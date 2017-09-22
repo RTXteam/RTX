@@ -1,0 +1,5 @@
+digraph test {
+node [shape=circle];
+      D1 -> D2 [label=is_a, color=green, fontcolor=green];
+}
+

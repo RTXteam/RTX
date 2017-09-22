@@ -1,0 +1,5 @@
+graph test {
+node [shape=circle];
+      D1 -- D2 [label=assoc_with, color=blue, len=1.5, fontcolor=blue];
+}
+

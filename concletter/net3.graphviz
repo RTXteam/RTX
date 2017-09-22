@@ -1,0 +1,13 @@
+digraph test {
+rankdir=LR;
+D1 [shape=circle];
+D2 [shape=circle];
+P [shape=rarrow];
+M1 [shape=hexagon];
+M2 [shape=hexagon]
+M1 -> P [color=red, label=member_of, arrowhead=none, fontcolor=red];
+M2 -> P [color=red, label=member_of, arrowhead=none, fontcolor=red];
+M1 -> D1 [color=blue, label=assoc_with, fontcolor=blue];
+M2 -> D2 [color=blue, label=assoc_with, arrowshape=tee, fontcolor=blue];
+}
+

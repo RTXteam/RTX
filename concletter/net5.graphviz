@@ -1,0 +1,19 @@
+digraph test {
+rankdir=LR;
+rs334 [shape=insulator];
+rs334 -> SCA [color=black, label=causes];
+rs334 -> malaria [arrowhead=tee, color=black, label=protects_against];
+SCA [shape=circle, size=2.5, fixedsize=true];
+cerebral_malaria [shape=circle, size=2.5, fixedsize=true];
+malaria [shape=circle, size=2.5, fixedsize=true];
+Hb_pathway [shape=rarrow];
+Hb [shape=hexagon];
+HMOX1 [shape=hexagon]
+Hb -> Hb_pathway [color=red, label=member_of, arrowhead=none, fontcolor=red];
+HMOX1 -> Hb_pathway [color=red, label=member_of, arrowhead=none, fontcolor=red];
+HMOX1 -> cerebral_malaria [color=blue, label=assoc_with, fontcolor=blue];
+cerebral_malaria -> malaria [color=green, label=is_a, fontcolor=green];
+Hb -> SCA [color=blue, label=protects_against, arrowhead=tee, fontcolor=blue];
+rs334 -> Hb [color=purple, label=inferred, arrowhead=tee, fontcolor=purple];
+}
+
