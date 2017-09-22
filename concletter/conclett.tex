@@ -58,25 +58,19 @@
 
 \section{Project plan}
 \subsection{Description of methodology to be used}
-\subsubsection{Overview of reasoning engine}
-We propose to implement a reasoning engine based on the formalism of Tractable
-First-Order Probabilistic Logic and its associated Tractable Markov Logic (TLM)
-language developed by \citet{Domingos:2012wi}. In keeping with the distributed
-nature of Translator's Knowledge Sources, the reasoning engine that will
-generate the dossier will operate on a Markov Logic Network learned from the
-{\em schemas\/} and other metdata of Knowledge Sources; it will not be a network
-of all biological interactions contained in the Knowledge Sources. The reasoning
-engine's input will be a data structure representing the parsed natural language
-query (see Sec.~\ref{sec:nlp}). The reasoning engine's output will be a {\em
-  dossier,\/} i.e., a ranked list of {\em search strategies,\/} where a search
-strategy is a possible joining of result-sets from one or more queries of
-Translator Knowledge Sources (KS).
+The methodology we propose to autonomously answer user queries consists of three main components: process natural language user queries, generate a dossier of search strategies, and execute the desired search strategies.
+\subsection{Natural language processing}
+A critical functionality of a reasoning engine is the ability to parse and understand free-form user input. To facilitate this, we...
+\textit{Liang's stuff here}
+The NLP step will result in ... This representation of the user query will be used by the reasoning engine to generate a dossier of search strategies. 
+%an identification of relevant abstract terms (such as ``disease,'' ``pathway,'', ``molecule'' etc.) along with a desired connectives between them (such as ``offers protection against,'' ``is associated to'' etc.).
+\subsection{Generate a dossier of search strategies}
+Our Reasoning Engine will simultaneously identify relevant knowledge sources and construct appropriate queries in order to answer user questions. This is accomplished by constructing a network of \textit{schemas} and other metadata of Knowledge Sources (KS's) which we call a \textit{schema network}. This representation will not be a network of all biological interactions contained in the KS's, but rather abstractly represents the categories of information contained in the various Translator KS's as well as the relationships between them. Guided by the parsed user input, our Knowledge Engine will identify appropriate paths in this network that represent search strategies to answer the user query. These paths will traverse one or more KS's metadata and hence will automatically identify the relevant databases to query. To find such paths, we will implement a reasoning engine based on the formalism of Tractable First-Order Probabilistic Logic and its associated Tractable Markov Logic (TLM) language \citet{Domingos:2012wi}.
+%\subsubsection{Tractable Markov Logic}
+%In keeping with the distributed nature of Translator's Knowledge Sources, the reasoning engine that will generate the dossier will operate on a Markov Logic Network learned from the {\em schemas\/} and other metdata of Knowledge Sources; it will not be a network of all biological interactions contained in the Knowledge Sources. The reasoning engine's input will be a data structure representing the parsed natural language query (see Sec.~\ref{sec:nlp}). The reasoning engine's output will be a {\em dossier,\/} i.e., a ranked list of {\em search strategies,\/} where a search strategy is a possible joining of result-sets from one or more queries of Translator Knowledge Sources (KS).
 
 \subsubsection{Example to show how the reasoning engine will work}
-We will illustrate the {\em search strategy\/} idea with a concrete
-example. Suppose a user wishes to find a common mechanism to explain the
-association of a variant $V$ with two different diseases $D1$ and $D2$
-(Fig.~\ref{fig:networks}a).
+We will illustrate the {\em dossier generation\/} idea with a concrete example. Suppose a user wishes to find a common mechanism to explain the association of a variant $V$ with two different diseases $D1$ and $D2$ (Fig.~\ref{fig:networks}a).
 \begin{figure}[h!]
   \begin{tabular}{cccc}
     \includegraphics[width=1.4in]{baseproblem.png} &
@@ -86,17 +80,13 @@ association of a variant $V$ with two different diseases $D1$ and $D2$
     {\bf (a) Query} & {\bf (b) Search Strategy 1} & {\bf (c) Search Strategy 2} & {\bf (d) Search Strategy 3}
   \end{tabular}
   \caption{Example query predicate information (A) and examples of some simple
-    search strategies (B--D) that would be examined by the reasoning engine based on
-    a Markov Logic Network representing possible {\em types of connections\/}  between biological
-    entities that are
-   . Color denotes database to be searched (green: Disease Ontology,
-    blue: DisGeNET, red: Pathway Commons). Black edges denote the query
-    predicate variant-disease relationships. Circles denote the diseases D1 and
-    D2, the boxed G denotes a variant, the large arrow shape denotes a pathway
-    P, and hexagons denote the protein molecules M1 and M2 (or equivalently,
-    their associated genes).}
+    search strategies (B--D) that would be examined by the reasoning engine based on a Markov Logic Network representing possible {\em types of connections\/}  between biological
+    entities that are  . Color denotes database to be searched (green: Disease Ontology, blue: DisGeNET, red: Pathway Commons). Black edges denote the query predicate variant-disease relationships. Circles denote the diseases D1 and D2, the boxed G denotes a variant, the large arrow shape denotes a pathway P, and hexagons denote the protein molecules M1 and M2 (or equivalently, their associated genes).}
   \label{fig:networks}
 \end{figure}
+The goal will be to find paths in the schema network that describe common mechanisms between the input diseases. One possible kind of path is a (disease,disease) tuple representing ``is-a subtype of'' relationships (Fig.~\ref{fig:networks}b). This kind of relationship between diseases is inferred from the metadata of the Gene Ontology database. 
+%The schema network contains many different kinds of paths between a The schema network will contain various paths between the disease label and itself. For example, one such path is $D1$ ``is a``
+
 A simple strategy would be to search to obtain a list of (disease,disease)
 tuples representing ``is-a'' relationships from the Gene Ontology database
 (Fig.~\ref{fig:networks}b) where the edge would be assigned a weight in the
@@ -149,7 +139,9 @@ Programming Interface (KBAPI).
 
 
 \subsection{Anticipated functionality for the POC reasoning tool}
+\textit{Functionality for the reasoning tool proof-of-concept (due in Nov)}
 \subsection{Components of the proposed software stack}
+
 
 \subsubsection{Natural language query analyzer}
 \label{sec:nlp}
