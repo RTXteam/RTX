@@ -50,6 +50,7 @@
         \item IBM Watson is also based off of probabilistic evidence-based architecture (Magazine, A. I. "The ai behind watson—the technical article." AI Magazine (2010).)
         \item Suggested for use with precision oncology (10.1038/nrclinonc.2013.244)
         \item Similar approaches in drug-target interaction prediction (10.1109/TCBB.2014.2325031)
+        \item Automatic question answering (10.1145/2396761.2398544)
         \item Liang, more accurate previous applications?
         \end{enumerate}
 \end{enumerate}
@@ -67,7 +68,7 @@ The NLP step will result in ... This representation of the user query will be us
 %an identification of relevant abstract terms (such as ``disease,'' ``pathway,'', ``molecule'' etc.) along with a desired connectives between them (such as ``offers protection against,'' ``is associated to'' etc.).
 \subsection{Generate a dossier of search strategies}
 \label{section:strategies}
-Our Reasoning Engine will simultaneously identify relevant knowledge sources and construct appropriate queries in order to answer user questions. This is accomplished by constructing a network of \textit{schemas} and other metadata of Knowledge Sources (KS's) which we call a \textit{schema network}. This representation will not be a network of all biological interactions and entities contained in the KS's, but rather compactly and abstractly represents the categories of information contained in the various Translator KS's as well as the relationships between them. Using the parsed user input, our Reasoning Engine will identify appropriate paths in this network that represent search strategies to answer the user query. These paths will traverse one or more KS's metadata and hence will automatically identify the relevant databases to query. To find such paths, we will implement a reasoning engine based on the formalism of Tractable First-Order Probabilistic Logic and its associated Tractable Markov Logic (TML) language developed by \citet{Domingos:2012wi}. The Java-based (and open-source) NCATS-Tangerine Beacon Aggregator is used to obtain metadata (schemas and entity counts) from Knowledge Sources via RESTful queries leveraging the common Translator Knowledge Beacon Application Programming Interface (KBAPI). This provides the topology of the schema network. 
+Our Reasoning Engine will simultaneously identify relevant knowledge sources and construct appropriate queries in order to answer user questions. This is accomplished by constructing a network of \textit{schemas} and other metadata of Knowledge Sources (KS's) which we call a \textit{schema network}. This representation will not be a network of all biological interactions and entities contained in the KS's, but rather compactly and abstractly represents the categories of information contained in the various Translator KS's as well as the relationships between them. Hence, nodes are metadata entities (such as \verb|disease| or \verb|pathway|) and edges between them are given by first order logical statements (such as \verb|assoc_with(D1,D2)|). Using the parsed user input, our Reasoning Engine will identify appropriate paths in this network that represent search strategies to answer the user query. These paths will traverse one or more KS's metadata and hence will automatically identify the relevant databases to query. To find such paths, we will implement a reasoning engine based on the formalism of Tractable First-Order Probabilistic Logic and its associated Tractable Markov Logic (TML) language developed by \citet{Domingos:2012wi}. The identification of such paths is equivalent to knowledge-based model construction, which has been previously shown to be subsumed by Markov Logic \cite{domingos20071}. \textbf{This might be complete BS, but sounds reasonable}.
 
 \textbf{Training?}
 
@@ -116,22 +117,31 @@ After the search strategy (path through the schema network) is selected, we empl
 
 
 \subsection{Anticipated functionality for the POC reasoning tool}
+%\textit{Functionality for the reasoning tool proof-of-concept (due in Nov)}
 For the two proof of concept project questions, the anticipated functionality includes:
 \begin{enumerate}
-\item Allow the user to select from one of two questions (``which genetic condition(s) protect(s) from a given disease $D$'' and ``what is the outcome pathway for drug $D$ and condition $C$'') where $D$ and $C$ are drugs and conditions that can be specified by the user.
+\item Allow the user to select from one of two questions: ``which genetic condition(s) protect(s) from a given disease $D$'' and ``what is the outcome pathway for drug $D$ and condition $C$''. The condition $C$ and/or drug $D$ are specified by the user.
 \item Pre-computed search strategies for these two questions will be implemented.
-\item The modified Dijkstra algorithm will be implemented and will query the Knowledge Sources in real time (based on the user selected search query)
+\item The modified Dijkstra algorithm will be implemented and will query the Knowledge Sources in real time (based on the user selected search query).
 \end{enumerate}
-If funded, the Reasoning Engine we propose will allow for natural language input (Section \ref{section:NLP}), automatic generation of search strategies (Section \ref{section:strategies}) and will also utilize the Dijkstra algorithm of Section \ref{section:Dijkstra}
-\textit{Functionality for the reasoning tool proof-of-concept (due in Nov)}
-\subsection{Components of the proposed software stack}
+If funded, the Reasoning Engine we propose will allow for natural language input (Section \ref{section:NLP}), automatic generation of search strategies (Section \ref{section:strategies}) and will also utilize the Dijkstra algorithm of Section \ref{section:Dijkstra}.
 
+\subsection{Components of the proposed software stack}
+The natural language processing will use the open source software \textbf{Liang: name and reference}.
+
+ For the search strategy generation, there are a number of open source software packages that implement Markov Logic Networks: Tuffy \cite{DBLP:journals/pvldb/NiuRDS11}, Alchemy \cite{kok2006alchemy}, RockIt \cite{noessner2013rockit}, and TheBeast \cite{riedel08improving}. We will utilize Alchemy due to its robust implementation and continued development. To set the schema network topology, the Java-based (and open-source) NCATS-Tangerine Beacon Aggregator is used to obtain metadata (schemas and entity counts) from Knowledge Sources via RESTful queries leveraging the common Translator Knowledge Beacon Application Programming Interface (KBAPI).
+ 
+ The modified Dijkstra algorithm will be developed in-house and will be published (in an open source fashion) on GitHub.
 
 %\subsubsection{Natural language query analyzer}
 %\label{sec:nlp}
 %Should we use the Stanford CoreNLP with BioNLP shared task data? If so, which Python API should we use? (There are about a dozen of them).
 
 \subsection{How proposed software will interact with Translator}
+\textit{A description of how the proposed software will interact with the Translator architecture
+components described in this FOA or how it will be enhanced to do so in the future. See
+“Further Information on Biomedical Data Translator” section above for a listing of the
+current Translator components.}
 
 %% \section{Background: Types of questions}
 %% \subsection{How does drug X induce clinical outcome Y?}
