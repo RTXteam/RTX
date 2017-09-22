@@ -68,15 +68,24 @@ The NLP step will result in ... This representation of the user query will be us
 %an identification of relevant abstract terms (such as ``disease,'' ``pathway,'', ``molecule'' etc.) along with a desired connectives between them (such as ``offers protection against,'' ``is associated to'' etc.).
 \subsection{Generate a dossier of search strategies}
 \label{section:strategies}
-Our Reasoning Engine will simultaneously identify relevant knowledge sources and construct appropriate queries in order to answer user questions. This is accomplished by constructing a network of \textit{schemas} and other metadata of Knowledge Sources (KS's) which we call a \textit{schema network}. This representation will not be a network of all biological interactions and entities contained in the KS's, but rather compactly and abstractly represents the categories of information contained in the various Translator KS's as well as the relationships between them. Hence, nodes are metadata entities (such as \verb|disease| or \verb|pathway|) and edges between them are given by first order logical statements (such as \verb|assoc_with(D1,D2)|). Using the parsed user input, our Reasoning Engine will identify appropriate paths in this network that represent search strategies to answer the user query. These paths will traverse one or more KS's metadata and hence will automatically identify the relevant databases to query. To find such paths, we will implement a reasoning engine based on the formalism of Tractable First-Order Probabilistic Logic and its associated Tractable Markov Logic (TML) language developed by \citet{Domingos:2012wi}. The identification of such paths is equivalent to knowledge-based model construction, which has been previously shown to be subsumed by Markov Logic \cite{domingos20071}. \textbf{This might be complete BS, but sounds reasonable}.
+Our Reasoning Engine will simultaneously identify relevant knowledge sources and construct appropriate queries in order to answer user questions. This is accomplished by constructing a network of \textit{schemas} and other metadata of Knowledge Sources (KS's) which we call a \textit{schema network}. This representation will not be a network of all biological interactions and entities contained in the KS's, but rather compactly and abstractly represents the categories of information contained in the various Translator KS's as well as the relationships between them. Hence, nodes are metadata entities (such as \verb|disease| or \verb|pathway|) and edges between them are given by first order logical statements (such as \verb|assoc_with(X,Y)|). Using the parsed user input, our Reasoning Engine will identify paths in this schema network that represent search strategies to answer the user query. These paths will traverse one or more KS's metadata and hence will automatically identify the relevant databases to query. To find such paths, we will implement a reasoning engine based on the formalism of Tractable First-Order Probabilistic Logic and its associated Tractable Markov Logic (TML) language developed by \citet{Domingos:2012wi}. The identification of such paths is equivalent to knowledge-based model construction, which is known to be subsumed by Markov Logic \cite{domingos20071}. \textbf{This might be complete BS, but sounds reasonable}.
 
 \textbf{Training?}
 
 %\subsubsection{Tractable Markov Logic}
 %In keeping with the distributed nature of Translator's Knowledge Sources, the reasoning engine that will generate the dossier will operate on a Markov Logic Network learned from the {\em schemas\/} and other metdata of Knowledge Sources; it will not be a network of all biological interactions contained in the Knowledge Sources. The reasoning engine's input will be a data structure representing the parsed natural language query (see Sec.~\ref{sec:nlp}). The reasoning engine's output will be a {\em dossier,\/} i.e., a ranked list of {\em search strategies,\/} where a search strategy is a possible joining of result-sets from one or more queries of Translator Knowledge Sources (KS).
 
-\subsubsection{Example to show how the reasoning engine will work}
-We will illustrate the {\em dossier generation\/} idea with a concrete example. Suppose a user wishes to find a common mechanism to explain the association of a variant $V$ with two different diseases $D1$ and $D2$ (Fig.~\ref{fig:networks}a).
+
+\subsection{Executing search strategies}
+\label{section:Dijkstra}
+After the search strategy (path through the schema network) is selected, we employ a modified Dijkstra algorithm to find probable paths between source and target node(s).
+\textbf{Steve, Liang, insert description here}
+
+%\subsubsection{Composition of the Markov Logic Network}
+%We will use the Java-baesd (and open-source) NCATS-Tangerine Beacon Aggregator to obtain metadata (schemas and entity counts) from Knowledge Sources via RESTful queries leveraging the common Translator Knowledge Beacon Application Programming Interface (KBAPI).
+
+\subsection{Example to show how the reasoning engine will work}
+We will illustrate the operation of the Reasoning Engine with a concrete example. Suppose a user wishes to find a common mechanism to explain the association of a variant $V$ with two different diseases $D1$ and $D2$ (Fig.~\ref{fig:networks}a).
 \begin{figure}[h!]
   \begin{tabular}{cccc}
     \includegraphics[width=1.4in]{baseproblem.png} &
@@ -90,7 +99,7 @@ We will illustrate the {\em dossier generation\/} idea with a concrete example. 
 \end{figure}
 The goal will be to find paths in the schema network that describe common mechanisms between the input diseases. One possible kind of path is a (disease,disease) tuple representing ``is a subtype of'' relationships (Fig.~\ref{fig:networks}b). This kind of relationship between diseases is inferred from the metadata of the Gene Ontology database. An alternate path consists of a undirected edges $\{$disease,disease$\}$ representing disease-disease associations from the DisGeNET database (Fig.~\ref{fig:networks}c). A more complicated path (traversing two different databases) is given in Fig.~\ref{fig:networks}b) where  (molecule,disease) ``associated\_with'' tuples (from DisGeNET or Pharos) with (molecule,pathway) tuples representing ``member\_of'' relationships from Pathway Commons. An example of a {\em three}-database search strategy, for the same user query (Fig.~\ref{fig:threedb}a) about a variant-to-two-diseases association, is shown in Fig.~\ref{fig:threedb}b).
 
-Each of these possible paths identifies relevant KS's and represents a search strategy: how to traverse these databases to answer the user query. A na\''ive approach to ranking these different search strategies would be to use a combination of path length with edge weightings based on, say, prevalence of the given diseases $D1$ and $D2$,  strength of associations, etc. A more nuanced approach is to utilize the TML language \citet{Domingos:2012wi} to rank the search strategies in terms of how well they answer the user input. After the user selects a desired search strategy (alternatively, the top ranked search strategy is automatically utilized), the source and target nodes are grounded with the particular biological entities contained in the user query. A modified Dijkstra algorithm (Section \ref{section:Dijkstra}) is then used to execute the query on the databases of interest to find paths between actual biological entities.
+Each of these possible paths identifies relevant KS's and represents a search strategy: how to traverse these databases to answer the user query. A naive approach to ranking these different search strategies would be to use a combination of path length with edge weightings based on, say, prevalence of the given diseases $D1$ and $D2$,  strength of associations, etc. A more nuanced approach is to utilize the TML language \citet{Domingos:2012wi} to rank the search strategies in terms of how well they answer the user input. After the user selects a desired search strategy (alternatively, the top ranked search strategy is automatically utilized), the source and target nodes are grounded with the particular biological entities contained in the user query. A modified Dijkstra algorithm (Section \ref{section:Dijkstra}) is then used to execute the query on the databases of interest to find paths between actual biological entities.
 
 %The schema network contains many different kinds of paths between a The schema network will contain various paths between the disease label and itself. For example, one such path is $D1$ ``is a``
 
@@ -105,18 +114,10 @@ Each of these possible paths identifies relevant KS's and represents a search st
   \caption{Example query predicate information (A); three-database example search strategy (B); matching search result for the specific query example G=rs334, D1=sicke-cell anemia (SCA) and D2=malaria (C). Edge color denotes the Knowledge Source to be searched (blue, DisGeNET; red, Pathway Commons; and green, Disease Ontology). Black edges denote the original query. Purple edge is the inferred interaction that explains the two black edges in light of the colored edges.}
   \label{fig:threedb}
 \end{figure}
-As an example, assume that the variant G in this example query scenario is rs334, a pleiotropic rare (MAF = 0.014\%) variant for which the homozygous minor allele causes the blood disorder sickle-cell anemia (D1) and protects against malaria (D2). A Dijkstra search on the three-database search strategy shown in Fig.~\ref{fig:threedb}b) would yield a match indicating that a potential explanation for the pleiotropy of rs334 is that it inhibits the hemoglobin pathway, thus reducing circulating levels of free heme, which has been reported to be protective in the case of cerebral malaria (a neurological complication of malarial disease)~\cite{Ferreira:2011ff}.
-
-\subsection{Executing search strategies}
-\label{section:Dijkstra}
-After the search strategy (path through the schema network) is selected, we employ a modified Dijkstra algorithm to find probable paths between source and target node(s).
-\textbf{Steve, Liang, insert description here}
-
-%\subsubsection{Composition of the Markov Logic Network}
-%We will use the Java-baesd (and open-source) NCATS-Tangerine Beacon Aggregator to obtain metadata (schemas and entity counts) from Knowledge Sources via RESTful queries leveraging the common Translator Knowledge Beacon Application Programming Interface (KBAPI).
+For example, assume that the variant G in this example query scenario is rs334, a pleiotropic rare (MAF = 0.014\%) variant for which the homozygous minor allele causes the blood disorder sickle-cell anemia (D1) and protects against malaria (D2). A Dijkstra search on the three-database search strategy shown in Fig.~\ref{fig:threedb}b) would yield a match indicating that a potential explanation for the pleiotropy of rs334 is that it inhibits the hemoglobin pathway, thus reducing circulating levels of free heme, which has been reported to be protective in the case of cerebral malaria (a neurological complication of malarial disease)~\cite{Ferreira:2011ff}.
 
 
-\subsection{Anticipated functionality for the POC reasoning tool}
+\section{Anticipated functionality for the POC reasoning tool}
 %\textit{Functionality for the reasoning tool proof-of-concept (due in Nov)}
 For the two proof of concept project questions, the anticipated functionality includes:
 \begin{enumerate}
@@ -126,18 +127,18 @@ For the two proof of concept project questions, the anticipated functionality in
 \end{enumerate}
 If funded, the Reasoning Engine we propose will allow for natural language input (Section \ref{section:NLP}), automatic generation of search strategies (Section \ref{section:strategies}) and will also utilize the Dijkstra algorithm of Section \ref{section:Dijkstra}.
 
-\subsection{Components of the proposed software stack}
+\section{Components of the proposed software stack}
 The natural language processing will use the open source software \textbf{Liang: name and reference}.
 
- For the search strategy generation, there are a number of open source software packages that implement Markov Logic Networks: Tuffy \cite{DBLP:journals/pvldb/NiuRDS11}, Alchemy \cite{kok2006alchemy}, RockIt \cite{noessner2013rockit}, and TheBeast \cite{riedel08improving}. We will utilize Alchemy due to its robust implementation and continued development. To set the schema network topology, the Java-based (and open-source) NCATS-Tangerine Beacon Aggregator is used to obtain metadata (schemas and entity counts) from Knowledge Sources via RESTful queries leveraging the common Translator Knowledge Beacon Application Programming Interface (KBAPI).
+For the search strategy generation, there are a number of open source software packages that implement Markov Logic Networks: Tuffy \cite{DBLP:journals/pvldb/NiuRDS11}, Alchemy \cite{kok2006alchemy}, RockIt \cite{noessner2013rockit}, and TheBeast \cite{riedel08improving}. We will utilize Alchemy due to its robust implementation and continued development. To set the schema network topology, the Java-based (and open-source) NCATS-Tangerine Beacon Aggregator is used to obtain metadata (schemas and entity counts) from Knowledge Sources via RESTful queries leveraging the common Translator Knowledge Beacon Application Programming Interface (KBAPI).
  
- The modified Dijkstra algorithm will be developed in-house and will be published (in an open source fashion) on GitHub.
+The modified Dijkstra algorithm will be developed in-house and will be published (in an open source fashion) on GitHub.
 
 %\subsubsection{Natural language query analyzer}
 %\label{sec:nlp}
 %Should we use the Stanford CoreNLP with BioNLP shared task data? If so, which Python API should we use? (There are about a dozen of them).
 
-\subsection{How proposed software will interact with Translator}
+\section{How proposed software will interact with Translator}
 \textit{A description of how the proposed software will interact with the Translator architecture
 components described in this FOA or how it will be enhanced to do so in the future. See
 “Further Information on Biomedical Data Translator” section above for a listing of the
