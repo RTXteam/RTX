@@ -60,12 +60,17 @@
 \subsection{Overview of methodology to be used}
 The methodology we propose to autonomously answer user queries consists of three main components: process natural language user queries, generate a dossier of search strategies, and execute the desired search strategies.
 \subsection{Natural language processing}
+\label{section:NLP}
 A critical functionality of a reasoning engine is the ability to parse and understand free-form user input. To facilitate this, we...
 \textbf{Liang's NLP paragraph here}
 The NLP step will result in ... This representation of the user query will be used by the reasoning engine to generate a dossier of search strategies. 
 %an identification of relevant abstract terms (such as ``disease,'' ``pathway,'', ``molecule'' etc.) along with a desired connectives between them (such as ``offers protection against,'' ``is associated to'' etc.).
 \subsection{Generate a dossier of search strategies}
-Our Reasoning Engine will simultaneously identify relevant knowledge sources and construct appropriate queries in order to answer user questions. This is accomplished by constructing a network of \textit{schemas} and other metadata of Knowledge Sources (KS's) which we call a \textit{schema network}. This representation will not be a network of all biological interactions contained in the KS's, but rather compactly and abstractly represents the categories of information contained in the various Translator KS's as well as the relationships between them. Using the parsed user input, our Knowledge Engine will identify appropriate paths in this network that represent search strategies to answer the user query. These paths will traverse one or more KS's metadata and hence will automatically identify the relevant databases to query. To find such paths, we will implement a reasoning engine based on the formalism of Tractable First-Order Probabilistic Logic and its associated Tractable Markov Logic (TML) language \citet{Domingos:2012wi}. The Java-based (and open-source) NCATS-Tangerine Beacon Aggregator is used to obtain metadata (schemas and entity counts) from Knowledge Sources via RESTful queries leveraging the common Translator Knowledge Beacon Application Programming Interface (KBAPI). This provides the topology of the schema network. 
+\label{section:strategies}
+Our Reasoning Engine will simultaneously identify relevant knowledge sources and construct appropriate queries in order to answer user questions. This is accomplished by constructing a network of \textit{schemas} and other metadata of Knowledge Sources (KS's) which we call a \textit{schema network}. This representation will not be a network of all biological interactions and entities contained in the KS's, but rather compactly and abstractly represents the categories of information contained in the various Translator KS's as well as the relationships between them. Using the parsed user input, our Reasoning Engine will identify appropriate paths in this network that represent search strategies to answer the user query. These paths will traverse one or more KS's metadata and hence will automatically identify the relevant databases to query. To find such paths, we will implement a reasoning engine based on the formalism of Tractable First-Order Probabilistic Logic and its associated Tractable Markov Logic (TML) language developed by \citet{Domingos:2012wi}. The Java-based (and open-source) NCATS-Tangerine Beacon Aggregator is used to obtain metadata (schemas and entity counts) from Knowledge Sources via RESTful queries leveraging the common Translator Knowledge Beacon Application Programming Interface (KBAPI). This provides the topology of the schema network. 
+
+\textbf{Training?}
+
 %\subsubsection{Tractable Markov Logic}
 %In keeping with the distributed nature of Translator's Knowledge Sources, the reasoning engine that will generate the dossier will operate on a Markov Logic Network learned from the {\em schemas\/} and other metdata of Knowledge Sources; it will not be a network of all biological interactions contained in the Knowledge Sources. The reasoning engine's input will be a data structure representing the parsed natural language query (see Sec.~\ref{sec:nlp}). The reasoning engine's output will be a {\em dossier,\/} i.e., a ranked list of {\em search strategies,\/} where a search strategy is a possible joining of result-sets from one or more queries of Translator Knowledge Sources (KS).
 
@@ -102,25 +107,29 @@ Each of these possible paths identifies relevant KS's and represents a search st
 As an example, assume that the variant G in this example query scenario is rs334, a pleiotropic rare (MAF = 0.014\%) variant for which the homozygous minor allele causes the blood disorder sickle-cell anemia (D1) and protects against malaria (D2). A Dijkstra search on the three-database search strategy shown in Fig.~\ref{fig:threedb}b) would yield a match indicating that a potential explanation for the pleiotropy of rs334 is that it inhibits the hemoglobin pathway, thus reducing circulating levels of free heme, which has been reported to be protective in the case of cerebral malaria (a neurological complication of malarial disease)~\cite{Ferreira:2011ff}.
 
 \subsection{Executing search strategies}
+\label{section:Dijkstra}
 After the search strategy (path through the schema network) is selected, we employ a modified Dijkstra algorithm to find probable paths between source and target node(s).
 \textbf{Steve, Liang, insert description here}
 
-\subsubsection{Composition of the Markov Logic Network}
-We will use the Java-baesd (and open-source) NCATS-Tangerine Beacon Aggregator
-to obtain metadata (schemas and entity counts) from Knowledge Sources via
-RESTful queries leveraging the common Translator Knowledge Beacon Application
-Programming Interface (KBAPI).
+%\subsubsection{Composition of the Markov Logic Network}
+%We will use the Java-baesd (and open-source) NCATS-Tangerine Beacon Aggregator to obtain metadata (schemas and entity counts) from Knowledge Sources via RESTful queries leveraging the common Translator Knowledge Beacon Application Programming Interface (KBAPI).
 
 
 \subsection{Anticipated functionality for the POC reasoning tool}
+For the two proof of concept project questions, the anticipated functionality includes:
+\begin{enumerate}
+\item Allow the user to select from one of two questions (``which genetic condition(s) protect(s) from a given disease $D$'' and ``what is the outcome pathway for drug $D$ and condition $C$'') where $D$ and $C$ are drugs and conditions that can be specified by the user.
+\item Pre-computed search strategies for these two questions will be implemented.
+\item The modified Dijkstra algorithm will be implemented and will query the Knowledge Sources in real time (based on the user selected search query)
+\end{enumerate}
+If funded, the Reasoning Engine we propose will allow for natural language input (Section \ref{section:NLP}), automatic generation of search strategies (Section \ref{section:strategies}) and will also utilize the Dijkstra algorithm of Section \ref{section:Dijkstra}
 \textit{Functionality for the reasoning tool proof-of-concept (due in Nov)}
 \subsection{Components of the proposed software stack}
 
 
-\subsubsection{Natural language query analyzer}
-\label{sec:nlp}
-Should we use the Stanford CoreNLP with BioNLP shared task data? If so, which
-Python API should we use? (There are about a dozen of them).
+%\subsubsection{Natural language query analyzer}
+%\label{sec:nlp}
+%Should we use the Stanford CoreNLP with BioNLP shared task data? If so, which Python API should we use? (There are about a dozen of them).
 
 \subsection{How proposed software will interact with Translator}
 
