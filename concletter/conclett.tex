@@ -47,7 +47,7 @@
  \item Previous applications:
  		\begin{enumerate}
         \item Autonomous service robots (10.1177/0278364913481635),
-        \item IBM Watson is also based off of probabilistic evidence-based architecture (Magazine, A. I. "The ai behind watson—the technical article." AI Magazine (2010).)
+        \item IBM Watson is also based off of probabilistic evidence-based architecture (Magazine, A.I.~ ``The AI behind Watson -- the technical article.'' AI Magazine (2010).)
         \item Suggested for use with precision oncology (10.1038/nrclinonc.2013.244)
         \item Similar approaches in drug-target interaction prediction (10.1109/TCBB.2014.2325031)
         \item Automatic question answering (10.1145/2396761.2398544)
@@ -65,6 +65,30 @@ The methodology we propose to autonomously answer user queries consists of three
 A critical functionality of a reasoning engine is the ability to parse and understand free-form user input. To facilitate this, we...
 \textbf{Liang's NLP paragraph here}
 The NLP step will result in ... This representation of the user query will be used by the reasoning engine to generate a dossier of search strategies. 
+
+\begin{figure}
+\centering
+\begin{tabular}{c|c}
+\includegraphics[width=0.6\textwidth]{stanford_parse}
+&
+\raisebox{2cm}{
+\begin{tabular}{l}
+cause (G?, D1)\\[0.5cm]
+protect\_against (G?, D2)
+\end{tabular}
+}
+\\
+(a) syntactic parse &
+(b) semantic parse
+\end{tabular}
+\caption{Natural language parsing of the input query
+{\em``What genetic variant causes D1 and protects against D2?"}
+where D1 and D2 are placeholders for two particular diseases.
+(a) step 1, syntactic parsing: from query to Stanford dependencies.
+(b) step 2, semantic parsing: from Stanford dependencies to first-order logic predicates.
+}
+\end{figure}
+
 %an identification of relevant abstract terms (such as ``disease,'' ``pathway,'', ``molecule'' etc.) along with a desired connectives between them (such as ``offers protection against,'' ``is associated to'' etc.).
 \subsection{Generate a dossier of search strategies}
 \label{section:strategies}
