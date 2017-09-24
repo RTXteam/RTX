@@ -29,6 +29,8 @@
 \titlespacing\section{0pt}{12pt plus 4pt minus 2pt}{0pt plus 2pt minus 2pt}
 \titlespacing\subsection{0pt}{12pt plus 4pt minus 2pt}{0pt plus 2pt minus 2pt}
 \titlespacing\subsubsection{0pt}{12pt plus 4pt minus 2pt}{0pt plus 2pt minus 2pt}
+\setlength{\parindent}{0cm}
+%\setlength{\parskip}{6pt}
 
 \begin{document}
 
@@ -69,9 +71,13 @@
 
 \subsection{Limitations and bottlenecks in the current state of the art}
 
+\vspace{1em}
+
 \section{Project plan}
-\subsection{Overview of methodology to be used}
-The methodology we propose to autonomously answer user queries consists of three main components: process natural language user queries, generate a dossier of search strategies, and execute the desired search strategies.
+%\subsection{Overview of methodology to be used}
+We propose a three-component system that will (i) process natural language user
+queries, (ii) generate a dossier of ranked search strategies, and (iii) execute
+the desired search strategies.
 \subsection{Natural language processing}
 \label{section:NLP}
 A critical functionality of a reasoning engine is the ability to parse and understand free-form user input. To facilitate this, we...
@@ -104,22 +110,22 @@ where D1 and D2 are placeholders for two particular diseases.
 %an identification of relevant abstract terms (such as ``disease,'' ``pathway,'', ``molecule'' etc.) along with a desired connectives between them (such as ``offers protection against,'' ``is associated to'' etc.).
 \subsection{Generate a dossier of search strategies}
 \label{section:strategies}
-Given a parsed natural language query as input, our Reasoning Engine will return
-a {\em dossier\/} of possible {\em search strategies.\/} We define a search
-strategy as a set of types of biological entities (possible entity types include
-genetic variants, drugs, genes, molecules, pathways, diseases, diagnoses, or
-phenotypes) and proposed searches of Knowledge Sources to identify relationships
-between pairs of those entities. Thus, each search strategy is a connected,
-undirected graph in which each vertex corresponds to a type of biological entity
-and each edge corresponds to a Knowledge Source that can return tuples of
-associations for the entity types for the vertices that the edge connects.  One
-or more vertices in the strategy correspond to the entity types of the constants
-of the user's natural language query; these constant vertices will always be
-terminal vertices of the search strategy graph. We will illustrate by showing
-the graphs for three simple example search strategy that the reasoning engine
-would include in the dossier, for two user queries: {\em How are disease DX and
-disease DY connected?\/} (Fig.~\ref{fig:ugraph}a-b) and {\em How does variant G
-cause disease DX and protect against disease DY?\/} (Fig.~\ref{fig:ugraph}c).
+Given a parsed natural language query as input, our reasoning engine will return
+a {\em dossier\/} of possible {\em search strategies,\/} where a search strategy
+as a set of types of biological entities (possible entity types include genetic
+variants, drugs, genes, molecules, pathways, diseases, diagnoses, or phenotypes)
+and proposed searches of Knowledge Sources to identify relationships between
+pairs of those entities. Thus, each search strategy is a connected, undirected
+graph in which each vertex corresponds to a type of biological entity and each
+edge corresponds to a type of association for the entity types for the vertices
+that the edge connects (which would come from a Knowledge Source).  Leaf
+vertices in the strategy correspond to the entity types of the constants of the
+user's natural language query; these constant vertices will always be leaf
+vertices of the search strategy graph. We will illustrate by showing the graphs
+for three simple example search strategy that the reasoning engine would include
+in the dossier, for two user queries: {\em How are disease DX and disease DY
+  connected?\/} (Fig.~\ref{fig:ugraph}a-b) and {\em How does variant G cause
+  disease DX and protect against disease DY?\/} (Fig.~\ref{fig:ugraph}c).
 \begin{figure}[h!]
   \begin{tabular}{ccc}
     \includegraphics[width=1.2in]{net6.png} &
@@ -127,17 +133,16 @@ cause disease DX and protect against disease DY?\/} (Fig.~\ref{fig:ugraph}c).
     \includegraphics[width=2.5in]{net8.png} \\
                     {\bf (a)} & {\bf (b)} & {\bf (c)}
                     \end{tabular}
-  \caption{Three simple example search strategies that might be included in
-    dossiers returned by the reasoning engine. Example search strategies (a) and
-    (b) are for a natural language query {\em How are disease DX and disease DY
-    connected?\/}, which has two constants.  Search strategy (c) is for a natural
-    language query {\em How does variant G cause disease DX and protect against
-    disease DY?}  Double-shapes denote constants in the search strategy. Shape
-    denotes an entity type (circle: disease; hexagon: molecule; trapezoid:
-    pathway, box, variant). Internal vertex labels like ``M'' and ``P'' are
-    placeholders representing the entity type, not a specific molecule. Edge
-    color denotes the type of knowledge source to be searched (blue:
-    disease-molecule association (e.g., DisGeNET, ClinVar); red:
+  \caption{Three example search strategies that might be included in dossiers
+    returned by the reasoning engine: (a) and (b) are for a user query {\em How
+      are disease DX and disease DY connected?\/}, which has two constants.
+    Search strategy (c) is for a query {\em How does variant G cause disease DX
+      and protect against disease DY?}  Double-shapes denote constants in the
+    search strategy. Shape denotes an entity type (circle: disease; hexagon:
+    molecule; trapezoid: pathway, box, variant). Internal vertex labels like
+    ``M'' and ``P'' are placeholders representing the entity type, not a
+    specific molecule. Edge color denotes the type of knowledge source to be
+    searched (blue: disease-molecule association (e.g., DisGeNET, ClinVar); red:
     molecule-pathway association (e.g., Pathway Commons 2, BioCyc); green:
     disease-disease associaiton (e..g, disease ontology, DNetDB); purple:
     variant-molecule association (e.g., ClinVar, BeFree). Arbitrarily complex
@@ -153,11 +158,11 @@ cause disease DX and protect against disease DY?\/} (Fig.~\ref{fig:ugraph}c).
 
 In implementing the reasoning engine, we will use a markov chain approach to
 generate undirected graphs with the constant terms from the user's query as
-terminal vertices in the graph. The markov chain approach will also enable the
+leaf vertices in the graph. The markov chain approach will also enable the
 prioritization search strategies with fewer Knowledge Source lookups.  We will
 illustrate the idea with a simple example, reprising the hypothetical user query
 {\em How are disease DX and disease DY connected?}. With two constants (i.e.,
-terminal vertices in the graph), the undirected graph is a chain, in which case
+leaf vertices in the graph), the undirected graph is a chain, in which case
 the reasoning engine would generate graphs according to the markov process
 shown in Fig.~\ref{fig:mp}a.
 \begin{figure}[h!]
@@ -183,7 +188,7 @@ shown in Fig.~\ref{fig:mp}a.
     disease). In (b), if the markov reaches a ``branching jump or terminate''
     state, the procedure is (i) add the indicated vertex to the undirected graph
     being constructed, (ii) remove the indicated vertex from the transition
-    digraph, and (iii) select a non-terminal vertex in the undirected search
+    digraph, and (iii) select a non-leaf vertex in the undirected search
     strategy graph and begin extending a branch from that vertex.}
   \label{fig:mp}    
 \end{figure}
@@ -191,7 +196,7 @@ Such digraphs will be constructed for each possible one-constant, two-constant,
 and three-constant natural-language query. The digraph edges will have a
 standard set of transition probabilities assigned. Each realization of the
 markov chain will generate a possible search strategy, i.e., an undirected graph
-with the constant entities as terminal vertices; the markov chain will also
+with the constant entities as leaf vertices; the markov chain will also
 assign a probability to each search strategy, penalizing excessively long chains
 of Knowledge Source lookups and prioritizing the simplest strategies that can
 connect the constant entities.
@@ -227,7 +232,7 @@ that is consistent with current knowledge of the role of heme in cerebral malari
        of rs334 for sickle-cell anemia. SCA, sickle-cell anemia; Hb,
        hemoglobin b; HMOX1, heme oxygenase 1.  Colors, database
        types (see Fig.~\ref{fig:mp}b).}
-  \label{fig:networks}
+  \label{fig:malaria}
 \end{figure}
 
 \subsubsection{Beyond markov chains---Markov Logic Networks}
