@@ -1,8 +1,0 @@
-digraph test {
-node [shape=circle];
-rankdir=LR;
-G [shape=insulator];
-G -> D1 [color=black, label=causes];
-G -> D2 [arrowhead=tee, color=black, label=protects_against];
-}
-
