@@ -45,40 +45,43 @@ This system will be able to handle a variety of user queries, limited primarily 
 
 This approach (detailed in the project description) addresses a number of limitations in the current NCATS reasoning tools (\url{https://github.com/NCATS-Tangerine/cq-notebooks}). In particular, the process of generating and executing search strategies will be automated, removing the need to write custom Python notebooks for each query type. Our system, based on a probabilistic Markovian architecture, will both learn from repeated user interaction and also dynamically incorporate uncertainty in all steps of the proposed process. Relevant knowledge sources will also be automatically identified, removing the need for users to be experts in the variety of biological databases available. Lastly, by returning a variety of ranked search strategies and answers, our knowledge engine will present a dossier of results allowing the user to appreciate subtlety and complexity when it naturally arises from an input query (eg. some questions have more than one ``correct'' answer). 
 
-The team we have assembled to construct this knowledge engine possesses a wide range of applicable skills, from systems biology \cite{ramsey2010systems,hwang2005data1,hwang2005data2,de2004evolution}, natural language processing \cite{huang2012structured,huang2010dynamic,mi2008forest,huang2007forest}, mathematical algorithms for big data problems \cite{koslicki2014wgsquikr,holzinger2014entropy,koslicki2015coding,koslicki2013quikr,koslicki2017improving}, to database interaction and knowledge discover \cite{nandi2011guided,nandi2007effective,jagadish2007making,nandi2007assisted}. Previous implementations of knowledge engines
+The team we have assembled to construct this knowledge engine possesses a wide range of applicable skills, from systems biology \cite{ramsey2010systems,hwang2005data1,hwang2005data2,de2004evolution}, natural language processing \cite{huang2012structured,huang2010dynamic,mi2008forest,huang2007forest}, mathematical algorithms for big data problems \cite{koslicki2014wgsquikr,holzinger2014entropy,koslicki2015coding,koslicki2013quikr,koslicki2017improving}, to database interaction and knowledge discover \cite{nandi2011guided,nandi2007effective,jagadish2007making,nandi2007assisted}. Individual components of this knowledge engine have been implemented for different applications (as detailed in the previous references) and similar paradigms are employed by a variety of previously implemented knowledge engines with high-profile examples including IBM's Watson \cite{ferrucci2010building} and the aforementioned Wolfram$|$Alpha \cite{Wolframalpha}.
 
-\begin{enumerate}
- \item Core methodology:
-        \begin{enumerate}
-        \item  NLP parsing
-        \item  1st order probabilistic logic
-        \item modified Dijkstra
-        \item other probabilistic data analysis approaches?
-  		\end{enumerate}
- \item Limitations addressed:
-        \begin{enumerate}
-        \item No incorporation of uncertainty in all steps of the process
-        \item inability to use natural language queries
-        \item inability to automate identification of relevant knowledge sources
-        \item inability to automate the selection of relevant queries
-        \end{enumerate}
- \item Expertise:
- 		\begin{enumerate}
-        \item Steve and Liang will have to put there expertise in here
-        Mine is: mathematical algorithms for fast approximate or exact analysis of big data problems (can give references)
-        \end{enumerate}
- \item Previous applications:
- 		\begin{enumerate}
-        \item Autonomous service robots (10.1177/0278364913481635),
-        \item IBM Watson is also based off of probabilistic evidence-based architecture (Magazine, A.I.~ ``The AI behind Watson -- the technical article.'' AI Magazine (2010).)
-        \item Suggested for use with precision oncology (10.1038/nrclinonc.2013.244)
-        \item Similar approaches in drug-target interaction prediction (10.1109/TCBB.2014.2325031)
-        \item Automatic question answering (10.1145/2396761.2398544)
-        \item Liang, more accurate previous applications?
-        \end{enumerate}
-\end{enumerate}
+Finally, the knowledge engine we propose will be built in a modular, extensible fashion allowing it to interact with new knowledge sources. Since we employ a Markov chain architecture to generate search strategies and a Dijkstra-like algorithm to execute them, new biological entities can easily be incorporated. The flexibility of this framework allows for quick integration of additional constraints and new query types with the advantage of not needing to re-train the entire system whenever a new extension is added (in contrast to deep learning/neural network architectures). 
 
-\subsection{Limitations and bottlenecks in the current state of the art}
+
+%\begin{enumerate}
+ %\item Core methodology:
+%        \begin{enumerate}
+%        \item  NLP parsing
+%        \item  1st order probabilistic logic
+%        \item modified Dijkstra
+%        \item other probabilistic data analysis approaches?
+%  		\end{enumerate}
+ %\item Limitations addressed:
+%        \begin{enumerate}
+%        \item No incorporation of uncertainty in all steps of the process
+%        \item inability to use natural language queries
+%        \item inability to automate identification of relevant knowledge sources
+%        \item inability to automate the selection of relevant queries
+%        \end{enumerate}
+% \item Expertise:
+ %		\begin{enumerate}
+%        \item Steve and Liang will have to put there expertise in here
+%        Mine is: mathematical algorithms for fast approximate or exact analysis of big data problems (can give references)
+%        \end{enumerate}
+% \item Previous applications:
+ %		\begin{enumerate}
+%        \item Autonomous service robots (10.1177/0278364913481635),
+%        \item IBM Watson is also based off of probabilistic evidence-based architecture (Magazine, A.I.~ ``The AI behind Watson -- the technical article.'' AI Magazine (2010).)
+%        \item Suggested for use with precision oncology (10.1038/nrclinonc.2013.244)
+%        \item Similar approaches in drug-target interaction prediction (10.1109/TCBB.2014.2325031)
+%        \item Automatic question answering (10.1145/2396761.2398544)
+%        \item Liang, more accurate previous applications?
+%        \end{enumerate}
+%\end{enumerate}
+
+%\subsection{Limitations and bottlenecks in the current state of the art}
 
 \newpage
 
@@ -95,7 +98,7 @@ understand free-form user input. To facilitate this, we...  \textbf{Liang's NLP
 user query will be used by the reasoning engine to generate a dossier of search
 strategies.
 
-\begin{figure}
+\begin{figure}[h!]
 \centering
 \begin{tabular}{c|c}
 \includegraphics[width=0.4\textwidth]{stanford_parse}
