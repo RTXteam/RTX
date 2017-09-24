@@ -110,22 +110,20 @@ where D1 and D2 are placeholders for two particular diseases.
 %an identification of relevant abstract terms (such as ``disease,'' ``pathway,'', ``molecule'' etc.) along with a desired connectives between them (such as ``offers protection against,'' ``is associated to'' etc.).
 \subsection{Generate a dossier of search strategies}
 \label{section:strategies}
-Given a parsed natural language query as input, our reasoning engine will return
-a {\em dossier\/} of possible {\em search strategies,\/} where a search strategy
-as a set of types of biological entities (possible entity types include genetic
-variants, drugs, genes, molecules, pathways, diseases, diagnoses, or phenotypes)
-and proposed searches of Knowledge Sources to identify relationships between
-pairs of those entities. Thus, each search strategy is a connected, undirected
-graph in which each vertex corresponds to a type of biological entity and each
-edge corresponds to a type of association for the entity types for the vertices
-that the edge connects (which would come from a Knowledge Source).  Leaf
-vertices in the strategy correspond to the entity types of the constants of the
-user's natural language query; these constant vertices will always be leaf
-vertices of the search strategy graph. We will illustrate by showing the graphs
-for three simple example search strategy that the reasoning engine would include
-in the dossier, for two user queries: {\em How are disease DX and disease DY
-  connected?\/} (Fig.~\ref{fig:ugraph}a-b) and {\em How does variant G cause
-  disease DX and protect against disease DY?\/} (Fig.~\ref{fig:ugraph}c).
+Given a parsed natural language query as input, our Reasoning Engine will return
+a {\em dossier\/} of possible {\em search strategies.\/} We define a search
+strategy as a set of types of biological entities (these include
+genetic variants, drugs, genes, molecules, pathways, diseases, diagnoses, phenotypes, etc.) along with associated queries of Knowledge Sources to identify relationships
+between pairs of those entities. Thus, each search strategy is a connected,
+undirected graph in which each vertex corresponds to a type of biological entity
+and each edge corresponds to a Knowledge Source that can return tuples of
+associations for the entity types corresponding to the respective vertices.  One
+or more terminal vertices in this graph correspond to the entity types of the constants provided by 
+the user's parsed natural language query. To illustrate, we show 
+the graphs for three simple search strategies that the reasoning engine
+would include in the dossier for two user queries: {\em How are disease DX and
+disease DY connected?\/} (Fig.~\ref{fig:ugraph}a-b) and {\em How does variant G
+cause disease DX and protect against disease DY?\/} (Fig.~\ref{fig:ugraph}c).
 \begin{figure}[h!]
   \begin{tabular}{ccc}
     \includegraphics[width=1.2in]{net6.png} &
@@ -156,15 +154,14 @@ in the dossier, for two user queries: {\em How are disease DX and disease DY
 \subsubsection{How the reasoning engine will generate and prioritize search
   strategies}
 
-In implementing the reasoning engine, we will use a markov chain approach to
+In implementing the reasoning engine, we will use a Markov chain approach to
 generate undirected graphs with the constant terms from the user's query as
-leaf vertices in the graph. The markov chain approach will also enable the
-prioritization search strategies with fewer Knowledge Source lookups.  We will
+terminal vertices in the graph. This approach enables the
+prioritization of search strategies with fewer Knowledge Source lookups.  We will
 illustrate the idea with a simple example, reprising the hypothetical user query
 {\em How are disease DX and disease DY connected?}. With two constants (i.e.,
-leaf vertices in the graph), the undirected graph is a chain, in which case
-the reasoning engine would generate graphs according to the markov process
-shown in Fig.~\ref{fig:mp}a.
+terminal vertices in the graph), the reasoning engine would generate graphs according to the Markov process
+shown in Fig.~\ref{fig:mp}a).
 \begin{figure}[h!]
   \begin{tabular}{cc}
     \includegraphics[width=3in]{markov1.png} &
@@ -185,7 +182,7 @@ shown in Fig.~\ref{fig:mp}a.
       interaction (PharmGKB); is PharmGKB; black; variant-disease association
       (ClinVar, DisGeNET).] Each shape corresponds to a different type of
     biological entity (M, molecule; P, pathway, R, drug, G, variant, D,
-    disease). In (b), if the markov reaches a ``branching jump or terminate''
+    disease). In (b), if the Markov reaches a ``branching jump or terminate''
     state, the procedure is (i) add the indicated vertex to the undirected graph
     being constructed, (ii) remove the indicated vertex from the transition
     digraph, and (iii) select a non-leaf vertex in the undirected search
@@ -195,13 +192,13 @@ shown in Fig.~\ref{fig:mp}a.
 Such digraphs will be constructed for each possible one-constant, two-constant,
 and three-constant natural-language query. The digraph edges will have a
 standard set of transition probabilities assigned. Each realization of the
-markov chain will generate a possible search strategy, i.e., an undirected graph
-with the constant entities as leaf vertices; the markov chain will also
+Markov chain will generate a possible search strategy, i.e., an undirected graph
+with the constant entities as terminal vertices; the Markov chain will also
 assign a probability to each search strategy, penalizing excessively long chains
 of Knowledge Source lookups and prioritizing the simplest strategies that can
 connect the constant entities.
 
-\subsubsection{Training of the markov chain transition probabilities}
+\subsubsection{Training of the Markov chain transition probabilities}
 The transition probabilities (the weights of the
 colored edges in Fig.~\ref{fig:mp}) will be determined empirically using a set
 of 100 natural-language queries that we will assemble from template queries from
@@ -235,7 +232,7 @@ that is consistent with current knowledge of the role of heme in cerebral malari
   \label{fig:malaria}
 \end{figure}
 
-\subsubsection{Beyond markov chains---Markov Logic Networks}
+\subsubsection{Beyond Markov chains---Markov Logic Networks}
 We would additionally investigate the potential utility for constructing a
 Markov Logic Network~\cite{Domingos:2012wi,domingos20071} that would
 probabilistically represent possible connections between different types of
