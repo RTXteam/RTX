@@ -80,9 +80,11 @@ queries, (ii) generate a dossier of ranked search strategies, and (iii) execute
 the desired search strategies.
 \subsection{Natural language processing}
 \label{section:NLP}
-A critical functionality of a reasoning engine is the ability to parse and understand free-form user input. To facilitate this, we...
-\textbf{Liang's NLP paragraph here}
-The NLP step will result in ... This representation of the user query will be used by the reasoning engine to generate a dossier of search strategies. 
+A critical functionality of a reasoning engine is the ability to parse and
+understand free-form user input. To facilitate this, we...  \textbf{Liang's NLP
+  paragraph here} The NLP step will result in ... This representation of the
+user query will be used by the reasoning engine to generate a dossier of search
+strategies.
 
 \begin{figure}
 \centering
@@ -112,18 +114,20 @@ where D1 and D2 are placeholders for two particular diseases.
 \label{section:strategies}
 Given a parsed natural language query as input, our Reasoning Engine will return
 a {\em dossier\/} of possible {\em search strategies.\/} We define a search
-strategy as a set of types of biological entities (these include
-genetic variants, drugs, genes, molecules, pathways, diseases, diagnoses, phenotypes, etc.) along with associated queries of Knowledge Sources to identify relationships
-between pairs of those entities. Thus, each search strategy is a connected,
-undirected graph in which each vertex corresponds to a type of biological entity
-and each edge corresponds to a Knowledge Source that can return tuples of
-associations for the entity types corresponding to the respective vertices.  One
-or more terminal vertices in this graph correspond to the entity types of the constants provided by 
-the user's parsed natural language query. To illustrate, we show 
-the graphs for three simple search strategies that the reasoning engine
-would include in the dossier for two user queries: {\em How are disease DX and
-disease DY connected?\/} (Fig.~\ref{fig:ugraph}a-b) and {\em How does variant G
-cause disease DX and protect against disease DY?\/} (Fig.~\ref{fig:ugraph}c).
+strategy as a set of types of biological entities (these include genetic
+variants, drugs, genes, molecules, pathways, diseases, diagnoses, phenotypes,
+etc.) along with associated queries of Knowledge Sources to identify
+relationships between pairs of those entities. Thus, each search strategy is a
+connected, undirected graph in which each vertex corresponds to a type of
+biological entity and each edge corresponds to a Knowledge Source that can
+return tuples of associations for the entity types corresponding to the
+respective vertices.  One or more terminal vertices in this graph correspond to
+the entity types of the constants provided by the user's parsed natural language
+query. To illustrate, we show the graphs for three simple search strategies that
+the reasoning engine would include in the dossier for two user queries: {\em How
+  are disease DX and disease DY connected?\/} (Fig.~\ref{fig:ugraph}a-b) and
+{\em How does variant G cause disease DX and protect against disease DY?\/}
+(Fig.~\ref{fig:ugraph}c).
 \begin{figure}[h!]
   \begin{tabular}{ccc}
     \includegraphics[width=1.2in]{net6.png} &
@@ -142,7 +146,7 @@ cause disease DX and protect against disease DY?\/} (Fig.~\ref{fig:ugraph}c).
     specific molecule. Edge color denotes the type of knowledge source to be
     searched (blue: disease-molecule association (e.g., DisGeNET, ClinVar); red:
     molecule-pathway association (e.g., Pathway Commons 2, BioCyc); green:
-    disease-disease associaiton (e..g, disease ontology, DNetDB); purple:
+    disease-disease association (e..g, disease ontology, DNetDB); purple:
     variant-molecule association (e.g., ClinVar, BeFree). Arbitrarily complex
     search strategies can be created by chaining together additional possible
     entity-entity relationships, however, the reasoning engine will penalize
@@ -156,12 +160,12 @@ cause disease DX and protect against disease DY?\/} (Fig.~\ref{fig:ugraph}c).
 
 In implementing the reasoning engine, we will use a Markov chain approach to
 generate undirected graphs with the constant terms from the user's query as
-terminal vertices in the graph. This approach enables the
-prioritization of search strategies with fewer Knowledge Source lookups.  We will
-illustrate the idea with a simple example, reprising the hypothetical user query
-{\em How are disease DX and disease DY connected?}. With two constants (i.e.,
-terminal vertices in the graph), the reasoning engine would generate graphs according to the Markov process
-shown in Fig.~\ref{fig:mp}a).
+terminal vertices in the graph. This approach enables the prioritization of
+search strategies with fewer Knowledge Source lookups.  We will illustrate the
+idea with a simple example, reprising the hypothetical user query {\em How are
+  disease DX and disease DY connected?}. With two constants (i.e., terminal
+vertices in the graph), the reasoning engine would generate graphs according to
+the Markov process shown in Fig.~\ref{fig:mp}a).
 \begin{figure}[h!]
   \begin{tabular}{cc}
     \includegraphics[width=3in]{markov1.png} &
@@ -176,7 +180,7 @@ shown in Fig.~\ref{fig:mp}a).
     Colored arcs represent searches for entity-entity associations in various
     database sources [blue: disease-molecule association (e.g., DisGeNET,
       ClinVar); red: molecule-pathway association (e.g., Pathway Commons 2,
-      BioCyc); green: disease-disease associaiton (e..g, disease ontology,
+      BioCyc); green: disease-disease association (e..g, disease ontology,
       DNetDB); purple: variant-molecule association (e.g., ClinVar, BeFree);
       pink: variant-variant association (SNAP or IGSR); orange: drug-variant
       interaction (PharmGKB); is PharmGKB; black; variant-disease association
@@ -212,14 +216,15 @@ prioritize important linear combinations of the log-probability weights to
 fine-tune).
 
 \subsubsection{A concrete example of how our reasoning engine would work}
-Suppose a user wishes to find a common mechanism to identify a common
-mechanism underlying the causal effect of variant rs334 for sickle-cell anemia
-and that same variant's protective benefit against malaria. The natural-language
-query has three constants, and one search strategy that would be ranked in the dossier
-would be the one shown in Fig.~\ref{fig:ugraph}c. If executed against the databases
-Pathway Commons (red), Disease Ontology (green), DisGeNET (blue), and ClinVar (purple),
-the search strategy would return an explanatory mechanism, as shown in Fig.~\ref{fig:malaria},
-that is consistent with current knowledge of the role of heme in cerebral malaria~\cite{Ferreira:2011ff}
+Suppose a user wishes to find a common mechanism to identify a common mechanism
+underlying the causal effect of variant rs334 for sickle-cell anemia and that
+same variant's protective benefit against malaria. The natural-language query
+has three constants, and one search strategy that would be ranked in the dossier
+would be the one shown in Fig.~\ref{fig:ugraph}c. If executed against the
+databases Pathway Commons (red), Disease Ontology (green), DisGeNET (blue), and
+ClinVar (purple), the search strategy would return an explanatory mechanism, as
+shown in Fig.~\ref{fig:malaria}, that is consistent with current knowledge of
+the role of heme in cerebral malaria~\cite{Ferreira:2011ff}
 \begin{figure}[h!]
      \includegraphics[width=6in]{net5.png} 
      \caption{Example of how the reasoning engine-returned search strategy of
@@ -244,26 +249,27 @@ of Markov Logic Networks could improve the ability to map parsed
 natural-language queries to the search strategies that are most likely to yield
 biologically relevant information.
 
-%% Knowledge Sources, specific queries against those knowledge
-%% sources that will return tuples of entities , and join operations
-%% connecting those entities. If we conceptualize these entities as Without loss of generality, we will denote identify
-%% relevant knowledge sources and construct appropriate queries in order to answer
-%% user questions. This is accomplished by constructing a network of
-%% \textit{schemas} and other metadata of Knowledge Sources (KS's) which we call a
-%% \textit{schema network}. This representation will not be a network of all
-%% biological interactions and entities contained in the KS's, but rather it
-%% compactly and abstractly represents the categories of information contained in
-%% the various Translator KS's as well as the relationships between them. Hence,
-%% nodes are metadata entities (such as \verb|disease| or \verb|pathway|) and edges
-%% between them are given by first order logical statements (such as
-%% \verb|assoc_with(X,Y)|). Using the parsed user input, our Reasoning Engine will
-%% identify paths in this schema network that represent search strategies to answer
-%% the user query. These paths will traverse one or more KS's metadata and hence
-%% will automatically identify the relevant databases to query. To find such paths,
-%% we will implement a reasoning engine based on the formalism of Tractable
-%% First-Order Probabilistic Logic and its associated Tractable Markov Logic (TML)
-%% language developed by \citet{Domingos:2012wi}. The identification of such paths
-%% is equivalent to knowledge-based model construction, which is known to be
+%% Knowledge Sources, specific queries against those knowledge sources that will
+%% return tuples of entities , and join operations connecting those entities. If
+%% we conceptualize these entities as Without loss of generality, we will denote
+%% identify relevant knowledge sources and construct appropriate queries in
+%% order to answer user questions. This is accomplished by constructing a
+%% network of \textit{schemas} and other metadata of Knowledge Sources (KS's)
+%% which we call a \textit{schema network}. This representation will not be a
+%% network of all biological interactions and entities contained in the KS's,
+%% but rather it compactly and abstractly represents the categories of
+%% information contained in the various Translator KS's as well as the
+%% relationships between them. Hence, nodes are metadata entities (such as
+%% \verb|disease| or \verb|pathway|) and edges between them are given by first
+%% order logical statements (such as \verb|assoc_with(X,Y)|). Using the parsed
+%% user input, our Reasoning Engine will identify paths in this schema network
+%% that represent search strategies to answer the user query. These paths will
+%% traverse one or more KS's metadata and hence will automatically identify the
+%% relevant databases to query. To find such paths, we will implement a
+%% reasoning engine based on the formalism of Tractable First-Order
+%% Probabilistic Logic and its associated Tractable Markov Logic (TML) language
+%% developed by \citet{Domingos:2012wi}. The identification of such paths is
+%% equivalent to knowledge-based model construction, which is known to be
 %% subsumed by Markov Logic \cite{domingos20071}.
 
 
@@ -297,11 +303,15 @@ biologically relevant information.
 
 \subsection{Executing search strategies}
 \label{section:Dijkstra}
-After the search strategy (path through the schema network) is selected, we employ a modified Dijkstra algorithm to find probable paths between source and target node(s).
-\textbf{Steve, Liang, insert description here}
+After the search strategy (path through the schema network) is selected, we
+employ a modified Dijkstra algorithm to find probable paths between source and
+target node(s).  \textbf{Steve, Liang, insert description here}
 
-%\subsubsection{Composition of the Markov Logic Network}
-%We will use the Java-baesd (and open-source) NCATS-Tangerine Beacon Aggregator to obtain metadata (schemas and entity counts) from Knowledge Sources via RESTful queries leveraging the common Translator Knowledge Beacon Application Programming Interface (KBAPI).
+%\subsubsection{Composition of the Markov Logic Network} We will use the
+%Java-baesd (and open-source) NCATS-Tangerine Beacon Aggregator to obtain
+%metadata (schemas and entity counts) from Knowledge Sources via RESTful queries
+%leveraging the common Translator Knowledge Beacon Application Programming
+%Interface (KBAPI).
 
 
 %% Each of these possible paths identifies relevant KS's and represents a search
@@ -318,7 +328,9 @@ After the search strategy (path through the schema network) is selected, we empl
 %% query on the databases of interest to find paths between actual biological
 %% entities.
 
-%The schema network contains many different kinds of paths between a The schema network will contain various paths between the disease label and itself. For example, one such path is $D1$ ``is a``
+%The schema network contains many different kinds of paths between a The schema
+%network will contain various paths between the disease label and itself. For
+%example, one such path is $D1$ ``is a``
 
 %A simple strategy would be to search to obtain a list of (disease,disease)
 %tuples representing ``is-a'' relationships from the Gene Ontology database
@@ -395,11 +407,12 @@ NCATS-Tangerine Beacon Aggregator is used to obtain metadata (schemas and entity
 counts) from Knowledge Sources via RESTful queries leveraging the common
 Translator Knowledge Beacon Application Programming Interface (KBAPI).
  
-The modified Dijkstra algorithm will be developed in-house and will be published (in an open source fashion) on GitHub.
+The modified Dijkstra algorithm will be developed in-house and will be published
+(in an open source fashion) on GitHub.
 
-%\subsubsection{Natural language query analyzer}
-%\label{sec:nlp}
-%Should we use the Stanford CoreNLP with BioNLP shared task data? If so, which Python API should we use? (There are about a dozen of them).
+%\subsubsection{Natural language query analyzer} \label{sec:nlp} Should we use
+%the Stanford CoreNLP with BioNLP shared task data? If so, which Python API
+%should we use? (There are about a dozen of them).
 
 \section{How proposed software will interact with Translator}
 \textit{A description of how the proposed software will interact with the Translator architecture
@@ -407,14 +420,14 @@ components described in this FOA or how it will be enhanced to do so in the futu
 “Further Information on Biomedical Data Translator” section above for a listing of the
 current Translator components.}
 
-%% \section{Background: Types of questions}
-%% \subsection{How does drug X induce clinical outcome Y?}
-%% \subsection{Why do variants that cause sicke-cell anemia protect against malaria?}
-%% \subsection{In people with variants found in any of the 22 known FA genes, is there increasing incidence of apalastic anemia
-%%   (or other diseases)?}
-%% \subsection{What venomous species have resulted in drugs approved by the FDA?}
-%% \subsection{What cellular processes in which tissues are impacted in a patient-based EMR?}
-%% \subsection{Why does ingestion of GlcNAc ameliorate symptoms of ngly1 deficiency?}
+%% \section{Background: Types of questions} \subsection{How does drug X induce
+%% clinical outcome Y?}  \subsection{Why do variants that cause sicke-cell
+%% anemia protect against malaria?}  \subsection{In people with variants found
+%% in any of the 22 known FA genes, is there increasing incidence of apalastic
+%% anemia (or other diseases)?}  \subsection{What venomous species have resulted
+%% in drugs approved by the FDA?}  \subsection{What cellular processes in which
+%% tissues are impacted in a patient-based EMR?}  \subsection{Why does ingestion
+%% of GlcNAc ameliorate symptoms of ngly1 deficiency?}
 
 %% \section{Background: Knowledge Sources}
 %% \begin{description}
