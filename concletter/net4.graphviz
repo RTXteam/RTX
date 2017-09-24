@@ -2,7 +2,7 @@ digraph test {
 rankdir=LR;
 D1 [shape=circle];
 D2 [shape=circle];
-P [shape=rarrow];
+P [shape=trapezium];
 M1 [shape=hexagon];
 M2 [shape=hexagon]
 M1 -> P [color=red, label=member_of, arrowhead=none, fontcolor=red];

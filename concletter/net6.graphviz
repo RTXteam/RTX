@@ -1,0 +1,9 @@
+graph test {
+rankdir=LR;
+DX [shape=doublecircle];
+DY [shape=doublecircle];
+M  [shape=hexagon];
+DX -- M [color=blue];
+M -- DY [color=blue];
+}
+
