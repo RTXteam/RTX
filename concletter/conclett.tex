@@ -391,34 +391,25 @@ target node(s).  \textbf{Steve, Liang, insert description here}
 
 \section{Anticipated functionality for the POC reasoning tool}
 %\textit{Functionality for the reasoning tool proof-of-concept (due in Nov)}
-For the two proof of concept project questions, the anticipated functionality includes:
-\begin{enumerate}
-\item Allow the user to select from one of two questions: ``which genetic
+For the two proof of concept project questions, the anticipated functionality includes (i) Allow the user to select from one of two questions: ``which genetic
   condition(s) protect(s) from a given disease $D$'' and ``what is the outcome
   pathway for drug $D$ and condition $C$''. The condition $C$ and/or drug $D$
   are specified by the user.
-\item Pre-computed search strategies for these two questions will be implemented.
-\item The modified Dijkstra algorithm will be implemented and will query the
+(ii) Pre-computed search strategies for these two questions will be implemented.
+(iii) The modified Dijkstra algorithm will be implemented and will query the
   Knowledge Sources in real time (based on the user selected search query).
-\end{enumerate}
+
 If funded, the Reasoning Engine we propose will allow for natural language input
 (Section \ref{section:NLP}), automatic generation of search strategies (Section
 \ref{section:strategies}) and will also utilize the Dijkstra algorithm of
 Section \ref{section:Dijkstra}.
 
 \section{Components of the proposed software stack}
-The natural language processing will use the open source software \textbf{Liang: name and reference}.
-
-For the search strategy generation, there are a number of open source software
+The natural language processing will use the open source software \textbf{Liang: name and reference}. {\color{red} For the search strategy generation, there are a number of open source software
 packages that implement Markov Logic Networks: Tuffy
 \cite{DBLP:journals/pvldb/NiuRDS11}, Alchemy \cite{kok2006alchemy}, RockIt
 \cite{noessner2013rockit}, and TheBeast \cite{riedel08improving}. We will
-utilize Alchemy due to its robust implementation and continued development. To
-set the schema network topology, the Java-based (and open-source)
-NCATS-Tangerine Beacon Aggregator is used to obtain metadata (schemas and entity
-counts) from Knowledge Sources via RESTful queries leveraging the common
-Translator Knowledge Beacon Application Programming Interface (KBAPI).
- 
+utilize Alchemy due to its robust implementation and continued development. }
 The modified Dijkstra algorithm will be developed in-house and will be published
 (in an open source fashion) on GitHub.
 
@@ -427,10 +418,8 @@ The modified Dijkstra algorithm will be developed in-house and will be published
 %should we use? (There are about a dozen of them).
 
 \section{How proposed software will interact with Translator}
-\textit{A description of how the proposed software will interact with the Translator architecture
-components described in this FOA or how it will be enhanced to do so in the future. See
-“Further Information on Biomedical Data Translator” section above for a listing of the
-current Translator components.}
+The Java-based (and open-source) NCATS-Tangerine Beacon Aggregator is used to obtain metadata (schemas and entity
+counts) from Knowledge Sources via RESTful queries leveraging the common Translator Knowledge Beacon Application Programming Interface (KBAPI). This is used to set the architecture of the Markov chain. {\color{red} everything else including Dijkstra with API calls.}
 
 %% \section{Background: Types of questions} \subsection{How does drug X induce
 %% clinical outcome Y?}  \subsection{Why do variants that cause sicke-cell
