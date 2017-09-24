@@ -1,6 +1,6 @@
 digraph markov1 {
 rankdir=LR;
-edge [arrowsize=0.3];
+edge [arrowsize=0.9];
 G [shape=insulator, label="\n\nG\n\nbranching\njump or\nterminate"];
 DX [shape=doublecircle, size=2, fixedsize=true, fontsize=10];
 DY [shape=doublecircle, size=2, fixedsize=true, fontsize=12, label="\n\n\nDY\nbranching\njump or\nterminate"];
