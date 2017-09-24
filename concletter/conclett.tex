@@ -24,6 +24,12 @@
 \usepackage{caption}
 \captionsetup{font=small}
 
+\usepackage{titlesec}
+
+\titlespacing\section{0pt}{12pt plus 4pt minus 2pt}{0pt plus 2pt minus 2pt}
+\titlespacing\subsection{0pt}{12pt plus 4pt minus 2pt}{0pt plus 2pt minus 2pt}
+\titlespacing\subsubsection{0pt}{12pt plus 4pt minus 2pt}{0pt plus 2pt minus 2pt}
+
 \begin{document}
 
 \thispagestyle{plain}
@@ -75,7 +81,7 @@ The NLP step will result in ... This representation of the user query will be us
 \begin{figure}
 \centering
 \begin{tabular}{c|c}
-\includegraphics[width=0.6\textwidth]{stanford_parse}
+\includegraphics[width=0.4\textwidth]{stanford_parse}
 &
 \raisebox{2cm}{
 \begin{tabular}{l}
@@ -176,9 +182,9 @@ shown in Fig.~\ref{fig:mp}a.
     biological entity (M, molecule; P, pathway, R, drug, G, variant, D,
     disease). In (b), if the markov reaches a ``branching jump or terminate''
     state, the procedure is (i) add the indicated vertex to the undirected graph
-    being constructed, (ii) remove the indicated vertex from the markov-chain
-    transition digraph, and (iii) select a non-terminal vertex in the undirected
-    search strategy graph and begin extending a branch from that vertex.}
+    being constructed, (ii) remove the indicated vertex from the transition
+    digraph, and (iii) select a non-terminal vertex in the undirected search
+    strategy graph and begin extending a branch from that vertex.}
   \label{fig:mp}    
 \end{figure}
 Such digraphs will be constructed for each possible one-constant, two-constant,
@@ -202,6 +208,27 @@ strategies for the 100 example queries, among the dossiers produced for these
 queries (we will use the principal axes and eigenvalues of the Hessian to
 prioritize important linear combinations of the log-probability weights to
 fine-tune).
+
+\subsubsection{A concrete example of how our reasoning engine would work}
+Suppose a user wishes to find a common mechanism to identify a common
+mechanism underlying the causal effect of variant rs334 for sickle-cell anemia
+and that same variant's protective benefit against malaria. The natural-language
+query has three constants, and one search strategy that would be ranked in the dossier
+would be the one shown in Fig.~\ref{fig:ugraph}c. If executed against the databases
+Pathway Commons (red), Disease Ontology (green), DisGeNET (blue), and ClinVar (purple),
+the search strategy would return an explanatory mechanism, as shown in Fig.~\ref{fig:malaria},
+that is consistent with current knowledge of the role of heme in cerebral malaria~\cite{Ferreira:2011ff}
+\begin{figure}[h!]
+     \includegraphics[width=6in]{net5.png} 
+     \caption{Example of how the reasoning engine-returned search strategy of
+       Fig.~\ref{fig:ugraph}c would find entity-entity associations across four
+       databases that would suggest a common mechanism underlying the
+       protective benefit of variant rs334 against malaria and the causal effect
+       of rs334 for sickle-cell anemia. SCA, sickle-cell anemia; Hb,
+       hemoglobin b; HMOX1, heme oxygenase 1.  Colors, database
+       types (see Fig.~\ref{fig:mp}b).}
+  \label{fig:networks}
+\end{figure}
 
 \subsubsection{Beyond markov chains---Markov Logic Networks}
 We would additionally investigate the potential utility for constructing a
@@ -249,26 +276,7 @@ biologically relevant information.
 %search strategy is a possible joining of result-sets from one or more queries
 %of Translator Knowledge Sources (KS).
 
-\subsubsection{A concrete example of how our reasoning engine would work}
-Suppose a user wishes to find a common mechanism to identify a common
-mechanism underlying the causal effect of variant rs334 for sickle-cell anemia
-and that same variant's protective benefit against malaria. The natural-language
-query has three constants, and one search strategy that would be ranked in the dossier
-would be the one shown in Fig.~\ref{fig:ugraph}c. If executed against the databases
-Pathway Commons (red), Disease Ontology (green), DisGeNET (blue), and ClinVar (purple),
-the search strategy would return an explanatory mechanism, as shown in Fig.~\ref{fig:malaria},
-that is consistent with current knowledge of the role of heme in cerebral malaria~\cite{Ferreira:2011ff}
-\begin{figure}[h!]
-     \includegraphics[width=6in]{net5.png} 
-     \caption{Example of how the reasoning engine-returned search strategy of
-       Fig.~\ref{fig:ugraph}c would find entity-entity associations across four
-       databases that would suggest a common mechanism underlying the
-       protective benefit of variant rs334 against malaria and the causal effect
-       of rs334 for sickle-cell anemia. SCA, sickle-cell anemia; Hb,
-       hemoglobin b; HMOX1, heme oxygenase 1.  Colors, database
-       types (see Fig.~\ref{fig:mp}b).}
-  \label{fig:networks}
-\end{figure}
+
 %% The goal will be to find paths in the schema network that describe common
 %% mechanisms between the input diseases. One possible kind of path is a
 %% (disease,disease) tuple representing ``is a subtype of'' relationships
