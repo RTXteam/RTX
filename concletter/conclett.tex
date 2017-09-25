@@ -164,11 +164,10 @@ we will use the widely-used Stanford parser %footnote{https://nlp.stanford.edu/s
 which converts the sentence into a directed acyclic graph 
 known as the ``Stanford dependency" \cite{stanforddep:2008} (Figure~\ref{fig:parse}(a)).
 Then for semantic parsing, we will write our own converter 
-that transforms the Stanford dependency graph (retrained on domanin-specific data from BioNLP contests \cite{bionlp:2013}) into a first-order logic formula (Figure~\ref{fig:parse}(b)).
-A potential problem with this approach is that the Stanford parser is mostly trained on news text and may not perform the best for the biomedical domain, but we will retrain the Stanford parser with additional in-domain data from BioNLP contests \cite{bionlp:2013}.
-The NLP step will result in a first-order logic formula
-(Fig.~\ref{fig:parse}(b)). This representation of the user query will be used by
-the Reasoning Tool to generate a dossier of search strategies.
+that transforms the Stanford dependency graph (retrained on domain-specific data from BioNLP contests \cite{bionlp:2013}) into a first-order logic formula (Figure~\ref{fig:parse}(b)).
+%The NLP step will result in a first-order logic formula
+%(Fig.~\ref{fig:parse}(b)).
+This representation of the user query will be used to set straight-forward constraints on the Markov chain used to generate a dossier of search strategies (Section \ref{section:MarkovChain}).
 \begin{figure}[htbp]
 \centering
 \begin{tabular}{cc}
@@ -255,7 +254,7 @@ the Reasoning Tool would include in the dossier for two user queries: {\em How
 
 \subsubsection{How the Reasoning Tool will generate and prioritize search
   strategies}
-
+\label{section:MarkovChain}
 In implementing the Reasoning Tool, we will use a Markov chain approach to
 generate trees with the constant terms from the user's query as
 terminal vertices in the tree. This approach enables the prioritization of
