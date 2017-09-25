@@ -84,7 +84,7 @@ language processing
 \cite{huang2012structured,huang2010dynamic,mi2008forest,huang2007forest},
 mathematical algorithms for big data problems
 \cite{koslicki2014wgsquikr,holzinger2014entropy,koslicki2015coding,koslicki2013quikr,koslicki2017improving},
-database interactions and knowledge discovery
+as well as database interactions and knowledge discovery
 \cite{nandi2011guided,nandi2007effective,jagadish2007making,nandi2007assisted}. Individual
 components of this knowledge engine have been implemented for different
 applications (as detailed in the previous references) and similar paradigms are
@@ -101,7 +101,8 @@ additional constraints and new query types with the advantage of not needing to
 re-train the entire system whenever a new extension is added (in contrast to
 deep learning/neural network architectures).
 
-\setlength{\parskip}{0pt}
+\newpage
+%\setlength{\parskip}{0pt}
 
 %\begin{enumerate}
  %\item Core methodology:
@@ -141,8 +142,10 @@ deep learning/neural network architectures).
 We propose a three-component system that will (i) process natural language user
 queries, (ii)~generate a dossier of ranked search strategies, and (iii) execute
 the desired search strategies.
+\vspace{-2ex}
 \subsection{Natural language processing}
 \label{section:NLP}
+<<<<<<< HEAD
 A critical functionality of a reasoning engine is the ability to parse and
 understand free-form user input. This process involves two steps:
 (a) {\bf syntactic parsing}, which converts the natural language query into a tree or directed graph structure modeling syntactic dependencies,
@@ -157,6 +160,14 @@ A potential problem with this approach is that the Stanford parser is mostly tra
 
 
 
+=======
+A critical functionality is the ability to parse and
+understand free-form user input. 
+%To facilitate this, we...  \textbf{Liang's NLP
+%  paragraph here} The NLP step will result in ... This representation of the
+%user query will be used by the reasoning engine to generate a dossier of search
+%strategies.
+>>>>>>> c512ca79933112bc39398ad4ba868137951dae66
 
 \begin{figure}[htbp]
 \centering
@@ -180,6 +191,7 @@ where D1 and D2 stand for two diseases.
 (b) semantic parsing: from dependencies to first-order logic.
 \label{fig:parse}}
 \end{figure}
+\vspace{-2ex}
 
 The NLP step will result in a first-order logic formula (Fig.~\ref{fig:parse}(b)). This representation of the
 user query will be used by the reasoning engine to generate a dossier of search
@@ -189,17 +201,19 @@ strategies.
 \subsection{Generate a dossier of search strategies}
 \label{section:strategies}
 Given a parsed natural language query as input, our Reasoning Engine will return
-a {\em dossier\/} of possible {\em search strategies.\/} We define a search
-strategy as a set of types of biological entities (these include genetic
-variants, drugs, genes, molecules, pathways, diseases, diagnoses, phenotypes,
-etc.) along with associated queries of Knowledge Sources to identify
-relationships between pairs of those entities. Thus, each search strategy is a
-connected, undirected graph in which each vertex corresponds to a type of
-biological entity and each edge corresponds to a Knowledge Source that can
-return tuples of associations for the entity types corresponding to the
-respective vertices.  One or more terminal vertices in this graph correspond to
+a {\em dossier\/} of possible {\em search strategies.\/} A search
+strategy is a {\color{red} graph} with vertices being biological entity types (including genetic
+variants, drugs, genes, molecules, pathways, diseases, diagnoses,
+etc.) and edges being query templates of Knowledge Sources to identify
+relationships between pairs of those entities.
+% Thus, each search strategy is a
+%connected, undirected {\color{red} graph} in which each vertex corresponds to a type of
+%biological entity and each edge corresponds to a Knowledge Source that can
+%return associates between such entities.
+%tuples of associations for the entity types corresponding to the respective vertices.
+Terminal vertices in this {\color{red} graph} correspond to
 the entity types of the constants provided by the user's parsed natural language
-query. To illustrate, we show the graphs for three simple search strategies that
+query. To illustrate, we show the {\color{red} graph} for three simple search strategies that
 the reasoning engine would include in the dossier for two user queries: {\em How
   are disease DX and disease DY connected?\/} (Fig.~\ref{fig:ugraph}a-b) and
 {\em How does variant G cause disease DX and protect against disease DY?\/}
@@ -224,33 +238,36 @@ the reasoning engine would include in the dossier for two user queries: {\em How
  %                   \end{tabular}
   \caption{Three example search strategies returned by the reasoning engine: (a)
     and (b) are for a user query {\em How are disease DX and disease DY
-      connected?\/}, which has two constants.  Search strategy (c) is for a
+      connected?\/} %, which has two constants.
+        Search strategy (c) is for a
     query {\em How does variant G cause disease DX and protect against disease
-      DY?}  Double-shapes denote constants in the query. Shape denotes bioentity
-    type (circle: disease; hexagon: molecule; trapezoid: pathway, box,
+      DY?}  Double-shapes denote constants in the query. Shapes denote bioentity
+    type (circle: disease, hexagon: molecule, trapezoid: pathway, box:
     variant). Internal vertex labels like ``M'' and ``P'' representing the
-    entity {\em type,} not a specific entity. Edge color denotes the type of
-    association (blue: disease-molecule; red: molecule-pathway; green:
-    disease-disease; purple: variant-molecule). Arbitrarily complex search
-    strategies can be created by chaining together additional possible
-    entity-entity relationships, however, our approach penalizes search strategy
-    graphs by the number of edges, in order to prioritize simpler search
-    strategies.}
+    entity {\em type,} not a specific entity. Edge colors denote the type of
+    association (blue: disease-molecule, red: molecule-pathway, green:
+    disease-disease, purple: variant-molecule). 
+    %Arbitrarily complex search
+    %strategies can be created by chaining together additional possible
+    %entity-entity relationships, however, our approach penalizes search strategy
+    %graphs by the number of edges and strength of association, in order to prioritize simpler search
+    %strategies.
+    }
   \label{fig:ugraph}
 \end{figure}
+\vspace{-2ex}
 
 \subsubsection{How the reasoning engine will generate and prioritize search
   strategies}
 
 In implementing the reasoning engine, we will use a Markov chain approach to
-generate undirected graphs with the constant terms from the user's query as
-terminal vertices in the graph. This approach enables the prioritization of
-search strategies with fewer Knowledge Source lookups.  We will illustrate the
-idea with a simple example, reprising the hypothetical user query {\em How are
+generate undirected {\color{red} graphs} with the constant terms from the user's query as
+terminal vertices in the {\color{red} graph}. This approach enables the prioritization of
+search strategies with fewer Knowledge Source lookups.  To illustrate, recall the hypothetical user query {\em How are
   disease DX and disease DY connected?}. With two constants (i.e., terminal
-vertices in the graph), the reasoning engine would generate graphs according to
+vertices in the {\color{red} graph}), the reasoning engine would generate {\color{red} graphs} according to
 the Markov process shown in Fig.~\ref{fig:mp}a).
-\begin{figure}[htbp]
+\begin{figure}[h!]
   \begin{center}
   \begin{overpic}[width=2.5in]{markov1.png}
     \put (0,0) {{\large \textsf{\textbf{(a)}}}}
@@ -264,19 +281,19 @@ the Markov process shown in Fig.~\ref{fig:mp}a).
 %    \includegraphics[width=3in]{markov2.png} %\\
 %                    {\bf (a)} & {\bf (b)}
 %  \end{tabular}
-  \caption{Markov chain transition graphs for generating ranked query strategies
+  \caption{Markov chain state transition graphs for generating ranked query strategies
     for (a) an example two-constant query (diseases DX and DY) and (b) a
     three-constant query (variant G and diseases DX and DY). Double-shape
     vertices are the constants of the natural-language query.  Colored arcs
     represent searches for entity-entity associations in various database
-    sources [blue: disease-molecule association (e.g., DisGeNET, ClinVar); red:
-      molecule-pathway association (e.g., Pathway Commons 2, BioCyc); green:
-      disease-disease association (e..g, Monarch, DNetDB); purple:
-      variant-molecule association (e.g., ClinVar, BeFree); pink:
-      variant-variant association (SNAP or IGSR); orange: drug-variant
-      interaction (PharmGKB); is PharmGKB; black; variant-disease association
-      (ClinVar, DisGeNET).] Each shape corresponds to a different type of
-    biological entity (M, molecule; P, pathway, R, drug, G, variant, D,
+    sources [blue: disease-molecule association (e.g., DisGeNET, ClinVar), red:
+      molecule-pathway association (e.g., Pathway Commons 2, BioCyc), green:
+      disease-disease association (e..g, Monarch, DNetDB), purple:
+      variant-molecule association (e.g., ClinVar, BeFree), pink:
+      variant-variant association (SNAP or IGSR), orange: drug-variant
+      interaction (PharmGKB), black: variant-disease association
+      (ClinVar, DisGeNET)]. Each shape corresponds to a different type of
+    biological entity (M: molecule, P: pathway, R: drug, G: variant, D:
     disease). In (b), the ``branching jump or terminate'' vertices enable the
     generation of a branched tree.}
 %    state, the procedure is (i) add the indicated vertex to the undirected graph
@@ -285,34 +302,39 @@ the Markov process shown in Fig.~\ref{fig:mp}a).
 %    strategy graph and begin extending a branch from that vertex.}
   \label{fig:mp}    
 \end{figure}
-Such digraphs will be constructed for each possible one-constant, two-constant,
-and three-constant natural-language query. The digraph edges will have a
-standard set of transition probabilities assigned. Each realization of the
-Markov chain will generate a possible search strategy, i.e., an undirected graph
-with the constant entities as terminal vertices; the Markov chain will also
-assign a probability to each search strategy, penalizing excessively long chains
-of Knowledge Source lookups and prioritizing the simplest strategies that can
-connect the constant entities.
+Such Markov chains will be constructed for each possible one-constant, two-constant,
+and three-constant natural-language query (and are trivially extensible). 
+%Markov chain edges will have a standard set of transition probabilities assigned.
+ Each realization of the
+Markov chain will generate a possible search strategy, i.e., an undirected {\color{red} graph},
+%with the constant entities as terminal vertices; the Markov chain will also
+and will assign a probability to each search strategy by penalizing weak associations and excessively long chains
+of Knowledge Source lookups.
+% and prioritizing the simplest strategies that can
+%connect the constant entities.
 
+\vspace{-2ex}
 \subsubsection{Training of the Markov chain transition probabilities}
-The transition probabilities (the weights of the
+The transition probabilities (weights of the
 colored edges in Fig.~\ref{fig:mp}) will be determined empirically using a set
 of 100 natural-language queries that we will assemble from template queries from
 online NCATS-Translator resources and using biological mechanisms (and
-successful search strategies for these queries that we will validate by hand)
+successful search strategies for these queries)
+% that we will validate by hand)
 for drug-variant interactions, variant-disease mechanisms, etc. We will select
 transition probabilities that minimize the ranks of the 100~successful search
 strategies for the 100 example queries, among the dossiers produced for these
-queries (we will use the principal axes and eigenvalues of the Hessian to
+queries (using the principal axes and eigenvalues of the Hessian to
 prioritize important linear combinations of the log-probability weights to
 be fine-tuned in the training pocedure).
-
+\vspace{-2ex}
 \subsubsection{A concrete example of how our reasoning engine would work}
-Suppose a user wishes to find a common mechanism to identify a common mechanism
+Suppose a user wishes to find a common mechanism %to identify a common mechanism
 underlying the causal effect of variant rs334 for sickle-cell anemia and that
 same variant's protective benefit against malaria. The natural-language query
-has three constants, and one search strategy that would be ranked in the dossier
-would be the one shown in Fig.~\ref{fig:ugraph}c. If executed against the
+has three constants, %and one search strategy that would be ranked in the dossier would be the one shown in
+and one possible search strategy is given in 
+ Fig.~\ref{fig:ugraph}c. If executed against the
 databases Pathway Commons (red), Disease Ontology (green), DisGeNET (blue), and
 ClinVar (purple), the search strategy would return an explanatory mechanism, as
 shown in Fig.~\ref{fig:malaria}, that is consistent with current knowledge of
@@ -329,6 +351,7 @@ the role of heme in cerebral malaria~\cite{Ferreira:2011ff}.
       oxygenase 1.  Edge colors: see Fig.~\ref{fig:mp}b.}
   \label{fig:malaria}
 \end{figure}
+\vspace{-2ex}
 
 
 %% Knowledge Sources, specific queries against those knowledge sources that will
@@ -382,10 +405,10 @@ the role of heme in cerebral malaria~\cite{Ferreira:2011ff}.
 %% (Fig.~\ref{fig:threedb}a) about a variant-to-two-diseases association, is shown
 %% in Fig.~\ref{fig:threedb}b).
 
-
+\vspace{-2ex}
 \subsection{Executing search strategies}
 \label{section:Dijkstra}
-After the search strategy (path through the schema network) is selected, we will
+After the search strategy ({\color{red} graph} generated by the Markov chain) is selected, we will
 employ a modified Dijkstra algorithm to find paths between source and target
 entities that minimize a sum of edge-weights, where smaller edge-weights
 indicate stronger evidentiary value. The modification will ensure that, for
@@ -461,31 +484,32 @@ inhibiting) is consistent with the semantics of the user's natural-language quer
 %% to be protective in the case of cerebral malaria (a neurological complication of
 %% malarial disease)~\cite{Ferreira:2011ff}.
 
-
+\vspace{-2ex}
 \subsection{Anticipated functionality for the POC reasoning tool}
 %\textit{Functionality for the reasoning tool proof-of-concept (due in Nov)}
-For the POC questions, the system that we propose to build will allow the user
+For the POC questions, the system we build will allow the user
 to select from one of two questions: ``which genetic condition(s) protect(s)
 from a given disease $D$'' and ``what is the outcome pathway for drug $D$ and
 condition $C$''. The condition $C$ and/or drug $D$ will be
 user-specified. Pre-computed search strategies for these two questions will be
 implemented.  The modified Dijkstra algorithm will be implemented and will
-search the Knowledge Sources in real time, based on the search query.  Our
-proposed system will allow for natural language input (Section
+search the Knowledge Sources in real time, based on the search query.  If funded, our full knowledge engine 
+will allow for natural language input (Section
 \ref{section:NLP}), automatic generation of search strategies (Section
 \ref{section:strategies}) and will account for empirically determined
 evidentiary weights for different types of entity-entity associations
 (Sec.~\ref{section:Dijkstra}).%also utilize the Dijkstra algorithm of
 %Section \ref{section:Dijkstra}.
 
+\vspace{-2ex}
 \subsection{Components of the proposed software stack}
-We would implement our proposed system in Python, using \verb|graph-tool| for
-graph searching and querying, \verb|Boost.Python| for implementing the
-customized weighted graph search algorithm, \verb|Py4J| for accessing Java-only
-APIs as needed (see Sec.~\ref{sec:interact}), \verb|Flask| for providing a REST
-API, and \verb|Requests| and \verb|json| to access the REST API for the NCATS
-blackboard. We will use a Python API for Stanford CoreNLP.  We will publish all
-code developed with NCATS support, on GitHub.
+We will implement our system in Python, using \verb|graph-tool| \cite{peixoto_graph-tool_2014} or \verb|SNAP| \cite{leskovec2016snap} for
+graph searching and querying, \verb|Boost.Python| \cite{boostpython} for implementing the
+modified Dijkstra algorithm, \verb|Py4J| \cite{Py4J} for accessing Java-only
+APIs as needed (see Sec.~\ref{sec:interact}), \verb|Flask| \cite{grinberg2014flask} for providing a REST
+API, and \verb|Requests| and the standard library \verb|json| to access the REST API for the NCATS
+blackboard. We will use a Python API for Stanford CoreNLP \cite{manning2014stanford}.  We will publish on GitHub all
+code developed with NCATS support.
 
 %% The natural language processing will use the open source software \textbf{Liang:
 %%   name and reference}. {\color{red} For the search strategy generation, there
@@ -499,6 +523,7 @@ code developed with NCATS support, on GitHub.
 %the Stanford CoreNLP with BioNLP shared task data? If so, which Python API
 %should we use? (There are about a dozen of them).
 
+\vspace{-2ex}
 \subsection{How proposed software will interact with Translator}
 \label{sec:interact}
 We will use the Java-based NCATS Knowledge Beacon Aggregator to obtain metadata
@@ -506,8 +531,9 @@ We will use the Java-based NCATS Knowledge Beacon Aggregator to obtain metadata
 leveraging the common Translator Knowledge Beacon Application Programming
 Interface (KBAPI). Our system will provide the functionality of converting a
 natural-language-query to a dossier of search strategies, via a REST API
-complying with the NCATS Knowledge Beacon Web API.
+complying with the NCATS Knowledge Beacon Web API. Results will be served in JSON form, formatted by a web interface.
 
+\vspace{-2ex}
 \subsection{Beyond Markov chains---Markov Logic Networks}
 We would additionally investigate the potential utility for constructing a
 Markov Logic Network~\cite{Domingos:2012wi,domingos20071} that would
@@ -519,6 +545,7 @@ of search strategies in our first reasoning engine prototype. As such, the use
 of Markov Logic Networks could improve the ability to map parsed
 natural-language queries to the search strategies that are most likely to yield
 biologically relevant information.
+
 
 %% \section{Background: Types of questions} \subsection{How does drug X induce
 %% clinical outcome Y?}  \subsection{Why do variants that cause sicke-cell
