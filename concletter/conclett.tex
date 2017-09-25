@@ -40,8 +40,7 @@
 
 \begin{document}
 
-\title{Proposal to build a translational biomedical Reasoning Tool that
-  would leverage a markov network-generation approach}
+\title{Proposal to build a translational biomedical Reasoning Tool leveraging a Markov network-generation approach}
 \date{}
 \author{}
 \maketitle
@@ -159,12 +158,12 @@ A critical functionality of a Reasoning Tool is the ability to parse and
 understand free-form user input. This process involves two steps:
 (a) {\bf syntactic parsing}, which converts the natural language query into a tree or directed graph structure modeling syntactic dependencies,
 and (b) {\bf semantic parsing}, which converts the syntactic structure into a first-order logic formula.
-For syntactic parsing, to start with,
-we will use the widely-used Stanford parser %footnote{https://nlp.stanford.edu/software/lex-parser.shtml},
-which converts the sentence into a directed acyclic graph 
+For syntactic parsing,
+we will use the widely-used Stanford parser (retrained on domain-specific data from BioNLP contests \cite{bionlp:2013})  %footnote{https://nlp.stanford.edu/software/lex-parser.shtml},
+which converts the query into a directed acyclic graph 
 known as the ``Stanford dependency" \cite{stanforddep:2008} (Figure~\ref{fig:parse}(a)).
-Then for semantic parsing, we will write our own converter 
-that transforms the Stanford dependency graph (retrained on domain-specific data from BioNLP contests \cite{bionlp:2013}) into a first-order logic formula (Figure~\ref{fig:parse}(b)).
+For semantic parsing, we will write our own converter (see Huang biosketch) 
+that transforms the Stanford dependency graph into a first-order logic formula (Figure~\ref{fig:parse}(b)).
 %The NLP step will result in a first-order logic formula
 %(Fig.~\ref{fig:parse}(b)).
 This representation of the user query will be used to set straight-forward constraints on the Markov chain used to generate a dossier of search strategies (Section \ref{section:MarkovChain}).
@@ -260,7 +259,7 @@ generate trees with the constant terms from the user's query as
 terminal vertices in the tree. This approach enables the prioritization of
 search strategies with fewer Knowledge Source lookups.  To illustrate, recall the hypothetical user query {\em How are
   disease DX and disease DY connected?} With two constants (i.e., terminal
-vertices in the tree), the Reasoning Tool would generate graphs according to
+vertices in the tree), the Reasoning Tool would generate trees according to
 the Markov process shown in Fig.~\ref{fig:mp}a).
 \begin{figure}[h!]
   \begin{center}
@@ -276,7 +275,7 @@ the Markov process shown in Fig.~\ref{fig:mp}a).
 %    \includegraphics[width=3in]{markov2.png} %\\
 %                    {\bf (a)} & {\bf (b)}
 %  \end{tabular}
-  \caption{Markov chain state transition graphs for generating ranked query strategies
+  \caption{Markov chain transition graphs for generating ranked query strategies
     for (a) an example two-constant query (diseases DX and DY) and (b) a
     three-constant query (variant G and diseases DX and DY). Double-shape
     vertices are the constants of the natural-language query.  Colored arcs
@@ -290,7 +289,7 @@ the Markov process shown in Fig.~\ref{fig:mp}a).
       (ClinVar, DisGeNET)]. Each shape corresponds to a different type of
     biological entity (M: molecule, P: pathway, R: drug, G: variant, D:
     disease). In (b), the ``branching jump or terminate'' vertices enable the
-    generation of a branched tree.}
+    generation of a branched search strategy tree.}
 %    state, the procedure is (i) add the indicated vertex to the undirected graph
 %    being constructed, (ii) remove the indicated vertex from the transition
 %    digraph, and (iii) select a non-leaf vertex in the undirected search
