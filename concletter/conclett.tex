@@ -156,7 +156,6 @@ the desired search strategies.
 \subsection{Natural language processing}
 \label{section:NLP}
 A critical functionality of a Reasoning Tool is the ability to parse and
-<<<<<<< HEAD
 understand free-form user input. This process involves two steps:
 (a) {\bf syntactic parsing}, which converts the natural language query into a tree or directed graph structure modeling syntactic dependencies,
 and (b) {\bf semantic parsing}, which converts the syntactic structure into a first-order logic formula.
@@ -165,32 +164,11 @@ we will use the widely-used Stanford parser %footnote{https://nlp.stanford.edu/s
 which converts the sentence into a directed acyclic graph 
 known as the ``Stanford dependency" \cite{stanforddep:2008} (Figure~\ref{fig:parse}(a)).
 Then for semantic parsing, we will write our own converter 
-that transforms the Stanford dependency graph into first-order logic formula (Figure~\ref{fig:parse}(b)).
+that transforms the Stanford dependency graph (retrained on domanin-specific data from BioNLP contests \cite{bionlp:2013}) into a first-order logic formula (Figure~\ref{fig:parse}(b)).
 A potential problem with this approach is that the Stanford parser is mostly trained on news text and may not perform the best for the biomedical domain, but we will retrain the Stanford parser with additional in-domain data from BioNLP contests \cite{bionlp:2013}.
 The NLP step will result in a first-order logic formula
 (Fig.~\ref{fig:parse}(b)). This representation of the user query will be used by
 the Reasoning Tool to generate a dossier of search strategies.
-=======
-understand free-form user input. This process involves two steps: (a) {\bf
-  syntactic parsing}, which converts the natural language query into a tree or
-directed graph structure modeling syntactic dependencies, and (b) {\bf semantic
-  parsing}, which converts the syntactic structure into a first-order logic
-formula.  For syntactic parsing, to start with, we will use the widely-used
-Stanford parser %footnote{https://nlp.stanford.edu/software/lex-parser.shtml},
-which converts the sentence into a directed acyclic graph known as the
-``Stanford dependency" \cite{stanforddep:2008} (Figure~\ref{fig:parse}(a)).
-Then for semantic parsing, we will write our own converter that transforms the
-Stanford dependency graph into first-order logic formula
-(Figure~\ref{fig:parse}(b)).  A potential problem with this approach is that the
-Stanford parser is mostly trained on news text and may not perform the best for
-the biomedical domain, but we will retrain the Stanford parser with additional
-in-domain data from BioNLP contests \cite{bionlp:2013}.
-
-
-
-
-
->>>>>>> d37ac0aa486731db2cc3d299b7ea39eb797aa737
 \begin{figure}[htbp]
 \centering
 \begin{tabular}{cc}
