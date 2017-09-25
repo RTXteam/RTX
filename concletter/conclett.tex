@@ -389,7 +389,7 @@ target node(s).  \textbf{Steve, Liang, insert description here}
 %% malarial disease)~\cite{Ferreira:2011ff}.
 
 
-\section{Anticipated functionality for the POC reasoning tool}
+\subsection{Anticipated functionality for the POC reasoning tool}
 %\textit{Functionality for the reasoning tool proof-of-concept (due in Nov)}
 For the two proof of concept project questions, the anticipated functionality includes (i) Allow the user to select from one of two questions: ``which genetic
   condition(s) protect(s) from a given disease $D$'' and ``what is the outcome
@@ -404,7 +404,7 @@ If funded, the Reasoning Engine we propose will allow for natural language input
 \ref{section:strategies}) and will also utilize the Dijkstra algorithm of
 Section \ref{section:Dijkstra}.
 
-\section{Components of the proposed software stack}
+\subsection{Components of the proposed software stack}
 The natural language processing will use the open source software \textbf{Liang: name and reference}. {\color{red} For the search strategy generation, there are a number of open source software
 packages that implement Markov Logic Networks: Tuffy
 \cite{DBLP:journals/pvldb/NiuRDS11}, Alchemy \cite{kok2006alchemy}, RockIt
@@ -417,7 +417,7 @@ The modified Dijkstra algorithm will be developed in-house and will be published
 %the Stanford CoreNLP with BioNLP shared task data? If so, which Python API
 %should we use? (There are about a dozen of them).
 
-\section{How proposed software will interact with Translator}
+\subsection{How proposed software will interact with Translator}
 The Java-based (and open-source) NCATS-Tangerine Beacon Aggregator is used to obtain metadata (schemas and entity
 counts) from Knowledge Sources via RESTful queries leveraging the common Translator Knowledge Beacon Application Programming Interface (KBAPI). This is used to set the architecture of the Markov chain. {\color{red} everything else including Dijkstra with API calls.}
 
