@@ -50,11 +50,11 @@
 
 \section*{Summary vision statement}
 \setlength{\parskip}{4pt} Our proposal describes a Reasoning Tool in the
-spirit of Wolfram$|$Alpha \cite{Wolframalpha}: the user will query the system in
+spirit of Wolfram~Alpha \cite{Wolframalpha}: the user will query the system in
 natural language and the Reasoning Tool will parse the input, generate search
 strategies to fulfill the user question, execute user-selected search strategies
 by traversing the relevant Knowledge Sources, and finally present results to the
-user. Similar to the highly successful Wolfram$|$Alpha, our Reasoning Tool
+user. Similar to the highly successful Wolfram~Alpha, our Reasoning Tool
 will learn from repeated interactions with users to return the most relevant
 search strategies for a given type of natural language query.
 
@@ -69,46 +69,47 @@ number of biological entities, with example questions including: \textit{How are
   disease X, which ones have the least well-studied clinical outcome pathway?},
 etc.
 
-Our approach (detailed in the project description) would advance current
+Our approach (detailed in Sec.~\ref{sec:plan}) would advance current
 capabilities for biomedical knowledge querying in several respects. First, the
 process of generating and executing search strategies will be automated,
 removing the need to write custom Python notebooks for each query type. Our
-system, based on a probabilistic Markovian architecture, will both learn from
-repeated user interaction and also dynamically incorporate uncertainty in all
-steps of the proposed process. Relevant Knowledge Sources will also be
+system, based on a probabilistic graph-traversal architecture, will both learn
+from repeated user interaction and also dynamically incorporate uncertainty in
+all steps of the proposed process. Relevant Knowledge Sources will also be
 automatically identified, removing the need for users to be experts in the
 variety of biological databases available. Lastly, by returning a variety of
-ranked search strategies and answers, our Reasoning Tool will present a
-dossier of results allowing the user to appreciate subtlety and complexity when
-it naturally arises from an input query (eg. some questions have more than one
+ranked search strategies and answers, our Reasoning Tool will present a dossier
+of results allowing the user to appreciate subtlety and complexity when it
+naturally arises from an input query (e.g., some questions have more than one
 ``correct'' strategy for connecting Knowledge Sources).
 
 Our team has the requisite depth and breadth of expertise to successfully
-construct the proposed Reasoning Tool within the requested 10-month
-time-frame.  This includes significant experience in software engineering for
-distributed systems and significant research experience advancing the
-state-of-the-art in systems biology
+construct the proposed Reasoning Tool within the requested 10-month time-frame.
+This includes significant experience in software engineering for distributed
+systems and significant research experience advancing the state-of-the-art in
+systems biology
 \cite{ramsey2010systems,hwang2005data1,hwang2005data2,de2004evolution}, natural
 language processing
 \cite{huang2012structured,huang2010dynamic,mi2008forest,huang2007forest},
 mathematical algorithms for big data problems
 \cite{koslicki2014wgsquikr,holzinger2014entropy,koslicki2015coding,koslicki2013quikr,koslicki2017improving},
-as well as database interactions and knowledge discovery
+and database interactions
 \cite{nandi2011guided,nandi2007effective,jagadish2007making,nandi2007assisted}. Individual
 components of this Reasoning Tool have been implemented for different
-applications (as detailed in the previous references) and similar paradigms are
-employed by a variety of previously implemented knowledge engines with
-high-profile examples including IBM's Watson \cite{ferrucci2010building} and the
-aforementioned Wolfram$|$Alpha \cite{Wolframalpha}.
+applications (as detailed in the previous references) and similar paradigms to
+the approach that we propose to use are employed by a variety of previously
+implemented knowledge engines with high-profile examples including IBM's Watson
+\cite{ferrucci2010building} and the aforementioned Wolfram~Alpha
+\cite{Wolframalpha}.
 
-Finally, the Reasoning Tool we propose will be built in a modular, extensible
-fashion allowing it to interact with new Knowledge Sources. Since we employ a
-Markov chain architecture to generate search strategies and a Dijkstra-like
-algorithm to execute them, new biological entities can easily be
-incorporated. The flexibility of this framework allows for quick integration of
-additional constraints and new query types with the advantage of not needing to
-re-train the entire system whenever a new extension is added (in contrast to
-deep learning/neural network architectures).
+Finally, we propose to build the Reasoning Tool in a modular, extensible fashion
+allowing it to interact with new Knowledge Sources. Since we will employ a Markov
+chain architecture to generate search strategies and a Dijkstra-like algorithm
+to execute them, new biological entities can easily be incorporated. The
+flexibility of this framework allows for quick integration of additional
+constraints and new query types with the advantage of not needing to re-train
+the entire system whenever a new extension is added (in contrast to typical deep
+neural network architectures).
 
 \newpage
 %\setlength{\parskip}{0pt}
@@ -147,6 +148,7 @@ deep learning/neural network architectures).
 %\subsection{Limitations and bottlenecks in the current state of the art}
 
 \section{Project plan}
+\label{sec:plan}
 %\subsection{Overview of methodology to be used}
 We propose a three-component system that will (i) process natural language user
 queries, (ii)~generate a dossier of ranked search strategies, and (iii) execute
@@ -166,7 +168,9 @@ For semantic parsing, we will write our own converter (see Huang biosketch)
 that transforms the Stanford dependency graph into a first-order logic formula (Figure~\ref{fig:parse}(b)).
 %The NLP step will result in a first-order logic formula
 %(Fig.~\ref{fig:parse}(b)).
-This representation of the user query will be used to set straight-forward constraints on the Markov chain used to generate a dossier of search strategies (Section \ref{section:MarkovChain}).
+This representation of the user query straightforwardly maps to constraints on
+the Markov chain that we will use to generate a search strategy dossier (Section
+\ref{section:MarkovChain}).
 \begin{figure}[htbp]
 \centering
 \begin{tabular}{cc}
@@ -183,7 +187,7 @@ protect\_against (G?, D2)
 {\bf (b)} step 2: semantic parsing\\[0.1cm]
 \end{tabular}
 \caption{Natural language parsing of the input query
-{\em``What genetic variant causes D1 and protects against D2?"}
+{\em``What genetic variant causes D1 and protects against D2?"},
 where D1 and D2 stand for two diseases.
 (a) syntactic parsing: from query to Stanford dependencies.
 (b) semantic parsing: from dependencies to first-order logic.
@@ -195,10 +199,10 @@ where D1 and D2 stand for two diseases.
 \subsection{Generate a dossier of search strategies}
 \label{section:strategies}
 Given a parsed natural language query as input, our Reasoning Tool will return
-a {\em dossier\/} of possible {\em search strategies.\/} A search
-strategy is a tree with vertices being biological entity types (including genetic
+a {\em dossier\/} of possible {\em search strategies.\/} Here, a search
+strategy is a tree for which the vertices are biological entity types (including genetic
 variants, drugs, genes, molecules, pathways, diseases, diagnoses,
-etc.) and edges being query templates of Knowledge Sources to identify
+etc.) and the edges are query templates of Knowledge Sources to identify
 relationships between pairs of those entities.
 % Thus, each search strategy is a
 %connected, undirected graph in which each vertex corresponds to a type of
@@ -207,7 +211,7 @@ relationships between pairs of those entities.
 %tuples of associations for the entity types corresponding to the respective vertices.
 Terminal vertices in this tree correspond to
 the entity types of the constants provided by the user's parsed natural language
-query. To illustrate, we show the tree for three simple search strategies that
+query. To illustrate, we show the trees for three simple search strategies that
 the Reasoning Tool would include in the dossier for two user queries: {\em How
   are disease DX and disease DY connected?\/} (Fig.~\ref{fig:ugraph}a-b) and
 {\em How does variant G cause disease DX and protect against disease DY?\/}
@@ -302,25 +306,25 @@ and three-constant natural-language query (and are trivially extensible).
  Each realization of the Markov chain will generate a possible search strategy,
  i.e., a tree,
 %with the constant entities as terminal vertices; the Markov chain will also
-and will assign a probability to each search strategy by penalizing weak associations and excessively long chains
-of Knowledge Source lookups.
+and will assign a probability to each search strategy by penalizing weak
+associations and/or excessively long chains of Knowledge Source lookups.
 % and prioritizing the simplest strategies that can
 %connect the constant entities.
 
 %\vspace{-2ex}
 \subsubsection{Training of the Markov chain transition probabilities}
-The transition probabilities (weights of the
+The transition probabilities (i.e., the weights of the
 colored edges in Fig.~\ref{fig:mp}) will be determined empirically using a set
 of 100 natural-language queries that we will assemble from template queries from
 online NCATS-Translator resources and using biological mechanisms (and
 successful search strategies for these queries)
 % that we will validate by hand)
-for drug-variant interactions, variant-disease mechanisms, etc. We will select
-transition probabilities that minimize the ranks of the 100~successful search
-strategies for the 100 example queries, among the dossiers produced for these
-queries (using the principal axes and eigenvalues of the Hessian to
-prioritize important linear combinations of the log-probability weights to
-be fine-tuned in the training pocedure).
+for drug-variant interactions, variant-disease mechanisms, drug-disease
+mechanisms, etc. We will select transition probabilities that minimize the ranks
+of the 100~successful search strategies for the 100 example queries, among the
+dossiers produced for these queries (using the principal axes and eigenvalues of
+the Hessian to prioritize important linear combinations of the log-probability
+weights to be fine-tuned in the training procedure).
 %\vspace{-2ex}
 \subsubsection{Demonstrating translational utility of integrating different knowledge sources}
 Suppose a user wishes to find a common mechanism %to identify a common mechanism
@@ -402,7 +406,7 @@ the role of heme in cerebral malaria~\cite{Ferreira:2011ff}.
 %\vspace{-2ex}
 \subsection{Executing search strategies}
 \label{section:Dijkstra}
-After the search strategy (tree generated by the Markov chain) is selected, we will
+After the search strategy (i.e., the tree generated by the Markov chain) is selected, we will
 employ a modified Dijkstra algorithm to find paths between source and target
 entities that minimize a sum of edge-weights, where smaller edge-weights
 indicate stronger evidentiary value. The straightforward modification will ensure that, for
@@ -485,12 +489,12 @@ one of two questions: ``which genetic condition(s) protect(s) from a given
 disease $D$'' and ``what is the outcome pathway for drug $R$ and condition
 $C$''. The condition $C$ and/or drug $R$ will be user-specified. Pre-computed
 search strategies for these two questions will be implemented.  The modified
-Dijkstra algorithm will be implemented and will search the Knowledge Sources in
-real time, based on the search query.  If funded, our full Reasoning Tool will
+Dijkstra algorithm will be implemented and will search the Knowledge Sources
+as specified in the search strategy.  If funded, our full Reasoning Tool will
 allow for natural language input (Section \ref{section:NLP}), automatic
 generation of search strategies (Section \ref{section:strategies}) and will
 account for empirically determined evidentiary weights for different types of
-entity-entity associations (Sec.~\ref{section:Dijkstra}).
+biomedical entity-entity associations (Sec.~\ref{section:Dijkstra}).
 
 \subsection{Components of the proposed software stack}
 We will implement our system in Python, using \verb|graph-tool|
@@ -533,7 +537,7 @@ inhibitory, causal, etc.). MLN is a natural generalization of the undirected
 graphical model approach described in Sec.~\ref{section:strategies}. As such,
 the use of Markov Logic Networks could improve the ability to map parsed
 natural-language queries to the search strategies that are most likely to yield
-biologically relevant information.
+results that are aligned with the query semantics.
 
 
 %% \section{Background: Types of questions} \subsection{How does drug X induce
