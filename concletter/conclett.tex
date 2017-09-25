@@ -166,11 +166,9 @@ known as the ``Stanford dependency" \cite{stanforddep:2008} (Figure~\ref{fig:par
 Then for semantic parsing, we will write our own converter 
 that transforms the Stanford dependency graph into first-order logic formula (Figure~\ref{fig:parse}(b)).
 A potential problem with this approach is that the Stanford parser is mostly trained on news text and may not perform the best for the biomedical domain, but we will retrain the Stanford parser with additional in-domain data from BioNLP contests \cite{bionlp:2013}.
-
-
-
-
-
+The NLP step will result in a first-order logic formula
+(Fig.~\ref{fig:parse}(b)). This representation of the user query will be used by
+the Reasoning Tool to generate a dossier of search strategies.
 \begin{figure}[htbp]
 \centering
 \begin{tabular}{cc}
@@ -194,10 +192,6 @@ where D1 and D2 stand for two diseases.
 \label{fig:parse}}
 \end{figure}
 %\vspace{-2ex}
-
-The NLP step will result in a first-order logic formula
-(Fig.~\ref{fig:parse}(b)). This representation of the user query will be used by
-the Reasoning Tool to generate a dossier of search strategies.
 
 %an identification of relevant abstract terms (such as ``disease,'' ``pathway,'', ``molecule'' etc.) along with a desired connectives between them (such as ``offers protection against,'' ``is associated to'' etc.).
 \subsection{Generate a dossier of search strategies}
