@@ -156,6 +156,7 @@ the desired search strategies.
 \subsection{Natural language processing}
 \label{section:NLP}
 A critical functionality of a Reasoning Tool is the ability to parse and
+<<<<<<< HEAD
 understand free-form user input. This process involves two steps:
 (a) {\bf syntactic parsing}, which converts the natural language query into a tree or directed graph structure modeling syntactic dependencies,
 and (b) {\bf semantic parsing}, which converts the syntactic structure into a first-order logic formula.
@@ -169,6 +170,27 @@ A potential problem with this approach is that the Stanford parser is mostly tra
 The NLP step will result in a first-order logic formula
 (Fig.~\ref{fig:parse}(b)). This representation of the user query will be used by
 the Reasoning Tool to generate a dossier of search strategies.
+=======
+understand free-form user input. This process involves two steps: (a) {\bf
+  syntactic parsing}, which converts the natural language query into a tree or
+directed graph structure modeling syntactic dependencies, and (b) {\bf semantic
+  parsing}, which converts the syntactic structure into a first-order logic
+formula.  For syntactic parsing, to start with, we will use the widely-used
+Stanford parser %footnote{https://nlp.stanford.edu/software/lex-parser.shtml},
+which converts the sentence into a directed acyclic graph known as the
+``Stanford dependency" \cite{stanforddep:2008} (Figure~\ref{fig:parse}(a)).
+Then for semantic parsing, we will write our own converter that transforms the
+Stanford dependency graph into first-order logic formula
+(Figure~\ref{fig:parse}(b)).  A potential problem with this approach is that the
+Stanford parser is mostly trained on news text and may not perform the best for
+the biomedical domain, but we will retrain the Stanford parser with additional
+in-domain data from BioNLP contests \cite{bionlp:2013}.
+
+
+
+
+
+>>>>>>> d37ac0aa486731db2cc3d299b7ea39eb797aa737
 \begin{figure}[htbp]
 \centering
 \begin{tabular}{cc}
@@ -198,7 +220,7 @@ where D1 and D2 stand for two diseases.
 \label{section:strategies}
 Given a parsed natural language query as input, our Reasoning Tool will return
 a {\em dossier\/} of possible {\em search strategies.\/} A search
-strategy is a graph with vertices being biological entity types (including genetic
+strategy is a tree with vertices being biological entity types (including genetic
 variants, drugs, genes, molecules, pathways, diseases, diagnoses,
 etc.) and edges being query templates of Knowledge Sources to identify
 relationships between pairs of those entities.
@@ -207,9 +229,9 @@ relationships between pairs of those entities.
 %biological entity and each edge corresponds to a Knowledge Source that can
 %return associates between such entities.
 %tuples of associations for the entity types corresponding to the respective vertices.
-Terminal vertices in this graph correspond to
+Terminal vertices in this tree correspond to
 the entity types of the constants provided by the user's parsed natural language
-query. To illustrate, we show the graph for three simple search strategies that
+query. To illustrate, we show the tree for three simple search strategies that
 the Reasoning Tool would include in the dossier for two user queries: {\em How
   are disease DX and disease DY connected?\/} (Fig.~\ref{fig:ugraph}a-b) and
 {\em How does variant G cause disease DX and protect against disease DY?\/}
@@ -257,11 +279,11 @@ the Reasoning Tool would include in the dossier for two user queries: {\em How
   strategies}
 
 In implementing the Reasoning Tool, we will use a Markov chain approach to
-generate undirected graphs with the constant terms from the user's query as
-terminal vertices in the graph. This approach enables the prioritization of
+generate trees with the constant terms from the user's query as
+terminal vertices in the tree. This approach enables the prioritization of
 search strategies with fewer Knowledge Source lookups.  To illustrate, recall the hypothetical user query {\em How are
   disease DX and disease DY connected?} With two constants (i.e., terminal
-vertices in the graph), the Reasoning Tool would generate graphs according to
+vertices in the tree), the Reasoning Tool would generate graphs according to
 the Markov process shown in Fig.~\ref{fig:mp}a).
 \begin{figure}[h!]
   \begin{center}
@@ -301,8 +323,8 @@ the Markov process shown in Fig.~\ref{fig:mp}a).
 Such Markov chains will be constructed for each possible one-constant, two-constant,
 and three-constant natural-language query (and are trivially extensible). 
 %Markov chain edges will have a standard set of transition probabilities assigned.
- Each realization of the
-Markov chain will generate a possible search strategy, i.e., an undirected graph,
+ Each realization of the Markov chain will generate a possible search strategy,
+ i.e., a tree,
 %with the constant entities as terminal vertices; the Markov chain will also
 and will assign a probability to each search strategy by penalizing weak associations and excessively long chains
 of Knowledge Source lookups.
@@ -404,10 +426,10 @@ the role of heme in cerebral malaria~\cite{Ferreira:2011ff}.
 %\vspace{-2ex}
 \subsection{Executing search strategies}
 \label{section:Dijkstra}
-After the search strategy (graph generated by the Markov chain) is selected, we will
+After the search strategy (tree generated by the Markov chain) is selected, we will
 employ a modified Dijkstra algorithm to find paths between source and target
 entities that minimize a sum of edge-weights, where smaller edge-weights
-indicate stronger evidentiary value. The modification will ensure that, for
+indicate stronger evidentiary value. The straightforward modification will ensure that, for
 causal paths of influence, the overall ``sign'' of the path (activating or
 inhibiting) is consistent with the semantics of the user's natural-language query.
 
