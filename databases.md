@@ -21,7 +21,7 @@
 - http://ibi.imim.es/befree/
 - variant-molecule assoications
 
-# ParmGKB
+# PharmGKB
 
 - https://www.pharmgkb.org/
 - drug-variant associations
@@ -44,8 +44,17 @@
 - gene-to-phenotype associations
 - gene-to-disease associations
 - downloadable at:  https://archive.monarchinitiative.org/latest/
+- database flat-file download is 14 GB Neo4j database archive
 
 # Pathway commons
 
 - gene-to-pathway
 
+# TCRD / Pharos
+
+- https://pharos.nih.gov
+- http://juniper.health.unm.edu/tcrd/download/README
+- disease ontology
+- drug-target associations
+- target-to-disease associations
+- database flat-file download is 2 GB compressed SQL
