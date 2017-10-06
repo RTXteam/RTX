@@ -58,3 +58,28 @@
 - drug-target associations
 - target-to-disease associations
 - database flat-file download is 2 GB compressed SQL
+
+# Software
+
+## BioPAX/Paxtools:  v5.1.0
+- Installed (compiled from GitHub repo clone)
+
+## graph-tool: v2.23
+- Installed (used Debian package from skewed.de Debian apt repository)
+
+## Maven:  v3.3.9
+- Installed using apt-get
+
+## JDK/JRE:  v1.8.0_131
+- Installed using apt-get
+
+## Neo4j: v3.2.6
+- Installed using apt-get from repo at neo4j.org
+- Followed these instructions:  http://www.exegetic.biz/blog/2016/09/installing-neo4j-ubuntu-16-04/
+
+## SciGraph:
+- Installed from git repo clone:  https://github.com/SciGraph/SciGraph.git
+- used Maven for installation
+
+
+
