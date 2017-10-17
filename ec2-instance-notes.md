@@ -1,6 +1,7 @@
 
 
-Root Password for mysql server in docker container NCATS2:  on a post-it note in Steve's middle desk drawer
+Root Password for mysql server in docker container NCATS2:  on a post-it note in Steve's middle desk drawer.
+
 Neo4j database password:  (same as root mysql password)
 
 Command to create a docker container for Question 1:
