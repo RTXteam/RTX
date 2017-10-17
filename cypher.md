@@ -1,6 +1,23 @@
 # Reasoning Tool Team to share Cypher queries here
 
-# Q1 Team Queries that we are using:
+# Q1 Team: 
+
+## APIs that we are using to query Neo4j:
+
+- [neo4jrestclient](https://pypi.python.org/pypi/neo4jrestclient/)
+
+This package uses a REST/HTTPS protocol to communicate with Neo4j
+
+- [neo4j python driver](https://neo4j.com/developer/python/)
+
+This package uses the Bolt protocol to communicate with Neo4j.
+
+- [RNeo4j](https://github.com/nicolewhite/RNeo4j)
+
+The `RNeo4j` package uses a REST/HTTP protocol to communicate with Neo4j.  See 
+our [example code](genetic_conditions/get_node_ids_of_genetic_conditions.R).
+
+## Cypher queries that we are using:
 
 - If you want to find the ID of a node of type `disease` for which attribute `attr1` has value `abc` (limiting to one node):
 
@@ -17,7 +34,9 @@
         WHERE NONE (rel in r WHERE type(rel)='isDefinedBy') RETURN path
 
         
-# Q2 Team Queries that we are using:
+# Q2 Team: 
+
+## Cypher queries that we are using:
 
     FILL IN CYPHER QUERIES HERE
     
