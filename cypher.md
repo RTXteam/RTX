@@ -33,7 +33,10 @@ our [example code](genetic_conditions/get_node_ids_of_genetic_conditions.R).
         START start_node=NODE(12345), end_node=NODE(23456) MATCH path=shortestPath((start_node)-[r*0..3]-(end_node)) \
         WHERE NONE (rel in r WHERE type(rel)='isDefinedBy') RETURN path
 
-        
+- If you have two nodes corresponding to the same disease (for example) and you want to know which node has higher "degree" in the network
+
+        MATCH (n:disease)--(other) WHERE ID(n)=486897 OR ID(n)=1633994 RETURN ID(n), count(other);
+
 # Q2 Team: 
 
 ## Cypher queries that we are using:
