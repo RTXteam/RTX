@@ -37,6 +37,29 @@ our [example code](genetic_conditions/get_node_ids_of_genetic_conditions.R).
 
         MATCH (n:disease)--(other) WHERE ID(n)=486897 OR ID(n)=1633994 RETURN ID(n), count(other);
 
+## Disease ID
+
+| name                           | id      |
+|--------------------------------|---------|
+| osteoporosis                   | 2185483 |
+| cholera                        | 2543486 |
+| malaria                        | 2542350 |
+| osteomalacia                   | 2612545 |
+| Hypercholesterolemia           | 1132179 |
+| asthma                         | 2592883 |
+| myocardial infarction          | 2549074 |
+| _Niemann-Pick Disease Type C_  | 7888    |
+| _Niemann-Pick disease type C_  | 843637  |
+| Huntington Disease             | 8138    |
+| Alkaptonuria                   | 6358    |
+| Sickle Cell Disease            | 7955    |
+| post-traumatic stress disorder | 5186887 |
+| Duchenne muscular dystrophy    | 53523   |
+| Diabetes Mellitus, Type 2      | 1122087 |
+| _Alcohol dependence_           | 486897  |
+| _alcohol dependence_           | 1633994 |
+| Alzheimer Disease              | 1131907 |
+
 # Q2 Team: 
 
 ## Cypher queries that we are using:
