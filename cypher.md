@@ -37,6 +37,17 @@ our [example code](genetic_conditions/get_node_ids_of_genetic_conditions.R).
 
         MATCH (n:disease)--(other) WHERE ID(n)=486897 OR ID(n)=1633994 RETURN ID(n), count(other);
 
+- From Yao:  code to compute the in- and out-degree of a set of nodes:
+
+        WITH [5570241, 2294705, 57088, 41913, 2294706, 813839] AS id_list
+        MATCH (o)-[r]-()
+        WHERE id(o) IN id_list
+        WITH o, count(r) as degree, id_list
+        MATCH (o)<-[r]-()
+        WHERE id(o) IN id_list
+        WITH o, degree, count(r) AS indegree
+        return id(o) AS ID, degree, indegree, degree - indegree AS outdegree
+        
 # Q2 Team: 
 
 ## Cypher queries that we are using:
