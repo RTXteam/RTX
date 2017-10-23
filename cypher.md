@@ -68,10 +68,10 @@ ignore_list = [41913, 813839, 57088, 401035, 2294705, 2294706, 5570241]
 
 - 41913: `association`, father of all `(:association)` nodes. Exclude this node to exclude all `(:disease)-->(:association)-->41913<--(:association)<--(:disease)` paths.
 - 813839: MONARCH top importer, alpha version. This is an ontology that collects a subset of core ontologies required by MONARCH. 
-        - 57088 (-[:isDefinedBy]-> 813839): `has phenotype`, a relationship that holds between a biological entity and a phenotype. 1541615 `association` nodes are pointing to this node. Exclude this node to exclude all `(:disease)-->(:association)-->57088<--(:association)<--(:disease)` paths.
-        - 401035 (-[:isDefinedBy]-> 813839): `has_part`, a core relation that holds between a whole and its part. 25% of the phenotypes in neo4j are pointing to this node. However this nodes has an out-degree of 22 only, all of which are also highly abstract. Exclude this node to exclude all `(:Phenotype)-->401035<--(:Phenotype)` paths.
-        - 2294705 (-[:isDefinedBy]-> 813839): `Autosomal recessive inheritance`. 3048 diseases are pointing to this node while its out-degree is only 3. Exclude this node to exclude all `(:disease)-->2294705<--(:disease)` paths
-        - 2294706 (-[:isDefinedBy]-> 813839): `Autosomal dominant inheritance`. 2802 diseases are pointing to this node while its out-degree is only 3. Exclude this node to exclude all `(:disease)-->2294706<--(:disease)` paths
+  - 57088 (-[:isDefinedBy]-> 813839): `has phenotype`, a relationship that holds between a biological entity and a phenotype. 1541615 `association` nodes are pointing to this node. Exclude this node to exclude all `(:disease)-->(:association)-->57088<--(:association)<--(:disease)` paths.
+  - 401035 (-[:isDefinedBy]-> 813839): `has_part`, a core relation that holds between a whole and its part. 25% of the phenotypes in neo4j are pointing to this node. However this nodes has an out-degree of 22 only, all of which are also highly abstract. Exclude this node to exclude all `(:Phenotype)-->401035<--(:Phenotype)` paths.
+  - 2294705 (-[:isDefinedBy]-> 813839): `Autosomal recessive inheritance`. 3048 diseases are pointing to this node while its out-degree is only 3. Exclude this node to exclude all `(:disease)-->2294705<--(:disease)` paths.
+  - 2294706 (-[:isDefinedBy]-> 813839): `Autosomal dominant inheritance`. 2802 diseases are pointing to this node while its out-degree is only 3. Exclude this node to exclude all `(:disease)-->2294706<--(:disease)` paths.
 - 5570241: iri http://www.orpha.net/ORDO/Orphanet_377788. Looks like a marker of the top term "disease" in ORDO (Orphanet Rare Disease Ontolog). 3698 diseases are pointing to this node while its out-degree is 0. Exclude this node to exclude all `(:disease)-->5570241<--(:disease)` paths
 
 
