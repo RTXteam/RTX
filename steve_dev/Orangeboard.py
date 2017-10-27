@@ -16,8 +16,13 @@ class Orangeboard:
                                                           self.ORANGEBOARD_NEO4J_PASSWORD))
         self.session = self.driver.session()
 
+    def __del__(self):
+        if not (self.driver == None):
+            self.shutdown()
+        
     def shutdown(self):
         self.driver.close()
+        self.driver=None
         
     def run_cypher_query(self, query_string):
         """runs a single cypher query in the neo4j database (without a transaction) and returns the result object
