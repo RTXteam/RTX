@@ -16,6 +16,9 @@ class Orangeboard:
                                                           self.ORANGEBOARD_NEO4J_PASSWORD))
         self.session = self.driver.session()
 
+    def __del__(self):
+        self.driver.close()
+        
     def run_cypher_query(self, query_string):
         """runs a single cypher query in the neo4j database (without a transaction) and returns the result object
         :param query_string: a ``str`` object containing a single cypher query (without a semicolon)
@@ -27,6 +30,7 @@ class Orangeboard:
 
     def make_property_string_from_dict(property_info):
         """takes a ``dict`` of property key-value pairs and converts it into a string in Neo4j format
+
         :param property_info: a ``dict`` of property key-value pairs
         :returns: a string representaiotn of the property key-value pairs, in Neo4j format like this:
         UUID:'97b47364-b9c2-11e7-ac88-a820660158fd', name:'prot1'
@@ -35,12 +39,14 @@ class Orangeboard:
 
     def create_uuid_index(self):
         """creates a neo4j index on the node property UUID for node label Base
+
         :returns: nothing
         """
         self.run_cypher_query("CREATE INDEX ON :Base(UUID)")
         
     def clear_orangeboard(self):
         """deletes all nodes and relationships in the orangeboard
+
         :returns: nothing
         """
         self.run_cypher_query("MATCH (n) DETACH DELETE n")
@@ -50,9 +56,9 @@ class Orangeboard:
 
         :param node1_uuid: ``str``, the UUID property of node 1
         :param node2_uuid: ``str``, the UUID property of node 2
-        :rel_type_name: ``str``, the relationship type name (must be a valid Neo4j relationship name)
-        :rel_is_directed: ``bool``, ``True`` means the relationship is directed (``node1``->``node2``), ``False`` means the relationship is undirected
-        :rel_properties: ``dict``, containing the relationship properties (the keys of the ``dict`` should be valid Neo4j property names; the dict cannot contain an entry with the name ``UUID``)
+        :param rel_type_name: ``str``, the relationship type name (must be a valid Neo4j relationship name)
+        :param rel_is_directed: ``bool``, ``True`` means the relationship is directed (``node1``->``node2``), ``False`` means the relationship is undirected
+        :param rel_properties: ``dict``, containing the relationship properties (the keys of the ``dict`` should be valid Neo4j property names; the dict cannot contain an entry with the name ``UUID``)
         :returns: nothing
         """
         rel_properties = dict(rel_properties)
@@ -74,7 +80,7 @@ class Orangeboard:
         
         return(rel_uuid)
 
-    def query_rel(self, rel_uuid):
+    def query_rel_by_uuid(self, rel_uuid):
         """returns a ``list`` of information about a user-specified relationship (specified by UUID)
         :param rel_uuid: a ``str`` specifying the UUID of the relationship to query
         :returns: a ``list`` with information about a relationship, in this format:
@@ -86,7 +92,7 @@ class Orangeboard:
         record = res.single()
         return(list(record.items()))
         
-    def query_node(self, node_uuid):
+    def query_node_by_uuid(self, node_uuid):
         """returns a ``list`` of information about a user-specified node (specified by UUID)
         
         :param node_uuid: type ``str``, contains the UUID of the node about which you want to query
@@ -136,5 +142,5 @@ ob.create_uuid_index()
 node1_uuid = ob.add_node(set(), {"name": "prot1"})
 node2_uuid = ob.add_node(set(), {"name": "prot2"})
 rel_uuid = ob.add_rel(node1_uuid, node2_uuid, "regulates", True)
-print(ob.query_node(node1_uuid))
-print(ob.query_rel(rel_uuid))
+print(ob.query_node_by_uuid(node1_uuid))
+print(ob.query_rel_by_uuid(rel_uuid))
