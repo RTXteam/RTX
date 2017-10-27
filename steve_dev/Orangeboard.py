@@ -16,7 +16,7 @@ class Orangeboard:
                                                           self.ORANGEBOARD_NEO4J_PASSWORD))
         self.session = self.driver.session()
 
-    def __del__(self):
+    def shutdown(self):
         self.driver.close()
         
     def run_cypher_query(self, query_string):
@@ -144,3 +144,4 @@ node2_uuid = ob.add_node(set(), {"name": "prot2"})
 rel_uuid = ob.add_rel(node1_uuid, node2_uuid, "regulates", True)
 print(ob.query_node_by_uuid(node1_uuid))
 print(ob.query_rel_by_uuid(rel_uuid))
+ob.shutdown()
