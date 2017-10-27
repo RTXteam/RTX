@@ -21,11 +21,16 @@ class Orangeboard:
             self.shutdown()
         
     def shutdown(self):
+        """shuts down the Orangeboard by disconnecting from the Neo4j database
+
+        :returns: nothing
+        """
         self.driver.close()
         self.driver=None
         
     def run_cypher_query(self, query_string):
         """runs a single cypher query in the neo4j database (without a transaction) and returns the result object
+
         :param query_string: a ``str`` object containing a single cypher query (without a semicolon)
         :returns: a `neo4j.v1.SessionResult` object resulting from executing the neo4j query
         """
