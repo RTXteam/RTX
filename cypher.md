@@ -79,7 +79,7 @@ our [example code](genetic_conditions/get_node_ids_of_genetic_conditions.R).
 |                                          | Human Immunodeficiency Virus Infection |
 | cystic fibrosis                          | Cholera                                |
 |                                          | Ebola Virus Infection                  |
-| SCA, glucose-six-phosphate-dehydrogenase | Duffy Malaria                          |
+| SCA, glucose-six-phosphate-dehydrogenase Duffy |  Malaria                         |
 |                                          | Osteomalacia                           |
 | PCSK9                                    | Hypercholesterolemia                   |
 |                                          | Diabetes Mellitus, Type 2              |
