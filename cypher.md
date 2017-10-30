@@ -71,6 +71,32 @@ our [example code](genetic_conditions/get_node_ids_of_genetic_conditions.R).
 | post-traumatic stress disorder | 5186887 |
 | Sickle Cell Disease            | 7955    |
 
+## Known Genetic Conditions Giving Protection 
+
+| Genetic Condition                        | Disease                                |
+|------------------------------------------|----------------------------------------|
+|                                          | Osteoporosis                           |
+|                                          | Human Immunodeficiency Virus Infection |
+| cystic fibrosis                          | Cholera                                |
+|                                          | Ebola Virus Infection                  |
+| SCA, glucose-six-phosphate-dehydrogenase Duffy |  Malaria                         |
+|                                          | Osteomalacia                           |
+| PCSK9                                    | Hypercholesterolemia                   |
+|                                          | Diabetes Mellitus, Type 2              |
+| c-kit deficiency                         | Asthma                                 |
+|                                          | Chronic Pancreatitis                   |
+|                                          | Alzheimer Disease                      |
+|                                          | Myocardial Infarction                  |
+|                                          | Duchenne Muscular Dystrophy            |
+|                                          | Deficiency of N-glycanase 1            |
+|                                          | Alcohol Dependence                     |
+|                                          | Major Depression                       |
+|                                          | Niemann Pick Type C                    |
+|                                          | Huntington Disease                     |
+|                                          | Alkaptonuria                           |
+|                                          | Sickle Cell Disease                    |
+|                                          | Post-Traumatic Stress Disorder         |
+
 ## High-level Nodes
 
 ```python
