@@ -1,4 +1,4 @@
-## Development python script for NCATS Translator Reasoning Tool Q1
+## An implementation of a Blackboard class
 ## Author: Stephen Ramsey, OSU
 
 import neo4j.v1
