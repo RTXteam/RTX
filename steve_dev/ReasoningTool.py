@@ -6,7 +6,7 @@ from QueryPC2 import QueryPC2
 
 query_omim_obj = QueryOMIM()
 query_mygene_obj = QueryMyGene()
-query_pc2 = QueryPC2()
+query_pc2_obj = QueryPC2()
 
 genetic_condition_mim_id = 603903  # sickle-cell anemia
 target_disease_disont_id = 12365
@@ -67,11 +67,20 @@ def add_node_if_not_in_orangeboard(orangeboard, biotype, node_name):
         node_uuid = master_node_ids_in_orangeboard[biotype][node_name]
     return node_uuid
 
+def expand_reactome(orangeboard, node):
+    reactome_id_str = node.get_bioname()
+    proteins_set = query_pc2_obj.pathway_to_uniprot_ids(reactome_id_str)
+    source_node_uuid = node.get_uuid()
+    for uniprot_id in proteins_set:
+        target_node_uuid = add_node_if_not_in_orangeboard(orangeboard, "uniprot", uniprot_id)
+        add_rel_if_not_in_orangeboard(orangeboard, target_node_uuid, source_node_uuid, "is_member_of")
+        
 def expand_uniprot(orangeboard, node):
     uniprot_id_str = node.get_bioname()
-    pathways_set = query_pc2.uniprot_id_to_reactome_pathways(uniprot_id_str)
+    pathways_set = query_pc2_obj.uniprot_id_to_reactome_pathways(uniprot_id_str)
     source_node_uuid = node.get_uuid()
     for pathway_id in pathways_set:
+        print(pathway_id)
         target_node_uuid = add_node_if_not_in_orangeboard(orangeboard, "reactome", pathway_id)
         add_rel_if_not_in_orangeboard(orangeboard, source_node_uuid, target_node_uuid, "is_member_of")
         
@@ -107,14 +116,21 @@ add_node(ob, "mim", genetic_condition_mim_id)
 ## add the initial target disease into the Orangeboard, as a "disease ontology" node
 add_node(ob, "disont", target_disease_disont_id)
 
-    
+
+print("----------- first round of expansion ----------")
 for node in ob.get_all_nodes():
     node.__class__  = ReasoningToolNode
     if not node.is_expanded():
         expand(ob, node)
     
+print("----------- second round of expansion ----------")
 for node in ob.get_all_nodes():
     node.__class__  = ReasoningToolNode
     if not node.is_expanded():
         expand(ob, node)
     
+print("----------- third round of expansion ----------")
+for node in ob.get_all_nodes():
+    node.__class__  = ReasoningToolNode
+    if not node.is_expanded():
+        expand(ob, node)
