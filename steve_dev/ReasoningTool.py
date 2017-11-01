@@ -107,8 +107,10 @@ add_node(ob, "mim", genetic_condition_mim_id)
 ## add the initial target disease into the Orangeboard, as a "disease ontology" node
 add_node(ob, "disont", target_disease_disont_id)
 
-    
+
 for node in ob.get_all_nodes():
+    # TODO Change this risky way of type conversion
+    # See https://stackoverflow.com/a/9112513
     node.__class__  = ReasoningToolNode
     if not node.is_expanded():
         expand(ob, node)
