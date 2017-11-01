@@ -125,6 +125,8 @@ for node in ob.get_all_nodes():
     
 print("----------- second round of expansion ----------")
 for node in ob.get_all_nodes():
+    # TODO Change this risky way of type conversion
+    # See https://stackoverflow.com/a/9112513
     node.__class__  = ReasoningToolNode
     if not node.is_expanded():
         expand(ob, node)
