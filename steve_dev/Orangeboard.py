@@ -35,9 +35,9 @@ class Orangeboard:
         :param query_string: a ``str`` object containing a single cypher query (without a semicolon)
         :returns: a `neo4j.v1.SessionResult` object resulting from executing the neo4j query
         """
-        assert (';' not in query_string)
         if (self.debug): print(query_string)
-        return self.driver.session().run(query_string)
+        assert (';' not in query_string)
+        return self.session.run(query_string)
 
     def make_property_string_from_dict(property_info):
         """takes a ``dict`` of property key-value pairs and converts it into a string in Neo4j format
