@@ -21,13 +21,12 @@ class QueryPC2:
         res_set = set()
         for line_str in res_text.splitlines():
             if start_capturing:
-                fields = line_str.split("\t")[3].split(":")
-                if len(fields) < 2:
-                    print(line_str)
-                    exit()
-                else:
-                    if fields[0] == "uniprot knowledgebase":
-                        res_set.add(fields[1])
+                unification_xref_str = line_str.split("\t")[3]
+                unification_xref_namevals = unification_xref_str.split(";")
+                for unification_xref_nameval in unification_xref_namevals:
+                    unification_xref_nameval_fields = unification_xref_nameval.split(":")
+                    if unification_xref_nameval_fields[0] == "uniprot knowledgebase":
+                        res_set.add(unification_xref_nameval_fields[1])
             if line_str.split("\t")[0] == "PARTICIPANT":
                 start_capturing = True
         return res_set
@@ -44,7 +43,7 @@ class QueryPC2:
     @staticmethod
     def test():
         print(QueryPC2.uniprot_id_to_reactome_pathways("P68871"))
-        print(QueryPC2.pathway_to_uniprot_ids("R-HSA-168249"))
+        print(QueryPC2.pathway_to_uniprot_ids("R-HSA-2168880"))
 
 if "--test" in set(sys.argv):
     QueryPC2.test()
