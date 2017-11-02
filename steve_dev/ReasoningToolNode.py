@@ -5,11 +5,8 @@ class ReasoningToolNode(neo4j.v1.types.Node):
         pass
     
     def get_biotype(self):
-        print(self.labels)
         labels = self.labels.copy()
-        print(labels)
         labels.remove("Base")
-        print(labels)
         assert len(labels)==1
         return list(labels)[0]
 
