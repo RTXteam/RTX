@@ -42,11 +42,11 @@ class QueryOMIM:
                 'uniprot_ids': set(uniprot_ids)}
 
     @staticmethod
-    def __test():
+    def test():
         qo = QueryOMIM()
         res = qo.disease_mim_to_gene_symbols_and_uniprot_ids(603903)
         print(res)
 
 
 if "--test" in set(sys.argv):
-    QueryOMIM.__test()
+    QueryOMIM.test()
