@@ -9,7 +9,9 @@ query_omim_obj = QueryOMIM()
 query_mygene_obj = QueryMyGene()
 
 genetic_condition_mim_id = 603903  # sickle-cell anemia
-target_disease_disont_id = 12365
+target_disease_disont_id = 12365   # malaria
+
+master_node_is_expanded = dict()
 
 master_rel_is_directed = {"genetic_cond_affects": True,
                           "is_member_of": True}
@@ -23,6 +25,8 @@ master_node_ids_in_orangeboard = {"mim":      dict(),
                                   "gene":     dict(),
                                   "reactome": dict()}
 
+def is_expanded(node_uuid):
+    return master_node_is_expanded[node_uuid]
 
 def add_rel(orangeboard, rel_type, source_node_uuid, target_node_uuid):
     is_directed = master_rel_is_directed[rel_type]
@@ -39,6 +43,7 @@ def add_node(orangeboard, biotype, node_name):
                                 node_properties={'name': str(node_name),
                                                  'expanded': 'false'})
     master_node_ids_in_orangeboard[biotype][node_name]=node_uuid
+    master_node_is_expanded[node_uuid]=False
     return node_uuid
 
 def get_rel_if_in_orangeboard(source_node_uuid, target_node_uuid, rel_type):
@@ -107,7 +112,9 @@ def expand(orangeboard, node):
     method_name = "expand_" + node_type
     method_obj = globals()[method_name]  ## dispatch to the correct function for expanding the node type
     method_obj(orangeboard, node)
-    orangeboard.set_node_property(node.properties["UUID"], "expanded", "true")
+    node_uuid=node.properties["UUID"]
+    master_node_is_expanded[node_uuid]=True
+    orangeboard.set_node_property(node_uuid, "expanded", "true")
 
 ob = Orangeboard()
 ob.clear()
