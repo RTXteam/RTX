@@ -13,12 +13,12 @@ class QueryReactome:
         assert 200 == res.status_code
         return res
 
-    @staticmethod
-    def uniprot_to_reactome_entity_id(uniprot_id):
-        handler = 'data/complexes/UniProt'
-        url_suffix = uniprot_id
-        res = QueryReactome.send_query_get(handler, url_suffix)
-        return res.json()
+    # @staticmethod
+    # def uniprot_to_reactome_entity_id(uniprot_id):
+    #     handler = 'data/complexes/UniProt'
+    #     url_suffix = uniprot_id
+    #     res = QueryReactome.send_query_get(handler, url_suffix)
+    #     return res.json()
 
     @staticmethod
     def test():
