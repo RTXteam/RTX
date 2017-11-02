@@ -10,5 +10,4 @@ class QueryMyGene:
         uniprot_id = None
         if len(res) > 0:
             uniprot_id = set([hit["uniprot"]["Swiss-Prot"] for hit in res["hits"]])
-            return uniprot_id
-    
+        return uniprot_id
