@@ -21,7 +21,13 @@ class QueryPC2:
         res_set = set()
         for line_str in res_text.splitlines():
             if start_capturing:
-                res_set.add(line_str.split("\t")[3].split(":")[1])
+                fields = line_str.split("\t")[3].split(":")
+                if len(fields) < 2:
+                    print(line_str)
+                    exit()
+                else:
+                    if fields[0] == "uniprot knowledgebase":
+                        res_set.add(fields[1])
             if line_str.split("\t")[0] == "PARTICIPANT":
                 start_capturing = True
         return res_set

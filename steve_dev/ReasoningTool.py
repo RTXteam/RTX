@@ -3,10 +3,10 @@ from ReasoningToolNode import ReasoningToolNode
 from QueryOMIM import QueryOMIM
 from QueryMyGene import QueryMyGene
 from QueryPC2 import QueryPC2
+from QueryUniprot import QueryUniprot
 
 query_omim_obj = QueryOMIM()
 query_mygene_obj = QueryMyGene()
-query_pc2_obj = QueryPC2()
 
 genetic_condition_mim_id = 603903  # sickle-cell anemia
 target_disease_disont_id = 12365
@@ -69,7 +69,7 @@ def add_node_if_not_in_orangeboard(orangeboard, biotype, node_name):
 
 def expand_reactome(orangeboard, node):
     reactome_id_str = node.get_bioname()
-    proteins_set = query_pc2_obj.pathway_to_uniprot_ids(reactome_id_str)
+    proteins_set = QueryPC2.pathway_to_uniprot_ids(reactome_id_str)
     source_node_uuid = node.get_uuid()
     for uniprot_id in proteins_set:
         target_node_uuid = add_node_if_not_in_orangeboard(orangeboard, "uniprot", uniprot_id)
@@ -77,7 +77,9 @@ def expand_reactome(orangeboard, node):
         
 def expand_uniprot(orangeboard, node):
     uniprot_id_str = node.get_bioname()
-    pathways_set = query_pc2_obj.uniprot_id_to_reactome_pathways(uniprot_id_str)
+    pathways_set_from_pc2 = QueryPC2.uniprot_id_to_reactome_pathways(uniprot_id_str)
+    pathways_set_from_uniprot = QueryUniprot.uniprot_id_to_reactome_pathways(uniprot_id_str)
+    pathways_set = pathways_set_from_pc2 | pathways_set_from_uniprot
     source_node_uuid = node.get_uuid()
     for pathway_id in pathways_set:
         print(pathway_id)

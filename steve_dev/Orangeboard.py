@@ -26,8 +26,8 @@ class Orangeboard:
 
         :returns: nothing
         """
+        self.session.close()
         self.driver.close()
-        self.driver=None
         
     def run_cypher_query(self, query_string):
         """runs a single cypher query in the neo4j database (without a transaction) and returns the result object

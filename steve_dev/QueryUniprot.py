@@ -5,7 +5,7 @@ class QueryUniprot:
     API_BASE_URL = "http://www.uniprot.org/uploadlists/"
     
     @staticmethod
-    def query_uniprot_to_reactome(uniprot_id):
+    def uniprot_id_to_reactome_pathways(uniprot_id):
         """returns a ``set`` of reactome IDs of pathways associated with a given string uniprot ID
 
         :param uniprot_id: a ``str`` uniprot ID, like ``"P68871"``
@@ -29,7 +29,7 @@ class QueryUniprot:
 
     @staticmethod
     def test():
-        print(QueryUniprot.query_uniprot_to_reactome("P68871"))
+        print(QueryUniprot.uniprot_id_to_reactome_pathways("P68871"))
         
 if "--test" in set(sys.argv):
     QueryUniprot.test()
