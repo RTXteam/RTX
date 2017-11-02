@@ -145,3 +145,5 @@ for node in ob.get_all_nodes():
     node.__class__  = ReasoningToolNode
     if not node.is_expanded():
         expand(ob, node)
+
+ob.shutdown()
