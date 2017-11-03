@@ -20,13 +20,16 @@ class OrangeboardNode:
         return str(self.neo4j_node)
 
     def __eq__(self, other):
-        # Great! neo4j node implemented `__eq__`
+        # Great! neo4j node implemented `__eq__`.
+        # Two neo4j nodes with the same label, properties, etc. are equal.
+        # If not overwritten, default behavior is to compare `id(self)` and `id(other)`
         if type(other) != OrangeboardNode:
             return False
         else:
             return self.neo4j_node == other.neo4j_node
 
     def __hash__(self):
+        # If `__eq__` is overwritten, do overwrite `__hash__` at the same time.
         return hash(self.neo4j_node)
 
     def get_biotype(self):
