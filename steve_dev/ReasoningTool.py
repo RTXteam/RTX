@@ -4,6 +4,7 @@ from QueryOMIM import QueryOMIM
 from QueryMyGene import QueryMyGene
 from QueryPC2 import QueryPC2
 from QueryUniprot import QueryUniprot
+from QueryReactome import QueryReactome
 
 query_omim_obj = QueryOMIM()
 query_mygene_obj = QueryMyGene()
@@ -74,9 +75,11 @@ def add_node_if_not_in_orangeboard(orangeboard, biotype, node_name):
 
 def expand_reactome(orangeboard, node):
     reactome_id_str = node.get_bioname()
-    proteins_set = QueryPC2.pathway_to_uniprot_ids(reactome_id_str)
+#    uniprot_ids_from_pc2 = QueryPC2.pathway_id_to_uniprot_ids(reactome_id_str)
+    uniprot_ids_from_reactome = QueryReactome.query_reactome_pathway_id_to_uniprot_ids(reactome_id_str)
+    uniprot_ids = uniprot_ids_from_reactome # | uniprot_ids_from_pc2
     source_node_uuid = node.get_uuid()
-    for uniprot_id in proteins_set:
+    for uniprot_id in uniprot_ids:
         target_node_uuid = add_node_if_not_in_orangeboard(orangeboard, "uniprot", uniprot_id)
         add_rel_if_not_in_orangeboard(orangeboard, target_node_uuid, source_node_uuid, "is_member_of")
         
@@ -84,7 +87,8 @@ def expand_uniprot(orangeboard, node):
     uniprot_id_str = node.get_bioname()
     pathways_set_from_pc2 = QueryPC2.uniprot_id_to_reactome_pathways(uniprot_id_str)
     pathways_set_from_uniprot = QueryUniprot.uniprot_id_to_reactome_pathways(uniprot_id_str)
-    pathways_set = pathways_set_from_pc2 | pathways_set_from_uniprot
+    pathways_set_from_reactome = QueryReactome.query_uniprot_id_to_reactome_pathway_ids(uniprot_id_str)
+    pathways_set = pathways_set_from_pc2 | pathways_set_from_uniprot | pathways_set_from_reactome
     source_node_uuid = node.get_uuid()
     for pathway_id in pathways_set:
         print(pathway_id)
