@@ -13,7 +13,7 @@ class QueryPC2:
         return res
 
     @staticmethod
-    def pathway_to_uniprot_ids(pathway_reactome_id):
+    def pathway_id_to_uniprot_ids(pathway_reactome_id):
         query_str = "uri=http://identifiers.org/reactome/" + pathway_reactome_id + "&format=TXT"
         res = QueryPC2.send_query_get("get", query_str)
         start_capturing = False
@@ -38,6 +38,7 @@ class QueryPC2:
         search_hits = res_dict["searchHit"]
         pathway_list = [item.split("http://identifiers.org/reactome/")[1] for i in range(0, len(search_hits)) for item
                         in search_hits[i]["pathway"]]
+        print(pathway_list)
         return set(pathway_list)
 
     @staticmethod
