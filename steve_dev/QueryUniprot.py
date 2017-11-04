@@ -30,6 +30,8 @@ class QueryUniprot:
     @staticmethod
     def test():
         print(QueryUniprot.uniprot_id_to_reactome_pathways("P68871"))
+        print(QueryUniprot.uniprot_id_to_reactome_pathways("Q16621"))
+        print(QueryUniprot.uniprot_id_to_reactome_pathways("P09601"))
         
 if "--test" in set(sys.argv):
     QueryUniprot.test()
