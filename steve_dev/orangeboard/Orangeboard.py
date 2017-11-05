@@ -16,6 +16,13 @@ class Node:
         self.in_rels = set()
         self.expanded = False
 
+    def get_props(self):
+        return {'UUID': self.uuid, 'name': self.name, 'seed_node_uuid': self.seed_node.uuid}
+        
+
+    def get_labels(sel):
+        return {'Base', self.nodetype}
+
 class Rel:
     def __init__(self, reltype, sourcedb, source_node, target_node, directed, seed_node):
         self.reltype = reltype
@@ -28,14 +35,30 @@ class Rel:
         source_node.out_rels.add(self)
         target_node.in_rels.add(self)
 
+    def get_props(self):
+        return {'UUID': self.uuid, 'reltype': self.reltype, 'sourcedb': self.sourcedb, 'seed_node_uuid': self.seed_node.uuid}
+    
 class Orangeboard:
-    def __init__(self):
+    def __init__(self, debug=False):
         self.dict_nodetype_to_dict_name_to_node = dict()
         self.dict_reltype_to_dict_relkey_to_rel = dict()
         self.dict_seed_uuid_to_list_nodes = dict()
         self.dict_seed_uuid_to_list_rels = dict()
+        self.debug = debug
         self.seed_node = None
 
+    def count_nodes(self):
+        count = 0
+        for seed_uuid in self.dict_seed_uuid_to_list_nodes.keys():
+            count += len(self.dict_seed_uuid_to_list_nodes[seed_uuid])
+        return count
+
+    def count_rels(self):
+        count = 0
+        for seed_uuid in self.dict_seed_uuid_to_list_rels.keys():
+            count += len(self.dict_seed_uuid_to_list_rels[seed_uuid])
+        return count
+        
     def set_seed_node(self, seed_node):
         self.seed_node = seed_node
         
@@ -50,7 +73,7 @@ class Orangeboard:
         return ret_node
 
     def get_all_nodes(self):
-        return self.dict_seed_uuid_to_list_nodes[self.seed_node.uuid]
+        return self.dict_seed_uuid_to_list_nodes[self.seed_node.uuid].copy()
     
     def add_node(self, nodetype, name):
         seed_node = self.seed_node
@@ -70,6 +93,8 @@ class Orangeboard:
             if sublist is None:
                 self.dict_seed_uuid_to_list_nodes[seed_node_uuid] = list()
             self.dict_seed_uuid_to_list_nodes[seed_node.uuid].append(new_node)
+        if self.debug:
+            print("Number of nodes: " + str(self.count_nodes()))
         return existing_node
 
     @staticmethod
@@ -114,7 +139,27 @@ class Orangeboard:
             if sublist is None:
                 self.dict_seed_uuid_to_list_rels[seed_node_uuid] = []
             self.dict_seed_uuid_to_list_rels[seed_node_uuid].append(new_rel)
+        if self.debug:
+            print("Number of rels: " + str(self.count_rels()))
         return existing_rel
+
+    @staticmethod
+    def make_label_string_from_set(node_labels):
+        if len(node_labels) > 0:
+            return ':' + ':'.join(node_labels)
+        else:
+            return ''
+
+    @staticmethod
+    def make_property_string_from_dict(property_info):
+        """takes a ``dict`` of property key-value pairs and converts it into a string in Neo4j format
+
+        :param property_info: a ``dict`` of property key-value pairs
+        :returns: a string representaiotn of the property key-value pairs, in Neo4j format like this:
+        UUID:'97b47364-b9c2-11e7-ac88-a820660158fd', name:'prot1'
+        """
+        return "{" + (', '.join("{!s}:{!r}".format(key,val) for (key,val) in property_info.items())) + "}" if len(property_info) > 0 else ''
     
     def cypher_dump(self):
+        cyph_list.append('CREATE INDEX ON :Base(UUID);')
         pass
