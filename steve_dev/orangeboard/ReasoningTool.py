@@ -75,7 +75,7 @@ def expand(orangeboard, node):
     method_obj(orangeboard, node)
     node.expanded = True
 
-ob = Orangeboard()
+ob = Orangeboard(debug=True)
 
 ## add the initial genetic condition into the Orangeboard, as a "MIM" node
 ob.add_node("mim_geneticcond", genetic_condition_mim_id)
