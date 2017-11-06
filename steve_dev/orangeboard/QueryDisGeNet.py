@@ -17,6 +17,9 @@ import pandas
 import io
 
 class QueryDisGeNet:
+    MAX_PROTS_FOR_GENE = 3   ## maybe we should make this a configurable class variable (SAR)
+    MAX_GENES_FOR_DISEASE = 20  ## maybe we should make this a configurable class variable (SAR)
+    
     @staticmethod
     def query_mesh_id_to_uniprot_ids(mesh_id):
         ent = 'disease'
@@ -52,15 +55,14 @@ class QueryDisGeNet:
         res = urllib.request.urlopen(req, binary_data)
         data  = res.read().decode("utf-8")
         res.close()
-        ret_data = set(pandas.read_csv(io.StringIO(data), sep="\t")["c2.uniprotId"].tolist()) - {'null'}
+        ret_data = set(pandas.read_csv(io.StringIO(data), sep="\t").head(QueryDisGeNet.MAX_GENES_FOR_DISEASE)["c2.uniprotId"].tolist()) - {'null'}
         for prot in ret_data.copy():
-            if '.' in prot:
+            if '.' in prot or ';' in prot:
                 ret_data.remove(prot)
-                ret_data.add(prot.split('.')[0])
-            if ';' in prot:
-                ret_data.remove(prot)
-                ret_data |= set(prot.split(';'))
-        
+                prot.replace('.', '')
+                prots_to_add = prot.split(';')
+                if len(prots_to_add) <= QueryDisGeNet.MAX_PROTS_FOR_GENE:
+                    ret_data |= set(prots_to_add)
         return(ret_data)
 
     
