@@ -57,6 +57,15 @@ class Orangeboard:
         self.debug = debug
         self.seed_node = None
 
+    def count_rels_for_node_slow(self, node):
+        node_uuid = node.uuid
+        count = 0
+        for subdict in self.dict_reltype_to_dict_relkey_to_rel.values():
+            for rel in subdict.values():
+                if rel.source_node.uuid == node_uuid or rel.target_node.uuid == node_uuid:
+                    count += 1
+        return count
+        
     def set_reltype_dirs(self, dict_reltype_dirs):
         self.dict_reltype_dirs = dict_reltype_dirs
         
@@ -71,7 +80,7 @@ class Orangeboard:
         for seed_uuid in self.dict_seed_uuid_to_list_rels.keys():
             count += len(self.dict_seed_uuid_to_list_rels[seed_uuid])
         return count
-        
+
     def set_seed_node(self, seed_node):
         self.seed_node = seed_node
         
@@ -294,8 +303,9 @@ class Orangeboard:
             cypher_query_str = 'UNWIND $props as map\nCREATE (n' + \
                                Orangeboard.make_label_string_from_set(node.get_labels()) + \
                                ')\nSET n = map'
-            print(query_params)
-            print(cypher_query_str)
+            if self.debug:
+                print(query_params)
+                print(cypher_query_str)
             self.neo4j_run_cypher_query(cypher_query_str, query_params)
 #                break
         self.neo4j_create_indexes()
