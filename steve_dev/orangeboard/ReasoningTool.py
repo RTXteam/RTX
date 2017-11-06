@@ -109,7 +109,12 @@ print("----------- second round of expansion ----------")
 for node in ob.get_all_nodes_for_current_seed_node():
     if not node.expanded:
         expand(ob, node)
-    
+
+print("----------- third round of expansion ----------")
+for node in ob.get_all_nodes_for_current_seed_node():
+    if not node.expanded:
+        expand(ob, node)
+        
 # print("----------- third round of expansion ----------")
 # for node in ob.get_all_nodes_for_current_seed_node():
 #     if not node.expanded:
@@ -127,6 +132,12 @@ for node in ob.get_all_nodes_for_current_seed_node():
     if not node.expanded:
         expand(ob, node)
 
+print("----------- third round of expansion ----------")
+for node in ob.get_all_nodes_for_current_seed_node():
+    if not node.expanded:
+        expand(ob, node)
+
+        
 #ob.neo4j_push(mim_node)
 
 # push the entire graph to neo4j
