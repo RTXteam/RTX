@@ -17,8 +17,12 @@ class QueryDisont:
     def query_disont_to_child_disonts(disont_id):
         res_json = QueryDisont.send_query_get('metadata', 'DOID:' + str(disont_id)).json()
         print(res_json)
-        disease_children_list = res_json["children"]
-        return set([int(disease_child_list[1].split(':')[1]) for disease_child_list in disease_children_list])
+        disease_children_list = res_json.get("children", None)
+        if disease_children_list is not None:
+            return set([int(disease_child_list[1].split(':')[1]) for disease_child_list in disease_children_list])
+        else:
+            return set()
+        
 
     @staticmethod
     def query_disont_to_mesh_id(disont_id):
