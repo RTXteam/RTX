@@ -78,28 +78,35 @@ def expand(orangeboard, node):
 ob = Orangeboard(debug=True)
 
 ob.set_reltype_dirs(master_rel_is_directed)
+## add the initial target disease into the Orangeboard, as a "disease ontology" node
+disease_node = ob.add_node("disont_disease", target_disease_disont_id, seed_node=True)
 
 ## add the initial genetic condition into the Orangeboard, as a "MIM" node
-ob.add_node("mim_geneticcond", genetic_condition_mim_id)
+mim_node = ob.add_node("mim_geneticcond", genetic_condition_mim_id, seed_node=True)
 
 print("----------- first round of expansion ----------")
 for node in ob.get_all_nodes_for_current_seed_node():
     if not node.expanded:
         expand(ob, node)
     
-# print("----------- second round of expansion ----------")
-# for node in ob.get_all_nodes_for_current_seed_node():
-#     # TODO Change this risky way of type conversion
-#     # See https://stackoverflow.com/a/9112513
-#     if not node.expanded:
-#         expand(ob, node)
+print("----------- second round of expansion ----------")
+for node in ob.get_all_nodes_for_current_seed_node():
+    # TODO Change this risky way of type conversion
+    # See https://stackoverflow.com/a/9112513
+    if not node.expanded:
+        expand(ob, node)
     
-# print("----------- third round of expansion ----------")
-# for node in ob.get_all_nodes_for_current_seed_node():
-#     if not node.expanded:
-#         expand(ob, node)
+print("----------- third round of expansion ----------")
+for node in ob.get_all_nodes_for_current_seed_node():
+    if not node.expanded:
+        expand(ob, node)
 
-## add the initial target disease into the Orangeboard, as a "disease ontology" node
-ob.add_node("disont_disease", target_disease_disont_id)
 
+#ob.neo4j_push(mim_node)
+
+# push the entire graph to neo4j
 ob.neo4j_push()
+
+# clear out the neo4j graph derived from the MIM seed node
+#ob.neo4j_clear(mim_node)
+
