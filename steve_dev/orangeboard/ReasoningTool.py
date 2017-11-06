@@ -109,12 +109,7 @@ print("----------- second round of expansion ----------")
 for node in ob.get_all_nodes_for_current_seed_node():
     if not node.expanded:
         expand(ob, node)
-
-print("----------- third round of expansion ----------")
-for node in ob.get_all_nodes_for_current_seed_node():
-    if not node.expanded:
-        expand(ob, node)
-        
+       
 # print("----------- third round of expansion ----------")
 # for node in ob.get_all_nodes_for_current_seed_node():
 #     if not node.expanded:
