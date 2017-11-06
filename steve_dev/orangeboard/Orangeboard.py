@@ -1,8 +1,6 @@
 import uuid
 import neo4j.v1
 
-#debug = True
-
 class Node:
     def __init__(self, nodetype, name, seed_node):
         self.nodetype = nodetype

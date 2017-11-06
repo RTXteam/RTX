@@ -7,7 +7,7 @@ class QueryPC2:
     @staticmethod
     def send_query_get(handler, url_suffix):
         url_str = QueryPC2.API_BASE_URL + "/" + handler + "?" + url_suffix
-        print(url_str)
+#        print(url_str)
         res = requests.get(url_str)
         assert 200 == res.status_code
         return res
@@ -38,7 +38,7 @@ class QueryPC2:
         search_hits = res_dict["searchHit"]
         pathway_list = [item.split("http://identifiers.org/reactome/")[1] for i in range(0, len(search_hits)) for item
                         in search_hits[i]["pathway"]]
-        print(pathway_list)
+#        print(pathway_list)
         return set(pathway_list)
 
     @staticmethod
