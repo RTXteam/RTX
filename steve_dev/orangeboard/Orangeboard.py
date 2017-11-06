@@ -1,7 +1,7 @@
 import uuid
 import neo4j.v1
 
-debug = True
+#debug = True
 
 class Node:
     def __init__(self, nodetype, name, seed_node):
@@ -289,15 +289,15 @@ class Orangeboard:
                 nodes &= self.get_all_nodes_for_seed_node_uuid(seed_node.uuid)
             query_params = { 'props': [ node.get_props() for node in nodes ] }
             first_node = None
-            for node in iter(nodes):
-                cypher_query_str = 'UNWIND $props as map\nCREATE (n' + \
-                                   Orangeboard.make_label_string_from_set(node.get_labels()) + \
-                                   ')\nSET n = map'
-                print(query_params)
-                print(cypher_query_str)
-                self.neo4j_run_cypher_query(cypher_query_str, query_params)
-                break
-#                               Orangeboard.make_label_string_from_set(next(iter(nodes)).get_labels()) + \
+            node = next(iter(nodes))
+#            for node in iter(nodes):  ## go through the loop ONCE, for the first node; (see "break")
+            cypher_query_str = 'UNWIND $props as map\nCREATE (n' + \
+                               Orangeboard.make_label_string_from_set(node.get_labels()) + \
+                               ')\nSET n = map'
+            print(query_params)
+            print(cypher_query_str)
+            self.neo4j_run_cypher_query(cypher_query_str, query_params)
+#                break
         self.neo4j_create_indexes()
         reltypes = self.get_all_reltypes()
         for reltype in reltypes:
