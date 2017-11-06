@@ -12,13 +12,14 @@ query_mygene_obj = QueryMyGene()
 
 genetic_condition_mim_id = 603903  # sickle-cell anemia
 target_disease_disont_id = 12365   # malaria
-## cerebral malaria DOID is:  14069
+## cerebral malaria:  D014069
 
 master_node_is_expanded = dict()
 
 master_rel_is_directed = {"genetic_cond_affects": True,
                           "is_member_of": True,
-                          "is_parent_of": True}
+                          "is_parent_of": True,
+                          "gene_assoc_with": True}
                         
 master_rel_ids_in_orangeboard = {"genetic_cond_affects": dict(),
                                  "is_member_of": dict()}
@@ -78,8 +79,11 @@ def expand_disont_disease(orangeboard, node):
     mesh_ids_set = QueryDisont.query_disont_to_mesh_id(disont_id)
     for mesh_id in mesh_ids_set:
         uniprot_ids_set = QueryDisGeNet.query_mesh_id_to_uniprot_ids(mesh_id)
-        ## TODO:  add node for uniprot_id here
-#        for uniprot_id in uniprot_ids
+        for uniprot_id in uniprot_ids_set:
+            source_node = orangeboard.add_node("uniprot_protein", uniprot_id)
+            orangeboard.add_rel("gene_assoc_with", "DisGeNet", source_node, node)
+## TODO:  add node for uniprot_id here
+
     
 def expand(orangeboard, node):
     node_type = node.nodetype
@@ -95,25 +99,33 @@ ob.set_reltype_dirs(master_rel_is_directed)
 disease_node = ob.add_node("disont_disease", target_disease_disont_id, seed_node=True)
 
 ## add the initial genetic condition into the Orangeboard, as a "MIM" node
-#mim_node = ob.add_node("mim_geneticcond", genetic_condition_mim_id, seed_node=True)
 
 print("----------- first round of expansion ----------")
 for node in ob.get_all_nodes_for_current_seed_node():
     if not node.expanded:
         expand(ob, node)
     
-# print("----------- second round of expansion ----------")
-# for node in ob.get_all_nodes_for_current_seed_node():
-#     # TODO Change this risky way of type conversion
-#     # See https://stackoverflow.com/a/9112513
-#     if not node.expanded:
-#         expand(ob, node)
+print("----------- second round of expansion ----------")
+for node in ob.get_all_nodes_for_current_seed_node():
+    if not node.expanded:
+        expand(ob, node)
     
 # print("----------- third round of expansion ----------")
 # for node in ob.get_all_nodes_for_current_seed_node():
 #     if not node.expanded:
 #         expand(ob, node)
 
+mim_node = ob.add_node("mim_geneticcond", genetic_condition_mim_id, seed_node=True)
+
+print("----------- first round of expansion ----------")
+for node in ob.get_all_nodes_for_current_seed_node():
+    if not node.expanded:
+        expand(ob, node)
+    
+print("----------- second round of expansion ----------")
+for node in ob.get_all_nodes_for_current_seed_node():
+    if not node.expanded:
+        expand(ob, node)
 
 #ob.neo4j_push(mim_node)
 
