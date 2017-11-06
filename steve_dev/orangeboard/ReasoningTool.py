@@ -5,12 +5,14 @@ from QueryPC2 import QueryPC2
 from QueryUniprot import QueryUniprot
 from QueryReactome import QueryReactome
 from QueryDisont import QueryDisont
+from QueryDisGeNet import QueryDisGeNet
 
 query_omim_obj = QueryOMIM()
 query_mygene_obj = QueryMyGene()
 
 genetic_condition_mim_id = 603903  # sickle-cell anemia
 target_disease_disont_id = 12365   # malaria
+## cerebral malaria DOID is:  14069
 
 master_node_is_expanded = dict()
 
@@ -73,6 +75,11 @@ def expand_disont_disease(orangeboard, node):
     for child_disease_id in child_disease_ids:
         target_node = orangeboard.add_node("disont_disease", str(child_disease_id))
         orangeboard.add_rel("is_parent_of", "DiseaseOntology", node, target_node)
+    mesh_ids_set = QueryDisont.query_disont_to_mesh_id(disont_id)
+    for mesh_id in mesh_ids_set:
+        uniprot_ids_set = QueryDisGeNet.query_mesh_id_to_uniprot_ids(mesh_id)
+        ## TODO:  add node for uniprot_id here
+#        for uniprot_id in uniprot_ids
     
 def expand(orangeboard, node):
     node_type = node.nodetype
