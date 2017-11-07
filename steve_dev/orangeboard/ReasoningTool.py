@@ -68,6 +68,7 @@ def expand_mim_geneticcond(orangeboard, node):
     source_node = node
     for uniprot_id in uniprot_ids:
         target_node = orangeboard.add_node("uniprot_protein", uniprot_id)
+        print("target node for uniprot id: " + uniprot_id + "; " + str(target_node.expanded))
         orangeboard.add_rel("genetic_cond_affects", "OMIM", source_node, target_node)
 
 def expand_disont_disease(orangeboard, node):
@@ -92,30 +93,12 @@ def expand(orangeboard, node):
     method_obj(orangeboard, node)
     node.expanded = True
 
-ob = Orangeboard(debug=False)
+ob = Orangeboard(debug=True)
 
 ob.set_reltype_dirs(master_rel_is_directed)
 
-# # ## add the initial target disease into the Orangeboard, as a "disease ontology" node
-# disease_node = ob.add_node("disont_disease", target_disease_disont_id, seed_node=True)
-
-# ## add the initial genetic condition into the Orangeboard, as a "MIM" node
-
-# print("----------- first round of expansion ----------")
-# for node in ob.get_all_nodes_for_current_seed_node():
-#     if not node.expanded:
-#         expand(ob, node)
-    
-# print("----------- second round of expansion ----------")
-# for node in ob.get_all_nodes_for_current_seed_node():
-#     if not node.expanded:
-#         expand(ob, node)
-
-# print(ob.get_node("uniprot_protein", "P09601"))
-# print(ob.count_rels_for_node_slow(ob.get_node("uniprot_protein", "P09601")))
-
-
-mim_node = ob.add_node("mim_geneticcond", genetic_condition_mim_id, seed_node=True)
+## add the initial target disease into the Orangeboard, as a "disease ontology" node
+disease_node = ob.add_node("disont_disease", target_disease_disont_id, seed_node_bool=True)
 
 print("----------- first round of expansion ----------")
 for node in ob.get_all_nodes_for_current_seed_node():
@@ -131,13 +114,41 @@ print("----------- third round of expansion ----------")
 for node in ob.get_all_nodes_for_current_seed_node():
     if not node.expanded:
         expand(ob, node)
+        
+print(ob.get_node("uniprot_protein", "P09601"))
+print(ob.count_rels_for_node_slow(ob.get_node("uniprot_protein", "P09601")))
+
+print("total number of nodes: " + str(ob.count_nodes()))
+print("total number of edges: " + str(ob.count_rels()))
+
+## add the initial genetic condition into the Orangeboard, as a "MIM" node
+mim_node = ob.add_node("mim_geneticcond", genetic_condition_mim_id, seed_node_bool=True)
+
+print("----------- first round of expansion ----------")
+for node in ob.get_all_nodes_for_current_seed_node():
+    if not node.expanded:
+        print("expanding node: " + str(node.name))
+        expand(ob, node)
+    
+print("----------- second round of expansion ----------")
+for node in ob.get_all_nodes_for_current_seed_node():
+    if not node.expanded:
+        expand(ob, node)
+
+print("----------- third round of expansion ----------")
+for node in ob.get_all_nodes_for_current_seed_node():
+    if not node.expanded:
+        expand(ob, node)
+
+print("total number of nodes: " + str(ob.count_nodes()))
+print("total number of edges: " + str(ob.count_rels()))
+
+print(ob.count_rels_for_node_slow(ob.get_node("uniprot_protein", "P09601")))
 
 #exit()
 
 # push the entire graph to neo4j
-#ob.neo4j_push()
-
-print(ob.count_rels_for_node_slow(ob.get_node("uniprot_protein", "P09601")))
+ob.neo4j_push()
 
 # clear out the neo4j graph derived from the MIM seed node
 #ob.neo4j_clear(mim_node)
