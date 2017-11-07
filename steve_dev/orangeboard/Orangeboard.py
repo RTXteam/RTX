@@ -14,12 +14,17 @@ class Node:
         self.out_rels = set()
         self.in_rels = set()
         self.expanded = False
+        self.desc = ''
+
+    def set_desc(self, desc):
+        self.desc = desc
 
     def get_props(self):
         return {'UUID': self.uuid,
                 'name': self.name,
                 'seed_node_uuid': self.seed_node.uuid,
-                'expanded': self.expanded}
+                'expanded': self.expanded,
+                'description': self.desc}
 
     def get_labels(self):
         return {'Base', self.nodetype}
@@ -49,13 +54,14 @@ class Orangeboard:
     NEO4J_PASSWORD="precisionmedicine"
     NEO4J_URL="bolt://localhost:7687"
 
-    def __init__(self, debug=False):
+    def __init__(self, dict_reltype_dirs, debug=False):
         self.dict_nodetype_to_dict_name_to_node = dict()
         self.dict_reltype_to_dict_relkey_to_rel = dict()
         self.dict_seed_uuid_to_list_nodes = dict()
         self.dict_seed_uuid_to_list_rels = dict()
         self.debug = debug
         self.seed_node = None
+        self.dict_reltype_dirs = dict_reltype_dirs
 
     def count_rels_for_node_slow(self, node):
         node_uuid = node.uuid
@@ -65,9 +71,6 @@ class Orangeboard:
                 if rel.source_node.uuid == node_uuid or rel.target_node.uuid == node_uuid:
                     count += 1
         return count
-        
-    def set_reltype_dirs(self, dict_reltype_dirs):
-        self.dict_reltype_dirs = dict_reltype_dirs
         
     def count_nodes(self):
         count = 0
@@ -119,15 +122,20 @@ class Orangeboard:
     def get_all_nodes_for_nodetype(self, nodetype):
         return set(self.dict_nodetype_to_dict_name_to_node[nodetype].values())
     
-    def add_node(self, nodetype, name, seed_node_bool=False):
+    def add_node(self, nodetype, name, seed_node_bool=False, desc=''):
         if seed_node_bool:
             self.set_seed_node(None)
+        else:
+            if self.seed_node is None:
+                print("must set seed_node_bool=True for first call to add_node")
+                exit(1)
         existing_node = self.get_node(nodetype, name)
         if existing_node is None:
             subdict = self.dict_nodetype_to_dict_name_to_node.get(nodetype, None)
             if subdict is None:
                 self.dict_nodetype_to_dict_name_to_node[nodetype] = dict()
             new_node = Node(nodetype, name, self.seed_node)
+            new_node.desc = desc
             existing_node = new_node
             if seed_node_bool:
                 self.set_seed_node(new_node)
@@ -138,6 +146,8 @@ class Orangeboard:
                 self.dict_seed_uuid_to_list_nodes[seed_node_uuid] = list()
             self.dict_seed_uuid_to_list_nodes[seed_node_uuid].append(new_node)
         else:
+            if desc != '' and existing_node.desc == '':
+                existing_node.desc = desc
             if seed_node_bool:
                 existing_node.expanded = False
         if self.debug:
