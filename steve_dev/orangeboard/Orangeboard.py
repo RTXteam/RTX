@@ -222,7 +222,7 @@ class Orangeboard:
         dict_reltype_to_dict_relkey_to_rel = self.dict_reltype_to_dict_relkey_to_rel
         for reltype in dict_reltype_to_dict_relkey_to_rel.keys():
             dict_relkey_to_rel = dict_reltype_to_dict_relkey_to_rel[reltype]
-            for relkey in dict_relkey_to_rel.keys():
+            for relkey in dict_relkey_to_rel.copy().keys():
                 rel = dict_relkey_to_rel[relkey]
                 if rel.seed_node.uuid == seed_node_uuid:
                     rel.source_node = None
@@ -233,19 +233,19 @@ class Orangeboard:
         dict_nodetype_to_dict_name_to_node = self.dict_nodetype_to_dict_name_to_node
         for nodetype in dict_nodetype_to_dict_name_to_node.keys():
             dict_name_to_node = dict_nodetype_to_dict_name_to_node[nodetype]
-            for name in dict_name_to_node.keys():
+            for name in dict_name_to_node.copy().keys():
                 node = dict_name_to_node[name]
-                if node.seed_node_uuid == seed_node_uuid:
+                if node.seed_node.uuid == seed_node_uuid:
                     del dict_name_to_node[name]
         del self.dict_seed_uuid_to_list_nodes[seed_node_uuid][:]
         del self.dict_seed_uuid_to_list_nodes[seed_node_uuid]
 
     def clear_from_seed_node(self, seed_node):
-        clear_from_seed_node_uuid(seed_node.uuid)
+        self.clear_from_seed_node_uuid(seed_node.uuid)
         
     def clear_all(self):
         for seed_node_uuid in self.dict_seed_uuid_to_list_nodes.keys():
-            clear_from_seed_node_uuid(seed_node_uuid)
+            self.clear_from_seed_node_uuid(seed_node_uuid)
 
     def neo4j_shutdown(self):
         """shuts down the Orangeboard by disconnecting from the Neo4j database
