@@ -17,6 +17,7 @@ class QueryReactome:
     @staticmethod
     def query_uniprot_to_reactome_entity_id(uniprot_id):
         res_json = QueryReactome.send_query_get("data/complexes/UniProt", uniprot_id).json()
+#        print(res_json)
         if type(res_json)==list:
             ret_ids = set([res_entry["stId"] for res_entry in res_json])
         else:
@@ -24,11 +25,27 @@ class QueryReactome:
         return ret_ids
 
     @staticmethod
+    def query_uniprot_to_reactome_entity_id_desc(uniprot_id):
+        res_json = QueryReactome.send_query_get("data/complexes/UniProt", uniprot_id).json()
+        if type(res_json)==list:
+            ret_ids = dict([[res_entry["stId"], res_entry["displayName"]] for res_entry in res_json])
+        else:
+            ret_ids = dict()
+        return ret_ids
+    
+    @staticmethod
     def query_reactome_entity_id_to_reactome_pathway_ids(reactome_entity_id):
         res_json = QueryReactome.send_query_get("data/pathways/low/diagram/entity", reactome_entity_id + "/allForms?species=9606").json()
         reactome_ids_list = [res_entry["stId"] for res_entry in res_json]
         return set(reactome_ids_list)
 
+    @staticmethod
+    def query_reactome_entity_id_to_reactome_pathway_ids_desc(reactome_entity_id):
+        res_json = QueryReactome.send_query_get("data/pathways/low/diagram/entity", reactome_entity_id + "/allForms?species=9606").json()
+#        print(res_json)
+        reactome_ids_dict = dict([[res_entry["stId"], res_entry["displayName"]] for res_entry in res_json])
+        return reactome_ids_dict
+    
     @staticmethod
     def query_uniprot_id_to_reactome_pathway_ids(uniprot_id):
         reactome_entity_ids = QueryReactome.query_uniprot_to_reactome_entity_id(uniprot_id)
@@ -40,11 +57,29 @@ class QueryReactome:
         return res_set
 
     @staticmethod
+    def query_uniprot_id_to_reactome_pathway_ids_desc(uniprot_id):
+        reactome_entity_ids = QueryReactome.query_uniprot_to_reactome_entity_id(uniprot_id)
+        res_dict = dict()
+        for reactome_entity_id in reactome_entity_ids:
+            pathway_ids_dict = QueryReactome.query_reactome_entity_id_to_reactome_pathway_ids_desc(reactome_entity_id)
+            if len(pathway_ids_dict) > 0:
+                res_dict.update(pathway_ids_dict)
+        return res_dict
+    
+    @staticmethod
     def query_reactome_pathway_id_to_uniprot_ids(reactome_pathway_id):
         res_json = QueryReactome.send_query_get("data/participants", reactome_pathway_id).json()
         participant_ids_list = [refEntity["displayName"] for peDbEntry in res_json for refEntity in peDbEntry["refEntities"]]
         uniprot_ids_list = [id.split(" ")[0].split(":")[1] for id in participant_ids_list if "UniProt" in id]
         return set(uniprot_ids_list)
+
+    @staticmethod
+    def query_reactome_pathway_id_to_uniprot_ids_desc(reactome_pathway_id):
+        res_json = QueryReactome.send_query_get("data/participants", reactome_pathway_id).json()
+#        print(res_json)
+        participant_ids_list = [refEntity["displayName"] for peDbEntry in res_json for refEntity in peDbEntry["refEntities"]]
+        uniprot_ids_list = [[id.split(" ")[0].split(":")[1], id.split(" ")[1]] for id in participant_ids_list if "UniProt" in id]
+        return dict(uniprot_ids_list)
     
     # @staticmethod
     # def uniprot_to_reactome_entity_id(uniprot_id):
@@ -55,12 +90,12 @@ class QueryReactome:
 
     @staticmethod
     def test():
-        print(QueryReactome.query_uniprot_to_reactome_entity_id("P68871"))
-        print(QueryReactome.query_uniprot_to_reactome_entity_id("O75521-2"))
-        print(QueryReactome.query_reactome_entity_id_to_reactome_pathway_ids("R-HSA-2230989"))
-        print(QueryReactome.query_uniprot_id_to_reactome_pathway_ids("P68871"))
-        print(QueryReactome.query_reactome_pathway_id_to_uniprot_ids("R-HSA-5423646"))
+#        print(QueryReactome.query_uniprot_to_reactome_entity_id("P68871"))
+#        print(QueryReactome.query_uniprot_to_reactome_entity_id("O75521-2"))
+#        print(QueryReactome.query_reactome_entity_id_to_reactome_pathway_ids_desc("R-HSA-2230989"))
+        print(QueryReactome.query_uniprot_id_to_reactome_pathway_ids_desc("P68871"))
+#        print(QueryReactome.query_reactome_pathway_id_to_uniprot_ids_desc("R-HSA-5423646"))
         
-if "--test" in set(sys.argv):
+if __name__ == '__main__':
     QueryReactome.test()
         

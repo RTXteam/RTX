@@ -48,5 +48,5 @@ class QueryOMIM:
         print(res)
 
 
-if "--test" in set(sys.argv):
+if __name__ == '__main__':
     QueryOMIM.test()

@@ -46,5 +46,5 @@ class QueryPC2:
         print(QueryPC2.uniprot_id_to_reactome_pathways("P68871"))
         print(QueryPC2.pathway_to_uniprot_ids("R-HSA-2168880"))
 
-if "--test" in set(sys.argv):
+if __name__ == '__main__':
     QueryPC2.test()

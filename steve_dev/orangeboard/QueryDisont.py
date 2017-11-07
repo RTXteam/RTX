@@ -22,8 +22,17 @@ class QueryDisont:
             return set([int(disease_child_list[1].split(':')[1]) for disease_child_list in disease_children_list])
         else:
             return set()
-        
 
+    @staticmethod
+    def query_disont_to_child_disonts_desc(disont_id):
+        res_json = QueryDisont.send_query_get('metadata', 'DOID:' + str(disont_id)).json()
+#        print(res_json)
+        disease_children_list = res_json.get("children", None)
+        if disease_children_list is not None:
+            return dict([[int(disease_child_list[1].split(':')[1]), disease_child_list[0]] for disease_child_list in disease_children_list])
+        else:
+            return dict()
+         
     @staticmethod
     def query_disont_to_mesh_id(disont_id):
         res_json = QueryDisont.send_query_get('metadata', 'DOID:' + str(disont_id)).json()
@@ -34,8 +43,8 @@ class QueryDisont:
     @staticmethod
     def test():
         print(QueryDisont.query_disont_to_mesh_id(14069))
-        print(QueryDisont.query_disont_to_child_disonts(12365))
+        print(QueryDisont.query_disont_to_child_disonts_desc(12365))
         
-if "--test" in set(sys.argv):
+if __name__ == '__main__':
     QueryDisont.test()
     

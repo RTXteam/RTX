@@ -33,6 +33,6 @@ class QueryUniprot:
         print(QueryUniprot.uniprot_id_to_reactome_pathways("Q16621"))
         print(QueryUniprot.uniprot_id_to_reactome_pathways("P09601"))
         
-if "--test" in set(sys.argv):
+if __name__ == '__main__':
     QueryUniprot.test()
       
