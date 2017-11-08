@@ -4,7 +4,7 @@ To manage all methods (or functions) decorated with `@functools.lru_cache`
 
 __all__ = ['register', 'cache_info', 'cache_clear']
 
-# all methods decorated with `CachedMethod.register` will be added to this list
+# all methods decorated with `@CachedMethod.register` will be added to this list
 cached_methods = []
 
 
