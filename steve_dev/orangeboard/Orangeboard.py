@@ -1,4 +1,5 @@
 import uuid
+import itertools
 import pprint
 import neo4j.v1
 
@@ -79,6 +80,15 @@ class Orangeboard:
         self.seed_node = None
         self.dict_reltype_dirs = dict_reltype_dirs
 
+    def __str__(self):
+        node_list = itertools.chain.from_iterable(self.dict_seed_uuid_to_list_nodes.values())
+        node_strings = [str(node) for node in node_list]
+
+        rel_list = itertools.chain.from_iterable(self.dict_seed_uuid_to_list_rels.values())
+        rel_strings = [str(rel) for rel in rel_list]
+
+        return "\n".join(node_strings) + "\n" + "\n".join(rel_strings)
+
     def count_rels_for_node_slow(self, node):
         node_uuid = node.uuid
         count = 0
@@ -88,17 +98,23 @@ class Orangeboard:
                     count += 1
         return count
         
+    # def count_nodes(self):
+    #     count = 0
+    #     for seed_uuid in self.dict_seed_uuid_to_list_nodes.keys():
+    #         count += len(self.dict_seed_uuid_to_list_nodes[seed_uuid])
+    #     return count
+    #
+    # def count_rels(self):
+    #     count = 0
+    #     for seed_uuid in self.dict_seed_uuid_to_list_rels.keys():
+    #         count += len(self.dict_seed_uuid_to_list_rels[seed_uuid])
+    #     return count
+
     def count_nodes(self):
-        count = 0
-        for seed_uuid in self.dict_seed_uuid_to_list_nodes.keys():
-            count += len(self.dict_seed_uuid_to_list_nodes[seed_uuid])
-        return count
+        return sum(map(len, self.dict_seed_uuid_to_list_nodes.values()))
 
     def count_rels(self):
-        count = 0
-        for seed_uuid in self.dict_seed_uuid_to_list_rels.keys():
-            count += len(self.dict_seed_uuid_to_list_rels[seed_uuid])
-        return count
+        return sum(map(len, self.dict_seed_uuid_to_list_rels.values()))
 
     def set_seed_node(self, seed_node):
         self.seed_node = seed_node
