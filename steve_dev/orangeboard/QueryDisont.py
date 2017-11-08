@@ -15,7 +15,12 @@ class QueryDisont:
     
     @staticmethod
     def query_disont_to_child_disonts(disont_id):
-        res_json = QueryDisont.send_query_get('metadata', 'DOID:' + str(disont_id)).json()
+        """for a disease ontology ID (including prefix "DOID:", with zero padding), return child DOIDs
+
+        :param disont_id: string, like ``'DOID:14069'``
+        :returns: ``set`` with keys as DOIDs
+        """
+        res_json = QueryDisont.send_query_get('metadata', disont_id).json()
 #        print(res_json)
         disease_children_list = res_json.get("children", None)
         if disease_children_list is not None:
@@ -25,25 +30,36 @@ class QueryDisont:
 
     @staticmethod
     def query_disont_to_child_disonts_desc(disont_id):
-        res_json = QueryDisont.send_query_get('metadata', 'DOID:' + str(disont_id)).json()
+        """for a disease ontology ID (including prefix "DOID:", with zero padding), return child DOIDs
+
+        :param disont_id: string, like ``'DOID:14069'``
+        :returns: ``dict`` with keys as DOIDs and values as human-readable disease names
+        """
+   
+        res_json = QueryDisont.send_query_get('metadata', disont_id).json()
 #        print(res_json)
         disease_children_list = res_json.get("children", None)
         if disease_children_list is not None:
-            return dict([[int(disease_child_list[1].split(':')[1]), disease_child_list[0]] for disease_child_list in disease_children_list])
+            return dict([[disease_child_list[1], disease_child_list[0]] for disease_child_list in disease_children_list])
         else:
             return dict()
          
     @staticmethod
     def query_disont_to_mesh_id(disont_id):
-        res_json = QueryDisont.send_query_get('metadata', 'DOID:' + str(disont_id)).json()
+        """convert a disease ontology ID (including prefix "DOID:", with zero padding) to MeSH ID
+
+        :param disont_id: string, like ``'DOID:14069'``
+        """
+        res_json = QueryDisont.send_query_get('metadata', disont_id).json()
         xref_strs = res_json["xrefs"]
         mesh_ids = set([xref_str.split('MESH:')[1] for xref_str in xref_strs if 'MESH:' in xref_str])
         return mesh_ids
         
     @staticmethod
     def test():
-        print(QueryDisont.query_disont_to_mesh_id(14069))
-        print(QueryDisont.query_disont_to_child_disonts_desc(12365))
+        print(QueryDisont.query_disont_to_mesh_id("DOID:14069"))
+        print(QueryDisont.query_disont_to_child_disonts_desc("DOID:12365"))
+        print(QueryDisont.query_disont_to_mesh_id("DOID:0050741"))
         
 if __name__ == '__main__':
     QueryDisont.test()

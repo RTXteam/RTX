@@ -49,9 +49,6 @@ def expand_uniprot_protein(orangeboard, node):
     pathways_dict_from_reactome = QueryReactome.query_uniprot_id_to_reactome_pathway_ids_desc(uniprot_id_str)
     pathways_dict_sourcedb = dict.fromkeys(pathways_dict_from_reactome.keys(), "reactome_pathway")
 #    pathways_set_from_uniprot = QueryUniprot.uniprot_id_to_reactome_pathways(uniprot_id_str)  ## doesn't provide pathway descriptions; see if we can get away with not using it?
-#    for pathway_id in pathways_set_from_uniprot:
-#        if pathways_dict.get(pathway_id, None) is None:
-#            pathways_dict[pathway_id] = "uniprotkb"
     source_node = node
     for pathway_id in pathways_dict_from_reactome.keys():
         target_node = orangeboard.add_node("reactome_pathway", pathway_id, desc=pathways_dict_from_reactome[pathway_id])
@@ -79,10 +76,10 @@ def expand_mim_geneticcond(orangeboard, node):
         orangeboard.add_rel("genetic_cond_affects", "OMIM", source_node, target_node)
 
 def expand_disont_disease(orangeboard, node):
-    disont_id = int(node.name)
+    disont_id = node.name
     child_disease_ids_dict = QueryDisont.query_disont_to_child_disonts_desc(disont_id)
     for child_disease_id in child_disease_ids_dict.keys():
-        target_node = orangeboard.add_node("disont_disease", str(child_disease_id), desc=child_disease_ids_dict[child_disease_id])
+        target_node = orangeboard.add_node("disont_disease", child_disease_id, desc=child_disease_ids_dict[child_disease_id])
         orangeboard.add_rel("is_parent_of", "DiseaseOntology", node, target_node)
     mesh_ids_set = QueryDisont.query_disont_to_mesh_id(disont_id)
     for mesh_id in mesh_ids_set:
@@ -102,7 +99,7 @@ def expand(orangeboard, node):
     
 def bigtest():
     genetic_condition_mim_id = 603903  # sickle-cell anemia
-    target_disease_disont_id = 12365   # malaria
+    target_disease_disont_id = 'DOID:12365'   # malaria
     ## cerebral malaria:  D014069
     
     ob = Orangeboard(master_rel_is_directed, debug=True)
@@ -175,7 +172,7 @@ def test_description_uniprot():
 
 def test_description_disont():
     ob = Orangeboard(master_rel_is_directed, debug=True)
-    node = ob.add_node("disont_disease", "12365", desc='malaria', seed_node_bool=True)
+    node = ob.add_node("disont_disease", "DOID:12365", desc='malaria', seed_node_bool=True)
     expand_disont_disease(ob, node)
     ob.neo4j_push()
 
