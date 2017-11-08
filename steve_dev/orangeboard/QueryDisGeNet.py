@@ -5,15 +5,18 @@
 
 import argparse
 import urllib.request, urllib.error, urllib.parse
-import sys
+import functools
 import pandas
 import io
+import CachedMethods
 
 class QueryDisGeNet:
     MAX_PROTS_FOR_GENE = 3   ## maybe we should make this a configurable class variable (SAR)
     MAX_GENES_FOR_DISEASE = 20  ## maybe we should make this a configurable class variable (SAR)
     
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def query_mesh_id_to_uniprot_ids(mesh_id):
         ent = 'disease'
         id = 'mesh'
@@ -60,6 +63,8 @@ class QueryDisGeNet:
         return(ret_data)
 
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def query_mesh_id_to_uniprot_ids_desc(mesh_id):
         ent = 'disease'
         id = 'mesh'

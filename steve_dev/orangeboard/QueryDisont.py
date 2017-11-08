@@ -1,5 +1,7 @@
 import requests
-import sys
+import functools
+import CachedMethods
+
 
 class QueryDisont:
 
@@ -14,6 +16,8 @@ class QueryDisont:
         return res
     
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def query_disont_to_child_disonts(disont_id):
         res_json = QueryDisont.send_query_get('metadata', 'DOID:' + str(disont_id)).json()
 #        print(res_json)
@@ -24,6 +28,8 @@ class QueryDisont:
             return set()
 
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def query_disont_to_child_disonts_desc(disont_id):
         res_json = QueryDisont.send_query_get('metadata', 'DOID:' + str(disont_id)).json()
 #        print(res_json)
@@ -34,6 +40,8 @@ class QueryDisont:
             return dict()
          
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def query_disont_to_mesh_id(disont_id):
         res_json = QueryDisont.send_query_get('metadata', 'DOID:' + str(disont_id)).json()
         xref_strs = res_json["xrefs"]

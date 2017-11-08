@@ -1,5 +1,7 @@
 import requests
-import sys
+import functools
+import CachedMethods
+
 
 class QueryReactome:
 
@@ -15,6 +17,8 @@ class QueryReactome:
         return res
 
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def query_uniprot_to_reactome_entity_id(uniprot_id):
         res_json = QueryReactome.send_query_get("data/complexes/UniProt", uniprot_id).json()
 #        print(res_json)
@@ -25,6 +29,8 @@ class QueryReactome:
         return ret_ids
 
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def query_uniprot_to_reactome_entity_id_desc(uniprot_id):
         res_json = QueryReactome.send_query_get("data/complexes/UniProt", uniprot_id).json()
         if type(res_json)==list:
@@ -34,12 +40,16 @@ class QueryReactome:
         return ret_ids
     
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def query_reactome_entity_id_to_reactome_pathway_ids(reactome_entity_id):
         res_json = QueryReactome.send_query_get("data/pathways/low/diagram/entity", reactome_entity_id + "/allForms?species=9606").json()
         reactome_ids_list = [res_entry["stId"] for res_entry in res_json]
         return set(reactome_ids_list)
 
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def query_reactome_entity_id_to_reactome_pathway_ids_desc(reactome_entity_id):
         res_json = QueryReactome.send_query_get("data/pathways/low/diagram/entity", reactome_entity_id + "/allForms?species=9606").json()
 #        print(res_json)
@@ -47,6 +57,8 @@ class QueryReactome:
         return reactome_ids_dict
     
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def query_uniprot_id_to_reactome_pathway_ids(uniprot_id):
         reactome_entity_ids = QueryReactome.query_uniprot_to_reactome_entity_id(uniprot_id)
         res_set = set()
@@ -57,6 +69,8 @@ class QueryReactome:
         return res_set
 
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def query_uniprot_id_to_reactome_pathway_ids_desc(uniprot_id):
         reactome_entity_ids = QueryReactome.query_uniprot_to_reactome_entity_id(uniprot_id)
         res_dict = dict()
@@ -67,6 +81,8 @@ class QueryReactome:
         return res_dict
     
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def query_reactome_pathway_id_to_uniprot_ids(reactome_pathway_id):
         res_json = QueryReactome.send_query_get("data/participants", reactome_pathway_id).json()
         participant_ids_list = [refEntity["displayName"] for peDbEntry in res_json for refEntity in peDbEntry["refEntities"]]
@@ -74,6 +90,8 @@ class QueryReactome:
         return set(uniprot_ids_list)
 
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def query_reactome_pathway_id_to_uniprot_ids_desc(reactome_pathway_id):
         res_json = QueryReactome.send_query_get("data/participants", reactome_pathway_id).json()
 #        print(res_json)
