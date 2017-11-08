@@ -1,5 +1,7 @@
 import uuid
+import pprint
 import neo4j.v1
+
 
 class Node:
     def __init__(self, nodetype, name, seed_node):
@@ -29,6 +31,13 @@ class Node:
     def get_labels(self):
         return {'Base', self.nodetype}
 
+    def __str__(self):
+        attr_list = ["nodetype", "name", "uuid", "expanded", "desc"]
+        attr_dict = {attr: str(self.__getattribute__(attr)) for attr in attr_list}
+
+        return pprint.pformat(attr_dict)
+
+
 class Rel:
     def __init__(self, reltype, sourcedb, source_node, target_node, seed_node):
         self.reltype = reltype
@@ -48,11 +57,18 @@ class Rel:
                 'seed_node_uuid': self.seed_node.uuid,
                 'source_node_uuid': self.source_node.uuid,
                 'target_node_uuid': self.target_node.uuid}
-    
+
+    def __str__(self):
+        attr_list = ["reltype", "sourcedb", "uuid", "source_node", "target_node"]
+        attr_dict = {attr: str(self.__getattribute__(attr)) for attr in attr_list}
+
+        return pprint.pformat(attr_dict)
+
+
 class Orangeboard:
-    NEO4J_USERNAME="neo4j"
-    NEO4J_PASSWORD="precisionmedicine"
-    NEO4J_URL="bolt://localhost:7687"
+    NEO4J_USERNAME = "neo4j"
+    NEO4J_PASSWORD = "precisionmedicine"
+    NEO4J_URL = "bolt://localhost:7687"
 
     def __init__(self, dict_reltype_dirs, debug=False):
         self.dict_nodetype_to_dict_name_to_node = dict()
