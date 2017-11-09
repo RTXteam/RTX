@@ -102,7 +102,8 @@ def expand_all_nodes(orangeboard):
     for node in orangeboard.get_all_nodes_for_current_seed_node():
         if not node.expanded:
             expand_node(orangeboard, node)
-    
+
+            
 def bigtest():
     genetic_condition_mim_id = 603903  # sickle-cell anemia
     target_disease_disont_id = 'DOID:12365'   # malaria
@@ -146,6 +147,7 @@ def bigtest():
     # clear out the neo4j graph derived from the MIM seed node
     #ob.neo4j_clear(mim_node)
 
+    
 def test_description_mim():
     ob = Orangeboard(master_rel_is_directed, debug=True)
     node = ob.add_node("mim_geneticcond", "603903", desc='sickle-cell anemia', seed_node_bool=True)
@@ -184,12 +186,13 @@ def test_issue2():
     node = ob.add_node("mim_geneticcond", "603933", desc='sickle-cell anemia', seed_node_bool=True)
     expand_mim_geneticcond(ob, node)
 
-def test_issue4():
+def test_issue3():
     ob = Orangeboard(master_rel_is_directed, debug=True)
-    node = ob.add_node("disont_disease", "DOID:0060728", desc='foo', seed_node_bool=True)
+    disease_node = ob.add_node("disont_disease", 'DOID:9352', desc="foo", seed_node_bool=True)
     expand_all_nodes(ob)
     expand_all_nodes(ob)
     expand_all_nodes(ob)
+    
     
     
 parser = argparse.ArgumentParser(description="prototype reasoning tool for Q1, NCATS competition, 2017")
