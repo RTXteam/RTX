@@ -4,3 +4,6 @@
 # macOS finder folder-level attributes
 **/.DS_store
 
+# ipython notebook checkpoints
+**/.ipynb_checkpoints
+
