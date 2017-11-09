@@ -63,7 +63,7 @@ def expand_mim_geneticcond(orangeboard, node):
     uniprot_ids_to_gene_symbols_dict = dict()
     for gene_symbol in gene_symbols:
         uniprot_id = query_mygene_obj.convert_gene_symbol_to_uniprot_id(gene_symbol)
-        if uniprot_id is not None:
+        if len(uniprot_id) > 0:
             assert len(uniprot_id)==1
             uniprot_ids_to_gene_symbols_dict[next(iter(uniprot_id))]=gene_symbol
     for uniprot_id in uniprot_ids:
@@ -179,6 +179,26 @@ def test_description_disont():
     expand_disont_disease(ob, node)
     ob.neo4j_push()
 
+def test_description_disont2():
+    ob = Orangeboard(master_rel_is_directed, debug=True)
+    node = ob.add_node("disont_disease", "DOID:9352", desc='foobar', seed_node_bool=True)
+    expand(ob)
+    expand(ob)
+    expand(ob)
+    ob.neo4j_push()
+
+def test_description_mim():
+    ob = Orangeboard(master_rel_is_directed, debug=True)
+    node = ob.add_node("mim_geneticcond", "603903", desc='sickle-cell anemia', seed_node_bool=True)
+    expand_mim_geneticcond(ob, node)
+    ob.neo4j_push()
+
+def test_issue2():
+    ob = Orangeboard(master_rel_is_directed, debug=True)
+    node = ob.add_node("mim_geneticcond", "603933", desc='sickle-cell anemia', seed_node_bool=True)
+    expand_mim_geneticcond(ob, node)
+    ob.neo4j_push()
+    
 parser = argparse.ArgumentParser(description="prototype reasoning tool for Q1, NCATS competition, 2017")
 parser.add_argument('--test', dest='test_function_to_call')
 args = parser.parse_args()
