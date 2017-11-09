@@ -23,7 +23,7 @@ master_rel_is_directed = {"genetic_cond_affects": True,
                           "is_member_of": True,
                           "is_parent_of": True,
                           "gene_assoc_with": True}
-                        
+
 master_rel_ids_in_orangeboard = {"genetic_cond_affects": dict(),
                                  "is_member_of": dict()}
 
@@ -42,7 +42,7 @@ def expand_reactome_pathway(orangeboard, node):
         target_node = orangeboard.add_node("uniprot_protein", uniprot_id, desc=uniprot_ids_from_reactome_dict[uniprot_id])
         orangeboard.add_rel("is_member_of", rel_sourcedb_dict[uniprot_id], target_node, source_node)
 #    uniprot_ids_from_pc2 = QueryPC2.pathway_id_to_uniprot_ids(reactome_id_str)  ## very slow query
-        
+
 def expand_uniprot_protein(orangeboard, node):
     uniprot_id_str = node.name
 #    pathways_set_from_pc2 = QueryPC2.uniprot_id_to_reactome_pathways(uniprot_id_str)  ## suspect these pathways are too high-level and not useful
@@ -53,7 +53,7 @@ def expand_uniprot_protein(orangeboard, node):
     for pathway_id in pathways_dict_from_reactome.keys():
         target_node = orangeboard.add_node("reactome_pathway", pathway_id, desc=pathways_dict_from_reactome[pathway_id])
         orangeboard.add_rel("is_member_of", pathways_dict_sourcedb[pathway_id], source_node, target_node)
-        
+
 def expand_mim_geneticcond(orangeboard, node):
     res_dict = query_omim_obj.disease_mim_to_gene_symbols_and_uniprot_ids(int(node.name))
     uniprot_ids = res_dict["uniprot_ids"]
@@ -90,7 +90,7 @@ def expand_disont_disease(orangeboard, node):
             source_node = orangeboard.add_node("uniprot_protein", uniprot_id, desc=uniprot_ids_dict[uniprot_id])
             orangeboard.add_rel("gene_assoc_with", "DisGeNet", source_node, node)
 ## TODO:  add node for uniprot_id here
-    
+
 def expand_node(orangeboard, node):
     node_type = node.nodetype
     method_name = "expand_" + node_type
@@ -103,12 +103,24 @@ def expand_all_nodes(orangeboard):
         if not node.expanded:
             expand_node(orangeboard, node)
 
-            
+
 def bigtest():
     genetic_condition_mim_id = 603903  # sickle-cell anemia
     target_disease_disont_id = 'DOID:12365'   # malaria
     ## cerebral malaria:  D014069
-    
+
+    # genetic_condition_mim_id = 219700 # cystic fibrosis
+    # target_disease_disont_id = 'DOID:1498' # cholera
+
+    # genetic_condition_mim_id = 305900 # glucose-6-phosphate dehydrogenase (G6PD)
+    # target_disease_disont_id = 'DOID:12365'   # malaria
+
+    # genetic_condition_mim_id = 607786 # proprotein convertase, subtilisin/kexin-type, 9 (PCSK9)
+    # target_disease_disont_id = 'DOID:13810'   # familial hypercholesterolemia
+
+    # genetic_condition_mim_id = 184745 # kit ligard
+    # target_disease_disont_id = 'DOID:2841' # asthma
+
     ob = Orangeboard(master_rel_is_directed, debug=True)
 
     ## add the initial target disease into the Orangeboard, as a "disease ontology" node
@@ -116,7 +128,7 @@ def bigtest():
 
     print("----------- first round of expansion ----------")
     expand_all_nodes(ob)
-    
+
     print("----------- second round of expansion ----------")
     expand_all_nodes(ob)
 
@@ -131,7 +143,7 @@ def bigtest():
 
     print("----------- first round of expansion ----------")
     expand_all_nodes(ob)
-    
+
     print("----------- second round of expansion ----------")
     expand_all_nodes(ob)
 
@@ -147,13 +159,13 @@ def bigtest():
     # clear out the neo4j graph derived from the MIM seed node
     #ob.neo4j_clear(mim_node)
 
-    
+
 def test_description_mim():
     ob = Orangeboard(master_rel_is_directed, debug=True)
     node = ob.add_node("mim_geneticcond", "603903", desc='sickle-cell anemia', seed_node_bool=True)
     expand_mim_geneticcond(ob, node)
     ob.neo4j_push()
-    
+
 def test_description_uniprot():
     ob = Orangeboard(master_rel_is_directed, debug=True)
     node = ob.add_node("uniprot_protein", "P68871", desc='HBB', seed_node_bool=True)
@@ -192,9 +204,9 @@ def test_issue3():
     expand_all_nodes(ob)
     expand_all_nodes(ob)
     expand_all_nodes(ob)
-    
-    
-    
+
+
+
 parser = argparse.ArgumentParser(description="prototype reasoning tool for Q1, NCATS competition, 2017")
 parser.add_argument('--test', dest='test_function_to_call')
 args = parser.parse_args()
@@ -202,4 +214,3 @@ args_dict = vars(args)
 if args_dict.get("test_function_to_call", None) is not None:
     print("going to call function: " + args_dict["test_function_to_call"])
     globals()[args_dict["test_function_to_call"]]()
-
