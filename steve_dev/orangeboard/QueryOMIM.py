@@ -27,6 +27,8 @@ class QueryOMIM:
         {gene_symbols: [gene_symbol_list], uniprot_ids: [uniprot_ids_list]}
 
         :param mim_id: an integer MIM number for a disease
+        :returns: a ``dict`` with two keys; ``gene_symbols`` and ``uniprot_ids``; the entry for each of the
+        keys is a ``set`` containing the indicated identifiers (or an empty ``set`` if no such identifiers are available)
         """
         assert type(mim_id) == int
         omim_handler = "entry"
@@ -34,18 +36,26 @@ class QueryOMIM:
         r = self.send_query_get(omim_handler, url_suffix)
         result_dict = r.json()
         result_entry = result_dict["omim"]["entryList"][0]["entry"]
-        uniprot_ids = result_entry["externalLinks"]["swissProtIDs"].split(",")
-        phenotype_map_list = result_entry["phenotypeMapList"]
-        gene_symbols = [phenotype_map_list[i]["phenotypeMap"]["geneSymbols"].split(", ")[0] for i in
-                        range(0, len(phenotype_map_list))]
+        external_links = result_entry["externalLinks"]
+        uniprot_ids_str = external_links.get("swissProtIDs", None)
+        if uniprot_ids_str is not None:
+            uniprot_ids = uniprot_ids_str.split(",")
+        else:
+            uniprot_ids = []
+        phenotype_map_list = result_entry.get("phenotypeMapList", None)
+        if phenotype_map_list is not None:
+            gene_symbols = [phenotype_map_list[i]["phenotypeMap"]["geneSymbols"].split(", ")[0] for i in
+                            range(0, len(phenotype_map_list))]
+        else:
+            gene_symbols = []
         return {'gene_symbols': set(gene_symbols),
                 'uniprot_ids': set(uniprot_ids)}
 
     @staticmethod
     def test():
         qo = QueryOMIM()
-        res = qo.disease_mim_to_gene_symbols_and_uniprot_ids(603903)
-        print(res)
+        print(qo.disease_mim_to_gene_symbols_and_uniprot_ids(603903))
+        print(qo.disease_mim_to_gene_symbols_and_uniprot_ids(603918))
 
 
 if __name__ == '__main__':
