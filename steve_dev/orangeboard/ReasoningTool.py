@@ -91,13 +91,17 @@ def expand_disont_disease(orangeboard, node):
             orangeboard.add_rel("gene_assoc_with", "DisGeNet", source_node, node)
 ## TODO:  add node for uniprot_id here
     
-def expand(orangeboard, node):
+def expand_node(orangeboard, node):
     node_type = node.nodetype
     method_name = "expand_" + node_type
     method_obj = globals()[method_name]  ## dispatch to the correct function for expanding the node type
     method_obj(orangeboard, node)
     node.expanded = True
 
+def expand_all_nodes(orangeboard):
+    for node in orangeboard.get_all_nodes_for_current_seed_node():
+        if not node.expanded:
+            expand_node(orangeboard, node)
     
 def bigtest():
     genetic_condition_mim_id = 603903  # sickle-cell anemia
@@ -110,22 +114,13 @@ def bigtest():
     disease_node = ob.add_node("disont_disease", target_disease_disont_id, desc="malaria", seed_node_bool=True)
 
     print("----------- first round of expansion ----------")
-    for node in ob.get_all_nodes_for_current_seed_node():
-        if not node.expanded:
-            expand(ob, node)
+    expand_all_nodes(orangeboard)
     
     print("----------- second round of expansion ----------")
-    for node in ob.get_all_nodes_for_current_seed_node():
-        if not node.expanded:
-            expand(ob, node)
+    expand_all_nodes(orangeboard)
 
     print("----------- third round of expansion ----------")
-    for node in ob.get_all_nodes_for_current_seed_node():
-        if not node.expanded:
-            expand(ob, node)
-
-    print(ob.get_node("uniprot_protein", "P09601"))
-    print(ob.count_rels_for_node_slow(ob.get_node("uniprot_protein", "P09601")))
+    expand_all_nodes(orangeboard)
 
     print("total number of nodes: " + str(ob.count_nodes()))
     print("total number of edges: " + str(ob.count_rels()))
@@ -137,22 +132,20 @@ def bigtest():
     for node in ob.get_all_nodes_for_current_seed_node():
         if not node.expanded:
             print("expanding node: " + str(node.name))
-            expand(ob, node)
+            expand_node(ob, node)
     
     print("----------- second round of expansion ----------")
     for node in ob.get_all_nodes_for_current_seed_node():
         if not node.expanded:
-            expand(ob, node)
+            expand_node(ob, node)
 
     print("----------- third round of expansion ----------")
     for node in ob.get_all_nodes_for_current_seed_node():
         if not node.expanded:
-            expand(ob, node)
+            expand_node(ob, node)
 
     print("total number of nodes: " + str(ob.count_nodes()))
     print("total number of edges: " + str(ob.count_rels()))
-
-    print(ob.count_rels_for_node_slow(ob.get_node("uniprot_protein", "P09601")))
 
     # push the entire graph to neo4j
     ob.neo4j_push()
@@ -182,12 +175,12 @@ def test_description_disont():
 def test_description_disont2():
     ob = Orangeboard(master_rel_is_directed, debug=True)
     node = ob.add_node("disont_disease", "DOID:9352", desc='foobar', seed_node_bool=True)
-    expand(ob)
-    expand(ob)
-    expand(ob)
+    expand_node(ob)
+    expand_node(ob)
+    expand_node(ob)
     ob.neo4j_push()
 
-def test_description_mim():
+def test_add_mim():
     ob = Orangeboard(master_rel_is_directed, debug=True)
     node = ob.add_node("mim_geneticcond", "603903", desc='sickle-cell anemia', seed_node_bool=True)
     expand_mim_geneticcond(ob, node)
@@ -197,7 +190,14 @@ def test_issue2():
     ob = Orangeboard(master_rel_is_directed, debug=True)
     node = ob.add_node("mim_geneticcond", "603933", desc='sickle-cell anemia', seed_node_bool=True)
     expand_mim_geneticcond(ob, node)
-    ob.neo4j_push()
+
+def test_issue4():
+    ob = Orangeboard(master_rel_is_directed, debug=True)
+    node = ob.add_node("disont_disease", "DOID:0060728", desc='foo', seed_node_bool=True)
+    expand_all_nodes(ob)
+    expand_all_nodes(ob)
+    expand_all_nodes(ob)
+    
     
 parser = argparse.ArgumentParser(description="prototype reasoning tool for Q1, NCATS competition, 2017")
 parser.add_argument('--test', dest='test_function_to_call')
