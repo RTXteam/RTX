@@ -1,3 +1,6 @@
 # emacs backup files
 **/*~
 
+# macOS finder folder-level attributes
+**/.DS_store
+
