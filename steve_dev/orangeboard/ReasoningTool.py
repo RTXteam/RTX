@@ -114,13 +114,13 @@ def bigtest():
     disease_node = ob.add_node("disont_disease", target_disease_disont_id, desc="malaria", seed_node_bool=True)
 
     print("----------- first round of expansion ----------")
-    expand_all_nodes(orangeboard)
+    expand_all_nodes(ob)
     
     print("----------- second round of expansion ----------")
-    expand_all_nodes(orangeboard)
+    expand_all_nodes(ob)
 
     print("----------- third round of expansion ----------")
-    expand_all_nodes(orangeboard)
+    expand_all_nodes(ob)
 
     print("total number of nodes: " + str(ob.count_nodes()))
     print("total number of edges: " + str(ob.count_rels()))
@@ -129,20 +129,13 @@ def bigtest():
     mim_node = ob.add_node("mim_geneticcond", genetic_condition_mim_id, desc="sickle-cell anemia", seed_node_bool=True)
 
     print("----------- first round of expansion ----------")
-    for node in ob.get_all_nodes_for_current_seed_node():
-        if not node.expanded:
-            print("expanding node: " + str(node.name))
-            expand_node(ob, node)
+    expand_all_nodes(ob)
     
     print("----------- second round of expansion ----------")
-    for node in ob.get_all_nodes_for_current_seed_node():
-        if not node.expanded:
-            expand_node(ob, node)
+    expand_all_nodes(ob)
 
     print("----------- third round of expansion ----------")
-    for node in ob.get_all_nodes_for_current_seed_node():
-        if not node.expanded:
-            expand_node(ob, node)
+    expand_all_nodes(ob)
 
     print("total number of nodes: " + str(ob.count_nodes()))
     print("total number of edges: " + str(ob.count_rels()))
