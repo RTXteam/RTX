@@ -12,7 +12,7 @@ class QueryMyGene:
     def convert_gene_symbol_to_uniprot_id(self, gene_symbol):
         res = self.mygene_obj.query('symbol:' + gene_symbol, species='human',
                            fields='uniprot')
-        uniprot_id = None
+        uniprot_id = set()
         if len(res) > 0:
             uniprot_id = set([hit["uniprot"]["Swiss-Prot"] for hit in res["hits"]])
         return uniprot_id
@@ -22,7 +22,7 @@ class QueryMyGene:
     def convert_uniprot_id_to_gene_symbol(self, uniprot_id):
         res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human',
                            fields='symbol')
-        gene_symbol = None
+        gene_symbol = set()
         if len(res) > 0:
             gene_symbol = set([hit["symbol"] for hit in res["hits"]])
         return gene_symbol

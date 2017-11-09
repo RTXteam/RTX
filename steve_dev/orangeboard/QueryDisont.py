@@ -65,6 +65,11 @@ class QueryDisont:
         
     @staticmethod
     def test():
+        print(QueryDisont.query_disont_to_mesh_id("DOID:9352"))
+        print(QueryDisont.query_disont_to_mesh_id("DOID:1837"))
+        print(QueryDisont.query_disont_to_mesh_id("DOID:10182"))
+        print(QueryDisont.query_disont_to_mesh_id("DOID:11712"))
+        print(QueryDisont.query_disont_to_child_disonts_desc("DOID:9352"))
         print(QueryDisont.query_disont_to_mesh_id("DOID:14069"))
         print(QueryDisont.query_disont_to_child_disonts_desc("DOID:12365"))
         print(QueryDisont.query_disont_to_mesh_id("DOID:0050741"))

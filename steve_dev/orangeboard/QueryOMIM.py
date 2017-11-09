@@ -54,12 +54,14 @@ class QueryOMIM:
         return {'gene_symbols': set(gene_symbols),
                 'uniprot_ids': set(uniprot_ids)}
 
+    def test_issue1(self):
+        print(self.disease_mim_to_gene_symbols_and_uniprot_ids(603918))
+        
     @staticmethod
     def test():
         qo = QueryOMIM()
         print(qo.disease_mim_to_gene_symbols_and_uniprot_ids(603903))
-        print(qo.disease_mim_to_gene_symbols_and_uniprot_ids(603918))
-
+        qo.test_issue1()
 
 if __name__ == '__main__':
     QueryOMIM.test()
