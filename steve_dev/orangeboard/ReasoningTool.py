@@ -69,8 +69,8 @@ def expand_mim_geneticcond(orangeboard, node):
     for uniprot_id in uniprot_ids:
         gene_symbol = query_mygene_obj.convert_uniprot_id_to_gene_symbol(uniprot_id)
         if gene_symbol is not None:
-            assert len(gene_symbol)==1
-            uniprot_ids_to_gene_symbols_dict[uniprot_id]=next(iter(gene_symbol))
+            gene_symbol_str = ';'.join(gene_symbol)
+            uniprot_ids_to_gene_symbols_dict[uniprot_id]=gene_symbol_str
     source_node = node
     for uniprot_id in uniprot_ids_to_gene_symbols_dict.keys():
         target_node = orangeboard.add_node("uniprot_protein", uniprot_id, desc=uniprot_ids_to_gene_symbols_dict[uniprot_id])
@@ -193,6 +193,10 @@ def test_issue3():
     expand_all_nodes(ob)
     expand_all_nodes(ob)
     
+def test_issue5():
+    ob = Orangeboard(master_rel_is_directed, debug=True)
+    disease_node = ob.add_node("mim_geneticcond", '604131', desc="foo", seed_node_bool=True)
+    expand_all_nodes(ob)
     
     
 parser = argparse.ArgumentParser(description="prototype reasoning tool for Q1, NCATS competition, 2017")
