@@ -10,3 +10,9 @@
 
 ## Neo4j:  Community Edition, version 3.3.0 (installed locally)
 
+# Running the software:
+
+    python3 ReasoningTool.py --test TEST_FUNCTION_NAME
+    
+(see code for the test functions that you can run)
+
