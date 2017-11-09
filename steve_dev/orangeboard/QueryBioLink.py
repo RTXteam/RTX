@@ -1,5 +1,6 @@
 import requests
-
+import functools
+import CachedMethods
 
 class QueryBioLink:
     API_BASE_URL = {
@@ -16,6 +17,8 @@ class QueryBioLink:
     }
 
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def find_phenotype_by_disease(disease_id):
         url = QueryBioLink.API_BASE_URL["find_phenotype_by_disease"].format(disease_id=disease_id)
 
@@ -26,6 +29,8 @@ class QueryBioLink:
         return res.json()["objects"]
 
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def find_disease_by_gene(gene_id):
         url = QueryBioLink.API_BASE_URL["find_disease_by_gene"].format(gene_id=gene_id)
 
@@ -36,6 +41,8 @@ class QueryBioLink:
         return res.json()["objects"]
 
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def find_gene_by_disease(disease_id):
         url = QueryBioLink.API_BASE_URL["find_gene_by_disease"].format(disease_id=disease_id)
 
@@ -46,6 +53,8 @@ class QueryBioLink:
         return res.json()["objects"]
 
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def find_phenotype_by_gene(gene_id):
         url = QueryBioLink.API_BASE_URL["find_phenotype_by_gene"].format(gene_id=gene_id)
 

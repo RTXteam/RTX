@@ -1,5 +1,6 @@
 import requests
-import sys
+import functools
+import CachedMethods
 
 
 class QueryOMIM:
@@ -22,6 +23,8 @@ class QueryOMIM:
         assert 200 == res.status_code
         return res
 
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def disease_mim_to_gene_symbols_and_uniprot_ids(self, mim_id):
         """for a given MIM ID for a genetic disease (as input), returns a dict of of gene symbols and UniProt IDs
         {gene_symbols: [gene_symbol_list], uniprot_ids: [uniprot_ids_list]}

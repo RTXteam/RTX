@@ -1,5 +1,7 @@
 import requests
-import sys
+import functools
+import CachedMethods
+
 
 class QueryDisont:
 
@@ -14,6 +16,8 @@ class QueryDisont:
         return res
     
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def query_disont_to_child_disonts(disont_id):
         """for a disease ontology ID (including prefix "DOID:", with zero padding), return child DOIDs
 
@@ -29,6 +33,8 @@ class QueryDisont:
             return set()
 
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def query_disont_to_child_disonts_desc(disont_id):
         """for a disease ontology ID (including prefix "DOID:", with zero padding), return child DOIDs
 
@@ -45,6 +51,8 @@ class QueryDisont:
             return dict()
          
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def query_disont_to_mesh_id(disont_id):
         """convert a disease ontology ID (including prefix "DOID:", with zero padding) to MeSH ID
 
