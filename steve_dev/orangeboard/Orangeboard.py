@@ -278,7 +278,8 @@ class Orangeboard:
     def clear_all(self):
         for seed_node_uuid in self.dict_seed_uuid_to_list_nodes.keys():
             self.clear_from_seed_node_uuid(seed_node_uuid)
-
+        self.seed_node = None
+        
     def neo4j_shutdown(self):
         """shuts down the Orangeboard by disconnecting from the Neo4j database
 

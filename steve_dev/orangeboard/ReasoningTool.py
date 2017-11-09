@@ -58,6 +58,8 @@ def expand_mim_geneticcond(orangeboard, node):
     res_dict = query_omim_obj.disease_mim_to_gene_symbols_and_uniprot_ids(int(node.name))
     uniprot_ids = res_dict["uniprot_ids"]
     gene_symbols = res_dict["gene_symbols"]
+    if len(uniprot_ids)==0 and len(gene_symbols)==0:
+        return  ## nothing else to do, for this MIM number
     uniprot_ids_to_gene_symbols_dict = dict()
     for gene_symbol in gene_symbols:
         uniprot_id = query_mygene_obj.convert_gene_symbol_to_uniprot_id(gene_symbol)
@@ -167,6 +169,7 @@ def test_description_mim():
 def test_description_uniprot():
     ob = Orangeboard(master_rel_is_directed, debug=True)
     node = ob.add_node("uniprot_protein", "P68871", desc='HBB', seed_node_bool=True)
+    print(ob.__str__())
     expand_uniprot_protein(ob, node)
     ob.neo4j_push()
 
