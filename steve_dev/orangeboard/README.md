@@ -68,9 +68,11 @@ of network protocol (HTTP/REST query, etc.).
 
 - `QueryBioLink.py`:  this will give us disease-phenotype relationships, disease-gene relationships, 
 gene-phenotype relationships, etc.  TODO: integrate this into ReasoningTool.py
+- `QueryPC2.py`: queries Pathway Commons 2.0 (PC2) for protein-pathway
+  relationships. Querying PC2 can be very slow, so we are not using it at this time.
 
 ## Knowledge sources for which our query classes are not yet implemented or are broken in some way:
 
 - `QueryPazar.py`: not sure we will ever end up remotely querying Pazar; Pazar looks useful but the web API is 
-SOAP-based and semi-undocumented.
-- `QueryGeneProf.py`: 
+SOAP-based and semi-undocumented. (SAR)
+- `QueryGeneProf.py`: experimental, under development (SAR)
