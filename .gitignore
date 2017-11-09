@@ -7,3 +7,6 @@
 # ipython notebook checkpoints
 **/.ipynb_checkpoints
 
+# R history files
+**/.Rhistory
+
