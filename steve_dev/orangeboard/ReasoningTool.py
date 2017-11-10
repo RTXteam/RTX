@@ -1,6 +1,10 @@
 import sys
 import timeit
 import argparse
+import requests
+import requests_cache
+
+requests_cache.install_cache("orangeboard")
 
 ## refuse to run in python version < 3.5 (in case accidentally invoked using "python" rather than "python3")
 if sys.version_info[0] < 3 or sys.version_info[1] < 5:
