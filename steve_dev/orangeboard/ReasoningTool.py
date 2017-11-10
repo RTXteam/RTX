@@ -61,7 +61,8 @@ def expand_uniprot_protein(orangeboard, node):
             reg_uniprot_ids_set = query_mygene_obj.convert_gene_symbol_to_uniprot_id(reg_gene_symbol)
             for reg_uniprot_id in reg_uniprot_ids_set:
                 node2 = orangeboard.add_node("uniprot_protein", reg_uniprot_id, desc=reg_gene_symbol)
-                orangeboard.add_rel("regulates", "GeneProf", node2, node1)
+                if node2.uuid != node1.uuid:
+                    orangeboard.add_rel("regulates", "GeneProf", node2, node1)
 
 def expand_mim_geneticcond(orangeboard, node):
     res_dict = query_omim_obj.disease_mim_to_gene_symbols_and_uniprot_ids(int(node.name))
