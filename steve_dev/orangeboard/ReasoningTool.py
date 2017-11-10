@@ -3,8 +3,6 @@ import timeit
 import argparse
 import requests_cache
 
-requests_cache.install_cache("orangeboard")
-
 ## refuse to run in python version < 3.5 (in case accidentally invoked using "python" rather than "python3")
 if sys.version_info[0] < 3 or sys.version_info[1] < 5:
     print("This script requires Python version 3.5 or greater")
@@ -20,6 +18,8 @@ from QueryDisGeNet import QueryDisGeNet
 from QueryGeneProf import QueryGeneProf
 from QueryBioLink import QueryBioLink
 ## from QueryPC2 import QueryPC2  ## not currently using; so comment out until such time as we decide to use it
+
+requests_cache.install_cache("orangeboard")
 
 query_omim_obj = QueryOMIM()
 query_mygene_obj = QueryMyGene(debug=True)
@@ -259,4 +259,3 @@ if __name__ == '__main__':
         globals()[args_dict["test_function_to_call"]]()
         end = timeit.timeit()
         print(" Elapsed time: " + str(end - start) + " sec.")
-        
