@@ -27,11 +27,17 @@ class QueryMyGene:
     def convert_gene_symbol_to_uniprot_id(self, gene_symbol):
         res = self.mygene_obj.query('symbol:' + gene_symbol, species='human',
                            fields='uniprot')
-        uniprot_id = set()
+        uniprot_ids_set = set()
         if len(res) > 0:
-            swiss_prot = [hit["uniprot"]["Swiss-Prot"] for hit in res["hits"]]
-            uniprot_id = set(QueryMyGene.unnest(swiss_prot, str))
-        return uniprot_id
+            uniprot_ids_list = []
+            for hit in res['hits']:
+                uniprot_hit = hit.get("uniprot", None)
+                if uniprot_hit is not None:
+                    uniprot_id = uniprot_hit["Swiss-Prot"]
+                    uniprot_ids_list.append(uniprot_id)
+            uniprot_ids_list = QueryMyGene.unnest(uniprot_ids_list, str)
+            uniprot_ids_set = set(uniprot_ids_list)
+        return uniprot_ids_set
 
     @CachedMethods.register
     @functools.lru_cache(maxsize=1024, typed=False)
@@ -47,8 +53,8 @@ class QueryMyGene:
         mg = QueryMyGene()
         print(mg.convert_gene_symbol_to_uniprot_id("HMOX1"))
         print(mg.convert_gene_symbol_to_uniprot_id('RAD54B'))
-
-        # print(mg.convert_uniprot_id_to_gene_symbol("P09601"))
+        print(mg.convert_gene_symbol_to_uniprot_id('NS2'))
+        print(mg.convert_uniprot_id_to_gene_symbol("P09601"))
         
 if __name__ == '__main__':
     QueryMyGene.test()
