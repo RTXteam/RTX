@@ -33,7 +33,6 @@ master_rel_ids_in_orangeboard = {"genetic_cond_affects": dict(),
 master_node_ids_in_orangeboard = {"mim_geneticcond":  dict(),
                                   "disont_disease":   dict(),
                                   "uniprot_protein":  dict(),
-                                  "gene":             dict(),
                                   "reactome_pathway": dict()}
 
 def expand_reactome_pathway(orangeboard, node):
