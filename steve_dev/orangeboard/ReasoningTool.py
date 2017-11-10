@@ -48,9 +48,9 @@ def expand_reactome_pathway(orangeboard, node):
 def expand_uniprot_protein(orangeboard, node):
     uniprot_id_str = node.name
 #    pathways_set_from_pc2 = QueryPC2.uniprot_id_to_reactome_pathways(uniprot_id_str)  ## suspect these pathways are too high-level and not useful
+#    pathways_set_from_uniprot = QueryUniprot.uniprot_id_to_reactome_pathways(uniprot_id_str)  ## doesn't provide pathway descriptions; see if we can get away with not using it?
     pathways_dict_from_reactome = QueryReactome.query_uniprot_id_to_reactome_pathway_ids_desc(uniprot_id_str)
     pathways_dict_sourcedb = dict.fromkeys(pathways_dict_from_reactome.keys(), "reactome_pathway")
-#    pathways_set_from_uniprot = QueryUniprot.uniprot_id_to_reactome_pathways(uniprot_id_str)  ## doesn't provide pathway descriptions; see if we can get away with not using it?
     node1 = node
     for pathway_id in pathways_dict_from_reactome.keys():
         target_node = orangeboard.add_node("reactome_pathway", pathway_id, desc=pathways_dict_from_reactome[pathway_id])
@@ -90,7 +90,6 @@ def expand_mim_geneticcond(orangeboard, node):
     source_node = node
     for uniprot_id in uniprot_ids_to_gene_symbols_dict.keys():
         target_node = orangeboard.add_node("uniprot_protein", uniprot_id, desc=uniprot_ids_to_gene_symbols_dict[uniprot_id])
-#        print("target node for uniprot id: " + uniprot_id + "; " + str(target_node.expanded))
         orangeboard.add_rel("genetic_cond_affects", "OMIM", source_node, target_node)
 
 def expand_disont_disease(orangeboard, node):
@@ -105,7 +104,6 @@ def expand_disont_disease(orangeboard, node):
         for uniprot_id in uniprot_ids_dict.keys():
             source_node = orangeboard.add_node("uniprot_protein", uniprot_id, desc=uniprot_ids_dict[uniprot_id])
             orangeboard.add_rel("gene_assoc_with", "DisGeNet", source_node, node)
-## TODO:  add node for uniprot_id here
 
 def expand_node(orangeboard, node):
     node_type = node.nodetype
