@@ -1,7 +1,6 @@
 import sys
 import timeit
 import argparse
-import requests
 import requests_cache
 
 requests_cache.install_cache("orangeboard")
@@ -14,12 +13,13 @@ if sys.version_info[0] < 3 or sys.version_info[1] < 5:
 from Orangeboard import Orangeboard
 from QueryOMIM import QueryOMIM
 from QueryMyGene import QueryMyGene
-## from QueryPC2 import QueryPC2  ## not currently using; so comment out until such time as we decide to use it
 from QueryUniprot import QueryUniprot
 from QueryReactome import QueryReactome
 from QueryDisont import QueryDisont
 from QueryDisGeNet import QueryDisGeNet
 from QueryGeneProf import QueryGeneProf
+from QueryBioLink import QueryBioLink
+## from QueryPC2 import QueryPC2  ## not currently using; so comment out until such time as we decide to use it
 
 query_omim_obj = QueryOMIM()
 query_mygene_obj = QueryMyGene(debug=True)
@@ -53,6 +53,7 @@ def expand_uniprot_protein(orangeboard, node):
     uniprot_id_str = node.name
 #    pathways_set_from_pc2 = QueryPC2.uniprot_id_to_reactome_pathways(uniprot_id_str)  ## suspect these pathways are too high-level and not useful
 #    pathways_set_from_uniprot = QueryUniprot.uniprot_id_to_reactome_pathways(uniprot_id_str)  ## doesn't provide pathway descriptions; see if we can get away with not using it?
+    ## protein-pathway membership:
     pathways_dict_from_reactome = QueryReactome.query_uniprot_id_to_reactome_pathway_ids_desc(uniprot_id_str)
     pathways_dict_sourcedb = dict.fromkeys(pathways_dict_from_reactome.keys(), "reactome_pathway")
     node1 = node
@@ -60,6 +61,7 @@ def expand_uniprot_protein(orangeboard, node):
         target_node = orangeboard.add_node("reactome_pathway", pathway_id, desc=pathways_dict_from_reactome[pathway_id])
         orangeboard.add_rel("is_member_of", pathways_dict_sourcedb[pathway_id], node1, target_node)
     gene_symbols_set = query_mygene_obj.convert_uniprot_id_to_gene_symbol(uniprot_id_str)
+    ## protein-DNA (i.e., gene regulatory) interactions:
     for gene_symbol in gene_symbols_set:
         regulator_gene_symbols_set = QueryGeneProf.gene_symbol_to_transcription_factor_gene_symbols(gene_symbol)
         for reg_gene_symbol in regulator_gene_symbols_set:
@@ -68,6 +70,15 @@ def expand_uniprot_protein(orangeboard, node):
                 node2 = orangeboard.add_node("uniprot_protein", reg_uniprot_id, desc=reg_gene_symbol)
                 if node2.uuid != node1.uuid:
                     orangeboard.add_rel("regulates", "GeneProf", node2, node1)
+    ## protein-disease associations:
+    entrez_gene_id = query_mygene_obj.convert_uniprot_id_to_entrez_gene_ID(uniprot_id_str)
+    if len(entrez_gene_id) > 0:
+        entrez_gene_id_str = 'NCBI:' + str(entrez_gene_id)
+        disont_id_dict = QueryBioLink.find_diseases_by_gene(entrez_gene_id_str)
+        for disont_id in disont_id_dict.keys():
+            node2 = orangeboard.add_node("disont_disease", disont_id, desc=disont_id_dict[disont_id])
+            orangeboard.add_rel("gene_assoc_with", "BioLink", node1, node2)
+    ## protein-protein interactions:
     int_dict = QueryReactome.query_uniprot_id_to_interacting_uniprot_ids(uniprot_id_str)
     for int_uniprot_id in int_dict.keys():
         int_alias = int_dict[int_uniprot_id]
