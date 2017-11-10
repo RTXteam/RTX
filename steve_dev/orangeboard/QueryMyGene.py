@@ -4,8 +4,9 @@ import CachedMethods
 
 
 class QueryMyGene:
-    def __init__(self):
+    def __init__(self, debug=False):
         self.mygene_obj = mygene.MyGeneInfo()
+        self.debug = debug
 
     @staticmethod
     def unnest(lst, skip_type):
@@ -35,6 +36,9 @@ class QueryMyGene:
                 if uniprot_hit is not None:
                     uniprot_id = uniprot_hit["Swiss-Prot"]
                     uniprot_ids_list.append(uniprot_id)
+                else:
+                    if self.debug:
+                        print("Could not find Uniprot ID for gene symbol: " + gene_symbol)
             uniprot_ids_list = QueryMyGene.unnest(uniprot_ids_list, str)
             uniprot_ids_set = set(uniprot_ids_list)
         return uniprot_ids_set
