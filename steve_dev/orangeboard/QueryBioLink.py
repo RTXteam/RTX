@@ -8,7 +8,7 @@ class QueryBioLink:
     API_BASE_URL = {
         "find_phenotype_by_disease": "https://api.monarchinitiative.org/api/bioentity/disease/{disease_id}/phenotypes/"
                                      "?fetch_objects=true&rows=10000",
-        "find_disease_by_gene": "https://api.monarchinitiative.org/api/bioentity/gene/{gene_id}/diseases/"
+        "find_disease_by_gene": "https://api.monarchinitiative.org/api/bioentity/gene/gene_id/diseases/"
                                 "?fetch_objects=true&rows=10000",
         "find_gene_by_disease": "https://api.monarchinitiative.org/api/bioentity/disease/{disease_id}/genes/"
                                 "?fetch_objects=true&rows=10000",
