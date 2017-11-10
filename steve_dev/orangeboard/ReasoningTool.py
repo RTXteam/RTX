@@ -24,7 +24,8 @@ master_node_is_expanded = dict()
 master_rel_is_directed = {"genetic_cond_affects": True,
                           "is_member_of": True,
                           "is_parent_of": True,
-                          "gene_assoc_with": True}
+                          "gene_assoc_with": True,
+                          "regulates": True}
 
 master_rel_ids_in_orangeboard = {"genetic_cond_affects": dict(),
                                  "is_member_of": dict()}
