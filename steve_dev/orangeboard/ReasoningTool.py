@@ -12,6 +12,8 @@ from QueryUniprot import QueryUniprot
 from QueryReactome import QueryReactome
 from QueryDisont import QueryDisont
 from QueryDisGeNet import QueryDisGeNet
+from QueryGeneProf import QueryGeneProf
+
 import argparse
 
 query_omim_obj = QueryOMIM()
@@ -49,10 +51,18 @@ def expand_uniprot_protein(orangeboard, node):
     pathways_dict_from_reactome = QueryReactome.query_uniprot_id_to_reactome_pathway_ids_desc(uniprot_id_str)
     pathways_dict_sourcedb = dict.fromkeys(pathways_dict_from_reactome.keys(), "reactome_pathway")
 #    pathways_set_from_uniprot = QueryUniprot.uniprot_id_to_reactome_pathways(uniprot_id_str)  ## doesn't provide pathway descriptions; see if we can get away with not using it?
-    source_node = node
+    node1 = node
     for pathway_id in pathways_dict_from_reactome.keys():
         target_node = orangeboard.add_node("reactome_pathway", pathway_id, desc=pathways_dict_from_reactome[pathway_id])
-        orangeboard.add_rel("is_member_of", pathways_dict_sourcedb[pathway_id], source_node, target_node)
+        orangeboard.add_rel("is_member_of", pathways_dict_sourcedb[pathway_id], node1, target_node)
+    gene_symbols_set = query_mygene_obj.convert_uniprot_id_to_gene_symbol(uniprot_id_str)
+    for gene_symbol in gene_symbols_set:
+        regulator_gene_symbols_set = QueryGeneProf.gene_symbol_to_transcription_factor_gene_symbols(gene_symbol)
+        for reg_gene_symbol in regulator_gene_symbols_set:
+            reg_uniprot_ids_set = query_mygene_obj.convert_gene_symbol_to_uniprot_id(reg_gene_symbol)
+            for reg_uniprot_id in reg_uniprot_ids_set:
+                node2 = orangeboard.add_node("uniprot_protein", reg_uniprot_id, desc=reg_gene_symbol)
+                orangeboard.add_rel("regulates", "GeneProf", node2, node1)
 
 def expand_mim_geneticcond(orangeboard, node):
     res_dict = query_omim_obj.disease_mim_to_gene_symbols_and_uniprot_ids(int(node.name))
