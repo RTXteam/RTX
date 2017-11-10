@@ -73,7 +73,7 @@ def expand_uniprot_protein(orangeboard, node):
     ## protein-disease associations:
     entrez_gene_id = query_mygene_obj.convert_uniprot_id_to_entrez_gene_ID(uniprot_id_str)
     if len(entrez_gene_id) > 0:
-        entrez_gene_id_str = 'NCBI:' + str(entrez_gene_id)
+        entrez_gene_id_str = 'NCBIGene:' + str(next(iter(entrez_gene_id)))
         disont_id_dict = QueryBioLink.find_diseases_by_gene(entrez_gene_id_str)
         for disont_id in disont_id_dict.keys():
             node2 = orangeboard.add_node("disont_disease", disont_id, desc=disont_id_dict[disont_id])
