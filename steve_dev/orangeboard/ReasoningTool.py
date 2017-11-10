@@ -62,10 +62,9 @@ def expand_mim_geneticcond(orangeboard, node):
         return  ## nothing else to do, for this MIM number
     uniprot_ids_to_gene_symbols_dict = dict()
     for gene_symbol in gene_symbols:
-        uniprot_id = query_mygene_obj.convert_gene_symbol_to_uniprot_id(gene_symbol)
-        if len(uniprot_id) > 0:
-            assert len(uniprot_id)==1
-            uniprot_ids_to_gene_symbols_dict[next(iter(uniprot_id))]=gene_symbol
+        uniprot_ids = query_mygene_obj.convert_gene_symbol_to_uniprot_id(gene_symbol)
+        for uniprot_id in uniprot_ids:
+            uniprot_ids_to_gene_symbols_dict[uniprot_id] = gene_symbol
     for uniprot_id in uniprot_ids:
         gene_symbol = query_mygene_obj.convert_uniprot_id_to_gene_symbol(uniprot_id)
         if gene_symbol is not None:
@@ -205,12 +204,19 @@ def test_issue3():
     expand_all_nodes(ob)
     expand_all_nodes(ob)
 
+def test_issue6():
+    ob = Orangeboard(master_rel_is_directed, debug=True)
+    ob.add_node("mim_geneticcond", '605027', desc="LYMPHOMA, NON-HODGKIN, FAMILIAL", seed_node_bool=True)
+    expand_all_nodes(ob)
+    expand_all_nodes(ob)
+    expand_all_nodes(ob)
 
 
-parser = argparse.ArgumentParser(description="prototype reasoning tool for Q1, NCATS competition, 2017")
-parser.add_argument('--test', dest='test_function_to_call')
-args = parser.parse_args()
-args_dict = vars(args)
-if args_dict.get("test_function_to_call", None) is not None:
-    print("going to call function: " + args_dict["test_function_to_call"])
-    globals()[args_dict["test_function_to_call"]]()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="prototype reasoning tool for Q1, NCATS competition, 2017")
+    parser.add_argument('--test', dest='test_function_to_call')
+    args = parser.parse_args()
+    args_dict = vars(args)
+    if args_dict.get("test_function_to_call", None) is not None:
+        print("going to call function: " + args_dict["test_function_to_call"])
+        globals()[args_dict["test_function_to_call"]]()

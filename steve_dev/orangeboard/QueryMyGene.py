@@ -7,6 +7,21 @@ class QueryMyGene:
     def __init__(self):
         self.mygene_obj = mygene.MyGeneInfo()
 
+    @staticmethod
+    def unnest(lst, skip_type):
+        """
+        To unnest a list like `["foo", ["bar", "baz"]]` to `["foo", "bar", "baz"]`.
+        Elements of `skip_type` will be leaf as is.
+        """
+        def generate_elements(lst, skip_type):
+            for e in lst:
+                if isinstance(e, skip_type):
+                    yield e
+                else:
+                    yield from e
+
+        return list(generate_elements(lst, skip_type))
+
     @CachedMethods.register
     @functools.lru_cache(maxsize=1024, typed=False)
     def convert_gene_symbol_to_uniprot_id(self, gene_symbol):
@@ -14,7 +29,8 @@ class QueryMyGene:
                            fields='uniprot')
         uniprot_id = set()
         if len(res) > 0:
-            uniprot_id = set([hit["uniprot"]["Swiss-Prot"] for hit in res["hits"]])
+            swiss_prot = [hit["uniprot"]["Swiss-Prot"] for hit in res["hits"]]
+            uniprot_id = set(QueryMyGene.unnest(swiss_prot, str))
         return uniprot_id
 
     @CachedMethods.register
@@ -30,7 +46,9 @@ class QueryMyGene:
     def test():
         mg = QueryMyGene()
         print(mg.convert_gene_symbol_to_uniprot_id("HMOX1"))
-        print(mg.convert_uniprot_id_to_gene_symbol("P09601"))
+        print(mg.convert_gene_symbol_to_uniprot_id('RAD54B'))
+
+        # print(mg.convert_uniprot_id_to_gene_symbol("P09601"))
         
 if __name__ == '__main__':
     QueryMyGene.test()
