@@ -2,6 +2,7 @@ import requests
 import functools
 import CachedMethods
 
+from QueryDisont import QueryDisont
 
 class QueryBioLink:
     API_BASE_URL = {
@@ -19,6 +20,7 @@ class QueryBioLink:
 
     @staticmethod
     def __access_api(url):
+        print(url)
         res = requests.get(url)
 
         assert 200 == res.status_code
@@ -37,19 +39,28 @@ class QueryBioLink:
             "Found {} phenotypes for disease {}. Crossed threshold 100.".format(len(results), disease_id)
 
         return results
-
+       
     @staticmethod
     @CachedMethods.register
     @functools.lru_cache(maxsize=1024, typed=False)
-    def find_disease_by_gene(gene_id):
+    def find_diseases_by_gene(gene_id):
+        '''for a given NCBI Entrez Gene ID, returns a ``set`` of DOI disease identifiers for the gene
+
+        :returns: a ``set`` containing ``str`` disease ontology identifiers
+        '''
         url = QueryBioLink.API_BASE_URL["find_disease_by_gene"].format(gene_id=gene_id)
 
         results = QueryBioLink.__access_api(url)
 
-        assert len(results) <= 100, \
-            "Found {} diseases for gene {}. Crossed threshold 100.".format(len(results), gene_id)
+        if len(results) > 200:
+            print('Number of diseases found for gene ' + gene_id + ' is: ' + str(len(results)))
 
-        return results
+        ret_data = dict()
+        for disease_id in results:
+            if 'DOID:' in disease_id:
+                ret_data[disease_id] = QueryDisont.query_disont_to_label(disease_id)
+                
+        return ret_data
 
     @staticmethod
     @CachedMethods.register
@@ -72,14 +83,15 @@ class QueryBioLink:
 
         results = QueryBioLink.__access_api(url)
 
-        assert len(results) <= 100, \
+        assert len(results) <= 200, \
             "Found {} phenotypes for gene {}. Crossed threshold 100.".format(len(results), gene_id)
 
         return results
 
 
 if __name__ == '__main__':
+    print(QueryBioLink.find_diseases_by_gene("NCBIGene:4750"))
+    print(QueryBioLink.find_diseases_by_gene("NCBIGene:1111111"))
     print(QueryBioLink.find_phenotype_by_disease("OMIM:605543"))
-    print(QueryBioLink.find_disease_by_gene("NCBIGene:4750"))
     print(QueryBioLink.find_gene_by_disease("OMIM:605543"))
     print(QueryBioLink.find_phenotype_by_gene("NCBIGene:4750"))
