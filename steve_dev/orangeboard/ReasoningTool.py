@@ -10,7 +10,7 @@ if sys.version_info[0] < 3 or sys.version_info[1] < 5:
 from Orangeboard import Orangeboard
 from QueryOMIM import QueryOMIM
 from QueryMyGene import QueryMyGene
-from QueryPC2 import QueryPC2
+## from QueryPC2 import QueryPC2  ## not currently using; so comment out until such time as we decide to use it
 from QueryUniprot import QueryUniprot
 from QueryReactome import QueryReactome
 from QueryDisont import QueryDisont
@@ -18,13 +18,14 @@ from QueryDisGeNet import QueryDisGeNet
 from QueryGeneProf import QueryGeneProf
 
 query_omim_obj = QueryOMIM()
-query_mygene_obj = QueryMyGene()
+query_mygene_obj = QueryMyGene(debug=True)
 
 master_rel_is_directed = {"genetic_cond_affects": True,
                           "is_member_of": True,
                           "is_parent_of": True,
                           "gene_assoc_with": True,
-                          "regulates": True}
+                          "regulates": True,
+                          "interacts_with": False}
 
 master_rel_ids_in_orangeboard = {"genetic_cond_affects": dict(),
                                  "is_member_of": dict()}
@@ -63,6 +64,12 @@ def expand_uniprot_protein(orangeboard, node):
                 node2 = orangeboard.add_node("uniprot_protein", reg_uniprot_id, desc=reg_gene_symbol)
                 if node2.uuid != node1.uuid:
                     orangeboard.add_rel("regulates", "GeneProf", node2, node1)
+    int_dict = QueryReactome.query_uniprot_id_to_interacting_uniprot_ids(uniprot_id_str)
+    for int_uniprot_id in int_dict.keys():
+        int_alias = int_dict[int_uniprot_id]
+        node2 = orangeboard.add_node("uniprot_protein", int_uniprot_id, desc=int_alias)
+        if node2.uuid != node1.uuid:
+            orangeboard.add_rel("interacts_with", "reactome", node1, node2)
 
 def expand_mim_geneticcond(orangeboard, node):
     res_dict = query_omim_obj.disease_mim_to_gene_symbols_and_uniprot_ids(int(node.name))
