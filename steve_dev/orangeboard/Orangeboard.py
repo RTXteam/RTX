@@ -70,7 +70,8 @@ class Orangeboard:
     NEO4J_USERNAME = "neo4j"
     NEO4J_PASSWORD = "precisionmedicine"
     NEO4J_URL = "bolt://localhost:7687"
-
+    DEBUG_COUNT_REPORT_GRANULARITY = 10
+    
     def __init__(self, dict_reltype_dirs, debug=False):
         self.dict_nodetype_to_dict_name_to_node = dict()
         self.dict_reltype_to_dict_relkey_to_rel = dict()
@@ -183,7 +184,9 @@ class Orangeboard:
             if seed_node_bool:
                 existing_node.expanded = False
         if self.debug:
-            print("Number of nodes: " + str(self.count_nodes()))
+            node_count = self.count_nodes()
+            if node_count % Orangeboard.DEBUG_COUNT_REPORT_GRANULARITY == 0:
+                print("Number of nodes: " + str(node_count))
         return existing_node
 
     @staticmethod
@@ -230,7 +233,9 @@ class Orangeboard:
                 self.dict_seed_uuid_to_list_rels[seed_node_uuid] = []
             self.dict_seed_uuid_to_list_rels[seed_node_uuid].append(new_rel)
         if self.debug:
-            print("Number of rels: " + str(self.count_rels()))
+            rel_count = self.count_rels()
+            if rel_count % Orangeboard.DEBUG_COUNT_REPORT_GRANULARITY == 0:
+                print("Number of rels: " + str(rel_count))
         return existing_rel
 
     @staticmethod
