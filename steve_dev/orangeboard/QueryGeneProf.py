@@ -7,7 +7,7 @@ class QueryGeneProf:
     @staticmethod
     def send_query_get(handler, url_suffix):
         url_str = QueryGeneProf.API_BASE_URL + "/" + handler + "/" + url_suffix
-#        print(url_str)
+        print(url_str)
         res = requests.get(url_str)
         assert 200 == res.status_code
         return res
