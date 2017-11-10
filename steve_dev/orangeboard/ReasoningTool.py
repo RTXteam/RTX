@@ -211,7 +211,13 @@ def test_issue6():
     expand_all_nodes(ob)
     expand_all_nodes(ob)
 
-
+def test_issue7():
+    ob = Orangeboard(master_rel_is_directed, debug=True)
+    ob.add_node("mim_geneticcond", '605275', desc="NOONAN SYNDROME 2; NS2", seed_node_bool=True)
+    expand_all_nodes(ob)
+    expand_all_nodes(ob)
+    expand_all_nodes(ob)
+    
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="prototype reasoning tool for Q1, NCATS competition, 2017")
     parser.add_argument('--test', dest='test_function_to_call')
