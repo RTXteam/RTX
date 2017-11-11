@@ -34,8 +34,9 @@ class QueryMyGene:
             for hit in res['hits']:
                 uniprot_hit = hit.get("uniprot", None)
                 if uniprot_hit is not None:
-                    uniprot_id = uniprot_hit["Swiss-Prot"]
-                    uniprot_ids_list.append(uniprot_id)
+                    uniprot_id = uniprot_hit.get("Swiss-Prot", None)
+                    if uniprot_id is not None:
+                        uniprot_ids_list.append(uniprot_id)
                 else:
                     if self.debug:
                         print("Could not find Uniprot ID for gene symbol: " + gene_symbol)
