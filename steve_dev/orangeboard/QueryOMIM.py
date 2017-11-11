@@ -29,13 +29,14 @@ class QueryOMIM:
         """for a given MIM ID for a genetic disease (as input), returns a dict of of gene symbols and UniProt IDs
         {gene_symbols: [gene_symbol_list], uniprot_ids: [uniprot_ids_list]}
 
-        :param mim_id: an integer MIM number for a disease
+        :param mim_id: a string OMIMD ID (of the form 'OMIM:605543')
         :returns: a ``dict`` with two keys; ``gene_symbols`` and ``uniprot_ids``; the entry for each of the
         keys is a ``set`` containing the indicated identifiers (or an empty ``set`` if no such identifiers are available)
         """
-        assert type(mim_id) == int
+        assert type(mim_id) == str
+        mim_num_str = mim_id.replace('OMIM:','')
         omim_handler = "entry"
-        url_suffix = "mimNumber=" + str(mim_id) + "&include=geneMap,externalLinks&exclude=text"
+        url_suffix = "mimNumber=" + mim_num_str + "&include=geneMap,externalLinks&exclude=text"
         r = self.send_query_get(omim_handler, url_suffix)
         result_dict = r.json()
         result_entry = result_dict["omim"]["entryList"][0]["entry"]
@@ -55,12 +56,12 @@ class QueryOMIM:
                 'uniprot_ids': set(uniprot_ids)}
 
     def test_issue1(self):
-        print(self.disease_mim_to_gene_symbols_and_uniprot_ids(603918))
+        print(self.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:603918'))
         
     @staticmethod
     def test():
         qo = QueryOMIM()
-        print(qo.disease_mim_to_gene_symbols_and_uniprot_ids(603903))
+        print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:603903'))
         qo.test_issue1()
 
 if __name__ == '__main__':
