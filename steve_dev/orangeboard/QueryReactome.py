@@ -10,10 +10,12 @@ class QueryReactome:
     @staticmethod
     def send_query_get(handler, url_suffix):  ## :WEIRD: Reactome REST API GET syntax doesn't want a question mark in the URL
         url_str = QueryReactome.API_BASE_URL + "/" + handler + "/" + url_suffix
-#        print(url_str)
+        print(url_str)
         res = requests.get(url_str, headers={'accept': 'application/json'})
         status_code = res.status_code
         assert status_code in [200, 404]
+        if status_code == 404:
+            res = None
         return res
 
     @staticmethod
@@ -59,17 +61,25 @@ class QueryReactome:
     @CachedMethods.register
     @functools.lru_cache(maxsize=1024, typed=False)
     def query_reactome_entity_id_to_reactome_pathway_ids(reactome_entity_id):
-        res_json = QueryReactome.send_query_get("data/pathways/low/diagram/entity", reactome_entity_id + "/allForms?species=9606").json()
-        reactome_ids_list = [res_entry["stId"] for res_entry in res_json]
-        return set(reactome_ids_list)
+        res = QueryReactome.send_query_get("data/pathways/low/diagram/entity", reactome_entity_id + "/allForms?species=9606")
+        if res is not None:
+            res_json = res.json()
+            reactome_ids_list = [res_entry["stId"] for res_entry in res_json]
+            ret_set = set(reactome_ids_list)
+        else:
+            ret_set = set()
+        return ret_set
 
     @staticmethod
     @CachedMethods.register
     @functools.lru_cache(maxsize=1024, typed=False)
     def query_reactome_entity_id_to_reactome_pathway_ids_desc(reactome_entity_id):
-        res_json = QueryReactome.send_query_get("data/pathways/low/diagram/entity", reactome_entity_id + "/allForms?species=9606").json()
-#        print(res_json)
-        reactome_ids_dict = dict([[res_entry["stId"], res_entry["displayName"]] for res_entry in res_json])
+        res = QueryReactome.send_query_get("data/pathways/low/diagram/entity", reactome_entity_id + "/allForms?species=9606")
+        if res is not None:
+            res_json = res.json()
+            reactome_ids_dict = dict([[res_entry["stId"], res_entry["displayName"]] for res_entry in res_json])
+        else:
+            reactome_ids_dict = dict()
         return reactome_ids_dict
     
     @staticmethod
