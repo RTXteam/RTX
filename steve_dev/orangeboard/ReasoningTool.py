@@ -1,5 +1,5 @@
 import sys
-import timeit
+import time
 import argparse
 import requests_cache
 
@@ -262,7 +262,7 @@ if __name__ == '__main__':
     args_dict = vars(args)
     if args_dict.get("test_function_to_call", None) is not None:
         print("going to call function: " + args_dict["test_function_to_call"])
-        start = timeit.timeit()
+        start_time = time.clock()
         globals()[args_dict["test_function_to_call"]]()
-        end = timeit.timeit()
-        print(" Elapsed time: " + str(end - start) + " sec.")
+        end_time = time.clock()
+        print("Elapsed time: " + str(end_time - start_time) + " seconds")
