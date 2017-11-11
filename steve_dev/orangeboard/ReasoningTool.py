@@ -1,6 +1,7 @@
 import sys
 import argparse
 import requests_cache
+import timeit
 
 ## refuse to run in python version < 3.5 (in case accidentally invoked using "python" rather than "python3")
 if sys.version_info[0] < 3 or sys.version_info[1] < 5:
@@ -268,7 +269,4 @@ if __name__ == '__main__':
     args_dict = vars(args)
     if args_dict.get("test_function_to_call", None) is not None:
         print("going to call function: " + args_dict["test_function_to_call"])
-        start_time = timer()
-        globals()[args_dict["test_function_to_call"]]()
-        end_time = timer()
-        print("Elapsed time: " + str(end_time - start_time) + " seconds")
+        timeit.timeit(lambda: globals()[args_dict["test_function_to_call"]]())
