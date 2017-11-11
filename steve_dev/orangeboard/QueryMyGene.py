@@ -53,6 +53,8 @@ class QueryMyGene:
             gene_symbol = set([hit["symbol"] for hit in res["hits"]])
         return gene_symbol
 
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def convert_uniprot_id_to_entrez_gene_ID(self, uniprot_id):
         res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human',
                                     fields='entrezgene')
