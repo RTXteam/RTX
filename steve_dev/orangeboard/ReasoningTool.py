@@ -36,10 +36,11 @@ master_rel_is_directed = {"genetic_cond_affects": True,
 master_rel_ids_in_orangeboard = {"genetic_cond_affects": dict(),
                                  "is_member_of": dict()}
 
-master_node_ids_in_orangeboard = {"mim_geneticcond":  dict(),
-                                  "disont_disease":   dict(),
-                                  "uniprot_protein":  dict(),
-                                  "reactome_pathway": dict()}
+master_node_ids_in_orangeboard = {"mim_geneticcond":   dict(),
+                                  "disont_disease":    dict(),
+                                  "uniprot_protein":   dict(),
+                                  "reactome_pathway":  dict(),
+                                  "phenont_phenotype": dict()}
 
 def expand_reactome_pathway(orangeboard, node):
     reactome_id_str = node.name
@@ -72,9 +73,9 @@ def expand_uniprot_protein(orangeboard, node):
                 node2 = orangeboard.add_node("uniprot_protein", reg_uniprot_id, desc=reg_gene_symbol)
                 if node2.uuid != node1.uuid:
                     orangeboard.add_rel("regulates", "GeneProf", node2, node1)
-    ## protein-disease associations:
     entrez_gene_id = query_mygene_obj.convert_uniprot_id_to_entrez_gene_ID(uniprot_id_str)
     if len(entrez_gene_id) > 0:
+        ## protein-disease associations:
         entrez_gene_id_str = 'NCBIGene:' + str(next(iter(entrez_gene_id)))
         disont_id_dict = QueryBioLink.find_diseases_by_gene(entrez_gene_id_str)
         for disont_id in disont_id_dict.keys():
@@ -83,8 +84,13 @@ def expand_uniprot_protein(orangeboard, node):
                 orangeboard.add_rel("gene_assoc_with", "BioLink", node1, node2)
             else:
                 if 'OMIM:' in disont_id:
-                    node2 = orangeboard.add_node("mim_geneticcond", disont_id.replace('OMIM:',''), desc=disont_id_dict[disont_id])
+                    node2 = orangeboard.add_node("mim_geneticcond", disont_id, desc=disont_id_dict[disont_id])
                     orangeboard.add_rel("gene_assoc_with", "BioLink", node1, node2)
+        ## protein-phenotype associations:
+        phenotype_id_dict = QueryBioLink.get_phenotypes_for_gene_desc(entrez_gene_id_str)
+        for phenotype_id_str in phenotype_id_dict.keys():
+            node2 = orangeboard.add_node("phenont_phenotype", phenotype_id_str, desc=phenotype_id_dict[phenotype_id_str])
+            orangeboard.add_rel("gene_assoc_with", "BioLink", node1, node2)
     ## protein-protein interactions:
     int_dict = QueryReactome.query_uniprot_id_to_interacting_uniprot_ids(uniprot_id_str)
     for int_uniprot_id in int_dict.keys():
@@ -92,9 +98,13 @@ def expand_uniprot_protein(orangeboard, node):
         node2 = orangeboard.add_node("uniprot_protein", int_uniprot_id, desc=int_alias)
         if node2.uuid != node1.uuid:
             orangeboard.add_rel("interacts_with", "reactome", node1, node2)
+    
+
+def expand_phenont_phenotype(orangeboard, node):
+    pass
 
 def expand_mim_geneticcond(orangeboard, node):
-    res_dict = query_omim_obj.disease_mim_to_gene_symbols_and_uniprot_ids(int(node.name))
+    res_dict = query_omim_obj.disease_mim_to_gene_symbols_and_uniprot_ids(node.name)
     uniprot_ids = res_dict["uniprot_ids"]
     gene_symbols = res_dict["gene_symbols"]
     if len(uniprot_ids)==0 and len(gene_symbols)==0:
@@ -126,6 +136,11 @@ def expand_disont_disease(orangeboard, node):
         for uniprot_id in uniprot_ids_dict.keys():
             source_node = orangeboard.add_node("uniprot_protein", uniprot_id, desc=uniprot_ids_dict[uniprot_id])
             orangeboard.add_rel("gene_assoc_with", "DisGeNet", source_node, node)
+    ## query for phenotypes associated with this disease
+    phenotype_id_dict = QueryBioLink.get_phenotypes_for_disease_desc(disont_id)
+    for phenotype_id_str in phenotype_id_dict.keys():
+        phenotype_node = orangeboard.add_node("phenont_phenotype", phenotype_id_str, desc=phenotype_id_dict[phenotype_id_str])
+        orangeboard.add_rel("phenotype_assoc_with", "BioLink", phenotype_node, node)
 
 def expand_node(orangeboard, node):
     node_type = node.nodetype
@@ -141,20 +156,20 @@ def expand_all_nodes(orangeboard):
 
 
 def bigtest():
-    genetic_condition_mim_id = 603903  # sickle-cell anemia
+    genetic_condition_mim_id = 'OMIM:603903'  # sickle-cell anemia
     target_disease_disont_id = 'DOID:12365'   # malaria
-    ## cerebral malaria:  D014069
+    ## cerebral malaria:  'DOID:014069'
 
-    # genetic_condition_mim_id = 219700 # cystic fibrosis
+    # genetic_condition_mim_id = 'OMIM:219700' # cystic fibrosis
     # target_disease_disont_id = 'DOID:1498' # cholera
 
-    # genetic_condition_mim_id = 305900 # glucose-6-phosphate dehydrogenase (G6PD)
+    # genetic_condition_mim_id = 'OMIM:305900' # glucose-6-phosphate dehydrogenase (G6PD)
     # target_disease_disont_id = 'DOID:12365'   # malaria
 
-    # genetic_condition_mim_id = 607786 # proprotein convertase, subtilisin/kexin-type, 9 (PCSK9)
+    # genetic_condition_mim_id = 'OMIM:607786' # proprotein convertase, subtilisin/kexin-type, 9 (PCSK9)
     # target_disease_disont_id = 'DOID:13810'   # familial hypercholesterolemia
 
-    # genetic_condition_mim_id = 184745 # kit ligard
+    # genetic_condition_mim_id = 'OMIM:184745' # kit ligard
     # target_disease_disont_id = 'DOID:2841' # asthma
 
     ob = Orangeboard(master_rel_is_directed, debug=True)
@@ -198,7 +213,7 @@ def bigtest():
 
 def test_description_mim():
     ob = Orangeboard(master_rel_is_directed, debug=True)
-    node = ob.add_node("mim_geneticcond", "603903", desc='sickle-cell anemia', seed_node_bool=True)
+    node = ob.add_node("mim_geneticcond", "OMIM:603903", desc='sickle-cell anemia', seed_node_bool=True)
     expand_mim_geneticcond(ob, node)
     ob.neo4j_push()
 
@@ -225,13 +240,13 @@ def test_description_disont2():
 
 def test_add_mim():
     ob = Orangeboard(master_rel_is_directed, debug=True)
-    node = ob.add_node("mim_geneticcond", "603903", desc='sickle-cell anemia', seed_node_bool=True)
+    node = ob.add_node("mim_geneticcond", "OMIM:603903", desc='sickle-cell anemia', seed_node_bool=True)
     expand_mim_geneticcond(ob, node)
     ob.neo4j_push()
 
 def test_issue2():
     ob = Orangeboard(master_rel_is_directed, debug=True)
-    node = ob.add_node("mim_geneticcond", "603933", desc='sickle-cell anemia', seed_node_bool=True)
+    node = ob.add_node("mim_geneticcond", "OMIM:603933", desc='sickle-cell anemia', seed_node_bool=True)
     expand_mim_geneticcond(ob, node)
 
 def test_issue3():
@@ -243,14 +258,14 @@ def test_issue3():
 
 def test_issue6():
     ob = Orangeboard(master_rel_is_directed, debug=True)
-    ob.add_node("mim_geneticcond", '605027', desc="LYMPHOMA, NON-HODGKIN, FAMILIAL", seed_node_bool=True)
+    ob.add_node("mim_geneticcond", 'OMIM:605027', desc="LYMPHOMA, NON-HODGKIN, FAMILIAL", seed_node_bool=True)
     expand_all_nodes(ob)
     expand_all_nodes(ob)
     expand_all_nodes(ob)
 
 def test_issue7():
     ob = Orangeboard(master_rel_is_directed, debug=True)
-    ob.add_node("mim_geneticcond", '605275', desc="NOONAN SYNDROME 2; NS2", seed_node_bool=True)
+    ob.add_node("mim_geneticcond", 'OMIM:605275', desc="NOONAN SYNDROME 2; NS2", seed_node_bool=True)
     expand_all_nodes(ob)
     expand_all_nodes(ob)
     expand_all_nodes(ob)
