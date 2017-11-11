@@ -51,13 +51,18 @@ class Rel:
         source_node.out_rels.add(self)
         target_node.in_rels.add(self)
 
-    def get_props(self):
-        return {'UUID': self.uuid,
-                'reltype': self.reltype,
-                'sourcedb': self.sourcedb,
-                'seed_node_uuid': self.seed_node.uuid,
-                'source_node_uuid': self.source_node.uuid,
-                'target_node_uuid': self.target_node.uuid}
+    def get_props(self, reverse=False):
+        prop_dict = {'UUID': self.uuid,
+                     'reltype': self.reltype,
+                     'sourcedb': self.sourcedb,
+                     'seed_node_uuid': self.seed_node.uuid}
+        if not reverse:
+            prop_dict['source_node_uuid'] = self.source_node.uuid
+            prop_dict['target_node_uuid'] = self.target_node.uuid
+        else:
+            prop_dict['source_node_uuid'] = self.target_node.uuid
+            prop_dict['target_node_uuid'] = self.source_node.uuid
+        return prop_dict
 
     def __str__(self):
         attr_list = ["reltype", "sourcedb", "uuid", "source_node", "target_node"]
@@ -99,18 +104,6 @@ class Orangeboard:
                     count += 1
         return count
         
-    # def count_nodes(self):
-    #     count = 0
-    #     for seed_uuid in self.dict_seed_uuid_to_list_nodes.keys():
-    #         count += len(self.dict_seed_uuid_to_list_nodes[seed_uuid])
-    #     return count
-    #
-    # def count_rels(self):
-    #     count = 0
-    #     for seed_uuid in self.dict_seed_uuid_to_list_rels.keys():
-    #         count += len(self.dict_seed_uuid_to_list_rels[seed_uuid])
-    #     return count
-
     def count_nodes(self):
         return sum(map(len, self.dict_seed_uuid_to_list_nodes.values()))
 
@@ -324,14 +317,12 @@ class Orangeboard:
         cypher_query = "MATCH (n" + \
                        cypher_query_middle + \
                        ") DETACH DELETE n"
-        if self.debug:
-            print(cypher_query)
+        if self.debug: print(cypher_query)
         self.neo4j_run_cypher_query(use_session, cypher_query)
         use_session.send()
         if session is None:
             use_session.close()
 
-   
     def neo4j_push(self, seed_node=None):
         assert self.dict_reltype_dirs is not None
         nodetypes = self.get_all_nodetypes()
@@ -351,7 +342,6 @@ class Orangeboard:
                                    Orangeboard.make_label_string_from_set(node.get_labels()) + \
                                    ')\nSET n = map'
                 if self.debug:
-#                    print(query_params)
                     print(cypher_query_str)
                 res = self.neo4j_run_cypher_query(session, cypher_query_str, query_params)
                 if self.debug:
@@ -368,7 +358,9 @@ class Orangeboard:
                 if seed_node is not None:
                     rels &= self.get_all_rels_for_seed_node_uuid(seed_node.uuid)
                 reltype_rels_params_list = [ rel.get_props() for rel in rels ]
-                dir_string = '>' if reltype_dir else ''
+                if not reltype_dir:
+                    reltype_rels_params_list = reltype_rels_params_list + \
+                                               [ rel.get_props(reverse=True) for rel in rels]
                 query_params = { 'rel_data_list': reltype_rels_params_list }
                 cypher_query_str = "UNWIND $rel_data_list AS rel_data_map\n" + \
                                    "MATCH (n1:Base {UUID: rel_data_map.source_node_uuid})," + \
@@ -378,10 +370,7 @@ class Orangeboard:
                                    " target_node_uuid: rel_data_map.target_node_uuid," + \
                                    " sourcedb: rel_data_map.sourcedb," + \
                                    " seed_node_uuid: rel_data_map.seed_node_uuid," + \
-                                   " UUID: rel_data_map.UUID }]-" + dir_string + "(n2)"
-                if self.debug:
-#                    print(query_params)
-                    print(cypher_query_str)
+                                   " UUID: rel_data_map.UUID }]->(n2)"
                 res = self.neo4j_run_cypher_query(session, cypher_query_str, query_params)
                 if self.debug:
                     print(res.summary())
