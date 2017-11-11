@@ -10,7 +10,7 @@ class QueryReactome:
     @staticmethod
     def send_query_get(handler, url_suffix):  ## :WEIRD: Reactome REST API GET syntax doesn't want a question mark in the URL
         url_str = QueryReactome.API_BASE_URL + "/" + handler + "/" + url_suffix
-        print(url_str)
+#        print(url_str)
         res = requests.get(url_str, headers={'accept': 'application/json'})
         status_code = res.status_code
         assert status_code in [200, 404]
