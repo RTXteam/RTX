@@ -77,8 +77,13 @@ def expand_uniprot_protein(orangeboard, node):
         entrez_gene_id_str = 'NCBIGene:' + str(next(iter(entrez_gene_id)))
         disont_id_dict = QueryBioLink.find_diseases_by_gene(entrez_gene_id_str)
         for disont_id in disont_id_dict.keys():
-            node2 = orangeboard.add_node("disont_disease", disont_id, desc=disont_id_dict[disont_id])
-            orangeboard.add_rel("gene_assoc_with", "BioLink", node1, node2)
+            if 'DOID:' in disont_id:
+                node2 = orangeboard.add_node("disont_disease", disont_id, desc=disont_id_dict[disont_id])
+                orangeboard.add_rel("gene_assoc_with", "BioLink", node1, node2)
+            else:
+                if 'OMIM:' in disont_id:
+                    node2 = orangeboard.add_node("mim_geneticcond", disont_id.replace('OMIM:',''), desc=disont_id_dict[disont_id])
+                    orangeboard.add_rel("gene_assoc_with", "BioLink", node1, node2)
     ## protein-protein interactions:
     int_dict = QueryReactome.query_uniprot_id_to_interacting_uniprot_ids(uniprot_id_str)
     for int_uniprot_id in int_dict.keys():
