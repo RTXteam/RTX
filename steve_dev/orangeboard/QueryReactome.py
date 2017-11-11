@@ -38,10 +38,14 @@ class QueryReactome:
     @CachedMethods.register
     @functools.lru_cache(maxsize=1024, typed=False)
     def query_uniprot_to_reactome_entity_id(uniprot_id):
-        res_json = QueryReactome.send_query_get("data/complexes/UniProt", uniprot_id).json()
-#        print(res_json)
-        if type(res_json)==list:
-            ret_ids = set([res_entry["stId"] for res_entry in res_json])
+        res = QueryReactome.send_query_get("data/complexes/UniProt", uniprot_id)
+        if res is not None:
+            res_json = res.json()
+            #        print(res_json)
+            if type(res_json)==list:
+                ret_ids = set([res_entry["stId"] for res_entry in res_json])
+            else:
+                ret_ids = set()
         else:
             ret_ids = set()
         return ret_ids
