@@ -247,7 +247,14 @@ def test_issue7():
     expand_all_nodes(ob)
     expand_all_nodes(ob)
     expand_all_nodes(ob)
-    
+
+def test_issue9():
+    ob = Orangeboard(master_rel_is_directed, debug=True)
+    node1 = ob.add_node('uniprot_protein', 'P16887', 'HBB')
+    node2 = ob.add_node('uniprot_protein', 'P09601', 'HMOX1')
+    ob.add_rel('interacts_with', 'reactome', node1, node2)
+    ob.neo4j_push()
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="prototype reasoning tool for Q1, NCATS competition, 2017")
     parser.add_argument('--test', dest='test_function_to_call')
