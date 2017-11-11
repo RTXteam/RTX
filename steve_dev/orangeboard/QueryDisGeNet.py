@@ -67,7 +67,6 @@ class QueryDisGeNet:
     @CachedMethods.register
     @functools.lru_cache(maxsize=1024, typed=False)
     def query_mesh_id_to_uniprot_ids_desc(mesh_id):
-        print(mesh_id)
         ent = 'disease'
         id = 'mesh'
         STR = "c1.MESH = '"
