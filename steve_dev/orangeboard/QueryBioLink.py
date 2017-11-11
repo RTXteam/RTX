@@ -2,8 +2,6 @@ import requests
 import functools
 import CachedMethods
 
-from QueryDisont import QueryDisont
-
 class QueryBioLink:
     API_BASE_URL = {
         "find_phenotype_by_disease": "https://api.monarchinitiative.org/api/bioentity/disease/{disease_id}/phenotypes/"
@@ -15,25 +13,33 @@ class QueryBioLink:
         "find_phenotype_by_gene": "https://api.monarchinitiative.org/api/bioentity/gene/{gene_id}/phenotypes/"
                                 "?fetch_objects=true&rows=10000",
         "find_gene_by_pathway": "https://api.monarchinitiative.org/api/bioentity/pathway/{pathway_id}/genes/"
-                                "?fetch_objects=true&rows=10000"
+                                "?fetch_objects=true&rows=10000",
+        "get_label_for_disease": "https://api.monarchinitiative.org/api/bioentity/disease/{disease_id}"
     }
 
     @staticmethod
     def __access_api(url):
         print(url)
         res = requests.get(url)
-
         assert 200 == res.status_code
+        return res.json()
 
-        return res.json()["objects"]
-
+    @staticmethod
+    def get_label_for_disease(disease_id):
+        url = QueryBioLink.API_BASE_URL["get_label_for_disease"].format(disease_id=disease_id)
+        results = QueryBioLink.__access_api(url)
+        result_str = 'UNKNOWN'
+        if results is not None:
+            result_str = results['label']
+        return result_str
+        
     @staticmethod
     @CachedMethods.register
     @functools.lru_cache(maxsize=1024, typed=False)
     def find_phenotype_by_disease(disease_id):
         url = QueryBioLink.API_BASE_URL["find_phenotype_by_disease"].format(disease_id=disease_id)
 
-        results = QueryBioLink.__access_api(url)
+        results = QueryBioLink.__access_api(url)['objects']
 
         assert len(results) <= 100, \
             "Found {} phenotypes for disease {}. Crossed threshold 100.".format(len(results), disease_id)
@@ -50,16 +56,16 @@ class QueryBioLink:
         '''
         url = QueryBioLink.API_BASE_URL["find_disease_by_gene"].format(gene_id=gene_id)
 
-        results = QueryBioLink.__access_api(url)
+        results = QueryBioLink.__access_api(url)['objects']
 
         if len(results) > 200:
             print('Number of diseases found for gene ' + gene_id + ' is: ' + str(len(results)))
 
         ret_data = dict()
         for disease_id in results:
-            if 'DOID:' in disease_id:
-                ret_data[disease_id] = QueryDisont.query_disont_to_label(disease_id)
-                
+            if 'DOID:' in disease_id or 'OMIM:' in disease_id:
+                ret_data[disease_id] = QueryBioLink.get_label_for_disease(disease_id)
+
         return ret_data
 
     @staticmethod
@@ -68,7 +74,7 @@ class QueryBioLink:
     def find_gene_by_disease(disease_id):
         url = QueryBioLink.API_BASE_URL["find_gene_by_disease"].format(disease_id=disease_id)
 
-        results = QueryBioLink.__access_api(url)
+        results = QueryBioLink.__access_api(url)['objects']
 
         assert len(results) <= 100, \
             "Found {} genes for disease {}. Crossed threshold 100.".format(len(results), disease_id)
@@ -81,7 +87,7 @@ class QueryBioLink:
     def find_phenotype_by_gene(gene_id):
         url = QueryBioLink.API_BASE_URL["find_phenotype_by_gene"].format(gene_id=gene_id)
 
-        results = QueryBioLink.__access_api(url)
+        results = QueryBioLink.__access_api(url)['objects']
 
         assert len(results) <= 200, \
             "Found {} phenotypes for gene {}. Crossed threshold 100.".format(len(results), gene_id)
@@ -95,3 +101,5 @@ if __name__ == '__main__':
     print(QueryBioLink.find_phenotype_by_disease("OMIM:605543"))
     print(QueryBioLink.find_gene_by_disease("OMIM:605543"))
     print(QueryBioLink.find_phenotype_by_gene("NCBIGene:4750"))
+    print(QueryBioLink.get_label_for_disease("OMIM:605543"))
+    
