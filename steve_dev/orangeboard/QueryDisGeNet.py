@@ -9,6 +9,7 @@ import functools
 import pandas
 import io
 import CachedMethods
+import math
 
 class QueryDisGeNet:
     MAX_PROTS_FOR_GENE = 3   ## maybe we should make this a configurable class variable (SAR)
@@ -66,6 +67,7 @@ class QueryDisGeNet:
     @CachedMethods.register
     @functools.lru_cache(maxsize=1024, typed=False)
     def query_mesh_id_to_uniprot_ids_desc(mesh_id):
+        print(mesh_id)
         ent = 'disease'
         id = 'mesh'
         STR = "c1.MESH = '"
@@ -105,20 +107,22 @@ class QueryDisGeNet:
         ret_dict = dict(list(zip(uniprot_ids_list, gene_names_list)))
 #        ret_data = set(ret_data_df["c2.uniprotId"].tolist()) - {'null'}
         for prot in ret_dict.copy().keys():
-            if '.' in prot or ';' in prot:
-                gene = ret_dict[prot]
-                del ret_dict[prot]
-                prot.replace('.', '')
-                prots_to_add = prot.split(';')
-                if len(prots_to_add) > QueryDisGeNet.MAX_PROTS_FOR_GENE:
-                    prots_to_add = prots_to_add[0:QueryDisGeNet.MAX_PROTS_FOR_GENE]
-                dict_add = dict.fromkeys(prots_to_add, gene)
-                ret_dict.update(dict_add)
+            if type(prot)==str:
+                if '.' in prot or ';' in prot:
+                    gene = ret_dict[prot]
+                    del ret_dict[prot]
+                    prot.replace('.', '')
+                    prots_to_add = prot.split(';')
+                    if len(prots_to_add) > QueryDisGeNet.MAX_PROTS_FOR_GENE:
+                        prots_to_add = prots_to_add[0:QueryDisGeNet.MAX_PROTS_FOR_GENE]
+                        dict_add = dict.fromkeys(prots_to_add, gene)
+                        ret_dict.update(dict_add)
         return(ret_dict)
                             
     @staticmethod
     def test():
         print(QueryDisGeNet.query_mesh_id_to_uniprot_ids_desc('D016779'))
+        print(QueryDisGeNet.query_mesh_id_to_uniprot_ids_desc('D004443'))
 
 if __name__ == '__main__':
     QueryDisGeNet.test()
