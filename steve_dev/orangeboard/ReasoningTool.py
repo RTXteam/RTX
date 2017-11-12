@@ -2,6 +2,7 @@ import sys
 import argparse
 import requests_cache
 import timeit
+import re
 
 ## refuse to run in python version < 3.5 (in case accidentally invoked using "python" rather than "python3")
 if sys.version_info[0] < 3 or sys.version_info[1] < 5:
@@ -24,23 +25,27 @@ from timeit import default_timer as timer
 requests_cache.install_cache("orangeboard")
 
 query_omim_obj = QueryOMIM()
-query_mygene_obj = QueryMyGene(debug=True)
+query_mygene_obj = QueryMyGene(debug=False)
 
-master_rel_is_directed = {"genetic_cond_affects": True,
+master_rel_is_directed = {"disease_affects": True,
                           "is_member_of": True,
                           "is_parent_of": True,
                           "gene_assoc_with": True,
                           "regulates": True,
                           "interacts_with": False}
 
-master_rel_ids_in_orangeboard = {"genetic_cond_affects": dict(),
+master_rel_ids_in_orangeboard = {"disease_affects": dict(),
                                  "is_member_of": dict()}
 
-master_node_ids_in_orangeboard = {"mim_geneticcond":   dict(),
+master_node_ids_in_orangeboard = {"omim_disease":      dict(),
                                   "disont_disease":    dict(),
                                   "uniprot_protein":   dict(),
                                   "reactome_pathway":  dict(),
-                                  "phenont_phenotype": dict()}
+                                  "phenont_phenotype": dict(),
+                                  "ncbigene_microrna":      dict()}
+
+def expand_ncbigene_microrna(orangeboard, node):
+    pass
 
 def expand_reactome_pathway(orangeboard, node):
     reactome_id_str = node.name
@@ -84,7 +89,7 @@ def expand_uniprot_protein(orangeboard, node):
                 orangeboard.add_rel("gene_assoc_with", "BioLink", node1, node2)
             else:
                 if 'OMIM:' in disont_id:
-                    node2 = orangeboard.add_node("mim_geneticcond", disont_id, desc=disont_id_dict[disont_id])
+                    node2 = orangeboard.add_node("omim_disease", disont_id, desc=disont_id_dict[disont_id])
                     orangeboard.add_rel("gene_assoc_with", "BioLink", node1, node2)
         ## protein-phenotype associations:
         phenotype_id_dict = QueryBioLink.get_phenotypes_for_gene_desc(entrez_gene_id_str)
@@ -103,7 +108,7 @@ def expand_uniprot_protein(orangeboard, node):
 def expand_phenont_phenotype(orangeboard, node):
     pass
 
-def expand_mim_geneticcond(orangeboard, node):
+def expand_omim_disease(orangeboard, node):
     res_dict = query_omim_obj.disease_mim_to_gene_symbols_and_uniprot_ids(node.name)
     uniprot_ids = res_dict["uniprot_ids"]
     gene_symbols = res_dict["gene_symbols"]
@@ -112,6 +117,16 @@ def expand_mim_geneticcond(orangeboard, node):
     uniprot_ids_to_gene_symbols_dict = dict()
     for gene_symbol in gene_symbols:
         uniprot_ids = query_mygene_obj.convert_gene_symbol_to_uniprot_id(gene_symbol)
+        if len(uniprot_ids) == 0:
+            ## this might be a microRNA
+            mir_match = re.match('MIR(\d+.*)', gene_symbol)
+            if mir_match is not None:
+               entrez_gene_ids = query_mygene_obj.convert_gene_symbol_to_entrez_gene_ID(gene_symbol)
+               if len(entrez_gene_ids) > 0:
+                   for entrez_gene_id in entrez_gene_ids:
+                       curie_entrez_gene_id = 'NCBI:' + str(entrez_gene_id)
+                       node2 = orangeboard.add_node("ncbigene_microrna", curie_entrez_gene_id, desc=gene_symbol)
+                       orangeboard.add_rel("disease_affects", "OMIM", node, node2)
         for uniprot_id in uniprot_ids:
             uniprot_ids_to_gene_symbols_dict[uniprot_id] = gene_symbol
     for uniprot_id in uniprot_ids:
@@ -122,7 +137,7 @@ def expand_mim_geneticcond(orangeboard, node):
     source_node = node
     for uniprot_id in uniprot_ids_to_gene_symbols_dict.keys():
         target_node = orangeboard.add_node("uniprot_protein", uniprot_id, desc=uniprot_ids_to_gene_symbols_dict[uniprot_id])
-        orangeboard.add_rel("genetic_cond_affects", "OMIM", source_node, target_node)
+        orangeboard.add_rel("disease_affects", "OMIM", source_node, target_node)
 
 def expand_disont_disease(orangeboard, node):
     disont_id = node.name
@@ -148,12 +163,12 @@ def expand_node(orangeboard, node):
     method_obj = globals()[method_name]  ## dispatch to the correct function for expanding the node type
     method_obj(orangeboard, node)
     node.expanded = True
-
+    
 def expand_all_nodes(orangeboard):
-    for node in orangeboard.get_all_nodes_for_current_seed_node():
+    nodes = orangeboard.get_all_nodes_for_current_seed_node()
+    for node in nodes:
         if not node.expanded:
             expand_node(orangeboard, node)
-
 
 def bigtest():
     genetic_condition_mim_id = 'OMIM:603903'  # sickle-cell anemia
@@ -190,7 +205,7 @@ def bigtest():
     print("total number of edges: " + str(ob.count_rels()))
 
     ## add the initial genetic condition into the Orangeboard, as a "MIM" node
-    mim_node = ob.add_node("mim_geneticcond", genetic_condition_mim_id, desc="sickle-cell anemia", seed_node_bool=True)
+    mim_node = ob.add_node("omim_disease", genetic_condition_mim_id, desc="sickle-cell anemia", seed_node_bool=True)
 
     print("----------- first round of expansion ----------")
     expand_all_nodes(ob)
@@ -213,8 +228,8 @@ def bigtest():
 
 def test_description_mim():
     ob = Orangeboard(master_rel_is_directed, debug=True)
-    node = ob.add_node("mim_geneticcond", "OMIM:603903", desc='sickle-cell anemia', seed_node_bool=True)
-    expand_mim_geneticcond(ob, node)
+    node = ob.add_node("omim_disease", "OMIM:603903", desc='sickle-cell anemia', seed_node_bool=True)
+    expand_omim_disease(ob, node)
     ob.neo4j_push()
 
 def test_description_uniprot():
@@ -240,14 +255,14 @@ def test_description_disont2():
 
 def test_add_mim():
     ob = Orangeboard(master_rel_is_directed, debug=True)
-    node = ob.add_node("mim_geneticcond", "OMIM:603903", desc='sickle-cell anemia', seed_node_bool=True)
-    expand_mim_geneticcond(ob, node)
+    node = ob.add_node("omim_disease", "OMIM:603903", desc='sickle-cell anemia', seed_node_bool=True)
+    expand_omim_disease(ob, node)
     ob.neo4j_push()
 
 def test_issue2():
     ob = Orangeboard(master_rel_is_directed, debug=True)
-    node = ob.add_node("mim_geneticcond", "OMIM:603933", desc='sickle-cell anemia', seed_node_bool=True)
-    expand_mim_geneticcond(ob, node)
+    node = ob.add_node("omim_disease", "OMIM:603933", desc='sickle-cell anemia', seed_node_bool=True)
+    expand_omim_disease(ob, node)
 
 def test_issue3():
     ob = Orangeboard(master_rel_is_directed, debug=True)
@@ -258,14 +273,14 @@ def test_issue3():
 
 def test_issue6():
     ob = Orangeboard(master_rel_is_directed, debug=True)
-    ob.add_node("mim_geneticcond", 'OMIM:605027', desc="LYMPHOMA, NON-HODGKIN, FAMILIAL", seed_node_bool=True)
+    ob.add_node("omim_disease", 'OMIM:605027', desc="LYMPHOMA, NON-HODGKIN, FAMILIAL", seed_node_bool=True)
     expand_all_nodes(ob)
     expand_all_nodes(ob)
     expand_all_nodes(ob)
 
 def test_issue7():
     ob = Orangeboard(master_rel_is_directed, debug=True)
-    ob.add_node("mim_geneticcond", 'OMIM:605275', desc="NOONAN SYNDROME 2; NS2", seed_node_bool=True)
+    ob.add_node("omim_disease", 'OMIM:605275', desc="NOONAN SYNDROME 2; NS2", seed_node_bool=True)
     expand_all_nodes(ob)
     expand_all_nodes(ob)
     expand_all_nodes(ob)
@@ -277,6 +292,12 @@ def test_issue9():
     ob.add_rel('interacts_with', 'reactome', node1, node2)
     ob.neo4j_push()
 
+def test_microrna():
+    ob = Orangeboard(master_rel_is_directed, debug=True)
+    ob.add_node('omim_disease', 'OMIM:613074', desc='deafness', seed_node_bool=True)
+    expand_all_nodes(ob)
+    ob.neo4j_push()
+    
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="prototype reasoning tool for Q1, NCATS competition, 2017")
     parser.add_argument('--test', dest='test_function_to_call')
@@ -284,4 +305,4 @@ if __name__ == '__main__':
     args_dict = vars(args)
     if args_dict.get("test_function_to_call", None) is not None:
         print("going to call function: " + args_dict["test_function_to_call"])
-        timeit.timeit(lambda: globals()[args_dict["test_function_to_call"]]())
+        timeit.timeit(lambda: globals()[args_dict["test_function_to_call"]](), number=1)
