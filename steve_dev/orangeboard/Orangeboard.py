@@ -150,6 +150,11 @@ class Orangeboard:
     
     def add_node(self, nodetype, name, seed_node_bool=False, desc=''):
         if seed_node_bool:
+            old_seed_node = self.seed_node
+            if old_seed_node is not None:
+                old_seed_node_uuid = old_seed_node.uuid
+            else:
+                old_seed_node_uuid = None
             self.set_seed_node(None)
         else:
             if self.seed_node is None:
@@ -157,6 +162,7 @@ class Orangeboard:
                 exit(1)
         existing_node = self.get_node(nodetype, name)
         if existing_node is None:
+            ## this is a new node we are adding
             subdict = self.dict_nodetype_to_dict_name_to_node.get(nodetype, None)
             if subdict is None:
                 self.dict_nodetype_to_dict_name_to_node[nodetype] = dict()
@@ -172,10 +178,28 @@ class Orangeboard:
                 self.dict_seed_uuid_to_list_nodes[seed_node_uuid] = list()
             self.dict_seed_uuid_to_list_nodes[seed_node_uuid].append(new_node)
         else:
+            ## node is already in the orangeboard
             if desc != '' and existing_node.desc == '':
                 existing_node.desc = desc
             if seed_node_bool:
+                ## node is already in the orangeboard but we are updating its seed node
+                ## (1) get the UUID for the existing node
+                new_seed_node_uuid = existing_node.uuid
+                ## (2) set the "expanded" variable of the existing node to False
                 existing_node.expanded = False
+                ## (3) set the seed_node of the orangeboard to the existing_node
+                self.set_seed_node(existing_node)
+                ## (4) set the seed_node of the existing node to itself
+                existing_node.seed_node = existing_node
+                ## (5) add the existing node to the new seed-node-level list:
+                new_seed_node_list = self.dict_seed_uuid_to_list_nodes.get(new_seed_node_uuid, None)
+                if new_seed_node_list is None:
+                    new_seed_node_list = []
+                    self.dict_seed_uuid_to_list_nodes[new_seed_node_uuid] = new_seed_node_list
+                new_seed_node_list.append(existing_node)
+                ## (6) remove the existing node from the old seed-node-level list:
+                assert old_seed_node_uuid is not None
+                self.dict_seed_uuid_to_list_nodes[old_seed_node_uuid].remove(existing_node)
         if self.debug:
             node_count = self.count_nodes()
             if node_count % Orangeboard.DEBUG_COUNT_REPORT_GRANULARITY == 0:
