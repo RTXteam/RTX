@@ -62,6 +62,7 @@ class QueryOMIM:
     def test():
         qo = QueryOMIM()
         print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:603903'))
+        print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:613074'))
         qo.test_issue1()
 
 if __name__ == '__main__':
