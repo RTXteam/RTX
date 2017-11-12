@@ -18,54 +18,6 @@ class QueryDisGeNet:
     @staticmethod
     @CachedMethods.register
     @functools.lru_cache(maxsize=1024, typed=False)
-    def query_mesh_id_to_uniprot_ids(mesh_id):
-        ent = 'disease'
-        id = 'mesh'
-        STR = "c1.MESH = '"
-        intfield = mesh_id
-        seq = ( """
-        DEFINE
-          	c0='/data/gene_disease_summary',
-	c1='/data/diseases',
-	c2='/data/genes',
-	c4='/data/sources'
-        ON
-           'http://www.disgenet.org/web/DisGeNET'
-        SELECT
-         	c1 (diseaseId, name, diseaseClassName, STY, MESH, OMIM, type ),
-	c2 (geneId, symbol,   uniprotId, description, pantherName ),
-	c0 (score, EI, Npmids, Nsnps)
-           
-        FROM
-            c0
-        WHERE
-            (
-                """ + STR +  mesh_id+"""'
-            AND
-                c4 = 'ALL'
-            )
-        ORDER BY
-            c0.score DESC""" ); #
-
-        binary_data = seq.encode("utf-8")
-        req = urllib.request.Request("http://www.disgenet.org/oql")
-        res = urllib.request.urlopen(req, binary_data)
-        data  = res.read().decode("utf-8")
-        res.close()
-        ret_data_df = pandas.read_csv(io.StringIO(data), sep="\t").head(QueryDisGeNet.MAX_GENES_FOR_DISEASE)
-        ret_data = set(ret_data_df["c2.uniprotId"].tolist()) - {'null'}
-        for prot in ret_data.copy():
-            if '.' in prot or ';' in prot:
-                ret_data.remove(prot)
-                prot.replace('.', '')
-                prots_to_add = prot.split(';')
-                if len(prots_to_add) <= QueryDisGeNet.MAX_PROTS_FOR_GENE:
-                    ret_data |= set(prots_to_add)
-        return(ret_data)
-
-    @staticmethod
-    @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_mesh_id_to_uniprot_ids_desc(mesh_id):
         ent = 'disease'
         id = 'mesh'
