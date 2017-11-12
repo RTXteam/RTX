@@ -27,7 +27,7 @@ class QueryMyGene:
     @functools.lru_cache(maxsize=1024, typed=False)
     def convert_gene_symbol_to_uniprot_id(self, gene_symbol):
         res = self.mygene_obj.query('symbol:' + gene_symbol, species='human',
-                           fields='uniprot')
+                                    fields='uniprot', verbose=False)
         uniprot_ids_set = set()
         if len(res) > 0:
             uniprot_ids_list = []
@@ -48,7 +48,7 @@ class QueryMyGene:
     @functools.lru_cache(maxsize=1024, typed=False)
     def convert_uniprot_id_to_gene_symbol(self, uniprot_id):
         res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human',
-                           fields='symbol')
+                                    fields='symbol', verbose=False)
         gene_symbol = set()
         if len(res) > 0:
             gene_symbol = set([hit["symbol"] for hit in res["hits"]])
@@ -58,14 +58,23 @@ class QueryMyGene:
     @functools.lru_cache(maxsize=1024, typed=False)
     def convert_uniprot_id_to_entrez_gene_ID(self, uniprot_id):
         res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human',
-                                    fields='entrezgene')
-        gene_symbol = set()
+                                    fields='entrezgene', verbose=False)
+        entrez_ids = set()
         if len(res) > 0:
-            gene_symbol = set([hit["entrezgene"] for hit in res["hits"]])
-        return gene_symbol
-     
+            entrez_ids = set([hit["entrezgene"] for hit in res["hits"]])
+        return entrez_ids
+
+    def convert_gene_symbol_to_entrez_gene_ID(self, gene_symbol):
+        res = self.mygene_obj.query('symbol:' + gene_symbol, species='human',
+                                    fields='entrezgene', verbose=False)
+        entrez_ids = set()
+        if len(res) > 0:
+            entrez_ids = set([hit['entrezgene'] for hit in res['hits']])
+        return entrez_ids
+    
     def test():
         mg = QueryMyGene()
+        print(mg.convert_gene_symbol_to_entrez_gene_ID('MIR96'))
         print(mg.convert_gene_symbol_to_uniprot_id("HMOX1"))
         print(mg.convert_gene_symbol_to_uniprot_id('RAD54B'))
         print(mg.convert_gene_symbol_to_uniprot_id('NS2'))
