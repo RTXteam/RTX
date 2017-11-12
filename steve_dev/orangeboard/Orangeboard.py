@@ -75,7 +75,7 @@ class Orangeboard:
     NEO4J_USERNAME = "neo4j"
     NEO4J_PASSWORD = "precisionmedicine"
     NEO4J_URL = "bolt://localhost:7687"
-    DEBUG_COUNT_REPORT_GRANULARITY = 10
+    DEBUG_COUNT_REPORT_GRANULARITY = 1000
     
     def __init__(self, dict_reltype_dirs, debug=False):
         self.dict_nodetype_to_dict_name_to_node = dict()
