@@ -4,24 +4,22 @@ import CachedMethods
 
 class QueryBioLink:
     API_BASE_URL = {
-        "get_phenotypes_for_disease": "https://api.monarchinitiative.org/api/bioentity/disease/{disease_id}/phenotypes/"
-                                     "?fetch_objects=true&rows=10000",
-        "find_disease_by_gene": "https://api.monarchinitiative.org/api/bioentity/gene/{gene_id}/diseases/"
-                                "?fetch_objects=true&rows=10000",
-        "find_gene_by_disease": "https://api.monarchinitiative.org/api/bioentity/disease/{disease_id}/genes/"
-                                "?fetch_objects=true&rows=10000",
-        "get_phenotypes_for_gene": "https://api.monarchinitiative.org/api/bioentity/gene/{gene_id}/phenotypes/"
-                                "?fetch_objects=true&rows=10000",
-        "find_gene_by_pathway": "https://api.monarchinitiative.org/api/bioentity/pathway/{pathway_id}/genes/"
-                                "?fetch_objects=true&rows=10000",
+        "get_phenotypes_for_disease": "https://api.monarchinitiative.org/api/bioentity/disease/{disease_id}/phenotypes/",
+        "find_disease_by_gene": "https://api.monarchinitiative.org/api/bioentity/gene/{gene_id}/diseases/",
+        "get_genes_for_disease": "https://api.monarchinitiative.org/api/bioentity/disease/{disease_id}/genes/",
+        "get_phenotypes_for_gene": "https://api.monarchinitiative.org/api/bioentity/gene/{gene_id}/phenotypes/",
+        "find_gene_by_pathway": "https://api.monarchinitiative.org/api/bioentity/pathway/{pathway_id}/genes/",
         "get_label_for_disease": "https://api.monarchinitiative.org/api/bioentity/disease/{disease_id}",
         "get_label_for_phenotype": "https://api.monarchinitiative.org/api/bioentity/phenotype/{phenotype_id}"
     }
 
     @staticmethod
     def __access_api(url):
-        print(url)
+#        print(url)
         res = requests.get(url)
+        res_status_code = res.status_code
+        if res_status_code != 200:
+            print("Status code result: " + str(res_status_code))
         assert 200 == res.status_code
         return res.json()
 
@@ -74,8 +72,8 @@ class QueryBioLink:
     @staticmethod
     @CachedMethods.register
     @functools.lru_cache(maxsize=1024, typed=False)
-    def find_gene_by_disease(disease_id):
-        url = QueryBioLink.API_BASE_URL["find_gene_by_disease"].format(disease_id=disease_id)
+    def get_genes_for_disease_desc(disease_id):
+        url = QueryBioLink.API_BASE_URL["get_genes_for_disease"].format(disease_id=disease_id)
 
         results = QueryBioLink.__access_api(url)['objects']
 
@@ -116,13 +114,13 @@ class QueryBioLink:
         return ret_dict
 
 if __name__ == '__main__':
+    print(QueryBioLink.get_genes_for_disease_desc("OMIM:605543"))
+    print(QueryBioLink.find_diseases_by_gene("NCBIGene:100048912"))
     print(QueryBioLink.get_phenotypes_for_disease_desc("OMIM:605543"))
     print(QueryBioLink.get_phenotypes_for_gene_desc("NCBIGene:4750"))
     print(QueryBioLink.get_phenotypes_for_gene("NCBIGene:4750"))
     print(QueryBioLink.find_diseases_by_gene("NCBIGene:4750"))
     print(QueryBioLink.find_diseases_by_gene("NCBIGene:1111111"))
-    print(QueryBioLink.find_gene_by_disease("OMIM:605543"))
     print(QueryBioLink.get_label_for_disease("DOID:1498"))
     print(QueryBioLink.get_label_for_disease("OMIM:605543"))
     print(QueryBioLink.get_label_for_phenotype("HP:0000003"))
-    
