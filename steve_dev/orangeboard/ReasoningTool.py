@@ -69,21 +69,24 @@ def expand_ncbigene_microrna(orangeboard, node):
     for phenotype_id in phenotype_ids_dict.keys():
         phenotype_node = orangeboard.add_node('phenont_phenotype', phenotype_id, desc=phenotype_ids_dict[phenotype_id])
         orangeboard.add_rel('gene_assoc_with', 'BioLink', node, phenotype_node)
-    mirbase_id = query_mygene_obj.convert_entrez_gene_ID_to_mirbase_ID(int(ncbi_gene_id.replace('NCBIGene:','')))
-    if len(mirbase_id) > 0:
-        assert len(mirbase_id)==1
-        target_gene_symbols = QueryMiRGate.get_gene_symbols_regulated_by_microrna(mirbase_id)
-        for target_gene_symbol in target_gene_symbols:
-            uniprot_ids = query_mygene_obj.convert_gene_symbol_to_uniprot_id(target_gene_symbol)
-            for uniprot_id in uniprot_ids:
-                target_prot_node = orangeboard.add_node('uniprot_protein', uniprot_id, desc=target_gene_symbol)
-                orangeboard.add_rel('controls_expression_of', 'miRGate', node, target_prot_node)
-            if len(uniprot_ids)==0:
-                if is_mir(target_gene_symbol):
-                    target_ncbi_entrez_ids = query_mygene_obj.convert_gene_symbol_to_entrez_gene_ID(target_gene_symbol)
-                    for target_ncbi_entrez_id in target_ncbi_entrez_ids:
-                        target_mir_node = orangeboard.add_node('ncbigene_microrna', 'NCBIGene:' + str(target_ncbi_entrez_id), desc=target_gene_symbol)
-                        orangeboard.add_rel('controls_expression_of', 'miRGate', node, target_mir_node)
+    mirbase_ids = query_mygene_obj.convert_entrez_gene_ID_to_mirbase_ID(int(ncbi_gene_id.replace('NCBIGene:','')))
+    for mirbase_id in mirbase_ids:
+        mature_mir_ids = QueryMiRBase.convert_mirbase_id_to_mature_mir_ids(mirbase_id)
+        for mature_mir_id in mature_mir_ids:
+            print(mirbase_id)
+            print(mature_mir_id)
+            target_gene_symbols = QueryMiRGate.get_gene_symbols_regulated_by_microrna(mature_mir_id)
+            for target_gene_symbol in target_gene_symbols:
+                uniprot_ids = query_mygene_obj.convert_gene_symbol_to_uniprot_id(target_gene_symbol)
+                for uniprot_id in uniprot_ids:
+                    target_prot_node = orangeboard.add_node('uniprot_protein', uniprot_id, desc=target_gene_symbol)
+                    orangeboard.add_rel('controls_expression_of', 'miRGate', node, target_prot_node)
+                    if len(uniprot_ids)==0:
+                        if is_mir(target_gene_symbol):
+                            target_ncbi_entrez_ids = query_mygene_obj.convert_gene_symbol_to_entrez_gene_ID(target_gene_symbol)
+                            for target_ncbi_entrez_id in target_ncbi_entrez_ids:
+                                target_mir_node = orangeboard.add_node('ncbigene_microrna', 'NCBIGene:' + str(target_ncbi_entrez_id), desc=target_gene_symbol)
+                                orangeboard.add_rel('controls_expression_of', 'miRGate', node, target_mir_node)
     
 def expand_reactome_pathway(orangeboard, node):
     reactome_id_str = node.name
