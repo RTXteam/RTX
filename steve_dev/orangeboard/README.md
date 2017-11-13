@@ -3,11 +3,13 @@
 ## Base python requirements:
 - python 3.5 or newer (we are not testing or coding for compatibility with python2)
 
-## Python packages required:
-- `neo4j-driver` (version 1.5.0; we are installing using `pip3 install neo4j-driver`)
-- `requests` (version 2.18.4; we are installing using `pip3 install requests`)
-- `pandas` (version 0.21.0; we are installing using `pip3 install pandas`)
-- `mygene` (version 3.0.0, we are installing using `pip3 install mygene`)
+## Python packages required: (all packages installed using `pip3 install`)
+- `neo4j-driver` (version 1.5.0)
+- `requests` (version 2.18.4)
+- `requests-cache` (version 0.4.13)
+- `pandas` (version 0.21.0)
+- `mygene` (version 3.0.0)
+- `lxml` (version 4.1.1)
 
 ## Neo4j:  Community Edition, version 3.3.0 (installed locally)
 
@@ -15,7 +17,8 @@
 
     python3 ReasoningTool.py --test TEST_FUNCTION_NAME
     
-(see code for the test functions that you can run)
+(see code for the test functions that you can run; `bigtest` is the one that will 
+seed a node and do three rounds of expansion)
 
 # What is the Orangeboard?
 
@@ -59,20 +62,24 @@ of network protocol (HTTP/REST query, etc.).
 - `QueryOMIM.py`:  we use this to find the gene or protein that is "hit" by a genetic condition.
 - `QueryReactome.py`: we use this to find the pathways with which a protein is
   associated, and the proteins that are members of a pathway (so repeated invocations of this class
-  would yield a bipartite graph of proteins and pathways).
+  would yield a bipartite graph of proteins and pathways). Also gives us protein-protein interactions.
 - `QueryDisGeNet.py`: we use this to map a gene to a disease
 - `QueryDisont.py`: we use this to map a disease to "child diseases" that are special cases of the parent disease
 - `QueryMyGene.py`: enables us to interconvert between 
+- `QueryBioLink.py`:  this gives us disease-phenotype relationships, disease-gene relationships, 
+and gene-phenotype relationships.
+- `QueryMiRGate.py`: gives us microRNA-to-target-gene relationships
+- `QueryMiRBase.py`: used for identifier mapping for microRNAs (gene symbols to mature microRNA IDs, etc.)
+- `QueryGeneProf.py`: TF-to-target gene interactions
 
 ## Knowledge sources for which query classes have been written but not yet integrated into ReasoningTool.py:
 
-- `QueryBioLink.py`:  this will give us disease-phenotype relationships, disease-gene relationships, 
-gene-phenotype relationships, etc.  TODO: integrate this into ReasoningTool.py
 - `QueryPC2.py`: queries Pathway Commons 2.0 (PC2) for protein-pathway
-  relationships. Querying PC2 can be very slow, so we are not using it at this time.
+  relationships. Querying PC2 can be very slow, so we are not using it at this time. But this knowledge
+  base is potentially useful for literature-curated protein-DNA interactions ("controls-expression-of");
+  maybe we could make our own "knowledge source" based on their SIF file?
 
 ## Knowledge sources for which our query classes are not yet implemented or are broken in some way:
 
 - `QueryPazar.py`: not sure we will ever end up remotely querying Pazar; Pazar looks useful but the web API is 
 SOAP-based and semi-undocumented. (SAR)
-- `QueryGeneProf.py`: experimental, under development (SAR)
