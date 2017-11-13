@@ -297,7 +297,7 @@ def test_description_disont():
 def test_description_disont2():
     ob = Orangeboard(master_rel_is_directed, debug=True)
     node = ob.add_node('disont_disease', 'DOID:9352', desc='foobar', seed_node_bool=True)
-    expand_node(ob)
+    expand_disont_disease(ob, node)
     ob.neo4j_push()
 
 def test_add_mim():
