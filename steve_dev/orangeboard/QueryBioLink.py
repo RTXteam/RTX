@@ -2,28 +2,34 @@ import requests
 import functools
 import CachedMethods
 
+
 class QueryBioLink:
     API_BASE_URL = {
-        "get_phenotypes_for_disease": "https://api.monarchinitiative.org/api/bioentity/disease/{disease_id}/phenotypes/",
-        "get_diseases_for_gene": "https://api.monarchinitiative.org/api/bioentity/gene/{gene_id}/diseases/",
-        "get_genes_for_disease": "https://api.monarchinitiative.org/api/bioentity/disease/{disease_id}/genes/",
-        "get_phenotypes_for_gene": "https://api.monarchinitiative.org/api/bioentity/gene/{gene_id}/phenotypes/",
-        "get_genes_for_pathway": "https://api.monarchinitiative.org/api/bioentity/pathway/{pathway_id}/genes/",
+        "get_phenotypes_for_disease": "https://api.monarchinitiative.org/api/bioentity/disease/{disease_id}/phenotypes",
+        "get_diseases_for_gene": "https://api.monarchinitiative.org/api/bioentity/gene/{gene_id}/diseases",
+        "get_genes_for_disease": "https://api.monarchinitiative.org/api/bioentity/disease/{disease_id}/genes",
+        "get_phenotypes_for_gene": "https://api.monarchinitiative.org/api/bioentity/gene/{gene_id}/phenotypes",
+        "get_genes_for_pathway": "https://api.monarchinitiative.org/api/bioentity/pathway/{pathway_id}/genes",
         "get_label_for_disease": "https://api.monarchinitiative.org/api/bioentity/disease/{disease_id}",
-        "get_label_for_phenotype": "https://api.monarchinitiative.org/api/bioentity/phenotype/{phenotype_id}"
+        "get_label_for_phenotype": "https://api.monarchinitiative.org/api/bioentity/phenotype/{phenotype_id}",
+        "get_anatomies_for_gene": "https://api.monarchinitiative.org/api/bioentity/gene/{gene_id}/expression/anatomy",
+        "get_genes_for_anatomy": "https://api.monarchinitiative.org/api/bioentity/anatomy/{anatomy_id}/genes"
     }
 
     @staticmethod
     def __access_api(url):
-#        print(url)
+        # print(url)
         res = requests.get(url)
-        res_status_code = res.status_code
-        if res_status_code != 200:
-            print("Status code result: " + str(res_status_code))
-        assert 200 == res.status_code
+
+        status_code = res.status_code
+
+        assert 200 == status_code, "Status code result: {}".format(status_code)
+
         return res.json()
 
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def get_label_for_disease(disease_id):
         url = QueryBioLink.API_BASE_URL["get_label_for_disease"].format(disease_id=disease_id)
         results = QueryBioLink.__access_api(url)
@@ -51,10 +57,10 @@ class QueryBioLink:
     @CachedMethods.register
     @functools.lru_cache(maxsize=1024, typed=False)
     def get_diseases_for_gene_desc(gene_id):
-        '''for a given NCBI Entrez Gene ID, returns a ``set`` of DOI disease identifiers for the gene
+        """for a given NCBI Entrez Gene ID, returns a ``set`` of DOI disease identifiers for the gene
 
         :returns: a ``set`` containing ``str`` disease ontology identifiers
-        '''
+        """
         url = QueryBioLink.API_BASE_URL["get_diseases_for_gene"].format(gene_id=gene_id)
         results = QueryBioLink.__access_api(url)['objects']
 
@@ -82,6 +88,8 @@ class QueryBioLink:
         return results
 
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def get_label_for_phenotype(phenotype_id_str):
         url = QueryBioLink.API_BASE_URL["get_label_for_phenotype"].format(phenotype_id=phenotype_id_str)
         results = QueryBioLink.__access_api(url)
@@ -104,6 +112,8 @@ class QueryBioLink:
         return results
 
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def get_phenotypes_for_gene_desc(ncbi_entrez_gene_id):
         phenotype_id_set = QueryBioLink.get_phenotypes_for_gene(ncbi_entrez_gene_id)
         ret_dict = dict()
@@ -111,6 +121,41 @@ class QueryBioLink:
             phenotype_label_str = QueryBioLink.get_label_for_phenotype(phenotype_id_str)
             ret_dict[phenotype_id_str] = phenotype_label_str
         return ret_dict
+
+    @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
+    def get_anatomies_for_gene(gene_id):
+        """for a given NCBI Entrez Gene ID, returns a ``list`` of Anatomy ID for the gene
+
+        :returns: a ``list`` of anatomy ID
+        """
+        url = QueryBioLink.API_BASE_URL["get_anatomies_for_gene"].format(gene_id=gene_id)
+
+        results = QueryBioLink.__access_api(url)['objects']
+
+        if len(results) > 200:
+            print("Warning, got {} anatomies for gene {}".format(len(results), gene_id))
+
+        return results
+
+    @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
+    def get_genes_for_anatomy(anatomy_id):
+        """for a given Anatomy ID, returns a ``list`` of Gene ID for the anatomy
+
+        :returns: a ``list`` of gene ID
+        """
+        url = QueryBioLink.API_BASE_URL["get_genes_for_anatomy"].format(anatomy_id=anatomy_id)
+
+        results = QueryBioLink.__access_api(url)['associations']
+        results = list(map(lambda r: r["subject"]["id"], results))
+
+        if len(results) > 200:
+            print("Warning, got {} genes for anatomy {}".format(len(results), anatomy_id))
+
+        return results
 
 if __name__ == '__main__':
     print(QueryBioLink.get_diseases_for_gene_desc("NCBIGene:407053"))
@@ -124,3 +169,5 @@ if __name__ == '__main__':
     print(QueryBioLink.get_label_for_disease("DOID:1498"))
     print(QueryBioLink.get_label_for_disease("OMIM:605543"))
     print(QueryBioLink.get_label_for_phenotype("HP:0000003"))
+    print(QueryBioLink.get_anatomies_for_gene("NCBIGene:407053"))
+    print(QueryBioLink.get_genes_for_anatomy("UBERON:0000006"))

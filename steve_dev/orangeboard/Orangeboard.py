@@ -86,6 +86,7 @@ class Orangeboard:
         self.debug = debug
         self.seed_node = None
         self.dict_reltype_dirs = dict_reltype_dirs
+        self.driver = None
 
     def __str__(self):
         node_list = itertools.chain.from_iterable(self.dict_seed_uuid_to_list_nodes.values())
@@ -302,102 +303,107 @@ class Orangeboard:
         for seed_node_uuid in self.dict_seed_uuid_to_list_nodes.keys():
             self.clear_from_seed_node_uuid(seed_node_uuid)
         self.seed_node = None
-        
-    def neo4j_shutdown(self):
-        """shuts down the Orangeboard by disconnecting from the Neo4j database
 
-        :returns: nothing
-        """
-        self.driver.close()
-        
     def neo4j_connect(self):
         self.driver = neo4j.v1.GraphDatabase.driver(Orangeboard.NEO4J_URL,
                                                     auth=(Orangeboard.NEO4J_USERNAME,
                                                           Orangeboard.NEO4J_PASSWORD))
 
-    def neo4j_run_cypher_query(self, session, query_string, parameters=None):
+    # def neo4j_shutdown(self):
+    #     """shuts down the Orangeboard by disconnecting from the Neo4j database
+    #
+    #     :returns: nothing
+    #     """
+    #     self.driver.close()
+
+    def neo4j_run_cypher_query(self, query, parameters=None):
         """runs a single cypher query in the neo4j database (without a transaction) and returns the result object
 
-        :param query_string: a ``str`` object containing a single cypher query (without a semicolon)
+        :param query: a ``str`` object containing a single cypher query (without a semicolon)
+        :param parameters: a ``dict`` object containing parameters for this query
         :returns: a `neo4j.v1.SessionResult` object resulting from executing the neo4j query
         """
-        if (self.debug): print(query_string)
-        assert (';' not in query_string)
-        return session.run(query_string, parameters)
+        if self.debug:
+            print(query)
+        assert ';' not in query
+
+        # Lazily initialize the driver
+        if self.driver is None:
+            self.neo4j_connect()
+
+        # Transaction is guaranteed be be committed and session be closed
+        with self.driver.session() as session:
+            with session.begin_transaction() as tx:
+                return tx.run(query, parameters)
         
-    def neo4j_clear(self, session=None, seed_node=None):
+    def neo4j_clear(self, seed_node=None):
         """deletes all nodes and relationships in the orangeboard
 
         :returns: nothing
         """
-        if session is None:
-            use_session = self.driver.session()
-        else:
-            use_session = session
         if seed_node is not None:
             seed_node_uuid = seed_node.uuid
             cypher_query_middle = ":Base {seed_node_uuid: \'" + seed_node_uuid + "\'}"
         else:
             cypher_query_middle = ''
+
         cypher_query = "MATCH (n" + \
                        cypher_query_middle + \
                        ") DETACH DELETE n"
-        if self.debug: print(cypher_query)
-        self.neo4j_run_cypher_query(use_session, cypher_query)
-        use_session.send()
-        if session is None:
-            use_session.close()
+
+        if self.debug:
+            print(cypher_query)
+
+        self.neo4j_run_cypher_query(cypher_query)
 
     def neo4j_push(self, seed_node=None):
         assert self.dict_reltype_dirs is not None
+
+        self.neo4j_clear()
+
         nodetypes = self.get_all_nodetypes()
-        self.neo4j_connect()
-        with self.driver.session() as session:
-            self.neo4j_clear(session)
-            for nodetype in nodetypes:
-                if self.debug:
-                    print("Pushing nodes to Neo4j for node type: " + nodetype)
-                nodes = self.get_all_nodes_for_nodetype(nodetype)
-                if seed_node is not None:
-                    nodes &= self.get_all_nodes_for_seed_node_uuid(seed_node.uuid)
-                query_params = { 'props': [ node.get_props() for node in nodes ] }
-                first_node = None
-                node = next(iter(nodes))
-                cypher_query_str = 'UNWIND $props as map\nCREATE (n' + \
-                                   Orangeboard.make_label_string_from_set(node.get_labels()) + \
-                                   ')\nSET n = map'
-                if self.debug:
-                    print(cypher_query_str)
-                res = self.neo4j_run_cypher_query(session, cypher_query_str, query_params)
-                if self.debug:
-                    print(res.summary())
-            self.neo4j_run_cypher_query(session, "CREATE INDEX ON :Base(UUID)")
-            self.neo4j_run_cypher_query(session, "CREATE INDEX ON :Base(seed_node_uuid)")
-            reltypes = self.get_all_reltypes()
-            session.send()
-            for reltype in reltypes:
-                if self.debug:
-                    print("Pushing relationships to Neo4j for relationship type: " + reltype)
-                reltype_dir = self.dict_reltype_dirs[reltype]
-                rels = self.get_all_rels_for_reltype(reltype)
-                if seed_node is not None:
-                    rels &= self.get_all_rels_for_seed_node_uuid(seed_node.uuid)
-                reltype_rels_params_list = [ rel.get_props() for rel in rels ]
-                if not reltype_dir:
-                    reltype_rels_params_list = reltype_rels_params_list + \
-                                               [ rel.get_props(reverse=True) for rel in rels]
-                query_params = { 'rel_data_list': reltype_rels_params_list }
-                cypher_query_str = "UNWIND $rel_data_list AS rel_data_map\n" + \
-                                   "MATCH (n1:Base {UUID: rel_data_map.source_node_uuid})," + \
-                                   "(n2:Base {UUID: rel_data_map.target_node_uuid})\n" + \
-                                   "CREATE (n1)-[:" + reltype + \
-                                   " { source_node_uuid: rel_data_map.source_node_uuid," + \
-                                   " target_node_uuid: rel_data_map.target_node_uuid," + \
-                                   " sourcedb: rel_data_map.sourcedb," + \
-                                   " seed_node_uuid: rel_data_map.seed_node_uuid," + \
-                                   " UUID: rel_data_map.UUID }]->(n2)"
-                res = self.neo4j_run_cypher_query(session, cypher_query_str, query_params)
-                if self.debug:
-                    print(res.summary())
-            session.send()
-            session.close()
+        for nodetype in nodetypes:
+            if self.debug:
+                print("Pushing nodes to Neo4j for node type: " + nodetype)
+            nodes = self.get_all_nodes_for_nodetype(nodetype)
+            if seed_node is not None:
+                nodes &= self.get_all_nodes_for_seed_node_uuid(seed_node.uuid)
+            query_params = {'props': [node.get_props() for node in nodes]}
+            node = next(iter(nodes))
+            cypher_query_str = 'UNWIND $props as map\nCREATE (n' + \
+                               Orangeboard.make_label_string_from_set(node.get_labels()) + \
+                               ')\nSET n = map'
+            if self.debug:
+                print(cypher_query_str)
+            res = self.neo4j_run_cypher_query(cypher_query_str, query_params)
+            if self.debug:
+                print(res.summary().counters)
+
+        self.neo4j_run_cypher_query("CREATE INDEX ON :Base(UUID)")
+        self.neo4j_run_cypher_query("CREATE INDEX ON :Base(seed_node_uuid)")
+
+        reltypes = self.get_all_reltypes()
+        for reltype in reltypes:
+            if self.debug:
+                print("Pushing relationships to Neo4j for relationship type: " + reltype)
+            reltype_dir = self.dict_reltype_dirs[reltype]
+            rels = self.get_all_rels_for_reltype(reltype)
+            if seed_node is not None:
+                rels &= self.get_all_rels_for_seed_node_uuid(seed_node.uuid)
+            reltype_rels_params_list = [rel.get_props() for rel in rels]
+            if not reltype_dir:
+                reltype_rels_params_list = reltype_rels_params_list + \
+                                           [rel.get_props(reverse=True) for rel in rels]
+            query_params = {'rel_data_list': reltype_rels_params_list}
+            cypher_query_str = "UNWIND $rel_data_list AS rel_data_map\n" + \
+                               "MATCH (n1:Base {UUID: rel_data_map.source_node_uuid})," + \
+                               "(n2:Base {UUID: rel_data_map.target_node_uuid})\n" + \
+                               "CREATE (n1)-[:" + reltype + \
+                               " { source_node_uuid: rel_data_map.source_node_uuid," + \
+                               " target_node_uuid: rel_data_map.target_node_uuid," + \
+                               " sourcedb: rel_data_map.sourcedb," + \
+                               " seed_node_uuid: rel_data_map.seed_node_uuid," + \
+                               " UUID: rel_data_map.UUID }]->(n2)"
+            res = self.neo4j_run_cypher_query(cypher_query_str, query_params)
+            if self.debug:
+                print(res.summary().counters)

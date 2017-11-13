@@ -64,6 +64,8 @@ class QueryMyGene:
             entrez_ids = set([hit["entrezgene"] for hit in res["hits"]])
         return entrez_ids
 
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def convert_gene_symbol_to_entrez_gene_ID(self, gene_symbol):
         res = self.mygene_obj.query('symbol:' + gene_symbol, species='human',
                                     fields='entrezgene', verbose=False)
@@ -76,6 +78,8 @@ class QueryMyGene:
                     entrez_ids.add(entrez_id)
         return entrez_ids
 
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def convert_entrez_gene_ID_to_mirbase_ID(self, entrez_gene_id):
         assert type(entrez_gene_id)==int
         res = self.mygene_obj.query('entrezgene:' + str(entrez_gene_id), specis='human', fields='miRBase', verbose=False)
