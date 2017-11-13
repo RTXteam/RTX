@@ -154,10 +154,10 @@ def expand_uniprot_protein(orangeboard, node):
         if node2.uuid != node1.uuid:
             orangeboard.add_rel('interacts_with', 'reactome', node1, node2)
 
-
 def expand_phenont_phenotype(orangeboard, node):
     pass
-
+    ## TODO:  expand phenotype to child phenotypes, through the phenotype ontology as we do for disease ontology
+    
 def expand_omim_disease(orangeboard, node):
     res_dict = query_omim_obj.disease_mim_to_gene_symbols_and_uniprot_ids(node.name)
     uniprot_ids = res_dict['uniprot_ids']
