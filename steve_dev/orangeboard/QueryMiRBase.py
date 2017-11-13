@@ -1,5 +1,8 @@
 import requests
 import lxml.html
+import functools
+import CachedMethods
+
 
 class QueryMiRBase:
     API_BASE_URL = 'http://www.mirbase.org/cgi-bin'
@@ -13,9 +16,9 @@ class QueryMiRBase:
         assert status_code == 200
         return res
 
-
-    
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def convert_mirbase_id_to_mir_gene_symbol(mirbase_id):
         assert mirbase_id != ''
         res = QueryMiRBase.send_query_get('mirna_entry.pl', 'acc=' + mirbase_id)
@@ -28,6 +31,8 @@ class QueryMiRBase:
         return res_symbol
 
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def convert_mirbase_id_to_mature_mir_ids(mirbase_id):
         assert mirbase_id != ''
         res = QueryMiRBase.send_query_get('mirna_entry.pl', 'acc=' + mirbase_id)

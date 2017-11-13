@@ -19,6 +19,8 @@ class QueryReactome:
         return res
 
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def query_uniprot_id_to_interacting_uniprot_ids(uniprot_id):
         res = QueryReactome.send_query_get("interactors/static/molecule", uniprot_id + "/details").json()
         res_uniprot_ids = dict()

@@ -1,5 +1,8 @@
 import requests
 import lxml.etree
+import functools
+import CachedMethods
+
 
 class QueryMiRGate:
     API_BASE_URL = 'http://mirgate.bioinfo.cnio.es/ResT/API/human'
@@ -14,6 +17,8 @@ class QueryMiRGate:
         return res
 
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def get_microrna_ids_that_regulate_gene_symbol(gene_symbol):
         res = QueryMiRGate.send_query_get('gene_predictions', gene_symbol)
         root = lxml.etree.fromstring(res.content)
@@ -24,6 +29,8 @@ class QueryMiRGate:
         return res_ids
 
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def get_gene_symbols_regulated_by_microrna(microrna_id):
         '''returns the gene symbols that a given microrna (MIMAT ID) regulates
         
