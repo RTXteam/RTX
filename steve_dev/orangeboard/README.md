@@ -78,7 +78,9 @@ and gene-phenotype relationships.
   relationships. Querying PC2 can be very slow, so we are not using it at this time. But this knowledge
   base is potentially useful for literature-curated protein-DNA interactions ("controls-expression-of");
   maybe we could make our own "knowledge source" based on their SIF file?
-
+- `QueryUniprot.py`: can map a Uniprot protein to Reactome pathways; not sure what this buys us because
+  we are already doing it with Reactome.
+  
 ## Knowledge sources for which our query classes are not yet implemented or are broken in some way:
 
 - `QueryPazar.py`: not sure we will ever end up remotely querying Pazar; Pazar looks useful but the web API is 
