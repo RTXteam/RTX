@@ -73,8 +73,6 @@ def expand_ncbigene_microrna(orangeboard, node):
     for mirbase_id in mirbase_ids:
         mature_mir_ids = QueryMiRBase.convert_mirbase_id_to_mature_mir_ids(mirbase_id)
         for mature_mir_id in mature_mir_ids:
-            print(mirbase_id)
-            print(mature_mir_id)
             target_gene_symbols = QueryMiRGate.get_gene_symbols_regulated_by_microrna(mature_mir_id)
             for target_gene_symbol in target_gene_symbols:
                 uniprot_ids = query_mygene_obj.convert_gene_symbol_to_uniprot_id(target_gene_symbol)
