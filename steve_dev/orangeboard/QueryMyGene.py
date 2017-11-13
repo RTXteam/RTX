@@ -71,15 +71,24 @@ class QueryMyGene:
         if len(res) > 0:
             entrez_ids = set([hit['entrezgene'] for hit in res['hits']])
         return entrez_ids
+
+    def convert_entrez_gene_ID_to_mirbase_ID(self, entrez_gene_id):
+        assert type(entrez_gene_id)==int
+        res = self.mygene_obj.query('entrezgene:' + str(entrez_gene_id), specis='human', fields='miRBase', verbose=False)
+        mirbase_id = set()
+        if len(res) > 0:
+            mirbase_id = set([hit['miRBase'] for hit in res['hits']])
+        return mirbase_id
     
     def test():
         mg = QueryMyGene()
         print(mg.convert_gene_symbol_to_entrez_gene_ID('MIR96'))
+        print(mg.convert_entrez_gene_ID_to_mirbase_ID(407053))
         print(mg.convert_gene_symbol_to_uniprot_id("HMOX1"))
         print(mg.convert_gene_symbol_to_uniprot_id('RAD54B'))
         print(mg.convert_gene_symbol_to_uniprot_id('NS2'))
         print(mg.convert_uniprot_id_to_gene_symbol("P09601"))
         print(mg.convert_uniprot_id_to_entrez_gene_ID("P09601"))
-        
+
 if __name__ == '__main__':
     QueryMyGene.test()
