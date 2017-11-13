@@ -3,6 +3,7 @@ import itertools
 import pprint
 import neo4j.v1
 
+## NOTE to users:  neo4j password hard-coded (see NEO4J_PASSWORD below)
 
 class Node:
     def __init__(self, nodetype, name, seed_node):
