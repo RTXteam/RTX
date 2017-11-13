@@ -69,7 +69,11 @@ class QueryMyGene:
                                     fields='entrezgene', verbose=False)
         entrez_ids = set()
         if len(res) > 0:
-            entrez_ids = set([hit['entrezgene'] for hit in res['hits']])
+            entrez_ids = set()
+            for hit in res['hits']:
+                entrez_id = hit.get('entrezgene', None)
+                if entrez_id is not None:
+                    entrez_ids.add(entrez_id)
         return entrez_ids
 
     def convert_entrez_gene_ID_to_mirbase_ID(self, entrez_gene_id):
