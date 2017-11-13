@@ -7,7 +7,7 @@ class QueryMiRBase:
     @staticmethod
     def send_query_get(handler, url_suffix): 
         url_str = QueryMiRBase.API_BASE_URL + "/" + handler + "?" + url_suffix
-        print(url_str)
+#        print(url_str)
         res = requests.get(url_str, headers={'accept': 'application/json'})
         status_code = res.status_code
         assert status_code == 200
@@ -34,12 +34,11 @@ class QueryMiRBase:
         ret_ids = set()
         res_tree = lxml.html.fromstring(res.content)
         ## Try to find a suitable REST API somewhere, to replace this brittle HTML page scraping:
-        for mature_sequence_element in res_tree.xpath("/html/body/table[*]/tr/td/h2[contains(text(),'Mature sequence')]"):
-            ret_ids.add(mature_sequence_element.text.split('Mature sequence ')[1].replace('\n',''))
-        return(ret_ids)
+        hrefs = [x.get('href').split('=')[1] for x in res_tree.xpath("//a[contains(@href, 'MIMAT')]")]               
+        return(set(hrefs))
 
     def test():
-#        print(QueryMiRBase.convert_mirbase_id_to_mature_mir_ids('MI0000098'))
+        print(QueryMiRBase.convert_mirbase_id_to_mature_mir_ids('MI0000098'))
         print(QueryMiRBase.convert_mirbase_id_to_mature_mir_ids('MIMAT0027666'))
         print(QueryMiRBase.convert_mirbase_id_to_mir_gene_symbol('MIMAT0027666'))
         print(QueryMiRBase.convert_mirbase_id_to_mir_gene_symbol('MIMAT0027666X'))
