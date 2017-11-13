@@ -132,7 +132,8 @@ class QueryBioLink:
         """
         url = QueryBioLink.API_BASE_URL["get_anatomies_for_gene"].format(gene_id=gene_id)
 
-        results = QueryBioLink.__access_api(url)['objects']
+        results = QueryBioLink.__access_api(url)['associations']
+        results = dict(map(lambda r: (r["object"]["id"], r["object"]["label"]), results))
 
         if len(results) > 200:
             print("Warning, got {} anatomies for gene {}".format(len(results), gene_id))
