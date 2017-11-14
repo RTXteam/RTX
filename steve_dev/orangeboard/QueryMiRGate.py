@@ -10,7 +10,7 @@ class QueryMiRGate:
     @staticmethod
     def send_query_get(handler, url_suffix):  
         url_str = QueryMiRGate.API_BASE_URL + "/" + handler + "/" + url_suffix
-        print(url_str)
+#        print(url_str)
         res = requests.get(url_str, headers={'accept': 'application/json'})
         status_code = res.status_code
         assert status_code == 200
