@@ -45,7 +45,7 @@ class QueryPharos:
         res = QueryPharos.send_query_get("targets","("+target_id+")/links(kind=ix.idg.models.Disease)")
         if res is not None:
             res_json = res.json()
-            print(res_json)
+            #print(res_json)
             if type(res_json) == list:
                 for res_entry in res_json:
                     id = res_entry['refid']
@@ -247,6 +247,9 @@ class QueryPharos:
             print(QueryPharos.query_drug_to_targets("254599"))
         if 1 == 1:
             print(QueryPharos.query_drug_name_to_targets("lovastatin"))
+            print("=============")
+            print(QueryPharos.query_target_uniprot_accession("19672"))
+            print("=============")
             print(QueryPharos.query_target_to_diseases("19672"))
 
 if __name__ == '__main__':
