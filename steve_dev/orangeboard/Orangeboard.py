@@ -309,7 +309,7 @@ class Orangeboard:
     def neo4j_set_url(self, url='bolt://localhost:7687'):
         self.neo4j_url = url
         
-    def neo4j_set_auth(self, user='neo4j', password='precisionmedicine'):
+    def neo4j_set_auth(self, user=NEO4J_USERNAME, password=NEO4J_PASSWORD):
         self.neo4j_user = user
         self.neo4j_password = password
                
