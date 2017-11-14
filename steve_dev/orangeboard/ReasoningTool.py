@@ -108,6 +108,8 @@ def expand_reactome_pathway(orangeboard, node):
         orangeboard.add_rel('is_member_of', rel_sourcedb_dict[uniprot_id], target_node, source_node)
 #    uniprot_ids_from_pc2 = QueryPC2.pathway_id_to_uniprot_ids(reactome_id_str)  ## very slow query
 
+def expand_anatont_anatomy(orangeboard, node):
+    pass
 
 def expand_uniprot_protein(orangeboard, node):
     uniprot_id_str = node.name
