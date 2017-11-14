@@ -35,7 +35,8 @@ master_rel_is_directed = {'disease_affects': True,
                           'gene_assoc_with': True,
                           'phenotype_assoc_with': True,
                           'interacts_with': False,
-                          'controls_expression_of': True}
+                          'controls_expression_of': True,
+                          'is_expressed_in': True}
 
 master_rel_ids_in_orangeboard = {'disease_affects': dict(),
                                  'is_member_of': dict()}
@@ -45,14 +46,23 @@ master_node_ids_in_orangeboard = {'omim_disease':      dict(),
                                   'uniprot_protein':   dict(),
                                   'reactome_pathway':  dict(),
                                   'phenont_phenotype': dict(),
-                                  'ncbigene_microrna': dict()}
+                                  'ncbigene_microrna': dict(),
+                                  'anatont_anatomy':   dict()}
+
 
 def is_mir(gene_symbol):
     return re.match('MIR\d.*', gene_symbol) is not None or re.match('MIRLET\d.*', gene_symbol) is not None
-    
+
+
 def expand_ncbigene_microrna(orangeboard, node):
     ncbi_gene_id = node.name
     assert 'NCBIGene:' in ncbi_gene_id
+
+    anatomy_dict = QueryBioLink.get_anatomies_for_gene(ncbi_gene_id)
+    for anatomy_id, anatomy_desc in anatomy_dict.items():
+        anatomy_node = orangeboard.add_node('anatont_anatomy', anatomy_id, desc=anatomy_desc)
+        orangeboard.add_rel('is_expressed_in', 'BioLink', node, anatomy_node)
+
     disease_ids_dict = QueryBioLink.get_diseases_for_gene_desc(ncbi_gene_id)
     for disease_id in disease_ids_dict.keys():
         if 'OMIM:' in disease_id:
@@ -64,10 +74,12 @@ def expand_ncbigene_microrna(orangeboard, node):
                 orangeboard.add_rel('gene_assoc_with', 'BioLink', node, disease_node)
             else:
                 print('Warning: unexpected disease ID: ' + disease_id)
+
     phenotype_ids_dict = QueryBioLink.get_phenotypes_for_gene_desc(ncbi_gene_id)
     for phenotype_id in phenotype_ids_dict.keys():
         phenotype_node = orangeboard.add_node('phenont_phenotype', phenotype_id, desc=phenotype_ids_dict[phenotype_id])
         orangeboard.add_rel('gene_assoc_with', 'BioLink', node, phenotype_node)
+
     mirbase_ids = query_mygene_obj.convert_entrez_gene_ID_to_mirbase_ID(int(ncbi_gene_id.replace('NCBIGene:','')))
     for mirbase_id in mirbase_ids:
         mature_mir_ids = QueryMiRBase.convert_mirbase_id_to_mature_mir_ids(mirbase_id)
@@ -84,7 +96,8 @@ def expand_ncbigene_microrna(orangeboard, node):
                             for target_ncbi_entrez_id in target_ncbi_entrez_ids:
                                 target_mir_node = orangeboard.add_node('ncbigene_microrna', 'NCBIGene:' + str(target_ncbi_entrez_id), desc=target_gene_symbol)
                                 orangeboard.add_rel('controls_expression_of', 'miRGate', node, target_mir_node)
-    
+
+
 def expand_reactome_pathway(orangeboard, node):
     reactome_id_str = node.name
     uniprot_ids_from_reactome_dict = QueryReactome.query_reactome_pathway_id_to_uniprot_ids_desc(reactome_id_str)
@@ -94,6 +107,7 @@ def expand_reactome_pathway(orangeboard, node):
         target_node = orangeboard.add_node('uniprot_protein', uniprot_id, desc=uniprot_ids_from_reactome_dict[uniprot_id])
         orangeboard.add_rel('is_member_of', rel_sourcedb_dict[uniprot_id], target_node, source_node)
 #    uniprot_ids_from_pc2 = QueryPC2.pathway_id_to_uniprot_ids(reactome_id_str)  ## very slow query
+
 
 def expand_uniprot_protein(orangeboard, node):
     uniprot_id_str = node.name
@@ -130,6 +144,13 @@ def expand_uniprot_protein(orangeboard, node):
     entrez_gene_id = query_mygene_obj.convert_uniprot_id_to_entrez_gene_ID(uniprot_id_str)
     if len(entrez_gene_id) > 0:
         entrez_gene_id_str = 'NCBIGene:' + str(next(iter(entrez_gene_id)))
+
+        ## protein-to-anatomy associations:
+        anatomy_dict = QueryBioLink.get_anatomies_for_gene(entrez_gene_id_str)
+        for anatomy_id, anatomy_desc in anatomy_dict.items():
+            anatomy_node = orangeboard.add_node('anatont_anatomy', anatomy_id, desc=anatomy_desc)
+            orangeboard.add_rel('is_expressed_in', 'BioLink', node, anatomy_node)
+
         ## protein-disease associations:
         disont_id_dict = QueryBioLink.get_diseases_for_gene_desc(entrez_gene_id_str)
         for disont_id in disont_id_dict.keys():
@@ -153,10 +174,19 @@ def expand_uniprot_protein(orangeboard, node):
         if node2.uuid != node1.uuid:
             orangeboard.add_rel('interacts_with', 'reactome', node1, node2)
 
+
 def expand_phenont_phenotype(orangeboard, node):
-    pass
+    # EXPAND PHENOTYPE -> ANATOMY
+    phenotype_id = node.name
+
+    anatomy_dict = QueryBioLink.get_anatomies_for_phenotype(phenotype_id)
+    for anatomy_id, anatomy_desc in anatomy_dict.items():
+        anatomy_node = orangeboard.add_node('anatont_anatomy', anatomy_id, desc=anatomy_desc)
+        orangeboard.add_rel('phenotype_assoc_with', 'BioLink', node, anatomy_node)
+
     ## TODO:  expand phenotype to child phenotypes, through the phenotype ontology as we do for disease ontology
-    
+
+
 def expand_omim_disease(orangeboard, node):
     res_dict = query_omim_obj.disease_mim_to_gene_symbols_and_uniprot_ids(node.name)
     uniprot_ids = res_dict['uniprot_ids']
@@ -344,6 +374,28 @@ def test_microrna():
     expand_all_nodes(ob)
     expand_all_nodes(ob)
     ob.neo4j_push()
+
+def test_anatomy_1():
+    ob = Orangeboard(master_rel_is_directed, debug=True)
+    mir96 = ob.add_node('ncbigene_microrna', 'NCBIGene:407053', desc='MIR96', seed_node_bool=True)
+
+    expand_ncbigene_microrna(ob, mir96)
+    ob.neo4j_push()
+
+def test_anatomy_2():
+    ob = Orangeboard(master_rel_is_directed, debug=True)
+    hmox1 = ob.add_node('uniprot_protein', 'P09601', desc='HMOX1', seed_node_bool=True)
+
+    expand_uniprot_protein(ob, hmox1)
+    ob.neo4j_push()
+
+def test_anatomy_3():
+    ob = Orangeboard(master_rel_is_directed, debug=True)
+    mkd = ob.add_node('phenont_phenotype', 'HP:0000003', desc='Multicystic kidney dysplasia', seed_node_bool=True)
+
+    expand_phenont_phenotype(ob, mkd)
+    ob.neo4j_push()
+
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='prototype reasoning tool for Q1, NCATS competition, 2017')
