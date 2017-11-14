@@ -34,7 +34,6 @@ master_rel_is_directed = {'disease_affects': True,
                           'is_parent_of': True,
                           'gene_assoc_with': True,
                           'phenotype_assoc_with': True,
-                          'regulates': True,
                           'interacts_with': False,
                           'controls_expression_of': True}
 
@@ -116,7 +115,7 @@ def expand_uniprot_protein(orangeboard, node):
             for reg_uniprot_id in reg_uniprot_ids_set:
                 node2 = orangeboard.add_node('uniprot_protein', reg_uniprot_id, desc=reg_gene_symbol)
                 if node2.uuid != node1.uuid:
-                    orangeboard.add_rel('regulates', 'GeneProf', node2, node1)
+                    orangeboard.add_rel('controls_expression_of', 'GeneProf', node2, node1)
         ## microrna-gene interactions:
         microrna_regulators = QueryMiRGate.get_microrna_ids_that_regulate_gene_symbol(gene_symbol)
         for microrna_id in microrna_regulators:
@@ -130,8 +129,8 @@ def expand_uniprot_protein(orangeboard, node):
             
     entrez_gene_id = query_mygene_obj.convert_uniprot_id_to_entrez_gene_ID(uniprot_id_str)
     if len(entrez_gene_id) > 0:
-        ## protein-disease associations:
         entrez_gene_id_str = 'NCBIGene:' + str(next(iter(entrez_gene_id)))
+        ## protein-disease associations:
         disont_id_dict = QueryBioLink.get_diseases_for_gene_desc(entrez_gene_id_str)
         for disont_id in disont_id_dict.keys():
             if 'DOID:' in disont_id:
