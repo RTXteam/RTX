@@ -298,6 +298,8 @@ def bigtest():
     print('total number of edges: ' + str(ob.count_rels()))
 
     # push the entire graph to neo4j
+    ob.neo4j_set_url()  # use default url
+    ob.neo4j_set_auth() # use default username/password
     ob.neo4j_push()
 
     # clear out the neo4j graph derived from the MIM seed node
@@ -308,6 +310,8 @@ def test_description_mim():
     ob = Orangeboard(master_rel_is_directed, debug=True)
     node = ob.add_node('omim_disease', 'OMIM:603903', desc='sickle-cell anemia', seed_node_bool=True)
     expand_omim_disease(ob, node)
+    ob.neo4j_set_url()  # use default url
+    ob.neo4j_set_auth() # use default username/password
     ob.neo4j_push()
 
 def test_description_uniprot():
@@ -315,24 +319,32 @@ def test_description_uniprot():
     node = ob.add_node('uniprot_protein', 'P68871', desc='HBB', seed_node_bool=True)
     print(ob.__str__())
     expand_uniprot_protein(ob, node)
+    ob.neo4j_set_url()  # use default url
+    ob.neo4j_set_auth() # use default username/password
     ob.neo4j_push()
 
 def test_description_disont():
     ob = Orangeboard(master_rel_is_directed, debug=True)
     node = ob.add_node('disont_disease', 'DOID:12365', desc='malaria', seed_node_bool=True)
     expand_disont_disease(ob, node)
+    ob.neo4j_set_url()  # use default url
+    ob.neo4j_set_auth() # use default username/password
     ob.neo4j_push()
 
 def test_description_disont2():
     ob = Orangeboard(master_rel_is_directed, debug=True)
     node = ob.add_node('disont_disease', 'DOID:9352', desc='foobar', seed_node_bool=True)
     expand_disont_disease(ob, node)
+    ob.neo4j_set_url()  # use default url
+    ob.neo4j_set_auth() # use default username/password
     ob.neo4j_push()
 
 def test_add_mim():
     ob = Orangeboard(master_rel_is_directed, debug=True)
     node = ob.add_node('omim_disease', 'OMIM:603903', desc='sickle-cell anemia', seed_node_bool=True)
     expand_omim_disease(ob, node)
+    ob.neo4j_set_url()
+    ob.neo4j_set_auth()
     ob.neo4j_push()
 
 def test_issue2():
@@ -366,6 +378,8 @@ def test_issue9():
     node1 = ob.add_node('uniprot_protein', 'P16887', desc='HBB')
     node2 = ob.add_node('uniprot_protein', 'P09601', desc='HMOX1')
     ob.add_rel('interacts_with', 'reactome', node1, node2)
+    ob.neo4j_set_url()
+    ob.neo4j_set_auth()
     ob.neo4j_push()
 
 def test_microrna():
@@ -373,6 +387,8 @@ def test_microrna():
     ob.add_node('omim_disease', 'OMIM:613074', desc='deafness', seed_node_bool=True)
     expand_all_nodes(ob)
     expand_all_nodes(ob)
+    ob.neo4j_set_url()
+    ob.neo4j_set_auth()
     ob.neo4j_push()
 
 def test_anatomy_1():
@@ -380,6 +396,8 @@ def test_anatomy_1():
     mir96 = ob.add_node('ncbigene_microrna', 'NCBIGene:407053', desc='MIR96', seed_node_bool=True)
 
     expand_ncbigene_microrna(ob, mir96)
+    ob.neo4j_set_url()  # use default url
+    ob.neo4j_set_auth() # use default username/password
     ob.neo4j_push()
 
 def test_anatomy_2():
@@ -387,6 +405,8 @@ def test_anatomy_2():
     hmox1 = ob.add_node('uniprot_protein', 'P09601', desc='HMOX1', seed_node_bool=True)
 
     expand_uniprot_protein(ob, hmox1)
+    ob.neo4j_set_url()
+    ob.neo4j_set_auth()
     ob.neo4j_push()
 
 def test_anatomy_3():
@@ -394,6 +414,8 @@ def test_anatomy_3():
     mkd = ob.add_node('phenont_phenotype', 'HP:0000003', desc='Multicystic kidney dysplasia', seed_node_bool=True)
 
     expand_phenont_phenotype(ob, mkd)
+    ob.neo4j_set_url()
+    ob.neo4j_set_auth()
     ob.neo4j_push()
 
     
