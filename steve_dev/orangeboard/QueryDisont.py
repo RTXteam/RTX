@@ -33,6 +33,8 @@ class QueryDisont:
             return set()
 
     @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
     def query_disont_to_label(disont_id):
         res_json = QueryDisont.send_query_get('metadata', disont_id).json()
         return res_json.get('name', '')

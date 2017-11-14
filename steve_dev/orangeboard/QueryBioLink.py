@@ -13,7 +13,8 @@ class QueryBioLink:
         "get_label_for_disease": "https://api.monarchinitiative.org/api/bioentity/disease/{disease_id}",
         "get_label_for_phenotype": "https://api.monarchinitiative.org/api/bioentity/phenotype/{phenotype_id}",
         "get_anatomies_for_gene": "https://api.monarchinitiative.org/api/bioentity/gene/{gene_id}/expression/anatomy",
-        "get_genes_for_anatomy": "https://api.monarchinitiative.org/api/bioentity/anatomy/{anatomy_id}/genes"
+        "get_genes_for_anatomy": "https://api.monarchinitiative.org/api/bioentity/anatomy/{anatomy_id}/genes",
+        "get_anatomies_for_phenotype": "https://api.monarchinitiative.org/api/bioentity/phenotype/{phenotype_id}/anatomy"
     }
 
     @staticmethod
@@ -126,13 +127,14 @@ class QueryBioLink:
     @CachedMethods.register
     @functools.lru_cache(maxsize=1024, typed=False)
     def get_anatomies_for_gene(gene_id):
-        """for a given NCBI Entrez Gene ID, returns a ``list`` of Anatomy ID for the gene
+        """for a given NCBI Entrez Gene ID, returns a ``dict`` of Anatomy IDs and labels for the gene
 
-        :returns: a ``list`` of anatomy ID
+        :returns: a ``dict`` of <anatomy_ID, label>
         """
         url = QueryBioLink.API_BASE_URL["get_anatomies_for_gene"].format(gene_id=gene_id)
 
-        results = QueryBioLink.__access_api(url)['objects']
+        results = QueryBioLink.__access_api(url)['associations']
+        results = dict(map(lambda r: (r["object"]["id"], r["object"]["label"]), results))
 
         if len(results) > 200:
             print("Warning, got {} anatomies for gene {}".format(len(results), gene_id))
@@ -157,6 +159,24 @@ class QueryBioLink:
 
         return results
 
+    @staticmethod
+    @CachedMethods.register
+    @functools.lru_cache(maxsize=1024, typed=False)
+    def get_anatomies_for_phenotype(phenotype_id):
+        """for a given phenotype ID, returns a ``dict`` of Anatomy IDs and labels for the phenotype
+
+        :returns: a ``dict`` of <anatomy_ID, label>
+        """
+        url = QueryBioLink.API_BASE_URL["get_anatomies_for_phenotype"].format(phenotype_id=phenotype_id)
+
+        results = QueryBioLink.__access_api(url)
+        results = dict(map(lambda r: (r["id"], r["label"]), results))
+
+        if len(results) > 200:
+            print("Warning, got {} anatomies for phenotype {}".format(len(results), phenotype_id))
+
+        return results
+
 if __name__ == '__main__':
     print(QueryBioLink.get_diseases_for_gene_desc("NCBIGene:407053"))
     print(QueryBioLink.get_genes_for_disease_desc("OMIM:605543"))
@@ -171,3 +191,4 @@ if __name__ == '__main__':
     print(QueryBioLink.get_label_for_phenotype("HP:0000003"))
     print(QueryBioLink.get_anatomies_for_gene("NCBIGene:407053"))
     print(QueryBioLink.get_genes_for_anatomy("UBERON:0000006"))
+    print(QueryBioLink.get_anatomies_for_phenotype("HP:0000003"))

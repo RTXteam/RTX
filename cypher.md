@@ -47,11 +47,11 @@ our [example code](genetic_conditions/get_node_ids_of_genetic_conditions.R).
         WHERE id(o) IN id_list
         WITH o, degree, count(r) AS indegree
         return id(o) AS ID, degree, indegree, degree - indegree AS outdegree
-        
+
 ## Disease ID
 
 | name                           | id      |
-|--------------------------------|---------|
+| ------------------------------ | ------- |
 | _Alcohol dependence_           | 486897  |
 | _alcohol dependence_           | 1633994 |
 | Alkaptonuria                   | 6358    |
@@ -71,15 +71,45 @@ our [example code](genetic_conditions/get_node_ids_of_genetic_conditions.R).
 | post-traumatic stress disorder | 5186887 |
 | Sickle Cell Disease            | 7955    |
 
+
+
+## Disease DOID
+
+|                Disease                 | Disease name in [disease-ontology](http://disease-ontology.org/) | DOID         |
+| :------------------------------------: | ---------------------------------------- | ------------ |
+|              Osteoporosis              | osteoporosis                             | DOID:11476   |
+| Human Immunodeficiency Virus Infection | human immunodeficiency virus infectious disease | DOID:526     |
+|                Cholera                 | cholera                                  | DOID:1498    |
+|         Ebola Virus Infection          | Ebola hemorrhagic fever                  | DOID:4325    |
+|                Malaria                 | malaria                                  | DOID:12365   |
+|              Osteomalacia              | Osteomalacia                             | DOID:10573   |
+|          Hypercholesterolemia          | familial hypercholesterolemia            | DOID:13810   |
+|       Diabetes Mellitus, Type 2        | type 2 diabetes mellitus                 | DOID:9352    |
+|                 Asthma                 | asthma                                   | DOID:2841    |
+|          Chronic Pancreatitis          | pancreatitis                             | DOID:4989    |
+|           Alzheimer Disease            | Alzheimer's Disease                      | DOID:10652   |
+|         Myocardial Infarction          | myocardial infarction                    | DOID:5844    |
+|      Duchenne Muscular Dystrophy       | Duchenne Muscular Dystrophy              | DOID:11723   |
+|      Deficiency of N-glycanase 1       | NGLY1-deficiency                         | DOID:0060728 |
+|           Alcohol Dependence           | Alcohol Dependence                       | DOID:0050741 |
+|            Major Depression            | major depressive disorder                | DOID:1470    |
+|          Niemann Pick Type C           | Niemann Pick Type C                      | DOID:14504   |
+|           Huntington Disease           | Huntington's Disease                     | DOID:12858   |
+|              Alkaptonuria              | Alkaptonuria                             | DOID:9270    |
+|          Sickle Cell Disease           | sickle cell anemia                       | DOID:10923   |
+|     Post-Traumatic Stress Disorder     | post-traumatic stress disorder           | DOID:2055    |
+
+## 
+
 ## Known Genetic Conditions Giving Protection 
 
 | Genetic Condition                        | Disease                                |
-|------------------------------------------|----------------------------------------|
+| ---------------------------------------- | -------------------------------------- |
 |                                          | Osteoporosis                           |
 |                                          | Human Immunodeficiency Virus Infection |
 | cystic fibrosis                          | Cholera                                |
 |                                          | Ebola Virus Infection                  |
-| SCA, glucose-six-phosphate-dehydrogenase Duffy |  Malaria                         |
+| SCA, glucose-six-phosphate-dehydrogenase Duffy | Malaria                                |
 |                                          | Osteomalacia                           |
 | PCSK9                                    | Hypercholesterolemia                   |
 |                                          | Diabetes Mellitus, Type 2              |
@@ -117,5 +147,5 @@ ignore_list = [41913, 813839, 57088, 401035, 2294705, 2294706, 5570241]
 ## Cypher queries that we are using:
 
     FILL IN CYPHER QUERIES HERE
-    
+​    
 
