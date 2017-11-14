@@ -75,7 +75,6 @@ class Rel:
 class Orangeboard:
     NEO4J_USERNAME = "neo4j"
     NEO4J_PASSWORD = "precisionmedicine"
-    NEO4J_URL = "bolt://localhost:7687"
     DEBUG_COUNT_REPORT_GRANULARITY = 1000
     
     def __init__(self, dict_reltype_dirs, debug=False):
@@ -87,6 +86,9 @@ class Orangeboard:
         self.seed_node = None
         self.dict_reltype_dirs = dict_reltype_dirs
         self.driver = None
+        self.neo4j_url = None
+        self.neo4j_user = None
+        self.neo4j_password = None
 
     def __str__(self):
         node_list = itertools.chain.from_iterable(self.dict_seed_uuid_to_list_nodes.values())
@@ -304,11 +306,21 @@ class Orangeboard:
             self.clear_from_seed_node_uuid(seed_node_uuid)
         self.seed_node = None
 
+    def neo4j_set_url(self, url='bolt://localhost:7687'):
+        self.neo4j_url = url
+        
+    def neo4j_set_auth(self, user='neo4j', password='precisionmedicine'):
+        self.neo4j_user = user
+        self.neo4j_password = password
+               
     def neo4j_connect(self):
-        self.driver = neo4j.v1.GraphDatabase.driver(Orangeboard.NEO4J_URL,
-                                                    auth=(Orangeboard.NEO4J_USERNAME,
-                                                          Orangeboard.NEO4J_PASSWORD))
+        assert self.neo4j_url is not None
+        assert self.neo4j_user is not None
+        assert self.neo4j_password is not None
 
+        self.driver = neo4j.v1.GraphDatabase.driver(self.neo4j_url,
+                                                    auth=(self.neo4j_user,
+                                                          self.neo4j_password))
     # def neo4j_shutdown(self):
     #     """shuts down the Orangeboard by disconnecting from the Neo4j database
     #
