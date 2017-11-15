@@ -1,9 +1,0 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-
-# PyCharm project settings
-.idea/
-
-*~
-*.pyc
-.DS_store
