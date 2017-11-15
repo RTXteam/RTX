@@ -37,7 +37,7 @@ master_rel_is_directed = {'disease_affects': True,
                           'interacts_with': False,
                           'controls_expression_of': True,
                           'is_expressed_in': True,
-                          'is_target_of': True}
+                          'targets': True}
 
 master_rel_ids_in_orangeboard = {'disease_affects': dict(),
                                  'is_member_of': dict()}
@@ -60,7 +60,7 @@ def expand_pharos_drug(orangeboard, node):
         uniprot_id = QueryPharos.query_target_uniprot_accession(str(target["id"]))
 
         target_node = orangeboard.add_node('uniprot_protein', uniprot_id, desc=target["name"])
-        orangeboard.add_rel('is_target_of', 'Pharos', target_node, node)
+        orangeboard.add_rel('targets', 'Pharos', node, target_node)
 
 
 def is_mir(gene_symbol):
