@@ -100,18 +100,20 @@ def expand_ncbigene_microrna(orangeboard, node):
             target_gene_symbols = QueryMiRGate.get_gene_symbols_regulated_by_microrna(mature_mir_id)
             for target_gene_symbol in target_gene_symbols:
                 uniprot_ids = query_mygene_obj.convert_gene_symbol_to_uniprot_id(target_gene_symbol)
+
                 for uniprot_id in uniprot_ids:
                     target_prot_node = orangeboard.add_node('uniprot_protein', uniprot_id, desc=target_gene_symbol)
                     orangeboard.add_rel('controls_expression_of', 'miRGate', node, target_prot_node)
-                    if len(uniprot_ids) == 0:
-                        if is_mir(target_gene_symbol):
-                            target_ncbi_entrez_ids = query_mygene_obj.convert_gene_symbol_to_entrez_gene_ID(
-                                target_gene_symbol)
-                            for target_ncbi_entrez_id in target_ncbi_entrez_ids:
-                                target_mir_node = orangeboard.add_node('ncbigene_microrna',
-                                                                       'NCBIGene:' + str(target_ncbi_entrez_id),
-                                                                       desc=target_gene_symbol)
-                                orangeboard.add_rel('controls_expression_of', 'miRGate', node, target_mir_node)
+
+                if len(uniprot_ids) == 0:
+                    if is_mir(target_gene_symbol):
+                        target_ncbi_entrez_ids = query_mygene_obj.convert_gene_symbol_to_entrez_gene_ID(
+                            target_gene_symbol)
+                        for target_ncbi_entrez_id in target_ncbi_entrez_ids:
+                            target_mir_node = orangeboard.add_node('ncbigene_microrna',
+                                                                   'NCBIGene:' + str(target_ncbi_entrez_id),
+                                                                   desc=target_gene_symbol)
+                            orangeboard.add_rel('controls_expression_of', 'miRGate', node, target_mir_node)
 
 
 def expand_reactome_pathway(orangeboard, node):
