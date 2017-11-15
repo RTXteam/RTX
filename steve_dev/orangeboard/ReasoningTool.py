@@ -3,12 +3,6 @@ import argparse
 import requests_cache
 import timeit
 import re
-
-## refuse to run in python version < 3.5 (in case accidentally invoked using "python" rather than "python3")
-if sys.version_info[0] < 3 or sys.version_info[1] < 5:
-    print("This script requires Python version 3.5 or greater")
-    sys.exit(1)
-
 from Orangeboard import Orangeboard
 from QueryOMIM import QueryOMIM
 from QueryMyGene import QueryMyGene
@@ -20,9 +14,15 @@ from QueryGeneProf import QueryGeneProf
 from QueryBioLink import QueryBioLink
 from QueryMiRGate import QueryMiRGate
 from QueryMiRBase import QueryMiRBase
+from QueryPharos import QueryPharos
 ## from QueryPC2 import QueryPC2  ## not currently using; so comment out until such time as we decide to use it
 
 from timeit import default_timer as timer
+
+## refuse to run in python version < 3.5 (in case accidentally invoked using "python" rather than "python3")
+if sys.version_info[0] < 3 or sys.version_info[1] < 5:
+    print("This script requires Python version 3.5 or greater")
+    sys.exit(1)
 
 requests_cache.install_cache('orangeboard')
 
@@ -36,7 +36,8 @@ master_rel_is_directed = {'disease_affects': True,
                           'phenotype_assoc_with': True,
                           'interacts_with': False,
                           'controls_expression_of': True,
-                          'is_expressed_in': True}
+                          'is_expressed_in': True,
+                          'targets': True}
 
 master_rel_ids_in_orangeboard = {'disease_affects': dict(),
                                  'is_member_of': dict()}
@@ -47,7 +48,19 @@ master_node_ids_in_orangeboard = {'omim_disease':      dict(),
                                   'reactome_pathway':  dict(),
                                   'phenont_phenotype': dict(),
                                   'ncbigene_microrna': dict(),
-                                  'anatont_anatomy':   dict()}
+                                  'anatont_anatomy':   dict(),
+                                  'pharos_drug':       dict()}
+
+
+def expand_pharos_drug(orangeboard, node):
+    drug_name = node.name
+
+    targets = QueryPharos.query_drug_name_to_targets(drug_name)
+    for target in targets:
+        uniprot_id = QueryPharos.query_target_uniprot_accession(str(target["id"]))
+
+        target_node = orangeboard.add_node('uniprot_protein', uniprot_id, desc=target["name"])
+        orangeboard.add_rel('targets', 'Pharos', node, target_node)
 
 
 def is_mir(gene_symbol):
@@ -416,6 +429,15 @@ def test_anatomy_3():
     mkd = ob.add_node('phenont_phenotype', 'HP:0000003', desc='Multicystic kidney dysplasia', seed_node_bool=True)
 
     expand_phenont_phenotype(ob, mkd)
+    ob.neo4j_set_url()
+    ob.neo4j_set_auth()
+    ob.neo4j_push()
+
+def test_expand_pharos_drug():
+    ob = Orangeboard(master_rel_is_directed, debug=True)
+    lovastatin = ob.add_node('pharos_drug', 'lovastatin', desc='lovastatin', seed_node_bool=True)
+
+    expand_pharos_drug(ob, lovastatin)
     ob.neo4j_set_url()
     ob.neo4j_set_auth()
     ob.neo4j_push()
