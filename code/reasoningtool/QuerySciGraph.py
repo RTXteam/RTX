@@ -9,13 +9,12 @@ class QuerySciGraph:
     }
 
     @staticmethod
-    def __access_api(url):
-        # print(url)
-        res = requests.get(url)
+    def __access_api(url, params=None):
+        res = requests.get(url, params)
 
-        status_code = res.status_code
+        print(res.url)
 
-        assert 200 == status_code, "Status code result: {}".format(status_code)
+        assert 200 == res.status_code, "Status code result: {}; url: {}".format(res.status_code, res.url)
 
         return res.json()
 
@@ -26,7 +25,7 @@ class QuerySciGraph:
         """
         Return a dict of `<id, label>`, where `id`s are all sub-phenotype of parameter `phenont_id`.
 
-        E.g. input "HP:0000107", 
+        E.g. input "HP:0000107" (Renal cyst),
         >>> QuerySciGraph.query_sub_phenotypes_for_phenotype("HP:0000107")
         {'HP:0100877': 'Renal diverticulum', 'HP:0000108': 'Renal corticomedullary cysts', 
          'HP:0000803': 'Renal cortical cysts', 'HP:0000003': 'Multicystic kidney dysplasia', 
@@ -44,12 +43,9 @@ class QuerySciGraph:
             "relationshipType": "subClassOf"
         }
 
-        param_str = "&".join(["{}={}".format(key, value) for key, value in params.items()])
-        url = QuerySciGraph.API_BASE_URL["graph_neighbors"].format(node_id=phenont_id) + "?" + param_str
-
-        # print(url)
-
-        json = QuerySciGraph.__access_api(url)
+        # param_str = "&".join(["{}={}".format(key, value) for key, value in params.items()])
+        url = QuerySciGraph.API_BASE_URL["graph_neighbors"].format(node_id=phenont_id)
+        json = QuerySciGraph.__access_api(url, params=params)
         
         sub_edges = json['edges']  # Get all INCOMING edges
         sub_nodes = set(map(lambda e: e["sub"], sub_edges))  # Get all neighboring nodes (duplicates may exist; so set is used here)
@@ -60,4 +56,4 @@ class QuerySciGraph:
         return sub_nodes_with_labels
 
 if __name__ == '__main__':
-    print(QuerySciGraph.query_sub_phenotypes_for_phenotype("HP:0000107"))
+    print(QuerySciGraph.query_sub_phenotypes_for_phenotype("HP:0000107"))  # Renal cyst
