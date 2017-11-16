@@ -12,6 +12,7 @@ from QueryBioLink import QueryBioLink
 from QueryMiRGate import QueryMiRGate
 from QueryMiRBase import QueryMiRBase
 from QueryPharos import QueryPharos
+from QuerySciGraph import QuerySciGraph
 
 
 # from QueryPC2 import QueryPC2  # not currently using; so comment out until such time as we decide to use it
@@ -191,7 +192,10 @@ class BioNetExpander:
             anatomy_node = self.orangeboard.add_node('anatont_anatomy', anatomy_id, desc=anatomy_desc)
             self.orangeboard.add_rel('phenotype_assoc_with', 'BioLink', node, anatomy_node)
 
-        # TODO:  Expand phenotype to child phenotypes, through the phenotype ontology as we do for disease ontology  (issue #21)
+        sub_phe_dict = QuerySciGraph.query_sub_phenotypes_for_phenotype(phenotype_id)
+        for sub_phe_id, sub_phe_desc in sub_phe_dict.items():
+            sub_phe_node = self.orangeboard.add_node('phenont_phenotype', sub_phe_id, desc=sub_phe_desc)
+            self.orangeboard.add_rel('is_parent_of', 'Monarch_SciGraph', node, sub_phe_node)
 
     def expand_omim_disease(self, node):
         res_dict = self.query_omim_obj.disease_mim_to_gene_symbols_and_uniprot_ids(node.name)
