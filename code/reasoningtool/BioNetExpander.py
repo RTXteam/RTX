@@ -84,7 +84,8 @@ class BioNetExpander:
                                 target_mir_node = self.orangeboard.add_node('ncbigene_microrna',
                                                                             'NCBIGene:' + str(target_ncbi_entrez_id),
                                                                             desc=target_gene_symbol)
-                                self.orangeboard.add_rel('controls_expression_of', 'miRGate', node, target_mir_node)
+                                if target_mir_node != node:
+                                    self.orangeboard.add_rel('controls_expression_of', 'miRGate', node, target_mir_node)
 
     def expand_reactome_pathway(self, node):
         reactome_id_str = node.name
