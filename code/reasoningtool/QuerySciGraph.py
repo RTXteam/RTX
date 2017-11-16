@@ -53,6 +53,9 @@ class QuerySciGraph:
 
         sub_nodes_with_labels = dict([(node["id"], node['lbl']) for node in json['nodes'] if node["id"] in sub_nodes])
 
+        if len(sub_nodes_with_labels) >= 200:
+            print("[Warning][SciGraph] Found {} sub phenotypes for {}".format(len(sub_nodes_with_labels), phenont_id))
+
         return sub_nodes_with_labels
 
 if __name__ == '__main__':
