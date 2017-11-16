@@ -26,12 +26,12 @@ bne = BioNetExpander(ob)
 
 
 def bigtest():
-    genetic_condition_mim_id = 'OMIM:603903'  # sickle-cell anemia
-    target_disease_disont_id = 'DOID:12365'  # malaria
+#    genetic_condition_mim_id = 'OMIM:603903'  # sickle-cell anemia
+#    target_disease_disont_id = 'DOID:12365'  # malaria
     # cerebral malaria:  'DOID:14069'
 
     # genetic_condition_mim_id = 'OMIM:219700' # cystic fibrosis
-    # target_disease_disont_id = 'DOID:1498' # cholera
+#    target_disease_disont_id = 'DOID:1498' # cholera
 
     # genetic_condition_mim_id = 'OMIM:305900' # glucose-6-phosphate dehydrogenase (G6PD)
     # target_disease_disont_id = 'DOID:12365'   # malaria
@@ -44,7 +44,8 @@ def bigtest():
 
 
     # add the initial target disease into the Orangeboard, as a 'disease ontology' node
-    disease_node = ob.add_node('disont_disease', target_disease_disont_id, desc='malaria', seed_node_bool=True)
+    ob.add_node('disont_disease', 'DOID:12365', desc='malaria', seed_node_bool=True)
+    ob.add_node('disont_disease', 'DOID:1498', desc='cholera', seed_node_bool=True)
 
     print('----------- first round of expansion ----------')
     bne.expand_all_nodes()
