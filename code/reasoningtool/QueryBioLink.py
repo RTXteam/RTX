@@ -24,7 +24,7 @@ class QueryBioLink:
 
         status_code = res.status_code
 
-        assert 200 == status_code, "Status code result: {}".format(status_code)
+        assert 200 == status_code, "Status code result: {}; url: {}".format(status_code, url)
 
         return res.json()
 

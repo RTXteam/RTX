@@ -13,7 +13,7 @@ class QueryMiRGate:
 #        print(url_str)
         res = requests.get(url_str, headers={'accept': 'application/json'})
         status_code = res.status_code
-        assert status_code == 200
+        assert status_code == 200, url_str
         return res
 
     @staticmethod
