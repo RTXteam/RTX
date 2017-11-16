@@ -2,6 +2,7 @@ import uuid
 import itertools
 import pprint
 import neo4j.v1
+import math
 
 ## NOTE to users:  neo4j password hard-coded (see NEO4J_PASSWORD below)
 
@@ -40,6 +41,8 @@ class Node:
 
         return pprint.pformat(attr_dict)
 
+    def simple_print(self):
+        return self.uuid + "," + self.nodetype + "," + self.name
 
 class Rel:
     def __init__(self, reltype, sourcedb, source_node, target_node, seed_node):
@@ -72,6 +75,8 @@ class Rel:
 
         return pprint.pformat(attr_dict)
 
+    def simple_print(self):
+        return self.source_node.uuid + "," + self.target_node.uuid + "," + self.uuid
 
 class Orangeboard:
     NEO4J_USERNAME = "neo4j"
@@ -101,6 +106,15 @@ class Orangeboard:
         self.neo4j_user = user
         self.neo4j_password = password
 
+    def simple_print(self):
+        node_list = itertools.chain.from_iterable(self.dict_seed_uuid_to_list_nodes.values())
+        node_strings = [node.simple_print() for node in node_list]
+
+        rel_list = itertools.chain.from_iterable(self.dict_seed_uuid_to_list_rels.values())
+        rel_strings = [rel.simple_print() for rel in rel_list]
+
+        return "\n".join(node_strings) + "\n" + "\n".join(rel_strings)
+        
     def __str__(self):
         node_list = itertools.chain.from_iterable(self.dict_seed_uuid_to_list_nodes.values())
         node_strings = [str(node) for node in node_list]
@@ -164,6 +178,7 @@ class Orangeboard:
         return set(self.dict_nodetype_to_dict_name_to_node[nodetype].values())
     
     def add_node(self, nodetype, name, seed_node_bool=False, desc=''):
+        assert type(name)==str
         if seed_node_bool:
             old_seed_node = self.seed_node
             if old_seed_node is not None:
