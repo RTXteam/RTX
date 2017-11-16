@@ -5,6 +5,7 @@ import neo4j.v1
 
 ## NOTE to users:  neo4j password hard-coded (see NEO4J_PASSWORD below)
 
+
 class Node:
     def __init__(self, nodetype, name, seed_node):
         self.nodetype = nodetype
@@ -77,18 +78,28 @@ class Orangeboard:
     NEO4J_PASSWORD = "precisionmedicine"
     DEBUG_COUNT_REPORT_GRANULARITY = 1000
     
-    def __init__(self, dict_reltype_dirs, debug=False):
+    def __init__(self, debug=False):
         self.dict_nodetype_to_dict_name_to_node = dict()
         self.dict_reltype_to_dict_relkey_to_rel = dict()
         self.dict_seed_uuid_to_list_nodes = dict()
         self.dict_seed_uuid_to_list_rels = dict()
         self.debug = debug
         self.seed_node = None
-        self.dict_reltype_dirs = dict_reltype_dirs
+        self.dict_reltype_dirs = None
         self.driver = None
         self.neo4j_url = None
         self.neo4j_user = None
         self.neo4j_password = None
+
+    def set_dict_reltype_dirs(self, dict_reltype_dirs):
+        self.dict_reltype_dirs = dict_reltype_dirs
+
+    def neo4j_set_url(self, url='bolt://localhost:7687'):
+        self.neo4j_url = url
+
+    def neo4j_set_auth(self, user=NEO4J_USERNAME, password=NEO4J_PASSWORD):
+        self.neo4j_user = user
+        self.neo4j_password = password
 
     def __str__(self):
         node_list = itertools.chain.from_iterable(self.dict_seed_uuid_to_list_nodes.values())
@@ -306,13 +317,6 @@ class Orangeboard:
             self.clear_from_seed_node_uuid(seed_node_uuid)
         self.seed_node = None
 
-    def neo4j_set_url(self, url='bolt://localhost:7687'):
-        self.neo4j_url = url
-        
-    def neo4j_set_auth(self, user=NEO4J_USERNAME, password=NEO4J_PASSWORD):
-        self.neo4j_user = user
-        self.neo4j_password = password
-               
     def neo4j_connect(self):
         assert self.neo4j_url is not None
         assert self.neo4j_user is not None
