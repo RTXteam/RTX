@@ -258,19 +258,6 @@ def test_print_for_arash():
     print('total number of nodes: ' + str(ob.count_nodes()))
     print('total number of edges: ' + str(ob.count_rels()))
 
-    # print('----------- first round of expansion ----------')
-    # bne.expand_all_nodes()
-
-    # print('----------- second round of expansion ----------')
-    # bne.expand_all_nodes()
-
-    # print('----------- third round of expansion ----------')
-    # bne.expand_all_nodes()
-
-    # print('total number of nodes: ' + str(ob.count_nodes()))
-    # print('total number of edges: ' + str(ob.count_rels()))
-
-
     print(ob.simple_print(), file=sys.stderr)
     
 def lysine_test_6():
