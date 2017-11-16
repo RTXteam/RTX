@@ -60,7 +60,7 @@ def bigtest():
     print('total number of edges: ' + str(ob.count_rels()))
 
     # add the initial genetic condition into the Orangeboard, as a 'MIM' node
-    mim_node = ob.add_node('omim_disease', genetic_condition_mim_id, desc='sickle-cell anemia', seed_node_bool=True)
+    mim_node = ob.add_node('omim_disease', 'OMIM:603903', desc='sickle-cell anemia', seed_node_bool=True)
 
     print('----------- first round of expansion ----------')
     bne.expand_all_nodes()
@@ -249,6 +249,12 @@ def lysine_test_6():
 
     print("[lysine_test_6] count(Node) = {}".format(ob.count_nodes()))
     print("[lysine_test_6] count(Rel) = {}".format(ob.count_rels()))
+
+
+def test_expand_phenont_phenotype():
+    ob.add_node('phenont_phenotype', "HP:0000107", desc='Renal cyst', seed_node_bool=True)
+    bne.expand_all_nodes()
+    ob.neo4j_push()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Testing prototype for Q1, NCATS competition, 2017')
