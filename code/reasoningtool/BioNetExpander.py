@@ -191,7 +191,7 @@ class BioNetExpander:
             anatomy_node = self.orangeboard.add_node('anatont_anatomy', anatomy_id, desc=anatomy_desc)
             self.orangeboard.add_rel('phenotype_assoc_with', 'BioLink', node, anatomy_node)
 
-        # TODO:  expand phenotype to child phenotypes, through the phenotype ontology as we do for disease ontology
+        # TODO:  Expand phenotype to child phenotypes, through the phenotype ontology as we do for disease ontology  (issue #21)
 
     def expand_omim_disease(self, node):
         res_dict = self.query_omim_obj.disease_mim_to_gene_symbols_and_uniprot_ids(node.name)
