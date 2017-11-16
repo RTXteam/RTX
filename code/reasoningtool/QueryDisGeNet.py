@@ -56,7 +56,6 @@ class QueryDisGeNet:
         uniprot_ids_list = ret_data_df["c2.uniprotId"].tolist()
         gene_names_list = ret_data_df["c2.symbol"].tolist()
         ret_dict = dict(list(zip(uniprot_ids_list, gene_names_list)))
-#        ret_data = set(ret_data_df["c2.uniprotId"].tolist()) - {'null'}
         for prot in ret_dict.copy().keys():
             if type(prot)==str:
                 if '.' in prot or ';' in prot:
@@ -68,10 +67,11 @@ class QueryDisGeNet:
                         prots_to_add = prots_to_add[0:QueryDisGeNet.MAX_PROTS_FOR_GENE]
                         dict_add = dict()
                         for prot_name in prots_to_add:
-                            if prot_name is not math.nan:
+                            if type(prot_name) == str:
                                 dict_add[prot_name] = gene
-#                        dict_add = dict.fromkeys(prots_to_add, gene)  # testing issue #19 SAR
                         ret_dict.update(dict_add)
+            else:  ## this is a math.nan
+                del ret_dict[prot]            
         return(ret_dict)
                             
     @staticmethod
