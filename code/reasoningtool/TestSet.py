@@ -240,11 +240,11 @@ def test_print_for_arash():
 
     # add the initial target disease into the Orangeboard, as a 'disease ontology' node
     ob.add_node('disont_disease', 'DOID:12365', desc='malaria', seed_node_bool=True)
-    ob.add_node('disont_disease', 'DOID:1498', desc='cholera')
+#    ob.add_node('disont_disease', 'DOID:1498', desc='cholera')
 
     # add the initial genetic condition into the Orangeboard, as a 'MIM' node
     ob.add_node('omim_disease', 'OMIM:603903', desc='sickle-cell anemia')
-    ob.add_node('omim_disease', 'OMIM:219700', desc='cystic fibrosis')
+#    ob.add_node('omim_disease', 'OMIM:219700', desc='cystic fibrosis')
     
     print('----------- first round of expansion ----------')
     bne.expand_all_nodes()
