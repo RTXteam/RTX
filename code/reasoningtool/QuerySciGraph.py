@@ -12,7 +12,7 @@ class QuerySciGraph:
     def __access_api(url, params=None):
         res = requests.get(url, params)
 
-        print(res.url)
+#        print(res.url)
 
         assert 200 == res.status_code, "Status code result: {}; url: {}".format(res.status_code, res.url)
 
