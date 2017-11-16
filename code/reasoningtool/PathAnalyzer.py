@@ -1,6 +1,7 @@
 from Orangeboard import Orangeboard
 
 
+
 class PathAnalyzer:
     """
     We will need Python code (probably using Cypher via neo4j.v1) that can, given a path,
@@ -18,8 +19,8 @@ class PathAnalyzer:
 
     For (5) and (6) you will have to use Cypher.
     """
-    def __init__(self, ob):
-        self.ob = ob
+    def __init__(self, orangeboard):
+        self.orangeboard = orangeboard
 
     @staticmethod
     def get_all_reltypes_in_path(path):
@@ -59,7 +60,7 @@ class PathAnalyzer:
         # So here make a query for each node in the path
         def __get_in_degree(node):
             query = "MATCH (s)<-[r]-() WHERE s.UUID = $uuid RETURN count(r) AS in_degree"
-            stmt_resp = self.ob.neo4j_run_cypher_query(query, parameters={'uuid': node.properties['UUID']})
+            stmt_resp = self.orangeboard.neo4j_run_cypher_query(query, parameters={'uuid': node.properties['UUID']})
             return stmt_resp.single()['in_degree']
 
         return list(map(__get_in_degree, path.nodes))
@@ -69,20 +70,28 @@ class PathAnalyzer:
         # So here make a query for each node in the path
         def __get_out_degree(node):
             query = "MATCH (s)-[r]->() WHERE s.UUID = $uuid RETURN count(r) AS out_degree"
-            stmt_resp = self.ob.neo4j_run_cypher_query(query, parameters={'uuid': node.properties['UUID']})
+            stmt_resp = self.orangeboard.neo4j_run_cypher_query(query, parameters={'uuid': node.properties['UUID']})
             return stmt_resp.single()['out_degree']
 
         return list(map(__get_out_degree, path.nodes))
 
 
 if __name__ == '__main__':
-    master_rel_is_directed = {"disease_affects": True,
-                              "is_member_of": True,
-                              "is_parent_of": True,
-                              "gene_assoc_with": True,
-                              "regulates": True,
-                              "interacts_with": False}
-    ob = Orangeboard(master_rel_is_directed, debug=False)
+    ob = Orangeboard(debug=False)
+
+    master_rel_is_directed = {'disease_affects': True,
+                              'is_member_of': True,
+                              'is_parent_of': True,
+                              'gene_assoc_with': True,
+                              'phenotype_assoc_with': True,
+                              'interacts_with': False,
+                              'controls_expression_of': True,
+                              'is_expressed_in': True,
+                              'targets': True}
+
+    ob.set_dict_reltype_dirs(master_rel_is_directed)
+    ob.neo4j_set_url()
+    ob.neo4j_set_auth()
 
     ob.neo4j_clear()
 
@@ -91,7 +100,7 @@ if __name__ == '__main__':
     ob.add_rel('interacts_with', 'reactome', node1, node2)  # bi-directional; actually 2 rels
 
     node3 = ob.add_node("omim_disease", "OMIM:603903", desc='sickle-cell anemia', seed_node_bool=True)
-    ob.add_rel('regulates', 'OMIM', node2, node3)
+    ob.add_rel('controls_expression_of', 'OMIM', node2, node3)
 
     ob.neo4j_push()
 
