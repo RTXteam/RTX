@@ -25,7 +25,7 @@ class QuerySciGraph:
         """
         Return a dict of `<id, label>`, where `id`s are all sub-phenotype of parameter `phenont_id`.
 
-        E.g. input "HP:0000107", 
+        E.g. input "HP:0000107" (Renal cyst),
         >>> QuerySciGraph.query_sub_phenotypes_for_phenotype("HP:0000107")
         {'HP:0100877': 'Renal diverticulum', 'HP:0000108': 'Renal corticomedullary cysts', 
          'HP:0000803': 'Renal cortical cysts', 'HP:0000003': 'Multicystic kidney dysplasia', 
@@ -56,4 +56,4 @@ class QuerySciGraph:
         return sub_nodes_with_labels
 
 if __name__ == '__main__':
-    print(QuerySciGraph.query_sub_phenotypes_for_phenotype("HP:0000107"))
+    print(QuerySciGraph.query_sub_phenotypes_for_phenotype("HP:0000107"))  # Renal cyst
