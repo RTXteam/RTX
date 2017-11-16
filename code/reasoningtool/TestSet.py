@@ -28,7 +28,7 @@ bne = BioNetExpander(ob)
 def bigtest():
     genetic_condition_mim_id = 'OMIM:603903'  # sickle-cell anemia
     target_disease_disont_id = 'DOID:12365'  # malaria
-    # cerebral malaria:  'DOID:014069'
+    # cerebral malaria:  'DOID:14069'
 
     # genetic_condition_mim_id = 'OMIM:219700' # cystic fibrosis
     # target_disease_disont_id = 'DOID:1498' # cholera
@@ -174,6 +174,64 @@ def test_expand_pharos_drug():
 
     bne.expand_pharos_drug(lovastatin)
     ob.neo4j_push()
+
+def lysine_test_1():
+    ob.add_node('pharos_drug', 'acetaminophen', desc='acetaminophen', seed_node_bool=True)
+
+    bne.expand_all_nodes()
+    ob.neo4j_push()
+
+def lysine_test_2():
+    ob.add_node('pharos_drug', 'acetaminophen', desc='acetaminophen', seed_node_bool=True)
+
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
+    ob.neo4j_push()
+
+def lysine_test_3():
+    ob.add_node('pharos_drug', 'acetaminophen', desc='acetaminophen', seed_node_bool=True)
+
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
+    ob.neo4j_push()
+
+def lysine_test_4():
+    ob.add_node('disont_disease', 'DOID:1498', desc='cholera', seed_node_bool=True)
+
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
+    ob.neo4j_push()
+
+    print("[lysine_test_4] count(Node) = {}".format(ob.count_nodes()))
+    print("[lysine_test_4] count(Rel) = {}".format(ob.count_rels()))
+
+def lysine_test_5():
+    ob.add_node('disont_disease', 'DOID:12365', desc='malaria', seed_node_bool=True)
+    ob.add_node('disont_disease', 'DOID:1498', desc='cholera', seed_node_bool=True)
+
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
+    ob.neo4j_push()
+
+    print("[lysine_test_5] count(Node) = {}".format(ob.count_nodes()))
+    print("[lysine_test_5] count(Rel) = {}".format(ob.count_rels()))
+
+def lysine_test_6():
+    ob.add_node('disont_disease', 'DOID:12365', desc='malaria', seed_node_bool=True)
+    ob.add_node('disont_disease', 'DOID:1498', desc='cholera', seed_node_bool=True)
+    ob.add_node('disont_disease', 'DOID:2841', desc='asthma', seed_node_bool=True)
+    ob.add_node('disont_disease', 'DOID:526', desc='HIV', seed_node_bool=True)
+
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
+    ob.neo4j_push()
+
+    print("[lysine_test_6] count(Node) = {}".format(ob.count_nodes()))
+    print("[lysine_test_6] count(Rel) = {}".format(ob.count_rels()))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Testing prototype for Q1, NCATS competition, 2017')
