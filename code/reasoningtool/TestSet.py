@@ -219,6 +219,22 @@ def lysine_test_5():
     print("[lysine_test_5] count(Node) = {}".format(ob.count_nodes()))
     print("[lysine_test_5] count(Rel) = {}".format(ob.count_rels()))
 
+def test_issue19():
+     genetic_condition_mim_id = 'OMIM:219700' # cystic fibrosis
+     target_disease_disont_id = 'DOID:1498' # cholera
+
+     disease_node = ob.add_node('disont_disease', target_disease_disont_id, desc='cholera', seed_node_bool=True)
+
+     print('----------- first round of expansion ----------')
+     bne.expand_all_nodes()
+
+     print('----------- second round of expansion ----------')
+     bne.expand_all_nodes()
+
+     print('----------- third round of expansion ----------')
+     bne.expand_all_nodes()
+
+      
 def lysine_test_6():
     ob.add_node('disont_disease', 'DOID:12365', desc='malaria', seed_node_bool=True)
     ob.add_node('disont_disease', 'DOID:1498', desc='cholera', seed_node_bool=True)
