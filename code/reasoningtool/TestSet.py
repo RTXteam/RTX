@@ -1,6 +1,7 @@
 import argparse
 import timeit
 import requests_cache
+import sys
 from Orangeboard import Orangeboard
 from BioNetExpander import BioNetExpander
 
@@ -235,7 +236,43 @@ def test_issue19():
      print('----------- third round of expansion ----------')
      bne.expand_all_nodes()
 
-      
+def test_print_for_arash():
+
+    # add the initial target disease into the Orangeboard, as a 'disease ontology' node
+    ob.add_node('disont_disease', 'DOID:12365', desc='malaria', seed_node_bool=True)
+    ob.add_node('disont_disease', 'DOID:1498', desc='cholera')
+
+    # add the initial genetic condition into the Orangeboard, as a 'MIM' node
+    ob.add_node('omim_disease', 'OMIM:603903', desc='sickle-cell anemia')
+    ob.add_node('omim_disease', 'OMIM:219700', desc='cystic fibrosis')
+    
+    print('----------- first round of expansion ----------')
+    bne.expand_all_nodes()
+
+    print('----------- second round of expansion ----------')
+    bne.expand_all_nodes()
+
+    print('----------- third round of expansion ----------')
+    bne.expand_all_nodes()
+
+    print('total number of nodes: ' + str(ob.count_nodes()))
+    print('total number of edges: ' + str(ob.count_rels()))
+
+    # print('----------- first round of expansion ----------')
+    # bne.expand_all_nodes()
+
+    # print('----------- second round of expansion ----------')
+    # bne.expand_all_nodes()
+
+    # print('----------- third round of expansion ----------')
+    # bne.expand_all_nodes()
+
+    # print('total number of nodes: ' + str(ob.count_nodes()))
+    # print('total number of edges: ' + str(ob.count_rels()))
+
+
+    print(ob.simple_print(), file=sys.stderr)
+    
 def lysine_test_6():
     ob.add_node('disont_disease', 'DOID:12365', desc='malaria', seed_node_bool=True)
     ob.add_node('disont_disease', 'DOID:1498', desc='cholera', seed_node_bool=True)
