@@ -97,7 +97,10 @@ class BioNetExpander:
             self.orangeboard.add_rel('is_member_of', rel_sourcedb_dict[uniprot_id], target_node, source_node)
 
     def expand_anatont_anatomy(self, node):
-        # TODO
+        """
+        This a placeholder.
+        Please do not remove it otherwise expanding nodes of type"anatont_anatomy" would raise errors.
+        """
         pass
 
     def expand_uniprot_protein(self, node):
@@ -277,6 +280,15 @@ if __name__ == '__main__':
                               'controls_expression_of': True,
                               'is_expressed_in': True,
                               'targets': True}
+
+    # master_nodetypes = {'omim_disease',
+    #                     'disont_disease',
+    #                     'uniprot_protein',
+    #                     'reactome_pathway',
+    #                     'phenont_phenotype',
+    #                     'ncbigene_microrna',
+    #                     'anatont_anatomy',
+    #                     'pharos_drug'}
 
     ob.set_dict_reltype_dirs(master_rel_is_directed)
     ob.neo4j_set_url()
