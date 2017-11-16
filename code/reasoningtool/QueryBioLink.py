@@ -8,7 +8,7 @@ class QueryBioLink:
         "get_phenotypes_for_disease": "https://api.monarchinitiative.org/api/bioentity/disease/{disease_id}/phenotypes",
         "get_diseases_for_gene": "https://api.monarchinitiative.org/api/bioentity/gene/{gene_id}/diseases",
         "get_genes_for_disease": "https://api.monarchinitiative.org/api/bioentity/disease/{disease_id}/genes",
-        "get_phenotypes_for_gene": "https://api.monarchinitiative.org/api/bioentity/gene/{gene_id}/phenotypes",
+        "get_phenotypes_for_gene": "https://api.monarchinitiative.org/api/bioentity/gene/{gene_id}/phenotypes?exclude_automatic_assertions=true",
         "get_genes_for_pathway": "https://api.monarchinitiative.org/api/bioentity/pathway/{pathway_id}/genes",
         "get_label_for_disease": "https://api.monarchinitiative.org/api/bioentity/disease/{disease_id}",
         "get_label_for_phenotype": "https://api.monarchinitiative.org/api/bioentity/phenotype/{phenotype_id}",
