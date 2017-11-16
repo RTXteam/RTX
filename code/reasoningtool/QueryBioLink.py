@@ -178,6 +178,7 @@ class QueryBioLink:
         return results
 
 if __name__ == '__main__':
+    print(QueryBioLink.get_phenotypes_for_gene_desc("NCBIGene:1080"))  # test for issue #22
     print(QueryBioLink.get_diseases_for_gene_desc("NCBIGene:407053"))
     print(QueryBioLink.get_genes_for_disease_desc("OMIM:605543"))
     print(QueryBioLink.get_diseases_for_gene_desc("NCBIGene:100048912"))
