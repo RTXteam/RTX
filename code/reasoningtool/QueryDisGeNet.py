@@ -66,7 +66,11 @@ class QueryDisGeNet:
                     prots_to_add = prot.split(';')
                     if len(prots_to_add) > QueryDisGeNet.MAX_PROTS_FOR_GENE:
                         prots_to_add = prots_to_add[0:QueryDisGeNet.MAX_PROTS_FOR_GENE]
-                        dict_add = dict.fromkeys(prots_to_add, gene)
+                        dict_add = dict()
+                        for prot_name in prots_to_add:
+                            if prot_name is not math.nan:
+                                dict_add[prot_name] = gene
+#                        dict_add = dict.fromkeys(prots_to_add, gene)  # testing issue #19 SAR
                         ret_dict.update(dict_add)
         return(ret_dict)
                             
