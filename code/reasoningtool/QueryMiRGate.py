@@ -19,6 +19,9 @@ class QueryMiRGate:
         if status_code != 200:
             print("Status code " + status_code + " for url: " + url_str)
             return None
+        if len(res.content) == 0:
+            print("Empty response")
+            res = None
         return res
 
     @staticmethod
