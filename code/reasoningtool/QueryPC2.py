@@ -1,6 +1,6 @@
 import requests
-import functools
 import CachedMethods
+
 
 class QueryPC2:
     API_BASE_URL = 'http://www.pathwaycommons.org/pc2'
@@ -15,7 +15,6 @@ class QueryPC2:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def pathway_id_to_uniprot_ids(pathway_reactome_id):
         query_str = "uri=http://identifiers.org/reactome/" + pathway_reactome_id + "&format=TXT"
         res = QueryPC2.send_query_get("get", query_str)
@@ -36,7 +35,6 @@ class QueryPC2:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def uniprot_id_to_reactome_pathways(uniprot_id):
         res = QueryPC2.send_query_get("search.json", "q=" + uniprot_id + "&type=pathway")
         res_dict = res.json()
@@ -46,10 +44,7 @@ class QueryPC2:
 #        print(pathway_list)
         return set(pathway_list)
 
-    @staticmethod
-    def test():
-        print(QueryPC2.uniprot_id_to_reactome_pathways("P68871"))
-        print(QueryPC2.pathway_to_uniprot_ids("R-HSA-2168880"))
 
 if __name__ == '__main__':
-    QueryPC2.test()
+    print(QueryPC2.uniprot_id_to_reactome_pathways("P68871"))
+    print(QueryPC2.pathway_to_uniprot_ids("R-HSA-2168880"))

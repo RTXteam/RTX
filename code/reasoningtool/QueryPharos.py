@@ -1,5 +1,4 @@
 import requests
-import functools
 import CachedMethods
 
 
@@ -22,7 +21,6 @@ class QueryPharos:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_drug_name_to_targets(drug_name):
         ret_ids = []
         res = QueryPharos.send_query_get("targets","/search?q="+drug_name+"&facet=IDG%20Development%20Level%2FTclin")
@@ -39,7 +37,6 @@ class QueryPharos:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_target_to_diseases(target_id):
         ret_ids = []
         res = QueryPharos.send_query_get("targets","("+target_id+")/links(kind=ix.idg.models.Disease)")
@@ -61,7 +58,6 @@ class QueryPharos:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_target_to_drugs(target_id):
         ret_ids = []
         res = QueryPharos.send_query_get("targets","("+target_id+")/links(kind=ix.idg.models.Ligand)")
@@ -88,7 +84,6 @@ class QueryPharos:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_drug_to_targets(drug_id):
         ret_ids = []
         res = QueryPharos.send_query_get("ligands","("+drug_id+")/links(kind=ix.idg.models.Target)")
@@ -123,7 +118,6 @@ class QueryPharos:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_target_name(target_id):
         res = QueryPharos.send_query_get("targets","("+target_id+")")
         if res is not None:
@@ -140,7 +134,6 @@ class QueryPharos:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_target_uniprot_accession(target_id):
         res = QueryPharos.send_query_get("targets","("+target_id+")/synonyms")
         if res is not None:
@@ -155,7 +148,6 @@ class QueryPharos:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_disease_name(disease_id):
         res = QueryPharos.send_query_get("diseases","("+disease_id+")")
         if res is not None:
@@ -172,7 +164,6 @@ class QueryPharos:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_drug_name(ligand_id):
         res = QueryPharos.send_query_get("ligands","("+ligand_id+")")
         if res is not None:
@@ -189,7 +180,6 @@ class QueryPharos:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_drug_id_by_name(drug_name):
         res = QueryPharos.send_query_get("ligands","/search?q="+drug_name)
         if res is not None:
@@ -211,7 +201,6 @@ class QueryPharos:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_disease_id_by_name(disease_name):
         res = QueryPharos.send_query_get("diseases","/search?q="+disease_name)
         if res is not None:
@@ -226,32 +215,13 @@ class QueryPharos:
                         ret_value = content_entry['id']
         return ret_value
 
-
-    @staticmethod
-    def test():
-#        print(QueryPharos.query_drug_name_to_targets("acetaminophen"))
-#        print(QueryPharos.query_target_to_diseases("8359"))
-#        print(QueryPharos.query_target_name("8359"))
-#        print(QueryPharos.query_target_uniprot_accession("8359"))
-#        print(QueryPharos.query_disease_name("4446"))
-#        print(QueryPharos.query_target_to_drugs("8359"))
-#        print(QueryPharos.query_drug_to_targets("1379"))
-#        print(QueryPharos.query_drug_name("101986"))
-#        print(QueryPharos.query_drug_id_by_name("ibuprofen"))
-#        print(QueryPharos.query_drug_id_by_name("acetaminophen"))
-#        print(QueryPharos.query_drug_id_by_name("lovastatin"))
-#        print(QueryPharos.query_disease_id_by_name("Hyperlipidemia"))
-
-        if 0 == 1:
-            print(QueryPharos.query_drug_id_by_name("lovastatin"))
-            print(QueryPharos.query_drug_to_targets("254599"))
-        if 1 == 1:
-            print(QueryPharos.query_drug_name_to_targets("lovastatin"))
-            print("=============")
-            print(QueryPharos.query_target_uniprot_accession("19672"))
-            print("=============")
-            print(QueryPharos.query_target_to_diseases("19672"))
-
 if __name__ == '__main__':
-    QueryPharos.test()
-        
+    if 0 == 1:
+        print(QueryPharos.query_drug_id_by_name("lovastatin"))
+        print(QueryPharos.query_drug_to_targets("254599"))
+    if 1 == 1:
+        print(QueryPharos.query_drug_name_to_targets("lovastatin"))
+        print("=============")
+        print(QueryPharos.query_target_uniprot_accession("19672"))
+        print("=============")
+        print(QueryPharos.query_target_to_diseases("19672"))

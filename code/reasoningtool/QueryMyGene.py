@@ -1,5 +1,4 @@
 import mygene
-import functools
 import CachedMethods
 
 
@@ -24,7 +23,6 @@ class QueryMyGene:
         return list(generate_elements(lst, skip_type))
 
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def convert_gene_symbol_to_uniprot_id(self, gene_symbol):
         res = self.mygene_obj.query('symbol:' + gene_symbol, species='human',
                                     fields='uniprot', verbose=False)
@@ -45,7 +43,6 @@ class QueryMyGene:
         return uniprot_ids_set
 
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def convert_uniprot_id_to_gene_symbol(self, uniprot_id):
         res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human',
                                     fields='symbol', verbose=False)
@@ -55,7 +52,6 @@ class QueryMyGene:
         return gene_symbol
 
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def convert_uniprot_id_to_entrez_gene_ID(self, uniprot_id):
         res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human',
                                     fields='entrezgene', verbose=False)
@@ -65,7 +61,6 @@ class QueryMyGene:
         return entrez_ids
 
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def convert_gene_symbol_to_entrez_gene_ID(self, gene_symbol):
         res = self.mygene_obj.query('symbol:' + gene_symbol, species='human',
                                     fields='entrezgene', verbose=False)
@@ -79,7 +74,6 @@ class QueryMyGene:
         return entrez_ids
 
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def convert_entrez_gene_ID_to_mirbase_ID(self, entrez_gene_id):
         assert type(entrez_gene_id)==int
         res = self.mygene_obj.query('entrezgene:' + str(entrez_gene_id), specis='human', fields='miRBase', verbose=False)
@@ -87,16 +81,14 @@ class QueryMyGene:
         if len(res) > 0:
             mirbase_id = set([hit['miRBase'] for hit in res['hits']])
         return mirbase_id
-    
-    def test():
-        mg = QueryMyGene()
-        print(mg.convert_gene_symbol_to_entrez_gene_ID('MIR96'))
-        print(mg.convert_entrez_gene_ID_to_mirbase_ID(407053))
-        print(mg.convert_gene_symbol_to_uniprot_id("HMOX1"))
-        print(mg.convert_gene_symbol_to_uniprot_id('RAD54B'))
-        print(mg.convert_gene_symbol_to_uniprot_id('NS2'))
-        print(mg.convert_uniprot_id_to_gene_symbol("P09601"))
-        print(mg.convert_uniprot_id_to_entrez_gene_ID("P09601"))
+
 
 if __name__ == '__main__':
-    QueryMyGene.test()
+    mg = QueryMyGene()
+    print(mg.convert_gene_symbol_to_entrez_gene_ID('MIR96'))
+    print(mg.convert_entrez_gene_ID_to_mirbase_ID(407053))
+    print(mg.convert_gene_symbol_to_uniprot_id("HMOX1"))
+    print(mg.convert_gene_symbol_to_uniprot_id('RAD54B'))
+    print(mg.convert_gene_symbol_to_uniprot_id('NS2'))
+    print(mg.convert_uniprot_id_to_gene_symbol("P09601"))
+    print(mg.convert_uniprot_id_to_entrez_gene_ID("P09601"))
