@@ -290,10 +290,11 @@ def test_q1():
     for disont_id_str in q1_diseases_dict.keys():
         ob.add_node('disont_disease', disont_id_str, seed_node_bool)
         seed_node_bool = False
-        bne.expand_all_nodes()
-        bne.expand_all_nodes()
-        bne.expand_all_nodes()
-        ob.neo4j_push()
+
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
+    ob.neo4j_push()
     
 def test_print_for_arash():
 
