@@ -179,7 +179,6 @@ class BioNetExpander:
         # protein-protein interactions:
         int_dict = QueryReactome.query_uniprot_id_to_interacting_uniprot_ids(uniprot_id_str)
         for int_uniprot_id in int_dict.keys():
-            assert 'CHEBI:' not in int_uniprot_id  # debugging code for issue #34
             int_alias = int_dict[int_uniprot_id]
             node2 = self.orangeboard.add_node('uniprot_protein', int_uniprot_id, desc=int_alias)
             if node2.uuid != node1.uuid:
