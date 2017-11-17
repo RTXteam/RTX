@@ -1,5 +1,6 @@
 import requests
 import lxml.etree
+import sys
 
 class QueryMiRGate:
     API_BASE_URL = 'http://mirgate.bioinfo.cnio.es/ResT/API/human'
@@ -13,14 +14,17 @@ class QueryMiRGate:
             res = requests.get(url_str, headers={'accept': 'application/json'},
                                timeout=QueryMiRGate.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
-            print("Timeout in QueryMiRGate for URL: " + url_str)
+            print(url_str, sys.stderr)
+            print("Timeout in QueryMiRGate for URL: " + url_str, sys.stderr)
             return None
         status_code = res.status_code
         if status_code != 200:
-            print("Status code " + status_code + " for url: " + url_str)
+            print(url_str, sys.stderr)
+            print("Status code " + status_code + " for url: " + url_str, sys.stderr)
             return None
         if len(res.content) == 0:
-            print("Empty response")
+            print(url_str, sys.stderr)
+            print("Empty response from URL!", sys.stderr)
             res = None
         return res
 
