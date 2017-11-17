@@ -42,7 +42,7 @@ class Node:
         return pprint.pformat(attr_dict)
 
     def simple_print(self):
-        return self.uuid + "," + self.nodetype + "," + self.name
+        return 'node,' + self.uuid + "," + self.nodetype + "," + self.name
 
 class Rel:
     def __init__(self, reltype, sourcedb, source_node, target_node, seed_node):
@@ -76,7 +76,7 @@ class Rel:
         return pprint.pformat(attr_dict)
 
     def simple_print(self):
-        return self.source_node.uuid + "," + self.target_node.uuid + "," + self.uuid
+        return 'rel,' + self.source_node.uuid + "," + self.target_node.uuid + "," + self.uuid
 
 class Orangeboard:
     NEO4J_USERNAME = "neo4j"
