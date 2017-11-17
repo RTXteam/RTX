@@ -17,8 +17,8 @@ class Node:
             self.seed_node = self
         new_uuid = str(uuid.uuid1())
         self.uuid = new_uuid
-#        self.out_rels = set()
-#        self.in_rels = set()
+        self.out_rels = set()
+        self.in_rels = set()
         self.expanded = False
         self.desc = ''
 
@@ -53,8 +53,8 @@ class Rel:
         self.seed_node = seed_node
         new_uuid = str(uuid.uuid1())
         self.uuid = new_uuid
-#        source_node.out_rels.add(self)
-#        target_node.in_rels.add(self)
+        source_node.out_rels.add(self)
+        target_node.in_rels.add(self)
 
     def get_props(self, reverse=False):
         prop_dict = {'UUID': self.uuid,
