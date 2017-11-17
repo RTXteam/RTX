@@ -283,6 +283,18 @@ def test_issue19():
      print('----------- third round of expansion ----------')
      bne.expand_all_nodes()
 
+def test_q1():
+    q1_diseases_dict = {'DOID:12365': 'malaria',
+                        'DOID:1498': 'cholera'}
+    seed_node_bool = True
+    for disont_id_str in q1_diseases_dict.keys():
+        ob.add_node('disont_disease', disont_id_str, seed_node_bool)
+        seed_node_bool = False
+        bne.expand_all_nodes()
+        bne.expand_all_nodes()
+        bne.expand_all_nodes()
+        ob.neo4j_push()
+    
 def test_print_for_arash():
 
     # add the initial target disease into the Orangeboard, as a 'disease ontology' node
