@@ -3,13 +3,12 @@
 # Modified by Stephen Ramsey at Oregon State University
 ###############################################################################
 
-import argparse
 import urllib.request, urllib.error, urllib.parse
-import functools
 import pandas
 import io
 import CachedMethods
 import math
+
 
 class QueryDisGeNet:
     MAX_PROTS_FOR_GENE = 3   ## maybe we should make this a configurable class variable (SAR)
@@ -17,7 +16,6 @@ class QueryDisGeNet:
     
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_mesh_id_to_uniprot_ids_desc(mesh_id):
         ent = 'disease'
         id = 'mesh'
@@ -73,13 +71,8 @@ class QueryDisGeNet:
             else:  ## this is a math.nan
                 del ret_dict[prot]            
         return(ret_dict)
-                            
-    @staticmethod
-    def test():
-        print(QueryDisGeNet.query_mesh_id_to_uniprot_ids_desc('D016779'))
-        print(QueryDisGeNet.query_mesh_id_to_uniprot_ids_desc('D004443'))
+
 
 if __name__ == '__main__':
-    QueryDisGeNet.test()
-    
-        
+    print(QueryDisGeNet.query_mesh_id_to_uniprot_ids_desc('D016779'))
+    print(QueryDisGeNet.query_mesh_id_to_uniprot_ids_desc('D004443'))

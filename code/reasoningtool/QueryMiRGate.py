@@ -1,6 +1,5 @@
 import requests
 import lxml.etree
-import functools
 import CachedMethods
 
 
@@ -18,7 +17,6 @@ class QueryMiRGate:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def get_microrna_ids_that_regulate_gene_symbol(gene_symbol):
         res = QueryMiRGate.send_query_get('gene_predictions', gene_symbol)
         root = lxml.etree.fromstring(res.content)
@@ -30,7 +28,6 @@ class QueryMiRGate:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def get_gene_symbols_regulated_by_microrna(microrna_id):
         '''returns the gene symbols that a given microrna (MIMAT ID) regulates
         
@@ -43,12 +40,9 @@ class QueryMiRGate:
         res_ids = set([res_element.xpath('@HGNC')[0] for res_element in res_elements])
         res_ids.discard('')
         return res_ids
-    
-    def test():
-        print(QueryMiRGate.get_gene_symbols_regulated_by_microrna('MIMAT0018979'))
-        print(QueryMiRGate.get_microrna_ids_that_regulate_gene_symbol('HMOX1'))
-        print(QueryMiRGate.get_gene_symbols_regulated_by_microrna('MIMAT0019885'))
+
         
 if __name__ == '__main__':
-    QueryMiRGate.test()
-     
+    print(QueryMiRGate.get_gene_symbols_regulated_by_microrna('MIMAT0018979'))
+    print(QueryMiRGate.get_microrna_ids_that_regulate_gene_symbol('HMOX1'))
+    print(QueryMiRGate.get_gene_symbols_regulated_by_microrna('MIMAT0019885'))

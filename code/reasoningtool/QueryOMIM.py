@@ -1,5 +1,4 @@
 import requests
-import functools
 import CachedMethods
 
 
@@ -24,7 +23,6 @@ class QueryOMIM:
         return res
 
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def disease_mim_to_gene_symbols_and_uniprot_ids(self, mim_id):
         """for a given MIM ID for a genetic disease (as input), returns a dict of of gene symbols and UniProt IDs
         {gene_symbols: [gene_symbol_list], uniprot_ids: [uniprot_ids_list]}
@@ -55,15 +53,8 @@ class QueryOMIM:
         return {'gene_symbols': set(gene_symbols),
                 'uniprot_ids': set(uniprot_ids)}
 
-    def test_issue1(self):
-        print(self.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:603918'))
-        
-    @staticmethod
-    def test():
-        qo = QueryOMIM()
-        print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:603903'))
-        print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:613074'))
-        qo.test_issue1()
-
 if __name__ == '__main__':
-    QueryOMIM.test()
+    qo = QueryOMIM()
+    print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:603903'))
+    print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:613074'))
+    print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:603918'))  # test issue 1

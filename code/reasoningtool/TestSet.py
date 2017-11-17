@@ -78,6 +78,53 @@ def bigtest():
     # push the entire graph to neo4j
     ob.neo4j_push()
 
+def bigtest2():
+    genetic_condition_mim_id = 'OMIM:219700'  # cystic fibrosis
+    target_disease_disont_id = 'DOID:1498'  # cholera
+
+    # genetic_condition_mim_id = 'OMIM:305900' # glucose-6-phosphate dehydrogenase (G6PD)
+    # target_disease_disont_id = 'DOID:12365'   # malaria
+
+    # genetic_condition_mim_id = 'OMIM:607786' # proprotein convertase, subtilisin/kexin-type, 9 (PCSK9)
+    # target_disease_disont_id = 'DOID:13810'   # familial hypercholesterolemia
+
+    # genetic_condition_mim_id = 'OMIM:184745' # kit ligard
+    # target_disease_disont_id = 'DOID:2841' # asthma
+
+
+    # add the initial target disease into the Orangeboard, as a 'disease ontology' node
+    disease_node = ob.add_node('disont_disease', target_disease_disont_id, desc='malaria', seed_node_bool=True)
+
+    print('----------- first round of expansion ----------')
+    bne.expand_all_nodes()
+
+    print('----------- second round of expansion ----------')
+    bne.expand_all_nodes()
+
+    print('----------- third round of expansion ----------')
+    bne.expand_all_nodes()
+
+    print('total number of nodes: ' + str(ob.count_nodes()))
+    print('total number of edges: ' + str(ob.count_rels()))
+
+     # add the initial genetic condition into the Orangeboard, as a 'MIM' node
+    mim_node = ob.add_node('omim_disease', genetic_condition_mim_id, desc='sickle-cell anemia', seed_node_bool=True)
+
+    print('----------- first round of expansion ----------')
+    bne.expand_all_nodes()
+
+    print('----------- second round of expansion ----------')
+    bne.expand_all_nodes()
+
+    print('----------- third round of expansion ----------')
+    bne.expand_all_nodes()
+
+    print('total number of nodes: ' + str(ob.count_nodes()))
+    print('total number of edges: ' + str(ob.count_rels()))
+
+    # push the entire graph to neo4j
+    ob.neo4j_push()
+
 
 def test_description_mim():
     node = ob.add_node('omim_disease', 'OMIM:603903', desc='sickle-cell anemia', seed_node_bool=True)
@@ -245,7 +292,7 @@ def test_print_for_arash():
     # add the initial genetic condition into the Orangeboard, as a 'MIM' node
     ob.add_node('omim_disease', 'OMIM:603903', desc='sickle-cell anemia')
 #    ob.add_node('omim_disease', 'OMIM:219700', desc='cystic fibrosis')
-    
+
     print('----------- first round of expansion ----------')
     bne.expand_all_nodes()
 
@@ -259,7 +306,7 @@ def test_print_for_arash():
     print('total number of edges: ' + str(ob.count_rels()))
 
     print(ob.simple_print(), file=sys.stderr)
-    
+
 def lysine_test_6():
     ob.add_node('disont_disease', 'DOID:12365', desc='malaria', seed_node_bool=True)
     ob.add_node('disont_disease', 'DOID:1498', desc='cholera', seed_node_bool=True)

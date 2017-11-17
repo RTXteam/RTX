@@ -1,5 +1,4 @@
 import requests
-import functools
 import CachedMethods
 
 
@@ -20,7 +19,6 @@ class QuerySciGraph:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_sub_phenotypes_for_phenotype(phenont_id):
         """
         Return a dict of `<id, label>`, where `id`s are all sub-phenotype of parameter `phenont_id`.

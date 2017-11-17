@@ -1,5 +1,4 @@
 import requests
-import functools
 import CachedMethods
 
 
@@ -30,7 +29,6 @@ class QueryBioLink:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def get_label_for_disease(disease_id):
         url = QueryBioLink.API_BASE_URL["get_label_for_disease"].format(disease_id=disease_id)
         results = QueryBioLink.__access_api(url)
@@ -41,7 +39,6 @@ class QueryBioLink:
         
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def get_phenotypes_for_disease_desc(disease_id):
         url = QueryBioLink.API_BASE_URL["get_phenotypes_for_disease"].format(disease_id=disease_id)
         results = QueryBioLink.__access_api(url)['objects']
@@ -56,7 +53,6 @@ class QueryBioLink:
        
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def get_diseases_for_gene_desc(gene_id):
         """for a given NCBI Entrez Gene ID, returns a ``set`` of DOI disease identifiers for the gene
 
@@ -77,7 +73,6 @@ class QueryBioLink:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def get_genes_for_disease_desc(disease_id):
         url = QueryBioLink.API_BASE_URL["get_genes_for_disease"].format(disease_id=disease_id)
 
@@ -90,7 +85,6 @@ class QueryBioLink:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def get_label_for_phenotype(phenotype_id_str):
         url = QueryBioLink.API_BASE_URL["get_label_for_phenotype"].format(phenotype_id=phenotype_id_str)
         results = QueryBioLink.__access_api(url)
@@ -101,7 +95,6 @@ class QueryBioLink:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def get_phenotypes_for_gene(gene_id):
         url = QueryBioLink.API_BASE_URL["get_phenotypes_for_gene"].format(gene_id=gene_id)
 
@@ -114,7 +107,6 @@ class QueryBioLink:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def get_phenotypes_for_gene_desc(ncbi_entrez_gene_id):
         phenotype_id_set = QueryBioLink.get_phenotypes_for_gene(ncbi_entrez_gene_id)
         ret_dict = dict()
@@ -125,7 +117,6 @@ class QueryBioLink:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def get_anatomies_for_gene(gene_id):
         """for a given NCBI Entrez Gene ID, returns a ``dict`` of Anatomy IDs and labels for the gene
 
@@ -143,7 +134,6 @@ class QueryBioLink:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def get_genes_for_anatomy(anatomy_id):
         """for a given Anatomy ID, returns a ``list`` of Gene ID for the anatomy
 
@@ -161,7 +151,6 @@ class QueryBioLink:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def get_anatomies_for_phenotype(phenotype_id):
         """for a given phenotype ID, returns a ``dict`` of Anatomy IDs and labels for the phenotype
 
@@ -193,3 +182,5 @@ if __name__ == '__main__':
     print(QueryBioLink.get_anatomies_for_gene("NCBIGene:407053"))
     print(QueryBioLink.get_genes_for_anatomy("UBERON:0000006"))
     print(QueryBioLink.get_anatomies_for_phenotype("HP:0000003"))
+
+    print(CachedMethods.cache_info())

@@ -1,13 +1,12 @@
 import requests
-import functools
 import CachedMethods
+
 
 class QueryUniprot:
     API_BASE_URL = "http://www.uniprot.org/uploadlists/"
     
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def uniprot_id_to_reactome_pathways(uniprot_id):
         """returns a ``set`` of reactome IDs of pathways associated with a given string uniprot ID
 
@@ -29,13 +28,9 @@ class QueryUniprot:
             if field_str != "To":
                 res_set.add(field_str)
         return res_set
-
-    @staticmethod
-    def test():
-        print(QueryUniprot.uniprot_id_to_reactome_pathways("P68871"))
-        print(QueryUniprot.uniprot_id_to_reactome_pathways("Q16621"))
-        print(QueryUniprot.uniprot_id_to_reactome_pathways("P09601"))
         
 if __name__ == '__main__':
-    QueryUniprot.test()
-      
+    print(QueryUniprot.uniprot_id_to_reactome_pathways("P68871"))
+    print(QueryUniprot.uniprot_id_to_reactome_pathways("Q16621"))
+    print(QueryUniprot.uniprot_id_to_reactome_pathways("P09601"))
+    print(CachedMethods.cache_info())

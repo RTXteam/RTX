@@ -1,5 +1,4 @@
 import requests
-import functools
 import CachedMethods
 
 
@@ -20,7 +19,6 @@ class QueryReactome:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_uniprot_id_to_interacting_uniprot_ids(uniprot_id):
         res = QueryReactome.send_query_get("interactors/static/molecule", uniprot_id + "/details").json()
         res_uniprot_ids = dict()
@@ -38,7 +36,6 @@ class QueryReactome:
         
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_uniprot_to_reactome_entity_id(uniprot_id):
         res = QueryReactome.send_query_get("data/complexes/UniProt", uniprot_id)
         if res is not None:
@@ -54,7 +51,6 @@ class QueryReactome:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_uniprot_to_reactome_entity_id_desc(uniprot_id):
         res_json = QueryReactome.send_query_get("data/complexes/UniProt", uniprot_id).json()
         if type(res_json)==list:
@@ -65,7 +61,6 @@ class QueryReactome:
     
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_reactome_entity_id_to_reactome_pathway_ids(reactome_entity_id):
         res = QueryReactome.send_query_get("data/pathways/low/diagram/entity", reactome_entity_id + "/allForms?species=9606")
         if res is not None:
@@ -78,7 +73,6 @@ class QueryReactome:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_reactome_entity_id_to_reactome_pathway_ids_desc(reactome_entity_id):
         res = QueryReactome.send_query_get("data/pathways/low/diagram/entity", reactome_entity_id + "/allForms?species=9606")
         if res is not None:
@@ -90,7 +84,6 @@ class QueryReactome:
     
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_uniprot_id_to_reactome_pathway_ids(uniprot_id):
         reactome_entity_ids = QueryReactome.query_uniprot_to_reactome_entity_id(uniprot_id)
         res_set = set()
@@ -102,7 +95,6 @@ class QueryReactome:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_uniprot_id_to_reactome_pathway_ids_desc(uniprot_id):
         reactome_entity_ids = QueryReactome.query_uniprot_to_reactome_entity_id(uniprot_id)
         res_dict = dict()
@@ -114,7 +106,6 @@ class QueryReactome:
     
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_reactome_pathway_id_to_uniprot_ids(reactome_pathway_id):
         res_json = QueryReactome.send_query_get("data/participants", reactome_pathway_id).json()
         participant_ids_list = [refEntity["displayName"] for peDbEntry in res_json for refEntity in peDbEntry["refEntities"]]
@@ -123,7 +114,6 @@ class QueryReactome:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_reactome_pathway_id_to_uniprot_ids_desc(reactome_pathway_id):
         res_json = QueryReactome.send_query_get("data/participants", reactome_pathway_id).json()
 #        print(res_json)
@@ -138,15 +128,12 @@ class QueryReactome:
     #     res = QueryReactome.send_query_get(handler, url_suffix)
     #     return res.json()
 
-    @staticmethod
-    def test():
-#        print(QueryReactome.query_uniprot_to_reactome_entity_id("P68871"))
-#        print(QueryReactome.query_uniprot_to_reactome_entity_id("O75521-2"))
-#        print(QueryReactome.query_reactome_entity_id_to_reactome_pathway_ids_desc("R-HSA-2230989"))
-        print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids("Q13501"))
-#        print(QueryReactome.query_uniprot_id_to_reactome_pathway_ids_desc("P68871"))
-#        print(QueryReactome.query_reactome_pathway_id_to_uniprot_ids_desc("R-HSA-5423646"))
         
 if __name__ == '__main__':
-    QueryReactome.test()
+    #        print(QueryReactome.query_uniprot_to_reactome_entity_id("P68871"))
+    #        print(QueryReactome.query_uniprot_to_reactome_entity_id("O75521-2"))
+    #        print(QueryReactome.query_reactome_entity_id_to_reactome_pathway_ids_desc("R-HSA-2230989"))
+    print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids("Q13501"))
+    #        print(QueryReactome.query_uniprot_id_to_reactome_pathway_ids_desc("P68871"))
+    #        print(QueryReactome.query_reactome_pathway_id_to_uniprot_ids_desc("R-HSA-5423646"))
         

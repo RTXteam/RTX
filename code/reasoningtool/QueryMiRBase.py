@@ -18,7 +18,6 @@ class QueryMiRBase:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def convert_mirbase_id_to_mir_gene_symbol(mirbase_id):
         assert mirbase_id != ''
         res = QueryMiRBase.send_query_get('mirna_entry.pl', 'acc=' + mirbase_id)
@@ -32,7 +31,6 @@ class QueryMiRBase:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def convert_mirbase_id_to_mature_mir_ids(mirbase_id):
         assert mirbase_id != ''
         res = QueryMiRBase.send_query_get('mirna_entry.pl', 'acc=' + mirbase_id)
@@ -43,12 +41,9 @@ class QueryMiRBase:
         
         return(set(hrefs))
 
-    def test():
-        print(QueryMiRBase.convert_mirbase_id_to_mature_mir_ids('MI0014240'))
-        print(QueryMiRBase.convert_mirbase_id_to_mature_mir_ids('MI0000098'))
-        print(QueryMiRBase.convert_mirbase_id_to_mature_mir_ids('MIMAT0027666'))
-        print(QueryMiRBase.convert_mirbase_id_to_mir_gene_symbol('MIMAT0027666'))
-#        print(QueryMiRBase.convert_mirbase_id_to_mir_gene_symbol('MIMAT0027666X'))
 if __name__ == '__main__':
-    QueryMiRBase.test()
-     
+    print(QueryMiRBase.convert_mirbase_id_to_mature_mir_ids('MI0014240'))
+    print(QueryMiRBase.convert_mirbase_id_to_mature_mir_ids('MI0000098'))
+    print(QueryMiRBase.convert_mirbase_id_to_mature_mir_ids('MIMAT0027666'))
+    print(QueryMiRBase.convert_mirbase_id_to_mir_gene_symbol('MIMAT0027666'))
+    # print(QueryMiRBase.convert_mirbase_id_to_mir_gene_symbol('MIMAT0027666X'))

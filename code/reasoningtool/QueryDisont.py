@@ -1,5 +1,4 @@
 import requests
-import functools
 import CachedMethods
 
 
@@ -17,7 +16,6 @@ class QueryDisont:
     
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_disont_to_child_disonts(disont_id):
         """for a disease ontology ID (including prefix "DOID:", with zero padding), return child DOIDs
 
@@ -34,14 +32,12 @@ class QueryDisont:
 
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_disont_to_label(disont_id):
         res_json = QueryDisont.send_query_get('metadata', disont_id).json()
         return res_json.get('name', '')
     
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_disont_to_child_disonts_desc(disont_id):
         """for a disease ontology ID (including prefix "DOID:", with zero padding), return child DOIDs
 
@@ -59,7 +55,6 @@ class QueryDisont:
          
     @staticmethod
     @CachedMethods.register
-    @functools.lru_cache(maxsize=1024, typed=False)
     def query_disont_to_mesh_id(disont_id):
         """convert a disease ontology ID (including prefix "DOID:", with zero padding) to MeSH ID
 
@@ -72,19 +67,14 @@ class QueryDisont:
         else:
             mesh_ids = set()
         return mesh_ids
-        
-    @staticmethod
-    def test():
-        print(QueryDisont.query_disont_to_mesh_id("DOID:9352"))
-        print(QueryDisont.query_disont_to_mesh_id("DOID:1837"))
-        print(QueryDisont.query_disont_to_mesh_id("DOID:10182"))
-        print(QueryDisont.query_disont_to_mesh_id("DOID:11712"))
-        print(QueryDisont.query_disont_to_child_disonts_desc("DOID:9352"))
-        print(QueryDisont.query_disont_to_mesh_id("DOID:14069"))
-        print(QueryDisont.query_disont_to_child_disonts_desc("DOID:12365"))
-        print(QueryDisont.query_disont_to_mesh_id("DOID:0050741"))
-        print(QueryDisont.query_disont_to_label("DOID:0050741"))
-        
+
 if __name__ == '__main__':
-    QueryDisont.test()
-    
+    print(QueryDisont.query_disont_to_mesh_id("DOID:9352"))
+    print(QueryDisont.query_disont_to_mesh_id("DOID:1837"))
+    print(QueryDisont.query_disont_to_mesh_id("DOID:10182"))
+    print(QueryDisont.query_disont_to_mesh_id("DOID:11712"))
+    print(QueryDisont.query_disont_to_child_disonts_desc("DOID:9352"))
+    print(QueryDisont.query_disont_to_mesh_id("DOID:14069"))
+    print(QueryDisont.query_disont_to_child_disonts_desc("DOID:12365"))
+    print(QueryDisont.query_disont_to_mesh_id("DOID:0050741"))
+    print(QueryDisont.query_disont_to_label("DOID:0050741"))
