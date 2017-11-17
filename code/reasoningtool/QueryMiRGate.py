@@ -50,6 +50,7 @@ class QueryMiRGate:
         return res_ids
 
 if __name__ == '__main__':
+    print(QueryMiRGate.get_gene_symbols_regulated_by_microrna('MIMAT0022742')) # for issue #30
     print(QueryMiRGate.get_microrna_ids_that_regulate_gene_symbol('HMOX1'))
     print(QueryMiRGate.get_gene_symbols_regulated_by_microrna('MIMAT0016853')) # for issue #25
     print(QueryMiRGate.get_gene_symbols_regulated_by_microrna('MIMAT0018979'))
