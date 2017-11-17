@@ -4,7 +4,7 @@ import lxml.etree
 
 class QueryMiRGate:
     API_BASE_URL = 'http://mirgate.bioinfo.cnio.es/ResT/API/human'
-    TIMEOUT_SEC = 60
+    TIMEOUT_SEC = 120
     
     @staticmethod
     def send_query_get(handler, url_suffix):  
