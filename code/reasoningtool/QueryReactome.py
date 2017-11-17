@@ -30,8 +30,9 @@ class QueryReactome:
                     for res_entity_interactor in res_entity_interactors:
                         int_uniprot_id = res_entity_interactor.get('acc', None)
                         if int_uniprot_id is not None:
-                            int_alias = res_entity_interactor.get('alias', '')
-                            res_uniprot_ids[int_uniprot_id] = int_alias
+                            if 'CHEBI:' not in int_uniprot_id:
+                                int_alias = res_entity_interactor.get('alias', '')
+                                res_uniprot_ids[int_uniprot_id] = int_alias
         return res_uniprot_ids
         
     @staticmethod
