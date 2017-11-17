@@ -45,7 +45,12 @@ class QueryMyGene:
                                     fields='symbol', verbose=False)
         gene_symbol = set()
         if len(res) > 0:
-            gene_symbol = set([hit["symbol"] for hit in res["hits"]])
+            res_hits = res.get('hits', None)
+            if res_hits is not None:
+                gene_symbol = set([hit['symbol'] for hit in res_hits])
+            else:
+                print("QueryMyGene.convert_uniprot_id_to_gene_symbol: no \'hits\' result data for uniprot_id: " + uniprot_id, sys.stderr)
+            gene_symbol = set([hit["symbol"] for hit in res_hits])
         return gene_symbol
 
     def convert_uniprot_id_to_entrez_gene_ID(self, uniprot_id):
