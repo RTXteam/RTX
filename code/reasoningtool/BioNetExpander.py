@@ -34,7 +34,6 @@ class BioNetExpander:
         targets = QueryPharos.query_drug_name_to_targets(drug_name)
         for target in targets:
             uniprot_id = QueryPharos.query_target_uniprot_accession(str(target["id"]))
-            assert 'CHEBI:' not in uniprot_id  # debugging code for issue #34
             target_node = self.orangeboard.add_node('uniprot_protein', uniprot_id, desc=target["name"])
             self.orangeboard.add_rel('targets', 'Pharos', node, target_node)
 
@@ -94,7 +93,6 @@ class BioNetExpander:
         rel_sourcedb_dict = dict.fromkeys(uniprot_ids_from_reactome_dict.keys(), 'reactome')
         source_node = node
         for uniprot_id in uniprot_ids_from_reactome_dict.keys():
-            assert 'CHEBI:' not in uniprot_id  # debugging code for issue #34
             target_node = self.orangeboard.add_node('uniprot_protein', uniprot_id,
                                                     desc=uniprot_ids_from_reactome_dict[uniprot_id])
             self.orangeboard.add_rel('is_member_of', rel_sourcedb_dict[uniprot_id], target_node, source_node)
