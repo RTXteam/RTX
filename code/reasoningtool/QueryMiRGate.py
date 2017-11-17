@@ -1,7 +1,6 @@
 import requests
 import lxml.etree
 
-
 class QueryMiRGate:
     API_BASE_URL = 'http://mirgate.bioinfo.cnio.es/ResT/API/human'
     TIMEOUT_SEC = 120
@@ -9,7 +8,7 @@ class QueryMiRGate:
     @staticmethod
     def send_query_get(handler, url_suffix):  
         url_str = QueryMiRGate.API_BASE_URL + "/" + handler + "/" + url_suffix
-#        print(url_str)
+        print(url_str)
         try:
             res = requests.get(url_str, headers={'accept': 'application/json'},
                                timeout=QueryMiRGate.TIMEOUT_SEC)
@@ -51,7 +50,7 @@ class QueryMiRGate:
         return res_ids
 
 if __name__ == '__main__':
+    print(QueryMiRGate.get_microrna_ids_that_regulate_gene_symbol('HMOX1'))
     print(QueryMiRGate.get_gene_symbols_regulated_by_microrna('MIMAT0016853')) # for issue #25
     print(QueryMiRGate.get_gene_symbols_regulated_by_microrna('MIMAT0018979'))
-    print(QueryMiRGate.get_microrna_ids_that_regulate_gene_symbol('HMOX1'))
     print(QueryMiRGate.get_gene_symbols_regulated_by_microrna('MIMAT0019885'))
