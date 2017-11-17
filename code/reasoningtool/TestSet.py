@@ -285,7 +285,9 @@ def test_issue19():
 
 def test_q1():
     q1_diseases_dict = {'DOID:12365': 'malaria',
-                        'DOID:1498': 'cholera'}
+                        'DOID:1498':  'cholera',
+                        'DOID:2841':  'asthma',
+                        'DOID:13810': 'hypercholesterolemia'}
     seed_node_bool = True
     for disont_id_str in q1_diseases_dict.keys():
         ob.add_node('disont_disease', disont_id_str, seed_node_bool)
