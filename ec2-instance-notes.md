@@ -15,7 +15,7 @@ ncats3              version2            YYYYYYYYYYYY        43 hours ago        
 ncats3              version1            ZZZZZZZZZZZZ        2 days ago          5.45GB
 
 # Commit current image
-# Usage: docker commit [ImageName] [Repository:Tag]
+# Usage: docker commit [DockerName] [Repository:Tag]
 admin@star-trek:~$ sudo docker commit NCATS3 ncats3:version3
 
 # Check again
