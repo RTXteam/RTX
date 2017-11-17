@@ -1,5 +1,4 @@
 import mygene
-import CachedMethods
 
 
 class QueryMyGene:
@@ -22,7 +21,6 @@ class QueryMyGene:
 
         return list(generate_elements(lst, skip_type))
 
-    @CachedMethods.register
     def convert_gene_symbol_to_uniprot_id(self, gene_symbol):
         res = self.mygene_obj.query('symbol:' + gene_symbol, species='human',
                                     fields='uniprot', verbose=False)
@@ -42,7 +40,6 @@ class QueryMyGene:
             uniprot_ids_set = set(uniprot_ids_list)
         return uniprot_ids_set
 
-    @CachedMethods.register
     def convert_uniprot_id_to_gene_symbol(self, uniprot_id):
         res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human',
                                     fields='symbol', verbose=False)
@@ -51,16 +48,18 @@ class QueryMyGene:
             gene_symbol = set([hit["symbol"] for hit in res["hits"]])
         return gene_symbol
 
-    @CachedMethods.register
     def convert_uniprot_id_to_entrez_gene_ID(self, uniprot_id):
         res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human',
                                     fields='entrezgene', verbose=False)
         entrez_ids = set()
         if len(res) > 0:
-            entrez_ids = set([hit["entrezgene"] for hit in res["hits"]])
+            res_hits = res.get('hits', None)
+            if res_hits is not None:
+                entrez_ids = set([hit["entrezgene"] for hit in res_hits])
+            else:
+                print("QueryMyGene.convert_uniprot_id_to_entrez_gene_ID: no \'hits\' result data for uniprot_id: " + uniprot_id)
         return entrez_ids
 
-    @CachedMethods.register
     def convert_gene_symbol_to_entrez_gene_ID(self, gene_symbol):
         res = self.mygene_obj.query('symbol:' + gene_symbol, species='human',
                                     fields='entrezgene', verbose=False)
@@ -73,7 +72,6 @@ class QueryMyGene:
                     entrez_ids.add(entrez_id)
         return entrez_ids
 
-    @CachedMethods.register
     def convert_entrez_gene_ID_to_mirbase_ID(self, entrez_gene_id):
         assert type(entrez_gene_id)==int
         res = self.mygene_obj.query('entrezgene:' + str(entrez_gene_id), specis='human', fields='miRBase', verbose=False)
