@@ -36,14 +36,16 @@ class QueryGeneProf:
     def geneprof_id_to_transcription_factor_gene_symbols(geneprof_id):
         handler = 'gene.info/regulation/binary/by.target'
         url_suffix = 'human/' + str(geneprof_id) + '.json?with-sample-info=true'
-        res = QueryGeneProf.send_query_get(handler, url_suffix).json()
+        res = QueryGeneProf.send_query_get(handler, url_suffix)
         tf_genes = set()
         if res is not None:
-            sample_info_dict_list = [expt['sample'] for expt in res['values'] if expt['is_target']]
-            for sample_info in sample_info_dict_list:
-                gene_symbol = sample_info.get("Gene", None)
-                if gene_symbol is not None:
-                    tf_genes.add(gene_symbol)
+            res_json = res.json()
+            if res_json is not None:
+                sample_info_dict_list = [expt['sample'] for expt in res_json['values'] if expt['is_target']]
+                for sample_info in sample_info_dict_list:
+                    gene_symbol = sample_info.get("Gene", None)
+                    if gene_symbol is not None:
+                        tf_genes.add(gene_symbol)
         return tf_genes
 
     @staticmethod
