@@ -76,7 +76,7 @@ def bigtest():
     print('total number of edges: ' + str(ob.count_rels()))
 
     print('size is: ' + str(ob.bytesize()))
-    
+
     # push the entire graph to neo4j
     ob.neo4j_push()
 
@@ -95,7 +95,7 @@ def bigtest2():
 
 
     # add the initial target disease into the Orangeboard, as a 'disease ontology' node
-    disease_node = ob.add_node('disont_disease', target_disease_disont_id, desc='malaria', seed_node_bool=True)
+    disease_node = ob.add_node('disont_disease', target_disease_disont_id, desc='cholera', seed_node_bool=True)
 
     print('----------- first round of expansion ----------')
     bne.expand_all_nodes()
@@ -110,7 +110,7 @@ def bigtest2():
     print('total number of edges: ' + str(ob.count_rels()))
 
      # add the initial genetic condition into the Orangeboard, as a 'MIM' node
-    mim_node = ob.add_node('omim_disease', genetic_condition_mim_id, desc='sickle-cell anemia', seed_node_bool=True)
+    mim_node = ob.add_node('omim_disease', genetic_condition_mim_id, desc='cystic fibrosis', seed_node_bool=True)
 
     print('----------- first round of expansion ----------')
     bne.expand_all_nodes()
@@ -294,7 +294,7 @@ def test_q1():
                         'DOID:1498':  'cholera',
                         'DOID:2841':  'asthma',
                         'DOID:13810': 'hypercholesterolemia'}
-    
+
     seed_node_bool = True
     for disont_id_str in q1_diseases_dict.keys():
         ob.add_node('disont_disease', disont_id_str, seed_node_bool)
@@ -305,7 +305,7 @@ def test_q1():
     bne.expand_all_nodes()
     ob.set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
-    
+
 def test_print_for_arash():
 
     # add the initial target disease into the Orangeboard, as a 'disease ontology' node
@@ -349,7 +349,7 @@ def test_ob_size():
     bne.expand_all_nodes()
     bne.expand_all_nodes()
     print('size is: ' + str(ob.bytesize()))
-    
+
 def test_expand_phenont_phenotype():
     ob.add_node('phenont_phenotype', "HP:0000107", desc='Renal cyst', seed_node_bool=True)
     bne.expand_all_nodes()
