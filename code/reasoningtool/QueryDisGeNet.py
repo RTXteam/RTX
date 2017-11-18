@@ -7,6 +7,7 @@ import pandas
 import io
 import math
 import requests
+import sys
 
 class QueryDisGeNet:
     MAX_PROTS_FOR_GENE = 3   ## maybe we should make this a configurable class variable (SAR)
