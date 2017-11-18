@@ -301,6 +301,7 @@ def test_q1():
     bne.expand_all_nodes()
     bne.expand_all_nodes()
     bne.expand_all_nodes()
+    ob.set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
     
 def test_print_for_arash():
