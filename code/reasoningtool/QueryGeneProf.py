@@ -12,7 +12,6 @@ class QueryGeneProf:
         try:
             res = requests.get(url_str, timeout=QueryGeneProf.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
-            print(url_str, sys.stderr)
             print("Timeout in QueryGeneProf for URL: " + url_str, file=sys.stderr)
             return None
         status_code = res.status_code
