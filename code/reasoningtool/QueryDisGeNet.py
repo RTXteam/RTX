@@ -3,19 +3,18 @@
 # Modified by Stephen Ramsey at Oregon State University
 ###############################################################################
 
-import urllib.request, urllib.error, urllib.parse
 import pandas
 import io
-import CachedMethods
 import math
-
+import requests
 
 class QueryDisGeNet:
     MAX_PROTS_FOR_GENE = 3   ## maybe we should make this a configurable class variable (SAR)
     MAX_GENES_FOR_DISEASE = 20  ## maybe we should make this a configurable class variable (SAR)
+    SPARQL_ENDPOINT_URL = 'http://www.disgenet.org/oql'
+    TIMEOUT_SEC = 120
     
     @staticmethod
-    @CachedMethods.register
     def query_mesh_id_to_uniprot_ids_desc(mesh_id):
         ent = 'disease'
         id = 'mesh'
@@ -23,7 +22,7 @@ class QueryDisGeNet:
         intfield = mesh_id
         seq = ( """
         DEFINE
-          	c0='/data/gene_disease_summary',
+        c0='/data/gene_disease_summary',
 	c1='/data/diseases',
 	c2='/data/genes',
 	c4='/data/sources'
@@ -46,11 +45,28 @@ class QueryDisGeNet:
             c0.score DESC""" ); #
 
         binary_data = seq.encode("utf-8")
-        req = urllib.request.Request("http://www.disgenet.org/oql")
-        res = urllib.request.urlopen(req, binary_data)
-        data  = res.read().decode("utf-8")
-        res.close()
-        ret_data_df = pandas.read_csv(io.StringIO(data), sep="\t").head(QueryDisGeNet.MAX_GENES_FOR_DISEASE)
+        url_str = QueryDisGeNet.SPARQL_ENDPOINT_URL
+
+        try:
+            res = requests.post(url_str, data=binary_data, timeout=QueryDisGeNet.TIMEOUT_SEC)       
+        except requests.exceptions.Timeout:
+            print(url_str, sys.stderr)
+            print("Timeout in QueryDisGeNet for URL: " + url_str, file=sys.stderr)
+            return dict()
+        
+        status_code = res.status_code
+        
+        if status_code != 200:
+            print(url_str, sys.stderr)
+            print("Status code " + status_code + " for url: " + url_str, file=sys.stderr)
+            return dict()
+        
+        if len(res.content) == 0:
+            print(url_str, file=sys.stderr)
+            print("Empty response from URL!", file=sys.stderr)
+            return dict()
+        
+        ret_data_df = pandas.read_csv(io.StringIO(res.content.decode('utf-8')), sep="\t").head(QueryDisGeNet.MAX_GENES_FOR_DISEASE)
         uniprot_ids_list = ret_data_df["c2.uniprotId"].tolist()
         gene_names_list = ret_data_df["c2.symbol"].tolist()
         ret_dict = dict(list(zip(uniprot_ids_list, gene_names_list)))
