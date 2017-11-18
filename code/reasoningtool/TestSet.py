@@ -75,6 +75,8 @@ def bigtest():
     print('total number of nodes: ' + str(ob.count_nodes()))
     print('total number of edges: ' + str(ob.count_rels()))
 
+    print('size is: ' + str(ob.bytesize()))
+    
     # push the entire graph to neo4j
     ob.neo4j_push()
 
@@ -342,7 +344,12 @@ def lysine_test_6():
     print("[lysine_test_6] count(Node) = {}".format(ob.count_nodes()))
     print("[lysine_test_6] count(Rel) = {}".format(ob.count_rels()))
 
-
+def test_ob_size():
+    ob.add_node('phenont_phenotype', "HP:0000107", desc='Renal cyst', seed_node_bool=True)
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
+    print('size is: ' + str(ob.bytesize()))
+    
 def test_expand_phenont_phenotype():
     ob.add_node('phenont_phenotype', "HP:0000107", desc='Renal cyst', seed_node_bool=True)
     bne.expand_all_nodes()
@@ -355,4 +362,4 @@ if __name__ == '__main__':
     args_dict = vars(args)
     if args_dict.get('test_function_to_call', None) is not None:
         print('going to call function: ' + args_dict['test_function_to_call'])
-        print(timeit.timeit(lambda: globals()[args_dict['test_function_to_call']](), number=1))
+        print('running time for test: ' + str(timeit.timeit(lambda: globals()[args_dict['test_function_to_call']](), number=1)))
