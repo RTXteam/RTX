@@ -3,6 +3,7 @@ import itertools
 import pprint
 import neo4j.v1
 import math
+import sys
 
 ## NOTE to users:  neo4j password hard-coded (see NEO4J_PASSWORD below)
 
@@ -36,13 +37,13 @@ class Node:
         return {'Base', self.nodetype}
 
     def __str__(self):
-        attr_list = ["nodetype", "name", "uuid", "expanded", "desc"]
+        attr_list = ['nodetype', 'name', 'uuid', 'expanded', 'desc']
         attr_dict = {attr: str(self.__getattribute__(attr)) for attr in attr_list}
 
         return pprint.pformat(attr_dict)
 
     def simple_print(self):
-        return 'node,' + self.uuid + "," + self.nodetype + "," + self.name
+        return 'node,' + self.uuid + ',' + self.nodetype + ',' + self.name
 
 class Rel:
     def __init__(self, reltype, sourcedb, source_node, target_node, seed_node):
@@ -70,17 +71,17 @@ class Rel:
         return prop_dict
 
     def __str__(self):
-        attr_list = ["reltype", "sourcedb", "uuid", "source_node", "target_node"]
+        attr_list = ['reltype', 'sourcedb', 'uuid', 'source_node', 'target_node']
         attr_dict = {attr: str(self.__getattribute__(attr)) for attr in attr_list}
 
         return pprint.pformat(attr_dict)
 
     def simple_print(self):
-        return 'rel,' + self.source_node.uuid + "," + self.target_node.uuid + "," + self.uuid
+        return 'rel,' + self.source_node.uuid + ',' + self.target_node.uuid + ',' + self.uuid
 
 class Orangeboard:
-    NEO4J_USERNAME = "neo4j"
-    NEO4J_PASSWORD = "precisionmedicine"
+    NEO4J_USERNAME = 'neo4j'
+    NEO4J_PASSWORD = 'precisionmedicine'
     DEBUG_COUNT_REPORT_GRANULARITY = 1000
     
     def __init__(self, debug=False):
@@ -113,7 +114,7 @@ class Orangeboard:
         rel_list = itertools.chain.from_iterable(self.dict_seed_uuid_to_list_rels.values())
         rel_strings = [rel.simple_print() for rel in rel_list]
 
-        return "\n".join(node_strings) + "\n" + "\n".join(rel_strings)
+        return '\n'.join(node_strings) + '\n' + '\n'.join(rel_strings)
         
     def __str__(self):
         node_list = itertools.chain.from_iterable(self.dict_seed_uuid_to_list_nodes.values())
@@ -122,7 +123,7 @@ class Orangeboard:
         rel_list = itertools.chain.from_iterable(self.dict_seed_uuid_to_list_rels.values())
         rel_strings = [str(rel) for rel in rel_list]
 
-        return "\n".join(node_strings) + "\n" + "\n".join(rel_strings)
+        return '\n'.join(node_strings) + '\n' + '\n'.join(rel_strings)
 
     def count_rels_for_node_slow(self, node):
         node_uuid = node.uuid
@@ -188,7 +189,7 @@ class Orangeboard:
             self.set_seed_node(None)
         else:
             if self.seed_node is None:
-                print("must set seed_node_bool=True for first call to add_node")
+                print('must set seed_node_bool=True for first call to add_node')
                 exit(1)
         existing_node = self.get_node(nodetype, name)
         if existing_node is None:
@@ -215,7 +216,7 @@ class Orangeboard:
                 ## node is already in the orangeboard but we are updating its seed node
                 ## (1) get the UUID for the existing node
                 new_seed_node_uuid = existing_node.uuid
-                ## (2) set the "expanded" variable of the existing node to False
+                ## (2) set the 'expanded' variable of the existing node to False
                 existing_node.expanded = False
                 ## (3) set the seed_node of the orangeboard to the existing_node
                 self.set_seed_node(existing_node)
@@ -233,7 +234,7 @@ class Orangeboard:
         if self.debug:
             node_count = self.count_nodes()
             if node_count % Orangeboard.DEBUG_COUNT_REPORT_GRANULARITY == 0:
-                print("Number of nodes: " + str(node_count))
+                print('Number of nodes: ' + str(node_count))
         return existing_node
 
     @staticmethod
@@ -241,10 +242,10 @@ class Orangeboard:
         source_uuid = source_node.uuid
         target_uuid = target_node.uuid
         if source_uuid < target_uuid:
-            rel_dict_key = source_uuid + "--" + target_uuid
+            rel_dict_key = source_uuid + '--' + target_uuid
         else:
             assert source_uuid > target_uuid
-            rel_dict_key = target_uuid + "--" + source_uuid
+            rel_dict_key = target_uuid + '--' + source_uuid
         return rel_dict_key
     
     def get_rel(self, reltype, source_node, target_node):
@@ -282,7 +283,7 @@ class Orangeboard:
         if self.debug:
             rel_count = self.count_rels()
             if rel_count % Orangeboard.DEBUG_COUNT_REPORT_GRANULARITY == 0:
-                print("Number of rels: " + str(rel_count))
+                print('Number of rels: ' + str(rel_count))
         return existing_rel
 
     @staticmethod
@@ -300,7 +301,7 @@ class Orangeboard:
         :returns: a string representaiotn of the property key-value pairs, in Neo4j format like this:
         UUID:'97b47364-b9c2-11e7-ac88-a820660158fd', name:'prot1'
         """
-        return "{" + (', '.join("{!s}:{!r}".format(key,val) for (key,val) in property_info.items())) + "}" if len(property_info) > 0 else ''
+        return '{' + (', '.join('{!s}:{!r}'.format(key,val) for (key,val) in property_info.items())) + '}' if len(property_info) > 0 else ''
 
     def clear_from_seed_node_uuid(self, seed_node_uuid):
         dict_reltype_to_dict_relkey_to_rel = self.dict_reltype_to_dict_relkey_to_rel
@@ -374,13 +375,13 @@ class Orangeboard:
         """
         if seed_node is not None:
             seed_node_uuid = seed_node.uuid
-            cypher_query_middle = ":Base {seed_node_uuid: \'" + seed_node_uuid + "\'}"
+            cypher_query_middle = ':Base {seed_node_uuid: \'' + seed_node_uuid + '\'}'
         else:
             cypher_query_middle = ''
 
-        cypher_query = "MATCH (n" + \
+        cypher_query = 'MATCH (n' + \
                        cypher_query_middle + \
-                       ") DETACH DELETE n"
+                       ') DETACH DELETE n'
 
         if self.debug:
             print(cypher_query)
@@ -395,7 +396,7 @@ class Orangeboard:
         nodetypes = self.get_all_nodetypes()
         for nodetype in nodetypes:
             if self.debug:
-                print("Pushing nodes to Neo4j for node type: " + nodetype)
+                print('Pushing nodes to Neo4j for node type: ' + nodetype)
             nodes = self.get_all_nodes_for_nodetype(nodetype)
             if seed_node is not None:
                 nodes &= self.get_all_nodes_for_seed_node_uuid(seed_node.uuid)
@@ -410,13 +411,13 @@ class Orangeboard:
             if self.debug:
                 print(res.summary().counters)
 
-        self.neo4j_run_cypher_query("CREATE INDEX ON :Base(UUID)")
-        self.neo4j_run_cypher_query("CREATE INDEX ON :Base(seed_node_uuid)")
+        self.neo4j_run_cypher_query('CREATE INDEX ON :Base(UUID)')
+        self.neo4j_run_cypher_query('CREATE INDEX ON :Base(seed_node_uuid)')
 
         reltypes = self.get_all_reltypes()
         for reltype in reltypes:
             if self.debug:
-                print("Pushing relationships to Neo4j for relationship type: " + reltype)
+                print('Pushing relationships to Neo4j for relationship type: ' + reltype)
             reltype_dir = self.dict_reltype_dirs[reltype]
             rels = self.get_all_rels_for_reltype(reltype)
             if seed_node is not None:
@@ -426,15 +427,15 @@ class Orangeboard:
                 reltype_rels_params_list = reltype_rels_params_list + \
                                            [rel.get_props(reverse=True) for rel in rels]
             query_params = {'rel_data_list': reltype_rels_params_list}
-            cypher_query_str = "UNWIND $rel_data_list AS rel_data_map\n" + \
-                               "MATCH (n1:Base {UUID: rel_data_map.source_node_uuid})," + \
-                               "(n2:Base {UUID: rel_data_map.target_node_uuid})\n" + \
-                               "CREATE (n1)-[:" + reltype + \
-                               " { source_node_uuid: rel_data_map.source_node_uuid," + \
-                               " target_node_uuid: rel_data_map.target_node_uuid," + \
-                               " sourcedb: rel_data_map.sourcedb," + \
-                               " seed_node_uuid: rel_data_map.seed_node_uuid," + \
-                               " UUID: rel_data_map.UUID }]->(n2)"
+            cypher_query_str = 'UNWIND $rel_data_list AS rel_data_map\n' + \
+                               'MATCH (n1:Base {UUID: rel_data_map.source_node_uuid}),' + \
+                               '(n2:Base {UUID: rel_data_map.target_node_uuid})\n' + \
+                               'CREATE (n1)-[:' + reltype + \
+                               ' { source_node_uuid: rel_data_map.source_node_uuid,' + \
+                               ' target_node_uuid: rel_data_map.target_node_uuid,' + \
+                               ' sourcedb: rel_data_map.sourcedb,' + \
+                               ' seed_node_uuid: rel_data_map.seed_node_uuid,' + \
+                               ' UUID: rel_data_map.UUID }]->(n2)'
             res = self.neo4j_run_cypher_query(cypher_query_str, query_params)
             if self.debug:
                 print(res.summary().counters)
