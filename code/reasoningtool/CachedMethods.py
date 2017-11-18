@@ -9,7 +9,7 @@ __all__ = ['register', 'cache_info', 'cache_clear']
 # all methods (or function) decorated with `@CachedMethod.register` will be added to this list
 cached_methods = []
 
-enabled = True
+enabled = False
 
 lru_cache_setting = {
     "maxsize": 1024,
