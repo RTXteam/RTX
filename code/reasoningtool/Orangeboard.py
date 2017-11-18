@@ -218,6 +218,10 @@ class Orangeboard:
             if sublist is None:
                 self.dict_seed_uuid_to_list_nodes[seed_node_uuid] = list()
             self.dict_seed_uuid_to_list_nodes[seed_node_uuid].append(new_node)
+            if self.debug:
+                node_count = self.count_nodes()
+                if node_count % Orangeboard.DEBUG_COUNT_REPORT_GRANULARITY == 0:
+                    print('Number of nodes: ' + str(node_count))
         else:
             ## node is already in the orangeboard
             if desc != '' and existing_node.desc == '':
@@ -241,10 +245,6 @@ class Orangeboard:
                 ## (6) remove the existing node from the old seed-node-level list:
                 assert old_seed_node_uuid is not None
                 self.dict_seed_uuid_to_list_nodes[old_seed_node_uuid].remove(existing_node)
-        if self.debug:
-            node_count = self.count_nodes()
-            if node_count % Orangeboard.DEBUG_COUNT_REPORT_GRANULARITY == 0:
-                print('Number of nodes: ' + str(node_count))
         return existing_node
 
     @staticmethod
@@ -290,10 +290,10 @@ class Orangeboard:
             if sublist is None:
                 self.dict_seed_uuid_to_list_rels[seed_node_uuid] = []
             self.dict_seed_uuid_to_list_rels[seed_node_uuid].append(new_rel)
-        if self.debug:
-            rel_count = self.count_rels()
-            if rel_count % Orangeboard.DEBUG_COUNT_REPORT_GRANULARITY == 0:
-                print('Number of rels: ' + str(rel_count))
+            if self.debug:
+                rel_count = self.count_rels()
+                if rel_count % Orangeboard.DEBUG_COUNT_REPORT_GRANULARITY == 0:
+                    print('Number of rels: ' + str(rel_count))
         return existing_rel
 
     @staticmethod
