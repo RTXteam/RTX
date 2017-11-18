@@ -83,6 +83,16 @@ class Orangeboard:
     NEO4J_USERNAME = 'neo4j'
     NEO4J_PASSWORD = 'precisionmedicine'
     DEBUG_COUNT_REPORT_GRANULARITY = 1000
+
+    def bytesize(self):
+        count = 0
+        for uuid in self.dict_seed_uuid_to_list_nodes.keys():
+            for node in self.dict_seed_uuid_to_list_nodes[uuid]:
+                count += sys.getsizeof(node)
+        for uuid in self.dict_seed_uuid_to_list_rels.keys():
+            for rel in self.dict_seed_uuid_to_list_rels[uuid]:
+                count += sys.getsizeof(rel)
+        return count
     
     def __init__(self, debug=False):
         self.dict_nodetype_to_dict_name_to_node = dict()
@@ -189,7 +199,7 @@ class Orangeboard:
             self.set_seed_node(None)
         else:
             if self.seed_node is None:
-                print('must set seed_node_bool=True for first call to add_node')
+                print('must set seed_node_bool=True for first call to add_node', file=sys.stderr)
                 exit(1)
         existing_node = self.get_node(nodetype, name)
         if existing_node is None:
