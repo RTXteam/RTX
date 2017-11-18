@@ -45,31 +45,31 @@ class QueryDisGeNet:
         ORDER BY
             c0.score DESC""" ); #
 
-        binary_data = seq.encode("utf-8")
+        binary_data = seq.encode('utf-8')
         url_str = QueryDisGeNet.SPARQL_ENDPOINT_URL
 
         try:
             res = requests.post(url_str, data=binary_data, timeout=QueryDisGeNet.TIMEOUT_SEC)       
         except requests.exceptions.Timeout:
             print(url_str, sys.stderr)
-            print("Timeout in QueryDisGeNet for URL: " + url_str, file=sys.stderr)
+            print('Timeout in QueryDisGeNet for URL: ' + url_str, file=sys.stderr)
             return dict()
         
         status_code = res.status_code
         
         if status_code != 200:
             print(url_str, sys.stderr)
-            print("Status code " + status_code + " for url: " + url_str, file=sys.stderr)
+            print('Status code ' + status_code + ' for url: ' + url_str, file=sys.stderr)
             return dict()
         
         if len(res.content) == 0:
             print(url_str, file=sys.stderr)
-            print("Empty response from URL!", file=sys.stderr)
+            print('Empty response from URL!', file=sys.stderr)
             return dict()
         
-        ret_data_df = pandas.read_csv(io.StringIO(res.content.decode('utf-8')), sep="\t").head(QueryDisGeNet.MAX_GENES_FOR_DISEASE)
-        uniprot_ids_list = ret_data_df["c2.uniprotId"].tolist()
-        gene_names_list = ret_data_df["c2.symbol"].tolist()
+        ret_data_df = pandas.read_csv(io.StringIO(res.content.decode('utf-8')), sep='\t').head(QueryDisGeNet.MAX_GENES_FOR_DISEASE)
+        uniprot_ids_list = ret_data_df['c2.uniprotId'].tolist()
+        gene_names_list = ret_data_df['c2.symbol'].tolist()
         ret_dict = dict(list(zip(uniprot_ids_list, gene_names_list)))
         for prot in ret_dict.copy().keys():
             if type(prot)==str:
