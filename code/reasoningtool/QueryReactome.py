@@ -7,7 +7,7 @@ class QueryReactome:
     API_BASE_URL = 'https://reactome.org/ContentService'
 
     @staticmethod
-    def send_query_get(handler, url_suffix):  ## :WEIRD: Reactome REST API GET syntax doesn't want a question mark in the URL
+    def send_query_get(handler, url_suffix):  
         url_str = QueryReactome.API_BASE_URL + "/" + handler + "/" + url_suffix
 #        print(url_str)
         res = requests.get(url_str, headers={'accept': 'application/json'})
