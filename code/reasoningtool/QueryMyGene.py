@@ -49,7 +49,7 @@ class QueryMyGene:
             if res_hits is not None:
                 gene_symbol = set([hit['symbol'] for hit in res_hits])
             else:
-                print("QueryMyGene.convert_uniprot_id_to_gene_symbol: no \'hits\' result data for uniprot_id: " + uniprot_id, sys.stderr)
+                print("QueryMyGene.convert_uniprot_id_to_gene_symbol: no \'hits\' result data for uniprot_id: " + uniprot_id, file=sys.stderr)
             gene_symbol = set([hit["symbol"] for hit in res_hits])
         return gene_symbol
 
@@ -62,7 +62,7 @@ class QueryMyGene:
             if res_hits is not None:
                 entrez_ids = set([hit["entrezgene"] for hit in res_hits])
             else:
-                print("QueryMyGene.convert_uniprot_id_to_entrez_gene_ID: no \'hits\' result data for uniprot_id: " + uniprot_id, sys.stderr)
+                print("QueryMyGene.convert_uniprot_id_to_entrez_gene_ID: no \'hits\' result data for uniprot_id: " + uniprot_id, file=sys.stderr)
         return entrez_ids
 
     def convert_gene_symbol_to_entrez_gene_ID(self, gene_symbol):
