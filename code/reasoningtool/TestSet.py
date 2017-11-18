@@ -288,12 +288,16 @@ def test_issue19():
 def test_q1():
     q1_diseases_dict = {'DOID:11476': 'osteoporosis',
                         'DOID:526':   'HIV infectious disease',
-                        'DOID:4325':  'Ebola hemmorhagic fever',
-                        'DOID:10573': 'Osteomalacia',
-                        'DOID:12365': 'malaria',
                         'DOID:1498':  'cholera',
+                        'DOID:4325':  'Ebola hemmorhagic fever',
+                        'DOID:12365': 'malaria',
+                        'DOID:10573': 'Osteomalacia',
+                        'DOID:13810': 'hypercholesterolemia',
                         'DOID:2841':  'asthma',
-                        'DOID:13810': 'hypercholesterolemia'}
+                        'DOID:4989':  'Chronic pancreatitis',
+                        'DOID:10652': 'Alzheimer Disease',
+                        'DOID:5844':  'Myocardial Infarction',
+                        'DOID:11723': 'Duchenne Muscular Dystrophy'}
 
     seed_node_bool = True
     for disont_id_str in q1_diseases_dict.keys():
