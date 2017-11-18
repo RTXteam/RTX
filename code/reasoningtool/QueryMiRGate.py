@@ -9,7 +9,7 @@ class QueryMiRGate:
     @staticmethod
     def send_query_get(handler, url_suffix):  
         url_str = QueryMiRGate.API_BASE_URL + "/" + handler + "/" + url_suffix
-        print(url_str)
+#        print(url_str)
         try:
             res = requests.get(url_str, headers={'accept': 'application/json'},
                                timeout=QueryMiRGate.TIMEOUT_SEC)
