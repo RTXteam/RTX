@@ -60,7 +60,11 @@ class QueryMyGene:
         if len(res) > 0:
             res_hits = res.get('hits', None)
             if res_hits is not None:
-                entrez_ids = set([hit["entrezgene"] for hit in res_hits])
+                for hit in res_hits:
+                    entrez_id = hit.get('entrezgene', None)
+                    if entrez_id is not None:
+                        entrez_ids.add(entrez_id)
+#                entrez_ids = set([hit["entrezgene"] for hit in res_hits])
             else:
                 print("QueryMyGene.convert_uniprot_id_to_entrez_gene_ID: no \'hits\' result data for uniprot_id: " + uniprot_id, file=sys.stderr)
         return entrez_ids
