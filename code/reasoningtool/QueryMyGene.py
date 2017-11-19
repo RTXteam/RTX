@@ -1,3 +1,17 @@
+""" This module defines the class QueryMyGene.
+QueryMyGene is written to query gene annotation information via python package
+mygene. It can convert among gene symbol, uniprot id, entrez gene id, mirbase id.
+"""
+
+__author__ = ""
+__copyright__ = ""
+__credits__ = []
+__license__ = ""
+__version__ = ""
+__maintainer__ = ""
+__email__ = ""
+__status__ = "Prototype"
+
 import mygene
 import sys
 

@@ -1,3 +1,17 @@
+""" This module defines the class QueryOMIM.
+It is written to connect to http://api.omim.org/api, which converts omim id to
+gene symbol and uniprot id.
+"""
+
+__author__ = ""
+__copyright__ = ""
+__credits__ = []
+__license__ = ""
+__version__ = ""
+__maintainer__ = ""
+__email__ = ""
+__status__ = "Prototype"
+
 import requests
 import CachedMethods
 

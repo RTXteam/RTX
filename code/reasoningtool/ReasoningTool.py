@@ -1,3 +1,18 @@
+""" This module defines the ReasoningTool functions which carry out the expanding
+ process from all types of nodes. It can calculate the joint of specific rounds
+ of expanding. Moreover, it is responsible for connection with Neo4j database and
+ handle the node, relation pushing and configuration to Neo4j databse.
+"""
+
+__author__ = ""
+__copyright__ = ""
+__credits__ = []
+__license__ = ""
+__version__ = ""
+__maintainer__ = ""
+__email__ = ""
+__status__ = "Prototype"
+
 import sys
 import argparse
 import requests_cache

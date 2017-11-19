@@ -1,3 +1,17 @@
+""" This module defines the class QuerySciGraph which connects to APIs at
+https://scigraph-ontology.monarchinitiative.org/scigraph/graph/neighbors/,
+querying "sub phenotypes" for phenotypes.
+"""
+
+__author__ = ""
+__copyright__ = ""
+__credits__ = []
+__license__ = ""
+__version__ = ""
+__maintainer__ = ""
+__email__ = ""
+__status__ = "Prototype"
+
 import requests
 import CachedMethods
 
@@ -25,9 +39,9 @@ class QuerySciGraph:
 
         E.g. input "HP:0000107" (Renal cyst),
         >>> QuerySciGraph.query_sub_phenotypes_for_phenotype("HP:0000107")
-        {'HP:0100877': 'Renal diverticulum', 'HP:0000108': 'Renal corticomedullary cysts', 
-         'HP:0000803': 'Renal cortical cysts', 'HP:0000003': 'Multicystic kidney dysplasia', 
-         'HP:0008659': 'Multiple small medullary renal cysts', 'HP:0005562': 'Multiple renal cysts', 
+        {'HP:0100877': 'Renal diverticulum', 'HP:0000108': 'Renal corticomedullary cysts',
+         'HP:0000803': 'Renal cortical cysts', 'HP:0000003': 'Multicystic kidney dysplasia',
+         'HP:0008659': 'Multiple small medullary renal cysts', 'HP:0005562': 'Multiple renal cysts',
          'HP:0000800': 'Cystic renal dysplasia', 'HP:0012581': 'Solitary renal cyst'}
         """
         params = {
@@ -44,7 +58,7 @@ class QuerySciGraph:
         # param_str = "&".join(["{}={}".format(key, value) for key, value in params.items()])
         url = QuerySciGraph.API_BASE_URL["graph_neighbors"].format(node_id=phenont_id)
         json = QuerySciGraph.__access_api(url, params=params)
-        
+
         sub_edges = json['edges']  # Get all INCOMING edges
         sub_nodes = set(map(lambda e: e["sub"], sub_edges))  # Get all neighboring nodes (duplicates may exist; so set is used here)
         sub_nodes = set(filter(lambda s: s.startswith("HP:"), sub_nodes))  # Keep human phenotypes only

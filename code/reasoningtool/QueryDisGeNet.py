@@ -2,6 +2,18 @@
 # http://ibi.imim.es/
 # Modified by Stephen Ramsey at Oregon State University
 ###############################################################################
+""" This module defines the class QueryDisGeNet which is designed to query
+descriptions according to the mesh ids.
+"""
+
+__author__ = ""
+__copyright__ = ""
+__credits__ = []
+__license__ = ""
+__version__ = ""
+__maintainer__ = ""
+__email__ = ""
+__status__ = "Prototype"
 
 import pandas
 import io
@@ -14,7 +26,7 @@ class QueryDisGeNet:
     MAX_GENES_FOR_DISEASE = 20  ## maybe we should make this a configurable class variable (SAR)
     SPARQL_ENDPOINT_URL = 'http://www.disgenet.org/oql'
     TIMEOUT_SEC = 120
-    
+
     @staticmethod
     def query_mesh_id_to_uniprot_ids_desc(mesh_id):
         ent = 'disease'
@@ -33,7 +45,7 @@ class QueryDisGeNet:
          	c1 (diseaseId, name, diseaseClassName, STY, MESH, OMIM, type ),
 	c2 (geneId, symbol,   uniprotId, description, pantherName ),
 	c0 (score, EI, Npmids, Nsnps)
-           
+
         FROM
             c0
         WHERE
@@ -49,24 +61,24 @@ class QueryDisGeNet:
         url_str = QueryDisGeNet.SPARQL_ENDPOINT_URL
 
         try:
-            res = requests.post(url_str, data=binary_data, timeout=QueryDisGeNet.TIMEOUT_SEC)       
+            res = requests.post(url_str, data=binary_data, timeout=QueryDisGeNet.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
             print(url_str, sys.stderr)
             print('Timeout in QueryDisGeNet for URL: ' + url_str, file=sys.stderr)
             return dict()
-        
+
         status_code = res.status_code
-        
+
         if status_code != 200:
             print(url_str, sys.stderr)
             print('Status code ' + status_code + ' for url: ' + url_str, file=sys.stderr)
             return dict()
-        
+
         if len(res.content) == 0:
             print(url_str, file=sys.stderr)
             print('Empty response from URL!', file=sys.stderr)
             return dict()
-        
+
         ret_data_df = pandas.read_csv(io.StringIO(res.content.decode('utf-8')), sep='\t').head(QueryDisGeNet.MAX_GENES_FOR_DISEASE)
         uniprot_ids_list = ret_data_df['c2.uniprotId'].tolist()
         gene_names_list = ret_data_df['c2.symbol'].tolist()
@@ -86,7 +98,7 @@ class QueryDisGeNet:
                                 dict_add[prot_name] = gene
                         ret_dict.update(dict_add)
             else:  ## this is a math.nan
-                del ret_dict[prot]            
+                del ret_dict[prot]
         return(ret_dict)
 
 

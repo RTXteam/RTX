@@ -1,3 +1,20 @@
+""" This module defines class Node, class Re, class Orangeboard.
+Orangeboard is a class, responsible for connecting with Neo4j database,
+conduct operations to graph (e.g. add node, add relation, extract node
+information, extract relation information). It can conduct cypher query to Neo4j
+database and alter graph in neo4j.
+ )
+"""
+
+__author__ = ""
+__copyright__ = ""
+__credits__ = []
+__license__ = ""
+__version__ = ""
+__maintainer__ = ""
+__email__ = ""
+__status__ = "Prototype"
+
 import uuid
 import itertools
 import pprint
@@ -6,7 +23,6 @@ import math
 import sys
 
 ## NOTE to users:  neo4j password hard-coded (see NEO4J_PASSWORD below)
-
 
 class Node:
     def __init__(self, nodetype, name, seed_node):
@@ -93,7 +109,7 @@ class Orangeboard:
             for rel in self.dict_seed_uuid_to_list_rels[uuid]:
                 count += sys.getsizeof(rel)
         return count
-    
+
     def __init__(self, debug=False):
         self.dict_nodetype_to_dict_name_to_node = dict()
         self.dict_reltype_to_dict_relkey_to_rel = dict()
@@ -125,7 +141,7 @@ class Orangeboard:
         rel_strings = [rel.simple_print() for rel in rel_list]
 
         return '\n'.join(node_strings) + '\n' + '\n'.join(rel_strings)
-        
+
     def __str__(self):
         node_list = itertools.chain.from_iterable(self.dict_seed_uuid_to_list_nodes.values())
         node_strings = [str(node) for node in node_list]
@@ -143,7 +159,7 @@ class Orangeboard:
                 if rel.source_node.uuid == node_uuid or rel.target_node.uuid == node_uuid:
                     count += 1
         return count
-        
+
     def count_nodes(self):
         return sum(map(len, self.dict_seed_uuid_to_list_nodes.values()))
 
@@ -152,7 +168,7 @@ class Orangeboard:
 
     def set_seed_node(self, seed_node):
         self.seed_node = seed_node
-        
+
     def get_node(self, nodetype, name):
         subdict = self.dict_nodetype_to_dict_name_to_node.get(nodetype, None)
         ret_node = None
@@ -172,7 +188,7 @@ class Orangeboard:
             return set(list_rels)
         else:
             return set()
-    
+
     def get_all_nodes_for_current_seed_node(self):
         return self.get_all_nodes_for_seed_node_uuid(self.seed_node.uuid)
 
@@ -181,13 +197,13 @@ class Orangeboard:
 
     def get_all_rels_for_reltype(self, reltype):
         return set(self.dict_reltype_to_dict_relkey_to_rel[reltype].values())
-    
+
     def get_all_nodetypes(self):
         return self.dict_nodetype_to_dict_name_to_node.keys()
-        
+
     def get_all_nodes_for_nodetype(self, nodetype):
         return set(self.dict_nodetype_to_dict_name_to_node[nodetype].values())
-    
+
     def add_node(self, nodetype, name, seed_node_bool=False, desc=''):
         assert type(name)==str
         if seed_node_bool:
@@ -257,7 +273,7 @@ class Orangeboard:
             assert source_uuid > target_uuid
             rel_dict_key = target_uuid + '--' + source_uuid
         return rel_dict_key
-    
+
     def get_rel(self, reltype, source_node, target_node):
         ret_rel = None
         rel_dict_key = None
@@ -268,7 +284,7 @@ class Orangeboard:
             if existing_rel is not None:
                 ret_rel = existing_rel
         return [ret_rel, rel_dict_key]
-        
+
     def add_rel(self, reltype, sourcedb, source_node, target_node):
         seed_node = self.seed_node
         assert seed_node is not None
@@ -322,7 +338,7 @@ class Orangeboard:
                 if rel.seed_node.uuid == seed_node_uuid:
                     rel.source_node = None
                     rel.target_node = None
-                    del dict_relkey_to_rel[relkey]                   
+                    del dict_relkey_to_rel[relkey]
         del self.dict_seed_uuid_to_list_rels[seed_node_uuid][:]
         del self.dict_seed_uuid_to_list_rels[seed_node_uuid]
         dict_nodetype_to_dict_name_to_node = self.dict_nodetype_to_dict_name_to_node
@@ -337,7 +353,7 @@ class Orangeboard:
 
     def clear_from_seed_node(self, seed_node):
         self.clear_from_seed_node_uuid(seed_node.uuid)
-        
+
     def clear_all(self):
         for seed_node_uuid in self.dict_seed_uuid_to_list_nodes.keys():
             self.clear_from_seed_node_uuid(seed_node_uuid)
@@ -377,7 +393,7 @@ class Orangeboard:
         with self.driver.session() as session:
             with session.begin_transaction() as tx:
                 return tx.run(query, parameters)
-        
+
     def neo4j_clear(self, seed_node=None):
         """deletes all nodes and relationships in the orangeboard
 

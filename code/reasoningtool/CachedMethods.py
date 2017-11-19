@@ -1,6 +1,13 @@
+""" This module keeps track of all cacheable methods (or functions) for NCATS project.
 """
-To keep track of all cacheable methods (or functions)
-"""
+__author__ = ""
+__copyright__ = ""
+__credits__ = []
+__license__ = ""
+__version__ = ""
+__maintainer__ = ""
+__email__ = ""
+__status__ = "Prototype"
 
 from functools import lru_cache
 
