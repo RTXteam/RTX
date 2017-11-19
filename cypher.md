@@ -113,7 +113,7 @@ our [example code](genetic_conditions/get_node_ids_of_genetic_conditions.R).
 |                                          | Osteomalacia                           |
 | PCSK9                                    | Hypercholesterolemia                   |
 |                                          | Diabetes Mellitus, Type 2              |
-| c-kit deficiency                         | Asthma                                 |
+| Familial Mediterranean Fever             | Asthma                                 |
 |                                          | Chronic Pancreatitis                   |
 |                                          | Alzheimer Disease                      |
 |                                          | Myocardial Infarction                  |
