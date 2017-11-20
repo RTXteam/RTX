@@ -1,3 +1,18 @@
+""" This module defines the class QueryMiRGate.
+QueryMiRGate is written to connect with mirgate.bioinfo.cnio.es/ResT/API/human,
+querying the information concerning regulation of microRNA.
+"""
+
+__author__ = ""
+__copyright__ = ""
+__credits__ = []
+__license__ = ""
+__version__ = ""
+__maintainer__ = ""
+__email__ = ""
+__status__ = "Prototype"
+
+
 import requests
 import lxml.etree
 import sys
@@ -5,9 +20,9 @@ import sys
 class QueryMiRGate:
     API_BASE_URL = 'http://mirgate.bioinfo.cnio.es/ResT/API/human'
     TIMEOUT_SEC = 120
-    
+
     @staticmethod
-    def send_query_get(handler, url_suffix):  
+    def send_query_get(handler, url_suffix):
         url_str = QueryMiRGate.API_BASE_URL + "/" + handler + "/" + url_suffix
 #        print(url_str)
         try:
@@ -43,7 +58,7 @@ class QueryMiRGate:
     @staticmethod
     def get_gene_symbols_regulated_by_microrna(microrna_id):
         '''returns the gene symbols that a given microrna (MIMAT ID) regulates
-        
+
         '''
         assert 'MIMAT' in microrna_id
         res = QueryMiRGate.send_query_get('miRNA_predictions', microrna_id)

@@ -1,3 +1,27 @@
+""" This module defines the class QueryBioLink. QueryBioLink class is designed
+to communicate with Monarch APIs and their corresponding data sources. The
+available methods include:
+    * query phenotype for disease
+    * query disease for gene
+    * query gene for disease
+    * query phenotype for gene
+    * query gene for pathway
+    * query label for disease
+    * query label for phenotype
+    * query anatomy for gene
+    * query gene for anatomy
+    * query anatomy for phenotype
+"""
+
+__author__ = ""
+__copyright__ = ""
+__credits__ = []
+__license__ = ""
+__version__ = ""
+__maintainer__ = ""
+__email__ = ""
+__status__ = "Prototype"
+
 import requests
 import CachedMethods
 
@@ -36,7 +60,7 @@ class QueryBioLink:
         if results is not None:
             result_str = results['label']
         return result_str
-        
+
     @staticmethod
     @CachedMethods.register
     def get_phenotypes_for_disease_desc(disease_id):
@@ -50,7 +74,7 @@ class QueryBioLink:
             ret_dict[phenotype_id_str] = phenotype_label_str
 
         return ret_dict
-       
+
     @staticmethod
     @CachedMethods.register
     def get_diseases_for_gene_desc(gene_id):
@@ -102,7 +126,7 @@ class QueryBioLink:
 
         if len(results) > 200:
             print("Warning, got " + str(len(results)) + " phenotypes for gene " + gene_id)
-            
+
         return results
 
     @staticmethod

@@ -1,3 +1,16 @@
+""" This module defines the class QueryPC2. It is designed to connect to
+http://www.pathwaycommons.org/pc2, querying uniprot id and pathway id mutually.
+"""
+
+__author__ = ""
+__copyright__ = ""
+__credits__ = []
+__license__ = ""
+__version__ = ""
+__maintainer__ = ""
+__email__ = ""
+__status__ = "Prototype"
+
 import requests
 import CachedMethods
 

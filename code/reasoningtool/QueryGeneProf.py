@@ -1,3 +1,17 @@
+""" This module defines the class QueryGeneProf.
+QueryGeneProf is written to connect with geneprof.org, querying the functional
+genomics data including transcription factor, gene symbol.
+"""
+
+__author__ = ""
+__copyright__ = ""
+__credits__ = []
+__license__ = ""
+__version__ = ""
+__maintainer__ = ""
+__email__ = ""
+__status__ = "Prototype"
+
 import requests
 import sys
 
@@ -57,7 +71,7 @@ class QueryGeneProf:
                 tf_gene_symbols |= QueryGeneProf.geneprof_id_to_transcription_factor_gene_symbols(geneprof_id)
         return tf_gene_symbols
 
-        
+
 if __name__ == '__main__':
     QueryGeneProf.gene_symbol_to_geneprof_ids('xyzzy')
     print(QueryGeneProf.gene_symbol_to_transcription_factor_gene_symbols('HMOX1'))

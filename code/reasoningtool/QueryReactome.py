@@ -1,3 +1,17 @@
+""" This module defines the class QueryReactome. QueryReactome is written to
+connect with APIs at https://reactome.org/ContentService, querying the pathway
+information.
+"""
+
+__author__ = ""
+__copyright__ = ""
+__credits__ = []
+__license__ = ""
+__version__ = ""
+__maintainer__ = ""
+__email__ = ""
+__status__ = "Prototype"
+
 import requests
 import sys
 
@@ -6,7 +20,7 @@ class QueryReactome:
     API_BASE_URL = 'https://reactome.org/ContentService'
 
     @staticmethod
-    def send_query_get(handler, url_suffix):  
+    def send_query_get(handler, url_suffix):
         url_str = QueryReactome.API_BASE_URL + "/" + handler + "/" + url_suffix
 #        print(url_str)
         res = requests.get(url_str, headers={'accept': 'application/json'})
@@ -33,7 +47,7 @@ class QueryReactome:
                                     int_alias = res_entity_interactor.get('alias', '')
                                     res_uniprot_ids[int_uniprot_id] = int_alias
         return res_uniprot_ids
-        
+
     @staticmethod
     def query_uniprot_to_reactome_entity_id(uniprot_id):
         res = QueryReactome.send_query_get("data/complexes/UniProt", uniprot_id)
@@ -57,7 +71,7 @@ class QueryReactome:
             if type(res_json)==list:
                 ret_ids = dict([[res_entry["stId"], res_entry["displayName"]] for res_entry in res_json])
         return ret_ids
-    
+
     @staticmethod
     def query_reactome_entity_id_to_reactome_pathway_ids(reactome_entity_id):
         res = QueryReactome.send_query_get("data/pathways/low/diagram/entity", reactome_entity_id + "/allForms?species=9606")
@@ -78,7 +92,7 @@ class QueryReactome:
         else:
             reactome_ids_dict = dict()
         return reactome_ids_dict
-    
+
     @staticmethod
     def query_uniprot_id_to_reactome_pathway_ids(uniprot_id):
         reactome_entity_ids = QueryReactome.query_uniprot_to_reactome_entity_id(uniprot_id)
@@ -98,7 +112,7 @@ class QueryReactome:
             if len(pathway_ids_dict) > 0:
                 res_dict.update(pathway_ids_dict)
         return res_dict
-    
+
     @staticmethod
     def query_reactome_pathway_id_to_uniprot_ids(reactome_pathway_id):
         res = QueryReactome.send_query_get("data/participants", reactome_pathway_id)
@@ -121,7 +135,7 @@ class QueryReactome:
             uniprot_ids_list = [[id.split(" ")[0].split(":")[1], id.split(" ")[1]] for id in participant_ids_list if "UniProt" in id]
             ret_dict = dict(uniprot_ids_list)
         return ret_dict
-           
+
 if __name__ == '__main__':
     print(QueryReactome.query_uniprot_to_reactome_entity_id("P68871"))
     print(QueryReactome.query_uniprot_to_reactome_entity_id("O75521-2"))
@@ -129,4 +143,3 @@ if __name__ == '__main__':
     print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids("Q13501"))
     print(QueryReactome.query_uniprot_id_to_reactome_pathway_ids_desc("P68871"))
     print(QueryReactome.query_reactome_pathway_id_to_uniprot_ids_desc("R-HSA-5423646"))
-        

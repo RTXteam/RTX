@@ -1,3 +1,17 @@
+""" This module is the definition of class QueryMiRBase. It is designed to connect
+to a microRNA databse named miRBase. It can query miRBase for gene symbol, miRNA
+ids etc.
+"""
+
+__author__ = ""
+__copyright__ = ""
+__credits__ = []
+__license__ = ""
+__version__ = ""
+__maintainer__ = ""
+__email__ = ""
+__status__ = "Prototype"
+
 import requests
 import lxml.html
 import functools
@@ -8,7 +22,7 @@ class QueryMiRBase:
     API_BASE_URL = 'http://www.mirbase.org/cgi-bin'
 
     @staticmethod
-    def send_query_get(handler, url_suffix): 
+    def send_query_get(handler, url_suffix):
         url_str = QueryMiRBase.API_BASE_URL + "/" + handler + "?" + url_suffix
 #        print(url_str)
         res = requests.get(url_str, headers={'accept': 'application/json'})
@@ -38,7 +52,7 @@ class QueryMiRBase:
         res_tree = lxml.html.fromstring(res.content)
         ## Try to find a suitable REST API somewhere, to replace this brittle HTML page scraping:
         hrefs = [x.get('href').split('=')[1] for x in res_tree.xpath("/html//table/tr/td/a[contains(@href, 'MIMAT')]")]
-        
+
         return(set(hrefs))
 
 if __name__ == '__main__':
