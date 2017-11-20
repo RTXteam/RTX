@@ -1,15 +1,3 @@
-""" This module defines all the unit tests and integration testing.
-"""
-
-__author__ = ""
-__copyright__ = ""
-__credits__ = []
-__license__ = ""
-__version__ = ""
-__maintainer__ = ""
-__email__ = ""
-__status__ = "Prototype"
-
 import argparse
 import timeit
 import requests_cache
@@ -319,13 +307,13 @@ def test_q1():
     bne.expand_all_nodes()
     bne.expand_all_nodes()
     bne.expand_all_nodes()
-
+    
     ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
 
     print("[Q1] count(Node) = {}".format(ob.count_nodes()))
     print("[Q1] count(Rel) = {}".format(ob.count_rels()))
-
+    
 def test_print_for_arash():
 
     # add the initial target disease into the Orangeboard, as a 'disease ontology' node
