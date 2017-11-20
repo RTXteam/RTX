@@ -363,6 +363,40 @@ def test_expand_phenont_phenotype():
     bne.expand_all_nodes()
     ob.neo4j_push()
 
+def test_query_path_from_gc_to_disease():
+    # this test should be conducted after bigtest or bigtest2 complete
+    # ob = Orangeboard(debug=False)
+    # master_rel_is_directed = {'disease_affects': True,
+    #                          'is_member_of': True,
+    #                          'is_parent_of': True,
+    #                          'gene_assoc_with': True,
+    #                          'phenotype_assoc_with': True,
+    #                          'interacts_with': False,
+    #                          'controls_expression_of': True,
+    #                          'is_expressed_in': True,
+    #                          'targets': True}
+    #ob.set_dict_reltype_dirs(master_rel_is_directed)
+    #ob.neo4j_set_url()
+    #ob.neo4j_set_auth()
+    # path = ob.neo4j_run_cypher_query("Match p=(a:omim_disease)<--(b)-->(c:uniprot_protein) "
+    #                                      "RETURN p LIMIT 1").single()['p']
+
+    result = ob.neo4j_run_cypher_query("match p=(n)-[*..3]-(m) where n.name='OMIM:219700' and m.name='DOID:1498' return p, nodes(p), relationships(p)")
+   
+    for record in result:
+        # print(record[1])
+        # print(record[2])
+        print('path:')
+        nodes = record[1]
+        rels = record[2]
+        
+        for r in rels:
+            start_node_desc = [n for n in nodes if n.get('UUID') == r.get('source_node_uuid')][0].get('description')
+            end_node_desc = [n for n in nodes if n.get('UUID') == r.get('target_node_uuid')][0].get('description')
+            rel_desc = r.type
+            print("    ({}) ---- [{}] ---->({})".format(start_node_desc, rel_desc, end_node_desc))
+        print("\n")
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Testing prototype for Q1, NCATS competition, 2017')
     parser.add_argument('--test', dest='test_function_to_call')
