@@ -1,3 +1,17 @@
+""" This module defines the class QueryPharos which connects to APIs at
+https://pharos.ncats.io/idg/api/v1, querying information correspondances among
+drugs, dieases, targets.
+"""
+
+__author__ = ""
+__copyright__ = ""
+__credits__ = []
+__license__ = ""
+__version__ = ""
+__maintainer__ = ""
+__email__ = ""
+__status__ = "Prototype"
+
 import requests
 import CachedMethods
 

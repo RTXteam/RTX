@@ -1,3 +1,16 @@
+""" This module defines class PathAnalyzer which is written for analyzing path
+via path's properties (e.g node counts, edge counts in specific path).
+"""
+
+__author__ = ""
+__copyright__ = ""
+__credits__ = []
+__license__ = ""
+__version__ = ""
+__maintainer__ = ""
+__email__ = ""
+__status__ = "Prototype"
+
 from Orangeboard import Orangeboard
 
 

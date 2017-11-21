@@ -1,3 +1,25 @@
+""" This is a module to define class BioNetExpander.
+BioNetExpander carries the function of expanding objects to objects (two objects
+can belong to distinct types or same type) from multiple online sources.
+BioNetExpander is capable of expanding from nodes of various types, including:
+    * drug
+    * gene
+    * disease
+    * pathway
+    * anatomy
+    * protein
+    * phenotype
+"""
+
+__author__ = ""
+__copyright__ = ""
+__credits__ = []
+__license__ = ""
+__version__ = ""
+__maintainer__ = ""
+__email__ = ""
+__status__ = "Prototype"
+
 import re
 from operator import methodcaller
 from Orangeboard import Orangeboard
