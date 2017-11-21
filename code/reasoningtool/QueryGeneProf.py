@@ -17,7 +17,7 @@ import sys
 
 class QueryGeneProf:
     API_BASE_URL = 'http://www.geneprof.org/GeneProf/api'
-    TIMEOUT_SEC = 1
+    TIMEOUT_SEC = 120
 
     @staticmethod
     def send_query_get(handler, url_suffix):
