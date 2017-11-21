@@ -68,13 +68,13 @@ class Rel:
         self.source_node = source_node
         self.target_node = target_node
         self.seed_node = seed_node
-        new_uuid = str(uuid.uuid1())
-        self.uuid = new_uuid
+#        new_uuid = str(uuid.uuid1())
+#        self.uuid = new_uuid
 #        source_node.out_rels.add(self)
 #        target_node.in_rels.add(self)
 
     def get_props(self, reverse=False):
-        prop_dict = {'UUID': self.uuid,
+        prop_dict = {#'UUID': self.uuid,
                      'reltype': self.reltype,
                      'sourcedb': self.sourcedb,
                      'seed_node_uuid': self.seed_node.uuid}
@@ -461,8 +461,9 @@ class Orangeboard:
                                ' { source_node_uuid: rel_data_map.source_node_uuid,' + \
                                ' target_node_uuid: rel_data_map.target_node_uuid,' + \
                                ' sourcedb: rel_data_map.sourcedb,' + \
-                               ' seed_node_uuid: rel_data_map.seed_node_uuid,' + \
-                               ' UUID: rel_data_map.UUID }]->(n2)'
+                               ' seed_node_uuid: rel_data_map.seed_node_uuid' + \
+                               ' }]->(n2)'
+#                               ' UUID: rel_data_map.UUID }]->(n2)'
             res = self.neo4j_run_cypher_query(cypher_query_str, query_params)
             if self.debug:
                 print(res.summary().counters)
