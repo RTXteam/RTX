@@ -1,14 +1,14 @@
 """ This module defines all the unit tests and integration testing.
 """
 
-__author__ = ""
+__author__ = 'Yao Yao'
 __copyright__ = ""
-__credits__ = []
-__license__ = ""
-__version__ = ""
-__maintainer__ = ""
-__email__ = ""
-__status__ = "Prototype"
+__credits__ = ['Yao Yao', 'Zheng Liu', 'Stephen Ramsey']
+__license__ = 'MIT'
+__version__ = '0.1.0'
+__maintainer__ = ''
+__email__ = ''
+__status__ = 'Prototype'
 
 import argparse
 import timeit
@@ -298,24 +298,37 @@ def test_issue19():
      bne.expand_all_nodes()
 
 def test_q1():
-    q1_diseases_dict = {'DOID:11476': 'osteoporosis',
-                        'DOID:526':   'HIV infectious disease',
-                        'DOID:1498':  'cholera',
-                        'DOID:4325':  'Ebola hemmorhagic fever',
-                        'DOID:12365': 'malaria',
-                        'DOID:10573': 'Osteomalacia',
-                        'DOID:13810': 'hypercholesterolemia',
-                        'DOID:2841':  'asthma',
-                        'DOID:4989':  'Chronic pancreatitis',
-                        'DOID:10652': 'Alzheimer Disease',
-                        'DOID:5844':  'Myocardial Infarction',
-                        'DOID:11723': 'Duchenne Muscular Dystrophy'}
+    ## seed all 21 diseases in the Orangeboard
+    q1_diseases_dict = {'DOID:11476':   'osteoporosis',
+                        'DOID:526':     'HIV infectious disease',
+                        'DOID:1498':    'cholera',
+                        'DOID:4325':    'Ebola hemmorhagic fever',
+                        'DOID:12365':   'malaria',
+                        'DOID:10573':   'Osteomalacia',
+                        'DOID:13810':   'hypercholesterolemia',
+                        'DOID:9352':    'type 2 diabetes mellitus',
+                        'DOID:2841':    'asthma',
+                        'DOID:4989':    'pancreatitis',
+                        'DOID:10652':   'Alzheimer Disease',
+                        'DOID:5844':    'Myocardial Infarction',
+                        'DOID:11723':   'Duchenne Muscular Dystrophy',
+                        'DOID:0060728': 'NGLY1-deficiency',
+                        'DOID:0050741': 'Alcohol Dependence',
+                        'DOID:1470':    'major depressive disorder',
+                        'DOID:14504':   'Niemann-Pick disease',
+                        'DOID:12858':   'Huntington\'s Disease',
+                        'DOID:9270':    'Alkaptonuria',
+                        'DOID:10923':   'sickle cell anemia',
+                        'DOID:2055':    'post-traumatic stress disorder'}
 
+    ## set the seed node flag to True, for the first disease
     seed_node_bool = True
     for disont_id_str in q1_diseases_dict.keys():
         ob.add_node('disont_disease', disont_id_str, seed_node_bool)
+        ## for the rest of the diseases, do not set the seed-node flag
         seed_node_bool = False
 
+    ## triple-expand the knowledge graph
     bne.expand_all_nodes()
     bne.expand_all_nodes()
     bne.expand_all_nodes()
