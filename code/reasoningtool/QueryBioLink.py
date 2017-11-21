@@ -136,7 +136,7 @@ class QueryBioLink:
         ret_dict = dict()
         for phenotype_id_str in phenotype_id_set:
             phenotype_label_str = QueryBioLink.get_label_for_phenotype(phenotype_id_str)
-            if 'AQTLTrait' not in phenotype_label_str:
+            if 'HP:' in phenotype_id_str:
                 ret_dict[phenotype_id_str] = phenotype_label_str
         return ret_dict
 
