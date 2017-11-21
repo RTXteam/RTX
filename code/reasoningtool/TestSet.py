@@ -297,6 +297,45 @@ def test_issue19():
      print('----------- third round of expansion ----------')
      bne.expand_all_nodes()
 
+def test_q1_singleexpand():
+    ## seed all 21 diseases in the Orangeboard
+    q1_diseases_dict = {'DOID:11476':   'osteoporosis',
+                        'DOID:526':     'HIV infectious disease',
+                        'DOID:1498':    'cholera',
+                        'DOID:4325':    'Ebola hemmorhagic fever',
+                        'DOID:12365':   'malaria',
+                        'DOID:10573':   'Osteomalacia',
+                        'DOID:13810':   'hypercholesterolemia',
+                        'DOID:9352':    'type 2 diabetes mellitus',
+                        'DOID:2841':    'asthma',
+                        'DOID:4989':    'pancreatitis',
+                        'DOID:10652':   'Alzheimer Disease',
+                        'DOID:5844':    'Myocardial Infarction',
+                        'DOID:11723':   'Duchenne Muscular Dystrophy',
+                        'DOID:0060728': 'NGLY1-deficiency',
+                        'DOID:0050741': 'Alcohol Dependence',
+                        'DOID:1470':    'major depressive disorder',
+                        'DOID:14504':   'Niemann-Pick disease',
+                        'DOID:12858':   'Huntington\'s Disease',
+                        'DOID:9270':    'Alkaptonuria',
+                        'DOID:10923':   'sickle cell anemia',
+                        'DOID:2055':    'post-traumatic stress disorder'}
+
+    ## set the seed node flag to True, for the first disease
+    seed_node_bool = True
+    for disont_id_str in q1_diseases_dict.keys():
+        ob.add_node('disont_disease', disont_id_str, seed_node_bool)
+        ## for the rest of the diseases, do not set the seed-node flag
+        seed_node_bool = False
+
+    bne.expand_all_nodes()
+    
+    ob.neo4j_set_url('bolt://0.0.0.0:7687')
+    ob.neo4j_push()
+
+    print("[Q1] count(Node) = {}".format(ob.count_nodes()))
+    print("[Q1] count(Rel) = {}".format(ob.count_rels()))
+    
 def test_q1():
     ## seed all 21 diseases in the Orangeboard
     q1_diseases_dict = {'DOID:11476':   'osteoporosis',
