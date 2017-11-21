@@ -75,7 +75,7 @@ class QueryDisGeNet:
 
         if status_code != 200:
             print(url_str, sys.stderr)
-            print('Status code ' + status_code + ' for url: ' + url_str, file=sys.stderr)
+            print('Status code ' + str(status_code) + ' for url: ' + url_str, file=sys.stderr)
             return dict()
 
         if len(res.content) == 0:
