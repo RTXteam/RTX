@@ -36,10 +36,14 @@ class QueryMyGene:
         return list(generate_elements(lst, skip_type))
 
     def convert_gene_symbol_to_uniprot_id(self, gene_symbol):
-        res = self.mygene_obj.query('symbol:' + gene_symbol, species='human',
-                                    fields='uniprot', verbose=False)
+        try:
+            res = self.mygene_obj.query('symbol:' + gene_symbol, species='human',
+                                        fields='uniprot', verbose=False)
+        except requests.exceptions.HTTPError:
+            print('HTTP error for querying gene symbol to uniprot in mygene: ' + gene_symbol, file=sys.stderr)
+            res = None            
         uniprot_ids_set = set()
-        if len(res) > 0:
+        if res is not None and len(res) > 0:
             uniprot_ids_list = []
             for hit in res['hits']:
                 uniprot_hit = hit.get("uniprot", None)
@@ -55,10 +59,14 @@ class QueryMyGene:
         return uniprot_ids_set
 
     def convert_uniprot_id_to_gene_symbol(self, uniprot_id):
-        res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human',
-                                    fields='symbol', verbose=False)
+        try:
+            res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human',
+                                        fields='symbol', verbose=False)
+        except requests.exceptions.HTTPError:
+            print('HTTP error for querying uniprot to gene symbol mygene: ' + uniprot_id, file=sys.stderr)
+            res = None
         gene_symbol = set()
-        if len(res) > 0:
+        if res is not None and len(res) > 0:
             res_hits = res.get('hits', None)
             if res_hits is not None:
                 gene_symbol = set([hit['symbol'] for hit in res_hits])
@@ -68,10 +76,14 @@ class QueryMyGene:
         return gene_symbol
 
     def convert_uniprot_id_to_entrez_gene_ID(self, uniprot_id):
-        res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human',
-                                    fields='entrezgene', verbose=False)
+        try:
+            res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human',
+                                        fields='entrezgene', verbose=False)
+        except requests.exceptions.HTTPError:
+            print('HTTP error for querying uniprot-to-entrezgene in mygene: ' + uniprot_id, file=sys.stderr)
+            res = None
         entrez_ids = set()
-        if len(res) > 0:
+        if res is not None and len(res) > 0:
             res_hits = res.get('hits', None)
             if res_hits is not None:
                 for hit in res_hits:
@@ -113,3 +125,4 @@ if __name__ == '__main__':
     print(mg.convert_gene_symbol_to_uniprot_id('NS2'))
     print(mg.convert_uniprot_id_to_gene_symbol("P09601"))
     print(mg.convert_uniprot_id_to_entrez_gene_ID("P09601"))
+    print(mg.convert_uniprot_id_to_entrez_gene_ID("XYZZY"))
