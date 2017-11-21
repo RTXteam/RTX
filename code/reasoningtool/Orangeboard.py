@@ -6,14 +6,14 @@ database and alter graph in neo4j.
  )
 """
 
-__author__ = ""
-__copyright__ = ""
-__credits__ = []
-__license__ = ""
-__version__ = ""
-__maintainer__ = ""
-__email__ = ""
-__status__ = "Prototype"
+__author__ = 'Stephen Ramsey'
+__copyright__ = 'Oregon State University'
+__credits__ = ['Stephen Ramsey', 'Yao Yao', 'Zheng Liu']
+__license__ = 'MIT'
+__version__ = '0.1.0'
+__maintainer__ = ''
+__email__ = ''
+__status__ = 'Prototype'
 
 import uuid
 import itertools
@@ -206,6 +206,7 @@ class Orangeboard:
 
     def add_node(self, nodetype, name, seed_node_bool=False, desc=''):
         assert type(name)==str
+        assert not 'AQTLTrait' in name   ## debugging code for issue #43
         if seed_node_bool:
             old_seed_node = self.seed_node
             if old_seed_node is not None:
