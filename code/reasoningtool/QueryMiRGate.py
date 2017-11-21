@@ -3,14 +3,14 @@ QueryMiRGate is written to connect with mirgate.bioinfo.cnio.es/ResT/API/human,
 querying the information concerning regulation of microRNA.
 """
 
-__author__ = ""
-__copyright__ = ""
-__credits__ = []
-__license__ = ""
-__version__ = ""
-__maintainer__ = ""
-__email__ = ""
-__status__ = "Prototype"
+__author__ = 'Stephen Ramsey'
+__copyright__ = 'Oregon State University'
+__credits__ = ['Stephen Ramsey', 'Yao Yao', 'Zheng Liu']
+__license__ = 'MIT'
+__version__ = '0.1.2'
+__maintainer__ = ''
+__email__ = ''
+__status__ = 'Prototype'
 
 
 import requests
