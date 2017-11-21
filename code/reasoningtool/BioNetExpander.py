@@ -11,21 +11,20 @@ BioNetExpander is capable of expanding from nodes of various types, including:
     * phenotype
 """
 
-__author__ = ""
-__copyright__ = ""
-__credits__ = []
-__license__ = ""
-__version__ = ""
-__maintainer__ = ""
-__email__ = ""
-__status__ = "Prototype"
+__author__ = 'Yao Yao'
+__copyright__ = 'Oregon State University',
+__credits__ = ['Yao Yao', 'Stephen Ramsey', 'Zheng Liu']
+__license__ = 'MIT'
+__version__ = '0.1.0'
+__maintainer__ = ''
+__email__ = ''
+__status__ = 'Prototype'
 
 import re
 from operator import methodcaller
 from Orangeboard import Orangeboard
 from QueryOMIM import QueryOMIM
 from QueryMyGene import QueryMyGene
-# from QueryUniprot import QueryUniprot
 from QueryReactome import QueryReactome
 from QueryDisont import QueryDisont
 from QueryDisGeNet import QueryDisGeNet
@@ -35,10 +34,6 @@ from QueryMiRGate import QueryMiRGate
 from QueryMiRBase import QueryMiRBase
 from QueryPharos import QueryPharos
 from QuerySciGraph import QuerySciGraph
-
-
-# from QueryPC2 import QueryPC2  # not currently using; so comment out until such time as we decide to use it
-
 
 class BioNetExpander:
     def __init__(self, orangeboard):
