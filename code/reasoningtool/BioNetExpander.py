@@ -192,12 +192,19 @@ class BioNetExpander:
                 self.orangeboard.add_rel('gene_assoc_with', 'BioLink', node1, node2)
 
         # protein-protein interactions:
-        int_dict = QueryReactome.query_uniprot_id_to_interacting_uniprot_ids(uniprot_id_str)
+        int_dict = QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc(uniprot_id_str)
         for int_uniprot_id in int_dict.keys():
             int_alias = int_dict[int_uniprot_id]
-            node2 = self.orangeboard.add_node('uniprot_protein', int_uniprot_id, desc=int_alias)
-            if node2.uuid != node1.uuid:
-                self.orangeboard.add_rel('interacts_with', 'reactome', node1, node2)
+            if 'BINDSGENE:' not in int_alias:
+                node2 = self.orangeboard.add_node('uniprot_protein', int_uniprot_id, desc=int_alias)
+                if node2.uuid != node1.uuid:
+                    self.orangeboard.add_rel('interacts_with', 'reactome', node1, node2)
+            else:
+                target_gene_symbol = int_alias.split(':')[1]
+                target_uniprot_ids_set = self.query_mygene_obj.convert_gene_symbol_to_uniprot_id(target_gene_symbol)
+                for target_uniprot_id in target_uniprot_ids_set:
+                    node2 = self.orangeboard.add_node('uniprot_protein', target_uniprot_id, desc=target_gene_symbol)
+                    self.orangeboard.add_rel('controls_expression_of', 'Reactome', node1, node2)
 
     def expand_phenont_phenotype(self, node):
         # EXPAND PHENOTYPE -> ANATOMY
