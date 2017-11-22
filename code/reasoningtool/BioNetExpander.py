@@ -51,6 +51,7 @@ class BioNetExpander:
         targets = QueryPharos.query_drug_name_to_targets(drug_name)
         for target in targets:
             uniprot_id = QueryPharos.query_target_uniprot_accession(str(target["id"]))
+            assert '-' not in uniprot_id
             target_node = self.orangeboard.add_node('uniprot_protein', uniprot_id, desc=target["name"])
             self.orangeboard.add_rel('targets', 'Pharos', node, target_node)
 
@@ -90,6 +91,7 @@ class BioNetExpander:
                 for target_gene_symbol in target_gene_symbols:
                     uniprot_ids = self.query_mygene_obj.convert_gene_symbol_to_uniprot_id(target_gene_symbol)
                     for uniprot_id in uniprot_ids:
+                        assert '-' not in uniprot_id
                         target_prot_node = self.orangeboard.add_node('uniprot_protein', uniprot_id,
                                                                      desc=target_gene_symbol)
                         self.orangeboard.add_rel('controls_expression_of', 'miRGate', node, target_prot_node)
@@ -110,6 +112,7 @@ class BioNetExpander:
         rel_sourcedb_dict = dict.fromkeys(uniprot_ids_from_reactome_dict.keys(), 'reactome')
         source_node = node
         for uniprot_id in uniprot_ids_from_reactome_dict.keys():
+            assert '-' not in uniprot_id
             target_node = self.orangeboard.add_node('uniprot_protein', uniprot_id,
                                                     desc=uniprot_ids_from_reactome_dict[uniprot_id])
             self.orangeboard.add_rel('is_member_of', rel_sourcedb_dict[uniprot_id], target_node, source_node)
@@ -146,6 +149,7 @@ class BioNetExpander:
             for reg_gene_symbol in regulator_gene_symbols_set:
                 reg_uniprot_ids_set = self.query_mygene_obj.convert_gene_symbol_to_uniprot_id(reg_gene_symbol)
                 for reg_uniprot_id in reg_uniprot_ids_set:
+                    assert '-' not in reg_uniprot_id
                     node2 = self.orangeboard.add_node('uniprot_protein', reg_uniprot_id, desc=reg_gene_symbol)
                     if node2.uuid != node1.uuid:
                         self.orangeboard.add_rel('controls_expression_of', 'GeneProf', node2, node1)
@@ -203,6 +207,7 @@ class BioNetExpander:
                 target_gene_symbol = int_alias.split(':')[1]
                 target_uniprot_ids_set = self.query_mygene_obj.convert_gene_symbol_to_uniprot_id(target_gene_symbol)
                 for target_uniprot_id in target_uniprot_ids_set:
+                    assert '-' not in target_uniprot_id
                     node2 = self.orangeboard.add_node('uniprot_protein', target_uniprot_id, desc=target_gene_symbol)
                     if node2 != node1:
                         self.orangeboard.add_rel('controls_expression_of', 'Reactome', node1, node2)
@@ -250,6 +255,7 @@ class BioNetExpander:
                 uniprot_ids_to_gene_symbols_dict[uniprot_id] = gene_symbol_str
         source_node = node
         for uniprot_id in uniprot_ids_to_gene_symbols_dict.keys():
+            assert '-' not in uniprot_id
             target_node = self.orangeboard.add_node('uniprot_protein', uniprot_id,
                                                     desc=uniprot_ids_to_gene_symbols_dict[uniprot_id])
             self.orangeboard.add_rel('disease_affects', 'OMIM', source_node, target_node)
@@ -267,6 +273,7 @@ class BioNetExpander:
         for mesh_id in mesh_ids_set:
             uniprot_ids_dict = QueryDisGeNet.query_mesh_id_to_uniprot_ids_desc(mesh_id)
             for uniprot_id in uniprot_ids_dict.keys():
+                assert '-' not in uniprot_id
                 source_node = self.orangeboard.add_node('uniprot_protein', uniprot_id,
                                                         desc=uniprot_ids_dict[uniprot_id])
                 self.orangeboard.add_rel('gene_assoc_with', 'DisGeNet', source_node, node)
