@@ -49,7 +49,8 @@ class QueryReactome:
                          'HTL1C',
                          'I72A2',
                          'SV40',
-                         'HV1B1']
+                         'HV1B1',
+                         'SCHPO']
     
     @staticmethod
     def send_query_get(handler, url_suffix):
@@ -143,7 +144,7 @@ class QueryReactome:
 
     ## called from BioNetExpander
     @staticmethod
-    def query_uniprot_id_to_interacting_uniprot_ids(uniprot_id):
+    def query_uniprot_id_to_interacting_uniprot_ids_desc(uniprot_id):
         res = QueryReactome.send_query_get('interactors/static/molecule', uniprot_id + '/details').json()
         res_uniprot_ids = dict()
         if res is not None:
@@ -159,18 +160,31 @@ class QueryReactome:
                                     int_alias = res_entity_interactor.get('alias', '')
                                     alt_species = None
                                     if ' ' in int_alias:
-                                        alt_species = int_alias.split(' ')[1]
+                                        int_alias_split = int_alias.split(' ')
+                                        alt_species = int_alias_split[1]
                                     if alt_species is None or alt_species not in QueryReactome.SPECIES_MNEMONICS:
                                         if alt_species is not None:
-                                            print('For query protein ' + uniprot_id + ' and interactant protein ' + int_uniprot_id + ', check for potential other species name in Reactome output: ' + alt_species, file=sys.stderr)
-                                        res_uniprot_ids[int_uniprot_id] = int_alias
+                                            if 'DNA' in int_alias_split or \
+                                               'DNA-PROBE' in int_alias_split or \
+                                               'DSDNA' in int_alias_split or \
+                                               'GENE' in int_alias_split or \
+                                               any(['-SITE' in alias_element for alias_element in int_alias_split]):
+                                                target_gene_symbol = int_alias_split[0]
+                                                int_alias = 'BINDSGENE:' + int_alias_split[0]
+                                            else:
+                                                print('For query protein ' + uniprot_id + ' and interactant protein ' + int_uniprot_id + ', check for potential other species name in Reactome output: ' + alt_species, file=sys.stderr)
+                                                int_alias = None
+                                        if int_alias is not None:
+                                            res_uniprot_ids[int_uniprot_id] = int_alias
         return res_uniprot_ids
 
     @staticmethod
     def test():
-        print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids('Q13501'))
-        print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids('P68871'))
-        print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids('O75521-2'))
+        print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc('P04150'))
+        print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc('Q06609'))
+        print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc('Q13501'))
+        print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc('P68871'))
+        print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc('O75521-2'))
 #        print(QueryReactome.query_reactome_pathway_id_to_uniprot_ids_desc('R-HSA-5423646'))
 #        print(QueryReactome.query_uniprot_id_to_reactome_pathway_ids_desc('P68871'))
 #        print(QueryReactome.__query_uniprot_to_reactome_entity_id('O75521-2'))
