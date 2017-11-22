@@ -33,7 +33,17 @@ class QueryReactome:
                          'TOBAC',
                          'WHEAT',
                          'YEAST',
-                         'HV1N5']
+                         'HV1N5',
+                         'HV1H2',
+                         'DANRE',
+                         'XENLA',
+                         'MYCTU',
+                         'DNA',
+                         'GENE',
+                         'HHV8P',
+                         'HTLV2',
+                         'HHV1',
+                         'EBVB9']
     
     @staticmethod
     def send_query_get(handler, url_suffix):
