@@ -160,6 +160,8 @@ class QueryReactome:
                             int_uniprot_id = res_entity_interactor.get('acc', None)
                             if int_uniprot_id is not None:
                                 if 'CHEBI:' not in int_uniprot_id:
+                                    if '-' in int_uniprot_id:
+                                        int_uniprot_id = int_uniprot_id.split('-')[0]
                                     int_alias = res_entity_interactor.get('alias', '')
                                     alt_species = None
                                     if ' ' in int_alias:
