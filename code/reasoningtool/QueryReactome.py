@@ -18,6 +18,7 @@ import sys
 class QueryReactome:
 
     API_BASE_URL = 'https://reactome.org/ContentService'
+    
     SPECIES_MNEMONICS = ['BOVIN',
                          'CHICK',
                          'ECOLI',
@@ -38,12 +39,17 @@ class QueryReactome:
                          'DANRE',
                          'XENLA',
                          'MYCTU',
-                         'DNA',
-                         'GENE',
                          'HHV8P',
                          'HTLV2',
                          'HHV1',
-                         'EBVB9']
+                         'HPV16',
+                         '9HIV1',
+                         'EBVB9',
+                         'PROBE',
+                         'HTL1C',
+                         'I72A2',
+                         'SV40',
+                         'HV1B1']
     
     @staticmethod
     def send_query_get(handler, url_suffix):
@@ -156,20 +162,20 @@ class QueryReactome:
                                         alt_species = int_alias.split(' ')[1]
                                     if alt_species is None or alt_species not in QueryReactome.SPECIES_MNEMONICS:
                                         if alt_species is not None:
-                                            print('Check for potential other species name in Reactome output: ' + alt_species, file=sys.stderr)
+                                            print('For query protein ' + uniprot_id + ', check for potential other species name in Reactome output: ' + alt_species, file=sys.stderr)
                                         res_uniprot_ids[int_uniprot_id] = int_alias
         return res_uniprot_ids
 
     @staticmethod
     def test():
-        print(QueryReactome.query_reactome_pathway_id_to_uniprot_ids_desc('R-HSA-5423646'))
         print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids('Q13501'))
         print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids('P68871'))
         print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids('O75521-2'))
-        print(QueryReactome.query_uniprot_id_to_reactome_pathway_ids_desc('P68871'))
-        print(QueryReactome.__query_uniprot_to_reactome_entity_id('O75521-2'))
-        print(QueryReactome.__query_reactome_entity_id_to_reactome_pathway_ids_desc('R-HSA-2230989'))
-        print(QueryReactome.__query_uniprot_to_reactome_entity_id_desc('P68871'))
+#        print(QueryReactome.query_reactome_pathway_id_to_uniprot_ids_desc('R-HSA-5423646'))
+#        print(QueryReactome.query_uniprot_id_to_reactome_pathway_ids_desc('P68871'))
+#        print(QueryReactome.__query_uniprot_to_reactome_entity_id('O75521-2'))
+#        print(QueryReactome.__query_reactome_entity_id_to_reactome_pathway_ids_desc('R-HSA-2230989'))
+#        print(QueryReactome.__query_uniprot_to_reactome_entity_id_desc('P68871'))
         
 if __name__ == '__main__':
     QueryReactome.test()
