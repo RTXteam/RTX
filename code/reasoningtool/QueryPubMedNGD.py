@@ -33,7 +33,7 @@ class QueryPubMedNGD:
         '''
         nij = QueryPubMedNGD.get_pubmed_hits_count('("{mesh1}"[MeSH Terms]) AND "{mesh2}"[MeSH Terms]'.format(mesh1=mesh1_str,
                                                                                                mesh2=mesh2_str))
-        N = 2.7e+7 # from PubMed home page
+        N = 2.7e+7 * 20 # from PubMed home page there are 27 million articles; avg 20 MeSH terms per article
         ni = QueryPubMedNGD.get_pubmed_hits_count('"{mesh1}"[MeSH Terms]'.format(mesh1=mesh1_str))
         nj = QueryPubMedNGD.get_pubmed_hits_count('"{mesh2}"[MeSH Terms]'.format(mesh2=mesh2_str))
         if ni == 0 or nj == 0 or nij == 0:
