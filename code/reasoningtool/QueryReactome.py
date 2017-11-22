@@ -20,6 +20,9 @@ class QueryReactome:
     API_BASE_URL = 'https://reactome.org/ContentService'
     
     SPECIES_MNEMONICS = ['BOVIN',
+                         'ACAVI',
+                         'VACCW',
+                         'PLAVS',
                          'CHICK',
                          'ECOLI',
                          'HORSE',
@@ -162,13 +165,16 @@ class QueryReactome:
                                     if ' ' in int_alias:
                                         int_alias_split = int_alias.split(' ')
                                         alt_species = int_alias_split[1]
-                                    if alt_species is None or alt_species not in QueryReactome.SPECIES_MNEMONICS:
+                                    if alt_species is None or (alt_species not in QueryReactome.SPECIES_MNEMONICS and \
+                                                               not (alt_species[0] == '9')):
                                         if alt_species is not None:
                                             if 'DNA' in int_alias_split or \
                                                'DNA-PROBE' in int_alias_split or \
                                                'DSDNA' in int_alias_split or \
                                                'GENE' in int_alias_split or \
-                                               any(['-SITE' in alias_element for alias_element in int_alias_split]):
+                                               'PROMOTE' in int_alias_split or \
+                                               any(['-SITE' in alias_element for alias_element in int_alias_split]) or \
+                                               any(['BIND' in alias_element for alias_element in int_alias_split]):                                               
                                                 target_gene_symbol = int_alias_split[0]
                                                 int_alias = 'BINDSGENE:' + int_alias_split[0]
                                             else:
