@@ -173,6 +173,7 @@ class QueryReactome:
                                                'DSDNA' in int_alias_split or \
                                                'GENE' in int_alias_split or \
                                                'PROMOTE' in int_alias_split or \
+                                               'PROMOTER' in int_alias_split or \
                                                any(['-SITE' in alias_element for alias_element in int_alias_split]) or \
                                                any(['BIND' in alias_element for alias_element in int_alias_split]):                                               
                                                 target_gene_symbol = int_alias_split[0]
