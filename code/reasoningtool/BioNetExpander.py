@@ -204,7 +204,8 @@ class BioNetExpander:
                 target_uniprot_ids_set = self.query_mygene_obj.convert_gene_symbol_to_uniprot_id(target_gene_symbol)
                 for target_uniprot_id in target_uniprot_ids_set:
                     node2 = self.orangeboard.add_node('uniprot_protein', target_uniprot_id, desc=target_gene_symbol)
-                    self.orangeboard.add_rel('controls_expression_of', 'Reactome', node1, node2)
+                    if node2 != node1:
+                        self.orangeboard.add_rel('controls_expression_of', 'Reactome', node1, node2)
 
     def expand_phenont_phenotype(self, node):
         # EXPAND PHENOTYPE -> ANATOMY
