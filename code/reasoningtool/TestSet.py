@@ -415,7 +415,7 @@ def test_q1_no_push():
     bne.expand_all_nodes()
     
     ob.neo4j_set_url('bolt://0.0.0.0:7687')
-    ob.neo4j_push()
+#    ob.neo4j_push()
 
     print("[Q1] count(Node) = {}".format(ob.count_nodes()))
     print("[Q1] count(Rel) = {}".format(ob.count_rels()))
