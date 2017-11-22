@@ -53,7 +53,8 @@ class QueryReactome:
                          'I72A2',
                          'SV40',
                          'HV1B1',
-                         'SCHPO']
+                         'SCHPO',
+                         'MUS']
     
     @staticmethod
     def send_query_get(handler, url_suffix):
