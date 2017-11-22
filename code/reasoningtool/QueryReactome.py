@@ -162,7 +162,7 @@ class QueryReactome:
                                         alt_species = int_alias.split(' ')[1]
                                     if alt_species is None or alt_species not in QueryReactome.SPECIES_MNEMONICS:
                                         if alt_species is not None:
-                                            print('For query protein ' + uniprot_id + ', check for potential other species name in Reactome output: ' + alt_species, file=sys.stderr)
+                                            print('For query protein ' + uniprot_id + ' and interactant protein ' + int_uniprot_id + ', check for potential other species name in Reactome output: ' + alt_species, file=sys.stderr)
                                         res_uniprot_ids[int_uniprot_id] = int_alias
         return res_uniprot_ids
 
