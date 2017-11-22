@@ -295,7 +295,6 @@ class BioNetExpander:
             if not node.expanded:
                 self.expand_node(node)
 
-
 if __name__ == '__main__':
     ob = Orangeboard(debug=False)
 
