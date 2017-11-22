@@ -77,8 +77,7 @@ def test_omim_8k():
     ## expand the knowledge graph
     bne.expand_all_nodes()
 
-    
-def test_q1():
+def make_master_kg():
     ## seed all 21 diseases in the Orangeboard
     ## set the seed node flag to True, for the first disease
     seed_node_bool = True
@@ -92,7 +91,7 @@ def test_q1():
     bne.expand_all_nodes()
     bne.expand_all_nodes()
 
-    omim_df = pandas.read_csv('../../genetic_conditions/Genetic_conditions_from_OMIM.txt',
+    omim_df = pandas.read_csv('../../q1/Genetic_conditions_from_OMIM.txt',
                               sep='\t')[['MIM_number','preferred_title']]
     first_row = True
     for index, row in omim_df.iterrows():
@@ -104,6 +103,18 @@ def test_q1():
     bne.expand_all_nodes()
     bne.expand_all_nodes()
     bne.expand_all_nodes()            
+
+    drug_dis_df = pandas.read_csv('../../q2/q2-drugandcondition-list.txt',
+                                  sep='\t')
+
+    first_row = True
+    for index, row in drug_dis_df.iterrows():
+        ob.add_node('pharos_drug', row['Drug'].lower(), seed_node_bool=first_row)
+        if first_row:
+            first_row = False
+
+    ## triple-expand the knowledge graph
+    bne.expand_all_nodes()
             
     ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
@@ -212,6 +223,11 @@ def bigtest2():
     # push the entire graph to neo4j
     ob.neo4j_push()
 
+def read_drug_dis():
+    drug_dis_df = pandas.read_csv('../../q2/q2-drugandcondition-list.txt',
+                                  sep='\t')
+    for index, row in drug_dis_df.iterrows():
+        print('add drug: ' + row['Drug'].lower())
 
 def test_description_mim():
     node = ob.add_node('omim_disease', 'OMIM:603903', desc='sickle-cell anemia', seed_node_bool=True)
