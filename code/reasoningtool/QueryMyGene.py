@@ -14,6 +14,7 @@ __status__ = "Prototype"
 
 import mygene
 import sys
+import requests
 
 class QueryMyGene:
     def __init__(self, debug=False):
