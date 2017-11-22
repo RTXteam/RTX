@@ -1,4 +1,9 @@
 """ This module defines all the unit tests and integration testing.
+
+    NOTE:  run this script with 
+              python3 -u
+    in order to see print debugging statements as they are printed, if you
+    are redirecting stdout and stderr to a file.
 """
 
 __author__ = 'Yao Yao'
