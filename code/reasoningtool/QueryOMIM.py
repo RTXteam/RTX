@@ -52,23 +52,24 @@ class QueryOMIM:
         r = self.send_query_get(omim_handler, url_suffix)
         result_dict = r.json()
         result_entry = result_dict["omim"]["entryList"][0]["entry"]
-        external_links = result_entry["externalLinks"]
-        uniprot_ids_str = external_links.get("swissProtIDs", None)
-        if uniprot_ids_str is not None:
-            uniprot_ids = uniprot_ids_str.split(",")
-        else:
-            uniprot_ids = []
-        phenotype_map_list = result_entry.get("phenotypeMapList", None)
-        if phenotype_map_list is not None:
-            gene_symbols = [phenotype_map_list[i]["phenotypeMap"]["geneSymbols"].split(", ")[0] for i in
-                            range(0, len(phenotype_map_list))]
-        else:
-            gene_symbols = []
+        external_links = result_entry.get('externalLinks', None)
+        uniprot_ids = []
+        gene_symbols = []
+        if external_links is not None:
+            uniprot_ids_str = external_links.get("swissProtIDs", None)
+            if uniprot_ids_str is not None:
+                uniprot_ids = uniprot_ids_str.split(",")
+            else:
+                phenotype_map_list = result_entry.get("phenotypeMapList", None)
+                if phenotype_map_list is not None:
+                    gene_symbols = [phenotype_map_list[i]["phenotypeMap"]["geneSymbols"].split(", ")[0] for i in
+                                    range(0, len(phenotype_map_list))]
         return {'gene_symbols': set(gene_symbols),
                 'uniprot_ids': set(uniprot_ids)}
 
 if __name__ == '__main__':
     qo = QueryOMIM()
+    print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:129905'))
     print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:603903'))
     print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:613074'))
     print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:603918'))  # test issue 1
