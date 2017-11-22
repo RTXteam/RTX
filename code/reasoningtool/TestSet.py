@@ -16,6 +16,7 @@ import requests_cache
 import sys
 from Orangeboard import Orangeboard
 from BioNetExpander import BioNetExpander
+import pandas
 
 requests_cache.install_cache('orangeboard')
 
@@ -31,13 +32,80 @@ master_rel_is_directed = {'disease_affects': True,
                           'is_expressed_in': True,
                           'targets': True}
 
+q1_diseases_dict = {'DOID:11476':   'osteoporosis',
+                    'DOID:526':     'HIV infectious disease',
+                    'DOID:1498':    'cholera',
+                    'DOID:4325':    'Ebola hemmorhagic fever',
+                    'DOID:12365':   'malaria',
+                    'DOID:10573':   'Osteomalacia',
+                    'DOID:13810':   'hypercholesterolemia',
+                    'DOID:9352':    'type 2 diabetes mellitus',
+                    'DOID:2841':    'asthma',
+                    'DOID:4989':    'pancreatitis',
+                    'DOID:10652':   'Alzheimer Disease',
+                    'DOID:5844':    'Myocardial Infarction',
+                    'DOID:11723':   'Duchenne Muscular Dystrophy',
+                    'DOID:0060728': 'NGLY1-deficiency',
+                    'DOID:0050741': 'Alcohol Dependence',
+                    'DOID:1470':    'major depressive disorder',
+                    'DOID:14504':   'Niemann-Pick disease',
+                    'DOID:12858':   'Huntington\'s Disease',
+                    'DOID:9270':    'Alkaptonuria',
+                    'DOID:10923':   'sickle cell anemia',
+                    'DOID:2055':    'post-traumatic stress disorder'}
+
 ob.set_dict_reltype_dirs(master_rel_is_directed)
 ob.neo4j_set_url()
 ob.neo4j_set_auth()
 
 bne = BioNetExpander(ob)
 
+def test_omim_8k():
+    omim_df = pandas.read_csv('../../genetic_conditions/Genetic_conditions_from_OMIM.txt',
+                              sep='\t')[['MIM_number','preferred_title']]
+    first_row = True
+    for index, row in omim_df.iterrows():
+        ob.add_node('omim_disease', 'OMIM:' + str(row['MIM_number']), seed_node_bool=first_row)
+        if first_row:
+            first_row = False
 
+    ## expand the knowledge graph
+    bne.expand_all_nodes()
+
+    
+def test_q1():
+    ## seed all 21 diseases in the Orangeboard
+    ## set the seed node flag to True, for the first disease
+    seed_node_bool = True
+    for disont_id_str in q1_diseases_dict.keys():
+        ob.add_node('disont_disease', disont_id_str, seed_node_bool)
+        ## for the rest of the diseases, do not set the seed-node flag
+        seed_node_bool = False
+
+    ## triple-expand the knowledge graph
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
+
+    omim_df = pandas.read_csv('../../genetic_conditions/Genetic_conditions_from_OMIM.txt',
+                              sep='\t')[['MIM_number','preferred_title']]
+    first_row = True
+    for index, row in omim_df.iterrows():
+        ob.add_node('omim_disease', 'OMIM:' + str(row['MIM_number']), seed_node_bool=first_row)
+        if first_row:
+            first_row = False
+
+    ## triple-expand the knowledge graph
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()            
+            
+    ob.neo4j_set_url('bolt://0.0.0.0:7687')
+    ob.neo4j_push()
+
+    print("[Q1] count(Node) = {}".format(ob.count_nodes()))
+    print("[Q1] count(Rel) = {}".format(ob.count_rels()))
+    
 def bigtest():
 #    genetic_condition_mim_id = 'OMIM:603903'  # sickle-cell anemia
 #    target_disease_disont_id = 'DOID:12365'  # malaria
@@ -299,28 +367,6 @@ def test_issue19():
 
 def test_q1_singleexpand():
     ## seed all 21 diseases in the Orangeboard
-    q1_diseases_dict = {'DOID:11476':   'osteoporosis',
-                        'DOID:526':     'HIV infectious disease',
-                        'DOID:1498':    'cholera',
-                        'DOID:4325':    'Ebola hemmorhagic fever',
-                        'DOID:12365':   'malaria',
-                        'DOID:10573':   'Osteomalacia',
-                        'DOID:13810':   'hypercholesterolemia',
-                        'DOID:9352':    'type 2 diabetes mellitus',
-                        'DOID:2841':    'asthma',
-                        'DOID:4989':    'pancreatitis',
-                        'DOID:10652':   'Alzheimer Disease',
-                        'DOID:5844':    'Myocardial Infarction',
-                        'DOID:11723':   'Duchenne Muscular Dystrophy',
-                        'DOID:0060728': 'NGLY1-deficiency',
-                        'DOID:0050741': 'Alcohol Dependence',
-                        'DOID:1470':    'major depressive disorder',
-                        'DOID:14504':   'Niemann-Pick disease',
-                        'DOID:12858':   'Huntington\'s Disease',
-                        'DOID:9270':    'Alkaptonuria',
-                        'DOID:10923':   'sickle cell anemia',
-                        'DOID:2055':    'post-traumatic stress disorder'}
-
     ## set the seed node flag to True, for the first disease
     seed_node_bool = True
     for disont_id_str in q1_diseases_dict.keys():
@@ -336,47 +382,7 @@ def test_q1_singleexpand():
     print("[Q1] count(Node) = {}".format(ob.count_nodes()))
     print("[Q1] count(Rel) = {}".format(ob.count_rels()))
     
-def test_q1():
-    ## seed all 21 diseases in the Orangeboard
-    q1_diseases_dict = {'DOID:11476':   'osteoporosis',
-                        'DOID:526':     'HIV infectious disease',
-                        'DOID:1498':    'cholera',
-                        'DOID:4325':    'Ebola hemmorhagic fever',
-                        'DOID:12365':   'malaria',
-                        'DOID:10573':   'Osteomalacia',
-                        'DOID:13810':   'hypercholesterolemia',
-                        'DOID:9352':    'type 2 diabetes mellitus',
-                        'DOID:2841':    'asthma',
-                        'DOID:4989':    'pancreatitis',
-                        'DOID:10652':   'Alzheimer Disease',
-                        'DOID:5844':    'Myocardial Infarction',
-                        'DOID:11723':   'Duchenne Muscular Dystrophy',
-                        'DOID:0060728': 'NGLY1-deficiency',
-                        'DOID:0050741': 'Alcohol Dependence',
-                        'DOID:1470':    'major depressive disorder',
-                        'DOID:14504':   'Niemann-Pick disease',
-                        'DOID:12858':   'Huntington\'s Disease',
-                        'DOID:9270':    'Alkaptonuria',
-                        'DOID:10923':   'sickle cell anemia',
-                        'DOID:2055':    'post-traumatic stress disorder'}
 
-    ## set the seed node flag to True, for the first disease
-    seed_node_bool = True
-    for disont_id_str in q1_diseases_dict.keys():
-        ob.add_node('disont_disease', disont_id_str, seed_node_bool)
-        ## for the rest of the diseases, do not set the seed-node flag
-        seed_node_bool = False
-
-    ## triple-expand the knowledge graph
-    bne.expand_all_nodes()
-    bne.expand_all_nodes()
-    bne.expand_all_nodes()
-    
-    ob.neo4j_set_url('bolt://0.0.0.0:7687')
-    ob.neo4j_push()
-
-    print("[Q1] count(Node) = {}".format(ob.count_nodes()))
-    print("[Q1] count(Rel) = {}".format(ob.count_rels()))
     
 def test_q1_no_push():
     ## seed all 21 diseases in the Orangeboard
