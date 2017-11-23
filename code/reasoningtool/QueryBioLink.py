@@ -76,7 +76,7 @@ class QueryBioLink:
             return ret_dict
         res_list = results['objects']
         if len(res_list) > 200:
-            print('Number of phenotypes found for disease: ' + disease_id + ' is: ' + str(len(res_list)))
+            print('Number of phenotypes found for disease: ' + disease_id + ' is: ' + str(len(res_list)), file=sys.stderr)
         for phenotype_id_str in res_list:
             phenotype_label_str = QueryBioLink.get_label_for_phenotype(phenotype_id_str)
             ret_dict[phenotype_id_str] = phenotype_label_str
@@ -98,7 +98,7 @@ class QueryBioLink:
         ret_list = results['objects']
         
         if len(ret_list) > 200:
-            print('Number of diseases found for gene ' + gene_id + ' is: ' + str(len(ret_list)))
+            print('Number of diseases found for gene ' + gene_id + ' is: ' + str(len(ret_list)), file=sys.stderr)
 
         for disease_id in ret_list:
             if 'DOID:' in disease_id or 'OMIM:' in disease_id:
