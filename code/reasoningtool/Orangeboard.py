@@ -137,14 +137,15 @@ class Orangeboard:
         self.neo4j_user = user
         self.neo4j_password = password
 
-    def simple_print(self):
-        node_list = itertools.chain.from_iterable(self.dict_seed_uuid_to_list_nodes.values())
-        node_strings = [node.simple_print() for node in node_list]
-
+    def simple_print_rels(self):
         rel_list = itertools.chain.from_iterable(self.dict_seed_uuid_to_list_rels.values())
         rel_strings = [rel.simple_print() for rel in rel_list]
-
-        return '\n'.join(node_strings) + '\n' + '\n'.join(rel_strings)
+        return '\n'.join(rel_strings)
+    
+    def simple_print_nodes(self):
+        node_list = itertools.chain.from_iterable(self.dict_seed_uuid_to_list_nodes.values())
+        node_strings = [node.simple_print() for node in node_list]
+        return '\n'.join(node_strings)
 
     def __str__(self):
         node_list = itertools.chain.from_iterable(self.dict_seed_uuid_to_list_nodes.values())
