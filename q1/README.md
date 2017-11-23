@@ -22,7 +22,7 @@
 |         Ebola Virus Infection          | Ebola hemorrhagic fever                  | DOID:4325    | Ebola Infection                  | ???         |
 |                Malaria                 | malaria                                  | DOID:12365   | Malaria                          | OMIM:603903 |
 |              Osteomalacia              | Osteomalacia                             | DOID:10573   | Osteomalacia                     | ???         |
-|          Hypercholesterolemia          | familial hypercholesterolemia            | DOID:13810   | Hypercholesterolemia             | PCSK9?      |
+|          Hypercholesterolemia          | familial hypercholesterolemia            | DOID:13810   | Hypercholesterolemia             | rs745633457, rs28362286 |
 |       Diabetes Mellitus, Type 2        | type 2 diabetes mellitus                 | DOID:9352    | Diabetes Mellitus, Type 2        | ???         |
 |                 Asthma                 | asthma                                   | DOID:2841    | Asthma                           | OMIM:249100 |
 |          Chronic Pancreatitis          | pancreatitis                             | DOID:4989    | Pancreatitis, Chronic            | ???         |
