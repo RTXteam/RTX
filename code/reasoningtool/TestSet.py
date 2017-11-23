@@ -113,6 +113,15 @@ def make_master_kg():
     print("[Q1] count(Node) = {}".format(ob.count_nodes()))
     print("[Q1] count(Rel) = {}".format(ob.count_rels()))
 
+def test_print_for_arash():
+    make_master_kg()
+    nodes_file = open('nodes.csv', 'w')
+    nodes_file.write(ob.simple_print_nodes())
+    nodes_file.close()
+    rels_file = open('rels.csv', 'w')
+    rels_file.write(ob.simple_print_rels())
+    rels_file.close()
+    
 def test_omim_8k():
     omim_df = pandas.read_csv('../../genetic_conditions/Genetic_conditions_from_OMIM.txt',
                               sep='\t')[['MIM_number','preferred_title']]
@@ -326,30 +335,6 @@ def test_q1_no_push():
 
     print("[Q1] count(Node) = {}".format(ob.count_nodes()))
     print("[Q1] count(Rel) = {}".format(ob.count_rels()))
-
-def test_print_for_arash():
-
-    # add the initial target disease into the Orangeboard, as a 'disease ontology' node
-    ob.add_node('disont_disease', 'DOID:12365', desc='malaria', seed_node_bool=True)
-#    ob.add_node('disont_disease', 'DOID:1498', desc='cholera')
-
-    # add the initial genetic condition into the Orangeboard, as a 'MIM' node
-    ob.add_node('omim_disease', 'OMIM:603903', desc='sickle-cell anemia')
-#    ob.add_node('omim_disease', 'OMIM:219700', desc='cystic fibrosis')
-
-    print('----------- first round of expansion ----------')
-    bne.expand_all_nodes()
-
-    print('----------- second round of expansion ----------')
-    bne.expand_all_nodes()
-
-    print('----------- third round of expansion ----------')
-    bne.expand_all_nodes()
-
-    print('total number of nodes: ' + str(ob.count_nodes()))
-    print('total number of edges: ' + str(ob.count_rels()))
-
-    print(ob.simple_print(), file=sys.stderr)
 
 def lysine_test_6():
     ob.add_node('disont_disease', 'DOID:12365', desc='malaria', seed_node_bool=True)
