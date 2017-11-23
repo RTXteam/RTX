@@ -171,7 +171,7 @@ class QueryBioLink:
         ret_dict = dict(map(lambda r: (r["object"]["id"], r["object"]["label"]), res_dict))
 
         if len(ret_dict) > 200:
-            print("Warning, got {} anatomies for gene {}".format(len(ret_dict), gene_id))
+            print("Warning, got {} anatomies for gene {}".format(len(ret_dict), gene_id), file=sys.stderr)
 
         return ret_dict
 
@@ -191,7 +191,7 @@ class QueryBioLink:
         ret_list = list(map(lambda r: r["subject"]["id"], res_dict))
 
         if len(ret_list) > 200:
-            print("Warning, got {} genes for anatomy {}".format(len(ret_list), anatomy_id))
+            print("Warning, got {} genes for anatomy {}".format(len(ret_list), anatomy_id), file=sys.stderr)
 
         return ret_list
 
@@ -211,7 +211,7 @@ class QueryBioLink:
         ret_dict = dict(map(lambda r: (r["id"], r["label"]), results))
 
         if len(ret_dict) > 200:
-            print("Warning, got {} anatomies for phenotype {}".format(len(ret_dict), phenotype_id))
+            print("Warning, got {} anatomies for phenotype {}".format(len(ret_dict), phenotype_id), file=sys.stderr)
 
         return ret_dict
 
