@@ -1,6 +1,7 @@
 import networkx as nx
 from numpy import linalg as LA
 import numpy as np
+np.warnings.filterwarnings('ignore')
 import cypher
 from collections import namedtuple
 from neo4j.v1 import GraphDatabase, basic_auth

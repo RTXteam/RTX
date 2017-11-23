@@ -1,5 +1,6 @@
 # Solution to question 1, this assumes the neo4j network has already been populated with the relevant data
 import numpy as np
+np.warnings.filterwarnings('ignore')
 from collections import namedtuple
 from neo4j.v1 import GraphDatabase, basic_auth
 import os
