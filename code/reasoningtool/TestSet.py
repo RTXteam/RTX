@@ -65,18 +65,6 @@ ob.neo4j_set_auth()
 
 bne = BioNetExpander(ob)
 
-def test_omim_8k():
-    omim_df = pandas.read_csv('../../genetic_conditions/Genetic_conditions_from_OMIM.txt',
-                              sep='\t')[['MIM_number','preferred_title']]
-    first_row = True
-    for index, row in omim_df.iterrows():
-        ob.add_node('omim_disease', 'OMIM:' + str(row['MIM_number']), seed_node_bool=first_row)
-        if first_row:
-            first_row = False
-
-    ## expand the knowledge graph
-    bne.expand_all_nodes()
-
 def make_master_kg():
     ## seed all 21 diseases in the Orangeboard
     ## set the seed node flag to True, for the first disease
@@ -125,6 +113,18 @@ def make_master_kg():
     print("[Q1] count(Node) = {}".format(ob.count_nodes()))
     print("[Q1] count(Rel) = {}".format(ob.count_rels()))
 
+def test_omim_8k():
+    omim_df = pandas.read_csv('../../genetic_conditions/Genetic_conditions_from_OMIM.txt',
+                              sep='\t')[['MIM_number','preferred_title']]
+    first_row = True
+    for index, row in omim_df.iterrows():
+        ob.add_node('omim_disease', 'OMIM:' + str(row['MIM_number']), seed_node_bool=first_row)
+        if first_row:
+            first_row = False
+
+    ## expand the knowledge graph
+    bne.expand_all_nodes()
+    
 def bigtest():
 #    genetic_condition_mim_id = 'OMIM:603903'  # sickle-cell anemia
 #    target_disease_disont_id = 'DOID:12365'  # malaria
