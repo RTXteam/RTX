@@ -7,7 +7,7 @@
 """
 
 __author__ = 'Yao Yao'
-__copyright__ = ""
+__copyright__ = 'Oregon State University'
 __credits__ = ['Yao Yao', 'Zheng Liu', 'Stephen Ramsey']
 __license__ = 'MIT'
 __version__ = '0.1.0'
