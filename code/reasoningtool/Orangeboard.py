@@ -140,12 +140,12 @@ class Orangeboard:
     def simple_print_rels(self):
         rel_list = itertools.chain.from_iterable(self.dict_seed_uuid_to_list_rels.values())
         rel_strings = [rel.simple_print() for rel in rel_list]
-        return '\n'.join(rel_strings)
+        return '\n'.join(rel_strings) + '\n'
     
     def simple_print_nodes(self):
         node_list = itertools.chain.from_iterable(self.dict_seed_uuid_to_list_nodes.values())
         node_strings = [node.simple_print() for node in node_list]
-        return '\n'.join(node_strings)
+        return '\n'.join(node_strings) + '\n'
 
     def __str__(self):
         node_list = itertools.chain.from_iterable(self.dict_seed_uuid_to_list_nodes.values())
