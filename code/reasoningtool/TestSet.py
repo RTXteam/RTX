@@ -65,7 +65,7 @@ ob.neo4j_set_auth()
 
 bne = BioNetExpander(ob)
 
-def make_master_kg():
+def seed_kg_q1():
     ## seed all 21 diseases in the Orangeboard
     ## set the seed node flag to True, for the first disease
     seed_node_bool = True
@@ -94,6 +94,8 @@ def make_master_kg():
     bne.expand_all_nodes()
     bne.expand_all_nodes()
 
+def seed_kg_q2():
+    
     drug_dis_df = pandas.read_csv('../../q2/q2-drugandcondition-list.txt',
                                   sep='\t')
 
@@ -106,15 +108,17 @@ def make_master_kg():
     ## triple-expand the knowledge graph
     bne.expand_all_nodes()
     bne.expand_all_nodes()
-
+    
+def make_master_kg():
+    seed_kg_q1()
+    seed_kg_q2()
     ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
-
     print("[Q1] count(Node) = {}".format(ob.count_nodes()))
     print("[Q1] count(Rel) = {}".format(ob.count_rels()))
 
-def test_print_for_arash():
-    make_master_kg()
+def make_q1_kg_and_save_as_csv():
+    seed_kg_q1()
     nodes_file = open('nodes.csv', 'w')
     nodes_file.write(ob.simple_print_nodes())
     nodes_file.close()
