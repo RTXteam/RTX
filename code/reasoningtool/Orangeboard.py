@@ -114,6 +114,7 @@ class Orangeboard:
     def __init__(self, debug=False):
         self.dict_nodetype_to_dict_name_to_node = dict()
         self.dict_reltype_to_dict_relkey_to_rel = dict()
+        self.dict_nodetype_count = dict()
         self.dict_seed_uuid_to_list_nodes = dict()
         self.dict_seed_uuid_to_list_rels = dict()
         self.debug = debug
@@ -168,6 +169,20 @@ class Orangeboard:
 
     def count_rels(self):
         return sum(map(len, self.dict_seed_uuid_to_list_rels.values()))
+
+    def count_nodes_by_nodetype(self):
+        # nodetypes = self.dict_nodetype_to_dict_name_to_node.keys()
+        # print(nodetypes)
+        # self.dict_nodetype_count = {str(nodetype): len(set(self.dict_nodetype_to_dict_name_to_node[nodetype].values())) for nodetype in self.dict_nodetype_to_dict_name_to_node.keys()}
+        # return self.dict_nodetype_count
+
+        results_nodetype = self.neo4j_run_cypher_query("match (n) return distinct labels(n)")
+        nodetypes = [r[0][1] for r in results_nodetype]
+        for nt in nodetypes:
+            results_nodecount = self.neo4j_run_cypher_query("match (n:{}) return count(n)".format(nt))
+            self.dict_nodetype_count[nt] = [r[0] for r in results_nodecount][0]
+        return self.dict_nodetype_count
+
 
     def set_seed_node(self, seed_node):
         self.seed_node = seed_node

@@ -1,6 +1,6 @@
 """ This module defines all the unit tests and integration testing.
 
-    NOTE:  run this script with 
+    NOTE:  run this script with
               python3 -u
     in order to see print debugging statements as they are printed, if you
     are redirecting stdout and stderr to a file.
@@ -104,7 +104,7 @@ def make_master_kg():
     ## triple-expand the knowledge graph
     bne.expand_all_nodes()
     bne.expand_all_nodes()
-    bne.expand_all_nodes()            
+    bne.expand_all_nodes()
 
     drug_dis_df = pandas.read_csv('../../q2/q2-drugandcondition-list.txt',
                                   sep='\t')
@@ -117,13 +117,13 @@ def make_master_kg():
 
     ## triple-expand the knowledge graph
     bne.expand_all_nodes()
-            
+
     ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
 
     print("[Q1] count(Node) = {}".format(ob.count_nodes()))
     print("[Q1] count(Rel) = {}".format(ob.count_rels()))
-    
+
 def bigtest():
 #    genetic_condition_mim_id = 'OMIM:603903'  # sickle-cell anemia
 #    target_disease_disont_id = 'DOID:12365'  # malaria
@@ -398,15 +398,15 @@ def test_q1_singleexpand():
         seed_node_bool = False
 
     bne.expand_all_nodes()
-    
+
     ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
 
     print("[Q1] count(Node) = {}".format(ob.count_nodes()))
     print("[Q1] count(Rel) = {}".format(ob.count_rels()))
-    
 
-    
+
+
 def test_q1_no_push():
     ## seed all 21 diseases in the Orangeboard
     q1_diseases_dict = {'DOID:11476':   'osteoporosis',
@@ -442,13 +442,13 @@ def test_q1_no_push():
     bne.expand_all_nodes()
     bne.expand_all_nodes()
     bne.expand_all_nodes()
-    
+
     ob.neo4j_set_url('bolt://0.0.0.0:7687')
 #    ob.neo4j_push()
 
     print("[Q1] count(Node) = {}".format(ob.count_nodes()))
     print("[Q1] count(Rel) = {}".format(ob.count_rels()))
-    
+
 def test_print_for_arash():
 
     # add the initial target disease into the Orangeboard, as a 'disease ontology' node
@@ -472,7 +472,7 @@ def test_print_for_arash():
     print('total number of edges: ' + str(ob.count_rels()))
 
     print(ob.simple_print(), file=sys.stderr)
-    
+
 def lysine_test_6():
     ob.add_node('disont_disease', 'DOID:12365', desc='malaria', seed_node_bool=True)
     ob.add_node('disont_disease', 'DOID:1498', desc='cholera', seed_node_bool=True)
@@ -517,20 +517,22 @@ def test_query_path_from_gc_to_disease():
     #                                      "RETURN p LIMIT 1").single()['p']
 
     result = ob.neo4j_run_cypher_query("match p=(n)-[*..3]-(m) where n.name='OMIM:219700' and m.name='DOID:1498' return p, nodes(p), relationships(p)")
-   
+
     for record in result:
-        # print(record[1])
-        # print(record[2])
         print('path:')
         nodes = record[1]
         rels = record[2]
-        
+
         for r in rels:
             start_node_desc = [n for n in nodes if n.get('UUID') == r.get('source_node_uuid')][0].get('description')
             end_node_desc = [n for n in nodes if n.get('UUID') == r.get('target_node_uuid')][0].get('description')
             rel_desc = r.type
             print("    ({}) ---- [{}] ---->({})".format(start_node_desc, rel_desc, end_node_desc))
         print("\n")
+
+def test_count_nodes_by_nodetype():
+    num_nodes_by_nodetype = ob.count_nodes_by_nodetype()
+    print(num_nodes_by_nodetype)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Testing prototype for Q1, NCATS competition, 2017')
