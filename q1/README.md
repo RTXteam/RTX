@@ -22,8 +22,8 @@
 |         Ebola Virus Infection          | Ebola hemorrhagic fever                  | DOID:4325    | Ebola Infection                  | ???         |
 |                Malaria                 | malaria                                  | DOID:12365   | Malaria                          | OMIM:603903 |
 |              Osteomalacia              | Osteomalacia                             | DOID:10573   | Osteomalacia                     | ???         |
-|          Hypercholesterolemia          | familial hypercholesterolemia            | DOID:13810   | Hypercholesterolemia             | rs745633457, rs28362286 |
-|       Diabetes Mellitus, Type 2        | type 2 diabetes mellitus                 | DOID:9352    | Diabetes Mellitus, Type 2        | ???         |
+|          Hypercholesterolemia          | familial hypercholesterolemia            | DOID:13810   | Hypercholesterolemia             | Q8NBP7 (gene PCSK9; variants rs745633457, rs28362286) |
+|       Diabetes Mellitus, Type 2        | type 2 diabetes mellitus                 | DOID:9352    | Diabetes Mellitus, Type 2        | Q8IWU4 (gene SLC30A8; variants rs587777582, rs200185429) |
 |                 Asthma                 | asthma                                   | DOID:2841    | Asthma                           | OMIM:249100 |
 |          Chronic Pancreatitis          | pancreatitis                             | DOID:4989    | Pancreatitis, Chronic            | ???         |
 |           Alzheimer Disease            | Alzheimer's Disease                      | DOID:10652   | Alzheimer Disease                | ???         |
