@@ -11,6 +11,7 @@ import requests
 import urllib
 import math
 import sys
+import time
 
 # MeSH Terms for Q1 diseases: (see git/q1/README.md)
 #   Osteoporosis
@@ -36,7 +37,7 @@ import sys
 #   Stress Disorders, Post-Traumatic
 
 class QueryNCBIeUtils:
-    TIMEOUT_SEC = 120
+    TIMEOUT_SEC = 0.1
     API_BASE_URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils'
 
     '''runs a query against eUtils (hard-coded for JSON response) and returns the results as a ``requests`` object
