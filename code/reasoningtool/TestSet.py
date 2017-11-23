@@ -108,14 +108,15 @@ def seed_kg_q2():
     ## triple-expand the knowledge graph
     bne.expand_all_nodes()
     bne.expand_all_nodes()
+    bne.expand_all_nodes()
     
 def make_master_kg():
     seed_kg_q1()
     seed_kg_q2()
     ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
-    print("[Q1] count(Node) = {}".format(ob.count_nodes()))
-    print("[Q1] count(Rel) = {}".format(ob.count_rels()))
+    print("count(Node) = {}".format(ob.count_nodes()))
+    print("count(Rel) = {}".format(ob.count_rels()))
 
 def make_q1_kg_and_save_as_csv():
     seed_kg_q1()
