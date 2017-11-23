@@ -36,7 +36,7 @@ import sys
 #   Stress Disorders, Post-Traumatic
 
 class QueryNCBIeUtils:
-    TIMEOUT_SEC = 120
+    TIMEOUT_SEC = 0.1
     API_BASE_URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils'
 
     '''runs a query against eUtils (hard-coded for JSON response) and returns the results as a ``requests`` object
@@ -51,7 +51,7 @@ class QueryNCBIeUtils:
         url_str = QueryNCBIeUtils.API_BASE_URL + '/' + handler + '?' + url_suffix + '&retmode=json&retmax=' + str(retmax)
 #        print(url_str)
         try:
-            res = requests.get(url_str, headers={'accept': 'application/json'})
+            res = requests.get(url_str, headers={'accept': 'application/json'}, timeout=QueryNCBIeUtils.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
             print('HTTP timeout in QueryNCBIeUtils.py; URL: ' + url_str, file=sys.stderr)
             return None
@@ -121,9 +121,8 @@ class QueryNCBIeUtils:
     def get_medgen_uid_for_omim_id(omim_id):
         res = QueryNCBIeUtils.send_query_get('elink.fcgi',
                                              'db=medgen&dbfrom=omim&cmd=neighbor&id=' + str(omim_id))
-        res_json = res.json()
-
         ret_medgen_ids = set()
+
         if res is not None:
             res_json = res.json()
             res_linksets = res_json.get('linksets', None)
