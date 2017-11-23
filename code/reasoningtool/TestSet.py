@@ -124,107 +124,6 @@ def test_omim_8k():
 
     ## expand the knowledge graph
     bne.expand_all_nodes()
-    
-def bigtest():
-#    genetic_condition_mim_id = 'OMIM:603903'  # sickle-cell anemia
-#    target_disease_disont_id = 'DOID:12365'  # malaria
-    # cerebral malaria:  'DOID:14069'
-
-    # genetic_condition_mim_id = 'OMIM:219700' # cystic fibrosis
-#    target_disease_disont_id = 'DOID:1498' # cholera
-
-    # genetic_condition_mim_id = 'OMIM:305900' # glucose-6-phosphate dehydrogenase (G6PD)
-    # target_disease_disont_id = 'DOID:12365'   # malaria
-
-    # genetic_condition_mim_id = 'OMIM:607786' # proprotein convertase, subtilisin/kexin-type, 9 (PCSK9)
-    # target_disease_disont_id = 'DOID:13810'   # familial hypercholesterolemia
-
-    # genetic_condition_mim_id = 'OMIM:184745' # kit ligard
-    # target_disease_disont_id = 'DOID:2841' # asthma
-
-
-    # add the initial target disease into the Orangeboard, as a 'disease ontology' node
-    ob.add_node('disont_disease', 'DOID:12365', desc='malaria', seed_node_bool=True)
-    ob.add_node('disont_disease', 'DOID:1498', desc='cholera', seed_node_bool=True)
-
-    print('----------- first round of expansion ----------')
-    bne.expand_all_nodes()
-
-    print('----------- second round of expansion ----------')
-    bne.expand_all_nodes()
-
-    print('----------- third round of expansion ----------')
-    bne.expand_all_nodes()
-
-    print('total number of nodes: ' + str(ob.count_nodes()))
-    print('total number of edges: ' + str(ob.count_rels()))
-
-    # add the initial genetic condition into the Orangeboard, as a 'MIM' node
-    mim_node = ob.add_node('omim_disease', 'OMIM:603903', desc='sickle-cell anemia', seed_node_bool=True)
-
-    print('----------- first round of expansion ----------')
-    bne.expand_all_nodes()
-
-    print('----------- second round of expansion ----------')
-    bne.expand_all_nodes()
-
-    print('----------- third round of expansion ----------')
-    bne.expand_all_nodes()
-
-    print('total number of nodes: ' + str(ob.count_nodes()))
-    print('total number of edges: ' + str(ob.count_rels()))
-
-    print('size is: ' + str(ob.bytesize()))
-
-    # push the entire graph to neo4j
-    ob.neo4j_push()
-
-def bigtest2():
-    genetic_condition_mim_id = 'OMIM:219700'  # cystic fibrosis
-    target_disease_disont_id = 'DOID:1498'  # cholera
-
-    # genetic_condition_mim_id = 'OMIM:305900' # glucose-6-phosphate dehydrogenase (G6PD)
-    # target_disease_disont_id = 'DOID:12365'   # malaria
-
-    # genetic_condition_mim_id = 'OMIM:607786' # proprotein convertase, subtilisin/kexin-type, 9 (PCSK9)
-    # target_disease_disont_id = 'DOID:13810'   # familial hypercholesterolemia
-
-    # genetic_condition_mim_id = 'OMIM:184745' # kit ligard
-    # target_disease_disont_id = 'DOID:2841' # asthma
-
-
-    # add the initial target disease into the Orangeboard, as a 'disease ontology' node
-    disease_node = ob.add_node('disont_disease', target_disease_disont_id, desc='cholera', seed_node_bool=True)
-
-    print('----------- first round of expansion ----------')
-    bne.expand_all_nodes()
-
-    print('----------- second round of expansion ----------')
-    bne.expand_all_nodes()
-
-    print('----------- third round of expansion ----------')
-    bne.expand_all_nodes()
-
-    print('total number of nodes: ' + str(ob.count_nodes()))
-    print('total number of edges: ' + str(ob.count_rels()))
-
-     # add the initial genetic condition into the Orangeboard, as a 'MIM' node
-    mim_node = ob.add_node('omim_disease', genetic_condition_mim_id, desc='cystic fibrosis', seed_node_bool=True)
-
-    print('----------- first round of expansion ----------')
-    bne.expand_all_nodes()
-
-    print('----------- second round of expansion ----------')
-    bne.expand_all_nodes()
-
-    print('----------- third round of expansion ----------')
-    bne.expand_all_nodes()
-
-    print('total number of nodes: ' + str(ob.count_nodes()))
-    print('total number of edges: ' + str(ob.count_rels()))
-
-    # push the entire graph to neo4j
-    ob.neo4j_push()
 
 def read_drug_dis():
     drug_dis_df = pandas.read_csv('../../q2/q2-drugandcondition-list.txt',
@@ -410,28 +309,6 @@ def test_q1_singleexpand():
 
 def test_q1_no_push():
     ## seed all 21 diseases in the Orangeboard
-    q1_diseases_dict = {'DOID:11476':   'osteoporosis',
-                        'DOID:526':     'HIV infectious disease',
-                        'DOID:1498':    'cholera',
-                        'DOID:4325':    'Ebola hemmorhagic fever',
-                        'DOID:12365':   'malaria',
-                        'DOID:10573':   'Osteomalacia',
-                        'DOID:13810':   'hypercholesterolemia',
-                        'DOID:9352':    'type 2 diabetes mellitus',
-                        'DOID:2841':    'asthma',
-                        'DOID:4989':    'pancreatitis',
-                        'DOID:10652':   'Alzheimer Disease',
-                        'DOID:5844':    'Myocardial Infarction',
-                        'DOID:11723':   'Duchenne Muscular Dystrophy',
-                        'DOID:0060728': 'NGLY1-deficiency',
-                        'DOID:0050741': 'Alcohol Dependence',
-                        'DOID:1470':    'major depressive disorder',
-                        'DOID:14504':   'Niemann-Pick disease',
-                        'DOID:12858':   'Huntington\'s Disease',
-                        'DOID:9270':    'Alkaptonuria',
-                        'DOID:10923':   'sickle cell anemia',
-                        'DOID:2055':    'post-traumatic stress disorder'}
-
     ## set the seed node flag to True, for the first disease
     seed_node_bool = True
     for disont_id_str in q1_diseases_dict.keys():
