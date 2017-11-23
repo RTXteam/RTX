@@ -24,9 +24,10 @@ __status__ = "Prototype"
 
 import requests
 import CachedMethods
-
+import sys
 
 class QueryBioLink:
+    TIMEOUT_SEC = 120
     API_BASE_URL = {
         "get_phenotypes_for_disease": "https://api.monarchinitiative.org/api/bioentity/disease/{disease_id}/phenotypes",
         "get_diseases_for_gene": "https://api.monarchinitiative.org/api/bioentity/gene/{gene_id}/diseases",
@@ -43,16 +44,22 @@ class QueryBioLink:
     @staticmethod
     def __access_api(url):
         # print(url)
-        res = requests.get(url)
-
+        try:
+            res = requests.get(url,
+                               timeout=QueryBioLink.TIMEOUT_SEC)
+        except requests.exceptions.Timeout:
+            print(url, file=sys.stderr)
+            print("Timeout in QueryBioLink for URL: " + url, file=sys.stderr)
+            return None
         status_code = res.status_code
-
-        assert 200 == status_code, "Status code result: {}; url: {}".format(status_code, url)
+        if status_code != 200:
+            print(url, file=sys.stderr)
+            print("Status code " + str(status_code) + " for url: " + url, file=sys.stderr)
+            return None
 
         return res.json()
 
     @staticmethod
-    @CachedMethods.register
     def get_label_for_disease(disease_id):
         url = QueryBioLink.API_BASE_URL["get_label_for_disease"].format(disease_id=disease_id)
         results = QueryBioLink.__access_api(url)
@@ -62,53 +69,59 @@ class QueryBioLink:
         return result_str
 
     @staticmethod
-    @CachedMethods.register
     def get_phenotypes_for_disease_desc(disease_id):
         url = QueryBioLink.API_BASE_URL["get_phenotypes_for_disease"].format(disease_id=disease_id)
-        results = QueryBioLink.__access_api(url)['objects']
-        if len(results) > 200:
-            print('Number of phenotypes found for disease: ' + disease_id + ' is: ' + str(len(results)))
+        results = QueryBioLink.__access_api(url)
         ret_dict = dict()
-        for phenotype_id_str in results:
+        if results is None:
+            return ret_dict
+        res_list = results['objects']
+        if len(res_list) > 200:
+            print('Number of phenotypes found for disease: ' + disease_id + ' is: ' + str(len(res_list)))
+        for phenotype_id_str in res_list:
             phenotype_label_str = QueryBioLink.get_label_for_phenotype(phenotype_id_str)
             ret_dict[phenotype_id_str] = phenotype_label_str
 
         return ret_dict
 
     @staticmethod
-    @CachedMethods.register
     def get_diseases_for_gene_desc(gene_id):
         """for a given NCBI Entrez Gene ID, returns a ``set`` of DOI disease identifiers for the gene
 
         :returns: a ``set`` containing ``str`` disease ontology identifiers
         """
         url = QueryBioLink.API_BASE_URL["get_diseases_for_gene"].format(gene_id=gene_id)
-        results = QueryBioLink.__access_api(url)['objects']
-
-        if len(results) > 200:
-            print('Number of diseases found for gene ' + gene_id + ' is: ' + str(len(results)))
-
+        results = QueryBioLink.__access_api(url)
         ret_data = dict()
-        for disease_id in results:
+        if results is None:
+            return ret_data
+        
+        ret_list = results['objects']
+        
+        if len(ret_list) > 200:
+            print('Number of diseases found for gene ' + gene_id + ' is: ' + str(len(ret_list)))
+
+        for disease_id in ret_list:
             if 'DOID:' in disease_id or 'OMIM:' in disease_id:
                 ret_data[disease_id] = QueryBioLink.get_label_for_disease(disease_id)
 
         return ret_data
 
     @staticmethod
-    @CachedMethods.register
     def get_genes_for_disease_desc(disease_id):
         url = QueryBioLink.API_BASE_URL["get_genes_for_disease"].format(disease_id=disease_id)
 
-        results = QueryBioLink.__access_api(url)['objects']
+        results = QueryBioLink.__access_api(url)
+        ret_list = []
+        if results is None:
+            return ret_list
+        ret_list = results['objects']
 
-        assert len(results) <= 100, \
-            "Found {} genes for disease {}. Crossed threshold 100.".format(len(results), disease_id)
-
-        return results
+        if len(ret_list) > 100:
+            print('number of genes found for disease ' + disease_id + ' is: ' + str(len(ret_list)), file=sys.stderr)
+        return ret_list
 
     @staticmethod
-    @CachedMethods.register
     def get_label_for_phenotype(phenotype_id_str):
         url = QueryBioLink.API_BASE_URL["get_label_for_phenotype"].format(phenotype_id=phenotype_id_str)
         results = QueryBioLink.__access_api(url)
@@ -118,19 +131,21 @@ class QueryBioLink:
         return result_str
 
     @staticmethod
-    @CachedMethods.register
     def get_phenotypes_for_gene(gene_id):
         url = QueryBioLink.API_BASE_URL["get_phenotypes_for_gene"].format(gene_id=gene_id)
 
-        results = QueryBioLink.__access_api(url)['objects']
+        results = QueryBioLink.__access_api(url)
+        ret_list = []
+        if results is None:
+            return ret_list
+        ret_list = results['objects']
 
-        if len(results) > 200:
-            print("Warning, got " + str(len(results)) + " phenotypes for gene " + gene_id)
+        if len(ret_list) > 200:
+            print("Warning, got " + str(len(ret_list)) + " phenotypes for gene " + gene_id, file=sys.stderr)
 
-        return results
+        return ret_list
 
     @staticmethod
-    @CachedMethods.register
     def get_phenotypes_for_gene_desc(ncbi_entrez_gene_id):
         phenotype_id_set = QueryBioLink.get_phenotypes_for_gene(ncbi_entrez_gene_id)
         ret_dict = dict()
@@ -141,7 +156,6 @@ class QueryBioLink:
         return ret_dict
 
     @staticmethod
-    @CachedMethods.register
     def get_anatomies_for_gene(gene_id):
         """for a given NCBI Entrez Gene ID, returns a ``dict`` of Anatomy IDs and labels for the gene
 
@@ -149,16 +163,19 @@ class QueryBioLink:
         """
         url = QueryBioLink.API_BASE_URL["get_anatomies_for_gene"].format(gene_id=gene_id)
 
-        results = QueryBioLink.__access_api(url)['associations']
-        results = dict(map(lambda r: (r["object"]["id"], r["object"]["label"]), results))
+        results = QueryBioLink.__access_api(url)
+        ret_dict = dict()
+        if results is None:
+            return ret_dict
+        res_dict = results['associations']
+        ret_dict = dict(map(lambda r: (r["object"]["id"], r["object"]["label"]), res_dict))
 
-        if len(results) > 200:
-            print("Warning, got {} anatomies for gene {}".format(len(results), gene_id))
+        if len(ret_dict) > 200:
+            print("Warning, got {} anatomies for gene {}".format(len(ret_dict), gene_id))
 
-        return results
+        return ret_dict
 
     @staticmethod
-    @CachedMethods.register
     def get_genes_for_anatomy(anatomy_id):
         """for a given Anatomy ID, returns a ``list`` of Gene ID for the anatomy
 
@@ -166,16 +183,19 @@ class QueryBioLink:
         """
         url = QueryBioLink.API_BASE_URL["get_genes_for_anatomy"].format(anatomy_id=anatomy_id)
 
-        results = QueryBioLink.__access_api(url)['associations']
-        results = list(map(lambda r: r["subject"]["id"], results))
+        results = QueryBioLink.__access_api(url)
+        ret_list = []
+        if results is None:
+            return ret_list
+        res_dict = results['associations']
+        ret_list = list(map(lambda r: r["subject"]["id"], res_dict))
 
-        if len(results) > 200:
-            print("Warning, got {} genes for anatomy {}".format(len(results), anatomy_id))
+        if len(ret_list) > 200:
+            print("Warning, got {} genes for anatomy {}".format(len(ret_list), anatomy_id))
 
-        return results
+        return ret_list
 
     @staticmethod
-    @CachedMethods.register
     def get_anatomies_for_phenotype(phenotype_id):
         """for a given phenotype ID, returns a ``dict`` of Anatomy IDs and labels for the phenotype
 
@@ -184,18 +204,23 @@ class QueryBioLink:
         url = QueryBioLink.API_BASE_URL["get_anatomies_for_phenotype"].format(phenotype_id=phenotype_id)
 
         results = QueryBioLink.__access_api(url)
-        results = dict(map(lambda r: (r["id"], r["label"]), results))
+        ret_dict = ()
+        if results is None:
+            return ret_dict
+        
+        ret_dict = dict(map(lambda r: (r["id"], r["label"]), results))
 
-        if len(results) > 200:
-            print("Warning, got {} anatomies for phenotype {}".format(len(results), phenotype_id))
+        if len(ret_dict) > 200:
+            print("Warning, got {} anatomies for phenotype {}".format(len(ret_dict), phenotype_id))
 
-        return results
+        return ret_dict
 
 if __name__ == '__main__':
     print(QueryBioLink.get_phenotypes_for_disease_desc("OMIM:605543"))
+    print(QueryBioLink.get_genes_for_disease_desc("OMIM:XXXXXX"))
+    print(QueryBioLink.get_genes_for_disease_desc("OMIM:605543"))
     print(QueryBioLink.get_phenotypes_for_gene_desc("NCBIGene:1080"))  # test for issue #22
     print(QueryBioLink.get_diseases_for_gene_desc("NCBIGene:407053"))
-    print(QueryBioLink.get_genes_for_disease_desc("OMIM:605543"))
     print(QueryBioLink.get_diseases_for_gene_desc("NCBIGene:100048912"))
     print(QueryBioLink.get_phenotypes_for_gene_desc("NCBIGene:4750"))
     print(QueryBioLink.get_phenotypes_for_gene("NCBIGene:4750"))
@@ -207,5 +232,3 @@ if __name__ == '__main__':
     print(QueryBioLink.get_anatomies_for_gene("NCBIGene:407053"))
     print(QueryBioLink.get_genes_for_anatomy("UBERON:0000006"))
     print(QueryBioLink.get_anatomies_for_phenotype("HP:0000003"))
-
-    print(CachedMethods.cache_info())
