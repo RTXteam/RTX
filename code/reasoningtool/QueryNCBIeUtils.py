@@ -47,13 +47,13 @@ class QueryNCBIeUtils:
                                              
     '''returns the NCBI MedGen UID for an OMIM ID
 
-    :param omim_id: an integer
+    :param omim_id: a string (eg: 'OMIM:1234')
     :returns: integer or None
     '''
     @staticmethod
     def get_medgen_id_for_omim_id(omim_id):
         res = QueryNCBIeUtils.send_query_get('esearch.fcgi',
-                                             'db=medgen&term=OMIM:' + str(omim_id))
+                                             'db=medgen&term=' + omim_id)
         res_json = res.json()
         ret_ids = set()
         esearchresult = res_json.get('esearchresult', None)
@@ -102,7 +102,7 @@ class QueryNCBIeUtils:
         print(QueryNCBIeUtils.normalized_google_distance(mesh1_str, mesh2_str))
               
 if __name__ == '__main__':
-    print(QueryNCBIeUtils.get_medgen_id_for_omim_id(219700))
-    print(QueryNCBIeUtils.get_medgen_id_for_omim_id(219550))
+    print(QueryNCBIeUtils.get_medgen_id_for_omim_id('OMIM:219700'))
+    print(QueryNCBIeUtils.get_medgen_id_for_omim_id('OMIM:219550'))
     print(QueryNCBIeUtils.get_mesh_id_for_medgen_id(258573))
     
