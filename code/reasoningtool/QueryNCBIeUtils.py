@@ -1,8 +1,3 @@
-import requests
-import urllib
-import math
-import sys
-
 __author__ = 'Stephen Ramsey'
 __copyright__ = 'Oregon State University'
 __credits__ = ['Stephen Ramsey']
@@ -12,7 +7,12 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-# MeSH Terms for Q1 diseases:
+import requests
+import urllib
+import math
+import sys
+
+# MeSH Terms for Q1 diseases: (see git/q1/README.md)
 #   Osteoporosis
 #   HIV Infections
 #   Cholera
