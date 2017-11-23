@@ -117,6 +117,7 @@ def make_master_kg():
 
     ## triple-expand the knowledge graph
     bne.expand_all_nodes()
+    bne.expand_all_nodes()
 
     ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
