@@ -37,7 +37,7 @@ import time
 #   Stress Disorders, Post-Traumatic
 
 class QueryNCBIeUtils:
-    TIMEOUT_SEC = 0.1
+    TIMEOUT_SEC = 120
     API_BASE_URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils'
 
     '''runs a query against eUtils (hard-coded for JSON response) and returns the results as a ``requests`` object
