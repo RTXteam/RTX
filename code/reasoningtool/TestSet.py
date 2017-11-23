@@ -95,7 +95,9 @@ def make_master_kg():
                               sep='\t')[['MIM_number','preferred_title']]
     first_row = True
     for index, row in omim_df.iterrows():
-        ob.add_node('omim_disease', 'OMIM:' + str(row['MIM_number']), seed_node_bool=first_row)
+        ob.add_node('omim_disease', 'OMIM:' + str(row['MIM_number']),
+                    desc=row['preferred_title'],
+                    seed_node_bool=first_row)
         if first_row:
             first_row = False
 
