@@ -23,7 +23,7 @@ class QueryPharos:
     @staticmethod
     def send_query_get(entity, url_suffix):
         url_str = QueryPharos.API_BASE_URL + "/" + entity + url_suffix
-        print(url_str)
+        #print(url_str)
         res = requests.get(url_str, headers={'accept': 'application/json'})
         status_code = res.status_code
         #print("Status code="+str(status_code))
