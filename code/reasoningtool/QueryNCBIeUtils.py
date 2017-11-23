@@ -12,6 +12,29 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
+# MeSH Terms for Q1 diseases:
+#   Osteoporosis
+#   HIV Infections
+#   Cholera
+#   Ebola Infection
+#   Malaria
+#   Osteomalacia
+#   Hypercholesterolemia
+#   Diabetes Mellitus, Type 2
+#   Asthma
+#   Pancreatitis, Chronic
+#   Alzheimer Disease
+#   Myocardial Infarction
+#   Muscular Dystrophy, Duchenne
+#   NGLY1 protein, human
+#   Alcoholism
+#   Depressive Disorder, Major
+#   Niemann-Pick Disease, Type C
+#   Huntington Disease
+#   Alkaptonuria
+#   Anemia, Sickle Cell
+#   Stress Disorders, Post-Traumatic
+
 class QueryNCBIeUtils:
     API_BASE_URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils'
 
@@ -158,10 +181,33 @@ class QueryNCBIeUtils:
         print(QueryNCBIeUtils.normalized_google_distance(mesh1_str, mesh2_str))
               
 if __name__ == '__main__':
-    print(QueryNCBIeUtils.normalized_google_distance("Cystic Fibrosis", "Cholera"))
+    for mesh_term in ['Osteoporosis',
+                      'HIV Infections',
+                      'Cholera',
+                      'Ebola Infection',
+                      'Malaria',
+                      'Osteomalacia',
+                      'Hypercholesterolemia',
+                      'Diabetes Mellitus, Type 2',
+                      'Asthma',
+                      'Pancreatitis, Chronic',
+                      'Alzheimer Disease',
+                      'Myocardial Infarction',
+                      'Muscular Dystrophy, Duchenne',
+                      'NGLY1 protein, human',
+                      'Alcoholism',
+                      'Depressive Disorder, Major',
+                      'Niemann-Pick Disease, Type C',
+                      'Huntington Disease',
+                      'Alkaptonuria',
+                      'Anemia, Sickle Cell',
+                      'Stress Disorders, Post-Traumatic']:
+        print(QueryNCBIeUtils.normalized_google_distance(mesh_term, QueryNCBIeUtils.get_mesh_terms_for_omim_id(219700)[0]))
+              
     print(QueryNCBIeUtils.normalized_google_distance(
         QueryNCBIeUtils.get_mesh_terms_for_omim_id(219700)[0],
         "Cholera"))
+              
     print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(219700)) # OMIM preferred name: "CYSTIC FIBROSIS"
     print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(125050)) # OMIM preferred name: "DEAFNESS WITH ANHIDROTIC ECTODERMAL DYSPLASIA"
     print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(310350)) # OMIM preferred name: "MYELOLYMPHATIC INSUFFICIENCY"
