@@ -94,7 +94,7 @@ class Rel:
         return pprint.pformat(attr_dict)
 
     def simple_print(self):
-        return 'rel,' + self.source_node.uuid + ',' + self.target_node.uuid + ',' + self.uuid
+        return 'rel,' + self.source_node.uuid + ',' + self.target_node.uuid + ',' + self.sourcedb + ':' + self.reltype
 
 class Orangeboard:
     NEO4J_USERNAME = 'neo4j'
