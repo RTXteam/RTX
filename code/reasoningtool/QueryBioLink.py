@@ -13,17 +13,16 @@ available methods include:
     * query anatomy for phenotype
 """
 
-__author__ = ""
-__copyright__ = ""
-__credits__ = []
-__license__ = ""
-__version__ = ""
-__maintainer__ = ""
-__email__ = ""
-__status__ = "Prototype"
+__author__ = 'Zheng Liu'
+__copyright__ = 'Oregon State University'
+__credits__ = ['Zheng Liu', 'Stephen Ramsey', 'Yao Yao']
+__license__ = 'MIT'
+__version__ = '0.1.0'
+__maintainer__ = ''
+__email__ = ''
+__status__ = 'Prototype'
 
 import requests
-import CachedMethods
 import sys
 
 class QueryBioLink:
