@@ -14,8 +14,14 @@ __status__ = 'Prototype'
 
 class QueryNCBIeUtils:
     API_BASE_URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils'
-    PUBMED_URL = API_BASE_URL + '/esearch.fcgi?db=pubmed&retmode=json&retmax=1000&term='
 
+    '''runs a query against eUtils (hard-coded for JSON response) and returns the results as a ``requests`` object
+    
+    :param handler: str handler, like ``elink.fcgi``
+    :param url_suffix: str suffix to be appended on the URL after the "?" character
+    :param retmax: int to specify the maximum number of records to return (default here 
+                   is 1000, which is more useful than the NCBI default of 20)
+    '''
     @staticmethod
     def send_query_get(handler, url_suffix, retmax=1000):
         url_str = QueryNCBIeUtils.API_BASE_URL + '/' + handler + '?' + url_suffix + '&retmode=json&retmax=' + str(retmax)
@@ -27,9 +33,15 @@ class QueryNCBIeUtils:
             res = None
         return res
 
-    def get_mesh_id_for_medgen_id(medgen_id):
+    '''returns the mesh UID for a given medgen UID
+
+    :param medgen_uid: integer
+    :returns: set(integers) or ``None``
+    '''
+    @staticmethod
+    def get_mesh_uid_for_medgen_uid(medgen_uid):
         res = QueryNCBIeUtils.send_query_get('elink.fcgi',
-                                             'db=mesh&dbfrom=medgen&cmd=neighbor&id=' + str(medgen_id))
+                                             'db=mesh&dbfrom=medgen&cmd=neighbor&id=' + str(medgen_uid))
         res_mesh_ids = set()
         if res is not None:
             res_json = res.json()
@@ -44,26 +56,70 @@ class QueryNCBIeUtils:
                                 for res_meshid in res_meshids:
                                     res_mesh_ids.add(int(res_meshid))
         return res_mesh_ids
-                                             
-    '''returns the NCBI MedGen UID for an OMIM ID
 
-    :param omim_id: an integer
-    :returns: integer or None
+    '''returns the mesh terms for a given MeSH Entrez UID
+
+    :param mesh_uid: str
+    :returns: list(str) of MeSH terms
     '''
     @staticmethod
-    def get_medgen_id_for_omim_id(omim_id):
-        res = QueryNCBIeUtils.send_query_get('esearch.fcgi',
-                                             'db=medgen&term=OMIM:' + str(omim_id))
-        res_json = res.json()
-        ret_ids = set()
-        esearchresult = res_json.get('esearchresult', None)
-        if esearchresult is not None:
-            idlist = esearchresult.get('idlist', None)
-            if idlist is not None:
-                for id in idlist:
-                    ret_ids.add(int(id))
-        return ret_ids
+    def get_mesh_terms_for_mesh_uid(mesh_uid):
+        res = QueryNCBIeUtils.send_query_get('esummary.fcgi',
+                                             'db=mesh&id=' + str(mesh_uid))
+        ret_mesh = []
+        if res is not None:
+            res_json = res.json()
+            res_result = res_json.get('result', None)
+            if res_result is not None:
+                uids = res_result.get('uids', None)
+                if uids is not None:
+                    assert type(uids)==list
+                    for uid in uids:
+                        assert type(uid)==str
+                        res_uid = res_result.get(uid, None)
+                        if res_uid is not None:
+                            res_dsm = res_uid.get('ds_meshterms', None)
+                            if res_dsm is not None:
+                                assert type(res_dsm)==list
+                                ret_mesh += res_dsm
+        return ret_mesh
     
+    '''returns the NCBI MedGen UID for an OMIM ID
+
+    :param omim_id: integer
+    :returns: set(integers) or None
+    '''
+    @staticmethod
+    def get_medgen_uid_for_omim_id(omim_id):
+        res = QueryNCBIeUtils.send_query_get('elink.fcgi',
+                                             'db=medgen&dbfrom=omim&cmd=neighbor&id=' + str(omim_id))
+        res_json = res.json()
+
+        ret_medgen_ids = set()
+        if res is not None:
+            res_json = res.json()
+            res_linksets = res_json.get('linksets', None)
+            if res_linksets is not None:
+                for res_linkset in res_linksets:
+                    res_linksetdbs = res_linkset.get('linksetdbs', None)
+                    if res_linksetdbs is not None:
+                        for res_linksetdb in res_linksetdbs:
+                            res_medgenids = res_linksetdb.get('links', None)
+                            if res_medgenids is not None:
+                                ret_medgen_ids |= set(res_medgenids)
+        return ret_medgen_ids
+
+    @staticmethod
+    def get_mesh_terms_for_omim_id(omim_id):
+        medgen_uids = QueryNCBIeUtils.get_medgen_uid_for_omim_id(omim_id)
+        ret_mesh_terms = []
+        for medgen_uid in medgen_uids:
+            mesh_uids = QueryNCBIeUtils.get_mesh_uid_for_medgen_uid(medgen_uid)
+            for mesh_uid in mesh_uids:
+                mesh_terms = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(mesh_uid)
+                ret_mesh_terms += list(mesh_terms)
+        return ret_mesh_terms
+        
     @staticmethod
     def get_pubmed_hits_count(term_str):
         term_str_encoded = urllib.parse.quote(term_str, safe='')
@@ -74,7 +130,7 @@ class QueryNCBIeUtils:
             print('HTTP response status code: ' + str(status_code) + ' for query term string {term}'.format(term=term_str))
             return None
         return int(res.json()['esearchresult']['count'])
-    
+
     @staticmethod
     def normalized_google_distance(mesh1_str, mesh2_str):
         '''returns the normalized Google distance for two MeSH terms
@@ -92,7 +148,7 @@ class QueryNCBIeUtils:
         denominator = math.log(N) - min(math.log(ni), math.log(nj))
         ngd = numerator/denominator
         return ngd
-    
+
     @staticmethod
     def test_ngd():
 #        mesh1_str = 'Anemia, Sickle Cell'
@@ -102,7 +158,21 @@ class QueryNCBIeUtils:
         print(QueryNCBIeUtils.normalized_google_distance(mesh1_str, mesh2_str))
               
 if __name__ == '__main__':
-    print(QueryNCBIeUtils.get_medgen_id_for_omim_id(219700))
-    print(QueryNCBIeUtils.get_medgen_id_for_omim_id(219550))
-    print(QueryNCBIeUtils.get_mesh_id_for_medgen_id(258573))
+    print(QueryNCBIeUtils.normalized_google_distance("Cystic Fibrosis", "Cholera"))
+    print(QueryNCBIeUtils.normalized_google_distance(
+        QueryNCBIeUtils.get_mesh_terms_for_omim_id(219700)[0],
+        "Cholera"))
+    print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(219700)) # OMIM preferred name: "CYSTIC FIBROSIS"
+    print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(125050)) # OMIM preferred name: "DEAFNESS WITH ANHIDROTIC ECTODERMAL DYSPLASIA"
+    print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(310350)) # OMIM preferred name: "MYELOLYMPHATIC INSUFFICIENCY"
+    print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(603903)) # OMIM preferred name: "SICKLE CELL ANEMIA"
+    print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(612067)) # OMIM preferred name: "DYSTONIA 16; DYT16"
+    print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(615113)) # OMIM preferred name: "MICROPHTHALMIA, ISOLATED 8; MCOP8"
+    print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(615860)) # OMIM preferred name: "CONE-ROD DYSTROPHY 19; CORD19"
+    print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(180200)) # OMIM preferred name: "RETINOBLASTOMA; RB1"
+    print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(617062)) # OMIM preferred name: "OKUR-CHUNG NEURODEVELOPMENTAL SYNDROME; OCNDS"
+    print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(617698)) # OMIM preferred name: "3-METHYLGLUTACONIC ACIDURIA, TYPE IX; MGCA9"
+    print(QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(68003550))
+    print(QueryNCBIeUtils.get_medgen_uid_for_omim_id(219550))
+    print(QueryNCBIeUtils.get_mesh_uid_for_medgen_uid(41393))
     
