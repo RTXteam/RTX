@@ -299,13 +299,17 @@ class BioNetExpander:
 
     def expand_all_nodes(self):
         nodes = self.orangeboard.get_all_nodes_for_current_seed_node()
+        num_nodes_to_expand = sum([not mynode.expanded for mynode in nodes])
         print('----------------------------------------------------')
-        print('Number of nodes to expand: ' + str(sum([not mynode.expanded for mynode in nodes])))
+        print('Number of nodes to expand: ' + str(num_nodes_to_expand))
         print('----------------------------------------------------')
         for node in nodes:
             if not node.expanded:
                 self.expand_node(node)
-
+                num_nodes_to_expand -= 1
+                if (num_nodes_to_expand % 100 == 0):
+                    print('Number of nodes left to expand in this iteration: ' + str(num_nodes_to_expand))
+                
 if __name__ == '__main__':
     ob = Orangeboard(debug=False)
 
