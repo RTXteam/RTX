@@ -36,7 +36,7 @@ import sys
 #   Stress Disorders, Post-Traumatic
 
 class QueryNCBIeUtils:
-    TIMEOUT_SEC = 0.1
+    TIMEOUT_SEC = 120
     API_BASE_URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils'
 
     '''runs a query against eUtils (hard-coded for JSON response) and returns the results as a ``requests`` object
@@ -54,6 +54,11 @@ class QueryNCBIeUtils:
             res = requests.get(url_str, headers={'accept': 'application/json'}, timeout=QueryNCBIeUtils.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
             print('HTTP timeout in QueryNCBIeUtils.py; URL: ' + url_str, file=sys.stderr)
+            time.sleep(1)  ## take a timeout because NCBI rate-limits connections
+            return None
+        except requests.exceptions.ConnectionError:
+            print('HTTP connection error in QueryNCBIeUtils.py; URL: ' + url_str, file=sys.stderr)
+            time.sleep(1)  ## take a timeout because NCBI rate-limits connections
             return None
         status_code = res.status_code
         if status_code != 200:
