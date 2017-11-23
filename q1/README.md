@@ -1,5 +1,6 @@
+# NCATS Reasoning Tool Q1 Page
 
-# Q1 as stated by NCATS in the Concept Letter FOA:
+## Q1 as stated by NCATS in the Concept Letter FOA:
 
 > 1. Genetic condition protects from a disease Sometimes a condition that causes
 > adverse health effects also helps protect against other diseases. For example,
