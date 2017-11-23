@@ -295,7 +295,7 @@ def display_results(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disease, 
 					print(to_print)
 	else:
 		if doid in q1_doid_to_disease:
-			name = q1_doid_to_disease
+			name = q1_doid_to_disease[doid]
 		else:
 			name = doid
 		print("Sorry, I was unable to find a genetic condition that protects against %s" % name)

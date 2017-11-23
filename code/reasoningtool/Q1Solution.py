@@ -7,6 +7,7 @@ import QueryPubMedNGD
 import math
 import Q1Utils
 import MarkovLearning
+import QueryNCBIeUtils
 
 # Connection information for the neo4j server, populated with orangeboard
 driver = GraphDatabase.driver("bolt://lysine.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))
@@ -162,7 +163,8 @@ def answerQ1(input_disease, directed=True, max_path_len=3):  # I'm thinking dire
 	#for omim in omims:
 	for omim in prioritized_omims:  # only the on the prioritized ones
 		if omim in omim_to_mesh:
-			res = QueryPubMedNGD.QueryPubMedNGD.normalized_google_distance(omim_to_mesh[omim], input_disease)
+			# TODO: incorporate the new QueryPubMed code that steve put in to get ALL the meshes
+			res = QueryNCBIeUtils.QueryNCBIeUtils.normalized_google_distance(omim_to_mesh[omim], input_disease)
 			omims_GD.append((omim, res))
 	well_studied_omims = list()
 	for tup in omims_GD:
@@ -220,14 +222,15 @@ def answerQ1(input_disease, directed=True, max_path_len=3):  # I'm thinking dire
 	for index in to_select:
 		selected_omim = omim_list[index]
 		path_name, path_type, prob = paths_dict_prob_all[selected_omim]
-		selected_probs[selected_omim] = prob/total
+		selected_probs[selected_omim] = prob/float(2*total)
 		paths_dict_selected[selected_omim] = (path_name, path_type)
 
 	Q1Utils.display_results(doid, paths_dict_selected, omim_to_genetic_cond, q1_doid_to_disease, probs=selected_probs)
 
 def run_on_all():
 	for disease in q1_disease_to_doid.keys():
-		answerQ1(disease)
+		print(disease)
+		answerQ1(disease, directed=True, max_path_len=2)
 
 
 
