@@ -181,6 +181,11 @@ def seed_kg_q2():
                     ob.add_node('disont_disease', disont_id, desc=disont_desc, seed_node_bool=first_row)
                     if first_row:
                         first_row = False
+
+    ## triple-expand the knowledge graph
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
                 
     print('=====================> seeding drug nodes for Q2')
     first_row = True
@@ -195,7 +200,7 @@ def seed_kg_q2():
     bne.expand_all_nodes()
     
 def make_master_kg():
-    seed_kg_q1()
+#    seed_kg_q1()
     seed_kg_q2()
     ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
