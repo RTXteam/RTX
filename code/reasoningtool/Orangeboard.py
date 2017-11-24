@@ -268,6 +268,8 @@ class Orangeboard:
                 ## node is already in the orangeboard but we are updating its seed node
                 ## (1) get the UUID for the existing node
                 new_seed_node_uuid = existing_node.uuid
+                print('existing_node before changing it: ')
+                print(existing_node)
                 print('new seed node uuid: ' + new_seed_node_uuid)
                 ## (2) set the 'expanded' variable of the existing node to False
                 existing_node.expanded = False
@@ -283,6 +285,7 @@ class Orangeboard:
                 new_seed_node_list.append(existing_node)
                 ## (6) remove the existing node from the old seed-node-level list:
                 assert old_seed_node_uuid is not None
+                print('existing_node after changing it: ')
                 print(existing_node)
                 self.dict_seed_uuid_to_list_nodes[old_seed_node_uuid].remove(existing_node)
         return existing_node
