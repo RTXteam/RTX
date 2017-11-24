@@ -36,8 +36,19 @@ from QueryPharos import QueryPharos
 from QuerySciGraph import QuerySciGraph
 
 class BioNetExpander:
+    MASTER_REL_IS_EXPANDED = {'disease_affects': True,
+                              'is_member_of': True,
+                              'is_parent_of': True,
+                              'gene_assoc_with': True,
+                              'phenotype_assoc_with': True,
+                              'interacts_with': False,
+                              'controls_expression_of': True,
+                              'is_expressed_in': True,
+                              'targets': True}
+
     def __init__(self, orangeboard):
         self.orangeboard = orangeboard
+        self.orangeboard.set_dict_reltype_dirs(self.MASTER_REL_IS_EXPANDED)
         self.query_omim_obj = QueryOMIM()
         self.query_mygene_obj = QueryMyGene(debug=False)
 
