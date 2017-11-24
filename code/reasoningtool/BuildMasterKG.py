@@ -1,5 +1,6 @@
 '''Builds a master knowledge graph and pushes it to Neo4j.  Uses BioNetExpander and Orangeboard.
 
+   Usage:  sh run_build_master_kg.sh
 '''
 
 __author__ = 'Stephen Ramsey'
