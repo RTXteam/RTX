@@ -17,7 +17,7 @@
 
 | Disease name in NCATS file             | Disease name in [disease-ontology](http://disease-ontology.org/) | DOID | MeSH Term        | "Answer"    |
 | :------------------------------------: | ---------------------------------------- | ------------ | -------------------------------- | ----------- |
-|              Osteoporosis              | osteoporosis                             | DOID:11476   | Osteoporosis                     | rs11692564  |
+|              Osteoporosis              | osteoporosis                             | DOID:11476   | Osteoporosis                     | Q05925 (EN1 gene; variant rs11692564)  |
 | Human Immunodeficiency Virus Infection | human immunodeficiency virus infectious disease | DOID:526 | HIV Infections                | ???         |
 |                Cholera                 | cholera                                  | DOID:1498    | Cholera                          | OMIM:219700 |
 |         Ebola Virus Infection          | Ebola hemorrhagic fever                  | DOID:4325    | Ebola Infection                  | ???         |
