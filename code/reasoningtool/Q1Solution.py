@@ -4,7 +4,7 @@ np.warnings.filterwarnings('ignore')
 from collections import namedtuple
 from neo4j.v1 import GraphDatabase, basic_auth
 import os
-import QueryPubMedNGD
+#import QueryPubMedNGD
 import math
 import Q1Utils
 import MarkovLearning
@@ -38,7 +38,9 @@ defaults = DefaultConfigurable(**DEFAULT_CONFIGURABLE)
 
 
 ########################################################################################
-# Main body
+
+# TODO: the following two dictionaries would be relatively straightforward to programmatically create
+# but given the time contraints, let's just hard code them now...
 
 # Dictionary converting disease to disont_disease ID
 # TODO: double check the DOID's, possibly add synonyms for the diseases
@@ -68,6 +70,28 @@ q1_disease_to_doid = dict()
 for key in q1_doid_to_disease.keys():
 	q1_disease_to_doid[q1_doid_to_disease[key]] = key
 
+q1_doid_to_mesh = {'DOID:11476': 'Osteoporosis',
+					'DOID:526': 'HIV Infections',
+					'DOID:1498': 'Cholera',
+					'DOID:4325': 'Ebola Infection',
+					'DOID:12365': 'Malaria',
+					'DOID:10573': 'Osteomalacia',
+					'DOID:13810': 'Hypercholesterolemia',
+					'DOID:9352': 'Diabetes Mellitus, Type 2',
+					'DOID:2841': 'Asthma',
+					'DOID:4989': 'Pancreatitis, Chronic',
+					'DOID:10652': 'Alzheimer Disease',
+					'DOID:5844': 'Myocardial Infarction',
+					'DOID:11723': 'Muscular Dystrophy, Duchenne',
+					'DOID:0060728': 'NGLY1 protein, human',
+					'DOID:0050741': 'Alcoholism',
+					'DOID:1470': 'Depressive Disorder, Major',
+					'DOID:14504': 'Niemann-Pick Disease, Type C',
+					'DOID:12858': 'Huntington Disease',
+					'DOID:9270': 'Alkaptonuria',
+					'DOID:10923': 'Anemia, Sickle Cell',
+					'DOID:2055': 'Stress Disorders, Post-Traumatic'}
+
 # Get the genetic diseases of interest
 genetic_condition_to_omim = dict()
 genetic_condition_to_mesh = dict()
@@ -96,7 +120,7 @@ for condition in genetic_condition_to_omim.keys():
 ###################################################
 # Start input
 
-def answerQ1(input_disease, directed=True, max_path_len=3):  # I'm thinking directed true is best
+def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False):  # I'm thinking directed true is best
 	"""
 	Answers Q1.
 	:param input_disease: input disease (from the list)
@@ -124,6 +148,8 @@ def answerQ1(input_disease, directed=True, max_path_len=3):  # I'm thinking dire
 	if not omims:
 		print("No nearby omims found. Please raise the max_path_len and try again.")
 		return
+	if verbose:
+		print("Found %d nearby omims" % len(omims))
 
 	# Computing expected graph distance
 	exp_graph_distance_s_t = []  # source to target
@@ -158,35 +184,41 @@ def answerQ1(input_disease, directed=True, max_path_len=3):  # I'm thinking dire
 		prioritized_omims.append(omim)
 	#print("path prioritized omims: ")
 	#print(prioritized_omims)
+	if verbose:
+		print("Found %d omims nearby (according to the random walk)" % len(prioritized_omims))
 
 	# Getting well-studied omims
 	omims_GD = list()
 	#for omim in omims:
 	for omim in prioritized_omims:  # only the on the prioritized ones
 		if omim in omim_to_mesh:
-			# TODO: incorporate the new QueryPubMed code that steve put in to get ALL the meshes
-			res = QueryNCBIeUtils.QueryNCBIeUtils.normalized_google_distance(omim_to_mesh[omim], input_disease)
+			#res = QueryNCBIeUtils.QueryNCBIeUtils.normalized_google_distance(omim_to_mesh[omim], input_disease)
+			omim_mesh = QueryNCBIeUtils.QueryNCBIeUtils.get_mesh_terms_for_omim_id(omim.split(':')[1])
+			if len(omim_mesh) > 1:
+				omim_mesh = omim_mesh[0]
+			res = QueryNCBIeUtils.QueryNCBIeUtils.normalized_google_distance(omim_mesh, q1_doid_to_mesh[doid])
 			omims_GD.append((omim, res))
 	well_studied_omims = list()
 	for tup in omims_GD:
 		if tup[1] != math.nan and tup[1] > 0:
 			well_studied_omims.append(tup)
-	well_studied_omims = [item[0] for item in sorted(well_studied_omims, key=lambda tup: tup[1], reverse=True)]
+	well_studied_omims = [item[0] for item in sorted(well_studied_omims, key=lambda tup: tup[1])]
 	#print("Well-studied OMIMS:")
 	#print(well_studied_omims)
+	if verbose:
+		print("Found %d well-studied omims" % len(well_studied_omims))
+		print(well_studied_omims)
 
 	#############################################
 	# Select omim's to report
-	well_studied_prioritized = list(set(prioritized_omims).intersection(set(well_studied_omims)))
+	well_studied_prioritized = well_studied_omims
+	#well_studied_prioritized = list(set(prioritized_omims).intersection(set(well_studied_omims)))
 	#print("The following conditions may protect against %s:" % input_disease)
 	#print(well_studied_prioritized)
-
-	# Report them
 	omim_list = well_studied_prioritized
-	#display_results(session, omim_list, doid, omim_to_genetic_cond, q1_doid_to_disease)
 
 	# Select likely paths and report them
-	trained_MC, quad_to_matrix_index = MarkovLearning.trained_MC()  # initilize the Markov chain
+	trained_MC, quad_to_matrix_index = MarkovLearning.trained_MC()  # initialize the Markov chain
 	paths_dict_prob_all = dict()
 	paths_dict_selected = dict()
 	# get the probabilities for each path
@@ -223,7 +255,7 @@ def answerQ1(input_disease, directed=True, max_path_len=3):  # I'm thinking dire
 	for index in to_select:
 		selected_omim = omim_list[index]
 		path_name, path_type, prob = paths_dict_prob_all[selected_omim]
-		selected_probs[selected_omim] = prob/float(2*total)
+		selected_probs[selected_omim] = prob/float(1.5*total)
 		paths_dict_selected[selected_omim] = (path_name, path_type)
 
 	Q1Utils.display_results(doid, paths_dict_selected, omim_to_genetic_cond, q1_doid_to_disease, probs=selected_probs)

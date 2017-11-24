@@ -117,6 +117,7 @@ class Orangeboard:
         self.dict_nodetype_to_dict_name_to_node = dict()
         self.dict_reltype_to_dict_relkey_to_rel = dict()
         self.dict_nodetype_count = dict()
+        self.dict_reltype_count = dict()
         self.dict_seed_uuid_to_list_nodes = dict()
         self.dict_seed_uuid_to_list_rels = dict()
         self.debug = debug
@@ -185,6 +186,13 @@ class Orangeboard:
             results_nodecount = self.neo4j_run_cypher_query("match (n:{}) return count(n)".format(nt))
             self.dict_nodetype_count[nt] = [r[0] for r in results_nodecount][0]
         return self.dict_nodetype_count
+
+    def count_rels_by_reltype(self):
+        results_reltype = self.neo4j_run_cypher_query("MATCH path=()-[r]-() RETURN distinct extract (rel in relationships(path) | type(rel) ) as types, count(*)")
+        #dict_reltype_count = dict()  # defined on init
+        for res in results_reltype:
+            self.dict_reltype_count[res['types'][0]] = res['count(*)']
+        return self.dict_reltype_count
 
 
     def set_seed_node(self, seed_node):
