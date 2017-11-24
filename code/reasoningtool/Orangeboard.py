@@ -502,10 +502,14 @@ class Orangeboard:
             if self.debug:
                 print(res.summary().counters)
 
+    def test_issue_66():
+        ob = Orangeboard(debug=True)
+        gnode = ob.add_node('footype', 'g', seed_node_bool=True)
+        xnode = ob.add_node('footype', 'x', seed_node_bool=False)
+        ynode = ob.add_node('footype', 'y', seed_node_bool=True)
+        znode = ob.add_node('footype', 'z', seed_node_bool=True)
+        ob.add_node('footype', 'g', seed_node_bool=True)
+        print(ob)
+        
 if __name__ == '__main__':
-    ob = Orangeboard(debug=True)
-    xnode = ob.add_node('footype', 'x', seed_node_bool=True)
-    ynode = ob.add_node('footype', 'y', seed_node_bool=False)
-#    ob.add_node('footype', 'y', seed_node_bool=True)
-    print(ob)
-    
+    Orangeboard.test_issue_66()
