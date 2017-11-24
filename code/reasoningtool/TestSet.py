@@ -1,10 +1,10 @@
-""" This module defines all the unit tests and integration testing.
+''' This module defines all the unit tests and integration testing.
 
     NOTE:  run this script with
               python3 -u
     in order to see print debugging statements as they are printed, if you
     are redirecting stdout and stderr to a file.
-"""
+'''
 
 __author__ = 'Yao Yao'
 __copyright__ = 'Oregon State University'
@@ -26,16 +26,10 @@ import pandas
 requests_cache.install_cache('orangeboard')
 
 ob = Orangeboard(debug=True)
+ob.neo4j_set_url()
+ob.neo4j_set_auth()
 
-master_rel_is_directed = {'disease_affects': True,
-                          'is_member_of': True,
-                          'is_parent_of': True,
-                          'gene_assoc_with': True,
-                          'phenotype_assoc_with': True,
-                          'interacts_with': False,
-                          'controls_expression_of': True,
-                          'is_expressed_in': True,
-                          'targets': True}
+bne = BioNetExpander(ob)
 
 q1_diseases_dict = {'DOID:11476':   'osteoporosis',
                     'DOID:526':     'HIV infectious disease',
@@ -58,12 +52,6 @@ q1_diseases_dict = {'DOID:11476':   'osteoporosis',
                     'DOID:9270':    'Alkaptonuria',
                     'DOID:10923':   'sickle cell anemia',
                     'DOID:2055':    'post-traumatic stress disorder'}
-
-ob.set_dict_reltype_dirs(master_rel_is_directed)
-ob.neo4j_set_url()
-ob.neo4j_set_auth()
-
-bne = BioNetExpander(ob)
 
 def seed_kg_q1():
     ## seed all 21 diseases in the Orangeboard
@@ -319,8 +307,6 @@ def test_q1_singleexpand():
     print("[Q1] count(Node) = {}".format(ob.count_nodes()))
     print("[Q1] count(Rel) = {}".format(ob.count_rels()))
 
-
-
 def test_q1_no_push():
     ## seed all 21 diseases in the Orangeboard
     ## set the seed node flag to True, for the first disease
@@ -409,4 +395,10 @@ if __name__ == '__main__':
     args_dict = vars(args)
     if args_dict.get('test_function_to_call', None) is not None:
         print('going to call function: ' + args_dict['test_function_to_call'])
-        print('running time for test: ' + str(timeit.timeit(lambda: globals()[args_dict['test_function_to_call']](), number=1)))
+        test_function_name = args_dict['test_function_to_call']
+        try:
+            test_function = globals()[test_function_name]
+        except KeyError:
+            sys.exit('Unable to find test function named: ' + test_function_name)
+        test_running_time = timeit.timeit(lambda: test_function(), number=1)
+        print('running time for test: ' + str(test_running_time))
