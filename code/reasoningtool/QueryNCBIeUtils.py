@@ -67,6 +67,23 @@ class QueryNCBIeUtils:
             res = None
         return res
 
+    '''returns a list of mesh UIDs for a given mesh term query
+
+    '''
+    @staticmethod
+    def get_mesh_uids_for_mesh_term(mesh_term):
+        res = QueryNCBIeUtils.send_query_get('esearch.fcgi',
+                                             'db=mesh&term=' +  urllib.parse.quote(mesh_term + '[MeSH Terms]', safe=''))
+        res_list = []
+        if res is not None:
+            res_json = res.json()
+            res_esr = res_json.get('esearchresult', None)
+            if res_esr is not None:
+                res_idlist = res_esr.get('idlist', None)
+                if res_idlist is not None:
+                    res_list += res_idlist
+        return res_list
+        
     '''returns the mesh UID for a given medgen UID
 
     :param medgen_uid: integer
@@ -191,44 +208,48 @@ class QueryNCBIeUtils:
         print(QueryNCBIeUtils.normalized_google_distance(mesh1_str, mesh2_str))
               
 if __name__ == '__main__':
-    for mesh_term in ['Osteoporosis',
-                      'HIV Infections',
-                      'Cholera',
-                      'Ebola Infection',
-                      'Malaria',
-                      'Osteomalacia',
-                      'Hypercholesterolemia',
-                      'Diabetes Mellitus, Type 2',
-                      'Asthma',
-                      'Pancreatitis, Chronic',
-                      'Alzheimer Disease',
-                      'Myocardial Infarction',
-                      'Muscular Dystrophy, Duchenne',
-                      'NGLY1 protein, human',
-                      'Alcoholism',
-                      'Depressive Disorder, Major',
-                      'Niemann-Pick Disease, Type C',
-                      'Huntington Disease',
-                      'Alkaptonuria',
-                      'Anemia, Sickle Cell',
-                      'Stress Disorders, Post-Traumatic']:
-        print(QueryNCBIeUtils.normalized_google_distance(mesh_term, QueryNCBIeUtils.get_mesh_terms_for_omim_id(219700)[0]))
+    print(QueryNCBIeUtils.get_mesh_uids_for_mesh_term('Anorexia Nervosa'))    
+#    print(QueryNCBIeUtils.get_mesh_uids_for_mesh_term('Leukemia, Promyelocytic, Acute'))
+#    print(QueryNCBIeUtils.get_mesh_uids_for_mesh_term('Leukemia, Myeloid, Acute'))
+    
+    # for mesh_term in ['Osteoporosis',
+    #                   'HIV Infections',
+    #                   'Cholera',
+    #                   'Ebola Infection',
+    #                   'Malaria',
+    #                   'Osteomalacia',
+    #                   'Hypercholesterolemia',
+    #                   'Diabetes Mellitus, Type 2',
+    #                   'Asthma',
+    #                   'Pancreatitis, Chronic',
+    #                   'Alzheimer Disease',
+    #                   'Myocardial Infarction',
+    #                   'Muscular Dystrophy, Duchenne',
+    #                   'NGLY1 protein, human',
+    #                   'Alcoholism',
+    #                   'Depressive Disorder, Major',
+    #                   'Niemann-Pick Disease, Type C',
+    #                   'Huntington Disease',
+    #                   'Alkaptonuria',
+    #                   'Anemia, Sickle Cell',
+    #                   'Stress Disorders, Post-Traumatic']:
+    #     print(QueryNCBIeUtils.normalized_google_distance(mesh_term, QueryNCBIeUtils.get_mesh_terms_for_omim_id(219700)[0]))
               
-    print(QueryNCBIeUtils.normalized_google_distance(
-        QueryNCBIeUtils.get_mesh_terms_for_omim_id(219700)[0],
-        "Cholera"))
+    # print(QueryNCBIeUtils.normalized_google_distance(
+    #     QueryNCBIeUtils.get_mesh_terms_for_omim_id(219700)[0],
+    #     "Cholera"))
               
-    print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(219700)) # OMIM preferred name: "CYSTIC FIBROSIS"
-    print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(125050)) # OMIM preferred name: "DEAFNESS WITH ANHIDROTIC ECTODERMAL DYSPLASIA"
-    print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(310350)) # OMIM preferred name: "MYELOLYMPHATIC INSUFFICIENCY"
-    print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(603903)) # OMIM preferred name: "SICKLE CELL ANEMIA"
-    print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(612067)) # OMIM preferred name: "DYSTONIA 16; DYT16"
-    print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(615113)) # OMIM preferred name: "MICROPHTHALMIA, ISOLATED 8; MCOP8"
-    print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(615860)) # OMIM preferred name: "CONE-ROD DYSTROPHY 19; CORD19"
-    print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(180200)) # OMIM preferred name: "RETINOBLASTOMA; RB1"
-    print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(617062)) # OMIM preferred name: "OKUR-CHUNG NEURODEVELOPMENTAL SYNDROME; OCNDS"
-    print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(617698)) # OMIM preferred name: "3-METHYLGLUTACONIC ACIDURIA, TYPE IX; MGCA9"
-    print(QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(68003550))
-    print(QueryNCBIeUtils.get_medgen_uid_for_omim_id(219550))
-    print(QueryNCBIeUtils.get_mesh_uid_for_medgen_uid(41393))
+    # print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(219700)) # OMIM preferred name: "CYSTIC FIBROSIS"
+    # print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(125050)) # OMIM preferred name: "DEAFNESS WITH ANHIDROTIC ECTODERMAL DYSPLASIA"
+    # print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(310350)) # OMIM preferred name: "MYELOLYMPHATIC INSUFFICIENCY"
+    # print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(603903)) # OMIM preferred name: "SICKLE CELL ANEMIA"
+    # print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(612067)) # OMIM preferred name: "DYSTONIA 16; DYT16"
+    # print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(615113)) # OMIM preferred name: "MICROPHTHALMIA, ISOLATED 8; MCOP8"
+    # print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(615860)) # OMIM preferred name: "CONE-ROD DYSTROPHY 19; CORD19"
+    # print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(180200)) # OMIM preferred name: "RETINOBLASTOMA; RB1"
+    # print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(617062)) # OMIM preferred name: "OKUR-CHUNG NEURODEVELOPMENTAL SYNDROME; OCNDS"
+    # print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(617698)) # OMIM preferred name: "3-METHYLGLUTACONIC ACIDURIA, TYPE IX; MGCA9"
+    # print(QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(68003550))
+    # print(QueryNCBIeUtils.get_medgen_uid_for_omim_id(219550))
+    # print(QueryNCBIeUtils.get_mesh_uid_for_medgen_uid(41393))
     
