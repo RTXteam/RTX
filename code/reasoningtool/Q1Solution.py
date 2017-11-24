@@ -216,10 +216,12 @@ def main():
 			if disease == 'asthma':  # if we incrementally built it up, we'd be waiting all day
 				answerQ1(disease, directed=True, max_path_len=5, verbose=True)
 			else:
-				for len in [2, 3, 4, 5]:  # start out with small path lengths, then expand outward until we find something
+				for len in [2, 3, 4]:  # start out with small path lengths, then expand outward until we find something
 					res = answerQ1(disease, directed=True, max_path_len=len, verbose=True)
 					if res != 1:
 						break
+				if res == 1:
+					print("Sorry, no results found for %s" % disease)
 	else:
 		answerQ1(disease, directed=directed, max_path_len=max_path_len, verbose=verbose)
 
