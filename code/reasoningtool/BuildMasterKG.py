@@ -116,22 +116,22 @@ def seed_kg_q1():
     ## triple-expand the knowledge graph
     bne.expand_all_nodes()
     bne.expand_all_nodes()
-    bne.expand_all_nodes()
+    # bne.expand_all_nodes()
 
-    omim_df = pandas.read_csv('../../q1/Genetic_conditions_from_OMIM.txt',
-                              sep='\t')[['MIM_number','preferred_title']]
-    first_row = True
-    for index, row in omim_df.iterrows():
-        ob.add_node('omim_disease', 'OMIM:' + str(row['MIM_number']),
-                    desc=row['preferred_title'],
-                    seed_node_bool=first_row)
-        if first_row:
-            first_row = False
+    # omim_df = pandas.read_csv('../../q1/Genetic_conditions_from_OMIM.txt',
+    #                           sep='\t')[['MIM_number','preferred_title']]
+    # first_row = True
+    # for index, row in omim_df.iterrows():
+    #     ob.add_node('omim_disease', 'OMIM:' + str(row['MIM_number']),
+    #                 desc=row['preferred_title'],
+    #                 seed_node_bool=first_row)
+    #     if first_row:
+    #         first_row = False
 
-    ## triple-expand the knowledge graph
-    bne.expand_all_nodes()
-    bne.expand_all_nodes()
-    bne.expand_all_nodes()
+    # ## triple-expand the knowledge graph
+    # bne.expand_all_nodes()
+    # bne.expand_all_nodes()
+    # bne.expand_all_nodes()
 
 def convert_mesh_entrez_uid_to_curie_form(mesh_entrez_uid):
     assert mesh_entrez_uid > 68000000
@@ -179,8 +179,7 @@ def seed_kg_q2():
                 for disont_id in disont_ids:
                     disont_desc = QueryDisont.query_disont_to_label(disont_id)
                     ob.add_node('disont_disease', disont_id, desc=disont_desc, seed_node_bool=first_row)
-                    if first_row:
-                        first_row = False
+                    first_row = False
 
     ## triple-expand the knowledge graph
     bne.expand_all_nodes()
@@ -191,8 +190,7 @@ def seed_kg_q2():
     first_row = True
     for index, row in drug_dis_df.iterrows():
         ob.add_node('pharos_drug', row['Drug'].lower(), seed_node_bool=first_row)
-        if first_row:
-            first_row = False
+        first_row = False
 
     ## triple-expand the knowledge graph
     bne.expand_all_nodes()
