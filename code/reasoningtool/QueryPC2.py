@@ -12,7 +12,6 @@ __email__ = ""
 __status__ = "Prototype"
 
 import requests
-import CachedMethods
 
 
 class QueryPC2:
@@ -27,7 +26,6 @@ class QueryPC2:
         return res
 
     @staticmethod
-    @CachedMethods.register
     def pathway_id_to_uniprot_ids(pathway_reactome_id):
         query_str = "uri=http://identifiers.org/reactome/" + pathway_reactome_id + "&format=TXT"
         res = QueryPC2.send_query_get("get", query_str)
@@ -47,7 +45,6 @@ class QueryPC2:
         return res_set
 
     @staticmethod
-    @CachedMethods.register
     def uniprot_id_to_reactome_pathways(uniprot_id):
         res = QueryPC2.send_query_get("search.json", "q=" + uniprot_id + "&type=pathway")
         res_dict = res.json()
