@@ -200,7 +200,7 @@ def seed_kg_q2():
     bne.expand_all_nodes()
     
 def make_master_kg():
-#    seed_kg_q1()
+    seed_kg_q1()
     seed_kg_q2()
     ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
