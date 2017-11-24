@@ -136,11 +136,12 @@ def trained_MC():
 	known_solutions['OMIM:613985'] = 'DOID:12365'
 	known_solutions['OMIM:205400'] = 'DOID:12365'
 	known_solutions['OMIM:219700'] = 'DOID:1498'
+	known_solutions['OMIM:143890'] = 'DOID:9352'  # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5468445/
 
 	paths_dict = dict()
 	for omim in known_solutions.keys():
 		doid = known_solutions[omim]
-		path_name, path_type = Q1Utils.interleave_nodes_and_relationships(session, omim, doid, max_path_len=4)
+		path_name, path_type = Q1Utils.interleave_nodes_and_relationships(session, omim, doid, max_path_len=5)
 		paths_dict[omim] = (path_name, path_type)
 	state_space, quad_to_matrix_index = initialize_Markov_chain(connection, config)
 	trained = train(state_space, quad_to_matrix_index, paths_dict, type='L')

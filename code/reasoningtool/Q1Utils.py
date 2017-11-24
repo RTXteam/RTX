@@ -6,6 +6,9 @@ import cypher
 from collections import namedtuple
 from neo4j.v1 import GraphDatabase, basic_auth
 from collections import Counter
+import QueryNCBIeUtils
+import math
+import MarkovLearning
 
 # Connection information for the neo4j server, populated with orangeboard
 driver = GraphDatabase.driver("bolt://lysine.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))
@@ -34,7 +37,7 @@ defaults = DefaultConfigurable(**DEFAULT_CONFIGURABLE)
 
 
 # Get the omims that connect up to a given doid
-def get_omims_connecting_to_fixed_doid(session, doid, max_path_len=4, debug=False):
+def get_omims_connecting_to_fixed_doid(session, doid, max_path_len=4, debug=False, verbose=False, directed=False):
 	"""
 	This function finds all omim's within max_path_len steps (undirected) of a given disont_disease
 	:param session: neo4j server session
@@ -43,16 +46,23 @@ def get_omims_connecting_to_fixed_doid(session, doid, max_path_len=4, debug=Fals
 	:param debug: flag indicating if the query should also be returned
 	:return: list of omim ID's
 	"""
-	query = "MATCH path=allShortestPaths((s:omim_disease)-[*1..%d]-(t:disont_disease))" \
-			" WHERE t.name='%s' WITH distinct nodes(path)[0] as p RETURN p.name" %(max_path_len, doid)
+	if directed:
+		query = "MATCH path=allShortestPaths((s:omim_disease)-[*1..%d]->(t:disont_disease))" \
+				" WHERE t.name='%s' WITH distinct nodes(path)[0] as p RETURN p.name" % (max_path_len, doid)
+	else:
+		query = "MATCH path=allShortestPaths((s:omim_disease)-[*1..%d]-(t:disont_disease))" \
+				" WHERE t.name='%s' WITH distinct nodes(path)[0] as p RETURN p.name" %(max_path_len, doid)
 	with session.begin_transaction() as tx:
 		result = tx.run(query)
 		result_list = [i for i in result]
 		names = [i['p.name'] for i in result_list]
+		if verbose:
+			print("Found %d nearby omims" % len(names))
 		if debug:
 			return names, query
 		else:
 			return names
+
 
 
 # get the list of relationships (and counts) between a fixed omim and fixed doid
@@ -120,9 +130,14 @@ def expected_graph_distance(omim, doid, max_path_len=4, directed=True, connectio
 	:return: a pair of floats giving the expected path length from source to target, and target to source respectively
 	along with the basis (list of omim ID's).
 	"""
-	query = "MATCH path=allShortestPaths((s:omim_disease)-[*1..%d]-(t:disont_disease)) " \
-			"WHERE s.name='%s' AND t.name='%s' " \
-			"RETURN path" % (max_path_len, omim, doid)
+	if directed:
+		query = "MATCH path=allShortestPaths((s:omim_disease)-[*1..%d]->(t:disont_disease)) " \
+				"WHERE s.name='%s' AND t.name='%s' " \
+				"RETURN path" % (max_path_len, omim, doid)
+	else:
+		query = "MATCH path=allShortestPaths((s:omim_disease)-[*1..%d]-(t:disont_disease)) " \
+				"WHERE s.name='%s' AND t.name='%s' " \
+				"RETURN path" % (max_path_len, omim, doid)
 	res = cypher.run(query, conn=connection, config=defaults)
 	graph = get_graph(res, directed=directed)  # Note: I may want to make this directed, but sometimes this means no path from OMIM
 	mat = nx.to_numpy_matrix(graph)  # get the indidence matrix
@@ -301,3 +316,142 @@ def display_results(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disease, 
 			name = doid
 		print("Sorry, I was unable to find a genetic condition that protects against %s" % name)
 
+
+def refine_omims_graph_distance(omims, doid, directed=False, max_path_len=3, verbose=False):
+	"""
+	take an omim list and subset it to consist of those that have low expected graph distance (according to
+	a random walk
+	:param omims: list of omims
+	:param doid: target DOID
+	:param directed: treat the graph as directed or not
+	:param max_path_len: maximum path length to consider
+	:param verbose: display help messages or not
+	:return: a list consisting of a subset of omims
+	"""
+	# Computing expected graph distance
+	exp_graph_distance_s_t = []  # source to target
+	exp_graph_distance_t_s = []  # target to source
+	for omim in omims:
+		o_to_do, d_to_o = expected_graph_distance(omim, doid, directed=directed, max_path_len=max_path_len)
+		exp_graph_distance_s_t.append(o_to_do)
+		exp_graph_distance_t_s.append(d_to_o)
+	s_t_np = np.array(exp_graph_distance_s_t)  # convert to numpy array, source to target
+	# prioritize short paths
+	omim_exp_distances = list()
+	for i in range(len(omims)):
+		omim_exp_distances.append((omims[i], s_t_np[i]))
+	# Selecting relevant genetic diseases
+	# get the non-zero, non-inf graph distance OMIMS, select those that are close to the median, sort them, store them
+	non_zero_distances = s_t_np[np.where((s_t_np > 0) & (s_t_np < float("inf")))]
+	distance_mean = np.mean(non_zero_distances)  # mean distance
+	distance_median = np.median(non_zero_distances)  # median distance
+	distance_std = np.std(non_zero_distances)  # standard deviation
+	# to_select = np.where(s_t_np < distance_mean+distance_std)[0]  # those not more than 1*\sigma above the mean
+	if directed:  # if it's directed, then we want short paths
+		to_select = np.where(s_t_np <= distance_median)[0]
+	else:  # if it's undirected, we want long paths (since that implies high connectivity (lots of paths between source
+		# and target)
+		to_select = np.where(s_t_np >= distance_median)[0]
+	prioritized_omims_and_dist = list()
+	for index in to_select:
+		prioritized_omims_and_dist.append((omims[index], s_t_np[index]))
+	prioritized_omims_and_dist_sorted = sorted(prioritized_omims_and_dist, key=lambda tup: tup[1])
+	prioritized_omims = list()
+	for omim, dist in prioritized_omims_and_dist_sorted:
+		prioritized_omims.append(omim)
+	if verbose:
+		print("Found %d omims nearby (according to the random walk)" % len(prioritized_omims))
+	return prioritized_omims
+
+def refine_omims_well_studied(omims, doid, omim_to_mesh, q1_doid_to_mesh, verbose=False):
+	"""
+	Subset given omims to those that are well studied (have low google distance between the source
+	omim mesh name and the target doid mesh name
+	:param omims:
+	:param doid:
+	:param omim_to_mesh:
+	:param q1_doid_to_mesh:
+	:param verbose:
+	:return:
+	"""
+	# Getting well-studied omims
+	omims_GD = list()
+	for omim in omims:  # only the on the prioritized ones
+		if omim in omim_to_mesh:
+			# res = QueryNCBIeUtils.QueryNCBIeUtils.normalized_google_distance(omim_to_mesh[omim], input_disease)
+			omim_mesh = QueryNCBIeUtils.QueryNCBIeUtils.get_mesh_terms_for_omim_id(omim.split(':')[1])
+			if len(omim_mesh) > 1:
+				omim_mesh = omim_mesh[0]
+			res = QueryNCBIeUtils.QueryNCBIeUtils.normalized_google_distance(omim_mesh, q1_doid_to_mesh[doid])
+			omims_GD.append((omim, res))
+	well_studied_omims = list()
+	for tup in omims_GD:
+		if tup[1] != math.nan and tup[1] > 0:
+			well_studied_omims.append(tup)
+	well_studied_omims = [item[0] for item in sorted(well_studied_omims, key=lambda tup: tup[1])]
+	if verbose:
+		print("Found %d well-studied omims" % len(well_studied_omims))
+		print(well_studied_omims)
+	return well_studied_omims
+
+
+def refine_omims_Markov_chain(omim_list, doid, max_path_len=3, verbose=False):
+	"""
+	Subset an omim_list to be only those for which there is a high probability path between
+	the omim and the target doid according the Markov chain model
+	:param omim_list: input list of source omims
+	:param doid: target doid
+	:param max_path_len: how many hops we want to go looking for a path between the source and target
+	:return: tuple
+	1. subseted omim list,
+	2. dictionary with keys=omim_subset_list and values=the path names and types,
+	3. a dictionary with keys=omim_subset_list and values=the probabilities given by the Markov chain
+	"""
+	# Select likely paths and report them
+	trained_MC, quad_to_matrix_index = MarkovLearning.trained_MC()  # initialize the Markov chain
+	paths_dict_prob_all = dict()
+	paths_dict_selected = dict()
+	# get the probabilities for each path
+	for omim in omim_list:
+		path_name, path_type = interleave_nodes_and_relationships(session, omim, doid, max_path_len=max_path_len)
+		probabilities = []
+		for path in path_type:
+			prob = MarkovLearning.path_probability(trained_MC, quad_to_matrix_index, path)
+			probabilities.append(prob)
+		total_prob = np.sum(
+			probabilities)  # add up all the probabilities of all paths TODO: could also take the mean, etc.
+		# Only select the relevant paths
+		prob_np = np.array(probabilities)
+		prob_np /= np.sum(prob_np)  # normalize TODO: see if we should leave un-normalized
+		prob_np_mean = np.mean(prob_np)
+		to_select = np.where(prob_np >= prob_np_mean)[0]  # select ones above the mean
+		selected_probabilities = prob_np[to_select]
+		selected_path_name = []
+		selected_path_type = []
+		for index in to_select:
+			selected_path_name.append(path_name[index])
+			selected_path_type.append(path_type[index])
+		paths_dict_prob_all[omim] = (selected_path_name, selected_path_type, total_prob)
+
+	# now select which omims I actually want to display
+	omim_probs = []
+	for omim in omim_list:
+		omim_probs.append(paths_dict_prob_all[omim][2])
+	omim_probs_np = np.array(omim_probs)
+	total = np.sum(omim_probs_np)
+	omim_probs_np /= total
+	omim_probs_np_mean = np.mean(omim_probs_np)
+	to_select = np.where(omim_probs_np >= omim_probs_np_mean)[0]  # TODO: see if we should leave un-normalized
+	# to_select = np.where(omim_probs_np > 0)[0]
+	selected_probs = dict()
+	selected_omims = []
+	for index in to_select:
+		selected_omim = omim_list[index]
+		selected_omims.append(selected_omim)
+		path_name, path_type, prob = paths_dict_prob_all[selected_omim]
+		selected_probs[selected_omim] = prob  # /float(1.5*total)
+		paths_dict_selected[selected_omim] = (path_name, path_type)
+
+	if verbose:
+		print("Found %d omims (according to the Markov chain model)" % len(selected_omims))
+	return selected_omims, paths_dict_selected, selected_probs
