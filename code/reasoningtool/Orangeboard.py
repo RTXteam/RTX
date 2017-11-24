@@ -57,7 +57,8 @@ class Node:
     def __str__(self):
         attr_list = ['nodetype', 'name', 'uuid', 'expanded', 'desc']
         attr_dict = {attr: str(self.__getattribute__(attr)) for attr in attr_list}
-
+        attr_dict['seed_node_uuid'] = self.seed_node.uuid
+        
         return pprint.pformat(attr_dict)
 
     def simple_print(self):
@@ -234,7 +235,6 @@ class Orangeboard:
 
     def add_node(self, nodetype, name, seed_node_bool=False, desc=''):
         assert type(name)==str
-        assert not 'AQTLTrait' in name   ## debugging code for issue #43
         if seed_node_bool:
             old_seed_node = self.seed_node
             if old_seed_node is not None:
@@ -268,6 +268,7 @@ class Orangeboard:
                 if node_count % Orangeboard.DEBUG_COUNT_REPORT_GRANULARITY == 0:
                     print('Number of nodes: ' + str(node_count) + '; elapsed time: ' + format(timeit.default_timer() - self.start_time, '.2f') + ' s')
         else:
+#            print('adding a node already in the orangeboard; seed_node_bool is: ' + str(seed_node_bool))
             ## node is already in the orangeboard
             if desc != '' and existing_node.desc == '':
                 existing_node.desc = desc
@@ -275,6 +276,9 @@ class Orangeboard:
                 ## node is already in the orangeboard but we are updating its seed node
                 ## (1) get the UUID for the existing node
                 new_seed_node_uuid = existing_node.uuid
+                print('existing_node before changing it: ')
+                print(existing_node)
+                print('new seed node uuid: ' + new_seed_node_uuid)
                 ## (2) set the 'expanded' variable of the existing node to False
                 existing_node.expanded = False
                 ## (3) set the seed_node of the orangeboard to the existing_node
@@ -289,6 +293,8 @@ class Orangeboard:
                 new_seed_node_list.append(existing_node)
                 ## (6) remove the existing node from the old seed-node-level list:
                 assert old_seed_node_uuid is not None
+                print('existing_node after changing it: ')
+                print(existing_node)
                 self.dict_seed_uuid_to_list_nodes[old_seed_node_uuid].remove(existing_node)
         return existing_node
 
@@ -495,3 +501,11 @@ class Orangeboard:
             res = self.neo4j_run_cypher_query(cypher_query_str, query_params)
             if self.debug:
                 print(res.summary().counters)
+
+if __name__ == '__main__':
+    ob = Orangeboard(debug=True)
+    xnode = ob.add_node('footype', 'x', seed_node_bool=True)
+    ynode = ob.add_node('footype', 'y', seed_node_bool=False)
+#    ob.add_node('footype', 'y', seed_node_bool=True)
+    print(ob)
+    

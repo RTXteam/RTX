@@ -179,8 +179,7 @@ def seed_kg_q2():
                 for disont_id in disont_ids:
                     disont_desc = QueryDisont.query_disont_to_label(disont_id)
                     ob.add_node('disont_disease', disont_id, desc=disont_desc, seed_node_bool=first_row)
-                    if first_row:
-                        first_row = False
+                    first_row = False
 
     ## triple-expand the knowledge graph
     bne.expand_all_nodes()
@@ -191,8 +190,7 @@ def seed_kg_q2():
     first_row = True
     for index, row in drug_dis_df.iterrows():
         ob.add_node('pharos_drug', row['Drug'].lower(), seed_node_bool=first_row)
-        if first_row:
-            first_row = False
+        first_row = False
 
     ## triple-expand the knowledge graph
     bne.expand_all_nodes()
