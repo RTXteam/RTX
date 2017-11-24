@@ -91,7 +91,7 @@ def train(state_space, quad_to_matrix_index, obs_dict, type='ML'):
 			if row_sums[index] > 0:
 				trans_mat[index, :] /= row_sums[index]
 	elif type == 'L':
-		pseudo_count = 0.01
+		pseudo_count = 0.001
 		trans_mat += pseudo_count  # add a psedo-count
 		row_sums = trans_mat.sum(axis=1)
 		for index in range(len(row_sums)):
@@ -136,11 +136,13 @@ def trained_MC():
 	known_solutions['OMIM:613985'] = 'DOID:12365'
 	known_solutions['OMIM:205400'] = 'DOID:12365'
 	known_solutions['OMIM:219700'] = 'DOID:1498'
+	known_solutions['OMIM:143890'] = 'DOID:9352'  # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5468445/
+	known_solutions['OMIM:603903'] = 'DOID:12365'
 
 	paths_dict = dict()
 	for omim in known_solutions.keys():
 		doid = known_solutions[omim]
-		path_name, path_type = Q1Utils.interleave_nodes_and_relationships(session, omim, doid, max_path_len=4)
+		path_name, path_type = Q1Utils.interleave_nodes_and_relationships(session, omim, doid, max_path_len=5)
 		paths_dict[omim] = (path_name, path_type)
 	state_space, quad_to_matrix_index = initialize_Markov_chain(connection, config)
 	trained = train(state_space, quad_to_matrix_index, paths_dict, type='L')
@@ -171,7 +173,8 @@ def test():
 	state_space, quad_to_matrix_index = initialize_Markov_chain(connection, config)
 	trained = train(state_space, quad_to_matrix_index, paths_dict, type='L')
 	# This can get messed up if you change the priors
-	assert np.abs(path_probability(trained, quad_to_matrix_index, paths_dict[omim][1][0]) - 0.271387803655) < .001
+	#print(path_probability(trained, quad_to_matrix_index, paths_dict[omim][1][0]))
+	assert np.abs(path_probability(trained, quad_to_matrix_index, paths_dict[omim][1][0]) - 0.851746) < .01
 	trained = train(state_space, quad_to_matrix_index, paths_dict, type='ML')
 	# This should always == 1
 	assert path_probability(trained, quad_to_matrix_index, paths_dict[omim][1][0]) == 1.0
