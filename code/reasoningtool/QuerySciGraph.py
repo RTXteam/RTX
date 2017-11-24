@@ -13,8 +13,7 @@ __email__ = ""
 __status__ = "Prototype"
 
 import requests
-import CachedMethods
-
+import sys
 
 class QuerySciGraph:
     API_BASE_URL = {
@@ -23,16 +22,41 @@ class QuerySciGraph:
 
     @staticmethod
     def __access_api(url, params=None):
-        res = requests.get(url, params)
-
-#        print(res.url)
-
-        assert 200 == res.status_code, "Status code result: {}; url: {}".format(res.status_code, res.url)
+        try:
+            res = requests.get(url, params)
+        except requests.exceptions.Timeout:
+            print(url, file=sys.stderr)
+            print('Timeout in QuerySciGraph for URL: ' + url, file=sys.stderr)
+            return None
+        status_code = res.status_code
+        if status_code != 200:
+            print(url, file=sys.stderr)
+            print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
+            return None
 
         return res.json()
+             
+    '''returns the disease ontology IDs (DOID:NNNNN) for a given mesh ID in the form 'MESH:D012345'
 
+    :return: set(str)
+    '''
     @staticmethod
-    @CachedMethods.register
+    def get_disont_ids_for_mesh_id(mesh_id):
+        results = QuerySciGraph.__access_api(QuerySciGraph.API_BASE_URL['graph_neighbors'].format(node_id=mesh_id))
+        disont_ids = set()
+        if results is not None:
+            res_nodes = results.get('nodes', None)
+            if res_nodes is not None:
+                assert type(res_nodes)==list
+                for res_node in res_nodes:
+                    id = res_node.get('id', None)
+                    if id is not None:
+                        if 'DOID:' in id:
+                            disont_ids.add(id)
+            
+        return disont_ids
+    
+    @staticmethod
     def query_sub_phenotypes_for_phenotype(phenont_id):
         """
         Return a dict of `<id, label>`, where `id`s are all sub-phenotype of parameter `phenont_id`.
@@ -72,3 +96,4 @@ class QuerySciGraph:
 
 if __name__ == '__main__':
     print(QuerySciGraph.query_sub_phenotypes_for_phenotype("HP:0000107"))  # Renal cyst
+    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015470'))
