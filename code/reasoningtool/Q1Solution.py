@@ -153,7 +153,8 @@ def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False):  # I'
 	omims = Q1Utils.get_omims_connecting_to_fixed_doid(session, doid, directed=directed, max_path_len=max_path_len, verbose=verbose)
 
 	if not omims:
-		print("No nearby omims found. Please raise the max_path_len and try again.")
+		if verbose:
+			print("No nearby omims found. Please raise the max_path_len and try again.")
 		return 1
 
 	# NOTE: the following three can be mixed and matched in any order you please
@@ -166,6 +167,11 @@ def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False):  # I'
 
 	# get the ones that have low google distance (are "well studied")
 	omims = Q1Utils.refine_omims_well_studied(omims, doid, omim_to_mesh, q1_doid_to_mesh, verbose=verbose)
+
+	if not omims:
+		if verbose:
+			print("No omims passed all refinements. Please raise the max_path_len and try again.")
+		return 1
 
 	to_display_paths_dict = dict()
 	to_display_probs_dict = dict()
@@ -183,16 +189,6 @@ def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False):  # I'
 	# display them
 	Q1Utils.display_results(doid, to_display_paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=to_display_probs_dict)
 
-def run_on_all():
-	for disease in q1_disease_to_doid.keys():
-		print("\n")
-		print(disease)
-		res = answerQ1(disease, directed=True, max_path_len=2, verbose=True)
-		if res == 1:
-			res = answerQ1(disease, directed=True, max_path_len=3, verbose=True)
-			if res == 1:
-				res = answerQ1(disease, directed=True, max_path_len=4, verbose=True)
-
 
 
 def main():
@@ -203,14 +199,29 @@ def main():
 	parser.add_argument('-d', '--directed', action="store_true", help="To treat the graph as directed or not.", default=True)
 	parser.add_argument('-m', '--max_path_len', type=int,
 						help="Maximum graph path length for which to look for nearby omims", default=3)
+	parser.add_argument('-a', '--all', action="store_true", help="Flag indicating you want to run it on all Q1 diseases",
+						default=False)
 	# Parse and check args
 	args = parser.parse_args()
 	disease = args.input_disease
 	verbose = args.verbose
 	directed = args.directed
 	max_path_len = args.max_path_len
+	all_d = args.all
 
-	answerQ1(disease, directed=directed, max_path_len=max_path_len, verbose=verbose)
+	if all_d:
+		for disease in q1_disease_to_doid.keys():
+			print("\n")
+			print(disease)
+			if disease == 'asthma':  # if we incrementally built it up, we'd be waiting all day
+				answerQ1(disease, directed=True, max_path_len=5, verbose=True)
+			else:
+				for len in [2, 3, 4, 5]:  # start out with small path lengths, then expand outward until we find something
+					res = answerQ1(disease, directed=True, max_path_len=len, verbose=True)
+					if res != 1:
+						break
+	else:
+		answerQ1(disease, directed=directed, max_path_len=max_path_len, verbose=verbose)
 
 if __name__ == "__main__":
 	main()
