@@ -186,6 +186,11 @@ def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False):  # I'
 			to_display_paths_dict[omim] = paths_dict[omim]
 			to_display_probs_dict[omim] = prob_dict[omim]
 
+	if not to_display_probs_dict:
+		if verbose:
+			print("No omims passed all refinements. Please raise the max_path_len and try again.")
+		return 1
+
 	# display them
 	Q1Utils.display_results(doid, to_display_paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=to_display_probs_dict)
 

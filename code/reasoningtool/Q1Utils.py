@@ -391,7 +391,7 @@ def refine_omims_well_studied(omims, doid, omim_to_mesh, q1_doid_to_mesh, verbos
 	well_studied_omims = [item[0] for item in sorted(well_studied_omims, key=lambda tup: tup[1])]
 	if verbose:
 		print("Found %d well-studied omims" % len(well_studied_omims))
-		print(well_studied_omims)
+		#print(well_studied_omims)
 	return well_studied_omims
 
 
