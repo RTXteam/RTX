@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>RTX POC UI</title>
+  <link rel="stylesheet" href="plain.css" />
+  </head>
+
+<body>
+
+<H1 id="header">RTX Proof-of-Concept User Interface</H1>
+
+
+<div id="page">
+
+<P>The RTX team presents a proof-of-concept Reasoning Tool for evaluation by NCATS. This page provides a simple layer on top of an OpenAPI interface to RTX.
+at present only a few types of questions are supported. Select from one of the example queries to test the tool.</P>
+
+<BR>
+<H2>Documentation</H2>
+<UL>
+<LI> Overview documentation
+<LI> <a href="http://www.peptideatlas.org/api/rtx/v1/ui/">OpenAPI interface documentation</a>
+</UL>
+
+<BR>
+<H2>Example Questions</H2>
+<UL>
+<LI> What is lovastatin? <button onClick="javascript:pasteQuestion('what is lovastatin')">PASTE</button>
+<LI> What genetic conditions might offer protection against malaria?  <button onClick="javascript:pasteQuestion('what genetic conditions might offer protection against malaria')">PASTE</button>
+<LI> What is the clinical outcome pathway of lovastatin for treatment of hyperlipidemia?  <button onClick="javascript:pasteQuestion('what is the clinical outcome pathway of lovastatin for treatment of hyperlipidemia')">PASTE</button>
+<LI> What proteins does acetaminophen target?  <button onClick="javascript:pasteQuestion('what proteins does acetaminophen target')">PASTE</button>
+
+</UL>
+
+<BR>
+<H2>Enter question:</H2>
+<form id="questionForm" name="questionForm" method="post" action="javascript:sendQuestion()">
+<input type="text" id="questionText" name="questionText" size="150" maxlength="1000"/><BR>
+<input type="button" name="action" value="GO" onClick="javascript:sendQuestion()"/>
+</form>
+
+<BR>
+<H2>Result:</H2>
+<div id="result">Results will be here</div>
+
+</div>
+
+<script language="JavaScript" type = "application/javascript">
+
+function pasteQuestion(question) {
+  document.getElementById("questionForm").elements["questionText"].value = question;
+};
+
+function sendQuestion(e) {
+
+  // collect the form data while iterating over the inputs
+  var data = { 'text': document.getElementById("questionForm").elements["questionText"].value, 'language': 'English' };
+  document.getElementById("result").innerHTML = "Interpreting your question...";
+  //alert(JSON.stringify(data));
+
+  // construct an HTTP request
+  var xhr = new XMLHttpRequest();
+  xhr.open("post", "http://www.peptideatlas.org/api/rtx/v1/translate", true);
+  xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+
+  // send the collected data as JSON
+  xhr.send(JSON.stringify(data));
+
+  xhr.onloadend = function() {
+    var jsonObj = JSON.parse(xhr.responseText);
+    //alert(JSON.stringify(jsonObj));
+    //document.getElementById("result").innerHTML = JSON.stringify(jsonObj);
+
+    if ( jsonObj[0].knownQueryTypeId ) {
+      document.getElementById("result").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;"+jsonObj[0]["restatedQuestion"]+"<BR>Please ensure that this is an accurate restatement of the intended question.<BR>Looking for answer...<BR><BR>";
+      var xhr2 = new XMLHttpRequest();
+      xhr2.open("post", "http://www.peptideatlas.org/api/rtx/v1/query", true);
+      xhr2.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+
+      // send the collected data as JSON
+      xhr2.send(JSON.stringify(jsonObj[0]));
+
+      xhr2.onloadend = function() {
+        var jsonObj2 = JSON.parse(xhr2.responseText);
+        //alert(JSON.stringify(jsonObj2));
+        document.getElementById("result").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;"+jsonObj[0]["restatedQuestion"]+"<BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR>";
+
+        //document.getElementById("result").innerHTML += "<BR>\n";
+        document.getElementById("result").innerHTML += jsonObj2[0].text.join("<BR>\n");
+      };
+    } else {
+      document.getElementById("result").innerHTML = jsonObj[0].text.join("\n");
+    };
+
+  };
+
+};
+
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,156 @@
+---
+swagger: "2.0"
+info:
+  description: "Proof-of-concept OpenAPI front end for RTX."
+  version: "0.2.0"
+  title: "RTX"
+  contact:
+    email: "edeutsch@systemsbiology.org"
+  license:
+    name: "Apache 2.0"
+    url: "http://www.apache.org/licenses/LICENSE-2.0.html"
+host: "www.peptideatlas.org"
+basePath: "/api/rtx/v1"
+tags:
+- name: "translate"
+  description: "Translate natural language question into a standardized query"
+  externalDocs:
+    description: "Documentation for the RTX translate function"
+    url: "http://www.peptideatlas.org/doc/RTX/index.html#translate"
+- name: "query"
+  description: "Query RTX using a predefined question type"
+  externalDocs:
+    description: "Documentation for the RTX query function"
+    url: "http://www.peptideatlas.org/doc/RTX/index.html#query"
+schemes:
+- "http"
+paths:
+  /translate:
+    post:
+      tags:
+      - "translate"
+      summary: "Translate natural language question into a standardized query"
+      description: ""
+      operationId: "translate"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "Question object that needs to be translated"
+        required: true
+        schema:
+          $ref: "#/definitions/Question"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Query"
+        400:
+          description: "Invalid status value"
+      x-swagger-router-controller: "swagger_server.controllers.translate_controller"
+  /query:
+    post:
+      tags:
+      - "query"
+      summary: "Query RTX using a predefined question type"
+      description: ""
+      operationId: "query"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "Query information to be submitted"
+        required: true
+        schema:
+          $ref: "#/definitions/Query"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Response"
+        400:
+          description: "Invalid status value"
+      x-swagger-router-controller: "swagger_server.controllers.query_controller"
+definitions:
+  Question:
+    type: "object"
+    properties:
+      text:
+        type: "string"
+        example: "what genetic conditions offer protection against malaria"
+        description: "Free text question"
+      language:
+        type: "string"
+        example: "English"
+        description: "Human language in which the question is posed"
+        enum:
+        - "English"
+  Query:
+    type: "object"
+    properties:
+      originalQuestion:
+        type: "string"
+        example: "what genetic conditions offer protection against malaria"
+        description: "Original question as it was typed in by the user"
+      restatedQuestion:
+        type: "string"
+        example: "Which genetic conditions may offer protection against malaria?"
+        description: "Restatement of the question as understood by the translator"
+      message:
+        type: "string"
+        example: "Sorry, RTX was not able to understand your question."
+        description: "Response from the translation engine to the user"
+      knownQueryTypeId:
+        type: "string"
+        example: "Q1"
+        description: "RTX identifier for the specific query type"
+      terms:
+        type: "array"
+        description: "Ordered list of terms needed by the specific query type"
+        items:
+          type: "string"
+          example: "malaria"
+  Response:
+    type: "object"
+    properties:
+      id:
+        type: "integer"
+        format: "int32"
+        example: 1254
+        description: "Internal identifier of the response"
+      code:
+        type: "integer"
+        format: "int32"
+        example: 11
+        description: "Numeric code denoting the success or failture of the response"
+      codeString:
+        type: "string"
+        example: "TermNotFound"
+        description: "String code denoting the success or failture of the response"
+      message:
+        type: "string"
+        example: "The term 'hypertwitteremia' is not a recognized condition needed\
+          \ for query type 'Q1'."
+        description: "Extended message denoting the success or failture of the response"
+      text:
+        type: "array"
+        description: "List of text lines providing response data for the provided\
+          \ query"
+        items:
+          type: "string"
+          example: "The genetic condition sickle-cell anemia may provide protection\
+            \ from cerebral malaria via genetic alterations of proteins HBB (P68871)\
+            \ and HMOX1 (P09601)."
+externalDocs:
+  description: "Documentation for the RTX web service"
+  url: "http://www.peptideatlas.org/doc/RTX/index.html"
