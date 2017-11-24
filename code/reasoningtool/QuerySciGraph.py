@@ -16,14 +16,16 @@ import requests
 import sys
 
 class QuerySciGraph:
+    TIMEOUT_SEC=120
     API_BASE_URL = {
         "graph_neighbors": "https://scigraph-ontology.monarchinitiative.org/scigraph/graph/neighbors/{node_id}"
     }
 
     @staticmethod
     def __access_api(url, params=None):
+#        print(url)
         try:
-            res = requests.get(url, params)
+            res = requests.get(url, params, timeout=QuerySciGraph.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
             print(url, file=sys.stderr)
             print('Timeout in QuerySciGraph for URL: ' + url, file=sys.stderr)
@@ -36,8 +38,9 @@ class QuerySciGraph:
 
         return res.json()
              
-    '''returns the disease ontology IDs (DOID:NNNNN) for a given mesh ID in the form 'MESH:D012345'
+    '''returns the disease ontology IDs (DOID:NNNNN) for a given mesh ID in CURIE format, 'MESH:D012345'
 
+    :param mesh_id: str containing the MeSH ID in CURIE format, i.e., MESH:D003550
     :return: set(str)
     '''
     @staticmethod
@@ -53,7 +56,15 @@ class QuerySciGraph:
                     if id is not None:
                         if 'DOID:' in id:
                             disont_ids.add(id)
-            
+                        else:
+                            meta = res_node.get('meta', None)
+                            if meta is not None:
+                                dbxrefs = meta.get('http://www.geneontology.org/formats/oboInOwl#hasDbXref', None)
+                                if dbxrefs is not None:
+                                    assert type(dbxrefs)==list
+                                    for dbxref in dbxrefs:
+                                        if 'DOID:' in dbxref:
+                                            disont_ids.add(dbxref)
         return disont_ids
     
     @staticmethod
@@ -95,5 +106,7 @@ class QuerySciGraph:
         return sub_nodes_with_labels
 
 if __name__ == '__main__':
-    print(QuerySciGraph.query_sub_phenotypes_for_phenotype("HP:0000107"))  # Renal cyst
-    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015470'))
+    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D000856'))
+#    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015473'))
+#    print(QuerySciGraph.query_sub_phenotypes_for_phenotype("HP:0000107"))  # Renal cyst
+#    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015470'))
