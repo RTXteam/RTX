@@ -268,17 +268,19 @@ class Orangeboard:
                 if node_count % Orangeboard.DEBUG_COUNT_REPORT_GRANULARITY == 0:
                     print('Number of nodes: ' + str(node_count) + '; elapsed time: ' + format(timeit.default_timer() - self.start_time, '.2f') + ' s')
         else:
-#            print('adding a node already in the orangeboard; seed_node_bool is: ' + str(seed_node_bool))
             ## node is already in the orangeboard
+
+            ## if the node object doesn't have a description but it is being
+            ## given one now, add the description to the existing node object
             if desc != '' and existing_node.desc == '':
                 existing_node.desc = desc
+
+            ## if seed_node_bool=True, this is a special case that must be handled
             if seed_node_bool:
                 ## node is already in the orangeboard but we are updating its seed node
                 ## (1) get the UUID for the existing node
                 new_seed_node_uuid = existing_node.uuid
-                print('existing_node before changing it: ')
-                print(existing_node)
-                print('new seed node uuid: ' + new_seed_node_uuid)
+                existing_node_previous_seed_node_uuid = existing_node.seed_node.uuid
                 ## (2) set the 'expanded' variable of the existing node to False
                 existing_node.expanded = False
                 ## (3) set the seed_node of the orangeboard to the existing_node
@@ -292,10 +294,8 @@ class Orangeboard:
                     self.dict_seed_uuid_to_list_nodes[new_seed_node_uuid] = new_seed_node_list
                 new_seed_node_list.append(existing_node)
                 ## (6) remove the existing node from the old seed-node-level list:
-                assert old_seed_node_uuid is not None
-                print('existing_node after changing it: ')
-                print(existing_node)
-                self.dict_seed_uuid_to_list_nodes[old_seed_node_uuid].remove(existing_node)
+                assert existing_node_previous_seed_node_uuid is not None
+                self.dict_seed_uuid_to_list_nodes[existing_node_previous_seed_node_uuid].remove(existing_node)
         return existing_node
 
     @staticmethod
@@ -502,10 +502,14 @@ class Orangeboard:
             if self.debug:
                 print(res.summary().counters)
 
+    def test_issue_66():
+        ob = Orangeboard(debug=True)
+        gnode = ob.add_node('footype', 'g', seed_node_bool=True)
+        xnode = ob.add_node('footype', 'x', seed_node_bool=False)
+        ynode = ob.add_node('footype', 'y', seed_node_bool=True)
+        znode = ob.add_node('footype', 'z', seed_node_bool=True)
+        ob.add_node('footype', 'g', seed_node_bool=True)
+#       print(ob)
+        
 if __name__ == '__main__':
-    ob = Orangeboard(debug=True)
-    xnode = ob.add_node('footype', 'x', seed_node_bool=True)
-    ynode = ob.add_node('footype', 'y', seed_node_bool=False)
-#    ob.add_node('footype', 'y', seed_node_bool=True)
-    print(ob)
-    
+    Orangeboard.test_issue_66()
