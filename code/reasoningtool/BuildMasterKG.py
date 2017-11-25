@@ -68,34 +68,6 @@ q1_diseases_dict = {'DOID:11476':   'osteoporosis',
                     'DOID:10923':   'sickle cell anemia',
                     'DOID:2055':    'post-traumatic stress disorder'}
 
-ob.set_dict_reltype_dirs(master_rel_is_directed)
-ob.neo4j_set_url()
-ob.neo4j_set_auth()
-
-bne = BioNetExpander(ob)
-
-q1_diseases_dict = {'DOID:11476':   'osteoporosis',
-                    'DOID:526':     'HIV infectious disease',
-                    'DOID:1498':    'cholera',
-                    'DOID:4325':    'Ebola hemmorhagic fever',
-                    'DOID:12365':   'malaria',
-                    'DOID:10573':   'Osteomalacia',
-                    'DOID:13810':   'hypercholesterolemia',
-                    'DOID:9352':    'type 2 diabetes mellitus',
-                    'DOID:2841':    'asthma',
-                    'DOID:4989':    'pancreatitis',
-                    'DOID:10652':   'Alzheimer Disease',
-                    'DOID:5844':    'Myocardial Infarction',
-                    'DOID:11723':   'Duchenne Muscular Dystrophy',
-                    'DOID:0060728': 'NGLY1-deficiency',
-                    'DOID:0050741': 'Alcohol Dependence',
-                    'DOID:1470':    'major depressive disorder',
-                    'DOID:14504':   'Niemann-Pick disease',
-                    'DOID:12858':   'Huntington\'s Disease',
-                    'DOID:9270':    'Alkaptonuria',
-                    'DOID:10923':   'sickle cell anemia',
-                    'DOID:2055':    'post-traumatic stress disorder'}
-
 q2_mesh_to_diseases_look_aside_dict = {'MESH:D000855': 'DOID:8689',
                                        'MESH:D016174': 'DOID:1883',
                                        'MESH:D001007': 'DOID:2030',
@@ -106,6 +78,13 @@ q2_mesh_to_diseases_look_aside_dict = {'MESH:D000855': 'DOID:8689',
                                        'MESH:D008414': 'DOID:10690',
                                        'MESH:D014549': 'DOID:724',
                                        'MESH:D016411': 'DOID:0050749'}
+
+ob.set_dict_reltype_dirs(master_rel_is_directed)
+ob.neo4j_set_url()
+ob.neo4j_set_auth()
+
+bne = BioNetExpander(ob)
+
 
 def seed_and_expand_kg_q1():
     ## seed all 21 diseases in the Orangeboard
