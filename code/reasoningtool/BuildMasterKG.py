@@ -211,7 +211,7 @@ def seed_and_expand_kg_q2():
     bne.expand_all_nodes()
 
 def add_pc2_to_kg():
-    sif_data = pandas.read_csv('../../pc2/PathwayCommons9.ALL.hgnc.sif',
+    sif_data = pandas.read_csv('../../pc2/PathwayCommons9.All.hgnc.sif',
                                sep='\t', names=['gene1', 'interaction_type', 'gene2'])
     interaction_types = set(['interacts-with',
                              'controls-expression-of',
