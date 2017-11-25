@@ -124,7 +124,9 @@ disease_ignore_list = [
 'OMIM:164230',
 'OMIM:607154',
 'OMIM:181500',
-'OMIM:608516'
+'OMIM:608516',
+'OMIM:144700',
+'OMIM:114480'
 ]
 # May consider 'OMIM:617347', 'OMIM:238600' too
 
@@ -173,6 +175,7 @@ def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False):  # I'
 			print("No omims passed all refinements. Please raise the max_path_len and try again.")
 		return 1
 
+	# Get rid of the self-loops:
 	to_display_paths_dict = dict()
 	to_display_probs_dict = dict()
 	for omim in omims:
