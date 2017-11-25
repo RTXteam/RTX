@@ -14,6 +14,11 @@
   keeping (2) self-contained, this could be JSON) spanning the drug, disease, a
   pathway, and an anatomy.  Bonus points if the script is commented.
 
+    - Things that will help with BT2:
+      - Steve to check into GitHub an extension of the q2 starting TSV file that has HP or DOID identifiers in Col3
+      - push the updated KG to Lysine as soon as the code is confirmed to be working
+      - get the UI up and running on Lysine
+      
 - (BT3) Make a slide deck (approx. 10 slides) that will guide our presentation
   and serve as insurance against unexpected demo failure. NOTE: the slide deck
   is actually due on Monday. Slides should be as follows:
