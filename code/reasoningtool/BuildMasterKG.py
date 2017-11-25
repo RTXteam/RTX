@@ -236,7 +236,7 @@ def add_pc2_to_kg():
             uniprot2 = next(iter(uniprots2))
             node1 = ob.get_node('uniprot_protein', uniprot1)
             node2 = ob.get_node('uniprot_protein', uniprot2)
-            if node1 is not None and node2 is not None:
+            if node1 is not None and node2 is not None and node1.uuid != node2.uuid:
                 if interaction_type == 'interacts-with':
                     ob.add_rel('interacts_with', 'PC2', node1, node2)
                 else:
