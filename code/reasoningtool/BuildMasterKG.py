@@ -209,15 +209,64 @@ def seed_and_expand_kg_q2():
     bne.expand_all_nodes()
     bne.expand_all_nodes()
     bne.expand_all_nodes()
-    
+
+def add_pc2_to_kg():
+    sif_data = pandas.read_csv('../../pc2/PathwayCommons9.ALL.hgnc.sif',
+                               sep='\t', names=['gene1', 'interaction_type', 'gene2'])
+    interaction_types = set(['interacts-with',
+                             'controls-expression-of',
+                             'controls-state-change-of',
+                             'controls-phosphorylation-of'])
+    sif_data = sif_data[sif_data.interaction_type.isin(interaction_types)]    
+    genes = set(sif_data['gene1'].tolist() + sif_data['gene2'].tolist())
+    genes_uniprot_dict = dict()
+    print('converting gene names')
+    for gene in genes:
+        genes_uniprot_dict[gene] = bne.query_mygene_obj.convert_gene_symbol_to_uniprot_id(gene)
+    print('testing interactions to see if nodes are in the orangeboard')
+    for index, row in sif_data.iterrows():
+        interaction_type = row['interaction_type']
+        gene1 = row['gene1']
+        gene2 = row['gene2']
+        uniprots1 = genes_uniprot_dict.get(gene1, None)
+        uniprots2 = genes_uniprot_dict.get(gene2, None)
+        if uniprots1 is not None and len(uniprots1)==1 and \
+           uniprots2 is not None and len(uniprots2)==1:
+            uniprot1 = next(iter(uniprots1))
+            uniprot2 = next(iter(uniprots2))
+            node1 = ob.get_node('uniprot_protein', uniprot1)
+            node2 = ob.get_node('uniprot_protein', uniprot2)
+            if node1 is not None and node2 is not None:
+                if interaction_type == 'interacts-with':
+                    ob.add_rel('interacts_with', 'PC2', node1, node2)
+                else:
+                    if interaction_type == 'controls-expression-of':
+                        ob.add_rel('controls_expression_of', 'PC2', node1, node2)
+                    else:
+                        if interaction_type == 'controls-state-change-of' or \
+                           interaction_type == 'controls-phosphorylation-of':
+                            ob.add_rel('controls_state_change_of', 'PC2', node1, node2)
+                        else:
+                            assert False
+
 def make_master_kg():
     seed_and_expand_kg_q1()
     seed_and_expand_kg_q2()
+    add_pc2_to_kg()
     ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
     print("count(Node) = {}".format(ob.count_nodes()))
     print("count(Rel) = {}".format(ob.count_rels()))
 
+def test_pc2():
+    ob.add_node('uniprot_protein', 'P04217', desc='A1BG', seed_node_bool=True)
+    ob.add_node('uniprot_protein', 'P01023', desc='A2M', seed_node_bool=False)
+    add_pc2_to_kg()
+    print(ob)
+        
 running_time = timeit.timeit(lambda: make_master_kg(), number=1)
 print('running time for test: ' + str(running_time))
+
+                        
+    
 
