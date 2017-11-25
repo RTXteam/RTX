@@ -90,7 +90,7 @@ class Rel:
         return prop_dict
 
     def __str__(self):
-        attr_list = ['reltype', 'sourcedb', 'uuid', 'source_node', 'target_node']
+        attr_list = ['reltype', 'sourcedb', 'source_node', 'target_node']
         attr_dict = {attr: str(self.__getattribute__(attr)) for attr in attr_list}
 
         return pprint.pformat(attr_dict)
