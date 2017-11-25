@@ -107,7 +107,7 @@ q2_mesh_to_diseases_look_aside_dict = {'MESH:D000855': 'DOID:8689',
                                        'MESH:D014549': 'DOID:724',
                                        'MESH:D016411': 'DOID:0050749'}
 
-def seed_kg_q1():
+def seed_and_expand_kg_q1():
     ## seed all 21 diseases in the Orangeboard
     ## set the seed node flag to True, for the first disease
     seed_node_bool = True
@@ -165,7 +165,7 @@ def get_disont_ids_for_mesh_term(mesh_term):
 
     return ret_disont_ids
     
-def seed_kg_q2():
+def seed_and_expand_kg_q2():
     
     drug_dis_df = pandas.read_csv('../../q2/q2-drugandcondition-list.txt',
                                   sep='\t')
@@ -211,8 +211,8 @@ def seed_kg_q2():
     bne.expand_all_nodes()
     
 def make_master_kg():
-    seed_kg_q1()
-    seed_kg_q2()
+    seed_and_expand_kg_q1()
+    seed_and_expand_kg_q2()
     ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
     print("count(Node) = {}".format(ob.count_nodes()))
