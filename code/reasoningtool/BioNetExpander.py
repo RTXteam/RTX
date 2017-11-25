@@ -44,7 +44,8 @@ class BioNetExpander:
                               'interacts_with': False,
                               'controls_expression_of': True,
                               'is_expressed_in': True,
-                              'targets': True}
+                              'targets': True,
+                              'controls_stage_change_of': True}
 
     def __init__(self, orangeboard):
         self.orangeboard = orangeboard
