@@ -170,18 +170,26 @@ def pick_promising_paths(paths):
 disease = 'DOID:1686'
 #disease = 'glaucoma'
 drug = 'physostigmine'
-res = node_name_and_label_in_path(session, drug, disease, max_path_len=6, debug=False, disont=True)
+paths = node_name_and_label_in_path(session, drug, disease, max_path_len=6, debug=False, disont=True)
 
-num_labels, has_prot_and_path, has_prot_and_anat = pick_promising_paths(res)
+num_labels, has_prot_and_path, has_prot_and_anat = pick_promising_paths(paths)
 
 print(np.where(np.array(num_labels)>3)[0])  # has more than 3 node types
 print(np.where(np.array(has_prot_and_path)==True)[0])  # has protein and reactome pathway
-print(np.where(np.array(has_prot_and_anat)==True)[0]) # has protein and anatont_anatomy
+print(np.where(np.array(has_prot_and_anat)==True)[0])  # has protein and anatont_anatomy
 
 # Now go through each of the anatont_anatomy things and find the ones that are the absolute closest to the
 # disease
 
 # Just need to connect things together
+
+found_anat = set()
+for index in np.where(np.array(has_prot_and_anat)==True)[0]:
+	path = paths[index]
+	for node in path:
+		if node[1] == 'anatont_anatomy':
+			found_anat.add(node[0])
+
 
 
 
