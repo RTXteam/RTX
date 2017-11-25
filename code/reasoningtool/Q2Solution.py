@@ -36,9 +36,8 @@ DefaultConfigurable = namedtuple(
 defaults = DefaultConfigurable(**DEFAULT_CONFIGURABLE)
 
 
-
-drug_to_disease = dict()
-with open(os.path.abspath('../../q2/q2-drugandcondition-list.txt'), 'r') as fid:
+drug_to_disease_doid = dict()
+with open(os.path.abspath('../../q2/q2-drugandcondition-list-mapped.txt'), 'r') as fid:
 	i = 0
 	for line in fid.readlines():
 		if i == 0:
@@ -47,9 +46,11 @@ with open(os.path.abspath('../../q2/q2-drugandcondition-list.txt'), 'r') as fid:
 		else:
 			i += 1
 			line = line.strip()
-			drug = line.split('\t')[0].lower()
-			disease = line.split('\t')[1].lower()
-			drug_to_disease[drug] = disease
+			line_split = line.split('\t')
+			drug = line_split[1].lower()
+			disease_doid = line_split[-1]
+			drug_to_disease_doid[drug] = disease_doid
+
 
 def has_drug(drug, session=session, debug=False):
 	"""
@@ -76,7 +77,7 @@ def has_drug(drug, session=session, debug=False):
 			return False
 
 
-def has_disease(disease, session=session, debug=False):
+def has_disease(disease_doid, session=session, debug=False):
 	"""
 	Check if disease is in the the graph
 	:param disease:
@@ -84,14 +85,14 @@ def has_disease(disease, session=session, debug=False):
 	:param debug:
 	:return:
 	"""
-	query = "MATCH (n:disont_disease) where '%s' in n.description return count(n)" % disease
+	query = "MATCH (n:disont_disease) where n.name='%s' return count(n)" % disease_doid
 	if debug:
 		return query
 	else:
 		res = session.run(query)
 		res = [i for i in res]
 		if len(res) > 1:
-			raise Exception("More than one node found for disease %s" % disease)
+			raise Exception("More than one node found for disease %s" % disease_doid)
 		elif len(res) == 1:
 			if res[0]['count(n)'] > 0:
 				return True
@@ -108,7 +109,7 @@ def has_phenotype(disease, session=session, debug=False):
 	:param debug:
 	:return:
 	"""
-	query = "MATCH (n:phenont_phenotype) where '%s' in n.name return count(n)" % disease
+	query = "MATCH (n:phenont_phenotype) where '%s' in n.description return count(n)" % disease
 	if debug:
 		return query
 	else:
@@ -190,6 +191,21 @@ for index in np.where(np.array(has_prot_and_anat)==True)[0]:
 		if node[1] == 'anatont_anatomy':
 			found_anat.add(node[0])
 
+
+def get_path_length(source_type, source_name, target_type, target_name, session=session, debug=False):
+	query = "match p=shortestPath((s:%s{name:'%s'})-[*0..3]-(t:%s{name:'%s'})) "\
+			"return length(p)" % (source_type, source_name, target_type, target_name)
+	if debug:
+		return query
+	res = session.run(query)
+	res = [i for i in res]
+	return res[0]['length(p)']
+
+path_lengths = []
+for anat in found_anat:
+	path_lengths.append(get_path_length('anatont_anatomy', anat, 'disont_disease', disease))
+
+# get rid of the other diseases too
 
 
 
