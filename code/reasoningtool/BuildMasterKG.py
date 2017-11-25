@@ -19,6 +19,8 @@ from BioNetExpander import BioNetExpander
 from QueryNCBIeUtils import QueryNCBIeUtils
 from QuerySciGraph import QuerySciGraph
 from QueryDisont import QueryDisont
+from ParsePhenont import ParsePhenont
+
 import pandas
 import timeit
 import argparse
@@ -134,9 +136,13 @@ def seed_kg_q1():
     bne.expand_all_nodes()
     bne.expand_all_nodes()
 
+MESH_ENTREZ_UID_BASE = 68000000
+
 def convert_mesh_entrez_uid_to_curie_form(mesh_entrez_uid):
-    assert mesh_entrez_uid > 68000000
-    return 'MESH:D' + format(mesh_entrez_uid - 68000000, '06')
+    assert mesh_entrez_uid > MESH_ENTREZ_UID_BASE
+    return 'MESH:D' + format(mesh_entrez_uid - MESH_ENTREZ_UID_BASE, '06')
+
+human_phenont_name_id_dict = ParsePhenont.get_name_id_dict('../../hpo/hp.obo')
 
 def get_disont_ids_for_mesh_term(mesh_term):
     ret_disont_ids = []
@@ -144,7 +150,7 @@ def get_disont_ids_for_mesh_term(mesh_term):
     if len(mesh_uids) > 0:
         for mesh_uid in mesh_uids:
             mesh_uid_int = int(mesh_uid)
-            if mesh_uid_int > 68000000:
+            if mesh_uid_int > MESH_ENTREZ_UID_BASE:
                 mesh_id_curie = convert_mesh_entrez_uid_to_curie_form(mesh_uid_int)
                 disont_ids = QuerySciGraph.get_disont_ids_for_mesh_id(mesh_id_curie)
                 if len(disont_ids) > 0:
@@ -153,11 +159,9 @@ def get_disont_ids_for_mesh_term(mesh_term):
                     lal_disont_id = q2_mesh_to_diseases_look_aside_dict.get(mesh_id_curie, None)
                     if lal_disont_id is not None:
                         ret_disont_ids += [lal_disont_id]
-                if len(ret_disont_ids) == 0:
-                    print('Unable to get Disease Ontology IDs for MeSH CURIE: ' + mesh_id_curie + '; MeSH term: ' + mesh_term, file=sys.stdout)
-
             else:
-                print('Got MeSH UID less than 68000000: ' + mesh_uid + '; for MeSH term: ' + mesh_term, file=sys.stderr)
+                print('Got MeSH UID less than ' + str(MESH_ENTREZ_UID_BASE) + ': ' + mesh_uid + \
+                      '; for MeSH term: ' + mesh_term, file=sys.stderr)
 
     return ret_disont_ids
     
@@ -181,6 +185,14 @@ def seed_kg_q2():
                     disont_desc = QueryDisont.query_disont_to_label(disont_id)
                     ob.add_node('disont_disease', disont_id, desc=disont_desc, seed_node_bool=first_row)
                     first_row = False
+            else:
+                human_phenont_id = human_phenont_name_id_dict.get(mesh_term, None)
+                if human_phenont_id is not None:
+                    ob.add_node('phenont_phenotype', human_phenont_id, desc=mesh_term, seed_node_bool=first_row)
+                    first_row = False
+                else:
+                    print('Unable to get Disease Ontology ID or Human Phenotype Ontology ID for MeSH term: ' + mesh_term, file=sys.stdout)                        
+                    
 
     ## triple-expand the knowledge graph
     bne.expand_all_nodes()
