@@ -312,7 +312,7 @@ def make_file_q2_mapping():
     seed_and_expand_kg_q2()
 
         
-running_time = timeit.timeit(lambda: make_file_q2_mapping(), number=1)
+running_time = timeit.timeit(lambda: make_master_kg(), number=1)
 print('running time for test: ' + str(running_time))
 
                         
