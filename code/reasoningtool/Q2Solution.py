@@ -262,6 +262,110 @@ def get_intermediate_path_lenth(source_type, source_name, intermediate_type, int
 		return np.inf
 
 
+def anatomy_name_to_description(anatomy_name, session=session, debug=False):
+	query = "match (n:anatont_anatomy{name:'%s'}) return n.description" % anatomy_name
+	if debug:
+		return query
+	res = session.run(query)
+	res = [i for i in res]
+	if res:
+		return res[0]['n.description']
+	else:
+		return "a tissue "
+
+
+def connect_to_pathway(path, pathway_near_intersection_names):
+	proteins = []
+	for node in path:
+		if node[1] == "uniprot_protein":
+			proteins.append(node[0])
+	if len(proteins) == 1:
+		pathway_distances = []
+		for pathway in pathway_near_intersection_names:
+			path_dist = get_path_length("uniprot_protein", proteins[0], "reactome_pathway", pathway)
+			pathway_distances.append((pathway, path_dist))
+	else:
+		pathway_distances = []
+		for pathway in pathway_near_intersection_names:
+			path_dist = get_intermediate_path_lenth("uniprot_protein", proteins[0], "reactome_pathway", pathway,
+													"uniprot_protein", proteins[1])
+			pathway_distances.append((pathway, path_dist))
+	# pick the smallest
+	pathway_distances_sorted = sorted(pathway_distances, key=lambda tup: tup[1])
+	smallest_pathway = pathway_distances_sorted[0][0]
+	return smallest_pathway
+
+
+def pathway_name_to_description(pathway_name, session=session, debug=False):
+	query = "match (n:reactome_pathway{name:'%s'}) return n.description" % pathway_name
+	if debug:
+		return query
+	res = session.run(query)
+	res = [i for i in res]
+	if res:
+		return res[0]['n.description']
+	else:
+		return " "
+
+
+def prioritize_on_gd(found_anat_names, disease_description):
+	anat_name_google_distance = []
+	for anat in found_anat_names:
+		query = "match (n:anatont_anatomy{name:'%s'}) return n.description" % anat
+		res = session.run(query)
+		res = [i for i in res]
+		if res:
+			description = res[0]['n.description']
+			total_gd = 0
+			num_words = 0
+			gd = QueryNCBIeUtils.QueryNCBIeUtils.normalized_google_distance(description, disease_description)
+			if gd > 0:
+				anat_name_google_distance.append((anat, gd))
+			else:
+				for word in description.split():
+					gd = QueryNCBIeUtils.QueryNCBIeUtils.normalized_google_distance(word, disease_description)
+					if gd > 0:
+						total_gd += gd
+						num_words += 1
+				if num_words > 0:
+					anat_name_google_distance.append((anat, total_gd / float(num_words)))
+				else:
+					anat_name_google_distance.append((anat, np.inf))
+		else:
+			anat_name_google_distance.append((anat, np.inf))
+
+
+def get_proteins_in_both(paths, pathway_indicies, anat_indicies):
+	found_path_names = set()
+	for index in pathway_indicies:
+		path = paths[index]
+		for node in path:
+			if node[1] == 'reactome_pathway':
+				found_path_names.add(node[0])
+	# Get the names of the found anatomy entities
+	found_anat_names = set()
+	for index in anat_indicies:
+		path = paths[index]
+		for node in path:
+			if node[1] == 'anatont_anatomy':
+				found_anat_names.add(node[0])
+	# get the proteins in the pathway and anat paths
+	proteins_in_pathway = set()
+	for index in pathway_indicies:
+		path = paths[index]
+		for node in path:
+			if node[1] == "uniprot_protein":
+				proteins_in_pathway.add(node[0])
+	proteins_in_anat = set()
+	for index in anat_indicies:
+		path = paths[index]
+		for node in path:
+			if node[1] == "uniprot_protein":
+				proteins_in_anat.add(node[0])
+	in_both = proteins_in_pathway.intersection(proteins_in_anat)
+	return in_both, found_anat_names
+
+
 #disease = 'DOID:1686'
 #disease_description = 'glaucoma'
 #drug = 'physostigmine'
@@ -284,6 +388,7 @@ num_labels, has_prot_and_path, has_prot_and_anat = look_for_pathway_and_anat(pat
 pathway_indicies = np.where(np.array(has_prot_and_path))[0]  # paths that have reactome pathway
 anat_indicies = np.where(np.array(has_prot_and_anat))[0]  # paths that have anatomy/tissue in it
 
+# TODO: go to print if this occurs
 # See if we get lucky and we have anatomy and pathway in a single path
 pathway_and_anat_indicies = set(pathway_indicies).intersection(set(anat_indicies))
 if pathway_and_anat_indicies:
@@ -291,41 +396,10 @@ if pathway_and_anat_indicies:
 
 # Otherwise, try to connect them up
 # get the names of the found pathway entities
-found_path_names = set()
-for index in pathway_indicies:
-	path = paths[index]
-	for node in path:
-		if node[1] == 'reactome_pathway':
-			found_path_names.add(node[0])
+proteins_in_both, found_anat_names = get_proteins_in_both(paths, pathway_indicies, anat_indicies)
 
-# Get the names of the found anatomy entities
-found_anat_names = set()
-for index in anat_indicies:
-	path = paths[index]
-	for node in path:
-		if node[1] == 'anatont_anatomy':
-			found_anat_names.add(node[0])
-
-# For the proteins in the
-
-proteins_in_pathway = set()
-for index in pathway_indicies:
-	path = paths[index]
-	for node in path:
-		if node[1] == "uniprot_protein":
-			proteins_in_pathway.add(node[0])
-
-proteins_in_anat = set()
-for index in anat_indicies:
-	path = paths[index]
-	for node in path:
-		if node[1] == "uniprot_protein":
-			proteins_in_anat.add(node[0])
-
-proteins_in_both = proteins_in_pathway.intersection(proteins_in_anat)
-
-if proteins_in_both:
-	print("There are proteins nearby to anatomy and pathways: " + str(proteins_in_both))
+#if proteins_in_both:
+#	print("There are proteins nearby to anatomy and pathways: " + str(proteins_in_both))
 
 # get the pathway paths and anatomy paths that contain these shared proteins
 pathway_near_intersection_indices = []
@@ -347,42 +421,20 @@ for index in anat_indicies:
 		anat_near_intersection_indicies.append(index)
 
 # Let's find the anatomy that is closest to the disease
-anat_distances = dict()
-for anat in found_anat_names:
-	anat_distances[anat] = get_path_length("anatont_anatomy", anat, "disont_disease", disease)
+#anat_distances = dict()
+#for anat in found_anat_names:
+#	anat_distances[anat] = get_path_length("anatont_anatomy", anat, "disont_disease", disease)
 
-pathway_distances = dict()
-for pathway in found_path_names:
-	pathway_distances[pathway] = get_path_length("reactome_pathway", pathway, "disont_disease", disease)
+#pathway_distances = dict()
+#for pathway in found_path_names:
+#	pathway_distances[pathway] = get_path_length("reactome_pathway", pathway, "disont_disease", disease)
 
 # All the distances are the same, so it's not going to help to prioritize short paths
 
-# Let's try to prioritize the anatomy based on google distance?
-anat_name_google_distance = []
-for anat in found_anat_names:
-	query = "match (n:anatont_anatomy{name:'%s'}) return n.description" % anat
-	res = session.run(query)
-	res = [i for i in res]
-	if res:
-		description = res[0]['n.description']
-		total_gd = 0
-		num_words = 0
-		gd = QueryNCBIeUtils.QueryNCBIeUtils.normalized_google_distance(description, disease_description)
-		if gd > 0:
-			anat_name_google_distance.append((anat, gd))
-		else:
-			for word in description.split():
-				gd = QueryNCBIeUtils.QueryNCBIeUtils.normalized_google_distance(word, disease_description)
-				if gd > 0:
-					total_gd += gd
-					num_words += 1
-			if num_words > 0:
-				anat_name_google_distance.append((anat, total_gd/float(num_words)))
-			else:
-				anat_name_google_distance.append((anat, np.inf))
-	else:
-		anat_name_google_distance.append((anat, np.inf))
+# Let's try to prioritize the anatomy based on google distance
+anat_name_google_distance = prioritize_on_gd(found_anat_names, disease_description)
 
+# Get the top three
 anat_name_google_distance_sorted = sorted(anat_name_google_distance, key=lambda tup: tup[1])
 num_select = 3
 best_anat = dict()
@@ -398,30 +450,46 @@ for path in paths:
 		if node[1] == "anatont_anatomy":
 			if node[0] in best_anat.keys():
 				best_anat_paths.append(path)
-				print(path)
+				#print(path)
 
-# Connect the proteins to the pathways
-#def connect_to_pathway(path):
-proteins = []
-for node in path:
-	if node[1] == "uniprot_protein":
-		proteins.append(node[0])
-if len(proteins) == 1:
-	pathway_distances = []
-	for pathway in pathway_near_intersection_names:
-		path_dist = get_path_length("uniprot_protein", proteins[0], "reactome_pathway", pathway)
-		pathway_distances.append((pathway, path_dist))
-else:
-	pathway_distances = []
-	for pathway in pathway_near_intersection_names:
-		path_dist = get_intermediate_path_lenth("uniprot_protein", proteins[0], "reactome_pathway", pathway,"uniprot_protein",proteins[1])
-		pathway_distances.append((pathway, path_dist))
-# pick the smallest
-pathway_distances_sorted = sorted(pathway_distances, key=lambda tup: tup[1])
-smallest_pathway = pathway_distances_sorted[0][0]
+# get confidences (based on google distances)
+gd_max = np.ma.masked_invalid(np.array([i[1] for i in anat_name_google_distance_sorted])).max()
+
 
 # Then display the results....
-
+print("The possible clinical outcome pathways include: ")
+#def display_path(path, pathway_near_intersection_names, best_anat, gd_max):
+path = best_anat_paths[0]
+pathway = connect_to_pathway(path, pathway_near_intersection_names)
+pathway_description = pathway_name_to_description(pathway)
+path_proteins = []
+anatomy_name = False
+for node in path:
+	if node[1] == "uniprot_protein":
+		path_proteins.append(node[0])
+	if node[1] == "anatont_anatomy":
+		anatomy_name = node[0]
+conf = 1-best_anat[anatomy_name]/gd_max
+#print("The possible clinical outcome pathways include: ")
+#print("The drug %s " % drug)
+to_print = "The drug %s " % drug
+#print("targets the protein %s" % path_proteins[0])
+to_print += "targets the protein %s" % path_proteins[0]
+if len(path_proteins) > 1:
+	#print("which is involved with the %s pathway and associated protein %s" % (pathway_description, path_proteins[1]))
+	to_print += "which is involved with the %s pathway and associated protein %s" % (pathway_description, path_proteins[1])
+else:
+	#print("which is involved with the %s pathway" % pathway_description)
+	to_print = "which is involved with the %s pathway" % pathway_description
+if anatomy_name:
+	anatomy_description = anatomy_name_to_description(anatomy_name)
+	#print("which is relevant to the %s" % anatomy_description)
+	to_print += "which is relevant to the %s" % anatomy_description
+#print("and alleviates symptoms of %s. " % disease_description)
+to_print += "and alleviates symptoms of %s. " % disease_description
+#print("(Confidence %f)." % conf)
+to_print += "(Confidence %f)." % conf
+print(to_print)
 
 
 
