@@ -240,7 +240,7 @@ def seed_and_expand_kg_q2(num_expansions=3):
                             assert False ## should never get here
         curie_ids_for_df.append(mesh_term_to_curie_ids_dict[mesh_term])
     drug_dis_df['CURIE_ID'] = pandas.Series(curie_ids_for_df, index=drug_dis_df.index)
-    drug_dis_df.to_csv('../../data/q2/q2-drugandcondition-list-mapped.txt', sep='\t')
+    drug_dis_df.to_csv('../../data/q2/q2-drugandcondition-list-mapped-output.txt', sep='\t')
 
     ## triple-expand the knowledge graph
     for _ in range(0, num_expansions):

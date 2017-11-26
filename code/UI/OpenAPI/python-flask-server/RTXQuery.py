@@ -1,6 +1,16 @@
 #!/usr/bin/python3
 import re
+import os
 from QueryPharos import QueryPharos
+import sys
+import subprocess
+
+#sys.path.append("../../../reasoningtool")
+#sys.path.append(".")
+#print(os.getcwd())
+#import Q1Solution
+
+
 
 class RTXQuery:
 
@@ -27,8 +37,14 @@ class RTXQuery:
 
     if id == 'Q1':
       # call out to OrangeBoard here to satify the query "What genetic conditions might offer protection against XXXXXX?"
-      simulatedResult = [ { "id": 537, "code": 1, "codeString": "OK", "message": "AnswerFound", "text": [ "There might be something that offers protection against "+terms[0]+"", "more information..." ] } ]
-      return(simulatedResult)
+      os.chdir("/mnt/data/orangeboard/code/NCATS/code/reasoningtool")
+      #returnedText = answerQ1(terms[0], directed=True, max_path_len=3, verbose=True)
+      returnedText = subprocess.run( [ "python3 Q1Solution.py -v -i "+terms[0] ], stdout=subprocess.PIPE, shell=True )
+      reformattedText = returnedText.stdout.decode('utf-8')
+      reformattedText = re.sub("\n","\n<LI>",reformattedText)
+      reformattedText = "<UL><LI>" + reformattedText + "</UL>"
+      result = [ { "id": 537, "code": 1, "codeString": "OK", "message": "AnswerFound", "text": [ reformattedText ] } ]
+      return(result)
 
     if id == 'Q2':
       # call out to OrangeBoard here to satify the query "What is the clinical outcome pathway of XXXXXX for treatment of YYYYYYY?"
@@ -58,9 +74,9 @@ class RTXQuery:
 def main():
   rtxq = RTXQuery()
   #query = { "knownQueryTypeId": "Q0", "terms": [ "lovastatin" ] }
-  #query = { "knownQueryTypeId": "Q1", "terms": [ "lovastatin" ] }
+  query = { "knownQueryTypeId": "Q1", "terms": [ "cholera" ] }
   #query = { "knownQueryTypeId": "Q2", "terms": [ "lovastatin", "hyperpidemia" ] }
-  query = { "knownQueryTypeId": "Q3", "terms": [ "acetaminophen" ] }
+  #query = { "knownQueryTypeId": "Q3", "terms": [ "acetaminophen" ] }
   result = rtxq.query(query)
   print(" Result is:")
   print(result)
