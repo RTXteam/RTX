@@ -6,6 +6,8 @@
 
 ### Base python requirements:
 - Python 3.5 or newer 
+- Neo4j Community Edition, version 3.3.0 (installed locally is recommended for
+  best performance)
 
 ## Requirements for running `BuildMasterKG.py`
 
@@ -27,9 +29,6 @@ or equivalently:
 
     sh run_build_master_kg.sh
     
-## Neo4j:  Community Edition, version 3.3.0 (installed locally)
-
-
 # What is the Orangeboard?
 
 Orangeboard is a simple implementation of the Blackboard architectural pattern
