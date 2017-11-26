@@ -7,5 +7,5 @@ fi
 
 cd /mnt/data/orangeboard/code/NCATS/code/UI/OpenAPI/python-flask-server
 
-/usr/bin/python3 -m swagger_server >/tmp/RTX_OpenAPI.log 2>&1
+exec /usr/bin/python3 -m swagger_server >/tmp/RTX_OpenAPI.log 2>&1
 
