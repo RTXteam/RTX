@@ -119,6 +119,7 @@ class QueryMyGene:
 
 if __name__ == '__main__':
     mg = QueryMyGene()
+    print(mg.convert_uniprot_id_to_gene_symbol('Q05925'))
     print(mg.convert_gene_symbol_to_uniprot_id('A2M'))
     print(mg.convert_gene_symbol_to_uniprot_id('A1BG'))
     print(mg.convert_gene_symbol_to_entrez_gene_ID('MIR96'))
