@@ -323,15 +323,10 @@ class BioNetExpander:
                 
 if __name__ == '__main__':
     ob = Orangeboard(debug=False)
-
-    ob.set_dict_reltype_dirs()
+    ob.set_dict_reltype_dirs({'targets': True})
+    lovastatin = ob.add_node('pharos_drug', 'lovastatin', desc='lovastatin', seed_node_bool=True)
+    bne = BioNetExpander(ob)
+    bne.expand_pharos_drug(lovastatin)
     ob.neo4j_set_url()
     ob.neo4j_set_auth()
-
-    lovastatin = ob.add_node('pharos_drug', 'lovastatin', desc='lovastatin', seed_node_bool=True)
-
-    bne = BioNetExpander(ob)
-
-    bne.expand_pharos_drug(lovastatin)
-
     ob.neo4j_push()
