@@ -35,7 +35,6 @@ ob = Orangeboard(debug=True)
 ob.neo4j_set_url()
 ob.neo4j_set_auth()
 
-
 master_rel_is_directed = {'disease_affects': True,
                           'is_member_of': True,
                           'is_parent_of': True,
@@ -67,6 +66,8 @@ q1_diseases_dict = {'DOID:11476':   'osteoporosis',
                     'DOID:9270':    'Alkaptonuria',
                     'DOID:10923':   'sickle cell anemia',
                     'DOID:2055':    'post-traumatic stress disorder'}
+
+q1_omim_to_uniprot_look_aside_dict = {'OMIM:166710': ['Q05925']}
 
 q2_mesh_to_conditions_look_aside_dict = {'MESH:D000855': 'DOID:8689',
                                          'MESH:D016174': 'DOID:1883',
@@ -143,6 +144,18 @@ def seed_and_expand_kg_q1():
                     seed_node_bool=first_row)
         if first_row:
             first_row = False
+
+    for omim_id in q1_omim_to_uniprot_look_aside_dict.keys():
+        omim_node = ob.get_node('omim_disease', omim_id)
+        assert omim_node is not None
+        uniprot_ids_list = q1_omim_to_uniprot_look_aside_dict[omim_id]
+        print(uniprot_ids_list)
+        for uniprot_id in uniprot_ids_list:
+            gene_symbols = bne.query_mygene_obj.convert_uniprot_id_to_gene_symbol(uniprot_id)
+            print(gene_symbols)
+            assert len(gene_symbols) > 0
+            prot_node = ob.add_node('uniprot_protein', uniprot_id, desc=next(iter(gene_symbols)))
+            ob.add_rel('gene_assoc_with', 'OMIM', prot_node, omim_node)
 
     ## triple-expand the knowledge graph
     bne.expand_all_nodes()
