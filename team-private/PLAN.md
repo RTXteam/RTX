@@ -1,7 +1,7 @@
 # NCATS Reasoning Tool Proof-of-Concept Planning Page
 ## Deadline: Nov. 29, 2017 (09:00 PST)
 
-### last updated:  2017.11.24
+### last updated:  2017.11.26 06:23
 
 
 - (BT1) Check into GitHub a script that solves Q1 to the best of our ability
@@ -46,7 +46,8 @@ KG to work with.  Thus we have one final BT item:
 - (BT5) Complete knowledge graph so that it has the 21 Q1 diseases, the 8,000 Q1
   GCs, the 1,000 Q2 drugs and 1,000 Q2 diseases
 
+- (BT6) Movie showing a dry-run of the demo, on screen sharing
+
 Additional nice-to-haves:
 
 - (NTH1) Working OpenAPI connected to script BT1, script BT2, or both
-- (NTH2) Movie showing a dry-run of the demo, on screen sharing
