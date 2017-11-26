@@ -207,7 +207,7 @@ class QueryBioLink:
         handler = QueryBioLink.HANDLER_MAP['get_anatomies_for_phenotype'].format(phenotype_id=phenotype_id)
 
         results = QueryBioLink.__access_api(handler)
-        ret_dict = ()
+        ret_dict = dict()
         if results is None:
             return ret_dict
         
