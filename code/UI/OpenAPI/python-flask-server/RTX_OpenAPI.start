@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ -e /tmp/RTX_OpenAPI.log ]
+then
+    /bin/rm /tmp/RTX_OpenAPI.log
+fi
+
+cd /mnt/data/orangeboard/code/NCATS/code/UI/OpenAPI/python-flask-server
+
+/usr/bin/python3 -m swagger_server >/tmp/RTX_OpenAPI.log 2>&1
+
