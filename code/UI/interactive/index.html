@@ -20,7 +20,7 @@ at present only a few types of questions are supported. Select from one of the e
 <H2>Documentation</H2>
 <UL>
 <LI> Overview documentation
-<LI> <a href="http://www.peptideatlas.org/api/rtx/v1/ui/">OpenAPI interface documentation</a>
+<LI> <a href="/api/rtx/v1/ui/">OpenAPI interface documentation</a>
 </UL>
 
 <BR>
@@ -61,7 +61,7 @@ function sendQuestion(e) {
 
   // construct an HTTP request
   var xhr = new XMLHttpRequest();
-  xhr.open("post", "http://www.peptideatlas.org/api/rtx/v1/translate", true);
+  xhr.open("post", "/api/rtx/v1/translate", true);
   xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
   // send the collected data as JSON
@@ -75,7 +75,7 @@ function sendQuestion(e) {
     if ( jsonObj[0].knownQueryTypeId ) {
       document.getElementById("result").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;"+jsonObj[0]["restatedQuestion"]+"<BR>Please ensure that this is an accurate restatement of the intended question.<BR>Looking for answer...<BR><BR>";
       var xhr2 = new XMLHttpRequest();
-      xhr2.open("post", "http://www.peptideatlas.org/api/rtx/v1/query", true);
+      xhr2.open("post", "/api/rtx/v1/query", true);
       xhr2.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
       // send the collected data as JSON
