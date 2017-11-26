@@ -299,28 +299,47 @@ class Orangeboard:
         return existing_node
 
     @staticmethod
-    def make_rel_dict_key(source_node, target_node):
+    def make_rel_dict_key(source_node, target_node, rel_dir):
         source_uuid = source_node.uuid
         target_uuid = target_node.uuid
-        if source_uuid < target_uuid:
+        if rel_dir or source_uuid < target_uuid:
             rel_dict_key = source_uuid + '--' + target_uuid
         else:
-            assert source_uuid > target_uuid
+            assert source_uuid > target_uuid  
             rel_dict_key = target_uuid + '--' + source_uuid
         return rel_dict_key
 
     def get_rel(self, reltype, source_node, target_node):
+        dict_reltype_dirs = self.dict_reltype_dirs
+        if dict_reltype_dirs is None:
+            print('Must call Orangeboard.set_dict_reltype_dirs() before you call add_rel()', file=sys.stderr)
+            assert False
+        reltype_dir = dict_reltype_dirs.get(reltype, None)
+        if reltype_dir is None:
+            print('reltype passed to add_rel is not in dict_reltype_dirs; reltype=' + reltype, file=sys.stderr)
+            assert False
         ret_rel = None
         rel_dict_key = None
         subdict = self.dict_reltype_to_dict_relkey_to_rel.get(reltype, None)
         if subdict is not None:
-            rel_dict_key = Orangeboard.make_rel_dict_key(source_node, target_node)
+            rel_dict_key = Orangeboard.make_rel_dict_key(source_node, target_node, reltype_dir)
             existing_rel = subdict.get(rel_dict_key, None)
             if existing_rel is not None:
                 ret_rel = existing_rel
         return [ret_rel, rel_dict_key]
 
     def add_rel(self, reltype, sourcedb, source_node, target_node):
+        if source_node.uuid == target_node.uuid:
+            print('Attempt to add a relationship between a node and itself, for node: ' + str(node), file=sys.stderr)
+            assert False
+        dict_reltype_dirs = self.dict_reltype_dirs
+        if dict_reltype_dirs is None:
+            print('Must call Orangeboard.set_dict_reltype_dirs() before you call add_rel()', file=sys.stderr)
+            assert False
+        reltype_dir = dict_reltype_dirs.get(reltype, None)
+        if reltype_dir is None:
+            print('reltype passed to add_rel is not in dict_reltype_dirs; reltype=' + reltype, file=sys.stderr)
+            assert False
         seed_node = self.seed_node
         assert seed_node is not None
         existing_rel_list = self.get_rel(reltype, source_node, target_node)
@@ -334,7 +353,7 @@ class Orangeboard:
             existing_rel = new_rel
             rel_dict_key = existing_rel_list[1]
             if rel_dict_key is None:
-                rel_dict_key = Orangeboard.make_rel_dict_key(source_node, target_node)
+                rel_dict_key = Orangeboard.make_rel_dict_key(source_node, target_node, reltype_dir)
             subdict[rel_dict_key] = new_rel
             seed_node_uuid = seed_node.uuid
             sublist = self.dict_seed_uuid_to_list_rels.get(seed_node_uuid, None)
@@ -510,6 +529,23 @@ class Orangeboard:
         znode = ob.add_node('footype', 'z', seed_node_bool=True)
         ob.add_node('footype', 'g', seed_node_bool=True)
 #       print(ob)
-        
+
+    def test_issue_106():
+        ob = Orangeboard(debug=True)
+        ob.set_dict_reltype_dirs({'footype1': False,
+                                  'footype2': True})
+        node1 = ob.add_node('footype', 'w', seed_node_bool=True)
+        node2 = ob.add_node('footype', 'x', seed_node_bool=False)
+        node3 = ob.add_node('footype', 'y', seed_node_bool=False)
+        node4 = ob.add_node('footype', 'z', seed_node_bool=False)
+        ob.add_rel('footype1', 'foodb', node1, node2)
+        ob.add_rel('footype1', 'foodb', node2, node1)
+        ob.add_rel('footype2', 'foodb', node3, node4)
+        ob.add_rel('footype2', 'foodb', node4, node3)
+        # ob.neo4j_set_url()
+        # ob.neo4j_set_auth()
+        # ob.neo4j_push()
+        print(ob)
+                            
 if __name__ == '__main__':
-    Orangeboard.test_issue_66()
+    Orangeboard.test_issue_106()
