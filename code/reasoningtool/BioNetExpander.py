@@ -36,7 +36,7 @@ from QueryPharos import QueryPharos
 from QuerySciGraph import QuerySciGraph
 
 class BioNetExpander:
-    MASTER_REL_IS_EXPANDED = {'disease_affects': True,
+    MASTER_REL_IS_DIRECTED = {'disease_affects': True,
                               'is_member_of': True,
                               'is_parent_of': True,
                               'gene_assoc_with': True,
@@ -49,7 +49,7 @@ class BioNetExpander:
 
     def __init__(self, orangeboard):
         self.orangeboard = orangeboard
-        self.orangeboard.set_dict_reltype_dirs(self.MASTER_REL_IS_EXPANDED)
+        self.orangeboard.set_dict_reltype_dirs(self.MASTER_REL_IS_DIRECTED)
         self.query_omim_obj = QueryOMIM()
         self.query_mygene_obj = QueryMyGene(debug=False)
 
@@ -325,26 +325,7 @@ class BioNetExpander:
 if __name__ == '__main__':
     ob = Orangeboard(debug=False)
 
-    master_rel_is_directed = {'disease_affects': True,
-                              'is_member_of': True,
-                              'is_parent_of': True,
-                              'gene_assoc_with': True,
-                              'phenotype_assoc_with': True,
-                              'interacts_with': False,
-                              'controls_expression_of': True,
-                              'is_expressed_in': True,
-                              'targets': True}
-
-    # master_nodetypes = {'omim_disease',
-    #                     'disont_disease',
-    #                     'uniprot_protein',
-    #                     'reactome_pathway',
-    #                     'phenont_phenotype',
-    #                     'ncbigene_microrna',
-    #                     'anatont_anatomy',
-    #                     'pharos_drug'}
-
-    ob.set_dict_reltype_dirs(master_rel_is_directed)
+    ob.set_dict_reltype_dirs()
     ob.neo4j_set_url()
     ob.neo4j_set_auth()
 
