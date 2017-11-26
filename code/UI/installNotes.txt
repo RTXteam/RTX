@@ -1,0 +1,67 @@
+
+Notes installing the RTX UI on Docker image on lysine.ncats.io
+
+ssh admin@lysine.ncats.io
+sudo docker exec -it NCATS3 bash
+
+#### Get Apache running
+apt list --installed | grep apache
+apt install vim
+
+cd /etc/apache2/sites-available
+cp -p 000-default.conf 000-default.conf-orig
+vi 000-default.conf
+--
+ProxyPass /api/rtx/v1 http://localhost:5000/api/rtx/v1
+--
+
+cd /var/www
+mv html html-orig
+ln -s /mnt/data/orangeboard/code/NCATS/code/UI/interactive html
+
+a2enmod proxy
+a2enmod proxy_http
+a2enmod rewrite
+
+/usr/sbin/apachectl configtest
+service apache2 restart
+
+#### Get flask running
+
+cd /mnt/data/orangeboard/code/NCATS
+su - rt
+git pull
+
+cd /mnt/data/orangeboard/code/NCATS/code/UI/OpenAPI/python-flask-server
+python3 --version
+pip3 install -r requirements.txt
+
+#### Other modules needed for Q1Solution
+pip3 install networkx
+pip3 install ipython-cypher
+
+cd /mnt/data/orangeboard/code/NCATS/code/UI/OpenAPI/python-flask-server
+python3 -m swagger_server
+
+## test
+http://lysine.ncats.io/
+
+http://lysine.ncats.io/api/rtx/v1/ui/
+
+## Install the flask microframework as a service
+cd /mnt/data/orangeboard/code/NCATS/code/UI/OpenAPI/python-flask-server
+cp -p RTX_OpenAPI /etc/init.d/
+update-rc.d RTX_OpenAPI defaults
+
+service RTX_OpenAPI start
+service RTX_OpenAPI status
+ps auxww | grep swagger
+
+#### One can start and stop the RTX_OpenAPI service with:
+service RTX_OpenAPI stop
+su - rt
+cd /mnt/data/orangeboard/code/NCATS
+git pull
+exit
+service RTX_OpenAPI start
+
