@@ -9,19 +9,19 @@ info:
   license:
     name: "Apache 2.0"
     url: "http://www.apache.org/licenses/LICENSE-2.0.html"
-host: "www.peptideatlas.org"
+host: "ncats.saramsey.org"
 basePath: "/api/rtx/v1"
 tags:
 - name: "translate"
   description: "Translate natural language question into a standardized query"
   externalDocs:
     description: "Documentation for the RTX translate function"
-    url: "http://www.peptideatlas.org/doc/RTX/index.html#translate"
+    url: "http://ncats.saramsey.org/doc/RTX/index.html#translate"
 - name: "query"
   description: "Query RTX using a predefined question type"
   externalDocs:
     description: "Documentation for the RTX query function"
-    url: "http://www.peptideatlas.org/doc/RTX/index.html#query"
+    url: "http://ncats.saramsey.org/doc/RTX/index.html#query"
 schemes:
 - "http"
 paths:
@@ -153,4 +153,4 @@ definitions:
             \ and HMOX1 (P09601)."
 externalDocs:
   description: "Documentation for the RTX web service"
-  url: "http://www.peptideatlas.org/doc/RTX/index.html"
+  url: "http://ncats.saramsey.org/doc/RTX/index.html"
