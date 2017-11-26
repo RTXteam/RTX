@@ -121,7 +121,11 @@ q2_mesh_to_conditions_look_aside_dict = {'MESH:D000855': 'DOID:8689',
                                          'MESH:D013614': 'HP:0006688',
                                          'MESH:D014593': 'HP:0002486',
                                          'MESH:D015430': 'HP:0004324',
-                                         'MESH:D006376': 'DOID:883'}
+                                         'MESH:D006376': 'DOID:883',
+                                         'MESH:D015431': 'HP:0001824',
+                                         'MESH:D019106': 'HP:0011891',
+                                         'MESH:D009119': 'HP:0004305'  # not sure about this particular mapping
+}
 
 ob.set_dict_reltype_dirs(master_rel_is_directed)
 ob.neo4j_set_url()
@@ -240,7 +244,6 @@ def seed_and_expand_kg_q2():
     drug_dis_df['CURIE_ID'] = pandas.Series(curie_ids_for_df, index=drug_dis_df.index)
     drug_dis_df.to_csv('../../q2/q2-drugandcondition-list-mapped.txt', sep='\t')
 
-        
     ## triple-expand the knowledge graph
     bne.expand_all_nodes()
     bne.expand_all_nodes()
@@ -305,13 +308,11 @@ def make_master_kg():
     print("count(Node) = {}".format(ob.count_nodes()))
     print("count(Rel) = {}".format(ob.count_rels()))
 
-def test_pc2():
-    ob.add_node('uniprot_protein', 'P04217', desc='A1BG', seed_node_bool=True)
-    ob.add_node('uniprot_protein', 'P01023', desc='A2M', seed_node_bool=False)
-    add_pc2_to_kg()
-    print(ob)
+def make_file_q2_mapping():
+    seed_and_expand_kg_q2()
+
         
-running_time = timeit.timeit(lambda: make_master_kg(), number=1)
+running_time = timeit.timeit(lambda: make_file_q2_mapping(), number=1)
 print('running time for test: ' + str(running_time))
 
                         
