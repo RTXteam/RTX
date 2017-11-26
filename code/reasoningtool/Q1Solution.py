@@ -234,7 +234,10 @@ def main():
 		res = answerQ1(disease, directed=directed, max_path_len=max_path_len, verbose=verbose)
 		if res == 1:
 			print("Increasing path length and trying again...")
-			res = answerQ1(disease, directed=directed, max_path_len=max_path_len+1, verbose=verbose)
+			res = answerQ1(disease, directed=directed, max_path_len=max_path_len + 1, verbose=verbose)
+			if res == 1:
+				print("Increasing path length and trying again...")
+				res = answerQ1(disease, directed=directed, max_path_len=max_path_len + 2, verbose=verbose)
 
 if __name__ == "__main__":
 	main()
