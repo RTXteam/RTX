@@ -58,10 +58,9 @@ service RTX_OpenAPI status
 ps auxww | grep swagger
 
 #### One can start and stop the RTX_OpenAPI service with:
-service RTX_OpenAPI stop
 su - rt
 cd /mnt/data/orangeboard/code/NCATS
 git pull
 exit
-service RTX_OpenAPI start
+service RTX_OpenAPI restart
 
