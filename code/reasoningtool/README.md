@@ -1,9 +1,15 @@
-# Requirements for using `ReasoningTool.py`:
+# Requirements
 
-## Base python requirements:
-- python 3.5 or newer (we are not testing or coding for compatibility with python2)
+## Universal requirements for using the RTX proof-of-concept reasoning tool software
 
-## Python packages required: (all packages installed using `pip3 install`)
+[NOTE: script-specific requirements are enumerated below]
+
+### Base python requirements:
+- Python 3.5 or newer 
+
+## Requirements for running `BuildMasterKG.py`
+
+### Python packages required
 - `neo4j-driver` (version 1.5.0)
 - `requests` (version 2.18.4)
 - `requests-cache` (version 0.4.13)
@@ -11,14 +17,18 @@
 - `mygene` (version 3.0.0)
 - `lxml` (version 4.1.1)
 
+## Using `BuildMasterKG.py`
+
+First, make sure Neo4j is running and available on `bolt://localhost:7687`.  Then run:
+
+    python3 -u BuildMasterKG.py 1>stdout.log 2>stderr.log
+
+or equivalently:
+
+    sh run_build_master_kg.sh
+    
 ## Neo4j:  Community Edition, version 3.3.0 (installed locally)
 
-# Running the software:
-
-    python3 ReasoningTool.py --test TEST_FUNCTION_NAME
-    
-(see code for the test functions that you can run; `bigtest` is the one that will 
-seed a node and do three rounds of expansion)
 
 # What is the Orangeboard?
 
