@@ -7,17 +7,19 @@ import Q1Utils
 import argparse
 import cypher
 import QueryNCBIeUtils
+import requests_cache
+requests_cache.install_cache('orangeboard')
 
 
 
 # Connection information for the neo4j server, populated with orangeboard
-#driver = GraphDatabase.driver("bolt://lysine.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))
-driver = GraphDatabase.driver("bolt://ncats.saramsey.org:7687", auth=basic_auth("neo4j", "precisionmedicine"))
+driver = GraphDatabase.driver("bolt://lysine.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))
+#driver = GraphDatabase.driver("bolt://ncats.saramsey.org:7687", auth=basic_auth("neo4j", "precisionmedicine"))
 session = driver.session()
 
 # Connection information for the ipython-cypher package
-#connection = "http://neo4j:precisionmedicine@lysine.ncats.io:7473/db/data"
-connection = "http://neo4j:precisionmedicine@ncats.saramsey.org:7473/db/data"
+connection = "http://neo4j:precisionmedicine@lysine.ncats.io:7473/db/data"
+#connection = "http://neo4j:precisionmedicine@ncats.saramsey.org:7473/db/data"
 DEFAULT_CONFIGURABLE = {
 	"auto_limit": 0,
 	"style": 'DEFAULT',
@@ -39,7 +41,7 @@ defaults = DefaultConfigurable(**DEFAULT_CONFIGURABLE)
 
 
 drug_to_disease_doid = dict()
-with open(os.path.abspath('../../q2/q2-drugandcondition-list-mapped.txt'), 'r') as fid:
+with open(os.path.abspath('../../data/q2/q2-drugandcondition-list-mapped.txt'), 'r') as fid:
 	i = 0
 	for line in fid.readlines():
 		if i == 0:
@@ -402,6 +404,7 @@ proteins_in_both, found_anat_names = get_proteins_in_both(paths, pathway_indicie
 #	print("There are proteins nearby to anatomy and pathways: " + str(proteins_in_both))
 
 # get the pathway paths and anatomy paths that contain these shared proteins
+# TODO: might not need these?
 pathway_near_intersection_indices = []
 pathway_near_intersection_names = set()
 anat_near_intersection_indicies = []
