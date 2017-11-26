@@ -148,7 +148,7 @@ def seed_and_expand_kg_q1():
     bne.expand_all_nodes()
     bne.expand_all_nodes()
 
-    omim_df = pandas.read_csv('../../q1/Genetic_conditions_from_OMIM.txt',
+    omim_df = pandas.read_csv('../../data/q1/Genetic_conditions_from_OMIM.txt',
                               sep='\t')[['MIM_number','preferred_title']]
     first_row = True
     for index, row in omim_df.iterrows():
@@ -181,7 +181,7 @@ def convert_mesh_entrez_uid_to_curie_form(mesh_entrez_uid):
     assert mesh_entrez_uid > MESH_ENTREZ_UID_BASE
     return 'MESH:D' + format(mesh_entrez_uid - MESH_ENTREZ_UID_BASE, '06')
 
-human_phenont_name_id_dict = ParsePhenont.get_name_id_dict('../../hpo/hp.obo')
+human_phenont_name_id_dict = ParsePhenont.get_name_id_dict('../../data/hpo/hp.obo')
 
 def get_curie_ont_ids_for_mesh_term(mesh_term):
     ret_curie_ids = []
@@ -210,7 +210,7 @@ def get_curie_ont_ids_for_mesh_term(mesh_term):
     
 def seed_and_expand_kg_q2():
     
-    drug_dis_df = pandas.read_csv('../../q2/q2-drugandcondition-list.txt',
+    drug_dis_df = pandas.read_csv('../../data/q2/q2-drugandcondition-list.txt',
                                   sep='\t')
 
     print('=====================> seeding disease nodes for Q2')
@@ -242,7 +242,7 @@ def seed_and_expand_kg_q2():
                             assert False ## should never get here
         curie_ids_for_df.append(mesh_term_to_curie_ids_dict[mesh_term])
     drug_dis_df['CURIE_ID'] = pandas.Series(curie_ids_for_df, index=drug_dis_df.index)
-    drug_dis_df.to_csv('../../q2/q2-drugandcondition-list-mapped.txt', sep='\t')
+    drug_dis_df.to_csv('../../data/q2/q2-drugandcondition-list-mapped.txt', sep='\t')
 
     ## triple-expand the knowledge graph
     bne.expand_all_nodes()
@@ -261,7 +261,7 @@ def seed_and_expand_kg_q2():
     bne.expand_all_nodes()
 
 def add_pc2_to_kg():
-    sif_data = pandas.read_csv('../../pc2/PathwayCommons9.All.hgnc.sif',
+    sif_data = pandas.read_csv('../../data/pc2/PathwayCommons9.All.hgnc.sif',
                                sep='\t', names=['gene1', 'interaction_type', 'gene2'])
     interaction_types = set(['interacts-with',
                              'controls-expression-of',
