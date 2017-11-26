@@ -12,11 +12,11 @@
 
 # Change the next 3 lines to suit where you install your script and what you want to call it
 DIR=/mnt/data/orangeboard/code/NCATS/code/UI/OpenAPI/python-flask-server
-DAEMON=/usr/bin/python3
+DAEMON=$DIR/RTX_OpenAPI.start
 DAEMON_NAME=RTX_OpenAPI
 
 # Add any command line options for your daemon here
-DAEMON_OPTS="-m swagger_server"
+DAEMON_OPTS=""
 
 # This next line determines what user the script runs as.
 # Root generally not recommended but necessary if you are using the Raspberry Pi GPIO from Python.
@@ -29,7 +29,6 @@ PIDFILE=/var/run/$DAEMON_NAME.pid
 
 do_start () {
     log_daemon_msg "Starting system $DAEMON_NAME daemon"
-    cd $DIR
     start-stop-daemon --start --background --pidfile $PIDFILE --make-pidfile --user $DAEMON_USER --chuid $DAEMON_USER --startas $DAEMON -- $DAEMON_OPTS
     log_end_msg $?
 }
