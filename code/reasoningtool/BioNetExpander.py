@@ -225,9 +225,8 @@ class BioNetExpander:
                         self.orangeboard.add_rel('controls_expression_of', 'Reactome', node1, node2)
 
     def expand_phenont_phenotype(self, node):
-        # EXPAND PHENOTYPE -> ANATOMY
+        # expand phenotype=>anatomy
         phenotype_id = node.name
-
         anatomy_dict = QueryBioLink.get_anatomies_for_phenotype(phenotype_id)
         for anatomy_id, anatomy_desc in anatomy_dict.items():
             anatomy_node = self.orangeboard.add_node('anatont_anatomy', anatomy_id, desc=anatomy_desc)
