@@ -85,7 +85,7 @@ q2_mesh_to_conditions_look_aside_dict = {'MESH:D000855': 'DOID:8689',
                                          'MESH:D009057': 'HP:1091',
                                          'MESH:D004107': 'HP:0030449',
                                          'MESH:D016099': 'HP:12072',
-                                         'MESH:D004927': 'DOID:0050339',
+                                         'MESH:D004927': 'HP:0005420',
                                          'MESH:D005393': 'DOID:104',
                                          'MESH:D030762': 'HP:0030449',
                                          'MESH:D051271': 'HP:0002315',
@@ -99,7 +99,6 @@ q2_mesh_to_conditions_look_aside_dict = {'MESH:D000855': 'DOID:8689',
                                          'MESH:D008593': 'HP:0100805',
                                          'MESH:D008597': 'HP:0000140',
                                          'MESH:D009126': 'HP:0002486',
-                                         'MESH:D013035': 'HP:0002486',
                                          'MESH:D026201': 'HP:0002486',
                                          'MESH:D051474': 'DOID:9210',
                                          'MESH:D007744': 'HP:0030369',
@@ -111,7 +110,21 @@ q2_mesh_to_conditions_look_aside_dict = {'MESH:D000855': 'DOID:8689',
                                          'MESH:D011275': 'HP:0030449',
                                          'MESH:D007752': 'HP:0001788',
                                          'MESH:D011595': 'HP:0002361',
-                                         'MESH:D012120': 'HP:0002093'
+                                         'MESH:D012120': 'HP:0002093',
+                                         'MESH:D012140': 'DOID:1579',
+                                         'MESH:D012141': 'HP:0011947',
+                                         'MESH:D012550': 'DOID:0050597',
+                                         'MESH:D012892': 'HP:0100785',
+                                         'MESH:D012907': 'DOID:0050742',
+                                         'MESH:D018461': 'HP:0002718',
+                                         'MESH:D013035': 'HP:0006963',
+                                         'MESH:D013614': 'HP:0006688',
+                                         'MESH:D014593': 'HP:0002486',
+                                         'MESH:D015430': 'HP:0004324',
+                                         'MESH:D006376': 'DOID:883',
+                                         'MESH:D015431': 'HP:0001824',
+                                         'MESH:D019106': 'HP:0011891',
+                                         'MESH:D009119': 'HP:0004305'  # not sure about this particular mapping
 }
 
 ob.set_dict_reltype_dirs(master_rel_is_directed)
@@ -231,7 +244,6 @@ def seed_and_expand_kg_q2():
     drug_dis_df['CURIE_ID'] = pandas.Series(curie_ids_for_df, index=drug_dis_df.index)
     drug_dis_df.to_csv('../../q2/q2-drugandcondition-list-mapped.txt', sep='\t')
 
-        
     ## triple-expand the knowledge graph
     bne.expand_all_nodes()
     bne.expand_all_nodes()
@@ -296,13 +308,11 @@ def make_master_kg():
     print("count(Node) = {}".format(ob.count_nodes()))
     print("count(Rel) = {}".format(ob.count_rels()))
 
-def test_pc2():
-    ob.add_node('uniprot_protein', 'P04217', desc='A1BG', seed_node_bool=True)
-    ob.add_node('uniprot_protein', 'P01023', desc='A2M', seed_node_bool=False)
-    add_pc2_to_kg()
-    print(ob)
+def make_file_q2_mapping():
+    seed_and_expand_kg_q2()
+
         
-running_time = timeit.timeit(lambda: make_master_kg(), number=1)
+running_time = timeit.timeit(lambda: make_file_q2_mapping(), number=1)
 print('running time for test: ' + str(running_time))
 
                         
