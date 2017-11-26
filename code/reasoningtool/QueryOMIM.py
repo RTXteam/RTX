@@ -51,7 +51,7 @@ class QueryOMIM:
         url_suffix = "mimNumber=" + mim_num_str + "&include=geneMap,externalLinks&exclude=text"
         r = self.send_query_get(omim_handler, url_suffix)
         result_dict = r.json()
-        print(result_dict)
+#        print(result_dict)
         result_entry = result_dict["omim"]["entryList"][0]["entry"]
         external_links = result_entry.get('externalLinks', None)
         uniprot_ids = []
