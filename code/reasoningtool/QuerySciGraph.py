@@ -93,20 +93,22 @@ class QuerySciGraph:
         # param_str = "&".join(["{}={}".format(key, value) for key, value in params.items()])
         url = QuerySciGraph.API_BASE_URL["graph_neighbors"].format(node_id=phenont_id)
         json = QuerySciGraph.__access_api(url, params=params)
-
-        sub_edges = json['edges']  # Get all INCOMING edges
-        sub_nodes = set(map(lambda e: e["sub"], sub_edges))  # Get all neighboring nodes (duplicates may exist; so set is used here)
-        sub_nodes = set(filter(lambda s: s.startswith("HP:"), sub_nodes))  # Keep human phenotypes only
-
-        sub_nodes_with_labels = dict([(node["id"], node['lbl']) for node in json['nodes'] if node["id"] in sub_nodes])
-
-        if len(sub_nodes_with_labels) >= 200:
-            print("[Warning][SciGraph] Found {} sub phenotypes for {}".format(len(sub_nodes_with_labels), phenont_id))
+        sub_nodes_with_labels = dict()
+        if json is not None:
+            sub_edges = json['edges']  # Get all INCOMING edges
+            sub_nodes = set(map(lambda e: e["sub"], sub_edges))  # Get all neighboring nodes (duplicates may exist; so set is used here)
+            sub_nodes = set(filter(lambda s: s.startswith("HP:"), sub_nodes))  # Keep human phenotypes only
+            
+            sub_nodes_with_labels = dict([(node["id"], node['lbl']) for node in json['nodes'] if node["id"] in sub_nodes])
+            
+            if len(sub_nodes_with_labels) >= 200:
+                print("[Warning][SciGraph] Found {} sub phenotypes for {}".format(len(sub_nodes_with_labels), phenont_id))
 
         return sub_nodes_with_labels
 
 if __name__ == '__main__':
+    print(QuerySciGraph.query_sub_phenotyeps_for_phenotype('HP:12072'))
     print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D000856'))
-#    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015473'))
-#    print(QuerySciGraph.query_sub_phenotypes_for_phenotype("HP:0000107"))  # Renal cyst
-#    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015470'))
+    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015473'))
+    print(QuerySciGraph.query_sub_phenotypes_for_phenotype("HP:0000107"))  # Renal cyst
+    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015470'))
