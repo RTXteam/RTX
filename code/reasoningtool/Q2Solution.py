@@ -56,13 +56,13 @@ def answerQ2(drug, disease_description):
 			break
 
 	if not paths:
-		print("a Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype." % (drug, disease_description))
+		print("Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype." % (drug, disease_description))
 		return 1
 
 	# delete those that go through other drugs or diseases
 	paths = Q2Utils.delete_paths_through_other_drugs_diseases(paths, drug, disease)
 	if not paths:
-		print("b Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype." % (drug, disease_description))
+		print("Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype." % (drug, disease_description))
 		return 1
 
 	# Get: 1. Number of distinct node labels in each path, 2. if the path has a reactome pathway in it and
@@ -132,7 +132,7 @@ def answerQ2(drug, disease_description):
 	gds = np.array([i[1] for i in anat_name_google_distance_sorted])
 	num_non_inf = np.count_nonzero(~np.isinf(gds))
 	if num_non_inf == 0 or gds == []:
-		print("c Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype." % (
+		print("Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype." % (
 		drug, disease_description))
 		return 1
 	else:
