@@ -134,7 +134,7 @@ ob.neo4j_set_auth()
 bne = BioNetExpander(ob)
 
 
-def seed_and_expand_kg_q1():
+def seed_and_expand_kg_q1(num_expansions):
     ## seed all 21 diseases in the Orangeboard
     ## set the seed node flag to True, for the first disease
     seed_node_bool = True
@@ -144,11 +144,10 @@ def seed_and_expand_kg_q1():
         seed_node_bool = False
 
     ## triple-expand the knowledge graph
-    bne.expand_all_nodes()
-    bne.expand_all_nodes()
-    bne.expand_all_nodes()
+    for _ in range(0, num_expansions):
+        bne.expand_all_nodes()
 
-    omim_df = pandas.read_csv('../../q1/Genetic_conditions_from_OMIM.txt',
+    omim_df = pandas.read_csv('../../data/q1/Genetic_conditions_from_OMIM.txt',
                               sep='\t')[['MIM_number','preferred_title']]
     first_row = True
     for index, row in omim_df.iterrows():
@@ -171,9 +170,8 @@ def seed_and_expand_kg_q1():
             ob.add_rel('gene_assoc_with', 'OMIM', prot_node, omim_node)
 
     ## triple-expand the knowledge graph
-    bne.expand_all_nodes()
-    bne.expand_all_nodes()
-    bne.expand_all_nodes()
+    for _ in range(0, num_expansions):
+        bne.expand_all_nodes()
 
 MESH_ENTREZ_UID_BASE = 68000000
 
@@ -181,7 +179,7 @@ def convert_mesh_entrez_uid_to_curie_form(mesh_entrez_uid):
     assert mesh_entrez_uid > MESH_ENTREZ_UID_BASE
     return 'MESH:D' + format(mesh_entrez_uid - MESH_ENTREZ_UID_BASE, '06')
 
-human_phenont_name_id_dict = ParsePhenont.get_name_id_dict('../../hpo/hp.obo')
+human_phenont_name_id_dict = ParsePhenont.get_name_id_dict('../../data/hpo/hp.obo')
 
 def get_curie_ont_ids_for_mesh_term(mesh_term):
     ret_curie_ids = []
@@ -208,9 +206,9 @@ def get_curie_ont_ids_for_mesh_term(mesh_term):
             ret_curie_ids.append(human_phenont_id)
     return ret_curie_ids
     
-def seed_and_expand_kg_q2():
+def seed_and_expand_kg_q2(num_expansions=3):
     
-    drug_dis_df = pandas.read_csv('../../q2/q2-drugandcondition-list.txt',
+    drug_dis_df = pandas.read_csv('../../data/q2/q2-drugandcondition-list.txt',
                                   sep='\t')
 
     print('=====================> seeding disease nodes for Q2')
@@ -242,12 +240,11 @@ def seed_and_expand_kg_q2():
                             assert False ## should never get here
         curie_ids_for_df.append(mesh_term_to_curie_ids_dict[mesh_term])
     drug_dis_df['CURIE_ID'] = pandas.Series(curie_ids_for_df, index=drug_dis_df.index)
-    drug_dis_df.to_csv('../../q2/q2-drugandcondition-list-mapped.txt', sep='\t')
+    drug_dis_df.to_csv('../../data/q2/q2-drugandcondition-list-mapped.txt', sep='\t')
 
     ## triple-expand the knowledge graph
-    bne.expand_all_nodes()
-    bne.expand_all_nodes()
-    bne.expand_all_nodes()
+    for _ in range(0, num_expansions):
+        bne.expand_all_nodes()
                 
     print('=====================> seeding drug nodes for Q2')
     first_row = True
@@ -256,12 +253,11 @@ def seed_and_expand_kg_q2():
         first_row = False
 
     ## triple-expand the knowledge graph
-    bne.expand_all_nodes()
-    bne.expand_all_nodes()
-    bne.expand_all_nodes()
+    for _ in range(0, num_expansions):
+        bne.expand_all_nodes()
 
 def add_pc2_to_kg():
-    sif_data = pandas.read_csv('../../pc2/PathwayCommons9.All.hgnc.sif',
+    sif_data = pandas.read_csv('../../data/pc2/PathwayCommons9.All.hgnc.sif',
                                sep='\t', names=['gene1', 'interaction_type', 'gene2'])
     interaction_types = set(['interacts-with',
                              'controls-expression-of',
@@ -300,8 +296,8 @@ def add_pc2_to_kg():
                             assert False
 
 def make_master_kg():
-    seed_and_expand_kg_q1()
-    seed_and_expand_kg_q2()
+    seed_and_expand_kg_q1(num_expansions=3)
+    seed_and_expand_kg_q2(num_expansions=3)
     add_pc2_to_kg()
     ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
@@ -309,12 +305,23 @@ def make_master_kg():
     print("count(Rel) = {}".format(ob.count_rels()))
 
 def make_file_q2_mapping():
-    seed_and_expand_kg_q2()
+    seed_and_expand_kg_q2(num_expansions=0)
 
-        
-running_time = timeit.timeit(lambda: make_file_q2_mapping(), number=1)
-print('running time for test: ' + str(running_time))
-
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Builds the master knowledge graph')
+    parser.add_argument('--runfunc', dest='runfunc')
+    args = parser.parse_args()
+    args_dict = vars(args)
+    if args_dict.get('runfunc', None) is not None:
+        run_function_name = args_dict['runfunc']
+    else:
+        run_function_name = 'make_master_kg'
+    try:
+        run_function = globals()[run_function_name]
+    except KeyError:
+        sys.exit('In module BuildMasterKG.py, unable to find function named: ' + run_function_name)
+    running_time = timeit.timeit(lambda: run_function(), number=1)
+    print('running time for function: ' + str(running_time))
                         
     
 

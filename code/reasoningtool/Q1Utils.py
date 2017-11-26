@@ -6,9 +6,12 @@ import cypher
 from collections import namedtuple
 from neo4j.v1 import GraphDatabase, basic_auth
 from collections import Counter
+import requests_cache
 import QueryNCBIeUtils
 import math
 import MarkovLearning
+
+requests_cache.install_cache('orangeboard')
 
 # Connection information for the neo4j server, populated with orangeboard
 driver = GraphDatabase.driver("bolt://lysine.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))
