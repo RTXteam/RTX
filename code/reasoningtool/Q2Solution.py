@@ -41,6 +41,7 @@ defaults = DefaultConfigurable(**DEFAULT_CONFIGURABLE)
 
 
 drug_to_disease_doid = dict()
+disease_doid_to_description = dict()
 with open(os.path.abspath('../../data/q2/q2-drugandcondition-list-mapped.txt'), 'r') as fid:
 	i = 0
 	for line in fid.readlines():
@@ -53,7 +54,9 @@ with open(os.path.abspath('../../data/q2/q2-drugandcondition-list-mapped.txt'), 
 			line_split = line.split('\t')
 			drug = line_split[1].lower()
 			disease_doid = line_split[-1]
+			disease_descr = line_split[2]
 			drug_to_disease_doid[drug] = disease_doid
+			disease_doid_to_description[disease_doid] = disease_descr
 
 
 def has_drug(drug, session=session, debug=False):
@@ -153,7 +156,7 @@ def node_name_and_label_in_path(session, pharos_drug, disease, max_path_len=2, d
 		query = "match p=(n:pharos_drug{name:'%s'})-[]-(:uniprot_protein)-[]-(t)-[*0..%d]-(:disont_disease{name:'%s'}) "\
 				"where t:anatont_anatomy or t:reactome_pathway "\
 				"with nodes(p) as ns, range(0,length(nodes(p))-1) as idx " \
-				"return [i in idx | [(ns[i]).name, labels(ns[i])[0]] ] as path " % (pharos_drug, max_path_len, disease)
+				"return [i in idx | [(ns[i]).name, labels(ns[i])[1]] ] as path " % (pharos_drug, max_path_len, disease)
 	else:
 		#query = "match p=allShortestPaths((s:pharos_drug)-[*1..%d]-(t:phenont_phenotype)) "\
 		#		"where s.name='%s' and t.name='%s' "\
@@ -162,7 +165,7 @@ def node_name_and_label_in_path(session, pharos_drug, disease, max_path_len=2, d
 		query = "match p=(n:pharos_drug{name:'%s'})-[]-(:uniprot_protein)-[]-(t)-[*0..%d]-(:phenont_phenotype{name:'%s'}) " \
 				"where t:anatont_anatomy or t:reactome_pathway " \
 				"with nodes(p) as ns, range(0,length(nodes(p))-1) as idx " \
-				"return [i in idx | [(ns[i]).name, labels(ns[i])[0]] ] as path " % (pharos_drug, max_path_len, disease)
+				"return [i in idx | [(ns[i]).name, labels(ns[i])[1]] ] as path " % (pharos_drug, max_path_len, disease)
 	if debug:
 		return query
 	res = session.run(query)
@@ -250,7 +253,7 @@ def get_path_length(source_type, source_name, target_type, target_name, session=
 	else:
 		return np.inf
 
-
+# TODO: Debug this guy
 def get_intermediate_path_lenth(source_type, source_name, intermediate_type, intermediate_name, target_type, target_name, session=session, debug=False):
 	query = "match p = (s:%s{name:'%s'})-[*0..2]-(i:%s{name:'%s'})-[*0..2]-(t:%s{name:'%s'}) "\
 			"return length(p) order by length(p) limit 1" % (source_type, source_name, intermediate_type, intermediate_name, target_type, target_name)
@@ -335,6 +338,7 @@ def prioritize_on_gd(found_anat_names, disease_description):
 					anat_name_google_distance.append((anat, np.inf))
 		else:
 			anat_name_google_distance.append((anat, np.inf))
+	return anat_name_google_distance
 
 
 def get_proteins_in_both(paths, pathway_indicies, anat_indicies):
@@ -404,7 +408,6 @@ proteins_in_both, found_anat_names = get_proteins_in_both(paths, pathway_indicie
 #	print("There are proteins nearby to anatomy and pathways: " + str(proteins_in_both))
 
 # get the pathway paths and anatomy paths that contain these shared proteins
-# TODO: might not need these?
 pathway_near_intersection_indices = []
 pathway_near_intersection_names = set()
 anat_near_intersection_indicies = []
