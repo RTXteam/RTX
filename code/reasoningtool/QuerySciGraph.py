@@ -107,7 +107,7 @@ class QuerySciGraph:
         return sub_nodes_with_labels
 
 if __name__ == '__main__':
-    print(QuerySciGraph.query_sub_phenotyeps_for_phenotype('HP:12072'))
+    print(QuerySciGraph.query_sub_phenotypes_for_phenotype('HP:12072'))
     print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D000856'))
     print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015473'))
     print(QuerySciGraph.query_sub_phenotypes_for_phenotype("HP:0000107"))  # Renal cyst
