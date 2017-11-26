@@ -254,7 +254,7 @@ def get_path_length(source_type, source_name, target_type, target_name, session=
 		return np.inf
 
 # TODO: Debug this guy
-def get_intermediate_path_lenth(source_type, source_name, intermediate_type, intermediate_name, target_type, target_name, session=session, debug=False):
+def get_intermediate_path_length(source_type, source_name, intermediate_type, intermediate_name, target_type, target_name, session=session, debug=False):
 	query = "match p = (s:%s{name:'%s'})-[*0..2]-(i:%s{name:'%s'})-[*0..2]-(t:%s{name:'%s'}) "\
 			"return length(p) order by length(p) limit 1" % (source_type, source_name, intermediate_type, intermediate_name, target_type, target_name)
 	if debug:
@@ -262,7 +262,7 @@ def get_intermediate_path_lenth(source_type, source_name, intermediate_type, int
 	res = session.run(query)
 	res = [i for i in res]
 	if res:
-		return res[0]['length(p) order by length(p) limit 1']
+		return res[0]['length(p)']
 	else:
 		return np.inf
 
@@ -292,7 +292,7 @@ def connect_to_pathway(path, pathway_near_intersection_names):
 	else:
 		pathway_distances = []
 		for pathway in pathway_near_intersection_names:
-			path_dist = get_intermediate_path_lenth("uniprot_protein", proteins[0], "reactome_pathway", pathway,
+			path_dist = get_intermediate_path_length("uniprot_protein", proteins[0], "reactome_pathway", pathway,
 													"uniprot_protein", proteins[1])
 			pathway_distances.append((pathway, path_dist))
 	# pick the smallest
@@ -503,8 +503,9 @@ print(to_print)
 
 
 
-
-
+query = get_intermediate_path_length("uniprot_protein", "Q9UHP3", "uniprot_protein", "O43502", "uniprot_protein", "P62979", debug=True)
+res = session.run(query)
+res =[i for i in res]
 
 
 
