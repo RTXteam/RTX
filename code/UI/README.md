@@ -11,5 +11,5 @@
 ### License
 
 - The RTX team will be open-sourcing the RTX software under the MIT license. The
-copyright statement in the LICENSE file in the paren directory applies to the
+copyright statement in the LICENSE file in the parent directory applies to the
 software code in this directory.
