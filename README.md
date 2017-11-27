@@ -1,6 +1,6 @@
 # RTX Reasoning Tool proof-of-concept (POC) software
 
-RTX is being collaboratively developed by a team of investigators at Oregon State University, Institute for Systems Biology, Ohio State University
+RTX is being collaboratively developed by a team of investigators at Oregon State University, Institute for Systems Biology, Ohio State University.
 
 ## Organization of this repository
 
