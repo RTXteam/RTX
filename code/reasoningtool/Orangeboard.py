@@ -299,9 +299,7 @@ class Orangeboard:
         return existing_node
 
     @staticmethod
-    def make_rel_dict_key(source_node, target_node, rel_dir):
-        source_uuid = source_node.uuid
-        target_uuid = target_node.uuid
+    def make_rel_dict_key(source_uuid, target_uuid, rel_dir):
         if rel_dir or source_uuid < target_uuid:
             rel_dict_key = source_uuid + '--' + target_uuid
         else:
@@ -322,7 +320,7 @@ class Orangeboard:
         rel_dict_key = None
         subdict = self.dict_reltype_to_dict_relkey_to_rel.get(reltype, None)
         if subdict is not None:
-            rel_dict_key = Orangeboard.make_rel_dict_key(source_node, target_node, reltype_dir)
+            rel_dict_key = Orangeboard.make_rel_dict_key(source_node.uuid, target_node.uuid, reltype_dir)
             existing_rel = subdict.get(rel_dict_key, None)
             if existing_rel is not None:
                 ret_rel = existing_rel
@@ -353,7 +351,7 @@ class Orangeboard:
             existing_rel = new_rel
             rel_dict_key = existing_rel_list[1]
             if rel_dict_key is None:
-                rel_dict_key = Orangeboard.make_rel_dict_key(source_node, target_node, reltype_dir)
+                rel_dict_key = Orangeboard.make_rel_dict_key(source_node.uuid, target_node.uuid, reltype_dir)
             subdict[rel_dict_key] = new_rel
             seed_node_uuid = seed_node.uuid
             sublist = self.dict_seed_uuid_to_list_rels.get(seed_node_uuid, None)
@@ -526,22 +524,17 @@ class Orangeboard:
         ob.add_node('footype', 'g', seed_node_bool=True)
 #       print(ob)
 
-    def test_issue_106():
+    def test_issue_104():
         ob = Orangeboard(debug=True)
-        ob.set_dict_reltype_dirs({'footype1': False,
-                                  'footype2': True})
-        node1 = ob.add_node('bartype', 'w', seed_node_bool=True)
+        ob.set_dict_reltype_dirs({'interacts_with': False})
+        node1 = ob.add_node('uniprot_protein', 'w', seed_node_bool=True)
         node2 = ob.add_node('bartype', 'x', seed_node_bool=False)
-        node3 = ob.add_node('bartype', 'y', seed_node_bool=False)
-        node4 = ob.add_node('bartype', 'z', seed_node_bool=False)
-        ob.add_rel('footype1', 'foodb', node1, node2)
-        ob.add_rel('footype1', 'foodb', node2, node1)
-        ob.add_rel('footype2', 'foodb', node3, node4)
-        ob.add_rel('footype2', 'foodb', node4, node3)
+        ob.add_rel('interacts_with', 'PC2', node1, node2)
+        ob.add_rel('interacts_with', 'PC2', node2, node1)
         ob.neo4j_set_url()
         ob.neo4j_set_auth()
         ob.neo4j_push()
         print(ob)
                             
 if __name__ == '__main__':
-    Orangeboard.test_issue_106()
+    Orangeboard.test_issue_104()
