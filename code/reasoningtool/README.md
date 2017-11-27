@@ -21,7 +21,7 @@
 - `mygene` (version 3.0.0)
 - `lxml` (version 4.1.1)
 
-## Requirements for running `Q1Solution.py`
+## Requirements for running `Q1Solution.py` or `Q2Solution.py`
 
 ### Python packages required
 - `networkx` (2.0)
@@ -31,25 +31,44 @@
 - `requests` (version 2.18.4)
 - `requests-cache` (version 0.4.13)
 
-## Requirements for running `Q2Solution.py`
-
-### Python packages required
-- `numpy` (1.13.3)
-- `neo4j-driver` (version 1.5.0)
-- `requests` (version 2.18.4)
-- `requests-cache` (version 0.4.13)
-
-# Using the software
+# Using the RTX POC software
 
 ## Using `BuildMasterKG.py`
 
-First, make sure Neo4j is running and available on `bolt://localhost:7687`.  Then run:
+`BuildMasterKG.py` is the script that we use to build a knowledge graph seeded
+with the 21 Q1 diseases, a set of 8,000 genetic conditions from OMIM, and the
+1,000 pairs of drugs and conditions for Q2.  Each of these entities is expanded
+three steps in the knowledge graph, to make a Neo4j database with approximately
+1.5M relationships and 46,000 nodes.  To run `BuildMasterKG.py`, first, make
+sure Neo4j is running and available on `bolt://localhost:7687`.  Then run:
 
     python3 -u BuildMasterKG.py 1>stdout.log 2>stderr.log
 
 or equivalently:
 
     sh run_build_master_kg.sh
+
+## Using `Q1Solution.py`
+
+First, make sure Neo4j is running and available on `bolt://lysine.ncats.io:7687`.  Then, 
+to query for a genetic condition that may protect against a disease (for example, `cholera`),
+
+    python3 Q1Solution.py -m 3 -i cholera
+    
+To query for genetic conditions that protect against each of the 21 Q1 diseases,
+
+    python3 Q1Solutino.py -m 3 -a
+
+## Using `Q2Solution.py`
+
+First, make sure Neo4j is running and available on `bolt://lysine.ncats.io:7687`.  Then, 
+to query for a genetic condition that may protect against a disease (for example, `cholera`),
+
+    python3 Q1Solution.py -m 3 -i cholera
+    
+To query for genetic conditions that protect against each of the 21 Q1 diseases,
+
+    python3 Q1Solution.py -m 3 -a
 
 # What is the Orangeboard?
 
@@ -90,32 +109,26 @@ of network protocol (HTTP/REST query, etc.).
 
 ## Knowledge sources for which we have query classes that we are currently using in `ReasoningTool.py`:
 
+- `QueryMyGene.py`: enables us to interconvert between gene IDs and protein IDs
+- `QueryChEMBL.py`: we use this to find relationships between drugs and target proteins
+- `QueryPharos.py`: we use this to find relationships between drugs and target proteins
 - `QueryOMIM.py`:  we use this to find the gene or protein that is "hit" by a genetic condition.
 - `QueryReactome.py`: we use this to find the pathways with which a protein is
   associated, and the proteins that are members of a pathway (so repeated invocations of this class
   would yield a bipartite graph of proteins and pathways). Also gives us protein-protein interactions.
 - `QueryDisGeNet.py`: we use this to map a gene to a disease
 - `QueryDisont.py`: we use this to map a disease to "child diseases" that are special cases of the parent disease
-- `QueryMyGene.py`: enables us to interconvert between 
 - `QueryBioLink.py`:  this gives us disease-phenotype relationships, disease-gene relationships, 
 and gene-phenotype relationships.
 - `QueryMiRGate.py`: gives us microRNA-to-target-gene relationships
 - `QueryMiRBase.py`: used for identifier mapping for microRNAs (gene symbols to mature microRNA IDs, etc.)
 - `QueryGeneProf.py`: TF-to-target gene interactions
-
-## Knowledge sources for which query classes have been written but not yet integrated into ReasoningTool.py:
-
-- `QueryPC2.py`: queries Pathway Commons 2.0 (PC2) for protein-pathway
-  relationships. Querying PC2 can be very slow, so we are not using it at this time. But this knowledge
-  base is potentially useful for literature-curated protein-DNA interactions ("controls-expression-of");
-  maybe we could make our own "knowledge source" based on their SIF file?
-- `QueryUniprot.py`: can map a Uniprot protein to Reactome pathways; not sure what this buys us because
-  we are already doing it with Reactome.
-  
-## Knowledge sources for which our query classes are not yet implemented or are broken in some way:
-
-- `QueryPazar.py`: not sure we will ever end up remotely querying Pazar; Pazar looks useful but the web API is 
-SOAP-based and semi-undocumented. (SAR)
+- `QueryPhenont.py`: enables us to map between a human phenotype and child phenotypes in the human phenotype ontology
+- `QueryPC2.py`: enables us to obtain protein-protein interactions and TF-gene interactions.
+- `QueryNCBIeUtils.py`: enables us to do PubMed searches to find semantic
+  distance between biomedical terms; also enables us to interconvert between
+  MeSH IDs and OMIM identifiers.
+- `QuerySciGraph.py`: enables us to interconvert between a MeSH ID and a disease ontology ID.
 
 # Algorithmic approaches for proof of concept questions 1 and 2 
 
