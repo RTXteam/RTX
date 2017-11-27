@@ -9,7 +9,7 @@
 ## RTX leadership team
 
 | Name           | Role                                        | Email                             | GitHub username                               | Areas of relevant expertise      |
-| --------------   -------------------------------------------   ---------------------------------   --------------------------------------------- | -------------------------------- |
+| -------------- | ------------------------------------------- | --------------------------------- | --------------------------------------------- | -------------------------------- |
 | Stephen Ramsey | Project PI, Oregon State University         | `stephen.ramsey@oregonstate.edu`  | [saramsey](https://github.com/saramsey)       | compbio, systems biology         |
 | David Koslicki | Project Co-PI, Oregon State University      | `dkoslicki@math.oregonstate.edu`  | [dkoslicki](https://github.com/dkoslicki)     | compbio, graph algorithms        |
 | Eric Deutsch   | PI, subaward, Institute for Systems Biology | `eric.deutsch@systemsbiology.org` | [edeutsch](https://github.com/edeutsch)       | bioinformatics, data management  | 
@@ -18,7 +18,7 @@
 ## RTX other key personnel
 
 | Name             | Affiliation                   | Email                                 | GitHub username                                     | Areas of relevant expertise |
-| ----------------   -----------------------------   -------------------------------------   ---------------------------------------------------   --------------------------- |
+| ---------------- | ----------------------------- | ------------------------------------- | --------------------------------------------------- | --------------------------- |
 | Liang Huang      | Oregon State University       | `liang.huang@oregonstate.edu`         | [lianghuang3](https://github.com/lianghuang3)       | natural language processing | 
 | Arash Termehchy  | Oregon State University       | `arash.termehchy@oregonstate.edu`     | [arashtermehchy](https://github.com/arashtermehchy) | databases, nowledge graphs  |
 | Theo Knijnenburg | Institute for Systems Biology | `theo.knijnenburg@systemsbiology.org` | [tknijnen](https://github.com/tknijnen)             | systems biology, Translator |
