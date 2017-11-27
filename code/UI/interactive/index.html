@@ -85,7 +85,7 @@ function sendQuestion(e) {
         document.getElementById("result").innerHTML += jsonObj2[0].text.join("<BR>\n");
       };
     } else {
-      document.getElementById("result").innerHTML = jsonObj[0].text.join("\n");
+      document.getElementById("result").innerHTML = jsonObj[0].message;
     };
 
   };
