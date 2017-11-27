@@ -55,16 +55,15 @@ def get_omims_connecting_to_fixed_doid(session, doid, max_path_len=4, debug=Fals
 	else:
 		query = "MATCH path=allShortestPaths((s:omim_disease)-[*1..%d]-(t:disont_disease))" \
 				" WHERE t.name='%s' WITH distinct nodes(path)[0] as p RETURN p.name" %(max_path_len, doid)
-	with session.begin_transaction() as tx:
-		result = tx.run(query)
-		result_list = [i for i in result]
-		names = [i['p.name'] for i in result_list]
-		if verbose:
-			print("Found %d nearby omims" % len(names))
-		if debug:
-			return names, query
-		else:
-			return names
+	result = session.run(query)
+	result_list = [i for i in result]
+	names = [i['p.name'] for i in result_list]
+	if verbose:
+		print("Found %d nearby omims" % len(names))
+	if debug:
+		return names, query
+	else:
+		return names
 
 
 
