@@ -66,6 +66,6 @@ management. Browsing the open and closed
 [RTX issues](https://github.com/dkoslicki/NCATS/issues) will provide a sense of
 our team's workflow and organizational style, at least for a one-month POC
 project.
- 
+
  
 
