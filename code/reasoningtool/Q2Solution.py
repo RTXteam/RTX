@@ -31,15 +31,6 @@ with open(os.path.abspath('../../data/q2/q2-drugandcondition-list-mapped.txt'), 
 			disease_doid_to_description[disease_doid] = disease_descr
 
 
-#disease = 'DOID:1686'
-#disease_description = 'glaucoma'
-#drug = 'physostigmine'
-
-#disease = "DOID:10652"
-#disease_description = "Alzheimer Disease"
-#drug = "MEMANTINE".lower()
-
-
 def answerQ2(drug, disease_description):
 	if drug in drug_to_disease_doid:
 		disease = drug_to_disease_doid[drug]  # doid
@@ -81,16 +72,7 @@ def answerQ2(drug, disease_description):
 	pathway_indicies = np.where(np.array(has_prot_and_path))[0]  # paths that have reactome pathway
 	anat_indicies = np.where(np.array(has_prot_and_anat))[0]  # paths that have anatomy/tissue in it
 
-	# TODO: See if we can shortcircuit the rest if we have a single path with anatomy and pathway inside it
-	# Could also ignore since there's no reason the anatomy is the right one
-	# See if we get lucky and we have anatomy and pathway in a single path
-	#found_single_path = False
-	#pathway_and_anat_indicies = set(pathway_indicies).intersection(set(anat_indicies))
-	#if pathway_and_anat_indicies:
-	#	#print("RETURN THIS RESULT: " + str(paths[list(pathway_and_anat_indicies)[0]]))
-	#	found_single_path = True
-
-	# Otherwise, try to connect them up
+	# Connect the anatomy and pathway to the proteins
 	# get the names of the found pathway entities
 	proteins_in_both, found_anat_names = Q2Utils.get_proteins_in_both(paths, pathway_indicies, anat_indicies)
 
@@ -168,18 +150,6 @@ def answerQ2(drug, disease_description):
 		Q2Utils.print_results(best_anat_paths[i], pathway_near_intersection_names, best_anat, gd_max, drug, disease_description)
 
 
-
-
-#i = 1
-#drug = list(drug_to_disease_doid.keys())[i]  # drug name
-#disease = drug_to_disease_doid[drug]  # doid
-#disease_description = disease_doid_to_description[disease]  # disease description
-#drug = "fleroxacin"
-#disease = "DOID:874"
-#disease_description = "Pneumonia, Bacterial"
-#print("%s %s %s" % (drug, disease, disease_description))
-#answerQ2(drug, disease_description)
-
 def main():
 	parser = argparse.ArgumentParser(description="Runs the reasoning tool on Question 2",
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -206,8 +176,3 @@ def main():
 if __name__ == "__main__":
 	main()
 
-
-
-disease = 'DOID:1686'
-disease_description = 'glaucoma'
-drug = 'physostigmine'
