@@ -4,8 +4,8 @@ import os
 import Q2Utils
 import requests_cache
 requests_cache.install_cache('orangeboard')
-import sys
 import argparse
+from itertools import compress
 
 #TODO: After having access to training data, re-write this to use the Markov chain approach. This will be much more
 # extensible (not to mention faster)
@@ -28,15 +28,6 @@ with open(os.path.abspath('../../data/q2/q2-drugandcondition-list-mapped.txt'), 
 			disease_descr = line_split[2]
 			drug_to_disease_doid[drug] = disease_doid
 			disease_doid_to_description[disease_doid] = disease_descr
-
-
-#disease = 'DOID:1686'
-#disease_description = 'glaucoma'
-#drug = 'physostigmine'
-
-#disease = "DOID:10652"
-#disease_description = "Alzheimer Disease"
-#drug = "MEMANTINE".lower()
 
 
 def answerQ2(drug, disease_description):
@@ -80,16 +71,7 @@ def answerQ2(drug, disease_description):
 	pathway_indicies = np.where(np.array(has_prot_and_path))[0]  # paths that have reactome pathway
 	anat_indicies = np.where(np.array(has_prot_and_anat))[0]  # paths that have anatomy/tissue in it
 
-	# TODO: See if we can shortcircuit the rest if we have a single path with anatomy and pathway inside it
-	# Could also ignore since there's no reason the anatomy is the right one
-	# See if we get lucky and we have anatomy and pathway in a single path
-	#found_single_path = False
-	#pathway_and_anat_indicies = set(pathway_indicies).intersection(set(anat_indicies))
-	#if pathway_and_anat_indicies:
-	#	#print("RETURN THIS RESULT: " + str(paths[list(pathway_and_anat_indicies)[0]]))
-	#	found_single_path = True
-
-	# Otherwise, try to connect them up
+	# Connect the anatomy and pathway to the proteins
 	# get the names of the found pathway entities
 	proteins_in_both, found_anat_names = Q2Utils.get_proteins_in_both(paths, pathway_indicies, anat_indicies)
 
@@ -144,10 +126,20 @@ def answerQ2(drug, disease_description):
 			  "pathway, tissue, and phenotype (understudied)" % (drug, disease_description, disease_description))
 		return 1
 	else:
-		gd_max = np.ma.masked_invalid(gds).max()
-
+		if num_non_inf == 1:
+			gd_max = 2*np.ma.masked_invalid(gds).max()  # if there's only one known anatomy, return 50% confidence
+		else:
+			gd_max = np.ma.masked_invalid(gds).max()
 	# Sort the results
 	best_anat_paths = sorted(best_anat_paths, key=lambda key: best_anat_probs[tuple(key)])
+
+	# Remove paths with Inf in them
+	not_inf_indicies = []
+	for index in range(len(best_anat_paths)):
+		path = best_anat_paths[index]
+		if not np.isinf(best_anat_probs[tuple(path)]):
+			not_inf_indicies.append(index)
+	best_anat_paths = list(compress(best_anat_paths, not_inf_indicies))  # select the non Inf paths
 
 	# Then display the results....
 	print("The possible clinical outcome pathways include: ")
@@ -156,18 +148,6 @@ def answerQ2(drug, disease_description):
 		print("%d. " % (i+1))
 		Q2Utils.print_results(best_anat_paths[i], pathway_near_intersection_names, best_anat, gd_max, drug, disease_description)
 
-
-
-
-#i = 1
-#drug = list(drug_to_disease_doid.keys())[i]  # drug name
-#disease = drug_to_disease_doid[drug]  # doid
-#disease_description = disease_doid_to_description[disease]  # disease description
-#drug = "fleroxacin"
-#disease = "DOID:874"
-#disease_description = "Pneumonia, Bacterial"
-#print("%s %s %s" % (drug, disease, disease_description))
-#answerQ2(drug, disease_description)
 
 def main():
 	parser = argparse.ArgumentParser(description="Runs the reasoning tool on Question 2",
@@ -195,8 +175,3 @@ def main():
 if __name__ == "__main__":
 	main()
 
-
-
-disease = 'DOID:1686'
-disease_description = 'glaucoma'
-drug = 'physostigmine'
