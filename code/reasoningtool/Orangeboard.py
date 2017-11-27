@@ -443,10 +443,7 @@ class Orangeboard:
         if self.driver is None:
             self.neo4j_connect()
 
-        # Transaction is guaranteed be be committed and session be closed
-        with self.driver.session() as session:
-            with session.begin_transaction() as tx:
-                return tx.run(query, parameters)
+        return self.driver.session().run(query, parameters)
 
     def neo4j_clear(self, seed_node=None):
         """deletes all nodes and relationships in the orangeboard
@@ -516,7 +513,6 @@ class Orangeboard:
                                ' sourcedb: rel_data_map.sourcedb,' + \
                                ' seed_node_uuid: rel_data_map.seed_node_uuid' + \
                                ' }]->(n2)'
-#                               ' UUID: rel_data_map.UUID }]->(n2)'
             res = self.neo4j_run_cypher_query(cypher_query_str, query_params)
             if self.debug:
                 print(res.summary().counters)
@@ -534,17 +530,17 @@ class Orangeboard:
         ob = Orangeboard(debug=True)
         ob.set_dict_reltype_dirs({'footype1': False,
                                   'footype2': True})
-        node1 = ob.add_node('footype', 'w', seed_node_bool=True)
-        node2 = ob.add_node('footype', 'x', seed_node_bool=False)
-        node3 = ob.add_node('footype', 'y', seed_node_bool=False)
-        node4 = ob.add_node('footype', 'z', seed_node_bool=False)
+        node1 = ob.add_node('bartype', 'w', seed_node_bool=True)
+        node2 = ob.add_node('bartype', 'x', seed_node_bool=False)
+        node3 = ob.add_node('bartype', 'y', seed_node_bool=False)
+        node4 = ob.add_node('bartype', 'z', seed_node_bool=False)
         ob.add_rel('footype1', 'foodb', node1, node2)
         ob.add_rel('footype1', 'foodb', node2, node1)
         ob.add_rel('footype2', 'foodb', node3, node4)
         ob.add_rel('footype2', 'foodb', node4, node3)
-        # ob.neo4j_set_url()
-        # ob.neo4j_set_auth()
-        # ob.neo4j_push()
+        ob.neo4j_set_url()
+        ob.neo4j_set_auth()
+        ob.neo4j_push()
         print(ob)
                             
 if __name__ == '__main__':
