@@ -14,7 +14,7 @@
 
 ### Subdirectory `NLPCode`
 
-- Contains the natural language processing code used in the RTX proof-of-concept software.
+- Contains the natural language processing code to be used in the RTX software (not yet implemented).  
 
 ### License
 
