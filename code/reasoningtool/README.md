@@ -53,11 +53,14 @@ or equivalently:
 First, make sure Neo4j is running and available on `bolt://lysine.ncats.io:7687`.  Then, 
 to query for a genetic condition that may protect against a disease (for example, `cholera`),
 
-    python3 Q1Solution.py -m 3 -i cholera
+    python3 Q1Solution.py -i cholera
     
 To query for genetic conditions that protect against each of the 21 Q1 diseases,
 
-    python3 Q1Solution.py -m 3 -a
+    python3 Q1Solution.py -a
+
+The optional flag ``-m`` specifies how far in the knowledge graph to search for nearby genetic conditions.
+Sometimes this needs to be increased over the default ``-m 2`` and the code will inform you of this.
 
 ## Using `Q2Solution.py`
 
