@@ -97,7 +97,7 @@ def answerQ2(drug, disease_description):
 	# Prioritize the anatomy based on google distance
 	anat_name_google_distance = Q2Utils.prioritize_on_gd(found_anat_names, disease_description)
 
-	# Get the top three
+	# Get the top three anatomy names
 	anat_name_google_distance_sorted = sorted(anat_name_google_distance, key=lambda tup: tup[1])
 	num_select = min(3, len(anat_name_google_distance_sorted))
 	best_anat = dict()
@@ -145,7 +145,7 @@ def answerQ2(drug, disease_description):
 	print("The possible clinical outcome pathways include: ")
 	#if not found_single_path:
 	for i in range(len(best_anat_paths)):
-		print("%d. " % (i+1))
+		print("%d. " % (i+1), end=" ")
 		Q2Utils.print_results(best_anat_paths[i], pathway_near_intersection_names, best_anat, gd_max, drug, disease_description)
 
 
@@ -175,3 +175,8 @@ def main():
 if __name__ == "__main__":
 	main()
 
+
+
+'vx-11e', 'Carcinoma, Hepatocellular'
+'proparacaine', 'Pain, Postoperative'
+'bromfenac', 'Inflammation'

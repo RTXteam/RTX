@@ -61,6 +61,7 @@ def has_disease(disease_doid, session=session, debug=False):
 		else:
 			return False
 
+
 def has_phenotype(disease, session=session, debug=False):
 	"""
 	Check if phenotype is in the the graph
@@ -155,6 +156,7 @@ def look_for_pathway_and_anat(paths):
 			has_prot_and_anat.append(False)
 	return num_labels, has_prot_and_path, has_prot_and_anat
 
+
 def delete_paths_through_other_drugs_diseases(paths, drug, disease):
 	"""
 	Delete from paths those that contain other drugs or diseases
@@ -206,7 +208,7 @@ def get_path_length(source_type, source_name, target_type, target_name, session=
 	else:
 		return np.inf
 
-# TODO: Debug this guy
+
 def get_intermediate_path_length(source_type, source_name, intermediate_type, intermediate_name,
 								 target_type, target_name, session=session, debug=False, max_path_len=1):
 	"""
@@ -252,6 +254,25 @@ def anatomy_name_to_description(anatomy_name, session=session, debug=False):
 		return res[0]['n.description']
 	else:
 		return "a tissue "
+
+
+def protein_name_to_description(protein_name, session=session, debug=False):
+	"""
+	Get the description of an protein node
+	:param protein_name: name of the node
+	:param session: neo4j session
+	:param debug: just return the query
+	:return: a string (the description of the node)
+	"""
+	query = "match (n:uniprot_protein{name:'%s'}) return n.description" % protein_name
+	if debug:
+		return query
+	res = session.run(query)
+	res = [i for i in res]
+	if res:
+		return res[0]['n.description']
+	else:
+		return " "
 
 
 def connect_to_pathway(path, pathway_near_intersection_names):
@@ -411,19 +432,19 @@ def print_results(path, pathway_near_intersection_names, best_anat, gd_max, drug
 			anatomy_name = node[0]
 	conf = 1 - best_anat[anatomy_name] / gd_max
 	to_print = "The drug %s " % drug
-	to_print += "targets the protein %s " % path_proteins[0]
+	to_print += "targets the protein %s (%s) " % (protein_name_to_description(path_proteins[0]), path_proteins[0])
 
 	if pathway_description:
 		if pathway_set:
 			if len(path_proteins) > 1:
-				to_print += "which is involved with %s and associated protein %s " % (
-				pathway_description, path_proteins[1])
+				to_print += "which is involved with %s and associated protein %s (%s) " % (
+				pathway_description, protein_name_to_description(path_proteins[1]), path_proteins[1])
 			else:
 				to_print += "which is involved with (among others) the %s pathway " % pathway_description
 		else:
 			if len(path_proteins) > 1:
-				to_print += "which is involved with (among others) the %s pathway and associated protein %s " % (
-				pathway_description, path_proteins[1])
+				to_print += "which is involved with (among others) the %s pathway and associated protein %s (%s) " % (
+					pathway_description, protein_name_to_description(path_proteins[1]), path_proteins[1])
 			else:
 				to_print += "which is involved with (among others) the %s pathway " % pathway_description
 	else:
