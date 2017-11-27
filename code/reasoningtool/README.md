@@ -1,13 +1,15 @@
 # Requirements
 
-## Universal requirements for using the RTX proof-of-concept reasoning tool software
+## Base requirements for using the RTX proof-of-concept reasoning tool software
+
+- Python 3.5 or newer.  Specific packages that are required are listed for each
+  command-line script in the RTX POC software, in subsections below. For each
+  package requirement, a version number is indicated; that is the version number
+  of the package that we have tested with the RTX POC software.
+- Neo4j Community Edition, version 3.3.0 (installed locally is recommended for
+  best performance).
 
 [NOTE: script-specific requirements are enumerated below]
-
-### Base python requirements:
-- Python 3.5 or newer 
-- Neo4j Community Edition, version 3.3.0 (installed locally is recommended for
-  best performance)
 
 ## Requirements for running `BuildMasterKG.py`
 
@@ -19,6 +21,18 @@
 - `mygene` (version 3.0.0)
 - `lxml` (version 4.1.1)
 
+## Requirements for running `Q1Solution.py`
+
+### Python packages required
+- `networkx` (2.0)
+- `numpy` (1.13.3)
+- `ipython-cypher` (version 0.2.4)
+- `neo4j-driver` (version 1.5.0)
+- `requests` (version 2.18.4)
+- `requests-cache` (version 0.4.13)
+
+# Using the software
+
 ## Using `BuildMasterKG.py`
 
 First, make sure Neo4j is running and available on `bolt://localhost:7687`.  Then run:
@@ -28,7 +42,7 @@ First, make sure Neo4j is running and available on `bolt://localhost:7687`.  The
 or equivalently:
 
     sh run_build_master_kg.sh
-    
+
 # What is the Orangeboard?
 
 Orangeboard is a simple implementation of the Blackboard architectural pattern
