@@ -18,6 +18,7 @@ National Institutes of Health; see the `/etc/issue` file
 - host OSU: Ubuntu 16.04
 - Docker container: `ncats`
 - Docker container run command: see `run_container_ncats.saramsey.org.sh`
+- AWS CLI in host OS configured for `ramseyst` COE account (so don't make a public AMI!)
 
 # Backup to S3 from within the instances
 
