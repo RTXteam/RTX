@@ -206,7 +206,7 @@ def main():
 	parser.add_argument('-v', '--verbose', action="store_true", help="Flag to turn on verbosity", default=False)
 	parser.add_argument('-d', '--directed', action="store_true", help="To treat the graph as directed or not.", default=True)
 	parser.add_argument('-m', '--max_path_len', type=int,
-						help="Maximum graph path length for which to look for nearby omims", default=3)
+						help="Maximum graph path length for which to look for nearby omims", default=2)
 	parser.add_argument('-a', '--all', action="store_true", help="Flag indicating you want to run it on all Q1 diseases",
 						default=False)
 	# Parse and check args
@@ -231,7 +231,13 @@ def main():
 				if res == 1:
 					print("Sorry, no results found for %s" % disease)
 	else:
-		answerQ1(disease, directed=directed, max_path_len=max_path_len, verbose=verbose)
+		res = answerQ1(disease, directed=directed, max_path_len=max_path_len, verbose=verbose)
+		if res == 1:
+			print("Increasing path length and trying again...")
+			res = answerQ1(disease, directed=directed, max_path_len=max_path_len + 1, verbose=verbose)
+			if res == 1:
+				print("Increasing path length and trying again...")
+				res = answerQ1(disease, directed=directed, max_path_len=max_path_len + 2, verbose=verbose)
 
 if __name__ == "__main__":
 	main()
