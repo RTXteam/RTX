@@ -4,7 +4,6 @@ import os
 import Q2Utils
 import requests_cache
 requests_cache.install_cache('orangeboard')
-import sys
 import argparse
 from itertools import compress
 

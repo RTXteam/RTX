@@ -31,6 +31,14 @@
 - `requests` (version 2.18.4)
 - `requests-cache` (version 0.4.13)
 
+## Requirements for running `Q2Solution.py`
+
+### Python packages required
+- `numpy` (1.13.3)
+- `neo4j-driver` (version 1.5.0)
+- `requests` (version 2.18.4)
+- `requests-cache` (version 0.4.13)
+
 # Using the software
 
 ## Using `BuildMasterKG.py`
