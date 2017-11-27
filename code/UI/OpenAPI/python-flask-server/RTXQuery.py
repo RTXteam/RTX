@@ -48,8 +48,14 @@ class RTXQuery:
 
     if id == 'Q2':
       # call out to OrangeBoard here to satify the query "What is the clinical outcome pathway of XXXXXX for treatment of YYYYYYY?"
-      simulatedResult = [ { "id": 537, "code": 1, "codeString": "OK", "message": "AnswerFound", "text": [ "There might be something that links "+terms[0]+" to "+terms[1]+".", "more information..." ] } ]
-      return(simulatedResult)
+      os.chdir("/mnt/data/orangeboard/code/NCATS/code/reasoningtool")
+      returnedText = subprocess.run( [ "python3 Q2Solution.py -r "+terms[0]+" -d "+terms[1] ], stdout=subprocess.PIPE, shell=True )
+      reformattedText = returnedText.stdout.decode('utf-8')
+      reformattedText = re.sub("\n","<BR>\n",reformattedText)
+      #reformattedText = "<UL><LI>" + reformattedText + "</UL>"
+      result = [ { "id": 537, "code": 1, "codeString": "OK", "message": "AnswerFound", "text": [ reformattedText ] } ]
+      return(result)
+
 
     if id == 'Q3':
       targets = qph.query_drug_name_to_targets(terms[0])
@@ -74,8 +80,8 @@ class RTXQuery:
 def main():
   rtxq = RTXQuery()
   #query = { "knownQueryTypeId": "Q0", "terms": [ "lovastatin" ] }
-  query = { "knownQueryTypeId": "Q1", "terms": [ "cholera" ] }
-  #query = { "knownQueryTypeId": "Q2", "terms": [ "lovastatin", "hyperpidemia" ] }
+  #query = { "knownQueryTypeId": "Q1", "terms": [ "cholera" ] }
+  query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "glaucoma" ] }
   #query = { "knownQueryTypeId": "Q3", "terms": [ "acetaminophen" ] }
   result = rtxq.query(query)
   print(" Result is:")
