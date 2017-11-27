@@ -27,8 +27,10 @@ Add the following to /etc/apache2/sites-enabled/000-default.conf:
     Require valid-user
     </Location>
 
-before the `ProxyPass` statement.
+before the `ProxyPass` statement.  Then test your configuration changes using:
 
-### Restart Apache2:
+    apache2ctl configtest
+
+### You need to restart Apache2 for the changes to take effect:
 
     service apache2 restart
