@@ -57,7 +57,7 @@ to query for a genetic condition that may protect against a disease (for example
     
 To query for genetic conditions that protect against each of the 21 Q1 diseases,
 
-    python3 Q1Solutino.py -m 3 -a
+    python3 Q1Solution.py -m 3 -a
 
 ## Using `Q2Solution.py`
 
