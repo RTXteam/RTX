@@ -40,7 +40,10 @@ with open(os.path.abspath('../../data/q2/q2-drugandcondition-list-mapped.txt'), 
 
 
 def answerQ2(drug, disease_description):
-	disease = drug_to_disease_doid[drug]  # doid
+	if drug in drug_to_disease_doid:
+		disease = drug_to_disease_doid[drug]  # doid
+	else:
+		print("Sorry, but the drug %s is not in the list of known drugs." % drug)
 	if Q2Utils.has_disease(disease):
 		is_disont = True
 	else:
@@ -56,13 +59,17 @@ def answerQ2(drug, disease_description):
 			break
 
 	if not paths:
-		print("Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype." % (drug, disease_description))
+		print("Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype. "
+			  "The drug %s might not be one of the diseases I know about, or it does not connect to a known "
+			  "pathway, tissue, and phenotype (understudied)" % (drug, disease_description, disease_description))
 		return 1
 
 	# delete those that go through other drugs or diseases
 	paths = Q2Utils.delete_paths_through_other_drugs_diseases(paths, drug, disease)
 	if not paths:
-		print("Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype." % (drug, disease_description))
+		print("Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype. "
+			  "The drug %s might not be one of the diseases I know about, or it does not connect to a known "
+			  "pathway, tissue, and phenotype (understudied)" % (drug, disease_description, disease_description))
 		return 1
 
 	# Get: 1. Number of distinct node labels in each path, 2. if the path has a reactome pathway in it and
@@ -132,8 +139,9 @@ def answerQ2(drug, disease_description):
 	gds = np.array([i[1] for i in anat_name_google_distance_sorted])
 	num_non_inf = np.count_nonzero(~np.isinf(gds))
 	if num_non_inf == 0 or gds == []:
-		print("Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype." % (
-		drug, disease_description))
+		print("Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype. "
+			  "The drug %s might not be one of the diseases I know about, or it does not connect to a known "
+			  "pathway, tissue, and phenotype (understudied)" % (drug, disease_description, disease_description))
 		return 1
 	else:
 		gd_max = np.ma.masked_invalid(gds).max()
