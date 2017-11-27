@@ -62,7 +62,7 @@ the [RTX GitHub area](https://github.com/RTXteam/RTX).
 ### Issue tracking
 
 Our team makes extensive use of the GitHub Issues system for project
-management. Browsing the open and closed
+management. Browsing the open and (~100) closed
 [RTX issues](https://github.com/dkoslicki/NCATS/issues) will provide a sense of
 our team's workflow and organizational style, at least for a one-month POC
 project.
