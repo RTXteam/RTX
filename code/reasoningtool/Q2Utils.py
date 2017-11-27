@@ -329,6 +329,7 @@ def get_proteins_in_both(paths, pathway_indicies, anat_indicies):
 	in_both = proteins_in_pathway.intersection(proteins_in_anat)
 	return in_both, found_anat_names
 
+
 def print_results(path, pathway_near_intersection_names, best_anat, gd_max, drug, disease_description):
 	# Then display the results....
 	pathway = connect_to_pathway(path, pathway_near_intersection_names)
