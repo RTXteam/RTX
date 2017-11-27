@@ -1,29 +1,6 @@
 # RTX Reasoning Tool proof-of-concept (POC) software
 
-## RTX team's institutional affiliations
-
-- Oregon State University (Lead Proposing Institution)
-- Institute for Systems Biology (Subaward #1)
-- Ohio State University (Subaward #2)
-
-## RTX leadership team
-
-| Name           | Role                                        | Email                             | GitHub username                               | Areas of relevant expertise      |
-| -------------- | ------------------------------------------- | --------------------------------- | --------------------------------------------- | -------------------------------- |
-| Stephen Ramsey | Project PI, Oregon State University         | `stephen.ramsey@oregonstate.edu`  | [saramsey](https://github.com/saramsey)       | compbio, systems biology         |
-| David Koslicki | Project Co-PI, Oregon State University      | `dkoslicki@math.oregonstate.edu`  | [dkoslicki](https://github.com/dkoslicki)     | compbio, graph algorithms        |
-| Eric Deutsch   | PI, subaward, Institute for Systems Biology | `eric.deutsch@systemsbiology.org` | [edeutsch](https://github.com/edeutsch)       | bioinformatics, data management  | 
-| Arnab Nandi    | PI, subaward, Ohio State University         | `arnab@cse.ohio-state.edu`        | [arnabdotorg](https://gitnub.com/arnabdotorg) | UI for querying knowledge-bases  |
-
-## RTX other key personnel
-
-| Name             | Affiliation                   | Email                                 | GitHub username                                     | Areas of relevant expertise |
-| ---------------- | ----------------------------- | ------------------------------------- | --------------------------------------------------- | --------------------------- |
-| Liang Huang      | Oregon State University       | `liang.huang@oregonstate.edu`         | [lianghuang3](https://github.com/lianghuang3)       | natural language processing | 
-| Arash Termehchy  | Oregon State University       | `arash.termehchy@oregonstate.edu`     | [arashtermehchy](https://github.com/arashtermehchy) | databases, nowledge graphs  |
-| Theo Knijnenburg | Institute for Systems Biology | `theo.knijnenburg@systemsbiology.org` | [tknijnen](https://github.com/tknijnen)             | systems biology, Translator |
-| Sui Huang MD PhD | Institute for Systems Biology | `sui.huang@systemsbiology.org`        |                                                     | medicine, systems biology   |
-| Gustavo Glusman  | Institute for Systems Biology | `gustavo.glusman@systemsbiology.org`  |                                                     | computational genomics      |
+RTX is being collaboratively developed by a team of investigators at Oregon State University, Institute for Systems Biology, Ohio State University
 
 ## Organization of this repository
 
@@ -66,6 +43,33 @@ management. Browsing the open and (~100) closed
 [RTX issues](https://github.com/dkoslicki/NCATS/issues) will provide a sense of
 our team's workflow and organizational style, at least for a one-month POC
 project.
+
+## RTX team's institutional affiliations
+
+- Oregon State University (Lead Proposing Institution)
+- Institute for Systems Biology (Subaward #1)
+- Ohio State University (Subaward #2)
+
+## RTX leadership team
+
+| Name           | Role                                        | Email                             | GitHub username                               | Areas of relevant expertise      |
+| -------------- | ------------------------------------------- | --------------------------------- | --------------------------------------------- | -------------------------------- |
+| Stephen Ramsey | Project PI, Oregon State University         | `stephen.ramsey@oregonstate.edu`  | [saramsey](https://github.com/saramsey)       | compbio, systems biology         |
+| David Koslicki | Project Co-PI, Oregon State University      | `dkoslicki@math.oregonstate.edu`  | [dkoslicki](https://github.com/dkoslicki)     | compbio, graph algorithms        |
+| Eric Deutsch   | PI, subaward, Institute for Systems Biology | `eric.deutsch@systemsbiology.org` | [edeutsch](https://github.com/edeutsch)       | bioinformatics, data management  | 
+| Arnab Nandi    | PI, subaward, Ohio State University         | `arnab@cse.ohio-state.edu`        | [arnabdotorg](https://gitnub.com/arnabdotorg) | UI for querying knowledge-bases  |
+
+## RTX other key personnel
+
+| Name             | Affiliation                   | Email                                 | GitHub username                                     | Areas of relevant expertise |
+| ---------------- | ----------------------------- | ------------------------------------- | --------------------------------------------------- | --------------------------- |
+| Liang Huang      | Oregon State University       | `liang.huang@oregonstate.edu`         | [lianghuang3](https://github.com/lianghuang3)       | natural language processing | 
+| Arash Termehchy  | Oregon State University       | `arash.termehchy@oregonstate.edu`     | [arashtermehchy](https://github.com/arashtermehchy) | databases, nowledge graphs  |
+| Theo Knijnenburg | Institute for Systems Biology | `theo.knijnenburg@systemsbiology.org` | [tknijnen](https://github.com/tknijnen)             | systems biology, Translator |
+| Sui Huang MD PhD | Institute for Systems Biology | `sui.huang@systemsbiology.org`        |                                                     | medicine, systems biology   |
+| Gustavo Glusman  | Institute for Systems Biology | `gustavo.glusman@systemsbiology.org`  |                                                     | computational genomics      |
+
+
 
  
 
