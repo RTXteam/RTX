@@ -209,6 +209,19 @@ def get_path_length(source_type, source_name, target_type, target_name, session=
 # TODO: Debug this guy
 def get_intermediate_path_length(source_type, source_name, intermediate_type, intermediate_name,
 								 target_type, target_name, session=session, debug=False, max_path_len=1):
+	"""
+	get the smallest path length between a source and target where an intermediate node is specified
+	:param source_type: source node type
+	:param source_name: source node name
+	:param intermediate_type: intermediate node type
+	:param intermediate_name: intermediate node name
+	:param target_type: target node type
+	:param target_name: target node name
+	:param session: neo4j session
+	:param debug: just return the query (flag)
+	:param max_path_len: maximum distance to pad the intermediate node from the source and the target
+	:return: int (shortest path length of such paths)
+	"""
 	query = "match p = (s:%s{name:'%s'})-[*0..%d]-(i:%s{name:'%s'})-[*0..%d]-(t:%s{name:'%s'}) "\
 			"return length(p) order by length(p) limit 1" % (source_type, source_name, max_path_len, intermediate_type,
 															 intermediate_name, max_path_len, target_type, target_name)
@@ -223,6 +236,13 @@ def get_intermediate_path_length(source_type, source_name, intermediate_type, in
 
 
 def anatomy_name_to_description(anatomy_name, session=session, debug=False):
+	"""
+	Get the description of an anatomy node
+	:param anatomy_name: name of the node
+	:param session: neo4j session
+	:param debug: just return the query
+	:return: a string (the description of the node)
+	"""
 	query = "match (n:anatont_anatomy{name:'%s'}) return n.description" % anatomy_name
 	if debug:
 		return query
@@ -235,6 +255,12 @@ def anatomy_name_to_description(anatomy_name, session=session, debug=False):
 
 
 def connect_to_pathway(path, pathway_near_intersection_names):
+	"""
+	For the given path and pathway node names, find the pathway that is closest to the path
+	:param path: input path
+	:param pathway_near_intersection_names: a set of pathway node names (looking for the closest)
+	:return: the (a) pathway node that is closest to the given path
+	"""
 	proteins = []
 	for node in path:
 		if node[1] == "uniprot_protein":
@@ -260,6 +286,13 @@ def connect_to_pathway(path, pathway_near_intersection_names):
 
 
 def pathway_name_to_description(pathway_name, session=session, debug=False):
+	"""
+	Get the description of a pathway node
+	:param pathway_name: pathway node name
+	:param session: neo4j session
+	:param debug: just return the query
+	:return: string (pathway node description)
+	"""
 	query = "match (n:reactome_pathway{name:'%s'}) return n.description" % pathway_name
 	if debug:
 		return query
@@ -272,6 +305,13 @@ def pathway_name_to_description(pathway_name, session=session, debug=False):
 
 
 def prioritize_on_gd(found_anat_names, disease_description):
+	"""
+	Given a list (found_anat_names) of pathway node names and a disease_description (string), compute the
+	Google distance (based on NCBI search) between the anatomy names and the disease description
+	:param found_anat_names: a list of anatomy node names
+	:param disease_description: a string (disease description, MeSH term)
+	:return: a list of tuples, first element is anatomy node name, second element is the google distance
+	"""
 	anat_name_google_distance = []
 	for anat in found_anat_names:
 		query = "match (n:anatont_anatomy{name:'%s'}) return n.description" % anat
@@ -300,6 +340,17 @@ def prioritize_on_gd(found_anat_names, disease_description):
 
 
 def get_proteins_in_both(paths, pathway_indicies, anat_indicies):
+	"""
+	Given a list of paths (paths), a list of indicies of those paths that contain reactome pathways (pathway_indicies)
+	and a list of indicies of those paths that contain the anatot_anatomy nodes, find the proteins that are in both
+	the pathway_indicies and anat_indicies, and get all the anatomy names in the paths.
+	TODO: could possibly restrict to those anatomy names that are in the paths that contain proteins in both
+	pathway and anatomy paths (but for completeness, why not include them all?)
+	:param paths: a list of paths
+	:param pathway_indicies: a list of ints (paths[index] has a reactome pathway in it)
+	:param anat_indicies: a list of ints (paths[index] has a anatont_anatomy in it)
+	:return: a list of proteins in both, and a list of anatomy node names found
+	"""
 	found_path_names = set()
 	for index in pathway_indicies:
 		path = paths[index]
@@ -331,6 +382,16 @@ def get_proteins_in_both(paths, pathway_indicies, anat_indicies):
 
 
 def print_results(path, pathway_near_intersection_names, best_anat, gd_max, drug, disease_description):
+	"""
+	Pretty print the results
+	:param path: a given path to display
+	:param pathway_near_intersection_names: a list of reactome pathways found nearby to this path
+	:param best_anat: the best anatomy node name near to this path
+	:param gd_max: the maximum google distance of all anatomies found
+	:param drug: the target drug of interest (doid)
+	:param disease_description: the human-readable description of the drug
+	:return: None (print everything to screen)
+	"""
 	# Then display the results....
 	pathway = connect_to_pathway(path, pathway_near_intersection_names)
 	pathway_set = False
