@@ -254,6 +254,25 @@ def anatomy_name_to_description(anatomy_name, session=session, debug=False):
 		return "a tissue "
 
 
+def protein_name_to_description(protein_name, session=session, debug=False):
+	"""
+	Get the description of an protein node
+	:param protein_name: name of the node
+	:param session: neo4j session
+	:param debug: just return the query
+	:return: a string (the description of the node)
+	"""
+	query = "match (n:uniprot_protein{name:'%s'}) return n.description" % protein_name
+	if debug:
+		return query
+	res = session.run(query)
+	res = [i for i in res]
+	if res:
+		return res[0]['n.description']
+	else:
+		return " "
+
+
 def connect_to_pathway(path, pathway_near_intersection_names):
 	"""
 	For the given path and pathway node names, find the pathway that is closest to the path
@@ -411,19 +430,19 @@ def print_results(path, pathway_near_intersection_names, best_anat, gd_max, drug
 			anatomy_name = node[0]
 	conf = 1 - best_anat[anatomy_name] / gd_max
 	to_print = "The drug %s " % drug
-	to_print += "targets the protein %s " % path_proteins[0]
+	to_print += "targets the protein %s (%s) " % (protein_name_to_description(path_proteins[0]), path_proteins[0])
 
 	if pathway_description:
 		if pathway_set:
 			if len(path_proteins) > 1:
-				to_print += "which is involved with %s and associated protein %s " % (
-				pathway_description, path_proteins[1])
+				to_print += "which is involved with %s and associated protein %s (%s) " % (
+				pathway_description, protein_name_to_description(path_proteins[1]), path_proteins[1])
 			else:
 				to_print += "which is involved with (among others) the %s pathway " % pathway_description
 		else:
 			if len(path_proteins) > 1:
-				to_print += "which is involved with (among others) the %s pathway and associated protein %s " % (
-				pathway_description, path_proteins[1])
+				to_print += "which is involved with (among others) the %s pathway and associated protein %s (%s) " % (
+				pathway_description, protein_name_to_description(path_proteins[1]), path_proteins[1])
 			else:
 				to_print += "which is involved with (among others) the %s pathway " % pathway_description
 	else:
