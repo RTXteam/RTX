@@ -20,6 +20,7 @@ from QueryNCBIeUtils import QueryNCBIeUtils
 from QuerySciGraph import QuerySciGraph
 from QueryDisont import QueryDisont
 from ParsePhenont import ParsePhenont
+from QueryChEMBL import QueryChEMBL
 
 import pandas
 import timeit
@@ -166,7 +167,7 @@ def seed_and_expand_kg_q1(num_expansions):
             gene_symbols = bne.query_mygene_obj.convert_uniprot_id_to_gene_symbol(uniprot_id)
             print(gene_symbols)
             assert len(gene_symbols) > 0
-            prot_node = ob.add_node('uniprot_protein', uniprot_id, desc=next(iter(gene_symbols)))
+            prot_node = ob.add_node('uniprot_protein', uniprot_id, desc=';'.join(list(gene_symbols)))
             ob.add_rel('gene_assoc_with', 'OMIM', prot_node, omim_node)
 
     ## triple-expand the knowledge graph
@@ -206,55 +207,62 @@ def get_curie_ont_ids_for_mesh_term(mesh_term):
             ret_curie_ids.append(human_phenont_id)
     return ret_curie_ids
     
-def seed_and_expand_kg_q2(num_expansions=3):
+def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
     
     drug_dis_df = pandas.read_csv('../../data/q2/q2-drugandcondition-list.txt',
                                   sep='\t')
 
-    print('=====================> seeding disease nodes for Q2')
-    
-    first_row = True
-    mesh_terms_set = set()
-    mesh_term_to_curie_ids_dict = dict()
-    curie_ids_for_df = []
-    for index, row in drug_dis_df.iterrows():
-        mesh_term = row['Condition']
-        if mesh_term not in mesh_terms_set:
-            mesh_term_to_curie_ids_dict[mesh_term] = None
-            mesh_terms_set.add(mesh_term)
-            curie_ids = get_curie_ont_ids_for_mesh_term(mesh_term)
-            if len(curie_ids) > 0:
-                assert type(curie_ids)==list
-                for curie_id in curie_ids:
-                    if 'DOID:' in curie_id:
-                        disont_desc = QueryDisont.query_disont_to_label(curie_id)
-                        ob.add_node('disont_disease', curie_id, desc=disont_desc, seed_node_bool=first_row)
-                        mesh_term_to_curie_ids_dict[mesh_term] = curie_id
-                        first_row = False
-                    else:
-                        if 'HP:' in curie_id:
-                            ob.add_node('phenont_phenotype', curie_id, desc=mesh_term, seed_node_bool=first_row)
+    if seed_parts is None or 'conditions' in seed_parts:
+
+        print('=====================> seeding disease nodes for Q2')
+        first_row = True
+        mesh_terms_set = set()
+        mesh_term_to_curie_ids_dict = dict()
+        curie_ids_for_df = []
+        for index, row in drug_dis_df.iterrows():
+            mesh_term = row['Condition']
+            if mesh_term not in mesh_terms_set:
+                mesh_term_to_curie_ids_dict[mesh_term] = None
+                mesh_terms_set.add(mesh_term)
+                curie_ids = get_curie_ont_ids_for_mesh_term(mesh_term)
+                if len(curie_ids) > 0:
+                    assert type(curie_ids)==list
+                    for curie_id in curie_ids:
+                        if 'DOID:' in curie_id:
+                            disont_desc = QueryDisont.query_disont_to_label(curie_id)
+                            ob.add_node('disont_disease', curie_id, desc=disont_desc, seed_node_bool=first_row)
                             mesh_term_to_curie_ids_dict[mesh_term] = curie_id
                             first_row = False
                         else:
-                            assert False ## should never get here
-        curie_ids_for_df.append(mesh_term_to_curie_ids_dict[mesh_term])
-    drug_dis_df['CURIE_ID'] = pandas.Series(curie_ids_for_df, index=drug_dis_df.index)
-    drug_dis_df.to_csv('../../data/q2/q2-drugandcondition-list-mapped-output.txt', sep='\t')
-
-    ## triple-expand the knowledge graph
-    for _ in range(0, num_expansions):
-        bne.expand_all_nodes()
+                            if 'HP:' in curie_id:
+                                ob.add_node('phenont_phenotype', curie_id, desc=mesh_term, seed_node_bool=first_row)
+                                mesh_term_to_curie_ids_dict[mesh_term] = curie_id
+                                first_row = False
+                            else:
+                                assert False ## should never get here
+            curie_ids_for_df.append(mesh_term_to_curie_ids_dict[mesh_term])
+        drug_dis_df['CURIE_ID'] = pandas.Series(curie_ids_for_df, index=drug_dis_df.index)
+        drug_dis_df.to_csv('../../data/q2/q2-drugandcondition-list-mapped-output.txt', sep='\t')
+        ## triple-expand the knowledge graph
+        for _ in range(0, num_expansions):
+            bne.expand_all_nodes()
                 
-    print('=====================> seeding drug nodes for Q2')
-    first_row = True
-    for index, row in drug_dis_df.iterrows():
-        ob.add_node('pharos_drug', row['Drug'].lower(), seed_node_bool=first_row)
-        first_row = False
+    if seed_parts is None or 'drugs' in seed_parts:
+        print('=====================> seeding drug nodes for Q2')
+        first_row = True
+        for index, row in drug_dis_df.iterrows():
+            drug_name = row['Drug'].lower()
+            chembl_ids = QueryChEMBL.get_chembl_ids_for_drug(drug_name)
+            if chembl_ids is not None and len(chembl_ids) > 0:
+                chembl_id = next(iter(chembl_ids))
+            else:
+                chembl_id = ''
+            ob.add_node('pharos_drug', drug_name, desc=chembl_id, seed_node_bool=first_row)
+            first_row = False
 
-    ## triple-expand the knowledge graph
-    for _ in range(0, num_expansions):
-        bne.expand_all_nodes()
+        ## triple-expand the knowledge graph
+        for _ in range(0, num_expansions):
+            bne.expand_all_nodes()
 
 def add_pc2_to_kg():
     sif_data = pandas.read_csv('../../data/pc2/PathwayCommons9.All.hgnc.sif',
@@ -299,6 +307,13 @@ def make_master_kg():
     seed_and_expand_kg_q1(num_expansions=3)
     seed_and_expand_kg_q2(num_expansions=3)
     add_pc2_to_kg()
+    ob.neo4j_set_url('bolt://0.0.0.0:7687')
+    ob.neo4j_push()
+    print("count(Node) = {}".format(ob.count_nodes()))
+    print("count(Rel) = {}".format(ob.count_rels()))
+
+def test_seed_q2_drugs():
+    seed_and_expand_kg_q2(num_expansions=1, seed_parts=['drugs'])
     ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
     print("count(Node) = {}".format(ob.count_nodes()))

@@ -34,6 +34,7 @@ from QueryMiRGate import QueryMiRGate
 from QueryMiRBase import QueryMiRBase
 from QueryPharos import QueryPharos
 from QuerySciGraph import QuerySciGraph
+from QueryChEMBL import QueryChEMBL
 
 class BioNetExpander:
     MASTER_REL_IS_DIRECTED = {'disease_affects': True,
@@ -59,13 +60,22 @@ class BioNetExpander:
 
     def expand_pharos_drug(self, node):
         drug_name = node.name
-
+        drug_desc = node.desc
+        target_uniprot_ids = QueryChEMBL.get_target_uniprot_ids_for_drug(drug_name)
+        if target_uniprot_ids is not None:
+            for target_uniprot_id in target_uniprot_ids:
+                gene_names = self.query_mygene_obj.convert_uniprot_id_to_gene_symbol(target_uniprot_id)
+                node_desc = ';'.join(list(gene_names))
+                target_node = self.orangeboard.add_node('uniprot_protein', target_uniprot_id, desc=node_desc)
+                self.orangeboard.add_rel('targets', 'ChEMBL', node, target_node)
+        print('querying pharos for drug: ' + drug_name)
         targets = QueryPharos.query_drug_name_to_targets(drug_name)
-        for target in targets:
-            uniprot_id = QueryPharos.query_target_uniprot_accession(str(target["id"]))
-            assert '-' not in uniprot_id
-            target_node = self.orangeboard.add_node('uniprot_protein', uniprot_id, desc=target["name"])
-            self.orangeboard.add_rel('targets', 'Pharos', node, target_node)
+        if targets is not None:
+            for target in targets:
+                uniprot_id = QueryPharos.query_target_uniprot_accession(str(target["id"]))
+                assert '-' not in uniprot_id
+                target_node = self.orangeboard.add_node('uniprot_protein', uniprot_id, desc=target["name"])
+                self.orangeboard.add_rel('targets', 'Pharos', node, target_node)
 
     def expand_ncbigene_microrna(self, node):
         ncbi_gene_id = node.name
@@ -324,9 +334,11 @@ class BioNetExpander:
 if __name__ == '__main__':
     ob = Orangeboard(debug=False)
     ob.set_dict_reltype_dirs({'targets': True})
-    lovastatin = ob.add_node('pharos_drug', 'lovastatin', desc='lovastatin', seed_node_bool=True)
+    lovastatin = ob.add_node('pharos_drug', 'lovastatin', desc='', seed_node_bool=True)
+    clothiapine = ob.add_node('pharos_drug', 'clothiapine', desc='CHEMBL304902', seed_node_bool=True)
     bne = BioNetExpander(ob)
-    bne.expand_pharos_drug(lovastatin)
+    bne.expand_drug(lovastatin)
+    bne.expand_drug(clothiapine)
     ob.neo4j_set_url()
     ob.neo4j_set_auth()
     ob.neo4j_push()

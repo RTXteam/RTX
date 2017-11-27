@@ -22,7 +22,7 @@ class QueryChEMBL:
     @staticmethod
     def send_query_get(handler, url_suffix):
         url = QueryChEMBL.API_BASE_URL + '/' + handler + '?' + url_suffix
-        print(url)
+#        print(url)
         try:
             res = requests.get(url,
                                timeout=QueryChEMBL.TIMEOUT_SEC)
