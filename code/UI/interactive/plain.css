@@ -94,3 +94,11 @@ body{
 /* multiple styles seperated by a , */
 #content,
 ul li a{  }
+
+/* Make question text box bigger */
+input#questionText {
+    font-size: large;
+    margin: 4px;
+    padding: 6px;
+    width: 80%;
+}
