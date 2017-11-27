@@ -116,3 +116,28 @@ and gene-phenotype relationships.
 
 - `QueryPazar.py`: not sure we will ever end up remotely querying Pazar; Pazar looks useful but the web API is 
 SOAP-based and semi-undocumented. (SAR)
+
+# Algorithmic approaches for proof of concept questions 1 and 2 
+
+## Q1 approach
+To find genetic conditions that protect from a disease, we first find all genetic conditions near the disease 
+(i.e. short path distances within a threshold). We then utilize a Markov chain (trained on example condition-disease pairs) to specify path
+"templates" between the condition and the disease. A template is a path through the knowledge graph that specifies node 
+labels and relationship types, without specifying which nodes and relationships are chosen). These path "templates" are 
+then used select from the nearby genetic conditions those that have a high probability of fulfilling the query. Of the 
+remaining conditions, we use text mining (PubMed [Google distance](https://en.wikipedia.org/wiki/Normalized_Google_distance) 
+between MeSH terms) to select the well studied conditions. These are prioritized based on a confidence score which is a combination of small PubMed 
+Google distance and high Markov chain path probability. 
+
+## Q2 approach
+To find a clinical outcome pathway for a drug-disease pair, we first find all paths between the source drug and the target 
+disease that contain at least one [uniprot](http://www.uniprot.org/) protein, [reactome](https://reactome.org/) pathway,  
+and/or [Monarch](https://monarchinitiative.org/)-[BioLink](https://github.com/biolink/biolink-api) [Uberon](https://uberon.github.io/) annotated 
+tissue/anatomy node. We then find all proteins that appear in both reactome pathway and anatomy/tissue containing paths. 
+The anatomy nodes are prioritized using the 
+PubMed [Google distance](https://en.wikipedia.org/wiki/Normalized_Google_distance) based on MeSH terms and their knowledge 
+graph distance to the aforementioned proteins. Paths are then found that start at the drug, go through the nearby protein(s), nearby 
+pathway(s), and the prioritized anatomy node(s). Confidence values calculated as a combination of Google 
+distance and path length between nodes. If given training data (known paths connecting drugs and diseases), it would be 
+straightforward to solve Q2 by utilizing the same Markov chain approach that we used for Q1. We intend to use this 
+Markov chain approach for the production version of the RTX.
