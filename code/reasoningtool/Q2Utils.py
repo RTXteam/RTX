@@ -61,6 +61,7 @@ def has_disease(disease_doid, session=session, debug=False):
 		else:
 			return False
 
+
 def has_phenotype(disease, session=session, debug=False):
 	"""
 	Check if phenotype is in the the graph
@@ -155,6 +156,7 @@ def look_for_pathway_and_anat(paths):
 			has_prot_and_anat.append(False)
 	return num_labels, has_prot_and_path, has_prot_and_anat
 
+
 def delete_paths_through_other_drugs_diseases(paths, drug, disease):
 	"""
 	Delete from paths those that contain other drugs or diseases
@@ -206,7 +208,7 @@ def get_path_length(source_type, source_name, target_type, target_name, session=
 	else:
 		return np.inf
 
-# TODO: Debug this guy
+
 def get_intermediate_path_length(source_type, source_name, intermediate_type, intermediate_name,
 								 target_type, target_name, session=session, debug=False, max_path_len=1):
 	"""
@@ -442,7 +444,7 @@ def print_results(path, pathway_near_intersection_names, best_anat, gd_max, drug
 		else:
 			if len(path_proteins) > 1:
 				to_print += "which is involved with (among others) the %s pathway and associated protein %s (%s) " % (
-				pathway_description, protein_name_to_description(path_proteins[1]), path_proteins[1])
+					pathway_description, protein_name_to_description(path_proteins[1]), path_proteins[1])
 			else:
 				to_print += "which is involved with (among others) the %s pathway " % pathway_description
 	else:
