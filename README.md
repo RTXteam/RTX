@@ -1,4 +1,4 @@
-# RTX Reasoning Tool proof-of-concept (POC) software repository
+# RTX Reasoning Tool proof-of-concept (POC) software
 
 ## RTX team's institutional affiliations
 
