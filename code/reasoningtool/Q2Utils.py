@@ -357,13 +357,13 @@ def print_results(path, pathway_near_intersection_names, best_anat, gd_max, drug
 				to_print += "which is involved with %s and associated protein %s " % (
 				pathway_description, path_proteins[1])
 			else:
-				to_print = "which is involved with (among others) the %s pathway " % pathway_description
+				to_print += "which is involved with (among others) the %s pathway " % pathway_description
 		else:
 			if len(path_proteins) > 1:
 				to_print += "which is involved with (among others) the %s pathway and associated protein %s " % (
 				pathway_description, path_proteins[1])
 			else:
-				to_print = "which is involved with (among others) the %s pathway " % pathway_description
+				to_print += "which is involved with (among others) the %s pathway " % pathway_description
 	else:
 		to_print += " which is involved with an unknown pathway"
 
