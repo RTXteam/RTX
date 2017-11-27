@@ -67,6 +67,20 @@ class QueryNCBIeUtils:
             res = None
         return res
 
+    @staticmethod
+    def get_clinvar_uids_for_disease_or_phenotype_string(disphen_str):
+        res = QueryNCBIeUtils.send_query_get('esearch.fcgi',
+                                             'term=' + disphen_str + '[disease/phenotype]')
+        res_set = set()
+        if res is not None:
+            res_json = res.json()
+            esr = res_json.get('esearchresult', None)
+            if esr is not None:
+                idlist = esr.get('idlist', None)
+                if idlist is not None:
+                    res_set |= set([int(uid_str) for uid_str in idlist])
+        return res_set
+    
     '''returns a list of mesh UIDs for a given mesh term query
 
     '''
@@ -175,11 +189,14 @@ class QueryNCBIeUtils:
         term_str_encoded = urllib.parse.quote(term_str, safe='')
         res = QueryNCBIeUtils.send_query_get('esearch.fcgi',
                                              'db=pubmed&term=' + term_str_encoded)
-        status_code = res.status_code
-        if status_code != 200:
-            print('HTTP response status code: ' + str(status_code) + ' for query term string {term}'.format(term=term_str))
-            return None
-        return int(res.json()['esearchresult']['count'])
+        res_int = None
+        if res is not None:
+            status_code = res.status_code
+            if status_code == 200:
+                res_int = int(res.json()['esearchresult']['count'])
+            else:
+                print('HTTP response status code: ' + str(status_code) + ' for query term string {term}'.format(term=term_str))
+        return res_int
 
     @staticmethod
     def normalized_google_distance(mesh1_str, mesh2_str):
@@ -208,7 +225,8 @@ class QueryNCBIeUtils:
         print(QueryNCBIeUtils.normalized_google_distance(mesh1_str, mesh2_str))
               
 if __name__ == '__main__':
-    print(QueryNCBIeUtils.get_mesh_uids_for_mesh_term('Anorexia Nervosa'))    
+#    print(QueryNCBIeUtils.get_clinvar_uids_for_disease_or_phenotype_string('hypercholesterolemia'))
+#    print(QueryNCBIeUtils.get_mesh_uids_for_mesh_term('Anorexia Nervosa'))    
 #    print(QueryNCBIeUtils.get_mesh_uids_for_mesh_term('Leukemia, Promyelocytic, Acute'))
 #    print(QueryNCBIeUtils.get_mesh_uids_for_mesh_term('Leukemia, Myeloid, Acute'))
     
@@ -235,9 +253,9 @@ if __name__ == '__main__':
     #                   'Stress Disorders, Post-Traumatic']:
     #     print(QueryNCBIeUtils.normalized_google_distance(mesh_term, QueryNCBIeUtils.get_mesh_terms_for_omim_id(219700)[0]))
               
-    # print(QueryNCBIeUtils.normalized_google_distance(
-    #     QueryNCBIeUtils.get_mesh_terms_for_omim_id(219700)[0],
-    #     "Cholera"))
+    print(QueryNCBIeUtils.normalized_google_distance(
+        QueryNCBIeUtils.get_mesh_terms_for_omim_id(219700)[0],
+        "Cholera"))
               
     # print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(219700)) # OMIM preferred name: "CYSTIC FIBROSIS"
     # print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(125050)) # OMIM preferred name: "DEAFNESS WITH ANHIDROTIC ECTODERMAL DYSPLASIA"
