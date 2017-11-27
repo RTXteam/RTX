@@ -19,3 +19,9 @@ National Institutes of Health; see the `/etc/issue` file
 - Docker container: `ncats`
 - Docker container run command: see `run_container_ncats.saramsey.org.sh`
 
+# Backup to S3 from within the instances
+
+- Need `awscli` Python package installed (can be either in the host OS or inside the container)
+
+    aws s3 cp orangeboard.sqlite s3://ramseylab/ncats/ncats.saramsey.org
+
