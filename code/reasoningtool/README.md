@@ -133,7 +133,7 @@ Google distance and high Markov chain path probability.
 To find a clinical outcome pathway for a drug-disease pair, we first find all paths between the source drug and the target 
 disease that contain at least one [uniprot](http://www.uniprot.org/) protein, [reactome](https://reactome.org/) pathway,  
 and/or [Monarch](https://monarchinitiative.org/)-[BioLink](https://github.com/biolink/biolink-api) [Uberon](https://uberon.github.io/) annotated 
-tissue/anatomy node. We then find all proteins that appear in both reactome pathway and anatomy/tissue containing paths. 
+tissue/anatomy node. We then find all proteins that appear in both reactome pathway node and anatomy/tissue node containing paths. 
 The anatomy nodes are prioritized using the 
 PubMed [Google distance](https://en.wikipedia.org/wiki/Normalized_Google_distance) based on MeSH terms and their knowledge 
 graph distance to the aforementioned proteins. Paths are then found that start at the drug, go through the nearby protein(s), nearby 
