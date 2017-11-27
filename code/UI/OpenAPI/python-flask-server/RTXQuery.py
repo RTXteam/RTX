@@ -39,7 +39,7 @@ class RTXQuery:
       # call out to OrangeBoard here to satify the query "What genetic conditions might offer protection against XXXXXX?"
       os.chdir("/mnt/data/orangeboard/code/NCATS/code/reasoningtool")
       #returnedText = answerQ1(terms[0], directed=True, max_path_len=3, verbose=True)
-      returnedText = subprocess.run( [ "python3 Q1Solution.py -i "+terms[0] ], stdout=subprocess.PIPE, shell=True )
+      returnedText = subprocess.run( [ "python3 Q1Solution.py -i '"+terms[0]+"'" ], stdout=subprocess.PIPE, shell=True )
       reformattedText = returnedText.stdout.decode('utf-8')
       reformattedText = re.sub("\n","\n<LI>",reformattedText)
       reformattedText = "<UL><LI>" + reformattedText + "</UL>"
@@ -49,7 +49,7 @@ class RTXQuery:
     if id == 'Q2':
       # call out to OrangeBoard here to satify the query "What is the clinical outcome pathway of XXXXXX for treatment of YYYYYYY?"
       os.chdir("/mnt/data/orangeboard/code/NCATS/code/reasoningtool")
-      returnedText = subprocess.run( [ "python3 Q2Solution.py -r "+terms[0]+" -d "+terms[1] ], stdout=subprocess.PIPE, shell=True )
+      returnedText = subprocess.run( [ "python3 Q2Solution.py -r '"+terms[0]+"' -d '"+terms[1]+"'" ], stdout=subprocess.PIPE, shell=True )
       reformattedText = returnedText.stdout.decode('utf-8')
       reformattedText = re.sub("\n","<BR>\n",reformattedText)
       #reformattedText = "<UL><LI>" + reformattedText + "</UL>"
