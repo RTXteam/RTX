@@ -62,13 +62,14 @@ To query for genetic conditions that protect against each of the 21 Q1 diseases,
 ## Using `Q2Solution.py`
 
 First, make sure Neo4j is running and available on `bolt://lysine.ncats.io:7687`.  Then, 
-to query for a genetic condition that may protect against a disease (for example, `cholera`),
+to query for the clinical outcome pathway between a drug (e.g., `lovastatin`) and 
+a condition (e.g., `hypercholesterolemia`),
 
-    python3 Q1Solution.py -m 3 -i cholera
+    python3 Q2Solution.py -r lovastatin -d hypercholesterolemia
     
-To query for genetic conditions that protect against each of the 21 Q1 diseases,
+To find clinical outcome pathways for all 1,000 pairs of drugs and conditions for Q2,
 
-    python3 Q1Solution.py -m 3 -a
+    python3 Q2Solution.py -a
 
 # What is the Orangeboard?
 
