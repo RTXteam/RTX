@@ -7,6 +7,7 @@ import os
 import Q1Utils
 import argparse
 import sys
+import json
 
 # Connection information for the neo4j server, populated with orangeboard
 #driver = GraphDatabase.driver("bolt://lysine.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))
@@ -196,11 +197,13 @@ def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False, use_js
 			print("No omims passed all refinements. Please raise the max_path_len and try again.")
 		return 1
 
+	results_text = Q1Utils.display_results_str(doid, to_display_paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=to_display_probs_dict)
 	if not use_json:
-		Q1Utils.display_results(doid, to_display_paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=to_display_probs_dict)
+		print(results_text)
 	else:
-		print(Q1Utils.get_results_json_str(doid, to_display_paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=to_display_probs_dict))
-
+		ret_obj = Q1Utils.get_results_object_model(doid, to_display_paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=to_display_probs_dict)
+		ret_obj['text'] = results_text
+		print(json.dumps(ret_obj))
 
 
 def main():
