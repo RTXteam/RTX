@@ -39,6 +39,25 @@ DefaultConfigurable = namedtuple(
 defaults = DefaultConfigurable(**DEFAULT_CONFIGURABLE)
 
 
+def node_to_description(name, session=session, debug=False):
+	"""
+	Get the description of an protein node
+	:param name: name of the node
+	:param session: neo4j session
+	:param debug: just return the query
+	:return: a string (the description of the node)
+	"""
+	query = "match (n{name:'%s'}) return n.description" % name
+	if debug:
+		return query
+	res = session.run(query)
+	res = [i for i in res]
+	if res:
+		return res[0]['n.description']
+	else:
+		return " "
+
+
 # Get the omims that connect up to a given doid
 def get_omims_connecting_to_fixed_doid(session, doid, max_path_len=4, debug=False, verbose=False, directed=False):
 	"""
@@ -282,7 +301,7 @@ def display_results(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disease, 
 					if index % 2 == 1:
 						to_print += "--[%s]-->" % (path_types[index])
 					else:
-						to_print += "(%s:%s)" % (path_names[index], path_types[index])
+						to_print += "(%s:%s:%s)" % (node_to_description(path_names[index]), path_names[index], path_types[index])
 				if doid in q1_doid_to_disease:
 					to_print += "(%s). " % q1_doid_to_disease[doid]
 				else:
@@ -457,3 +476,5 @@ def refine_omims_Markov_chain(omim_list, doid, max_path_len=3, verbose=False):
 	if verbose:
 		print("Found %d omims (according to the Markov chain model)" % len(selected_omims))
 	return selected_omims, paths_dict_selected, selected_probs
+
+
