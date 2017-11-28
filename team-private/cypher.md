@@ -48,31 +48,6 @@ our [example code](genetic_conditions/get_node_ids_of_genetic_conditions.R).
         WITH o, degree, count(r) AS indegree
         return id(o) AS ID, degree, indegree, degree - indegree AS outdegree
 
-## Disease ID
-
-| name                           | id      |
-| ------------------------------ | ------- |
-| _Alcohol dependence_           | 486897  |
-| _alcohol dependence_           | 1633994 |
-| Alkaptonuria                   | 6358    |
-| Alzheimer Disease              | 1131907 |
-| asthma                         | 2592883 |
-| cholera                        | 2543486 |
-| Diabetes Mellitus, Type 2      | 1122087 |
-| Duchenne muscular dystrophy    | 53523   |
-| Huntington Disease             | 8138    |
-| Hypercholesterolemia           | 1132179 |
-| malaria                        | 2542350 |
-| myocardial infarction          | 2549074 |
-| _Niemann-Pick Disease Type C_  | 7888    |
-| _Niemann-Pick disease type C_  | 843637  |
-| osteomalacia                   | 2612545 |
-| osteoporosis                   | 2185483 |
-| post-traumatic stress disorder | 5186887 |
-| Sickle Cell Disease            | 7955    |
-
-
-
 ## Disease DOID
 
 |                Disease                 | Disease name in [disease-ontology](http://disease-ontology.org/) | DOID         |
