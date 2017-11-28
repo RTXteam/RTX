@@ -71,37 +71,50 @@ To find clinical outcome pathways for all 1,000 pairs of drugs and conditions fo
 
     python3 Q2Solution.py -a
 
-# What is the Orangeboard?
+# What are the Orangeboard and BioNetExpander?
 
-Orangeboard is a simple implementation of the Blackboard architectural pattern
-for modeling a knowledge graph (orange because it is the color for both OSU and
-ISB).  You can add nodes and relationships to the Orangeboard, and they get
-represented as python `Node` or `Rel` objects.  Nodes can be marked with a
-`nodetype` and a `name` (the combination of which is unique).  Every node also
-gets a UUID assigned internally by the Blackboard.  Nodes can also have
-properties which will get mapped to Neo4j properties when the graph is exported
-to Neo4j. You can also add relationships (which I shorten to `rel` in much of
-the code) to the graph in the Blackboard.  A relationship has a `reltype` which
-is like a category of relationships (think `is_child_of` or `is_member_of`, that
-kind of thing).  Each `reltype` is mapped (by a hard-coded `dict` in the
-`ReasoningTool.py` script) to a `boolean` value indicating whether or not that
+`Orangeboard` and `BioNetExpander` together are a simple implementation of the
+Blackboard architectural pattern for modeling a knowledge graph (orange because
+it is the color for both OSU and ISB). `Orangeboard` provides an API and object
+model for adding nodes and relationships to the virtual blackboard, which are
+represented as Python `Node` or `Rel` objects.  
+
+## Nodes in Orangeboard
+Nodes are marked with a `nodetype` (which directly maps to a node Label in
+Neo4j) and a `name`, the combination of which is unique in the knowledge graph.
+Every node also gets a UUID assigned internally by `Orangeboard`.  Nodes can
+also have properties which will get mapped to Neo4j properties when the graph is
+exported to Neo4j.
+
+## Relationships in Orangeboard
+Relationships (for short, referred to as `rel` in much of the code) are
+represented by `Rel` objects, which have a `reltype` which is like a category of
+relationships (think `is_child_of`, `is_member_of`, or
+`controls_expression_of`).Orangeboard and BioNetExpander can handle a hybrid directed + undirected
+knowledge graph.  Each `reltype` is mapped (by a `dict` member in the
+`BioNetExpander.py` class) to a `bool` value indicating whether or not that
 `reltype` is to be directed or not (`True` means directed, `False` means
-undirected). Each relationship object also has a `sourcedb` label that is
-free-form but I'm using as a controlled vocabulary to describe where I got the
-relationship from, e.g., `reactome` or `OMIM` or whatever). Relationships also
-get assigned UUIDs internally by the Orangeboard. The first node that you put
-into an empty Orangeboard *must* be marked as `seed_node=True`. Subsequently,
-every node or relationship that gets added to the Orangeboard as the knowledge
-graph is expanded from that seed node will be marked as being associated with
-that "seed node", using the seed node's UUID. At any time, you can subsequently
-add a second (or third, or ...) node and mark it with `seed_node=True`. This
-resets things so that after you add the second "seed node", any new nodes or
-relationships that are subsequently added to the knowledge graph are marked as
-coming from the *second* seed node. Thus, each node or relationship in the
-Orangeboard is marked with a "seed node UUID". This marking is what enables
-Orangeboard to have the capability to delete all nodes and relationships that
-derive from a single seed node (though of course, Orangeboard also has a method
-for completely deleting all nodes and relationships, to restore ).
+undirected). An undirected relationship in the `Orangeboard` knowledge graph
+object model would get mapped to two relationships (with opposite orientations) when the knowledge
+graph is exported to Neo4j, since Neo4j does not permit undirected relationships.
+Each relationship object also has a `sourcedb` label which is used
+as a controlled vocabulary to describe where `BioNetExpander` got the
+relationship from, e.g., `reactome` or `OMIM` or whatever). 
+
+### Seed nodes 
+The first node that you put into an empty Orangeboard *must* be marked as
+`seed_node=True`. Subsequently, every node or relationship that gets added to
+the Orangeboard as the knowledge graph is expanded from that seed node will be
+marked as being associated with that "seed node", using the seed node's UUID. At
+any time, you can subsequently add a second (or third, or ...) node and mark it
+with `seed_node=True`. This resets things so that after you add the second "seed
+node", any new nodes or relationships that are subsequently added to the
+knowledge graph are marked as coming from the *second* seed node. Thus, each
+node or relationship in the Orangeboard is marked with a "seed node UUID". This
+marking is what enables Orangeboard to have the capability to delete all nodes
+and relationships that derive from a single seed node (though of course,
+Orangeboard also has a method for completely deleting all nodes and
+relationships, to restore the virtual blackboard to its initial state).
 
 # Knowledge sources:
 
