@@ -2,26 +2,26 @@
 swagger: "2.0"
 info:
   description: "Proof-of-concept OpenAPI front end for RTX."
-  version: "0.2.0"
+  version: "1.0.0"
   title: "RTX"
   contact:
     email: "edeutsch@systemsbiology.org"
   license:
     name: "Apache 2.0"
     url: "http://www.apache.org/licenses/LICENSE-2.0.html"
-host: "ncats.saramsey.org"
+host: "lysine.ncats.io"
 basePath: "/api/rtx/v1"
 tags:
 - name: "translate"
   description: "Translate natural language question into a standardized query"
   externalDocs:
     description: "Documentation for the RTX translate function"
-    url: "http://ncats.saramsey.org/doc/RTX/index.html#translate"
+    url: "http://lysine.ncats.io/overview.html#translate"
 - name: "query"
   description: "Query RTX using a predefined question type"
   externalDocs:
     description: "Documentation for the RTX query function"
-    url: "http://ncats.saramsey.org/doc/RTX/index.html#query"
+    url: "http://lysine.ncats.io/overview.html#query"
 schemes:
 - "http"
 paths:
@@ -142,15 +142,16 @@ definitions:
         example: "The term 'hypertwitteremia' is not a recognized condition needed\
           \ for query type 'Q1'."
         description: "Extended message denoting the success or failture of the response"
+      result:
+        $ref: "#/definitions/Response_result"
+  Response_result:
+    properties:
       text:
-        type: "array"
-        description: "List of text lines providing response data for the provided\
-          \ query"
-        items:
-          type: "string"
-          example: "The genetic condition sickle-cell anemia may provide protection\
-            \ from cerebral malaria via genetic alterations of proteins HBB (P68871)\
-            \ and HMOX1 (P09601)."
+        type: "string"
+        example: "The genetic condition sickle-cell anemia may provide protection\
+          \ from cerebral malaria via genetic alterations of proteins HBB (P68871)\
+          \ and HMOX1 (P09601)."
+    description: "A data structure that depends on the query type"
 externalDocs:
   description: "Documentation for the RTX web service"
-  url: "http://ncats.saramsey.org/doc/RTX/index.html"
+  url: "http://lysine.ncats.io/overview.html"
