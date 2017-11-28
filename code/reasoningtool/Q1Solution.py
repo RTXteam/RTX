@@ -12,6 +12,7 @@ import sys
 #driver = GraphDatabase.driver("bolt://lysine.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))
 #session = driver.session()
 
+	
 # Connection information for the ipython-cypher package
 connection = "http://neo4j:precisionmedicine@lysine.ncats.io:7473/db/data"
 DEFAULT_CONFIGURABLE = {
@@ -136,7 +137,7 @@ disease_ignore_list = [
 ###################################################
 # Start input
 
-def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False):  # I'm thinking directed true is best
+def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False, use_json=False):  # I'm thinking directed true is best
 	"""
 	Answers Q1.
 	:param input_disease: input disease (from the list)
@@ -195,8 +196,10 @@ def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False):  # I'
 			print("No omims passed all refinements. Please raise the max_path_len and try again.")
 		return 1
 
-	# display them
-	Q1Utils.display_results(doid, to_display_paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=to_display_probs_dict)
+	if not use_json:
+		Q1Utils.display_results(doid, to_display_paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=to_display_probs_dict)
+	else:
+		print(Q1Utils.get_results_json_str(doid, to_display_paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=to_display_probs_dict))
 
 
 
@@ -210,10 +213,11 @@ def main():
 						help="Maximum graph path length for which to look for nearby omims", default=2)
 	parser.add_argument('-a', '--all', action="store_true", help="Flag indicating you want to run it on all Q1 diseases",
 						default=False)
+	parser.add_argument('-j', '--json', action='store_true', help='Flag specifying that results should be printed in JSON format (to stdout)', default=False)
 
 	if '-h' in sys.argv or '--help' in sys.argv:
-                Q1Utils.session.close()
-                Q1Utils.driver.close()
+	        Q1Utils.session.close()
+	        Q1Utils.driver.close()
 
 	# Parse and check args
 	args = parser.parse_args()
@@ -221,6 +225,7 @@ def main():
 	verbose = args.verbose
 	directed = args.directed
 	max_path_len = args.max_path_len
+	use_json = args.json
 	all_d = args.all
 
 	if all_d:
@@ -228,22 +233,22 @@ def main():
 			print("\n")
 			print(disease)
 			if disease == 'asthma':  # if we incrementally built it up, we'd be waiting all day
-				answerQ1(disease, directed=True, max_path_len=5, verbose=True)
+				answerQ1(disease, directed=True, max_path_len=5, verbose=True, use_json=use_json)
 			else:
 				for len in [2, 3, 4]:  # start out with small path lengths, then expand outward until we find something
-					res = answerQ1(disease, directed=True, max_path_len=len, verbose=True)
+					res = answerQ1(disease, directed=True, max_path_len=len, verbose=True, use_json=use_json)
 					if res != 1:
 						break
 				if res == 1:
 					print("Sorry, no results found for %s" % disease)
 	else:
-		res = answerQ1(disease, directed=directed, max_path_len=max_path_len, verbose=verbose)
+		res = answerQ1(disease, directed=directed, max_path_len=max_path_len, verbose=verbose, use_json=use_json)
 		if res == 1:
 			print("Increasing path length and trying again...")
-			res = answerQ1(disease, directed=directed, max_path_len=max_path_len + 1, verbose=verbose)
+			res = answerQ1(disease, directed=directed, max_path_len=max_path_len + 1, verbose=verbose, use_json=use_json)
 			if res == 1:
 				print("Increasing path length and trying again...")
-				res = answerQ1(disease, directed=directed, max_path_len=max_path_len + 2, verbose=verbose)
+				res = answerQ1(disease, directed=directed, max_path_len=max_path_len + 2, verbose=verbose, use_json=use_json)
 
 if __name__ == "__main__":
 	main()
