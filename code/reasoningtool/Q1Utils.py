@@ -10,7 +10,6 @@ import requests_cache
 import QueryNCBIeUtils
 import math
 import MarkovLearning
-import json
 
 requests_cache.install_cache('orangeboard')
 
@@ -260,15 +259,15 @@ def interleave_nodes_and_relationships(session, omim, doid, max_path_len=3, debu
 	res_type = [item['path'] for item in res_type]
 	return res_name, res_type
 
-def get_results_json_str(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=False):
+def get_results_object_model(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=False):
 	"""
-	Format the results as a JSON string
+	Returns pathway results as an object model
 	:param doid: souce doid DOID:1234
 	:param paths_dict: a dictionary (keys OMIM id's) with values (path_name,path_type)
 	:param omim_to_genetic_cond: a dictionary to translate between omim and genetic condition name
 	:param q1_doid_to_disease:  a dictionary to translate between doid and disease name
 	:param probs: optional probability of the OMIM being the right one
-	:return: ``str``
+	:return: ``dict``
 	"""
 
 	ret_obj = dict()
@@ -337,9 +336,9 @@ def get_results_json_str(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_dise
 							   'reltype': str(relationship)})
 				omim_dict['counts'] = count_list
 			ret_omims_dict[omim] = omim_dict
-	return json.dumps(ret_obj)
+	return ret_obj
 
-def display_results(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=False):
+def display_results_str(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=False):
 	"""
 	Format the results in a pretty manner
 	:param doid: souce doid DOID:1234
@@ -349,6 +348,7 @@ def display_results(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disease, 
 	:param probs: optional probability of the OMIM being the right one
 	:return: none (just prints to screen)
 	"""
+	to_print = ''
 	omim_list = paths_dict.keys()
 	if len(omim_list) > 0:
 		if doid in q1_doid_to_disease:
@@ -361,12 +361,12 @@ def display_results(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disease, 
 				omim_names.append(omim_to_genetic_cond[omim])
 			else:
 				omim_names.append(omim)
-		print(("Possible genetic conditions that protect against %s: " % doid_name) + str(omim_names))
+		ret_str = "Possible genetic conditions that protect against {doid_name}: ".format(doid_name=doid_name) + str(omim_names) + '\n'
 		for omim in omim_list:
 			if omim in omim_to_genetic_cond:
-				to_print = "The proposed mechanism of action for %s (%s) is: " % (omim_to_genetic_cond[omim], omim)
+				to_print += "The proposed mechanism of action for %s (%s) is: " % (omim_to_genetic_cond[omim], omim)
 			else:
-				to_print = "The proposed mechanism of action for %s is: " % omim
+				to_print += "The proposed mechanism of action for %s is: " % omim
 			path_names, path_types = paths_dict[omim]
 			if len(path_names) == 1:
 				path_names = path_names[0]
@@ -387,12 +387,12 @@ def display_results(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disease, 
 				if probs:
 					if omim in probs:
 						to_print += "Confidence: %f" % probs[omim]
-				print(to_print)
+				to_print += '\n'
 			else:
-				print(to_print)
+				to_print += '\n'
 				if probs:
 					if omim in probs:
-						print("With confidence %f, the mechanism is one of the following paths: " % probs[omim])
+						to_print += "With confidence %f, the mechanism is one of the following paths: " % probs[omim] + '\n'
 				relationships_and_counts_dict = Counter(map(tuple, path_types))
 				relationships = list(relationships_and_counts_dict.keys())
 				counts = []
@@ -406,15 +406,14 @@ def display_results(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disease, 
 					relationship = relationships_and_counts_sorted[index][0]
 					count = relationships_and_counts_sorted[index][1]
 					to_print = "%d. " % (index + 1)
-					to_print += ("There were %d paths of the form " % count) + str(relationship)
-					print(to_print)
+					to_print += ("There were %d paths of the form " % count) + str(relationship) + '\n'
 	else:
 		if doid in q1_doid_to_disease:
 			name = q1_doid_to_disease[doid]
 		else:
 			name = doid
-		print("Sorry, I was unable to find a genetic condition that protects against %s" % name)
-
+		to_print = "Sorry, I was unable to find a genetic condition that protects against {name}".format(name=name) + '\n'
+	return to_print
 
 def refine_omims_graph_distance(omims, doid, directed=False, max_path_len=3, verbose=False):
 	"""
