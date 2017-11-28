@@ -158,3 +158,11 @@ pathway(s), and the prioritized anatomy node(s). Confidence values calculated as
 distance and path length between nodes. If given training data (known paths connecting drugs and diseases), it would be 
 straightforward to solve Q2 by utilizing the same Markov chain approach that we used for Q1. We intend to use this 
 Markov chain approach for the production version of the RTX.
+
+# Additional subdirectories
+
+- `future`: This subdirectory contains some Python modules that we are developing for possible future use. They are not
+a part of the POC software system.
+- `deprecated`: This subdirectory contains some Python modules that we are not using, but for which we wish to retain
+version history.
+

@@ -68,7 +68,6 @@ class BioNetExpander:
                 node_desc = ';'.join(list(gene_names))
                 target_node = self.orangeboard.add_node('uniprot_protein', target_uniprot_id, desc=node_desc)
                 self.orangeboard.add_rel('targets', 'ChEMBL', node, target_node)
-        print('querying pharos for drug: ' + drug_name)
         targets = QueryPharos.query_drug_name_to_targets(drug_name)
         if targets is not None:
             for target in targets:
