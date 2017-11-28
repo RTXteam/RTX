@@ -10,6 +10,7 @@ import requests_cache
 import QueryNCBIeUtils
 import math
 import MarkovLearning
+import json
 
 requests_cache.install_cache('orangeboard')
 
@@ -259,6 +260,84 @@ def interleave_nodes_and_relationships(session, omim, doid, max_path_len=3, debu
 	res_type = [item['path'] for item in res_type]
 	return res_name, res_type
 
+def get_results_json_str(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=False):
+	"""
+	Format the results as a JSON string
+	:param doid: souce doid DOID:1234
+	:param paths_dict: a dictionary (keys OMIM id's) with values (path_name,path_type)
+	:param omim_to_genetic_cond: a dictionary to translate between omim and genetic condition name
+	:param q1_doid_to_disease:  a dictionary to translate between doid and disease name
+	:param probs: optional probability of the OMIM being the right one
+	:return: ``str``
+	"""
+
+	ret_obj = dict()
+	
+	omim_list = paths_dict.keys()
+	if len(omim_list) > 0:
+		if doid in q1_doid_to_disease:
+			doid_name = q1_doid_to_disease[doid]
+		else:
+			doid_name = doid
+		ret_obj['target_disease'] = doid_name
+		ret_omims_dict = dict()
+		ret_obj['source_genetic_conditions'] = ret_omims_dict
+		omim_names = []
+		for omim in omim_list:
+			if omim in omim_to_genetic_cond:
+				omim_names.append(omim_to_genetic_cond[omim])
+			else:
+				omim_names.append(omim)
+		for omim in omim_list:
+			omim_dict = {}
+			
+			path_names, path_types = paths_dict[omim]
+			if len(path_names) == 1:
+				path_list = []
+				path_list.append({'type': 'node',
+						  'name': omim,
+						  'desc': omim_to_genetic_cond.get(omim, '')})
+				path_names = path_names[0]
+				path_types = path_types[0]
+				for index in range(1, len(path_names) - 1):
+					if index % 2 == 1:
+						path_list.append({'type': 'rel',
+								  'name': path_types[index]})
+					else:
+						path_list.append({'type': 'node',
+								  'name': path_names[index],
+								  'desc': node_to_description(path_names[index])})
+				path_list.append({'type': 'node',
+						  'name': doid,
+						  'desc': q1_doid_to_disease.get(doid, '')})
+				if probs:
+					if omim in probs:
+						omim_dict['conf'] = probs[omim]
+
+				omim_dict['path'] = path_list
+			else:
+				print(to_print)
+				if probs:
+					if omim in probs:
+						omim_dict['conf'] = probs[omim]
+				relationships_and_counts_dict = Counter(map(tuple, path_types))
+				relationships = list(relationships_and_counts_dict.keys())
+				counts = []
+				for rel in relationships:
+					counts.append(relationships_and_counts_dict[rel])
+				relationships_and_counts = []
+				for i in range(len(counts)):
+					relationships_and_counts.append((relationships[i], counts[i]))
+				relationships_and_counts_sorted = sorted(relationships_and_counts, key=lambda tup: tup[1])
+				count_list = []
+				for index in range(len(relationships_and_counts_sorted)):
+					relationship = relationships_and_counts_sorted[index][0]
+					count = relationships_and_counts_sorted[index][1]
+					count_list.append({'count': count,
+							   'reltype': str(relationship)})
+				omim_dict['counts'] = count_list
+			ret_omims_dict[omim] = omim_dict
+	return json.dumps(ret_obj)
 
 def display_results(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=False):
 	"""
