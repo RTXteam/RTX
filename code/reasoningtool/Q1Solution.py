@@ -211,7 +211,7 @@ def main():
 	parser.add_argument('-a', '--all', action="store_true", help="Flag indicating you want to run it on all Q1 diseases",
 						default=False)
 
-	if '-h' in sys.argv:
+	if '-h' in sys.argv or '--help' in sys.argv:
                 Q1Utils.session.close()
                 Q1Utils.driver.close()
 
