@@ -35,7 +35,7 @@ the [RTX GitHub area](https://github.com/RTXteam/RTX).
 - RTX depends on a (46 GB) SQLite cache file, `orangeboard.sqlite`, which is
   stored in Amazon S3 [link; requires pre-arrangement for access](https://s3-us-west-2.amazonaws.com/ramseylab/ncats/ncats.saramsey.org/orangeboard.sqlite).
 
-- Neo4j and Python modules: see [the README the code subdirectory](https://github.com/dkoslicki/NCATS/blob/master/code/README.md)
+- Neo4j and Python modules: see [the README file in the code subdirectory](https://github.com/dkoslicki/NCATS/blob/master/code/README.md)
 
 
 ### Issue tracking
