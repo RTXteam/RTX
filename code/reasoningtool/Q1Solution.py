@@ -2,14 +2,15 @@
 import numpy as np
 np.warnings.filterwarnings('ignore')
 from collections import namedtuple
-from neo4j.v1 import GraphDatabase, basic_auth
+#from neo4j.v1 import GraphDatabase, basic_auth
 import os
 import Q1Utils
 import argparse
+import sys
 
 # Connection information for the neo4j server, populated with orangeboard
-driver = GraphDatabase.driver("bolt://lysine.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))
-session = driver.session()
+#driver = GraphDatabase.driver("bolt://lysine.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))
+#session = driver.session()
 
 # Connection information for the ipython-cypher package
 connection = "http://neo4j:precisionmedicine@lysine.ncats.io:7473/db/data"
@@ -152,7 +153,7 @@ def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False):  # I'
 	doid = q1_disease_to_doid[input_disease]  # get the DOID for this disease
 
 	# Getting nearby genetic diseases
-	omims = Q1Utils.get_omims_connecting_to_fixed_doid(session, doid, directed=directed, max_path_len=max_path_len, verbose=verbose)
+	omims = Q1Utils.get_omims_connecting_to_fixed_doid(doid, directed=directed, max_path_len=max_path_len, verbose=verbose)
 
 	if not omims:
 		if verbose:
@@ -209,6 +210,11 @@ def main():
 						help="Maximum graph path length for which to look for nearby omims", default=2)
 	parser.add_argument('-a', '--all', action="store_true", help="Flag indicating you want to run it on all Q1 diseases",
 						default=False)
+
+	if '-h' in sys.argv:
+                Q1Utils.session.close()
+                Q1Utils.driver.close()
+
 	# Parse and check args
 	args = parser.parse_args()
 	disease = args.input_disease

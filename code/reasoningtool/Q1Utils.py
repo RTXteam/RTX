@@ -38,7 +38,6 @@ DefaultConfigurable = namedtuple(
 )
 defaults = DefaultConfigurable(**DEFAULT_CONFIGURABLE)
 
-
 def node_to_description(name, session=session, debug=False):
 	"""
 	Get the description of an protein node
@@ -59,7 +58,7 @@ def node_to_description(name, session=session, debug=False):
 
 
 # Get the omims that connect up to a given doid
-def get_omims_connecting_to_fixed_doid(session, doid, max_path_len=4, debug=False, verbose=False, directed=False):
+def get_omims_connecting_to_fixed_doid(doid, max_path_len=4, debug=False, verbose=False, directed=False):
 	"""
 	This function finds all omim's within max_path_len steps (undirected) of a given disont_disease
 	:param session: neo4j server session
