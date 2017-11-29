@@ -5,6 +5,7 @@ from QueryPharos import QueryPharos
 import sys
 import subprocess
 from QueryMeSH import QueryMeSH
+import json
 
 #sys.path.append("../../../reasoningtool")
 #sys.path.append(".")
@@ -23,18 +24,6 @@ class RTXQuery:
     terms = query["terms"]
     result = [ { "id": 536, "code": 100, "codeString": "UnsupportedQueryID", "message": "The specified query id '"+id+"' is not supported at this time", "text": [ "The specified query id '"+id+"' is not supported at this time" ] } ]
 
-    if id == 'Q90':
-      # call out to OrangeBoard here to satify the query "What is XXXXXX?"
-      drug_id = qph.query_drug_id_by_name(terms[0])
-      if drug_id:
-        description = qph.query_drug_description(str(drug_id))
-        if description:
-          result = [ { "id": 537, "code": 1, "codeString": "OK", "message": "AnswerFound", "text": [ terms[0]+" is "+description ] } ]
-        else:
-          result = [ { "id": 537, "code": 10, "codeString": "DrugDescriptionNotFound", "message": "DrugDescriptionNotFound", "text": [ "Unable to find a definition for drug '"+terms[0]+"'." ] } ]
-      else:
-          result = [ { "id": 537, "code": 11, "codeString": "DrugNotFound", "message": "DrugNotFound", "text": [ "Unable to find drug '"+terms[0]+"'." ] } ]
-      return(result)
 
     if id == 'Q0':
       # call out to QueryMeSH here to satify the query "What is XXXXXX?"
@@ -43,7 +32,7 @@ class RTXQuery:
       html = query.prettyPrintAttributes(attributes)
       if attributes["status"] == "OK":
         if attributes["description"]: 
-          result = [ { "id": 537, "code": 1, "codeString": "OK", "message": "AnswerFound", "text": [ html ] } ]
+          result = [ { "id": 537, "code": 1, "codeString": "OK", "message": "AnswerFound", "text": [ html ], "result": attributes } ]
         else:
           result = [ { "id": 537, "code": 10, "codeString": "DrugDescriptionNotFound", "message": "DrugDescriptionNotFound", "text": [ "Unable to find a definition for drug '"+terms[0]+"'." ] } ]
       else:
@@ -54,11 +43,18 @@ class RTXQuery:
       # call out to OrangeBoard here to satify the query "What genetic conditions might offer protection against XXXXXX?"
       os.chdir("/mnt/data/orangeboard/code/NCATS/code/reasoningtool")
       #returnedText = answerQ1(terms[0], directed=True, max_path_len=3, verbose=True)
-      returnedText = subprocess.run( [ "python3 Q1Solution.py -i '"+terms[0]+"'" ], stdout=subprocess.PIPE, shell=True )
+      returnedText = subprocess.run( [ "python3 Q1Solution.py -j -i '"+terms[0]+"'" ], stdout=subprocess.PIPE, shell=True )
       reformattedText = returnedText.stdout.decode('utf-8')
-      reformattedText = re.sub("\n","\n<LI>",reformattedText)
-      reformattedText = "<UL><LI>" + reformattedText + "</UL>"
-      result = [ { "id": 537, "code": 1, "codeString": "OK", "message": "AnswerFound", "text": [ reformattedText ] } ]
+      #print(reformattedText)
+      try:
+          returnedData = json.loads(reformattedText)
+          text = returnedData["text"]
+      except:
+          returnedData = { "status": "ERROR" }
+          text = "ERROR: Unable to properly parse the JSON response:<BR>\n"+reformattedText
+      prettyText = re.sub("\n","\n<LI>",text)
+      prettyText = "<UL><LI>" + prettyText + "</UL>"
+      result = [ { "id": 537, "code": 1, "codeString": "OK", "message": "AnswerFound", "result": returnedData, "text": [ prettyText ] } ]
       return(result)
 
     if id == 'Q2':
@@ -79,7 +75,7 @@ class RTXQuery:
         for target in targets:
           list += "<LI> "+target["name"]+"\n"
         list += "</UL>\n"
-        result = [ { "id": 537, "code": 1, "codeString": "OK", "message": "AnswerFound", "text": [ terms[0]+" is known to target: "+list ] } ]
+        result = [ { "id": 537, "code": 1, "codeString": "OK", "message": "AnswerFound", "result": targets, "text": [ terms[0]+" is known to target: "+list ] } ]
       else:
         result = [ { "id": 537, "code": 11, "codeString": "DrugNotFound", "message": "DrugNotFound", "text": [ "Unable to find drug '"+terms[0]+"'." ] } ]
       return(result);
@@ -94,12 +90,12 @@ class RTXQuery:
 
 def main():
   rtxq = RTXQuery()
-  query = { "knownQueryTypeId": "Q0", "terms": [ "lovastatin" ] }
-  #query = { "knownQueryTypeId": "Q1", "terms": [ "cholera" ] }
+  #query = { "knownQueryTypeId": "Q0", "terms": [ "lovastatin" ] }
+  query = { "knownQueryTypeId": "Q1", "terms": [ "alkaptonuria" ] }
   #query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "glaucoma" ] }
   #query = { "knownQueryTypeId": "Q3", "terms": [ "acetaminophen" ] }
   result = rtxq.query(query)
-  print(" Result is:")
+  #print(" Result is:")
   print(result)
 
 
