@@ -1,4 +1,4 @@
-|  types                     |   count      | 
+|  Relationship type         | Relationship count | 
 |----------------------------|--------------| 
 | "is_parent_of"             | 9534         | 
 | "controls_expression_of"   | 523523       | 
