@@ -150,7 +150,8 @@ def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False, use_js
 	#input_disease = 'cholera'  # input disease
 	# TODO: synonyms for diseases
 	if input_disease not in q1_disease_to_doid:
-		print("Sorry, the disease %s is not one of the Q1 diseases." % input_disease)
+		if not use_json:
+			print("Sorry, the disease %s is not one of the Q1 diseases." % input_disease)
 		return
 	doid = q1_disease_to_doid[input_disease]  # get the DOID for this disease
 
@@ -158,7 +159,7 @@ def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False, use_js
 	omims = Q1Utils.get_omims_connecting_to_fixed_doid(doid, directed=directed, max_path_len=max_path_len, verbose=verbose)
 
 	if not omims:
-		if verbose:
+		if verbose and not use_json:
 			print("No nearby omims found. Please raise the max_path_len and try again.")
 		return 1
 
@@ -174,7 +175,7 @@ def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False, use_js
 	omims = Q1Utils.refine_omims_well_studied(omims, doid, omim_to_mesh, q1_doid_to_mesh, verbose=verbose)
 
 	if not omims:
-		if verbose:
+		if verbose and not use_json:
 			print("No omims passed all refinements. Please raise the max_path_len and try again.")
 		return 1
 
@@ -193,7 +194,7 @@ def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False, use_js
 			to_display_probs_dict[omim] = prob_dict[omim]
 
 	if not to_display_probs_dict:
-		if verbose:
+		if verbose and not use_json:
 			print("No omims passed all refinements. Please raise the max_path_len and try again.")
 		return 1
 
@@ -219,8 +220,8 @@ def main():
 	parser.add_argument('-j', '--json', action='store_true', help='Flag specifying that results should be printed in JSON format (to stdout)', default=False)
 
 	if '-h' in sys.argv or '--help' in sys.argv:
-	        Q1Utils.session.close()
-	        Q1Utils.driver.close()
+		Q1Utils.session.close()
+		Q1Utils.driver.close()
 
 	# Parse and check args
 	args = parser.parse_args()
@@ -247,10 +248,12 @@ def main():
 	else:
 		res = answerQ1(disease, directed=directed, max_path_len=max_path_len, verbose=verbose, use_json=use_json)
 		if res == 1:
-			print("Increasing path length and trying again...")
+			if not use_json:
+				print("Increasing path length and trying again...")
 			res = answerQ1(disease, directed=directed, max_path_len=max_path_len + 1, verbose=verbose, use_json=use_json)
 			if res == 1:
-				print("Increasing path length and trying again...")
+				if not use_json:
+					print("Increasing path length and trying again...")
 				res = answerQ1(disease, directed=directed, max_path_len=max_path_len + 2, verbose=verbose, use_json=use_json)
 
 if __name__ == "__main__":
