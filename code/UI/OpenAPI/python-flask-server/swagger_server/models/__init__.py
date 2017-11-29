@@ -5,3 +5,4 @@ from __future__ import absolute_import
 from .query import Query
 from .question import Question
 from .response import Response
+from .response_result import ResponseResult

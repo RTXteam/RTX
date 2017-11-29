@@ -6,6 +6,7 @@ import requests_cache
 requests_cache.install_cache('orangeboard')
 import argparse
 from itertools import compress
+import sys
 
 #TODO: After having access to training data, re-write this to use the Markov chain approach. This will be much more
 # extensible (not to mention faster)
@@ -156,6 +157,11 @@ def main():
 	parser.add_argument('-d', '--disease', type=str, help="Input disease (description)")
 	parser.add_argument('-a', '--all', action="store_true", help="Flag indicating you want to run it on all Q2 drugs + diseases",
 						default=False)
+
+	if '-h' in sys.argv or '--help' in sys.argv:
+                Q2Utils.session.close()
+                Q2Utils.driver.close()
+                
 	# Parse and check args
 	args = parser.parse_args()
 	drug = args.drug

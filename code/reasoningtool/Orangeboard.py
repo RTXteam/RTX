@@ -441,7 +441,10 @@ class Orangeboard:
         if self.driver is None:
             self.neo4j_connect()
 
-        return self.driver.session().run(query, parameters)
+        session = self.driver.session()
+        res = session.run(query, parameters)
+        session.close()
+        return res
 
     def neo4j_clear(self, seed_node=None):
         """deletes all nodes and relationships in the orangeboard
@@ -535,6 +538,18 @@ class Orangeboard:
         ob.neo4j_set_auth()
         ob.neo4j_push()
         print(ob)
-                            
+
+    def test_issue_120():
+        ob = Orangeboard(debug=True)
+        ob.set_dict_reltype_dirs({'interacts_with': False})
+        node1 = ob.add_node('uniprot_protein', 'w', seed_node_bool=True)
+        node2 = ob.add_node('bartype', 'x', seed_node_bool=False)
+        ob.add_rel('interacts_with', 'PC2', node1, node2)
+        ob.add_rel('interacts_with', 'PC2', node2, node1)
+        ob.neo4j_set_url()
+        ob.neo4j_set_auth()
+        ob.neo4j_push()
+        print(ob)
+        
 if __name__ == '__main__':
     Orangeboard.test_issue_104()
