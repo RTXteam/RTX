@@ -6,7 +6,7 @@ MATCH (n) RETURN distinct labels(n)[1], count(*)
 match (n) return count(n)
 
 ## Number and kind of relationships:
-MATCH path=()-[r]-() RETURN distinct extract (rel in relationships(path) | type(rel) ) as types, count(*)
+MATCH path=()-[r]-() RETURN distinct extract (rel in relationships(path) | type(rel) )[0] as types, count(*)
 
 ## Total number of relationships
 match ()-[r]-() return count(r)
