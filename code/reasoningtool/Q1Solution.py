@@ -231,7 +231,7 @@ def main():
 
 	# Parse and check args
 	args = parser.parse_args()
-	disease = args.input_disease
+	disease = args.input_disease.lower()
 	verbose = args.verbose
 	directed = args.directed
 	max_path_len = args.max_path_len
