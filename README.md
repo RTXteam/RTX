@@ -2,27 +2,27 @@
 
 The RTX Reasoning Tool POC software is being collaboratively developed by a 
 [team of investigators](https://github.com/dkoslicki/NCATS#rtx-leadership-team) 
-at Oregon State University, Institute for Systems Biology, and Ohio
+at Oregon State University, the Institute for Systems Biology, and Ohio
 State University.
 
 ## Organization of this repository
 
 ### subdirectory `code`
 
-All software code files for the RTX proof-of-concept are accessible (and
-version-controlled) under this subdirectory. The RTX POC code is 97% Python3,
-with the remainder being small bash scripts, Cypher queries, etc.
+All software code files for the RTX proof-of-concept (POC) are accessible (and
+version-controlled) under this subdirectory. The RTX POC software code is 97%
+Python3, with the remainder being small bash scripts, Cypher queries, etc.
 
 ### subdirectory `data`
 
 Text data files for the RTX system that are deployed using git are stored under
 this subdirectory. There are only a few such files because the RTX POC software
 obtaines most of the information that makes up the biomedical knowledge graph by
-RESTfully querying web-based knowledge sources, rather than by loading flat-files.
+RESTfully querying web-based knowledge sources, rather than by loading flat files.
 
 ### subdirectory `team-private`
 
-This subdirectory contains notes other documents for sharing within the RTX team.
+This subdirectory contains notes and other documents for sharing within the RTX team.
 
 ### License
 
@@ -32,10 +32,15 @@ the [RTX GitHub area](https://github.com/RTXteam/RTX).
 
 ### Dependencies outside of GitHub
 
-- RTX depends on a (46 GB) SQLite cache file, `orangeboard.sqlite`, which is
-  stored in Amazon S3 [link; requires pre-arrangement for access](https://s3-us-west-2.amazonaws.com/ramseylab/ncats/ncats.saramsey.org/orangeboard.sqlite).
+- The RTX POC software depends on a SQLite cache file, `orangeboard.sqlite`. The
+POC software can build this cache file if the cache file is not pre-installed by
+the user; however, the POC software will build the knowledge graph much more
+rapidly the first time, if our pre-built cache file (46 GB) is used. The
+pre-built cache file is stored in Amazon S3
+[(link; requires pre-arrangement for access)](https://s3-us-west-2.amazonaws.com/ramseylab/ncats/ncats.saramsey.org/orangeboard.sqlite).
 
-- Neo4j and Python modules: see [the README file in the code subdirectory](https://github.com/dkoslicki/NCATS/blob/master/code/README.md)
+- Neo4j and Python modules: please see [the README file in the code subdirectory](https://github.com/dkoslicki/NCATS/blob/master/code/README.md)
+for more information.
 
 
 ### Issue tracking
