@@ -1,10 +1,11 @@
-''' This module defines class Node, class Re, class Orangeboard.
-Orangeboard is a class, responsible for connecting with Neo4j database,
-conduct operations to graph (e.g. add node, add relation, extract node
-information, extract relation information). It can conduct cypher query to Neo4j
-database and alter graph in neo4j. This class is intended to be used
-as a singleton.
- 
+'''This module defines class Node, class Rel, and class Orangeboard.  The
+Orangeboard class is responsible for connecting with the Neo4j database and
+performing operations on a graph object model (e.g., add node, add relationship,
+retrieve node information, and retrieve relationship information). Orangeboard
+has a method for pushing the graph object model to the Neo4j database, using a
+high-performance bulk upload operation.  This class is intended to be used as a
+singleton.
+
 '''
 
 __author__ = 'Stephen Ramsey'
