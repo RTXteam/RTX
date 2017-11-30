@@ -123,7 +123,7 @@ def answerQ2(drug, disease_description):
 	num_non_inf = np.count_nonzero(~np.isinf(gds))
 	if num_non_inf == 0 or gds == []:
 		print("Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype. "
-			  "The drug %s might not be one of the diseases I know about, or it does not connect to a known "
+			  "The disease %s might not be one of the diseases I know about, or it does not connect to a known "
 			  "pathway, tissue, and phenotype (understudied)" % (drug, disease_description, disease_description))
 		return 1
 	else:
@@ -159,9 +159,9 @@ def main():
 						default=False)
 
 	if '-h' in sys.argv or '--help' in sys.argv:
-                Q2Utils.session.close()
-                Q2Utils.driver.close()
-                
+		Q2Utils.session.close()
+		Q2Utils.driver.close()
+
 	# Parse and check args
 	args = parser.parse_args()
 	drug = args.drug
@@ -183,6 +183,3 @@ if __name__ == "__main__":
 
 
 
-'vx-11e', 'Carcinoma, Hepatocellular'
-'proparacaine', 'Pain, Postoperative'
-'bromfenac', 'Inflammation'

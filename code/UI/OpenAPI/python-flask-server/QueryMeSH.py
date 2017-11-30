@@ -140,6 +140,9 @@ class QueryMeSH:
                 elif attributes["name"] == "Enzymes and Coenzymes":
                     type = "protein"
                     keepGoing = 0
+                elif attributes["name"] == "Anatomy Category":
+                    type = "anatomical part"
+                    keepGoing = 0
                 elif attributes["parentId"] == "1000048":
                     type = name
                     keepGoing = 0

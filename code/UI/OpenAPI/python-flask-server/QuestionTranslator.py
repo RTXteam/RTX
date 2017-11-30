@@ -50,9 +50,9 @@ class QuestionTranslator:
       query = [ { "knownQueryTypeId": "Q3", "terms": [ term ], "restatedQuestion": "Which proteins does "+term+" target?", "originalQuestion": originalText } ]
       return(query)
 
-    match = re.match( "what is\s+(.+)", text, re.I )
+    match = re.match( "what is\s*(a|an)?\s+(.+)", text, re.I )
     if match:
-      term = match.group(1)
+      term = match.group(2)
       term = re.sub("^\s+","", term)
       term = re.sub("\s+$","", term)
       query = [ { "knownQueryTypeId": "Q0", "terms": [ term ], "restatedQuestion": "What is "+term+"?", "originalQuestion": originalText } ]

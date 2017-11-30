@@ -70,6 +70,12 @@ q1_disease_to_doid = dict()
 for key in q1_doid_to_disease.keys():
 	q1_disease_to_doid[q1_doid_to_disease[key]] = key
 
+for key in q1_doid_to_disease.keys():
+	q1_disease_to_doid[q1_doid_to_disease[key].lower()] = key
+
+for key in q1_doid_to_disease.keys():
+	q1_disease_to_doid[q1_doid_to_disease[key].upper()] = key
+
 q1_doid_to_mesh = {'DOID:11476': 'Osteoporosis',
 					'DOID:526': 'HIV Infections',
 					'DOID:1498': 'Cholera',
@@ -225,7 +231,7 @@ def main():
 
 	# Parse and check args
 	args = parser.parse_args()
-	disease = args.input_disease
+	disease = args.input_disease.lower()
 	verbose = args.verbose
 	directed = args.directed
 	max_path_len = args.max_path_len
