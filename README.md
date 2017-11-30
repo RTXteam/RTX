@@ -66,7 +66,7 @@ project.
 | Name             | Affiliation                   | Email                                 | GitHub username                                     | Areas of relevant expertise |
 | ---------------- | ----------------------------- | ------------------------------------- | --------------------------------------------------- | --------------------------- |
 | Liang Huang      | Oregon State University       | `liang.huang@oregonstate.edu`         | [lianghuang3](https://github.com/lianghuang3)       | natural language processing | 
-| Arash Termehchy  | Oregon State University       | `arash.termehchy@oregonstate.edu`     | [arashtermehchy](https://github.com/arashtermehchy) | databases, nowledge graphs  |
+| Arash Termehchy  | Oregon State University       | `arash.termehchy@oregonstate.edu`     | [arashtermehchy](https://github.com/arashtermehchy) | databases, knowledge graphs  |
 | Theo Knijnenburg | Institute for Systems Biology | `theo.knijnenburg@systemsbiology.org` | [tknijnen](https://github.com/tknijnen)             | systems biology, Translator |
 | Sui Huang MD PhD | Institute for Systems Biology | `sui.huang@systemsbiology.org`        |                                                     | medicine, systems biology   |
 | Gustavo Glusman  | Institute for Systems Biology | `gustavo.glusman@systemsbiology.org`  |                                                     | computational genomics      |
