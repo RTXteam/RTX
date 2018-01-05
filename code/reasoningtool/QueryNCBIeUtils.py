@@ -217,6 +217,11 @@ class QueryNCBIeUtils:
         return ngd
 
     @staticmethod
+    def is_mesh_term(mesh_term):
+        ret_list = QueryNCBIeUtils.get_mesh_uids_for_mesh_term(mesh_term)
+        return ret_list is not None and len(ret_list) > 0
+    
+    @staticmethod
     def test_ngd():
 #        mesh1_str = 'Anemia, Sickle Cell'
 #        mesh2_str = 'Malaria'
