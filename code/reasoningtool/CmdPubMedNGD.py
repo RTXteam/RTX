@@ -3,6 +3,8 @@
    Usage:    python3 CmdPubMedNGD.py term1 term2
 
    Example:  python3 CmdPubMedNGD.py atherosclerosis hypercholesterolemia
+
+   Output:   JSON dump of dict (keys are "value" and "status")
 '''
 __author__ = 'Stephen Ramsey'
 __copyright__ = 'Oregon State University'
