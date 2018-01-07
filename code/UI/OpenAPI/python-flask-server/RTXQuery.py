@@ -7,12 +7,6 @@ import subprocess
 from QueryMeSH import QueryMeSH
 import json
 
-#sys.path.append("../../../reasoningtool")
-#sys.path.append(".")
-#print(os.getcwd())
-#import Q1Solution
-
-
 
 class RTXQuery:
 
@@ -31,12 +25,18 @@ class RTXQuery:
       attributes = query.findTermAttributesAndTypeByName(terms[0])
       html = query.prettyPrintAttributes(attributes)
       if attributes["status"] == "OK":
-        if attributes["description"]: 
-          result = [ { "id": 537, "code": 1, "codeString": "OK", "message": "AnswerFound", "text": [ html ], "result": attributes } ]
+        if attributes["description"]:
+          codeString = "OK"
+          result = [ { "id": 537, "code": 1, "codeString": codeString, "message": "AnswerFound", "text": [ html ], "result": attributes } ]
+          self.logQuery(query,codeString)
         else:
-          result = [ { "id": 537, "code": 10, "codeString": "DrugDescriptionNotFound", "message": "DrugDescriptionNotFound", "text": [ "Unable to find a definition for drug '"+terms[0]+"'." ] } ]
+          codeString = "DrugDescriptionNotFound"
+          result = [ { "id": 537, "code": 10, "codeString": codeString, "message": "DrugDescriptionNotFound", "text": [ "Unable to find a definition for drug '"+terms[0]+"'." ] } ]
+          self.logQuery(query,codeString)
       else:
-          result = [ { "id": 537, "code": 11, "codeString": "TermNotFound", "message": "TermNotFound", "text": [ html ] } ]
+          codeString = "TermNotFound"
+          result = [ { "id": 537, "code": 11, "codeString": codeString, "message": "TermNotFound", "text": [ html ] } ]
+          self.logQuery(query,codeString)
       return(result)
 
     if id == 'Q1':
@@ -82,6 +82,13 @@ class RTXQuery:
 
 
     return(result)
+
+
+  def logQuery(self,query,resultCode):
+    id = query["knownQueryTypeId"]
+    terms = query["terms"]
+    with open("RTXQueries.log","a") as logfile
+      logfile.write(datetime+"\t"+resultCode+"\t"+id+"\t"+",".join(terms))
 
 
   def __init__(self):
