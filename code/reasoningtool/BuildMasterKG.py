@@ -265,6 +265,7 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
             all_drugs.add(drug_name)
             
         for drug_name in all_drugs:
+            print(drug_name)
             chembl_ids = QueryChEMBL.get_chembl_ids_for_drug(drug_name)
             if chembl_ids is not None and len(chembl_ids) > 0:
                 chembl_id = next(iter(chembl_ids))
