@@ -18,11 +18,12 @@ import sys
 class QuerySciGraph:
     TIMEOUT_SEC=120
     API_BASE_URL = {
-        "graph_neighbors": "https://scigraph-ontology.monarchinitiative.org/scigraph/graph/neighbors/{node_id}"
+        'graph_neighbors': 'https://scigraph-ontology.monarchinitiative.org/scigraph/graph/neighbors/{node_id}',
+        'cypher_query': 'https://scigraph-ontology.monarchinitiative.org/scigraph/cypher/execute.json'
     }
 
     @staticmethod
-    def __access_api(url, params=None):
+    def __access_api(url, params=None, headers=None):
 #        print(url)
         try:
             res = requests.get(url, params, timeout=QuerySciGraph.TIMEOUT_SEC)
@@ -33,7 +34,7 @@ class QuerySciGraph:
         status_code = res.status_code
         if status_code != 200:
             print(url, file=sys.stderr)
-            print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
+            print('Status code ' + str(status_code) + ' for url: ' + res.url, file=sys.stderr)
             return None
 
         return res.json()
@@ -65,6 +66,16 @@ class QuerySciGraph:
                                     for dbxref in dbxrefs:
                                         if 'DOID:' in dbxref:
                                             disont_ids.add(dbxref)
+        else:
+            cypher_query = 'MATCH (dis:disease) WHERE ANY(item IN dis.`http://www.geneontology.org/formats/oboInOwl#hasDbXref` WHERE item = \'' + mesh_id + '\') RETURN dis.`http://www.geneontology.org/formats/oboInOwl#hasDbXref` as xref'
+            
+            url = QuerySciGraph.API_BASE_URL['cypher_query']
+            results = QuerySciGraph.__access_api(url, params={'cypherQuery': cypher_query, 'limit': '10'})
+            if results is not None:
+                if len(results) > 0:
+                    results_xref = results[0].get('xref', None)
+                    if results_xref is not None:
+                        disont_ids = set([x for x in results_xref if 'DOID:' in x])
         return disont_ids
     
     @staticmethod
@@ -107,8 +118,10 @@ class QuerySciGraph:
         return sub_nodes_with_labels
 
 if __name__ == '__main__':
-    print(QuerySciGraph.query_sub_phenotypes_for_phenotype('HP:12072'))
-    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D000856'))
-    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015473'))
-    print(QuerySciGraph.query_sub_phenotypes_for_phenotype("HP:0000107"))  # Renal cyst
-    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015470'))
+    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D005199'))
+#    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D006937'))
+#    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D000856'))
+#    print(QuerySciGraph.query_sub_phenotypes_for_phenotype('HP:12072'))
+#    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015473'))
+#    print(QuerySciGraph.query_sub_phenotypes_for_phenotype("HP:0000107"))  # Renal cyst
+#    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015470'))
