@@ -251,8 +251,20 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
     if seed_parts is None or 'drugs' in seed_parts:
         print('=====================> seeding drug nodes for Q2')
         first_row = True
+        all_drugs = set()
+        
         for index, row in drug_dis_df.iterrows():
             drug_name = row['Drug'].lower()
+            all_drugs.add(drug_name)
+
+        fda_drug_df = pandas.read_csv('../../data/q2/drugset2017.txt',
+                                      sep='\t')
+
+        for index, row in fda_drug_df.iterrows():
+            drug_name = row['NAME'].lower()
+            all_drugs.add(drug_name)
+            
+        for drug_name in all_drugs:
             chembl_ids = QueryChEMBL.get_chembl_ids_for_drug(drug_name)
             if chembl_ids is not None and len(chembl_ids) > 0:
                 chembl_id = next(iter(chembl_ids))
