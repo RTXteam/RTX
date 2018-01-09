@@ -257,7 +257,7 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
             drug_name = row['Drug'].lower()
             all_drugs.add(drug_name)
 
-        fda_drug_df = pandas.read_csv('../../data/q2/drugset2017.txt',
+        fda_drug_df = pandas.read_csv('../../data/q2/drugset2017_filt.txt',
                                       sep='\t')
 
         for index, row in fda_drug_df.iterrows():
