@@ -55,23 +55,28 @@ class QueryChEMBL:
     def get_target_uniprot_ids_for_chembl_id(chembl_id):
         res = QueryChEMBL.send_query_get(handler='target_prediction.json',
                                          url_suffix='molecule_chembl_id__exact=' + chembl_id + '&target_organism__exact=Homo%20sapiens')
-        res_targets_set = set()
+        res_targets_dict = dict()
         if res is not None:
             target_predictions_list = res.get('target_predictions', None)
             if target_predictions_list is not None:
                 for target_prediction in target_predictions_list:
+#                    print(target_prediction)
                     target_uniprot_id = target_prediction.get('target_accession', None)
+                    target_probability = target_prediction.get('probability', None)
                     if target_uniprot_id is not None:
                         # need to get the gene ID for this Uniprot ID
-                        res_targets_set.add(target_uniprot_id)
-        return res_targets_set
+                        res_targets_dict[target_uniprot_id] = float(target_probability)
+        return res_targets_dict
 
     @staticmethod
     def get_target_uniprot_ids_for_drug(drug_name):
         chembl_ids_for_drug = QueryChEMBL.get_chembl_ids_for_drug(drug_name)
-        res_uniprot_ids = set()
+        res_uniprot_ids = dict()
         for chembl_id in chembl_ids_for_drug:
-            res_uniprot_ids |= QueryChEMBL.get_target_uniprot_ids_for_chembl_id(chembl_id)
+#            print(chembl_id)
+            uniprot_ids_dict = QueryChEMBL.get_target_uniprot_ids_for_chembl_id(chembl_id)
+            for uniprot_id in uniprot_ids_dict.keys():
+                res_uniprot_ids[uniprot_id] = uniprot_ids_dict[uniprot_id]
         return res_uniprot_ids
     
     @staticmethod
