@@ -63,11 +63,12 @@ class BioNetExpander:
         drug_desc = node.desc
         target_uniprot_ids = QueryChEMBL.get_target_uniprot_ids_for_drug(drug_name)
         if target_uniprot_ids is not None:
-            for target_uniprot_id in target_uniprot_ids:
+            for target_uniprot_id in target_uniprot_ids.keys():
+                probability = target_uniprot_ids[target_uniprot_id]
                 gene_names = self.query_mygene_obj.convert_uniprot_id_to_gene_symbol(target_uniprot_id)
                 node_desc = ';'.join(list(gene_names))
                 target_node = self.orangeboard.add_node('uniprot_protein', target_uniprot_id, desc=node_desc)
-                self.orangeboard.add_rel('targets', 'ChEMBL', node, target_node)
+                self.orangeboard.add_rel('targets', 'ChEMBL', node, target_node, prob=probability)
         targets = QueryPharos.query_drug_name_to_targets(drug_name)
         if targets is not None:
             for target in targets:
