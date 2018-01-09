@@ -317,8 +317,8 @@ def add_pc2_to_kg():
                             assert False
 
 def make_master_kg():
-    seed_and_expand_kg_q1(num_expansions=3)
     seed_and_expand_kg_q2(num_expansions=3)
+    seed_and_expand_kg_q1(num_expansions=3)
     add_pc2_to_kg()
     ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
