@@ -66,12 +66,14 @@ class Node:
         return 'node,' + self.uuid + ',' + self.nodetype + ',' + self.name
 
 class Rel:
-    def __init__(self, reltype, sourcedb, source_node, target_node, seed_node):
+    def __init__(self, reltype, sourcedb, source_node, target_node, seed_node, prob=None):
         self.reltype = reltype
         self.sourcedb = sourcedb
         self.source_node = source_node
         self.target_node = target_node
         self.seed_node = seed_node
+        self.prob = prob
+        
 #        new_uuid = str(uuid.uuid1())
 #        self.uuid = new_uuid
 #        source_node.out_rels.add(self)
@@ -81,7 +83,8 @@ class Rel:
         prop_dict = {#'UUID': self.uuid,
                      'reltype': self.reltype,
                      'sourcedb': self.sourcedb,
-                     'seed_node_uuid': self.seed_node.uuid}
+                     'seed_node_uuid': self.seed_node.uuid,
+                     'prob': self.prob}
         if not reverse:
             prop_dict['source_node_uuid'] = self.source_node.uuid
             prop_dict['target_node_uuid'] = self.target_node.uuid
@@ -327,7 +330,7 @@ class Orangeboard:
                 ret_rel = existing_rel
         return [ret_rel, rel_dict_key]
 
-    def add_rel(self, reltype, sourcedb, source_node, target_node):
+    def add_rel(self, reltype, sourcedb, source_node, target_node, prob=None):
         if source_node.uuid == target_node.uuid:
             print('Attempt to add a relationship between a node and itself, for node: ' + str(node), file=sys.stderr)
             assert False
@@ -348,7 +351,7 @@ class Orangeboard:
             if subdict is None:
                 self.dict_reltype_to_dict_relkey_to_rel[reltype] = dict()
                 subdict = self.dict_reltype_to_dict_relkey_to_rel.get(reltype, None)
-            new_rel = Rel(reltype, sourcedb, source_node, target_node, seed_node)
+            new_rel = Rel(reltype, sourcedb, source_node, target_node, seed_node, prob)
             existing_rel = new_rel
             rel_dict_key = existing_rel_list[1]
             if rel_dict_key is None:
@@ -513,7 +516,8 @@ class Orangeboard:
                                ' { source_node_uuid: rel_data_map.source_node_uuid,' + \
                                ' target_node_uuid: rel_data_map.target_node_uuid,' + \
                                ' sourcedb: rel_data_map.sourcedb,' + \
-                               ' seed_node_uuid: rel_data_map.seed_node_uuid' + \
+                               ' seed_node_uuid: rel_data_map.seed_node_uuid,' + \
+                               ' probability: rel_data_map.prob' + \
                                ' }]->(n2)'
             res = self.neo4j_run_cypher_query(cypher_query_str, query_params)
             if self.debug:
@@ -551,6 +555,17 @@ class Orangeboard:
         ob.neo4j_set_auth()
         ob.neo4j_push()
         print(ob)
+
+    def test_issue_130():
+        ob = Orangeboard(debug=True)
+        ob.set_dict_reltype_dirs({'targets': True})
+        node1 = ob.add_node('drug', 'x', seed_node_bool=True)
+        node2 = ob.add_node('uniprot_protein', 'w', seed_node_bool=False)
+        ob.add_rel('targets', 'ChEMBL', node1, node2, prob=0.5)
+        ob.neo4j_set_url()
+        ob.neo4j_set_auth()
+        ob.neo4j_push()
+        print(ob)        
         
 if __name__ == '__main__':
-    Orangeboard.test_issue_104()
+    Orangeboard.test_issue_130()
