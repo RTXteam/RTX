@@ -162,7 +162,7 @@ def seed_and_expand_kg_q1(num_expansions):
         omim_node = ob.get_node('omim_disease', omim_id)
         assert omim_node is not None
         uniprot_ids_list = q1_omim_to_uniprot_look_aside_dict[omim_id]
-#        print(uniprot_ids_list)
+        print(uniprot_ids_list)
         for uniprot_id in uniprot_ids_list:
             gene_symbols = bne.query_mygene_obj.convert_uniprot_id_to_gene_symbol(uniprot_id)
             print(gene_symbols)
