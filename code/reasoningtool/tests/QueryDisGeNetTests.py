@@ -2,7 +2,7 @@ import unittest
 from QueryDisGeNet import QueryDisGeNet
 
 
-class MyTestCase(unittest.TestCase):
+class QueryDisGeNetTestCase(unittest.TestCase):
     def test_query_mesh_id_to_uniprot_ids_desc(self):
         ret_dict = QueryDisGeNet.query_mesh_id_to_uniprot_ids_desc('D016779')
 
