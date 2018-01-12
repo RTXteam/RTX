@@ -41,5 +41,6 @@ class QueryGeneProfTestCase(unittest.TestCase):
 
         self.assertSetEqual(ret_set, known_set)
 
+
 if __name__ == '__main__':
     unittest.main()

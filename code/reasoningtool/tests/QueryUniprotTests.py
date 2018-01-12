@@ -2,7 +2,6 @@ import unittest
 from QueryUniprot import QueryUniprot
 
 
-# TODO complete tests for other functions
 class QueryUniprotTestCase(unittest.TestCase):
     def test_uniprot_id_to_reactome_pathways(self):
         res_set = QueryUniprot.uniprot_id_to_reactome_pathways("P68871")
