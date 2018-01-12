@@ -24,13 +24,13 @@ class QueryPC2:
         try:
             res = requests.get(url_str, timeout=QueryPC2.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
-            print(url, file=sys.stderr)
-            print('Timeout in QueryPC2 for URL: ' + url, file=sys.stderr)
+            # print(url, file=sys.stderr)
+            # print('Timeout in QueryPC2 for URL: ' + url, file=sys.stderr)
             return None
         status_code = res.status_code
         if status_code != 200:
-            print(url, file=sys.stderr)
-            print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
+            # print(url, file=sys.stderr)
+            # print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
             return None
         return res
 
