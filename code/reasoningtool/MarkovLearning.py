@@ -7,11 +7,11 @@ import Q1Utils
 
 
 # Connection information for the neo4j server
-driver = GraphDatabase.driver("bolt://lysine.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))
+driver = GraphDatabase.driver("bolt://rtx.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))
 session = driver.session()
 
 # Connection information for the ipython-cypher package
-connection = "http://neo4j:precisionmedicine@lysine.ncats.io:7473/db/data"
+connection = "http://neo4j:precisionmedicine@rtx.ncats.io:7473/db/data"
 DEFAULT_CONFIGURABLE = {
 	"auto_limit": 0,
 	"style": 'DEFAULT',

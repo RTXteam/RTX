@@ -4,7 +4,7 @@ from collections import namedtuple
 
 
 # Connection information for the ipython-cypher package
-connection = "http://neo4j:precisionmedicine@lysine.ncats.io:7473/db/data"
+connection = "http://neo4j:precisionmedicine@rtx.ncats.io:7473/db/data"
 DEFAULT_CONFIGURABLE = {
 	"auto_limit": 0,
 	"style": 'DEFAULT',

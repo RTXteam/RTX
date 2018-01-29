@@ -7,7 +7,7 @@ import requests_cache
 requests_cache.install_cache('orangeboard')
 
 # Connection information for the neo4j server, populated with orangeboard
-driver = GraphDatabase.driver("bolt://lysine.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))  # production server
+driver = GraphDatabase.driver("bolt://rtx.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))  # production server
 #driver = GraphDatabase.driver("bolt://ncats.saramsey.org:7687", auth=basic_auth("neo4j", "precisionmedicine"))  # test server
 session = driver.session()
 
