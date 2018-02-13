@@ -1,4 +1,9 @@
 #!/usr/bin/python3
+from __future__ import print_function
+import sys
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
 import re
 import os
 from QueryPharos import QueryPharos
@@ -6,6 +11,8 @@ import sys
 import subprocess
 from QueryMeSH import QueryMeSH
 import json
+import datetime
+
 
 
 class RTXQuery:
@@ -28,15 +35,15 @@ class RTXQuery:
         if attributes["description"]:
           codeString = "OK"
           result = [ { "id": 537, "code": 1, "codeString": codeString, "message": "AnswerFound", "text": [ html ], "result": attributes } ]
-          self.logQuery(query,codeString)
+          self.logQuery(id,codeString,terms)
         else:
           codeString = "DrugDescriptionNotFound"
           result = [ { "id": 537, "code": 10, "codeString": codeString, "message": "DrugDescriptionNotFound", "text": [ "Unable to find a definition for drug '"+terms[0]+"'." ] } ]
-          self.logQuery(query,codeString)
+          self.logQuery(id,codeString,terms)
       else:
           codeString = "TermNotFound"
           result = [ { "id": 537, "code": 11, "codeString": codeString, "message": "TermNotFound", "text": [ html ] } ]
-          self.logQuery(query,codeString)
+          self.logQuery(id,codeString,terms)
       return(result)
 
     if id == 'Q1':
@@ -54,7 +61,9 @@ class RTXQuery:
           text = "ERROR: Unable to properly parse the JSON response:<BR>\n"+reformattedText
       prettyText = re.sub("\n","\n<LI>",text)
       prettyText = "<UL><LI>" + prettyText + "</UL>"
-      result = [ { "id": 537, "code": 1, "codeString": "OK", "message": "AnswerFound", "result": returnedData, "text": [ prettyText ] } ]
+      codeString = "OK"
+      result = [ { "id": 537, "code": 1, "codeString": codeString, "message": "AnswerFound", "result": returnedData, "text": [ prettyText ] } ]
+      self.logQuery(id,codeString,terms)
       return(result)
 
     if id == 'Q2':
@@ -64,7 +73,9 @@ class RTXQuery:
       reformattedText = returnedText.stdout.decode('utf-8')
       reformattedText = re.sub("\n","<BR>\n",reformattedText)
       #reformattedText = "<UL><LI>" + reformattedText + "</UL>"
-      result = [ { "id": 537, "code": 1, "codeString": "OK", "message": "AnswerFound", "text": [ reformattedText ] } ]
+      codeString = "OK"
+      result = [ { "id": 537, "code": 1, "codeString": codeString, "message": "AnswerFound", "text": [ reformattedText ] } ]
+      self.logQuery(id,codeString,terms)
       return(result)
 
 
@@ -75,20 +86,24 @@ class RTXQuery:
         for target in targets:
           list += "<LI> "+target["name"]+"\n"
         list += "</UL>\n"
-        result = [ { "id": 537, "code": 1, "codeString": "OK", "message": "AnswerFound", "result": targets, "text": [ terms[0]+" is known to target: "+list ] } ]
+        codeString = "OK"
+        result = [ { "id": 537, "code": 1, "codeString": codeString, "message": "AnswerFound", "result": targets, "text": [ terms[0]+" is known to target: "+list ] } ]
+        self.logQuery(id,codeString,terms)
       else:
-        result = [ { "id": 537, "code": 11, "codeString": "DrugNotFound", "message": "DrugNotFound", "text": [ "Unable to find drug '"+terms[0]+"'." ] } ]
+        codeString = "DrugNotFound"
+        result = [ { "id": 537, "code": 11, "codeString": codeString, "message": "DrugNotFound", "text": [ "Unable to find drug '"+terms[0]+"'." ] } ]
+        self.logQuery(id,codeString,terms)
       return(result);
 
 
     return(result)
 
 
-  def logQuery(self,query,resultCode):
-    id = query["knownQueryTypeId"]
-    terms = query["terms"]
-    with open("RTXQueries.log","a") as logfile
-      logfile.write(datetime+"\t"+resultCode+"\t"+id+"\t"+",".join(terms))
+  def logQuery(self,id,codeString,terms):
+    datetimeString = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    os.chdir("/mnt/data/orangeboard/code/NCATS/code/UI/OpenAPI/python-flask-server")
+    with open("RTXQueries.log","a") as logfile:
+      logfile.write(datetimeString+"\t"+codeString+"\t"+id+"\t"+",".join(terms)+"\n")
 
 
   def __init__(self):
@@ -97,8 +112,8 @@ class RTXQuery:
 
 def main():
   rtxq = RTXQuery()
-  #query = { "knownQueryTypeId": "Q0", "terms": [ "lovastatin" ] }
-  query = { "knownQueryTypeId": "Q1", "terms": [ "alkaptonuria" ] }
+  query = { "knownQueryTypeId": "Q0", "terms": [ "lovastatin" ] }
+  #query = { "knownQueryTypeId": "Q1", "terms": [ "alkaptonuria" ] }
   #query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "glaucoma" ] }
   #query = { "knownQueryTypeId": "Q3", "terms": [ "acetaminophen" ] }
   result = rtxq.query(query)

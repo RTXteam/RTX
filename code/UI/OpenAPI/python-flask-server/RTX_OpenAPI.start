@@ -5,7 +5,12 @@ then
     /bin/rm /tmp/RTX_OpenAPI.log
 fi
 
+if [ -e /tmp/RTX_OpenAPI.elog ]
+then
+    /bin/rm /tmp/RTX_OpenAPI.elog
+fi
+
 cd /mnt/data/orangeboard/code/NCATS/code/UI/OpenAPI/python-flask-server
 
-exec /usr/bin/python3 -m swagger_server >/tmp/RTX_OpenAPI.log 2>&1
+exec /usr/bin/python3 -m swagger_server 1>/tmp/RTX_OpenAPI.log 2>/tmp/RTX_OpenAPI.elog
 
