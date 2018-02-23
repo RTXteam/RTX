@@ -315,7 +315,7 @@ def get_results_object_model(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_
 
 				omim_dict['path'] = path_list
 			else:
-				print(to_print)
+				#print(to_print)
 				if probs:
 					if omim in probs:
 						omim_dict['conf'] = probs[omim]
