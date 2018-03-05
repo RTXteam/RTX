@@ -1,0 +1,10 @@
+--index-url https://pypi.python.org/simple/
+requests-cache
+pandas
+neo4j-driver
+numpy
+ipython-cypher
+networkx
+pronto
+lxml
+mygene
