@@ -52,19 +52,34 @@ def get_node_property(name, node_property, node_label="", session=session, debug
 	:param debug: just return the query
 	:return: a string (the description of the node)
 	"""
-	if node_label == "":
-		query = "match (n{name:'%s'}) return n.%s" % (name, node_property)
+	if node_property != "label":
+		if node_label == "":
+			query = "match (n{name:'%s'}) return n.%s" % (name, node_property)
+		else:
+			query = "match (n:%s{name:'%s'}) return n.%s" % (node_label, name, node_property)
+		if debug:
+			return query
+		res = session.run(query)
+		res = [i for i in res]  # consume the query
+		if res:
+			return res[0]['n.%s' % node_property]
+		else:
+			raise Exception("No result returned, property doesn't exist? node: %s" % name)
 	else:
-		query = "match (n:%s{name:'%s'}) return n.%s" % (node_label, name, node_property)
-	if debug:
-		return query
-	res = session.run(query)
-	res = [i for i in res]  # consume the query
-	if res:
-		return res[0]['n.%s' % node_property]
-	else:
-		return " "
-
+		if node_label == "":
+			query = "match (n{name:'%s'}) return labels(n)" % (name)
+		else:
+			query = "match (n:%s{name:'%s'}) return labels(n)" % (node_label, name)
+		if debug:
+			return query
+		res = session.run(query)
+		res = [i for i in res]  # consume the query
+		if res:
+			node_types = res[0]['labels(n)']
+			node_type = list(set(node_types).difference({"Base"}))
+			return node_type.pop()  # TODO: this assume only a single result is returned
+		else:
+			raise Exception("No result returned, property doesn't exist? node: %s" % name)
 
 # Get node names in paths between two fixed endpoints
 def get_node_names_of_type_connected_to_target(source_label, source_name, target_label, max_path_len=4, debug=False, verbose=False, direction="u", session=session):
@@ -116,14 +131,14 @@ def get_one_hop_target(source_label, source_name, target_label, edge_type, debug
 	:return: list of omim ID's
 	"""
 	if direction == "r":
-		query = "MATCH path=allShortestPaths((s:%s{name:'%s'})<-[:%s]-(t:%s))" \
+		query = "MATCH path=(s:%s{name:'%s'})<-[:%s]-(t:%s)" \
 				" WITH distinct nodes(path)[1] as p RETURN p.name" % (source_label, source_name, edge_type, target_label)
 	elif direction == "f":
-		query = "MATCH path=allShortestPaths((s:%s{name:'%s'})-[:%s]->(t:%s))" \
+		query = "MATCH path=(s:%s{name:'%s'})-[:%s]->(t:%s)" \
 				" WITH distinct nodes(path)[1] as p RETURN p.name" % (
 				source_label, source_name, edge_type, target_label)
 	elif direction == "u":
-		query = "MATCH path=allShortestPaths((s:%s{name:'%s'})-[:%s]-(t:%s))" \
+		query = "MATCH path=(s:%s{name:'%s'})-[:%s]-(t:%s)" \
 				" WITH distinct nodes(path)[1] as p RETURN p.name" % (
 				source_label, source_name, edge_type, target_label)
 	else:
@@ -647,6 +662,8 @@ def test_get_node_property():
 	assert res == 'diphtheritic cystitis'
 	res = get_node_property("DOID:13306", "expanded")
 	assert res == False
+	res = get_node_property("metolazone", "label")
+	assert res == 'pharos_drug'
 
 
 def test_get_one_hop_target():
