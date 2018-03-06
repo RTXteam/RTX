@@ -638,6 +638,8 @@ def refine_omims_Markov_chain(omim_list, doid, max_path_len=3, verbose=False):
 		print("Found %d omims (according to the Markov chain model)" % len(selected_omims))
 	return selected_omims, paths_dict_selected, selected_probs
 
+###################################################################
+# Tests
 
 def test_get_node_names_of_type_connected_to_target():
 	res = get_node_names_of_type_connected_to_target("disont_disease", "DOID:14793", "uniprot_protein", max_path_len=1, direction="u")
@@ -671,3 +673,9 @@ def test_get_one_hop_target():
 	assert res == ["Q92838"]
 	res = get_one_hop_target("pharos_drug", "carbetocin", "uniprot_protein", "targets")
 	assert res == ["P30559"]
+
+
+def test_suite():
+	test_get_node_names_of_type_connected_to_target
+	test_get_node_property
+	test_get_one_hop_target

@@ -19,3 +19,13 @@ def one_hop_relationship_type(source_name, target_label, relationship_type):
 def test_one_hop_relationship_type():
 	res = one_hop_relationship_type("carbetocin", "uniprot_protein", "targets")
 	assert res == [{'desc': 'OXTR', 'name': 'P30559', 'type': 'node'}]
+	res = one_hop_relationship_type("OMIM:263200", "uniprot_protein", "disease_affects")
+	known_res = [{'desc': 'PKHD1', 'name': 'P08F94', 'type': 'node'}, {'desc': 'DZIP1L', 'name': 'Q8IYY4', 'type': 'node'}]
+	for item in res:
+		assert item in known_res
+	for item in known_res:
+		assert item in res
+
+
+def test_suite():
+	test_one_hop_relationship_type()
