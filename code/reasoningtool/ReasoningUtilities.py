@@ -102,6 +102,42 @@ def get_node_names_of_type_connected_to_target(source_label, source_name, target
 	else:
 		return names
 
+
+def get_one_hop_target(source_label, source_name, target_label, edge_type, debug=False, verbose=False, direction="u", session=session):
+	"""
+	This function finds all target nodes connected in one hop to a source node (with a given edge type). EG: what proteins does drug X target?
+	:param source_label: kind of source node (eg: disont_disease)
+	:param source_name: actual name of the source node (eg: DOID:14793)
+	:param target_label: kind of target nodes to look for (eg: omim_disease)
+	:param edge_type: Type of edge to be interested in (eg: targets, disease_affects)
+	:param debug: flag indicating if the query should also be returned
+	:param direction: Which direction to look (u: undirected, f: source->target, r: source<-target
+	:param session: neo4j server session
+	:return: list of omim ID's
+	"""
+	if direction == "r":
+		query = "MATCH path=allShortestPaths((s:%s{name:'%s'})<-[:%s]-(t:%s))" \
+				" WITH distinct nodes(path)[1] as p RETURN p.name" % (source_label, source_name, edge_type, target_label)
+	elif direction == "f":
+		query = "MATCH path=allShortestPaths((s:%s{name:'%s'})-[:%s]->(t:%s))" \
+				" WITH distinct nodes(path)[1] as p RETURN p.name" % (
+				source_label, source_name, edge_type, target_label)
+	elif direction == "u":
+		query = "MATCH path=allShortestPaths((s:%s{name:'%s'})-[:%s]-(t:%s))" \
+				" WITH distinct nodes(path)[1] as p RETURN p.name" % (
+				source_label, source_name, edge_type, target_label)
+	else:
+		raise Exception("Sorry, the direction must be one of 'f', 'r', or 'u'")
+	result = session.run(query)
+	result_list = [i for i in result]
+	names = [i['p.name'] for i in result_list]
+	if verbose:
+		print("Found %d nearby %s's" % (len(names), target_label))
+	if debug:
+		return names, query
+	else:
+		return names
+
 ############################################################################################
 # Stopping point 3/5/18 DK
 
@@ -611,3 +647,10 @@ def test_get_node_property():
 	assert res == 'diphtheritic cystitis'
 	res = get_node_property("DOID:13306", "expanded")
 	assert res == False
+
+
+def test_get_one_hop_target():
+	res = get_one_hop_target("disont_disease", "DOID:14793", "uniprot_protein", "gene_assoc_with")
+	assert res == ["Q92838"]
+	res = get_one_hop_target("pharos_drug", "carbetocin", "uniprot_protein", "targets")
+	assert res == ["P30559"]
