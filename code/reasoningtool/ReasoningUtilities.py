@@ -153,6 +153,29 @@ def get_one_hop_target(source_label, source_name, target_label, edge_type, debug
 	else:
 		return names
 
+def get_relationship_types_between(source_name, source_label, target_name, target_label, max_path_len=4,session=session, debug=False):
+	"""
+	This function will return the relationship types between fixed source and target nodes
+	:param source_name: source node name (eg: DOID:1234).
+	This replaces get_rels_fixed_omim_to_fixed_doid().
+	:param target_name: target node name (eg: skin rash)
+	:param max_path_len: maximum path length to consider
+	:param session: neo4j driver session
+	:return: returns a list of tuples where tup[0] is the list of relationship types, tup[1] is the count.
+	"""
+	query = "MATCH path=allShortestPaths((s:%s)-[*1..%d]-(t:%s)) " \
+			"WHERE s.name='%s' AND t.name='%s' " \
+			"RETURN distinct extract (rel in relationships(path) | type(rel) ) as types, count(*)" % (source_label, max_path_len, target_label, source_name, target_name)
+	with session.begin_transaction() as tx:
+		result = tx.run(query)
+		result_list = [i for i in result]
+		return_list = list()
+		for item in result_list:
+			return_list.append((item['types'], item['count(*)']))
+		if debug:
+			return return_list, query
+		else:
+			return return_list
 ############################################################################################
 # Stopping point 3/5/18 DK
 
@@ -675,7 +698,23 @@ def test_get_one_hop_target():
 	assert res == ["P30559"]
 
 
+def test_get_relationship_types_between():
+	res = get_relationship_types_between("DOID:0110307","disont_disease","DOID:1798","disont_disease",max_path_len=5)
+	known_result = [(['is_parent_of', 'phenotype_assoc_with', 'phenotype_assoc_with'], 40), (['is_parent_of', 'gene_assoc_with', 'gene_assoc_with'], 2)]
+	for tup in res:
+		assert tup in known_result
+	for tup in known_result:
+		assert tup in res
+
+	res = get_relationship_types_between("benzilonium","pharos_drug","DOID:14325","disont_disease",max_path_len=5)
+	known_result = [(['targets', 'controls_state_change_of', 'gene_assoc_with', 'is_parent_of'], 10), (['targets', 'controls_expression_of', 'gene_assoc_with', 'is_parent_of'], 7)]
+	for tup in res:
+		assert tup in known_result
+	for tup in known_result:
+		assert tup in res
+
 def test_suite():
-	test_get_node_names_of_type_connected_to_target
-	test_get_node_property
-	test_get_one_hop_target
+	test_get_node_names_of_type_connected_to_target()
+	test_get_node_property()
+	test_get_one_hop_target()
+	test_get_relationship_types_between()
