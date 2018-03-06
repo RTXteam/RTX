@@ -25,6 +25,8 @@ def test_one_hop_relationship_type():
 		assert item in known_res
 	for item in known_res:
 		assert item in res
+	res = one_hop_relationship_type("OMIM:263200", "ncbigene_microrna", "gene_assoc_with")
+	assert res == [{'desc': 'MIR1225', 'name': 'NCBIGene:100188847', 'type': 'node'}]
 
 
 def test_suite():
