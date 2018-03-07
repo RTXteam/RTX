@@ -176,37 +176,9 @@ def get_relationship_types_between(source_name, source_label, target_name, targe
 			return return_list, query
 		else:
 			return return_list
-############################################################################################
-# Stopping point 3/5/18 DK
-
-# get the list of relationships (and counts) between a fixed omim and fixed doid
-def get_rels_fixed_omim_to_fixed_doid(session, omim, doid, max_path_len=4, debug=False):
-	"""
-	This function returns all unique relationships in paths from a given OMIM to a disont disease.
-	:param session: neo4j server session
-	:param omim: omim ID (eg: 'OMIM:12345')
-	:param doid: disont_disease ID (eg: 'DOID:12345')
-	:param max_path_len: Maximum path length to consider (default =4)
-	:param debug: Flag that if true, also returns the cypher query
-	:return: a list of cypher results (path) along with their counts.
-	"""
-	query = "MATCH path=allShortestPaths((s:omim_disease)-[*1..%d]-(t:disont_disease)) " \
-			"WHERE s.name='%s' AND t.name='%s' " \
-			"RETURN distinct extract (rel in relationships(path) | type(rel) ) as types, count(*)" % (
-			max_path_len, omim, doid)
-	with session.begin_transaction() as tx:
-		result = tx.run(query)
-		result_list = [i for i in result]
-		return_list = list()
-		for item in result_list:
-			return_list.append((item['types'], item['count(*)']))
-		if debug:
-			return return_list, query
-		else:
-			return return_list
 
 
-# Convert neo4j subgraph (from cypher query) into a networkx graph
+# Convert ipython-cypher query (from cypher query) into a networkx graph
 def get_graph(res, directed=True):
 	"""
 	This function takes the result (subgraph) of a ipython-cypher query and builds a networkx graph from it
@@ -222,12 +194,15 @@ def get_graph(res, directed=True):
 		graph = nx.MultiGraph()
 	for item in res._results.graph:
 		for node in item['nodes']:
-			graph.add_node(node['id'], properties=node['properties'], labels=node['labels'],
-						   names=node['properties']['name'], description=node['properties']['description'])
+			graph.add_node(node['id'], properties=node['properties'], labels=node['labels'],names=node['properties']['name'], description=node['properties']['description'])
 		for rel in item['relationships']:
-			graph.add_edge(rel['startNode'], rel['endNode'], id=rel['id'], properties=rel['properties'],
-						   type=rel['type'])
+			graph.add_edge(rel['startNode'], rel['endNode'], id=rel['id'], properties=rel['properties'], type=rel['type'])
 	return graph
+
+
+
+############################################################################################
+# Stopping point 3/6/18 DK
 
 
 # since multiple paths can connect two nodes, treat it as a Markov chain and compute the expected path length
@@ -256,8 +231,7 @@ def expected_graph_distance(omim, doid, max_path_len=4, directed=True, connectio
 				"WHERE s.name='%s' AND t.name='%s' " \
 				"RETURN path" % (max_path_len, omim, doid)
 	res = cypher.run(query, conn=connection, config=defaults)
-	graph = get_graph(res,
-					  directed=directed)  # Note: I may want to make this directed, but sometimes this means no path from OMIM
+	graph = get_graph(res, directed=directed)  # Note: I may want to make this directed, but sometimes this means no path from OMIM
 	mat = nx.to_numpy_matrix(graph)  # get the indidence matrix
 	basis = [i[1] for i in list(graph.nodes(data='names'))]  # basis for the matrix (i.e. list of ID's)
 	doid_index = basis.index(doid)  # position of the target
@@ -278,7 +252,7 @@ def expected_graph_distance(omim, doid, max_path_len=4, directed=True, connectio
 	else:
 		row_sums = mat.sum(axis=1)
 		mat_norm = mat / row_sums
-	exp_o_to_d = np.sum([float(i) * LA.matrix_power(mat_norm, i)[omim_index, doid_index] for i in range(15)])
+	exp_o_to_d = np.sum([float(i) * LA.matrix_power(mat_norm, i)[omim_index, doid_index] for i in range(15)])  # No need to take the whole infinite sum, let's just do the first 15 terms in the power series
 	exp_d_to_o = np.sum([float(i) * LA.matrix_power(mat_norm, i)[doid_index, omim_index] for i in range(15)])
 	if exp_o_to_d == 0:
 		exp_o_to_d = float("inf")  # no such path
@@ -712,6 +686,17 @@ def test_get_relationship_types_between():
 		assert tup in known_result
 	for tup in known_result:
 		assert tup in res
+
+
+def test_get_graph():
+	query = 'match p=(s:disont_disease{name:"DOID:14325"})-[*1..3]-(t:pharos_drug) return p limit 10'
+	res = cypher.run(query, conn=connection, config=defaults)
+	graph = get_graph(res)
+	nodes = set(['138403', '148895', '140062', '140090', '139899', '140317', '138536', '121114', '138632', '147613', '140300', '140008', '140423'])
+	edges = set([('138403', '121114', 0), ('148895', '147613', 0), ('148895', '147613', 1), ('148895', '147613', 2), ('148895', '147613', 3), ('148895', '147613', 4), ('148895', '147613', 5), ('148895', '147613', 6), ('148895', '147613', 7), ('148895', '147613', 8), ('148895', '147613', 9), ('140062', '121114', 0), ('140090', '121114', 0), ('139899', '121114', 0), ('140317', '121114', 0), ('138536', '121114', 0), ('121114', '148895', 0), ('121114', '148895', 1), ('121114', '148895', 2), ('121114', '148895', 3), ('121114', '148895', 4), ('121114', '148895', 5), ('121114', '148895', 6), ('121114', '148895', 7), ('121114', '148895', 8), ('121114', '148895', 9), ('138632', '121114', 0), ('140300', '121114', 0), ('140008', '121114', 0), ('140423', '121114', 0)])
+	assert set(graph.nodes) == nodes
+	assert set(graph.edges) == edges
+
 
 def test_suite():
 	test_get_node_names_of_type_connected_to_target()
