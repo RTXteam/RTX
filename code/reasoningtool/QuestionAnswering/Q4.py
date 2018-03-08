@@ -35,6 +35,14 @@ class Q4:
 		source_label = RU.get_node_property(source_name, "label")
 		# get the actual targets
 		targets = RU.get_one_hop_target(source_label, source_name, target_label, relationship_type)
+		# Look 2 steps beyone if we didn't get any targets
+		if targets == []:
+			for max_path_len in range(2, 5):
+				print(max_path_len)
+				targets = RU.get_node_names_of_type_connected_to_target(source_label, source_name, target_label, max_path_len=max_path_len, direction="u")
+				if targets:
+					break
+
 		# Format the results. TODO: change this to a call to Eric's output formatter when he's written that
 		results_list = list()
 		for target in targets:
