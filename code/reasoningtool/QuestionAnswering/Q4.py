@@ -1,6 +1,14 @@
 # This will be a collection of scripts that can answer various questions
 # Start out with easy ones
-import ReasoningUtilities as RU
+import os
+import sys
+# PyCharm doesn't play well with relative imports + python console + terminal
+try:
+	from code.reasoningtool import ReasoningUtilities as RU
+except ImportError:
+	sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+	import ReasoningUtilities as RU
+
 # TODO: write boilerplate argparse class that I can just call in each individual question
 # TODO: turn into a script and put the argparse stuff in it
 
