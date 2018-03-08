@@ -34,7 +34,7 @@ class Q4:
 		source_label = RU.get_node_property(source_name, "label")
 		# get the actual targets
 		targets = RU.get_one_hop_target(source_label, source_name, target_label, relationship_type)
-		# Format the results. TODO: cnage this to a call to Eric's output formatter when he's written that
+		# Format the results. TODO: change this to a call to Eric's output formatter when he's written that
 		results_list = list()
 		for target in targets:
 			results_list.append(
@@ -58,13 +58,11 @@ class Q4:
 				output += term + " "
 			output += "\n"
 		output += "Assumes that Z directly connects X and Y."
-		print(output)
-		return
-
+		return output
 
 
 # Tests
-def testQ4():
+def testQ4_answer():
 	Q = Q4()
 	res = Q.answer(["carbetocin", "uniprot_protein", "targets"])
 	assert res == [{'desc': 'OXTR', 'name': 'P30559', 'type': 'node','prob': 1}]
@@ -75,11 +73,17 @@ def testQ4():
 	for item in known_res:
 		assert item in res
 	res = Q.answer(["OMIM:263200", "ncbigene_microrna", "gene_assoc_with"])
-	assert res == [{'desc': 'MIR1225', 'name': 'NCBIGene:100188847', 'type': 'node','prob': 1}]
+	assert res == [{'desc': 'MIR1225', 'name': 'NCBIGene:100188847', 'type': 'node', 'prob': 1}]
+
+
+def test_Q4_describe():
+	Q = Q4()
+	res = Q.describe()
 
 
 def test_suite():
-	testQ4()
+	testQ4_answer()
+	test_Q4_describe()
 
 
 def main():
