@@ -2,6 +2,7 @@
 # Start out with easy ones
 import os
 import sys
+import argparse
 # PyCharm doesn't play well with relative imports + python console + terminal
 try:
 	from code.reasoningtool import ReasoningUtilities as RU
@@ -19,17 +20,17 @@ class Q4:
 	def __init__(self):
 		None
 
-	def answer(self, query_terms):
+	def answer(self, source_name, target_label, relationship_type):
 		"""
 		Answer a question of the type "What proteins does drug X target" but is general:
 		 what <node X type> does <node Y grounded> <relatioship Z> that can be answered in one hop in the KG
 		:param query_terms: a triple consisting of a source node name (KG neo4j node name, the target label (KG neo4j
 		"node label") and the relationship type (KG neo4j "Relationship type")
-		:return:
+		:param source_name: KG neo4j node name (eg "carbetocin")
+		:param target_label: KG node label (eg. "uniprot_protein")
+		:param relationship_type: KG relationship type (eg. "targets")
+		:return: list of dictionaries containing the nodes that are one hop (along relationship type) that connect source to target.
 		"""
-		source_name = query_terms[0]
-		target_label = query_terms[1]
-		relationship_type = query_terms[2]
 		# Get label/kind of node the source is
 		source_label = RU.get_node_property(source_name, "label")
 		# get the actual targets
@@ -64,15 +65,15 @@ class Q4:
 # Tests
 def testQ4_answer():
 	Q = Q4()
-	res = Q.answer(["carbetocin", "uniprot_protein", "targets"])
+	res = Q.answer("carbetocin", "uniprot_protein", "targets")
 	assert res == [{'desc': 'OXTR', 'name': 'P30559', 'type': 'node','prob': 1}]
-	res = Q.answer(["OMIM:263200", "uniprot_protein", "disease_affects"])
+	res = Q.answer("OMIM:263200", "uniprot_protein", "disease_affects")
 	known_res = [{'desc': 'PKHD1', 'name': 'P08F94', 'type': 'node','prob': 1}, {'desc': 'DZIP1L', 'name': 'Q8IYY4', 'type': 'node','prob': 1}]
 	for item in res:
 		assert item in known_res
 	for item in known_res:
 		assert item in res
-	res = Q.answer(["OMIM:263200", "ncbigene_microrna", "gene_assoc_with"])
+	res = Q.answer("OMIM:263200", "ncbigene_microrna", "gene_assoc_with")
 	assert res == [{'desc': 'MIR1225', 'name': 'NCBIGene:100188847', 'type': 'node', 'prob': 1}]
 
 
@@ -87,8 +88,31 @@ def test_suite():
 
 
 def main():
+	parser = argparse.ArgumentParser(description="Answers questions of the type 'What proteins does X target?'.",
+									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+	parser.add_argument('-s', '--subject', type=str, help="Source node name.", default="carbetocin")
+	parser.add_argument('-o', '--object', type=str, help="Target node label", default="uniprot_protein")
+	parser.add_argument('-p', '--predicate', type=str, help="Relationship type.", default="targets")
+	parser.add_argument('-j', '--json', action='store_true', help='Flag specifying that results should be printed in JSON format (to stdout)', default=False)
+	parser.add_argument('-d', '--describe', action='store_true', help="Describe what kinds of questions this answers.", default=False)
+
+	# Parse and check args
+	args = parser.parse_args()
+	source_name = args.subject
+	target_label = args.object
+	relationship_type = args.predicate
+	use_json = args.json
+	describe_flag = args.describe
+
+	# Initialize the question class
 	Q = Q4()
-	Q.describe()
+
+	if describe_flag:
+		res = Q.describe()
+		print(res)
+	else:
+		res = Q.answer(source_name, target_label, relationship_type)
+		print(res)
 
 
 if __name__ == "__main__":
