@@ -41,6 +41,43 @@ DefaultConfigurable = namedtuple(
 )
 defaults = DefaultConfigurable(**DEFAULT_CONFIGURABLE)
 
+def count_nodes(sessions=session):
+	"""
+	Count the number of nodes
+	:param sessions: neo4j bolt session
+	:return: int
+	"""
+	query = "match (n) return count(n)"
+	res = session.run(query)
+	return res.single()["count(n)"]
+
+
+def get_relationship_types(sessions=session):
+	"""
+	Get all the node labels in the neo4j database
+	:param sessions: neo4j bolt session
+	:return: list of node labels
+	"""
+	query = "match ()-[r]-() return distinct type(r)"
+	res = session.run(query)
+	res = [i["type(r)"] for i in res]
+	return res
+
+def get_node_labels(sessions=session):
+	"""
+	Get all the edge labels in the neo4j database
+	:param sessions: neo4j bolt session
+	:return: list of relationship types
+	"""
+	query = "match (n) return distinct labels(n)"
+	res = session.run(query)
+	labels = []
+	for i in res:
+		label = list(set(i["labels(n)"]).difference({"Base"})) # get rid of the extra base label
+		label = label.pop()  #this assumes only a single relationship type, but that's ok since that's how neo4j works
+		labels.append(label)
+	return labels
+
 
 def get_node_property(name, node_property, node_label="", session=session, debug=False):
 	"""
