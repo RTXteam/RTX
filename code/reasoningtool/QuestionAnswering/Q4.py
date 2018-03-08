@@ -1,5 +1,3 @@
-# This will be a collection of scripts that can answer various questions
-# Start out with easy ones
 import os
 import sys
 import argparse
@@ -10,10 +8,6 @@ except ImportError:
 	sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 	import ReasoningUtilities as RU
 
-# TODO: write boilerplate argparse class that I can just call in each individual question
-# TODO: turn into a script and put the argparse stuff in it
-
-
 # eg: what proteins does drug X target? One hop question
 class Q4:
 
@@ -23,7 +17,7 @@ class Q4:
 	def answer(self, source_name, target_label, relationship_type):
 		"""
 		Answer a question of the type "What proteins does drug X target" but is general:
-		 what <node X type> does <node Y grounded> <relatioship Z> that can be answered in one hop in the KG
+		 what <node X type> does <node Y grounded> <relatioship Z> that can be answered in one hop in the KG (increasing the step size if necessary).
 		:param query_terms: a triple consisting of a source node name (KG neo4j node name, the target label (KG neo4j
 		"node label") and the relationship type (KG neo4j "Relationship type")
 		:param source_name: KG neo4j node name (eg "carbetocin")
