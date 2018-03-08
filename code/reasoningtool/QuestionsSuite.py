@@ -3,12 +3,13 @@
 import ReasoningUtilities as RU
 
 
+# eg: what proteins does drug X target? One hop question
 class Q4:
 
 	def answer(self, query_terms):
 		"""
 		Answer a question of the type "What proteins does drug X target" but is general:
-		 what <node X type> does <node Y grounded> <relatioship Z>
+		 what <node X type> does <node Y grounded> <relatioship Z> that can be answered in one hop in the KG
 		:param query_terms: a triple consisting of a source node name (KG neo4j node name, the target label (KG neo4j
 		"node label") and the relationship type (KG neo4j "Relationship type")
 		:return:
@@ -43,6 +44,7 @@ class Q4:
 			for term in rel_split:
 				output += term + " "
 			output += "\n"
+		output += "Assumes that Z directly connects X and Y."
 		print(output)
 		return
 
@@ -51,33 +53,21 @@ class Q4:
 
 
 
-# eg: what proteins does drug X target?
-def one_hop_relationship_type(source_name, target_label, relationship_type):
-	source_label = RU.get_node_property(source_name, "label")
-	targets = RU.get_one_hop_target(source_label, source_name, target_label, relationship_type)
-	results_list = list()
-	for target in targets:
-		results_list.append(
-			{'type': 'node',
-	 		'name': target,
-	 		'desc': RU.get_node_property(target, "description", node_label=target_label),
-			 'prob': 1})  # All these are known to be true
-	return results_list
-
 #########################################################
 # Tests
-def test_one_hop_relationship_type():
-	res = one_hop_relationship_type("carbetocin", "uniprot_protein", "targets")
+def testQ4():
+	Q = Q4()
+	res = Q.answer(["carbetocin", "uniprot_protein", "targets"])
 	assert res == [{'desc': 'OXTR', 'name': 'P30559', 'type': 'node','prob': 1}]
-	res = one_hop_relationship_type("OMIM:263200", "uniprot_protein", "disease_affects")
+	res = Q.answer(["OMIM:263200", "uniprot_protein", "disease_affects"])
 	known_res = [{'desc': 'PKHD1', 'name': 'P08F94', 'type': 'node','prob': 1}, {'desc': 'DZIP1L', 'name': 'Q8IYY4', 'type': 'node','prob': 1}]
 	for item in res:
 		assert item in known_res
 	for item in known_res:
 		assert item in res
-	res = one_hop_relationship_type("OMIM:263200", "ncbigene_microrna", "gene_assoc_with")
+	res = Q.answer(["OMIM:263200", "ncbigene_microrna", "gene_assoc_with"])
 	assert res == [{'desc': 'MIR1225', 'name': 'NCBIGene:100188847', 'type': 'node','prob': 1}]
 
 
 def test_suite():
-	test_one_hop_relationship_type()
+	testQ4()
