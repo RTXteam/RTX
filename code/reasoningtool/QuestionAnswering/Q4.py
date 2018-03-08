@@ -1,10 +1,15 @@
 # This will be a collection of scripts that can answer various questions
 # Start out with easy ones
 import ReasoningUtilities as RU
+# TODO: write boilerplate argparse class that I can just call in each individual question
+# TODO: turn into a script and put the argparse stuff in it
 
 
 # eg: what proteins does drug X target? One hop question
 class Q4:
+
+	def __init__(self):
+		None
 
 	def answer(self, query_terms):
 		"""
@@ -50,10 +55,6 @@ class Q4:
 
 
 
-
-
-
-#########################################################
 # Tests
 def testQ4():
 	Q = Q4()
@@ -71,3 +72,12 @@ def testQ4():
 
 def test_suite():
 	testQ4()
+
+
+def main():
+	Q = Q4()
+	Q.describe()
+
+
+if __name__ == "__main__":
+	main()
