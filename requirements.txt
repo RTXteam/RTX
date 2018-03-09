@@ -9,3 +9,7 @@ pronto
 lxml
 mygene
 nltk
+# nltk.download('wordnet')
+# nltk.download('averaged_perceptron_tagger')
+# nltk.download('punkt')
+# TODO: I may be missing a few nltk packages

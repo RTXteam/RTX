@@ -48,12 +48,12 @@ def sentence_similarity(sentence1, sentence2):
 	:return: float between 0 and 1 giving similarity of sentences
 	"""
 	# Tokenize and tag
-	sentence1 = pos_tag(word_tokenize(sentence1))
-	sentence2 = pos_tag(word_tokenize(sentence2))
+	sentence1_tagged = pos_tag(word_tokenize(sentence1))
+	sentence2_tagged = pos_tag(word_tokenize(sentence2))
 
 	# Get the synsets for the tagged words
-	synsets1 = [tagged_to_synset(*tagged_word) for tagged_word in sentence1]
-	synsets2 = [tagged_to_synset(*tagged_word) for tagged_word in sentence2]
+	synsets1 = [tagged_to_synset(*tagged_word) for tagged_word in sentence1_tagged]
+	synsets2 = [tagged_to_synset(*tagged_word) for tagged_word in sentence2_tagged]
 
 	# Filter out the Nones
 	synsets1 = [ss for ss in synsets1 if ss]
@@ -85,7 +85,17 @@ def sentence_similarity(sentence1, sentence2):
 		#score /= (len(sentence1) + len(sentence2)) / 2.0  # divide by the mean sentence length
 	else:
 		score = 0.0
-	return score
+
+	# If the number of synset's is small, no confidence in similarity
+	if count <= 2:
+		score = 0.0
+	# In case there are a ton of words not in the wordnet, also use naive Jaccard
+	jaccard = 0
+	sentence1_set = set([i.lower() for i in word_tokenize(sentence1)])
+	sentence2_set = set([i.lower() for i in word_tokenize(sentence2)])
+	jaccard = len(sentence1_set.intersection(sentence2_set)) / float(len(sentence1_set.union(sentence2_set)))
+	return max(score, jaccard)
+	#return score
 
 
 def symmetric_sentence_similarity(sentence1, sentence2):
