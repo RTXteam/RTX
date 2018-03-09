@@ -8,3 +8,4 @@ networkx
 pronto
 lxml
 mygene
+nltk

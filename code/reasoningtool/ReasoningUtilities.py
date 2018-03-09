@@ -63,6 +63,7 @@ def get_relationship_types(sessions=session):
 	res = [i["type(r)"] for i in res]
 	return res
 
+
 def get_node_labels(sessions=session):
 	"""
 	Get all the edge labels in the neo4j database
@@ -73,10 +74,25 @@ def get_node_labels(sessions=session):
 	res = session.run(query)
 	labels = []
 	for i in res:
-		label = list(set(i["labels(n)"]).difference({"Base"})) # get rid of the extra base label
-		label = label.pop()  #this assumes only a single relationship type, but that's ok since that's how neo4j works
+		label = list(set(i["labels(n)"]).difference({"Base"}))  # get rid of the extra base label
+		label = label.pop()  # this assumes only a single relationship type, but that's ok since that's how neo4j works
 		labels.append(label)
 	return labels
+
+
+def get_name_to_description_dict(session=session):
+	"""
+	Create a dictionary of all nodes, keys being the names, items being the descriptions
+	:param session: neo4j session
+	:return: dictionary of node names and descriptions
+	"""
+	query = "match (n) return properties(n) as n"
+	name_to_descr = dict()
+	res = session.run(query)
+	for item in res:
+		item_dict = item['n']
+		name_to_descr[item_dict['name']] = item_dict['description']
+	return name_to_descr
 
 
 def get_node_property(name, node_property, node_label="", session=session, debug=False):
