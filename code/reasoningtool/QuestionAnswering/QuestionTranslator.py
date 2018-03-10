@@ -49,7 +49,7 @@ Q4_corpus = [
 
 # get all the node names and descriptions
 try:
-	fid = open(os.path.abspath('../../../data/KGmetadata/NodeNamesDescriptions.tsv'), 'r')
+	fid = open(os.path.abspath('../../data/KGmetadata/NodeNamesDescriptions.tsv'), 'r')
 except FileNotFoundError:
 	fid = open(os.path.abspath('data/KGmetadata/NodeNamesDescriptions.tsv'), 'r')
 node_names = set()
@@ -72,7 +72,7 @@ fid.close()
 
 # get the edge types
 try:
-	fid = open(os.path.abspath('../../../data/KGmetadata/EdgeTypes.tsv'), 'r')
+	fid = open(os.path.abspath('../../data/KGmetadata/EdgeTypes.tsv'), 'r')
 except FileNotFoundError:
 	fid = open(os.path.abspath('data/KGmetadata/EdgeTypes.tsv'), 'r')
 edge_types = list()
@@ -83,7 +83,7 @@ fid.close()
 
 # Get the node labels
 try:
-	fid = open(os.path.abspath('../../../data/KGmetadata/NodeLabels.tsv'), 'r')
+	fid = open(os.path.abspath('../../data/KGmetadata/NodeLabels.tsv'), 'r')
 except FileNotFoundError:
 	fid = open(os.path.abspath('data/KGmetadata/NodeLabels.tsv'), 'r')
 node_labels = list()
@@ -141,8 +141,9 @@ def find_target_label(string, node_labels):
 	return res
 
 
-def find_edge_type(string, edge_types):
+def find_edge_type(string, edge_types):  #TODO: string="associated"
 	p = nltk.stem.snowball.SnowballStemmer("english")
+	st_words = set(stopwords.words('english'))
 	res = None
 	# remove underscores
 	edge_types_space = []
@@ -151,7 +152,7 @@ def find_edge_type(string, edge_types):
 	# standarize the string by making it lowercase and removing stop words
 	query = string.lower()
 	query_tokens = nltk.word_tokenize(query, "english")
-	query_no_stop = set(query_tokens).difference(set(stopwords.words('english')))
+	query_no_stop = [w for w in query_tokens if w not in st_words]
 	query_clean = ""
 	for word in query_no_stop:
 		query_clean += p.stem(word) + " "
@@ -159,7 +160,7 @@ def find_edge_type(string, edge_types):
 	for i in range(len(edge_types_space)):
 		et = edge_types_space[i]
 		et_tokens = nltk.word_tokenize(et)
-		et_no_stop = set(et_tokens).difference(set(stopwords.words('english')))
+		et_no_stop = [w for w in et_tokens if w not in st_words]
 		et_clean = ""
 		for word in et_no_stop:
 			if word == "assoc":
@@ -168,6 +169,7 @@ def find_edge_type(string, edge_types):
 		if query_clean == et_clean:
 			res = edge_types[i]
 	return res
+
 
 Q_corpora = [Q0_corpus, Q1_corpus, Q2_corpus, Q4_corpus]
 question = "what are the protein targets of acetaminophen"
