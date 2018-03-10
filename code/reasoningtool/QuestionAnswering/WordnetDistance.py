@@ -87,15 +87,13 @@ def sentence_similarity(sentence1, sentence2):
 		score = 0.0
 
 	# If the number of synset's is small, no confidence in similarity
-	if count <= 2:
-		score = 0.0
-	# In case there are a ton of words not in the wordnet, also use naive Jaccard
-	jaccard = 0
-	sentence1_set = set([i.lower() for i in word_tokenize(sentence1)])
-	sentence2_set = set([i.lower() for i in word_tokenize(sentence2)])
-	jaccard = len(sentence1_set.intersection(sentence2_set)) / float(len(sentence1_set.union(sentence2_set)))
-	return max(score, jaccard)
-	#return score
+	if count <= 3:
+		sentence1_set = set([i.lower() for i in word_tokenize(sentence1)])
+		sentence2_set = set([i.lower() for i in word_tokenize(sentence2)])
+		jaccard = len(sentence1_set.intersection(sentence2_set)) / float(len(sentence1_set.union(sentence2_set)))
+		score = jaccard
+	#return max(score, jaccard)
+	return score
 
 
 def symmetric_sentence_similarity(sentence1, sentence2):
