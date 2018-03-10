@@ -162,6 +162,8 @@ def find_edge_type(string, edge_types):
 		et_no_stop = set(et_tokens).difference(set(stopwords.words('english')))
 		et_clean = ""
 		for word in et_no_stop:
+			if word == "assoc":
+				word = "associated"
 			et_clean += p.stem(word) + " "
 		if query_clean == et_clean:
 			res = edge_types[i]
@@ -170,6 +172,7 @@ def find_edge_type(string, edge_types):
 Q_corpora = [Q0_corpus, Q1_corpus, Q2_corpus, Q4_corpus]
 question = "what are the protein targets of acetaminophen"
 question = "what proteins does acetaminophen target"
+question = "what are the phenotypes associated with malaria"
 
 (corpus_index, similarity) = wd.find_corpus(question, Q_corpora)
 
