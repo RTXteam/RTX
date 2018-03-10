@@ -107,11 +107,11 @@ def symmetric_sentence_similarity(sentence1, sentence2):
 	return (sentence_similarity(sentence1, sentence2) + sentence_similarity(sentence2, sentence1)) / 2
 
 
-def wordnet_max_corpus(sentence, corpus):
+def max_in_corpus(sentence, corpus):
 	return max([symmetric_sentence_similarity(sentence, s) for s in corpus])
 
 
-def wordnet_find_corpus(sentence, corpus_list):
+def find_corpus(sentence, corpus_list):
 	"""
 	From a list of corpora (a corpus is a list of example questions), find the one that gives the largest
 	wordnet distance.
@@ -122,7 +122,7 @@ def wordnet_find_corpus(sentence, corpus_list):
 	max_val = 0
 	max_index = -1
 	for i in range(len(corpus_list)):
-		dist = wordnet_max_corpus(sentence, corpus_list[i])
+		dist = max_in_corpus(sentence, corpus_list[i])
 		if dist > max_val:
 			max_val = dist
 			max_index = i
@@ -152,11 +152,11 @@ def test():
 	]
 
 	question = "what are the protein targets of ibuprofen"
-	res = wordnet_find_corpus(question, [Q2_corpus, Q4_corpus])
+	res = find_corpus(question, [Q2_corpus, Q4_corpus])
 	assert res[0] == 1
 
 	question = "What is the clinical outcome pathway of physostigmine for treatment of glaucoma?"
-	res = wordnet_find_corpus(question, [Q2_corpus, Q4_corpus])
+	res = find_corpus(question, [Q2_corpus, Q4_corpus])
 	assert res[0] == 0
 
 
