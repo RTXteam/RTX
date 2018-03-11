@@ -3,12 +3,26 @@ import sys
 import os
 import nltk
 from nltk.corpus import stopwords
+import string
 
+# Import Wordnet Distance
 try:
 	from code.reasoningtool.QuestionAnswering import WordnetDistance as wd
 except ImportError:
 	sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 	import WordnetDistance as wd
+
+# Import reasoning utilities
+try:
+	from code.reasoningtool import ReasoningUtilities as RU
+except ImportError:
+	# noinspection PyUnboundLocalVariable
+	try:
+		sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+		import ReasoningUtilities as RU
+	except ImportError:
+		sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  # Go up one level and look for it
+		import ReasoningUtilities as RU
 
 # Question examples
 Q0_corpus = [
@@ -172,7 +186,9 @@ def find_edge_type(string, edge_types):
 	return res
 
 
-def answer_question(question, Q_corpora):
+def find_question_parameters(question, Q_corpora):
+	# First, remove trailing punctuation
+	question = question.strip(string.punctuation)
 	(corpus_index, similarity) = wd.find_corpus(question, Q_corpora)
 
 	if similarity < .3:
@@ -186,13 +202,14 @@ def answer_question(question, Q_corpora):
 		for i in range(len(question_tokenized) - block_size + 1):
 			block = " ".join(question_tokenized[i:(i + block_size)])
 			blocks.append(block)
+	blocks = list(reversed(blocks))  # go bigger to smaller since "is_assoc_with" \subst "gene_assoc_with" after stopword deletion
 
 	# for each block, look for the associated terms in a greedy fashion
 	if corpus_index == 3:  # Q4
 		source_name = None
 		target_label = None
 		relationship_type = None
-		for block in reversed(blocks):
+		for block in blocks:
 			if source_name is None:
 				source_name = find_source_node_name(block, names2descrip, descrip2names)
 			if target_label is None:
@@ -201,10 +218,8 @@ def answer_question(question, Q_corpora):
 				relationship_type = find_edge_type(block, edge_types)
 			if all(item is not None for item in [source_name, target_label, relationship_type]):
 				break
-		#print(source_name)
-		#print(target_label)
-		#print(relationship_type)
 
+		# Check if all terms were correctly populated, return terms
 		if any(item is None for item in [source_name, target_label, relationship_type]):
 			error_message = "Sorry, I was unable to find the appropriate terms to answer your question. Missing term(s):\n"
 			if source_name is None:
@@ -221,34 +236,149 @@ def answer_question(question, Q_corpora):
 			#Q = Q4()
 			#Q.answer(source_name, target_label, relationship_type)
 
+	elif corpus_index == 2:  # Q2 COP question
+		drug_name = None
+		disease_name = None
+		candidate_node_names = []
+		# Look for anything that could be a node name
+		for block in blocks:
+			node = find_source_node_name(block, names2descrip, descrip2names)
+			if node is not None:
+				candidate_node_names.append(node)
 
-def test_answer_question():
+		# Get the node labels
+		candidate_node_labels = []
+		for node in candidate_node_names:
+			node_label = RU.get_node_property(node, "label")  # TODO: Arnab's UMLS lookup
+			candidate_node_labels.append(node_label)
+
+		# Check if a drug and a disease were named
+		if "pharos_drug" not in candidate_node_labels or "disont_disease" not in candidate_node_labels:
+			error_message = "Sorry, I was unable to find the appropriate terms to answer your question. Missing term(s):\n"
+			if "pharos_drug" not in candidate_node_labels:
+				error_message += "A pharos drug name (eg. acetaminophen, glycamil, tranilast, etc.)"
+			if "disont_disease" not in candidate_node_labels:
+				error_message += "A disease (eg. diphtheritic cystitis, pancreatic endocrine carcinoma, malaria, clear cell sarcoma, etc.)"
+			raise Exception(error_message)
+
+		# Look for the locations of the drugs and diseases
+		num_drug = 0
+		drug_loc = []
+		num_disease = 0
+		disease_loc = []
+		for i in range(len(candidate_node_labels)):
+			label = candidate_node_labels[i]
+			if label == "pharos_drug":
+				num_drug += 1
+				drug_loc.append(i)
+			if label == "disont_disease":
+				num_disease += 1
+				disease_loc.append(i)
+
+		# Throw an error if there are multiple drugs or diseases
+		if num_drug > 1 or num_disease > 1:
+			error_message = "There seem to be multiple names, this question requires only one drug term and one disease term. Repeats include:"
+			if num_drug > 1:
+				error_message += "\nDrugs detected: "
+				for loc in drug_loc:
+					error_message += "%s, " % candidate_node_names[loc]
+			if num_disease > 1:
+				error_message += "\nDiseases detected: "
+				for loc in disease_loc:
+					error_message += "%s, " % candidate_node_names[loc]
+
+		# Otherwise, everything is in order and return the results
+		else:
+			drug_name = candidate_node_names[drug_loc[0]]
+			disease_name = candidate_node_names[disease_loc[0]]
+			return drug_name, disease_name
+
+	elif corpus_index == 1:  # Q1
+		disease_name = None
+		# Look for a node name, break once one is found (greedy)
+		for block in blocks:
+			node = find_source_node_name(block, names2descrip, descrip2names)
+			if node is not None:
+				disease_name = node
+				break
+
+		# Get the node label
+		node_label = RU.get_node_property(disease_name, "label")  # TODO: Arnab's UMLS lookup
+		if node_label != "disont_disease":
+			error_message = "This question requires a disease name, I got a %s with the name %s" %(node_label, disease_name)
+			raise Exception(error_message)
+		else:
+			return disease_name
+
+def test_find_question_parameters():
+	# Q4 tests
 	question = "what are the protein targets of acetaminophen"
-	source_name, target_label, relationship_type = answer_question(question, Q_corpora)
+	source_name, target_label, relationship_type = find_question_parameters(question, Q_corpora)
 	assert source_name == "acetaminophen"
 	assert target_label == "uniprot_protein"
 	assert relationship_type == "targets"
 
 	question = "what proteins does acetaminophen target"
-	source_name, target_label, relationship_type = answer_question(question, Q_corpora)
+	source_name, target_label, relationship_type = find_question_parameters(question, Q_corpora)
 	assert source_name == "acetaminophen"
 	assert target_label == "uniprot_protein"
 	assert relationship_type == "targets"
 
 	question = "what are the phenotypes associated with malaria"
-	source_name, target_label, relationship_type = answer_question(question, Q_corpora)
+	source_name, target_label, relationship_type = find_question_parameters(question, Q_corpora)
 	assert source_name == "DOID:12365"
 	assert target_label == "phenont_phenotype"
 	assert relationship_type == "phenotype_assoc_with"
 
 	question = "what proteins are members of Aflatoxin activation and detoxification"
-	source_name, target_label, relationship_type = answer_question(question, Q_corpora)
+	source_name, target_label, relationship_type = find_question_parameters(question, Q_corpora)
 	assert source_name == "R-HSA-5423646"
 	assert target_label == "uniprot_protein"
 	assert relationship_type == "is_member_of"
 
 	question = "MIR4426 controls the expression of which proteins"
-	source_name, target_label, relationship_type = answer_question(question, Q_corpora)
+	source_name, target_label, relationship_type = find_question_parameters(question, Q_corpora)
 	assert source_name == "NCBIGene:100616345"
 	assert target_label == "uniprot_protein"
 	assert relationship_type == "controls_expression_of"
+
+	# Q2 tests
+	question = "What is the clinical outcome pathway of physostigmine for treatment of glaucoma"
+	drug, disease = find_question_parameters(question, Q_corpora)
+	assert drug == "physostigmine"
+	assert disease == "DOID:1686"
+
+	question = "What is the clinical outcome pathway for the treatment of lactic acidosis by benzilonium"
+	drug, disease = find_question_parameters(question, Q_corpora)
+	assert drug == "benzilonium"
+	assert disease == "DOID:3650"
+
+	question = "What is the clinical outcome pathway for the treatment of alcohol abuse by ACAMPROSATE"
+	drug, disease = find_question_parameters(question, Q_corpora)
+	assert drug == "acamprosate"
+	assert disease == "DOID:1574"
+
+	question = "What is the COP for the treatment of ISOETHARINE by ISOETHARINE"
+	try:
+		drug, disease = find_question_parameters(question, Q_corpora)
+	except Exception:
+		pass
+
+	question = "What is the COP for the treatment of Bronchitis by ISOETHARINE"
+	drug, disease = find_question_parameters(question, Q_corpora)
+	assert drug == "isoetharine"
+	assert disease == "DOID:6132"
+
+	# Q1 Questions
+	question = "what genetic conditions might protect against malaria?"
+	disease = find_question_parameters(question, Q_corpora)
+	assert disease == 'DOID:12365'
+
+	question = "what genetic conditions might protect against mixed malaria?"
+	disease = find_question_parameters(question, Q_corpora)
+	assert disease == 'DOID:14325'
+
+
+
+
+
