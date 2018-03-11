@@ -47,6 +47,8 @@ Q4_corpus = [
 		"what proteins interact with"
 ]
 
+Q_corpora = [Q0_corpus, Q1_corpus, Q2_corpus, Q4_corpus]
+
 # get all the node names and descriptions
 try:
 	fid = open(os.path.abspath('../../data/KGmetadata/NodeNamesDescriptions.tsv'), 'r')
@@ -55,7 +57,7 @@ except FileNotFoundError:
 node_names = set()
 node_descriptions = set()
 names2descrip = dict()
-descrip2names = dict()  # TODO: this assumes that descriptions are unique, and this will change soon
+descrip2names = dict()  # TODO: this assumes that descriptions are unique, and this may change soon
 for line in fid.readlines():
 	line = line.strip()
 	line_split = line.split('\t')
@@ -119,7 +121,7 @@ def find_source_node_name(string, names2descrip, descrip2names):
 
 def find_target_label(string, node_labels):
 	# drop any "s" endings
-	p = nltk.stem.snowball.SnowballStemmer("english")  # TODO: "conditions"->"condit"
+	p = nltk.stem.snowball.SnowballStemmer("english")
 	query = p.stem(string)
 	node_labels_space = []
 	# replace underscore with space
@@ -141,7 +143,7 @@ def find_target_label(string, node_labels):
 	return res
 
 
-def find_edge_type(string, edge_types):  #TODO: string="associated"
+def find_edge_type(string, edge_types):
 	p = nltk.stem.snowball.SnowballStemmer("english")
 	st_words = set(stopwords.words('english'))
 	res = None
@@ -171,45 +173,72 @@ def find_edge_type(string, edge_types):  #TODO: string="associated"
 	return res
 
 
-Q_corpora = [Q0_corpus, Q1_corpus, Q2_corpus, Q4_corpus]
-question = "what are the protein targets of acetaminophen"
-question = "what proteins does acetaminophen target"
-question = "what are the phenotypes associated with malaria"
+def answer_question(question, Q_corpora):
+	(corpus_index, similarity) = wd.find_corpus(question, Q_corpora)
 
-(corpus_index, similarity) = wd.find_corpus(question, Q_corpora)
+	if similarity < .3:
+		raise Exception("Sorry, I was unable to interpret your question. The nearest similar question I can answer "
+						"is:\n %s" % wd.max_in_corpus(question, Q_corpora[corpus_index]))
 
-# source_name, target_label, relationship_type
-# get every contiguous sub-block in the query
-blocks = []
-question_tokenized = nltk.word_tokenize(question, "english")
-for block_size in range(1,len(question_tokenized)):
-	for i in range(len(question_tokenized) - block_size + 1):
-		block = " ".join(question_tokenized[i:(i + block_size)])
-		blocks.append(block)
+	# get every contiguous sub-block in the query
+	blocks = []
+	question_tokenized = nltk.word_tokenize(question, "english")
+	for block_size in range(1, len(question_tokenized)):
+		for i in range(len(question_tokenized) - block_size + 1):
+			block = " ".join(question_tokenized[i:(i + block_size)])
+			blocks.append(block)
 
-# 'what are the protein targets of acetaminophen'
-# for each block, look for the associated terms in a greedy fashion
-if corpus_index == 3:  #Q4
-	source_name = None
-	target_label = None
-	relationship_type = None
-	for block in blocks:
-		if source_name is None:
-			source_name = find_source_node_name(block, names2descrip, descrip2names)
-		if target_label is None:
-			target_label = find_target_label(block, node_labels)
-		if relationship_type is None:
-			relationship_type = find_edge_type(block, edge_types)
-		if all(item is not None for item in [source_name, target_label, relationship_type]):
-			break
-	print(source_name)
-	print(target_label)
-	print(relationship_type)
+	# 'what are the protein targets of acetaminophen'
+	# for each block, look for the associated terms in a greedy fashion
+	if corpus_index == 3:  # Q4
+		source_name = None
+		target_label = None
+		relationship_type = None
+		for block in blocks:
+			if source_name is None:
+				source_name = find_source_node_name(block, names2descrip, descrip2names)
+			if target_label is None:
+				target_label = find_target_label(block, node_labels)
+			if relationship_type is None:
+				relationship_type = find_edge_type(block, edge_types)
+			if all(item is not None for item in [source_name, target_label, relationship_type]):
+				break
+		#print(source_name)
+		#print(target_label)
+		#print(relationship_type)
 
-# then go ahead an call Q4
-from Q4 import Q4
-Q = Q4()
-Q.answer(source_name, target_label, relationship_type)
+		if any(item is None for item in [source_name, target_label, relationship_type]):
+			error_message = "Sorry, I was unable to find the appropriate terms to answer your question. Missing term(s):\n"
+			if source_name is None:
+				error_message += "Entity/node name (eg. malaria, acetaminophen, NAIF1, tongue, etc.)\n"
+			if target_label is None:
+				error_message += "Target node label (eg. %s)\n" % [x.split("_")[1] for x in node_labels]
+			if relationship_type is None:
+				error_message += "Relationship type (eg. %s)\n" % [" ".join(x.split("_")) for x in edge_types]
+			raise Exception(error_message)
+		else:
+			return source_name, target_label, relationship_type
+			# Answer the question. TODO: make scripts for all questions and import them up front. Or put this elsewhere
+			#from Q4 import Q4
+			#Q = Q4()
+			#Q.answer(source_name, target_label, relationship_type)
 
 
+def test_answer_question():
+	question = "what are the protein targets of acetaminophen"
+	source_name, target_label, relationship_type = answer_question(question, Q_corpora)
+	assert source_name == "acetaminophen"
+	assert target_label == "uniprot_protein"
+	assert relationship_type == "targets"
 
+	question = "what proteins does acetaminophen target"
+	source_name, target_label, relationship_type = answer_question(question, Q_corpora)
+	assert source_name == "acetaminophen"
+	assert target_label == "uniprot_protein"
+	assert relationship_type == "targets"
+
+	question = "what are the phenotypes associated with malaria"
+	source_name, target_label, relationship_type = answer_question(question, Q_corpora)
+	assert source_name == "DOID:12365"
+	assert target_label == "phenont_phenotype"
+	assert relationship_type == "phenotype_assoc_with"

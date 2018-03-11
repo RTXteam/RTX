@@ -132,7 +132,7 @@ def find_corpus(sentence, corpus_list):
 		return (max_index, max_val)
 
 
-def test():
+def test_find_corpus():
 	Q0_corpus = [
 		"What is an",
 		"What is a",
