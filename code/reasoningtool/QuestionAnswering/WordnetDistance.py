@@ -108,6 +108,7 @@ def symmetric_sentence_similarity(sentence1, sentence2):
 
 
 def max_in_corpus(sentence, corpus):
+	# TODO: refactor this to return both the max index and the max value
 	return max([symmetric_sentence_similarity(sentence, s) for s in corpus])
 
 

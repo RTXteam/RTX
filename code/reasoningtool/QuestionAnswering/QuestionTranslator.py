@@ -178,7 +178,7 @@ def answer_question(question, Q_corpora):
 
 	if similarity < .3:
 		raise Exception("Sorry, I was unable to interpret your question. The nearest similar question I can answer "
-						"is:\n %s" % wd.max_in_corpus(question, Q_corpora[corpus_index]))
+						"is:\n %s" % Q_corpora[corpus_index][wd.max_in_corpus(question, Q_corpora[corpus_index])[0]])  # TODO: fix this
 
 	# get every contiguous sub-block in the query
 	blocks = []
@@ -188,7 +188,6 @@ def answer_question(question, Q_corpora):
 			block = " ".join(question_tokenized[i:(i + block_size)])
 			blocks.append(block)
 
-	# 'what are the protein targets of acetaminophen'
 	# for each block, look for the associated terms in a greedy fashion
 	if corpus_index == 3:  # Q4
 		source_name = None
