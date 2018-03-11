@@ -109,7 +109,14 @@ def symmetric_sentence_similarity(sentence1, sentence2):
 
 def max_in_corpus(sentence, corpus):
 	# TODO: refactor this to return both the max index and the max value
-	return max([symmetric_sentence_similarity(sentence, s) for s in corpus])
+	max_val = symmetric_sentence_similarity(sentence, corpus[0])
+	max_ind = 0
+	for i in range(len(corpus)):
+		val = symmetric_sentence_similarity(sentence, corpus[i])
+		if val > max_val:
+			max_val = val
+			max_ind = i
+	return (max_ind, max_val)
 
 
 def find_corpus(sentence, corpus_list):
@@ -123,7 +130,7 @@ def find_corpus(sentence, corpus_list):
 	max_val = 0
 	max_index = -1
 	for i in range(len(corpus_list)):
-		dist = max_in_corpus(sentence, corpus_list[i])
+		(ind, dist) = max_in_corpus(sentence, corpus_list[i])
 		if dist > max_val:
 			max_val = dist
 			max_index = i

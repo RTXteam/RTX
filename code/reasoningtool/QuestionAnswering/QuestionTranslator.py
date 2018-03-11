@@ -241,3 +241,10 @@ def test_answer_question():
 	assert source_name == "DOID:12365"
 	assert target_label == "phenont_phenotype"
 	assert relationship_type == "phenotype_assoc_with"
+
+	question = "what proteins are members of Aflatoxin activation and detoxification"
+	source_name, target_label, relationship_type = answer_question(question, Q_corpora)
+	assert source_name == "R-HSA-5423646"
+	assert target_label == "uniprot_protein"
+	assert relationship_type == "is_member_of"
+
