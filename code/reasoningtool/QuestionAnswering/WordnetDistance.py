@@ -133,6 +133,25 @@ def find_corpus(sentence, corpus_list):
 
 
 def test():
+	Q0_corpus = [
+		"What is an",
+		"What is a",
+		"what is"
+	]
+
+	Q1_corpus = [
+		"what genetic conditions might offer protection against",
+		"what genetic conditions protect against",
+		"what genetic diseases might protect against",
+		"what genetic conditions offer protection against"
+	]
+
+	Q2_corpus = [
+		"what is the clinical outcome pathway of for the treatment",
+		"what is the clinical outcome pathway for the treatment of with",
+		"what is the COP for the treatment of"
+	]
+
 	Q4_corpus = [
 		"What proteins are the target of",
 		"what proteins are targeted by",
@@ -143,24 +162,67 @@ def test():
 		"what proteins are expressed in",
 		"what are the genes associated with",
 		"what are the drugs that target",
+		"what are the members of the pathway",
+		"what proteins are expressed in",
+		"what phenotype is associated with",
+		"what proteins interact with"
 	]
 
-	Q2_corpus = [
-		"what is the clinical outcome pathway of for the treatment",
-		"what is the clinical outcome pathway for the treatment of with ",
-		"what is the COP for the treatment of "
-	]
-
+	# Question 4
 	question = "what are the protein targets of ibuprofen"
-	res = find_corpus(question, [Q2_corpus, Q4_corpus])
+	res = find_corpus(question, [Q0_corpus, Q1_corpus, Q2_corpus, Q4_corpus])
+	assert res[0] == 3
+
+	question = "what proteins are targeted by acetaminophen"
+	res = find_corpus(question, [Q0_corpus, Q1_corpus, Q2_corpus, Q4_corpus])
+	assert res[0] == 3
+
+	question = "ibuprofen targets what proteins"
+	res = find_corpus(question, [Q0_corpus, Q1_corpus, Q2_corpus, Q4_corpus])
+	assert res[0] == 3
+
+	# Question 2
+	question = "What is the clinical outcome pathway of physostigmine for the treatment of glaucoma?"
+	res = find_corpus(question, [Q0_corpus, Q1_corpus, Q2_corpus, Q4_corpus])
+	assert res[0] == 2
+
+	question = "What is the clinical outcome pathway of gabexate for the treatment of high blood pressure?"
+	res = find_corpus(question, [Q0_corpus, Q1_corpus, Q2_corpus, Q4_corpus])
+	assert res[0] == 2
+
+	question = "What is the COP for the treatment of high blood pressure with tranilast?"
+	res = find_corpus(question, [Q0_corpus, Q1_corpus, Q2_corpus, Q4_corpus])
+	assert res[0] == 2
+
+	# Question 1
+	question = "What genetic diseases might offer protection against diptheric cystis?"
+	res = find_corpus(question, [Q0_corpus, Q1_corpus, Q2_corpus, Q4_corpus])
 	assert res[0] == 1
 
-	question = "What is the clinical outcome pathway of physostigmine for treatment of glaucoma?"
-	res = find_corpus(question, [Q2_corpus, Q4_corpus])
+	question = "What genetic conditions offer protection against migraines?"
+	res = find_corpus(question, [Q0_corpus, Q1_corpus, Q2_corpus, Q4_corpus])
+	assert res[0] == 1
+
+	question = "What genetic conditions protect against spastic ataxia?"
+	res = find_corpus(question, [Q0_corpus, Q1_corpus, Q2_corpus, Q4_corpus])
+	assert res[0] == 1
+
+	# Question 0
+	question = "What is a dog?"
+	res = find_corpus(question, [Q0_corpus, Q1_corpus, Q2_corpus, Q4_corpus])
 	assert res[0] == 0
 
+	question = "What is love?"
+	res = find_corpus(question, [Q0_corpus, Q1_corpus, Q2_corpus, Q4_corpus])
+	assert res[0] == 0
 
+	question = "What is spastic ataxia?"
+	res = find_corpus(question, [Q0_corpus, Q1_corpus, Q2_corpus, Q4_corpus])
+	assert res[0] == 0
 
+	question = "What is Fanconi Anemia?"
+	res = find_corpus(question, [Q0_corpus, Q1_corpus, Q2_corpus, Q4_corpus])
+	assert res[0] == 0
 
 # Make a custom corpus from plaintext
 #my_sent_tokenizer = nltk.RegexpTokenizer('[^.!?]+')
