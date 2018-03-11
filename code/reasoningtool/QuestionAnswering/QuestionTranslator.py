@@ -1,7 +1,6 @@
 # An attempt at using rudimentary NLP for question translation
 import sys
 import os
-import re
 import nltk
 from nltk.corpus import stopwords
 
@@ -126,7 +125,7 @@ def find_target_label(string, node_labels):
 	node_labels_space = []
 	# replace underscore with space
 	for label in node_labels:
-		label = label.replace('_',' ')
+		label = label.replace('_', ' ')
 		node_labels_space.append(label)
 	query = query.lower()
 	res = None
@@ -178,7 +177,7 @@ def answer_question(question, Q_corpora):
 
 	if similarity < .3:
 		raise Exception("Sorry, I was unable to interpret your question. The nearest similar question I can answer "
-						"is:\n %s" % Q_corpora[corpus_index][wd.max_in_corpus(question, Q_corpora[corpus_index])[0]])  # TODO: fix this
+						"is:\n %s" % Q_corpora[corpus_index][wd.max_in_corpus(question, Q_corpora[corpus_index])[0]])
 
 	# get every contiguous sub-block in the query
 	blocks = []
@@ -193,7 +192,7 @@ def answer_question(question, Q_corpora):
 		source_name = None
 		target_label = None
 		relationship_type = None
-		for block in blocks:
+		for block in reversed(blocks):
 			if source_name is None:
 				source_name = find_source_node_name(block, names2descrip, descrip2names)
 			if target_label is None:
@@ -248,3 +247,8 @@ def test_answer_question():
 	assert target_label == "uniprot_protein"
 	assert relationship_type == "is_member_of"
 
+	question = "MIR4426 controls the expression of which proteins"
+	source_name, target_label, relationship_type = answer_question(question, Q_corpora)
+	assert source_name == "NCBIGene:100616345"
+	assert target_label == "uniprot_protein"
+	assert relationship_type == "controls_expression_of"
