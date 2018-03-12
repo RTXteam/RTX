@@ -112,12 +112,24 @@ for line in fid.readlines():
 fid.close()
 
 
+def log_query(code_string, id, original_text):
+	datetimeString = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+	log_dir = "/mnt/data/orangeboard/code/NCATS/code/UI/OpenAPI/python-flask-server"
+	try:
+		with open(os.path.join(log_dir,"RTXQuestions.log"),"a") as logfile:
+			logfile.write(datetimeString +"\t" + code_string + "\t" + id + "\t" + original_text + "\n")
+	except FileNotFoundError:
+		log_dir = "/tmp"
+		with open(os.path.join(log_dir,"RTXQuestions.log"),"a") as logfile:
+			logfile.write(datetimeString +"\t" + code_string + "\t" + id + "\t" + original_text + "\n")
+
+
 def restate_question(corpus_index, terms):
 	"""
 	Helper to restate question
-	:param corpus_index:
-	:param terms:
-	:return:
+	:param corpus_index: a list of lists, each one containing example questions for each question type
+	:param terms: the terms extracted from find_question_parameters
+	:return: restated question (string)
 	"""
 	# TODO: this is ugly at the moment
 	if corpus_index == 0:
@@ -127,15 +139,18 @@ def restate_question(corpus_index, terms):
 	elif corpus_index == 2:
 		restated = "What is the clinical outcome pathway of %s for the treatment of %s" % (names2descrip[terms["drug_name"]], names2descrip[terms["disease_name"]])
 	elif corpus_index == 3:
-		restated = "What %s %s %s" % (" ".join(terms["target_label"].split("_")), " ".join(terms["relationship_type"].split("_")), names2descrip[terms["source_name"]])
+		# TODO: this is a gnarly question to restate
+		restated = "%s %s what %s" % (names2descrip[terms["source_name"]], " ".join(terms["relationship_type"].split("_")), " ".join(terms["target_label"].split("_")))
+	else:
+		raise Exception("Only 4 questions have been implemented")
 	return restated
 
 
-def format_answer(results_dict):
+def format_answer(results_dict, logging=True):
 	"""
 	Format the results (of the term extraction) in struct form
-	:param results_dict:
-	:return:
+	:param results_dict: a result dictionary from find_question_parameters
+	:return: the formatted answer
 	"""
 	try:
 		input_text = results_dict["input_text"]
@@ -157,46 +172,47 @@ def format_answer(results_dict):
 		if error_code == "not_understood":
 			query = [{"knownQueryTypeId": "", "message": "I do not understand the question '" + input_text + "'",
 					  "restatedQuestion": "", "originalQuestion": input_text}]
-			# self.logQuery("NotUnderstood", "-", input_text)  # TODO: get logging
+			if logging:
+				log_query("NotUnderstood", "-", input_text)
 			return query
 
 		elif error_code == "illegal_char":
 			query = [{"knownQueryTypeId": "", "message": "Illegal characters in the question '" + input_text + "'",
 					  "restatedQuestion": "", "originalQuestion": input_text}]
-			print(query)
-			#self.logQuery("IllegalChars", "-", originalText)  # TODO: get logging
+			if logging:
+				log_query("IllegalChars", "-", input_text)
 			return query
 
 		elif error_code == "missing_term":
 			query = [{"knownQueryTypeId": "Q%s" % corpus_index, "message": "%s" % error_message,
 					  "restatedQuestion": "%s" % restate_question(corpus_index, terms), "originalQuestion": input_text}]
-			# self.logQuery("MissingTerms", "-", originalText)  # TODO: get logging
-			print(query)
+			if logging:
+				log_query("MissingTerms", "-", input_text)
 			return query
 
 		elif error_code == "multiple_terms":
 			query = [{"knownQueryTypeId": "Q%s" % corpus_index, "message": "%s" % error_message,
 					  "restatedQuestion": "%s" % restate_question(corpus_index, terms), "originalQuestion": input_text}]
-			# self.logQuery("MultipleTerms", "-", originalText)  # TODO: get logging
-			print(query)
+			if logging:
+				log_query("MultipleTerms", "-", input_text)
 			return query
 
 	else:
 		query = [{"knownQueryTypeId": "Q%s" % corpus_index, "terms": terms,
 				  "restatedQuestion": "%s" % restate_question(corpus_index, terms), "originalQuestion": input_text}]
-		# self.logQuery("OK", "Q%s" % corpus_index, originalText)  # TODO: get logging
-		print(query)
-	return query
+		if logging:
+			log_query("OK", "Q%s" % corpus_index, input_text)
+		return query
 
 
 # A variety of functions to help with term extraction
 def find_source_node_name(string, names2descrip, descrip2names):
 	"""
 	Find an acutal Neo4j KG node name in the string
-	:param string:
-	:param names2descrip:
-	:param descrip2names:
-	:return:
+	:param string: input string (chunck of text)
+	:param names2descrip: dictionary containing the names and descriptions of the nodes (see dumpdata.py)
+	:param descrip2names: reversed names2descrip dictionary
+	:return: one of the node names (key (string) of names2descrip)
 	"""
 	# exact match
 	query = string
@@ -224,9 +240,9 @@ def find_source_node_name(string, names2descrip, descrip2names):
 def find_target_label(string, node_labels):
 	"""
 	Find target label (drug, disease, etc) in string
-	:param string:
-	:param node_labels:
-	:return:
+	:param string: input string (chunck of text)
+	:param node_labels: node labels in the KG (see input dumpdata.py)
+	:return: one of the node labels
 	"""
 	# drop any "s" endings
 	p = nltk.stem.snowball.SnowballStemmer("english")
@@ -254,9 +270,9 @@ def find_target_label(string, node_labels):
 def find_edge_type(string, edge_types):
 	"""
 	Extract edge type from string
-	:param string:
-	:param edge_types:
-	:return:
+	:param string: input string (chunck of text)
+	:param edge_types: edge types in the KG (see dumpdata.py)
+	:return: one of the edge types
 	"""
 	p = nltk.stem.snowball.SnowballStemmer("english")
 	st_words = set(stopwords.words('english'))
@@ -290,7 +306,7 @@ def find_edge_type(string, edge_types):
 def find_question_parameters(question, Q_corpora):
 	"""
 	NLP-lite canned query matching, then term extraction (for passing to QX.py parameters)
-	:param question:
+	:param question: input natural language query
 	:param Q_corpora:
 	:return:
 	"""
@@ -489,14 +505,15 @@ def find_question_parameters(question, Q_corpora):
 			return results_dict
 
 
-def translate(question):
+def translate(question, logging=True):
 	"""
 	Do the actual translation
-	:param question:
+	:param question: input natural language question
+	:param logging: flag to turn logging on or off
 	:return:
 	"""
 	results_dict = find_question_parameters(question, Q_corpora)
-	return format_answer(results_dict)
+	return format_answer(results_dict, logging=logging)
 
 def test_find_question_parameters():
 	# No question should match
