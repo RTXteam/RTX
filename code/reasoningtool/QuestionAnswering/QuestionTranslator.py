@@ -8,6 +8,8 @@ import re
 import os
 import datetime
 
+# TODO: refactor this to comply with Eric's QuestionTranslator.py
+
 # Import Wordnet Distance
 try:
 	from code.reasoningtool.QuestionAnswering import WordnetDistance as wd
@@ -109,6 +111,18 @@ for line in fid.readlines():
 	line = line.strip()
 	node_labels.append(line)
 fid.close()
+
+def format_answer(corpus_index):
+	# Corpus index will be in the same order as the corpora.
+	# If "not_understood", then the question isn't understood
+	# If "illegal_char", then illegal characters in the question
+	# If "missing_term", then missing terms
+	# If "multiple_terms", then there were multiple terms that could satisfy the question parameters
+	if isinstance(corpus_index, str):
+		# Then there is an error
+		# TODO: populate with correct parameters
+		pass
+	return
 
 
 def find_source_node_name(string, names2descrip, descrip2names):
