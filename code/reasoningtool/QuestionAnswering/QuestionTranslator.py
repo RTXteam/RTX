@@ -4,6 +4,9 @@ import os
 import nltk
 from nltk.corpus import stopwords
 import string
+import re
+import os
+import datetime
 
 # Import Wordnet Distance
 try:
@@ -189,9 +192,11 @@ def find_edge_type(string, edge_types):
 def find_question_parameters(question, Q_corpora):
 	# First, remove trailing punctuation
 	question = question.strip(string.punctuation)
+
+	# Try to pattern match to one of the known queries
 	(corpus_index, similarity) = wd.find_corpus(question, Q_corpora)
 
-	if similarity < .3:
+	if similarity < .25:
 		raise Exception("Sorry, I was unable to interpret your question. The nearest similar question I can answer "
 						"is:\n %s" % Q_corpora[corpus_index][wd.max_in_corpus(question, Q_corpora[corpus_index])[0]])
 
@@ -310,9 +315,32 @@ def find_question_parameters(question, Q_corpora):
 		else:
 			return disease_name
 
+	elif corpus_index == 0:  # Q0
+		# Next, see if it's a "what is" question
+		term = None
+		text = question
+		text = re.sub("\?", "", text)
+		text = re.sub("^\s+", "", text)
+		text = re.sub("\s+$", "", text)
+		text = text.lower()
+		match = re.match("what is\s*(a|an)?\s+(.+)", text, re.I)
+		if match:
+			term = match.group(2)
+			term = re.sub("^\s+", "", term)
+			term = re.sub("\s+$", "", term)
+			return term
+
+
 def test_find_question_parameters():
+	# No question should match
+	question = "what proteins are four score and seven years ago, our fathers..."
+	try:
+		res = find_question_parameters(question, Q_corpora)
+	except:
+		pass
+
 	# Q4 tests
-	question = "what are the protein targets of acetaminophen"
+	question = "what are the protein targets of acetaminophen?"
 	source_name, target_label, relationship_type = find_question_parameters(question, Q_corpora)
 	assert source_name == "acetaminophen"
 	assert target_label == "uniprot_protein"
@@ -324,7 +352,7 @@ def test_find_question_parameters():
 	assert target_label == "uniprot_protein"
 	assert relationship_type == "targets"
 
-	question = "what are the phenotypes associated with malaria"
+	question = "what are the phenotypes associated with malaria?"
 	source_name, target_label, relationship_type = find_question_parameters(question, Q_corpora)
 	assert source_name == "DOID:12365"
 	assert target_label == "phenont_phenotype"
@@ -336,7 +364,7 @@ def test_find_question_parameters():
 	assert target_label == "uniprot_protein"
 	assert relationship_type == "is_member_of"
 
-	question = "MIR4426 controls the expression of which proteins"
+	question = "MIR4426 controls the expression of which proteins?"
 	source_name, target_label, relationship_type = find_question_parameters(question, Q_corpora)
 	assert source_name == "NCBIGene:100616345"
 	assert target_label == "uniprot_protein"
@@ -358,7 +386,7 @@ def test_find_question_parameters():
 	assert drug == "acamprosate"
 	assert disease == "DOID:1574"
 
-	question = "What is the COP for the treatment of ISOETHARINE by ISOETHARINE"
+	question = "What is the COP for the treatment of ISOETHARINE by ISOETHARINE?"
 	try:
 		drug, disease = find_question_parameters(question, Q_corpora)
 	except Exception:
@@ -378,6 +406,26 @@ def test_find_question_parameters():
 	disease = find_question_parameters(question, Q_corpora)
 	assert disease == 'DOID:14325'
 
+	question = "what genetic conditions might protect against bone marrow cancer?"
+	disease = find_question_parameters(question, Q_corpora)
+	assert disease == 'DOID:4960'
+
+	question = "what genetic conditions might protect against cerebral sarcoidosis?"
+	disease = find_question_parameters(question, Q_corpora)
+	assert disease == 'DOID:13403'
+
+	# Q0 Questions
+	question = "What is Creutzfeldt Jakob disease, subtype I"
+	term = find_question_parameters(question, Q_corpora)
+	assert term == "creutzfeldt jakob disease, subtype i"
+
+	question = "What is a dog"
+	term = find_question_parameters(question, Q_corpora)
+	assert term == "dog"
+
+	question = "What is an otolith"
+	term = find_question_parameters(question, Q_corpora)
+	assert term == "otolith"
 
 
 

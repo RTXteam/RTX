@@ -27,8 +27,8 @@ def tagged_to_synset(word, tag):
 	:return: wordnet synset
 	"""
 	wn_tag = penn_to_wn(tag)
-	if wn_tag is None:
-		return None
+	#if wn_tag is None:
+	#	return None
 	try:
 		syn = wn.synsets(word, wn_tag)
 		if not syn:
