@@ -5,7 +5,6 @@ import nltk
 from nltk.corpus import stopwords
 import string
 import re
-import os
 import datetime
 
 # TODO: refactor this to comply with Eric's QuestionTranslator.py
@@ -49,7 +48,7 @@ Q2_corpus = [
 	"what is the COP for the treatment of"
 ]
 
-Q4_corpus = [
+Q3_corpus = [
 		"What proteins are the target of",
 		"what proteins are targeted by",
 		"what proteins are in the pathway",
@@ -65,7 +64,7 @@ Q4_corpus = [
 		"what proteins interact with"
 ]
 
-Q_corpora = [Q0_corpus, Q1_corpus, Q2_corpus, Q4_corpus]
+Q_corpora = [Q0_corpus, Q1_corpus, Q2_corpus, Q3_corpus]
 
 # get all the node names and descriptions
 try:
@@ -112,20 +111,93 @@ for line in fid.readlines():
 	node_labels.append(line)
 fid.close()
 
-def format_answer(corpus_index):
+
+def restate_question(corpus_index, terms):
+	"""
+	Helper to restate question
+	:param corpus_index:
+	:param terms:
+	:return:
+	"""
+	# TODO: this is ugly at the moment
+	if corpus_index == 0:
+		restated = "What is %s" % terms["term"]
+	elif corpus_index == 1:
+		restated = "What genetic conditions might offer protection against %s" % terms["disease_name"]
+	elif corpus_index == 2:
+		restated = "What is the clinical outcome pathway of %s for the treatment of %s" % (names2descrip[terms["drug_name"]], names2descrip[terms["disease_name"]])
+	elif corpus_index == 3:
+		restated = "What %s %s %s" % (" ".join(terms["target_label"].split("_")), " ".join(terms["relationship_type"].split("_")), names2descrip[terms["source_name"]])
+	return restated
+
+
+def format_answer(results_dict):
+	"""
+	Format the results (of the term extraction) in struct form
+	:param results_dict:
+	:return:
+	"""
+	try:
+		input_text = results_dict["input_text"]
+		corpus_index = results_dict["corpus_index"]
+		terms = results_dict["terms"]
+		error_code = results_dict["error_code"]
+		error_message = results_dict["error_message"]
+	except KeyError:
+		print("Error, answer dict is missing some terms:")
+		print(results_dict)
+		return None  # Raise exception?
 	# Corpus index will be in the same order as the corpora.
 	# If "not_understood", then the question isn't understood
 	# If "illegal_char", then illegal characters in the question
 	# If "missing_term", then missing terms
 	# If "multiple_terms", then there were multiple terms that could satisfy the question parameters
-	if isinstance(corpus_index, str):
+	if error_code:
 		# Then there is an error
-		# TODO: populate with correct parameters
-		pass
-	return
+		if error_code == "not_understood":
+			query = [{"knownQueryTypeId": "", "message": "I do not understand the question '" + input_text + "'",
+					  "restatedQuestion": "", "originalQuestion": input_text}]
+			# self.logQuery("NotUnderstood", "-", input_text)  # TODO: get logging
+			return query
+
+		elif error_code == "illegal_char":
+			query = [{"knownQueryTypeId": "", "message": "Illegal characters in the question '" + input_text + "'",
+					  "restatedQuestion": "", "originalQuestion": input_text}]
+			print(query)
+			#self.logQuery("IllegalChars", "-", originalText)  # TODO: get logging
+			return query
+
+		elif error_code == "missing_term":
+			query = [{"knownQueryTypeId": "Q%s" % corpus_index, "message": "%s" % error_message,
+					  "restatedQuestion": "%s" % restate_question(corpus_index, terms), "originalQuestion": input_text}]
+			# self.logQuery("MissingTerms", "-", originalText)  # TODO: get logging
+			print(query)
+			return query
+
+		elif error_code == "multiple_terms":
+			query = [{"knownQueryTypeId": "Q%s" % corpus_index, "message": "%s" % error_message,
+					  "restatedQuestion": "%s" % restate_question(corpus_index, terms), "originalQuestion": input_text}]
+			# self.logQuery("MultipleTerms", "-", originalText)  # TODO: get logging
+			print(query)
+			return query
+
+	else:
+		query = [{"knownQueryTypeId": "Q%s" % corpus_index, "terms": terms,
+				  "restatedQuestion": "%s" % restate_question(corpus_index, terms), "originalQuestion": input_text}]
+		# self.logQuery("OK", "Q%s" % corpus_index, originalText)  # TODO: get logging
+		print(query)
+	return query
 
 
+# A variety of functions to help with term extraction
 def find_source_node_name(string, names2descrip, descrip2names):
+	"""
+	Find an acutal Neo4j KG node name in the string
+	:param string:
+	:param names2descrip:
+	:param descrip2names:
+	:return:
+	"""
 	# exact match
 	query = string
 	res = None
@@ -150,6 +222,12 @@ def find_source_node_name(string, names2descrip, descrip2names):
 
 
 def find_target_label(string, node_labels):
+	"""
+	Find target label (drug, disease, etc) in string
+	:param string:
+	:param node_labels:
+	:return:
+	"""
 	# drop any "s" endings
 	p = nltk.stem.snowball.SnowballStemmer("english")
 	query = p.stem(string)
@@ -174,6 +252,12 @@ def find_target_label(string, node_labels):
 
 
 def find_edge_type(string, edge_types):
+	"""
+	Extract edge type from string
+	:param string:
+	:param edge_types:
+	:return:
+	"""
 	p = nltk.stem.snowball.SnowballStemmer("english")
 	st_words = set(stopwords.words('english'))
 	res = None
@@ -204,6 +288,14 @@ def find_edge_type(string, edge_types):
 
 
 def find_question_parameters(question, Q_corpora):
+	"""
+	NLP-lite canned query matching, then term extraction (for passing to QX.py parameters)
+	:param question:
+	:param Q_corpora:
+	:return:
+	"""
+	results_dict = dict()
+	results_dict["input_text"] = question
 	# First, remove trailing punctuation
 	question = question.strip(string.punctuation)
 
@@ -211,8 +303,14 @@ def find_question_parameters(question, Q_corpora):
 	(corpus_index, similarity) = wd.find_corpus(question, Q_corpora)
 
 	if similarity < .25:
-		raise Exception("Sorry, I was unable to interpret your question. The nearest similar question I can answer "
-						"is:\n %s" % Q_corpora[corpus_index][wd.max_in_corpus(question, Q_corpora[corpus_index])[0]])
+		# Unable to match to one of the templates
+		results_dict["corpus_index"] = None
+		results_dict["terms"] = None
+		results_dict["error_code"] = "not_understood"
+		results_dict[
+			"error_message"] = "Sorry, I was unable to interpret your question. The nearest similar question I can answer is:\n %s" % \
+							   Q_corpora[corpus_index][wd.max_in_corpus(question, Q_corpora[corpus_index])[0]]
+		return results_dict
 
 	# get every contiguous sub-block in the query
 	blocks = []
@@ -247,13 +345,20 @@ def find_question_parameters(question, Q_corpora):
 				error_message += "Target node label (eg. %s)\n" % [x.split("_")[1] for x in node_labels]
 			if relationship_type is None:
 				error_message += "Relationship type (eg. %s)\n" % [" ".join(x.split("_")) for x in edge_types]
-			raise Exception(error_message)
+			#raise Exception(error_message)
+			results_dict["corpus_index"] = corpus_index
+			results_dict["terms"] = {"source_name": source_name, "target_label": target_label,
+									 "relationship_type": relationship_type}
+			results_dict["error_code"] = "missing_term"
+			results_dict["error_message"] = error_message
+			return results_dict
 		else:
-			return source_name, target_label, relationship_type
-			# Answer the question. TODO: make scripts for all questions and import them up front. Or put this elsewhere
-			#from Q4 import Q4
-			#Q = Q4()
-			#Q.answer(source_name, target_label, relationship_type)
+			results_dict["corpus_index"] = corpus_index
+			results_dict["terms"] = {"source_name": source_name, "target_label": target_label,
+									 "relationship_type": relationship_type}
+			results_dict["error_code"] = None
+			results_dict["error_message"] = None
+			return results_dict
 
 	elif corpus_index == 2:  # Q2 COP question
 		drug_name = None
@@ -278,7 +383,17 @@ def find_question_parameters(question, Q_corpora):
 				error_message += "A pharos drug name (eg. acetaminophen, glycamil, tranilast, etc.)"
 			if "disont_disease" not in candidate_node_labels:
 				error_message += "A disease (eg. diphtheritic cystitis, pancreatic endocrine carcinoma, malaria, clear cell sarcoma, etc.)"
-			raise Exception(error_message)
+			for i in range(len(candidate_node_labels)):
+				label = candidate_node_labels[i]
+				if label == "pharos_drug":
+					drug_name = candidate_node_names[i]
+				if label == "disont_disease":
+					disease_name = candidate_node_names[i]
+			results_dict["corpus_index"] = corpus_index
+			results_dict["terms"] = {"drug_name": drug_name, "disease_name": disease_name}
+			results_dict["error_code"] = "missing_term"
+			results_dict["error_message"] = error_message
+			return results_dict
 
 		# Look for the locations of the drugs and diseases
 		num_drug = 0
@@ -305,12 +420,22 @@ def find_question_parameters(question, Q_corpora):
 				error_message += "\nDiseases detected: "
 				for loc in disease_loc:
 					error_message += "%s, " % candidate_node_names[loc]
+			results_dict["corpus_index"] = corpus_index
+			results_dict["terms"] = {"drug_name": drug_name, "disease_name": disease_name}
+			results_dict["error_code"] = "multiple_terms"
+			results_dict["error_message"] = error_message
+			return results_dict
 
 		# Otherwise, everything is in order and return the results
 		else:
 			drug_name = candidate_node_names[drug_loc[0]]
 			disease_name = candidate_node_names[disease_loc[0]]
-			return drug_name, disease_name
+			#return drug_name, disease_name
+			results_dict["corpus_index"] = corpus_index
+			results_dict["terms"] = {"drug_name": drug_name, "disease_name": disease_name}
+			results_dict["error_code"] = None
+			results_dict["error_message"] = None
+			return results_dict
 
 	elif corpus_index == 1:  # Q1
 		disease_name = None
@@ -325,9 +450,18 @@ def find_question_parameters(question, Q_corpora):
 		node_label = RU.get_node_property(disease_name, "label")  # TODO: Arnab's UMLS lookup
 		if node_label != "disont_disease":
 			error_message = "This question requires a disease name, I got a %s with the name %s" %(node_label, disease_name)
-			raise Exception(error_message)
+			#raise Exception(error_message)
+			results_dict["corpus_index"] = corpus_index
+			results_dict["terms"] = {"disease_name": disease_name}
+			results_dict["error_code"] = "missing_term"
+			results_dict["error_message"] = error_message
+			return results_dict
 		else:
-			return disease_name
+			results_dict["corpus_index"] = corpus_index
+			results_dict["terms"] = {"disease_name": disease_name}
+			results_dict["error_code"] = None
+			results_dict["error_message"] = None
+			return results_dict
 
 	elif corpus_index == 0:  # Q0
 		# Next, see if it's a "what is" question
@@ -342,8 +476,27 @@ def find_question_parameters(question, Q_corpora):
 			term = match.group(2)
 			term = re.sub("^\s+", "", term)
 			term = re.sub("\s+$", "", term)
-			return term
+			results_dict["corpus_index"] = corpus_index
+			results_dict["terms"] = {"term": term}
+			results_dict["error_code"] = None
+			results_dict["error_message"] = None
+			return results_dict
+		else:
+			results_dict["corpus_index"] = corpus_index
+			results_dict["terms"] = {"term": term}
+			results_dict["error_code"] = "missing_term"
+			results_dict["error_message"] = "This question type requires an entity name (such as heart, ibuprofen, mixed malaria, etc.)."
+			return results_dict
 
+
+def translate(question):
+	"""
+	Do the actual translation
+	:param question:
+	:return:
+	"""
+	results_dict = find_question_parameters(question, Q_corpora)
+	return format_answer(results_dict)
 
 def test_find_question_parameters():
 	# No question should match
