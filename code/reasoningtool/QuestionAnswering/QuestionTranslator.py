@@ -501,97 +501,124 @@ def translate(question):
 def test_find_question_parameters():
 	# No question should match
 	question = "what proteins are four score and seven years ago, our fathers..."
-	try:
-		res = find_question_parameters(question, Q_corpora)
-	except:
-		pass
+	results_dict = find_question_parameters(question, Q_corpora)
+	assert results_dict["error_code"] is not None
 
 	# Q4 tests
 	question = "what are the protein targets of acetaminophen?"
-	source_name, target_label, relationship_type = find_question_parameters(question, Q_corpora)
+	results_dict = find_question_parameters(question, Q_corpora)
+	source_name = results_dict["terms"]["source_name"]
+	target_label = results_dict["terms"]["target_label"]
+	relationship_type = results_dict["terms"]["relationship_type"]
 	assert source_name == "acetaminophen"
 	assert target_label == "uniprot_protein"
 	assert relationship_type == "targets"
 
 	question = "what proteins does acetaminophen target"
-	source_name, target_label, relationship_type = find_question_parameters(question, Q_corpora)
+	results_dict = find_question_parameters(question, Q_corpora)
+	source_name = results_dict["terms"]["source_name"]
+	target_label = results_dict["terms"]["target_label"]
+	relationship_type = results_dict["terms"]["relationship_type"]
 	assert source_name == "acetaminophen"
 	assert target_label == "uniprot_protein"
 	assert relationship_type == "targets"
 
 	question = "what are the phenotypes associated with malaria?"
-	source_name, target_label, relationship_type = find_question_parameters(question, Q_corpora)
+	results_dict = find_question_parameters(question, Q_corpora)
+	source_name = results_dict["terms"]["source_name"]
+	target_label = results_dict["terms"]["target_label"]
+	relationship_type = results_dict["terms"]["relationship_type"]
 	assert source_name == "DOID:12365"
 	assert target_label == "phenont_phenotype"
 	assert relationship_type == "phenotype_assoc_with"
 
 	question = "what proteins are members of Aflatoxin activation and detoxification"
-	source_name, target_label, relationship_type = find_question_parameters(question, Q_corpora)
+	results_dict = find_question_parameters(question, Q_corpora)
+	source_name = results_dict["terms"]["source_name"]
+	target_label = results_dict["terms"]["target_label"]
+	relationship_type = results_dict["terms"]["relationship_type"]
 	assert source_name == "R-HSA-5423646"
 	assert target_label == "uniprot_protein"
 	assert relationship_type == "is_member_of"
 
 	question = "MIR4426 controls the expression of which proteins?"
-	source_name, target_label, relationship_type = find_question_parameters(question, Q_corpora)
+	results_dict = find_question_parameters(question, Q_corpora)
+	source_name = results_dict["terms"]["source_name"]
+	target_label = results_dict["terms"]["target_label"]
+	relationship_type = results_dict["terms"]["relationship_type"]
 	assert source_name == "NCBIGene:100616345"
 	assert target_label == "uniprot_protein"
 	assert relationship_type == "controls_expression_of"
 
 	# Q2 tests
 	question = "What is the clinical outcome pathway of physostigmine for treatment of glaucoma"
-	drug, disease = find_question_parameters(question, Q_corpora)
+	results_dict = find_question_parameters(question, Q_corpora)
+	drug = results_dict["terms"]["drug_name"]
+	disease = results_dict["terms"]["disease_name"]
 	assert drug == "physostigmine"
 	assert disease == "DOID:1686"
 
 	question = "What is the clinical outcome pathway for the treatment of lactic acidosis by benzilonium"
-	drug, disease = find_question_parameters(question, Q_corpora)
+	results_dict = find_question_parameters(question, Q_corpora)
+	drug = results_dict["terms"]["drug_name"]
+	disease = results_dict["terms"]["disease_name"]
 	assert drug == "benzilonium"
 	assert disease == "DOID:3650"
 
 	question = "What is the clinical outcome pathway for the treatment of alcohol abuse by ACAMPROSATE"
-	drug, disease = find_question_parameters(question, Q_corpora)
+	results_dict = find_question_parameters(question, Q_corpora)
+	drug = results_dict["terms"]["drug_name"]
+	disease = results_dict["terms"]["disease_name"]
 	assert drug == "acamprosate"
 	assert disease == "DOID:1574"
 
 	question = "What is the COP for the treatment of ISOETHARINE by ISOETHARINE?"
-	try:
-		drug, disease = find_question_parameters(question, Q_corpora)
-	except Exception:
-		pass
+	results_dict = find_question_parameters(question, Q_corpora)
+	assert results_dict["error_code"] is not None
+
 
 	question = "What is the COP for the treatment of Bronchitis by ISOETHARINE"
-	drug, disease = find_question_parameters(question, Q_corpora)
+	results_dict = find_question_parameters(question, Q_corpora)
+	drug = results_dict["terms"]["drug_name"]
+	disease = results_dict["terms"]["disease_name"]
 	assert drug == "isoetharine"
 	assert disease == "DOID:6132"
 
 	# Q1 Questions
 	question = "what genetic conditions might protect against malaria?"
-	disease = find_question_parameters(question, Q_corpora)
+	results_dict = find_question_parameters(question, Q_corpora)
+	disease = results_dict["terms"]["disease_name"]
 	assert disease == 'DOID:12365'
 
 	question = "what genetic conditions might protect against mixed malaria?"
-	disease = find_question_parameters(question, Q_corpora)
+	results_dict = find_question_parameters(question, Q_corpora)
+	disease = results_dict["terms"]["disease_name"]
 	assert disease == 'DOID:14325'
 
 	question = "what genetic conditions might protect against bone marrow cancer?"
-	disease = find_question_parameters(question, Q_corpora)
+	results_dict = find_question_parameters(question, Q_corpora)
+	disease = results_dict["terms"]["disease_name"]
 	assert disease == 'DOID:4960'
 
 	question = "what genetic conditions might protect against cerebral sarcoidosis?"
-	disease = find_question_parameters(question, Q_corpora)
+	results_dict = find_question_parameters(question, Q_corpora)
+	disease = results_dict["terms"]["disease_name"]
 	assert disease == 'DOID:13403'
 
 	# Q0 Questions
 	question = "What is Creutzfeldt Jakob disease, subtype I"
-	term = find_question_parameters(question, Q_corpora)
+	results_dict = find_question_parameters(question, Q_corpora)
+	term = results_dict["terms"]["term"]
 	assert term == "creutzfeldt jakob disease, subtype i"
 
 	question = "What is a dog"
-	term = find_question_parameters(question, Q_corpora)
+	results_dict = find_question_parameters(question, Q_corpora)
+	term = results_dict["terms"]["term"]
 	assert term == "dog"
 
 	question = "What is an otolith"
-	term = find_question_parameters(question, Q_corpora)
+	results_dict = find_question_parameters(question, Q_corpora)
+	term = results_dict["terms"]["term"]
 	assert term == "otolith"
 
 
