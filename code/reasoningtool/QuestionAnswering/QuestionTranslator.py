@@ -7,8 +7,6 @@ import string
 import re
 import datetime
 
-# TODO: refactor this to comply with Eric's QuestionTranslator.py
-
 # Import Wordnet Distance
 try:
 	from code.reasoningtool.QuestionAnswering import WordnetDistance as wd
@@ -30,6 +28,10 @@ except ImportError:
 
 
 class QuestionTranslator:
+	"""
+	This class handles a user's incoming question, matches it to one of the existing templates, extracts the relevant
+	terms, and then formats the answer (for use in the algorithm selector RTXQuery.py).
+	"""
 
 	def __init__(self):
 		# Question examples
@@ -305,8 +307,7 @@ class QuestionTranslator:
 		"""
 		NLP-lite canned query matching, then term extraction (for passing to QX.py parameters)
 		:param question: input natural language query
-		:param Q_corpora:
-		:return:
+		:return: a results dictionary (to be passed to format_answer)
 		"""
 		Q_corpora = self._Q_corpora
 		node_labels = self._node_labels
