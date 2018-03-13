@@ -92,17 +92,17 @@ def test_suite():
 def main():
 	parser = argparse.ArgumentParser(description="Answers questions of the type 'What proteins does X target?'.",
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-	parser.add_argument('-s', '--subject', type=str, help="Source node name.", default="carbetocin")
-	parser.add_argument('-o', '--object', type=str, help="Target node label", default="uniprot_protein")
-	parser.add_argument('-p', '--predicate', type=str, help="Relationship type.", default="targets")
+	parser.add_argument('-s', '--source_name', type=str, help="Source node name.", default="carbetocin")
+	parser.add_argument('-t', '--target_label', type=str, help="Target node label", default="uniprot_protein")
+	parser.add_argument('-r', '--rel_type', type=str, help="Relationship type.", default="targets")
 	parser.add_argument('-j', '--json', action='store_true', help='Flag specifying that results should be printed in JSON format (to stdout)', default=False)
 	parser.add_argument('-d', '--describe', action='store_true', help="Describe what kinds of questions this answers.", default=False)
 
 	# Parse and check args
 	args = parser.parse_args()
-	source_name = args.subject
-	target_label = args.object
-	relationship_type = args.predicate
+	source_name = args.source_name
+	target_label = args.target_label
+	relationship_type = args.rel_type
 	use_json = args.json
 	describe_flag = args.describe
 
