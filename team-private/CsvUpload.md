@@ -81,6 +81,8 @@ RETURN count(*);
 
 This will then upload the relationships and output a count of the relationships uploaded.
 
-## 4) CELEBRATE!
+## 4) Check to see if the nodes and relationships uploaded correctly
 
-You've now successfully updated your nodes and relationships into neo4j. If everything went well it shouldn't take too terably long. When I uploaded csvs with ~500,000 nodes and ~91,000,000 relationships using this method it took just a moment to upload the nodes and ~2h40m to upload the relationships.
+You can check by querying nodes/relationships, quering the counts of nodes/relationships, looking at subgraphs, etc.
+
+If everything checks out you've now successfully updated your nodes and relationships into neo4j. If everything went well it shouldn't take too terably long. When I uploaded csvs with ~500,000 nodes and ~91,000,000 relationships using this method it took just a moment to upload the nodes and ~2h40m to upload the relationships.
