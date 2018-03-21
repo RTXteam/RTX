@@ -354,6 +354,47 @@ def return_subgraph_paths_of_type(source_node, source_node_label, target_node, t
 	graph = get_graph(cypher.run(query, conn=connection, config=defaults), directed=directed)
 	return graph
 
+
+def return_subgraph_through_node_labels(source_node, source_node_label, target_node, target_node_label, node_list, directed=True, debug=False):
+	"""
+	This function extracts the subgraph of a neo4j database consisting of those paths that have the relationships (in
+	order) of those given by relationship_list
+	:param session: neo4j session
+	:param source_node: source node name (eg: DOID:1798)
+	:param target_node: target node name (eg: 'DOID:0110307')
+	:param relationship_list: list of relationships (must be valid neo4j relationship types), if this is a list of lists
+	then the subgraph consisting of all valid paths will be returned
+	:param debug: Flag indicating if the cypher query should be returned
+	:return: networkx graph
+	"""
+	if not any(isinstance(el, list) for el in node_list):  # It's a single list of relationships
+		query = "MATCH path=(s:%s)" % source_node_label
+		for i in range(len(node_list) - 1):
+			query += "-[]-(:" + node_list[i] + ")"
+		query += "-[]-(:" + node_list[-1] + ")-[]-" + "(t:%s) " % target_node_label
+		query += "WHERE s.name='%s' and t.name='%s' " % (source_node, target_node)
+		query += "RETURN path"
+		if debug:
+			return query
+	else:  # it's a list of lists
+		query = "MATCH (s:%s{name:'%s'}) " % (source_node_label, source_node)
+		for rel_index in range(len(node_list)):
+			rel_list = node_list[rel_index]
+			query += "OPTIONAL MATCH path%d=(s)" % rel_index
+			for i in range(len(rel_list) - 1):
+				query += "-[]-(:" + rel_list[i] + ")"
+			query += "-[]-(:" + rel_list[-1] + ")-[]-" + "(t:%s)" % target_node_label
+			query += " WHERE t.name='%s' " % target_node
+		query += "RETURN "
+		for rel_index in range(len(node_list) - 1):
+			query += "collect(path%d)+" % rel_index
+		query += "collect(path%d)" % (len(node_list) - 1)
+		if debug:
+			return query
+	graph = get_graph(cypher.run(query, conn=connection, config=defaults), directed=directed)
+	return graph
+
+
 def interleave_nodes_and_relationships(session, source_node, source_node_label, target_node, target_node_label, max_path_len=3, debug=False):
 	"""
 	Given fixed source source_node and fixed target target_node, returns a list consiting of the types of relationships and nodes
