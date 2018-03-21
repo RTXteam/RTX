@@ -36,7 +36,7 @@ class QueryEBIOLS:
             res = None
         return res
 
-    def get_mesh_id_for_uberon_id(self, uberon_curie_id):
+    def get_mesh_id_for_uberon_id(uberon_curie_id):
         """
         Converts an anatomy uberon ID to MeSH id
         :param uberon_curie_id: eg. "UBERON:0001259"
@@ -52,11 +52,12 @@ class QueryEBIOLS:
             if res_annotation is not None:
                 db_x_refs = res_annotation.get("database_cross_reference", None)
                 if db_x_refs is not None:
-                    ret_list = [mesh_id for mesh_id in db_x_refs if "MESH:D" in mesh_id]
+                    ret_list = [mesh_id for mesh_id in db_x_refs if "MESH:" in mesh_id]
         return set(ret_list)
                                          
 if __name__ == "__main__":
 #    print(QueryEBIOLS.send_query_get("uberon/terms/" + urllib.parse.quote_plus(urllib.parse.quote_plus("http://purl.obolibrary.org/obo/UBERON_0002107")), ""))
     print(QueryEBIOLS.get_mesh_id_for_uberon_id("UBERON:0002107"))
+    print(QueryEBIOLS.get_mesh_id_for_uberon_id("UBERON:0001162"))
     
     
