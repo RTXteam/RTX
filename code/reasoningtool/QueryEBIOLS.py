@@ -36,7 +36,7 @@ class QueryEBIOLS:
             res = None
         return res
 
-    def get_mesh_id_for_uberon_id(uberon_curie_id):
+    def get_mesh_id_for_uberon_id(self, uberon_curie_id):
         uberon_iri = "http://purl.obolibrary.org/obo/" + uberon_curie_id.replace(":","_")
         uberon_iri_double_encoded = urllib.parse.quote_plus(urllib.parse.quote_plus(uberon_iri))
         res = QueryEBIOLS.send_query_get("uberon/terms/", uberon_iri_double_encoded)
