@@ -37,6 +37,11 @@ class QueryEBIOLS:
         return res
 
     def get_mesh_id_for_uberon_id(self, uberon_curie_id):
+        """
+        Converts an anatomy uberon ID to MeSH id
+        :param uberon_curie_id: eg. "UBERON:0001259"
+        :return: a set of MeSH id's (eg. {"MESH:D008099"})
+        """
         uberon_iri = "http://purl.obolibrary.org/obo/" + uberon_curie_id.replace(":","_")
         uberon_iri_double_encoded = urllib.parse.quote_plus(urllib.parse.quote_plus(uberon_iri))
         res = QueryEBIOLS.send_query_get("uberon/terms/", uberon_iri_double_encoded)
