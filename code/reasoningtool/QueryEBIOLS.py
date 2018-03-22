@@ -36,6 +36,7 @@ class QueryEBIOLS:
             res = None
         return res
 
+    @staticmethod
     def get_mesh_id_for_uberon_id(uberon_curie_id):
         """
         Converts an anatomy uberon ID to MeSH id
