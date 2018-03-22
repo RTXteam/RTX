@@ -13,6 +13,10 @@ import requests_cache
 import QueryNCBIeUtils
 import math
 import MarkovLearning
+import QueryEBIOLS
+QueryEBIOLS = QueryEBIOLS.QueryEBIOLS()
+import QueryNCBIeUtils
+QueryNCBIeUtils = QueryNCBIeUtils.QueryNCBIeUtils()
 
 requests_cache.install_cache('orangeboard')
 
@@ -505,6 +509,58 @@ def get_results_object_model(target_node, paths_dict, name_to_description, q1_do
 				source_node_dict['counts'] = count_list
 			ret_source_nodes_dict[source_node] = source_node_dict
 	return ret_obj
+
+
+def weight_graph_with_google_distance(g):
+	"""
+	Creates a new property on the edges called 'gd_weight' that gives the google distance between source/target between that edge
+	:param g: a networkx graph
+	:return: a networkx graph with the decorated edges
+	"""
+	descriptions = nx.get_node_attributes(g, 'description')
+	names = nx.get_node_attributes(g, 'names')
+	labels = nx.get_node_attributes(g, 'labels')
+	nodes = list(nx.nodes(g))
+	edges = list(nx.edges(g))
+	edges2gd = dict()
+	# convert the nodes to mesh terms
+	# TODO: get this to work for pharos_drugs, uniprot_proteins, and check if working
+	for edge in edges:
+		i = 0
+		for node in edge:
+			mesh_terms = []
+			if QueryNCBIeUtils.is_mesh_term(names[node]):
+				mesh_terms = [names[node]]
+			elif QueryNCBIeUtils.is_mesh_term(descriptions[node]):
+				mesh_terms = [descriptions[node]]
+			elif "anatont_anatomy" in labels[node]:
+				id = names[node]
+				mesh_terms = QueryEBIOLS.get_mesh_id_for_uberon_id(id)
+			elif "omim_disease" in labels[node]:
+				id = names[node]
+				mesh_terms = QueryNCBIeUtils.get_mesh_terms_for_omim_id(id)
+			elif "disont_disease" in labels[node] or "phenont_phenotype" in labels[node]:
+				description = descriptions[node]
+				mesh_id = QueryNCBIeUtils.get_clinvar_uids_for_disease_or_phenotype_string(description)
+				mesh_terms = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(mesh_id)
+			if i == 0:
+				source_mesh_terms = mesh_terms
+				i += 1
+			else:
+				target_mesh_terms = mesh_terms
+		gd = np.inf
+		# Loop over all mesh terms and look for the smallest GD
+		for source_mesh_term in source_mesh_terms:
+			for target_mesh_term in target_mesh_terms:
+				gd_temp = QueryNCBIeUtils.normalized_google_distance(source_mesh_term, target_mesh_term)
+				if not np.isnan(gd_temp):
+					if gd_temp < gd:
+						gd = gd_temp
+		edges2gd[edge] = gd
+		# TODO: decorate the edges with these weights
+	#g2 = nx.set_edge_attributes(g, edges2gd)
+	for u,v,d in g.edges(data=True):  # TODO: check if this correctly populates with GD
+		d['gd_weight'] = edges2gd[(u,v)]
 
 
 
