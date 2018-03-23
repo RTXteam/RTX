@@ -36,6 +36,7 @@ def answerQ2(drug, disease_description):
 		disease = drug_to_disease_doid[drug]  # doid
 	else:
 		print("Sorry, but the drug %s is not in the list of known drugs." % drug)
+		return 1
 	if Q2Utils.has_disease(disease):
 		is_disont = True
 	else:
