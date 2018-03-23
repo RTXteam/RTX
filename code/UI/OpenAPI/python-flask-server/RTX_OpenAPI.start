@@ -1,16 +1,21 @@
 #!/bin/bash
 
-if [ -e /tmp/RTX_OpenAPI.log ]
+export DEVAREA=devED
+
+set LOGFILE=/tmp/RTX_OpenAPI_$DEVAREA.log
+set ELOGFILE=/tmp/RTX_OpenAPI_$DEVAREA.elog
+
+if [ -e $LOGFILE ]
 then
-    /bin/rm /tmp/RTX_OpenAPI.log
+    /bin/rm $LOGFILE
 fi
 
-if [ -e /tmp/RTX_OpenAPI.elog ]
+if [ -e $ELOGFILE ]
 then
-    /bin/rm /tmp/RTX_OpenAPI.elog
+    /bin/rm $ELOGFILE
 fi
 
-cd /mnt/data/orangeboard/code/NCATS/code/UI/OpenAPI/python-flask-server
+cd /mnt/data/orangeboard/$DEVAREA/RTX/code/UI/OpenAPI/python-flask-server
 
-exec /usr/bin/python3 -m swagger_server 1>/tmp/RTX_OpenAPI.log 2>/tmp/RTX_OpenAPI.elog
+exec /usr/bin/python3 -m swagger_server 1>$LOGFILE 2>$ELOGFILE
 
