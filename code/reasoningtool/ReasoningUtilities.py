@@ -47,6 +47,24 @@ DefaultConfigurable = namedtuple(
 )
 defaults = DefaultConfigurable(**DEFAULT_CONFIGURABLE)
 
+
+def node_exists_with_property(term, property_name, session=session):
+	"""
+	Check if the neo4j has a node with the given name as a given property
+	:param term: term to check (eg. 'naproxen')
+	:param property_name: relevant node property (eg. 'description' or 'name')
+	:param session: neo4j instance
+	:return: Boolean
+	"""
+	query = "match (n) where n.%s='%s' return n" % (property_name, term)
+	res = session.run(query)
+	res = [i for i in res]
+	if not res:
+		return False
+	else:
+		return True
+
+
 def count_nodes(sessions=session):
 	"""
 	Count the number of nodes

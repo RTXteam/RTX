@@ -88,6 +88,7 @@ class QuestionTranslator:
 			self._descrip2names[descr] = name
 		fid.close()
 
+		# TODO: replace this stuff with the RU.get_node_property (along with RU.node_exists_with_property)
 		# get the edge types
 		try:
 			fid = open(os.path.dirname(os.path.abspath(__file__))+'/../../../data/KGmetadata/EdgeTypes.tsv', 'r')
@@ -134,7 +135,7 @@ class QuestionTranslator:
 			restated = "What is %s" % terms[0]
 		elif corpus_index == 1:
 			#restated = "What genetic conditions might offer protection against %s" % terms["disease_name"]
-			restated = "What genetic conditions might offer protection against %s" % terms[0]
+			restated = "What genetic conditions might offer protection against %s" % RU.get_node_property(terms[0], 'description')
 		elif corpus_index == 2:
 			#restated = "What is the clinical outcome pathway of %s for the treatment of %s" % (names2descrip[terms["drug_name"]], names2descrip[terms["disease_name"]])
 			restated = "What is the clinical outcome pathway of %s for the treatment of %s" % (names2descrip[terms[0]], names2descrip[terms[1]])
