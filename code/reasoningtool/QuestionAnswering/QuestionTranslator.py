@@ -132,13 +132,11 @@ class QuestionTranslator:
 		names2descrip = self._names2descrip
 		# TODO: this is ugly at the moment
 		if corpus_index == 0:
-			restated = "What is %s" % terms[0]
+			restated = "What is %s" % terms["term"]
 		elif corpus_index == 1:
-			#restated = "What genetic conditions might offer protection against %s" % terms["disease_name"]
-			restated = "What genetic conditions might offer protection against %s" % RU.get_node_property(terms[0], 'description')
+			restated = "What genetic conditions might offer protection against %s" % RU.get_node_property(terms["disease_name"], 'description')
 		elif corpus_index == 2:
-			#restated = "What is the clinical outcome pathway of %s for the treatment of %s" % (names2descrip[terms["drug_name"]], names2descrip[terms["disease_name"]])
-			restated = "What is the clinical outcome pathway of %s for the treatment of %s" % (names2descrip[terms[0]], names2descrip[terms[1]])
+			restated = "What is the clinical outcome pathway of %s for the treatment of %s" % (names2descrip[terms["drug_name"]], names2descrip[terms["disease_name"]])
 		elif corpus_index == 3:
 			# TODO: this is a gnarly question to restate
 			restated = "%s %s what %s" % (names2descrip[terms["source_name"]], " ".join(terms["relationship_type"].split("_")), " ".join(terms["target_label"].split("_")))
