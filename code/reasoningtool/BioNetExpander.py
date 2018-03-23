@@ -41,21 +41,9 @@ from QuerySciGraph import QuerySciGraph
 from QueryChEMBL import QueryChEMBL
 
 class BioNetExpander:
-    MASTER_REL_IS_DIRECTED = {'disease_affects': True,
-                              'is_member_of': True,
-                              'is_parent_of': True,
-                              'gene_assoc_with': True,
-                              'phenotype_assoc_with': True,
-                              'interacts_with': False,
-                              'controls_expression_of': True,
-                              'is_expressed_in': True,
-                              'targets': True,
-                              'controls_state_change_of': True,
-                              'participates_in': True}
 
     def __init__(self, orangeboard):
         self.orangeboard = orangeboard
-        self.orangeboard.set_dict_reltype_dirs(self.MASTER_REL_IS_DIRECTED)
         self.query_omim_obj = QueryOMIM()
         self.query_mygene_obj = QueryMyGene(debug=False)
 
@@ -251,7 +239,7 @@ class BioNetExpander:
             node2 = self.orangeboard.add_node('geneont_bioprocess', go_id, desc=go_term)
             self.orangeboard.add_rel('participates_in', 'gene_ontology', node1, node2)
 
-    def expand_geneont_bioproces(self, node):
+    def expand_geneont_bioprocess(self, node):
         node_go_id = node.name
         child_go_ids_dict = QuerySciGraph.query_sub_ontology_terms_for_ontology_term(node_go_id)
         if child_go_ids_dict is not None:
