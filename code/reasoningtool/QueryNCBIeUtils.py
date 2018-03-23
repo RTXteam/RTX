@@ -408,13 +408,9 @@ if __name__ == '__main__':
     #        ))
     #    t1 = time.time()
     #    print(t1-t0)
-    
 
-    print(QueryNCBIeUtils.normalized_google_distance(
-        QueryNCBIeUtils.get_uniprot_names('P23219'),
-        'Naprosyn',
-        mesh1 = False
-        ))
+
+    print(QueryNCBIeUtils.normalized_google_distance(QueryNCBIeUtils.get_uniprot_names('P23219'), 'Naprosyn', mesh1=False))
            
 
 
