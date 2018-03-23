@@ -154,6 +154,10 @@ def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False, use_js
 	:return: nothing, prints to screen
 	"""
 	#input_disease = 'cholera'  # input disease
+	# Temp fix for input being doid, not description
+	doid = input_disease
+	input_disease = q1_doid_to_disease[doid]
+
 	# TODO: synonyms for diseases
 	if input_disease not in q1_disease_to_doid:
 		if not use_json:
@@ -231,7 +235,7 @@ def main():
 
 	# Parse and check args
 	args = parser.parse_args()
-	disease = args.input_disease.lower()
+	disease = args.input_disease
 	verbose = args.verbose
 	directed = args.directed
 	max_path_len = args.max_path_len
