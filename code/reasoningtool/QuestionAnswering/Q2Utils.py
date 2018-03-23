@@ -2,7 +2,13 @@
 import numpy as np
 np.warnings.filterwarnings('ignore')
 from neo4j.v1 import GraphDatabase, basic_auth
-import QueryNCBIeUtils
+import sys
+import os
+try:
+	import QueryNCBIeUtils
+except ImportError:
+	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  # Go up one level and look for it
+	import QueryNCBIeUtils
 import requests_cache
 requests_cache.install_cache('orangeboard')
 

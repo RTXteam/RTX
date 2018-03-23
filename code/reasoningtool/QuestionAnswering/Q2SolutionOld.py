@@ -14,7 +14,7 @@ import sys
 # Import the Q2 drugs and conditions
 drug_to_disease_doid = dict()
 disease_doid_to_description = dict()
-with open(os.path.abspath('../../data/q2/q2-drugandcondition-list-mapped.txt'), 'r') as fid:
+with open(os.path.abspath('../../../data/q2/q2-drugandcondition-list-mapped.txt'), 'r') as fid:
 	i = 0
 	for line in fid.readlines():
 		if i == 0:
@@ -36,6 +36,7 @@ def answerQ2(drug, disease_description):
 		disease = drug_to_disease_doid[drug]  # doid
 	else:
 		print("Sorry, but the drug %s is not in the list of known drugs." % drug)
+		return 1
 	if Q2Utils.has_disease(disease):
 		is_disont = True
 	else:

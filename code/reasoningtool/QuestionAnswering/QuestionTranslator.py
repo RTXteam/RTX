@@ -132,13 +132,11 @@ class QuestionTranslator:
 		names2descrip = self._names2descrip
 		# TODO: this is ugly at the moment
 		if corpus_index == 0:
-			restated = "What is %s" % terms[0]
+			restated = "What is %s" % terms["term"]
 		elif corpus_index == 1:
-			#restated = "What genetic conditions might offer protection against %s" % terms["disease_name"]
-			restated = "What genetic conditions might offer protection against %s" % RU.get_node_property(terms[0], 'description')
+			restated = "What genetic conditions might offer protection against %s" % RU.get_node_property(terms["disease_name"], 'description')
 		elif corpus_index == 2:
-			#restated = "What is the clinical outcome pathway of %s for the treatment of %s" % (names2descrip[terms["drug_name"]], names2descrip[terms["disease_name"]])
-			restated = "What is the clinical outcome pathway of %s for the treatment of %s" % (names2descrip[terms[0]], names2descrip[terms[1]])
+			restated = "What is the clinical outcome pathway of %s for the treatment of %s" % (names2descrip[terms["drug_name"]], names2descrip[terms["disease_name"]])
 		elif corpus_index == 3:
 			# TODO: this is a gnarly question to restate
 			restated = "%s %s what %s" % (names2descrip[terms["source_name"]], " ".join(terms["relationship_type"].split("_")), " ".join(terms["target_label"].split("_")))
@@ -162,6 +160,21 @@ class QuestionTranslator:
 			print("Error, answer dict is missing some terms:")
 			print(results_dict)
 			return None  # Raise exception?
+
+		# Convert the dictionary to a list for Eric
+		terms_list = []
+		if corpus_index == 0:
+			terms_list.append(terms["term"])
+		elif corpus_index == 1:
+			terms_list.append(terms["disease_name"])
+		elif corpus_index == 2:
+			terms_list.append(terms["disease_name"])
+			terms_list.append(terms["drug_name"])
+		elif corpus_index == 3:
+			terms_list.append(terms["source_name"])
+			terms_list.append(terms["target_label"])
+			terms_list.append(terms["relationship_type"])
+
 		# Corpus index will be in the same order as the corpora.
 		# If "not_understood", then the question isn't understood
 		# If "illegal_char", then illegal characters in the question
@@ -198,7 +211,7 @@ class QuestionTranslator:
 				return query
 
 		else:
-			query = [{"knownQueryTypeId": "Q%s" % corpus_index, "terms": terms,
+			query = [{"knownQueryTypeId": "Q%s" % corpus_index, "terms": terms_list,
 					  "restatedQuestion": "%s" % self.restate_question(corpus_index, terms), "originalQuestion": input_text}]
 			if logging:
 				self.log_query("OK", "Q%s" % corpus_index, input_text)
@@ -208,7 +221,7 @@ class QuestionTranslator:
 	def find_source_node_name(self, string):
 		"""
 		Find an acutal Neo4j KG node name in the string
-		:param string: input string (chunck of text)
+		:param string: input string (chunk of text)
 		:param names2descrip: dictionary containing the names and descriptions of the nodes (see dumpdata.py)
 		:param descrip2names: reversed names2descrip dictionary
 		:return: one of the node names (key (string) of names2descrip)
@@ -217,25 +230,27 @@ class QuestionTranslator:
 		descrip2names = self._descrip2names
 		# exact match
 		query = string
-		res = None
+		res_list = []
 		if query in names2descrip:
 			res = query
+			res_list.append(res)
 		elif query in descrip2names:
 			res = descrip2names[query]
+			res_list.append(res)
 		elif False:
 			pass
 			# TODO: put Arnabs ULMS metathesaurus lookup here
-		else:
-			res = None
 		# Case insensitive match
 		query_lower = string.lower()
 		for name in names2descrip:
 			if name.lower() == query_lower:
 				res = name
+				res_list.append(res)
 		for descr in descrip2names:
 			if descr.lower() == query_lower:
 				res = descrip2names[descr]
-		return res
+				res_list.append(res)
+		return res_list
 
 	def find_target_label(self, string):
 		"""
@@ -342,15 +357,19 @@ class QuestionTranslator:
 
 		# for each block, look for the associated terms in a greedy fashion
 		#######################################################################
-		# Q4/3: What are the protein targets of naproxen?
+		# Q3: What are the protein targets of naproxen?
 		#######################################################################
-		if corpus_index == 3:  # Q4
+		if corpus_index == 3:  # Q3
+			# Greedy look for drug name TODO: in the future, may need to disambiguate terms like I did for other Q's
+			# with candidate_node_names
 			source_name = None
 			target_label = None
 			relationship_type = None
 			for block in blocks:
 				if source_name is None:
-					source_name = self.find_source_node_name(block)
+					source_names = self.find_source_node_name(block)
+					if source_names:
+						source_name = source_names.pop()
 				if target_label is None:
 					target_label = self.find_target_label(block)
 				if relationship_type is None:
@@ -391,9 +410,9 @@ class QuestionTranslator:
 			candidate_node_names = []
 			# Look for anything that could be a node name
 			for block in blocks:
-				node = self.find_source_node_name(block)
-				if node is not None:
-					candidate_node_names.append(node)
+				nodes = self.find_source_node_name(block)
+				if nodes:
+					candidate_node_names.extend(nodes)
 
 			# Get the node labels
 			candidate_node_labels = []
@@ -419,6 +438,19 @@ class QuestionTranslator:
 				results_dict["error_code"] = "missing_term"
 				results_dict["error_message"] = error_message
 				return results_dict
+
+			# Deduplicate list (for exact matches of names)
+			candidate_node_names_dedup = []
+			candidate_node_labels_dedup = []
+			for i in range(len(candidate_node_names)):
+				name = candidate_node_names[i]
+				label = candidate_node_labels[i]
+				if name not in candidate_node_names_dedup:
+					candidate_node_names_dedup.append(name)
+					candidate_node_labels_dedup.append(label)
+
+			candidate_node_names = candidate_node_names_dedup
+			candidate_node_labels = candidate_node_labels_dedup
 
 			# Look for the locations of the drugs and diseases
 			num_drug = 0
@@ -467,28 +499,42 @@ class QuestionTranslator:
 		##########################################################
 		elif corpus_index == 1:  # Q1
 			disease_name = None
-			# Look for a node name, break once one is found (greedy)
+
+			# Look for node names, in a greedy fashion TODO: collect them all and make a decision later
+			candidate_node_names = []
 			for block in blocks:
-				node = self.find_source_node_name(block)
-				if node is not None:
-					disease_name = node
+				nodes = self.find_source_node_name(block)
+				if nodes:
+					candidate_node_names.extend(nodes)
 					break
 
-			# Get the node label
-			node_label = RU.get_node_property(disease_name, "label")  # TODO: Arnab's UMLS lookup
+			# Get the node labels
+			candidate_node_labels = []
+			for node in candidate_node_names:
+				node_label = RU.get_node_property(node, "label")  # TODO: Arnab's UMLS lookup
+				candidate_node_labels.append(node_label)
+
+			# Get the disease node
+			node_label = "-1"
+			for i in range(len(candidate_node_labels)):
+				temp_label = candidate_node_labels[i]
+				if temp_label == "disont_disease":
+					node_label = temp_label
+					disease_name = candidate_node_names[i]
+
 			if node_label != "disont_disease":
 				error_message = "This question requires a disease name, I got a %s with the name %s" %(node_label, disease_name)
 				#raise Exception(error_message)
 				results_dict["corpus_index"] = corpus_index
-				#results_dict["terms"] = {"disease_name": disease_name}
-				results_dict["terms"] = [ disease_name ]
+				results_dict["terms"] = {"disease_name": disease_name}
+				#results_dict["terms"] = [ disease_name ]
 				results_dict["error_code"] = "missing_term"
 				results_dict["error_message"] = error_message
 				return results_dict
 			else:
 				results_dict["corpus_index"] = corpus_index
-				#results_dict["terms"] = {"disease_name": disease_name}
-				results_dict["terms"] = [ disease_name ]
+				results_dict["terms"] = {"disease_name": disease_name}
+				#results_dict["terms"] = [ disease_name ]
 				results_dict["error_code"] = None
 				results_dict["error_message"] = None
 				return results_dict
@@ -510,7 +556,8 @@ class QuestionTranslator:
 				term = re.sub("^\s+", "", term)
 				term = re.sub("\s+$", "", term)
 				results_dict["corpus_index"] = corpus_index
-				results_dict["terms"] = [ term ]
+				#results_dict["terms"] = [ term ]
+				results_dict["terms"] = {"term": term}
 				results_dict["error_code"] = None
 				results_dict["error_message"] = None
 				return results_dict
@@ -543,7 +590,7 @@ def test_find_question_parameters():
 	results_dict = txltr.find_question_parameters(question)
 	assert results_dict["error_code"] is not None
 
-	# Q4 tests
+	# Q3 tests
 	question = "what are the protein targets of acetaminophen?"
 	results_dict = txltr.find_question_parameters(question)
 	source_name = results_dict["terms"]["source_name"]
@@ -625,7 +672,7 @@ def test_find_question_parameters():
 
 	# Q1 Questions
 	question = "what genetic conditions might protect against malaria?"
-	results_dict = txltr.find_question_parameters(question,)
+	results_dict = txltr.find_question_parameters(question)
 	disease = results_dict["terms"]["disease_name"]
 	assert disease == 'DOID:12365'
 

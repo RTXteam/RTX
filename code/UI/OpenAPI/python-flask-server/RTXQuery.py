@@ -48,12 +48,15 @@ class RTXQuery:
 
     if id == 'Q1':
       # call out to OrangeBoard here to satify the query "What genetic conditions might offer protection against XXXXXX?"
-      os.chdir("/mnt/data/orangeboard/code/NCATS/code/reasoningtool")
-      #returnedText = answerQ1(terms[0], directed=True, max_path_len=3, verbose=True)
+      cwd = os.path.dirname(os.path.abspath(__file__))
+      os.chdir("/mnt/data/orangeboard/devED/RTX/code/reasoningtool/QuestionAnswering")
+      eprint("python3 Q1Solution.py -j -i '"+terms[0]+"'" )
       returnedText = subprocess.run( [ "python3 Q1Solution.py -j -i '"+terms[0]+"'" ], stdout=subprocess.PIPE, shell=True )
+      os.chdir(cwd)
       reformattedText = returnedText.stdout.decode('utf-8')
       #print(reformattedText)
       try:
+          #eprint(reformattedText)
           returnedData = json.loads(reformattedText)
           text = returnedData["text"]
       except:
@@ -68,8 +71,11 @@ class RTXQuery:
 
     if id == 'Q2':
       # call out to OrangeBoard here to satify the query "What is the clinical outcome pathway of XXXXXX for treatment of YYYYYYY?"
-      os.chdir("/mnt/data/orangeboard/code/NCATS/code/reasoningtool")
-      returnedText = subprocess.run( [ "python3 Q2Solution.py -r '"+terms[0]+"' -d '"+terms[1]+"'" ], stdout=subprocess.PIPE, shell=True )
+      cwd = os.path.dirname(os.path.abspath(__file__))
+      os.chdir("/mnt/data/orangeboard/devED/RTX/code/reasoningtool/QuestionAnswering")
+      eprint("python3 Q2SolutionOld.py -r '"+terms[0]+"' -d '"+terms[1]+"'" )
+      returnedText = subprocess.run( [ "python3 Q2SolutionOld.py -r '"+terms[0]+"' -d '"+terms[1]+"'" ], stdout=subprocess.PIPE, shell=True )
+      os.chdir(cwd)
       reformattedText = returnedText.stdout.decode('utf-8')
       reformattedText = re.sub("\n","<BR>\n",reformattedText)
       #reformattedText = "<UL><LI>" + reformattedText + "</UL>"
@@ -101,8 +107,7 @@ class RTXQuery:
 
   def logQuery(self,id,codeString,terms):
     datetimeString = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    os.chdir("/mnt/data/orangeboard/code/NCATS/code/UI/OpenAPI/python-flask-server")
-    with open("RTXQueries.log","a") as logfile:
+    with open(os.path.dirname(os.path.abspath(__file__))+"/RTXQueries.log","a") as logfile:
       logfile.write(datetimeString+"\t"+codeString+"\t"+id+"\t"+",".join(terms)+"\n")
 
 

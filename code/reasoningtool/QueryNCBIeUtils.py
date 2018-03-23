@@ -12,6 +12,8 @@ import urllib
 import math
 import sys
 import time
+from bs4 import BeautifulSoup as bsoup
+import re
 
 # MeSH Terms for Q1 diseases: (see git/q1/README.md)
 #   Osteoporosis
@@ -199,16 +201,22 @@ class QueryNCBIeUtils:
         return res_int
 
     @staticmethod
-    def normalized_google_distance(mesh1_str, mesh2_str):
+    def normalized_google_distance(mesh1_str, mesh2_str,mesh1=True,mesh2=True):
         '''returns the normalized Google distance for two MeSH terms
         
         :returns: NGD, as a float (or math.nan if any counts are zero, or None if HTTP error)
         '''
-        nij = QueryNCBIeUtils.get_pubmed_hits_count('("{mesh1}"[MeSH Terms]) AND "{mesh2}"[MeSH Terms]'.format(mesh1=mesh1_str,
+        if mesh1: # checks mesh flag then converts to mesh term search
+            mesh1_str+='[MeSH Terms]'
+
+        if mesh2: # checks mesh flag then converts to mesh term search
+            mesh2_str+='[MeSH Terms]'
+
+        nij = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str,
                                                                                                mesh2=mesh2_str))
         N = 2.7e+7 * 20 # from PubMed home page there are 27 million articles; avg 20 MeSH terms per article
-        ni = QueryNCBIeUtils.get_pubmed_hits_count('"{mesh1}"[MeSH Terms]'.format(mesh1=mesh1_str))
-        nj = QueryNCBIeUtils.get_pubmed_hits_count('"{mesh2}"[MeSH Terms]'.format(mesh2=mesh2_str))
+        ni = QueryNCBIeUtils.get_pubmed_hits_count('{mesh1}'.format(mesh1=mesh1_str))
+        nj = QueryNCBIeUtils.get_pubmed_hits_count('{mesh2}'.format(mesh2=mesh2_str))
         if ni == 0 or nj == 0 or nij == 0:
             return math.nan
         numerator = max(math.log(ni), math.log(nj)) - math.log(nij)
@@ -228,6 +236,90 @@ class QueryNCBIeUtils:
         omim1_str = '219700'
         omim2_str = '219550'
         print(QueryNCBIeUtils.normalized_google_distance(mesh1_str, mesh2_str))
+
+    @staticmethod
+    def get_uniprot_names(id):
+        '''
+        Takes a uniprot id then return a string containing all synonyms listed on uniprot seperated by the deliminator |
+
+        Parameters:
+            id - a string containing the uniprot id
+
+        Output:
+            search - a string containing all synonyms uniprot lists for
+        '''
+        url = 'https://www.uniprot.org/uniprot/' + id + '.xml' # hardcoded url for uniprot data
+        r = requests.get(url, headers = {'User-Agent':'Mozilla/5.0'}) # send get request
+        soup = bsoup(r.text, 'lxml') # parses xml response
+        if r.status_code != 200: # checks for error
+            print('HTTP response status code: ' + str(r.status_code) + ' for URL:\n' + url, file=sys.stderr)
+            return None
+        search = '' # initializes search term variable
+        if len(soup.find_all('protein')) > 0: # checks for protein section
+            for name in soup.find('protein').find_all('fullname'):
+                if QueryNCBIeUtils.is_mesh_term(name.text):
+                    search += '|' + name.text + '[MeSH Terms]'
+                else:
+                    search += '|' + name.text
+            for name in soup.find('protein').find_all('shortname'):
+                if QueryNCBIeUtils.is_mesh_term(name.text):
+                    search += '|' + name.text + '[MeSH Terms]'
+                else:
+                    search += '|' + name.text
+        if len(soup.find_all('gene')) > 0: # checks for gene section
+            for name in soup.find('gene').find_all('name'):
+                if QueryNCBIeUtils.is_mesh_term(name.text):
+                    search += '|' + name.text + '[MeSH Terms]'
+                else:
+                    search += '|' + name.text
+        search = search[1:] # gets rid of leading |
+        return search
+
+    @staticmethod
+    def get_reactome_names(id):
+        '''
+        Takes a reactome id then return a string containing all synonyms listed on reactome seperated by the deliminator |
+        However, If it finds a MeSH terms in the list it will return the search term as a mesh term serach
+        e.g. it will return something like '(IGF1R)[MeSH Terms]' 
+
+        This can be inputed into the google function as a non mesh term and will search as a mesh term. 
+        This is so that we do not need to handle the output of this function any differently it can all be input as non mesh terms
+
+        Parameters:
+            id - a string containing the reactome id
+
+        Output:
+            search - a string containing all synonyms of the reactome id or a mesh term formatted for the google distance function
+        '''
+        url = 'https://reactome.org/ContentService/data/query/'+id+'/name' # hardcoded url for reactiome names
+        r = requests.get(url, headers = {'User-Agent':'Mozilla/5.0'}) # sends get request that returns a string
+        if r.status_code != 200:
+            print('HTTP response status code: ' + str(r.status_code) + ' for URL:\n' + url, file=sys.stderr)
+            return None
+        nameList = r.text.split('\n') # splits returned string by line
+        search = '' # initializes search term variable
+        for name in nameList:
+            if len(name) > 0: # removes blank lines at beginning and end of response
+                if len(re.compile("[()]").split(name)) > 1: # check for parenthesis
+                    for n in re.compile("[()]").split(name): # splits on either "(" or ")"
+                        if len(n)>0: # removes banks generated by split
+                            if QueryNCBIeUtils.is_mesh_term(n): # check for mesh term
+                                search += '|' + n + '[MeSH Terms]'
+                            else:
+                                search += '|' + n
+                elif len(name.split('ecNumber')) > 1: # checks for ec number
+                    if QueryNCBIeUtils.is_mesh_term(name.split('ecNumber')[0]):
+                        search += '|' + name.split('ecNumber')[0] + '[MeSH Terms]'
+                    else:
+                        search += '|' + name.split('ecNumber')[0]
+                    search += '|' + name.split('ecNumber')[1][:-1] + '[EC/RN Number]' # removes trailing "/" and formats as ec search term
+                else:
+                    if QueryNCBIeUtils.is_mesh_term(name):
+                        search += '|' + name + '[MeSH Terms]'
+                    else:
+                        search += '|' + name
+        search = search[1:] # removes leading |
+        return search
               
 if __name__ == '__main__':
 #    print(QueryNCBIeUtils.get_clinvar_uids_for_disease_or_phenotype_string('hypercholesterolemia'))
@@ -258,10 +350,72 @@ if __name__ == '__main__':
     #                   'Stress Disorders, Post-Traumatic']:
     #     print(QueryNCBIeUtils.normalized_google_distance(mesh_term, QueryNCBIeUtils.get_mesh_terms_for_omim_id(219700)[0]))
               
-    print(QueryNCBIeUtils.normalized_google_distance(
-        QueryNCBIeUtils.get_mesh_terms_for_omim_id(219700)[0],
-        "Cholera"))
-              
+    #print(QueryNCBIeUtils.normalized_google_distance(
+    #    QueryNCBIeUtils.get_mesh_terms_for_omim_id(219700)[0],
+    #    "Cholera"))
+    
+
+
+
+
+    #reactome_list = [
+    #"R-HSA-5626467",
+    #"R-HSA-5627083",
+    #"R-HSA-447115",
+    #"R-HSA-5579012",
+    #"R-HSA-199992",
+    #"R-HSA-3000170",
+    #"R-HSA-5683371",
+    #"R-HSA-5619058",
+    #"R-HSA-5579006",
+    #"R-HSA-2404192",
+    #]
+    #
+    #for ids in reactome_list:
+    #    t0 = time.time()
+    #    searchTerm = QueryNCBIeUtils.get_reactome_names(ids)
+    #    print(searchTerm)
+    #    print(QueryNCBIeUtils.normalized_google_distance(
+    #        searchTerm,
+    #        'Human',
+    #        mesh1 = False
+    #        ))
+    #    t1 = time.time()
+    #    print(t1-t0)
+    #
+    #uniprot_list = [
+    #"Q15699",
+    #"A0A0G2JJD3",
+    #"Q9NR22",
+    #"Q92949",
+    #"Q12996",
+    #"Q92544",
+    #"Q14789",
+    #"Q9NRN5",
+    #"Q9BXW9",
+    #"P56556",
+    #"P23219"
+    #]
+    #
+    #for ids in uniprot_list:
+    #    t0 = time.time()
+    #    searchTerm = QueryNCBIeUtils.get_uniprot_names(ids)
+    #    print(searchTerm)
+    #    print(QueryNCBIeUtils.normalized_google_distance(
+    #        searchTerm,
+    #        'Human',
+    #        mesh1 = False
+    #        ))
+    #    t1 = time.time()
+    #    print(t1-t0)
+
+
+    print(QueryNCBIeUtils.normalized_google_distance(QueryNCBIeUtils.get_uniprot_names('P23219'), 'Naprosyn', mesh1=False))
+           
+
+
+
+
     # print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(219700)) # OMIM preferred name: "CYSTIC FIBROSIS"
     # print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(125050)) # OMIM preferred name: "DEAFNESS WITH ANHIDROTIC ECTODERMAL DYSPLASIA"
     # print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(310350)) # OMIM preferred name: "MYELOLYMPHATIC INSUFFICIENCY"

@@ -11,7 +11,7 @@ import CustomExceptions
 
 drug_to_disease_doid = dict()
 disease_doid_to_description = dict()
-with open(os.path.abspath('../../data/q2/q2-drugandcondition-list-mapped.txt'), 'r') as fid:
+with open(os.path.abspath('../../../data/q2/q2-drugandcondition-list-mapped.txt'), 'r') as fid:
 	i = 0
 	for line in fid.readlines():
 		if i == 0:
@@ -45,15 +45,21 @@ def answerQ2(drug_name, disease_name, k):
 													with_rel=['uniprot_protein', 'gene_assoc_with', 'disont_disease'],
 													directed=False)
 	except CustomExceptions.EmptyCypherError:
-		try:
+		try:  # Then look for any sort of COP
 			g = RU.return_subgraph_through_node_labels(drug_name, 'pharos_drug', disease_name, 'disont_disease',
 													['uniprot_protein', 'anatont_anatomy', 'phenont_phenotype'],
 													directed=False)
 		except CustomExceptions.EmptyCypherError:
-			print("Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype. "
-				  "The drug and/or disease may not be one of the entities I know about, or they do not connect via a known "
-				  "pathway, tissue, and phenotype (understudied)" % (drug_name, RU.get_node_property(disease_name, 'description')))
-			return 1
+			try:  # Then look for any sort of connection between source and target
+				g = RU.get_shortest_subgraph_between_nodes(drug_name, 'pharos_drug', disease_name, 'disont_disease',
+															max_path_len=4, limit=50, debug=False, directed=False)
+			except CustomExceptions.EmptyCypherError:
+				print(
+					"Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype. "
+					"The drug and/or disease may not be one of the entities I know about, or they do not connect via a known "
+					"pathway, tissue, and phenotype (understudied)" %
+					(drug_name, RU.get_node_property(disease_name, 'description')))
+				return 1
 	# Decorate with normalized google distance
 	RU.weight_graph_with_google_distance(g)
 
@@ -79,8 +85,8 @@ def answerQ2(drug_name, disease_name, k):
 def main():
 	parser = argparse.ArgumentParser(description="Runs the reasoning tool on Question 2",
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-	parser.add_argument('-r', '--drug', type=str, help="Input drug")
-	parser.add_argument('-d', '--disease', type=str, help="Input disease (Identifier in the graph, eg DOID:)")
+	parser.add_argument('-r', '--drug', type=str, help="Input drug (name in the graph, eg. 'naproxen')")
+	parser.add_argument('-d', '--disease', type=str, help="Input disease (Identifier in the graph, eg 'DOID:8398')")
 	parser.add_argument('-a', '--all', action="store_true", help="Flag indicating you want to run it on all Q2 drugs + diseases",
 						default=False)
 	parser.add_argument('-k', '--kpaths', type=int, help="Number of paths to return.", default=10)
@@ -104,7 +110,7 @@ def main():
 			print((drug, disease_description))
 			res = answerQ2(drug, disease, k)
 	else:
-		res = answerQ2(drug, disease , k)
+		res = answerQ2(drug, disease, k)
 
 if __name__ == "__main__":
 	main()

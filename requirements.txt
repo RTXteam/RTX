@@ -8,6 +8,7 @@ networkx
 pronto
 lxml
 mygene
+beautifulsoup4
 nltk
 # nltk.download('wordnet')
 # nltk.download('averaged_perceptron_tagger')

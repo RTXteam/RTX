@@ -3,22 +3,34 @@
 import networkx as nx
 from numpy import linalg as LA
 import numpy as np
-
 np.warnings.filterwarnings('ignore')
 import cypher
+import os
+import sys
 from collections import namedtuple
 from neo4j.v1 import GraphDatabase, basic_auth
 from collections import Counter
 import requests_cache
-import QueryNCBIeUtils
-import math
-import MarkovLearning
-import QueryEBIOLS
-QueryEBIOLS = QueryEBIOLS.QueryEBIOLS()
-import QueryNCBIeUtils
-QueryNCBIeUtils = QueryNCBIeUtils.QueryNCBIeUtils()
 from itertools import islice
 import CustomExceptions
+# Import stuff from one level up
+try:
+	import QueryNCBIeUtils
+except ImportError:
+	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  # Go up one level and look for it
+	import QueryNCBIeUtils
+
+import math
+import MarkovLearning
+try:
+	import QueryEBIOLS
+except ImportError:
+	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  # Go up one level and look for it
+	import QueryEBIOLS
+
+QueryEBIOLS = QueryEBIOLS.QueryEBIOLS()
+QueryNCBIeUtils = QueryNCBIeUtils.QueryNCBIeUtils()
+
 
 requests_cache.install_cache('orangeboard')
 
@@ -434,6 +446,35 @@ def return_subgraph_through_node_labels(source_node, source_node_label, target_n
 		query += "collect(path%d)" % (len(node_list) - 1)
 		if debug:
 			return query
+	res = cypher.run(query, conn=connection, config=defaults)
+	if not res:
+		raise CustomExceptions.EmptyCypherError(query)
+	else:
+		graph = get_graph(res, directed=directed)
+		return graph
+
+
+def get_shortest_subgraph_between_nodes(source_name, source_label, target_name, target_label, max_path_len=4, limit=50,
+										debug=False, directed=False):
+	"""
+	This function will return the sugraph between between fixed source and target nodes
+	:param source_name: source node name (in KG)
+	:param source_label: source node label
+	:param target_name: target node name
+	:param target_label: target node label
+	:param max_path_len: maximum path length to consider
+	:param limit: max number of paths to return
+	:param session: neo4j session
+	:param debug: just return the cypher query
+	:param directed: treat the graph as directed or not
+	:return: networkx graph
+	"""
+	query = "MATCH path=allShortestPaths((s:%s)-[*1..%d]-(t:%s)) " \
+			"WHERE s.name='%s' AND t.name='%s' " \
+			"RETURN path limit %d" % (source_label, max_path_len, target_label, source_name, target_name, limit)
+	if debug:
+		return query
+
 	res = cypher.run(query, conn=connection, config=defaults)
 	if not res:
 		raise CustomExceptions.EmptyCypherError(query)
