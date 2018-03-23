@@ -4,41 +4,41 @@ geneont_bioprocess	GO:0007165	signal transduction
 geneont_bioprocess	GO:0008283	cell proliferation
 geneont_bioprocess	GO:0036462	TRAIL-activated apoptotic signaling pathway
 geneont_bioprocess	GO:0051301	cell division
-anatont_uberon	UBERON:0000014	zone of skin
-anatont_uberon	UBERON:0000018	compound eye
-anatont_uberon	UBERON:0000019	camera-type eye
-anatont_uberon	UBERON:0000029	lymph node
-anatont_uberon	UBERON:0000081	metanephros
-anatont_uberon	UBERON:0000082	adult mammalian kidney
-anatont_uberon	UBERON:0000178	blood
-anatont_uberon	UBERON:0000310	breast
-anatont_uberon	UBERON:0000945	stomach
-anatont_uberon	UBERON:0000948	heart
-anatont_uberon	UBERON:0000955	brain
-anatont_uberon	UBERON:0000970	eye
-anatont_uberon	UBERON:0000974	neck
-anatont_uberon	UBERON:0000992	female gonad
-anatont_uberon	UBERON:0000995	uterus
-anatont_uberon	UBERON:0001017	central nervous system
-anatont_uberon	UBERON:0001017	central nervous system
-anatont_uberon	UBERON:0001155	colon
-anatont_uberon	UBERON:0001348	brown adipose tissue
-anatont_uberon	UBERON:0001637	artery
-anatont_uberon	UBERON:0001824	mucose of larynx
-anatont_uberon	UBERON:0001911	mammary gland
-anatont_uberon	UBERON:0001994	hyaline cartilage tissue
-anatont_uberon	UBERON:0002012	pulmonary artery
-anatont_uberon	UBERON:0002097	skin of body
-anatont_uberon	UBERON:0002107	liver
-anatont_uberon	UBERON:0002113	kidney
-anatont_uberon	UBERON:0002196	adenohypophysis
-anatont_uberon	UBERON:0002333	pulmonary trunk
-anatont_uberon	UBERON:0002465	lymphoid system
-anatont_uberon	UBERON:0003714	neural tissue
-anatont_uberon	UBERON:0004572	arterial system
-anatont_uberon	UBERON:0004785	respiratory system mucosa
-anatont_uberon	UBERON:0004816	larynx epithelium
-anatont_uberon	UBERON:0006558	lymphatic part of lymphoid system
-anatont_uberon	UBERON:0009564	distal limb integumentary appendage
-anatont_uberon	UBERON:0010996	articular cartilage of joint
-anatont_uberon	UBERON:6003624	adult brain
+anatont_anatomy	UBERON:0000014	zone of skin
+anatont_anatomy	UBERON:0000018	compound eye
+anatont_anatomy	UBERON:0000019	camera-type eye
+anatont_anatomy	UBERON:0000029	lymph node
+anatont_anatomy	UBERON:0000081	metanephros
+anatont_anatomy	UBERON:0000082	adult mammalian kidney
+anatont_anatomy	UBERON:0000178	blood
+anatont_anatomy	UBERON:0000310	breast
+anatont_anatomy	UBERON:0000945	stomach
+anatont_anatomy	UBERON:0000948	heart
+anatont_anatomy	UBERON:0000955	brain
+anatont_anatomy	UBERON:0000970	eye
+anatont_anatomy	UBERON:0000974	neck
+anatont_anatomy	UBERON:0000992	female gonad
+anatont_anatomy	UBERON:0000995	uterus
+anatont_anatomy	UBERON:0001017	central nervous system
+anatont_anatomy	UBERON:0001017	central nervous system
+anatont_anatomy	UBERON:0001155	colon
+anatont_anatomy	UBERON:0001348	brown adipose tissue
+anatont_anatomy	UBERON:0001637	artery
+anatont_anatomy	UBERON:0001824	mucose of larynx
+anatont_anatomy	UBERON:0001911	mammary gland
+anatont_anatomy	UBERON:0001994	hyaline cartilage tissue
+anatont_anatomy	UBERON:0002012	pulmonary artery
+anatont_anatomy	UBERON:0002097	skin of body
+anatont_anatomy	UBERON:0002107	liver
+anatont_anatomy	UBERON:0002113	kidney
+anatont_anatomy	UBERON:0002196	adenohypophysis
+anatont_anatomy	UBERON:0002333	pulmonary trunk
+anatont_anatomy	UBERON:0002465	lymphoid system
+anatont_anatomy	UBERON:0003714	neural tissue
+anatont_anatomy	UBERON:0004572	arterial system
+anatont_anatomy	UBERON:0004785	respiratory system mucosa
+anatont_anatomy	UBERON:0004816	larynx epithelium
+anatont_anatomy	UBERON:0006558	lymphatic part of lymphoid system
+anatont_anatomy	UBERON:0009564	distal limb integumentary appendage
+anatont_anatomy	UBERON:0010996	articular cartilage of joint
+anatont_anatomy	UBERON:6003624	adult brain
