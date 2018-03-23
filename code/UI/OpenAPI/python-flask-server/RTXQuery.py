@@ -49,14 +49,14 @@ class RTXQuery:
     if id == 'Q1':
       # call out to OrangeBoard here to satify the query "What genetic conditions might offer protection against XXXXXX?"
       cwd = os.path.dirname(os.path.abspath(__file__))
-      os.chdir("/mnt/data/orangeboard/devED/RTX/code/reasoningtool")
+      os.chdir("/mnt/data/orangeboard/devED/RTX/code/reasoningtool/QuestionAnswering")
       eprint("python3 Q1Solution.py -j -i '"+terms[0]+"'" )
       returnedText = subprocess.run( [ "python3 Q1Solution.py -j -i '"+terms[0]+"'" ], stdout=subprocess.PIPE, shell=True )
       os.chdir(cwd)
       reformattedText = returnedText.stdout.decode('utf-8')
       #print(reformattedText)
       try:
-          eprint(reformattedText)
+          #eprint(reformattedText)
           returnedData = json.loads(reformattedText)
           text = returnedData["text"]
       except:
@@ -72,8 +72,9 @@ class RTXQuery:
     if id == 'Q2':
       # call out to OrangeBoard here to satify the query "What is the clinical outcome pathway of XXXXXX for treatment of YYYYYYY?"
       cwd = os.path.dirname(os.path.abspath(__file__))
-      os.chdir("/mnt/data/orangeboard/devED/RTX/code/reasoningtool")
-      returnedText = subprocess.run( [ "python3 Q2Solution.py -r '"+terms[0]+"' -d '"+terms[1]+"'" ], stdout=subprocess.PIPE, shell=True )
+      os.chdir("/mnt/data/orangeboard/devED/RTX/code/reasoningtool/QuestionAnswering")
+      eprint("python3 Q2SolutionOld.py -r '"+terms[0]+"' -d '"+terms[1]+"'" )
+      returnedText = subprocess.run( [ "python3 Q2SolutionOld.py -r '"+terms[0]+"' -d '"+terms[1]+"'" ], stdout=subprocess.PIPE, shell=True )
       os.chdir(cwd)
       reformattedText = returnedText.stdout.decode('utf-8')
       reformattedText = re.sub("\n","<BR>\n",reformattedText)
