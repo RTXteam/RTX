@@ -359,9 +359,9 @@ class QuestionTranslator:
 
 		# for each block, look for the associated terms in a greedy fashion
 		#######################################################################
-		# Q4/3: What are the protein targets of naproxen?
+		# Q3: What are the protein targets of naproxen?
 		#######################################################################
-		if corpus_index == 3:  # Q4
+		if corpus_index == 3:  # Q3
 			# Greedy look for drug name TODO: in the future, may need to disambiguate terms like I did for other Q's
 			# with candidate_node_names
 			source_name = None
@@ -592,7 +592,7 @@ def test_find_question_parameters():
 	results_dict = txltr.find_question_parameters(question)
 	assert results_dict["error_code"] is not None
 
-	# Q4 tests
+	# Q3 tests
 	question = "what are the protein targets of acetaminophen?"
 	results_dict = txltr.find_question_parameters(question)
 	source_name = results_dict["terms"]["source_name"]
