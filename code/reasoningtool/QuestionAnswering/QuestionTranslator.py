@@ -73,10 +73,7 @@ class QuestionTranslator:
 		self._Q_corpora = [Q0_corpus, Q1_corpus, Q2_corpus, Q3_corpus]
 
 		# get all the node names and descriptions
-		try:
-			fid = open(os.path.abspath('../../../data/KGmetadata/NodeNamesDescriptions.tsv'), 'r')
-		except FileNotFoundError:
-			fid = open(os.path.abspath('data/KGmetadata/NodeNamesDescriptions.tsv'), 'r')
+		fid = open(os.path.dirname(os.path.abspath(__file__))+'/../../../data/KGmetadata/NodeNamesDescriptions.tsv', 'r')
 		self._names2descrip = dict()
 		self._descrip2names = dict()  # TODO: this assumes that descriptions are unique, and this may change soon
 		for line in fid.readlines():
@@ -93,7 +90,7 @@ class QuestionTranslator:
 
 		# get the edge types
 		try:
-			fid = open(os.path.abspath('../../../data/KGmetadata/EdgeTypes.tsv'), 'r')
+			fid = open(os.path.dirname(os.path.abspath(__file__))+'/../../../data/KGmetadata/EdgeTypes.tsv', 'r')
 		except FileNotFoundError:
 			fid = open(os.path.abspath('data/KGmetadata/EdgeTypes.tsv'), 'r')
 		self._edge_types = list()
@@ -104,7 +101,7 @@ class QuestionTranslator:
 
 		# Get the node labels
 		try:
-			fid = open(os.path.abspath('../../../data/KGmetadata/NodeLabels.tsv'), 'r')
+			fid = open(os.path.dirname(os.path.abspath(__file__))+'/../../../data/KGmetadata/NodeLabels.tsv', 'r')
 		except FileNotFoundError:
 			fid = open(os.path.abspath('data/KGmetadata/NodeLabels.tsv'), 'r')
 		self._node_labels = list()
@@ -115,7 +112,7 @@ class QuestionTranslator:
 
 	def log_query(self, code_string, id, original_text):
 		date_time_string = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-		log_dir = "/mnt/data/orangeboard/code/NCATS/code/UI/OpenAPI/python-flask-server"
+		log_dir = os.path.dirname(os.path.abspath(__file__))+"/../../../code/UI/OpenAPI/python-flask-server"
 		try:
 			with open(os.path.join(log_dir,"RTXQuestions.log"),"a") as logfile:
 				logfile.write(date_time_string +"\t" + code_string + "\t" + id + "\t" + original_text + "\n")
@@ -134,11 +131,13 @@ class QuestionTranslator:
 		names2descrip = self._names2descrip
 		# TODO: this is ugly at the moment
 		if corpus_index == 0:
-			restated = "What is %s" % terms["term"]
+			restated = "What is %s" % terms[0]
 		elif corpus_index == 1:
-			restated = "What genetic conditions might offer protection against %s" % terms["disease_name"]
+			#restated = "What genetic conditions might offer protection against %s" % terms["disease_name"]
+			restated = "What genetic conditions might offer protection against %s" % terms[0]
 		elif corpus_index == 2:
-			restated = "What is the clinical outcome pathway of %s for the treatment of %s" % (names2descrip[terms["drug_name"]], names2descrip[terms["disease_name"]])
+			#restated = "What is the clinical outcome pathway of %s for the treatment of %s" % (names2descrip[terms["drug_name"]], names2descrip[terms["disease_name"]])
+			restated = "What is the clinical outcome pathway of %s for the treatment of %s" % (names2descrip[terms[0]], names2descrip[terms[1]])
 		elif corpus_index == 3:
 			# TODO: this is a gnarly question to restate
 			restated = "%s %s what %s" % (names2descrip[terms["source_name"]], " ".join(terms["relationship_type"].split("_")), " ".join(terms["target_label"].split("_")))
@@ -480,13 +479,15 @@ class QuestionTranslator:
 				error_message = "This question requires a disease name, I got a %s with the name %s" %(node_label, disease_name)
 				#raise Exception(error_message)
 				results_dict["corpus_index"] = corpus_index
-				results_dict["terms"] = {"disease_name": disease_name}
+				#results_dict["terms"] = {"disease_name": disease_name}
+				results_dict["terms"] = [ disease_name ]
 				results_dict["error_code"] = "missing_term"
 				results_dict["error_message"] = error_message
 				return results_dict
 			else:
 				results_dict["corpus_index"] = corpus_index
-				results_dict["terms"] = {"disease_name": disease_name}
+				#results_dict["terms"] = {"disease_name": disease_name}
+				results_dict["terms"] = [ disease_name ]
 				results_dict["error_code"] = None
 				results_dict["error_message"] = None
 				return results_dict
@@ -508,7 +509,7 @@ class QuestionTranslator:
 				term = re.sub("^\s+", "", term)
 				term = re.sub("\s+$", "", term)
 				results_dict["corpus_index"] = corpus_index
-				results_dict["terms"] = {"term": term}
+				results_dict["terms"] = [ term ]
 				results_dict["error_code"] = None
 				results_dict["error_message"] = None
 				return results_dict
