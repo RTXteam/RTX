@@ -1,27 +1,27 @@
 ---
 swagger: "2.0"
 info:
-  description: "Proof-of-concept OpenAPI front end for RTX."
-  version: "1.0.0"
+  description: "OpenAPI for RTX -devED testing"
+  version: "1.1.0"
   title: "RTX"
   contact:
     email: "edeutsch@systemsbiology.org"
   license:
     name: "Apache 2.0"
     url: "http://www.apache.org/licenses/LICENSE-2.0.html"
-host: "lysine.ncats.io"
-basePath: "/api/rtx/v1"
+host: "rtx.ncats.io"
+basePath: "/devED/api/rtx/v1"
 tags:
 - name: "translate"
   description: "Translate natural language question into a standardized query"
   externalDocs:
     description: "Documentation for the RTX translate function"
-    url: "http://lysine.ncats.io/overview.html#translate"
+    url: "http://rtx.ncats.io/devED/overview.html#translate"
 - name: "query"
   description: "Query RTX using a predefined question type"
   externalDocs:
     description: "Documentation for the RTX query function"
-    url: "http://lysine.ncats.io/overview.html#query"
+    url: "http://rtx.ncats.io/devED/overview.html#query"
 schemes:
 - "http"
 paths:
@@ -95,6 +95,9 @@ definitions:
         description: "Human language in which the question is posed"
         enum:
         - "English"
+    example:
+      language: "English"
+      text: "what genetic conditions offer protection against malaria"
   Query:
     type: "object"
     properties:
@@ -120,6 +123,14 @@ definitions:
         items:
           type: "string"
           example: "malaria"
+    example:
+      originalQuestion: "what genetic conditions offer protection against malaria"
+      restatedQuestion: "Which genetic conditions may offer protection against malaria?"
+      terms:
+      - "malaria"
+      - "malaria"
+      knownQueryTypeId: "Q1"
+      message: "Sorry, RTX was not able to understand your question."
   Response:
     type: "object"
     properties:
@@ -144,6 +155,16 @@ definitions:
         description: "Extended message denoting the success or failture of the response"
       result:
         $ref: "#/definitions/Response_result"
+    example:
+      result:
+        text: "The genetic condition sickle-cell anemia may provide protection from\
+          \ cerebral malaria via genetic alterations of proteins HBB (P68871) and\
+          \ HMOX1 (P09601)."
+      code: 11
+      codeString: "TermNotFound"
+      id: 1254
+      message: "The term 'hypertwitteremia' is not a recognized condition needed for\
+        \ query type 'Q1'."
   Response_result:
     properties:
       text:
@@ -152,6 +173,10 @@ definitions:
           \ from cerebral malaria via genetic alterations of proteins HBB (P68871)\
           \ and HMOX1 (P09601)."
     description: "A data structure that depends on the query type"
+    example:
+      text: "The genetic condition sickle-cell anemia may provide protection from\
+        \ cerebral malaria via genetic alterations of proteins HBB (P68871) and HMOX1\
+        \ (P09601)."
 externalDocs:
   description: "Documentation for the RTX web service"
-  url: "http://lysine.ncats.io/overview.html"
+  url: "http://rtx.ncats.io/devED/overview.html"
