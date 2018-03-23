@@ -7,6 +7,7 @@ requests_cache.install_cache('orangeboard')
 import argparse
 from itertools import compress
 import sys
+import CustomExceptions
 
 drug_to_disease_doid = dict()
 disease_doid_to_description = dict()
@@ -38,15 +39,21 @@ def answerQ2(drug_name, disease_name, k):
 
 
 	# get the relevant subgraph between the source and target nodes
-	try:
+	try:  # First look for COP's where the gene is associated to the disease
 		g = RU.return_subgraph_through_node_labels(drug_name, 'pharos_drug', disease_name, 'disont_disease',
-											   ['uniprot_protein', 'anatont_anatomy', 'phenont_phenotype'],
-											   directed=False)
-	except:  # Yes, networkx raises an unnamed exception
-		print("Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype. "
-			  "The drug and/or disease may not be one of the entities I know about, or they do not connect via a known "
-			  "pathway, tissue, and phenotype (understudied)" % (drug_name, RU.get_node_property(disease_name, 'description')))
-		return 1
+													['uniprot_protein', 'anatont_anatomy', 'phenont_phenotype'],
+													with_rel=['uniprot_protein', 'gene_assoc_with', 'disont_disease'],
+													directed=False)
+	except CustomExceptions.EmptyCypherError:
+		try:
+			g = RU.return_subgraph_through_node_labels(drug_name, 'pharos_drug', disease_name, 'disont_disease',
+													['uniprot_protein', 'anatont_anatomy', 'phenont_phenotype'],
+													directed=False)
+		except CustomExceptions.EmptyCypherError:
+			print("Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype. "
+				  "The drug and/or disease may not be one of the entities I know about, or they do not connect via a known "
+				  "pathway, tissue, and phenotype (understudied)" % (drug_name, RU.get_node_property(disease_name, 'description')))
+			return 1
 	# Decorate with normalized google distance
 	RU.weight_graph_with_google_distance(g)
 

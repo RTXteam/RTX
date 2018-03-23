@@ -18,6 +18,7 @@ QueryEBIOLS = QueryEBIOLS.QueryEBIOLS()
 import QueryNCBIeUtils
 QueryNCBIeUtils = QueryNCBIeUtils.QueryNCBIeUtils()
 from itertools import islice
+import CustomExceptions
 
 requests_cache.install_cache('orangeboard')
 
@@ -45,6 +46,24 @@ DefaultConfigurable = namedtuple(
 	", ".join([k for k in DEFAULT_CONFIGURABLE.keys()])
 )
 defaults = DefaultConfigurable(**DEFAULT_CONFIGURABLE)
+
+
+def node_exists_with_property(term, property_name, session=session):
+	"""
+	Check if the neo4j has a node with the given name as a given property
+	:param term: term to check (eg. 'naproxen')
+	:param property_name: relevant node property (eg. 'description' or 'name')
+	:param session: neo4j instance
+	:return: Boolean
+	"""
+	query = "match (n) where n.%s='%s' return n" % (property_name, term)
+	res = session.run(query)
+	res = [i for i in res]
+	if not res:
+		return False
+	else:
+		return True
+
 
 def count_nodes(sessions=session):
 	"""
@@ -360,19 +379,38 @@ def return_subgraph_paths_of_type(source_node, source_node_label, target_node, t
 	return graph
 
 
-def return_subgraph_through_node_labels(source_node, source_node_label, target_node, target_node_label, node_list, directed=True, debug=False):
+def return_subgraph_through_node_labels(source_node, source_node_label, target_node, target_node_label, node_list,
+										with_rel=[], directed=True, debug=False):
 	"""
-	This function extracts the subgraph of a neo4j database consisting of those paths that have the relationships (in
-	order) of those given by relationship_list
-	:param session: neo4j session
-	:param source_node: source node name (eg: DOID:1798)
-	:param target_node: target node name (eg: 'DOID:0110307')
-	:param relationship_list: list of relationships (must be valid neo4j relationship types), if this is a list of lists
-	then the subgraph consisting of all valid paths will be returned
-	:param debug: Flag indicating if the cypher query should be returned
-	:return: networkx graph
+	Return a subgraph with the following constraints: from source_node to target_node through node_list node labels.
+	Optionally only return paths that have a (node_label)-[relationship_type]-(node_label) give by the three element
+	list with_rel.
+	:param source_node: Source node name (eg. 'naproxen')
+	:param source_node_label:  source node label (eg. 'pharos_drug')
+	:param target_node: target node name (eg. 'DOID:8398')
+	:param target_node_label: target node lable (eg. 'disont_disease')
+	:param node_list: list of node labels that all paths must go through
+	:param with_rel: an optional triplet where with_rel[0] is a node label, with_rel[1] is a relationship type,
+	and with_rel[2] is a node label
+	:param directed: If the graph should be directed or not
+	:param debug: Just print the cypher query
+	:return: a networkx graph containing all paths satisfying the query
 	"""
-	if not any(isinstance(el, list) for el in node_list):  # It's a single list of relationships
+	if with_rel:
+		if any(isinstance(el, list) for el in node_list):
+			raise Exception("node_list must be a single list of nodes (not a list of lists) if you want to use with_rel.")
+		query = "MATCH path=(%s:%s{name:'%s'})" % (source_node_label, source_node_label, source_node)
+		for i in range(len(node_list) - 1):
+			if with_rel[0] == node_list[i]:
+				query += "-[]-(%s:%s)" % (node_list[i], node_list[i])
+			else:
+				query += "-[]-(:%s)" % node_list[i]
+		query += "-[]-(:%s)-[]-(%s:%s{name:'%s'}) " % (node_list[-1], target_node_label, target_node_label, target_node)
+		query += "WHERE exists((%s)-[:%s]-(%s)) " % (with_rel[0], with_rel[1], with_rel[2])
+		query += "RETURN path"
+		if debug:
+			return query
+	elif not any(isinstance(el, list) for el in node_list):  # It's a single list of relationships
 		query = "MATCH path=(s:%s)" % source_node_label
 		for i in range(len(node_list) - 1):
 			query += "-[]-(:" + node_list[i] + ")"
@@ -396,8 +434,12 @@ def return_subgraph_through_node_labels(source_node, source_node_label, target_n
 		query += "collect(path%d)" % (len(node_list) - 1)
 		if debug:
 			return query
-	graph = get_graph(cypher.run(query, conn=connection, config=defaults), directed=directed)
-	return graph
+	res = cypher.run(query, conn=connection, config=defaults)
+	if not res:
+		raise CustomExceptions.EmptyCypherError(query)
+	else:
+		graph = get_graph(res, directed=directed)
+		return graph
 
 
 def interleave_nodes_and_relationships(session, source_node, source_node_label, target_node, target_node_label, max_path_len=3, debug=False):
@@ -542,8 +584,10 @@ def weight_graph_with_google_distance(g):
 				mesh_terms = QueryNCBIeUtils.get_mesh_terms_for_omim_id(id)
 			elif "disont_disease" in labels[node] or "phenont_phenotype" in labels[node]:
 				description = descriptions[node]
-				mesh_id = QueryNCBIeUtils.get_clinvar_uids_for_disease_or_phenotype_string(description)
-				mesh_terms = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(mesh_id)
+				mesh_ids = QueryNCBIeUtils.get_clinvar_uids_for_disease_or_phenotype_string(description)
+				if len(mesh_ids) > 300:  # too many mesh_id's to pass to eutils
+					mesh_ids = set(list(mesh_ids)[0:300])
+				mesh_terms = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(mesh_ids)
 			if i == 0:
 				source_mesh_terms = mesh_terms
 				i += 1
