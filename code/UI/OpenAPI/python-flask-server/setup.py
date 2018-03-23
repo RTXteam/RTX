@@ -26,8 +26,10 @@ setup(
     packages=find_packages(),
     package_data={'': ['swagger/swagger.yaml']},
     include_package_data=True,
+    entry_points={
+        'console_scripts': ['swagger_server=swagger_server.__main__:main']},
     long_description="""\
-    Proof-of-concept OpenAPI front end for RTX.
+    OpenAPI for RTX -devED testing
     """
 )
 

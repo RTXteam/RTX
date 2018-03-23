@@ -1,5 +1,7 @@
 #!/bin/sh
 
+export DEVAREA=devED
+
 ### BEGIN INIT INFO
 # Provides:          RTX_OpenAPI
 # Required-Start:    $remote_fs $syslog
@@ -11,9 +13,10 @@
 ### END INIT INFO
 
 # Change the next 3 lines to suit where you install your script and what you want to call it
-DIR=/mnt/data/orangeboard/code/NCATS/code/UI/OpenAPI/python-flask-server
-DAEMON=$DIR/RTX_OpenAPI.start
-DAEMON_NAME=RTX_OpenAPI
+DIR=/mnt/data/orangeboard/$DEVAREA/RTX/code/UI/OpenAPI/python-flask-server
+
+DAEMON=$DIR/RTX_OpenAPI_$DEVAREA.start
+DAEMON_NAME=RTX_OpenAPI_$DEVAREA
 
 # Add any command line options for your daemon here
 DAEMON_OPTS=""
