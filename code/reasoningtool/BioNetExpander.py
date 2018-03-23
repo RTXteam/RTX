@@ -11,7 +11,7 @@ BioNetExpander is capable of expanding from nodes of various types, including:
     * phenotype
 """
 
-__author__ = 'Yao Yao'
+__author__ = 'Stephen Ramsey'
 __copyright__ = 'Oregon State University',
 __credits__ = ['Yao Yao', 'Stephen Ramsey', 'Zheng Liu']
 __license__ = 'MIT'
@@ -22,6 +22,10 @@ __status__ = 'Prototype'
 
 import re
 from operator import methodcaller
+import timeit
+import argparse
+import sys
+
 from Orangeboard import Orangeboard
 from QueryOMIM import QueryOMIM
 from QueryMyGene import QueryMyGene
@@ -46,7 +50,8 @@ class BioNetExpander:
                               'controls_expression_of': True,
                               'is_expressed_in': True,
                               'targets': True,
-                              'controls_state_change_of': True}
+                              'controls_state_change_of': True,
+                              'participates_in': True}
 
     def __init__(self, orangeboard):
         self.orangeboard = orangeboard
@@ -81,6 +86,13 @@ class BioNetExpander:
         ncbi_gene_id = node.name
         assert 'NCBIGene:' in ncbi_gene_id
 
+        entrez_gene_id = int(ncbi_gene_id.replace("NCBIGene:", ""))
+        # microRNA-to-GO (biological process):
+        go_bp_dict = self.query_mygene_obj.get_gene_ontology_ids_bp_for_entrez_gene_id(entrez_gene_id)
+        for go_id, go_term in go_bp_dict.items():
+            node2 = self.orangeboard.add_node('geneont_bioprocess', go_id, desc=go_term)
+            self.add_rel('participates_in', 'gene_ontology', node1, node2)
+        
         anatomy_dict = QueryBioLink.get_anatomies_for_gene(ncbi_gene_id)
         for anatomy_id, anatomy_desc in anatomy_dict.items():
             anatomy_node = self.orangeboard.add_node('anatont_anatomy', anatomy_id, desc=anatomy_desc)
@@ -149,9 +161,8 @@ class BioNetExpander:
     def expand_uniprot_protein(self, node):
         uniprot_id_str = node.name
 
-        # suspect these pathways are too high-level and not useful
+        # SAR:  I suspect these pathways are too high-level and not useful:
         # pathways_set_from_pc2 = QueryPC2.uniprot_id_to_reactome_pathways(uniprot_id_str)
-
         # doesn't provide pathway descriptions; see if we can get away with not using it?
         # pathways_set_from_uniprot = QueryUniprot.uniprot_id_to_reactome_pathways(uniprot_id_str)
 
@@ -234,6 +245,21 @@ class BioNetExpander:
                     if node2 != node1:
                         self.orangeboard.add_rel('controls_expression_of', 'Reactome', node1, node2)
 
+        # protein-to-GO (biological process):
+        go_bp_dict = self.query_mygene_obj.get_gene_ontology_ids_bp_for_uniprot_id(uniprot_id_str)
+        for go_id, go_term in go_bp_dict.items():
+            node2 = self.orangeboard.add_node('geneont_bioprocess', go_id, desc=go_term)
+            self.orangeboard.add_rel('participates_in', 'gene_ontology', node1, node2)
+
+    def expand_geneont_bioproces(self, node):
+        node_go_id = node.name
+        child_go_ids_dict = QuerySciGraph.query_sub_ontology_terms_for_ontology_term(node_go_id)
+        if child_go_ids_dict is not None:
+            for child_go_id, child_go_term in child_go_ids_dict.items():
+                child_node = self.orangeboard.add_node('geneont_bioprocess', child_go_id, desc=child_go_term)
+                if child_node != node:
+                    self.orangeboard.add_rel('is_parent_of', 'gene_ontology', node, child_node)
+    
     def expand_phenont_phenotype(self, node):
         # expand phenotype=>anatomy
         phenotype_id = node.name
@@ -242,7 +268,7 @@ class BioNetExpander:
             anatomy_node = self.orangeboard.add_node('anatont_anatomy', anatomy_id, desc=anatomy_desc)
             self.orangeboard.add_rel('phenotype_assoc_with', 'BioLink', node, anatomy_node)
 
-        sub_phe_dict = QuerySciGraph.query_sub_phenotypes_for_phenotype(phenotype_id)
+        sub_phe_dict = QuerySciGraph.query_sub_ontology_terms_for_ontology_term(phenotype_id)
         for sub_phe_id, sub_phe_desc in sub_phe_dict.items():
             sub_phe_node = self.orangeboard.add_node('phenont_phenotype', sub_phe_id, desc=sub_phe_desc)
             self.orangeboard.add_rel('is_parent_of', 'Monarch_SciGraph', node, sub_phe_node)
@@ -330,15 +356,51 @@ class BioNetExpander:
                 num_nodes_to_expand -= 1
                 if (num_nodes_to_expand % 100 == 0):
                     print('Number of nodes left to expand in this iteration: ' + str(num_nodes_to_expand))
-                
+
+    def test_go_bp_protein():
+        ob = Orangeboard(debug=False)
+        ob.set_dict_reltype_dirs({'targets': True})
+        protein_node = ob.add_node('uniprot_protein', 'Q05925', desc='', seed_node_bool=True)
+        bne = BioNetExpander(ob)
+        bne.expand_uniprot_protein(protein_node)
+        ob.neo4j_set_url()
+        ob.neo4j_set_auth()
+        ob.neo4j_push()
+
+    def test_go_bp_microrna():
+        ob = Orangeboard(debug=False)
+        ob.set_dict_reltype_dirs({'targets': True})
+        microrna_node = ob.add_node('ncbigene_microrna', 'NCBIGene:406991', desc='', seed_node_bool=True)
+        bne = BioNetExpander(ob)
+        bne.expand_ncbigene_microrna(microrna_node)
+        ob.neo4j_set_url()
+        ob.neo4j_set_auth()
+        ob.neo4j_push()
+
+    def test_go_term():
+        ob = Orangeboard(debug=False)
+        ob.set_dict_reltype_dirs({'targets': True})
+        go_node = ob.add_node('geneont_bioprocess', 'GO:1904685', desc='', seed_node_bool=True)
+        bne = BioNetExpander(ob)
+        bne.expand_geneont_bioproces(go_node)
+        ob.neo4j_set_url()
+        ob.neo4j_set_auth()
+        ob.neo4j_push()
+        
 if __name__ == '__main__':
-    ob = Orangeboard(debug=False)
-    ob.set_dict_reltype_dirs({'targets': True})
-    lovastatin = ob.add_node('pharos_drug', 'lovastatin', desc='', seed_node_bool=True)
-    clothiapine = ob.add_node('pharos_drug', 'clothiapine', desc='CHEMBL304902', seed_node_bool=True)
-    bne = BioNetExpander(ob)
-    bne.expand_drug(lovastatin)
-    bne.expand_drug(clothiapine)
-    ob.neo4j_set_url()
-    ob.neo4j_set_auth()
-    ob.neo4j_push()
+    parser = argparse.ArgumentParser(description='Builds the master knowledge graph')
+    parser.add_argument('--runfunc', dest='runfunc')
+    args = parser.parse_args()
+    args_dict = vars(args)
+    if args_dict.get('runfunc', None) is not None:
+        run_function_name = args_dict['runfunc']
+    else:
+        sys.exit("must specify --runfunc")
+    run_method = getattr(BioNetExpander, run_function_name, None)
+    if run_method is None:
+        sys.exit("function not found: " + run_function_name)
+        
+    running_time = timeit.timeit(lambda: run_method(), number=1)
+    print('running time for function: ' + str(running_time))
+                        
+  
