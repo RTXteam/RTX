@@ -110,15 +110,33 @@ class QueryMyGene:
 
     def convert_entrez_gene_ID_to_mirbase_ID(self, entrez_gene_id):
         assert type(entrez_gene_id)==int
-        res = self.mygene_obj.query('entrezgene:' + str(entrez_gene_id), specis='human', fields='miRBase', verbose=False)
+        res = self.mygene_obj.query('entrezgene:' + str(entrez_gene_id), species='human', fields='miRBase', verbose=False)
         mirbase_id = set()
         if len(res) > 0:
             mirbase_id = set([hit['miRBase'] for hit in res['hits']])
         return mirbase_id
 
 
+    def get_gene_ontology_ids_bp_for_uniprot_id(self, uniprot_id):
+        assert type(uniprot_id)==str
+        q_res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human', fields='go', verbose=False)
+        res = dict()
+        q_res_hits = q_res.get('hits', None)
+        if q_res_hits is not None:
+            if type(q_res_hits)==list and len(q_res_hits) > 0:
+                q_res_hits_zero = q_res_hits[0]
+                if type(q_res_hits_zero)==dict:
+                    q_res_go = q_res_hits_zero.get('go', None)
+                    if q_res_go is not None:
+                        q_res_bp = q_res_go.get('BP', None)
+                        if q_res_bp is not None:
+                            if type(q_res_bp)==list and len(q_res_bp) > 0:
+                                res = {item["id"]:item["term"] for item in q_res_bp}
+        return res
+        
 if __name__ == '__main__':
     mg = QueryMyGene()
+    print(mg.get_gene_ontology_ids_bp_for_uniprot_id('Q05925'))
     print(mg.convert_uniprot_id_to_gene_symbol('Q05925'))
     print(mg.convert_gene_symbol_to_uniprot_id('A2M'))
     print(mg.convert_gene_symbol_to_uniprot_id('A1BG'))
