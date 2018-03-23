@@ -73,8 +73,8 @@ class RTXQuery:
       # call out to OrangeBoard here to satify the query "What is the clinical outcome pathway of XXXXXX for treatment of YYYYYYY?"
       cwd = os.path.dirname(os.path.abspath(__file__))
       os.chdir("/mnt/data/orangeboard/devED/RTX/code/reasoningtool/QuestionAnswering")
-      eprint("python3 Q2SolutionOld.py -r '"+terms[0]+"' -d '"+terms[1]+"'" )
-      returnedText = subprocess.run( [ "python3 Q2SolutionOld.py -r '"+terms[0]+"' -d '"+terms[1]+"'" ], stdout=subprocess.PIPE, shell=True )
+      eprint("python3 Q2Solution.py -r '"+terms[0]+"' -d '"+terms[1]+"'" )
+      returnedText = subprocess.run( [ "python3 Q2Solution.py -d '"+terms[0]+"' -r '"+terms[1]+"'" ], stdout=subprocess.PIPE, shell=True )
       os.chdir(cwd)
       reformattedText = returnedText.stdout.decode('utf-8')
       reformattedText = re.sub("\n","<BR>\n",reformattedText)
