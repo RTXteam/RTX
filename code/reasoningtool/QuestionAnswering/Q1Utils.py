@@ -3,11 +3,17 @@ from numpy import linalg as LA
 import numpy as np
 np.warnings.filterwarnings('ignore')
 import cypher
+import os
+import sys
 from collections import namedtuple
 from neo4j.v1 import GraphDatabase, basic_auth
 from collections import Counter
 import requests_cache
-import QueryNCBIeUtils
+try:
+	import QueryNCBIeUtils
+except ImportError:
+	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  # Go up one level and look for it
+	import QueryNCBIeUtils
 import math
 import MarkovLearning
 

@@ -14,7 +14,7 @@ import sys
 # Import the Q2 drugs and conditions
 drug_to_disease_doid = dict()
 disease_doid_to_description = dict()
-with open(os.path.abspath('../../data/q2/q2-drugandcondition-list-mapped.txt'), 'r') as fid:
+with open(os.path.abspath('../../../data/q2/q2-drugandcondition-list-mapped.txt'), 'r') as fid:
 	i = 0
 	for line in fid.readlines():
 		if i == 0:

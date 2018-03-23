@@ -101,7 +101,7 @@ q1_doid_to_mesh = {'DOID:11476': 'Osteoporosis',
 # Get the genetic diseases of interest
 genetic_condition_to_omim = dict()
 genetic_condition_to_mesh = dict()
-fid = open(os.path.abspath('../../data/q1/Genetic_conditions_from_OMIM.txt'), 'r')
+fid = open(os.path.abspath('../../../data/q1/Genetic_conditions_from_OMIM.txt'), 'r')
 i = 0
 for line in fid.readlines():
 	if i == 0:

@@ -11,7 +11,7 @@ import CustomExceptions
 
 drug_to_disease_doid = dict()
 disease_doid_to_description = dict()
-with open(os.path.abspath('../../data/q2/q2-drugandcondition-list-mapped.txt'), 'r') as fid:
+with open(os.path.abspath('../../../data/q2/q2-drugandcondition-list-mapped.txt'), 'r') as fid:
 	i = 0
 	for line in fid.readlines():
 		if i == 0:
@@ -80,7 +80,7 @@ def main():
 	parser = argparse.ArgumentParser(description="Runs the reasoning tool on Question 2",
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 	parser.add_argument('-r', '--drug', type=str, help="Input drug")
-	parser.add_argument('-d', '--disease', type=str, help="Input disease (Identifier in the graph, eg DOID:)")
+	parser.add_argument('-d', '--disease', type=str, help="Input disease (Identifier in the graph, eg DOID:8398)")
 	parser.add_argument('-a', '--all', action="store_true", help="Flag indicating you want to run it on all Q2 drugs + diseases",
 						default=False)
 	parser.add_argument('-k', '--kpaths', type=int, help="Number of paths to return.", default=10)

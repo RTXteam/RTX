@@ -3,22 +3,34 @@
 import networkx as nx
 from numpy import linalg as LA
 import numpy as np
-
 np.warnings.filterwarnings('ignore')
 import cypher
+import os
+import sys
 from collections import namedtuple
 from neo4j.v1 import GraphDatabase, basic_auth
 from collections import Counter
 import requests_cache
-import QueryNCBIeUtils
-import math
-import MarkovLearning
-import QueryEBIOLS
-QueryEBIOLS = QueryEBIOLS.QueryEBIOLS()
-import QueryNCBIeUtils
-QueryNCBIeUtils = QueryNCBIeUtils.QueryNCBIeUtils()
 from itertools import islice
 import CustomExceptions
+# Import stuff from one level up
+try:
+	import QueryNCBIeUtils
+except ImportError:
+	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  # Go up one level and look for it
+	import QueryNCBIeUtils
+
+import math
+import MarkovLearning
+try:
+	import QueryEBIOLS
+except ImportError:
+	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  # Go up one level and look for it
+	import QueryEBIOLS
+
+QueryEBIOLS = QueryEBIOLS.QueryEBIOLS()
+QueryNCBIeUtils = QueryNCBIeUtils.QueryNCBIeUtils()
+
 
 requests_cache.install_cache('orangeboard')
 
