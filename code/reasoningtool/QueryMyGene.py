@@ -124,18 +124,38 @@ class QueryMyGene:
         q_res_hits = q_res.get('hits', None)
         if q_res_hits is not None:
             if type(q_res_hits)==list and len(q_res_hits) > 0:
-                q_res_hits_zero = q_res_hits[0]
-                if type(q_res_hits_zero)==dict:
-                    q_res_go = q_res_hits_zero.get('go', None)
-                    if q_res_go is not None:
-                        q_res_bp = q_res_go.get('BP', None)
-                        if q_res_bp is not None:
-                            if type(q_res_bp)==list and len(q_res_bp) > 0:
-                                res = {item["id"]:item["term"] for item in q_res_bp}
+                for q_res_hit in q_res_hits:
+                    if type(q_res_hit)==dict:
+                        q_res_go = q_res_hit.get('go', None)
+                        if q_res_go is not None:
+                            q_res_bp = q_res_go.get('BP', None)
+                            if q_res_bp is not None:
+                                if type(q_res_bp)==list and len(q_res_bp) > 0:
+                                    res_add = {item["id"]:item["term"] for item in q_res_bp}
+                                    res.update(res_add)
         return res
-        
+
+    def get_gene_ontology_ids_bp_for_entrez_gene_id(self, entrez_gene_id):
+        assert type(entrez_gene_id)==int
+        q_res = self.mygene_obj.query('entrezgene:' + str(entrez_gene_id), species='human', fields='go', verbose=False)
+        res = dict()
+        q_res_hits = q_res.get('hits', None)
+        if q_res_hits is not None:
+            if type(q_res_hits)==list and len(q_res_hits) > 0:
+                for q_res_hit in q_res_hits:
+                    if type(q_res_hit)==dict:
+                        q_res_go = q_res_hit.get('go', None)
+                        if q_res_go is not None:
+                            q_res_bp = q_res_go.get('BP', None)
+                            if q_res_bp is not None:
+                                if type(q_res_bp)==list and len(q_res_bp) > 0:
+                                    res_add = {item["id"]:item["term"] for item in q_res_bp}
+                                    res.update(res_add)
+        return res
+    
 if __name__ == '__main__':
     mg = QueryMyGene()
+    print(mg.get_gene_ontology_ids_bp_for_entrez_gene_id(406991))
     print(mg.get_gene_ontology_ids_bp_for_uniprot_id('Q05925'))
     print(mg.convert_uniprot_id_to_gene_symbol('Q05925'))
     print(mg.convert_gene_symbol_to_uniprot_id('A2M'))

@@ -79,9 +79,9 @@ class QuerySciGraph:
         return disont_ids
     
     @staticmethod
-    def query_sub_phenotypes_for_phenotype(phenont_id):
+    def query_sub_ontology_terms_for_ontology_term(ontology_term_id):
         """
-        Return a dict of `<id, label>`, where `id`s are all sub-phenotype of parameter `phenont_id`.
+        Return a dict of `<id, label>`, where `id`s are all sub-phenotype of parameter `ontology_term_id`.
 
         E.g. input "HP:0000107" (Renal cyst),
         >>> QuerySciGraph.query_sub_phenotypes_for_phenotype("HP:0000107")
@@ -90,11 +90,14 @@ class QuerySciGraph:
          'HP:0008659': 'Multiple small medullary renal cysts', 'HP:0005562': 'Multiple renal cysts',
          'HP:0000800': 'Cystic renal dysplasia', 'HP:0012581': 'Solitary renal cyst'}
         """
+
+        curie_prefix = ontology_term_id.split(":")[0]
+        
         params = {
             # "depth": 1,
             # "blankNodes": "false",
 
-            # Suppose `phenont_id` is X
+            # Suppose `ontology_term_id` is X
             # If direction is INCOMING, find all Y that (sub {id: Y})-[:subClassOf]->(obj {id: X})
             # If direction is OUTGOING, find all Y that (sub {id: X})-[:subClassOf]->(obj {id: Y})
             "direction": "INCOMING",  # "OUTGOING" / "BOTH"
@@ -102,26 +105,27 @@ class QuerySciGraph:
         }
 
         # param_str = "&".join(["{}={}".format(key, value) for key, value in params.items()])
-        url = QuerySciGraph.API_BASE_URL["graph_neighbors"].format(node_id=phenont_id)
+        url = QuerySciGraph.API_BASE_URL["graph_neighbors"].format(node_id=ontology_term_id)
         json = QuerySciGraph.__access_api(url, params=params)
         sub_nodes_with_labels = dict()
         if json is not None:
             sub_edges = json['edges']  # Get all INCOMING edges
             sub_nodes = set(map(lambda e: e["sub"], sub_edges))  # Get all neighboring nodes (duplicates may exist; so set is used here)
-            sub_nodes = set(filter(lambda s: s.startswith("HP:"), sub_nodes))  # Keep human phenotypes only
+            sub_nodes = set(filter(lambda s: s.startswith(curie_prefix + ":"), sub_nodes))  # Keep human phenotypes only
             
             sub_nodes_with_labels = dict([(node["id"], node['lbl']) for node in json['nodes'] if node["id"] in sub_nodes])
             
             if len(sub_nodes_with_labels) >= 200:
-                print("[Warning][SciGraph] Found {} sub phenotypes for {}".format(len(sub_nodes_with_labels), phenont_id))
+                print("[Warning][SciGraph] Found {} sub phenotypes for {}".format(len(sub_nodes_with_labels), ontology_term_id))
 
         return sub_nodes_with_labels
 
 if __name__ == '__main__':
-    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D005199'))
+#    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D005199'))
 #    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D006937'))
 #    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D000856'))
-#    print(QuerySciGraph.query_sub_phenotypes_for_phenotype('HP:12072'))
+    print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term('HP:12072'))
+    print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term('GO:1904685'))
 #    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015473'))
-#    print(QuerySciGraph.query_sub_phenotypes_for_phenotype("HP:0000107"))  # Renal cyst
+    print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term("HP:0000107"))  # Renal cyst
 #    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015470'))
