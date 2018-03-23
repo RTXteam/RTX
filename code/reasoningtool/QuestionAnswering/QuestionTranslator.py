@@ -341,6 +341,9 @@ class QuestionTranslator:
 		blocks = list(reversed(blocks))  # go bigger to smaller since "is_assoc_with" \subst "gene_assoc_with" after stopword deletion
 
 		# for each block, look for the associated terms in a greedy fashion
+		#######################################################################
+		# Q4/3: What are the protein targets of naproxen?
+		#######################################################################
 		if corpus_index == 3:  # Q4
 			source_name = None
 			target_label = None
@@ -379,6 +382,9 @@ class QuestionTranslator:
 				results_dict["error_message"] = None
 				return results_dict
 
+		#####################################################
+		# Q2: What is the clinical outcome pathway for the treatment of X by Y?
+		#####################################################
 		elif corpus_index == 2:  # Q2 COP question
 			drug_name = None
 			disease_name = None
@@ -456,6 +462,9 @@ class QuestionTranslator:
 				results_dict["error_message"] = None
 				return results_dict
 
+		##########################################################
+		# Q1: What genetic conditions may offer protection against X?
+		##########################################################
 		elif corpus_index == 1:  # Q1
 			disease_name = None
 			# Look for a node name, break once one is found (greedy)
@@ -482,6 +491,9 @@ class QuestionTranslator:
 				results_dict["error_message"] = None
 				return results_dict
 
+		########################################################################
+		# Q0: what is X?
+		########################################################################
 		elif corpus_index == 0:  # Q0
 			# Next, see if it's a "what is" question
 			term = None
