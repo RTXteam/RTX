@@ -943,8 +943,47 @@ def test_get_graph():
 	assert set(graph.edges) == edges
 
 
+def test_return_subgraph_through_node_labels():
+	g = return_subgraph_through_node_labels('naproxen', 'pharos_drug', 'UBERON:0001474', 'anatont_anatomy',
+										['uniprot_protein'], directed=False)
+	nodes = dict()
+	for v, data in g.nodes(data=True):
+		nodes[v] = data
+	names = [v['names'] for v in nodes.values()]
+	assert 'naproxen' in names
+	assert 'UBERON:0001474' in names
+	assert 'P37231' in names
+
+
+def test_weight_graph_with_google_distance():
+	g = return_subgraph_through_node_labels('naproxen', 'pharos_drug', 'UBERON:0001474', 'anatont_anatomy',
+											['uniprot_protein'], directed=False)
+	for u, v, k, data in g.edges(data=True, keys=True):
+		assert 'gd_weight' not in data
+	weight_graph_with_google_distance(g)
+	for u, v, k, data in g.edges(data=True, keys=True):
+		assert 'gd_weight' in data
+		w = data['gd_weight']
+		assert w is not None
+		assert np.isfinite(w)
+
+
+def test_get_top_shortest_paths():
+	g = return_subgraph_through_node_labels('naproxen', 'pharos_drug', 'UBERON:0001474', 'anatont_anatomy',
+											['uniprot_protein'], directed=False)
+	node_paths, edge_paths, lengths = get_top_shortest_paths(g, 'naproxen', 'UBERON:0001474', 1)
+	for path in node_paths:
+		assert 'naproxen' == path[0]['names']
+		assert 'UBERON:0001474' == path[-1]['names']
+	for path_length in lengths:
+		assert np.isfinite(path_length)
+
+
 def test_suite():
 	test_get_node_names_of_type_connected_to_target()
 	test_get_node_property()
 	test_get_one_hop_target()
 	test_get_relationship_types_between()
+	test_return_subgraph_through_node_labels()
+	test_weight_graph_with_google_distance()
+	test_get_top_shortest_paths()
