@@ -17,6 +17,7 @@ import QueryEBIOLS
 QueryEBIOLS = QueryEBIOLS.QueryEBIOLS()
 import QueryNCBIeUtils
 QueryNCBIeUtils = QueryNCBIeUtils.QueryNCBIeUtils()
+from itertools import islice
 
 requests_cache.install_cache('orangeboard')
 
@@ -515,7 +516,7 @@ def weight_graph_with_google_distance(g):
 	"""
 	Creates a new property on the edges called 'gd_weight' that gives the google distance between source/target between that edge
 	:param g: a networkx graph
-	:return: a networkx graph with the decorated edges
+	:return: None (graph properties are updated)
 	"""
 	descriptions = nx.get_node_attributes(g, 'description')
 	names = nx.get_node_attributes(g, 'names')
@@ -556,16 +557,102 @@ def weight_graph_with_google_distance(g):
 				if not np.isnan(gd_temp):
 					if gd_temp < gd:
 						gd = gd_temp
-		edges2gd[edge] = gd
-		# TODO: decorate the edges with these weights
-	#g2 = nx.set_edge_attributes(g, edges2gd)
-	for u,v,d in g.edges(data=True):  # TODO: check if this correctly populates with GD
-		d['gd_weight'] = edges2gd[(u,v)]
+		if not np.isinf(gd):
+			edges2gd[edge] = gd
+		else:
+			edges2gd[edge] = 10  # TODO: check if this default threshold is acceptable
+		# decorate the edges with these weights
+	#g2 = nx.set_edge_attributes(g, edges2gd)  # This only works if I use the keys of the multigraph, not sure I want that since I'm basing it off source/target
+	for u, v, d in g.edges(data=True):
+		d['gd_weight'] = edges2gd[(u, v)]
 
 
+def make_graph_simple(g, directed=False):
+	"""
+	Makes a multigraph into a simple graph, summing weights if data is different
+	:param g: networkx graph weighted with google distance
+	:param directed: whether to treat the graph as directed or not
+	:return: simple graph (networkx)
+	"""
+	g_nodes = g.nodes(data=True)
+	if directed:
+		g_simple = nx.DiGraph()
+	else:
+		g_simple = nx.Graph()
+	for u, v, k, data in g.edges(data=True, keys=True):
+		w = data['gd_weight']
+		# If the edge already exists in the graph
+		if g_simple.has_edge(u, v):
+			# check if the data matches in the simple graph
+			in_data = g_simple.get_edge_data(u, v)
+			# If not, add the edge weights. TODO: this ignores duplicate edges!! Can't get around it though due to path finding algorithm
+			if in_data != data:
+				g_simple[u][v]['gd_weight'] += w
+		else:
+			u_node_data = g_nodes[u]
+			v_node_data = g_nodes[v]
+			g_simple.add_node(u, **u_node_data)
+			g_simple.add_node(v, **v_node_data)
+			g_simple.add_edge(u, v, **data)
+	return g_simple
 
+
+def get_top_shortest_paths(g, source_name, target_name, k):
+	"""
+	Returns the top k shortest paths through the graph g (which has been weighted with Google distance using
+	weight_graph_with_google_distance). This will weight the graph with google distance if it is not already.
+	:param g:  Google weighted network x graph
+	:param source_name: name of the source node of interest
+	:param target_name: name of the target node of interest
+	:param k: number of top paths to return
+	:return: tuple (top k paths as a list of dictionaries, top k path edges as a list of dictionaries, path_lengths)
+	"""
+	# Check if the graph has been weighted with google distance
+	weighted_flag = False
+	for u, v, data in g.edges(data=True):
+		if 'gd_weights' in data:
+			weighted_flag = True
+		else:
+			weighted_flag = False
+		break
+	if weighted_flag is False:
+		weight_graph_with_google_distance(g)
+	# Check if the graph is simple or not
+	if isinstance(g, nx.MultiDiGraph):
+		g_simple = make_graph_simple(g, directed=True)
+	elif isinstance(g, nx.MultiGraph):
+		g_simple = make_graph_simple(g, directed=False)
+	else:
+		g_simple = g
+	# Map back and forth between nodes and names (this assume names are unique, which they are since they're neo4j keys)
+	nodes2names = nx.get_node_attributes(g_simple, 'names')
+	names2nodes = dict()
+	for node in nodes2names.keys():
+		names2nodes[nodes2names[node]] = node
+	paths = list(islice(nx.shortest_simple_paths(g_simple, names2nodes[source_name], names2nodes[target_name], weight='gd_weight'), k))
+	g_simple_nodes = g_simple.nodes(data=True)
+	decorated_paths = []
+	for path in paths:
+		temp_path = []
+		for node in path:
+			temp_path.append(g_simple_nodes[node])
+		decorated_paths.append(temp_path)
+	decorated_path_edges = []
+	path_lengths = []
+	for path in paths:
+		edge_list = []
+		path_length = 0
+		for i in range(len(path)-1):
+			source_node = path[i]
+			target_node = path[i+1]
+			edge = g_simple.get_edge_data(source_node, target_node)
+			path_length += edge['gd_weight']
+			edge_list.append(edge)
+		decorated_path_edges.append(edge_list)
+		path_lengths.append(path_length)
+	return decorated_paths, decorated_path_edges, path_lengths
 ############################################################################################
-# Stopping point 3/8/18 DK
+# Stopping point 3/22/18 DK
 
 
 
@@ -614,7 +701,7 @@ def display_results_str(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disea
 						to_print += "--[%s]-->" % (path_types[index])
 					else:
 						to_print += "(%s:%s:%s)" % (
-						node_to_description(path_names[index]), path_names[index], path_types[index])
+						get_node_property(path_names[index], 'description'), path_names[index], path_types[index])
 				if doid in q1_doid_to_disease:
 					to_print += "(%s). " % q1_doid_to_disease[doid]
 				else:
