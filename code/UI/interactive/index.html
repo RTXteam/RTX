@@ -2,25 +2,25 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>RTX POC UI</title>
+  <title>RTX UI</title>
   <link rel="stylesheet" href="plain.css" />
   </head>
 
 <body>
 
-<H1 id="header">RTX Proof-of-Concept User Interface</H1>
+<H1 id="header">RTX User Interface</H1>
 
 
 <div id="page">
 
-<P>The RTX team presents a proof-of-concept Reasoning Tool for evaluation by NCATS. This page provides a simple layer on top of an OpenAPI interface to RTX.
+<P>The RTX team presents a pilot Reasoning Tool for evaluation. This page provides a simple layer on top of the OpenAPI web service interface to RTX.
 At present only a few types of questions are supported. Select from one of the example queries to test the tool.</P>
 
 <BR>
 <H2>Documentation</H2>
 <UL>
-<LI> <a target="_blank" href="/overview.html">Overview documentation</a>
-<LI> <a target="_blank" href="/api/rtx/v1/ui/">OpenAPI interface documentation</a>
+<LI> <a target="_blank" href="overview.html">Overview documentation</a>
+<LI> <a target="_blank" href="/devED/api/rtx/v1/ui/">OpenAPI interface documentation</a>
 </UL>
 
 <BR>
@@ -32,7 +32,7 @@ At present only a few types of questions are supported. Select from one of the e
 <LI> What proteins does acetaminophen target?  <button onClick="javascript:pasteQuestion('what proteins does acetaminophen target')">PASTE</button>
 
 </UL>
-<P><I>At present, the full natural language processing (NLP) system is not yet hooked up, and only the above example question types are supported.</I></P>
+<P><I>At present, the full natural language processing (NLP) system is not yet implemented, and only the above example question types are supported.</I></P>
 
 <H2>Enter question:</H2>
 <form id="questionForm" name="questionForm" method="post" action="javascript:sendQuestion()">
@@ -60,7 +60,7 @@ function sendQuestion(e) {
 
   // construct an HTTP request
   var xhr = new XMLHttpRequest();
-  xhr.open("post", "/api/rtx/v1/translate", true);
+  xhr.open("post", "/devED/api/rtx/v1/translate", true);
   xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
   // send the collected data as JSON
@@ -72,7 +72,7 @@ function sendQuestion(e) {
     if ( jsonObj[0].knownQueryTypeId ) {
       document.getElementById("result").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;"+jsonObj[0]["restatedQuestion"]+"<BR>Please ensure that this is an accurate restatement of the intended question.<BR>Looking for answer...<BR><BR>";
       var xhr2 = new XMLHttpRequest();
-      xhr2.open("post", "/api/rtx/v1/query", true);
+      xhr2.open("post", "/devED/api/rtx/v1/query", true);
       xhr2.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
       // send the collected data as JSON
