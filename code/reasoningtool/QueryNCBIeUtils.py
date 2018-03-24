@@ -217,23 +217,23 @@ class QueryNCBIeUtils:
     def normalized_google_distance(mesh1_str, mesh2_str, mesh1=True, mesh2=True):
         """
         returns the normalized Google distance for two MeSH terms
-        :param mesh1_str: mesh string
-        :param mesh2_str: mesh string
+        :param mesh1_str_decorated: mesh string
+        :param mesh2_str_decorated: mesh string
         :param mesh1: flag if mesh1_str is a MeSH term
         :param mesh2: flag if mesh2_str is a MeSH term
         :returns: NGD, as a float (or math.nan if any counts are zero, or None if HTTP error)
         """
         if mesh1:  # checks mesh flag then converts to mesh term search
-            mesh1_str += '[MeSH Terms]'
+            mesh1_str_decorated = mesh1_str + '[MeSH Terms]'
 
         if mesh2:  # checks mesh flag then converts to mesh term search
-            mesh2_str += '[MeSH Terms]'
+            mesh2_str_decorated = mesh2_str + '[MeSH Terms]'
 
-        nij = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str,
-                                                                                               mesh2=mesh2_str))
+        nij = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
+                                                                                     mesh2=mesh2_str_decorated))
         N = 2.7e+7 * 20  # from PubMed home page there are 27 million articles; avg 20 MeSH terms per article
-        ni = QueryNCBIeUtils.get_pubmed_hits_count('{mesh1}'.format(mesh1=mesh1_str))
-        nj = QueryNCBIeUtils.get_pubmed_hits_count('{mesh2}'.format(mesh2=mesh2_str))
+        ni = QueryNCBIeUtils.get_pubmed_hits_count('{mesh1}'.format(mesh1=mesh1_str_decorated))
+        nj = QueryNCBIeUtils.get_pubmed_hits_count('{mesh2}'.format(mesh2=mesh2_str_decorated))
         if ni == 0 or nj == 0 or nij == 0:
             return math.nan
         numerator = max(math.log(ni), math.log(nj)) - math.log(nij)
