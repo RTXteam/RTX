@@ -643,10 +643,21 @@ def weight_graph_with_google_distance(g):
 			elif QueryNCBIeUtils.is_mesh_term(descriptions[node]):
 				mesh_terms = [descriptions[node]]
 			elif "anatont_anatomy" in labels[node]:
-				#id = names[node]
-				#mesh_ids = QueryEBIOLS.get_mesh_id_for_uberon_id(id)
-				# TODO: pending the fix to EBIOLS and QueryNCBIeUtils
-				pass
+				id = names[node]
+				mesh_ids = QueryEBIOLS.get_mesh_id_for_uberon_id(id)
+				mesh_terms = []
+				for mesh_id in mesh_ids:
+					if "MESH:D" in mesh_id:
+						mesh_id_number = mesh_id.split(':D')[1]
+						try:
+							mesh_id_number_int = int(mesh_id_number)
+							mesh_terms_temp = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(mesh_id_number_int)
+							if not mesh_terms_temp:
+								mesh_terms_temp = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(mesh_id_number_int + 68000000)
+							if mesh_terms_temp:
+								mesh_terms.extend(mesh_terms_temp)
+						except ValueError:
+							pass
 			elif "omim_disease" in labels[node]:
 				id = names[node]
 				mesh_terms = QueryNCBIeUtils.get_mesh_terms_for_omim_id(id)
