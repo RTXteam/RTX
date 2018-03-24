@@ -90,6 +90,16 @@ def answerQ2(drug_name, disease_name, k):
 		pathways = RU.get_one_hop_target('uniprot_protein', protein['names'], 'reactome_pathway', 'is_member_of')
 		pathways_per_path.append(pathways)
 
+	# Delete those elements that don't have a reactome pathway
+	for i, pathways in enumerate(pathways_per_path):
+		if not pathways:
+			del node_paths[i]
+			del edge_paths[i]
+			del weights[i]
+			del proteins_per_path[i]
+			del proteins_per_path_locations[i]
+			del pathways_per_path[i]
+
 	# Look for the pathway that has both a small GD between protein and disease
 	max_gd = 10
 	best_pathways_per_path = []

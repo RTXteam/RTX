@@ -225,9 +225,13 @@ class QueryNCBIeUtils:
         """
         if mesh1:  # checks mesh flag then converts to mesh term search
             mesh1_str_decorated = mesh1_str + '[MeSH Terms]'
+        else:
+            mesh1_str_decorated = mesh1_str
 
         if mesh2:  # checks mesh flag then converts to mesh term search
             mesh2_str_decorated = mesh2_str + '[MeSH Terms]'
+        else:
+            mesh2_str_decorated = mesh2_str
 
         nij = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
                                                                                      mesh2=mesh2_str_decorated))
