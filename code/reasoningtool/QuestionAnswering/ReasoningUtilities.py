@@ -637,17 +637,25 @@ def weight_graph_with_google_distance(g):
 			elif QueryNCBIeUtils.is_mesh_term(descriptions[node]):
 				mesh_terms = [descriptions[node]]
 			elif "anatont_anatomy" in labels[node]:
-				id = names[node]
-				mesh_terms = QueryEBIOLS.get_mesh_id_for_uberon_id(id)
+				#id = names[node]
+				#mesh_ids = QueryEBIOLS.get_mesh_id_for_uberon_id(id)
+				# TODO: pending the fix to EBIOLS and QueryNCBIeUtils
+				pass
 			elif "omim_disease" in labels[node]:
 				id = names[node]
 				mesh_terms = QueryNCBIeUtils.get_mesh_terms_for_omim_id(id)
 			elif "disont_disease" in labels[node] or "phenont_phenotype" in labels[node]:
-				description = descriptions[node]
-				mesh_ids = QueryNCBIeUtils.get_clinvar_uids_for_disease_or_phenotype_string(description)
-				if len(mesh_ids) > 300:  # too many mesh_id's to pass to eutils
-					mesh_ids = set(list(mesh_ids)[0:300])
-				mesh_terms = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(mesh_ids)
+				# TODO: no way to convert clinvar to mesh yet
+				#description = descriptions[node]
+				#mesh_ids = QueryNCBIeUtils.get_clinvar_uids_for_disease_or_phenotype_string(description)
+				#if len(mesh_ids) > 300:  # too many mesh_id's to pass to eutils
+				#	mesh_ids = set(list(mesh_ids)[0:300])
+				#mesh_terms = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(mesh_ids)
+				pass
+			elif "uniprot_protein" in labels[node]:
+				mesh_terms = [QueryNCBIeUtils.get_uniprot_names(names[node])]
+			elif "reactome_pathway" in labels[node]:
+				mesh_terms = [QueryNCBIeUtils.get_reactome_names(names[node])]
 			if i == 0:
 				source_mesh_terms = mesh_terms
 				i += 1
@@ -656,8 +664,16 @@ def weight_graph_with_google_distance(g):
 		gd = np.inf
 		# Loop over all mesh terms and look for the smallest GD
 		for source_mesh_term in source_mesh_terms:
+			if "|" in source_mesh_term:
+				mesh1 = False
+			else:
+				mesh1 = True
 			for target_mesh_term in target_mesh_terms:
-				gd_temp = QueryNCBIeUtils.normalized_google_distance(source_mesh_term, target_mesh_term)
+				if "|" in target_mesh_term:
+					mesh2 = False
+				else:
+					mesh2 = True
+				gd_temp = QueryNCBIeUtils.normalized_google_distance(source_mesh_term, target_mesh_term, mesh1=mesh1, mesh2=mesh2)
 				if not np.isnan(gd_temp):
 					if gd_temp < gd:
 						gd = gd_temp
