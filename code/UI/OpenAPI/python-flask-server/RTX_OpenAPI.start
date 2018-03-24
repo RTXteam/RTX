@@ -1,9 +1,9 @@
 #!/bin/bash
 
-export DEVAREA=devED
+export DEVAREA=production
 
-set LOGFILE=/tmp/RTX_OpenAPI_$DEVAREA.log
-set ELOGFILE=/tmp/RTX_OpenAPI_$DEVAREA.elog
+LOGFILE=/tmp/RTX_OpenAPI_$DEVAREA.log
+ELOGFILE=/tmp/RTX_OpenAPI_$DEVAREA.elog
 
 if [ -e $LOGFILE ]
 then
