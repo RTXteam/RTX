@@ -64,8 +64,8 @@ def answerQ2(drug_name, disease_name, k):
 	RU.weight_graph_with_google_distance(g)
 
 	# Get the top k paths
-	node_paths, edge_paths, lengths = RU.get_top_shortest_paths(g, drug_name, disease_name, k)
-	actual_k = len(lengths)  # since there may be less than k paths
+	node_paths, edge_paths, weights = RU.get_top_shortest_paths(g, drug_name, disease_name, k)
+	actual_k = len(weights)  # since there may be less than k paths
 
 	# TODO: For each of these paths, connect the protein to a pathway
 

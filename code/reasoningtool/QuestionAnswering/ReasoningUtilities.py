@@ -483,6 +483,25 @@ def get_shortest_subgraph_between_nodes(source_name, source_label, target_name, 
 		return graph
 
 
+def get_node_as_graph(node_name, debug=False):
+	"""
+	Get a node and return it as a networkx graph model
+	:param node_name: KG neo4j node name
+	:param debug: just return the cypher command
+	:return: networkx graph
+	"""
+	query = "MATCH (n{name:'%s'}) return n" % node_name
+	if debug:
+		return query
+
+	res = cypher.run(query, conn=connection, config=defaults)
+	if not res:
+		raise CustomExceptions.EmptyCypherError(query)
+	else:
+		graph = get_graph(res, directed=False)
+		return graph
+
+
 def interleave_nodes_and_relationships(session, source_node, source_node_label, target_node, target_node_label, max_path_len=3, debug=False):
 	"""
 	Given fixed source source_node and fixed target target_node, returns a list consiting of the types of relationships and nodes
