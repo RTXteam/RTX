@@ -487,6 +487,8 @@ def refine_omims_well_studied(omims, doid, omim_to_mesh, q1_doid_to_mesh, verbos
 			if len(omim_mesh) > 1:
 				omim_mesh = omim_mesh[0]
 			if omim_mesh:
+				if isinstance(omim_mesh, list):
+					omim_mesh = omim_mesh[0]
 				res = QueryNCBIeUtils.QueryNCBIeUtils.normalized_google_distance(omim_mesh, q1_doid_to_mesh[doid])
 			else:
 				res = math.nan
