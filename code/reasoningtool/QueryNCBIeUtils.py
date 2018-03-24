@@ -12,8 +12,9 @@ import urllib
 import math
 import sys
 import time
-from bs4 import BeautifulSoup as bsoup
+from io import StringIO
 import re
+import pandas
 
 # MeSH Terms for Q1 diseases: (see git/q1/README.md)
 #   Osteoporosis
@@ -248,31 +249,25 @@ class QueryNCBIeUtils:
         Output:
             search - a string containing all synonyms uniprot lists for
         '''
-        url = 'https://www.uniprot.org/uniprot/' + id + '.xml' # hardcoded url for uniprot data
+        url = 'https://www.uniprot.org/uniprot/?query=id:' + id + '&sort=score&columns=entry name,protein names,genes&format=tab' # hardcoded url for uniprot data
         r = requests.get(url, headers = {'User-Agent':'Mozilla/5.0'}) # send get request
-        soup = bsoup(r.text, 'lxml') # parses xml response
+        df = pandas.read_csv(StringIO(r.content.decode('utf-8')), sep='\t')
         if r.status_code != 200: # checks for error
             print('HTTP response status code: ' + str(r.status_code) + ' for URL:\n' + url, file=sys.stderr)
             return None
-        search = '' # initializes search term variable
-        if len(soup.find_all('protein')) > 0: # checks for protein section
-            for name in soup.find('protein').find_all('fullname'):
-                if QueryNCBIeUtils.is_mesh_term(name.text):
-                    search += '|' + name.text + '[MeSH Terms]'
+        search = df.loc[0,'Entry name'] # initializes search term variable
+        for name in re.compile("[()]").split(df.loc[0,'Protein names']): # checks for protein section
+            if len(name) > 1:
+                if QueryNCBIeUtils.is_mesh_term(name):
+                    search += '|' + name + '[MeSH Terms]'
                 else:
-                    search += '|' + name.text
-            for name in soup.find('protein').find_all('shortname'):
-                if QueryNCBIeUtils.is_mesh_term(name.text):
-                    search += '|' + name.text + '[MeSH Terms]'
+                    search += '|' + name
+        for name in df.loc[0, 'Gene names'].split(' '):
+            if len(name) > 1:
+                if QueryNCBIeUtils.is_mesh_term(name):
+                    search += '|' + name + '[MeSH Terms]'
                 else:
-                    search += '|' + name.text
-        if len(soup.find_all('gene')) > 0: # checks for gene section
-            for name in soup.find('gene').find_all('name'):
-                if QueryNCBIeUtils.is_mesh_term(name.text):
-                    search += '|' + name.text + '[MeSH Terms]'
-                else:
-                    search += '|' + name.text
-        search = search[1:] # gets rid of leading |
+                    search += '|' + name
         return search
 
     @staticmethod

@@ -26,6 +26,8 @@ import pandas
 import timeit
 import argparse
 
+MESH_ENTREZ_UID_BASE = 68000000
+
 ## configure requests package to use the "orangeboard.sqlite" cache
 requests_cache.install_cache('orangeboard')
 
@@ -36,7 +38,7 @@ ob = Orangeboard(debug=True)
 ob.neo4j_set_url()
 ob.neo4j_set_auth()
 
-master_rel_is_directed = {'disease_affects': True,
+MASTER_REL_IS_DIRECTED = {'disease_affects': True,
                           'is_member_of': True,
                           'is_parent_of': True,
                           'gene_assoc_with': True,
@@ -44,7 +46,9 @@ master_rel_is_directed = {'disease_affects': True,
                           'interacts_with': False,
                           'controls_expression_of': True,
                           'is_expressed_in': True,
-                          'targets': True}
+                          'targets': True,
+                          'controls_state_change_of': True,
+                          'participates_in': True}
 
 q1_diseases_dict = {'DOID:11476':   'osteoporosis',
                     'DOID:526':     'HIV infectious disease',
@@ -128,12 +132,11 @@ q2_mesh_to_conditions_look_aside_dict = {'MESH:D000855': 'DOID:8689',
                                          'MESH:D009119': 'HP:0004305'  # not sure about this particular mapping
 }
 
-ob.set_dict_reltype_dirs(master_rel_is_directed)
+ob.set_dict_reltype_dirs(MASTER_REL_IS_DIRECTED)
 ob.neo4j_set_url()
 ob.neo4j_set_auth()
 
 bne = BioNetExpander(ob)
-
 
 def seed_and_expand_kg_q1(num_expansions):
     ## seed all 21 diseases in the Orangeboard
@@ -173,8 +176,6 @@ def seed_and_expand_kg_q1(num_expansions):
     ## triple-expand the knowledge graph
     for _ in range(0, num_expansions):
         bne.expand_all_nodes()
-
-MESH_ENTREZ_UID_BASE = 68000000
 
 def convert_mesh_entrez_uid_to_curie_form(mesh_entrez_uid):
     assert mesh_entrez_uid > MESH_ENTREZ_UID_BASE
@@ -317,7 +318,22 @@ def add_pc2_to_kg():
                         else:
                             assert False
 
+def seed_and_expand_kg_q2_cop(num_expansions=3):
+    q2_cop_data = pandas.read_csv('../../data/q2/cop_data.tsv',
+                                  sep="\t",
+                                  names=['type', 'curie_id', 'term'],
+                                  header=0)
+    first_row = True
+    for index, row in q2_cop_data.iterrows():
+#        print("type: " + row['type'] + "; curie_id: " + row['curie_id'] + "; desc: " + row['term'])
+        ob.add_node(row['type'], row['curie_id'], desc=row['term'], seed_node_bool=first_row)
+        if first_row == True:
+            first_row = False
+    for _ in range(0, num_expansions):
+        bne.expand_all_nodes()
+    
 def make_master_kg():
+    seed_and_expand_kg_q2_cop(num_expansions=3)
     seed_and_expand_kg_q2(num_expansions=3)
     seed_and_expand_kg_q1(num_expansions=3)
     add_pc2_to_kg()
