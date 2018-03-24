@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export DEVAREA=production
+export DEVAREA=template
 
 LOGFILE=/tmp/RTX_OpenAPI_$DEVAREA.log
 ELOGFILE=/tmp/RTX_OpenAPI_$DEVAREA.elog
