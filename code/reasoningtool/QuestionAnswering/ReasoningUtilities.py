@@ -269,7 +269,7 @@ def get_relationship_types_between(source_name, source_label, target_name, targe
 
 
 # Convert ipython-cypher query (from cypher query) into a networkx graph
-def get_graph(res, directed=True):
+def get_graph(res, directed=True, multigraph=False):
 	"""
 	This function takes the result (subgraph) of a ipython-cypher query and builds a networkx graph from it
 	:param res: output from an ipython-cypher query
@@ -280,10 +280,16 @@ def get_graph(res, directed=True):
 		raise Exception("Empty graph. Cypher query input returned no results.")
 	if nx is None:
 		raise ImportError("Try installing NetworkX first.")
-	if directed:
-		graph = nx.MultiDiGraph()
+	if multigraph:
+		if directed:
+			graph = nx.MultiDiGraph()
+		else:
+			graph = nx.MultiGraph()
 	else:
-		graph = nx.MultiGraph()
+		if directed:
+			graph = nx.DiGraph()
+		else:
+			graph = nx.Graph()
 	for item in res._results.graph:
 		for node in item['nodes']:
 			graph.add_node(node['id'], properties=node['properties'], labels=node['labels'], names=node['properties']['name'], description=node['properties']['description'])
