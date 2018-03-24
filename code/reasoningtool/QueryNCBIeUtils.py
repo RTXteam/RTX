@@ -15,6 +15,9 @@ import time
 from io import StringIO
 import re
 import pandas
+import CachedMethods
+import requests_cache
+#requests_cache.install_cache('QueryNCBIeUtilsCache')
 
 # MeSH Terms for Q1 diseases: (see git/q1/README.md)
 #   Osteoporosis
@@ -51,6 +54,7 @@ class QueryNCBIeUtils:
                    is 1000, which is more useful than the NCBI default of 20)
     '''
     @staticmethod
+    @CachedMethods.register
     def send_query_get(handler, url_suffix, retmax=1000):
         url_str = QueryNCBIeUtils.API_BASE_URL + '/' + handler + '?' + url_suffix + '&retmode=json&retmax=' + str(retmax)
 #        print(url_str)
@@ -71,6 +75,7 @@ class QueryNCBIeUtils:
         return res
 
     @staticmethod
+    @CachedMethods.register
     def get_clinvar_uids_for_disease_or_phenotype_string(disphen_str):
         res = QueryNCBIeUtils.send_query_get('esearch.fcgi',
                                              'term=' + disphen_str + '[disease/phenotype]')
@@ -88,6 +93,7 @@ class QueryNCBIeUtils:
 
     '''
     @staticmethod
+    @CachedMethods.register
     def get_mesh_uids_for_mesh_term(mesh_term):
         res = QueryNCBIeUtils.send_query_get('esearch.fcgi',
                                              'db=mesh&term=' +  urllib.parse.quote(mesh_term + '[MeSH Terms]', safe=''))
@@ -107,6 +113,7 @@ class QueryNCBIeUtils:
     :returns: set(integers) or ``None``
     '''
     @staticmethod
+    @CachedMethods.register
     def get_mesh_uid_for_medgen_uid(medgen_uid):
         res = QueryNCBIeUtils.send_query_get('elink.fcgi',
                                              'db=mesh&dbfrom=medgen&cmd=neighbor&id=' + str(medgen_uid))
@@ -131,6 +138,7 @@ class QueryNCBIeUtils:
     :returns: list(str) of MeSH terms
     '''
     @staticmethod
+    @CachedMethods.register
     def get_mesh_terms_for_mesh_uid(mesh_uid):
         res = QueryNCBIeUtils.send_query_get('esummary.fcgi',
                                              'db=mesh&id=' + str(mesh_uid))
@@ -158,6 +166,7 @@ class QueryNCBIeUtils:
     :returns: set(integers) or None
     '''
     @staticmethod
+    @CachedMethods.register
     def get_medgen_uid_for_omim_id(omim_id):
         res = QueryNCBIeUtils.send_query_get('elink.fcgi',
                                              'db=medgen&dbfrom=omim&cmd=neighbor&id=' + str(omim_id))
@@ -177,6 +186,7 @@ class QueryNCBIeUtils:
         return ret_medgen_ids
 
     @staticmethod
+    @CachedMethods.register
     def get_mesh_terms_for_omim_id(omim_id):
         medgen_uids = QueryNCBIeUtils.get_medgen_uid_for_omim_id(omim_id)
         ret_mesh_terms = []
@@ -188,6 +198,7 @@ class QueryNCBIeUtils:
         return ret_mesh_terms
         
     @staticmethod
+    @CachedMethods.register
     def get_pubmed_hits_count(term_str):
         term_str_encoded = urllib.parse.quote(term_str, safe='')
         res = QueryNCBIeUtils.send_query_get('esearch.fcgi',
@@ -202,6 +213,7 @@ class QueryNCBIeUtils:
         return res_int
 
     @staticmethod
+    @CachedMethods.register
     def normalized_google_distance(mesh1_str, mesh2_str, mesh1=True, mesh2=True):
         """
         returns the normalized Google distance for two MeSH terms
@@ -230,6 +242,7 @@ class QueryNCBIeUtils:
         return ngd
 
     @staticmethod
+    @CachedMethods.register
     def is_mesh_term(mesh_term):
         ret_list = QueryNCBIeUtils.get_mesh_uids_for_mesh_term(mesh_term)
         return ret_list is not None and len(ret_list) > 0
@@ -243,6 +256,7 @@ class QueryNCBIeUtils:
         print(QueryNCBIeUtils.normalized_google_distance(mesh1_str, mesh2_str))
 
     @staticmethod
+    @CachedMethods.register
     def get_uniprot_names(id):
         """
         Takes a uniprot id then return a string containing all synonyms listed on uniprot seperated by the deliminator |
@@ -271,6 +285,7 @@ class QueryNCBIeUtils:
         return search
 
     @staticmethod
+    @CachedMethods.register
     def get_reactome_names(id):
         '''
         Takes a reactome id then return a string containing all synonyms listed on reactome seperated by the deliminator |
