@@ -42,6 +42,12 @@ def answerQ2(drug_name, disease_name, k):
 	:param k: Number of paths to return (int)
 	:return: Text answer
 	"""
+	if not RU.node_exists_with_property(drug_name, 'name'):
+		print("Sorry, the drug %s is not yet in our knowledge graph." % drug_name)
+		return 1
+	if not RU.node_exists_with_property(disease_name, 'name'):
+		print("Sorry, the disease %s is not yet in our knowledge graph." % disease_name)
+		return 1
 
 
 	# get the relevant subgraph between the source and target nodes
@@ -60,11 +66,18 @@ def answerQ2(drug_name, disease_name, k):
 				g = RU.get_shortest_subgraph_between_nodes(drug_name, 'pharos_drug', disease_name, 'disont_disease',
 															max_path_len=4, limit=50, debug=False, directed=False)
 			except CustomExceptions.EmptyCypherError:
-				print(
-					"Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype. "
-					"The drug and/or disease may not be one of the entities I know about, or they do not connect via a known "
-					"pathway, tissue, and phenotype (understudied)" %
-					(drug_name, RU.get_node_property(disease_name, 'description')))
+				try:
+					print(
+						"Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype. "
+						"The drug and/or disease may not be one of the entities I know about, or they do not connect via a known "
+						"pathway, tissue, and phenotype (understudied)" %
+						(drug_name, RU.get_node_property(disease_name, 'description')))
+				except:
+					print(
+						"Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype. "
+						"The drug and/or disease may not be one of the entities I know about, or they do not connect via a known "
+						"pathway, tissue, and phenotype (understudied)" %
+						(drug_name, disease_name))
 				return 1
 	# Decorate with normalized google distance
 	RU.weight_graph_with_google_distance(g)
@@ -107,7 +120,7 @@ def answerQ2(drug_name, disease_name, k):
 	disease_common_name = RU.get_node_property(disease_name, 'description', node_label='disont_disease')
 	for j, pathways in enumerate(pathways_per_path):
 		smallest_gd = np.inf
-		best_pathway = ""  # TODO: sometimes there is no best pathway? ('fesoterodine', 'Urinary Bladder, Overactive')
+		best_pathway = ""
 		for pathway in pathways:
 			protein_pathway_gd = QueryNCBIeUtils.normalized_google_distance(
 				QueryNCBIeUtils.get_uniprot_names(proteins_per_path[j]['names']),
