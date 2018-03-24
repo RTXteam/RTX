@@ -97,7 +97,7 @@ def answerQ2(drug_name, disease_name, k):
 	disease_common_name = RU.get_node_property(disease_name, 'description', node_label='disont_disease')
 	for j, pathways in enumerate(pathways_per_path):
 		smallest_gd = np.inf
-		best_pathway = ""
+		best_pathway = ""  # TODO: sometimes there is no best pathway? ('fesoterodine', 'Urinary Bladder, Overactive')
 		for pathway in pathways:
 			protein_pathway_gd = QueryNCBIeUtils.normalized_google_distance(
 				QueryNCBIeUtils.get_uniprot_names(proteins_per_path[j]['names']),
