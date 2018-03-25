@@ -141,6 +141,18 @@ def answerQ2(drug_name, disease_name, k):
 		best_pathways_per_path.append(best_pathway)
 		best_pathways_per_path_gd.append(smallest_gd)
 
+	# Delete those elements that don't have a best reactome pathway
+	for i, pathways in enumerate(best_pathways_per_path):
+		if not pathways:
+			del node_paths[i]
+			del edge_paths[i]
+			del weights[i]
+			del proteins_per_path[i]
+			del proteins_per_path_locations[i]
+			del pathways_per_path[i]
+			del best_pathways_per_path[i]
+			del best_pathways_per_path_gd[i]
+
 	# Insert the best pathway into the node_path
 	for i in range(len(node_paths)):
 		best_pathway = best_pathways_per_path[i]
