@@ -1,9 +1,9 @@
 #!/bin/sh
 
-export DEVAREA=devED
+export DEVAREA=template
 
 ### BEGIN INIT INFO
-# Provides:          RTX_OpenAPI
+# Provides:          RTX_OpenAPI_template
 # Required-Start:    $remote_fs $syslog
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5

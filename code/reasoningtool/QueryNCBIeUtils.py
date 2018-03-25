@@ -12,8 +12,12 @@ import urllib
 import math
 import sys
 import time
-from bs4 import BeautifulSoup as bsoup
+from io import StringIO
 import re
+import pandas
+import CachedMethods
+import requests_cache
+#requests_cache.install_cache('QueryNCBIeUtilsCache')
 
 # MeSH Terms for Q1 diseases: (see git/q1/README.md)
 #   Osteoporosis
@@ -50,6 +54,7 @@ class QueryNCBIeUtils:
                    is 1000, which is more useful than the NCBI default of 20)
     '''
     @staticmethod
+    @CachedMethods.register
     def send_query_get(handler, url_suffix, retmax=1000):
         url_str = QueryNCBIeUtils.API_BASE_URL + '/' + handler + '?' + url_suffix + '&retmode=json&retmax=' + str(retmax)
 #        print(url_str)
@@ -70,6 +75,7 @@ class QueryNCBIeUtils:
         return res
 
     @staticmethod
+    @CachedMethods.register
     def get_clinvar_uids_for_disease_or_phenotype_string(disphen_str):
         res = QueryNCBIeUtils.send_query_get('esearch.fcgi',
                                              'term=' + disphen_str + '[disease/phenotype]')
@@ -87,6 +93,7 @@ class QueryNCBIeUtils:
 
     '''
     @staticmethod
+    @CachedMethods.register
     def get_mesh_uids_for_mesh_term(mesh_term):
         res = QueryNCBIeUtils.send_query_get('esearch.fcgi',
                                              'db=mesh&term=' +  urllib.parse.quote(mesh_term + '[MeSH Terms]', safe=''))
@@ -106,6 +113,7 @@ class QueryNCBIeUtils:
     :returns: set(integers) or ``None``
     '''
     @staticmethod
+    @CachedMethods.register
     def get_mesh_uid_for_medgen_uid(medgen_uid):
         res = QueryNCBIeUtils.send_query_get('elink.fcgi',
                                              'db=mesh&dbfrom=medgen&cmd=neighbor&id=' + str(medgen_uid))
@@ -131,6 +139,7 @@ class QueryNCBIeUtils:
     :returns: list(str) of MeSH terms
     '''
     @staticmethod
+    @CachedMethods.register
     def get_mesh_terms_for_mesh_uid(mesh_uid):
         assert type(mesh_uid)==int
         res = QueryNCBIeUtils.send_query_get('esummary.fcgi',
@@ -159,6 +168,7 @@ class QueryNCBIeUtils:
     :returns: set(integers) or None
     '''
     @staticmethod
+    @CachedMethods.register
     def get_medgen_uid_for_omim_id(omim_id):
         res = QueryNCBIeUtils.send_query_get('elink.fcgi',
                                              'db=medgen&dbfrom=omim&cmd=neighbor&id=' + str(omim_id))
@@ -178,6 +188,7 @@ class QueryNCBIeUtils:
         return ret_medgen_ids
 
     @staticmethod
+    @CachedMethods.register
     def get_mesh_terms_for_omim_id(omim_id):
         medgen_uids = QueryNCBIeUtils.get_medgen_uid_for_omim_id(omim_id)
         ret_mesh_terms = []
@@ -189,6 +200,7 @@ class QueryNCBIeUtils:
         return ret_mesh_terms
         
     @staticmethod
+    @CachedMethods.register
     def get_pubmed_hits_count(term_str):
         term_str_encoded = urllib.parse.quote(term_str, safe='')
         res = QueryNCBIeUtils.send_query_get('esearch.fcgi',
@@ -203,22 +215,31 @@ class QueryNCBIeUtils:
         return res_int
 
     @staticmethod
-    def normalized_google_distance(mesh1_str, mesh2_str,mesh1=True,mesh2=True):
-        '''returns the normalized Google distance for two MeSH terms
-        
+    @CachedMethods.register
+    def normalized_google_distance(mesh1_str, mesh2_str, mesh1=True, mesh2=True):
+        """
+        returns the normalized Google distance for two MeSH terms
+        :param mesh1_str_decorated: mesh string
+        :param mesh2_str_decorated: mesh string
+        :param mesh1: flag if mesh1_str is a MeSH term
+        :param mesh2: flag if mesh2_str is a MeSH term
         :returns: NGD, as a float (or math.nan if any counts are zero, or None if HTTP error)
-        '''
-        if mesh1: # checks mesh flag then converts to mesh term search
-            mesh1_str+='[MeSH Terms]'
+        """
+        if mesh1:  # checks mesh flag then converts to mesh term search
+            mesh1_str_decorated = mesh1_str + '[MeSH Terms]'
+        else:
+            mesh1_str_decorated = mesh1_str
 
-        if mesh2: # checks mesh flag then converts to mesh term search
-            mesh2_str+='[MeSH Terms]'
+        if mesh2:  # checks mesh flag then converts to mesh term search
+            mesh2_str_decorated = mesh2_str + '[MeSH Terms]'
+        else:
+            mesh2_str_decorated = mesh2_str
 
-        nij = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str,
-                                                                                               mesh2=mesh2_str))
-        N = 2.7e+7 * 20 # from PubMed home page there are 27 million articles; avg 20 MeSH terms per article
-        ni = QueryNCBIeUtils.get_pubmed_hits_count('{mesh1}'.format(mesh1=mesh1_str))
-        nj = QueryNCBIeUtils.get_pubmed_hits_count('{mesh2}'.format(mesh2=mesh2_str))
+        nij = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
+                                                                                     mesh2=mesh2_str_decorated))
+        N = 2.7e+7 * 20  # from PubMed home page there are 27 million articles; avg 20 MeSH terms per article
+        ni = QueryNCBIeUtils.get_pubmed_hits_count('{mesh1}'.format(mesh1=mesh1_str_decorated))
+        nj = QueryNCBIeUtils.get_pubmed_hits_count('{mesh2}'.format(mesh2=mesh2_str_decorated))
         if ni == 0 or nj == 0 or nij == 0:
             return math.nan
         numerator = max(math.log(ni), math.log(nj)) - math.log(nij)
@@ -227,57 +248,50 @@ class QueryNCBIeUtils:
         return ngd
 
     @staticmethod
+    @CachedMethods.register
     def is_mesh_term(mesh_term):
         ret_list = QueryNCBIeUtils.get_mesh_uids_for_mesh_term(mesh_term)
         return ret_list is not None and len(ret_list) > 0
     
     @staticmethod
     def test_ngd():
-#        mesh1_str = 'Anemia, Sickle Cell'
-#        mesh2_str = 'Malaria'
+        #mesh1_str = 'Anemia, Sickle Cell'
+        #mesh2_str = 'Malaria'
         omim1_str = '219700'
         omim2_str = '219550'
         print(QueryNCBIeUtils.normalized_google_distance(mesh1_str, mesh2_str))
 
     @staticmethod
+    @CachedMethods.register
     def get_uniprot_names(id):
-        '''
+        """
         Takes a uniprot id then return a string containing all synonyms listed on uniprot seperated by the deliminator |
-
-        Parameters:
-            id - a string containing the uniprot id
-
-        Output:
-            search - a string containing all synonyms uniprot lists for
-        '''
-        url = 'https://www.uniprot.org/uniprot/' + id + '.xml' # hardcoded url for uniprot data
-        r = requests.get(url, headers = {'User-Agent':'Mozilla/5.0'}) # send get request
-        soup = bsoup(r.text, 'lxml') # parses xml response
-        if r.status_code != 200: # checks for error
+        :param id: a string containing the uniprot id
+        :returns: a string containing all synonyms uniprot lists for
+        """
+        url = 'https://www.uniprot.org/uniprot/?query=id:' + id + '&sort=score&columns=entry name,protein names,genes&format=tab' # hardcoded url for uniprot data
+        r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})  # send get request
+        df = pandas.read_csv(StringIO(r.content.decode('utf-8')), sep='\t')
+        if r.status_code != 200:  # checks for error
             print('HTTP response status code: ' + str(r.status_code) + ' for URL:\n' + url, file=sys.stderr)
             return None
-        search = '' # initializes search term variable
-        if len(soup.find_all('protein')) > 0: # checks for protein section
-            for name in soup.find('protein').find_all('fullname'):
-                if QueryNCBIeUtils.is_mesh_term(name.text):
-                    search += '|' + name.text + '[MeSH Terms]'
+        search = df.loc[0, 'Entry name']  # initializes search term variable
+        for name in re.compile("[()]").split(df.loc[0, 'Protein names']):  # checks for protein section
+            if len(name) > 1:
+                if QueryNCBIeUtils.is_mesh_term(name):
+                    search += '|' + name + '[MeSH Terms]'
                 else:
-                    search += '|' + name.text
-            for name in soup.find('protein').find_all('shortname'):
-                if QueryNCBIeUtils.is_mesh_term(name.text):
-                    search += '|' + name.text + '[MeSH Terms]'
+                    search += '|' + name
+        for name in df.loc[0, 'Gene names'].split(' '):
+            if len(name) > 1:
+                if QueryNCBIeUtils.is_mesh_term(name):
+                    search += '|' + name + '[MeSH Terms]'
                 else:
-                    search += '|' + name.text
-        if len(soup.find_all('gene')) > 0: # checks for gene section
-            for name in soup.find('gene').find_all('name'):
-                if QueryNCBIeUtils.is_mesh_term(name.text):
-                    search += '|' + name.text + '[MeSH Terms]'
-                else:
-                    search += '|' + name.text
-        search = search[1:] # gets rid of leading |
+                    search += '|' + name
         return search
 
     @staticmethod
+    @CachedMethods.register
     def get_reactome_names(id):
         '''
         Takes a reactome id then return a string containing all synonyms listed on reactome seperated by the deliminator |
@@ -293,34 +307,34 @@ class QueryNCBIeUtils:
         Output:
             search - a string containing all synonyms of the reactome id or a mesh term formatted for the google distance function
         '''
-        url = 'https://reactome.org/ContentService/data/query/'+id+'/name' # hardcoded url for reactiome names
-        r = requests.get(url, headers = {'User-Agent':'Mozilla/5.0'}) # sends get request that returns a string
+        url = 'https://reactome.org/ContentService/data/query/'+id+'/name'  # hardcoded url for reactiome names
+        r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})  # sends get request that returns a string
         if r.status_code != 200:
             print('HTTP response status code: ' + str(r.status_code) + ' for URL:\n' + url, file=sys.stderr)
             return None
-        nameList = r.text.split('\n') # splits returned string by line
-        search = '' # initializes search term variable
+        nameList = r.text.split('\n')  # splits returned string by line
+        search = ''  # initializes search term variable
         for name in nameList:
-            if len(name) > 0: # removes blank lines at beginning and end of response
-                if len(re.compile("[()]").split(name)) > 1: # check for parenthesis
-                    for n in re.compile("[()]").split(name): # splits on either "(" or ")"
-                        if len(n)>0: # removes banks generated by split
-                            if QueryNCBIeUtils.is_mesh_term(n): # check for mesh term
+            if len(name) > 0:  # removes blank lines at beginning and end of response
+                if len(re.compile("[()]").split(name)) > 1:  # check for parenthesis
+                    for n in re.compile("[()]").split(name):  # splits on either "(" or ")"
+                        if len(n) > 0:  # removes banks generated by split
+                            if QueryNCBIeUtils.is_mesh_term(n):  # check for mesh term
                                 search += '|' + n + '[MeSH Terms]'
                             else:
                                 search += '|' + n
-                elif len(name.split('ecNumber')) > 1: # checks for ec number
+                elif len(name.split('ecNumber')) > 1:  # checks for ec number
                     if QueryNCBIeUtils.is_mesh_term(name.split('ecNumber')[0]):
                         search += '|' + name.split('ecNumber')[0] + '[MeSH Terms]'
                     else:
                         search += '|' + name.split('ecNumber')[0]
-                    search += '|' + name.split('ecNumber')[1][:-1] + '[EC/RN Number]' # removes trailing "/" and formats as ec search term
+                    search += '|' + name.split('ecNumber')[1][:-1] + '[EC/RN Number]'  # removes trailing "/" and formats as ec search term
                 else:
                     if QueryNCBIeUtils.is_mesh_term(name):
                         search += '|' + name + '[MeSH Terms]'
                     else:
                         search += '|' + name
-        search = search[1:] # removes leading |
+        search = search[1:]  # removes leading |
         return search
               
 if __name__ == '__main__':

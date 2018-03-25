@@ -8,6 +8,12 @@ import argparse
 from itertools import compress
 import sys
 import CustomExceptions
+try:
+	import QueryNCBIeUtils
+except ImportError:
+	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  # Go up one level and look for it
+	import QueryNCBIeUtils
+QueryNCBIeUtils = QueryNCBIeUtils.QueryNCBIeUtils()
 
 drug_to_disease_doid = dict()
 disease_doid_to_description = dict()
@@ -36,6 +42,12 @@ def answerQ2(drug_name, disease_name, k):
 	:param k: Number of paths to return (int)
 	:return: Text answer
 	"""
+	if not RU.node_exists_with_property(drug_name, 'name'):
+		print("Sorry, the drug %s is not yet in our knowledge graph." % drug_name)
+		return 1
+	if not RU.node_exists_with_property(disease_name, 'name'):
+		print("Sorry, the disease %s is not yet in our knowledge graph." % disease_name)
+		return 1
 
 
 	# get the relevant subgraph between the source and target nodes
@@ -54,20 +66,113 @@ def answerQ2(drug_name, disease_name, k):
 				g = RU.get_shortest_subgraph_between_nodes(drug_name, 'pharos_drug', disease_name, 'disont_disease',
 															max_path_len=4, limit=50, debug=False, directed=False)
 			except CustomExceptions.EmptyCypherError:
-				print(
-					"Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype. "
-					"The drug and/or disease may not be one of the entities I know about, or they do not connect via a known "
-					"pathway, tissue, and phenotype (understudied)" %
-					(drug_name, RU.get_node_property(disease_name, 'description')))
+				try:
+					print(
+						"Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype. "
+						"The drug and/or disease may not be one of the entities I know about, or they do not connect via a known "
+						"pathway, tissue, and phenotype (understudied)" %
+						(drug_name, RU.get_node_property(disease_name, 'description')))
+				except:
+					print(
+						"Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype. "
+						"The drug and/or disease may not be one of the entities I know about, or they do not connect via a known "
+						"pathway, tissue, and phenotype (understudied)" %
+						(drug_name, disease_name))
 				return 1
 	# Decorate with normalized google distance
 	RU.weight_graph_with_google_distance(g)
 
 	# Get the top k paths
-	node_paths, edge_paths, lengths = RU.get_top_shortest_paths(g, drug_name, disease_name, k)
-	actual_k = len(lengths)  # since there may be less than k paths
+	node_paths, edge_paths, weights = RU.get_top_shortest_paths(g, drug_name, disease_name, k)
+	actual_k = len(weights)  # since there may be less than k paths
 
-	# TODO: For each of these paths, connect the protein to a pathway
+	# For each of these paths, connect the protein to a pathway
+	# First, grab the proteins and locations
+	proteins_per_path = []
+	proteins_per_path_locations = []
+	for path in node_paths:
+		for i, node in enumerate(path):
+			if "uniprot_protein" in node["labels"]:
+				proteins_per_path.append(node)
+				proteins_per_path_locations.append(i)
+				break
+
+	# Connect a reactome pathway to the proteins (only for the first seen protein in each path)
+	pathways_per_path = []
+	for protein in proteins_per_path:
+		pathways = RU.get_one_hop_target('uniprot_protein', protein['names'], 'reactome_pathway', 'is_member_of')
+		pathways_per_path.append(pathways)
+
+	# Delete those elements that don't have a reactome pathway
+	for i, pathways in enumerate(pathways_per_path):
+		if not pathways:
+			del node_paths[i]
+			del edge_paths[i]
+			del weights[i]
+			del proteins_per_path[i]
+			del proteins_per_path_locations[i]
+			del pathways_per_path[i]
+
+	# Look for the pathway that has both a small GD between protein and disease
+	max_gd = 10
+	best_pathways_per_path = []
+	best_pathways_per_path_gd = []
+	disease_common_name = RU.get_node_property(disease_name, 'description', node_label='disont_disease')
+	for j, pathways in enumerate(pathways_per_path):
+		smallest_gd = np.inf
+		best_pathway = ""
+		for pathway in pathways:
+			protein_pathway_gd = QueryNCBIeUtils.normalized_google_distance(
+				QueryNCBIeUtils.get_uniprot_names(proteins_per_path[j]['names']),
+				QueryNCBIeUtils.get_reactome_names(pathway),
+				mesh1=False, mesh2=False)
+			if np.isnan(protein_pathway_gd):
+				protein_pathway_gd = max_gd
+
+			pathway_disease_gd = QueryNCBIeUtils.normalized_google_distance(disease_common_name,
+																			QueryNCBIeUtils.get_reactome_names(pathway),
+																			mesh1=True, mesh2=False)
+			if np.isnan(pathway_disease_gd):
+				pathway_disease_gd = max_gd
+
+			if protein_pathway_gd + pathway_disease_gd < smallest_gd:
+				smallest_gd = protein_pathway_gd + pathway_disease_gd
+				best_pathway = pathway
+		best_pathways_per_path.append(best_pathway)
+		best_pathways_per_path_gd.append(smallest_gd)
+
+	# Delete those elements that don't have a best reactome pathway
+	for i, pathways in enumerate(best_pathways_per_path):
+		if not pathways:
+			del node_paths[i]
+			del edge_paths[i]
+			del weights[i]
+			del proteins_per_path[i]
+			del proteins_per_path_locations[i]
+			del pathways_per_path[i]
+			del best_pathways_per_path[i]
+			del best_pathways_per_path_gd[i]
+
+	# Insert the best pathway into the node_path
+	for i in range(len(node_paths)):
+		best_pathway = best_pathways_per_path[i]
+		# Convert the pathway name to a graph and grab the resulting data
+		graph = RU.get_node_as_graph(best_pathway)
+		best_pathway_with_node_data = list(graph.nodes(data=True)).pop()[1]
+		# same for the edge
+		graph = RU.get_shortest_subgraph_between_nodes(proteins_per_path[i]["names"], "uniprot_protein", best_pathway,
+													   "reactome_pathway", max_path_len=1, limit=1, directed=False)
+		edge_data = list(graph.edges(data=True)).pop()[2]
+		best_pathway_gd = best_pathways_per_path_gd[i]
+		protein_location = proteins_per_path_locations[i]
+		node_paths[i].insert(protein_location + 1, best_pathway_with_node_data)
+		edge_paths[i].insert(protein_location, edge_data)
+		weights[i] += best_pathway_gd
+
+	# resort the paths
+	node_paths = [x for _, x in sorted(zip(weights, node_paths), key=lambda pair: pair[0])]
+	edge_paths = [x for _, x in sorted(zip(weights, edge_paths), key=lambda pair: pair[0])]
+	weights.sort()
 
 	# Then display the results....
 	print("The possible clinical outcome pathways include: ")
@@ -79,6 +184,7 @@ def answerQ2(drug_name, disease_name, k):
 			to_print += " " + str(node_path[node_index]['description'])
 			if node_index < len(edge_path):
 				to_print += " -" + str(edge_path[node_index]['type']) +"->"
+		to_print += ". Distance (smaller is better): %f." % weights[path_ind]
 		print(to_print)
 
 

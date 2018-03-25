@@ -220,7 +220,7 @@ def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False, use_js
 def main():
 	parser = argparse.ArgumentParser(description="Runs the reasoning tool on Question 1",
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-	parser.add_argument('-i', '--input_disease', type=str, help="Input disease", default="cholera")
+	parser.add_argument('-i', '--input_disease', type=str, help="Input disease", default="DOID:12365")
 	parser.add_argument('-v', '--verbose', action="store_true", help="Flag to turn on verbosity", default=False)
 	parser.add_argument('-d', '--directed', action="store_true", help="To treat the graph as directed or not.", default=True)
 	parser.add_argument('-m', '--max_path_len', type=int,
@@ -243,10 +243,10 @@ def main():
 	all_d = args.all
 
 	if all_d:
-		for disease in q1_disease_to_doid.keys():
+		for disease in q1_disease_to_doid.values():
 			print("\n")
 			print(disease)
-			if disease == 'asthma':  # if we incrementally built it up, we'd be waiting all day
+			if disease == 'DOID:2841':  # if we incrementally built it up, we'd be waiting all day (asthma)
 				answerQ1(disease, directed=True, max_path_len=5, verbose=True, use_json=use_json)
 			else:
 				for len in [2, 3, 4]:  # start out with small path lengths, then expand outward until we find something

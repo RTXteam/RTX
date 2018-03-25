@@ -269,7 +269,7 @@ def get_relationship_types_between(source_name, source_label, target_name, targe
 
 
 # Convert ipython-cypher query (from cypher query) into a networkx graph
-def get_graph(res, directed=True):
+def get_graph(res, directed=True, multigraph=False):
 	"""
 	This function takes the result (subgraph) of a ipython-cypher query and builds a networkx graph from it
 	:param res: output from an ipython-cypher query
@@ -280,10 +280,16 @@ def get_graph(res, directed=True):
 		raise Exception("Empty graph. Cypher query input returned no results.")
 	if nx is None:
 		raise ImportError("Try installing NetworkX first.")
-	if directed:
-		graph = nx.MultiDiGraph()
+	if multigraph:
+		if directed:
+			graph = nx.MultiDiGraph()
+		else:
+			graph = nx.MultiGraph()
 	else:
-		graph = nx.MultiGraph()
+		if directed:
+			graph = nx.DiGraph()
+		else:
+			graph = nx.Graph()
 	for item in res._results.graph:
 		for node in item['nodes']:
 			graph.add_node(node['id'], properties=node['properties'], labels=node['labels'], names=node['properties']['name'], description=node['properties']['description'])
@@ -483,6 +489,25 @@ def get_shortest_subgraph_between_nodes(source_name, source_label, target_name, 
 		return graph
 
 
+def get_node_as_graph(node_name, debug=False):
+	"""
+	Get a node and return it as a networkx graph model
+	:param node_name: KG neo4j node name
+	:param debug: just return the cypher command
+	:return: networkx graph
+	"""
+	query = "MATCH (n{name:'%s'}) return n" % node_name
+	if debug:
+		return query
+
+	res = cypher.run(query, conn=connection, config=defaults)
+	if not res:
+		raise CustomExceptions.EmptyCypherError(query)
+	else:
+		graph = get_graph(res, directed=False)
+		return graph
+
+
 def interleave_nodes_and_relationships(session, source_node, source_node_label, target_node, target_node_label, max_path_len=3, debug=False):
 	"""
 	Given fixed source source_node and fixed target target_node, returns a list consiting of the types of relationships and nodes
@@ -619,16 +644,35 @@ def weight_graph_with_google_distance(g):
 				mesh_terms = [descriptions[node]]
 			elif "anatont_anatomy" in labels[node]:
 				id = names[node]
-				mesh_terms = QueryEBIOLS.get_mesh_id_for_uberon_id(id)
+				mesh_ids = QueryEBIOLS.get_mesh_id_for_uberon_id(id)
+				mesh_terms = []
+				for mesh_id in mesh_ids:
+					if "MESH:D" in mesh_id:
+						mesh_id_number = mesh_id.split(':D')[1]
+						try:
+							mesh_id_number_int = int(mesh_id_number)
+							mesh_terms_temp = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(mesh_id_number_int)
+							if not mesh_terms_temp:
+								mesh_terms_temp = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(mesh_id_number_int + 68000000)
+							if mesh_terms_temp:
+								mesh_terms.extend(mesh_terms_temp)
+						except ValueError:
+							pass
 			elif "omim_disease" in labels[node]:
 				id = names[node]
 				mesh_terms = QueryNCBIeUtils.get_mesh_terms_for_omim_id(id)
 			elif "disont_disease" in labels[node] or "phenont_phenotype" in labels[node]:
-				description = descriptions[node]
-				mesh_ids = QueryNCBIeUtils.get_clinvar_uids_for_disease_or_phenotype_string(description)
-				if len(mesh_ids) > 300:  # too many mesh_id's to pass to eutils
-					mesh_ids = set(list(mesh_ids)[0:300])
-				mesh_terms = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(mesh_ids)
+				# TODO: no way to convert clinvar to mesh yet
+				#description = descriptions[node]
+				#mesh_ids = QueryNCBIeUtils.get_clinvar_uids_for_disease_or_phenotype_string(description)
+				#if len(mesh_ids) > 300:  # too many mesh_id's to pass to eutils
+				#	mesh_ids = set(list(mesh_ids)[0:300])
+				#mesh_terms = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(mesh_ids)
+				pass
+			elif "uniprot_protein" in labels[node]:
+				mesh_terms = [QueryNCBIeUtils.get_uniprot_names(names[node])]
+			elif "reactome_pathway" in labels[node]:
+				mesh_terms = [QueryNCBIeUtils.get_reactome_names(names[node])]
 			if i == 0:
 				source_mesh_terms = mesh_terms
 				i += 1
@@ -637,8 +681,16 @@ def weight_graph_with_google_distance(g):
 		gd = np.inf
 		# Loop over all mesh terms and look for the smallest GD
 		for source_mesh_term in source_mesh_terms:
+			if "|" in source_mesh_term:
+				mesh1 = False
+			else:
+				mesh1 = True
 			for target_mesh_term in target_mesh_terms:
-				gd_temp = QueryNCBIeUtils.normalized_google_distance(source_mesh_term, target_mesh_term)
+				if "|" in target_mesh_term:
+					mesh2 = False
+				else:
+					mesh2 = True
+				gd_temp = QueryNCBIeUtils.normalized_google_distance(source_mesh_term, target_mesh_term, mesh1=mesh1, mesh2=mesh2)
 				if not np.isnan(gd_temp):
 					if gd_temp < gd:
 						gd = gd_temp
