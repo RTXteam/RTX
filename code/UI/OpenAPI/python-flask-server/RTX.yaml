@@ -196,6 +196,8 @@ definitions:
         type: "string"
         example: "1 answer found"
         description: "Extended message denoting the success or mode of failure for the response"
+      result_list:
+        $ref: "#/definitions/Result_list"
   Result_list:
     type: "array"
     items:
