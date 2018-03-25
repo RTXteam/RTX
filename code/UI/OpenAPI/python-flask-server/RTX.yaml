@@ -110,7 +110,7 @@ paths:
         200:
           description: "successful operation"
           schema:
-            $ref: "#/definitions/MeSHNGDResponse"
+            $ref: "#/definitions/MeshNgdResponse"
         400:
           description: "Invalid terms"
       x-swagger-router-controller: "swagger_server.controllers.getpubmedmeshngd_controller"
@@ -156,15 +156,15 @@ definitions:
   Response:
     type: "object"
     properties:
-      at_context:
+      context:
         type: "string"
         example: "http://translator.ncats.io"
         description: "JSON-LD context URI"
-      at_type:
+      type:
         type: "string"
         example: "medical_translator_query_result"
         description: "Entity type of this response"
-      at_id:
+      id:
         type: "string"
         example: "http://rtx.ncats.io/api/v1/response/1234"
         description: "URI for this response"
@@ -197,16 +197,14 @@ definitions:
         example: "1 answer found"
         description: "Extended message denoting the success or mode of failure for the response"
       result_list:
-        $ref: "#/definitions/Result_list"
-  Result_list:
-    type: "array"
-    items:
-      $ref: "#/definitions/Result"
+        type: "array"
+        items:
+          $ref: "#/definitions/Result"
   Result:
     type: "object"
     description: "One of potentially several results or answers for a query"
     properties:
-      at_id:
+      id:
         type: "string"
         example: "http://rtx.ncats.io/api/v1/response/1234/result/2345"
         description: "URI for this response"
@@ -228,26 +226,22 @@ definitions:
     description: "A thought graph associated with this result. This will commonly be a linear path subgraph from one concept to another, but related items aside of the path may be included."
     properties:
       node_list:
-        $ref: "#/definitions/Node_list"
+        type: "array"
+        items:
+          $ref: "#/definitions/Node"
       edge_list:
-        $ref: "#/definitions/Edge_list"
-  Node_list:
-    type: "array"
-    items:
-      $ref: "#/definitions/Node"
-  Edge_list:
-    type: "array"
-    items:
-      $ref: "#/definitions/Edge"
+        type: "array"
+        items:
+          $ref: "#/definitions/Edge"
   Node:
     type: "object"
     description: "A node in the thought subgraph"
     properties:
-      at_type:
+      type:
         type: "string"
         example: "protein"
         description: "Entity type of this node (e.g., protein, disease, etc.)"
-      at_id:
+      id:
         type: "string"
         example: "https://www.uniprot.org/uniprot/P00738"
         description: "URI identifier for this response"
@@ -271,7 +265,7 @@ definitions:
     type: "object"
     description: "An edge in the thought subgraph linking two nodes"
     properties:
-      at_type:
+      type:
         type: "string"
         example: "affects"
         description: "Entity type of this response"
@@ -288,14 +282,19 @@ definitions:
         format: "float"
         example: 0.99
         description: "Confidence metric for this edge, a value 0.0 (no confidence) and 1.0 (highest confidence)"
-  MeSHNGDResponse:
+  MeshNgdResponse:
     type: "object"
     properties:
-      status:
+      result_code:
         type: "string"
-        description: "String code denoting the success or failure of the response"
-        example: "success"
+        example: "TermNotFound"
+        description: "Set to OK for success, or some other short string to indicate and error (e.g., TermNotFound, etc.)"
+      message:
+        type: "string"
+        example: "Term 1 'malria' not found in MeSH"
+        description: "Extended message denoting the success or mode of failure for request"
       value:
         type: "number"
+        format: "float"
         description: "Calculated Normalized Google Distance for the two supplied terms"
         example: 0.714
