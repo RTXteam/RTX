@@ -134,12 +134,14 @@ class QueryNCBIeUtils:
 
     '''returns the mesh terms for a given MeSH Entrez UID
 
-    :param mesh_uid: str
+    :param mesh_uid: int (take the "D012345" form of the MeSH UID, remove the "D", convert to an integer, and add 
+                     68,000,000 to the integer; then pass that integer as "mesh_uid" to this function)
     :returns: list(str) of MeSH terms
     '''
     @staticmethod
     @CachedMethods.register
     def get_mesh_terms_for_mesh_uid(mesh_uid):
+        assert type(mesh_uid)==int
         res = QueryNCBIeUtils.send_query_get('esummary.fcgi',
                                              'db=mesh&id=' + str(mesh_uid))
         ret_mesh = []
@@ -424,9 +426,9 @@ if __name__ == '__main__':
     #    print(t1-t0)
 
 
-    print(QueryNCBIeUtils.normalized_google_distance(QueryNCBIeUtils.get_uniprot_names('P23219'), 'Naprosyn', mesh1=False))
-           
+#    print(QueryNCBIeUtils.normalized_google_distance(QueryNCBIeUtils.get_uniprot_names('P23219'), 'Naprosyn', mesh1=False))
 
+    print(QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(68014059))
 
 
 
