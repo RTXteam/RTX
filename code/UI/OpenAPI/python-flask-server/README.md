@@ -21,13 +21,13 @@ python3 -m swagger_server
 and open your browser to here:
 
 ```
-http://localhost:8080/devED/api/rtx/v1/ui/
+http://localhost:8080/api/rtx/v1/ui/
 ```
 
 Your Swagger definition lives here:
 
 ```
-http://localhost:8080/devED/api/rtx/v1/swagger.json
+http://localhost:8080/api/rtx/v1/swagger.json
 ```
 
 To launch the integration tests, use tox:

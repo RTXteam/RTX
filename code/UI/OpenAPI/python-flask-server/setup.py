@@ -29,7 +29,7 @@ setup(
     entry_points={
         'console_scripts': ['swagger_server=swagger_server.__main__:main']},
     long_description="""\
-    OpenAPI for RTX -devED testing
+    OpenAPI for RTX
     """
 )
 
