@@ -48,8 +48,8 @@ class RTXQuery:
 
     if id == 'Q1':
       # call out to OrangeBoard here to satify the query "What genetic conditions might offer protection against XXXXXX?"
-      cwd = os.path.dirname(os.path.abspath(__file__))
-      os.chdir("/mnt/data/orangeboard/devED/RTX/code/reasoningtool/QuestionAnswering")
+      cwd = os.getcwd()
+      os.chdir(os.path.dirname(os.path.abspath(__file__))+"/../../..//reasoningtool/QuestionAnswering")
       eprint("python3 Q1Solution.py -j -i '"+terms[0]+"'" )
       returnedText = subprocess.run( [ "python3 Q1Solution.py -j -i '"+terms[0]+"'" ], stdout=subprocess.PIPE, shell=True )
       os.chdir(cwd)
@@ -71,8 +71,8 @@ class RTXQuery:
 
     if id == 'Q2':
       # call out to OrangeBoard here to satify the query "What is the clinical outcome pathway of XXXXXX for treatment of YYYYYYY?"
-      cwd = os.path.dirname(os.path.abspath(__file__))
-      os.chdir("/mnt/data/orangeboard/devED/RTX/code/reasoningtool/QuestionAnswering")
+      cwd = os.getcwd()
+      os.chdir(os.path.dirname(os.path.abspath(__file__))+"/../../..//reasoningtool/QuestionAnswering")
       eprint("python3 Q2Solution.py -r '"+terms[0]+"' -d '"+terms[1]+"'" )
       returnedText = subprocess.run( [ "python3 Q2Solution.py -d '"+terms[0]+"' -r '"+terms[1]+"'" ], stdout=subprocess.PIPE, shell=True )
       os.chdir(cwd)

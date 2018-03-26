@@ -4,6 +4,15 @@ geneont_bioprocess	GO:0007165	signal transduction
 geneont_bioprocess	GO:0008283	cell proliferation
 geneont_bioprocess	GO:0036462	TRAIL-activated apoptotic signaling pathway
 geneont_bioprocess	GO:0051301	cell division
+geneont_bioprocess	GO:0006412	protein biosynthesis
+geneont_bioprocess	GO:0048870	cell movement
+geneont_bioprocess	GO:0019079	viral replication
+geneont_bioprocess	GO:0035810	diuresis
+geneont_bioprocess	GO:0006915	apoptosis
+geneont_bioprocess	GO:0051324	prophase
+geneont_bioprocess	GO:0006260	DNA replication
+geneont_bioprocess	GO:0015075	ion transporter activity
+geneont_bioprocess	GO:0042310	vasoconstriction
 anatont_anatomy	UBERON:0000014	zone of skin
 anatont_anatomy	UBERON:0000018	compound eye
 anatont_anatomy	UBERON:0000019	camera-type eye

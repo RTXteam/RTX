@@ -186,7 +186,7 @@ human_phenont_name_id_dict = ParsePhenont.get_name_id_dict('../../data/hpo/hp.ob
 def get_curie_ont_ids_for_mesh_term(mesh_term):
     ret_curie_ids = []
     mesh_uids = QueryNCBIeUtils.get_mesh_uids_for_mesh_term(mesh_term)
-    print(mesh_uids)
+#    print(mesh_uids)
     if len(mesh_uids) > 0:
         for mesh_uid in mesh_uids:
             mesh_uid_int = int(mesh_uid)

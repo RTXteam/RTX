@@ -79,7 +79,7 @@ class BioNetExpander:
         go_bp_dict = self.query_mygene_obj.get_gene_ontology_ids_bp_for_entrez_gene_id(entrez_gene_id)
         for go_id, go_term in go_bp_dict.items():
             node2 = self.orangeboard.add_node('geneont_bioprocess', go_id, desc=go_term)
-            self.add_rel('participates_in', 'gene_ontology', node1, node2)
+            self.orangeboard.add_rel('participates_in', 'gene_ontology', node, node2)
         
         anatomy_dict = QueryBioLink.get_anatomies_for_gene(ncbi_gene_id)
         for anatomy_id, anatomy_desc in anatomy_dict.items():

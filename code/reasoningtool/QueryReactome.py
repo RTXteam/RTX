@@ -151,43 +151,45 @@ class QueryReactome:
     ## called from BioNetExpander
     @staticmethod
     def query_uniprot_id_to_interacting_uniprot_ids_desc(uniprot_id):
-        res = QueryReactome.send_query_get('interactors/static/molecule', uniprot_id + '/details').json()
+        res = QueryReactome.send_query_get('interactors/static/molecule', uniprot_id + '/details')
         res_uniprot_ids = dict()
         if res is not None:
-            res_entities = res.get('entities', None)
-            if res_entities is not None:
-                for res_entity in res_entities:
-                    res_entity_interactors = res_entity.get('interactors', None)
-                    if res_entity_interactors is not None:
-                        for res_entity_interactor in res_entity_interactors:
-                            int_uniprot_id = res_entity_interactor.get('acc', None)
-                            if int_uniprot_id is not None:
-                                if 'CHEBI:' not in int_uniprot_id:
-                                    if '-' in int_uniprot_id:
-                                        int_uniprot_id = int_uniprot_id.split('-')[0]
-                                    int_alias = res_entity_interactor.get('alias', '')
-                                    alt_species = None
-                                    if ' ' in int_alias:
-                                        int_alias_split = int_alias.split(' ')
-                                        alt_species = int_alias_split[1]
-                                    if alt_species is None or (alt_species not in QueryReactome.SPECIES_MNEMONICS and \
-                                                               not (alt_species[0] == '9')):
-                                        if alt_species is not None:
-                                            if 'DNA' in int_alias_split or \
-                                               'DNA-PROBE' in int_alias_split or \
-                                               'DSDNA' in int_alias_split or \
-                                               'GENE' in int_alias_split or \
-                                               'PROMOTE' in int_alias_split or \
-                                               'PROMOTER' in int_alias_split or \
-                                               any(['-SITE' in alias_element for alias_element in int_alias_split]) or \
-                                               any(['BIND' in alias_element for alias_element in int_alias_split]):                                               
-                                                target_gene_symbol = int_alias_split[0]
-                                                int_alias = 'BINDSGENE:' + int_alias_split[0]
-                                            else:
-                                                print('For query protein ' + uniprot_id + ' and interactant protein ' + int_uniprot_id + ', check for potential other species name in Reactome output: ' + alt_species, file=sys.stderr)
-                                                int_alias = None
-                                        if int_alias is not None:
-                                            res_uniprot_ids[int_uniprot_id] = int_alias
+            res_json = res.json()
+            if res_json is not None:
+                res_entities = res_json.get('entities', None)
+                if res_entities is not None:
+                    for res_entity in res_entities:
+                        res_entity_interactors = res_entity.get('interactors', None)
+                        if res_entity_interactors is not None:
+                            for res_entity_interactor in res_entity_interactors:
+                                int_uniprot_id = res_entity_interactor.get('acc', None)
+                                if int_uniprot_id is not None:
+                                    if 'CHEBI:' not in int_uniprot_id:
+                                        if '-' in int_uniprot_id:
+                                            int_uniprot_id = int_uniprot_id.split('-')[0]
+                                        int_alias = res_entity_interactor.get('alias', '')
+                                        alt_species = None
+                                        if ' ' in int_alias:
+                                            int_alias_split = int_alias.split(' ')
+                                            alt_species = int_alias_split[1]
+                                        if alt_species is None or (alt_species not in QueryReactome.SPECIES_MNEMONICS and \
+                                                                   not (alt_species[0] == '9')):
+                                            if alt_species is not None:
+                                                if 'DNA' in int_alias_split or \
+                                                   'DNA-PROBE' in int_alias_split or \
+                                                   'DSDNA' in int_alias_split or \
+                                                   'GENE' in int_alias_split or \
+                                                   'PROMOTE' in int_alias_split or \
+                                                   'PROMOTER' in int_alias_split or \
+                                                   any(['-SITE' in alias_element for alias_element in int_alias_split]) or \
+                                                   any(['BIND' in alias_element for alias_element in int_alias_split]):                                               
+                                                    target_gene_symbol = int_alias_split[0]
+                                                    int_alias = 'BINDSGENE:' + int_alias_split[0]
+                                                else:
+                                                    print('For query protein ' + uniprot_id + ' and interactant protein ' + int_uniprot_id + ', check for potential other species name in Reactome output: ' + alt_species, file=sys.stderr)
+                                                    int_alias = None
+                                            if int_alias is not None:
+                                                res_uniprot_ids[int_uniprot_id] = int_alias
         return res_uniprot_ids
 
     @staticmethod
