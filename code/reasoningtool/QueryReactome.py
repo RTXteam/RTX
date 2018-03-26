@@ -54,6 +54,7 @@ class QueryReactome:
                          'SV40',
                          'HV1B1',
                          'SCHPO',
+                         'RUBV',
                          'MUS']
     
     @staticmethod
