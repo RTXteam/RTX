@@ -241,7 +241,7 @@ class QueryNCBIeUtils:
         ni = QueryNCBIeUtils.get_pubmed_hits_count('{mesh1}'.format(mesh1=mesh1_str_decorated))
         nj = QueryNCBIeUtils.get_pubmed_hits_count('{mesh2}'.format(mesh2=mesh2_str_decorated))
         if ni is None or nj is None or nij is None:
-            return None
+            return math.nan
         if ni == 0 or nj == 0 or nij == 0:
             return math.nan
         numerator = max(math.log(ni), math.log(nj)) - math.log(nij)
