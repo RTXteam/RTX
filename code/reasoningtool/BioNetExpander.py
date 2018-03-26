@@ -54,7 +54,7 @@ class BioNetExpander:
     def expand_pharos_drug(self, node):
         drug_name = node.name
         drug_desc = node.desc
-        target_uniprot_ids = QueryChEMBL.get_target_uniprot_ids_for_drug(drug_name)
+        target_uniprot_ids = QueryChEMBL.get_target_uniprot_ids_for_drug(drug_desc)
         if target_uniprot_ids is not None:
             for target_uniprot_id in target_uniprot_ids.keys():
                 probability = target_uniprot_ids[target_uniprot_id]
