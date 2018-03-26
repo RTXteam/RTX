@@ -6,7 +6,7 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from swagger_server.models.base_model_ import Model
-from swagger_server.models.response_result import ResponseResult  # noqa: F401,E501
+from swagger_server.models.result import Result  # noqa: F401,E501
 from swagger_server import util
 
 
@@ -16,41 +16,71 @@ class Response(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, id: int=None, code: int=None, code_string: str=None, message: str=None, result: ResponseResult=None):  # noqa: E501
+    def __init__(self, context: str=None, type: str=None, id: str=None, tool_version: str=None, schema_version: str=None, datetime: str=None, original_question_text: str=None, restated_question_text: str=None, result_code: str=None, message: str=None, result_list: List[Result]=None):  # noqa: E501
         """Response - a model defined in Swagger
 
+        :param context: The context of this Response.  # noqa: E501
+        :type context: str
+        :param type: The type of this Response.  # noqa: E501
+        :type type: str
         :param id: The id of this Response.  # noqa: E501
-        :type id: int
-        :param code: The code of this Response.  # noqa: E501
-        :type code: int
-        :param code_string: The code_string of this Response.  # noqa: E501
-        :type code_string: str
+        :type id: str
+        :param tool_version: The tool_version of this Response.  # noqa: E501
+        :type tool_version: str
+        :param schema_version: The schema_version of this Response.  # noqa: E501
+        :type schema_version: str
+        :param datetime: The datetime of this Response.  # noqa: E501
+        :type datetime: str
+        :param original_question_text: The original_question_text of this Response.  # noqa: E501
+        :type original_question_text: str
+        :param restated_question_text: The restated_question_text of this Response.  # noqa: E501
+        :type restated_question_text: str
+        :param result_code: The result_code of this Response.  # noqa: E501
+        :type result_code: str
         :param message: The message of this Response.  # noqa: E501
         :type message: str
-        :param result: The result of this Response.  # noqa: E501
-        :type result: ResponseResult
+        :param result_list: The result_list of this Response.  # noqa: E501
+        :type result_list: List[Result]
         """
         self.swagger_types = {
-            'id': int,
-            'code': int,
-            'code_string': str,
+            'context': str,
+            'type': str,
+            'id': str,
+            'tool_version': str,
+            'schema_version': str,
+            'datetime': str,
+            'original_question_text': str,
+            'restated_question_text': str,
+            'result_code': str,
             'message': str,
-            'result': ResponseResult
+            'result_list': List[Result]
         }
 
         self.attribute_map = {
+            'context': 'context',
+            'type': 'type',
             'id': 'id',
-            'code': 'code',
-            'code_string': 'codeString',
+            'tool_version': 'tool_version',
+            'schema_version': 'schema_version',
+            'datetime': 'datetime',
+            'original_question_text': 'original_question_text',
+            'restated_question_text': 'restated_question_text',
+            'result_code': 'result_code',
             'message': 'message',
-            'result': 'result'
+            'result_list': 'result_list'
         }
 
+        self._context = context
+        self._type = type
         self._id = id
-        self._code = code
-        self._code_string = code_string
+        self._tool_version = tool_version
+        self._schema_version = schema_version
+        self._datetime = datetime
+        self._original_question_text = original_question_text
+        self._restated_question_text = restated_question_text
+        self._result_code = result_code
         self._message = message
-        self._result = result
+        self._result_list = result_list
 
     @classmethod
     def from_dict(cls, dikt) -> 'Response':
@@ -64,79 +94,217 @@ class Response(Model):
         return util.deserialize_model(dikt, cls)
 
     @property
-    def id(self) -> int:
+    def context(self) -> str:
+        """Gets the context of this Response.
+
+        JSON-LD context URI  # noqa: E501
+
+        :return: The context of this Response.
+        :rtype: str
+        """
+        return self._context
+
+    @context.setter
+    def context(self, context: str):
+        """Sets the context of this Response.
+
+        JSON-LD context URI  # noqa: E501
+
+        :param context: The context of this Response.
+        :type context: str
+        """
+
+        self._context = context
+
+    @property
+    def type(self) -> str:
+        """Gets the type of this Response.
+
+        Entity type of this response  # noqa: E501
+
+        :return: The type of this Response.
+        :rtype: str
+        """
+        return self._type
+
+    @type.setter
+    def type(self, type: str):
+        """Sets the type of this Response.
+
+        Entity type of this response  # noqa: E501
+
+        :param type: The type of this Response.
+        :type type: str
+        """
+
+        self._type = type
+
+    @property
+    def id(self) -> str:
         """Gets the id of this Response.
 
-        Internal identifier of the response  # noqa: E501
+        URI for this response  # noqa: E501
 
         :return: The id of this Response.
-        :rtype: int
+        :rtype: str
         """
         return self._id
 
     @id.setter
-    def id(self, id: int):
+    def id(self, id: str):
         """Sets the id of this Response.
 
-        Internal identifier of the response  # noqa: E501
+        URI for this response  # noqa: E501
 
         :param id: The id of this Response.
-        :type id: int
+        :type id: str
         """
 
         self._id = id
 
     @property
-    def code(self) -> int:
-        """Gets the code of this Response.
+    def tool_version(self) -> str:
+        """Gets the tool_version of this Response.
 
-        Numeric code denoting the success or failture of the response  # noqa: E501
+        Version label of the tool that generated this response  # noqa: E501
 
-        :return: The code of this Response.
-        :rtype: int
-        """
-        return self._code
-
-    @code.setter
-    def code(self, code: int):
-        """Sets the code of this Response.
-
-        Numeric code denoting the success or failture of the response  # noqa: E501
-
-        :param code: The code of this Response.
-        :type code: int
-        """
-
-        self._code = code
-
-    @property
-    def code_string(self) -> str:
-        """Gets the code_string of this Response.
-
-        String code denoting the success or failture of the response  # noqa: E501
-
-        :return: The code_string of this Response.
+        :return: The tool_version of this Response.
         :rtype: str
         """
-        return self._code_string
+        return self._tool_version
 
-    @code_string.setter
-    def code_string(self, code_string: str):
-        """Sets the code_string of this Response.
+    @tool_version.setter
+    def tool_version(self, tool_version: str):
+        """Sets the tool_version of this Response.
 
-        String code denoting the success or failture of the response  # noqa: E501
+        Version label of the tool that generated this response  # noqa: E501
 
-        :param code_string: The code_string of this Response.
-        :type code_string: str
+        :param tool_version: The tool_version of this Response.
+        :type tool_version: str
         """
 
-        self._code_string = code_string
+        self._tool_version = tool_version
+
+    @property
+    def schema_version(self) -> str:
+        """Gets the schema_version of this Response.
+
+        Version label of this JSON-LD schema  # noqa: E501
+
+        :return: The schema_version of this Response.
+        :rtype: str
+        """
+        return self._schema_version
+
+    @schema_version.setter
+    def schema_version(self, schema_version: str):
+        """Sets the schema_version of this Response.
+
+        Version label of this JSON-LD schema  # noqa: E501
+
+        :param schema_version: The schema_version of this Response.
+        :type schema_version: str
+        """
+
+        self._schema_version = schema_version
+
+    @property
+    def datetime(self) -> str:
+        """Gets the datetime of this Response.
+
+        ISO standard datetime string for the time that this response was generated  # noqa: E501
+
+        :return: The datetime of this Response.
+        :rtype: str
+        """
+        return self._datetime
+
+    @datetime.setter
+    def datetime(self, datetime: str):
+        """Sets the datetime of this Response.
+
+        ISO standard datetime string for the time that this response was generated  # noqa: E501
+
+        :param datetime: The datetime of this Response.
+        :type datetime: str
+        """
+
+        self._datetime = datetime
+
+    @property
+    def original_question_text(self) -> str:
+        """Gets the original_question_text of this Response.
+
+        The original question text typed in by the user  # noqa: E501
+
+        :return: The original_question_text of this Response.
+        :rtype: str
+        """
+        return self._original_question_text
+
+    @original_question_text.setter
+    def original_question_text(self, original_question_text: str):
+        """Sets the original_question_text of this Response.
+
+        The original question text typed in by the user  # noqa: E501
+
+        :param original_question_text: The original_question_text of this Response.
+        :type original_question_text: str
+        """
+
+        self._original_question_text = original_question_text
+
+    @property
+    def restated_question_text(self) -> str:
+        """Gets the restated_question_text of this Response.
+
+        A precise restatement of the question, as understood by the Translator, for which the answer applies. The user should verify that the restated question matches the intent of their original question (it might not).  # noqa: E501
+
+        :return: The restated_question_text of this Response.
+        :rtype: str
+        """
+        return self._restated_question_text
+
+    @restated_question_text.setter
+    def restated_question_text(self, restated_question_text: str):
+        """Sets the restated_question_text of this Response.
+
+        A precise restatement of the question, as understood by the Translator, for which the answer applies. The user should verify that the restated question matches the intent of their original question (it might not).  # noqa: E501
+
+        :param restated_question_text: The restated_question_text of this Response.
+        :type restated_question_text: str
+        """
+
+        self._restated_question_text = restated_question_text
+
+    @property
+    def result_code(self) -> str:
+        """Gets the result_code of this Response.
+
+        Set to OK for success, or some other short string to indicate and error (e.g., KGUnavailable, TermNotFound, etc.)  # noqa: E501
+
+        :return: The result_code of this Response.
+        :rtype: str
+        """
+        return self._result_code
+
+    @result_code.setter
+    def result_code(self, result_code: str):
+        """Sets the result_code of this Response.
+
+        Set to OK for success, or some other short string to indicate and error (e.g., KGUnavailable, TermNotFound, etc.)  # noqa: E501
+
+        :param result_code: The result_code of this Response.
+        :type result_code: str
+        """
+
+        self._result_code = result_code
 
     @property
     def message(self) -> str:
         """Gets the message of this Response.
 
-        Extended message denoting the success or failture of the response  # noqa: E501
+        Extended message denoting the success or mode of failure for the response  # noqa: E501
 
         :return: The message of this Response.
         :rtype: str
@@ -147,7 +315,7 @@ class Response(Model):
     def message(self, message: str):
         """Sets the message of this Response.
 
-        Extended message denoting the success or failture of the response  # noqa: E501
+        Extended message denoting the success or mode of failure for the response  # noqa: E501
 
         :param message: The message of this Response.
         :type message: str
@@ -156,22 +324,22 @@ class Response(Model):
         self._message = message
 
     @property
-    def result(self) -> ResponseResult:
-        """Gets the result of this Response.
+    def result_list(self) -> List[Result]:
+        """Gets the result_list of this Response.
 
 
-        :return: The result of this Response.
-        :rtype: ResponseResult
+        :return: The result_list of this Response.
+        :rtype: List[Result]
         """
-        return self._result
+        return self._result_list
 
-    @result.setter
-    def result(self, result: ResponseResult):
-        """Sets the result of this Response.
+    @result_list.setter
+    def result_list(self, result_list: List[Result]):
+        """Sets the result_list of this Response.
 
 
-        :param result: The result of this Response.
-        :type result: ResponseResult
+        :param result_list: The result_list of this Response.
+        :type result_list: List[Result]
         """
 
-        self._result = result
+        self._result_list = result_list

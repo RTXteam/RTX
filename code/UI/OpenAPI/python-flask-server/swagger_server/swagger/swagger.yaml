@@ -1,7 +1,7 @@
 ---
 swagger: "2.0"
 info:
-  description: "OpenAPI for RTX -devED testing"
+  description: "OpenAPI for RTX"
   version: "1.1.0"
   title: "RTX"
   contact:
@@ -10,18 +10,24 @@ info:
     name: "Apache 2.0"
     url: "http://www.apache.org/licenses/LICENSE-2.0.html"
 host: "rtx.ncats.io"
-basePath: "/devED/api/rtx/v1"
+basePath: "/api/rtx/v1"
 tags:
 - name: "translate"
   description: "Translate natural language question into a standardized query"
   externalDocs:
     description: "Documentation for the RTX translate function"
-    url: "http://rtx.ncats.io/devED/overview.html#translate"
+    url: "http://rtx.ncats.io/overview.html#translate"
 - name: "query"
   description: "Query RTX using a predefined question type"
   externalDocs:
     description: "Documentation for the RTX query function"
-    url: "http://rtx.ncats.io/devED/overview.html#query"
+    url: "http://rtx.ncats.io/overview.html#query"
+- name: "getPubMedMeSHNGD"
+  description: "Query to get the Normalized Google Distance between two MeSH terms\
+    \ based on co-occurance in all PubMed article annotations"
+  externalDocs:
+    description: "Documentation for the RTX query function"
+    url: "http://rtx.ncats.io/overview.html#getPubMedMeSHNGD"
 schemes:
 - "http"
 paths:
@@ -75,12 +81,39 @@ paths:
         200:
           description: "successful operation"
           schema:
-            type: "array"
-            items:
-              $ref: "#/definitions/Response"
+            $ref: "#/definitions/Response"
         400:
           description: "Invalid status value"
       x-swagger-router-controller: "swagger_server.controllers.query_controller"
+  /getPubMedMeSHNGD/{term1}/{term2}:
+    get:
+      tags:
+      - "getPubMedMeSHNGD"
+      summary: "Query to get the Normalized Google Distance between two MeSH terms\
+        \ based on co-occurance in all PubMed article annotations"
+      description: ""
+      operationId: "get_pub_med_me_shngd"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "term1"
+        in: "path"
+        description: "First of two terms. Order not important."
+        required: true
+        type: "string"
+      - name: "term2"
+        in: "path"
+        description: "Second of two terms. Order not important."
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/MeshNgdResponse"
+        400:
+          description: "Invalid terms"
+      x-swagger-router-controller: "swagger_server.controllers.getpubmedmeshngd_controller"
 definitions:
   Question:
     type: "object"
@@ -134,49 +167,297 @@ definitions:
   Response:
     type: "object"
     properties:
-      id:
-        type: "integer"
-        format: "int32"
-        example: 1254
-        description: "Internal identifier of the response"
-      code:
-        type: "integer"
-        format: "int32"
-        example: 11
-        description: "Numeric code denoting the success or failture of the response"
-      codeString:
+      context:
         type: "string"
-        example: "TermNotFound"
-        description: "String code denoting the success or failture of the response"
+        example: "http://translator.ncats.io"
+        description: "JSON-LD context URI"
+      type:
+        type: "string"
+        example: "medical_translator_query_result"
+        description: "Entity type of this response"
+      id:
+        type: "string"
+        example: "http://rtx.ncats.io/api/v1/response/1234"
+        description: "URI for this response"
+      tool_version:
+        type: "string"
+        example: "RTX 0.4.0"
+        description: "Version label of the tool that generated this response"
+      schema_version:
+        type: "string"
+        example: "0.5"
+        description: "Version label of this JSON-LD schema"
+      datetime:
+        type: "string"
+        example: "2018-01-09 12:34:45"
+        description: "ISO standard datetime string for the time that this response\
+          \ was generated"
+      original_question_text:
+        type: "string"
+        example: "what proteins are affected by sickle cell anemia"
+        description: "The original question text typed in by the user"
+      restated_question_text:
+        type: "string"
+        example: "Which proteins are affected by sickle cell anemia?"
+        description: "A precise restatement of the question, as understood by the\
+          \ Translator, for which the answer applies. The user should verify that\
+          \ the restated question matches the intent of their original question (it\
+          \ might not)."
+      result_code:
+        type: "string"
+        example: "OK"
+        description: "Set to OK for success, or some other short string to indicate\
+          \ and error (e.g., KGUnavailable, TermNotFound, etc.)"
       message:
         type: "string"
-        example: "The term 'hypertwitteremia' is not a recognized condition needed\
-          \ for query type 'Q1'."
-        description: "Extended message denoting the success or failture of the response"
-      result:
-        $ref: "#/definitions/Response_result"
+        example: "1 answer found"
+        description: "Extended message denoting the success or mode of failure for\
+          \ the response"
+      result_list:
+        type: "array"
+        items:
+          $ref: "#/definitions/Result"
     example:
-      result:
-        text: "The genetic condition sickle-cell anemia may provide protection from\
+      schema_version: "0.5"
+      datetime: "2018-01-09 12:34:45"
+      tool_version: "RTX 0.4.0"
+      context: "http://translator.ncats.io"
+      result_list:
+      - result_graph:
+          node_list:
+          - symbol: "HP"
+            name: "Haptoglobin"
+            description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
+            id: "https://www.uniprot.org/uniprot/P00738"
+            accession: "OMIM:603903"
+            type: "protein"
+          - symbol: "HP"
+            name: "Haptoglobin"
+            description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
+            id: "https://www.uniprot.org/uniprot/P00738"
+            accession: "OMIM:603903"
+            type: "protein"
+          edge_list:
+          - confidence: 0.99
+            target_id: "https://www.uniprot.org/uniprot/P00738"
+            source_id: "http://omim.org/entry/603903"
+            type: "affects"
+          - confidence: 0.99
+            target_id: "https://www.uniprot.org/uniprot/P00738"
+            source_id: "http://omim.org/entry/603903"
+            type: "affects"
+        confidence: 0.9234
+        id: "http://rtx.ncats.io/api/v1/response/1234/result/2345"
+        text: "The genetic condition sickle cell anemia may provide protection from\
           \ cerebral malaria via genetic alterations of proteins HBB (P68871) and\
           \ HMOX1 (P09601)."
-      code: 11
-      codeString: "TermNotFound"
-      id: 1254
-      message: "The term 'hypertwitteremia' is not a recognized condition needed for\
-        \ query type 'Q1'."
-  Response_result:
+      - result_graph:
+          node_list:
+          - symbol: "HP"
+            name: "Haptoglobin"
+            description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
+            id: "https://www.uniprot.org/uniprot/P00738"
+            accession: "OMIM:603903"
+            type: "protein"
+          - symbol: "HP"
+            name: "Haptoglobin"
+            description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
+            id: "https://www.uniprot.org/uniprot/P00738"
+            accession: "OMIM:603903"
+            type: "protein"
+          edge_list:
+          - confidence: 0.99
+            target_id: "https://www.uniprot.org/uniprot/P00738"
+            source_id: "http://omim.org/entry/603903"
+            type: "affects"
+          - confidence: 0.99
+            target_id: "https://www.uniprot.org/uniprot/P00738"
+            source_id: "http://omim.org/entry/603903"
+            type: "affects"
+        confidence: 0.9234
+        id: "http://rtx.ncats.io/api/v1/response/1234/result/2345"
+        text: "The genetic condition sickle cell anemia may provide protection from\
+          \ cerebral malaria via genetic alterations of proteins HBB (P68871) and\
+          \ HMOX1 (P09601)."
+      result_code: "OK"
+      id: "http://rtx.ncats.io/api/v1/response/1234"
+      type: "medical_translator_query_result"
+      original_question_text: "what proteins are affected by sickle cell anemia"
+      message: "1 answer found"
+      restated_question_text: "Which proteins are affected by sickle cell anemia?"
+  Result:
+    type: "object"
     properties:
+      id:
+        type: "string"
+        example: "http://rtx.ncats.io/api/v1/response/1234/result/2345"
+        description: "URI for this response"
       text:
         type: "string"
-        example: "The genetic condition sickle-cell anemia may provide protection\
+        example: "The genetic condition sickle cell anemia may provide protection\
           \ from cerebral malaria via genetic alterations of proteins HBB (P68871)\
           \ and HMOX1 (P09601)."
-    description: "A data structure that depends on the query type"
+        description: "A free text description or comment from the reasoner about this\
+          \ answer"
+      confidence:
+        type: "number"
+        format: "float"
+        example: 0.9234
+        description: "Confidence metric for this result, a value 0.0 (no confidence)\
+          \ and 1.0 (highest confidence)"
+      result_graph:
+        $ref: "#/definitions/Result_graph"
+    description: "One of potentially several results or answers for a query"
     example:
-      text: "The genetic condition sickle-cell anemia may provide protection from\
+      result_graph:
+        node_list:
+        - symbol: "HP"
+          name: "Haptoglobin"
+          description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
+          id: "https://www.uniprot.org/uniprot/P00738"
+          accession: "OMIM:603903"
+          type: "protein"
+        - symbol: "HP"
+          name: "Haptoglobin"
+          description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
+          id: "https://www.uniprot.org/uniprot/P00738"
+          accession: "OMIM:603903"
+          type: "protein"
+        edge_list:
+        - confidence: 0.99
+          target_id: "https://www.uniprot.org/uniprot/P00738"
+          source_id: "http://omim.org/entry/603903"
+          type: "affects"
+        - confidence: 0.99
+          target_id: "https://www.uniprot.org/uniprot/P00738"
+          source_id: "http://omim.org/entry/603903"
+          type: "affects"
+      confidence: 0.9234
+      id: "http://rtx.ncats.io/api/v1/response/1234/result/2345"
+      text: "The genetic condition sickle cell anemia may provide protection from\
         \ cerebral malaria via genetic alterations of proteins HBB (P68871) and HMOX1\
         \ (P09601)."
+  Result_graph:
+    type: "object"
+    properties:
+      node_list:
+        type: "array"
+        items:
+          $ref: "#/definitions/Node"
+      edge_list:
+        type: "array"
+        items:
+          $ref: "#/definitions/Edge"
+    description: "A thought graph associated with this result. This will commonly\
+      \ be a linear path subgraph from one concept to another, but related items aside\
+      \ of the path may be included."
+    example:
+      node_list:
+      - symbol: "HP"
+        name: "Haptoglobin"
+        description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
+        id: "https://www.uniprot.org/uniprot/P00738"
+        accession: "OMIM:603903"
+        type: "protein"
+      - symbol: "HP"
+        name: "Haptoglobin"
+        description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
+        id: "https://www.uniprot.org/uniprot/P00738"
+        accession: "OMIM:603903"
+        type: "protein"
+      edge_list:
+      - confidence: 0.99
+        target_id: "https://www.uniprot.org/uniprot/P00738"
+        source_id: "http://omim.org/entry/603903"
+        type: "affects"
+      - confidence: 0.99
+        target_id: "https://www.uniprot.org/uniprot/P00738"
+        source_id: "http://omim.org/entry/603903"
+        type: "affects"
+  Node:
+    type: "object"
+    properties:
+      type:
+        type: "string"
+        example: "protein"
+        description: "Entity type of this node (e.g., protein, disease, etc.)"
+      id:
+        type: "string"
+        example: "https://www.uniprot.org/uniprot/P00738"
+        description: "URI identifier for this response"
+      symbol:
+        type: "string"
+        example: "HP"
+        description: "Short abbreviation or symbol for this entity"
+      name:
+        type: "string"
+        example: "Haptoglobin"
+        description: "Formal name of the entity"
+      accession:
+        type: "string"
+        example: "OMIM:603903"
+        description: "Accession number in an external resource for this entity"
+      description:
+        type: "string"
+        example: "Haptoglobin captures, and combines with free plasma hemoglobin..."
+        description: "One to three sentences of description/definition of this entity"
+    description: "A node in the thought subgraph"
+    example:
+      symbol: "HP"
+      name: "Haptoglobin"
+      description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
+      id: "https://www.uniprot.org/uniprot/P00738"
+      accession: "OMIM:603903"
+      type: "protein"
+  Edge:
+    type: "object"
+    properties:
+      type:
+        type: "string"
+        example: "affects"
+        description: "Entity type of this response"
+      source_id:
+        type: "string"
+        example: "http://omim.org/entry/603903"
+        description: "Corresponds to the @id of source node of this edge"
+      target_id:
+        type: "string"
+        example: "https://www.uniprot.org/uniprot/P00738"
+        description: "Corresponds to the @id of target node of this edge"
+      confidence:
+        type: "number"
+        format: "float"
+        example: 0.99
+        description: "Confidence metric for this edge, a value 0.0 (no confidence)\
+          \ and 1.0 (highest confidence)"
+    description: "An edge in the thought subgraph linking two nodes"
+    example:
+      confidence: 0.99
+      target_id: "https://www.uniprot.org/uniprot/P00738"
+      source_id: "http://omim.org/entry/603903"
+      type: "affects"
+  MeshNgdResponse:
+    type: "object"
+    properties:
+      result_code:
+        type: "string"
+        example: "TermNotFound"
+        description: "Set to OK for success, or some other short string to indicate\
+          \ and error (e.g., TermNotFound, etc.)"
+      message:
+        type: "string"
+        example: "Term 1 'malria' not found in MeSH"
+        description: "Extended message denoting the success or mode of failure for\
+          \ request"
+      value:
+        type: "number"
+        format: "float"
+        example: 0.714
+        description: "Calculated Normalized Google Distance for the two supplied terms"
+    example:
+      result_code: "TermNotFound"
+      message: "Term 1 'malria' not found in MeSH"
+      value: 0.714
 externalDocs:
   description: "Documentation for the RTX web service"
-  url: "http://rtx.ncats.io/devED/overview.html"
+  url: "http://rtx.ncats.io/overview.html"
