@@ -240,6 +240,8 @@ class QueryNCBIeUtils:
         N = 2.7e+7 * 20  # from PubMed home page there are 27 million articles; avg 20 MeSH terms per article
         ni = QueryNCBIeUtils.get_pubmed_hits_count('{mesh1}'.format(mesh1=mesh1_str_decorated))
         nj = QueryNCBIeUtils.get_pubmed_hits_count('{mesh2}'.format(mesh2=mesh2_str_decorated))
+        if ni is None or nj is None or nij is None:
+            return None
         if ni == 0 or nj == 0 or nij == 0:
             return math.nan
         numerator = max(math.log(ni), math.log(nj)) - math.log(nij)
@@ -427,11 +429,7 @@ if __name__ == '__main__':
 
 
 #    print(QueryNCBIeUtils.normalized_google_distance(QueryNCBIeUtils.get_uniprot_names('P23219'), 'Naprosyn', mesh1=False))
-
     print(QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(68014059))
-
-
-
     # print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(219700)) # OMIM preferred name: "CYSTIC FIBROSIS"
     # print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(125050)) # OMIM preferred name: "DEAFNESS WITH ANHIDROTIC ECTODERMAL DYSPLASIA"
     # print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(310350)) # OMIM preferred name: "MYELOLYMPHATIC INSUFFICIENCY"
