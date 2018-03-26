@@ -49,7 +49,7 @@ def answerQ2(drug_name, disease_name, k):
 		print("Sorry, the disease %s is not yet in our knowledge graph." % disease_name)
 		return 1
 
-
+	# TODO: could dynamically get the terminal node label as some are (drug, phenotype) pairs
 	# get the relevant subgraph between the source and target nodes
 	try:  # First look for COP's where the gene is associated to the disease
 		g = RU.return_subgraph_through_node_labels(drug_name, 'pharos_drug', disease_name, 'disont_disease',
@@ -209,11 +209,12 @@ def main():
 	k = args.kpaths
 
 	if all_d:
-		for drug in list(drug_to_disease_doid.keys()):
+		for i, drug in enumerate(list(drug_to_disease_doid.keys())):
 			disease = drug_to_disease_doid[drug]  # doid
 			disease_description = disease_doid_to_description[disease]  # disease description
 			print("\n")
-			print((drug, disease_description))
+			print((drug, disease_description, disease))
+			print(i)
 			res = answerQ2(drug, disease, k)
 	else:
 		res = answerQ2(drug, disease, k)
