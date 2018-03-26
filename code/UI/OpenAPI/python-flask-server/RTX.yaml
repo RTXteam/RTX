@@ -261,6 +261,31 @@ definitions:
         type: "string"
         example: "Haptoglobin captures, and combines with free plasma hemoglobin..."
         description: "One to three sentences of description/definition of this entity"
+      node_attributes:
+        type: "array"
+        description: "A list of arbitrary attributes for the node"
+        items:
+          $ref: "#/definitions/Node_attribute"
+  Node_attribute:
+    type: "object"
+    description: "A generic attribute for a node"
+    properties:
+      type:
+        type: "string"
+        example: "article"
+        description: "Entity type of this attribute"
+      name:
+        type: "string"
+        example: "Wikipedia article"
+        description: "Formal name of the attribute"
+      value:
+        type: "string"
+        example: "7.23e-12"
+        description: "Value of the attribute"
+      url:
+        type: "string"
+        example: "https://en.wikipedia.org/wiki/Malaria"
+        description: "A URL corresponding to this attribute"
   Edge:
     type: "object"
     description: "An edge in the thought subgraph linking two nodes"
