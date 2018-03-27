@@ -22,6 +22,7 @@ class FormatResponse:
 		self._question_number = question_number
 		self._now = datetime.datetime.now()
 		self._result_list = []
+		self._num_results = 0
 		# Create the response object and fill it with attributes about the response
 		self.response = Response()
 		self.response.context = "http://translator.ncats.io"
@@ -33,7 +34,7 @@ class FormatResponse:
 		self.response.original_question_text = "ERIC FILL THIS IN FROM QuestionTranslator.py"  # TODO
 		self.response.restated_question_text = "ERIC FILL THIS IN FROM QuestionTranslator.py"  # TODO
 		self.response.result_code = "OK"  # TODO: from QuestionTranslator.py
-		self.response.message = "1 result found"  # TODO: figure out how to populate this
+		self.response.message = "%s result found" % self._num_results  # TODO: figure out how to populate this
 
 	def __str__(self):
 		return repr(self.response)
@@ -110,6 +111,9 @@ class FormatResponse:
 		# Put the first result (potential answer) into the response
 		self._result_list.append(result1)
 		self.response.result_list = self._result_list
+		# Increment the number of results
+		self._num_results += 1
+		self.response.message = "%s result found" % self._num_results
 
 if __name__ == '__main__':
 	test = FormatResponse(2)

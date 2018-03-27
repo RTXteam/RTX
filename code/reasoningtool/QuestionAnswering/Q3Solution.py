@@ -59,7 +59,7 @@ class Q3:
 									"%s and %s are connected by the relationship %s" % (
 									source_description, RU.get_node_property(target, 'description'),
 									relationship_type), 1)
-				return response
+			return response
 
 	def describe(self):
 		output = "Answers questions of the form: 'What proteins does tranilast target?' and 'What genes are affected by " \
