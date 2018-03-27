@@ -194,6 +194,7 @@ def answerQ2(drug_name, disease_name, k, text=False):
 	else:  # you want the result object model
 		response = FormatOutput.FormatResponse(2)
 		for path_ind in range(len(node_paths)):
+			# Format the free text portion
 			node_path = node_paths[path_ind]
 			edge_path = edge_paths[path_ind]
 			to_print = ""
