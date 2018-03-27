@@ -89,6 +89,25 @@ class QueryNCBIeUtils:
                     res_set |= set([int(uid_str) for uid_str in idlist])
         return res_set
     
+    '''returns a set of mesh UIDs for a given disease name
+
+    '''
+    @staticmethod
+    @CachedMethods.register
+    def get_mesh_uids_for_disease_or_phenotype_string(disphen_str):
+        res = QueryNCBIeUtils.send_query_get('esearch.fcgi',
+                                             'db=mesh&term=' + urllib.parse.quote(disphen_str + '[disease/phenotype]',safe=''))
+        res_set = set()
+        if res is not None:
+            res_json = res.json()
+            esr = res_json.get('esearchresult', None)
+            if esr is not None:
+                idlist = esr.get('idlist', None)
+                if idlist is not None:
+                    res_set |= set([int(uid_str) for uid_str in idlist])
+        return res_set
+    
+    
     '''returns a list of mesh UIDs for a given mesh term query
 
     '''
@@ -338,6 +357,62 @@ class QueryNCBIeUtils:
                         search += '|' + name
         search = search[1:]  # removes leading |
         return search
+
+    
+    '''Returns a set of mesh ids for a given clinvar id
+
+    '''
+    @staticmethod
+    @CachedMethods.register
+    def get_mesh_id_for_clinvar_uid(clinvar_id):
+        # This checks for a straight clinvar id -> mesh id conversion:
+        res = QueryNCBIeUtils.send_query_get('elink.fcgi',
+                                             'db=mesh&dbfrom=clinvar&id=' + str(clinvar_id))
+        res_set = set()
+        if res is not None:
+            res_json = res.json()
+            linksets = res_json.get('linksets', None)
+            if linksets is not None:
+                link = linksets[0]
+                if link is not None:
+                    dbs = link.get('linksetdbs', None)
+                    if dbs is not None:
+                        mesh_db = dbs[0]
+                        if mesh_db is not None:
+                            ids = mesh_db.get('links', None)
+                            res_set |= set([int(uid_str) for uid_str in ids])
+
+        # if there are no mesh ids returned above then this finds clinvar -> medgen -> mesh canversions:
+        if len(res_set) == 0:
+            res = QueryNCBIeUtils.send_query_get('elink.fcgi',
+                                             'db=medgen&dbfrom=clinvar&id=' + str(clinvar_id))
+            if res is not None:
+                res_json = res.json()
+                linksets = res_json.get('linksets', None)
+                if linksets is not None:
+                    link = linksets[0]
+                    if link is not None:
+                        dbs = link.get('linksetdbs', None)
+                        if dbs is not None:
+                            medgen = dbs[0]
+                            if medgen is not None:
+                                ids = medgen.get('links', None)
+                                if ids is not None:
+                                    for medgen_id in ids:
+                                        res2 = QueryNCBIeUtils.send_query_get('elink.fcgi',
+                                            'db=mesh&dbfrom=medgen&id=' + str(medgen_id))
+                                        res2_json = res2.json()
+                                        linksets2 = res2_json.get('linksets', None)
+                                        if linksets2 is not None:
+                                            link2 = linksets2[0]
+                                            if link2 is not None:
+                                                dbs2 = link2.get('linksetdbs', None)
+                                                if dbs2 is not None:
+                                                    mesh_data = dbs2[0]
+                                                    if mesh_data is not None:
+                                                        mesh_ids = mesh_data.get('links', None)
+                                                        res_set |= set([int(uid_str) for uid_str in mesh_ids])
+        return res_set
               
 if __name__ == '__main__':
 #    print(QueryNCBIeUtils.get_clinvar_uids_for_disease_or_phenotype_string('hypercholesterolemia'))
