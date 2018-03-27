@@ -220,7 +220,7 @@ class QueryNCBIeUtils:
         
     @staticmethod
     @CachedMethods.register
-    def get_pubmed_hits_count(term_str):
+    def get_pubmed_hits_count(term_str, joint=False):
         term_str_encoded = urllib.parse.quote(term_str, safe='')
         res = QueryNCBIeUtils.send_query_get('esearch.fcgi',
                                              'db=pubmed&term=' + term_str_encoded)
@@ -229,6 +229,11 @@ class QueryNCBIeUtils:
             status_code = res.status_code
             if status_code == 200:
                 res_int = int(res.json()['esearchresult']['count'])
+                if joint:
+                    res_int = [res_int]
+                    res_int += [int(res.json()['esearchresult']['translationstack'][0]['count'])]
+                    res_int += [int(res.json()['esearchresult']['translationstack'][1]['count'])]
+                    print(res_int)
             else:
                 print('HTTP response status code: ' + str(status_code) + ' for query term string {term}'.format(term=term_str))
         return res_int
@@ -244,6 +249,7 @@ class QueryNCBIeUtils:
         :param mesh2: flag if mesh2_str is a MeSH term
         :returns: NGD, as a float (or math.nan if any counts are zero, or None if HTTP error)
         """
+
         if mesh1:  # checks mesh flag then converts to mesh term search
             mesh1_str_decorated = mesh1_str + '[MeSH Terms]'
         else:
@@ -254,11 +260,15 @@ class QueryNCBIeUtils:
         else:
             mesh2_str_decorated = mesh2_str
 
-        nij = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
-                                                                                     mesh2=mesh2_str_decorated))
+        if mesh1 and mesh2:
+            [nij, ni, nj] = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
+                                                                                     mesh2=mesh2_str_decorated),joint=True)
+        else:
+            nij = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
+                                                                                         mesh2=mesh2_str_decorated))
+            ni = QueryNCBIeUtils.get_pubmed_hits_count('{mesh1}'.format(mesh1=mesh1_str_decorated))
+            nj = QueryNCBIeUtils.get_pubmed_hits_count('{mesh2}'.format(mesh2=mesh2_str_decorated))
         N = 2.7e+7 * 20  # from PubMed home page there are 27 million articles; avg 20 MeSH terms per article
-        ni = QueryNCBIeUtils.get_pubmed_hits_count('{mesh1}'.format(mesh1=mesh1_str_decorated))
-        nj = QueryNCBIeUtils.get_pubmed_hits_count('{mesh2}'.format(mesh2=mesh2_str_decorated))
         if ni is None or nj is None or nij is None:
             return math.nan
         if ni == 0 or nj == 0 or nij == 0:
