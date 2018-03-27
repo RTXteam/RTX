@@ -307,6 +307,52 @@ definitions:
         format: "float"
         example: 0.99
         description: "Confidence metric for this edge, a value 0.0 (no confidence) and 1.0 (highest confidence)"
+      origin_list:
+        type: "array"
+        description: "A list of origins (sources) for this edge and attributes from those origins"
+        items:
+          $ref: "#/definitions/Origin"
+  Origin:
+    type: "object"
+    description: "An origin (source) for this edge"
+    properties:
+      id:
+        type: "string"
+        example: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
+        description: "URI for the origin of the edge"
+      type:
+        type: "string"
+        example: "Monarch_BioLink_API_Relationship"
+        description: "Entity type of the origin"
+      name:
+        type: "string"
+        example: "Wikipedia article"
+        description: "Formal name of the piece evidence that yielded the edge"
+      attribute_list:
+        type: "array"
+        description: "A list of attributes for this edge from this origin (source)"
+        items:
+          $ref: "#/definitions/Edge_attribute"
+  Edge_attribute:
+    type: "object"
+    description: "A generic attribute for an edge"
+    properties:
+      type:
+        type: "string"
+        example: "PubMed_article"
+        description: "Entity type of this attribute"
+      name:
+        type: "string"
+        example: "Orthopaedic Manifestations of Sickle Cell Disease"
+        description: "Formal name of the attribute"
+      value:
+        type: "string"
+        example: "0.5"
+        description: "Value of the attribute. While all attributes should have a name, many will not have a value"
+      url:
+        type: "string"
+        example: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+        description: "A URL corresponding to this attribute"
   MeshNgdResponse:
     type: "object"
     properties:
