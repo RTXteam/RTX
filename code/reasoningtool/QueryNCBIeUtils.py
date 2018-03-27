@@ -379,7 +379,7 @@ class QueryNCBIeUtils:
                     if dbs is not None:
                         mesh_db = dbs[0]
                         if mesh_db is not None:
-                            ids = medgen.get('links', None)
+                            ids = mesh_db.get('links', None)
                             res_set |= set([int(uid_str) for uid_str in ids])
 
         # if there are no mesh ids returned above then this finds clinvar -> medgen -> mesh canversions:
