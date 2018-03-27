@@ -54,7 +54,7 @@ class BioNetExpander:
     def expand_pharos_drug(self, node):
         drug_name = node.name
         drug_desc = node.desc
-        target_uniprot_ids = QueryChEMBL.get_target_uniprot_ids_for_drug(drug_name)
+        target_uniprot_ids = QueryChEMBL.get_target_uniprot_ids_for_drug(drug_desc)
         if target_uniprot_ids is not None:
             for target_uniprot_id in target_uniprot_ids.keys():
                 probability = target_uniprot_ids[target_uniprot_id]
@@ -62,7 +62,7 @@ class BioNetExpander:
                 node_desc = ';'.join(list(gene_names))
                 target_node = self.orangeboard.add_node('uniprot_protein', target_uniprot_id, desc=node_desc)
                 self.orangeboard.add_rel('targets', 'ChEMBL', node, target_node, prob=probability)
-        targets = QueryPharos.query_drug_name_to_targets(drug_name)
+        targets = QueryPharos.query_drug_name_to_targets(drug_desc)
         if targets is not None:
             for target in targets:
                 uniprot_id = QueryPharos.query_target_uniprot_accession(str(target["id"]))

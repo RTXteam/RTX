@@ -108,14 +108,17 @@ def answerQ2(drug_name, disease_name, k, text=False):
 		pathways_per_path.append(pathways)
 
 	# Delete those elements that don't have a reactome pathway
+	bad_paths = []
 	for i, pathways in enumerate(pathways_per_path):
 		if not pathways:
-			del node_paths[i]
-			del edge_paths[i]
-			del weights[i]
-			del proteins_per_path[i]
-			del proteins_per_path_locations[i]
-			del pathways_per_path[i]
+			bad_paths.append(i)
+	for i in reversed(bad_paths):
+		del node_paths[i]
+		del edge_paths[i]
+		del weights[i]
+		del proteins_per_path[i]
+		del proteins_per_path_locations[i]
+		del pathways_per_path[i]
 
 	# Look for the pathway that has both a small GD between protein and disease
 	max_gd = 10
@@ -146,16 +149,19 @@ def answerQ2(drug_name, disease_name, k, text=False):
 		best_pathways_per_path_gd.append(smallest_gd)
 
 	# Delete those elements that don't have a best reactome pathway
+	bad_paths = []
 	for i, pathways in enumerate(best_pathways_per_path):
 		if not pathways:
-			del node_paths[i]
-			del edge_paths[i]
-			del weights[i]
-			del proteins_per_path[i]
-			del proteins_per_path_locations[i]
-			del pathways_per_path[i]
-			del best_pathways_per_path[i]
-			del best_pathways_per_path_gd[i]
+			bad_paths.append(i)
+	for i in reversed(bad_paths):
+		del node_paths[i]
+		del edge_paths[i]
+		del weights[i]
+		del proteins_per_path[i]
+		del proteins_per_path_locations[i]
+		del pathways_per_path[i]
+		del best_pathways_per_path[i]
+		del best_pathways_per_path_gd[i]
 
 	# Insert the best pathway into the node_path
 	for i in range(len(node_paths)):
