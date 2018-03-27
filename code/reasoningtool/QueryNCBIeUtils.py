@@ -108,6 +108,24 @@ class QueryNCBIeUtils:
         return res_set
     
     
+    '''returns a list of mesh UIDs for a given mesh tree number
+
+    '''
+    @staticmethod
+    @CachedMethods.register
+    def get_mesh_uids_for_mesh_tree(mesh_term):
+        res = QueryNCBIeUtils.send_query_get('esearch.fcgi',
+                                             'db=mesh&term=' +  urllib.parse.quote(mesh_term, safe=''))
+        res_list = []
+        if res is not None:
+            res_json = res.json()
+            res_esr = res_json.get('esearchresult', None)
+            if res_esr is not None:
+                res_idlist = res_esr.get('idlist', None)
+                if res_idlist is not None:
+                    res_list += res_idlist
+        return res_list
+    
     '''returns a list of mesh UIDs for a given mesh term query
 
     '''
