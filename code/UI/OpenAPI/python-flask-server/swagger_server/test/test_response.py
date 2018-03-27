@@ -10,6 +10,7 @@ from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
 from swagger_server.models.origin import Origin
 from swagger_server.models.edge_attribute import EdgeAttribute
+from swagger_server.models.node_attribute import NodeAttribute
 
 class TestResponse():
 
@@ -44,6 +45,13 @@ class TestResponse():
         node2.symbol = "HP"
         node2.accession = "UNIPROT:P00738"
         node2.description = "Haptoglobin captures, and combines with free plasma hemoglobin..."
+
+        #### Create a node attribute
+        node2attribute1 = NodeAttribute()
+        node2attribute1.type = "comment"
+        node2attribute1.name = "Complex_description"
+        node2attribute1.value = "The Hemoglobin/haptoglobin complex is composed of a haptoglobin dimer bound to two hemoglobin alpha-beta dimers"
+        node2.node_attributes = [ node2attribute1 ]
 
         #### Create an edge between these 2 nodes
         edge1 = Edge()
