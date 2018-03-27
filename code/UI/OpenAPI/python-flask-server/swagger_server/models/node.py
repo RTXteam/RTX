@@ -6,6 +6,7 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from swagger_server.models.base_model_ import Model
+from swagger_server.models.node_attribute import NodeAttribute  # noqa: F401,E501
 from swagger_server import util
 
 
@@ -15,7 +16,7 @@ class Node(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, type: str=None, id: str=None, symbol: str=None, name: str=None, accession: str=None, description: str=None):  # noqa: E501
+    def __init__(self, type: str=None, id: str=None, symbol: str=None, name: str=None, accession: str=None, description: str=None, node_attributes: List[NodeAttribute]=None):  # noqa: E501
         """Node - a model defined in Swagger
 
         :param type: The type of this Node.  # noqa: E501
@@ -30,6 +31,8 @@ class Node(Model):
         :type accession: str
         :param description: The description of this Node.  # noqa: E501
         :type description: str
+        :param node_attributes: The node_attributes of this Node.  # noqa: E501
+        :type node_attributes: List[NodeAttribute]
         """
         self.swagger_types = {
             'type': str,
@@ -37,7 +40,8 @@ class Node(Model):
             'symbol': str,
             'name': str,
             'accession': str,
-            'description': str
+            'description': str,
+            'node_attributes': List[NodeAttribute]
         }
 
         self.attribute_map = {
@@ -46,7 +50,8 @@ class Node(Model):
             'symbol': 'symbol',
             'name': 'name',
             'accession': 'accession',
-            'description': 'description'
+            'description': 'description',
+            'node_attributes': 'node_attributes'
         }
 
         self._type = type
@@ -55,6 +60,7 @@ class Node(Model):
         self._name = name
         self._accession = accession
         self._description = description
+        self._node_attributes = node_attributes
 
     @classmethod
     def from_dict(cls, dikt) -> 'Node':
@@ -204,3 +210,26 @@ class Node(Model):
         """
 
         self._description = description
+
+    @property
+    def node_attributes(self) -> List[NodeAttribute]:
+        """Gets the node_attributes of this Node.
+
+        A list of arbitrary attributes for the node  # noqa: E501
+
+        :return: The node_attributes of this Node.
+        :rtype: List[NodeAttribute]
+        """
+        return self._node_attributes
+
+    @node_attributes.setter
+    def node_attributes(self, node_attributes: List[NodeAttribute]):
+        """Sets the node_attributes of this Node.
+
+        A list of arbitrary attributes for the node  # noqa: E501
+
+        :param node_attributes: The node_attributes of this Node.
+        :type node_attributes: List[NodeAttribute]
+        """
+
+        self._node_attributes = node_attributes

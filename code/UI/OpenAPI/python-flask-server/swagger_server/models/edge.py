@@ -6,6 +6,7 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from swagger_server.models.base_model_ import Model
+from swagger_server.models.origin import Origin  # noqa: F401,E501
 from swagger_server import util
 
 
@@ -15,7 +16,7 @@ class Edge(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, type: str=None, source_id: str=None, target_id: str=None, confidence: float=None):  # noqa: E501
+    def __init__(self, type: str=None, source_id: str=None, target_id: str=None, confidence: float=None, origin_list: List[Origin]=None):  # noqa: E501
         """Edge - a model defined in Swagger
 
         :param type: The type of this Edge.  # noqa: E501
@@ -26,25 +27,30 @@ class Edge(Model):
         :type target_id: str
         :param confidence: The confidence of this Edge.  # noqa: E501
         :type confidence: float
+        :param origin_list: The origin_list of this Edge.  # noqa: E501
+        :type origin_list: List[Origin]
         """
         self.swagger_types = {
             'type': str,
             'source_id': str,
             'target_id': str,
-            'confidence': float
+            'confidence': float,
+            'origin_list': List[Origin]
         }
 
         self.attribute_map = {
             'type': 'type',
             'source_id': 'source_id',
             'target_id': 'target_id',
-            'confidence': 'confidence'
+            'confidence': 'confidence',
+            'origin_list': 'origin_list'
         }
 
         self._type = type
         self._source_id = source_id
         self._target_id = target_id
         self._confidence = confidence
+        self._origin_list = origin_list
 
     @classmethod
     def from_dict(cls, dikt) -> 'Edge':
@@ -148,3 +154,26 @@ class Edge(Model):
         """
 
         self._confidence = confidence
+
+    @property
+    def origin_list(self) -> List[Origin]:
+        """Gets the origin_list of this Edge.
+
+        A list of origins (sources) for this edge and attributes from those origins  # noqa: E501
+
+        :return: The origin_list of this Edge.
+        :rtype: List[Origin]
+        """
+        return self._origin_list
+
+    @origin_list.setter
+    def origin_list(self, origin_list: List[Origin]):
+        """Sets the origin_list of this Edge.
+
+        A list of origins (sources) for this edge and attributes from those origins  # noqa: E501
+
+        :param origin_list: The origin_list of this Edge.
+        :type origin_list: List[Origin]
+        """
+
+        self._origin_list = origin_list
