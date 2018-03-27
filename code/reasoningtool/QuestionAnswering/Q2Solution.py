@@ -15,6 +15,9 @@ except ImportError:
 	import QueryNCBIeUtils
 QueryNCBIeUtils = QueryNCBIeUtils.QueryNCBIeUtils()
 
+import FormatOutput
+import networkx as nx
+
 drug_to_disease_doid = dict()
 disease_doid_to_description = dict()
 with open(os.path.abspath('../../../data/q2/q2-drugandcondition-list-mapped.txt'), 'r') as fid:
@@ -34,12 +37,13 @@ with open(os.path.abspath('../../../data/q2/q2-drugandcondition-list-mapped.txt'
 			disease_doid_to_description[disease_doid] = disease_descr
 
 
-def answerQ2(drug_name, disease_name, k):
+def answerQ2(drug_name, disease_name, k, text=False):
 	"""
 	Find the clinical outcome pathway connecting the drug to the disease
 	:param drug_name: a name of a drug (node.name in the KG)
 	:param disease_name: a name of a disease (node.name in the KG, eg DOID:)
 	:param k: Number of paths to return (int)
+	:param text: if you want the answers as plain text.
 	:return: Text answer
 	"""
 	if not RU.node_exists_with_property(drug_name, 'name'):
@@ -175,17 +179,42 @@ def answerQ2(drug_name, disease_name, k):
 	weights.sort()
 
 	# Then display the results....
-	print("The possible clinical outcome pathways include: ")
-	for path_ind in range(len(node_paths)):
-		node_path = node_paths[path_ind]
-		edge_path = edge_paths[path_ind]
-		to_print = ""
-		for node_index in range(len(node_path)):
-			to_print += " " + str(node_path[node_index]['description'])
-			if node_index < len(edge_path):
-				to_print += " -" + str(edge_path[node_index]['type']) +"->"
-		to_print += ". Distance (smaller is better): %f." % weights[path_ind]
-		print(to_print)
+	if text:
+		print("The possible clinical outcome pathways include: ")
+		for path_ind in range(len(node_paths)):
+			node_path = node_paths[path_ind]
+			edge_path = edge_paths[path_ind]
+			to_print = ""
+			for node_index in range(len(node_path)):
+				to_print += " " + str(node_path[node_index]['description'])
+				if node_index < len(edge_path):
+					to_print += " -" + str(edge_path[node_index]['type']) + "->"
+			to_print += ". Distance (smaller is better): %f." % weights[path_ind]
+			print(to_print)
+	else:  # you want the result object model
+		response = FormatOutput.FormatResponse(2)
+		for path_ind in range(len(node_paths)):
+			node_path = node_paths[path_ind]
+			edge_path = edge_paths[path_ind]
+			to_print = ""
+			for node_index in range(len(node_path)):
+				to_print += " " + str(node_path[node_index]['description'])
+				if node_index < len(edge_path):
+					to_print += " -" + str(edge_path[node_index]['type']) + "->"
+			to_print += ". Distance (smaller is better): %f." % weights[path_ind]
+			# put the nodes/edges into a networkx graph
+			g = nx.Graph()
+			nodes_to_add = []
+			edges_to_add = []
+			for node in node_path:
+				nodes_to_add.append((node['properties']['UUID'], node))
+			for edge in edge_path:
+				edges_to_add.append((edge['properties']['source_node_uuid'], edge['properties']['target_node_uuid'], edge))
+			g.add_nodes_from(nodes_to_add)
+			g.add_edges_from(edges_to_add)
+			# populate the response. Quick hack to convert
+			response.add_subgraph(g.nodes(data=True), g.edges(data=True), to_print, 1-weights[path_ind]/float(max([len(x) for x in edge_paths])*max_gd))
+		print(response)
 
 
 def main():
@@ -196,6 +225,7 @@ def main():
 	parser.add_argument('-a', '--all', action="store_true", help="Flag indicating you want to run it on all Q2 drugs + diseases",
 						default=False)
 	parser.add_argument('-k', '--kpaths', type=int, help="Number of paths to return.", default=10)
+	parser.add_argument('-t', '--text', action="store_true", help="Flag indicating you want the results in plain text.")
 
 	if '-h' in sys.argv or '--help' in sys.argv:
 		RU.session.close()
@@ -207,6 +237,7 @@ def main():
 	disease = args.disease
 	all_d = args.all
 	k = args.kpaths
+	text = args.text
 
 	if all_d:
 		for i, drug in enumerate(list(drug_to_disease_doid.keys())):
@@ -215,9 +246,9 @@ def main():
 			print("\n")
 			print((drug, disease_description, disease))
 			print(i)
-			res = answerQ2(drug, disease, k)
+			res = answerQ2(drug, disease, k, text=text)
 	else:
-		res = answerQ2(drug, disease, k)
+		res = answerQ2(drug, disease, k, text)
 
 if __name__ == "__main__":
 	main()
