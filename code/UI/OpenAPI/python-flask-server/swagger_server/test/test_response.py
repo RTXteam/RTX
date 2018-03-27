@@ -8,6 +8,8 @@ from swagger_server.models.result import Result
 from swagger_server.models.result_graph import ResultGraph
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
+from swagger_server.models.origin import Origin
+from swagger_server.models.edge_attribute import EdgeAttribute
 
 class TestResponse():
 
@@ -49,6 +51,20 @@ class TestResponse():
         edge1.source_id = node1.id
         edge1.target_id = node2.id
         edge1.confidence = 1.0
+
+        #### Add an origin and property for the edge
+        origin1 = Origin()
+        origin1.id = "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
+        origin1.type = "Monarch_BioLink_API_Relationship"
+
+        #### Add an attribute
+        attribute1 = EdgeAttribute()
+        attribute1.type = "PubMed_article"
+        attribute1.name = "Orthopaedic Manifestations of Sickle Cell Disease"
+        attribute1.value = None
+        attribute1.url = "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+        origin1.attribute_list = [ attribute1 ]
+        edge1.origin_list = [ origin1 ]
 
         #### Create the first result (potential answer)
         result1 = Result()
