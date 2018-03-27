@@ -22,12 +22,12 @@ tags:
   externalDocs:
     description: "Documentation for the RTX query function"
     url: "http://rtx.ncats.io/overview.html#query"
-- name: "getPubMedMeSHNGD"
+- name: "getPubmedMeshNgd"
   description: "Query to get the Normalized Google Distance between two MeSH terms\
     \ based on co-occurance in all PubMed article annotations"
   externalDocs:
     description: "Documentation for the RTX query function"
-    url: "http://rtx.ncats.io/overview.html#getPubMedMeSHNGD"
+    url: "http://rtx.ncats.io/overview.html#getPubmedMeshNgd"
 schemes:
 - "http"
 paths:
@@ -85,14 +85,14 @@ paths:
         400:
           description: "Invalid status value"
       x-swagger-router-controller: "swagger_server.controllers.query_controller"
-  /getPubMedMeSHNGD/{term1}/{term2}:
+  /getPubmedMeshNgd/{term1}/{term2}:
     get:
       tags:
-      - "getPubMedMeSHNGD"
+      - "getPubmedMeshNgd"
       summary: "Query to get the Normalized Google Distance between two MeSH terms\
         \ based on co-occurance in all PubMed article annotations"
       description: ""
-      operationId: "get_pub_med_me_shngd"
+      operationId: "get_pubmed_mesh_ngd"
       produces:
       - "application/json"
       parameters:
@@ -113,7 +113,7 @@ paths:
             $ref: "#/definitions/MeshNgdResponse"
         400:
           description: "Invalid terms"
-      x-swagger-router-controller: "swagger_server.controllers.getpubmedmeshngd_controller"
+      x-swagger-router-controller: "swagger_server.controllers.get_pubmed_mesh_ngd_controller"
 definitions:
   Question:
     type: "object"
