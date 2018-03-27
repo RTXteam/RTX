@@ -374,13 +374,13 @@ class QueryNCBIeUtils:
             linksets = res_json.get('linksets', None)
             if linksets is not None:
                 link = linksets[0]
-                    if link is not None:
-                        dbs = link.get('linksetdbs', None)
-                        if dbs is not None:
-                            mesh_db = dbs[0]
-                            if mesh_db is not None:
-                                ids = medgen.get('links', None)
-                                res_set |= set([int(uid_str) for uid_str in ids])
+                if link is not None:
+                    dbs = link.get('linksetdbs', None)
+                    if dbs is not None:
+                        mesh_db = dbs[0]
+                        if mesh_db is not None:
+                            ids = medgen.get('links', None)
+                            res_set |= set([int(uid_str) for uid_str in ids])
 
         # if there are no mesh ids returned above then this finds clinvar -> medgen -> mesh canversions:
         if len(res_set) == 0:
