@@ -24,11 +24,11 @@ tags:
   externalDocs:
     description: "Documentation for the RTX query function"
     url: "http://rtx.ncats.io/overview.html#query"
-- name: "getPubMedMeSHNGD"
+- name: "getPubmedMeshNgd"
   description: "Query to get the Normalized Google Distance between two MeSH terms based on co-occurance in all PubMed article annotations"
   externalDocs:
     description: "Documentation for the RTX query function"
-    url: "http://rtx.ncats.io/overview.html#getPubMedMeSHNGD"
+    url: "http://rtx.ncats.io/overview.html#getPubmedMeshNgd"
 schemes:
 - "http"
 paths:
@@ -86,13 +86,13 @@ paths:
         400:
           description: "Invalid status value"
       x-swagger-router-controller: "swagger_server.controllers.query_controller"
-  /getPubMedMeSHNGD/{term1}/{term2}:
+  /getPubmedMeshNgd/{term1}/{term2}:
     get:
       tags:
-      - "getPubMedMeSHNGD"
+      - "getPubmedMeshNgd"
       summary: "Query to get the Normalized Google Distance between two MeSH terms based on co-occurance in all PubMed article annotations"
       description: ""
-      operationId: "getPubMedMeSHNGD"
+      operationId: "getPubmedMeshNgd"
       produces:
       - "application/json"
       parameters:
@@ -113,7 +113,7 @@ paths:
             $ref: "#/definitions/MeshNgdResponse"
         400:
           description: "Invalid terms"
-      x-swagger-router-controller: "swagger_server.controllers.getpubmedmeshngd_controller"
+      x-swagger-router-controller: "swagger_server.controllers.get_pubmed_mesh_ngd_controller"
 definitions:
   Question:
     type: "object"
@@ -307,6 +307,52 @@ definitions:
         format: "float"
         example: 0.99
         description: "Confidence metric for this edge, a value 0.0 (no confidence) and 1.0 (highest confidence)"
+      origin_list:
+        type: "array"
+        description: "A list of origins (sources) for this edge and attributes from those origins"
+        items:
+          $ref: "#/definitions/Origin"
+  Origin:
+    type: "object"
+    description: "An origin (source) for this edge"
+    properties:
+      id:
+        type: "string"
+        example: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
+        description: "URI for the origin of the edge"
+      type:
+        type: "string"
+        example: "Monarch_BioLink_API_Relationship"
+        description: "Entity type of the origin"
+      name:
+        type: "string"
+        example: "Wikipedia article"
+        description: "Formal name of the piece evidence that yielded the edge"
+      attribute_list:
+        type: "array"
+        description: "A list of attributes for this edge from this origin (source)"
+        items:
+          $ref: "#/definitions/Edge_attribute"
+  Edge_attribute:
+    type: "object"
+    description: "A generic attribute for an edge"
+    properties:
+      type:
+        type: "string"
+        example: "PubMed_article"
+        description: "Entity type of this attribute"
+      name:
+        type: "string"
+        example: "Orthopaedic Manifestations of Sickle Cell Disease"
+        description: "Formal name of the attribute"
+      value:
+        type: "string"
+        example: "0.5"
+        description: "Value of the attribute. While all attributes should have a name, many will not have a value"
+      url:
+        type: "string"
+        example: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+        description: "A URL corresponding to this attribute"
   MeshNgdResponse:
     type: "object"
     properties:

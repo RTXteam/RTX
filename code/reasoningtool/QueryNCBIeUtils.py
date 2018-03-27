@@ -89,6 +89,25 @@ class QueryNCBIeUtils:
                     res_set |= set([int(uid_str) for uid_str in idlist])
         return res_set
     
+    '''returns a set of mesh UIDs for a given disease name
+
+    '''
+    @staticmethod
+    @CachedMethods.register
+    def get_mesh_uids_for_disease_or_phenotype_string(disphen_str):
+        res = QueryNCBIeUtils.send_query_get('esearch.fcgi',
+                                             'db=mesh&term=' + urllib.parse.quote(disphen_str + '[disease/phenotype]',safe=''))
+        res_set = set()
+        if res is not None:
+            res_json = res.json()
+            esr = res_json.get('esearchresult', None)
+            if esr is not None:
+                idlist = esr.get('idlist', None)
+                if idlist is not None:
+                    res_set |= set([int(uid_str) for uid_str in idlist])
+        return res_set
+    
+    
     '''returns a list of mesh UIDs for a given mesh term query
 
     '''
@@ -201,7 +220,7 @@ class QueryNCBIeUtils:
         
     @staticmethod
     @CachedMethods.register
-    def get_pubmed_hits_count(term_str):
+    def get_pubmed_hits_count(term_str, joint=False):
         term_str_encoded = urllib.parse.quote(term_str, safe='')
         res = QueryNCBIeUtils.send_query_get('esearch.fcgi',
                                              'db=pubmed&term=' + term_str_encoded)
@@ -210,6 +229,11 @@ class QueryNCBIeUtils:
             status_code = res.status_code
             if status_code == 200:
                 res_int = int(res.json()['esearchresult']['count'])
+                if joint:
+                    res_int = [res_int]
+                    res_int += [int(res.json()['esearchresult']['translationstack'][0]['count'])]
+                    res_int += [int(res.json()['esearchresult']['translationstack'][1]['count'])]
+                    print(res_int)
             else:
                 print('HTTP response status code: ' + str(status_code) + ' for query term string {term}'.format(term=term_str))
         return res_int
@@ -225,6 +249,7 @@ class QueryNCBIeUtils:
         :param mesh2: flag if mesh2_str is a MeSH term
         :returns: NGD, as a float (or math.nan if any counts are zero, or None if HTTP error)
         """
+
         if mesh1:  # checks mesh flag then converts to mesh term search
             mesh1_str_decorated = mesh1_str + '[MeSH Terms]'
         else:
@@ -235,11 +260,15 @@ class QueryNCBIeUtils:
         else:
             mesh2_str_decorated = mesh2_str
 
-        nij = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
-                                                                                     mesh2=mesh2_str_decorated))
+        if mesh1 and mesh2:
+            [nij, ni, nj] = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
+                                                                                     mesh2=mesh2_str_decorated),joint=True)
+        else:
+            nij = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
+                                                                                         mesh2=mesh2_str_decorated))
+            ni = QueryNCBIeUtils.get_pubmed_hits_count('{mesh1}'.format(mesh1=mesh1_str_decorated))
+            nj = QueryNCBIeUtils.get_pubmed_hits_count('{mesh2}'.format(mesh2=mesh2_str_decorated))
         N = 2.7e+7 * 20  # from PubMed home page there are 27 million articles; avg 20 MeSH terms per article
-        ni = QueryNCBIeUtils.get_pubmed_hits_count('{mesh1}'.format(mesh1=mesh1_str_decorated))
-        nj = QueryNCBIeUtils.get_pubmed_hits_count('{mesh2}'.format(mesh2=mesh2_str_decorated))
         if ni is None or nj is None or nij is None:
             return math.nan
         if ni == 0 or nj == 0 or nij == 0:
@@ -338,6 +367,62 @@ class QueryNCBIeUtils:
                         search += '|' + name
         search = search[1:]  # removes leading |
         return search
+
+    
+    '''Returns a set of mesh ids for a given clinvar id
+
+    '''
+    @staticmethod
+    @CachedMethods.register
+    def get_mesh_id_for_clinvar_uid(clinvar_id):
+        # This checks for a straight clinvar id -> mesh id conversion:
+        res = QueryNCBIeUtils.send_query_get('elink.fcgi',
+                                             'db=mesh&dbfrom=clinvar&id=' + str(clinvar_id))
+        res_set = set()
+        if res is not None:
+            res_json = res.json()
+            linksets = res_json.get('linksets', None)
+            if linksets is not None:
+                link = linksets[0]
+                if link is not None:
+                    dbs = link.get('linksetdbs', None)
+                    if dbs is not None:
+                        mesh_db = dbs[0]
+                        if mesh_db is not None:
+                            ids = mesh_db.get('links', None)
+                            res_set |= set([int(uid_str) for uid_str in ids])
+
+        # if there are no mesh ids returned above then this finds clinvar -> medgen -> mesh canversions:
+        if len(res_set) == 0:
+            res = QueryNCBIeUtils.send_query_get('elink.fcgi',
+                                             'db=medgen&dbfrom=clinvar&id=' + str(clinvar_id))
+            if res is not None:
+                res_json = res.json()
+                linksets = res_json.get('linksets', None)
+                if linksets is not None:
+                    link = linksets[0]
+                    if link is not None:
+                        dbs = link.get('linksetdbs', None)
+                        if dbs is not None:
+                            medgen = dbs[0]
+                            if medgen is not None:
+                                ids = medgen.get('links', None)
+                                if ids is not None:
+                                    for medgen_id in ids:
+                                        res2 = QueryNCBIeUtils.send_query_get('elink.fcgi',
+                                            'db=mesh&dbfrom=medgen&id=' + str(medgen_id))
+                                        res2_json = res2.json()
+                                        linksets2 = res2_json.get('linksets', None)
+                                        if linksets2 is not None:
+                                            link2 = linksets2[0]
+                                            if link2 is not None:
+                                                dbs2 = link2.get('linksetdbs', None)
+                                                if dbs2 is not None:
+                                                    mesh_data = dbs2[0]
+                                                    if mesh_data is not None:
+                                                        mesh_ids = mesh_data.get('links', None)
+                                                        res_set |= set([int(uid_str) for uid_str in mesh_ids])
+        return res_set
               
 if __name__ == '__main__':
 #    print(QueryNCBIeUtils.get_clinvar_uids_for_disease_or_phenotype_string('hypercholesterolemia'))
