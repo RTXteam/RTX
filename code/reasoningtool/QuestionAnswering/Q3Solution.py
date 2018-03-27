@@ -9,7 +9,7 @@ except ImportError:
 	import ReasoningUtilities as RU
 
 # eg: what proteins does drug X target? One hop question
-class Q4:
+class Q3:
 
 	def __init__(self):
 		None
@@ -65,8 +65,8 @@ class Q4:
 
 
 # Tests
-def testQ4_answer():
-	Q = Q4()
+def testQ3_answer():
+	Q = Q3()
 	res = Q.answer("carbetocin", "uniprot_protein", "targets")
 	assert res == [{'desc': 'OXTR', 'name': 'P30559', 'type': 'node','prob': 1}]
 	res = Q.answer("OMIM:263200", "uniprot_protein", "disease_affects")
@@ -79,14 +79,14 @@ def testQ4_answer():
 	assert res == [{'desc': 'MIR1225', 'name': 'NCBIGene:100188847', 'type': 'node', 'prob': 1}]
 
 
-def test_Q4_describe():
-	Q = Q4()
+def test_Q3_describe():
+	Q = Q3()
 	res = Q.describe()
 
 
 def test_suite():
-	testQ4_answer()
-	test_Q4_describe()
+	testQ3_answer()
+	test_Q3_describe()
 
 
 def main():
@@ -107,7 +107,7 @@ def main():
 	describe_flag = args.describe
 
 	# Initialize the question class
-	Q = Q4()
+	Q = Q3()
 
 	if describe_flag:
 		res = Q.describe()
