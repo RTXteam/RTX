@@ -101,7 +101,7 @@ sub main {
       if ( $line =~ /from swagger_server import util/ ) {
 	print OUTFILE "import os\n";
 	print OUTFILE "import sys\n";
-	print OUTFILE "sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../reasoningtool/QuestionAnswering/")\n";
+	print OUTFILE "sys.path.append(os.path.dirname(os.path.abspath(__file__))+\"/../../../../../reasoningtool/QuestionAnswering/\")\n";
 	print OUTFILE "from QuestionTranslator import QuestionTranslator\n";
         $status = 1;
         next;
