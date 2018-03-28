@@ -530,9 +530,9 @@ if __name__ == '__main__':
     #    t1 = time.time()
     #    print(t1-t0)
 
-    print(QueryNCBIeUtils.normalized_google_distance("acetaminophen","liver"))
-#    print(QueryNCBIeUtils.normalized_google_distance(QueryNCBIeUtils.get_uniprot_names('P23219'), 'Naprosyn', mesh1=False))
-#    print(QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(68014059))
+    #print(QueryNCBIeUtils.normalized_google_distance("acetaminophen","liver"))
+    #print(QueryNCBIeUtils.normalized_google_distance(QueryNCBIeUtils.get_uniprot_names('P23219'), 'Naprosyn', mesh1=False))
+    #print(QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(68014059))
     # print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(219700)) # OMIM preferred name: "CYSTIC FIBROSIS"
     # print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(125050)) # OMIM preferred name: "DEAFNESS WITH ANHIDROTIC ECTODERMAL DYSPLASIA"
     # print(QueryNCBIeUtils.get_mesh_terms_for_omim_id(310350)) # OMIM preferred name: "MYELOLYMPHATIC INSUFFICIENCY"
