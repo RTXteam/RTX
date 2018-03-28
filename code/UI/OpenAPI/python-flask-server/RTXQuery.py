@@ -12,7 +12,9 @@ import subprocess
 from QueryMeSH import QueryMeSH
 import json
 import datetime
+import ast
 
+from swagger_server.models.response import Response
 
 
 class RTXQuery:
@@ -65,8 +67,15 @@ class RTXQuery:
       eprint("python3 Q2Solution.py -r '"+terms[0]+"' -d '"+terms[1]+"'" )
       returnedText = subprocess.run( [ "python3 Q2Solution.py -d '"+terms[0]+"' -r '"+terms[1]+"'" ], stdout=subprocess.PIPE, shell=True )
       os.chdir(cwd)
-      #reformattedText = returnedText.stdout.decode('utf-8')
-      response = json.loads(returnedText)
+      reformattedText = returnedText.stdout.decode('utf-8')
+      eprint(reformattedText)
+      try:
+          data = ast.literal_eval(reformattedText)
+          response = Response.from_dict(data)
+      except:
+          response = Response()
+          response.result_code = "InternalError"
+          response.message = "Error parsing the response from the reasoner. This is an internal bug that needs to be fixed. Unable to respond to this question at this time."
       id = response.id
       codeString = response.result_code
       self.logQuery(id,codeString,terms)
@@ -109,11 +118,14 @@ def main():
   #query = { "knownQueryTypeId": "Q0", "terms": [ "lovastatin" ] }
   #query = { "knownQueryTypeId": "Q0", "terms": [ "foo" ] }
   #query = { "knownQueryTypeId": "Q1", "terms": [ "alkaptonuria" ] }
-  query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "DOID:1686" ] }
+  query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "glaucoma" ] }
+  #query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "glaucoma" ] }
+  #query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "DOID:1686" ] }
+  #query = { "knownQueryTypeId": "Q2", "terms": [ "DOID:1686", "physostigmine" ] }
   #query = { "knownQueryTypeId": "Q3", "terms": [ "acetaminophen" ] }
-  result = rtxq.query(query)
-  #print(" Result is:")
-  print(result)
+  response = rtxq.query(query)
+  #print(json.dumps(response,sort_keys=True,indent=2))
+  print(response)
 
 
 if __name__ == "__main__": main()
