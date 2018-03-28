@@ -211,17 +211,26 @@ def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False, use_js
 			print("No omims passed all refinements. Please raise the max_path_len and try again.")
 		return 1
 
-	results_text = Q1Utils.display_results_str(doid, to_display_paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=to_display_probs_dict)
-	for path_pair in to_display_paths_dict.values():
+	# Order the results
+	keys = list(to_display_paths_dict.keys())
+	probs = [to_display_probs_dict[key] for key in keys]
+	keys_sorted = [x for _, x in sorted(zip(probs, keys), key=lambda pair: pair[0])]
+	for key in keys_sorted:
+		path_pair = to_display_paths_dict[key]
+		temp_path_dict = dict()
+		temp_path_dict[key] = path_pair
 		node_rel_list = path_pair[0]
+		results_text = Q1Utils.display_results_str(doid, temp_path_dict, omim_to_genetic_cond,
+													q1_doid_to_disease, probs=to_display_probs_dict)
 		for i, path in enumerate(node_rel_list):
 			node_list = path[0::2]
 			rel_list = path[1::2]
-			print(to_display_probs_dict)
 			g = RU.return_exact_path(node_list, rel_list)
 			response.add_subgraph(g.nodes(data=True), g.edges(data=True), results_text, to_display_probs_dict[node_list[0]])
 
 	if not use_json:
+		results_text = Q1Utils.display_results_str(doid, to_display_paths_dict, omim_to_genetic_cond,
+													q1_doid_to_disease, probs=to_display_probs_dict)
 		print(results_text)
 	else:
 		#ret_obj = Q1Utils.get_results_object_model(doid, to_display_paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=to_display_probs_dict)
