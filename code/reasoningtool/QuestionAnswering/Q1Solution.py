@@ -9,6 +9,7 @@ import argparse
 import sys
 import json
 import ReasoningUtilities as RU
+import FormatOutput
 
 # Connection information for the neo4j server, populated with orangeboard
 #driver = GraphDatabase.driver("bolt://rtx.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))
@@ -208,21 +209,26 @@ def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False, use_js
 		if verbose and not use_json:
 			print("No omims passed all refinements. Please raise the max_path_len and try again.")
 		return 1
+	response = FormatOutput.FormatResponse(1)
 	results_text = Q1Utils.display_results_str(doid, to_display_paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=to_display_probs_dict)
 	for path_pair in to_display_paths_dict.values():
 		node_rel_list = path_pair[0]
 		for i, path in enumerate(node_rel_list):
 			node_list = path[0::2]
 			rel_list = path[1::2]
-			print(node_list)
-			print(rel_list)
+			print(to_display_probs_dict)
+			sys.exit(1)
 			g = RU.return_exact_path(node_list, rel_list)
+			response.add_subgraph(g.nodes(data=True), g.edges(data=True), results_text,
+								  1 - weights[path_ind] / float(max([len(x) for x in edge_paths]) * max_gd))
 	if not use_json:
 		print(results_text)
 	else:
-		ret_obj = Q1Utils.get_results_object_model(doid, to_display_paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=to_display_probs_dict)
-		ret_obj['text'] = results_text
-		print(json.dumps(ret_obj))
+		#ret_obj = Q1Utils.get_results_object_model(doid, to_display_paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=to_display_probs_dict)
+		#ret_obj['text'] = results_text
+		#print(json.dumps(ret_obj))
+		return response
+
 
 
 def main():
