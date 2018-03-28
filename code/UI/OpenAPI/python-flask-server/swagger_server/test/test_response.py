@@ -1,6 +1,7 @@
 
 import os
 import sys
+import datetime
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 
 from swagger_server.models.response import Response
@@ -20,10 +21,10 @@ class TestResponse():
         response = Response()
         response.context = "http://translator.ncats.io"
         response.id = "http://rtx.ncats.io/api/v1/response/1234"
-        response.type = "medical_translator_query_result"
+        response.type = "medical_translator_query_response"
         response.tool_version = "RTX 0.4"
         response.schema_version = "0.5"
-        response.datetime = "2018-01-09 12:34:45"
+        response.datetime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         response.original_question_text = "what proteins are affected by sickle cell anemia"
         response.restated_question_text = "Which proteins are affected by sickle cell anemia?"
         response.result_code = "OK"
