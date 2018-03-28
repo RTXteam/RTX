@@ -13,6 +13,7 @@ from QueryMeSH import QueryMeSH
 import json
 import datetime
 
+from swagger_server.models.response import Response
 
 
 class RTXQuery:
@@ -65,8 +66,15 @@ class RTXQuery:
       eprint("python3 Q2Solution.py -r '"+terms[0]+"' -d '"+terms[1]+"'" )
       returnedText = subprocess.run( [ "python3 Q2Solution.py -d '"+terms[0]+"' -r '"+terms[1]+"'" ], stdout=subprocess.PIPE, shell=True )
       os.chdir(cwd)
-      #reformattedText = returnedText.stdout.decode('utf-8')
-      response = json.loads(returnedText)
+      reformattedText = returnedText.stdout.decode('utf-8')
+      eprint(reformattedText)
+      try:
+          response = json.loads(reformattedText)
+      except:
+          response = Response()
+          response.id = "000"
+          response.result_code = "InternalError"
+          response.message = "Error parsing the response from the reasoner. This is an internal bug that needs to be fixed. Unable to respond to this question at this time."
       id = response.id
       codeString = response.result_code
       self.logQuery(id,codeString,terms)
@@ -106,10 +114,11 @@ class RTXQuery:
 
 def main():
   rtxq = RTXQuery()
-  query = { "knownQueryTypeId": "Q0", "terms": [ "lovastatin" ] }
-  query = { "knownQueryTypeId": "Q0", "terms": [ "foo" ] }
+  #query = { "knownQueryTypeId": "Q0", "terms": [ "lovastatin" ] }
+  #query = { "knownQueryTypeId": "Q0", "terms": [ "foo" ] }
   #query = { "knownQueryTypeId": "Q1", "terms": [ "alkaptonuria" ] }
   #query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "glaucoma" ] }
+  query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "glaucoma" ] }
   #query = { "knownQueryTypeId": "Q3", "terms": [ "acetaminophen" ] }
   result = rtxq.query(query)
   #print(" Result is:")
