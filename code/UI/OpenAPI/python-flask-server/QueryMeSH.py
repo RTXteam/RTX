@@ -129,7 +129,7 @@ class QueryMeSH:
             #### Create the first result (potential answer)
             result1 = Result()
             result1.id = "http://rtx.ncats.io/api/v1/response/0000/result/0000"
-            result1.text = "A " + attributes["name"] + " is " + attributes["description"]
+            result1.text = "The term " + attributes["name"] + " refers to " + attributes["description"]
             result1.confidence = 1.0
 
             #### Create a ResultGraph object and put the list of nodes and edges into it
