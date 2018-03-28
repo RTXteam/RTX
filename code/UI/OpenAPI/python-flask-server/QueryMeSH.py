@@ -16,6 +16,16 @@ __status__ = "Prototype"
 import requests
 import requests_cache
 import time
+import datetime
+
+from swagger_server.models.response import Response
+from swagger_server.models.result import Result
+from swagger_server.models.result_graph import ResultGraph
+from swagger_server.models.node import Node
+from swagger_server.models.edge import Edge
+from swagger_server.models.origin import Origin
+from swagger_server.models.edge_attribute import EdgeAttribute
+from swagger_server.models.node_attribute import NodeAttribute
 
 def make_throttle_hook(timeout=1.0):
     """
@@ -90,6 +100,57 @@ class QueryMeSH:
         return attributes
 
 
+    def createResponse(self):
+        #### Create the response object and fill it with attributes about the response
+        response = Response()
+        response.context = "http://translator.ncats.io"
+        response.id = "http://rtx.ncats.io/api/v1/response/0000"
+        response.type = "medical_translator_query_response"
+        response.tool_version = "RTX 0.4"
+        response.schema_version = "0.5"
+        response.datetime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        response.result_code = "OK"
+        response.message = "1 result found"
+        return response
+
+
+    def queryTerm(self, term):
+        method = "queryTerm"
+        attributes = self.findTermAttributesAndTypeByName(term)
+        response = self.createResponse()
+        if ( attributes["status"] == 'OK' ):
+            node1 = Node()
+            node1.id = "https://www.ncbi.nlm.nih.gov/mesh/?term=" + attributes["id"]
+            node1.type = attributes["type"]
+            node1.name = attributes["name"]
+            node1.accession = "MeSH:" + attributes["id"]
+            node1.description = attributes["description"]
+
+            #### Create the first result (potential answer)
+            result1 = Result()
+            result1.id = "http://rtx.ncats.io/api/v1/response/0000/result/0000"
+            result1.text = "A " + attributes["name"] + " is " + attributes["description"]
+            result1.confidence = 1.0
+
+            #### Create a ResultGraph object and put the list of nodes and edges into it
+            result_graph = ResultGraph()
+            result_graph.node_list = [ node1 ]
+
+            #### Put the ResultGraph into the first result (potential answer)
+            result1.result_graph = result_graph
+
+            #### Put the first result (potential answer) into the response
+            result_list = [ result1 ]
+            response.result_list = result_list
+
+        else:
+            response.result_code = "TermNotFound"
+            response.message = "Unable to find term '" + term + "' in MeSH. No further information is available at this time."
+            response.id = None
+
+        return response
+
+
     def findTermAttributesById(self, termId):
         method = "findPotentialTermIds"
         attributes = {}
@@ -132,7 +193,7 @@ class QueryMeSH:
             if name:
                 #print(attributes)
                 if attributes["name"] == "Chemicals and Drugs Category":
-                    type = "drug"
+                    type = "chemical_substance"
                     keepGoing = 0
                 elif attributes["name"] == "Diseases Category":
                     type = "disease"
@@ -141,7 +202,13 @@ class QueryMeSH:
                     type = "protein"
                     keepGoing = 0
                 elif attributes["name"] == "Anatomy Category":
-                    type = "anatomical part"
+                    type = "gross_anatomical_structure"
+                    keepGoing = 0
+                elif attributes["name"] == "Analytical, Diagnostic and Therapeutic Techniques and Equipment Category":
+                    type = "treatment"
+                    keepGoing = 0
+                elif attributes["name"] == "Animals":
+                    type = "organism_taxon"
                     keepGoing = 0
                 elif attributes["parentId"] == "1000048":
                     type = name
@@ -211,7 +278,13 @@ if __name__ == '__main__':
         #termId = q.findTermId("lovastatin")
         #attributes = q.findTermAttributesAndTypeByName("malaria")
         #attributes = q.findTermAttributesAndTypeByName("phenazepam")
-        attributes = q.findTermAttributesAndTypeByName("physostigmine")
-        print(attributes)
-        print(q.prettyPrintAttributes(attributes))
+        #attributes = q.findTermAttributesAndTypeByName("physostigmine")
+        #attributes = q.findTermAttributesAndTypeByName("heart")
+        #attributes = q.findTermAttributesAndTypeByName("mouse")
+        #attributes = q.findTermAttributesAndTypeByName("appendectomy")
+        #attributes = q.findTermAttributesAndTypeByName("mitochondrion")
+        #print(attributes)
+        #print(q.prettyPrintAttributes(attributes))
 
+        print(q.queryTerm("heart"))
+        #print(q.queryTerm("snot"))
