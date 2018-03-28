@@ -147,10 +147,10 @@ disease_ignore_list = [
 ###################################################
 # Start input
 
-def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False, use_json=False):  # I'm thinking directed true is best
+def answerQ1(doid, directed=True, max_path_len=3, verbose=False, use_json=False):  # I'm thinking directed true is best
 	"""
 	Answers Q1.
-	:param input_disease: input disease (from the list)
+	:param doid: input disease (from the list)
 	:param directed: if true, treats the graph as directed and looks for short paths, if false, looks for nodes with
 	many paths from source to target
 	:param max_path_len: maximum path length to consider
@@ -158,15 +158,23 @@ def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False, use_js
 	"""
 	#input_disease = 'cholera'  # input disease
 	# Temp fix for input being doid, not description
-	doid = input_disease
-	input_disease = q1_doid_to_disease[doid]
+	#doid = input_disease
 
 	# TODO: synonyms for diseases
-	if input_disease not in q1_disease_to_doid:
+	if doid not in q1_doid_to_disease:
+		try:
+			disease_description = RU.get_node_property(doid, 'description')
+		except:
+			disease_description = doid
 		if not use_json:
-			print("Sorry, the disease %s is not one of the Q1 diseases." % input_disease)
-		return
-	doid = q1_disease_to_doid[input_disease]  # get the DOID for this disease
+			print("Sorry, the disease %s is not one of the Q1 diseases." % disease_description)
+			return
+		else:
+			error_code = "NotInDiseaseList"
+			error_message = "Sorry, the disease %s is not one of the Q1 diseases." % disease_description
+			response.add_error_message(error_code, error_message)
+			response.print()
+			return
 
 	# Getting nearby genetic diseases
 	omims = Q1Utils.get_omims_connecting_to_fixed_doid(doid, directed=directed, max_path_len=max_path_len, verbose=verbose)
@@ -236,7 +244,7 @@ def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False, use_js
 		#ret_obj = Q1Utils.get_results_object_model(doid, to_display_paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=to_display_probs_dict)
 		#ret_obj['text'] = results_text
 		#print(json.dumps(ret_obj))
-		print(response)
+		response.print()
 		return
 
 
@@ -289,6 +297,11 @@ def main():
 				if not use_json:
 					print("Increasing path length and trying again...")
 				res = answerQ1(disease, directed=directed, max_path_len=max_path_len + 2, verbose=verbose, use_json=use_json)
+				if res == 1 and use_json:
+					error_code = "NoResultsFound"
+					error_message = "Sorry, no results found for %s" % disease
+					response.add_error_message(error_code, error_message)
+					response.print()
 
 if __name__ == "__main__":
 	main()

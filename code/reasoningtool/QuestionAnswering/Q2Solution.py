@@ -18,6 +18,7 @@ QueryNCBIeUtils = QueryNCBIeUtils.QueryNCBIeUtils()
 import FormatOutput
 import networkx as nx
 
+
 drug_to_disease_doid = dict()
 disease_doid_to_description = dict()
 with open(os.path.abspath('../../../data/q2/q2-drugandcondition-list-mapped.txt'), 'r') as fid:
@@ -46,12 +47,27 @@ def answerQ2(drug_name, disease_name, k, text=False):
 	:param text: if you want the answers as plain text.
 	:return: Text answer
 	"""
+	response = FormatOutput.FormatResponse(2)
 	if not RU.node_exists_with_property(drug_name, 'name'):
-		print("Sorry, the drug %s is not yet in our knowledge graph." % drug_name)
-		return 1
+		error_message = "Sorry, the drug %s is not yet in our knowledge graph." % drug_name
+		error_code = "DrugNotFound"
+		if text:
+			print(error_message)
+			return 1
+		else:
+			response.add_error_message(error_code, error_message)
+			response.print()
+			return 1
 	if not RU.node_exists_with_property(disease_name, 'name'):
-		print("Sorry, the disease %s is not yet in our knowledge graph." % disease_name)
-		return 1
+		error_message = "Sorry, the disease %s is not yet in our knowledge graph." % disease_name
+		error_code = "DiseaseNotFound"
+		if text:
+			print(error_message)
+			return 1
+		else:
+			response.add_error_message(error_code, error_message)
+			response.print()
+			return 1
 
 	# TODO: could dynamically get the terminal node label as some are (drug, phenotype) pairs
 	# get the relevant subgraph between the source and target nodes
@@ -70,19 +86,23 @@ def answerQ2(drug_name, disease_name, k, text=False):
 				g = RU.get_shortest_subgraph_between_nodes(drug_name, 'pharos_drug', disease_name, 'disont_disease',
 															max_path_len=4, limit=50, debug=False, directed=False)
 			except CustomExceptions.EmptyCypherError:
+				error_code = "NoPathsFound"
 				try:
-					print(
-						"Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype. "
-						"The drug and/or disease may not be one of the entities I know about, or they do not connect via a known "
-						"pathway, tissue, and phenotype (understudied)" %
-						(drug_name, RU.get_node_property(disease_name, 'description')))
+					error_message = "Sorry, I could not find any paths connecting %s to %s via protein, pathway, "\
+						"tissue, and phenotype. The drug and/or disease may not be one of the entities I know about, or they "\
+						"do not connect via a known pathway, tissue, and phenotype (understudied)" % (
+					drug_name, RU.get_node_property(disease_name, 'description'))
 				except:
-					print(
-						"Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype. "
-						"The drug and/or disease may not be one of the entities I know about, or they do not connect via a known "
-						"pathway, tissue, and phenotype (understudied)" %
-						(drug_name, disease_name))
-				return 1
+					error_message = "Sorry, I could not find any paths connecting %s to %s via protein, pathway, "\
+						"tissue, and phenotype. The drug and/or disease may not be one of the entities I know about, or they "\
+						"do not connect via a known pathway, tissue, and phenotype (understudied)" % (drug_name, disease_name)
+				if text:
+					print(error_message)
+					return 1
+				else:
+					response.add_error_message(error_code, error_message)
+					response.print()
+					return 1
 	# Decorate with normalized google distance
 	RU.weight_graph_with_google_distance(g)
 
@@ -198,7 +218,6 @@ def answerQ2(drug_name, disease_name, k, text=False):
 			to_print += ". Distance (smaller is better): %f." % weights[path_ind]
 			print(to_print)
 	else:  # you want the result object model
-		response = FormatOutput.FormatResponse(2)
 		for path_ind in range(len(node_paths)):
 			# Format the free text portion
 			node_path = node_paths[path_ind]
@@ -221,7 +240,7 @@ def answerQ2(drug_name, disease_name, k, text=False):
 			g.add_edges_from(edges_to_add)
 			# populate the response. Quick hack to convert
 			response.add_subgraph(g.nodes(data=True), g.edges(data=True), to_print, 1-weights[path_ind]/float(max([len(x) for x in edge_paths])*max_gd))
-		print(response)
+		response.print()
 
 
 def main():
