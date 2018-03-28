@@ -33,11 +33,16 @@ class FormatResponse:
 		self.response.datetime = self._now.strftime("%Y-%m-%d %H:%M:%S")
 		self.response.original_question_text = "ERIC FILL THIS IN FROM QuestionTranslator.py"  # TODO
 		self.response.restated_question_text = "ERIC FILL THIS IN FROM QuestionTranslator.py"  # TODO
-		self.response.result_code = "OK"  # TODO: from QuestionTranslator.py
-		self.response.message = "%s result found" % self._num_results  # TODO: figure out how to populate this
+		self.response.result_code = "OK"
+		self.response.message = "%s result(s) found" % self._num_results
 
 	def __str__(self):
 		return repr(self.response)
+
+	def add_error_message(self, code, message):
+		response = self.response
+		response.result_code = code
+		response.message = message
 
 	def add_subgraph(self, nodes, edges, plain_text, confidence):
 		"""
