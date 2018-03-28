@@ -65,14 +65,12 @@ class RTXQuery:
       eprint("python3 Q2Solution.py -r '"+terms[0]+"' -d '"+terms[1]+"'" )
       returnedText = subprocess.run( [ "python3 Q2Solution.py -d '"+terms[0]+"' -r '"+terms[1]+"'" ], stdout=subprocess.PIPE, shell=True )
       os.chdir(cwd)
-      reformattedText = returnedText.stdout.decode('utf-8')
-      reformattedText = re.sub("\n","<BR>\n",reformattedText)
-      #reformattedText = "<UL><LI>" + reformattedText + "</UL>"
-      codeString = "OK"
-      result = [ { "id": 537, "code": 1, "codeString": codeString, "message": "AnswerFound", "text": [ reformattedText ] } ]
+      #reformattedText = returnedText.stdout.decode('utf-8')
+      response = json.loads(returnedText)
+      id = response.id
+      codeString = response.result_code
       self.logQuery(id,codeString,terms)
-      return(result)
-
+      return(response)
 
     if id == 'Q3':
       targets = qph.query_drug_name_to_targets(terms[0])
