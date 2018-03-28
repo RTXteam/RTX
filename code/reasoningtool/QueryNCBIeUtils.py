@@ -443,10 +443,11 @@ class QueryNCBIeUtils:
         return res_set
               
 if __name__ == '__main__':
-#    print(QueryNCBIeUtils.get_clinvar_uids_for_disease_or_phenotype_string('hypercholesterolemia'))
-#    print(QueryNCBIeUtils.get_mesh_uids_for_mesh_term('Anorexia Nervosa'))    
-#    print(QueryNCBIeUtils.get_mesh_uids_for_mesh_term('Leukemia, Promyelocytic, Acute'))
-#    print(QueryNCBIeUtils.get_mesh_uids_for_mesh_term('Leukemia, Myeloid, Acute'))
+    pass
+    #print(QueryNCBIeUtils.get_clinvar_uids_for_disease_or_phenotype_string('hypercholesterolemia'))
+    #print(QueryNCBIeUtils.get_mesh_uids_for_mesh_term('Anorexia Nervosa'))
+    #print(QueryNCBIeUtils.get_mesh_uids_for_mesh_term('Leukemia, Promyelocytic, Acute'))
+    #print(QueryNCBIeUtils.get_mesh_uids_for_mesh_term('Leukemia, Myeloid, Acute'))
     
     # for mesh_term in ['Osteoporosis',
     #                   'HIV Infections',
