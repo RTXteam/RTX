@@ -96,6 +96,8 @@ class RTXQuery:
 
   def logQuery(self,id,codeString,terms):
     datetimeString = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    if id == None:
+      id = '000'
     with open(os.path.dirname(os.path.abspath(__file__))+"/RTXQueries.log","a") as logfile:
       logfile.write(datetimeString+"\t"+codeString+"\t"+id+"\t"+",".join(terms)+"\n")
 
@@ -107,6 +109,7 @@ class RTXQuery:
 def main():
   rtxq = RTXQuery()
   query = { "knownQueryTypeId": "Q0", "terms": [ "lovastatin" ] }
+  query = { "knownQueryTypeId": "Q0", "terms": [ "foo" ] }
   #query = { "knownQueryTypeId": "Q1", "terms": [ "alkaptonuria" ] }
   #query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "glaucoma" ] }
   #query = { "knownQueryTypeId": "Q3", "terms": [ "acetaminophen" ] }
