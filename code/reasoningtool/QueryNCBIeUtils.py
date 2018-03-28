@@ -251,7 +251,7 @@ class QueryNCBIeUtils:
                     res_int = [res_int]
                     res_int += [int(res.json()['esearchresult']['translationstack'][0]['count'])]
                     res_int += [int(res.json()['esearchresult']['translationstack'][1]['count'])]
-                    print(res_int)
+                    #print(res_int)
             else:
                 print('HTTP response status code: ' + str(status_code) + ' for query term string {term}'.format(term=term_str))
         return res_int
