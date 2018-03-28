@@ -19,6 +19,10 @@ class FormatResponse:
 	Class to format a neo4j networkx subgraph into the standardized output
 	"""
 	def __init__(self, question_number):
+		"""
+		Initialize the class
+		:param question_number: which question number this is
+		"""
 		self._question_number = question_number
 		self._now = datetime.datetime.now()
 		self._result_list = []
@@ -40,6 +44,12 @@ class FormatResponse:
 		return repr(self.response)
 
 	def add_error_message(self, code, message):
+		"""
+		Add an error message to the response
+		:param code: error code
+		:param message: error message
+		:return: None (modifies response)
+		"""
 		response = self.response
 		response.result_code = code
 		response.message = message
