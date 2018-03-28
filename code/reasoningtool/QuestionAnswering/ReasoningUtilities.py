@@ -508,6 +508,27 @@ def get_node_as_graph(node_name, debug=False):
 		return graph
 
 
+def return_exact_path(node_list, relationship_list, directed=True, debug=False):
+	"""
+	Returns a networkx representation of a path through node_list via relationship_list
+	:param node_list: list of KG nodes
+	:param relationship_list: list of KG relationships (in order)
+	:param directed: return a directed graph or not
+	:param debug: just print the cypher query
+	:return: networkx graph of the path
+	"""
+	query = "MATCH path=(s{name:'%s'})-" % node_list[0]
+	for i in range(len(relationship_list) - 1):
+		query += "[:" + relationship_list[i] + "]-({name:'%s'})-" % node_list[i+1]
+	query += "[:" + relationship_list[-1] + "]-" + "(t{name:'%s'}) " % node_list[-1]
+	query += "RETURN path"
+	if debug:
+		return query
+
+	graph = get_graph(cypher.run(query, conn=connection, config=defaults), directed=directed)
+	return graph
+
+
 def interleave_nodes_and_relationships(session, source_node, source_node_label, target_node, target_node_label, max_path_len=3, debug=False):
 	"""
 	Given fixed source source_node and fixed target target_node, returns a list consiting of the types of relationships and nodes
