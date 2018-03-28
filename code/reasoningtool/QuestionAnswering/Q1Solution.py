@@ -214,7 +214,7 @@ def answerQ1(input_disease, directed=True, max_path_len=3, verbose=False, use_js
 	# Order the results
 	keys = list(to_display_paths_dict.keys())
 	probs = [to_display_probs_dict[key] for key in keys]
-	keys_sorted = [x for _, x in sorted(zip(probs, keys), key=lambda pair: pair[0])]
+	keys_sorted = [x for _, x in sorted(zip(probs, keys), key=lambda pair: pair[0], reverse=True)]
 	for key in keys_sorted:
 		path_pair = to_display_paths_dict[key]
 		temp_path_dict = dict()
