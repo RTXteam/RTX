@@ -119,6 +119,7 @@ def main():
   #query = { "knownQueryTypeId": "Q1", "terms": [ "alkaptonuria" ] }
   #query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "glaucoma" ] }
   query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "glaucoma" ] }
+  query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "DOID:1686" ] }
   #query = { "knownQueryTypeId": "Q3", "terms": [ "acetaminophen" ] }
   result = rtxq.query(query)
   #print(" Result is:")
