@@ -29,22 +29,11 @@ class RTXQuery:
     if id == 'Q0':
       # call out to QueryMeSH here to satify the query "What is XXXXXX?"
       query = QueryMeSH()
-      attributes = query.findTermAttributesAndTypeByName(terms[0])
-      html = query.prettyPrintAttributes(attributes)
-      if attributes["status"] == "OK":
-        if attributes["description"]:
-          codeString = "OK"
-          result = [ { "id": 537, "code": 1, "codeString": codeString, "message": "AnswerFound", "text": [ html ], "result": attributes } ]
-          self.logQuery(id,codeString,terms)
-        else:
-          codeString = "DrugDescriptionNotFound"
-          result = [ { "id": 537, "code": 10, "codeString": codeString, "message": "DrugDescriptionNotFound", "text": [ "Unable to find a definition for drug '"+terms[0]+"'." ] } ]
-          self.logQuery(id,codeString,terms)
-      else:
-          codeString = "TermNotFound"
-          result = [ { "id": 537, "code": 11, "codeString": codeString, "message": "TermNotFound", "text": [ html ] } ]
-          self.logQuery(id,codeString,terms)
-      return(result)
+      response = query.queryTerm(terms[0])
+      id = response.id
+      codeString = response.result_code
+      self.logQuery(id,codeString,terms)
+      return(response)
 
     if id == 'Q1':
       # call out to OrangeBoard here to satify the query "What genetic conditions might offer protection against XXXXXX?"
