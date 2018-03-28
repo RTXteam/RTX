@@ -12,6 +12,7 @@ import subprocess
 from QueryMeSH import QueryMeSH
 import json
 import datetime
+import ast
 
 from swagger_server.models.response import Response
 
@@ -69,10 +70,10 @@ class RTXQuery:
       reformattedText = returnedText.stdout.decode('utf-8')
       eprint(reformattedText)
       try:
-          response = json.loads(reformattedText)
+          data = ast.literal_eval(reformattedText)
+          response = Response.from_dict(data)
       except:
           response = Response()
-          response.id = "000"
           response.result_code = "InternalError"
           response.message = "Error parsing the response from the reasoner. This is an internal bug that needs to be fixed. Unable to respond to this question at this time."
       id = response.id
@@ -117,13 +118,14 @@ def main():
   #query = { "knownQueryTypeId": "Q0", "terms": [ "lovastatin" ] }
   #query = { "knownQueryTypeId": "Q0", "terms": [ "foo" ] }
   #query = { "knownQueryTypeId": "Q1", "terms": [ "alkaptonuria" ] }
-  #query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "glaucoma" ] }
   query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "glaucoma" ] }
-  query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "DOID:1686" ] }
+  #query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "glaucoma" ] }
+  #query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "DOID:1686" ] }
+  #query = { "knownQueryTypeId": "Q2", "terms": [ "DOID:1686", "physostigmine" ] }
   #query = { "knownQueryTypeId": "Q3", "terms": [ "acetaminophen" ] }
-  result = rtxq.query(query)
-  #print(" Result is:")
-  print(result)
+  response = rtxq.query(query)
+  #print(json.dumps(response,sort_keys=True,indent=2))
+  print(response)
 
 
 if __name__ == "__main__": main()
