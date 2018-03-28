@@ -6,27 +6,22 @@ def eprint(*args, **kwargs):
 
 import re
 import os
-from QueryPharos import QueryPharos
 import sys
 import subprocess
-from QueryMeSH import QueryMeSH
 import json
 import datetime
 import ast
 
+from QueryMeSH import QueryMeSH
 from swagger_server.models.response import Response
-
 
 class RTXQuery:
 
   def query(self,query):
 
-    qph = QueryPharos()
-
+    #### Extract the id and the terms from the incoming parameters
     id = query["knownQueryTypeId"]
     terms = query["terms"]
-    result = [ { "id": 536, "code": 100, "codeString": "UnsupportedQueryID", "message": "The specified query id '"+id+"' is not supported at this time", "text": [ "The specified query id '"+id+"' is not supported at this time" ] } ]
-
 
     if id == 'Q0':
       # call out to QueryMeSH here to satify the query "What is XXXXXX?"
@@ -37,68 +32,101 @@ class RTXQuery:
       self.logQuery(id,codeString,terms)
       return(response)
 
+    #### Call out to OrangeBoard to answer the query "What genetic conditions might offer protection against XXXXXX?"
     if id == 'Q1':
-      # call out to OrangeBoard here to satify the query "What genetic conditions might offer protection against XXXXXX?"
+      #### Set CWD to the QuestioningAnswering area and then invoke from the shell the Q1Solution code
       cwd = os.getcwd()
-      os.chdir(os.path.dirname(os.path.abspath(__file__))+"/../../..//reasoningtool/QuestionAnswering")
-      eprint("python3 Q1Solution.py -j -i '"+terms[0]+"'" )
-      returnedText = subprocess.run( [ "python3 Q1Solution.py -j -i '"+terms[0]+"'" ], stdout=subprocess.PIPE, shell=True )
+      os.chdir(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/QuestionAnswering")
+      command = "python3 Q1Solution.py -j -i '" + terms[0] + "'"
+      eprint(command)
+      returnedText = subprocess.run( [ command ], stdout=subprocess.PIPE, shell=True )
       os.chdir(cwd)
-      reformattedText = returnedText.stdout.decode('utf-8')
-      #print(reformattedText)
-      try:
-          #eprint(reformattedText)
-          returnedData = json.loads(reformattedText)
-          text = returnedData["text"]
-      except:
-          returnedData = { "status": "ERROR" }
-          text = "ERROR: Unable to properly parse the JSON response:<BR>\n"+reformattedText
-      prettyText = re.sub("\n","\n<LI>",text)
-      prettyText = "<UL><LI>" + prettyText + "</UL>"
-      codeString = "OK"
-      result = [ { "id": 537, "code": 1, "codeString": codeString, "message": "AnswerFound", "result": returnedData, "text": [ prettyText ] } ]
-      self.logQuery(id,codeString,terms)
-      return(result)
 
-    if id == 'Q2':
-      # call out to OrangeBoard here to satify the query "What is the clinical outcome pathway of XXXXXX for treatment of YYYYYYY?"
-      cwd = os.getcwd()
-      os.chdir(os.path.dirname(os.path.abspath(__file__))+"/../../..//reasoningtool/QuestionAnswering")
-      eprint("python3 Q2Solution.py -r '"+terms[0]+"' -d '"+terms[1]+"'" )
-      returnedText = subprocess.run( [ "python3 Q2Solution.py -d '"+terms[0]+"' -r '"+terms[1]+"'" ], stdout=subprocess.PIPE, shell=True )
-      os.chdir(cwd)
+      #### reformat the stdout result of the shell command into a string
       reformattedText = returnedText.stdout.decode('utf-8')
-      eprint(reformattedText)
+      #eprint(reformattedText)
+
+      #### Try to decode that string into a response object
       try:
-          data = ast.literal_eval(reformattedText)
+          #data = ast.literal_eval(reformattedText)
+          data = json.loads(reformattedText)
           response = Response.from_dict(data)
+
+      #### If it fails, the just create a new Response object with a notice about the failure
       except:
           response = Response()
           response.result_code = "InternalError"
-          response.message = "Error parsing the response from the reasoner. This is an internal bug that needs to be fixed. Unable to respond to this question at this time."
-      id = response.id
-      codeString = response.result_code
-      self.logQuery(id,codeString,terms)
+          response.message = "Error parsing the response from the reasoner. This is an internal bug that needs to be fixed. Unable to respond to this question at this time. The unparsable response was: " + reformattedText
+
+      #### Log the result and return the Response object
+      self.logQuery(response.id,response.result_code,terms)
       return(response)
 
+    #### Call out to OrangeBoard to answer the query "What is the clinical outcome pathway of XXXXXX for treatment of YYYYYYY?"
+    if id == 'Q2':
+      #### Set CWD to the QuestioningAnswering area and then invoke from the shell the Q2Solution code
+      cwd = os.getcwd()
+      os.chdir(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/QuestionAnswering")
+      command = "python3 Q2Solution.py -j -d '" + terms[0] + "' -r '" + terms[1] + "'"
+      eprint(command)
+      returnedText = subprocess.run( [ command ], stdout=subprocess.PIPE, shell=True )
+      os.chdir(cwd)
+
+      #### reformat the stdout result of the shell command into a string
+      reformattedText = returnedText.stdout.decode('utf-8')
+      #eprint(reformattedText)
+
+      #### Try to decode that string into a response object
+      try:
+          #data = ast.literal_eval(reformattedText)
+          data = json.loads(reformattedText)
+          response = Response.from_dict(data)
+
+      #### If it fails, the just create a new Response object with a notice about the failure
+      except:
+          response = Response()
+          response.result_code = "InternalError"
+          response.message = "Error parsing the response from the reasoner. This is an internal bug that needs to be fixed. Unable to respond to this question at this time. The unparsable response was: " + reformattedText
+
+      #### Log the result and return the Response object
+      self.logQuery(response.id,response.result_code,terms)
+      return(response)
+
+    #### Call out to OrangeBoard to answer the query "Which proteins does X target?"
     if id == 'Q3':
-      targets = qph.query_drug_name_to_targets(terms[0])
-      if targets:
-        list = '<UL>\n'
-        for target in targets:
-          list += "<LI> "+target["name"]+"\n"
-        list += "</UL>\n"
-        codeString = "OK"
-        result = [ { "id": 537, "code": 1, "codeString": codeString, "message": "AnswerFound", "result": targets, "text": [ terms[0]+" is known to target: "+list ] } ]
-        self.logQuery(id,codeString,terms)
-      else:
-        codeString = "DrugNotFound"
-        result = [ { "id": 537, "code": 11, "codeString": codeString, "message": "DrugNotFound", "text": [ "Unable to find drug '"+terms[0]+"'." ] } ]
-        self.logQuery(id,codeString,terms)
-      return(result);
+      #### Set CWD to the QuestioningAnswering area and then invoke from the shell the Q3Solution code
+      cwd = os.getcwd()
+      os.chdir(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/QuestionAnswering")
+      command = "python3 Q3Solution.py -j -s '" + terms[0] + "' -t '" + terms[1] + "' -r '" + terms[2] + "' "
+      eprint(command)
+      returnedText = subprocess.run( [ command ], stdout=subprocess.PIPE, shell=True )
+      os.chdir(cwd)
 
+      #### reformat the stdout result of the shell command into a string
+      reformattedText = returnedText.stdout.decode('utf-8')
+      #eprint(reformattedText)
 
-    return(result)
+      #### Try to decode that string into a response object
+      try:
+          #data = ast.literal_eval(reformattedText)
+          data = json.loads(reformattedText)
+          response = Response.from_dict(data)
+
+      #### If it fails, the just create a new Response object with a notice about the failure
+      except:
+          response = Response()
+          response.result_code = "InternalError"
+          response.message = "Error parsing the response from the reasoner. This is an internal bug that needs to be fixed. Unable to respond to this question at this time. The unparsable response was: " + reformattedText
+
+      #### Log the result and return the Response object
+      self.logQuery(response.id,response.result_code,terms)
+      return(response)
+
+    #### If the query type id is not triggered above, then return an error
+    response = Response()
+    response.result_code = "UnsupportedQueryTypeID"
+    response.message = "The specified query id '" + id + "' is not supported at this time"
+    return(response)
 
 
   def logQuery(self,id,codeString,terms):
