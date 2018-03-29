@@ -35,7 +35,7 @@ class Q3:
 		# Look 2 steps beyone if we didn't get any targets
 		if targets == []:
 			for max_path_len in range(2, 5):
-				print(max_path_len)
+				#print(max_path_len)
 				targets = RU.get_node_names_of_type_connected_to_target(source_label, source_name, target_label, max_path_len=max_path_len, direction="u")
 				if targets:
 					break
