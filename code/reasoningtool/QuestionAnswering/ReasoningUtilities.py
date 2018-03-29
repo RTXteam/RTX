@@ -187,16 +187,18 @@ def get_node_names_of_type_connected_to_target(source_label, source_name, target
 	"""
 	if direction == "r":
 		query = "MATCH path=allShortestPaths((t:%s)-[*1..%d]->(s:%s))" \
-				" WHERE s.name='%s' WITH distinct nodes(path)[0] as p RETURN p.name" % (target_label, max_path_len, source_label, source_name)
+				" WHERE s.name='%s' AND t<>s WITH distinct nodes(path)[0] as p RETURN p.name" % (target_label, max_path_len, source_label, source_name)
 	elif direction == "f":
 		query = "MATCH path=allShortestPaths((t:%s)<-[*1..%d]-(s:%s))" \
-				" WHERE s.name='%s' WITH distinct nodes(path)[0] as p RETURN p.name" % (
+				" WHERE s.name='%s' AND t<>s WITH distinct nodes(path)[0] as p RETURN p.name" % (
 				target_label, max_path_len, source_label, source_name)
 	elif direction == "u":
 		query = "MATCH path=allShortestPaths((t:%s)-[*1..%d]-(s:%s))" \
-				" WHERE s.name='%s' WITH distinct nodes(path)[0] as p RETURN p.name" % (target_label, max_path_len, source_label, source_name)
+				" WHERE s.name='%s' AND t<>s WITH distinct nodes(path)[0] as p RETURN p.name" % (target_label, max_path_len, source_label, source_name)
 	else:
 		raise Exception("Sorry, the direction must be one of 'f', 'r', or 'u'")
+	if debug:
+		return query
 	result = session.run(query)
 	result_list = [i for i in result]
 	names = [i['p.name'] for i in result_list]
