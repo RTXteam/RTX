@@ -545,11 +545,7 @@ def count_nodes_of_type_on_path_of_type_to_label(source_name, source_label, targ
 	:param session: neo4j session
 	:return: two dictionaries: names2counts, names2nodes (keys = target node names, counts is number of nodes of interest in the paths, nodes are the actual nodes of interest)
 	"""
-	query = "MATCH path=(s:%s{name:'%s'})-" % (source_label, source_name)
-	for i in range(len(relationship_label_list) - 1):
-		query += "[:%s]-(:%s)-" % (relationship_label_list[i], node_label_list[i])
-	query += "[:%s]-(t:%s) " % (relationship_label_list[-1], target_label)
-	query += "MATCH (s:%s{name:'%s'})-" % (source_label, source_name)
+	query = "MATCH (s:%s{name:'%s'})-" % (source_label, source_name)
 	for i in range(len(relationship_label_list) - 1):
 		if i == node_of_interest_position:
 			query += "[:%s]-(n:%s)-" % (relationship_label_list[i], node_label_list[i])
