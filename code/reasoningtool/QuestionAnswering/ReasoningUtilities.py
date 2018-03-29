@@ -531,6 +531,44 @@ def return_exact_path(node_list, relationship_list, directed=True, debug=False):
 	return graph
 
 
+def count_nodes_of_type_on_path_of_type_to_label(source_name, source_label, target_label, node_label_list, relationship_label_list, node_of_interest_position, debug=False, session=session):
+	"""
+	This function will take a source node, look for paths along given node and relationship types to a certain target node,
+	and then count the number distinct number of nodes of interest that occur along that path.
+	:param source_name: source node name
+	:param source_label: source node label
+	:param target_label: target node label
+	:param node_label_list: list of node labels (eg. ['phenont_phenotype'])
+	:param relationship_label_list: list of relationship types (eg. ['phenotype_assoc_with', 'phenotype_assoc_with'])
+	:param node_of_interest_position: position of node to count (in this eg, node_of_interest_position = 0)
+	:param debug: just print the cypher query
+	:param session: neo4j session
+	:return: two dictionaries: names2counts, names2nodes (keys = target node names, counts is number of nodes of interest in the paths, nodes are the actual nodes of interest)
+	"""
+	query = "MATCH path=(s:%s{name:'%s'})-" % (source_label, source_name)
+	for i in range(len(relationship_label_list) - 1):
+		query += "[:%s]-(:%s)-" % (relationship_label_list[i], node_label_list[i])
+	query += "[:%s]-(t:%s) " % (relationship_label_list[-1], target_label)
+	query += "MATCH (s:%s{name:'%s'})-" % (source_label, source_name)
+	for i in range(len(relationship_label_list) - 1):
+		if i == node_of_interest_position:
+			query += "[:%s]-(n:%s)-" % (relationship_label_list[i], node_label_list[i])
+		else:
+			query += "[:%s]-(:%s)-" % (relationship_label_list[i], node_label_list[i])
+	query += "[:%s]-(t:%s) " % (relationship_label_list[-1], target_label)
+	query += "RETURN t.name, count(distinct n.name), collect(distinct n.name)"
+	if debug:
+		return query
+	else:
+		result = session.run(query)
+		result_list = [i for i in result]
+		names2counts = dict()
+		names2nodes = dict()
+		for i in result_list:
+			names2counts[i['t.name']] = int(i['count(distinct n.name)'])
+			names2nodes[i['t.name']] = i['collect(distinct n.name)']
+		return names2counts, names2nodes
+
 def interleave_nodes_and_relationships(session, source_node, source_node_label, target_node, target_node_label, max_path_len=3, debug=False):
 	"""
 	Given fixed source source_node and fixed target target_node, returns a list consiting of the types of relationships and nodes
