@@ -12,6 +12,7 @@ from swagger_server.models.edge import Edge
 import datetime
 import math
 import json
+import ast
 
 import ReasoningUtilities as RU
 
@@ -45,7 +46,7 @@ class FormatResponse:
 		return repr(self.response)
 
 	def print(self):
-		print(json.dumps(print(self.response), sort_keys=True, indent=2))
+		print(json.dumps(ast.literal_eval(repr(self.response)), sort_keys=True, indent=2))
 
 	def add_error_message(self, code, message):
 		"""
