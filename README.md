@@ -35,7 +35,7 @@ the [RTX GitHub area](https://github.com/RTXteam/RTX).
 - The RTX POC software depends on a SQLite cache file, `orangeboard.sqlite`. The
 POC software can build this cache file if the cache file is not pre-installed by
 the user; however, the POC software will build the knowledge graph much more
-rapidly the first time, if our pre-built cache file (46 GB) is used. The
+rapidly the first time, if our pre-built cache file (63 GB) is used. The
 pre-built cache file is stored in Amazon S3
 [(link; requires pre-arrangement for access)](https://s3-us-west-2.amazonaws.com/ramseylab/ncats/ncats.saramsey.org/orangeboard.sqlite).
 
