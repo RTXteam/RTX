@@ -67,7 +67,7 @@ class RTXQuery:
       #### Set CWD to the QuestioningAnswering area and then invoke from the shell the Q2Solution code
       cwd = os.getcwd()
       os.chdir(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/QuestionAnswering")
-      command = "python3 Q2Solution.py -j -d '" + terms[0] + "' -r '" + terms[1] + "'"
+      command = "python3 Q2Solution.py -d '" + terms[0] + "' -r '" + terms[1] + "'"
       eprint(command)
       returnedText = subprocess.run( [ command ], stdout=subprocess.PIPE, shell=True )
       os.chdir(cwd)
@@ -81,7 +81,6 @@ class RTXQuery:
           #data = ast.literal_eval(reformattedText)
           data = json.loads(reformattedText)
           response = Response.from_dict(data)
-
       #### If it fails, the just create a new Response object with a notice about the failure
       except:
           response = Response()
@@ -146,14 +145,14 @@ def main():
   #query = { "knownQueryTypeId": "Q0", "terms": [ "lovastatin" ] }
   #query = { "knownQueryTypeId": "Q0", "terms": [ "foo" ] }
   #query = { "knownQueryTypeId": "Q1", "terms": [ "alkaptonuria" ] }
-  query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "glaucoma" ] }
+  #query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "glaucoma" ] }
   #query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "glaucoma" ] }
   #query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "DOID:1686" ] }
-  #query = { "knownQueryTypeId": "Q2", "terms": [ "DOID:1686", "physostigmine" ] }
+  query = { "knownQueryTypeId": "Q2", "terms": [ "DOID:1686", "physostigmine" ] }
   #query = { "knownQueryTypeId": "Q3", "terms": [ "acetaminophen" ] }
   response = rtxq.query(query)
-  #print(json.dumps(response,sort_keys=True,indent=2))
-  print(response)
+  print(json.dumps(ast.literal_eval(repr(response)),sort_keys=True,indent=2))
+  #print(response)
 
 
 if __name__ == "__main__": main()
