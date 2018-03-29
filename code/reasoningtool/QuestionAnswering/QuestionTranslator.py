@@ -136,7 +136,14 @@ class QuestionTranslator:
 		elif corpus_index == 1:
 			restated = "What genetic conditions might offer protection against %s" % RU.get_node_property(terms["disease_name"], 'description')
 		elif corpus_index == 2:
-			restated = "What is the clinical outcome pathway of %s for the treatment of %s" % (names2descrip[terms["drug_name"]], names2descrip[terms["disease_name"]])
+			if terms["drug_name"] not in names2descrip and terms["disease_name"] not in names2descrip:
+				restated = "What is the clinical outcome pathway of %s for the treatment of %s" % ("?", "?")
+			elif terms["drug_name"] not in names2descrip:
+				restated = "What is the clinical outcome pathway of %s for the treatment of %s" % ("?", names2descrip[terms["disease_name"]])
+			elif terms["disease_name"] not in names2descrip:
+				restated = "What is the clinical outcome pathway of %s for the treatment of %s" % (names2descrip[terms["drug_name"]], "?")
+			else:
+				restated = "What is the clinical outcome pathway of %s for the treatment of %s" % (names2descrip[terms["drug_name"]], names2descrip[terms["disease_name"]])
 		elif corpus_index == 3:
 			# TODO: this is a gnarly question to restate
 			restated = "%s %s what %s" % (names2descrip[terms["source_name"]], " ".join(terms["relationship_type"].split("_")), " ".join(terms["target_label"].split("_")))
@@ -710,9 +717,9 @@ def test_find_question_parameters():
 
 def main():
 	txltr = QuestionTranslator()
-	question = {"language": "English", "text": "What is the clinical outcome pathway of physostigmine for treatment of glaucoma"}
+	#question = {"language": "English", "text": "What is the clinical outcome pathway of physostigmine for treatment of glaucoma"}
 	question = {"language": "English", "text": "What is the clinical outcome pathway of dicumarol for treatment of coagulation"}
-	question = {"language": "English", "text": "what is lovastatin"}
+	#question = {"language": "English", "text": "what is lovastatin"}
 	res = txltr.translate(question)
 	print("Result is:")
 	print(res)
