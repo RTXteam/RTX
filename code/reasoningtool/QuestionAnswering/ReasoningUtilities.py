@@ -565,6 +565,50 @@ def count_nodes_of_type_on_path_of_type_to_label(source_name, source_label, targ
 			names2nodes[i['t.name']] = i['collect(distinct n.name)']
 		return names2counts, names2nodes
 
+def count_nodes_of_type_for_nodes_that_connect_to_label(source_name, source_label, target_label, node_label_list, relationship_label_list, node_of_interest_position, debug=False, session=session):
+	"""
+	This function will take a source node, get all the target nodes of node_label type that connect to the source via node_label_list
+	and relationship_label list, it then takes each target node, and counts the number of nodes of type node_label_list[node_of_interest] that are connected to the target.
+	An example cypher result is:
+	MATCH (t:disont_disease)-[:phenotype_assoc_with]-(n:phenont_phenotype) WHERE (:disont_disease{name:'DOID:8398'})-[:phenotype_assoc_with]-(:phenont_phenotype)-[:phenotype_assoc_with]-(t:disont_disease) RETURN t.name, count(distinct n.name)
+	which will return
+	DOID:001	18
+	DOID:002	200
+	which means that DOID:001 and DOID:002 both are connected to the source, and DOID:001 has 18 phenotypes, DOID:002 has 200 phenotypes.
+	:param source_name: source node name
+	:param source_label: source node label
+	:param target_label: target node label
+	:param node_label_list: list of node labels (eg. ['phenont_phenotype'])
+	:param relationship_label_list: list of relationship types (eg. ['phenotype_assoc_with', 'phenotype_assoc_with'])
+	:param node_of_interest_position: position of node to count (in this eg, node_of_interest_position = 0)
+	:param debug: just print the cypher query
+	:param session: neo4j session
+	:return: dict: names2counts, (keys = target node names, values = number of nodes of interest connected to target)
+	"""
+	temp_rel_list = list(reversed(relationship_label_list))
+	temp_node_list = list(reversed(node_label_list))
+	query = "MATCH (t:%s)" % (target_label)
+	for i in range(len(relationship_label_list) - 1):
+		if i == node_of_interest_position:
+			query += "-[:%s]-(n:%s)" % (temp_rel_list[i], temp_node_list[i])
+			break
+		else:
+			query += "-[:%s]-(:%s)" % (temp_rel_list[i], temp_node_list[i])
+	query += " WHERE (:%s{name:'%s'})-" % (source_label, source_name)
+	for i in range(len(relationship_label_list) - 1):
+		query += "[:%s]-(:%s)-" % (relationship_label_list[i], node_label_list[i])
+	query += "[:%s]-(t:%s) " % (relationship_label_list[-1], target_label)
+	query += "RETURN t.name, count(distinct n.name)"
+	if debug:
+		return query
+	else:
+		result = session.run(query)
+		result_list = [i for i in result]
+		names2counts = dict()
+		for i in result_list:
+			names2counts[i['t.name']] = int(i['count(distinct n.name)'])
+		return names2counts
+
 def interleave_nodes_and_relationships(session, source_node, source_node_label, target_node, target_node_label, max_path_len=3, debug=False):
 	"""
 	Given fixed source source_node and fixed target target_node, returns a list consiting of the types of relationships and nodes
