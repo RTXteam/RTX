@@ -142,8 +142,8 @@ def seed_and_expand_kg_q1(num_expansions):
     ## seed all 21 diseases in the Orangeboard
     ## set the seed node flag to True, for the first disease
     seed_node_bool = True
-    for disont_id_str in q1_diseases_dict.keys():
-        ob.add_node('disont_disease', disont_id_str, seed_node_bool)
+    for disont_id_str, disont_desc in q1_diseases_dict.items():
+        ob.add_node('disont_disease', disont_id_str, seed_node_bool, desc=disont_desc)
         ## for the rest of the diseases, do not set the seed-node flag
         seed_node_bool = False
 
