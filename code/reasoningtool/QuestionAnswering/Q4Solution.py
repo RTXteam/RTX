@@ -94,7 +94,7 @@ class Q4:
 		if not other_disease_IDs_to_intersection_counts:
 			error_code = "NoDiseasesFound"
 			error_message = "No diseases were found with similarity crossing the threshold of %f." % threshold
-			parent = RU.get_one_hop_target(disease_label, disease_ID, disease_label, "is_parent_of")
+			parent = RU.get_one_hop_target(disease_label, disease_ID, disease_label, "is_parent_of").pop()
 			if parent:
 				error_message += "\n Note that %s is a parent disease to %s, so you might try that instead." % (RU.get_node_property(parent, 'description'), disease_description)
 			if not use_json:
@@ -102,6 +102,7 @@ class Q4:
 				return 1
 			else:
 				response.add_error_message(error_code, error_message)
+				response.print()
 				return 1
 
 		#print("Total number of other diseases %d" % len(list(other_disease_IDs_to_intersection_counts.keys())))
