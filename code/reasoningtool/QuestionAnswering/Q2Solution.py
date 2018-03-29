@@ -38,7 +38,7 @@ with open(os.path.abspath('../../../data/q2/q2-drugandcondition-list-mapped.txt'
 			disease_doid_to_description[disease_doid] = disease_descr
 
 
-def answerQ2(drug_name, disease_name, k, text=False):
+def answerQ2(drug_name, disease_name, k, use_json=False):
 	"""
 	Find the clinical outcome pathway connecting the drug to the disease
 	:param drug_name: a name of a drug (node.name in the KG)
@@ -51,7 +51,7 @@ def answerQ2(drug_name, disease_name, k, text=False):
 	if not RU.node_exists_with_property(drug_name, 'name'):
 		error_message = "Sorry, the drug %s is not yet in our knowledge graph." % drug_name
 		error_code = "DrugNotFound"
-		if text:
+		if not use_json:
 			print(error_message)
 			return 1
 		else:
@@ -61,7 +61,7 @@ def answerQ2(drug_name, disease_name, k, text=False):
 	if not RU.node_exists_with_property(disease_name, 'name'):
 		error_message = "Sorry, the disease %s is not yet in our knowledge graph." % disease_name
 		error_code = "DiseaseNotFound"
-		if text:
+		if not use_json:
 			print(error_message)
 			return 1
 		else:
@@ -96,7 +96,7 @@ def answerQ2(drug_name, disease_name, k, text=False):
 					error_message = "Sorry, I could not find any paths connecting %s to %s via protein, pathway, "\
 						"tissue, and phenotype. The drug and/or disease may not be one of the entities I know about, or they "\
 						"do not connect via a known pathway, tissue, and phenotype (understudied)" % (drug_name, disease_name)
-				if text:
+				if not use_json:
 					print(error_message)
 					return 1
 				else:
@@ -205,7 +205,7 @@ def answerQ2(drug_name, disease_name, k, text=False):
 	weights.sort()
 
 	# Then display the results....
-	if text:
+	if not use_json:
 		print("The possible clinical outcome pathways include: ")
 		for path_ind in range(len(node_paths)):
 			node_path = node_paths[path_ind]
@@ -251,7 +251,7 @@ def main():
 	parser.add_argument('-a', '--all', action="store_true", help="Flag indicating you want to run it on all Q2 drugs + diseases",
 						default=False)
 	parser.add_argument('-k', '--kpaths', type=int, help="Number of paths to return.", default=10)
-	parser.add_argument('-t', '--text', action="store_true", help="Flag indicating you want the results in plain text.")
+	parser.add_argument('-j', '--json', action="store_true", help="Flag indicating you want the results in JSON format.", default=False)
 
 	if '-h' in sys.argv or '--help' in sys.argv:
 		RU.session.close()
@@ -263,7 +263,7 @@ def main():
 	disease = args.disease
 	all_d = args.all
 	k = args.kpaths
-	text = args.text
+	use_json = args.json
 
 	if all_d:
 		for i, drug in enumerate(list(drug_to_disease_doid.keys())):
@@ -272,9 +272,9 @@ def main():
 			print("\n")
 			print((drug, disease_description, disease))
 			print(i)
-			res = answerQ2(drug, disease, k, text=text)
+			res = answerQ2(drug, disease, k, text=use_json)
 	else:
-		res = answerQ2(drug, disease, k, text)
+		res = answerQ2(drug, disease, k, use_json)
 
 if __name__ == "__main__":
 	main()
