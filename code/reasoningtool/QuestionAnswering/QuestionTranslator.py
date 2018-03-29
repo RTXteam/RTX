@@ -710,6 +710,8 @@ def test_find_question_parameters():
 
 def main():
 	txltr = QuestionTranslator()
+	question = {"language": "English", "text": "What is the clinical outcome pathway of physostigmine for treatment of glaucoma"}
+	question = {"language": "English", "text": "What is the clinical outcome pathway of dicumarol for treatment of coagulation"}
 	question = {"language": "English", "text": "what is lovastatin"}
 	res = txltr.translate(question)
 	print("Result is:")
