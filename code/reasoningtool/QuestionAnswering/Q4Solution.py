@@ -176,7 +176,7 @@ class Q4:
 		else:
 			for other_disease_ID, jaccard in disease_jaccard_tuples_sorted:
 				to_print = "%s is similar to the disease %s with similarity value %f" % (
-				disease_description, RU.get_node_property(other_disease_ID, 'decription'), jaccard)
+				disease_description, RU.get_node_property(other_disease_ID, 'description'), jaccard)
 				g = RU.get_node_as_graph(other_disease_ID)
 				response.add_subgraph(g.nodes(data=True), g.edges(data=True), to_print, jaccard)
 			response.print()
