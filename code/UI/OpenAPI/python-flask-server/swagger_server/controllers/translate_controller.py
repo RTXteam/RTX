@@ -4,6 +4,10 @@ import six
 from swagger_server.models.query import Query  # noqa: E501
 from swagger_server.models.question import Question  # noqa: E501
 from swagger_server import util
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../reasoningtool/QuestionAnswering/")
+from QuestionTranslator import QuestionTranslator
 
 
 def translate(body):  # noqa: E501
@@ -17,5 +21,7 @@ def translate(body):  # noqa: E501
     :rtype: List[Query]
     """
     if connexion.request.is_json:
-        body = Question.from_dict(connexion.request.get_json())  # noqa: E501
-    return 'do some magic!'
+        question = connexion.request.get_json()
+        txltr = QuestionTranslator()
+        query = txltr.translate(question)
+    return query
