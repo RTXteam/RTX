@@ -245,7 +245,7 @@ def get_one_hop_target(source_label, source_name, target_label, edge_type, debug
 	else:
 		return names
 
-def get_relationship_types_between(source_name, source_label, target_name, target_label, max_path_len=4,session=session, debug=False):
+def get_relationship_types_between(source_name, source_label, target_name, target_label, max_path_len=4, session=session, debug=False):
 	"""
 	This function will return the relationship types between fixed source and target nodes
 	:param source_name: source node name (eg: DOID:1234).
@@ -254,20 +254,38 @@ def get_relationship_types_between(source_name, source_label, target_name, targe
 	:param max_path_len: maximum path length to consider
 	:param session: neo4j driver session
 	:return: returns a list of tuples where tup[0] is the list of relationship types, tup[1] is the count.
+	unless max_path_len=1 and it's missing a target_name, then just return the relationship types
 	"""
-	query = "MATCH path=allShortestPaths((s:%s)-[*1..%d]-(t:%s)) " \
-			"WHERE s.name='%s' AND t.name='%s' " \
-			"RETURN distinct extract (rel in relationships(path) | type(rel) ) as types, count(*)" % (source_label, max_path_len, target_label, source_name, target_name)
-	with session.begin_transaction() as tx:
-		result = tx.run(query)
-		result_list = [i for i in result]
-		return_list = list()
-		for item in result_list:
-			return_list.append((item['types'], item['count(*)']))
+	if max_path_len == 1 and source_name and not target_name:
+		query = "match (s:%s{name:'%s'})-[r]-(t:%s) return distinct type(r)" % (source_label, source_name, target_label)
 		if debug:
-			return return_list, query
+			return query
 		else:
-			return return_list
+			res = session.run(query)
+			res = [i["type(r)"] for i in res]
+			return res
+	elif max_path_len == 1 and not source_name and not target_name:
+		query = "match (s:%s)-[r]-(t:%s) return distinct type(r)" % (source_label, target_label)
+		if debug:
+			return query
+		else:
+			res = session.run(query)
+			res = [i["type(r)"] for i in res]
+			return res
+	else:
+		query = "MATCH path=allShortestPaths((s:%s)-[*1..%d]-(t:%s)) " \
+				"WHERE s.name='%s' AND t.name='%s' " \
+				"RETURN distinct extract (rel in relationships(path) | type(rel) ) as types, count(*)" % (source_label, max_path_len, target_label, source_name, target_name)
+		with session.begin_transaction() as tx:
+			result = tx.run(query)
+			result_list = [i for i in result]
+			return_list = list()
+			for item in result_list:
+				return_list.append((item['types'], item['count(*)']))
+			if debug:
+				return return_list, query
+			else:
+				return return_list
 
 
 # Convert ipython-cypher query (from cypher query) into a networkx graph
