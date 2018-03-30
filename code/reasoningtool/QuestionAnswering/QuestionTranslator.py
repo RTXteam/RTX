@@ -163,7 +163,8 @@ class QuestionTranslator:
 				target_label = " ".join(terms["target_label"].split("_"))
 			else:
 				target_label = "?"
-			restated = "%s %s what %s" % (source_name, relationship_type, target_label)
+			#restated = "%s %s what %s" % (source_name, relationship_type, target_label)
+			restated = "Source name: %s, Target label: %s, Relationship type: %s" % (source_name, target_label, relationship_type)
 		else:
 			raise Exception("Only 4 questions have been implemented")
 		return restated
@@ -734,26 +735,29 @@ def test_find_question_parameters():
 
 def main():
 	txltr = QuestionTranslator()
-	#question = {"language": "English", "text": "What is the clinical outcome pathway of physostigmine for treatment of glaucoma"}
-	#question = {"language": "English", "text": "What is the clinical outcome pathway of dicumarol for treatment of coagulation"}
-	#question = {"language": "English", "text": "What is the clinical outcome pathway of naproxen for treatment of Osteoarthritis"}
-	#question = {"language": "English", "text": "What is the clinical outcome pathway of beano for treatment of Osteoarthritis"}
-	#question = {"language": "English", "text": "What is the clinical outcome pathway of physostigmine for treatment of glaucoma in dogs"}
-	#question = {"language": "English", "text": "What is the clinical outcome pathway of glaucoma for treatment of physostigmine"}
-	#question = {"language": "English", "text": "What is the COP of physostigmine for treatment of glaucoma"}
-	#question = {"language": "English", "text": "what genetic conditions might offer protection against malaria"}
-	#question = {"language": "English", "text": "Which genetic conditions might offer protection against hypertension"}
-	#question = {"language": "English", "text": "what genetic conditions might offer protection against naproxen"}
-	#question = {"language": "English", "text": "what genetic conditions might offer protection against asdfasdf"}
-	#question = {"language": "English", "text": "what is lovastatin"}
-	question = {"language": "English", "text": "what are dogs"}
-	#question = {"language": "English", "text": "what is an iPhone"}
-	#question = {"language": "English", "text": "What proteins does acetaminophen target?"}
-	#question = {"language": "English", "text": "What proteins are in the glycosylation pathway?"}
-	#question = {"language": "English", "text": "What proteins are expressed in liver?"}
-	res = txltr.translate(question)
-	print("Result is:")
-	print(res)
+	texts = ["What is the clinical outcome pathway of physostigmine for treatment of glaucoma",
+	"What is the clinical outcome pathway of dicumarol for treatment of coagulation",
+	"What is the clinical outcome pathway of naproxen for treatment of Osteoarthritis",
+	"What is the clinical outcome pathway of beano for treatment of Osteoarthritis",
+	"What is the clinical outcome pathway of physostigmine for treatment of glaucoma in dogs",
+	"What is the clinical outcome pathway of glaucoma for treatment of physostigmine",
+	"What is the COP of physostigmine for treatment of glaucoma",
+	"what genetic conditions might offer protection against malaria",
+	"Which genetic conditions might offer protection against hypertension",
+	"what genetic conditions might offer protection against naproxen",
+	"what genetic conditions might offer protection against asdfasdf",
+	"what is lovastatin",
+	"what are dogs",
+	"what is an iPhone",
+	"What proteins does acetaminophen target?",
+	"What proteins are in the glycosylation pathway?",
+	"What proteins are expressed in liver?"
+	]
+	for text in texts:
+		question = {"language": "English", "text": text}
+		res = txltr.translate(question)
+		print("Result is:")
+		print(res)
 
 
 if __name__ == "__main__":
