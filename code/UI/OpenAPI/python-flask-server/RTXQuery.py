@@ -67,7 +67,7 @@ class RTXQuery:
       #### Set CWD to the QuestioningAnswering area and then invoke from the shell the Q2Solution code
       cwd = os.getcwd()
       os.chdir(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/QuestionAnswering")
-      command = "python3 Q2Solution.py -d '" + terms[0] + "' -r '" + terms[1] + "'"
+      command = "python3 Q2Solution.py -j -d '" + terms[0] + "' -r '" + terms[1] + "'"
       eprint(command)
       returnedText = subprocess.run( [ command ], stdout=subprocess.PIPE, shell=True )
       os.chdir(cwd)
