@@ -168,14 +168,14 @@ class Q4:
 		disease_jaccard_tuples_sorted = [(x, y) for x, y in
 										 sorted(disease_jaccard_tuples, key=lambda pair: pair[1], reverse=True)]
 		if not use_json:
-			to_print = "The diseases similar to %s are: \n" % disease_description
+			to_print = "The diseases with phenotypes similar to %s are: \n" % disease_description
 			for other_disease_ID, jaccard in disease_jaccard_tuples_sorted:
 				to_print += "%s\t%s\tJaccard %f\n" % (
 				other_disease_ID, RU.get_node_property(other_disease_ID, 'description'), jaccard)
 			print(to_print)
 		else:
 			for other_disease_ID, jaccard in disease_jaccard_tuples_sorted:
-				to_print = "%s is similar to the disease %s with similarity value %f" % (
+				to_print = "%s is phenotypically similar to the disease %s with similarity value %f" % (
 				disease_description, RU.get_node_property(other_disease_ID, 'description'), jaccard)
 				g = RU.get_node_as_graph(other_disease_ID)
 				response.add_subgraph(g.nodes(data=True), g.edges(data=True), to_print, jaccard)
