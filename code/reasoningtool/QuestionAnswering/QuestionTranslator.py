@@ -752,7 +752,7 @@ def main():
 	"what genetic conditions might offer protection against naproxen",
 	"what genetic conditions might offer protection against asdfasdf",
 	"what is lovastatin",
-	"what are dogs",
+	"what are adenoids",
 	"what is an iPhone",
 	"What proteins does acetaminophen target?",
 	"What proteins are in the glycosylation pathway?",
@@ -761,8 +761,10 @@ def main():
 	for text in texts:
 		question = {"language": "English", "text": text}
 		res = txltr.translate(question)
+		print("Question is: " + text)
 		print("Result is:")
 		print(res)
+		print("=====")
 
 
 if __name__ == "__main__":
