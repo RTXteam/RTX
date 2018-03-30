@@ -8,13 +8,15 @@ except ImportError:
 	sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 	import ReasoningUtilities as RU
 
+import FormatOutput
+
 # eg: what proteins does drug X target? One hop question
-class Q4:
+class Q3:
 
 	def __init__(self):
 		None
 
-	def answer(self, source_name, target_label, relationship_type):
+	def answer(self, source_name, target_label, relationship_type, use_json=False):
 		"""
 		Answer a question of the type "What proteins does drug X target" but is general:
 		 what <node X type> does <node Y grounded> <relatioship Z> that can be answered in one hop in the KG (increasing the step size if necessary).
@@ -23,6 +25,7 @@ class Q4:
 		:param source_name: KG neo4j node name (eg "carbetocin")
 		:param target_label: KG node label (eg. "uniprot_protein")
 		:param relationship_type: KG relationship type (eg. "targets")
+		:param use_json: If the answer should be in Eric's Json standardized API output format
 		:return: list of dictionaries containing the nodes that are one hop (along relationship type) that connect source to target.
 		"""
 		# Get label/kind of node the source is
@@ -37,15 +40,26 @@ class Q4:
 				if targets:
 					break
 
-		# Format the results. TODO: change this to a call to Eric's output formatter when he's written that
-		results_list = list()
-		for target in targets:
-			results_list.append(
-				{'type': 'node',
-				 'name': target,
-				 'desc': RU.get_node_property(target, "description", node_label=target_label),
-				 'prob': 1})  # All these are known to be true
-		return results_list
+		# Format the results.
+		if not use_json:
+			results_list = list()
+			for target in targets:
+				results_list.append(
+					{'type': 'node',
+					 'name': target,
+					 'desc': RU.get_node_property(target, "description", node_label=target_label),
+					 'prob': 1})  # All these are known to be true
+			return results_list
+		else:  # You want the standardized API output format
+			response = FormatOutput.FormatResponse(3)  # it's a Q3 question
+			source_description = RU.get_node_property(source_name, 'description')
+			for target in targets:
+				g = RU.return_subgraph_paths_of_type(source_name, source_label, target, target_label, [relationship_type], directed=False)
+				response.add_subgraph(g.nodes(data=True), g.edges(data=True),
+									"%s and %s are connected by the relationship %s" % (
+									source_description, RU.get_node_property(target, 'description'),
+									relationship_type), 1)
+			return response
 
 	def describe(self):
 		output = "Answers questions of the form: 'What proteins does tranilast target?' and 'What genes are affected by " \
@@ -65,8 +79,8 @@ class Q4:
 
 
 # Tests
-def testQ4_answer():
-	Q = Q4()
+def testQ3_answer():
+	Q = Q3()
 	res = Q.answer("carbetocin", "uniprot_protein", "targets")
 	assert res == [{'desc': 'OXTR', 'name': 'P30559', 'type': 'node','prob': 1}]
 	res = Q.answer("OMIM:263200", "uniprot_protein", "disease_affects")
@@ -79,14 +93,14 @@ def testQ4_answer():
 	assert res == [{'desc': 'MIR1225', 'name': 'NCBIGene:100188847', 'type': 'node', 'prob': 1}]
 
 
-def test_Q4_describe():
-	Q = Q4()
+def test_Q3_describe():
+	Q = Q3()
 	res = Q.describe()
 
 
 def test_suite():
-	testQ4_answer()
-	test_Q4_describe()
+	testQ3_answer()
+	test_Q3_describe()
 
 
 def main():
@@ -107,14 +121,14 @@ def main():
 	describe_flag = args.describe
 
 	# Initialize the question class
-	Q = Q4()
+	Q = Q3()
 
 	if describe_flag:
 		res = Q.describe()
 		print(res)
 	else:
-		res = Q.answer(source_name, target_label, relationship_type)
-		print(res)
+		res = Q.answer(source_name, target_label, relationship_type, use_json)
+		res.print()
 
 
 if __name__ == "__main__":

@@ -38,7 +38,8 @@ class QuestionTranslator:
 		Q0_corpus = [
 			"What is an",
 			"What is a",
-			"what is"
+			"what is",
+			"what are"
 		]
 
 		Q1_corpus = [
@@ -132,14 +133,43 @@ class QuestionTranslator:
 		names2descrip = self._names2descrip
 		# TODO: this is ugly at the moment
 		if corpus_index == 0:
-			restated = "What is %s" % terms["term"]
+			if "term" in terms and terms["term"] is not None:
+				term = terms["term"]
+			else:
+				term = "?"
+			restated = "What is %s" % term
 		elif corpus_index == 1:
-			restated = "What genetic conditions might offer protection against %s" % RU.get_node_property(terms["disease_name"], 'description')
+			try:
+				disease_name = RU.get_node_property(terms["disease_name"], 'description')
+			except:
+				disease_name = "?"
+			restated = "What genetic conditions might offer protection against %s" % disease_name
 		elif corpus_index == 2:
-			restated = "What is the clinical outcome pathway of %s for the treatment of %s" % (names2descrip[terms["drug_name"]], names2descrip[terms["disease_name"]])
+			if "drug_name" in terms and terms["drug_name"] is not None and terms["drug_name"] in names2descrip:
+				drug_name = names2descrip[terms["drug_name"]]
+			else:
+				drug_name = "?"
+			if "disease_name" in terms and terms["disease_name"] is not None and terms["disease_name"] in names2descrip:
+				disease_name = names2descrip[terms["disease_name"]]
+			else:
+				disease_name = "?"
+			restated = "What is the clinical outcome pathway of %s for the treatment of %s" % (drug_name, disease_name)
 		elif corpus_index == 3:
 			# TODO: this is a gnarly question to restate
-			restated = "%s %s what %s" % (names2descrip[terms["source_name"]], " ".join(terms["relationship_type"].split("_")), " ".join(terms["target_label"].split("_")))
+			if "source_name" in terms and terms["source_name"] is not None and terms["source_name"] in names2descrip:
+				source_name = names2descrip[terms["source_name"]]
+			else:
+				source_name = "?"
+			if "relationship_type" in terms and terms["relationship_type"] is not None:
+				relationship_type = " ".join(terms["relationship_type"].split("_"))
+			else:
+				relationship_type = "?"
+			if "target_label" in terms and terms["target_label"] is not None:
+				target_label = " ".join(terms["target_label"].split("_"))
+			else:
+				target_label = "?"
+			#restated = "%s %s what %s" % (source_name, relationship_type, target_label)
+			restated = "Node name: %s, Node label: %s, Relationship type: %s" % (source_name, target_label, relationship_type)
 		else:
 			raise Exception("Only 4 questions have been implemented")
 		return restated
@@ -710,10 +740,29 @@ def test_find_question_parameters():
 
 def main():
 	txltr = QuestionTranslator()
-	question = {"language": "English", "text": "what is lovastatin"}
-	res = txltr.translate(question)
-	print("Result is:")
-	print(res)
+	texts = ["What is the clinical outcome pathway of physostigmine for treatment of glaucoma",
+	"What is the clinical outcome pathway of dicumarol for treatment of coagulation",
+	"What is the clinical outcome pathway of naproxen for treatment of Osteoarthritis",
+	"What is the clinical outcome pathway of beano for treatment of Osteoarthritis",
+	"What is the clinical outcome pathway of physostigmine for treatment of glaucoma in dogs",
+	"What is the clinical outcome pathway of glaucoma for treatment of physostigmine",
+	"What is the COP of physostigmine for treatment of glaucoma",
+	"what genetic conditions might offer protection against malaria",
+	"Which genetic conditions might offer protection against hypertension",
+	"what genetic conditions might offer protection against naproxen",
+	"what genetic conditions might offer protection against asdfasdf",
+	"what is lovastatin",
+	"what are dogs",
+	"what is an iPhone",
+	"What proteins does acetaminophen target?",
+	"What proteins are in the glycosylation pathway?",
+	"What proteins are expressed in liver?"
+	]
+	for text in texts:
+		question = {"language": "English", "text": text}
+		res = txltr.translate(question)
+		print("Result is:")
+		print(res)
 
 
 if __name__ == "__main__":

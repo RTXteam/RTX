@@ -15,6 +15,10 @@ except ImportError:
 	import QueryNCBIeUtils
 QueryNCBIeUtils = QueryNCBIeUtils.QueryNCBIeUtils()
 
+import FormatOutput
+import networkx as nx
+
+
 drug_to_disease_doid = dict()
 disease_doid_to_description = dict()
 with open(os.path.abspath('../../../data/q2/q2-drugandcondition-list-mapped.txt'), 'r') as fid:
@@ -34,20 +38,36 @@ with open(os.path.abspath('../../../data/q2/q2-drugandcondition-list-mapped.txt'
 			disease_doid_to_description[disease_doid] = disease_descr
 
 
-def answerQ2(drug_name, disease_name, k):
+def answerQ2(drug_name, disease_name, k, use_json=False):
 	"""
 	Find the clinical outcome pathway connecting the drug to the disease
 	:param drug_name: a name of a drug (node.name in the KG)
 	:param disease_name: a name of a disease (node.name in the KG, eg DOID:)
 	:param k: Number of paths to return (int)
+	:param text: if you want the answers as plain text.
 	:return: Text answer
 	"""
+	response = FormatOutput.FormatResponse(2)
 	if not RU.node_exists_with_property(drug_name, 'name'):
-		print("Sorry, the drug %s is not yet in our knowledge graph." % drug_name)
-		return 1
+		error_message = "Sorry, the drug %s is not yet in our knowledge graph." % drug_name
+		error_code = "DrugNotFound"
+		if not use_json:
+			print(error_message)
+			return 1
+		else:
+			response.add_error_message(error_code, error_message)
+			response.print()
+			return 1
 	if not RU.node_exists_with_property(disease_name, 'name'):
-		print("Sorry, the disease %s is not yet in our knowledge graph." % disease_name)
-		return 1
+		error_message = "Sorry, the disease %s is not yet in our knowledge graph." % disease_name
+		error_code = "DiseaseNotFound"
+		if not use_json:
+			print(error_message)
+			return 1
+		else:
+			response.add_error_message(error_code, error_message)
+			response.print()
+			return 1
 
 	# TODO: could dynamically get the terminal node label as some are (drug, phenotype) pairs
 	# get the relevant subgraph between the source and target nodes
@@ -66,19 +86,23 @@ def answerQ2(drug_name, disease_name, k):
 				g = RU.get_shortest_subgraph_between_nodes(drug_name, 'pharos_drug', disease_name, 'disont_disease',
 															max_path_len=4, limit=50, debug=False, directed=False)
 			except CustomExceptions.EmptyCypherError:
+				error_code = "NoPathsFound"
 				try:
-					print(
-						"Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype. "
-						"The drug and/or disease may not be one of the entities I know about, or they do not connect via a known "
-						"pathway, tissue, and phenotype (understudied)" %
-						(drug_name, RU.get_node_property(disease_name, 'description')))
+					error_message = "Sorry, I could not find any paths connecting %s to %s via protein, pathway, "\
+						"tissue, and phenotype. The drug and/or disease may not be one of the entities I know about, or they "\
+						"do not connect via a known pathway, tissue, and phenotype (understudied)" % (
+					drug_name, RU.get_node_property(disease_name, 'description'))
 				except:
-					print(
-						"Sorry, I could not find any paths connecting %s to %s via protein, pathway, tissue, and phenotype. "
-						"The drug and/or disease may not be one of the entities I know about, or they do not connect via a known "
-						"pathway, tissue, and phenotype (understudied)" %
-						(drug_name, disease_name))
-				return 1
+					error_message = "Sorry, I could not find any paths connecting %s to %s via protein, pathway, "\
+						"tissue, and phenotype. The drug and/or disease may not be one of the entities I know about, or they "\
+						"do not connect via a known pathway, tissue, and phenotype (understudied)" % (drug_name, disease_name)
+				if not use_json:
+					print(error_message)
+					return 1
+				else:
+					response.add_error_message(error_code, error_message)
+					response.print()
+					return 1
 	# Decorate with normalized google distance
 	RU.weight_graph_with_google_distance(g)
 
@@ -181,17 +205,42 @@ def answerQ2(drug_name, disease_name, k):
 	weights.sort()
 
 	# Then display the results....
-	print("The possible clinical outcome pathways include: ")
-	for path_ind in range(len(node_paths)):
-		node_path = node_paths[path_ind]
-		edge_path = edge_paths[path_ind]
-		to_print = ""
-		for node_index in range(len(node_path)):
-			to_print += " " + str(node_path[node_index]['description'])
-			if node_index < len(edge_path):
-				to_print += " -" + str(edge_path[node_index]['type']) +"->"
-		to_print += ". Distance (smaller is better): %f." % weights[path_ind]
-		print(to_print)
+	if not use_json:
+		print("The possible clinical outcome pathways include: ")
+		for path_ind in range(len(node_paths)):
+			node_path = node_paths[path_ind]
+			edge_path = edge_paths[path_ind]
+			to_print = ""
+			for node_index in range(len(node_path)):
+				to_print += " " + str(node_path[node_index]['description'])
+				if node_index < len(edge_path):
+					to_print += " -" + str(edge_path[node_index]['type']) + "->"
+			to_print += ". Distance (smaller is better): %f." % weights[path_ind]
+			print(to_print)
+	else:  # you want the result object model
+		for path_ind in range(len(node_paths)):
+			# Format the free text portion
+			node_path = node_paths[path_ind]
+			edge_path = edge_paths[path_ind]
+			to_print = ""
+			for node_index in range(len(node_path)):
+				to_print += " " + str(node_path[node_index]['description'])
+				if node_index < len(edge_path):
+					to_print += " -" + str(edge_path[node_index]['type']) + "->"
+			to_print += ". Distance (smaller is better): %f." % weights[path_ind]
+			# put the nodes/edges into a networkx graph
+			g = nx.Graph()
+			nodes_to_add = []
+			edges_to_add = []
+			for node in node_path:
+				nodes_to_add.append((node['properties']['UUID'], node))
+			for edge in edge_path:
+				edges_to_add.append((edge['properties']['source_node_uuid'], edge['properties']['target_node_uuid'], edge))
+			g.add_nodes_from(nodes_to_add)
+			g.add_edges_from(edges_to_add)
+			# populate the response. Quick hack to convert
+			response.add_subgraph(g.nodes(data=True), g.edges(data=True), to_print, 1-weights[path_ind]/float(max([len(x) for x in edge_paths])*max_gd))
+		response.print()
 
 
 def main():
@@ -202,6 +251,7 @@ def main():
 	parser.add_argument('-a', '--all', action="store_true", help="Flag indicating you want to run it on all Q2 drugs + diseases",
 						default=False)
 	parser.add_argument('-k', '--kpaths', type=int, help="Number of paths to return.", default=10)
+	parser.add_argument('-j', '--json', action="store_true", help="Flag indicating you want the results in JSON format.", default=False)
 
 	if '-h' in sys.argv or '--help' in sys.argv:
 		RU.session.close()
@@ -213,6 +263,7 @@ def main():
 	disease = args.disease
 	all_d = args.all
 	k = args.kpaths
+	use_json = args.json
 
 	if all_d:
 		for i, drug in enumerate(list(drug_to_disease_doid.keys())):
@@ -221,9 +272,9 @@ def main():
 			print("\n")
 			print((drug, disease_description, disease))
 			print(i)
-			res = answerQ2(drug, disease, k)
+			res = answerQ2(drug, disease, k, text=use_json)
 	else:
-		res = answerQ2(drug, disease, k)
+		res = answerQ2(drug, disease, k, use_json)
 
 if __name__ == "__main__":
 	main()
