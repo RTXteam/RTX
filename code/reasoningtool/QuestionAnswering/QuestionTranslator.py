@@ -133,7 +133,11 @@ class QuestionTranslator:
 		names2descrip = self._names2descrip
 		# TODO: this is ugly at the moment
 		if corpus_index == 0:
-			restated = "What is %s" % terms["term"]
+			if "term" in terms and terms["term"] is not None:
+				term = terms["term"]
+			else:
+				term = "?"
+			restated = "What is %s" % term
 		elif corpus_index == 1:
 			try:
 				disease_name = RU.get_node_property(terms["disease_name"], 'description')
@@ -141,14 +145,15 @@ class QuestionTranslator:
 				disease_name = "?"
 			restated = "What genetic conditions might offer protection against %s" % disease_name
 		elif corpus_index == 2:
-			if terms["drug_name"] not in names2descrip and terms["disease_name"] not in names2descrip:
-				restated = "What is the clinical outcome pathway of %s for the treatment of %s" % ("?", "?")
-			elif terms["drug_name"] not in names2descrip:
-				restated = "What is the clinical outcome pathway of %s for the treatment of %s" % ("?", names2descrip[terms["disease_name"]])
-			elif terms["disease_name"] not in names2descrip:
-				restated = "What is the clinical outcome pathway of %s for the treatment of %s" % (names2descrip[terms["drug_name"]], "?")
+			if "drug_name" in terms and terms["drug_name"] is not None and terms["drug_name"] in names2descrip:
+				drug_name = names2descrip[terms["drug_name"]]
 			else:
-				restated = "What is the clinical outcome pathway of %s for the treatment of %s" % (names2descrip[terms["drug_name"]], names2descrip[terms["disease_name"]])
+				drug_name = "?"
+			if "disease_name" in terms and terms["disease_name"] is not None and terms["disease_name"] in names2descrip:
+				disease_name = names2descrip[terms["disease_name"]]
+			else:
+				disease_name = "?"
+			restated = "What is the clinical outcome pathway of %s for the treatment of %s" % (drug_name, disease_name)
 		elif corpus_index == 3:
 			# TODO: this is a gnarly question to restate
 			if "source_name" in terms and terms["source_name"] is not None and terms["source_name"] in names2descrip:
@@ -164,7 +169,7 @@ class QuestionTranslator:
 			else:
 				target_label = "?"
 			#restated = "%s %s what %s" % (source_name, relationship_type, target_label)
-			restated = "Source name: %s, Target label: %s, Relationship type: %s" % (source_name, target_label, relationship_type)
+			restated = "Node name: %s, Node label: %s, Relationship type: %s" % (source_name, target_label, relationship_type)
 		else:
 			raise Exception("Only 4 questions have been implemented")
 		return restated
