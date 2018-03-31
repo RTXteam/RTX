@@ -71,7 +71,15 @@ class QuestionTranslator:
 				"what proteins interact with"
 		]
 
-		self._Q_corpora = [Q0_corpus, Q1_corpus, Q2_corpus, Q3_corpus]
+		Q4_corpus =[
+			"what diseases have phenotypes similar to",
+			"what diseases have symptoms similar to",
+			"what are diseases similar to",
+			"what diseases are similar to",
+			"what diseases have phenotypes similar to",
+		]
+
+		self._Q_corpora = [Q0_corpus, Q1_corpus, Q2_corpus, Q3_corpus, Q4_corpus]
 
 		# get all the node names and descriptions
 		fid = open(os.path.dirname(os.path.abspath(__file__))+'/../../../data/KGmetadata/NodeNamesDescriptions.tsv', 'r')
@@ -170,8 +178,10 @@ class QuestionTranslator:
 				target_label = "?"
 			#restated = "%s %s what %s" % (source_name, relationship_type, target_label)
 			restated = "Node name: %s, Node label: %s, Relationship type: %s" % (source_name, target_label, relationship_type)
+		elif corpus_index ==4:
+			restated = "What diseases have phenotypes similar to %s" % RU.get_node_property(terms["disease_name"])
 		else:
-			raise Exception("Only 4 questions have been implemented")
+			raise Exception("Only 5 questions have been implemented, please ask a different question.")
 		return restated
 
 	def format_answer(self, results_dict, logging=True):
@@ -204,6 +214,8 @@ class QuestionTranslator:
 			terms_list.append(terms["source_name"])
 			terms_list.append(terms["target_label"])
 			terms_list.append(terms["relationship_type"])
+		elif corpus_index == 4:
+			terms_list.append(terms["disease_name"])
 
 		# Corpus index will be in the same order as the corpora.
 		# If "not_understood", then the question isn't understood
@@ -386,10 +398,54 @@ class QuestionTranslator:
 		blocks = list(reversed(blocks))  # go bigger to smaller since "is_assoc_with" \subst "gene_assoc_with" after stopword deletion
 
 		# for each block, look for the associated terms in a greedy fashion
+		##########################################################
+		# Q4: What diseasea have phenotypes similar to X?
+		##########################################################
+		if corpus_index == 4:  # Q4
+			disease_name = None
+
+			# Look for node names, in a greedy fashion TODO: collect them all and make a decision later
+			candidate_node_names = []
+			for block in blocks:
+				nodes = self.find_source_node_name(block)
+				if nodes:
+					candidate_node_names.extend(nodes)
+					break
+
+			# Get the node labels
+			candidate_node_labels = []
+			for node in candidate_node_names:
+				node_label = RU.get_node_property(node, "label")  # TODO: Arnab's UMLS lookup
+				candidate_node_labels.append(node_label)
+
+			# Get the disease node
+			node_label = "-1"
+			for i in range(len(candidate_node_labels)):
+				temp_label = candidate_node_labels[i]
+				if temp_label == "disont_disease" or temp_label == "omim_disease":
+					node_label = temp_label
+					disease_name = candidate_node_names[i]
+
+			if node_label != "disont_disease" and node_label != "omim_disease":
+				error_message = "This question requires a disease name, I got a %s with the name %s" % (
+				node_label, disease_name)
+				# raise Exception(error_message)
+				results_dict["corpus_index"] = corpus_index
+				results_dict["terms"] = {"disease_name": disease_name}
+				results_dict["error_code"] = "missing_term"
+				results_dict["error_message"] = error_message
+				return results_dict
+			else:
+				results_dict["corpus_index"] = corpus_index
+				results_dict["terms"] = {"disease_name": disease_name}
+				results_dict["error_code"] = None
+				results_dict["error_message"] = None
+				return results_dict
+
 		#######################################################################
 		# Q3: What are the protein targets of naproxen?
 		#######################################################################
-		if corpus_index == 3:  # Q3
+		elif corpus_index == 3:  # Q3
 			# Greedy look for drug name TODO: in the future, may need to disambiguate terms like I did for other Q's
 			# with candidate_node_names
 			source_name = None
@@ -619,6 +675,49 @@ def test_find_question_parameters():
 	question = "what proteins are four score and seven years ago, our fathers..."
 	results_dict = txltr.find_question_parameters(question)
 	assert results_dict["error_code"] is not None
+
+	# Q4 tests
+	question = "what diseases are similar to malaria"
+	results_dict = txltr.find_question_parameters(question)
+	assert "disease_name" in results_dict["terms"]
+	assert results_dict["terms"]["disease_name"] is not None
+	disease_name = results_dict["terms"]["disease_name"]
+	assert disease_name == "DOID:12365"
+
+	question = "what diseases have phenotypes similar to hepatic coma"
+	results_dict = txltr.find_question_parameters(question)
+	assert "disease_name" in results_dict["terms"]
+	assert results_dict["terms"]["disease_name"] is not None
+	disease_name = results_dict["terms"]["disease_name"]
+	assert disease_name == "DOID:12550"
+
+	question = "what diseases are similar to neutropenia"
+	results_dict = txltr.find_question_parameters(question)
+	assert "disease_name" in results_dict["terms"]
+	assert results_dict["terms"]["disease_name"] is not None
+	disease_name = results_dict["terms"]["disease_name"]
+	assert disease_name == "DOID:1227"
+
+	question = "what are diseases are similar to rectum sarcomatoid carcinoma"
+	results_dict = txltr.find_question_parameters(question)
+	assert "disease_name" in results_dict["terms"]
+	assert results_dict["terms"]["disease_name"] is not None
+	disease_name = results_dict["terms"]["disease_name"]
+	assert disease_name == "DOID:7356"
+
+	question = "what are diseases phenotypically similar to diffuse glomerulonephritis"
+	results_dict = txltr.find_question_parameters(question)
+	assert "disease_name" in results_dict["terms"]
+	assert results_dict["terms"]["disease_name"] is not None
+	disease_name = results_dict["terms"]["disease_name"]
+	assert disease_name == "DOID:4781"
+
+	question = "what are diseases phenotypically similar to Hyperinsulinemic hypoglycemia familial 3"
+	results_dict = txltr.find_question_parameters(question)
+	assert "disease_name" in results_dict["terms"]
+	assert results_dict["terms"]["disease_name"] is not None
+	disease_name = results_dict["terms"]["disease_name"]
+	assert disease_name == "OMIM:602485"
 
 	# Q3 tests
 	question = "what are the protein targets of acetaminophen?"
