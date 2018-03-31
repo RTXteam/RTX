@@ -272,7 +272,7 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
                 chembl_id = next(iter(chembl_ids))
             else:
                 chembl_id = ''
-            ob.add_node('pharos_drug', chembl_id, desc=drug_name, seed_node_bool=first_row)
+            ob.add_node('drug', chembl_id, desc=drug_name, seed_node_bool=first_row)
             first_row = False
 
         ## triple-expand the knowledge graph
