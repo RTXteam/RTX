@@ -25,19 +25,28 @@ class RTXQuery:
 
     if id == 'Q0':
       # call out to QueryMeSH here to satify the query "What is XXXXXX?"
-      query = QueryMeSH()
-      response = query.queryTerm(terms[0])
+      meshQuery = QueryMeSH()
+      response = meshQuery.queryTerm(terms[0])
+      print(query)
+      if 'originalQuestion' in query:
+        response.original_question_text = query["originalQuestion"]
+        response.restated_question_text = query["restatedQuestion"]
       id = response.id
       codeString = response.result_code
       self.logQuery(id,codeString,terms)
       return(response)
 
     #### Call out to OrangeBoard to answer the query "What genetic conditions might offer protection against XXXXXX?"
-    if id == 'Q1':
+    if id == 'Q1' or id == 'Q4':
+
+      commands = { 'Q1': "python3 Q1Solution.py -j -i 'term0'",
+                   'Q4': "python3 Q4Solution.py -j -d 'term0'" }
+      command = commands[id]
+      command = re.sub('term0',terms[0],command)
+
       #### Set CWD to the QuestioningAnswering area and then invoke from the shell the Q1Solution code
       cwd = os.getcwd()
       os.chdir(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/QuestionAnswering")
-      command = "python3 Q1Solution.py -j -i '" + terms[0] + "'"
       eprint(command)
       returnedText = subprocess.run( [ command ], stdout=subprocess.PIPE, shell=True )
       os.chdir(cwd)
@@ -57,6 +66,11 @@ class RTXQuery:
           response = Response()
           response.result_code = "InternalError"
           response.message = "Error parsing the response from the reasoner. This is an internal bug that needs to be fixed. Unable to respond to this question at this time. The unparsable response was: " + reformattedText
+
+      print(query)
+      if 'originalQuestion' in query:
+        response.original_question_text = query["originalQuestion"]
+        response.restated_question_text = query["restatedQuestion"]
 
       #### Log the result and return the Response object
       self.logQuery(response.id,response.result_code,terms)
@@ -144,11 +158,11 @@ def main():
   rtxq = RTXQuery()
   #query = { "knownQueryTypeId": "Q0", "terms": [ "lovastatin" ] }
   #query = { "knownQueryTypeId": "Q0", "terms": [ "foo" ] }
-  #query = { "knownQueryTypeId": "Q1", "terms": [ "alkaptonuria" ] }
+  query = { "knownQueryTypeId": "Q1", "terms": [ "malaria" ] }
   #query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "glaucoma" ] }
   #query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "glaucoma" ] }
   #query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "DOID:1686" ] }
-  query = { "knownQueryTypeId": "Q2", "terms": [ "DOID:1686", "physostigmine" ] }
+  #query = { "knownQueryTypeId": "Q2", "terms": [ "DOID:1686", "physostigmine" ] }
   #query = { "knownQueryTypeId": "Q3", "terms": [ "acetaminophen" ] }
   response = rtxq.query(query)
   print(json.dumps(ast.literal_eval(repr(response)),sort_keys=True,indent=2))
