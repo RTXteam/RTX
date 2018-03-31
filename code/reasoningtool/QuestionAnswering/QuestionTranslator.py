@@ -178,8 +178,18 @@ class QuestionTranslator:
 				target_label = "?"
 			#restated = "%s %s what %s" % (source_name, relationship_type, target_label)
 			restated = "Node name: %s, Node label: %s, Relationship type: %s" % (source_name, target_label, relationship_type)
-		elif corpus_index ==4:
-			restated = "What diseases have phenotypes similar to %s" % RU.get_node_property(terms["disease_name"])
+		elif corpus_index == 4:
+			if "disease_name" in terms:
+				try:
+					description = RU.get_node_property(terms["disease_name"], 'description')
+				except:
+					if terms["disease_name"] is not None:
+						description = terms["disease_name"]
+					else:
+						description = "?"
+			else:
+				description = "?"
+			restated = "What diseases have phenotypes similar to %s" % description
 		else:
 			raise Exception("Only 5 questions have been implemented, please ask a different question.")
 		return restated
@@ -665,8 +675,8 @@ class QuestionTranslator:
 			text = question["text"]
 			results_dict = self.find_question_parameters(text)
 			response = self.format_answer(results_dict, logging=logging)
-			response[0]["originalQuestion"] = text
-			response[0]["restatedQuestion"] = 'FIXME'
+			#response[0]["originalQuestion"] = text
+			#response[0]["restatedQuestion"] = self.restate_question()
 			return response
 		else:
 			raise Exception("Sorry, we can't handle the language: %s" % question["language"])
@@ -680,47 +690,146 @@ def test_find_question_parameters():
 	assert results_dict["error_code"] is not None
 
 	# Q4 tests
+	question = "what diseases are similar to naproxen"
+	results_dict = txltr.find_question_parameters(question)
+	assert "corpus_index" in results_dict
+	assert results_dict["corpus_index"] == 4
+	assert "error_code" in results_dict
+	assert results_dict["error_code"] == 'missing_term'
+	assert "terms" in results_dict
+	assert results_dict["terms"]["disease_name"] is None
+	res = txltr.translate({"language": "English", "text": question})[0]  # TODO: why is the result a list with a single dictionary element?
+	assert 'knownQueryTypeId' in res
+	assert res["knownQueryTypeId"] == 'Q4'
+	assert "originalQuestion" in res
+	assert res["originalQuestion"] is not None
+	assert res["originalQuestion"] == question
+	assert "restatedQuestion" in res
+	assert res["restatedQuestion"] is not None
+	assert res["restatedQuestion"] == "What diseases have phenotypes similar to ?"
+	assert "message" in res
+	assert res["message"] is not None
+	assert isinstance(res["message"], str)
+
 	question = "what diseases are similar to malaria"
 	results_dict = txltr.find_question_parameters(question)
+	assert "corpus_index" in results_dict
+	assert results_dict["corpus_index"] == 4
 	assert "disease_name" in results_dict["terms"]
 	assert results_dict["terms"]["disease_name"] is not None
 	disease_name = results_dict["terms"]["disease_name"]
 	assert disease_name == "DOID:12365"
+	res = txltr.translate({"language": "English", "text": question})[0]  # TODO: why is the result a list with a single dictionary element?
+	assert 'knownQueryTypeId' in res
+	assert res["knownQueryTypeId"] == 'Q4'
+	assert "originalQuestion" in res
+	assert res["originalQuestion"] is not None
+	assert res["originalQuestion"] == question
+	assert "restatedQuestion" in res
+	assert res["restatedQuestion"] is not None
+	assert res["restatedQuestion"] == "What diseases have phenotypes similar to malaria"
+	assert "terms" in res
+	assert res["terms"] == ['DOID:12365']
 
 	question = "what diseases have phenotypes similar to hepatic coma"
 	results_dict = txltr.find_question_parameters(question)
+	assert "corpus_index" in results_dict
+	assert results_dict["corpus_index"] == 4
 	assert "disease_name" in results_dict["terms"]
 	assert results_dict["terms"]["disease_name"] is not None
 	disease_name = results_dict["terms"]["disease_name"]
 	assert disease_name == "DOID:12550"
+	res = txltr.translate({"language": "English", "text": question})[0]
+	assert 'knownQueryTypeId' in res
+	assert res["knownQueryTypeId"] == 'Q4'
+	assert "originalQuestion" in res
+	assert res["originalQuestion"] is not None
+	assert res["originalQuestion"] == question
+	assert "restatedQuestion" in res
+	assert res["restatedQuestion"] is not None
+	assert res["restatedQuestion"] == "What diseases have phenotypes similar to hepatic coma"
+	assert "terms" in res
+	assert res["terms"] == ['DOID:12550']
 
 	question = "what diseases are similar to neutropenia"
 	results_dict = txltr.find_question_parameters(question)
+	assert "corpus_index" in results_dict
+	assert results_dict["corpus_index"] == 4
 	assert "disease_name" in results_dict["terms"]
 	assert results_dict["terms"]["disease_name"] is not None
 	disease_name = results_dict["terms"]["disease_name"]
 	assert disease_name == "DOID:1227"
+	res = txltr.translate({"language": "English", "text": question})[0]
+	assert 'knownQueryTypeId' in res
+	assert res["knownQueryTypeId"] == 'Q4'
+	assert "originalQuestion" in res
+	assert res["originalQuestion"] is not None
+	assert res["originalQuestion"] == question
+	assert "restatedQuestion" in res
+	assert res["restatedQuestion"] is not None
+	assert res["restatedQuestion"] == "What diseases have phenotypes similar to neutropenia"
+	assert "terms" in res
+	assert res["terms"] == ['DOID:1227']
 
 	question = "what are diseases are similar to rectum sarcomatoid carcinoma"
 	results_dict = txltr.find_question_parameters(question)
+	assert "corpus_index" in results_dict
+	assert results_dict["corpus_index"] == 4
 	assert "disease_name" in results_dict["terms"]
 	assert results_dict["terms"]["disease_name"] is not None
 	disease_name = results_dict["terms"]["disease_name"]
 	assert disease_name == "DOID:7356"
+	res = txltr.translate({"language": "English", "text": question})[0]
+	assert 'knownQueryTypeId' in res
+	assert res["knownQueryTypeId"] == 'Q4'
+	assert "originalQuestion" in res
+	assert res["originalQuestion"] is not None
+	assert res["originalQuestion"] == question
+	assert "restatedQuestion" in res
+	assert res["restatedQuestion"] is not None
+	assert res["restatedQuestion"] == "What diseases have phenotypes similar to rectum sarcomatoid carcinoma"
+	assert "terms" in res
+	assert res["terms"] == ['DOID:7356']
 
 	question = "what are diseases phenotypically similar to diffuse glomerulonephritis"
 	results_dict = txltr.find_question_parameters(question)
+	assert "corpus_index" in results_dict
+	assert results_dict["corpus_index"] == 4
 	assert "disease_name" in results_dict["terms"]
 	assert results_dict["terms"]["disease_name"] is not None
 	disease_name = results_dict["terms"]["disease_name"]
 	assert disease_name == "DOID:4781"
+	res = txltr.translate({"language": "English", "text": question})[0]
+	assert 'knownQueryTypeId' in res
+	assert res["knownQueryTypeId"] == 'Q4'
+	assert "originalQuestion" in res
+	assert res["originalQuestion"] is not None
+	assert res["originalQuestion"] == question
+	assert "restatedQuestion" in res
+	assert res["restatedQuestion"] is not None
+	assert res["restatedQuestion"] == "What diseases have phenotypes similar to diffuse glomerulonephritis"
+	assert "terms" in res
+	assert res["terms"] == ['DOID:4781']
 
 	question = "what are diseases phenotypically similar to Hyperinsulinemic hypoglycemia familial 3"
 	results_dict = txltr.find_question_parameters(question)
+	assert "corpus_index" in results_dict
+	assert results_dict["corpus_index"] == 4
 	assert "disease_name" in results_dict["terms"]
 	assert results_dict["terms"]["disease_name"] is not None
 	disease_name = results_dict["terms"]["disease_name"]
 	assert disease_name == "OMIM:602485"
+	res = txltr.translate({"language": "English", "text": question})[0]
+	assert 'knownQueryTypeId' in res
+	assert res["knownQueryTypeId"] == 'Q4'
+	assert "originalQuestion" in res
+	assert res["originalQuestion"] is not None
+	assert res["originalQuestion"] == question
+	assert "restatedQuestion" in res
+	assert res["restatedQuestion"] is not None
+	assert res["restatedQuestion"] == "What diseases have phenotypes similar to Hyperinsulinemic hypoglycemia familial 3"
+	assert "terms" in res
+	assert res["terms"] == ['OMIM:602485']
 
 	# Q3 tests
 	question = "what are the protein targets of acetaminophen?"
