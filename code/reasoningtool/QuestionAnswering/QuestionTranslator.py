@@ -855,7 +855,8 @@ def main():
 	"what is an iPhone",
 	"What proteins does acetaminophen target?",
 	"What proteins are in the glycosylation pathway?",
-	"What proteins are expressed in liver?"
+	"What proteins are expressed in liver?",
+	"What diseases are similar to glaucoma?"
 	]
 	for text in texts:
 		question = {"language": "English", "text": text}
