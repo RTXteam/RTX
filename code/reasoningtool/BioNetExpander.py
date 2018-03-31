@@ -51,7 +51,7 @@ class BioNetExpander:
     def is_mir(gene_symbol):
         return re.match('MIR\d.*', gene_symbol) is not None or re.match('MIRLET\d.*', gene_symbol) is not None
 
-    def expand_pharos_drug(self, node):
+    def expand_drug(self, node):
         drug_name = node.name
         drug_desc = node.desc
         target_uniprot_ids = QueryChEMBL.get_target_uniprot_ids_for_drug(drug_desc)
