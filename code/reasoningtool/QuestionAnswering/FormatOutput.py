@@ -137,7 +137,7 @@ class FormatResponse:
 
 if __name__ == '__main__':
 	test = FormatResponse(2)
-	g = RU.return_subgraph_through_node_labels("zopiclone", 'pharos_drug', 'DOID:0050433', 'disont_disease',
+	g = RU.return_subgraph_through_node_labels("zopiclone", 'drug', 'DOID:0050433', 'disont_disease',
 											   ['uniprot_protein', 'anatont_anatomy', 'phenont_phenotype'],
 											   directed=False)
 	test.add_subgraph(g.nodes(data=True), g.edges(data=True), "This is a test", 0.95)

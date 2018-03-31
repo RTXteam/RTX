@@ -406,7 +406,7 @@ def return_subgraph_through_node_labels(source_node, source_node_label, target_n
 	Optionally only return paths that have a (node_label)-[relationship_type]-(node_label) give by the three element
 	list with_rel.
 	:param source_node: Source node name (eg. 'naproxen')
-	:param source_node_label:  source node label (eg. 'pharos_drug')
+	:param source_node_label:  source node label (eg. 'drug')
 	:param target_node: target node name (eg. 'DOID:8398')
 	:param target_node_label: target node lable (eg. 'disont_disease')
 	:param node_list: list of node labels that all paths must go through
@@ -690,7 +690,7 @@ def weight_graph_with_google_distance(g):
 	edges = list(nx.edges(g))
 	edges2gd = dict()
 	# convert the nodes to mesh terms
-	# TODO: get this to work for pharos_drugs, uniprot_proteins, and check if working
+	# TODO: get this to work for drugs, uniprot_proteins, and check if working
 	for edge in edges:
 		i = 0
 		for node in edge:
@@ -1101,13 +1101,13 @@ def test_get_node_property():
 	res = get_node_property("DOID:13306", "expanded")
 	assert res == False
 	res = get_node_property("metolazone", "label")
-	assert res == 'pharos_drug'
+	assert res == 'drug'
 
 
 def test_get_one_hop_target():
 	res = get_one_hop_target("disont_disease", "DOID:14793", "uniprot_protein", "gene_assoc_with")
 	assert res == ["Q92838"]
-	res = get_one_hop_target("pharos_drug", "carbetocin", "uniprot_protein", "targets")
+	res = get_one_hop_target("drug", "carbetocin", "uniprot_protein", "targets")
 	assert res == ["P30559"]
 
 
@@ -1119,7 +1119,7 @@ def test_get_relationship_types_between():
 	for tup in known_result:
 		assert tup in res
 
-	res = get_relationship_types_between("benzilonium","pharos_drug","DOID:14325","disont_disease",max_path_len=5)
+	res = get_relationship_types_between("benzilonium","drug","DOID:14325","disont_disease",max_path_len=5)
 	known_result = [(['targets', 'controls_state_change_of', 'gene_assoc_with', 'is_parent_of'], 10), (['targets', 'controls_expression_of', 'gene_assoc_with', 'is_parent_of'], 7)]
 	for tup in res:
 		assert tup in known_result
@@ -1128,7 +1128,7 @@ def test_get_relationship_types_between():
 
 
 def test_get_graph():
-	query = 'match p=(s:disont_disease{name:"DOID:14325"})-[*1..3]-(t:pharos_drug) return p limit 10'
+	query = 'match p=(s:disont_disease{name:"DOID:14325"})-[*1..3]-(t:drug) return p limit 10'
 	res = cypher.run(query, conn=connection, config=defaults)
 	graph = get_graph(res)
 	nodes = set(['138403', '148895', '140062', '140090', '139899', '140317', '138536', '121114', '138632', '147613', '140300', '140008', '140423'])
@@ -1138,7 +1138,7 @@ def test_get_graph():
 
 
 def test_return_subgraph_through_node_labels():
-	g = return_subgraph_through_node_labels('naproxen', 'pharos_drug', 'UBERON:0001474', 'anatont_anatomy',
+	g = return_subgraph_through_node_labels('naproxen', 'drug', 'UBERON:0001474', 'anatont_anatomy',
 										['uniprot_protein'], directed=False)
 	nodes = dict()
 	for v, data in g.nodes(data=True):
@@ -1150,7 +1150,7 @@ def test_return_subgraph_through_node_labels():
 
 
 def test_weight_graph_with_google_distance():
-	g = return_subgraph_through_node_labels('naproxen', 'pharos_drug', 'UBERON:0001474', 'anatont_anatomy',
+	g = return_subgraph_through_node_labels('naproxen', 'drug', 'UBERON:0001474', 'anatont_anatomy',
 											['uniprot_protein'], directed=False)
 	for u, v, k, data in g.edges(data=True, keys=True):
 		assert 'gd_weight' not in data
@@ -1163,7 +1163,7 @@ def test_weight_graph_with_google_distance():
 
 
 def test_get_top_shortest_paths():
-	g = return_subgraph_through_node_labels('naproxen', 'pharos_drug', 'UBERON:0001474', 'anatont_anatomy',
+	g = return_subgraph_through_node_labels('naproxen', 'drug', 'UBERON:0001474', 'anatont_anatomy',
 											['uniprot_protein'], directed=False)
 	node_paths, edge_paths, lengths = get_top_shortest_paths(g, 'naproxen', 'UBERON:0001474', 1)
 	for path in node_paths:

@@ -26,7 +26,7 @@ def has_drug(drug, session=session, debug=False):
 	:param debug:
 	:return:
 	"""
-	query = "match (n:pharos_drug{name:toLower('%s')}) return count(n)" % drug
+	query = "match (n:drug{name:toLower('%s')}) return count(n)" % drug
 	if debug:
 		return query
 	else:
@@ -93,11 +93,11 @@ def has_phenotype(disease, session=session, debug=False):
 			return False
 
 
-def node_name_and_label_in_path(pharos_drug, disease, max_path_len=2, debug=False, disont=True, session=session):
+def node_name_and_label_in_path(drug, disease, max_path_len=2, debug=False, disont=True, session=session):
 	"""
 	Return nodes and labels in short paths that connect drug to disease that also go through anatomy and pathway
 	:param session: neo4j session
-	:param pharos_drug: source pharos drug
+	:param drug: source pharos drug
 	:param disease: target disease
 	:param max_path_len: maximum path length to consider
 	:param debug: just return the query
@@ -105,27 +105,27 @@ def node_name_and_label_in_path(pharos_drug, disease, max_path_len=2, debug=Fals
 	:return: list of lists of name, label tuples
 	"""
 	if disont:
-		#query = "match p=allShortestPaths((s:pharos_drug)-[*1..%d]-(t:disont_disease)) "\
+		#query = "match p=allShortestPaths((s:drug)-[*1..%d]-(t:disont_disease)) "\
 		#		"where s.name='%s' and t.name='%s' "\
 		#		"with nodes(p) as ns, range(0,length(nodes(p))-1) as idx "\
-		#		"return [i in idx | [(ns[i]).name, labels(ns[i])[0]] ] as path " % (max_path_len, pharos_drug, disease)
-		#query = "match p=(s:pharos_drug)-[*1..%d]-(t:disont_disease) " \
+		#		"return [i in idx | [(ns[i]).name, labels(ns[i])[0]] ] as path " % (max_path_len, drug, disease)
+		#query = "match p=(s:drug)-[*1..%d]-(t:disont_disease) " \
 		#		"where s.name='%s' and t.name='%s' " \
 		#		"with nodes(p) as ns, range(0,length(nodes(p))-1) as idx " \
-		#		"return [i in idx | [(ns[i]).name, labels(ns[i])[0]] ] as path " % (max_path_len, pharos_drug, disease)
-		query = "match p=(n:pharos_drug{name:'%s'})-[]-(:uniprot_protein)-[]-(t)-[*0..%d]-(:disont_disease{name:'%s'}) "\
+		#		"return [i in idx | [(ns[i]).name, labels(ns[i])[0]] ] as path " % (max_path_len, drug, disease)
+		query = "match p=(n:drug{name:'%s'})-[]-(:uniprot_protein)-[]-(t)-[*0..%d]-(:disont_disease{name:'%s'}) "\
 				"where t:anatont_anatomy or t:reactome_pathway "\
 				"with nodes(p) as ns, range(0,length(nodes(p))-1) as idx " \
-				"return [i in idx | [(ns[i]).name, labels(ns[i])[1]] ] as path " % (pharos_drug, max_path_len, disease)
+				"return [i in idx | [(ns[i]).name, labels(ns[i])[1]] ] as path " % (drug, max_path_len, disease)
 	else:
-		#query = "match p=allShortestPaths((s:pharos_drug)-[*1..%d]-(t:phenont_phenotype)) "\
+		#query = "match p=allShortestPaths((s:drug)-[*1..%d]-(t:phenont_phenotype)) "\
 		#		"where s.name='%s' and t.name='%s' "\
 		#		"with nodes(p) as ns, range(0,length(nodes(p))-1) as idx "\
-		#		"return [i in idx | [(ns[i]).name, labels(ns[i])[0]] ] as path " % (max_path_len, pharos_drug, disease)
-		query = "match p=(n:pharos_drug{name:'%s'})-[]-(:uniprot_protein)-[]-(t)-[*0..%d]-(:phenont_phenotype{name:'%s'}) " \
+		#		"return [i in idx | [(ns[i]).name, labels(ns[i])[0]] ] as path " % (max_path_len, drug, disease)
+		query = "match p=(n:drug{name:'%s'})-[]-(:uniprot_protein)-[]-(t)-[*0..%d]-(:phenont_phenotype{name:'%s'}) " \
 				"where t:anatont_anatomy or t:reactome_pathway " \
 				"with nodes(p) as ns, range(0,length(nodes(p))-1) as idx " \
-				"return [i in idx | [(ns[i]).name, labels(ns[i])[1]] ] as path " % (pharos_drug, max_path_len, disease)
+				"return [i in idx | [(ns[i]).name, labels(ns[i])[1]] ] as path " % (drug, max_path_len, disease)
 	if debug:
 		return query
 	res = session.run(query)
@@ -179,7 +179,7 @@ def delete_paths_through_other_drugs_diseases(paths, drug, disease):
 	for path in paths:
 		to_include = True
 		for node in path:
-			if node[1] == 'pharos_drug' and node[0] != drug:
+			if node[1] == 'drug' and node[0] != drug:
 				to_include = False  # don't include if you find another drug in the path
 			if is_disont:
 				if node[1] == 'disont_disease' and node[0] != disease:

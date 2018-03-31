@@ -72,18 +72,18 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 	# TODO: could dynamically get the terminal node label as some are (drug, phenotype) pairs
 	# get the relevant subgraph between the source and target nodes
 	try:  # First look for COP's where the gene is associated to the disease
-		g = RU.return_subgraph_through_node_labels(drug_name, 'pharos_drug', disease_name, 'disont_disease',
+		g = RU.return_subgraph_through_node_labels(drug_name, 'drug', disease_name, 'disont_disease',
 													['uniprot_protein', 'anatont_anatomy', 'phenont_phenotype'],
 													with_rel=['uniprot_protein', 'gene_assoc_with', 'disont_disease'],
 													directed=False)
 	except CustomExceptions.EmptyCypherError:
 		try:  # Then look for any sort of COP
-			g = RU.return_subgraph_through_node_labels(drug_name, 'pharos_drug', disease_name, 'disont_disease',
+			g = RU.return_subgraph_through_node_labels(drug_name, 'drug', disease_name, 'disont_disease',
 													['uniprot_protein', 'anatont_anatomy', 'phenont_phenotype'],
 													directed=False)
 		except CustomExceptions.EmptyCypherError:
 			try:  # Then look for any sort of connection between source and target
-				g = RU.get_shortest_subgraph_between_nodes(drug_name, 'pharos_drug', disease_name, 'disont_disease',
+				g = RU.get_shortest_subgraph_between_nodes(drug_name, 'drug', disease_name, 'disont_disease',
 															max_path_len=4, limit=50, debug=False, directed=False)
 			except CustomExceptions.EmptyCypherError:
 				error_code = "NoPathsFound"

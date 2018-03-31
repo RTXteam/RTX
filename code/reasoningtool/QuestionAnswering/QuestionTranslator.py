@@ -451,15 +451,15 @@ class QuestionTranslator:
 				candidate_node_labels.append(node_label)
 
 			# Check if a drug and a disease were named
-			if "pharos_drug" not in candidate_node_labels or "disont_disease" not in candidate_node_labels:
+			if "drug" not in candidate_node_labels or "disont_disease" not in candidate_node_labels:
 				error_message = "Sorry, I was unable to find the appropriate terms to answer your question. Missing term(s):\n"
-				if "pharos_drug" not in candidate_node_labels:
+				if "drug" not in candidate_node_labels:
 					error_message += "A pharos drug name (eg. acetaminophen, glycamil, tranilast, etc.)"
 				if "disont_disease" not in candidate_node_labels:
 					error_message += "A disease (eg. diphtheritic cystitis, pancreatic endocrine carcinoma, malaria, clear cell sarcoma, etc.)"
 				for i in range(len(candidate_node_labels)):
 					label = candidate_node_labels[i]
-					if label == "pharos_drug":
+					if label == "drug":
 						drug_name = candidate_node_names[i]
 					if label == "disont_disease":
 						disease_name = candidate_node_names[i]
@@ -489,7 +489,7 @@ class QuestionTranslator:
 			disease_loc = []
 			for i in range(len(candidate_node_labels)):
 				label = candidate_node_labels[i]
-				if label == "pharos_drug":
+				if label == "drug":
 					num_drug += 1
 					drug_loc.append(i)
 				if label == "disont_disease":
