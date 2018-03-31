@@ -664,7 +664,10 @@ class QuestionTranslator:
 		if question["language"] == "English":
 			text = question["text"]
 			results_dict = self.find_question_parameters(text)
-			return self.format_answer(results_dict, logging=logging)
+			response = self.format_answer(results_dict, logging=logging)
+			response[0]["originalQuestion"] = text
+			response[0]["restatedQuestion"] = 'FIXME'
+			return response
 		else:
 			raise Exception("Sorry, we can't handle the language: %s" % question["language"])
 
@@ -856,7 +859,7 @@ def main():
 	"What proteins does acetaminophen target?",
 	"What proteins are in the glycosylation pathway?",
 	"What proteins are expressed in liver?",
-	"What diseases are similar to glaucoma?"
+	"What diseases are similar to malaria?"
 	]
 	for text in texts:
 		question = {"language": "English", "text": text}
