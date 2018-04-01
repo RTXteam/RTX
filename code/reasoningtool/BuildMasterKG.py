@@ -38,18 +38,6 @@ ob = Orangeboard(debug=True)
 ob.neo4j_set_url()
 ob.neo4j_set_auth()
 
-MASTER_REL_IS_DIRECTED = {'disease_affects': True,
-                          'is_member_of': True,
-                          'is_parent_of': True,
-                          'gene_assoc_with': True,
-                          'phenotype_assoc_with': True,
-                          'interacts_with': False,
-                          'controls_expression_of': True,
-                          'is_expressed_in': True,
-                          'targets': True,
-                          'controls_state_change_of': True,
-                          'participates_in': True}
-
 q1_diseases_dict = {'DOID:11476':   'osteoporosis',
                     'DOID:526':     'HIV infectious disease',
                     'DOID:1498':    'cholera',
@@ -132,10 +120,8 @@ q2_mesh_to_conditions_look_aside_dict = {'MESH:D000855': 'DOID:8689',
                                          'MESH:D009119': 'HP:0004305'  # not sure about this particular mapping
 }
 
-ob.set_dict_reltype_dirs(MASTER_REL_IS_DIRECTED)
 ob.neo4j_set_url()
 ob.neo4j_set_auth()
-
 bne = BioNetExpander(ob)
 
 def seed_and_expand_kg_q1(num_expansions):
@@ -143,7 +129,7 @@ def seed_and_expand_kg_q1(num_expansions):
     ## set the seed node flag to True, for the first disease
     seed_node_bool = True
     for disont_id_str, disont_desc in q1_diseases_dict.items():
-        ob.add_node('disont_disease', disont_id_str, seed_node_bool, desc=disont_desc)
+        bne.add_node_smart('disont_disease', disont_id_str, seed_node_bool, desc=disont_desc)
         ## for the rest of the diseases, do not set the seed-node flag
         seed_node_bool = False
 
@@ -155,7 +141,7 @@ def seed_and_expand_kg_q1(num_expansions):
                               sep='\t')[['MIM_number','preferred_title']]
     first_row = True
     for index, row in omim_df.iterrows():
-        ob.add_node('omim_disease', 'OMIM:' + str(row['MIM_number']),
+        bne.add_node_smart('omim_disease', 'OMIM:' + str(row['MIM_number']),
                     desc=row['preferred_title'],
                     seed_node_bool=first_row)
         if first_row:
@@ -170,8 +156,8 @@ def seed_and_expand_kg_q1(num_expansions):
             gene_symbols = bne.query_mygene_obj.convert_uniprot_id_to_gene_symbol(uniprot_id)
             print(gene_symbols)
             assert len(gene_symbols) > 0
-            prot_node = ob.add_node('uniprot_protein', uniprot_id, desc=';'.join(list(gene_symbols)))
-            ob.add_rel('gene_assoc_with', 'OMIM', prot_node, omim_node)
+            prot_node = bne.add_node_smart('protein', uniprot_id, desc=';'.join(list(gene_symbols)))
+            ob.add_rel('associated with condition', 'OMIM', prot_node, omim_node, extended_reltype="associated with disease")
 
     ## triple-expand the knowledge graph
     for _ in range(0, num_expansions):
@@ -232,12 +218,12 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
                     for curie_id in curie_ids:
                         if 'DOID:' in curie_id:
                             disont_desc = QueryDisont.query_disont_to_label(curie_id)
-                            ob.add_node('disont_disease', curie_id, desc=disont_desc, seed_node_bool=first_row)
+                            bne.add_node_smart('disont_disease', curie_id, desc=disont_desc, seed_node_bool=first_row)
                             mesh_term_to_curie_ids_dict[mesh_term] = curie_id
                             first_row = False
                         else:
                             if 'HP:' in curie_id:
-                                ob.add_node('phenont_phenotype', curie_id, desc=mesh_term, seed_node_bool=first_row)
+                                bne.add_node_smart('phenont_phenotype', curie_id, desc=mesh_term, seed_node_bool=first_row)
                                 mesh_term_to_curie_ids_dict[mesh_term] = curie_id
                                 first_row = False
                             else:
@@ -272,7 +258,7 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
                 chembl_id = next(iter(chembl_ids))
             else:
                 chembl_id = ''
-            ob.add_node('drug', chembl_id, desc=drug_name, seed_node_bool=first_row)
+            bne.add_node_smart('compound', chembl_id, desc=drug_name, seed_node_bool=first_row)
             first_row = False
 
         ## triple-expand the knowledge graph
@@ -303,18 +289,18 @@ def add_pc2_to_kg():
            uniprots2 is not None and len(uniprots2)==1:
             uniprot1 = next(iter(uniprots1))
             uniprot2 = next(iter(uniprots2))
-            node1 = ob.get_node('uniprot_protein', uniprot1)
-            node2 = ob.get_node('uniprot_protein', uniprot2)
+            node1 = ob.get_node('protein', uniprot1)
+            node2 = ob.get_node('protein', uniprot2)
             if node1 is not None and node2 is not None and node1.uuid != node2.uuid:
                 if interaction_type == 'interacts-with':
-                    ob.add_rel('interacts_with', 'PC2', node1, node2)
+                    ob.add_rel('directly interacts with', 'PC2', node1, node2, extended_reltype="directly interacts with")
                 else:
                     if interaction_type == 'controls-expression-of':
-                        ob.add_rel('controls_expression_of', 'PC2', node1, node2)
+                        ob.add_rel("regulates", 'PC2', node1, node2, extended_reltype="regulates expression of")
                     else:
                         if interaction_type == 'controls-state-change-of' or \
                            interaction_type == 'controls-phosphorylation-of':
-                            ob.add_rel('controls_state_change_of', 'PC2', node1, node2)
+                            ob.add_rel("regulates", 'PC2', node1, node2, extended_reltype="regulates activity of")
                         else:
                             assert False
 
@@ -325,8 +311,7 @@ def seed_and_expand_kg_q2_cop(num_expansions=3):
                                   header=0)
     first_row = True
     for index, row in q2_cop_data.iterrows():
-#        print("type: " + row['type'] + "; curie_id: " + row['curie_id'] + "; desc: " + row['term'])
-        ob.add_node(row['type'], row['curie_id'], desc=row['term'], seed_node_bool=first_row)
+        bne.add_node_smart(row['type'], row['curie_id'], desc=row['term'], seed_node_bool=first_row)
         if first_row == True:
             first_row = False
     for _ in range(0, num_expansions):
@@ -342,6 +327,7 @@ def make_master_kg():
     print("count(Node) = {}".format(ob.count_nodes()))
     print("count(Rel) = {}".format(ob.count_rels()))
 
+
 def test_seed_q2_drugs():
     seed_and_expand_kg_q2(num_expansions=1, seed_parts=['drugs'])
     ob.neo4j_set_url('bolt://0.0.0.0:7687')
@@ -349,11 +335,14 @@ def test_seed_q2_drugs():
     print("count(Node) = {}".format(ob.count_nodes()))
     print("count(Rel) = {}".format(ob.count_rels()))
 
+
 def test_fa():
     print(get_curie_ont_ids_for_mesh_term("Fanconi Anemia"))
 
+
 def make_file_q2_mapping():
     seed_and_expand_kg_q2(num_expansions=0)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Builds the master knowledge graph')
