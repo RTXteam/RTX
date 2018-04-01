@@ -264,7 +264,7 @@ class BioNetExpander:
             for phenotype_id_str in phenotype_id_dict.keys():
                 node2 = self.add_node_smart('phenotype', phenotype_id_str,
                                                   desc=phenotype_id_dict[phenotype_id_str])
-                self.orangeboard.add_rel('has phenotype', 'BioLink', node1, node2, extended_reltype="has_phenotype")
+                self.orangeboard.add_rel('has_phenotype', 'BioLink', node1, node2, extended_reltype="has_phenotype")
 
         # protein-protein interactions:
         int_dict = QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc(uniprot_id_str)
