@@ -223,7 +223,7 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
                             first_row = False
                         else:
                             if 'HP:' in curie_id:
-                                bne.add_node_smart('phenont_phenotype', curie_id, seed_node_bool=first_row, desc=mesh_term)
+                                bne.add_node_smart('phenotype', curie_id, seed_node_bool=first_row, desc=mesh_term)
                                 mesh_term_to_curie_ids_dict[mesh_term] = curie_id
                                 first_row = False
                             else:
