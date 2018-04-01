@@ -273,7 +273,7 @@ class BioNetExpander:
             if 'BINDSGENE:' not in int_alias:
                 node2 = self.add_node_smart('protein', int_uniprot_id, desc=int_alias)
                 if node2.uuid != node1.uuid:
-                    self.orangeboard.add_rel('directly interacts_with', 'reactome', node1, node2, extended_reltype="directly interacts with")
+                    self.orangeboard.add_rel('directly interacts with', 'reactome', node1, node2, extended_reltype="directly interacts with")
             else:
                 target_gene_symbol = int_alias.split(':')[1]
                 target_uniprot_ids_set = self.query_mygene_obj.convert_gene_symbol_to_uniprot_id(target_gene_symbol)
