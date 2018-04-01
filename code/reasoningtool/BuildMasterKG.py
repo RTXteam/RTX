@@ -142,8 +142,8 @@ def seed_and_expand_kg_q1(num_expansions):
     first_row = True
     for index, row in omim_df.iterrows():
         bne.add_node_smart('omim_disease', 'OMIM:' + str(row['MIM_number']),
-                    desc=row['preferred_title'],
-                    seed_node_bool=first_row)
+                           seed_node_bool=first_row,
+                           desc=row['preferred_title'])
         if first_row:
             first_row = False
 
@@ -218,12 +218,12 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
                     for curie_id in curie_ids:
                         if 'DOID:' in curie_id:
                             disont_desc = QueryDisont.query_disont_to_label(curie_id)
-                            bne.add_node_smart('disont_disease', curie_id, desc=disont_desc, seed_node_bool=first_row)
+                            bne.add_node_smart('disont_disease', curie_id, seed_node_bool=first_row, desc=disont_desc)
                             mesh_term_to_curie_ids_dict[mesh_term] = curie_id
                             first_row = False
                         else:
                             if 'HP:' in curie_id:
-                                bne.add_node_smart('phenont_phenotype', curie_id, desc=mesh_term, seed_node_bool=first_row)
+                                bne.add_node_smart('phenont_phenotype', curie_id, seed_node_bool=first_row, desc=mesh_term)
                                 mesh_term_to_curie_ids_dict[mesh_term] = curie_id
                                 first_row = False
                             else:
@@ -258,7 +258,7 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
                 chembl_id = next(iter(chembl_ids))
             else:
                 chembl_id = ''
-            bne.add_node_smart('compound', chembl_id, desc=drug_name, seed_node_bool=first_row)
+            bne.add_node_smart('compound', chembl_id, seed_node_bool=first_row, desc=drug_name)
             first_row = False
 
         ## triple-expand the knowledge graph
@@ -311,7 +311,7 @@ def seed_and_expand_kg_q2_cop(num_expansions=3):
                                   header=0)
     first_row = True
     for index, row in q2_cop_data.iterrows():
-        bne.add_node_smart(row['type'], row['curie_id'], desc=row['term'], seed_node_bool=first_row)
+        bne.add_node_smart(row['type'], row['curie_id'], seed_node_bool=first_row, desc=row['term'])
         if first_row == True:
             first_row = False
     for _ in range(0, num_expansions):
