@@ -13,21 +13,21 @@ biological_process	GO:0051324	prophase
 biological_process	GO:0006260	DNA replication
 biological_process	GO:0015075	ion transporter activity
 biological_process	GO:0042310	vasoconstriction
-anatont_anatomy	UBERON:0000014	zone of skin
-anatont_anatomy	UBERON:0000018	compound eye
-anatont_anatomy	UBERON:0000019	camera-type eye
-anatont_anatomy	UBERON:0000029	lymph node
-anatont_anatomy	UBERON:0000081	metanephros
-anatont_anatomy	UBERON:0000082	adult mammalian kidney
-anatont_anatomy	UBERON:0000178	blood
-anatont_anatomy	UBERON:0000310	breast
-anatont_anatomy	UBERON:0000945	stomach
-anatont_anatomy	UBERON:0000948	heart
-anatont_anatomy	UBERON:0000955	brain
-anatont_anatomy	UBERON:0000970	eye
-anatont_anatomy	UBERON:0000974	neck
-anatont_anatomy	UBERON:0000992	female gonad
-anatont_anatomy	UBERON:0000995	uterus
+anatomy	UBERON:0000014	zone of skin
+anatomy	UBERON:0000018	compound eye
+anatomy	UBERON:0000019	camera-type eye
+anatomy	UBERON:0000029	lymph node
+anatomy	UBERON:0000081	metanephros
+anatomy	UBERON:0000082	adult mammalian kidney
+anatomy	UBERON:0000178	blood
+anatomy	UBERON:0000310	breast
+anatomy	UBERON:0000945	stomach
+anatomy	UBERON:0000948	heart
+anatomy	UBERON:0000955	brain
+anatomy	UBERON:0000970	eye
+anatomy	UBERON:0000974	neck
+anatomy	UBERON:0000992	female gonad
+anatomy	UBERON:0000995	uterus
 anatomy	UBERON:0001017	central nervous system
 anatomy	UBERON:0001017	central nervous system
 anatomy	UBERON:0001155	colon
