@@ -40,37 +40,87 @@ from QueryPharos import QueryPharos
 from QuerySciGraph import QuerySciGraph
 from QueryChEMBL import QueryChEMBL
 
+
 class BioNetExpander:
 
+    CURIE_PREFIX_TO_IRI_PREFIX = {"OMIM": "https://www.omim.org/entry/",
+                                  "UniProt": "http://www.uniprot.org/uniprot/",
+                                  "NCBIGene": "https://www.ncbi.nlm.nih.gov/gene/",
+                                  "HP": "http://purl.obolibrary.org/obo/HP_",
+                                  "DOID": "http://purl.obolibrary.org/obo/DOID_",
+                                  "Reactome": "https://reactome.org/content/detail/",
+                                  "ChEMBL": "https://www.ebi.ac.uk/chembl/compound/inspect/CHEMBL/",
+                                  "UBERON": "http://purl.obolibrary.org/obo/UBERON_",
+                                  "GO": "http://purl.obolibrary.org/obo/GO_"}
+
+    NODE_SIMPLE_TYPE_TO_CURIE_PREFIX = {"compound": "ChEMBL",
+                                        "protein": "UniProt",
+                                        "genetic_condition": "OMIM",
+                                        "anatomy": "UBERON",
+                                        "microrna": "NCBIGene",
+                                        "phenotype": "HP",
+                                        "disease": "DOID",
+                                        "pathway": "Reactome",
+                                        "biological_process": "GO"}
+      
+    MASTER_REL_IS_DIRECTED = {'subclass of': True,
+                              'associated with condition': True,
+                              'affects': True,
+                              'regulates': True,
+                              'expressed_in': True,
+                              'directly interacts with': False,
+                              'causes or contributes to condition': True,
+                              'participates_in': True,
+                              'has_phenotype': True}
+
     def __init__(self, orangeboard):
+        orangeboard.set_dict_reltype_dirs(self.MASTER_REL_IS_DIRECTED)
         self.orangeboard = orangeboard
         self.query_omim_obj = QueryOMIM()
         self.query_mygene_obj = QueryMyGene(debug=False)
 
+    def add_node_smart(self, simple_node_type, accession, seed_node_bool=False, desc=''):
+        curie_prefix = self.NODE_SIMPLE_TYPE_TO_CURIE_PREFIX[simple_node_type]
+        iri_prefix = self.CURIE_PREFIX_TO_IRI_PREFIX[curie_prefix]
+        if ":" not in accession:
+            curie_id = curie_prefix + ":" + accession
+            iri = iri_prefix + accession
+        else:
+            curie_id = accession
+            iri = iri_prefix + accession.split(":")[1]
+        node = self.orangeboard.add_node(simple_node_type,
+                                         accession,
+                                         seed_node_bool,
+                                         desc)
+        node.set_extra_props({"iri": iri,
+                              "curie_id": curie_id,
+                              "accession": accession})
+        return node
+    
     @staticmethod
     def is_mir(gene_symbol):
         return re.match('MIR\d.*', gene_symbol) is not None or re.match('MIRLET\d.*', gene_symbol) is not None
 
-    def expand_drug(self, node):
-        drug_name = node.name
-        drug_desc = node.desc
-        target_uniprot_ids = QueryChEMBL.get_target_uniprot_ids_for_drug(drug_desc)
+    def expand_compound(self, node):
+        compound_desc = node.desc
+        target_uniprot_ids = QueryChEMBL.get_target_uniprot_ids_for_drug(compound_desc)
         if target_uniprot_ids is not None:
-            for target_uniprot_id in target_uniprot_ids.keys():
+            for target_uniprot_id_curie in target_uniprot_ids.keys():
+                target_uniprot_id = target_uniprot_id_curie.replace("UniProt:", "")
                 probability = target_uniprot_ids[target_uniprot_id]
                 gene_names = self.query_mygene_obj.convert_uniprot_id_to_gene_symbol(target_uniprot_id)
                 node_desc = ';'.join(list(gene_names))
-                target_node = self.orangeboard.add_node('uniprot_protein', target_uniprot_id, desc=node_desc)
-                self.orangeboard.add_rel('targets', 'ChEMBL', node, target_node, prob=probability)
-        targets = QueryPharos.query_drug_name_to_targets(drug_desc)
+                target_node = self.add_node_smart('protein', target_uniprot_id, desc=node_desc)
+                self.orangeboard.add_rel('directly interacts with', 'ChEMBL', node, target_node, prob=probability, extended_reltype='targets')
+        targets = QueryPharos.query_drug_name_to_targets(compound_desc)
         if targets is not None:
             for target in targets:
                 uniprot_id = QueryPharos.query_target_uniprot_accession(str(target["id"]))
                 assert '-' not in uniprot_id
-                target_node = self.orangeboard.add_node('uniprot_protein', uniprot_id, desc=target["name"])
-                self.orangeboard.add_rel('targets', 'Pharos', node, target_node)
+                target_node = self.add_node_smart('protein', uniprot_id, desc=target["name"])
+                self.orangeboard.add_rel('directly interacts with', 'Pharos', node, target_node, extended_reltype="targets")
 
-    def expand_ncbigene_microrna(self, node):
+    def expand_microrna(self, node):
         ncbi_gene_id = node.name
         assert 'NCBIGene:' in ncbi_gene_id
 
@@ -78,31 +128,31 @@ class BioNetExpander:
         # microRNA-to-GO (biological process):
         go_bp_dict = self.query_mygene_obj.get_gene_ontology_ids_bp_for_entrez_gene_id(entrez_gene_id)
         for go_id, go_term in go_bp_dict.items():
-            node2 = self.orangeboard.add_node('geneont_bioprocess', go_id, desc=go_term)
-            self.orangeboard.add_rel('participates_in', 'gene_ontology', node, node2)
+            node2 = self.add_node_smart('biological_process', go_id, desc=go_term)
+            self.orangeboard.add_rel('participates_in', 'gene_ontology', node, node2, extended_reltype="participates_in")
         
         anatomy_dict = QueryBioLink.get_anatomies_for_gene(ncbi_gene_id)
         for anatomy_id, anatomy_desc in anatomy_dict.items():
-            anatomy_node = self.orangeboard.add_node('anatont_anatomy', anatomy_id, desc=anatomy_desc)
-            self.orangeboard.add_rel('is_expressed_in', 'BioLink', node, anatomy_node)
+            anatomy_node = self.add_node_smart('anatomy', anatomy_id, desc=anatomy_desc)
+            self.orangeboard.add_rel('expressed_in', 'BioLink', node, anatomy_node, extended_reltype="expressed_in")
 
         disease_ids_dict = QueryBioLink.get_diseases_for_gene_desc(ncbi_gene_id)
         for disease_id in disease_ids_dict.keys():
             if 'OMIM:' in disease_id:
-                disease_node = self.orangeboard.add_node('omim_disease', disease_id, desc=disease_ids_dict[disease_id])
-                self.orangeboard.add_rel('gene_assoc_with', 'BioLink', node, disease_node)
+                disease_node = self.add_node_smart('omim_disease', disease_id, desc=disease_ids_dict[disease_id])
+                self.orangeboard.add_rel('associated with condition', 'BioLink', node, disease_node, extended_reltype="associated with disease")
             elif 'DOID:' in disease_id:
-                disease_node = self.orangeboard.add_node('disont_disease', disease_id,
+                disease_node = self.add_node_smart('disont_disease', disease_id,
                                                          desc=disease_ids_dict[disease_id])
-                self.orangeboard.add_rel('gene_assoc_with', 'BioLink', node, disease_node)
+                self.orangeboard.add_rel('associated with condition', 'BioLink', node, disease_node, extended_reltype="associated with disease")
             else:
                 print('Warning: unexpected disease ID: ' + disease_id)
 
         phenotype_ids_dict = QueryBioLink.get_phenotypes_for_gene_desc(ncbi_gene_id)
         for phenotype_id in phenotype_ids_dict.keys():
-            phenotype_node = self.orangeboard.add_node('phenont_phenotype', phenotype_id,
+            phenotype_node = self.add_node_smart('phenotype', phenotype_id,
                                                        desc=phenotype_ids_dict[phenotype_id])
-            self.orangeboard.add_rel('gene_assoc_with', 'BioLink', node, phenotype_node)
+            self.orangeboard.add_rel('has_phenotype', 'BioLink', node, phenotype_node, extended_reltype="has_phenotype")
 
         mirbase_ids = self.query_mygene_obj.convert_entrez_gene_ID_to_mirbase_ID(
             int(ncbi_gene_id.replace('NCBIGene:', '')))
@@ -114,39 +164,39 @@ class BioNetExpander:
                     uniprot_ids = self.query_mygene_obj.convert_gene_symbol_to_uniprot_id(target_gene_symbol)
                     for uniprot_id in uniprot_ids:
                         assert '-' not in uniprot_id
-                        target_prot_node = self.orangeboard.add_node('uniprot_protein', uniprot_id,
+                        target_prot_node = self.add_node_smart('protein', uniprot_id,
                                                                      desc=target_gene_symbol)
-                        self.orangeboard.add_rel('controls_expression_of', 'miRGate', node, target_prot_node)
+                        self.orangeboard.add_rel('regulates', 'miRGate', node, target_prot_node, extended_reltype="regulates expression of")
                     if len(uniprot_ids) == 0:
                         if BioNetExpander.is_mir(target_gene_symbol):
                             target_ncbi_entrez_ids = self.query_mygene_obj.convert_gene_symbol_to_entrez_gene_ID(
                                 target_gene_symbol)
                             for target_ncbi_entrez_id in target_ncbi_entrez_ids:
-                                target_mir_node = self.orangeboard.add_node('ncbigene_microrna',
+                                target_mir_node = self.add_node_smart('microrna',
                                                                             'NCBIGene:' + str(target_ncbi_entrez_id),
                                                                             desc=target_gene_symbol)
                                 if target_mir_node != node:
-                                    self.orangeboard.add_rel('controls_expression_of', 'miRGate', node, target_mir_node)
+                                    self.orangeboard.add_rel('regulates', 'miRGate', node, target_mir_node, extended_reltype="regulates expression of")
 
-    def expand_reactome_pathway(self, node):
+    def expand_pathway(self, node):
         reactome_id_str = node.name
-        uniprot_ids_from_reactome_dict = QueryReactome.query_reactome_pathway_id_to_uniprot_ids_desc(reactome_id_str)
+        uniprot_ids_from_reactome_dict = QueryReactome.query_pathway_id_to_uniprot_ids_desc(reactome_id_str)
         rel_sourcedb_dict = dict.fromkeys(uniprot_ids_from_reactome_dict.keys(), 'reactome')
         source_node = node
         for uniprot_id in uniprot_ids_from_reactome_dict.keys():
             assert '-' not in uniprot_id
-            target_node = self.orangeboard.add_node('uniprot_protein', uniprot_id,
+            target_node = self.add_node_smart('protein', uniprot_id,
                                                     desc=uniprot_ids_from_reactome_dict[uniprot_id])
-            self.orangeboard.add_rel('is_member_of', rel_sourcedb_dict[uniprot_id], target_node, source_node)
+            self.orangeboard.add_rel('participates_in', rel_sourcedb_dict[uniprot_id], target_node, source_node, extended_reltype="participates_in")
 
-    def expand_anatont_anatomy(self, node):
+    def expand_anatomy(self, node):
         """
         This a placeholder.
-        Please do not remove it otherwise expanding nodes of type"anatont_anatomy" would raise errors.
+        Please do not remove it otherwise expanding nodes of type"anatomy" would raise errors.
         """
         pass
 
-    def expand_uniprot_protein(self, node):
+    def expand_protein(self, node):
         uniprot_id_str = node.name
 
         # SAR:  I suspect these pathways are too high-level and not useful:
@@ -159,10 +209,10 @@ class BioNetExpander:
         pathways_dict_sourcedb = dict.fromkeys(pathways_dict_from_reactome.keys(), 'reactome_pathway')
         node1 = node
         for pathway_id in pathways_dict_from_reactome.keys():
-            target_node = self.orangeboard.add_node('reactome_pathway',
+            target_node = self.add_node_smart('pathway',
                                                     pathway_id,
                                                     desc=pathways_dict_from_reactome[pathway_id])
-            self.orangeboard.add_rel('is_member_of', pathways_dict_sourcedb[pathway_id], node1, target_node)
+            self.orangeboard.add_rel('participates_in', pathways_dict_sourcedb[pathway_id], node1, target_node, extended_reltype="participates_in")
         gene_symbols_set = self.query_mygene_obj.convert_uniprot_id_to_gene_symbol(uniprot_id_str)
         for gene_symbol in gene_symbols_set:
             # protein-DNA (i.e., gene regulatory) interactions:
@@ -171,9 +221,9 @@ class BioNetExpander:
                 reg_uniprot_ids_set = self.query_mygene_obj.convert_gene_symbol_to_uniprot_id(reg_gene_symbol)
                 for reg_uniprot_id in reg_uniprot_ids_set:
                     assert '-' not in reg_uniprot_id
-                    node2 = self.orangeboard.add_node('uniprot_protein', reg_uniprot_id, desc=reg_gene_symbol)
+                    node2 = self.add_node_smart('protein', reg_uniprot_id, desc=reg_gene_symbol)
                     if node2.uuid != node1.uuid:
-                        self.orangeboard.add_rel('controls_expression_of', 'GeneProf', node2, node1)
+                        self.orangeboard.add_rel('regulates', 'GeneProf', node2, node1, extended_reltype="regulates expression of")
 
             # microrna-gene interactions:
             microrna_regulators = QueryMiRGate.get_microrna_ids_that_regulate_gene_symbol(gene_symbol)
@@ -183,10 +233,10 @@ class BioNetExpander:
                     mir_entrez_gene_ids = self.query_mygene_obj.convert_gene_symbol_to_entrez_gene_ID(mir_gene_symbol)
                     if len(mir_entrez_gene_ids) > 0:
                         for mir_entrez_gene_id in mir_entrez_gene_ids:
-                            mir_node = self.orangeboard.add_node('ncbigene_microrna',
+                            mir_node = self.add_node_smart('microrna',
                                                                  'NCBIGene:' + str(mir_entrez_gene_id),
                                                                  desc=mir_gene_symbol)
-                            self.orangeboard.add_rel('controls_expression_of', 'miRGate', mir_node, node)
+                            self.orangeboard.add_rel('regulates', 'miRGate', mir_node, node, extended_reltype="regulates expression of")
 
         entrez_gene_id = self.query_mygene_obj.convert_uniprot_id_to_entrez_gene_ID(uniprot_id_str)
         if len(entrez_gene_id) > 0:
@@ -195,92 +245,92 @@ class BioNetExpander:
             # protein-to-anatomy associations:
             anatomy_dict = QueryBioLink.get_anatomies_for_gene(entrez_gene_id_str)
             for anatomy_id, anatomy_desc in anatomy_dict.items():
-                anatomy_node = self.orangeboard.add_node('anatont_anatomy', anatomy_id, desc=anatomy_desc)
-                self.orangeboard.add_rel('is_expressed_in', 'BioLink', node, anatomy_node)
+                anatomy_node = self.add_node_smart('anatomy', anatomy_id, desc=anatomy_desc)
+                self.orangeboard.add_rel('expressed_in', 'BioLink', node, anatomy_node, extended_reltype="expressed_in")
 
             # protein-disease associations:
             disont_id_dict = QueryBioLink.get_diseases_for_gene_desc(entrez_gene_id_str)
             for disont_id in disont_id_dict.keys():
                 if 'DOID:' in disont_id:
-                    node2 = self.orangeboard.add_node('disont_disease', disont_id, desc=disont_id_dict[disont_id])
-                    self.orangeboard.add_rel('gene_assoc_with', 'BioLink', node1, node2)
+                    node2 = self.add_node_smart('disont_disease', disont_id, desc=disont_id_dict[disont_id])
+                    self.orangeboard.add_rel('associated with condition', 'BioLink', node1, node2, extended_reltype="associated with disease")
                 else:
                     if 'OMIM:' in disont_id:
-                        node2 = self.orangeboard.add_node('omim_disease', disont_id, desc=disont_id_dict[disont_id])
-                        self.orangeboard.add_rel('gene_assoc_with', 'BioLink', node1, node2)
+                        node2 = self.add_node_smart('omim_disease', disont_id, desc=disont_id_dict[disont_id])
+                        self.orangeboard.add_rel('associated wtih condition', 'BioLink', node1, node2, extended_reltype="associated with disease")
 
             # protein-phenotype associations:
             phenotype_id_dict = QueryBioLink.get_phenotypes_for_gene_desc(entrez_gene_id_str)
             for phenotype_id_str in phenotype_id_dict.keys():
-                node2 = self.orangeboard.add_node('phenont_phenotype', phenotype_id_str,
+                node2 = self.add_node_smart('phenotype', phenotype_id_str,
                                                   desc=phenotype_id_dict[phenotype_id_str])
-                self.orangeboard.add_rel('gene_assoc_with', 'BioLink', node1, node2)
+                self.orangeboard.add_rel('has phenotype', 'BioLink', node1, node2, extended_reltype="has_phenotype")
 
         # protein-protein interactions:
         int_dict = QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc(uniprot_id_str)
         for int_uniprot_id in int_dict.keys():
             int_alias = int_dict[int_uniprot_id]
             if 'BINDSGENE:' not in int_alias:
-                node2 = self.orangeboard.add_node('uniprot_protein', int_uniprot_id, desc=int_alias)
+                node2 = self.add_node_smart('protein', int_uniprot_id, desc=int_alias)
                 if node2.uuid != node1.uuid:
-                    self.orangeboard.add_rel('interacts_with', 'reactome', node1, node2)
+                    self.orangeboard.add_rel('directly interacts_with', 'reactome', node1, node2, extended_reltype="directly interacts with")
             else:
                 target_gene_symbol = int_alias.split(':')[1]
                 target_uniprot_ids_set = self.query_mygene_obj.convert_gene_symbol_to_uniprot_id(target_gene_symbol)
                 for target_uniprot_id in target_uniprot_ids_set:
                     assert '-' not in target_uniprot_id
-                    node2 = self.orangeboard.add_node('uniprot_protein', target_uniprot_id, desc=target_gene_symbol)
+                    node2 = self.add_node_smart('protein', target_uniprot_id, desc=target_gene_symbol)
                     if node2 != node1:
-                        self.orangeboard.add_rel('controls_expression_of', 'Reactome', node1, node2)
+                        self.orangeboard.add_rel('regulates', 'Reactome', node1, node2, extended_reltype="regulates expression of")
 
         # protein-to-GO (biological process):
         go_bp_dict = self.query_mygene_obj.get_gene_ontology_ids_bp_for_uniprot_id(uniprot_id_str)
         for go_id, go_term in go_bp_dict.items():
-            node2 = self.orangeboard.add_node('geneont_bioprocess', go_id, desc=go_term)
-            self.orangeboard.add_rel('participates_in', 'gene_ontology', node1, node2)
+            node2 = self.add_node_smart('biological_process', go_id, desc=go_term)
+            self.orangeboard.add_rel("participates_in", 'gene_ontology', node1, node2, extended_reltype="participates_in")
 
-    def expand_geneont_bioprocess(self, node):
+    def expand_biological_process(self, node):
         node_go_id = node.name
         child_go_ids_dict = QuerySciGraph.query_sub_ontology_terms_for_ontology_term(node_go_id)
         if child_go_ids_dict is not None:
             for child_go_id, child_go_term in child_go_ids_dict.items():
-                child_node = self.orangeboard.add_node('geneont_bioprocess', child_go_id, desc=child_go_term)
+                child_node = self.add_node_smart('biological_process', child_go_id, desc=child_go_term)
                 if child_node != node:
-                    self.orangeboard.add_rel('is_parent_of', 'gene_ontology', node, child_node)
+                    self.orangeboard.add_rel("subclass of", 'gene_ontology', child_node, node, extended_reltype="subclass of")
     
-    def expand_phenont_phenotype(self, node):
+    def expand_phenotype(self, node):
         # expand phenotype=>anatomy
         phenotype_id = node.name
         anatomy_dict = QueryBioLink.get_anatomies_for_phenotype(phenotype_id)
         for anatomy_id, anatomy_desc in anatomy_dict.items():
-            anatomy_node = self.orangeboard.add_node('anatont_anatomy', anatomy_id, desc=anatomy_desc)
-            self.orangeboard.add_rel('phenotype_assoc_with', 'BioLink', node, anatomy_node)
+            anatomy_node = self.add_node_smart('anatomy', anatomy_id, desc=anatomy_desc)
+            self.orangeboard.add_rel("affects", 'BioLink', node, anatomy_node, extended_reltype="affects")
 
         sub_phe_dict = QuerySciGraph.query_sub_ontology_terms_for_ontology_term(phenotype_id)
         for sub_phe_id, sub_phe_desc in sub_phe_dict.items():
-            sub_phe_node = self.orangeboard.add_node('phenont_phenotype', sub_phe_id, desc=sub_phe_desc)
-            self.orangeboard.add_rel('is_parent_of', 'Monarch_SciGraph', node, sub_phe_node)
+            sub_phe_node = self.add_node_smart('phenotype', sub_phe_id, desc=sub_phe_desc)
+            self.orangeboard.add_rel("subclass of", 'Monarch_SciGraph', sub_phe_node, node, extended_reltype="subclass of")
 
     def expand_omim_disease(self, node):
         res_dict = self.query_omim_obj.disease_mim_to_gene_symbols_and_uniprot_ids(node.name)
         uniprot_ids = res_dict['uniprot_ids']
         gene_symbols = res_dict['gene_symbols']
         if len(uniprot_ids) == 0 and len(gene_symbols) == 0:
-            return  ## nothing else to do, for this MIM number
+            return  # nothing else to do, for this MIM number
         uniprot_ids_to_gene_symbols_dict = dict()
         for gene_symbol in gene_symbols:
             uniprot_ids = self.query_mygene_obj.convert_gene_symbol_to_uniprot_id(gene_symbol)
             if len(uniprot_ids) == 0:
-                ## this might be a microRNA
+                # this might be a microRNA
                 if BioNetExpander.is_mir(gene_symbol):
                     entrez_gene_ids = self.query_mygene_obj.convert_gene_symbol_to_entrez_gene_ID(gene_symbol)
                     if len(entrez_gene_ids) > 0:
                         for entrez_gene_id in entrez_gene_ids:
                             curie_entrez_gene_id = 'NCBIGene:' + str(entrez_gene_id)
-                            node2 = self.orangeboard.add_node('ncbigene_microrna',
+                            node2 = self.add_node_smart('microrna',
                                                               curie_entrez_gene_id,
                                                               desc=gene_symbol)
-                            self.orangeboard.add_rel('disease_affects', 'OMIM', node, node2)
+                            self.orangeboard.add_rel("causes or contributes to condition", "OMIM", node2, node, extended_reltype="causes or contributes to condition")
             for uniprot_id in uniprot_ids:
                 uniprot_ids_to_gene_symbols_dict[uniprot_id] = gene_symbol
         for uniprot_id in uniprot_ids:
@@ -291,34 +341,38 @@ class BioNetExpander:
         source_node = node
         for uniprot_id in uniprot_ids_to_gene_symbols_dict.keys():
             assert '-' not in uniprot_id
-            target_node = self.orangeboard.add_node('uniprot_protein', uniprot_id,
+            target_node = self.add_node_smart('protein', uniprot_id,
                                                     desc=uniprot_ids_to_gene_symbols_dict[uniprot_id])
-            self.orangeboard.add_rel('disease_affects', 'OMIM', source_node, target_node)
+            self.orangeboard.add_rel("causes or contributes to condition",
+                                     "OMIM", target_node, source_node,
+                                     extended_reltype="causes or contributes to condition")
 
     def expand_disont_disease(self, node):
         disont_id = node.name
 
         child_disease_ids_dict = QueryDisont.query_disont_to_child_disonts_desc(disont_id)
         for child_disease_id in child_disease_ids_dict.keys():
-            target_node = self.orangeboard.add_node('disont_disease', child_disease_id,
+            target_node = self.add_node_smart('disont_disease', child_disease_id,
                                                     desc=child_disease_ids_dict[child_disease_id])
-            self.orangeboard.add_rel('is_parent_of', 'DiseaseOntology', node, target_node)
+            self.orangeboard.add_rel('subclass of', 'DiseaseOntology',
+                                     target_node, node, extended_reltype="subclass of")
 
         mesh_ids_set = QueryDisont.query_disont_to_mesh_id(disont_id)
         for mesh_id in mesh_ids_set:
             uniprot_ids_dict = QueryDisGeNet.query_mesh_id_to_uniprot_ids_desc(mesh_id)
             for uniprot_id in uniprot_ids_dict.keys():
                 assert '-' not in uniprot_id
-                source_node = self.orangeboard.add_node('uniprot_protein', uniprot_id,
+                source_node = self.add_node_smart('protein', uniprot_id,
                                                         desc=uniprot_ids_dict[uniprot_id])
-                self.orangeboard.add_rel('gene_assoc_with', 'DisGeNet', source_node, node)
+                self.orangeboard.add_rel("associated with condition", "DisGeNet", source_node,
+                                         node, extended_reltype="associated with condition")
 
         # query for phenotypes associated with this disease
         phenotype_id_dict = QueryBioLink.get_phenotypes_for_disease_desc(disont_id)
         for phenotype_id_str in phenotype_id_dict.keys():
-            phenotype_node = self.orangeboard.add_node('phenont_phenotype', phenotype_id_str,
+            phenotype_node = self.add_node_smart('phenotype', phenotype_id_str,
                                                        desc=phenotype_id_dict[phenotype_id_str])
-            self.orangeboard.add_rel('phenotype_assoc_with', 'BioLink', phenotype_node, node)
+            self.orangeboard.add_rel("has_phenotype", 'BioLink', node, phenotype_node, extended_reltype="has_phenotype")
 
     def expand_node(self, node):
         node_type = node.nodetype
@@ -348,9 +402,9 @@ class BioNetExpander:
     def test_go_bp_protein():
         ob = Orangeboard(debug=False)
         ob.set_dict_reltype_dirs({'targets': True})
-        protein_node = ob.add_node('uniprot_protein', 'Q05925', desc='', seed_node_bool=True)
         bne = BioNetExpander(ob)
-        bne.expand_uniprot_protein(protein_node)
+        protein_node = bne.add_node_smart('protein', 'Q05925', seed_node_bool=True, desc='')
+        bne.expand_protein(protein_node)
         ob.neo4j_set_url()
         ob.neo4j_set_auth()
         ob.neo4j_push()
@@ -358,9 +412,9 @@ class BioNetExpander:
     def test_go_bp_microrna():
         ob = Orangeboard(debug=False)
         ob.set_dict_reltype_dirs({'targets': True})
-        microrna_node = ob.add_node('ncbigene_microrna', 'NCBIGene:406991', desc='', seed_node_bool=True)
         bne = BioNetExpander(ob)
-        bne.expand_ncbigene_microrna(microrna_node)
+        microrna_node = bne.add_node_smart('microrna', 'NCBIGene:406991', seed_node_bool=True, desc='test microrna')
+        bne.expand_microrna(microrna_node)
         ob.neo4j_set_url()
         ob.neo4j_set_auth()
         ob.neo4j_push()
@@ -368,13 +422,14 @@ class BioNetExpander:
     def test_go_term():
         ob = Orangeboard(debug=False)
         ob.set_dict_reltype_dirs({'targets': True})
-        go_node = ob.add_node('geneont_bioprocess', 'GO:1904685', desc='', seed_node_bool=True)
         bne = BioNetExpander(ob)
-        bne.expand_geneont_bioproces(go_node)
+        go_node = bne.add_node_smart('biological_process', 'GO:1904685', seed_node_bool=True, desc='test biological process')
+        bne.expand_biological_process(go_node)
         ob.neo4j_set_url()
         ob.neo4j_set_auth()
         ob.neo4j_push()
-        
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Builds the master knowledge graph')
     parser.add_argument('--runfunc', dest='runfunc')
