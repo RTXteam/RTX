@@ -129,7 +129,7 @@ def seed_and_expand_kg_q1(num_expansions):
     ## set the seed node flag to True, for the first disease
     seed_node_bool = True
     for disont_id_str, disont_desc in q1_diseases_dict.items():
-        bne.add_node_smart('disont_disease', disont_id_str, seed_node_bool, desc=disont_desc)
+        bne.add_node_smart('disease', disont_id_str, seed_node_bool, desc=disont_desc)
         ## for the rest of the diseases, do not set the seed-node flag
         seed_node_bool = False
 
@@ -218,7 +218,7 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
                     for curie_id in curie_ids:
                         if 'DOID:' in curie_id:
                             disont_desc = QueryDisont.query_disont_to_label(curie_id)
-                            bne.add_node_smart('disont_disease', curie_id, seed_node_bool=first_row, desc=disont_desc)
+                            bne.add_node_smart('disease', curie_id, seed_node_bool=first_row, desc=disont_desc)
                             mesh_term_to_curie_ids_dict[mesh_term] = curie_id
                             first_row = False
                         else:
