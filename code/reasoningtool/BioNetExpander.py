@@ -142,7 +142,7 @@ class BioNetExpander:
                 disease_node = self.add_node_smart('omim_disease', disease_id, desc=disease_ids_dict[disease_id])
                 self.orangeboard.add_rel('associated with condition', 'BioLink', node, disease_node, extended_reltype="associated with disease")
             elif 'DOID:' in disease_id:
-                disease_node = self.add_node_smart('disont_disease', disease_id,
+                disease_node = self.add_node_smart('disease', disease_id,
                                                          desc=disease_ids_dict[disease_id])
                 self.orangeboard.add_rel('associated with condition', 'BioLink', node, disease_node, extended_reltype="associated with disease")
             else:
@@ -252,7 +252,7 @@ class BioNetExpander:
             disont_id_dict = QueryBioLink.get_diseases_for_gene_desc(entrez_gene_id_str)
             for disont_id in disont_id_dict.keys():
                 if 'DOID:' in disont_id:
-                    node2 = self.add_node_smart('disont_disease', disont_id, desc=disont_id_dict[disont_id])
+                    node2 = self.add_node_smart('disease', disont_id, desc=disont_id_dict[disont_id])
                     self.orangeboard.add_rel('associated with condition', 'BioLink', node1, node2, extended_reltype="associated with disease")
                 else:
                     if 'OMIM:' in disont_id:
@@ -347,12 +347,12 @@ class BioNetExpander:
                                      "OMIM", target_node, source_node,
                                      extended_reltype="causes or contributes to condition")
 
-    def expand_disont_disease(self, node):
+    def expand_disease(self, node):
         disont_id = node.name
 
         child_disease_ids_dict = QueryDisont.query_disont_to_child_disonts_desc(disont_id)
         for child_disease_id in child_disease_ids_dict.keys():
-            target_node = self.add_node_smart('disont_disease', child_disease_id,
+            target_node = self.add_node_smart('disease', child_disease_id,
                                                     desc=child_disease_ids_dict[child_disease_id])
             self.orangeboard.add_rel('subclass of', 'DiseaseOntology',
                                      target_node, node, extended_reltype="subclass of")
