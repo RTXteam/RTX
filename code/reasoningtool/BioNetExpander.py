@@ -139,7 +139,7 @@ class BioNetExpander:
         disease_ids_dict = QueryBioLink.get_diseases_for_gene_desc(ncbi_gene_id)
         for disease_id in disease_ids_dict.keys():
             if 'OMIM:' in disease_id:
-                disease_node = self.add_node_smart('omim_disease', disease_id, desc=disease_ids_dict[disease_id])
+                disease_node = self.add_node_smart('genetic_condition', disease_id, desc=disease_ids_dict[disease_id])
                 self.orangeboard.add_rel('associated with condition', 'BioLink', node, disease_node, extended_reltype="associated with disease")
             elif 'DOID:' in disease_id:
                 disease_node = self.add_node_smart('disease', disease_id,
@@ -256,7 +256,7 @@ class BioNetExpander:
                     self.orangeboard.add_rel('associated with condition', 'BioLink', node1, node2, extended_reltype="associated with disease")
                 else:
                     if 'OMIM:' in disont_id:
-                        node2 = self.add_node_smart('omim_disease', disont_id, desc=disont_id_dict[disont_id])
+                        node2 = self.add_node_smart('genetic_condition', disont_id, desc=disont_id_dict[disont_id])
                         self.orangeboard.add_rel('associated wtih condition', 'BioLink', node1, node2, extended_reltype="associated with disease")
 
             # protein-phenotype associations:
@@ -311,7 +311,7 @@ class BioNetExpander:
             sub_phe_node = self.add_node_smart('phenotype', sub_phe_id, desc=sub_phe_desc)
             self.orangeboard.add_rel("subclass of", 'Monarch_SciGraph', sub_phe_node, node, extended_reltype="subclass of")
 
-    def expand_omim_disease(self, node):
+    def expand_genetic_condition(self, node):
         res_dict = self.query_omim_obj.disease_mim_to_gene_symbols_and_uniprot_ids(node.name)
         uniprot_ids = res_dict['uniprot_ids']
         gene_symbols = res_dict['gene_symbols']
