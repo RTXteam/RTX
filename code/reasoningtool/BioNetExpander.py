@@ -257,13 +257,13 @@ class BioNetExpander:
                 else:
                     if 'OMIM:' in disont_id:
                         node2 = self.add_node_smart('genetic_condition', disont_id, desc=disont_id_dict[disont_id])
-                        self.orangeboard.add_rel('associated wtih condition', 'BioLink', node1, node2, extended_reltype="associated with disease")
+                        self.orangeboard.add_rel('associated with condition', 'BioLink', node1, node2, extended_reltype="associated with disease")
 
             # protein-phenotype associations:
             phenotype_id_dict = QueryBioLink.get_phenotypes_for_gene_desc(entrez_gene_id_str)
             for phenotype_id_str in phenotype_id_dict.keys():
                 node2 = self.add_node_smart('phenotype', phenotype_id_str,
-                                                  desc=phenotype_id_dict[phenotype_id_str])
+                                            desc=phenotype_id_dict[phenotype_id_str])
                 self.orangeboard.add_rel('has_phenotype', 'BioLink', node1, node2, extended_reltype="has_phenotype")
 
         # protein-protein interactions:
@@ -328,8 +328,8 @@ class BioNetExpander:
                         for entrez_gene_id in entrez_gene_ids:
                             curie_entrez_gene_id = 'NCBIGene:' + str(entrez_gene_id)
                             node2 = self.add_node_smart('microrna',
-                                                              curie_entrez_gene_id,
-                                                              desc=gene_symbol)
+                                                        curie_entrez_gene_id,
+                                                        desc=gene_symbol)
                             self.orangeboard.add_rel("causes or contributes to condition", "OMIM", node2, node, extended_reltype="causes or contributes to condition")
             for uniprot_id in uniprot_ids:
                 uniprot_ids_to_gene_symbols_dict[uniprot_id] = gene_symbol
@@ -342,7 +342,7 @@ class BioNetExpander:
         for uniprot_id in uniprot_ids_to_gene_symbols_dict.keys():
             assert '-' not in uniprot_id
             target_node = self.add_node_smart('protein', uniprot_id,
-                                                    desc=uniprot_ids_to_gene_symbols_dict[uniprot_id])
+                                              desc=uniprot_ids_to_gene_symbols_dict[uniprot_id])
             self.orangeboard.add_rel("causes or contributes to condition",
                                      "OMIM", target_node, source_node,
                                      extended_reltype="causes or contributes to condition")
