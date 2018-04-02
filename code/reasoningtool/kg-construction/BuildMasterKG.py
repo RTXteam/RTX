@@ -157,7 +157,7 @@ def seed_and_expand_kg_q1(num_expansions):
             print(gene_symbols)
             assert len(gene_symbols) > 0
             prot_node = bne.add_node_smart('protein', uniprot_id, desc=';'.join(list(gene_symbols)))
-            ob.add_rel('associated with condition', 'OMIM', prot_node, omim_node, extended_reltype="associated with disease")
+            ob.add_rel('associated_with_condition', 'OMIM', prot_node, omim_node, extended_reltype="associated_with_disease")
 
     # triple-expand the knowledge graph
     for _ in range(0, num_expansions):
@@ -293,14 +293,14 @@ def add_pc2_to_kg():
             node2 = ob.get_node('protein', uniprot2)
             if node1 is not None and node2 is not None and node1.uuid != node2.uuid:
                 if interaction_type == 'interacts-with':
-                    ob.add_rel('directly interacts with', 'PC2', node1, node2, extended_reltype="directly interacts with")
+                    ob.add_rel('directly_interacts_with', 'PC2', node1, node2, extended_reltype="directly_interacts_with")
                 else:
                     if interaction_type == 'controls-expression-of':
-                        ob.add_rel("regulates", 'PC2', node1, node2, extended_reltype="regulates expression of")
+                        ob.add_rel("regulates", 'PC2', node1, node2, extended_reltype="regulates_expression_of")
                     else:
                         if interaction_type == 'controls-state-change-of' or \
                            interaction_type == 'controls-phosphorylation-of':
-                            ob.add_rel("regulates", 'PC2', node1, node2, extended_reltype="regulates activity of")
+                            ob.add_rel("regulates", 'PC2', node1, node2, extended_reltype="regulates_activity_of")
                         else:
                             assert False
 
