@@ -38,39 +38,10 @@ ob = Orangeboard(debug=True)
 ob.neo4j_set_url()
 ob.neo4j_set_auth()
 
-q1_omim_to_uniprot_look_aside_dict = {'OMIM:166710': ['Q05925']}
 
 ob.neo4j_set_url()
 ob.neo4j_set_auth()
 bne = BioNetExpander(ob)
-
-def seed_and_expand_kg_q1(num_expansions):
-
-    omim_df = pandas.read_csv('../../../data/q1/Genetic_conditions_from_OMIM.txt',
-                              sep='\t')[['MIM_number', 'preferred_title']]
-    first_row = True
-    for index, row in omim_df.iterrows():
-        bne.add_node_smart('disease', 'OMIM:' + str(row['MIM_number']),
-                           seed_node_bool=first_row,
-                           desc=row['preferred_title'])
-        if first_row:
-            first_row = False
-
-    for omim_id in q1_omim_to_uniprot_look_aside_dict.keys():
-        omim_node = ob.get_node('disease', omim_id)
-        assert omim_node is not None
-        uniprot_ids_list = q1_omim_to_uniprot_look_aside_dict[omim_id]
-#        print(uniprot_ids_list)
-        for uniprot_id in uniprot_ids_list:
-            gene_symbols = bne.query_mygene_obj.convert_uniprot_id_to_gene_symbol(uniprot_id)
-            print(gene_symbols)
-            assert len(gene_symbols) > 0
-            prot_node = bne.add_node_smart('protein', uniprot_id, desc=';'.join(list(gene_symbols)))
-            ob.add_rel('associated_with_condition', 'OMIM', prot_node, omim_node, extended_reltype="associated_with_disease")
-
-    # triple-expand the knowledge graph
-    for _ in range(0, num_expansions):
-        bne.expand_all_nodes()
 
 def convert_mesh_entrez_uid_to_curie_form(mesh_entrez_uid):
     assert mesh_entrez_uid > MESH_ENTREZ_UID_BASE
@@ -227,7 +198,6 @@ def seed_and_expand_nodes_from_master_tsv_file(num_expansions=3):
 def make_master_kg():
     seed_and_expand_nodes_from_master_tsv_file(num_expansions=3)
     seed_and_expand_kg_q2(num_expansions=3)
-    seed_and_expand_kg_q1(num_expansions=3)
     add_pc2_to_kg()
     ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
