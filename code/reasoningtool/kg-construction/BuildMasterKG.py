@@ -38,107 +38,16 @@ ob = Orangeboard(debug=True)
 ob.neo4j_set_url()
 ob.neo4j_set_auth()
 
-q1_diseases_dict = {'DOID:11476':   'osteoporosis',
-                    'DOID:526':     'HIV infectious disease',
-                    'DOID:1498':    'cholera',
-                    'DOID:4325':    'Ebola hemmorhagic fever',
-                    'DOID:12365':   'malaria',
-                    'DOID:10573':   'Osteomalacia',
-                    'DOID:13810':   'hypercholesterolemia',
-                    'DOID:9352':    'type 2 diabetes mellitus',
-                    'DOID:2841':    'asthma',
-                    'DOID:4989':    'pancreatitis',
-                    'DOID:10652':   'Alzheimer Disease',
-                    'DOID:5844':    'Myocardial Infarction',
-                    'DOID:11723':   'Duchenne Muscular Dystrophy',
-                    'DOID:0060728': 'NGLY1-deficiency',
-                    'DOID:0050741': 'Alcohol Dependence',
-                    'DOID:1470':    'major depressive disorder',
-                    'DOID:14504':   'Niemann-Pick disease',
-                    'DOID:12858':   'Huntington\'s Disease',
-                    'DOID:9270':    'Alkaptonuria',
-                    'DOID:10923':   'sickle cell anemia',
-                    'DOID:2055':    'post-traumatic stress disorder'}
-
 q1_omim_to_uniprot_look_aside_dict = {'OMIM:166710': ['Q05925']}
-
-q2_mesh_to_conditions_look_aside_dict = {'MESH:D000855': 'DOID:8689',
-                                         'MESH:D016174': 'DOID:1883',
-                                         'MESH:D001007': 'DOID:2030',
-                                         'MESH:D056912': 'DOID:8670',
-                                         'MESH:D007024': 'DOID:10556',
-                                         'MESH:D010259': 'DOID:10938',
-                                         'MESH:D009169': 'DOID:399',
-                                         'MESH:D008414': 'DOID:10690',
-                                         'MESH:D014549': 'DOID:724',
-                                         'MESH:D016411': 'DOID:0050749',
-                                         'MESH:D011247': 'HP:0002686',
-                                         'MESH:D001777': 'HP:0001928',
-                                         'MESH:D003085': 'HP:0011848',
-                                         'MESH:D009057': 'HP:1091',
-                                         'MESH:D004107': 'HP:0030449',
-                                         'MESH:D016099': 'HP:12072',
-                                         'MESH:D004927': 'HP:0005420',
-                                         'MESH:D005393': 'DOID:104',
-                                         'MESH:D030762': 'HP:0030449',
-                                         'MESH:D051271': 'HP:0002315',
-                                         'MESH:D006470': 'HP:0006535',
-                                         'MESH:D019584': 'HP:0005968',
-                                         'MESH:D007249': 'HP:0012531',
-                                         'MESH:D018784': 'HP:0100592',
-                                         'MESH:D055744': 'DOID:0050073',
-                                         'MESH:D019266': 'HP:0001891',
-                                         'MESH:D017116': 'HP:0003419',
-                                         'MESH:D008593': 'HP:0100805',
-                                         'MESH:D008597': 'HP:0000140',
-                                         'MESH:D009126': 'HP:0002486',
-                                         'MESH:D026201': 'HP:0002486',
-                                         'MESH:D051474': 'DOID:9210',
-                                         'MESH:D007744': 'HP:0030369',
-                                         'MESH:D010272': 'DOID:1398',
-                                         'MESH:D017698': 'DOID:11968',
-                                         'MESH:D011183': 'DOID:8440',
-                                         'MESH:D020250': 'HP:0002017',
-                                         'MESH:D011248': 'HP:0001788',
-                                         'MESH:D011275': 'HP:0030449',
-                                         'MESH:D007752': 'HP:0001788',
-                                         'MESH:D011595': 'HP:0002361',
-                                         'MESH:D012120': 'HP:0002093',
-                                         'MESH:D012140': 'DOID:1579',
-                                         'MESH:D012141': 'HP:0011947',
-                                         'MESH:D012550': 'DOID:0050597',
-                                         'MESH:D012892': 'HP:0100785',
-                                         'MESH:D012907': 'DOID:0050742',
-                                         'MESH:D018461': 'HP:0002718',
-                                         'MESH:D013035': 'HP:0006963',
-                                         'MESH:D013614': 'HP:0006688',
-                                         'MESH:D014593': 'HP:0002486',
-                                         'MESH:D015430': 'HP:0004324',
-                                         'MESH:D006376': 'DOID:883',
-                                         'MESH:D015431': 'HP:0001824',
-                                         'MESH:D019106': 'HP:0011891',
-                                         'MESH:D009119': 'HP:0004305'  # not sure about this particular mapping
-}
 
 ob.neo4j_set_url()
 ob.neo4j_set_auth()
 bne = BioNetExpander(ob)
 
 def seed_and_expand_kg_q1(num_expansions):
-    ## seed all 21 diseases in the Orangeboard
-    ## set the seed node flag to True, for the first disease
-    seed_node_bool = True
-    for disont_id_str, disont_desc in q1_diseases_dict.items():
-        bne.add_node_smart('disease', disont_id_str, seed_node_bool, desc=disont_desc)
-        ## for the rest of the diseases, do not set the seed-node flag
-        seed_node_bool = False
-
-    ## triple-expand the knowledge graph
-    for _ in range(0, num_expansions):
-        bne.expand_all_nodes()
 
     omim_df = pandas.read_csv('../../../data/q1/Genetic_conditions_from_OMIM.txt',
-                              sep='\t')[['MIM_number','preferred_title']]
+                              sep='\t')[['MIM_number', 'preferred_title']]
     first_row = True
     for index, row in omim_df.iterrows():
         bne.add_node_smart('disease', 'OMIM:' + str(row['MIM_number']),
@@ -181,11 +90,6 @@ def get_curie_ont_ids_for_mesh_term(mesh_term):
                 disont_ids = QuerySciGraph.get_disont_ids_for_mesh_id(mesh_id_curie)
                 if len(disont_ids) > 0:
                     ret_curie_ids += disont_ids
-                else:
-                    
-                    lal_curie_id = q2_mesh_to_conditions_look_aside_dict.get(mesh_id_curie, None)
-                    if lal_curie_id is not None:
-                        ret_curie_ids += [lal_curie_id]
             else:
                 print('Got MeSH UID less than ' + str(MESH_ENTREZ_UID_BASE) + ': ' + mesh_uid + \
                       '; for MeSH term: ' + mesh_term, file=sys.stderr)
@@ -307,10 +211,10 @@ def add_pc2_to_kg():
                         else:
                             assert False
 
-def seed_and_expand_kg_q2_cop(num_expansions=3):
-    q2_cop_data = pandas.read_csv('../../../data/q2/cop_data.tsv',
+def seed_and_expand_nodes_from_master_tsv_file(num_expansions=3):
+    q2_cop_data = pandas.read_csv('../../../data/seed_nodes.tsv',
                                   sep="\t",
-                                  names=['type', 'curie_id', 'term'],
+                                  names=['type', 'curie_id', 'term', 'purpose'],
                                   header=0)
     first_row = True
     for index, row in q2_cop_data.iterrows():
@@ -321,7 +225,7 @@ def seed_and_expand_kg_q2_cop(num_expansions=3):
         bne.expand_all_nodes()
     
 def make_master_kg():
-    seed_and_expand_kg_q2_cop(num_expansions=3)
+    seed_and_expand_nodes_from_master_tsv_file(num_expansions=3)
     seed_and_expand_kg_q2(num_expansions=3)
     seed_and_expand_kg_q1(num_expansions=3)
     add_pc2_to_kg()
