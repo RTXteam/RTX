@@ -28,13 +28,13 @@ import argparse
 
 MESH_ENTREZ_UID_BASE = 68000000
 
-## configure requests package to use the "orangeboard.sqlite" cache
+# configure requests package to use the "orangeboard.sqlite" cache
 requests_cache.install_cache('orangeboard')
 
-## create an Orangeboard object
+# create an Orangeboard object
 ob = Orangeboard(debug=True)
 
-## configure the Orangeboard for Neo4j connectivity
+# configure the Orangeboard for Neo4j connectivity
 ob.neo4j_set_url()
 ob.neo4j_set_auth()
 
@@ -43,11 +43,13 @@ ob.neo4j_set_url()
 ob.neo4j_set_auth()
 bne = BioNetExpander(ob)
 
+
 def convert_mesh_entrez_uid_to_curie_form(mesh_entrez_uid):
     assert mesh_entrez_uid > MESH_ENTREZ_UID_BASE
     return 'MESH:D' + format(mesh_entrez_uid - MESH_ENTREZ_UID_BASE, '06')
 
 human_phenont_name_id_dict = ParsePhenont.get_name_id_dict('../../../data/hpo/hp.obo')
+
 
 def get_curie_ont_ids_for_mesh_term(mesh_term):
     ret_curie_ids = []
@@ -62,7 +64,7 @@ def get_curie_ont_ids_for_mesh_term(mesh_term):
                 if len(disont_ids) > 0:
                     ret_curie_ids += disont_ids
             else:
-                print('Got MeSH UID less than ' + str(MESH_ENTREZ_UID_BASE) + ': ' + mesh_uid + \
+                print('Got MeSH UID less than ' + str(MESH_ENTREZ_UID_BASE) + ': ' + mesh_uid + 
                       '; for MeSH term: ' + mesh_term, file=sys.stderr)
     if len(ret_curie_ids) == 0:
         human_phenont_id = human_phenont_name_id_dict.get(mesh_term, None)
@@ -72,7 +74,7 @@ def get_curie_ont_ids_for_mesh_term(mesh_term):
 
 
 def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
-    
+
     drug_dis_df = pandas.read_csv('../../../data/q2/q2-drugandcondition-list.txt',
                                   sep='\t')
 
@@ -90,7 +92,7 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
                 mesh_terms_set.add(mesh_term)
                 curie_ids = get_curie_ont_ids_for_mesh_term(mesh_term)
                 if len(curie_ids) > 0:
-                    assert type(curie_ids)==list
+                    assert type(curie_ids) == list
                     for curie_id in curie_ids:
                         if 'DOID:' in curie_id:
                             disont_desc = QueryDisont.query_disont_to_label(curie_id)
@@ -104,7 +106,7 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
                                 first_row = False
                             else:
                                 assert False  # should never get here
-                                
+
             curie_ids_for_df.append(mesh_term_to_curie_ids_dict[mesh_term])
         drug_dis_df['CURIE_ID'] = pandas.Series(curie_ids_for_df, index=drug_dis_df.index)
         drug_dis_df.to_csv('../../../data/q2/q2-drugandcondition-list-mapped-output.txt', sep='\t')
@@ -112,12 +114,12 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
         # triple-expand the knowledge graph
         for _ in range(0, num_expansions):
             bne.expand_all_nodes()
-                
+
     if seed_parts is None or 'drugs' in seed_parts:
         print('=====================> seeding drug nodes for Q2')
         first_row = True
         all_drugs = set()
-        
+
         for index, row in drug_dis_df.iterrows():
             drug_name = row['Drug'].lower()
             all_drugs.add(drug_name)
@@ -128,7 +130,7 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
         for index, row in fda_drug_df.iterrows():
             drug_name = row['NAME'].lower()
             all_drugs.add(drug_name)
-            
+
         for drug_name in all_drugs:
             print(drug_name)
             chembl_ids = QueryChEMBL.get_chembl_ids_for_drug(drug_name)
@@ -142,6 +144,7 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
         # triple-expand the knowledge graph
         for _ in range(0, num_expansions):
             bne.expand_all_nodes()
+
 
 def add_pc2_to_kg():
     sif_data = pandas.read_csv('../../../data/pc2/PathwayCommons9.All.hgnc.sif',
@@ -163,8 +166,8 @@ def add_pc2_to_kg():
         gene2 = row['gene2']
         uniprots1 = genes_uniprot_dict.get(gene1, None)
         uniprots2 = genes_uniprot_dict.get(gene2, None)
-        if uniprots1 is not None and len(uniprots1)==1 and \
-           uniprots2 is not None and len(uniprots2)==1:
+        if uniprots1 is not None and len(uniprots1) == 1 and \
+           uniprots2 is not None and len(uniprots2) == 1:
             uniprot1 = next(iter(uniprots1))
             uniprot2 = next(iter(uniprots2))
             node1 = ob.get_node('protein', uniprot1)
@@ -182,6 +185,7 @@ def add_pc2_to_kg():
                         else:
                             assert False
 
+
 def seed_and_expand_nodes_from_master_tsv_file(num_expansions=3):
     q2_cop_data = pandas.read_csv('../../../data/seed_nodes.tsv',
                                   sep="\t",
@@ -190,11 +194,12 @@ def seed_and_expand_nodes_from_master_tsv_file(num_expansions=3):
     first_row = True
     for index, row in q2_cop_data.iterrows():
         bne.add_node_smart(row['type'], row['curie_id'], seed_node_bool=first_row, desc=row['term'])
-        if first_row == True:
+        if first_row is True:
             first_row = False
     for _ in range(0, num_expansions):
         bne.expand_all_nodes()
-    
+
+
 def make_master_kg():
     seed_and_expand_nodes_from_master_tsv_file(num_expansions=3)
     seed_and_expand_kg_q2(num_expansions=3)
@@ -216,7 +221,6 @@ def test_seed_q2_drugs():
 def test_fa():
     print(get_curie_ont_ids_for_mesh_term("Fanconi Anemia"))
 
-
 def make_file_q2_mapping():
     seed_and_expand_kg_q2(num_expansions=0)
 
@@ -236,6 +240,3 @@ if __name__ == '__main__':
         sys.exit('In module BuildMasterKG.py, unable to find function named: ' + run_function_name)
     running_time = timeit.timeit(lambda: run_function(), number=1)
     print('running time for function: ' + str(running_time))
-                        
-    
-
