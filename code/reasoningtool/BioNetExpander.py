@@ -85,8 +85,10 @@ class BioNetExpander:
         if ":" not in name:
             accession = name
             if "CHEMBL" in name:
-                name = name.replace("CHEMBL", "")
-            curie_id = curie_prefix + ":" + name
+                shortname = name.replace("CHEMBL", "")
+            else:
+                shortname = name
+            curie_id = curie_prefix + ":" + shortname
             iri = iri_prefix + name
         else:
             curie_id = name
