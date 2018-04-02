@@ -141,14 +141,14 @@ def seed_and_expand_kg_q1(num_expansions):
                               sep='\t')[['MIM_number','preferred_title']]
     first_row = True
     for index, row in omim_df.iterrows():
-        bne.add_node_smart('genomic_entity', 'OMIM:' + str(row['MIM_number']),
+        bne.add_node_smart('disease', 'OMIM:' + str(row['MIM_number']),
                            seed_node_bool=first_row,
                            desc=row['preferred_title'])
         if first_row:
             first_row = False
 
     for omim_id in q1_omim_to_uniprot_look_aside_dict.keys():
-        omim_node = ob.get_node('genomic_entity', omim_id)
+        omim_node = ob.get_node('disease', omim_id)
         assert omim_node is not None
         uniprot_ids_list = q1_omim_to_uniprot_look_aside_dict[omim_id]
 #        print(uniprot_ids_list)
