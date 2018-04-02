@@ -49,7 +49,7 @@ class BioNetExpander:
                                   "HP": "http://purl.obolibrary.org/obo/HP_",
                                   "DOID": "http://purl.obolibrary.org/obo/DOID_",
                                   "Reactome": "https://reactome.org/content/detail/",
-                                  "ChEMBL": "https://www.ebi.ac.uk/chembl/compound/inspect/CHEMBL/",
+                                  "ChEMBL": "https://www.ebi.ac.uk/chembl/compound/inspect/",
                                   "UBERON": "http://purl.obolibrary.org/obo/UBERON_",
                                   "GO": "http://purl.obolibrary.org/obo/GO_"}
 
