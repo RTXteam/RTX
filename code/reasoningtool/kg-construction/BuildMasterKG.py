@@ -137,7 +137,7 @@ def seed_and_expand_kg_q1(num_expansions):
     for _ in range(0, num_expansions):
         bne.expand_all_nodes()
 
-    omim_df = pandas.read_csv('../../data/q1/Genetic_conditions_from_OMIM.txt',
+    omim_df = pandas.read_csv('../../../data/q1/Genetic_conditions_from_OMIM.txt',
                               sep='\t')[['MIM_number','preferred_title']]
     first_row = True
     for index, row in omim_df.iterrows():
@@ -167,7 +167,7 @@ def convert_mesh_entrez_uid_to_curie_form(mesh_entrez_uid):
     assert mesh_entrez_uid > MESH_ENTREZ_UID_BASE
     return 'MESH:D' + format(mesh_entrez_uid - MESH_ENTREZ_UID_BASE, '06')
 
-human_phenont_name_id_dict = ParsePhenont.get_name_id_dict('../../data/hpo/hp.obo')
+human_phenont_name_id_dict = ParsePhenont.get_name_id_dict('../../../data/hpo/hp.obo')
 
 def get_curie_ont_ids_for_mesh_term(mesh_term):
     ret_curie_ids = []
@@ -189,15 +189,16 @@ def get_curie_ont_ids_for_mesh_term(mesh_term):
             else:
                 print('Got MeSH UID less than ' + str(MESH_ENTREZ_UID_BASE) + ': ' + mesh_uid + \
                       '; for MeSH term: ' + mesh_term, file=sys.stderr)
-    if len(ret_curie_ids)==0:
+    if len(ret_curie_ids) == 0:
         human_phenont_id = human_phenont_name_id_dict.get(mesh_term, None)
         if human_phenont_id is not None:
             ret_curie_ids.append(human_phenont_id)
     return ret_curie_ids
-    
+
+
 def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
     
-    drug_dis_df = pandas.read_csv('../../data/q2/q2-drugandcondition-list.txt',
+    drug_dis_df = pandas.read_csv('../../../data/q2/q2-drugandcondition-list.txt',
                                   sep='\t')
 
     if seed_parts is None or 'conditions' in seed_parts:
@@ -227,11 +228,13 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
                                 mesh_term_to_curie_ids_dict[mesh_term] = curie_id
                                 first_row = False
                             else:
-                                assert False ## should never get here
+                                assert False  # should never get here
+                                
             curie_ids_for_df.append(mesh_term_to_curie_ids_dict[mesh_term])
         drug_dis_df['CURIE_ID'] = pandas.Series(curie_ids_for_df, index=drug_dis_df.index)
-        drug_dis_df.to_csv('../../data/q2/q2-drugandcondition-list-mapped-output.txt', sep='\t')
-        ## triple-expand the knowledge graph
+        drug_dis_df.to_csv('../../../data/q2/q2-drugandcondition-list-mapped-output.txt', sep='\t')
+
+        # triple-expand the knowledge graph
         for _ in range(0, num_expansions):
             bne.expand_all_nodes()
                 
@@ -244,7 +247,7 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
             drug_name = row['Drug'].lower()
             all_drugs.add(drug_name)
 
-        fda_drug_df = pandas.read_csv('../../data/q2/drugset2017_filt.txt',
+        fda_drug_df = pandas.read_csv('../../../data/q2/drugset2017_filt.txt',
                                       sep='\t')
 
         for index, row in fda_drug_df.iterrows():
@@ -261,12 +264,12 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
             bne.add_node_smart("chemical_substance", chembl_id, seed_node_bool=first_row, desc=drug_name)
             first_row = False
 
-        ## triple-expand the knowledge graph
+        # triple-expand the knowledge graph
         for _ in range(0, num_expansions):
             bne.expand_all_nodes()
 
 def add_pc2_to_kg():
-    sif_data = pandas.read_csv('../../data/pc2/PathwayCommons9.All.hgnc.sif',
+    sif_data = pandas.read_csv('../../../data/pc2/PathwayCommons9.All.hgnc.sif',
                                sep='\t', names=['gene1', 'interaction_type', 'gene2'])
     interaction_types = set(['interacts-with',
                              'controls-expression-of',
@@ -305,7 +308,7 @@ def add_pc2_to_kg():
                             assert False
 
 def seed_and_expand_kg_q2_cop(num_expansions=3):
-    q2_cop_data = pandas.read_csv('../../data/q2/cop_data.tsv',
+    q2_cop_data = pandas.read_csv('../../../data/q2/cop_data.tsv',
                                   sep="\t",
                                   names=['type', 'curie_id', 'term'],
                                   header=0)
