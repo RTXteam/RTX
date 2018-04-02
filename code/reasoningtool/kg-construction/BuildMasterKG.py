@@ -38,9 +38,6 @@ ob = Orangeboard(debug=True)
 ob.neo4j_set_url()
 ob.neo4j_set_auth()
 
-
-ob.neo4j_set_url()
-ob.neo4j_set_auth()
 bne = BioNetExpander(ob)
 
 
