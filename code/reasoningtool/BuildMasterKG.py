@@ -223,7 +223,7 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
                             first_row = False
                         else:
                             if 'HP:' in curie_id:
-                                bne.add_node_smart('phenotype', curie_id, seed_node_bool=first_row, desc=mesh_term)
+                                bne.add_node_smart("phenotypic_feature", curie_id, seed_node_bool=first_row, desc=mesh_term)
                                 mesh_term_to_curie_ids_dict[mesh_term] = curie_id
                                 first_row = False
                             else:
@@ -258,7 +258,7 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
                 chembl_id = next(iter(chembl_ids))
             else:
                 chembl_id = ''
-            bne.add_node_smart('compound', chembl_id, seed_node_bool=first_row, desc=drug_name)
+            bne.add_node_smart("chemical_substance", chembl_id, seed_node_bool=first_row, desc=drug_name)
             first_row = False
 
         ## triple-expand the knowledge graph
