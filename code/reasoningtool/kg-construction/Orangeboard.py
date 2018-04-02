@@ -92,11 +92,18 @@ class Rel:
         self.extended_reltype = extended_reltype
 
     def get_props(self, reverse=False):
+        extended_reltype = self.extended_reltype
+
+        if " " in extended_reltype:
+            quote_char = "`"
+        else:
+            quote_char = ""
+        
         prop_dict = {'reltype': self.reltype,
                      'sourcedb': self.sourcedb,
                      'seed_node_uuid': self.seed_node.uuid,
                      'prob': self.prob,
-                     'extended_reltype': "`" + self.extended_reltype + "`"}
+                     'extended_reltype': quote_char + self.extended_reltype + quote_char}
         if not reverse:
             prop_dict['source_node_uuid'] = self.source_node.uuid
             prop_dict['target_node_uuid'] = self.target_node.uuid
