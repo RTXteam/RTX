@@ -79,17 +79,21 @@ class BioNetExpander:
         self.query_omim_obj = QueryOMIM()
         self.query_mygene_obj = QueryMyGene(debug=False)
 
-    def add_node_smart(self, simple_node_type, accession, seed_node_bool=False, desc=''):
+    def add_node_smart(self, simple_node_type, name, seed_node_bool=False, desc=''):
         curie_prefix = self.NODE_SIMPLE_TYPE_TO_CURIE_PREFIX[simple_node_type]
         iri_prefix = self.CURIE_PREFIX_TO_IRI_PREFIX[curie_prefix]
-        if ":" not in accession:
-            curie_id = curie_prefix + ":" + accession
-            iri = iri_prefix + accession
+        if ":" not in name:
+            accession = name
+            if "CHEMBL" in name:
+                name = name.replace("CHEMBL", "")
+            curie_id = curie_prefix + ":" + name
+            iri = iri_prefix + name
         else:
-            curie_id = accession
-            iri = iri_prefix + accession.split(":")[1]
+            curie_id = name
+            accession = name.split(":")[1]
+            iri = iri_prefix + accession
         node = self.orangeboard.add_node(simple_node_type,
-                                         accession,
+                                         name,
                                          seed_node_bool,
                                          desc)
         node.set_extra_props({"iri": iri,
