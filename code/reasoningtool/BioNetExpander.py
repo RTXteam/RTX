@@ -180,7 +180,7 @@ class BioNetExpander:
 
     def expand_pathway(self, node):
         reactome_id_str = node.name
-        uniprot_ids_from_reactome_dict = QueryReactome.query_pathway_id_to_uniprot_ids_desc(reactome_id_str)
+        uniprot_ids_from_reactome_dict = QueryReactome.query_reactome_pathway_id_to_uniprot_ids_desc(reactome_id_str)
         rel_sourcedb_dict = dict.fromkeys(uniprot_ids_from_reactome_dict.keys(), 'reactome')
         source_node = node
         for uniprot_id in uniprot_ids_from_reactome_dict.keys():
