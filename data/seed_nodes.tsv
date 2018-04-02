@@ -1,0 +1,128 @@
+type	curie_id	term	purpose
+anatomical_entity	UBERON:0000014	zone of skin	Q2-COP
+anatomical_entity	UBERON:0000018	compound eye	Q2-COP
+anatomical_entity	UBERON:0000019	camera-type eye	Q2-COP
+anatomical_entity	UBERON:0000029	lymph node	Q2-COP
+anatomical_entity	UBERON:0000081	metanephros	Q2-COP
+anatomical_entity	UBERON:0000082	adult mammalian kidney	Q2-COP
+anatomical_entity	UBERON:0000178	blood	Q2-COP
+anatomical_entity	UBERON:0000310	breast	Q2-COP
+anatomical_entity	UBERON:0000945	stomach	Q2-COP
+anatomical_entity	UBERON:0000948	heart	Q2-COP
+anatomical_entity	UBERON:0000955	brain	Q2-COP
+anatomical_entity	UBERON:0000970	eye	Q2-COP
+anatomical_entity	UBERON:0000974	neck	Q2-COP
+anatomical_entity	UBERON:0000992	female gonad	Q2-COP
+anatomical_entity	UBERON:0000995	uterus	Q2-COP
+anatomical_entity	UBERON:0001017	central nervous system	Q2-COP
+anatomical_entity	UBERON:0001017	central nervous system	Q2-COP
+anatomical_entity	UBERON:0001155	colon	Q2-COP
+anatomical_entity	UBERON:0001348	brown adipose tissue	Q2-COP
+anatomical_entity	UBERON:0001637	artery	Q2-COP
+anatomical_entity	UBERON:0001824	mucose of larynx	Q2-COP
+anatomical_entity	UBERON:0001911	mammary gland	Q2-COP
+anatomical_entity	UBERON:0001994	hyaline cartilage tissue	Q2-COP
+anatomical_entity	UBERON:0002012	pulmonary artery	Q2-COP
+anatomical_entity	UBERON:0002097	skin of body	Q2-COP
+anatomical_entity	UBERON:0002107	liver	Q2-COP
+anatomical_entity	UBERON:0002113	kidney	Q2-COP
+anatomical_entity	UBERON:0002196	adenohypophysis	Q2-COP
+anatomical_entity	UBERON:0002333	pulmonary trunk	Q2-COP
+anatomical_entity	UBERON:0002465	lymphoid system	Q2-COP
+anatomical_entity	UBERON:0003714	neural tissue	Q2-COP
+anatomical_entity	UBERON:0004572	arterial system	Q2-COP
+anatomical_entity	UBERON:0004785	respiratory system mucosa	Q2-COP
+anatomical_entity	UBERON:0004816	larynx epithelium	Q2-COP
+anatomical_entity	UBERON:0006558	lymphatic part of lymphoid system	Q2-COP
+anatomical_entity	UBERON:0009564	distal limb integumentary appendage	Q2-COP
+anatomical_entity	UBERON:0010996	articular cartilage of joint	Q2-COP
+anatomical_entity	UBERON:6003624	adult brain	Q2-COP
+biological_process	GO:0003009	skeletal muscle contraction	Q2-COP
+biological_process	GO:0006260	DNA replication	Q2-COP
+biological_process	GO:0006412	protein biosynthesis	Q2-COP
+biological_process	GO:0006915	apoptosis	Q2-COP
+biological_process	GO:0007165	signal transduction	Q2-COP
+biological_process	GO:0008283	cell proliferation	Q2-COP
+biological_process	GO:0015075	ion transporter activity	Q2-COP
+biological_process	GO:0019079	viral replication	Q2-COP
+biological_process	GO:0035810	diuresis	Q2-COP
+biological_process	GO:0036462	TRAIL-activated apoptotic signaling pathway	Q2-COP
+biological_process	GO:0042310	vasoconstriction	Q2-COP
+biological_process	GO:0048870	cell movement	Q2-COP
+biological_process	GO:0051301	cell division	Q2-COP
+biological_process	GO:0051324	prophase	Q2-COP
+disease	DOID:0050741	Alcohol Dependence	Q1
+disease	DOID:0060728	NGLY1-deficiency	Q1
+disease	DOID:10573	Osteomalacia	Q1
+disease	DOID:10652	Alzheimer Disease	Q1
+disease	DOID:10923	sickle cell anemia	Q1
+disease	DOID:11476	osteoporosis	Q1
+disease	DOID:11723	Duchenne Muscular Dystrophy	Q1
+disease	DOID:12365	malaria	Q1
+disease	DOID:12858	Huntington's Disease	Q1
+disease	DOID:13810	hypercholesterolemia	Q1
+disease	DOID:14504	Niemann-Pick disease	Q1
+disease	DOID:1470	major depressive disorder	Q1
+disease	DOID:1498	cholera	Q1
+disease	DOID:2055	post-traumatic stress disorder	Q1
+disease	DOID:2841	asthma	Q1
+disease	DOID:4325	Ebola hemmorhagic fever	Q1
+disease	DOID:4989	pancreatitis	Q1
+disease	DOID:526	HIV infectious disease	Q1
+disease	DOID:5844	Myocardial Infarction	Q1
+disease	DOID:9270	Alkaptonuria	Q1
+disease	DOID:9352	type 2 diabetes mellitus	Q1
+disease	DOID:0050073	invasive aspergillosis	Q2
+disease	DOID:0050597	intestinal schistosomiasis	Q2
+disease	DOID:0050742	nicotine dependence	Q2
+disease	DOID:0050749	peripheral T-cell lymphoma	Q2
+disease	DOID:104	bacterial infectious disease	Q2
+disease	DOID:10556	supine hypotensive syndrome	Q2
+disease	DOID:10690	mastitis	Q2
+disease	DOID:10938	paranoid personality disorder	Q2
+disease	DOID:11968	postmenopausal atrophic vaginitis	Q2
+disease	DOID:1398	parasitic infectious disease	Q2
+disease	DOID:1579	respiratory system disease	Q2
+disease	DOID:1883	hepatitis C	Q2
+disease	DOID:2030	anxiety disorder	Q2
+disease	DOID:399	tuberculosis	Q2
+disease	DOID:724	female stress incontinence	Q2
+disease	DOID:8440	ileus	Q2
+disease	DOID:8670	eating disorder	Q2
+disease	DOID:8689	anorexia nervosa	Q2
+disease	DOID:883	parasitic helminthiasis infectious disease	Q2
+disease	DOID:9210	geniculate herpes zoster	Q2
+phenotypic_feature	HP:0000140	Abnormality of the menstrual cycle	Q2
+phenotypic_feature	HP:0001788	Premature rupture of membranes	Q2
+phenotypic_feature	HP:0001824	Weight loss	Q2
+phenotypic_feature	HP:0001891	Iron deficiency anemia	Q2
+phenotypic_feature	HP:0001928	Abnormality of coagulation	Q2
+phenotypic_feature	HP:0002017	Nausea and vomiting	Q2
+phenotypic_feature	HP:0002093	Respiratory insufficiency	Q2
+phenotypic_feature	HP:0002315	Headache	Q2
+phenotypic_feature	HP:0002361	Psychomotor deterioration	Q2
+phenotypic_feature	HP:0002486	Myotonia	Q2
+phenotypic_feature	HP:0002486	Myotonia	Q2
+phenotypic_feature	HP:0002486	Myotonia	Q2
+phenotypic_feature	HP:0002686	Prenatal maternal abnormality	Q2
+phenotypic_feature	HP:0002718	Recurrent bacterial infections	Q2
+phenotypic_feature	HP:0003419	Low back pain	Q2
+phenotypic_feature	HP:0004305	Involuntary movements	Q2
+phenotypic_feature	HP:0004324	Increased body weight	Q2
+phenotypic_feature	HP:0005420	Recurrent gram-negative bacterial infections	Q2
+phenotypic_feature	HP:0005968	Temperature instability	Q2
+phenotypic_feature	HP:0006535	Recurrent intrapulmonary hemorrhage	Q2
+phenotypic_feature	HP:0006688	Paroxysmal tachycardia	Q2
+phenotypic_feature	HP:0006963	0	Q2
+phenotypic_feature	HP:0011848	Abdominal colic	Q2
+phenotypic_feature	HP:0011891	Post-partum hemorrhage	Q2
+phenotypic_feature	HP:0011947	Respiratory tract infection	Q2
+phenotypic_feature	HP:0012531	Pain	Q2
+phenotypic_feature	HP:0030369	Induced vaginal delivery	Q2
+phenotypic_feature	HP:0030449	Therapeutic abortion	Q2
+phenotypic_feature	HP:0030449	Therapeutic abortion	Q2
+phenotypic_feature	HP:0030449	Therapeutic abortion	Q2
+phenotypic_feature	HP:0100592	Peritoneal abscess	Q2
+phenotypic_feature	HP:0100785	Insomnia	Q2
+phenotypic_feature	HP:0100805	Precocious menopause	Q2
+phenotypic_feature	HP:0012072	aciduria	Q2
