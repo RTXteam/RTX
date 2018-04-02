@@ -13,41 +13,41 @@ biological_process	GO:0051324	prophase
 biological_process	GO:0006260	DNA replication
 biological_process	GO:0015075	ion transporter activity
 biological_process	GO:0042310	vasoconstriction
-anatomy	UBERON:0000014	zone of skin
-anatomy	UBERON:0000018	compound eye
-anatomy	UBERON:0000019	camera-type eye
-anatomy	UBERON:0000029	lymph node
-anatomy	UBERON:0000081	metanephros
-anatomy	UBERON:0000082	adult mammalian kidney
-anatomy	UBERON:0000178	blood
-anatomy	UBERON:0000310	breast
-anatomy	UBERON:0000945	stomach
-anatomy	UBERON:0000948	heart
-anatomy	UBERON:0000955	brain
-anatomy	UBERON:0000970	eye
-anatomy	UBERON:0000974	neck
-anatomy	UBERON:0000992	female gonad
-anatomy	UBERON:0000995	uterus
-anatomy	UBERON:0001017	central nervous system
-anatomy	UBERON:0001017	central nervous system
-anatomy	UBERON:0001155	colon
-anatomy	UBERON:0001348	brown adipose tissue
-anatomy	UBERON:0001637	artery
-anatomy	UBERON:0001824	mucose of larynx
-anatomy	UBERON:0001911	mammary gland
-anatomy	UBERON:0001994	hyaline cartilage tissue
-anatomy	UBERON:0002012	pulmonary artery
-anatomy	UBERON:0002097	skin of body
-anatomy	UBERON:0002107	liver
-anatomy	UBERON:0002113	kidney
-anatomy	UBERON:0002196	adenohypophysis
-anatomy	UBERON:0002333	pulmonary trunk
-anatomy	UBERON:0002465	lymphoid system
-anatomy	UBERON:0003714	neural tissue
-anatomy	UBERON:0004572	arterial system
-anatomy	UBERON:0004785	respiratory system mucosa
-anatomy	UBERON:0004816	larynx epithelium
-anatomy	UBERON:0006558	lymphatic part of lymphoid system
-anatomy	UBERON:0009564	distal limb integumentary appendage
-anatomy	UBERON:0010996	articular cartilage of joint
-anatomy	UBERON:6003624	adult brain
+anatomical_entity	UBERON:0000014	zone of skin
+anatomical_entity	UBERON:0000018	compound eye
+anatomical_entity	UBERON:0000019	camera-type eye
+anatomical_entity	UBERON:0000029	lymph node
+anatomical_entity	UBERON:0000081	metanephros
+anatomical_entity	UBERON:0000082	adult mammalian kidney
+anatomical_entity	UBERON:0000178	blood
+anatomical_entity	UBERON:0000310	breast
+anatomical_entity	UBERON:0000945	stomach
+anatomical_entity	UBERON:0000948	heart
+anatomical_entity	UBERON:0000955	brain
+anatomical_entity	UBERON:0000970	eye
+anatomical_entity	UBERON:0000974	neck
+anatomical_entity	UBERON:0000992	female gonad
+anatomical_entity	UBERON:0000995	uterus
+anatomical_entity	UBERON:0001017	central nervous system
+anatomical_entity	UBERON:0001017	central nervous system
+anatomical_entity	UBERON:0001155	colon
+anatomical_entity	UBERON:0001348	brown adipose tissue
+anatomical_entity	UBERON:0001637	artery
+anatomical_entity	UBERON:0001824	mucose of larynx
+anatomical_entity	UBERON:0001911	mammary gland
+anatomical_entity	UBERON:0001994	hyaline cartilage tissue
+anatomical_entity	UBERON:0002012	pulmonary artery
+anatomical_entity	UBERON:0002097	skin of body
+anatomical_entity	UBERON:0002107	liver
+anatomical_entity	UBERON:0002113	kidney
+anatomical_entity	UBERON:0002196	adenohypophysis
+anatomical_entity	UBERON:0002333	pulmonary trunk
+anatomical_entity	UBERON:0002465	lymphoid system
+anatomical_entity	UBERON:0003714	neural tissue
+anatomical_entity	UBERON:0004572	arterial system
+anatomical_entity	UBERON:0004785	respiratory system mucosa
+anatomical_entity	UBERON:0004816	larynx epithelium
+anatomical_entity	UBERON:0006558	lymphatic part of lymphoid system
+anatomical_entity	UBERON:0009564	distal limb integumentary appendage
+anatomical_entity	UBERON:0010996	articular cartilage of joint
+anatomical_entity	UBERON:6003624	adult brain
