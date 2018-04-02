@@ -69,7 +69,7 @@ class BioNetExpander:
                               'regulates': True,
                               'expressed_in': True,
                               'directly interacts with': False,
-                              'causes or contributes to condition': True,
+                              'causes or contributes to': True,
                               'participates_in': True,
                               'has_phenotype': True}
 
@@ -330,7 +330,7 @@ class BioNetExpander:
                             node2 = self.add_node_smart('microrna',
                                                         curie_entrez_gene_id,
                                                         desc=gene_symbol)
-                            self.orangeboard.add_rel("causes or contributes to condition", "OMIM", node2, node, extended_reltype="causes or contributes to condition")
+                            self.orangeboard.add_rel("causes or contributes to", "OMIM", node2, node, extended_reltype="causes or contributes to")
             for uniprot_id in uniprot_ids:
                 uniprot_ids_to_gene_symbols_dict[uniprot_id] = gene_symbol
         for uniprot_id in uniprot_ids:
@@ -343,9 +343,9 @@ class BioNetExpander:
             assert '-' not in uniprot_id
             target_node = self.add_node_smart('protein', uniprot_id,
                                               desc=uniprot_ids_to_gene_symbols_dict[uniprot_id])
-            self.orangeboard.add_rel("causes or contributes to condition",
+            self.orangeboard.add_rel("causes or contributes to",
                                      "OMIM", target_node, source_node,
-                                     extended_reltype="causes or contributes to condition")
+                                     extended_reltype="causes or contributes to")
 
     def expand_disease(self, node):
         disont_id = node.name
