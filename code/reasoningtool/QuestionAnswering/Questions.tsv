@@ -1,3 +1,3 @@
 #restated question	corpus	types	solution script
-What is $term	["What is an","What is a","what is","what are"]	["term"]	Q0Solution.py
-Which genetic conditions might offer protection against $disont_disease?	["what genetic conditions might offer protection against","what genetic conditions protect against","what genetic diseases might protect against","what genetic conditions offer protection against"]	["disont_disease"]	Q1Solution.py
+What is $term	['What is an','What is a','what is','what are']	['term']	Q0Solution.py
+Which genetic conditions might offer protection against $disont_disease?	['what genetic conditions might offer protection against','what genetic conditions protect against','what genetic diseases might protect against','what genetic conditions offer protection against']	['disont_disease']	Q1Solution.py
