@@ -43,3 +43,15 @@ input_question = input_question.strip(string.punctuation)
 parameters = questions[corpus_index].get_parameters(input_question)
 print(questions[corpus_index].restate_question(parameters))
 
+max = 0
+for q1 in questions:
+	for q2 in questions:
+		if q1.restated_question_template.template != q2.restated_question_template.template:
+			for sentence in q2.corpus:
+				(index, similarity) = wd.find_corpus(sentence, [q1.corpus])
+				#print("sentence: %s \t corpus %s \t %f" % (sentence, q1.restated_question_template.template,similarity))
+				#print(similarity)
+				if similarity >= max:
+					max = similarity
+					#print(max)
+					print("sentence: %s \t corpus %s \t %f" % (sentence, q1.restated_question_template.template, similarity))
