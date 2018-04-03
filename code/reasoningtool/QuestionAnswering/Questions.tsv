@@ -1,15 +1,15 @@
 #restated question	corpus	types	solution script
 What is $term	['What is an','What is a','what is','what are']	['term']	Q0Solution.py
 Which genetic conditions might offer protection against $disont_disease?	['what genetic conditions might offer protection against','what genetic conditions protect against','what genetic diseases might protect against','what genetic conditions offer protection against']	['disont_disease']	Q1Solution.py
-What is the clinical outcome pathway of $pharos_drug for the treatment of $disont_disease	["what is the clinical outcome pathway of for the treatment", "what is the clinical outcome pathway for the treatment of with","what is the COP for the treatment of"]	["pharos_drug","disont_disease"]	Q2Solution.py
-what proteins are the target of $pharos drug	["what are the protein targets of", "what proteins does target"]	["pharos drug"]	Q3Solution.py
-what proteins are in the pathway $reactome_pathway	["what proteins are in the pathway", "what proteins are in", "has what proteins in it"]	["reactome_pathway"]	Q3Solution.py
-what are the phenotypes of the disease $disont_disease	["what are the symptoms of","what are the phenotypes of"]	["disont_disease"]	Q3Solution.py
-what micrornas control the expression of $uniprot_protein	["what micrornas control the expression of","what microRNAs control the expression of"]	["uniprot_protein"]	Q3Solution.py
-what genes are associated with $disont_disease	["what are the genes associated with","what are the proteins associated with"]	["disont_diease"]	Q3Solution.py
-what genes are associated with $phenont_phenotype	["what genes are associated with","what proteins are associated with"]	["phenont_phenotype"]	Q3Solution.py
-what genes are expressed in $anatont_anatomy	["what genes are expressed in","what proteins are expressed in"]	["anatont_anatomy"]	Q3Solution.py
-what are the drugs that target $uniprot_protein	["what drugs target","what are the drugs that target"]	["uniprot_protein"]	Q3Solution.py
-what proteins are associated with $phenont_phenotype	["what proteins are associated with","what genes are associated with"]	["phenont_phenotype"]	Q3Solution.py
-what micrornas are expressed in $anatont_anatomy	["what micrornas are expressed in","what microRNAs are expressed in"]	["anatont_anatomy"]	Q3Solution.py
-what proteins interact with $uniprot_protein	["what proteins interact with","what genes interact with"]	["uniprot_protein"]	Q3Solution.py
+What is the clinical outcome pathway of $pharos_drug for the treatment of $disont_disease	['what is the clinical outcome pathway of for the treatment', 'what is the clinical outcome pathway for the treatment of with','what is the COP for the treatment of']	['pharos_drug','disont_disease']	Q2Solution.py
+what proteins are the target of $pharos drug	['what are the protein targets of', 'what proteins does target']	['pharos drug']	Q3Solution.py
+what proteins are in the pathway $reactome_pathway	['what proteins are in the pathway', 'what proteins are in', 'has what proteins in it']	['reactome_pathway']	Q3Solution.py
+what are the phenotypes of the disease $disont_disease	['what are the symptoms of','what are the phenotypes of']	['disont_disease']	Q3Solution.py
+what micrornas control the expression of $uniprot_protein	['what micrornas control the expression of','what microRNAs control the expression of']	['uniprot_protein']	Q3Solution.py
+what genes are associated with $disont_disease	['what are the genes associated with','what are the proteins associated with']	['disont_diease']	Q3Solution.py
+what genes are associated with $phenont_phenotype	['what genes are associated with','what proteins are associated with']	['phenont_phenotype']	Q3Solution.py
+what genes are expressed in $anatont_anatomy	['what genes are expressed in','what proteins are expressed in']	['anatont_anatomy']	Q3Solution.py
+what are the drugs that target $uniprot_protein	['what drugs target','what are the drugs that target']	['uniprot_protein']	Q3Solution.py
+what proteins are associated with $phenont_phenotype	['what proteins are associated with','what genes are associated with']	['phenont_phenotype']	Q3Solution.py
+what micrornas are expressed in $anatont_anatomy	['what micrornas are expressed in','what microRNAs are expressed in']	['anatont_anatomy']	Q3Solution.py
+what proteins interact with $uniprot_protein	['what proteins interact with','what genes interact with']	['uniprot_protein']	Q3Solution.py
