@@ -183,6 +183,7 @@ class Question:
 		self.corpus = eval(row_split[1])
 		self.types = eval(row_split[2])
 		self.solution_script = row_split[3]
+		self.other_parameters = eval(row_split[4])
 		# Go through the template and pull off the slot names
 		self.parameter_names = []
 		for match in Template.pattern.findall(self.restated_question_template.template):
@@ -258,7 +259,7 @@ class Question:
 					if all([block not in b for b in found_blocks]):  # only add it if it's not a proper subset of an already found block
 						candidate_node_names.extend(nodes)
 						found_blocks.append(block)
-						print(block)
+						#print(block)
 
 			# Get the node labels for the found nodes
 			candidate_node_names_labels = set()  # set automatically deduplicates for me
@@ -285,6 +286,9 @@ class Question:
 					pos = parameter_name_positions.pop()
 					parameters[parameter_name] = candidate_node_names_labels[pos][0]
 
+			# Throw in the extra parameters
+			for key, value in self.other_parameters.items():
+				parameters[key] = value
 			return parameters
 
 

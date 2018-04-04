@@ -9,10 +9,13 @@ import WordnetDistance as wd
 questions = []
 
 with open('/home/dkoslicki/Dropbox/Repositories/RTX/code/reasoningtool/QuestionAnswering/Questions.tsv', "r") as fid:
+	i = 0
 	for line in fid.readlines():
 		if line[0] == "#":
 			pass
 		else:
+			print(i, line)
+			i += 1
 			questions.append(Question.Question(line))
 
 # The list Questions has elements given by the Question class
