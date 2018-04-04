@@ -8,6 +8,7 @@ import string
 import re
 import datetime
 import CustomExceptions
+import random
 # Import reasoning utilities
 try:
 	from code.reasoningtool import ReasoningUtilities as RU
@@ -19,6 +20,11 @@ except ImportError:
 	except ImportError:
 		sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  # Go up one level and look for it
 		import ReasoningUtilities as RU
+try:
+	from code.reasoningtool.QuestionAnswering import WordnetDistance as wd
+except ImportError:
+	sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+	import WordnetDistance as wd
 
 
 #################################################
@@ -280,7 +286,7 @@ class Question:
 			return parameters
 
 
-def tests():
+def test_get_parameters():
 	questions = []
 	with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Questions.tsv'), 'r') as fid:
 		for line in fid.readlines():
@@ -336,6 +342,48 @@ def tests():
 	assert isinstance(parameters["disont_disease"], str)
 	assert parameters["disont_disease"] == "DOID:13403"
 
+def test_correct_question():
+	"""
+	Point of this test is to form a bunch of sentences, match them against all queries, and make sure the correct
+	question template is matched
+	:return: None
+	"""
+	# get a random selection of nodes
+	property_to_nodes = dict()
+	for label in RU.get_node_labels():
+		nodes = RU.get_random_nodes(label, property="description")
+		property_to_nodes[label] = nodes
 
+	# import the questions
+	questions = []
+	with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Questions.tsv'), 'r') as fid:
+		for line in fid.readlines():
+			if line[0] == "#":
+				pass
+			else:
+				questions.append(Question(line))
 
+	# form the corpora
+	corpora = [q.corpus for q in questions]
+
+	for q in questions:
+		# populate the sentence template
+		parameters = dict()
+
+		# ignore the what is question
+		if q.parameter_names[0] != "term":
+			for label in q.parameter_names:
+				node = random.choice(property_to_nodes[label])
+				parameters[label] = node
+			input_sentence = q.restate_question(parameters)
+			input_sentence = input_sentence.strip(string.punctuation)
+
+			# Run it against all the questions
+			(corpus_index, similarity) = wd.find_corpus(input_sentence, corpora)
+			if questions[corpus_index].restated_question_template.template != q.restated_question_template.template:
+				temp_parameters = questions[corpus_index].get_parameters(input_sentence)
+				# test if the parameters were populated
+				if all([val is not None for val in temp_parameters.values()]):
+					print("Bad classification! input: %s\n matched template: %s" % (input_sentence, questions[corpus_index].restated_question_template.template))
+					print(questions[corpus_index].get_parameters(input_sentence))
 

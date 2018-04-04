@@ -77,7 +77,7 @@ def node_exists_with_property(term, property_name, session=session):
 		return True
 
 
-def count_nodes(sessions=session):
+def count_nodes():
 	"""
 	Count the number of nodes
 	:param sessions: neo4j bolt session
@@ -88,7 +88,17 @@ def count_nodes(sessions=session):
 	return res.single()["count(n)"]
 
 
-def get_relationship_types(sessions=session):
+def get_random_nodes(label, property="name", num=10, debug=False):
+	query = "match (n:%s) with rand() as r, n as n return n.%s order by r limit %d" % (label, property, num)
+	if debug:
+		return query
+	else:
+		res = session.run(query)
+		res = [i["n.%s" % property] for i in res]
+		return res
+
+
+def get_relationship_types():
 	"""
 	Get all the node labels in the neo4j database
 	:param sessions: neo4j bolt session
@@ -100,7 +110,7 @@ def get_relationship_types(sessions=session):
 	return res
 
 
-def get_node_labels(sessions=session):
+def get_node_labels():
 	"""
 	Get all the edge labels in the neo4j database
 	:param sessions: neo4j bolt session

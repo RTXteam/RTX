@@ -3,15 +3,12 @@ import os, sys
 from importlib import reload
 reload(Question)
 import string
-try:
-	from code.reasoningtool.QuestionAnswering import WordnetDistance as wd
-except ImportError:
-	sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-	import WordnetDistance as wd
+import WordnetDistance as wd
 
 
 questions = []
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Questions.tsv'), "r") as fid:
+
+with open('/home/dkoslicki/Dropbox/Repositories/RTX/code/reasoningtool/QuestionAnswering/Questions.tsv', "r") as fid:
 	for line in fid.readlines():
 		if line[0] == "#":
 			pass
@@ -43,6 +40,7 @@ input_question = input_question.strip(string.punctuation)
 parameters = questions[corpus_index].get_parameters(input_question)
 print(questions[corpus_index].restate_question(parameters))
 
+# Look at the similarity of restated questions with other templates (just return the running max)
 max = 0
 for q1 in questions:
 	for q2 in questions:
