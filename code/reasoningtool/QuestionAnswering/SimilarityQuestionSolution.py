@@ -1,4 +1,4 @@
-# This script will try to return diseases based on gene similarity
+# This script will return X that are similar to Y based on high Jaccard index of common one-hop nodes Z (X<->Z<->Y)
 
 import os
 import sys

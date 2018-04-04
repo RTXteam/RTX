@@ -177,6 +177,7 @@ class Question:
 	This class is a python representation of a question type/template
 	"""
 	def __init__(self, row):
+		#print(row)
 		row_split = row.strip().split("\t")  # See Questions.tsv for the expected format
 		self.restated_question_template = Template(row_split[0])  # this is a question template, such as "what is $entity"
 		self.corpus = eval(row_split[1])
@@ -257,6 +258,7 @@ class Question:
 					if all([block not in b for b in found_blocks]):  # only add it if it's not a proper subset of an already found block
 						candidate_node_names.extend(nodes)
 						found_blocks.append(block)
+						print(block)
 
 			# Get the node labels for the found nodes
 			candidate_node_names_labels = set()  # set automatically deduplicates for me
@@ -386,4 +388,6 @@ def test_correct_question():
 				if all([val is not None for val in temp_parameters.values()]):
 					print("Bad classification! input: %s\n matched template: %s" % (input_sentence, questions[corpus_index].restated_question_template.template))
 					print(questions[corpus_index].get_parameters(input_sentence))
+
+# TODO: It appears that I could make this better by first finding the node name, removing it from the sentence, and *then* doing the find in corpus
 

@@ -12,3 +12,21 @@ what are the drugs that target $uniprot_protein	['what drugs target','what are t
 what proteins are associated with $phenont_phenotype	['what proteins are associated with','what genes are associated with']	['phenont_phenotype']	Q3Solution.py
 what micrornas are expressed in $anatont_anatomy	['what micrornas are expressed in','what microRNAs are expressed in']	['anatont_anatomy']	Q3Solution.py
 what proteins interact with $uniprot_protein	['what proteins interact with','what genes interact with']	['uniprot_protein']	Q3Solution.py
+what diseases have similar phenotypes to $disont_disease	['what diseases have similar phenotypes to', 'what diseases have symptoms similar to']	['disont_disease']	SimilarityQuestionSolution.py
+what diseases involve similar genes to $disont_disease	['what diseases involve similar genes to']	['disont_disease']	SimilarityQuestionSolution.py
+what diseases involve similar micrornas to $disont_disease	['what diseases involve similar micrornas to']	['disont_disease']	SimilarityQuestionSolution.py
+what drugs have similar protein targets to $pharos_drug	['what drugs have similar protein targets to']	['pharos_drug']	SimilarityQuestionSolution.py
+what proteins are members of similar pathways to $uniprot_protein	['what proteins are members of similar pathways to']	['uniprot_protein']	SimilarityQuestionSolution.py
+what proteins are expressed in similar anatomy to $uniprot_protein	['what proteins are expressed in similar anatomy to', 'what genes are expressed in similar anatomy to', 'what genes are expressed in similar body parts as', 'what proteins are expressed in similar body parts as']	['anatont_anatomy']	SimilarityQuestionSolution.py
+what proteins are associated with similar phenotypes to $uniprot_protein	['what proteins are associated with similar phenotypes to', 'what proteins are associated with similar symptoms to']	['uniprot_protein']	SimilarityQuestionSolution.py
+what pathways involve similar genes to $reactome_pathway	['what pathways involve similar genes to', 'what pathways involve similar proteins to']	['reactome_pathway']	SimilarityQuestionSolution.py
+what genetic conditions involve similar genes to $omim_disease	['what genetic conditions involve similar genes to', 'what genetic conditions involve similar proteins to']	['omim_disease']	SimilarityQuestionSolution.py
+what genetic conditions involve similar micrornas to $omim_disease	['what genetic conditions involve similar micrornas to']	['omim_disease']	SimilarityQuestionSolution.py
+what drugs target proteins associated with $disont_disease	['what drugs target proteins associated with', 'what drugs target genes associated with']	['disont_disease']	SimilarityQuestionSolution.py
+what drugs target proteins expressed in $anatont_anatomy	['what drugs target proteins expressed in', 'what drugs target genes expressed in']	['anatont_anatomy']	SimilarityQuestionSolution.py
+what drugs target proteins associated with $phenont_phenotype	['what drugs target proteins associated with', 'what drugs target genes associated with']	['phenont_phenotype']	SimilarityQuestionSolution.py
+what drugs are associated with the pathway $reactome_pathway	['what drugs are associated with the pathway']	['reactome_pathway']	SimilarityQuestionSolution.py
+what drugs are associated with $anatont_anatomy	['what drugs are associated with']	['anatont_anatomy']	SimilarityQuestionSolution.py
+what anatomy are associated with $pharos_drug	['what anatomy are associated with', 'what body parts are associated with']	['pharos_drug']	SimilarityQuestionSolution.py
+what phenotypes are are associated with $pharos_drug	['what phenotypes are are associated with', 'what symptoms are are associated with']	['pharos_drug']	SimilarityQuestionSolution.py
+what diseases are associated with $pharos_drug	['what diseases are associated with']	['pharos_drug']	SimilarityQuestionSolution.py
