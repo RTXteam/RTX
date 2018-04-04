@@ -182,7 +182,7 @@ class Question:
 		self.restated_question_template = Template(row_split[0])  # this is a question template, such as "what is $entity"
 		self.corpus = eval(row_split[1])
 		self.types = eval(row_split[2])
-		self.solution_script = row_split[3]
+		self.solution_script = Template(row_split[3])
 		self.other_parameters = eval(row_split[4])
 		# Go through the template and pull off the slot names
 		self.parameter_names = []

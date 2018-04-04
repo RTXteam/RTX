@@ -7,16 +7,22 @@ import WordnetDistance as wd
 
 
 questions = []
-
-with open('/home/dkoslicki/Dropbox/Repositories/RTX/code/reasoningtool/QuestionAnswering/Questions.tsv', "r") as fid:
-	i = 0
-	for line in fid.readlines():
-		if line[0] == "#":
-			pass
-		else:
-			print(i, line)
-			i += 1
-			questions.append(Question.Question(line))
+try:
+	fid = open('/home/dkoslicki/Dropbox/Repositories/RTX/code/reasoningtool/QuestionAnswering/Questions.tsv', "r")
+except FileNotFoundError:
+	try:
+		fid = open('/home/dkoslicki/Desktop/RTX/code/reasoningtool/QuestionAnswering/Questions.tsv', "r")
+	except FileNotFoundError:
+		fid = open(os.path.join(os.path.dirname(__file__), 'Questions.tsv'), 'r')
+i = 0
+for line in fid.readlines():
+	if line[0] == "#":
+		pass
+	else:
+		print(i, line)
+		i += 1
+		questions.append(Question.Question(line))
+fid.close()
 
 # The list Questions has elements given by the Question class
 # for example, can print the templates
