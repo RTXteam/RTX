@@ -200,12 +200,19 @@ class Question:
 			parameter_name = match[1]
 			self.parameter_names.append(parameter_name)
 
-	def restate_question(self, parameters):
+	def restate_question(self, input_parameters):
 		"""
 		Restates a question.
 		:param parameters: a dictionary with keys given by self.parameters.keys()
 		:return: string
 		"""
+		# First, get rid of the Nones since they substitute in an ugly way
+		parameters = dict()
+		for key, value in input_parameters.items():
+			if value is not None:
+				parameters[key] = value
+
+		# Try to get the description of each node
 		parameters_as_descriptions = dict()
 		if parameters:
 			for parameter in parameters:
@@ -214,6 +221,8 @@ class Question:
 				except:
 					description = parameters[parameter]
 				parameters_as_descriptions[parameter] = description
+
+		# Lastly, make the template substitution
 		if parameters_as_descriptions:
 			restated = self.restated_question_template.safe_substitute(parameters_as_descriptions)
 		else:

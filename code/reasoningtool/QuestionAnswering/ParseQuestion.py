@@ -37,7 +37,7 @@ class ParseQuestion:
 
 		# Sort the indices based on wd_distance
 		indicies = range(len(self._question_templates))
-		sorted_indicies = [x for _, x in sorted(zip(wd_distances, indicies), key=lambda pair: pair[0],reverse=True)]
+		sorted_indicies = [x for _, x in sorted(zip(wd_distances, indicies), key=lambda pair: pair[0], reverse=True)]
 
 		# For each one of the questions, see if it can be fulfilled with the input_question
 		error_message = None
@@ -63,7 +63,7 @@ class ParseQuestion:
 			question = self._question_templates[sorted_indicies[0]]
 			parameters = question.get_parameters(input_question)
 			error_message = "The most similar question I can answer is: " + question.restate_question(parameters)
-			error_message += "\n But I was unable to fill the following parameters: " + str([key for key,value in parameters.items() if value is None])
+			error_message += "\n But I was unable to fill the following parameters: " + str([key for key, value in parameters.items() if value is None])
 			error_code = "missing_term"
 			return question, parameters, error_message, error_code
 
@@ -126,6 +126,7 @@ class ParseQuestion:
 				response['restatedQuestion'] = question.restate_question({})
 			response['originalQuestion'] = input_question
 			response['errorMessage'] = error_message
+			response['errorCode'] = error_code
 			return response
 
 
@@ -161,6 +162,68 @@ def main():
 		print(res)
 		print("=====")
 
+
+def tests():
+	txltr = ParseQuestion()
+	# No question should match
+	question = "what proteins are four score and seven years ago, our fathers..."
+	question = {"language": "English", "text": question}
+	results_dict = txltr.format_response(question)
+	assert results_dict["errorMessage"] is not None
+
+	# Q4 tests
+	question = "what diseases are similar to naproxen"
+	q, params, error_message, error_code = txltr.parse_question(question)
+	assert error_code == "missing_term"
+	res = txltr.format_response({"language": "English", "text": question})
+	assert "errorMessage" in res
+	assert isinstance(res["errorMessage"], str)
+
+	question = "what diseases are similar to malaria"
+	q, params, error_message, error_code = txltr.parse_question(question)
+	assert error_message is None
+	assert q.solution_script.template.split()[0] == "SimilarityQuestionSolution.py"
+	assert "disont_disease" in params
+	assert params["disont_disease"] == "DOID:12365"
+	res = txltr.format_response({"language": "English", "text": question})
+	assert "errorMessage" not in res
+	assert 'terms' in res
+	assert 'DOID:12365' in res['terms']
+
+	question = "what diseases are similar to cerebral malaria"
+	q, params, error_message, error_code = txltr.parse_question(question)
+	assert error_message is None
+	assert q.solution_script.template.split()[0] == "SimilarityQuestionSolution.py"
+	assert "disont_disease" in params
+	assert params["disont_disease"] == "DOID:14069"
+	res = txltr.format_response({"language": "English", "text": question})
+	assert "errorMessage" not in res
+	assert 'terms' in res
+	assert 'DOID:14069' in res['terms']
+	assert 'executionString' in res
+	assert 'solutionScript' in res
+	assert res['solutionScript'] == 'SimilarityQuestionSolution.py'
+
+	question = "what drugs target proteins associated with osteoarthritis"
+	q, params, error_message, error_code = txltr.parse_question(question)
+	assert error_message is None
+	assert q.solution_script.template.split()[0] == "SimilarityQuestionSolution.py"
+	assert "disont_disease" in params
+	assert params["disont_disease"] == "DOID:8398"
+	assert params["association"] == "uniprot_protein"
+	assert params["target"] == "pharos_drug"
+	res = txltr.format_response({"language": "English", "text": question})
+	assert "errorMessage" not in res
+	assert 'terms' in res
+	assert 'DOID:8398' in res['terms']
+	assert 'executionString' in res
+	assert 'solutionScript' in res
+	assert res['solutionScript'] == 'SimilarityQuestionSolution.py'
+
+	return
+	######################################################################
+	# No real need for a ton more tests any more. See the auto-tests of Question.test_correct_question
+	######################################################################
 
 if __name__ == "__main__":
 	main()
