@@ -110,6 +110,8 @@ class ParseQuestion:
 			response['restatedQuestion'] = restated_question
 			response['executionString'] = execution_string
 			response['originalQuestion'] = input_question
+			response['terms'] = list(parameters.values())
+			response['solutionScript'] = question.solution_script.template.split()[0]
 			return response
 		else:
 			self.log_query(error_code, "-", error_message)

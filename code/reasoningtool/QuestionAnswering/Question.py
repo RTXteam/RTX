@@ -34,6 +34,8 @@ except ImportError:
 fid = open(os.path.dirname(os.path.abspath(__file__))+'/../../../data/KGmetadata/NodeNamesDescriptions.tsv', 'r')
 names2descrip = dict()
 descrip2names = dict()  # TODO: this assumes that descriptions are unique, and this may change soon
+lower_name2upper_name = dict()
+lower_desc2upper_name = dict()
 for line in fid.readlines():
 	line = line.strip()
 	line_split = line.split('\t')
@@ -44,6 +46,8 @@ for line in fid.readlines():
 		descr = "N/A"
 	names2descrip[name] = descr
 	descrip2names[descr] = name
+	lower_name2upper_name[name.lower()] = name
+	lower_desc2upper_name[descr.lower()] = name
 fid.close()
 
 # TODO: replace this stuff with the RU.get_node_property (along with RU.node_exists_with_property)
@@ -95,14 +99,20 @@ def find_node_name(string):
 	# TODO: put Arnabs ULMS metathesaurus lookup here
 	# Case insensitive match
 	query_lower = string.lower()
-	for name in names2descrip:
-		if name.lower() == query_lower:
-			res = name
-			res_list.append(res)
-	for descr in descrip2names:
-		if descr.lower() == query_lower:
-			res = descrip2names[descr]
-			res_list.append(res)
+	if query_lower in lower_name2upper_name:
+		res = lower_name2upper_name[query_lower]
+		res_list.append(res)
+	if query_lower in lower_desc2upper_name:
+		res = lower_desc2upper_name[query_lower]
+		res_list.append(res)
+	#for name in names2descrip:
+	#	if name.lower() == query_lower:
+	#		res = name
+	#		res_list.append(res)
+	#for descr in descrip2names:
+	#	if descr.lower() == query_lower:
+	#		res = descrip2names[descr]
+	#		res_list.append(res)
 	return res_list
 
 def find_target_label(string):
