@@ -197,13 +197,18 @@ class Question:
 		:return: string
 		"""
 		parameters_as_descriptions = dict()
-		for parameter in parameters:
-			try:
-				description = RU.get_node_property(parameters[parameter], 'description')
-			except:
-				description = parameters[parameter]
-			parameters_as_descriptions[parameter] = description
-		return self.restated_question_template.safe_substitute(parameters_as_descriptions)
+		if parameters:
+			for parameter in parameters:
+				try:
+					description = RU.get_node_property(parameters[parameter], 'description')
+				except:
+					description = parameters[parameter]
+				parameters_as_descriptions[parameter] = description
+		if parameters_as_descriptions:
+			restated = self.restated_question_template.safe_substitute(parameters_as_descriptions)
+		else:
+			restated = self.restated_question_template.safe_substitute({})
+		return restated
 
 	def give_examples(self, parameters_list):
 		"""
@@ -239,7 +244,17 @@ class Question:
 				term = match.group(2)
 				term = re.sub("^\s+", "", term)
 				term = re.sub("\s+$", "", term)
-				return {"term": term}
+				parameters["term"] = term
+				return parameters
+			match = re.match("what are (.+)", input_question, re.I)
+			if match:
+				term = match.group(1)
+				term = re.sub("^\s+", "", term)
+				term = re.sub("\s+$", "", term)
+				parameters["term"] = term
+				return parameters
+			else:
+				return parameters
 		else:  # Otherwise, it's a standard question template
 			# get all n-tuples of words in the question (largest to smallest)
 			blocks = []

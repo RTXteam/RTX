@@ -37,7 +37,7 @@ class ParseQuestion:
 
 		# Sort the indices based on wd_distance
 		indicies = range(len(self._question_templates))
-		sorted_indicies = [x for _,x in sorted(zip(wd_distances, indicies), key=lambda pair: pair[0],reverse=True)]
+		sorted_indicies = [x for _, x in sorted(zip(wd_distances, indicies), key=lambda pair: pair[0],reverse=True)]
 
 		# For each one of the questions, see if it can be fulfilled with the input_question
 		error_message = None
@@ -69,13 +69,15 @@ class ParseQuestion:
 
 		# Otherwise, you're all good
 		question = self._question_templates[ind]
+		parameters = question.get_parameters(input_question)
 		return question, parameters, error_message, error_code
 
 	def callout_string(self, question, parameters):
 		"""
 		Simple function for returning the command that will need to be run to answer the question
-		:param input_question: input user query
-		:return: str
+		:param question: Question class
+		:param parameters: dict
+		:return: string
 		"""
 		return question.solution_script.safe_substitute(parameters)
 
@@ -90,12 +92,16 @@ class ParseQuestion:
 			with open(os.path.join(log_dir, "RTXQuestions.log"), "a") as logfile:
 				logfile.write(date_time_string + "\t" + code_string + "\t" + id + "\t" + original_text + "\n")
 
-	def format_response(self, input_question):
+	def format_response(self, question_with_lang):
 		"""
 		Formats the response given an input query
-		:param input_question: input query
+		:param input_question: input query dict with keys 'language' and 'text'
 		:return: dict
 		"""
+		if question_with_lang["language"] != "English":
+			raise Exception("Sorry, we can't handle the language: %s" % question_with_lang["language"])
+
+		input_question = question_with_lang["text"]
 		response = dict()
 		question, parameters, error_message, error_code = self.parse_question(input_question)
 		if error_message is None:
@@ -123,8 +129,35 @@ class ParseQuestion:
 
 def main():
 	p = ParseQuestion()
-	question = "What genetic conditions may offer protection against malaria"
-	print(p.format_response(question))
+	texts = ["What is the clinical outcome pathway of physostigmine for treatment of glaucoma",
+			 "What is the clinical outcome pathway of dicumarol for treatment of coagulation",
+			 "What is the clinical outcome pathway of naproxen for treatment of Osteoarthritis",
+			 "What is the clinical outcome pathway of beano for treatment of Osteoarthritis",
+			 "What is the clinical outcome pathway of physostigmine for treatment of glaucoma in dogs",
+			 "What is the clinical outcome pathway of glaucoma for treatment of physostigmine",
+			 "What is the COP of physostigmine for treatment of glaucoma",
+			 "what genetic conditions might offer protection against malaria",
+			 "Which genetic conditions might offer protection against hypertension",
+			 "what genetic conditions might offer protection against naproxen",
+			 "what genetic conditions might offer protection against asdfasdf",
+			 "what is lovastatin",
+			 "what are adenoids",
+			 "what is an iPhone",
+			 "What proteins does acetaminophen target?",
+			 "What proteins are in the glycosylation pathway?",
+			 "What proteins are expressed in liver?",
+			 "What diseases are similar to malaria?",
+			 "what diseases are associated with naproxen",
+			 "what phenotypes are associated with naproxen",
+			 "what drugs have similar protein targets to ibuprofen",
+			 ]
+	for text in texts:
+		question = {"language": "English", "text": text}
+		res = p.format_response(question)
+		print("Question is: " + text)
+		print("Result is:")
+		print(res)
+		print("=====")
 
 
 if __name__ == "__main__":

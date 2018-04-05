@@ -819,7 +819,10 @@ def weight_graph_with_google_distance(g):
 					mesh2 = False
 				else:
 					mesh2 = True
-				gd_temp = QueryNCBIeUtils.normalized_google_distance(source_mesh_term, target_mesh_term, mesh1=mesh1, mesh2=mesh2)
+				try:
+					gd_temp = QueryNCBIeUtils.normalized_google_distance(source_mesh_term, target_mesh_term, mesh1=mesh1, mesh2=mesh2)
+				except:
+					gd_temp = QueryNCBIeUtils.normalized_google_distance(source_mesh_term, target_mesh_term, mesh1=False, mesh2=False)
 				if not np.isnan(gd_temp):
 					if gd_temp < gd:
 						gd = gd_temp

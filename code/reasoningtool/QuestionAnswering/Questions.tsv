@@ -1,5 +1,5 @@
 #restated question	corpus	types	solution script	additional parameters
-What is $term	['What is an','What is a','what is','what are']	['term']	Q0Solution.py	{}
+What is $term	['What is an','What is a','what is','what are']	['term']	Q0Solution.py -i '$term'	{}
 Which genetic conditions might offer protection against $disont_disease?	['what genetic conditions might offer protection against','what genetic conditions protect against','what genetic diseases might protect against','what genetic conditions offer protection against']	['disont_disease']	Q1Solution.py -i '$disont_disease' -j	{}
 What is the clinical outcome pathway of $pharos_drug for the treatment of $disont_disease	['what is the clinical outcome pathway of for the treatment', 'what is the clinical outcome pathway for the treatment of with','what is the COP for the treatment of']	['pharos_drug','disont_disease']	Q2Solution.py -r '$pharos_drug' -d '$disont_disease' -j	{}
 what proteins are the target of $pharos_drug	['what are the protein targets of', 'what proteins does target','what proteins are the target of']	['pharos_drug']	Q3Solution.py -s '$pharos_drug' -t '$target_label' -r '$rel_type' -j	{'target_label': 'uniprot_protein', 'rel_type': 'targets'}
