@@ -59,6 +59,17 @@ class FormatResponse:
 		response.result_code = code
 		response.message = message
 
+	def add_text(self, plain_text):
+		result1 = Result()
+		result1.id = "http://rtx.ncats.io/api/v1/response/1234/result/2345"  # TODO: eric to change this
+		result1.text = plain_text
+		self._result_list.append(result1)
+		self.response.result_list = self._result_list
+		# Increment the number of results
+		self._num_results += 1
+		self.response.message = "%s result found" % self._num_results
+
+
 	def add_subgraph(self, nodes, edges, plain_text, confidence):
 		"""
 		Populate the object model using networkx neo4j subgraph

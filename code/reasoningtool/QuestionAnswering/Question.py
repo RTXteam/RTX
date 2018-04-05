@@ -420,7 +420,7 @@ def test_correct_question():
 		parameters = dict()
 
 		# ignore the what is question
-		if q.parameter_names[0] != "term":
+		if q.parameter_names and q.parameter_names[0] != "term":
 			for label in q.parameter_names:
 				node = random.choice(property_to_nodes[label])
 				parameters[label] = node

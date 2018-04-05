@@ -44,17 +44,21 @@ class ParseQuestion:
 		error_code = None
 		fulfilled = False
 		for ind in sorted_indicies[0:3]:  # only look at the top 3 similar questions
+			question = self._question_templates[ind]
 			if wd_distances[ind] < 0.25:  # don't even bother with these low quality matches
 				break
 			try:
-				parameters = self._question_templates[ind].get_parameters(input_question)
+				parameters = question.get_parameters(input_question)
 			except CustomExceptions.MultipleTerms as e:  # If you run into an exception, return the error string
-				error_message = "The most similar question I can answer is: " + self._question_templates[ind].restated_question_template.template
+				error_message = "The most similar question I can answer is: " + question.restated_question_template.template
 				error_message += " But I found: " + str(e)
 				error_code = "multiple_terms"
-				return self._question_templates[ind], {}, error_message, error_code
+				return question, {}, error_message, error_code
 			# Otherwise, see if the parameters can be filled
-			if parameters and all([x is not None for x in parameters.values()]):
+			if not parameters and not question.parameter_names:
+				fulfilled = True  # There was nothing to fulfill, so we're good
+				break
+			elif parameters and all([x is not None for x in parameters.values()]):
 				fulfilled = True
 				break  # Template parameters can be filled, so stop looking over questions
 
@@ -170,6 +174,18 @@ def tests():
 	question = {"language": "English", "text": question}
 	results_dict = txltr.format_response(question)
 	assert results_dict["errorMessage"] is not None
+
+	question = "what genetic conditions may offer protection against malaria osteoarthritis"
+	question = {"language": "English", "text": question}
+	results_dict = txltr.format_response(question)
+	assert results_dict['errorMessage'] is not None
+	assert results_dict['errorCode'] == 'multiple_terms'
+
+	question = "what genetic conditions may offer protection against"
+	question = {"language": "English", "text": question}
+	results_dict = txltr.format_response(question)
+	assert results_dict['errorMessage'] is not None
+	assert results_dict['errorCode'] == 'missing_term'
 
 	# Q4 tests
 	question = "what diseases are similar to naproxen"
