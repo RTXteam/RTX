@@ -278,6 +278,15 @@ class Question:
 			# get all n-tuples of words in the question (largest to smallest)
 			blocks = []
 			question_tokenized = nltk.word_tokenize(input_question, "english")
+			# Tokenizers have a bad habit of splitting on \', so fix it
+			question_tokenized_no_apos_split = []
+			for ind, block in enumerate(question_tokenized):
+				if block[0] == "'" and ind > 0:  # the tokenizer split on apostrophe
+					question_tokenized_no_apos_split[ind - 1] += question_tokenized[ind]
+				else:
+					question_tokenized_no_apos_split.append(block)
+			question_tokenized = question_tokenized_no_apos_split
+
 			for block_size in range(1, len(question_tokenized)):
 				for i in range(len(question_tokenized) - block_size + 1):
 					block = " ".join(question_tokenized[i:(i + block_size)])
