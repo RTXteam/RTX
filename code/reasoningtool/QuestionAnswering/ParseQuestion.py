@@ -110,12 +110,14 @@ class ParseQuestion:
 		question, parameters, error_message, error_code = self.parse_question(input_question)
 		if error_message is None:
 			restated_question = question.restate_question(parameters)
-			execution_string = self.callout_string(question, parameters)
-			response['restatedQuestion'] = restated_question
-			response['executionString'] = execution_string
-			response['originalQuestion'] = input_question
-			response['terms'] = list(parameters.values())
-			response['solutionScript'] = question.solution_script.template.split()[0]
+			#execution_string = self.callout_string(question, parameters)
+			response['restated_question'] = restated_question
+			#response['execution_string'] = execution_string
+			response['original_question'] = input_question
+			#response['terms'] = list(parameters.values())
+			response['terms'] = parameters
+			#response['solution_script'] = question.solution_script.template.split()[0]
+			response['known_query_type_id'] = question.known_query_type_id
 			return response
 		else:
 			self.log_query(error_code, "-", error_message)
@@ -125,12 +127,17 @@ class ParseQuestion:
 					if value is not None:
 						parameters_without_none[key] = value
 				restated_question = question.restate_question(parameters_without_none)
-				response['restatedQuestion'] = restated_question
+				response['restated_question'] = restated_question
+				response['known_query_type_id'] = question.known_query_type_id
 			elif question:
-				response['restatedQuestion'] = question.restate_question({})
-			response['originalQuestion'] = input_question
-			response['errorMessage'] = error_message
-			response['errorCode'] = error_code
+				response['restated_question'] = question.restate_question({})
+				response['known_query_type_id'] = question.known_query_type_id
+			else:
+				response['restated_question'] = None
+				response['known_query_type_id'] = None
+			response['original_question'] = input_question
+			response['error_message'] = error_message
+			response['error_code'] = error_code
 			return response
 
 
@@ -173,27 +180,26 @@ def tests():
 	question = "what proteins are four score and seven years ago, our fathers..."
 	question = {"language": "English", "text": question}
 	results_dict = txltr.format_response(question)
-	assert results_dict["errorMessage"] is not None
+	assert results_dict["error_message"] is not None
 
 	question = "what genetic conditions may offer protection against malaria osteoarthritis"
 	question = {"language": "English", "text": question}
 	results_dict = txltr.format_response(question)
-	assert results_dict['errorMessage'] is not None
-	assert results_dict['errorCode'] == 'multiple_terms'
+	assert results_dict['error_message'] is not None
+	assert results_dict['error_code'] == 'multiple_terms'
 
 	question = "what genetic conditions may offer protection against"
 	question = {"language": "English", "text": question}
 	results_dict = txltr.format_response(question)
-	assert results_dict['errorMessage'] is not None
-	assert results_dict['errorCode'] == 'missing_term'
+	assert results_dict['error_message'] is not None
+	assert results_dict['error_code'] == 'missing_term'
 
-	# Q4 tests
 	question = "what diseases are similar to naproxen"
 	q, params, error_message, error_code = txltr.parse_question(question)
 	assert error_code == "missing_term"
 	res = txltr.format_response({"language": "English", "text": question})
-	assert "errorMessage" in res
-	assert isinstance(res["errorMessage"], str)
+	assert "error_message" in res
+	assert isinstance(res["error_message"], str)
 
 	question = "what diseases are similar to malaria"
 	q, params, error_message, error_code = txltr.parse_question(question)
@@ -202,9 +208,10 @@ def tests():
 	assert "disont_disease" in params
 	assert params["disont_disease"] == "DOID:12365"
 	res = txltr.format_response({"language": "English", "text": question})
-	assert "errorMessage" not in res
+	assert "error_message" not in res
 	assert 'terms' in res
-	assert 'DOID:12365' in res['terms']
+	assert 'DOID:12365' in res['terms'].values()
+	assert res['known_query_type_id'] == 'Q13'
 
 	question = "what diseases are similar to cerebral malaria"
 	q, params, error_message, error_code = txltr.parse_question(question)
@@ -213,12 +220,13 @@ def tests():
 	assert "disont_disease" in params
 	assert params["disont_disease"] == "DOID:14069"
 	res = txltr.format_response({"language": "English", "text": question})
-	assert "errorMessage" not in res
+	assert "error_message" not in res
 	assert 'terms' in res
-	assert 'DOID:14069' in res['terms']
-	assert 'executionString' in res
-	assert 'solutionScript' in res
-	assert res['solutionScript'] == 'SimilarityQuestionSolution.py'
+	assert 'DOID:14069' in res['terms'].values()
+	assert res['known_query_type_id'] == 'Q13'
+	#assert 'execution_string' in res
+	#assert 'solution_script' in res
+	#assert res['solution_script'] == 'SimilarityQuestionSolution.py'
 
 	question = "what drugs target proteins associated with osteoarthritis"
 	q, params, error_message, error_code = txltr.parse_question(question)
@@ -229,12 +237,13 @@ def tests():
 	assert params["association"] == "uniprot_protein"
 	assert params["target"] == "pharos_drug"
 	res = txltr.format_response({"language": "English", "text": question})
-	assert "errorMessage" not in res
+	assert "error_message" not in res
 	assert 'terms' in res
-	assert 'DOID:8398' in res['terms']
-	assert 'executionString' in res
-	assert 'solutionScript' in res
-	assert res['solutionScript'] == 'SimilarityQuestionSolution.py'
+	assert 'DOID:8398' in res['terms'].values()
+	assert res['known_query_type_id'] == 'Q23'
+	#assert 'execution_string' in res
+	#assert 'solution_script' in res
+	#assert res['solution_script'] == 'SimilarityQuestionSolution.py'
 
 	return
 	######################################################################
