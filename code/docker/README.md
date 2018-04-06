@@ -30,3 +30,8 @@ To unpack and run the RTX POC software in Docker using the `run_container_ncats.
     (in the contianer)$ aws s3 cp s3://ramseylab/ncats/ncats.saramsey.org/orangeboard.sqlite .
 
 The above steps should prepare the RTX POC software to be used with your Docker container.
+
+# Running BuildMasterKG.py from the host OS:
+
+    sudo docker exec -it rtxsteve /usr/bin/sudo -H -u rt bash -c 'cd ~/kg-construction && ls -alh'
+    
