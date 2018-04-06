@@ -22,6 +22,9 @@ with open(os.path.join(os.path.dirname(__file__), 'Questions.tsv'), 'r') as fid:
 class ParseQuestion:
 	def __init__(self):
 		self._question_templates = question_templates
+		self._known_query_type_id_to_question = dict()
+		for q in question_templates:
+			self._known_query_type_id_to_question[q.known_query_type_id] = q
 
 	def parse_question(self, input_question):
 		"""
@@ -76,14 +79,21 @@ class ParseQuestion:
 		parameters = question.get_parameters(input_question)
 		return question, parameters, error_message, error_code
 
-	def callout_string(self, question, parameters):
+	def get_execution_string(self, known_query_type_id, parameters):
 		"""
 		Simple function for returning the command that will need to be run to answer the question
-		:param question: Question class
+		:param known_query_type_id: str
 		:param parameters: dict
 		:return: string
 		"""
-		return question.solution_script.safe_substitute(parameters)
+		if known_query_type_id in self._known_query_type_id_to_question:
+			q = self._known_query_type_id_to_question[known_query_type_id]
+		else:
+			raise Exception("Unknown query type id: %s" % known_query_type_id)
+		execution_string = q.solution_script.safe_substitute(parameters)
+		if "$" in execution_string:
+			raise Exception("Unpopulated parameter: %s" % execution_string)
+		return execution_string
 
 	def log_query(self, code_string, id, original_text):
 		date_time_string = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -244,6 +254,16 @@ def tests():
 	#assert 'execution_string' in res
 	#assert 'solution_script' in res
 	#assert res['solution_script'] == 'SimilarityQuestionSolution.py'
+
+
+	# Test the exectution string function
+	text = "What are the protein targets of naproxen"
+	question = {"language": "English", "text": text}
+	res = txltr.format_response(question)
+	known_query_type_id = res['known_query_type_id']
+	parameters = res['terms']
+	execution_string = txltr.get_execution_string(known_query_type_id, parameters)
+	assert execution_string == "Q3Solution.py -s 'naproxen' -t 'uniprot_protein' -r 'targets' -j"
 
 	return
 	######################################################################
