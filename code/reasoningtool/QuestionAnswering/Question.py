@@ -189,11 +189,12 @@ class Question:
 	def __init__(self, row):
 		#print(row)
 		row_split = row.strip().split("\t")  # See Questions.tsv for the expected format
-		self.restated_question_template = Template(row_split[0])  # this is a question template, such as "what is $entity"
-		self.corpus = eval(row_split[1])
-		self.types = eval(row_split[2])
-		self.solution_script = Template(row_split[3])
-		self.other_parameters = eval(row_split[4])
+		self.known_query_type_id = row_split[0]
+		self.restated_question_template = Template(row_split[1])  # this is a question template, such as "what is $entity"
+		self.corpus = eval(row_split[2])
+		self.types = eval(row_split[3])
+		self.solution_script = Template(row_split[4])
+		self.other_parameters = eval(row_split[5])
 		# Go through the template and pull off the slot names
 		self.parameter_names = []
 		for match in Template.pattern.findall(self.restated_question_template.template):
