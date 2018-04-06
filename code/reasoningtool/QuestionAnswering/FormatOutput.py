@@ -123,6 +123,8 @@ class FormatResponse:
 			edge.type = edge_types[(u, v)]
 			edge.source_id = node_uuid_to_node_object[edge_source_uuid[(u, v)]].id
 			edge.target_id = node_uuid_to_node_object[edge_target_uuid[(u, v)]].id
+			edge.origin_list = []
+			edge.origin_list.append(edge_source_db[(u, v)])  # TODO: check with eric if this really should be a list and if it should contain the source DB('s)
 			edge_objects.append(edge)
 
 		# Create the result (potential answer)

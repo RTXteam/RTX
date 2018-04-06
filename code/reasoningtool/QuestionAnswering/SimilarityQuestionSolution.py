@@ -43,6 +43,9 @@ class SimilarityQuestionSolution:
 		# get the description
 		source_node_description = RU.get_node_property(source_node_ID, 'description')
 
+		# get the source node label
+		source_node_label = RU.get_node_property(source_node_ID, 'label')
+
 		# Get the nodes in common
 		node_jaccard_tuples_sorted, error_code, error_message = similar_nodes_in_common.get_similar_nodes_in_common_source_target_association(source_node_ID, target_node_type, association_node_type, threshold)
 
@@ -66,7 +69,9 @@ class SimilarityQuestionSolution:
 			for other_disease_ID, jaccard in node_jaccard_tuples_sorted:
 				to_print = "The %s %s involves similar %s's as %s with similarity value %f" % (
 					target_node_type, RU.get_node_property(other_disease_ID, 'description'), association_node_type, source_node_description, jaccard)
-				g = RU.get_node_as_graph(other_disease_ID)
+				#g = RU.get_node_as_graph(other_disease_ID)
+				g = RU.return_subgraph_through_node_labels(source_node_ID, source_node_label, other_disease_ID, target_node_type,
+													[association_node_type], with_rel=[], directed=True, debug=False)
 				response.add_subgraph(g.nodes(data=True), g.edges(data=True), to_print, jaccard)
 			response.print()
 
