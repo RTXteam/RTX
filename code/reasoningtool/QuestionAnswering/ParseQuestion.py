@@ -183,6 +183,14 @@ def main():
 		print(res)
 		print("=====")
 
+	# Example of how to get the query string
+	text = "What are the protein targets of naproxen"
+	print("Getting execution string for: %s" % text)
+	question = {"language": "English", "text": text}
+	res = p.format_response(question)
+	execution_string = p.get_execution_string(res["known_query_type_id"], res["terms"])
+	print(execution_string)
+
 
 def tests():
 	txltr = ParseQuestion()
