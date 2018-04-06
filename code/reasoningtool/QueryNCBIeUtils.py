@@ -441,6 +441,31 @@ class QueryNCBIeUtils:
                                                         mesh_ids = mesh_data.get('links', None)
                                                         res_set |= set([int(uid_str) for uid_str in mesh_ids])
         return res_set
+    
+    def test_phrase_not_found():
+        print('----------')
+        print('Result and time for 1st error (joint search):')
+        print('----------')
+        t0 = time.time()
+        print(QueryNCBIeUtils.normalized_google_distance('lymph nodes','IL6'))
+        print(time.time() - t0)
+        print('----------')
+        print('Result and time for 2nd error (individual search):')
+        print('----------')
+        t0 = time.time()
+        print(QueryNCBIeUtils.normalized_google_distance('IL6','lymph nodes[MeSH Terms]',mesh2=False))
+        print(time.time() - t0)
+        print('Result and time for potential curve ball:')
+        print('----------')
+        t0 = time.time()
+        print(QueryNCBIeUtils.normalized_google_distance('IL6','lymph node[MeSH Terms]|Naprosyn[MeSH Terms]|asdasdjkahfjkaf|flu|cold',mesh2=False))
+        print(time.time() - t0)
+        print('----------')
+        print('Time with no error:')
+        print('----------')
+        t0 = time.time()
+        QueryNCBIeUtils.normalized_google_distance('Naprosyn','lymph nodes')
+        print(time.time() - t0)
               
 if __name__ == '__main__':
     pass
