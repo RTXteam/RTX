@@ -249,9 +249,15 @@ class QueryNCBIeUtils:
                 res_int = int(res.json()['esearchresult']['count'])
                 if joint:
                     res_int = [res_int]
-                    res_int += [int(res.json()['esearchresult']['translationstack'][0]['count'])]
-                    res_int += [int(res.json()['esearchresult']['translationstack'][1]['count'])]
-                    #print(res_int)
+                    if 'errorlist' in res.json()['esearchresult'].keys():
+                        if 'phrasesnotfound' in res.json()['esearchresult']['errorlist'].keys():
+                                if len(res.json()['esearchresult']['errorlist']['phrasesnotfound']) == 1:
+                                    res_int += 2*res.json()['esearchresult']['errorlist']['phrasesnotfound']
+                                else:
+                                    res_int += res.json()['esearchresult']['errorlist']['phrasesnotfound']
+                    else:
+                        res_int += [int(res.json()['esearchresult']['translationstack'][0]['count'])]
+                        res_int += [int(res.json()['esearchresult']['translationstack'][1]['count'])]
             else:
                 print('HTTP response status code: ' + str(status_code) + ' for query term string {term}'.format(term=term_str))
         return res_int
@@ -281,11 +287,28 @@ class QueryNCBIeUtils:
         if mesh1 and mesh2:
             [nij, ni, nj] = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
                                                                                      mesh2=mesh2_str_decorated),joint=True)
+            if type(ni) == str:
+                if mesh1_str_decorated == ni:
+                    mesh1_str_decorated = ni[:-12]
+                if mesh2_str_decorated == nj:
+                    mesh2_str_decorated = nj[:-12]
+                [nij, ni, nj] = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
+                                                                                         mesh2=mesh2_str_decorated), joint=True)
+
         else:
             nij = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
                                                                                          mesh2=mesh2_str_decorated))
             ni = QueryNCBIeUtils.get_pubmed_hits_count('{mesh1}'.format(mesh1=mesh1_str_decorated))
             nj = QueryNCBIeUtils.get_pubmed_hits_count('{mesh2}'.format(mesh2=mesh2_str_decorated))
+            if (ni == 0 and mesh1) or (nj == 0 and mesh2):
+                if (ni == 0 and mesh1):
+                    mesh1_str_decorated = mesh1_str
+                if (nj == 0 and mesh2):
+                    mesh2_str_decorated = mesh2_str
+                nij = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
+                                                                                         mesh2=mesh2_str_decorated))
+                ni = QueryNCBIeUtils.get_pubmed_hits_count('{mesh1}'.format(mesh1=mesh1_str_decorated))
+                nj = QueryNCBIeUtils.get_pubmed_hits_count('{mesh2}'.format(mesh2=mesh2_str_decorated))
         N = 2.7e+7 * 20  # from PubMed home page there are 27 million articles; avg 20 MeSH terms per article
         if ni is None or nj is None or nij is None:
             return math.nan
