@@ -1,13 +1,28 @@
 from neo4j.v1 import GraphDatabase
 import json
 
-# user_pass.json format
+### BEGIN HOW TO RUN
+#   Function: The script is used to test the consistency of the dumped database file
+#   Instance: This python script needs to be run on both 'kgdump' container and the machine which is loaded the dumped
+#             file. If the outputs on both machines are the same, the test is passed
+#   how to load the dumped database file:
+#               tar -zxvf xxxx.tar.gz
+#               neo4j-admin load --from=xxxx.cypher --database=graph --force
+#   how to run the python script:
+#               python3 backup_test.py
+#   output example:
+#               nodes counter : 68800
+#               relationships counter : 2508369
+### END HOW TO RUN
+
+### BEGIN user_pass.json format
 # {
 #   "username":"xxx",
 #   "password":"xxx"
 # }
+### END user_pass.json format
 
-class HelloWorldExample(object):
+class TestBackup(object):
 
     def __init__(self, uri, user, password):
         self._driver = GraphDatabase.driver(uri, auth=(user, password))
@@ -42,7 +57,7 @@ if __name__ == '__main__':
     f.close()
     user = json.loads(userData)
 
-    obj = HelloWorldExample("bolt://localhost:7687", user['username'], user['password'])
+    obj = TestBackup("bolt://localhost:7687", user['username'], user['password'])
     obj.print_node_count()
     obj.print_relation_count()
     obj.close()

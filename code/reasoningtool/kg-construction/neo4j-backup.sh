@@ -5,7 +5,7 @@
 #   Instance: 'kgdump' docker container in 'rtxsteve.saramesy.org' instance
 #   Where to run the script: any directory
 #   Who can run the script: root
-#   How to run the script: sh neo4j-backup.sh'
+#   How to run the script: sh neo4j-backup.sh
 #   The backup files will be stored in the /var/www/html folder of the 'rtxkgdump.saramsey.org' instance.
 #   The backup files can be accessed in http://rtxkgdump.saramsey.org/
 ### END INTRO
