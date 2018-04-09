@@ -13,7 +13,7 @@ import pandas as pd
 
 class QueryUMLSSQL():
 
-	def __init__(self, host, port, password, database):
+	def __init__(self, host, port, username, password, database):
 		'''
 		This initializes the class such that it will be able to connect to the umls database in mysql.
 		params:
@@ -22,7 +22,7 @@ class QueryUMLSSQL():
 			password = the password assigned to the user assigned to the ip you are connecting from
 			database = the name that the umls database is saved under
 		'''
-		self.db = _mysql.connect(host=host,port=int(port),passwd=password,db=database)
+		self.db = _mysql.connect(host=host,port=int(port),user = username,passwd=password,db=database)
 
 	def get_dataframe_from_db(self, query):
 		'''
