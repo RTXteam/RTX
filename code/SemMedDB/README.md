@@ -1,29 +1,5 @@
 # Conecting to and using the MySQL containers on rtxdev
 
-## Setting up your user
-
-In oder to connect the the mysql container you need to first go into the container and add yourself as a user. 
-You can get into the container instance by endering the following into the terminal (example for semmeddb):
-
-```
-ssh ubuntu@rtxdev.saramsey.org
-sudo docker exec -ti summeddb mysql -p
-```
-(swap semmeddb for umls to do this for the umls container)
-
-This will then prompt you for the root password. After entering this you should see a welcome message and the terminal should now be displaying `mysql>`.
-You can now add yourself as an admin by running the following commands:
-
-```
-CREATE USER 'user'@'your.ip.address' IDENTIFIED BY 'your_password';
-
-GRANT ALL PRIVILEGES ON *.* TO 'user'@'your.ip.address' WITH GRANT OPTION;
-
-FLUSH PRIVILEGES;
-```
-
-Now you should be all set to connect to the mysql server at rtxdev.saramsey.org:3306 (or :3406 for umls).
-
 ## Using QuerySemMedDB.py
 
 **NOTE:** Currently all functions return the response as a pandas dataframe with column headers
@@ -33,7 +9,7 @@ Now you should be all set to connect to the mysql server at rtxdev.saramsey.org:
 After importing the class QuerySemMedDB from QuerySemMedDB.py you first must establish the connection to the mysql container on rtxdev. You can do this with the following:
 
 ```
-smdb = QuerySemMedDB('rtxdev.saramsey.org', '3306', 'your_password', 'semmeddb')
+smdb = QuerySemMedDB('rtxdev.saramsey.org', '3306', 'rtx_read', 'password', 'semmeddb')
 ```
 
 #### Retreaving info on relationships between a subject and object
