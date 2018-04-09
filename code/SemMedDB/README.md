@@ -63,3 +63,45 @@ If you want the shortest path between a subject and object (under a maximum leng
 get_short_paths_between_subject_object('C1234567',''C7654321',max_length = 5)
 ```
 
+## Conecting to UMLS
+
+**NOTE:** Currently all functions return the response as a pandas dataframe with column headers
+
+#### Establishing a Connection
+
+After importing the class QueryUMLSSQL from QueryUMLSSQL.py you first must establish the connection to the mysql container on rtxdev. You can do this with the following:
+
+```
+umlsdb = QueryUMLSSQL('rtxdev.saramsey.org', '3306', 'rtx_read', 'password', 'semmeddb')
+```
+#### Converting from GO, HP, and OMIM
+
+To convert from GO, HP or OMIM to cui then you can use the function the following functions:
+
+* GO
+
+```
+umlsdb.get_cui_for_go_id('GO:0000252')
+```
+
+* HP
+
+```
+umlsdb.get_cui_for_hp_id('HP:0000176')
+```
+
+* OMIM
+
+```
+umlsdb.get_cui_for_omim_id('OMIM:610837')
+```
+
+#### Converting to cui fron normalized word
+
+**NOTE:** normalization is defined [here](https://www.ncbi.nlm.nih.gov/books/NBK9684/#ch02.sec2.7.3.2)
+
+to convert from a normalzed word use the following function:
+
+```
+umlsdb.get_cui_cloud_for_word('alox15')
+```
