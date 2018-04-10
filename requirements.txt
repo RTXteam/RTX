@@ -6,6 +6,7 @@ numpy
 ipython-cypher
 networkx
 pronto
+mysqlclient
 lxml
 mygene
 beautifulsoup4
