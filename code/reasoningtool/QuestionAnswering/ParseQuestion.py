@@ -175,6 +175,7 @@ def main():
 			 "what phenotypes are associated with naproxen",
 			 "what drugs have similar protein directly_interacts_with to ibuprofen",
 			 ]
+	texts = ["What is the clinical outcome pathway of naproxen for treatment of osteoarthritis"]
 	for text in texts:
 		question = {"language": "English", "text": text}
 		res = p.format_response(question)
@@ -271,7 +272,7 @@ def tests():
 	known_query_type_id = res['known_query_type_id']
 	parameters = res['terms']
 	execution_string = txltr.get_execution_string(known_query_type_id, parameters)
-	assert execution_string == "Q3Solution.py -s 'naproxen' -t 'protein' -r 'directly_interacts_with' -j"
+	assert execution_string == "Q3Solution.py -s 'CHEMBL154' -t 'protein' -r 'directly_interacts_with' -j"
 
 	return
 	######################################################################
