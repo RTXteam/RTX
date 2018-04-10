@@ -84,12 +84,16 @@ class FormatResponse:
 		node_names = dict()
 		node_labels = dict()
 		node_uuids = dict()
+		node_accessions = dict()
+		node_iris = dict()
 		for u, data in nodes:
 			node_keys.append(u)
-			node_descriptions[u] = data['description']
-			node_names[u] = data['names']
+			node_descriptions[u] = data['properties']['description']
+			node_names[u] = data['properties']['name']
 			node_labels[u] = list(set(data['labels']).difference({'Base'}))[0]
 			node_uuids[u] = data['properties']['UUID']
+			node_accessions[u] = data['properties']['accession']
+			node_iris[u] = data['properties']['iri']
 
 		edge_keys = []
 		edge_types = dict()
@@ -110,9 +114,9 @@ class FormatResponse:
 			node = Node()
 			node.id = node_uuids[node_key]
 			node.type = node_labels[node_key]
-			node.name = node_descriptions[node_key]
-			node.accession = node_names[node_key]
-			node.description = "None (yet)"  # TODO: where to get the common name descriptions? UMLS perhaps?
+			node.name = node_names[node_key]
+			node.accession = node_iris[node_key]
+			node.description = node_descriptions[node_key]
 			node_objects.append(node)
 			node_uuid_to_node_object[node_uuids[node_key]] = node
 
