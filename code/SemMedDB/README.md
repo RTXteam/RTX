@@ -72,7 +72,7 @@ get_short_paths_between_subject_object('C1234567',''C7654321',max_length = 5)
 After importing the class QueryUMLSSQL from QueryUMLSSQL.py you first must establish the connection to the mysql container on rtxdev. You can do this with the following:
 
 ```
-umlsdb = QueryUMLSSQL('rtxdev.saramsey.org', '3306', 'rtx_read', 'password', 'semmeddb')
+umlsdb = QueryUMLSSQL('rtxdev.saramsey.org', '3406', 'rtx_read', 'password', 'semmeddb')
 ```
 #### Converting from GO, HP, and OMIM
 
