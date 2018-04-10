@@ -82,3 +82,8 @@ def dump_edge_types(file_name, session=session):
 			type = i["type(r)"]
 			fid.write('%s\n' % type)
 	return
+
+# Actually dump the data
+dump_name_description('NodeNamesDescriptions.tsv')
+dump_node_labels('NodeLabels.tsv')
+dump_edge_types('EdgeTypes.tsv')
