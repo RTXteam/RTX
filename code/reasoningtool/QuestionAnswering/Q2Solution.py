@@ -247,7 +247,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 def main():
 	parser = argparse.ArgumentParser(description="Runs the reasoning tool on Question 2",
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-	parser.add_argument('-r', '--drug', type=str, help="Input drug (name in the graph, eg. 'naproxen')", default='naproxen')
+	parser.add_argument('-r', '--drug', type=str, help="Input drug (name in the graph, eg. 'naproxen')", default='CHEMBL154')
 	parser.add_argument('-d', '--disease', type=str, help="Input disease (Identifier in the graph, eg 'DOID:8398')", default='DOID:8398')
 	parser.add_argument('-a', '--all', action="store_true", help="Flag indicating you want to run it on all Q2 drugs + diseases",
 						default=False)
