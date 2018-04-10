@@ -17,7 +17,7 @@ import CustomExceptions
 try:
 	import QueryNCBIeUtils
 except ImportError:
-	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  # Go up one level and look for it
+	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../kg-construction')))  # Go up one level and look for it
 	import QueryNCBIeUtils
 
 import math
@@ -25,7 +25,7 @@ import MarkovLearning
 try:
 	import QueryEBIOLS
 except ImportError:
-	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  # Go up one level and look for it
+	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../kg-construction')))  # Go up one level and look for it
 	import QueryEBIOLS
 
 QueryEBIOLS = QueryEBIOLS.QueryEBIOLS()

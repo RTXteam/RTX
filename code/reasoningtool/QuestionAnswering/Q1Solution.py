@@ -3,8 +3,12 @@ import numpy as np
 np.warnings.filterwarnings('ignore')
 from collections import namedtuple
 #from neo4j.v1 import GraphDatabase, basic_auth
-import os
-import Q1Utils
+import os, sys
+try:
+	import QueryNCBIeUtils
+except ImportError:
+	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../kg-construction')))  # Go up one level and look for it
+	import QueryNCBIeUtils
 import argparse
 import sys
 import json
