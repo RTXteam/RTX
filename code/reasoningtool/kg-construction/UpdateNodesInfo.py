@@ -63,10 +63,7 @@ def update_anatomy_nodes():
 
     for i, node_id in enumerate(nodes):
         extended_info_json = QueryBioLinkExtended.get_anatomy_entity(node_id)
-        #   replace double quotes with single quotes
-        str_extended_info_json = str(extended_info_json)
-        str_extended_info_json = str_extended_info_json.replace('"', "'")
-        conn.update_anatomical_node(node_id, str_extended_info_json)
+        conn.update_anatomical_node(node_id, extended_info_json)
 
     conn.close()
 
