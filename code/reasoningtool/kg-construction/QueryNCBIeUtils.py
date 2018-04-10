@@ -249,9 +249,15 @@ class QueryNCBIeUtils:
                 res_int = int(res.json()['esearchresult']['count'])
                 if joint:
                     res_int = [res_int]
-                    res_int += [int(res.json()['esearchresult']['translationstack'][0]['count'])]
-                    res_int += [int(res.json()['esearchresult']['translationstack'][1]['count'])]
-                    #print(res_int)
+                    if 'errorlist' in res.json()['esearchresult'].keys():
+                        if 'phrasesnotfound' in res.json()['esearchresult']['errorlist'].keys():
+                                if len(res.json()['esearchresult']['errorlist']['phrasesnotfound']) == 1:
+                                    res_int += 2*res.json()['esearchresult']['errorlist']['phrasesnotfound']
+                                else:
+                                    res_int += res.json()['esearchresult']['errorlist']['phrasesnotfound']
+                    else:
+                        res_int += [int(res.json()['esearchresult']['translationstack'][0]['count'])]
+                        res_int += [int(res.json()['esearchresult']['translationstack'][1]['count'])]
             else:
                 print('HTTP response status code: ' + str(status_code) + ' for query term string {term}'.format(term=term_str))
         return res_int
@@ -281,11 +287,28 @@ class QueryNCBIeUtils:
         if mesh1 and mesh2:
             [nij, ni, nj] = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
                                                                                      mesh2=mesh2_str_decorated),joint=True)
+            if type(ni) == str:
+                if mesh1_str_decorated == ni:
+                    mesh1_str_decorated = ni[:-12]
+                if mesh2_str_decorated == nj:
+                    mesh2_str_decorated = nj[:-12]
+                [nij, ni, nj] = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
+                                                                                         mesh2=mesh2_str_decorated), joint=True)
+
         else:
             nij = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
                                                                                          mesh2=mesh2_str_decorated))
             ni = QueryNCBIeUtils.get_pubmed_hits_count('{mesh1}'.format(mesh1=mesh1_str_decorated))
             nj = QueryNCBIeUtils.get_pubmed_hits_count('{mesh2}'.format(mesh2=mesh2_str_decorated))
+            if (ni == 0 and mesh1) or (nj == 0 and mesh2):
+                if (ni == 0 and mesh1):
+                    mesh1_str_decorated = mesh1_str
+                if (nj == 0 and mesh2):
+                    mesh2_str_decorated = mesh2_str
+                nij = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
+                                                                                         mesh2=mesh2_str_decorated))
+                ni = QueryNCBIeUtils.get_pubmed_hits_count('{mesh1}'.format(mesh1=mesh1_str_decorated))
+                nj = QueryNCBIeUtils.get_pubmed_hits_count('{mesh2}'.format(mesh2=mesh2_str_decorated))
         N = 2.7e+7 * 20  # from PubMed home page there are 27 million articles; avg 20 MeSH terms per article
         if ni is None or nj is None or nij is None:
             return math.nan
@@ -441,6 +464,31 @@ class QueryNCBIeUtils:
                                                         mesh_ids = mesh_data.get('links', None)
                                                         res_set |= set([int(uid_str) for uid_str in mesh_ids])
         return res_set
+    
+    def test_phrase_not_found():
+        print('----------')
+        print('Result and time for 1st error (joint search):')
+        print('----------')
+        t0 = time.time()
+        print(QueryNCBIeUtils.normalized_google_distance('lymph nodes','IL6'))
+        print(time.time() - t0)
+        print('----------')
+        print('Result and time for 2nd error (individual search):')
+        print('----------')
+        t0 = time.time()
+        print(QueryNCBIeUtils.normalized_google_distance('IL6','lymph nodes[MeSH Terms]',mesh2=False))
+        print(time.time() - t0)
+        print('Result and time for potential curve ball:')
+        print('----------')
+        t0 = time.time()
+        print(QueryNCBIeUtils.normalized_google_distance('IL6','lymph node[MeSH Terms]|Naprosyn[MeSH Terms]|asdasdjkahfjkaf|flu|cold',mesh2=False))
+        print(time.time() - t0)
+        print('----------')
+        print('Time with no error:')
+        print('----------')
+        t0 = time.time()
+        QueryNCBIeUtils.normalized_google_distance('Naprosyn','lymph nodes')
+        print(time.time() - t0)
               
 if __name__ == '__main__':
     pass

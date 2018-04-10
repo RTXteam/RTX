@@ -212,9 +212,9 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 			edge_path = edge_paths[path_ind]
 			to_print = ""
 			for node_index in range(len(node_path)):
-				to_print += " " + str(node_path[node_index]['description'])
+				to_print += " (" + str(node_path[node_index]['names']) + "," + str(node_path[node_index]['description']) + ")"
 				if node_index < len(edge_path):
-					to_print += " -" + str(edge_path[node_index]['type']) + "->"
+					to_print += " -[" + str(edge_path[node_index]['type']) + "]-"
 			to_print += ". Distance (smaller is better): %f." % weights[path_ind]
 			print(to_print)
 	else:  # you want the result object model
@@ -272,7 +272,7 @@ def main():
 			print("\n")
 			print((drug, disease_description, disease))
 			print(i)
-			res = answerQ2(drug, disease, k, text=use_json)
+			res = answerQ2(drug, disease, k, use_json)
 	else:
 		res = answerQ2(drug, disease, k, use_json)
 

@@ -59,6 +59,17 @@ class FormatResponse:
 		response.result_code = code
 		response.message = message
 
+	def add_text(self, plain_text):
+		result1 = Result()
+		result1.id = "http://rtx.ncats.io/api/v1/response/1234/result/2345"  # TODO: eric to change this
+		result1.text = plain_text
+		self._result_list.append(result1)
+		self.response.result_list = self._result_list
+		# Increment the number of results
+		self._num_results += 1
+		self.response.message = "%s result found" % self._num_results
+
+
 	def add_subgraph(self, nodes, edges, plain_text, confidence):
 		"""
 		Populate the object model using networkx neo4j subgraph
@@ -112,6 +123,8 @@ class FormatResponse:
 			edge.type = edge_types[(u, v)]
 			edge.source_id = node_uuid_to_node_object[edge_source_uuid[(u, v)]].id
 			edge.target_id = node_uuid_to_node_object[edge_target_uuid[(u, v)]].id
+			edge.origin_list = []
+			edge.origin_list.append(edge_source_db[(u, v)])  # TODO: check with eric if this really should be a list and if it should contain the source DB('s)
 			edge_objects.append(edge)
 
 		# Create the result (potential answer)
