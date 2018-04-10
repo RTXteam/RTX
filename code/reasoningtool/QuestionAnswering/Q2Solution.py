@@ -73,18 +73,18 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 	# TODO: could dynamically get the terminal node label as some are (drug, phenotype) pairs
 	# get the relevant subgraph between the source and target nodes
 	try:  # First look for COP's where the gene is associated to the disease
-		g = RU.return_subgraph_through_node_labels(drug_name, 'pharos_drug', disease_name, 'disont_disease',
-													['uniprot_protein', 'anatont_anatomy', 'phenont_phenotype'],
-													with_rel=['uniprot_protein', 'gene_assoc_with', 'disont_disease'],
+		g = RU.return_subgraph_through_node_labels(drug_name, 'chemical_substance', disease_name, 'disease',
+													['protein', 'anatomical_entity', 'phenotypic_feature'],
+													with_rel=['protein', 'associated_with_condition', 'disease'],
 													directed=False)
 	except CustomExceptions.EmptyCypherError:
 		try:  # Then look for any sort of COP
-			g = RU.return_subgraph_through_node_labels(drug_name, 'drug', disease_name, 'disont_disease',
-													['uniprot_protein', 'anatont_anatomy', 'phenont_phenotype'],
+			g = RU.return_subgraph_through_node_labels(drug_name, 'drug', disease_name, 'disease',
+													['protein', 'anatomical_entity', 'phenotypic_feature'],
 													directed=False)
 		except CustomExceptions.EmptyCypherError:
 			try:  # Then look for any sort of connection between source and target
-				g = RU.get_shortest_subgraph_between_nodes(drug_name, 'drug', disease_name, 'disont_disease',
+				g = RU.get_shortest_subgraph_between_nodes(drug_name, 'drug', disease_name, 'disease',
 															max_path_len=4, limit=50, debug=False, directed=False)
 			except CustomExceptions.EmptyCypherError:
 				error_code = "NoPathsFound"
@@ -117,7 +117,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 	proteins_per_path_locations = []
 	for path in node_paths:
 		for i, node in enumerate(path):
-			if "uniprot_protein" in node["labels"]:
+			if "protein" in node["labels"]:
 				proteins_per_path.append(node)
 				proteins_per_path_locations.append(i)
 				break
@@ -125,7 +125,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 	# Connect a reactome pathway to the proteins (only for the first seen protein in each path)
 	pathways_per_path = []
 	for protein in proteins_per_path:
-		pathways = RU.get_one_hop_target('uniprot_protein', protein['names'], 'reactome_pathway', 'is_member_of')
+		pathways = RU.get_one_hop_target('protein', protein['names'], 'pathway', 'participates_in')
 		pathways_per_path.append(pathways)
 
 	# Delete those elements that don't have a reactome pathway
@@ -145,7 +145,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 	max_gd = 10
 	best_pathways_per_path = []
 	best_pathways_per_path_gd = []
-	disease_common_name = RU.get_node_property(disease_name, 'description', node_label='disont_disease')
+	disease_common_name = RU.get_node_property(disease_name, 'description', node_label='disease')
 	for j, pathways in enumerate(pathways_per_path):
 		smallest_gd = np.inf
 		best_pathway = ""
@@ -191,8 +191,8 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 		graph = RU.get_node_as_graph(best_pathway)
 		best_pathway_with_node_data = list(graph.nodes(data=True)).pop()[1]
 		# same for the edge
-		graph = RU.get_shortest_subgraph_between_nodes(proteins_per_path[i]["names"], "uniprot_protein", best_pathway,
-													   "reactome_pathway", max_path_len=1, limit=1, directed=False)
+		graph = RU.get_shortest_subgraph_between_nodes(proteins_per_path[i]["names"], "protein", best_pathway,
+													   "pathway", max_path_len=1, limit=1, directed=False)
 		edge_data = list(graph.edges(data=True)).pop()[2]
 		best_pathway_gd = best_pathways_per_path_gd[i]
 		protein_location = proteins_per_path_locations[i]

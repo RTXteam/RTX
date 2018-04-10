@@ -19,12 +19,12 @@ import FormatOutput
 response = FormatOutput.FormatResponse(1)
 
 # Connection information for the neo4j server, populated with orangeboard
-#driver = GraphDatabase.driver("bolt://rtx.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))
+#driver = GraphDatabase.driver("bolt://rtxdev.saramsey.org:7887", auth=basic_auth("neo4j", "precisionmedicine"))
 #session = driver.session()
 
 	
 # Connection information for the ipython-cypher package
-connection = "http://neo4j:precisionmedicine@rtx.ncats.io:7473/db/data"
+connection = "http://neo4j:precisionmedicine@rtxdev.saramsey.org:7674/db/data"
 DEFAULT_CONFIGURABLE = {
 	"auto_limit": 0,
 	"style": 'DEFAULT',
@@ -51,7 +51,7 @@ defaults = DefaultConfigurable(**DEFAULT_CONFIGURABLE)
 # TODO: the following two dictionaries would be relatively straightforward to programmatically create
 # but given the time contraints, let's just hard code them now...
 
-# Dictionary converting disease to disont_disease ID
+# Dictionary converting disease to disease ID
 # TODO: double check the DOID's, possibly add synonyms for the diseases
 ## seed all 21 diseases in the Orangeboard
 q1_doid_to_disease = {'DOID:11476': 'osteoporosis',

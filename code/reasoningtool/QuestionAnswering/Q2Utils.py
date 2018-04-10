@@ -13,7 +13,7 @@ import requests_cache
 requests_cache.install_cache('orangeboard')
 
 # Connection information for the neo4j server, populated with orangeboard
-driver = GraphDatabase.driver("bolt://rtx.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))  # production server
+driver = GraphDatabase.driver("bolt://rtxdev.saramsey.org:7887", auth=basic_auth("neo4j", "precisionmedicine"))  # production server
 #driver = GraphDatabase.driver("bolt://ncats.saramsey.org:7687", auth=basic_auth("neo4j", "precisionmedicine"))  # test server
 session = driver.session()
 
@@ -51,7 +51,7 @@ def has_disease(disease_doid, session=session, debug=False):
 	:param debug:
 	:return:
 	"""
-	query = "MATCH (n:disont_disease) where n.name='%s' return count(n)" % disease_doid
+	query = "MATCH (n:disease) where n.name='%s' return count(n)" % disease_doid
 	if debug:
 		return query
 	else:
@@ -76,7 +76,7 @@ def has_phenotype(disease, session=session, debug=False):
 	:param debug:
 	:return:
 	"""
-	query = "MATCH (n:phenont_phenotype) where n.name='%s' return count(n)" % disease
+	query = "MATCH (n:phenotypic_feature) where n.name='%s' return count(n)" % disease
 	if debug:
 		return query
 	else:
@@ -105,25 +105,25 @@ def node_name_and_label_in_path(drug, disease, max_path_len=2, debug=False, diso
 	:return: list of lists of name, label tuples
 	"""
 	if disont:
-		#query = "match p=allShortestPaths((s:drug)-[*1..%d]-(t:disont_disease)) "\
+		#query = "match p=allShortestPaths((s:drug)-[*1..%d]-(t:disease)) "\
 		#		"where s.name='%s' and t.name='%s' "\
 		#		"with nodes(p) as ns, range(0,length(nodes(p))-1) as idx "\
 		#		"return [i in idx | [(ns[i]).name, labels(ns[i])[0]] ] as path " % (max_path_len, drug, disease)
-		#query = "match p=(s:drug)-[*1..%d]-(t:disont_disease) " \
+		#query = "match p=(s:drug)-[*1..%d]-(t:disease) " \
 		#		"where s.name='%s' and t.name='%s' " \
 		#		"with nodes(p) as ns, range(0,length(nodes(p))-1) as idx " \
 		#		"return [i in idx | [(ns[i]).name, labels(ns[i])[0]] ] as path " % (max_path_len, drug, disease)
-		query = "match p=(n:drug{name:'%s'})-[]-(:uniprot_protein)-[]-(t)-[*0..%d]-(:disont_disease{name:'%s'}) "\
-				"where t:anatont_anatomy or t:reactome_pathway "\
+		query = "match p=(n:drug{name:'%s'})-[]-(:protein)-[]-(t)-[*0..%d]-(:disease{name:'%s'}) "\
+				"where t:anatomical_entity or t:pathway "\
 				"with nodes(p) as ns, range(0,length(nodes(p))-1) as idx " \
 				"return [i in idx | [(ns[i]).name, labels(ns[i])[1]] ] as path " % (drug, max_path_len, disease)
 	else:
-		#query = "match p=allShortestPaths((s:drug)-[*1..%d]-(t:phenont_phenotype)) "\
+		#query = "match p=allShortestPaths((s:drug)-[*1..%d]-(t:phenotypic_feature)) "\
 		#		"where s.name='%s' and t.name='%s' "\
 		#		"with nodes(p) as ns, range(0,length(nodes(p))-1) as idx "\
 		#		"return [i in idx | [(ns[i]).name, labels(ns[i])[0]] ] as path " % (max_path_len, drug, disease)
-		query = "match p=(n:drug{name:'%s'})-[]-(:uniprot_protein)-[]-(t)-[*0..%d]-(:phenont_phenotype{name:'%s'}) " \
-				"where t:anatont_anatomy or t:reactome_pathway " \
+		query = "match p=(n:drug{name:'%s'})-[]-(:protein)-[]-(t)-[*0..%d]-(:phenotypic_feature{name:'%s'}) " \
+				"where t:anatomical_entity or t:pathway " \
 				"with nodes(p) as ns, range(0,length(nodes(p))-1) as idx " \
 				"return [i in idx | [(ns[i]).name, labels(ns[i])[1]] ] as path " % (drug, max_path_len, disease)
 	if debug:
@@ -148,12 +148,12 @@ def look_for_pathway_and_anat(paths):
 		for tup in path:
 			labels_set.add(tup[1])
 		num_labels.append(len(labels_set))
-		if 'uniprot_protein' in labels_set:
-			if 'reactome_pathway' in labels_set:
+		if 'protein' in labels_set:
+			if 'pathway' in labels_set:
 				has_prot_and_path.append(True)
 			else:
 				has_prot_and_path.append(False)
-			if 'anatont_anatomy' in labels_set:
+			if 'anatomical_entity' in labels_set:
 				has_prot_and_anat.append(True)
 			else:
 				has_prot_and_anat.append(False)
@@ -182,10 +182,10 @@ def delete_paths_through_other_drugs_diseases(paths, drug, disease):
 			if node[1] == 'drug' and node[0] != drug:
 				to_include = False  # don't include if you find another drug in the path
 			if is_disont:
-				if node[1] == 'disont_disease' and node[0] != disease:
+				if node[1] == 'disease' and node[0] != disease:
 					to_include = False  # don't include if you find another disease in the path (and looking at disont)
 			if not is_disont:
-				if node[1] == 'disont_disease':
+				if node[1] == 'disease':
 					to_include = False  # if looking at phenotype, don't include paths with disont in it
 		if to_include:
 			good_paths.append(path)
@@ -251,7 +251,7 @@ def anatomy_name_to_description(anatomy_name, session=session, debug=False):
 	:param debug: just return the query
 	:return: a string (the description of the node)
 	"""
-	query = "match (n:anatont_anatomy{name:'%s'}) return n.description" % anatomy_name
+	query = "match (n:anatomical_entity{name:'%s'}) return n.description" % anatomy_name
 	if debug:
 		return query
 	res = session.run(query)
@@ -270,7 +270,7 @@ def protein_name_to_description(protein_name, session=session, debug=False):
 	:param debug: just return the query
 	:return: a string (the description of the node)
 	"""
-	query = "match (n:uniprot_protein{name:'%s'}) return n.description" % protein_name
+	query = "match (n:protein{name:'%s'}) return n.description" % protein_name
 	if debug:
 		return query
 	res = session.run(query)
@@ -290,18 +290,18 @@ def connect_to_pathway(path, pathway_near_intersection_names):
 	"""
 	proteins = []
 	for node in path:
-		if node[1] == "uniprot_protein":
+		if node[1] == "protein":
 			proteins.append(node[0])
 	if len(proteins) == 1:
 		pathway_distances = []
 		for pathway in pathway_near_intersection_names:
-			path_dist = get_path_length("uniprot_protein", proteins[0], "reactome_pathway", pathway)
+			path_dist = get_path_length("protein", proteins[0], "pathway", pathway)
 			pathway_distances.append((pathway, path_dist))
 	else:
 		pathway_distances = []
 		for pathway in pathway_near_intersection_names:
-			path_dist = get_intermediate_path_length("uniprot_protein", proteins[0], "reactome_pathway", pathway,
-													"uniprot_protein", proteins[1])
+			path_dist = get_intermediate_path_length("protein", proteins[0], "pathway", pathway,
+													"protein", proteins[1])
 			pathway_distances.append((pathway, path_dist))
 	# pick the smallest
 	if pathway_distances:
@@ -320,7 +320,7 @@ def pathway_name_to_description(pathway_name, session=session, debug=False):
 	:param debug: just return the query
 	:return: string (pathway node description)
 	"""
-	query = "match (n:reactome_pathway{name:'%s'}) return n.description" % pathway_name
+	query = "match (n:pathway{name:'%s'}) return n.description" % pathway_name
 	if debug:
 		return query
 	res = session.run(query)
@@ -341,7 +341,7 @@ def prioritize_on_gd(found_anat_names, disease_description):
 	"""
 	anat_name_google_distance = []
 	for anat in found_anat_names:
-		query = "match (n:anatont_anatomy{name:'%s'}) return n.description" % anat
+		query = "match (n:anatomical_entity{name:'%s'}) return n.description" % anat
 		res = session.run(query)
 		res = [i for i in res]
 		if res:
@@ -375,34 +375,34 @@ def get_proteins_in_both(paths, pathway_indicies, anat_indicies):
 	pathway and anatomy paths (but for completeness, why not include them all?)
 	:param paths: a list of paths
 	:param pathway_indicies: a list of ints (paths[index] has a reactome pathway in it)
-	:param anat_indicies: a list of ints (paths[index] has a anatont_anatomy in it)
+	:param anat_indicies: a list of ints (paths[index] has a anatomical_entity in it)
 	:return: a list of proteins in both, and a list of anatomy node names found
 	"""
 	found_path_names = set()
 	for index in pathway_indicies:
 		path = paths[index]
 		for node in path:
-			if node[1] == 'reactome_pathway':
+			if node[1] == 'pathway':
 				found_path_names.add(node[0])
 	# Get the names of the found anatomy entities
 	found_anat_names = set()
 	for index in anat_indicies:
 		path = paths[index]
 		for node in path:
-			if node[1] == 'anatont_anatomy':
+			if node[1] == 'anatomical_entity':
 				found_anat_names.add(node[0])
 	# get the proteins in the pathway and anat paths
 	proteins_in_pathway = set()
 	for index in pathway_indicies:
 		path = paths[index]
 		for node in path:
-			if node[1] == "uniprot_protein":
+			if node[1] == "protein":
 				proteins_in_pathway.add(node[0])
 	proteins_in_anat = set()
 	for index in anat_indicies:
 		path = paths[index]
 		for node in path:
-			if node[1] == "uniprot_protein":
+			if node[1] == "protein":
 				proteins_in_anat.add(node[0])
 	in_both = proteins_in_pathway.intersection(proteins_in_anat)
 	return in_both, found_anat_names
@@ -432,13 +432,13 @@ def print_results(path, pathway_near_intersection_names, best_anat, gd_max, drug
 	path_proteins = []
 	anatomy_name = False
 	for node in path:
-		if node[1] == "uniprot_protein":
+		if node[1] == "protein":
 			path_proteins.append(node[0])
-		if node[1] == "anatont_anatomy":
+		if node[1] == "anatomical_entity":
 			anatomy_name = node[0]
 	conf = 1 - best_anat[anatomy_name] / gd_max
 	to_print = "The drug %s " % drug
-	to_print += "targets the protein %s (%s) " % (protein_name_to_description(path_proteins[0]), path_proteins[0])
+	to_print += "directly_interacts_with the protein %s (%s) " % (protein_name_to_description(path_proteins[0]), path_proteins[0])
 
 	if pathway_description:
 		if pathway_set:

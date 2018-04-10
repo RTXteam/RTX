@@ -35,11 +35,11 @@ QueryNCBIeUtils = QueryNCBIeUtils.QueryNCBIeUtils()
 requests_cache.install_cache('orangeboard')
 
 # Connection information for the neo4j server, populated with orangeboard
-driver = GraphDatabase.driver("bolt://rtx.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))
+driver = GraphDatabase.driver("bolt://rtxdev.saramsey.org:7887", auth=basic_auth("neo4j", "precisionmedicine"))
 session = driver.session()
 
 # Connection information for the ipython-cypher package
-connection = "http://neo4j:precisionmedicine@rtx.ncats.io:7473/db/data"
+connection = "http://neo4j:precisionmedicine@rtxdev.saramsey.org:7674/db/data"
 DEFAULT_CONFIGURABLE = {
 	"auto_limit": 0,
 	"style": 'DEFAULT',
@@ -185,10 +185,10 @@ def get_node_property(name, node_property, node_label="", session=session, debug
 def get_node_names_of_type_connected_to_target(source_label, source_name, target_label, max_path_len=4, debug=False, verbose=False, direction="u", session=session):
 	"""
 	This function finds all node names of a certain kind (label) within max_path_len steps of a given source node.
-	This replaces 'get_omims_connecting_to_fixed_doid' by using the source_label=disont_disease, target_label=omim_disease.
-	:param source_label: kind of source node (eg: disont_disease)
+	This replaces 'get_omims_connecting_to_fixed_doid' by using the source_label=disease, target_label=disease.
+	:param source_label: kind of source node (eg: disease)
 	:param source_name: actual name of the source node (eg: DOID:14793)
-	:param target_label: kind of target nodes to look for (eg: omim_disease)
+	:param target_label: kind of target nodes to look for (eg: disease)
 	:param max_path_len: Maximum path length to consider (default =4)
 	:param debug: flag indicating if the query should also be returned
 	:param direction: Which direction to look (u: undirected, f: source->target, r: source<-target
@@ -223,10 +223,10 @@ def get_node_names_of_type_connected_to_target(source_label, source_name, target
 def get_one_hop_target(source_label, source_name, target_label, edge_type, debug=False, verbose=False, direction="u", session=session):
 	"""
 	This function finds all target nodes connected in one hop to a source node (with a given edge type). EG: what proteins does drug X target?
-	:param source_label: kind of source node (eg: disont_disease)
+	:param source_label: kind of source node (eg: disease)
 	:param source_name: actual name of the source node (eg: DOID:14793)
-	:param target_label: kind of target nodes to look for (eg: omim_disease)
-	:param edge_type: Type of edge to be interested in (eg: targets, disease_affects)
+	:param target_label: kind of target nodes to look for (eg: disease)
+	:param edge_type: Type of edge to be interested in (eg: directly_interacts_with, affects)
 	:param debug: flag indicating if the query should also be returned
 	:param direction: Which direction to look (u: undirected, f: source->target, r: source<-target
 	:param session: neo4j server session
@@ -436,7 +436,7 @@ def return_subgraph_through_node_labels(source_node, source_node_label, target_n
 	:param source_node: Source node name (eg. 'naproxen')
 	:param source_node_label:  source node label (eg. 'drug')
 	:param target_node: target node name (eg. 'DOID:8398')
-	:param target_node_label: target node lable (eg. 'disont_disease')
+	:param target_node_label: target node lable (eg. 'disease')
 	:param node_list: list of node labels that all paths must go through
 	:param with_rel: an optional triplet where with_rel[0] is a node label, with_rel[1] is a relationship type,
 	and with_rel[2] is a node label
@@ -566,8 +566,8 @@ def count_nodes_of_type_on_path_of_type_to_label(source_name, source_label, targ
 	:param source_name: source node name
 	:param source_label: source node label
 	:param target_label: target node label
-	:param node_label_list: list of node labels (eg. ['phenont_phenotype'])
-	:param relationship_label_list: list of relationship types (eg. ['phenotype_assoc_with', 'phenotype_assoc_with'])
+	:param node_label_list: list of node labels (eg. ['phenotypic_feature'])
+	:param relationship_label_list: list of relationship types (eg. ['has_phenotype', 'has_phenotype'])
 	:param node_of_interest_position: position of node to count (in this eg, node_of_interest_position = 0)
 	:param debug: just print the cypher query
 	:param session: neo4j session
@@ -598,7 +598,7 @@ def count_nodes_of_type_for_nodes_that_connect_to_label(source_name, source_labe
 	This function will take a source node, get all the target nodes of node_label type that connect to the source via node_label_list
 	and relationship_label list, it then takes each target node, and counts the number of nodes of type node_label_list[node_of_interest] that are connected to the target.
 	An example cypher result is:
-	MATCH (t:disont_disease)-[:phenotype_assoc_with]-(n:phenont_phenotype) WHERE (:disont_disease{name:'DOID:8398'})-[:phenotype_assoc_with]-(:phenont_phenotype)-[:phenotype_assoc_with]-(t:disont_disease) RETURN t.name, count(distinct n.name)
+	MATCH (t:disease)-[:has_phenotype]-(n:phenotypic_feature) WHERE (:disease{name:'DOID:8398'})-[:has_phenotype]-(:phenotypic_feature)-[:has_phenotype]-(t:disease) RETURN t.name, count(distinct n.name)
 	which will return
 	DOID:001	18
 	DOID:002	200
@@ -606,8 +606,8 @@ def count_nodes_of_type_for_nodes_that_connect_to_label(source_name, source_labe
 	:param source_name: source node name
 	:param source_label: source node label
 	:param target_label: target node label
-	:param node_label_list: list of node labels (eg. ['phenont_phenotype'])
-	:param relationship_label_list: list of relationship types (eg. ['phenotype_assoc_with', 'phenotype_assoc_with'])
+	:param node_label_list: list of node labels (eg. ['phenotypic_feature'])
+	:param relationship_label_list: list of relationship types (eg. ['has_phenotype', 'has_phenotype'])
 	:param node_of_interest_position: position of node to count (in this eg, node_of_interest_position = 0)
 	:param debug: just print the cypher query
 	:param session: neo4j session
@@ -771,7 +771,7 @@ def weight_graph_with_google_distance(g):
 				mesh_terms = [names[node]]
 			elif QueryNCBIeUtils.is_mesh_term(descriptions[node]):
 				mesh_terms = [descriptions[node]]
-			elif "anatont_anatomy" in labels[node]:
+			elif "anatomical_entity" in labels[node]:
 				id = names[node]
 				mesh_ids = QueryEBIOLS.get_mesh_id_for_uberon_id(id)
 				mesh_terms = []
@@ -787,10 +787,10 @@ def weight_graph_with_google_distance(g):
 								mesh_terms.extend(mesh_terms_temp)
 						except ValueError:
 							pass
-			elif "omim_disease" in labels[node]:
+			elif "disease" in labels[node]:
 				id = names[node]
 				mesh_terms = QueryNCBIeUtils.get_mesh_terms_for_omim_id(id)
-			elif "disont_disease" in labels[node] or "phenont_phenotype" in labels[node]:
+			elif "disease" in labels[node] or "phenotypic_feature" in labels[node]:
 				# TODO: no way to convert clinvar to mesh yet
 				#description = descriptions[node]
 				#mesh_ids = QueryNCBIeUtils.get_clinvar_uids_for_disease_or_phenotype_string(description)
@@ -798,9 +798,9 @@ def weight_graph_with_google_distance(g):
 				#	mesh_ids = set(list(mesh_ids)[0:300])
 				#mesh_terms = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(mesh_ids)
 				pass
-			elif "uniprot_protein" in labels[node]:
+			elif "protein" in labels[node]:
 				mesh_terms = [QueryNCBIeUtils.get_uniprot_names(names[node])]
-			elif "reactome_pathway" in labels[node]:
+			elif "pathway" in labels[node]:
 				mesh_terms = [QueryNCBIeUtils.get_reactome_names(names[node])]
 			if i == 0:
 				source_mesh_terms = mesh_terms
@@ -1153,23 +1153,23 @@ def refine_omims_Markov_chain(omim_list, doid, max_path_len=3, verbose=False):
 # Tests
 
 def test_get_node_names_of_type_connected_to_target():
-	res = get_node_names_of_type_connected_to_target("disont_disease", "DOID:14793", "uniprot_protein", max_path_len=1, direction="u")
+	res = get_node_names_of_type_connected_to_target("disease", "DOID:14793", "protein", max_path_len=1, direction="u")
 	assert res == ['Q92838']
-	res = get_node_names_of_type_connected_to_target("disont_disease", "DOID:14793", "uniprot_protein", max_path_len=1,direction="f")
+	res = get_node_names_of_type_connected_to_target("disease", "DOID:14793", "protein", max_path_len=1,direction="f")
 	assert res == []
-	res = get_node_names_of_type_connected_to_target("disont_disease", "DOID:14793", "uniprot_protein", max_path_len=1, direction="r")
+	res = get_node_names_of_type_connected_to_target("disease", "DOID:14793", "protein", max_path_len=1, direction="r")
 	assert res == ['Q92838']
-	res = get_node_names_of_type_connected_to_target("disont_disease", "DOID:14793", "omim_disease", max_path_len=2, direction="u")
+	res = get_node_names_of_type_connected_to_target("disease", "DOID:14793", "disease", max_path_len=2, direction="u")
 	assert set(res) == set(['OMIM:305100','OMIM:313500'])
 
 def test_get_node_property():
 	res = get_node_property("DOID:14793", "description")
 	assert res == 'hypohidrotic ectodermal dysplasia'
-	res = get_node_property("DOID:14793", "description", "disont_disease")
+	res = get_node_property("DOID:14793", "description", "disease")
 	assert res == 'hypohidrotic ectodermal dysplasia'
 	res = get_node_property("UBERON:0001259", "description")
 	assert res == 'mucosa of urinary bladder'
-	res = get_node_property("UBERON:0001259", "description", "anatont_anatomy")
+	res = get_node_property("UBERON:0001259", "description", "anatomical_entity")
 	assert res == 'mucosa of urinary bladder'
 	res = get_node_property("DOID:13306", "description")
 	assert res == 'diphtheritic cystitis'
@@ -1180,22 +1180,22 @@ def test_get_node_property():
 
 
 def test_get_one_hop_target():
-	res = get_one_hop_target("disont_disease", "DOID:14793", "uniprot_protein", "gene_assoc_with")
+	res = get_one_hop_target("disease", "DOID:14793", "protein", "associated_with_condition")
 	assert res == ["Q92838"]
-	res = get_one_hop_target("drug", "carbetocin", "uniprot_protein", "targets")
+	res = get_one_hop_target("drug", "carbetocin", "protein", "directly_interacts_with")
 	assert res == ["P30559"]
 
 
 def test_get_relationship_types_between():
-	res = get_relationship_types_between("DOID:0110307","disont_disease","DOID:1798","disont_disease",max_path_len=5)
-	known_result = [(['is_parent_of', 'phenotype_assoc_with', 'phenotype_assoc_with'], 40), (['is_parent_of', 'gene_assoc_with', 'gene_assoc_with'], 2)]
+	res = get_relationship_types_between("DOID:0110307","disease","DOID:1798","disease",max_path_len=5)
+	known_result = [(['subset_of', 'has_phenotype', 'has_phenotype'], 40), (['subset_of', 'associated_with_condition', 'associated_with_condition'], 2)]
 	for tup in res:
 		assert tup in known_result
 	for tup in known_result:
 		assert tup in res
 
-	res = get_relationship_types_between("benzilonium","drug","DOID:14325","disont_disease",max_path_len=5)
-	known_result = [(['targets', 'controls_state_change_of', 'gene_assoc_with', 'is_parent_of'], 10), (['targets', 'controls_expression_of', 'gene_assoc_with', 'is_parent_of'], 7)]
+	res = get_relationship_types_between("benzilonium","drug","DOID:14325","disease",max_path_len=5)
+	known_result = [(['directly_interacts_with', 'regulates', 'associated_with_condition', 'subset_of'], 10), (['directly_interacts_with', 'regulates', 'associated_with_condition', 'subset_of'], 7)]
 	for tup in res:
 		assert tup in known_result
 	for tup in known_result:
@@ -1203,7 +1203,7 @@ def test_get_relationship_types_between():
 
 
 def test_get_graph():
-	query = 'match p=(s:disont_disease{name:"DOID:14325"})-[*1..3]-(t:drug) return p limit 10'
+	query = 'match p=(s:disease{name:"DOID:14325"})-[*1..3]-(t:drug) return p limit 10'
 	res = cypher.run(query, conn=connection, config=defaults)
 	graph = get_graph(res)
 	nodes = set(['138403', '148895', '140062', '140090', '139899', '140317', '138536', '121114', '138632', '147613', '140300', '140008', '140423'])
@@ -1213,8 +1213,8 @@ def test_get_graph():
 
 
 def test_return_subgraph_through_node_labels():
-	g = return_subgraph_through_node_labels('naproxen', 'drug', 'UBERON:0001474', 'anatont_anatomy',
-										['uniprot_protein'], directed=False)
+	g = return_subgraph_through_node_labels('naproxen', 'drug', 'UBERON:0001474', 'anatomical_entity',
+										['protein'], directed=False)
 	nodes = dict()
 	for v, data in g.nodes(data=True):
 		nodes[v] = data
@@ -1225,8 +1225,8 @@ def test_return_subgraph_through_node_labels():
 
 
 def test_weight_graph_with_google_distance():
-	g = return_subgraph_through_node_labels('naproxen', 'drug', 'UBERON:0001474', 'anatont_anatomy',
-											['uniprot_protein'], directed=False)
+	g = return_subgraph_through_node_labels('naproxen', 'drug', 'UBERON:0001474', 'anatomical_entity',
+											['protein'], directed=False)
 	for u, v, k, data in g.edges(data=True, keys=True):
 		assert 'gd_weight' not in data
 	weight_graph_with_google_distance(g)
@@ -1238,8 +1238,8 @@ def test_weight_graph_with_google_distance():
 
 
 def test_get_top_shortest_paths():
-	g = return_subgraph_through_node_labels('naproxen', 'drug', 'UBERON:0001474', 'anatont_anatomy',
-											['uniprot_protein'], directed=False)
+	g = return_subgraph_through_node_labels('naproxen', 'drug', 'UBERON:0001474', 'anatomical_entity',
+											['protein'], directed=False)
 	node_paths, edge_paths, lengths = get_top_shortest_paths(g, 'naproxen', 'UBERON:0001474', 1)
 	for path in node_paths:
 		assert 'naproxen' == path[0]['names']

@@ -328,9 +328,9 @@ class QuestionTranslator:
 				res = node_labels[i]
 		if res is None:
 			if query == "gene":
-				res = "uniprot_protein"
+				res = "protein"
 			if query == "condit":
-				res = "omim_disease"
+				res = "disease"
 		# TODO: Arnab's UMLS lookup for synonyms
 		return res
 
@@ -405,7 +405,7 @@ class QuestionTranslator:
 			for i in range(len(question_tokenized) - block_size + 1):
 				block = " ".join(question_tokenized[i:(i + block_size)])
 				blocks.append(block)
-		blocks = list(reversed(blocks))  # go bigger to smaller since "is_assoc_with" \subst "gene_assoc_with" after stopword deletion
+		blocks = list(reversed(blocks))  # go bigger to smaller since "is_assoc_with" \subst "associated_with_condition" after stopword deletion
 
 		# for each block, look for the associated terms in a greedy fashion
 		##########################################################
@@ -432,11 +432,11 @@ class QuestionTranslator:
 			node_label = "-1"
 			for i in range(len(candidate_node_labels)):
 				temp_label = candidate_node_labels[i]
-				if temp_label == "disont_disease" or temp_label == "omim_disease":
+				if temp_label == "disease" or temp_label == "disease":
 					node_label = temp_label
 					disease_name = candidate_node_names[i]
 
-			if node_label != "disont_disease" and node_label != "omim_disease":
+			if node_label != "disease" and node_label != "disease":
 				error_message = "This question requires a disease name, I got a %s with the name %s" % (
 				node_label, disease_name)
 				# raise Exception(error_message)
@@ -453,7 +453,7 @@ class QuestionTranslator:
 				return results_dict
 
 		#######################################################################
-		# Q3: What are the protein targets of naproxen?
+		# Q3: What are the protein directly_interacts_with of naproxen?
 		#######################################################################
 		elif corpus_index == 3:  # Q3
 			# Greedy look for drug name TODO: in the future, may need to disambiguate terms like I did for other Q's
@@ -517,17 +517,17 @@ class QuestionTranslator:
 				candidate_node_labels.append(node_label)
 
 			# Check if a drug and a disease were named
-			if "drug" not in candidate_node_labels or "disont_disease" not in candidate_node_labels:
+			if "drug" not in candidate_node_labels or "disease" not in candidate_node_labels:
 				error_message = "Sorry, I was unable to find the appropriate terms to answer your question. Missing term(s):\n"
 				if "drug" not in candidate_node_labels:
 					error_message += "A pharos drug name (eg. acetaminophen, glycamil, tranilast, etc.)"
-				if "disont_disease" not in candidate_node_labels:
+				if "disease" not in candidate_node_labels:
 					error_message += "A disease (eg. diphtheritic cystitis, pancreatic endocrine carcinoma, malaria, clear cell sarcoma, etc.)"
 				for i in range(len(candidate_node_labels)):
 					label = candidate_node_labels[i]
 					if label == "drug":
 						drug_name = candidate_node_names[i]
-					if label == "disont_disease":
+					if label == "disease":
 						disease_name = candidate_node_names[i]
 				results_dict["corpus_index"] = corpus_index
 				results_dict["terms"] = {"drug_name": drug_name, "disease_name": disease_name}
@@ -558,7 +558,7 @@ class QuestionTranslator:
 				if label == "drug":
 					num_drug += 1
 					drug_loc.append(i)
-				if label == "disont_disease":
+				if label == "disease":
 					num_disease += 1
 					disease_loc.append(i)
 
@@ -614,11 +614,11 @@ class QuestionTranslator:
 			node_label = "-1"
 			for i in range(len(candidate_node_labels)):
 				temp_label = candidate_node_labels[i]
-				if temp_label == "disont_disease":
+				if temp_label == "disease":
 					node_label = temp_label
 					disease_name = candidate_node_names[i]
 
-			if node_label != "disont_disease":
+			if node_label != "disease":
 				error_message = "This question requires a disease name, I got a %s with the name %s" %(node_label, disease_name)
 				#raise Exception(error_message)
 				results_dict["corpus_index"] = corpus_index
@@ -832,14 +832,14 @@ def test_find_question_parameters():
 	assert res["terms"] == ['OMIM:602485']
 
 	# Q3 tests
-	question = "what are the protein targets of acetaminophen?"
+	question = "what are the protein directly_interacts_with of acetaminophen?"
 	results_dict = txltr.find_question_parameters(question)
 	source_name = results_dict["terms"]["source_name"]
 	target_label = results_dict["terms"]["target_label"]
 	relationship_type = results_dict["terms"]["relationship_type"]
 	assert source_name == "acetaminophen"
-	assert target_label == "uniprot_protein"
-	assert relationship_type == "targets"
+	assert target_label == "protein"
+	assert relationship_type == "directly_interacts_with"
 
 	question = "what proteins does acetaminophen target"
 	results_dict = txltr.find_question_parameters(question)
@@ -847,8 +847,8 @@ def test_find_question_parameters():
 	target_label = results_dict["terms"]["target_label"]
 	relationship_type = results_dict["terms"]["relationship_type"]
 	assert source_name == "acetaminophen"
-	assert target_label == "uniprot_protein"
-	assert relationship_type == "targets"
+	assert target_label == "protein"
+	assert relationship_type == "directly_interacts_with"
 
 	question = "what are the phenotypes associated with malaria?"
 	results_dict = txltr.find_question_parameters(question)
@@ -856,8 +856,8 @@ def test_find_question_parameters():
 	target_label = results_dict["terms"]["target_label"]
 	relationship_type = results_dict["terms"]["relationship_type"]
 	assert source_name == "DOID:12365"
-	assert target_label == "phenont_phenotype"
-	assert relationship_type == "phenotype_assoc_with"
+	assert target_label == "phenotypic_feature"
+	assert relationship_type == "has_phenotype"
 
 	question = "what proteins are members of Aflatoxin activation and detoxification"
 	results_dict = txltr.find_question_parameters(question)
@@ -865,8 +865,8 @@ def test_find_question_parameters():
 	target_label = results_dict["terms"]["target_label"]
 	relationship_type = results_dict["terms"]["relationship_type"]
 	assert source_name == "R-HSA-5423646"
-	assert target_label == "uniprot_protein"
-	assert relationship_type == "is_member_of"
+	assert target_label == "protein"
+	assert relationship_type == "participates_in"
 
 	question = "MIR4426 controls the expression of which proteins?"
 	results_dict = txltr.find_question_parameters(question)
@@ -874,8 +874,8 @@ def test_find_question_parameters():
 	target_label = results_dict["terms"]["target_label"]
 	relationship_type = results_dict["terms"]["relationship_type"]
 	assert source_name == "NCBIGene:100616345"
-	assert target_label == "uniprot_protein"
-	assert relationship_type == "controls_expression_of"
+	assert target_label == "protein"
+	assert relationship_type == "regulates"
 
 	# Q2 tests
 	question = "What is the clinical outcome pathway of physostigmine for treatment of glaucoma"

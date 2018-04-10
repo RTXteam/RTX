@@ -86,8 +86,8 @@ def main():
 	parser = argparse.ArgumentParser(description="Answers questions of the type 'What X involve similar Y as Z?'.",
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 	parser.add_argument('-s', '--source', type=str, help="source node name (or other name of node in the KG)", default="DOID:8398")
-	parser.add_argument('-t', '--target', type=str, help="target node type", default="disont_disease")
-	parser.add_argument('-a', '--association', type=str, help="association node type", default="phenont_phenotype")
+	parser.add_argument('-t', '--target', type=str, help="target node type", default="disease")
+	parser.add_argument('-a', '--association', type=str, help="association node type", default="phenotypic_feature")
 	parser.add_argument('-j', '--json', action='store_true', help='Flag specifying that results should be printed in JSON format (to stdout)', default=False)
 	parser.add_argument('--describe', action='store_true', help='Print a description of the question to stdout and quit', default=False)
 	parser.add_argument('--threshold', type=float, help='Jaccard index threshold (only report other diseases above this)', default=0.2)

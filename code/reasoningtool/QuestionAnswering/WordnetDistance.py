@@ -177,7 +177,7 @@ def test_find_corpus():
 	]
 
 	# Question 4
-	question = "what are the protein targets of ibuprofen"
+	question = "what are the protein directly_interacts_with of ibuprofen"
 	res = find_corpus(question, [Q0_corpus, Q1_corpus, Q2_corpus, Q4_corpus])
 	assert res[0] == 3
 
@@ -185,7 +185,7 @@ def test_find_corpus():
 	res = find_corpus(question, [Q0_corpus, Q1_corpus, Q2_corpus, Q4_corpus])
 	assert res[0] == 3
 
-	question = "ibuprofen targets what proteins"
+	question = "ibuprofen directly_interacts_with what proteins"
 	res = find_corpus(question, [Q0_corpus, Q1_corpus, Q2_corpus, Q4_corpus])
 	assert res[0] == 3
 

@@ -173,7 +173,7 @@ def main():
 			 "What diseases are similar to malaria?",
 			 "what diseases are associated with naproxen",
 			 "what phenotypes are associated with naproxen",
-			 "what drugs have similar protein targets to ibuprofen",
+			 "what drugs have similar protein directly_interacts_with to ibuprofen",
 			 ]
 	for text in texts:
 		question = {"language": "English", "text": text}
@@ -184,7 +184,7 @@ def main():
 		print("=====")
 
 	# Example of how to get the query string
-	text = "What are the protein targets of naproxen"
+	text = "What are the protein directly_interacts_with of naproxen"
 	print("Getting execution string for: %s" % text)
 	question = {"language": "English", "text": text}
 	res = p.format_response(question)
@@ -223,8 +223,8 @@ def tests():
 	q, params, error_message, error_code = txltr.parse_question(question)
 	assert error_message is None
 	assert q.solution_script.template.split()[0] == "SimilarityQuestionSolution.py"
-	assert "disont_disease" in params
-	assert params["disont_disease"] == "DOID:12365"
+	assert "disease" in params
+	assert params["disease"] == "DOID:12365"
 	res = txltr.format_response({"language": "English", "text": question})
 	assert "error_message" not in res
 	assert 'terms' in res
@@ -235,8 +235,8 @@ def tests():
 	q, params, error_message, error_code = txltr.parse_question(question)
 	assert error_message is None
 	assert q.solution_script.template.split()[0] == "SimilarityQuestionSolution.py"
-	assert "disont_disease" in params
-	assert params["disont_disease"] == "DOID:14069"
+	assert "disease" in params
+	assert params["disease"] == "DOID:14069"
 	res = txltr.format_response({"language": "English", "text": question})
 	assert "error_message" not in res
 	assert 'terms' in res
@@ -250,10 +250,10 @@ def tests():
 	q, params, error_message, error_code = txltr.parse_question(question)
 	assert error_message is None
 	assert q.solution_script.template.split()[0] == "SimilarityQuestionSolution.py"
-	assert "disont_disease" in params
-	assert params["disont_disease"] == "DOID:8398"
-	assert params["association"] == "uniprot_protein"
-	assert params["target"] == "pharos_drug"
+	assert "disease" in params
+	assert params["disease"] == "DOID:8398"
+	assert params["association"] == "protein"
+	assert params["target"] == "chemical_substance"
 	res = txltr.format_response({"language": "English", "text": question})
 	assert "error_message" not in res
 	assert 'terms' in res
@@ -265,13 +265,13 @@ def tests():
 
 
 	# Test the exectution string function
-	text = "What are the protein targets of naproxen"
+	text = "What are the protein directly_interacts_with of naproxen"
 	question = {"language": "English", "text": text}
 	res = txltr.format_response(question)
 	known_query_type_id = res['known_query_type_id']
 	parameters = res['terms']
 	execution_string = txltr.get_execution_string(known_query_type_id, parameters)
-	assert execution_string == "Q3Solution.py -s 'naproxen' -t 'uniprot_protein' -r 'targets' -j"
+	assert execution_string == "Q3Solution.py -s 'naproxen' -t 'protein' -r 'directly_interacts_with' -j"
 
 	return
 	######################################################################

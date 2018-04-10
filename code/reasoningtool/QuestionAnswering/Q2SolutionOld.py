@@ -86,7 +86,7 @@ def answerQ2(drug, disease_description):
 		path_names = set([node[0] for node in path])
 		if path_names.intersection(proteins_in_both):
 			for node in path:
-				if node[1] == "reactome_pathway":
+				if node[1] == "pathway":
 					pathway_near_intersection_names.add(node[0])
 			pathway_near_intersection_indices.append(index)
 
@@ -113,7 +113,7 @@ def answerQ2(drug, disease_description):
 	best_anat_probs = dict()
 	for path in paths:
 		for node in path:
-			if node[1] == "anatont_anatomy":
+			if node[1] == "anatomical_entity":
 				if node[0] in best_anat.keys():
 					best_anat_paths.append(path)
 					best_anat_probs[tuple(path)] = best_anat[node[0]]

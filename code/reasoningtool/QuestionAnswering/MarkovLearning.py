@@ -7,11 +7,11 @@ import Q1Utils
 
 
 # Connection information for the neo4j server
-driver = GraphDatabase.driver("bolt://rtx.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))
+driver = GraphDatabase.driver("bolt://rtxdev.saramsey.org:7887", auth=basic_auth("neo4j", "precisionmedicine"))
 session = driver.session()
 
 # Connection information for the ipython-cypher package
-connection = "http://neo4j:precisionmedicine@rtx.ncats.io:7473/db/data"
+connection = "http://neo4j:precisionmedicine@rtxdev.saramsey.org:7674/db/data"
 DEFAULT_CONFIGURABLE = {
 	"auto_limit": 0,
 	"style": 'DEFAULT',
@@ -159,23 +159,23 @@ def test():
 	paths_dict = dict()
 	omim = "test"
 	paths_dict[omim] = ([['OMIM:249100',
-	'disease_affects',
+	'affects',
 	'O15553',
-	'is_member_of',
+	'participates_in',
 	'R-HSA-168643',
-	'is_member_of',
+	'participates_in',
 	'P01584',
-	'gene_assoc_with',
+	'associated_with_condition',
 	'DOID:2841']],
-	[['omim_disease',
-	'disease_affects',
-	'uniprot_protein',
-	'is_member_of',
-	'reactome_pathway',
-	'is_member_of',
-	'uniprot_protein',
-	'gene_assoc_with',
-	'disont_disease']])
+	[['disease',
+	'affects',
+	'protein',
+	'participates_in',
+	'pathway',
+	'participates_in',
+	'protein',
+	'associated_with_condition',
+	'disease']])
 
 	state_space, quad_to_matrix_index = initialize_Markov_chain(connection, config)
 	trained = train(state_space, quad_to_matrix_index, paths_dict, type='L')
