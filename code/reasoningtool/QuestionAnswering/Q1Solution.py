@@ -183,7 +183,8 @@ def answerQ1(doid, directed=True, max_path_len=3, verbose=False, use_json=False)
 			return
 
 	# Getting nearby genetic diseases
-	omims = Q1Utils.get_omims_connecting_to_fixed_doid(doid, directed=directed, max_path_len=max_path_len, verbose=verbose)
+	#omims = Q1Utils.get_omims_connecting_to_fixed_doid(doid, directed=directed, max_path_len=max_path_len, verbose=verbose)
+	omims = RU.get_node_names_of_type_connected_to_target('disease', doid, 'disease', max_path_len=max_path_len, verbose=verbose, is_omim=True)
 
 	if not omims:
 		if verbose and not use_json:
@@ -193,7 +194,8 @@ def answerQ1(doid, directed=True, max_path_len=3, verbose=False, use_json=False)
 	# NOTE: the following three can be mixed and matched in any order you please
 
 	# get the ones that are nearby according to a random walk between source and target node
-	omims = Q1Utils.refine_omims_graph_distance(omims, doid, directed=directed, max_path_len=max_path_len, verbose=verbose)
+	#omims = Q1Utils.refine_omims_graph_distance(omims, doid, directed=directed, max_path_len=max_path_len, verbose=verbose)
+	omims = RU.refine_omims_graph_distance(omims, 'disease', doid, 'disease', directed=False, max_path_len=max_path_len, verbose=verbose)
 
 	# get the ones that have high probability according to a Markov chain model
 	omims, paths_dict, prob_dict = Q1Utils.refine_omims_Markov_chain(omims, doid, max_path_len=max_path_len, verbose=verbose)

@@ -182,7 +182,7 @@ def get_node_property(name, node_property, node_label="", session=session, debug
 
 
 # Get node names in paths between two fixed endpoints
-def get_node_names_of_type_connected_to_target(source_label, source_name, target_label, max_path_len=4, debug=False, verbose=False, direction="u", session=session):
+def get_node_names_of_type_connected_to_target(source_label, source_name, target_label, max_path_len=4, debug=False, verbose=False, direction="u", session=session, is_omim=False):
 	"""
 	This function finds all node names of a certain kind (label) within max_path_len steps of a given source node.
 	This replaces 'get_omims_connecting_to_fixed_doid' by using the source_label=disease, target_label=disease.
@@ -195,7 +195,11 @@ def get_node_names_of_type_connected_to_target(source_label, source_name, target
 	:param session: neo4j server session
 	:return: list of omim ID's
 	"""
-	if direction == "r":
+	if is_omim:
+		query = "MATCH path=shortestPath((t:%s)-[*1..%d]-(s:%s))" \
+				" WHERE s.name='%s' AND t<>s AND t.name=~'OMIM:.*' WITH distinct nodes(path)[0] as p RETURN p.name" % (
+				target_label, max_path_len, source_label, source_name)
+	elif direction == "r":
 		query = "MATCH path=shortestPath((t:%s)-[*1..%d]->(s:%s))" \
 				" WHERE s.name='%s' AND t<>s WITH distinct nodes(path)[0] as p RETURN p.name" % (target_label, max_path_len, source_label, source_name)
 	elif direction == "f":
@@ -1009,7 +1013,7 @@ def display_results_str(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disea
 	return to_print
 
 
-def refine_omims_graph_distance(omims, doid, directed=False, max_path_len=3, verbose=False):
+def refine_omims_graph_distance(source_names, source_label, target_name, target_label, directed=False, max_path_len=3, verbose=False):
 	"""
 	take an omim list and subset it to consist of those that have low expected graph distance (according to
 	a random walk
@@ -1023,15 +1027,15 @@ def refine_omims_graph_distance(omims, doid, directed=False, max_path_len=3, ver
 	# Computing expected graph distance
 	exp_graph_distance_s_t = []  # source to target
 	exp_graph_distance_t_s = []  # target to source
-	for omim in omims:
-		o_to_do, d_to_o = expected_graph_distance(omim, doid, directed=directed, max_path_len=max_path_len)
+	for source_name in source_names:
+		o_to_do, d_to_o = expected_graph_distance(source_name, source_label, target_name, target_label, directed=directed, max_path_len=max_path_len)
 		exp_graph_distance_s_t.append(o_to_do)
 		exp_graph_distance_t_s.append(d_to_o)
 	s_t_np = np.array(exp_graph_distance_s_t)  # convert to numpy array, source to target
 	# prioritize short paths
 	omim_exp_distances = list()
-	for i in range(len(omims)):
-		omim_exp_distances.append((omims[i], s_t_np[i]))
+	for i in range(len(source_names)):
+		omim_exp_distances.append((source_names[i], s_t_np[i]))
 	# Selecting relevant genetic diseases
 	# get the non-zero, non-inf graph distance OMIMS, select those that are close to the median, sort them, store them
 	non_zero_distances = s_t_np[np.where((s_t_np > 0) & (s_t_np < float("inf")))]
@@ -1046,7 +1050,7 @@ def refine_omims_graph_distance(omims, doid, directed=False, max_path_len=3, ver
 		to_select = np.where(s_t_np >= distance_median)[0]
 	prioritized_omims_and_dist = list()
 	for index in to_select:
-		prioritized_omims_and_dist.append((omims[index], s_t_np[index]))
+		prioritized_omims_and_dist.append((source_names[index], s_t_np[index]))
 	prioritized_omims_and_dist_sorted = sorted(prioritized_omims_and_dist, key=lambda tup: tup[1])
 	prioritized_omims = list()
 	for omim, dist in prioritized_omims_and_dist_sorted:

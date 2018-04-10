@@ -79,6 +79,8 @@ def get_omims_connecting_to_fixed_doid(doid, max_path_len=4, debug=False, verbos
 	else:
 		query = "MATCH path=allShortestPaths((s:disease)-[*1..%d]-(t:disease))" \
 				" WHERE t.name='%s' WITH distinct nodes(path)[0] as p RETURN p.name" %(max_path_len, doid)
+	if debug:
+		return query
 	result = session.run(query)
 	result_list = [i for i in result]
 	names = [i['p.name'] for i in result_list]
@@ -141,7 +143,7 @@ def get_graph(res, directed=True):
 
 # since multiple paths can connect two nodes, treat it as a Markov chain and compute the expected path length
 # connecting the source omim and the target doid
-def expected_graph_distance(omim, doid, max_path_len=4, directed=True, connection=connection, defaults=defaults):
+def expected_graph_distance(omim, doid, max_path_len=4, directed=False, connection=connection, defaults=defaults, debug=False):
 	"""
 	Given a source omim and target doid, extract the subgraph from neo4j consisting of all paths connecting these
 	two nodes. Treat this as a uniform Markov chain (all outgoing edges with equal weight) and calculate the expected
@@ -164,6 +166,8 @@ def expected_graph_distance(omim, doid, max_path_len=4, directed=True, connectio
 		query = "MATCH path=allShortestPaths((s:disease)-[*1..%d]-(t:disease)) " \
 				"WHERE s.name='%s' AND t.name='%s' " \
 				"RETURN path" % (max_path_len, omim, doid)
+	if debug:
+		return query
 	res = cypher.run(query, conn=connection, config=defaults)
 	graph = get_graph(res, directed=directed)  # Note: I may want to make this directed, but sometimes this means no path from OMIM
 	mat = nx.to_numpy_matrix(graph)  # get the indidence matrix
