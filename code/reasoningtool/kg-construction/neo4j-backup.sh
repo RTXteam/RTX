@@ -24,6 +24,8 @@ set -e
 
 file=`date '+%m%d%y-%H%M%S'`
 
+wall Neo4j will be shut down
+
 echo 'shut down Neo4j ...'
 service neo4j stop
 
