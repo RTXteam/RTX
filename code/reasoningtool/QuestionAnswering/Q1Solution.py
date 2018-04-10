@@ -9,6 +9,8 @@ try:
 except ImportError:
 	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../kg-construction')))  # Go up one level and look for it
 	import QueryNCBIeUtils
+QueryNCBIeUtils =QueryNCBIeUtils.QueryNCBIeUtils()
+import Q1Utils
 import argparse
 import sys
 import json

@@ -14,6 +14,8 @@ except ImportError:
 	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../kg-construction')))  # Go up one level and look for it
 	import QueryNCBIeUtils
 
+QueryNCBIeUtils =QueryNCBIeUtils.QueryNCBIeUtils()
+
 import FormatOutput
 import networkx as nx
 
@@ -71,7 +73,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 	# TODO: could dynamically get the terminal node label as some are (drug, phenotype) pairs
 	# get the relevant subgraph between the source and target nodes
 	try:  # First look for COP's where the gene is associated to the disease
-		g = RU.return_subgraph_through_node_labels(drug_name, 'drug', disease_name, 'disont_disease',
+		g = RU.return_subgraph_through_node_labels(drug_name, 'pharos_drug', disease_name, 'disont_disease',
 													['uniprot_protein', 'anatont_anatomy', 'phenont_phenotype'],
 													with_rel=['uniprot_protein', 'gene_assoc_with', 'disont_disease'],
 													directed=False)
@@ -245,8 +247,8 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 def main():
 	parser = argparse.ArgumentParser(description="Runs the reasoning tool on Question 2",
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-	parser.add_argument('-r', '--drug', type=str, help="Input drug (name in the graph, eg. 'naproxen')")
-	parser.add_argument('-d', '--disease', type=str, help="Input disease (Identifier in the graph, eg 'DOID:8398')")
+	parser.add_argument('-r', '--drug', type=str, help="Input drug (name in the graph, eg. 'naproxen')", default='naproxen')
+	parser.add_argument('-d', '--disease', type=str, help="Input disease (Identifier in the graph, eg 'DOID:8398')", default='DOID:8398')
 	parser.add_argument('-a', '--all', action="store_true", help="Flag indicating you want to run it on all Q2 drugs + diseases",
 						default=False)
 	parser.add_argument('-k', '--kpaths', type=int, help="Number of paths to return.", default=10)

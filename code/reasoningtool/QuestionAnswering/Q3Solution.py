@@ -128,7 +128,10 @@ def main():
 		print(res)
 	else:
 		res = Q.answer(source_name, target_label, relationship_type, use_json)
-		res.print()
+		if use_json:
+			res.print()
+		else:
+			print(res)
 
 
 if __name__ == "__main__":
