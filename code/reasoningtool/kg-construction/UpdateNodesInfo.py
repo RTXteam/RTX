@@ -36,9 +36,9 @@ class Neo4jConnection:
         with self._driver.session() as session:
             return session.write_transaction(self._get_anatomical_nodes)
 
-    def update_anatomical_node(self, n_id, extended_info_json):
+    def update_anatomical_nodes(self, nodes):
         with self._driver.session() as session:
-            return session.write_transaction(self._update_anatomical_node, n_id, extended_info_json)
+            return session.write_transaction(self._update_anatomical_nodes, nodes)
 
     @staticmethod
     def _get_anatomical_nodes(tx):
@@ -46,8 +46,16 @@ class Neo4jConnection:
         return [record["n.name"] for record in result]
 
     @staticmethod
-    def _update_anatomical_node(tx, n_id, extended_info_json):
-        result = tx.run('MATCH (n:anatomical_entity{name:"%s"}) set n.extended_info_json="%s"' % (n_id, extended_info_json))
+    def _update_anatomical_nodes(tx, nodes):
+        result = tx.run(
+            """
+            UNWIND {nodes} AS row
+            WITH row.node_id AS node_id, row.extended_info_json AS extended_info_json
+            MATCH (n:anatomical_entity{name:node_id})
+            SET n.extended_info_json="extended_info_json"
+            """,
+            nodes=nodes,
+        )
         return result
 
 
@@ -61,9 +69,20 @@ def update_anatomy_nodes():
     conn = Neo4jConnection("bolt://localhost:7687", user['username'], user['password'])
     nodes = conn.get_anatomical_nodes()
 
-    for i, node_id in enumerate(nodes):
-        extended_info_json = QueryBioLinkExtended.get_anatomy_entity(node_id)
-        conn.update_anatomical_node(node_id, extended_info_json)
+    from time import time
+    t = time()
+
+    nodes_array = []
+    for node_id in nodes:
+        node = {}
+        node['node_id'] = node_id
+        node['extended_info_json'] = QueryBioLinkExtended.get_anatomy_entity(node_id)
+        nodes_array.append(node)
+
+    print("api pulling time: %f" % (time()-t))
+
+    conn.update_anatomical_nodes(nodes_array)
+    print("total time: %f" % (time()-t))
 
     conn.close()
 
