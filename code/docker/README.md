@@ -33,5 +33,6 @@ The above steps should prepare the RTX POC software to be used with your Docker 
 
 # Running BuildMasterKG.py from the host OS:
 
+    screen
     sudo docker exec -it rtxsteve /usr/bin/sudo -H -u rt bash -c 'cd ~/kg-construction && sh run_build_master_kg.sh'
     
