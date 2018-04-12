@@ -1,8 +1,8 @@
-uniprot_protein
-pharos_drug
-anatont_anatomy
-omim_disease
-disont_disease
-phenont_phenotype
-reactome_pathway
-ncbigene_microrna
+disease
+chemical_substance
+pathway
+anatomical_entity
+microRNA
+protein
+biological_process
+phenotypic_feature

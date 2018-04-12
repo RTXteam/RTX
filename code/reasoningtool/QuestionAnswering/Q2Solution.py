@@ -11,9 +11,10 @@ import CustomExceptions
 try:
 	import QueryNCBIeUtils
 except ImportError:
-	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  # Go up one level and look for it
+	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../kg-construction')))  # Go up one level and look for it
 	import QueryNCBIeUtils
-QueryNCBIeUtils = QueryNCBIeUtils.QueryNCBIeUtils()
+
+QueryNCBIeUtils =QueryNCBIeUtils.QueryNCBIeUtils()
 
 import FormatOutput
 import networkx as nx
@@ -72,18 +73,18 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 	# TODO: could dynamically get the terminal node label as some are (drug, phenotype) pairs
 	# get the relevant subgraph between the source and target nodes
 	try:  # First look for COP's where the gene is associated to the disease
-		g = RU.return_subgraph_through_node_labels(drug_name, 'drug', disease_name, 'disont_disease',
-													['uniprot_protein', 'anatont_anatomy', 'phenont_phenotype'],
-													with_rel=['uniprot_protein', 'gene_assoc_with', 'disont_disease'],
+		g = RU.return_subgraph_through_node_labels(drug_name, 'chemical_substance', disease_name, 'disease',
+													['protein', 'anatomical_entity', 'phenotypic_feature'],
+													with_rel=['protein', 'associated_with_condition', 'disease'],
 													directed=False)
 	except CustomExceptions.EmptyCypherError:
 		try:  # Then look for any sort of COP
-			g = RU.return_subgraph_through_node_labels(drug_name, 'drug', disease_name, 'disont_disease',
-													['uniprot_protein', 'anatont_anatomy', 'phenont_phenotype'],
+			g = RU.return_subgraph_through_node_labels(drug_name, 'chemical_substance', disease_name, 'disease',
+													['protein', 'anatomical_entity', 'phenotypic_feature'],
 													directed=False)
 		except CustomExceptions.EmptyCypherError:
 			try:  # Then look for any sort of connection between source and target
-				g = RU.get_shortest_subgraph_between_nodes(drug_name, 'drug', disease_name, 'disont_disease',
+				g = RU.get_shortest_subgraph_between_nodes(drug_name, 'chemical_substance', disease_name, 'disease',
 															max_path_len=4, limit=50, debug=False, directed=False)
 			except CustomExceptions.EmptyCypherError:
 				error_code = "NoPathsFound"
@@ -91,11 +92,11 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 					error_message = "Sorry, I could not find any paths connecting %s to %s via protein, pathway, "\
 						"tissue, and phenotype. The drug and/or disease may not be one of the entities I know about, or they "\
 						"do not connect via a known pathway, tissue, and phenotype (understudied)" % (
-					drug_name, RU.get_node_property(disease_name, 'description'))
+						RU.get_node_property(drug_name, 'description'), RU.get_node_property(disease_name, 'description'))
 				except:
 					error_message = "Sorry, I could not find any paths connecting %s to %s via protein, pathway, "\
 						"tissue, and phenotype. The drug and/or disease may not be one of the entities I know about, or they "\
-						"do not connect via a known pathway, tissue, and phenotype (understudied)" % (drug_name, disease_name)
+						"do not connect via a known pathway, tissue, and phenotype (understudied)" % (RU.get_node_property(drug_name, 'description'), RU.get_node_property(disease_name, 'description'))
 				if not use_json:
 					print(error_message)
 					return 1
@@ -116,7 +117,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 	proteins_per_path_locations = []
 	for path in node_paths:
 		for i, node in enumerate(path):
-			if "uniprot_protein" in node["labels"]:
+			if "protein" in node["labels"]:
 				proteins_per_path.append(node)
 				proteins_per_path_locations.append(i)
 				break
@@ -124,7 +125,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 	# Connect a reactome pathway to the proteins (only for the first seen protein in each path)
 	pathways_per_path = []
 	for protein in proteins_per_path:
-		pathways = RU.get_one_hop_target('uniprot_protein', protein['names'], 'reactome_pathway', 'is_member_of')
+		pathways = RU.get_one_hop_target('protein', protein['names'], 'pathway', 'participates_in')
 		pathways_per_path.append(pathways)
 
 	# Delete those elements that don't have a reactome pathway
@@ -144,7 +145,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 	max_gd = 10
 	best_pathways_per_path = []
 	best_pathways_per_path_gd = []
-	disease_common_name = RU.get_node_property(disease_name, 'description', node_label='disont_disease')
+	disease_common_name = RU.get_node_property(disease_name, 'description', node_label='disease')
 	for j, pathways in enumerate(pathways_per_path):
 		smallest_gd = np.inf
 		best_pathway = ""
@@ -190,8 +191,8 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 		graph = RU.get_node_as_graph(best_pathway)
 		best_pathway_with_node_data = list(graph.nodes(data=True)).pop()[1]
 		# same for the edge
-		graph = RU.get_shortest_subgraph_between_nodes(proteins_per_path[i]["names"], "uniprot_protein", best_pathway,
-													   "reactome_pathway", max_path_len=1, limit=1, directed=False)
+		graph = RU.get_shortest_subgraph_between_nodes(proteins_per_path[i]["names"], "protein", best_pathway,
+													   "pathway", max_path_len=1, limit=1, directed=False)
 		edge_data = list(graph.edges(data=True)).pop()[2]
 		best_pathway_gd = best_pathways_per_path_gd[i]
 		protein_location = proteins_per_path_locations[i]
@@ -212,9 +213,9 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 			edge_path = edge_paths[path_ind]
 			to_print = ""
 			for node_index in range(len(node_path)):
-				to_print += " " + str(node_path[node_index]['description'])
+				to_print += " (" + str(node_path[node_index]['names']) + "," + str(node_path[node_index]['description']) + ")"
 				if node_index < len(edge_path):
-					to_print += " -" + str(edge_path[node_index]['type']) + "->"
+					to_print += " -[" + str(edge_path[node_index]['type']) + "]-"
 			to_print += ". Distance (smaller is better): %f." % weights[path_ind]
 			print(to_print)
 	else:  # you want the result object model
@@ -246,8 +247,8 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 def main():
 	parser = argparse.ArgumentParser(description="Runs the reasoning tool on Question 2",
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-	parser.add_argument('-r', '--drug', type=str, help="Input drug (name in the graph, eg. 'naproxen')")
-	parser.add_argument('-d', '--disease', type=str, help="Input disease (Identifier in the graph, eg 'DOID:8398')")
+	parser.add_argument('-r', '--drug', type=str, help="Input drug (name in the graph, eg. 'naproxen')", default='CHEMBL154')
+	parser.add_argument('-d', '--disease', type=str, help="Input disease (Identifier in the graph, eg 'DOID:8398')", default='DOID:8398')
 	parser.add_argument('-a', '--all', action="store_true", help="Flag indicating you want to run it on all Q2 drugs + diseases",
 						default=False)
 	parser.add_argument('-k', '--kpaths', type=int, help="Number of paths to return.", default=10)
@@ -272,7 +273,7 @@ def main():
 			print("\n")
 			print((drug, disease_description, disease))
 			print(i)
-			res = answerQ2(drug, disease, k, text=use_json)
+			res = answerQ2(drug, disease, k, use_json)
 	else:
 		res = answerQ2(drug, disease, k, use_json)
 

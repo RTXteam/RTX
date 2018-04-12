@@ -59,6 +59,17 @@ class FormatResponse:
 		response.result_code = code
 		response.message = message
 
+	def add_text(self, plain_text):
+		result1 = Result()
+		result1.id = "http://rtx.ncats.io/api/v1/response/1234/result/2345"  # TODO: eric to change this
+		result1.text = plain_text
+		self._result_list.append(result1)
+		self.response.result_list = self._result_list
+		# Increment the number of results
+		self._num_results += 1
+		self.response.message = "%s result found" % self._num_results
+
+
 	def add_subgraph(self, nodes, edges, plain_text, confidence):
 		"""
 		Populate the object model using networkx neo4j subgraph
@@ -73,12 +84,16 @@ class FormatResponse:
 		node_names = dict()
 		node_labels = dict()
 		node_uuids = dict()
+		node_accessions = dict()
+		node_iris = dict()
 		for u, data in nodes:
 			node_keys.append(u)
-			node_descriptions[u] = data['description']
-			node_names[u] = data['names']
+			node_descriptions[u] = data['properties']['description']
+			node_names[u] = data['properties']['name']
 			node_labels[u] = list(set(data['labels']).difference({'Base'}))[0]
 			node_uuids[u] = data['properties']['UUID']
+			node_accessions[u] = data['properties']['accession']
+			node_iris[u] = data['properties']['iri']
 
 		edge_keys = []
 		edge_types = dict()
@@ -99,9 +114,9 @@ class FormatResponse:
 			node = Node()
 			node.id = node_uuids[node_key]
 			node.type = node_labels[node_key]
-			node.name = node_descriptions[node_key]
-			node.accession = node_names[node_key]
-			node.description = "None (yet)"  # TODO: where to get the common name descriptions? UMLS perhaps?
+			node.name = node_names[node_key]
+			node.accession = node_iris[node_key]
+			node.description = node_descriptions[node_key]
 			node_objects.append(node)
 			node_uuid_to_node_object[node_uuids[node_key]] = node
 
@@ -112,6 +127,8 @@ class FormatResponse:
 			edge.type = edge_types[(u, v)]
 			edge.source_id = node_uuid_to_node_object[edge_source_uuid[(u, v)]].id
 			edge.target_id = node_uuid_to_node_object[edge_target_uuid[(u, v)]].id
+			edge.origin_list = []
+			edge.origin_list.append(edge_source_db[(u, v)])  # TODO: check with eric if this really should be a list and if it should contain the source DB('s)
 			edge_objects.append(edge)
 
 		# Create the result (potential answer)
@@ -137,8 +154,8 @@ class FormatResponse:
 
 if __name__ == '__main__':
 	test = FormatResponse(2)
-	g = RU.return_subgraph_through_node_labels("zopiclone", 'drug', 'DOID:0050433', 'disont_disease',
-											   ['uniprot_protein', 'anatont_anatomy', 'phenont_phenotype'],
+	g = RU.return_subgraph_through_node_labels("zopiclone", 'drug', 'DOID:0050433', 'disease',
+											   ['protein', 'anatomical_entity', 'phenotypic_feature'],
 											   directed=False)
 	test.add_subgraph(g.nodes(data=True), g.edges(data=True), "This is a test", 0.95)
 	test.add_subgraph(g.nodes(data=True), g.edges(data=True), "This is a SECOND test", 0.00)
