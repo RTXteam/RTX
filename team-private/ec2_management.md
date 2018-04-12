@@ -80,13 +80,13 @@ sudo docker exec -ti semmeddb mysql -p
 
 ## Open Ports on rtxdev ec2 instance
 
-|port | used for|
-|----|------|
-|:7474| rtxdev neo4j container HTTP access|
-|:7473| rtxdev neo4j container HTTPS access|
-|:7687| rtxdev neo4j container BOLT access|
-|:7674| rtxsteve neo4j container HTTP access|
-|:7673| rtxsteve neo4j container HTTPS access|
-|:7887| rtxsteve neo4j container BOLT access|
-|:3306| SemMedDB mySQL container|
-|:3406| UMLS nySQL container|
+|port | used for| Container Type |
+|----|------|----|
+|:7474| rtxdev HTTP access| neo4j |
+|:7473| rtxdev HTTPS access| neo4j |
+|:7687| rtxdev BOLT access| neo4j |
+|:7674| rtxsteve HTTP access| neo4j |
+|:7673| rtxsteve HTTPS access| neo4j |
+|:7887| rtxsteve BOLT access| neo4j |
+|:3306| SemMedDB access| neo4j |
+|:3406| UMLS access| neo4j |
