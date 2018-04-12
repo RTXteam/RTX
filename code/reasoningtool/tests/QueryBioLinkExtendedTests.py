@@ -19,5 +19,6 @@ class QueryBioLinkExtendedTestCase(unittest.TestCase):
         self.assertIsNotNone(extended_info_json)
         self.assertEqual(extended_info_json, "{'xrefs': None, 'taxon': {'id': None, 'label': None}, 'categories': ['disease', 'quality'], 'types': None, 'description': None, 'replaced_by': None, 'consider': None, 'synonyms': None, 'deprecated': None, 'id': 'DOID:3965', 'label': None}")
 
+
 if __name__ == '__main__':
     unittest.main()
