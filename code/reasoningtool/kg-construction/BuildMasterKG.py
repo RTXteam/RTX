@@ -21,6 +21,7 @@ from QuerySciGraph import QuerySciGraph
 from QueryDisont import QueryDisont
 from ParsePhenont import ParsePhenont
 from QueryChEMBL import QueryChEMBL
+from QueryPubChem import QueryPubChem
 
 import pandas
 import timeit
@@ -75,6 +76,8 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
     drug_dis_df = pandas.read_csv('../../../data/q2/q2-drugandcondition-list.txt',
                                   sep='\t')
 
+    all_drugs = set()
+
     if seed_parts is None or 'conditions' in seed_parts:
 
         print('=====================> seeding disease nodes for Q2')
@@ -83,6 +86,8 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
         mesh_term_to_curie_ids_dict = dict()
         curie_ids_for_df = []
         for index, row in drug_dis_df.iterrows():
+            drug_name = row["Drug"]
+            all_drugs.add(drug_name.lower())
             mesh_term = row['Condition']
             if mesh_term not in mesh_terms_set:
                 mesh_term_to_curie_ids_dict[mesh_term] = None
@@ -115,11 +120,10 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
     if seed_parts is None or 'drugs' in seed_parts:
         print('=====================> seeding drug nodes for Q2')
         first_row = True
-        all_drugs = set()
 
         for index, row in drug_dis_df.iterrows():
             drug_name = row['Drug'].lower()
-            all_drugs.add(drug_name)
+            all_drugs.add(drug_name.lower())
 
         fda_drug_df = pandas.read_csv('../../../data/q2/drugset2017_filt.txt',
                                       sep='\t')
@@ -129,12 +133,19 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
             all_drugs.add(drug_name)
 
         for drug_name in all_drugs:
-            print(drug_name)
             chembl_ids = QueryChEMBL.get_chembl_ids_for_drug(drug_name)
-            if chembl_ids is not None and len(chembl_ids) > 0:
-                chembl_id = next(iter(chembl_ids))
+            if chembl_ids is not None:
+                if len(chembl_ids) > 0:
+                    chembl_id = next(iter(chembl_ids))
+                else:
+                    # query PubChem
+                    chembl_ids = QueryPubChem.get_chembl_ids_for_drug(drug_name)
+                    if chembl_ids is not None:
+                        if len(chembl_ids) > 0:
+                            chembl_id = next(iter(chembl_ids))
             else:
-                chembl_id = ''
+                print("None returned from QueryChEMBL.get_chembl_ids_for_drug for drug name: " + drug_name)
+                assert False
             bne.add_node_smart("chemical_substance", chembl_id, seed_node_bool=first_row, desc=drug_name)
             first_row = False
 
@@ -217,6 +228,7 @@ def test_seed_q2_drugs():
 
 def test_fa():
     print(get_curie_ont_ids_for_mesh_term("Fanconi Anemia"))
+
 
 def make_file_q2_mapping():
     seed_and_expand_kg_q2(num_expansions=0)
