@@ -39,8 +39,9 @@ class QueryChEMBL:
 
     @staticmethod
     def get_chembl_ids_for_drug(drug_name):
+        drug_name_safe = urllib.parse.quote(drug_name, safe='')
         res = QueryChEMBL.send_query_get(handler='compound_record.json',
-                                         url_suffix='compound_name__iexact=' + urllib.parse.quote(drug_name, safe=''))
+                                         url_suffix='compound_name__iexact=' + drug_name_safe)
         res_chembl_set = set()
         if res is not None:
             compound_records = res.get('compound_records', None)
@@ -81,7 +82,8 @@ class QueryChEMBL:
     
     @staticmethod
     def test():
-        print(QueryChEMBL.get_target_uniprot_ids_for_drug('clothiapine'))
+        print(QueryChEMBL.get_chembl_ids_for_drug('acetaminophen'))
+#        print(QueryChEMBL.get_target_uniprot_ids_for_drug('clothiapine'))
         
 if __name__ == '__main__':
     QueryChEMBL.test()
