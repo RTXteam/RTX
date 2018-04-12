@@ -230,8 +230,8 @@ class QueryPharos:
         return ret_value
 
 if __name__ == '__main__':
-        print(QueryPharos.query_drug_id_by_name('lovastatin'))
-        print(QueryPharos.query_drug_id_by_name('clothiapine'))
+    print(QueryPharos.query_drug_id_by_name('lovastatin'))
+    print(QueryPharos.query_drug_id_by_name('clothiapine'))
 #        print(QueryPharos.query_drug_id_by_name("lovastatin"))
 #        print(QueryPharos.query_drug_to_targets("254599"))
 #        print(QueryPharos.query_drug_name_to_targets("lovastatin"))
