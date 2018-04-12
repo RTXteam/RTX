@@ -12,6 +12,8 @@ from neo4j.v1 import GraphDatabase, basic_auth
 from collections import Counter
 import requests_cache
 from itertools import islice
+import itertools
+import functools
 import CustomExceptions
 # Import stuff from one level up
 try:
@@ -753,7 +755,7 @@ def get_results_object_model(target_node, paths_dict, name_to_description, q1_do
 	return ret_obj
 
 
-def weight_graph_with_google_distance(g):
+def weight_graph_with_google_distance(g, default_value=10):
 	"""
 	Creates a new property on the edges called 'gd_weight' that gives the google distance between source/target between that edge
 	:param g: a networkx graph
@@ -833,21 +835,46 @@ def weight_graph_with_google_distance(g):
 		if not np.isinf(gd):
 			edges2gd[edge] = gd
 		else:
-			edges2gd[edge] = 10  # TODO: check if this default threshold is acceptable
+			edges2gd[edge] = default_value  # TODO: check if this default threshold (10) is acceptable
 		# decorate the edges with these weights
 	#g2 = nx.set_edge_attributes(g, edges2gd)  # This only works if I use the keys of the multigraph, not sure I want that since I'm basing it off source/target
 	for u, v, d in g.edges(data=True):
 		d['gd_weight'] = edges2gd[(u, v)]
 
 
-def weight_graph_with_property(g, property, default_value=0):
-	nodes = list(nx.nodes(g))
-	edges = list(nx.edges(g))
+def weight_graph_with_property(g, property, default_value=0, transformation=lambda x: x):
+	"""
+	Adds a new property to the edges in g
+	:param g: networkx graph
+	:param property: name of property (eg. 'probability' or 'gd_weight')
+	:param default_value: default value for the property to have
+	:param transformation: a lambda expression for transforming the property values
+	:return: None (changes the graph directly)
+	"""
+	if property == 'gd_weight':
+		weight_graph_with_google_distance(g, default_value=default_value)
+		for u, v, d in g.edges(data=True):
+			d[property] = transformation(d[property])
+	else:
+		for u, v, d in g.edges(data=True):
+			if property not in d['properties']:
+				d[property] = default_value
+			else:
+				d[property] = transformation(d['properties'][property])
+
+
+def merge_graph_properties(g, properties_list, new_property_name, operation=lambda x,y: x+y):
+	"""
+	Takes two or more properties and combines them into a new property
+	:param g: networkx graph
+	:param properties_list: a list of properties to merge
+	:param new_property_name: the new property name it will be called
+	:param operation: lambda expression saying how properties should be combined (eg. lambda x,y: x*y)
+	:return: None (modifies the graph directly)
+	"""
 	for u, v, d in g.edges(data=True):
-		if property not in d['properties']:
-			d[property] = default_value
-		else:
-			d[property] = d['properties'][property]
+		values = [d[prop] for prop in properties_list]
+		d[new_property_name] = functools.reduce(operation, values)
 
 
 def make_graph_simple(g, directed=False):
@@ -880,7 +907,7 @@ def make_graph_simple(g, directed=False):
 	return g_simple
 
 
-def get_top_shortest_paths(g, source_name, target_name, k):
+def get_top_shortest_paths(g, source_name, target_name, k, property='gd_weight', default_value=10):
 	"""
 	Returns the top k shortest paths through the graph g (which has been weighted with Google distance using
 	weight_graph_with_google_distance). This will weight the graph with google distance if it is not already.
@@ -893,13 +920,16 @@ def get_top_shortest_paths(g, source_name, target_name, k):
 	# Check if the graph has been weighted with google distance
 	weighted_flag = False
 	for u, v, data in g.edges(data=True):
-		if 'gd_weights' in data:
+		if property in data:
 			weighted_flag = True
 		else:
 			weighted_flag = False
 		break
 	if weighted_flag is False:
-		weight_graph_with_google_distance(g)
+		if property == 'gd_weights':
+			weight_graph_with_google_distance(g)
+		else:
+			weight_graph_with_property(g, property, default_value=default_value)
 	# Check if the graph is simple or not
 	if isinstance(g, nx.MultiDiGraph):
 		g_simple = make_graph_simple(g, directed=True)
@@ -912,7 +942,7 @@ def get_top_shortest_paths(g, source_name, target_name, k):
 	names2nodes = dict()
 	for node in nodes2names.keys():
 		names2nodes[nodes2names[node]] = node
-	paths = list(islice(nx.shortest_simple_paths(g_simple, names2nodes[source_name], names2nodes[target_name], weight='gd_weight'), k))
+	paths = list(islice(nx.shortest_simple_paths(g_simple, names2nodes[source_name], names2nodes[target_name], weight=property), k))
 	g_simple_nodes = g_simple.nodes(data=True)
 	decorated_paths = []
 	for path in paths:
@@ -929,7 +959,7 @@ def get_top_shortest_paths(g, source_name, target_name, k):
 			source_node = path[i]
 			target_node = path[i+1]
 			edge = g_simple.get_edge_data(source_node, target_node)
-			path_length += edge['gd_weight']
+			path_length += edge[property]
 			edge_list.append(edge)
 		decorated_path_edges.append(edge_list)
 		path_lengths.append(path_length)
