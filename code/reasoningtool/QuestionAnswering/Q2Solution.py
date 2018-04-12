@@ -79,12 +79,12 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 													directed=False)
 	except CustomExceptions.EmptyCypherError:
 		try:  # Then look for any sort of COP
-			g = RU.return_subgraph_through_node_labels(drug_name, 'drug', disease_name, 'disease',
+			g = RU.return_subgraph_through_node_labels(drug_name, 'chemical_substance', disease_name, 'disease',
 													['protein', 'anatomical_entity', 'phenotypic_feature'],
 													directed=False)
 		except CustomExceptions.EmptyCypherError:
 			try:  # Then look for any sort of connection between source and target
-				g = RU.get_shortest_subgraph_between_nodes(drug_name, 'drug', disease_name, 'disease',
+				g = RU.get_shortest_subgraph_between_nodes(drug_name, 'chemical_substance', disease_name, 'disease',
 															max_path_len=4, limit=50, debug=False, directed=False)
 			except CustomExceptions.EmptyCypherError:
 				error_code = "NoPathsFound"
@@ -92,11 +92,11 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 					error_message = "Sorry, I could not find any paths connecting %s to %s via protein, pathway, "\
 						"tissue, and phenotype. The drug and/or disease may not be one of the entities I know about, or they "\
 						"do not connect via a known pathway, tissue, and phenotype (understudied)" % (
-					drug_name, RU.get_node_property(disease_name, 'description'))
+						RU.get_node_property(drug_name, 'description'), RU.get_node_property(disease_name, 'description'))
 				except:
 					error_message = "Sorry, I could not find any paths connecting %s to %s via protein, pathway, "\
 						"tissue, and phenotype. The drug and/or disease may not be one of the entities I know about, or they "\
-						"do not connect via a known pathway, tissue, and phenotype (understudied)" % (drug_name, disease_name)
+						"do not connect via a known pathway, tissue, and phenotype (understudied)" % (RU.get_node_property(drug_name, 'description'), RU.get_node_property(disease_name, 'description'))
 				if not use_json:
 					print(error_message)
 					return 1

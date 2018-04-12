@@ -840,6 +840,16 @@ def weight_graph_with_google_distance(g):
 		d['gd_weight'] = edges2gd[(u, v)]
 
 
+def weight_graph_with_property(g, property, default_value=0):
+	nodes = list(nx.nodes(g))
+	edges = list(nx.edges(g))
+	for u, v, d in g.edges(data=True):
+		if property not in d['properties']:
+			d[property] = default_value
+		else:
+			d[property] = d['properties'][property]
+
+
 def make_graph_simple(g, directed=False):
 	"""
 	Makes a multigraph into a simple graph, summing weights if data is different
