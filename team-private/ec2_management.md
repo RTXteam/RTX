@@ -82,11 +82,11 @@ sudo docker exec -ti semmeddb mysql -p
 
 |port | used for| Container Type |
 |----|------|----|
-|:7474| rtxdev HTTP access| neo4j |
-|:7473| rtxdev HTTPS access| neo4j |
-|:7687| rtxdev BOLT access| neo4j |
-|:7674| rtxsteve HTTP access| neo4j |
-|:7673| rtxsteve HTTPS access| neo4j |
-|:7887| rtxsteve BOLT access| neo4j |
-|:3306| SemMedDB access| neo4j |
-|:3406| UMLS access| neo4j |
+|:7474| rtxdev HTTP| neo4j |
+|:7473| rtxdev HTTPS | neo4j |
+|:7687| rtxdev BOLT | neo4j |
+|:7674| rtxsteve HTTP | neo4j |
+|:7673| rtxsteve HTTPS | neo4j |
+|:7887| rtxsteve BOLT | neo4j |
+|:3306| SemMedDB | neo4j |
+|:3406| UMLS | neo4j |
