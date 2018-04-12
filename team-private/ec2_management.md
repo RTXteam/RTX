@@ -13,6 +13,10 @@ To start or stop an ec2 instace do the following:
 
 **NOTE:** I don't think it wise to post the passwords or username here on github. If you do not have any of there feel free to email me (Finn) or message me on the isb-ncats slack channel to ask for them.
 
+### Note about the ec2 instance names
+
+All the containers mentioned from here on (rtxdev, rtxsteve, semmeddb, and umls) are located within the ramseyst-RTX-dev **ec2 instance**. This is an attempt to alleviate confusion as there is also an **ec2 instance** named ramseyst-RTX-STEVE3 which, despite the similar name, does not contain the rtxsteve **container** mentioned in the later sections, this is contained in ramseyst-RTX-dev.
+
 ## Starting docker containers
 
 
