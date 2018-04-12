@@ -88,5 +88,5 @@ sudo docker exec -ti semmeddb mysql -p
 |:7674| rtxsteve HTTP | neo4j |
 |:7673| rtxsteve HTTPS | neo4j |
 |:7887| rtxsteve BOLT | neo4j |
-|:3306| SemMedDB | neo4j |
-|:3406| UMLS | neo4j |
+|:3306| SemMedDB | mySQL |
+|:3406| UMLS | mySQL |
