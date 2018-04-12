@@ -15,7 +15,7 @@ To start or stop an ec2 instace do the following:
 
 ### Note about the ec2 instance names
 
-All the containers mentioned from here on (rtxdev, rtxsteve, semmeddb, and umls) are located within the ramseyst-RTX-dev **ec2 instance**. This is an attempt to alleviate confusion as there is also an **ec2 instance** named ramseyst-RTX-STEVE3 which, despite the similar name, does not contain the rtxsteve **container** mentioned in the later sections, this is contained in ramseyst-RTX-dev.
+All the containers mentioned from here on (rtxdev, rtxsteve, semmeddb, and umls) are located within the ramseyst-RTX-dev **ec2 instance**. This is an attempt to alleviate confusion as there is also an **ec2 instance** named ramseyst-RTX-STEVE3 which, despite the similar name, does not contain the **container** named rtxsteve which is mentioned in the later sections, this container is contained in ramseyst-RTX-dev.
 
 ## Starting docker containers
 
