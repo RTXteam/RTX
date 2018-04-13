@@ -23,7 +23,8 @@ __status__ = 'Prototype'
 from Neo4jConnection import Neo4jConnection
 import json
 from QueryBioLinkExtended import QueryBioLinkExtended
-from QueryProteinEntity import QueryProteinEntity
+from QueryMyGene import QueryMyGene
+from QueryReactomeExtended import QueryReactomeExtended
 
 def update_anatomy_nodes():
 
@@ -93,6 +94,72 @@ def update_phenotype_nodes():
     conn.close()
 
 
+def update_microRNA_nodes():
+
+    f = open('user_pass.json', 'r')
+    user_data = f.read()
+    f.close()
+    user = json.loads(user_data)
+
+    conn = Neo4jConnection("bolt://localhost:7687", user['username'], user['password'])
+    nodes = conn.get_microRNA_nodes()
+
+    from time import time
+    t = time()
+
+    nodes_array = []
+    for node_id in nodes:
+        node = dict()
+        node['node_id'] = node_id
+        node['extended_info_json'] = QueryMyGene.get_microRNA_entity(node_id)
+        nodes_array.append(node)
+
+    print("api pulling time: %f" % (time()-t))
+
+    nodes_nums = len(nodes_array)
+    group_nums = nodes_nums // 10000 + 1
+    for i in range(group_nums):
+        start = i*10000
+        end = (i + 1) * 10000 if (i + 1) * 10000 < nodes_nums else nodes_nums
+        conn.update_microRNA_nodes(nodes_array[start:end])
+
+    print("total time: %f" % (time()-t))
+
+    conn.close()
+
+def update_pathway_nodes():
+
+    f = open('user_pass.json', 'r')
+    user_data = f.read()
+    f.close()
+    user = json.loads(user_data)
+
+    conn = Neo4jConnection("bolt://localhost:7687", user['username'], user['password'])
+    nodes = conn.get_pathway_nodes()
+
+    from time import time
+    t = time()
+
+    nodes_array = []
+    for node_id in nodes:
+        node = dict()
+        node['node_id'] = node_id
+        node['extended_info_json'] = QueryReactomeExtended.get_pathway_entity(node_id)
+        nodes_array.append(node)
+
+    print("api pulling time: %f" % (time()-t))
+
+    nodes_nums = len(nodes_array)
+    group_nums = nodes_nums // 10000 + 1
+    for i in range(group_nums):
+        start = i*10000
+        end = (i + 1) * 10000 if (i + 1) * 10000 < nodes_nums else nodes_nums
+        conn.update_pathway_nodes(nodes_array[start:end])
+
+    print("total time: %f" % (time()-t))
+
+    conn.close()
+
 def update_protein_nodes():
 
     f = open('user_pass.json', 'r')
@@ -110,7 +177,7 @@ def update_protein_nodes():
     for node_id in nodes:
         node = dict()
         node['node_id'] = node_id
-        node['extended_info_json'] = QueryProteinEntity.get_protein_entity(node_id)
+        node['extended_info_json'] = QueryMyGene.get_protein_entity(node_id)
         nodes_array.append(node)
 
     print("api pulling time: %f" % (time()-t))
@@ -162,7 +229,9 @@ def update_disease_nodes():
 
 if __name__ == '__main__':
 
-    # update_anatomy_nodes()
-    # update_phenotype_nodes()
+    update_anatomy_nodes()
+    update_phenotype_nodes()
+    update_microRNA_nodes()
+    update_pathway_nodes()
     update_protein_nodes()
-    # update_disease_nodes()
+    update_disease_nodes()
