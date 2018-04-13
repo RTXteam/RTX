@@ -1,6 +1,5 @@
 ''' This module defines the class QueryReactomeExtended. QueryReactomeExtended class is designed
-to communicate with Reactome APIs and their corresponding data sources. The
-available methods include:
+to communicate with Reactome APIs and their corresponding data sources. The available methods include:
     * query pathway entity by ID
 '''
 

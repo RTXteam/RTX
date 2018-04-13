@@ -1,5 +1,10 @@
 ''' This module defines the class QueryProteinEntity. QueryProteinEntity class is designed
-to query protein entity from mygene library
+to query protein entity from mygene library. The
+available methods include:
+
+    get_protein_entity : query protein properties by ID
+    get_microRNA_entity : query micro properties by ID
+
 '''
 
 __author__ = 'Deqing Qu'

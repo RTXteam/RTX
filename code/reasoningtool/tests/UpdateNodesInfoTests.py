@@ -91,7 +91,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
             node_id = nodes[i]
             extended_info_json_from_api = QueryMyGene.get_microRNA_entity(node_id)
 
-            # retrieve phenotype entities from BioLink API
+            # retrieve phenotype entities from MyGene API
             node = conn.get_microRNA_node(node_id)
             self.assertIsNotNone(node['n']['name'])
             self.assertIsNotNone(node['n']['extended_info_json'])
@@ -119,7 +119,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
             node_id = nodes[i]
             extended_info_json_from_api = QueryReactomeExtended.get_pathway_entity(node_id)
 
-            # retrieve phenotype entities from BioLink API
+            # retrieve phenotype entities from Reactome API
             node = conn.get_pathway_node(node_id)
             self.assertIsNotNone(node['n']['name'])
             self.assertIsNotNone(node['n']['extended_info_json'])
@@ -147,7 +147,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
             node_id = nodes[i]
             extended_info_json_from_api = QueryMyGene.get_protein_entity(node_id)
 
-            # retrieve phenotype entities from BioLink API
+            # retrieve phenotype entities from MyGene API
             node = conn.get_protein_node(node_id)
             self.maxDiff = None
             self.assertIsNotNone(node['n']['curie_id'])

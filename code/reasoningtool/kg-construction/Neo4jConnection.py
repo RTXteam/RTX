@@ -1,6 +1,14 @@
 ''' This module defines the class Neo4jConnection. Neo4jConnection class is designed
 to connect to Neo4j database and perform operations on a graphic model object. (e.g.,
-retrieve node and update node)
+retrieve node and update node) The available methods include:
+
+    get_xxx_nodes : query all xxx nodes
+    update_xxx_nodes : update xxx nodes by an array 'nodes', which contain two properties 'node_id'
+                            and 'extended_info_json' for each node
+    get_xxx_node : query xxx node by ID
+
+    xxx is the type of nodes. (e.g., anatomy, phenotype, microRNA, pathway, protein, disease)
+
 '''
 
 __author__ = 'Deqing Qu'
