@@ -833,6 +833,8 @@ def weight_graph_with_google_distance(g, default_value=10):
 					if gd_temp < gd:
 						gd = gd_temp
 		if not np.isinf(gd):
+			if gd > default_value:
+				gd = default_value
 			edges2gd[edge] = gd
 		else:
 			edges2gd[edge] = default_value  # TODO: check if this default threshold (10) is acceptable

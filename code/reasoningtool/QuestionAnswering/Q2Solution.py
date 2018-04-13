@@ -39,13 +39,14 @@ with open(os.path.abspath('../../../data/q2/q2-drugandcondition-list-mapped.txt'
 			disease_doid_to_description[disease_doid] = disease_descr
 
 
-def answerQ2(drug_name, disease_name, k, use_json=False):
+def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 	"""
 	Find the clinical outcome pathway connecting the drug to the disease
 	:param drug_name: a name of a drug (node.name in the KG)
 	:param disease_name: a name of a disease (node.name in the KG, eg DOID:)
 	:param k: Number of paths to return (int)
-	:param text: if you want the answers as plain text.
+	:param use_json: if you want the answers as JSON.
+	:param max_gd: maximum value for google distance
 	:return: Text answer
 	"""
 	response = FormatOutput.FormatResponse(2)
@@ -73,10 +74,13 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 	# TODO: could dynamically get the terminal node label as some are (drug, phenotype) pairs
 	# get the relevant subgraph between the source and target nodes
 	try:  # First look for COP's where the gene is associated to the disease
+		#g = RU.return_subgraph_through_node_labels(drug_name, 'chemical_substance', disease_name, 'disease',
+		#											['protein', 'anatomical_entity', 'phenotypic_feature'],
+		#											with_rel=['protein', 'associated_with_condition', 'disease'],
+		#											directed=False)
 		g = RU.return_subgraph_through_node_labels(drug_name, 'chemical_substance', disease_name, 'disease',
-													['protein', 'anatomical_entity', 'phenotypic_feature'],
-													with_rel=['protein', 'associated_with_condition', 'disease'],
-													directed=False)
+												   ['protein', 'anatomical_entity', 'phenotypic_feature'],
+												   directed=False)
 	except CustomExceptions.EmptyCypherError:
 		try:  # Then look for any sort of COP
 			g = RU.return_subgraph_through_node_labels(drug_name, 'chemical_substance', disease_name, 'disease',
@@ -105,10 +109,17 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 					response.print()
 					return 1
 	# Decorate with normalized google distance
-	RU.weight_graph_with_google_distance(g)
+	RU.weight_graph_with_google_distance(g, default_value=max_gd)
+
+	# Decorate with drug binding probability (1-x since these will be multiplicatively merged
+	#RU.weight_graph_with_property(g, 'probability', transformation=lambda x: 1-x, default_value=2)
+	RU.weight_graph_with_property(g, 'probability', transformation=lambda x: 1/float(x), default_value=100)
+
+	# Combine the properties
+	RU.merge_graph_properties(g, ['gd_weight', 'probability'], 'merged', operation=lambda x,y: x*y)
 
 	# Get the top k paths
-	node_paths, edge_paths, weights = RU.get_top_shortest_paths(g, drug_name, disease_name, k)
+	node_paths, edge_paths, weights = RU.get_top_shortest_paths(g, drug_name, disease_name, k, property='merged')
 	actual_k = len(weights)  # since there may be less than k paths
 
 	# For each of these paths, connect the protein to a pathway
@@ -142,7 +153,6 @@ def answerQ2(drug_name, disease_name, k, use_json=False):
 		del pathways_per_path[i]
 
 	# Look for the pathway that has both a small GD between protein and disease
-	max_gd = 10
 	best_pathways_per_path = []
 	best_pathways_per_path_gd = []
 	disease_common_name = RU.get_node_property(disease_name, 'description', node_label='disease')
