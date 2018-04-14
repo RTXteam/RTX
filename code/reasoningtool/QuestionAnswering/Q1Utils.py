@@ -12,7 +12,7 @@ import requests_cache
 try:
 	import QueryNCBIeUtils
 except ImportError:
-	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  # Go up one level and look for it
+	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../kg-construction')))  # Go up one level and look for it
 	import QueryNCBIeUtils
 import math
 import MarkovLearning
@@ -20,11 +20,11 @@ import MarkovLearning
 requests_cache.install_cache('orangeboard')
 
 # Connection information for the neo4j server, populated with orangeboard
-driver = GraphDatabase.driver("bolt://rtx.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))
+driver = GraphDatabase.driver("bolt://rtxdev.saramsey.org:7887", auth=basic_auth("neo4j", "precisionmedicine"))
 session = driver.session()
 
 # Connection information for the ipython-cypher package
-connection = "http://neo4j:precisionmedicine@rtx.ncats.io:7473/db/data"
+connection = "http://neo4j:precisionmedicine@rtxdev.saramsey.org:7674/db/data"
 DEFAULT_CONFIGURABLE = {
 	"auto_limit": 0,
 	"style": 'DEFAULT',
@@ -66,19 +66,21 @@ def node_to_description(name, session=session, debug=False):
 # Get the omims that connect up to a given doid
 def get_omims_connecting_to_fixed_doid(doid, max_path_len=4, debug=False, verbose=False, directed=False):
 	"""
-	This function finds all omim's within max_path_len steps (undirected) of a given disont_disease
+	This function finds all omim's within max_path_len steps (undirected) of a given disease
 	:param session: neo4j server session
-	:param doid: disont_disease ID (eg: 'DOID:12345')
+	:param doid: disease ID (eg: 'DOID:12345')
 	:param max_path_len: Maximum path length to consider (default =4)
 	:param debug: flag indicating if the query should also be returned
 	:return: list of omim ID's
 	"""
 	if directed:
-		query = "MATCH path=allShortestPaths((s:omim_disease)-[*1..%d]->(t:disont_disease))" \
+		query = "MATCH path=allShortestPaths((s:disease)-[*1..%d]->(t:disease))" \
 				" WHERE t.name='%s' WITH distinct nodes(path)[0] as p RETURN p.name" % (max_path_len, doid)
 	else:
-		query = "MATCH path=allShortestPaths((s:omim_disease)-[*1..%d]-(t:disont_disease))" \
+		query = "MATCH path=allShortestPaths((s:disease)-[*1..%d]-(t:disease))" \
 				" WHERE t.name='%s' WITH distinct nodes(path)[0] as p RETURN p.name" %(max_path_len, doid)
+	if debug:
+		return query
 	result = session.run(query)
 	result_list = [i for i in result]
 	names = [i['p.name'] for i in result_list]
@@ -97,12 +99,12 @@ def get_rels_fixed_omim_to_fixed_doid(session, omim, doid, max_path_len=4, debug
 	This function returns all unique relationships in paths from a given OMIM to a disont disease.
 	:param session: neo4j server session
 	:param omim: omim ID (eg: 'OMIM:12345')
-	:param doid: disont_disease ID (eg: 'DOID:12345')
+	:param doid: disease ID (eg: 'DOID:12345')
 	:param max_path_len: Maximum path length to consider (default =4)
 	:param debug: Flag that if true, also returns the cypher query
 	:return: a list of cypher results (path) along with their counts.
 	"""
-	query = "MATCH path=allShortestPaths((s:omim_disease)-[*1..%d]-(t:disont_disease)) " \
+	query = "MATCH path=allShortestPaths((s:disease)-[*1..%d]-(t:disease)) " \
 			"WHERE s.name='%s' AND t.name='%s' " \
 			"RETURN distinct extract (rel in relationships(path) | type(rel) ) as types, count(*)" % (max_path_len, omim, doid)
 	with session.begin_transaction() as tx:
@@ -141,7 +143,7 @@ def get_graph(res, directed=True):
 
 # since multiple paths can connect two nodes, treat it as a Markov chain and compute the expected path length
 # connecting the source omim and the target doid
-def expected_graph_distance(omim, doid, max_path_len=4, directed=True, connection=connection, defaults=defaults):
+def expected_graph_distance(omim, doid, max_path_len=4, directed=False, connection=connection, defaults=defaults, debug=False):
 	"""
 	Given a source omim and target doid, extract the subgraph from neo4j consisting of all paths connecting these
 	two nodes. Treat this as a uniform Markov chain (all outgoing edges with equal weight) and calculate the expected
@@ -157,13 +159,15 @@ def expected_graph_distance(omim, doid, max_path_len=4, directed=True, connectio
 	along with the basis (list of omim ID's).
 	"""
 	if directed:
-		query = "MATCH path=allShortestPaths((s:omim_disease)-[*1..%d]->(t:disont_disease)) " \
+		query = "MATCH path=allShortestPaths((s:disease)-[*1..%d]->(t:disease)) " \
 				"WHERE s.name='%s' AND t.name='%s' " \
 				"RETURN path" % (max_path_len, omim, doid)
 	else:
-		query = "MATCH path=allShortestPaths((s:omim_disease)-[*1..%d]-(t:disont_disease)) " \
+		query = "MATCH path=allShortestPaths((s:disease)-[*1..%d]-(t:disease)) " \
 				"WHERE s.name='%s' AND t.name='%s' " \
 				"RETURN path" % (max_path_len, omim, doid)
+	if debug:
+		return query
 	res = cypher.run(query, conn=connection, config=defaults)
 	graph = get_graph(res, directed=directed)  # Note: I may want to make this directed, but sometimes this means no path from OMIM
 	mat = nx.to_numpy_matrix(graph)  # get the indidence matrix
@@ -201,29 +205,29 @@ def return_subgraph_paths_of_type(session, omim, doid, relationship_list, debug=
 	order) of those given by relationship_list
 	:param session: neo4j session
 	:param omim: source OMIM ID (eg: OMIM:1234)
-	:param doid: target disont_disease ID (eg: 'DOID:1235')
+	:param doid: target disease ID (eg: 'DOID:1235')
 	:param relationship_list: list of relationships (must be valid neo4j relationship types), if this is a list of lists
 	then the subgraph consisting of all valid paths will be returned
 	:param debug: Flag indicating if the cypher query should be returned
 	:return: networkx graph
 	"""
 	if not any(isinstance(el, list) for el in relationship_list):  # It's a single list of relationships
-		query = "MATCH path=(s:omim_disease)-"
+		query = "MATCH path=(s:disease)-"
 		for i in range(len(relationship_list)-1):
 			query += "[:" + relationship_list[i] + "]-()-"
-		query += "[:" + relationship_list[-1] + "]-" + "(t:disont_disease) "
+		query += "[:" + relationship_list[-1] + "]-" + "(t:disease) "
 		query += "WHERE s.name='%s' and t.name='%s' " %(omim, doid)
 		query += "RETURN path"
 		if debug:
 			return query
 	else:  # it's a list of lists
-		query = "MATCH (s:omim_disease{name:'%s'}) " % omim
+		query = "MATCH (s:disease{name:'%s'}) " % omim
 		for rel_index in range(len(relationship_list)):
 			rel_list = relationship_list[rel_index]
 			query += "OPTIONAL MATCH path%d=(s)-" % rel_index
 			for i in range(len(rel_list)-1):
 				query += "[:" + rel_list[i] + "]-()-"
-			query += "[:" + rel_list[-1] + "]-" + "(t:disont_disease)"
+			query += "[:" + rel_list[-1] + "]-" + "(t:disease)"
 			query += " WHERE t.name='%s' " % doid
 		query += "RETURN "
 		for rel_index in range(len(relationship_list)-1):
@@ -245,13 +249,13 @@ def interleave_nodes_and_relationships(session, omim, doid, max_path_len=3, debu
 	:param debug: if you just want the query to be returned
 	:return: a list of lists of relationship and node types (strings) linking the source and target
 	"""
-	query_name = "match p= shortestPath((s:omim_disease)-[*1..%d]-(t:disont_disease)) "\
+	query_name = "match p= shortestPath((s:disease)-[*1..%d]-(t:disease)) "\
 			"where s.name='%s' "\
 			"and t.name='%s' "\
 			"with nodes(p) as ns, rels(p) as rs, range(0,length(nodes(p))+length(rels(p))-1) as idx "\
 			"return [i in idx | case i %% 2 = 0 when true then coalesce((ns[i/2]).name, (ns[i/2]).title) else type(rs[i/2]) end] as path "\
 			"" %(max_path_len, omim, doid)
-	query_type = "match p= shortestPath((s:omim_disease)-[*1..%d]-(t:disont_disease)) " \
+	query_type = "match p= shortestPath((s:disease)-[*1..%d]-(t:disease)) " \
 				 "where s.name='%s' " \
 				 "and t.name='%s' " \
 				 "with nodes(p) as ns, rels(p) as rs, range(0,length(nodes(p))+length(rels(p))-1) as idx " \

@@ -3,7 +3,13 @@ import numpy as np
 np.warnings.filterwarnings('ignore')
 from collections import namedtuple
 #from neo4j.v1 import GraphDatabase, basic_auth
-import os
+import os, sys
+try:
+	import QueryNCBIeUtils
+except ImportError:
+	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../kg-construction')))  # Go up one level and look for it
+	import QueryNCBIeUtils
+QueryNCBIeUtils =QueryNCBIeUtils.QueryNCBIeUtils()
 import Q1Utils
 import argparse
 import sys
@@ -13,12 +19,12 @@ import FormatOutput
 response = FormatOutput.FormatResponse(1)
 
 # Connection information for the neo4j server, populated with orangeboard
-#driver = GraphDatabase.driver("bolt://rtx.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))
+#driver = GraphDatabase.driver("bolt://rtxdev.saramsey.org:7887", auth=basic_auth("neo4j", "precisionmedicine"))
 #session = driver.session()
 
 	
 # Connection information for the ipython-cypher package
-connection = "http://neo4j:precisionmedicine@rtx.ncats.io:7473/db/data"
+connection = "http://neo4j:precisionmedicine@rtxdev.saramsey.org:7674/db/data"
 DEFAULT_CONFIGURABLE = {
 	"auto_limit": 0,
 	"style": 'DEFAULT',
@@ -45,7 +51,7 @@ defaults = DefaultConfigurable(**DEFAULT_CONFIGURABLE)
 # TODO: the following two dictionaries would be relatively straightforward to programmatically create
 # but given the time contraints, let's just hard code them now...
 
-# Dictionary converting disease to disont_disease ID
+# Dictionary converting disease to disease ID
 # TODO: double check the DOID's, possibly add synonyms for the diseases
 ## seed all 21 diseases in the Orangeboard
 q1_doid_to_disease = {'DOID:11476': 'osteoporosis',
@@ -177,7 +183,8 @@ def answerQ1(doid, directed=True, max_path_len=3, verbose=False, use_json=False)
 			return
 
 	# Getting nearby genetic diseases
-	omims = Q1Utils.get_omims_connecting_to_fixed_doid(doid, directed=directed, max_path_len=max_path_len, verbose=verbose)
+	#omims = Q1Utils.get_omims_connecting_to_fixed_doid(doid, directed=directed, max_path_len=max_path_len, verbose=verbose)
+	omims = RU.get_node_names_of_type_connected_to_target('disease', doid, 'disease', max_path_len=max_path_len, verbose=verbose, is_omim=True)
 
 	if not omims:
 		if verbose and not use_json:
@@ -187,7 +194,8 @@ def answerQ1(doid, directed=True, max_path_len=3, verbose=False, use_json=False)
 	# NOTE: the following three can be mixed and matched in any order you please
 
 	# get the ones that are nearby according to a random walk between source and target node
-	omims = Q1Utils.refine_omims_graph_distance(omims, doid, directed=directed, max_path_len=max_path_len, verbose=verbose)
+	#omims = Q1Utils.refine_omims_graph_distance(omims, doid, directed=directed, max_path_len=max_path_len, verbose=verbose)
+	omims = RU.refine_omims_graph_distance(omims, 'disease', doid, 'disease', directed=False, max_path_len=max_path_len, verbose=verbose)
 
 	# get the ones that have high probability according to a Markov chain model
 	omims, paths_dict, prob_dict = Q1Utils.refine_omims_Markov_chain(omims, doid, max_path_len=max_path_len, verbose=verbose)

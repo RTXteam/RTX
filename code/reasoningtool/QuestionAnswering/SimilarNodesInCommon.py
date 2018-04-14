@@ -40,7 +40,7 @@ class SimilarNodesInCommon:
 		input_node_associated_nodes = RU.get_one_hop_target(input_node_label, input_node_ID, association_node_label,
 															input_association_relationship)
 
-		# Look more steps beyond if we didn't get any targets
+		# Look more steps beyond if we didn't get any directly_interacts_with
 		if input_node_associated_nodes == []:
 			for max_path_len in range(2, 5):
 				input_node_associated_nodes = RU.get_node_names_of_type_connected_to_target(input_node_label, input_node_ID,
@@ -64,8 +64,8 @@ class SimilarNodesInCommon:
 		relationship_label_list = [input_association_relationship, target_association_relationship]
 		node_of_interest_position = 0
 		other_node_IDs_to_intersection_counts = dict()
-		if target_node_label == "disont_disease" or target_node_label == "omim_disease":
-			target_labels = ["disont_disease", "omim_disease"]
+		if target_node_label == "disease" or target_node_label == "disease":
+			target_labels = ["disease", "disease"]
 		else:
 			target_labels = [target_node_label]
 		for target_label in target_labels:
@@ -82,7 +82,7 @@ class SimilarNodesInCommon:
 		if not other_node_IDs_to_intersection_counts:
 			error_code = "NoNodesFound"
 			error_message = "No %s were found with similarity crossing the threshold of %f." % (target_node_label, threshold)
-			parent = RU.get_one_hop_target(input_node_label, input_node_ID, input_node_label, "is_parent_of", direction="r")
+			parent = RU.get_one_hop_target(input_node_label, input_node_ID, input_node_label, "subset_of", direction="r")
 			if parent:
 				parent = parent.pop()
 				error_message += "\n Note that %s is a parent of %s, so you might try that instead." % (
@@ -119,7 +119,7 @@ class SimilarNodesInCommon:
 		if not node_jaccard_tuples:
 			error_code = "NoNodesFound"
 			error_message = "No %s's were found with similarity crossing the threshold of %f." % (target_node_label, threshold)
-			parent = RU.get_one_hop_target(input_node_label, input_node_ID, input_node_label, "is_parent_of", direction="r")
+			parent = RU.get_one_hop_target(input_node_label, input_node_ID, input_node_label, "subset_of", direction="r")
 			if parent:
 				parent = parent.pop()
 				error_message += "\n Note that %s is a parent of %s, so you might try that instead." % (RU.get_node_property(parent, 'description'), input_node_description)
@@ -157,7 +157,7 @@ class SimilarNodesInCommon:
 		if not rels:
 			error_code = "NoRelationship"
 			error_message = "Sorry, the %s %s is not connected to any %s." % (input_node_label, input_node_ID, association_node_label)
-			parent = RU.get_one_hop_target(input_node_label, input_node_ID, input_node_label, "is_parent_of", direction="r")
+			parent = RU.get_one_hop_target(input_node_label, input_node_ID, input_node_label, "subset_of", direction="r")
 			if parent:
 				parent = parent.pop()
 				error_message += "\n Note that %s is a parent of %s, so you might try that instead." % (
@@ -205,11 +205,11 @@ def main():
 	if test_case == 1:
 		# Other diseases similar based on phenotypes
 		input_node_ID = "DOID:8398"
-		input_node_label = "disont_disease"
-		association_node_label = "phenont_phenotype"
-		input_association_relationship = "phenotype_assoc_with"
-		target_association_relationship = "phenotype_assoc_with"
-		target_node_label = "disont_disease"
+		input_node_label = "disease"
+		association_node_label = "phenotypic_feature"
+		input_association_relationship = "has_phenotype"
+		target_association_relationship = "has_phenotype"
+		target_node_label = "disease"
 		threshold = 0.2
 		res, error_code, error_message = Q.get_similar_nodes_in_common(input_node_ID, input_node_label, association_node_label, input_association_relationship,
 					target_association_relationship, target_node_label, threshold=threshold)
@@ -217,11 +217,11 @@ def main():
 	elif test_case == 2:
 		# Other diseases similar based on shared genes
 		input_node_ID = "DOID:8398"
-		input_node_label = "disont_disease"
-		association_node_label = "uniprot_protein"
-		input_association_relationship = "gene_assoc_with"
-		target_association_relationship = "gene_assoc_with"
-		target_node_label = "disont_disease"
+		input_node_label = "disease"
+		association_node_label = "protein"
+		input_association_relationship = "associated_with_condition"
+		target_association_relationship = "associated_with_condition"
+		target_node_label = "disease"
 		threshold = 0.05
 		res, error_code, error_message = Q.get_similar_nodes_in_common(input_node_ID, input_node_label, association_node_label,
 											input_association_relationship,
@@ -230,11 +230,11 @@ def main():
 	elif test_case == 3:
 		# drugs based on shared proteins
 		input_node_ID = "DOID:8398"
-		input_node_label = "disont_disease"
-		association_node_label = "uniprot_protein"
-		input_association_relationship = "gene_assoc_with"
-		target_association_relationship = "targets"
-		target_node_label = "pharos_drug"
+		input_node_label = "disease"
+		association_node_label = "protein"
+		input_association_relationship = "associated_with_condition"
+		target_association_relationship = "directly_interacts_with"
+		target_node_label = "chemical_substance"
 		threshold = 0.05
 		res, error_code, error_message = Q.get_similar_nodes_in_common(input_node_ID, input_node_label, association_node_label,
 											input_association_relationship,

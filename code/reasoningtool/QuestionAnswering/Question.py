@@ -138,9 +138,9 @@ def find_target_label(string):
 			res = node_labels[i]
 	if res is None:
 		if query == "gene":
-			res = "uniprot_protein"
+			res = "protein"
 		if query == "condit":
-			res = "omim_disease"
+			res = "disease"
 	# TODO: Arnab's UMLS lookup for synonyms
 	return res
 
@@ -370,27 +370,27 @@ def test_get_parameters():
 	# Q1 tests
 	input_question = "what genetic conditions might protect against malaria?"
 	parameters = questions[1].get_parameters(input_question)
-	assert "disont_disease" in parameters
-	assert isinstance(parameters["disont_disease"], str)
-	assert parameters["disont_disease"] == "DOID:12365"
+	assert "disease" in parameters
+	assert isinstance(parameters["disease"], str)
+	assert parameters["disease"] == "DOID:12365"
 
 	input_question = "what genetic conditions might protect against mixed malaria?"
 	parameters = questions[1].get_parameters(input_question)
-	assert "disont_disease" in parameters
-	assert isinstance(parameters["disont_disease"], str)
-	assert parameters["disont_disease"] == "DOID:14325"
+	assert "disease" in parameters
+	assert isinstance(parameters["disease"], str)
+	assert parameters["disease"] == "DOID:14325"
 
 	input_question = "what genetic conditions might protect against bone marrow cancer?"
 	parameters = questions[1].get_parameters(input_question)
-	assert "disont_disease" in parameters
-	assert isinstance(parameters["disont_disease"], str)
-	assert parameters["disont_disease"] == "DOID:4960"
+	assert "disease" in parameters
+	assert isinstance(parameters["disease"], str)
+	assert parameters["disease"] == "DOID:4960"
 
 	input_question = "what genetic conditions might protect against cerebral sarcoidosis?"
 	parameters = questions[1].get_parameters(input_question)
-	assert "disont_disease" in parameters
-	assert isinstance(parameters["disont_disease"], str)
-	assert parameters["disont_disease"] == "DOID:13403"
+	assert "disease" in parameters
+	assert isinstance(parameters["disease"], str)
+	assert parameters["disease"] == "DOID:13403"
 
 def test_correct_question():
 	"""

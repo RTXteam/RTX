@@ -21,13 +21,17 @@ import uuid
 import itertools
 import pprint
 import neo4j.v1
-import math
 import sys
 import timeit
+import argparse
 
-## NOTE to users:  neo4j password hard-coded (see NEO4J_PASSWORD below)
+# NOTE to users:  neo4j password hard-coded (see NEO4J_PASSWORD below)
+# nodetype+name together uniquely define a node
+
 
 class Node:
+    RESERVED_PROPS = {"UUID", "name", "seed_node_uuid", "expanded", "description"}
+
     def __init__(self, nodetype, name, seed_node):
         self.nodetype = nodetype
         self.name = name
@@ -40,17 +44,27 @@ class Node:
 #        self.out_rels = set()
 #        self.in_rels = set()
         self.expanded = False
+        self.extra_props = {}
         self.desc = ''
 
     def set_desc(self, desc):
         self.desc = desc
 
+    def set_extra_props(self, extra_props_dict):
+        assert 0 == len(extra_props_dict.keys() & self.RESERVED_PROPS)
+        self.extra_props = extra_props_dict
+
     def get_props(self):
-        return {'UUID': self.uuid,
-                'name': self.name,
-                'seed_node_uuid': self.seed_node.uuid,
-                'expanded': self.expanded,
-                'description': self.desc}
+        basic_props = {'UUID': self.uuid,
+                       'name': self.name,
+                       'seed_node_uuid': self.seed_node.uuid,
+                       'expanded': self.expanded,
+                       'description': self.desc}
+        ret_dict = {**basic_props, **self.extra_props}
+        # for key, value in ret_dict.items():
+        #     if type(value) == str and any(i in value for i in ' '):
+        #         ret_dict[key] = "`" + value + "`"
+        return ret_dict
 
     def get_labels(self):
         return {'Base', self.nodetype}
@@ -59,32 +73,37 @@ class Node:
         attr_list = ['nodetype', 'name', 'uuid', 'expanded', 'desc']
         attr_dict = {attr: str(self.__getattribute__(attr)) for attr in attr_list}
         attr_dict['seed_node_uuid'] = self.seed_node.uuid
-        
         return pprint.pformat(attr_dict)
 
     def simple_print(self):
         return 'node,' + self.uuid + ',' + self.nodetype + ',' + self.name
 
+
 class Rel:
-    def __init__(self, reltype, sourcedb, source_node, target_node, seed_node, prob=None):
+    def __init__(self, reltype, sourcedb, source_node, target_node, seed_node, prob=None, extended_reltype=None):
         self.reltype = reltype
         self.sourcedb = sourcedb
         self.source_node = source_node
         self.target_node = target_node
         self.seed_node = seed_node
         self.prob = prob
-        
-#        new_uuid = str(uuid.uuid1())
-#        self.uuid = new_uuid
-#        source_node.out_rels.add(self)
-#        target_node.in_rels.add(self)
+        if extended_reltype is None:
+            extended_reltype = reltype
+        self.extended_reltype = extended_reltype
 
     def get_props(self, reverse=False):
-        prop_dict = {#'UUID': self.uuid,
-                     'reltype': self.reltype,
+        extended_reltype = self.extended_reltype
+
+        if " " in extended_reltype:
+            quote_char = "`"
+        else:
+            quote_char = ""
+        
+        prop_dict = {'reltype': self.reltype,
                      'sourcedb': self.sourcedb,
                      'seed_node_uuid': self.seed_node.uuid,
-                     'prob': self.prob}
+                     'prob': self.prob,
+                     'extended_reltype': quote_char + self.extended_reltype + quote_char}
         if not reverse:
             prop_dict['source_node_uuid'] = self.source_node.uuid
             prop_dict['target_node_uuid'] = self.target_node.uuid
@@ -95,12 +114,14 @@ class Rel:
 
     def __str__(self):
         attr_list = ['reltype', 'sourcedb', 'source_node', 'target_node']
-        attr_dict = {attr: str(self.__getattribute__(attr)) for attr in attr_list}
+        attr_dict = {attr: str(self.__getattribute__(attr))
+                     for attr in attr_list}
 
         return pprint.pformat(attr_dict)
 
     def simple_print(self):
         return 'rel,' + self.source_node.uuid + ',' + self.target_node.uuid + ',' + self.sourcedb + ':' + self.reltype
+
 
 class Orangeboard:
     NEO4J_USERNAME = 'neo4j'
@@ -148,7 +169,7 @@ class Orangeboard:
         rel_list = itertools.chain.from_iterable(self.dict_seed_uuid_to_list_rels.values())
         rel_strings = [rel.simple_print() for rel in rel_list]
         return '\n'.join(rel_strings) + '\n'
-    
+
     def simple_print_nodes(self):
         node_list = itertools.chain.from_iterable(self.dict_seed_uuid_to_list_nodes.values())
         node_strings = [node.simple_print() for node in node_list]
@@ -272,14 +293,14 @@ class Orangeboard:
                 if node_count % Orangeboard.DEBUG_COUNT_REPORT_GRANULARITY == 0:
                     print('Number of nodes: ' + str(node_count) + '; elapsed time: ' + format(timeit.default_timer() - self.start_time, '.2f') + ' s')
         else:
-            ## node is already in the orangeboard
+            # node is already in the orangeboard
 
-            ## if the node object doesn't have a description but it is being
-            ## given one now, add the description to the existing node object
+            # if the node object doesn't have a description but it is being
+            # given one now, add the description to the existing node object
             if desc != '' and existing_node.desc == '':
                 existing_node.desc = desc
 
-            ## if seed_node_bool=True, this is a special case that must be handled
+            # if seed_node_bool=True, this is a special case that must be handled
             if seed_node_bool:
                 ## node is already in the orangeboard but we are updating its seed node
                 ## (1) get the UUID for the existing node
@@ -330,7 +351,7 @@ class Orangeboard:
                 ret_rel = existing_rel
         return [ret_rel, rel_dict_key]
 
-    def add_rel(self, reltype, sourcedb, source_node, target_node, prob=None):
+    def add_rel(self, reltype, sourcedb, source_node, target_node, prob=None, extended_reltype=None):
         if source_node.uuid == target_node.uuid:
             print('Attempt to add a relationship between a node and itself, for node: ' + str(node), file=sys.stderr)
             assert False
@@ -351,7 +372,7 @@ class Orangeboard:
             if subdict is None:
                 self.dict_reltype_to_dict_relkey_to_rel[reltype] = dict()
                 subdict = self.dict_reltype_to_dict_relkey_to_rel.get(reltype, None)
-            new_rel = Rel(reltype, sourcedb, source_node, target_node, seed_node, prob)
+            new_rel = Rel(reltype, sourcedb, source_node, target_node, seed_node, prob, extended_reltype)
             existing_rel = new_rel
             rel_dict_key = existing_rel_list[1]
             if rel_dict_key is None:
@@ -512,12 +533,13 @@ class Orangeboard:
             cypher_query_str = 'UNWIND $rel_data_list AS rel_data_map\n' + \
                                'MATCH (n1:Base {UUID: rel_data_map.source_node_uuid}),' + \
                                '(n2:Base {UUID: rel_data_map.target_node_uuid})\n' + \
-                               'CREATE (n1)-[:' + reltype + \
-                               ' { source_node_uuid: rel_data_map.source_node_uuid,' + \
+                               'CREATE (n1)-[:`' + reltype + \
+                               '` { source_node_uuid: rel_data_map.source_node_uuid,' + \
                                ' target_node_uuid: rel_data_map.target_node_uuid,' + \
                                ' sourcedb: rel_data_map.sourcedb,' + \
                                ' seed_node_uuid: rel_data_map.seed_node_uuid,' + \
-                               ' probability: rel_data_map.prob' + \
+                               ' probability: rel_data_map.prob,' + \
+                               ' extended_reltype: rel_data_map.extended_reltype' + \
                                ' }]->(n2)'
             res = self.neo4j_run_cypher_query(cypher_query_str, query_params)
             if self.debug:
@@ -566,6 +588,32 @@ class Orangeboard:
         ob.neo4j_set_auth()
         ob.neo4j_push()
         print(ob)        
-        
+
+    def test_extended_reltype():
+        ob = Orangeboard(debug=True)
+        ob.set_dict_reltype_dirs({'targets': True, 'targets2': True})
+        node1 = ob.add_node('drug', 'x', seed_node_bool=True)
+        node2 = ob.add_node('uniprot_protein', 'w', seed_node_bool=False)
+        ob.add_rel('targets', 'ChEMBL', node1, node2, prob=0.5)
+        ob.add_rel('targets2', 'ChEMBL2', node1, node2, prob=0.5, extended_reltype="test")
+        ob.neo4j_set_url()
+        ob.neo4j_set_auth()
+        ob.neo4j_push()
+        print(ob)        
+
 if __name__ == '__main__':
-    Orangeboard.test_issue_130()
+    parser = argparse.ArgumentParser(description='Builds the master knowledge graph')
+    parser.add_argument('--runfunc', dest='runfunc')
+    args = parser.parse_args()
+    args_dict = vars(args)
+    if args_dict.get('runfunc', None) is not None:
+        run_function_name = args_dict['runfunc']
+    else:
+        sys.exit("must specify --runfunc")
+    run_method = getattr(Orangeboard, run_function_name, None)
+    if run_method is None:
+        sys.exit("function not found: " + run_function_name)
+        
+    running_time = timeit.timeit(lambda: run_method(), number=1)
+    print('running time for function: ' + str(running_time))
+                        
