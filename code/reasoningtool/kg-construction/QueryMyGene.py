@@ -44,5 +44,5 @@ class QueryMyGene:
             return "UNKNOWN"
 
 if __name__ == '__main__':
-    print(QueryMyGene.get_protein_entity("UniProt:P53814"))
+    print(QueryMyGene.get_protein_entity("UniProt:O60884"))
     print(QueryMyGene.get_microRNA_entity("NCBIGene:100616298"))

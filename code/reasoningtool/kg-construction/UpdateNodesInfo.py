@@ -92,16 +92,13 @@ class UpdateNodesInfo:
     def update_anatomy_nodes():
         UpdateNodesInfo.__update_nodes('anatomy')
 
-
     @staticmethod
     def update_phenotype_nodes():
         UpdateNodesInfo.__update_nodes('phenotype')
 
-
     @staticmethod
     def update_microRNA_nodes():
         UpdateNodesInfo.__update_nodes('microRNA')
-
 
     @staticmethod
     def update_pathway_nodes():

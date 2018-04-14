@@ -105,12 +105,12 @@ class Neo4jConnection:
 
     @staticmethod
     def _get_anatomy_nodes(tx):
-        result = tx.run("MATCH (n:anatomical_entity) RETURN n.name LIMIT 900")
+        result = tx.run("MATCH (n:anatomical_entity) RETURN n.name")
         return [record["n.name"] for record in result]
 
     @staticmethod
     def _get_phenotype_nodes(tx):
-        result = tx.run("MATCH (n:phenotypic_feature) RETURN n.name LIMIT 900")
+        result = tx.run("MATCH (n:phenotypic_feature) RETURN n.name")
         return [record["n.name"] for record in result]
 
     @staticmethod
@@ -125,12 +125,12 @@ class Neo4jConnection:
 
     @staticmethod
     def _get_protein_nodes(tx):
-        result = tx.run("MATCH (n:protein) RETURN n.curie_id LIMIT 900")
+        result = tx.run("MATCH (n:protein) RETURN n.curie_id")
         return [record["n.curie_id"] for record in result]
 
     @staticmethod
     def _get_disease_nodes(tx):
-        result = tx.run("MATCH (n:disease) RETURN n.name LIMIT 900")
+        result = tx.run("MATCH (n:disease) RETURN n.name")
         return [record["n.name"] for record in result]
 
     @staticmethod

@@ -28,7 +28,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
         nodes = conn.get_anatomy_nodes()
 
         # generate random number array
-        random_indexes = random_int_list(0, len(nodes)-1, 100)
+        random_indexes = random_int_list(0, len(nodes)-1, 1000)
 
         for i in random_indexes:
             #   retrieve data from Neo4j
@@ -56,7 +56,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
         nodes = conn.get_phenotype_nodes()
 
         # generate random number array
-        random_indexes = random_int_list(0, len(nodes)-1, 100)
+        random_indexes = random_int_list(0, len(nodes)-1, 1000)
 
         for i in random_indexes:
             #   retrieve data from Neo4j
@@ -84,7 +84,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
         nodes = conn.get_microRNA_nodes()
 
         # generate random number array
-        random_indexes = random_int_list(0, len(nodes)-1, 100)
+        random_indexes = random_int_list(0, len(nodes)-1, 1000)
 
         for i in random_indexes:
             #   retrieve data from Neo4j
@@ -112,7 +112,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
         nodes = conn.get_pathway_nodes()
 
         # generate random number array
-        random_indexes = random_int_list(0, len(nodes)-1, 100)
+        random_indexes = random_int_list(0, len(nodes)-1, 1000)
 
         for i in random_indexes:
             #   retrieve data from Neo4j
@@ -140,7 +140,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
         nodes = conn.get_protein_nodes()
 
         # generate random number array
-        random_indexes = random_int_list(0, len(nodes)-1, 100)
+        random_indexes = random_int_list(0, len(nodes)-1, 1000)
 
         for i in random_indexes:
             #   retrieve data from Neo4j
@@ -169,7 +169,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
         nodes = conn.get_disease_nodes()
 
         # generate random number array
-        random_indexes = random_int_list(0, len(nodes)-1, 100)
+        random_indexes = random_int_list(0, len(nodes)-1, 1000)
 
         for i in random_indexes:
             #   retrieve data from Neo4j
