@@ -250,7 +250,8 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 			g.add_nodes_from(nodes_to_add)
 			g.add_edges_from(edges_to_add)
 			# populate the response. Quick hack to convert
-			response.add_subgraph(g.nodes(data=True), g.edges(data=True), to_print, 1-weights[path_ind]/float(max([len(x) for x in edge_paths])*max_gd))
+			#response.add_subgraph(g.nodes(data=True), g.edges(data=True), to_print, 1-weights[path_ind]/float(max([len(x) for x in edge_paths])*max_gd))
+			response.add_subgraph(g.nodes(data=True), g.edges(data=True), to_print, weights[path_ind])
 		response.print()
 
 
