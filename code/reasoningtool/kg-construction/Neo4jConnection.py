@@ -1,6 +1,14 @@
 ''' This module defines the class Neo4jConnection. Neo4jConnection class is designed
 to connect to Neo4j database and perform operations on a graphic model object. (e.g.,
-retrieve node and update node)
+retrieve node and update node) The available methods include:
+
+    get_xxx_nodes : query all xxx nodes
+    update_xxx_nodes : update xxx nodes by an array 'nodes', which contain two properties 'node_id'
+                            and 'extended_info_json' for each node
+    get_xxx_node : query xxx node by ID
+
+    xxx is the type of nodes. (e.g., anatomy, phenotype, microRNA, pathway, protein, disease)
+
 '''
 
 __author__ = 'Deqing Qu'
@@ -97,12 +105,12 @@ class Neo4jConnection:
 
     @staticmethod
     def _get_anatomy_nodes(tx):
-        result = tx.run("MATCH (n:anatomical_entity) RETURN n.name LIMIT 900")
+        result = tx.run("MATCH (n:anatomical_entity) RETURN n.name")
         return [record["n.name"] for record in result]
 
     @staticmethod
     def _get_phenotype_nodes(tx):
-        result = tx.run("MATCH (n:phenotypic_feature) RETURN n.name LIMIT 900")
+        result = tx.run("MATCH (n:phenotypic_feature) RETURN n.name")
         return [record["n.name"] for record in result]
 
     @staticmethod
@@ -117,12 +125,12 @@ class Neo4jConnection:
 
     @staticmethod
     def _get_protein_nodes(tx):
-        result = tx.run("MATCH (n:protein) RETURN n.curie_id LIMIT 900")
+        result = tx.run("MATCH (n:protein) RETURN n.curie_id")
         return [record["n.curie_id"] for record in result]
 
     @staticmethod
     def _get_disease_nodes(tx):
-        result = tx.run("MATCH (n:disease) RETURN n.name LIMIT 900")
+        result = tx.run("MATCH (n:disease) RETURN n.name")
         return [record["n.name"] for record in result]
 
     @staticmethod
