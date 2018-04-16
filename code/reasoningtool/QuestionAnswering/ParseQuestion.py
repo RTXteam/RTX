@@ -266,7 +266,7 @@ def tests():
 
 
 	# Test the exectution string function
-	text = "What are the protein directly_interacts_with of naproxen"
+	text = "What are the protein targets of naproxen"
 	question = {"language": "English", "text": text}
 	res = txltr.format_response(question)
 	known_query_type_id = res['known_query_type_id']
