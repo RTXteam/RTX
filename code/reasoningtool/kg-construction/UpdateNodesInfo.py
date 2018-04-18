@@ -13,6 +13,10 @@ Example of method name used from other packages.
     example of get_nodes_mtd_name : get_anatomy_nodes
     example of get_entity_mtd_name : get_anatomy_entity
     example of update_nodes_mtd_name : update_anatomy_nodes
+
+How to run this module
+        $ cd [git repo]/code/reasoningtool/kg-construction
+        $ python3 UpdateNodesInfo.py
 '''
 
 # BEGIN user_pass.json format

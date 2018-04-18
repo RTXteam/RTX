@@ -1,3 +1,10 @@
+"""
+    Run this module outside `tests` folder.
+        $ cd [git repo]/code/reasoningtool/
+        $ python3 -m unittest tests/UpdateNodesInfoTests.py
+"""
+
+
 import unittest
 from UpdateNodesInfo import Neo4jConnection
 from QueryBioLinkExtended import QueryBioLinkExtended
@@ -248,7 +255,6 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
             self.assertEqual(extended_info_json_from_api, node['n']['extended_info_json'])
             if node['n']['extended_info_json'] != "UNKNOWN":
                 self.assertEqual(json.loads(extended_info_json_from_api), json.loads(node['n']['extended_info_json']))
-                print(json.loads(node['n']['extended_info_json']))
 
         conn.close()
 

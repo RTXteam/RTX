@@ -82,7 +82,20 @@ class QueryBioLinkExtended:
 
 
 if __name__ == '__main__':
-    print(QueryBioLinkExtended.get_anatomy_entity('UBERON:0004476'))
-    print(QueryBioLinkExtended.get_phenotype_entity('HP:0011515'))
-    print(QueryBioLinkExtended.get_disease_entity('DOID:3965'))
-    print(QueryBioLinkExtended.get_bio_process_entity('GO:0097289'))
+
+    def save_to_test_file(key, value):
+        f = open('test_data.json', 'r+')
+        try:
+            json_data = json.load(f)
+        except ValueError:
+            json_data = {}
+        f.seek(0)
+        f.truncate()
+        json_data[key] = value
+        json.dump(json_data, f)
+        f.close()
+
+    save_to_test_file('UBERON:0004476', QueryBioLinkExtended.get_anatomy_entity('UBERON:0004476'))
+    save_to_test_file('HP:0011515', QueryBioLinkExtended.get_phenotype_entity('HP:0011515'))
+    save_to_test_file('DOID:3965', QueryBioLinkExtended.get_disease_entity('DOID:3965'))
+    save_to_test_file('GO:0097289', QueryBioLinkExtended.get_bio_process_entity('GO:0097289'))

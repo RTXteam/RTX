@@ -47,14 +47,17 @@ class QueryMyGene:
 
 if __name__ == '__main__':
 
-    print(QueryMyGene.get_protein_entity("UniProt:O60884"))
-    response_json_str = QueryMyGene.get_protein_entity("UniProt:O60884")
-    response_dict = json.loads(response_json_str)
-    print(len(response_dict))
-    # print(QueryMyGene.get_protein_entity("UniProt:O60884"))
-    # print(QueryMyGene.get_microRNA_entity("NCBIGene:100616298"))
+    def save_to_test_file(key, value):
+        f = open('test_data.json', 'r+')
+        try:
+            json_data = json.load(f)
+        except ValueError:
+            json_data = {}
+        f.seek(0)
+        f.truncate()
+        json_data[key] = value
+        json.dump(json_data, f)
+        f.close()
 
-    print(QueryMyGene.get_microRNA_entity("NCBIGene: 100847086"))
-    response_json_str = QueryMyGene.get_microRNA_entity("NCBIGene: 100847086")
-    response_dict = json.loads(response_json_str)
-    print(len(response_dict))
+    save_to_test_file('UniProt:O60884', QueryMyGene.get_protein_entity("UniProt:O60884"))
+    save_to_test_file('NCBIGene: 100847086', QueryMyGene.get_microRNA_entity("NCBIGene: 100847086"))

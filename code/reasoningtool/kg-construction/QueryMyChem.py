@@ -66,11 +66,17 @@ class QueryMyChem:
 
 
 if __name__ == '__main__':
-    result = QueryMyChem.get_chemical_substance_entity('CHEMBL1201217')
 
-    dict_json = json.loads(result)
+    def save_to_test_file(key, value):
+        f = open('test_data.json', 'r+')
+        try:
+            json_data = json.load(f)
+        except ValueError:
+            json_data = {}
+        f.seek(0)
+        f.truncate()
+        json_data[key] = value
+        json.dump(json_data, f)
+        f.close()
 
-    f = open('mychem.json', 'w')
-    f.write(result)
-    f.close()
-    print(len(dict_json))
+    save_to_test_file('CHEMBL1201217', QueryMyChem.get_chemical_substance_entity('CHEMBL1201217'))

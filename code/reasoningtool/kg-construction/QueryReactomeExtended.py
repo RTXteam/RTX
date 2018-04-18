@@ -65,4 +65,16 @@ class QueryReactomeExtended:
 
 
 if __name__ == '__main__':
-    print(QueryReactomeExtended.get_pathway_entity('R-HSA-5579024'))
+    def save_to_test_file(key, value):
+        f = open('test_data.json', 'r+')
+        try:
+            json_data = json.load(f)
+        except ValueError:
+            json_data = {}
+        f.seek(0)
+        f.truncate()
+        json_data[key] = value
+        json.dump(json_data, f)
+        f.close()
+
+    save_to_test_file('R-HSA-5579024', QueryReactomeExtended.get_pathway_entity('R-HSA-5579024'))
