@@ -17,32 +17,47 @@ __email__ = ''
 __status__ = 'Prototype'
 
 import mygene
+import requests_cache
+import json
 
+# configure requests package to use the "orangeboard.sqlite" cache
+requests_cache.install_cache('orangeboard')
 
 class QueryMyGene:
 
     @staticmethod
     def get_protein_entity(protein_id):
         mg = mygene.MyGeneInfo()
-        result_str = str(mg.query(protein_id, fields='all'))
-        #   replace double quotes with single quotes
-        result_str = result_str.replace('"', "'")
-        if len(result_str) > 100:
-            return result_str
-        else:
-            return "UNKNOWN"
+        results = str(mg.query(protein_id, fields='all', return_raw='True'))
+        result_str = 'UNKNOWN'
+        if len(results) > 100:
+            json_dict = json.loads(results)
+            result_str = json.dumps(json_dict)
+        return result_str
 
     @staticmethod
-    def get_microRNA_entity(protein_id):
+    def get_microRNA_entity(microrna_id):
         mg = mygene.MyGeneInfo()
-        result_str = str(mg.query(protein_id.replace('NCBIGene', 'entrezgene'), fields='all'))
-        #   replace double quotes with single quotes
-        result_str = result_str.replace('"', "'")
-        if len(result_str) > 100:
-            return result_str
-        else:
-            return "UNKNOWN"
+        results = str(mg.query(microrna_id.replace('NCBIGene', 'entrezgene'), fields='all', return_raw='True'))
+        result_str = 'UNKNOWN'
+        if len(results) > 100:
+            json_dict = json.loads(results)
+            result_str = json.dumps(json_dict)
+        return result_str
 
 if __name__ == '__main__':
-    print(QueryMyGene.get_protein_entity("UniProt:O60884"))
-    print(QueryMyGene.get_microRNA_entity("NCBIGene:100616298"))
+
+    def save_to_test_file(key, value):
+        f = open('test_data.json', 'r+')
+        try:
+            json_data = json.load(f)
+        except ValueError:
+            json_data = {}
+        f.seek(0)
+        f.truncate()
+        json_data[key] = value
+        json.dump(json_data, f)
+        f.close()
+
+    save_to_test_file('UniProt:O60884', QueryMyGene.get_protein_entity("UniProt:O60884"))
+    save_to_test_file('NCBIGene: 100847086', QueryMyGene.get_microRNA_entity("NCBIGene: 100847086"))

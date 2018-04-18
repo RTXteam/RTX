@@ -31,7 +31,7 @@ except ImportError:
 # Required data about the knowledge graph
 ################################################
 # get all the node names and descriptions
-fid = open(os.path.dirname(os.path.abspath(__file__))+'/../../../data/KGmetadata/NodeNamesDescriptions.tsv', 'r')
+fid = open(os.path.dirname(os.path.abspath(__file__))+'/../../../data/KGmetadata/NodeNamesDescriptions.tsv', 'r', encoding='utf-8', errors='replace')
 names2descrip = dict()
 descrip2names = dict()  # TODO: this assumes that descriptions are unique, and this may change soon
 lower_name2upper_name = dict()

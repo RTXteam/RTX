@@ -1,8 +1,16 @@
+"""
+    Run this module outside `tests` folder.
+        $ cd [git repo]/code/reasoningtool/
+        $ python3 -m unittest tests/UpdateNodesInfoTests.py
+"""
+
+
 import unittest
 from UpdateNodesInfo import Neo4jConnection
 from QueryBioLinkExtended import QueryBioLinkExtended
 from QueryMyGene import QueryMyGene
 from QueryReactomeExtended import QueryReactomeExtended
+from QueryMyChem import QueryMyChem
 import json
 import random
 
@@ -28,7 +36,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
         nodes = conn.get_anatomy_nodes()
 
         # generate random number array
-        random_indexes = random_int_list(0, len(nodes)-1, 1000)
+        random_indexes = random_int_list(0, len(nodes)-1, 100)
 
         for i in random_indexes:
             #   retrieve data from Neo4j
@@ -40,9 +48,10 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
             self.assertIsNotNone(node['n']['name'])
             self.assertIsNotNone(node['n']['extended_info_json'])
             self.assertEqual(node_id, node['n']['name'])
+            self.maxDiff = None
             self.assertEqual(extended_info_json_from_api, node['n']['extended_info_json'])
-            # print(node['n']['name'])
-            # print(node['n']['extended_info_json'])
+            if node['n']['extended_info_json'] != "UNKNOWN":
+                self.assertEqual(json.loads(extended_info_json_from_api), json.loads(node['n']['extended_info_json']))
 
         conn.close()
 
@@ -56,7 +65,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
         nodes = conn.get_phenotype_nodes()
 
         # generate random number array
-        random_indexes = random_int_list(0, len(nodes)-1, 1000)
+        random_indexes = random_int_list(0, len(nodes)-1, 100)
 
         for i in random_indexes:
             #   retrieve data from Neo4j
@@ -68,9 +77,10 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
             self.assertIsNotNone(node['n']['name'])
             self.assertIsNotNone(node['n']['extended_info_json'])
             self.assertEqual(node_id, node['n']['name'])
+            self.maxDiff = None
             self.assertEqual(extended_info_json_from_api, node['n']['extended_info_json'])
-            # print(node['n']['name'])
-            # print(node['n']['extended_info_json'])
+            if node['n']['extended_info_json'] != "UNKNOWN":
+                self.assertEqual(json.loads(extended_info_json_from_api), json.loads(node['n']['extended_info_json']))
 
         conn.close()
 
@@ -84,7 +94,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
         nodes = conn.get_microRNA_nodes()
 
         # generate random number array
-        random_indexes = random_int_list(0, len(nodes)-1, 1000)
+        random_indexes = random_int_list(0, len(nodes)-1, 100)
 
         for i in random_indexes:
             #   retrieve data from Neo4j
@@ -96,9 +106,10 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
             self.assertIsNotNone(node['n']['name'])
             self.assertIsNotNone(node['n']['extended_info_json'])
             self.assertEqual(node_id, node['n']['name'])
+            self.maxDiff = None
             self.assertEqual(extended_info_json_from_api, node['n']['extended_info_json'])
-            # print(node['n']['name'])
-            # print(node['n']['extended_info_json'])
+            if node['n']['extended_info_json'] != "UNKNOWN":
+                self.assertEqual(json.loads(extended_info_json_from_api), json.loads(node['n']['extended_info_json']))
 
         conn.close()
 
@@ -112,7 +123,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
         nodes = conn.get_pathway_nodes()
 
         # generate random number array
-        random_indexes = random_int_list(0, len(nodes)-1, 1000)
+        random_indexes = random_int_list(0, len(nodes)-1, 100)
 
         for i in random_indexes:
             #   retrieve data from Neo4j
@@ -124,9 +135,10 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
             self.assertIsNotNone(node['n']['name'])
             self.assertIsNotNone(node['n']['extended_info_json'])
             self.assertEqual(node_id, node['n']['name'])
+            self.maxDiff = None
             self.assertEqual(extended_info_json_from_api, node['n']['extended_info_json'])
-            # print(node['n']['name'])
-            # print(node['n']['extended_info_json'])
+            if node['n']['extended_info_json'] != "UNKNOWN":
+                self.assertEqual(json.loads(extended_info_json_from_api), json.loads(node['n']['extended_info_json']))
 
         conn.close()
 
@@ -140,7 +152,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
         nodes = conn.get_protein_nodes()
 
         # generate random number array
-        random_indexes = random_int_list(0, len(nodes)-1, 1000)
+        random_indexes = random_int_list(0, len(nodes)-1, 100)
 
         for i in random_indexes:
             #   retrieve data from Neo4j
@@ -154,8 +166,8 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
             self.assertIsNotNone(node['n']['extended_info_json'])
             self.assertEqual(node_id, node['n']['curie_id'])
             self.assertEqual(extended_info_json_from_api, node['n']['extended_info_json'])
-            # print(node['n']['name'])
-            # print(node['n']['extended_info_json'])
+            if node['n']['extended_info_json'] != "UNKNOWN":
+                self.assertEqual(json.loads(extended_info_json_from_api), json.loads(node['n']['extended_info_json']))
 
         conn.close()
 
@@ -169,7 +181,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
         nodes = conn.get_disease_nodes()
 
         # generate random number array
-        random_indexes = random_int_list(0, len(nodes)-1, 1000)
+        random_indexes = random_int_list(0, len(nodes)-1, 100)
 
         for i in random_indexes:
             #   retrieve data from Neo4j
@@ -181,9 +193,68 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
             self.assertIsNotNone(node['n']['name'])
             self.assertIsNotNone(node['n']['extended_info_json'])
             self.assertEqual(node_id, node['n']['name'])
+            self.maxDiff = None
             self.assertEqual(extended_info_json_from_api, node['n']['extended_info_json'])
-            # print(node['n']['name'])
-            # print(node['n']['extended_info_json'])
+            if node['n']['extended_info_json'] != "UNKNOWN":
+                self.assertEqual(json.loads(extended_info_json_from_api), json.loads(node['n']['extended_info_json']))
+
+        conn.close()
+
+    def test_update_chemical_substance_entity(self):
+        f = open('user_pass.json', 'r')
+        user_data = f.read()
+        f.close()
+        user = json.loads(user_data)
+
+        conn = Neo4jConnection("bolt://localhost:7687", user['username'], user['password'])
+        nodes = conn.get_chemical_substance_nodes()
+
+        # generate random number array
+        random_indexes = random_int_list(0, len(nodes)-1, 10)
+
+        for i in random_indexes:
+            #   retrieve data from Neo4j
+            node_id = nodes[i]
+            extended_info_json_from_api = QueryMyChem.get_chemical_substance_entity(node_id)
+
+            # retrieve phenotype entities from BioLink API
+            node = conn.get_chemical_substance_node(node_id)
+            self.assertIsNotNone(node['n']['name'])
+            self.assertIsNotNone(node['n']['extended_info_json'])
+            self.assertEqual(node_id, node['n']['name'])
+            self.maxDiff = None
+            self.assertEqual(extended_info_json_from_api, node['n']['extended_info_json'])
+            if node['n']['extended_info_json'] != "UNKNOWN":
+                self.assertEqual(json.loads(extended_info_json_from_api), json.loads(node['n']['extended_info_json']))
+
+        conn.close()
+
+    def test_update_bio_process_entity(self):
+        f = open('user_pass.json', 'r')
+        user_data = f.read()
+        f.close()
+        user = json.loads(user_data)
+
+        conn = Neo4jConnection("bolt://localhost:7687", user['username'], user['password'])
+        nodes = conn.get_bio_process_nodes()
+
+        # generate random number array
+        random_indexes = random_int_list(0, len(nodes)-1, 10)
+
+        for i in random_indexes:
+            #   retrieve data from Neo4j
+            node_id = nodes[i]
+            extended_info_json_from_api = QueryBioLinkExtended.get_bio_process_entity(node_id)
+
+            # retrieve phenotype entities from BioLink API
+            node = conn.get_bio_process_node(node_id)
+            self.assertIsNotNone(node['n']['name'])
+            self.assertIsNotNone(node['n']['extended_info_json'])
+            self.assertEqual(node_id, node['n']['name'])
+            self.maxDiff = None
+            self.assertEqual(extended_info_json_from_api, node['n']['extended_info_json'])
+            if node['n']['extended_info_json'] != "UNKNOWN":
+                self.assertEqual(json.loads(extended_info_json_from_api), json.loads(node['n']['extended_info_json']))
 
         conn.close()
 

@@ -18,7 +18,7 @@ __status__ = 'Prototype'
 import requests
 import requests_cache
 import sys
-
+import json
 
 # configure requests package to use the "orangeboard.sqlite" cache
 requests_cache.install_cache('orangeboard')
@@ -30,7 +30,8 @@ class QueryBioLinkExtended:
     HANDLER_MAP = {
         'get_anatomy': 'anatomy/{id}',
         'get_phenotype': 'phenotype/{id}',
-        'get_disease': 'disease/{id}'
+        'get_disease': 'disease/{id}',
+        'get_bio_process': '{id}'
     }
 
     @staticmethod
@@ -50,7 +51,7 @@ class QueryBioLinkExtended:
             print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
             return None
 
-        return res.json()
+        return res.text
 
     @staticmethod
     def __get_entity(entity_type, entity_id):
@@ -58,9 +59,9 @@ class QueryBioLinkExtended:
         results = QueryBioLinkExtended.__access_api(handler)
         result_str = 'UNKNOWN'
         if results is not None:
-            result_str = str(results)
-            #   replace double quotes with single quotes
-            result_str = result_str.replace('"', "'")
+            #   remove all \n characters using json api and convert the string to one line
+            json_dict = json.loads(results)
+            result_str = json.dumps(json_dict)
         return result_str
 
     @staticmethod
@@ -75,8 +76,26 @@ class QueryBioLinkExtended:
     def get_disease_entity(disease_id):
         return QueryBioLinkExtended.__get_entity("get_disease", disease_id)
 
+    @staticmethod
+    def get_bio_process_entity(bio_process_id):
+        return QueryBioLinkExtended.__get_entity("get_bio_process", bio_process_id)
+
 
 if __name__ == '__main__':
-    print(QueryBioLinkExtended.get_anatomy_entity('UBERON:0004476'))
-    print(QueryBioLinkExtended.get_phenotype_entity('HP:0011515'))
-    print(QueryBioLinkExtended.get_disease_entity('DOID:3965'))
+
+    def save_to_test_file(key, value):
+        f = open('test_data.json', 'r+')
+        try:
+            json_data = json.load(f)
+        except ValueError:
+            json_data = {}
+        f.seek(0)
+        f.truncate()
+        json_data[key] = value
+        json.dump(json_data, f)
+        f.close()
+
+    save_to_test_file('UBERON:0004476', QueryBioLinkExtended.get_anatomy_entity('UBERON:0004476'))
+    save_to_test_file('HP:0011515', QueryBioLinkExtended.get_phenotype_entity('HP:0011515'))
+    save_to_test_file('DOID:3965', QueryBioLinkExtended.get_disease_entity('DOID:3965'))
+    save_to_test_file('GO:0097289', QueryBioLinkExtended.get_bio_process_entity('GO:0097289'))
