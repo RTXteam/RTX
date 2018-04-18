@@ -1,63 +1,170 @@
-''' This module defines the class QueryProteinEntity. QueryProteinEntity class is designed
-to query protein entity from mygene library. The
-available methods include:
+""" This module defines the class QueryMyGene.
+QueryMyGene is written to query gene annotation information via python package
+mygene. It can convert among gene symbol, uniprot id, entrez gene id, mirbase id.
+"""
 
-    get_protein_entity : query protein properties by ID
-    get_microRNA_entity : query micro properties by ID
-
-'''
-
-__author__ = 'Deqing Qu'
-__copyright__ = 'Oregon State University'
-__credits__ = ['Deqing Qu', 'Stephen Ramsey']
-__license__ = 'MIT'
-__version__ = '0.1.0'
-__maintainer__ = ''
-__email__ = ''
-__status__ = 'Prototype'
+__author__ = ""
+__copyright__ = ""
+__credits__ = []
+__license__ = ""
+__version__ = ""
+__maintainer__ = ""
+__email__ = ""
+__status__ = "Prototype"
 
 import mygene
-import requests_cache
-import json
-
-# configure requests package to use the "orangeboard.sqlite" cache
-requests_cache.install_cache('orangeboard')
+import sys
+import requests
 
 class QueryMyGene:
+    def __init__(self, debug=False):
+        self.mygene_obj = mygene.MyGeneInfo()
+        self.debug = debug
 
     @staticmethod
-    def get_protein_entity(protein_id):
-        mg = mygene.MyGeneInfo()
-        results = str(mg.query(protein_id, fields='all', return_raw='True'))
-        result_str = 'UNKNOWN'
-        if len(results) > 100:
-            json_dict = json.loads(results)
-            result_str = json.dumps(json_dict)
-        return result_str
+    def unnest(lst, skip_type):
+        """
+        To unnest a list like `["foo", ["bar", "baz"]]` to `["foo", "bar", "baz"]`.
+        Elements of `skip_type` will be leaf as is.
+        """
+        def generate_elements(lst, skip_type):
+            for e in lst:
+                if isinstance(e, skip_type):
+                    yield e
+                else:
+                    yield from e
 
-    @staticmethod
-    def get_microRNA_entity(microrna_id):
-        mg = mygene.MyGeneInfo()
-        results = str(mg.query(microrna_id.replace('NCBIGene', 'entrezgene'), fields='all', return_raw='True'))
-        result_str = 'UNKNOWN'
-        if len(results) > 100:
-            json_dict = json.loads(results)
-            result_str = json.dumps(json_dict)
-        return result_str
+        return list(generate_elements(lst, skip_type))
 
-if __name__ == '__main__':
-
-    def save_to_test_file(key, value):
-        f = open('test_data.json', 'r+')
+    def convert_gene_symbol_to_uniprot_id(self, gene_symbol):
         try:
-            json_data = json.load(f)
-        except ValueError:
-            json_data = {}
-        f.seek(0)
-        f.truncate()
-        json_data[key] = value
-        json.dump(json_data, f)
-        f.close()
+            res = self.mygene_obj.query('symbol:' + gene_symbol, species='human',
+                                        fields='uniprot', verbose=False)
+        except requests.exceptions.HTTPError:
+            print('HTTP error for querying gene symbol to uniprot in mygene: ' + gene_symbol, file=sys.stderr)
+            res = None            
+        uniprot_ids_set = set()
+        if res is not None and len(res) > 0:
+            uniprot_ids_list = []
+            for hit in res['hits']:
+                uniprot_hit = hit.get("uniprot", None)
+                if uniprot_hit is not None:
+                    uniprot_id = uniprot_hit.get("Swiss-Prot", None)
+                    if uniprot_id is not None:
+                        uniprot_ids_list.append(uniprot_id)
+                else:
+                    if self.debug:
+                        print("Could not find Uniprot ID for gene symbol: " + gene_symbol)
+            uniprot_ids_list = QueryMyGene.unnest(uniprot_ids_list, str)
+            uniprot_ids_set = set(uniprot_ids_list)
+        return uniprot_ids_set
 
-    save_to_test_file('UniProt:O60884', QueryMyGene.get_protein_entity("UniProt:O60884"))
-    save_to_test_file('NCBIGene: 100847086', QueryMyGene.get_microRNA_entity("NCBIGene: 100847086"))
+    def convert_uniprot_id_to_gene_symbol(self, uniprot_id):
+        try:
+            res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human',
+                                        fields='symbol', verbose=False)
+        except requests.exceptions.HTTPError:
+            print('HTTP error for querying uniprot to gene symbol mygene: ' + uniprot_id, file=sys.stderr)
+            res = None
+        gene_symbol = set()
+        if res is not None and len(res) > 0:
+            res_hits = res.get('hits', None)
+            if res_hits is not None:
+                gene_symbol = set([hit['symbol'] for hit in res_hits])
+            else:
+                print("QueryMyGene.convert_uniprot_id_to_gene_symbol: no \'hits\' result data for uniprot_id: " + uniprot_id, file=sys.stderr)
+            gene_symbol = set([hit["symbol"] for hit in res_hits])
+        return gene_symbol
+
+    def convert_uniprot_id_to_entrez_gene_ID(self, uniprot_id):
+        try:
+            res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human',
+                                        fields='entrezgene', verbose=False)
+        except requests.exceptions.HTTPError:
+            print('HTTP error for querying uniprot-to-entrezgene in mygene: ' + uniprot_id, file=sys.stderr)
+            res = None
+        entrez_ids = set()
+        if res is not None and len(res) > 0:
+            res_hits = res.get('hits', None)
+            if res_hits is not None:
+                for hit in res_hits:
+                    entrez_id = hit.get('entrezgene', None)
+                    if entrez_id is not None:
+                        entrez_ids.add(entrez_id)
+#                entrez_ids = set([hit["entrezgene"] for hit in res_hits])
+            else:
+                print("QueryMyGene.convert_uniprot_id_to_entrez_gene_ID: no \'hits\' result data for uniprot_id: " + uniprot_id, file=sys.stderr)
+        return entrez_ids
+
+    def convert_gene_symbol_to_entrez_gene_ID(self, gene_symbol):
+        res = self.mygene_obj.query('symbol:' + gene_symbol, species='human',
+                                    fields='entrezgene', verbose=False)
+        entrez_ids = set()
+        if len(res) > 0:
+            entrez_ids = set()
+            for hit in res['hits']:
+                entrez_id = hit.get('entrezgene', None)
+                if entrez_id is not None:
+                    entrez_ids.add(entrez_id)
+        return entrez_ids
+
+    def convert_entrez_gene_ID_to_mirbase_ID(self, entrez_gene_id):
+        assert type(entrez_gene_id)==int
+        res = self.mygene_obj.query('entrezgene:' + str(entrez_gene_id), species='human', fields='miRBase', verbose=False)
+        mirbase_id = set()
+        if len(res) > 0:
+            mirbase_id = set([hit['miRBase'] for hit in res['hits']])
+        return mirbase_id
+
+
+    def get_gene_ontology_ids_bp_for_uniprot_id(self, uniprot_id):
+        assert type(uniprot_id)==str
+        q_res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human', fields='go', verbose=False)
+        res = dict()
+        q_res_hits = q_res.get('hits', None)
+        if q_res_hits is not None:
+            if type(q_res_hits)==list and len(q_res_hits) > 0:
+                for q_res_hit in q_res_hits:
+                    if type(q_res_hit)==dict:
+                        q_res_go = q_res_hit.get('go', None)
+                        if q_res_go is not None:
+                            q_res_bp = q_res_go.get('BP', None)
+                            if q_res_bp is not None:
+                                if type(q_res_bp)==list and len(q_res_bp) > 0:
+                                    res_add = {item["id"]:item["term"] for item in q_res_bp}
+                                    res.update(res_add)
+        return res
+
+    def get_gene_ontology_ids_bp_for_entrez_gene_id(self, entrez_gene_id):
+        assert type(entrez_gene_id)==int
+        q_res = self.mygene_obj.query('entrezgene:' + str(entrez_gene_id), species='human', fields='go', verbose=False)
+        res = dict()
+        q_res_hits = q_res.get('hits', None)
+        if q_res_hits is not None:
+            if type(q_res_hits)==list and len(q_res_hits) > 0:
+                for q_res_hit in q_res_hits:
+                    if type(q_res_hit)==dict:
+                        q_res_go = q_res_hit.get('go', None)
+                        if q_res_go is not None:
+                            q_res_bp = q_res_go.get('BP', None)
+                            if q_res_bp is not None:
+                                if type(q_res_bp)==list and len(q_res_bp) > 0:
+                                    res_add = {item["id"]:item["term"] for item in q_res_bp}
+                                    res.update(res_add)
+        return res
+    
+if __name__ == '__main__':
+    mg = QueryMyGene()
+    print(mg.get_gene_ontology_ids_bp_for_entrez_gene_id(406991))
+    print(mg.get_gene_ontology_ids_bp_for_uniprot_id('Q05925'))
+    print(mg.convert_uniprot_id_to_gene_symbol('Q05925'))
+    print(mg.convert_gene_symbol_to_uniprot_id('A2M'))
+    print(mg.convert_gene_symbol_to_uniprot_id('A1BG'))
+    print(mg.convert_gene_symbol_to_entrez_gene_ID('MIR96'))
+    print(mg.convert_entrez_gene_ID_to_mirbase_ID(407053))
+    print(mg.convert_gene_symbol_to_uniprot_id("HMOX1"))
+    print(mg.convert_gene_symbol_to_uniprot_id('RAD54B'))
+    print(mg.convert_gene_symbol_to_uniprot_id('NS2'))
+    print(mg.convert_uniprot_id_to_gene_symbol("P09601"))
+    print(mg.convert_uniprot_id_to_entrez_gene_ID("P09601"))
+    print(mg.convert_uniprot_id_to_entrez_gene_ID("XYZZY"))
