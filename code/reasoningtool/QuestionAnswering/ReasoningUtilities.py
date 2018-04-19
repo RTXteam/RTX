@@ -365,7 +365,8 @@ def expected_graph_distance(source_node, source_node_label, target_node, target_
 	res = cypher.run(query, conn=connection, config=defaults)
 	graph = get_graph(res, directed=directed)  # Note: I may want to make this directed, but sometimes this means no path from OMIM
 	mat = nx.to_numpy_matrix(graph)  # get the indidence matrix
-	basis = [i[1] for i in list(graph.nodes(data='names'))]  # basis for the matrix (i.e. list of ID's)
+	#basis = [i[1] for i in list(graph.nodes(data='names'))]  # basis for the matrix (i.e. list of ID's)
+	basis = [d['names'] for u,d in graph.nodes(data=True)]
 	doid_index = basis.index(target_node)  # position of the target
 	omim_index = basis.index(source_node)  # position of the source
 	# print(source_node)  # diagnostics
