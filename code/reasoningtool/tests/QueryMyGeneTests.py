@@ -1,36 +1,36 @@
 import unittest
 from QueryMyGene import QueryMyGene
-import json
 
 
-def get_from_test_file(key):
-    f = open('test_data.json', 'r')
-    test_data = f.read()
-    try:
-        test_data_dict = json.loads(test_data)
-        f.close()
-        return test_data_dict[key]
-    except ValueError:
-        f.close()
-        return None
+class QueryMyGeneTestCase(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.mg = QueryMyGene()
 
+    def test_convert_gene_symbol_to_uniprot_id(self):
+        uniprot_ids = self.mg.convert_gene_symbol_to_uniprot_id('A2M')
+        known_ids = {'P01023'}
+        self.assertSetEqual(uniprot_ids, known_ids)
 
-class QueryProteinEntityTestCase(unittest.TestCase):
+    def test_convert_uniprot_id_to_gene_symbol(self):
+        gene_symbols = self.mg.convert_uniprot_id_to_gene_symbol('Q05925')
+        know_symbols = {'EN1'}
+        self.assertSetEqual(gene_symbols, know_symbols)
 
-    def test_get_protein_entity(self):
+    def test_convert_uniprot_id_to_entrez_gene_ID(self):
+        entrez_ids = self.mg.convert_uniprot_id_to_entrez_gene_ID("P09601")
+        known_ids = {3162}
+        self.assertSetEqual(entrez_ids, known_ids)
 
-        extended_info_json = QueryMyGene.get_protein_entity("UniProt:O60884")
-        self.maxDiff = None
-        self.assertIsNotNone(extended_info_json)
-        self.assertEqual(extended_info_json, get_from_test_file('UniProt:O60884'))
+    def test_convert_gene_symbol_to_entrez_gene_ID(self):
+        entrez_ids = self.mg.convert_gene_symbol_to_entrez_gene_ID('MIR96')
+        known_ids = {407053}
+        self.assertSetEqual(entrez_ids, known_ids)
 
-    def test_get_microRNA_entity(self):
-
-        extended_info_json = QueryMyGene.get_microRNA_entity("NCBIGene: 100847086")
-        self.maxDiff = None
-        self.assertIsNotNone(extended_info_json)
-        self.assertEqual(extended_info_json, get_from_test_file('NCBIGene: 100847086'))
+    def test_convert_entrez_gene_ID_to_mirbase_ID(self):
+        mirbase_ids = self.mg.convert_entrez_gene_ID_to_mirbase_ID(407053)
+        known_ids = {'MI0000098'}
+        self.assertSetEqual(mirbase_ids, known_ids)
 
 
 if __name__ == '__main__':
-    unittest.main()

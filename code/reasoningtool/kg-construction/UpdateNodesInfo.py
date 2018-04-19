@@ -19,12 +19,12 @@ How to run this module
         $ python3 UpdateNodesInfo.py
 '''
 
-# BEGIN user_pass.json format
+# BEGIN config.json format
 # {
 #   "username":"xxx",
 #   "password":"xxx"
 # }
-# END user_pass.json format
+# END config.json format
 
 __author__ = 'Deqing Qu'
 __copyright__ = 'Oregon State University'
@@ -44,9 +44,9 @@ class UpdateNodesInfo:
     GET_QUERY_CLASS = {
         'anatomy': 'QueryBioLinkExtended',
         'phenotype': 'QueryBioLinkExtended',
-        'microRNA': 'QueryMyGene',
+        'microRNA': 'QueryMyGeneExtended',
         'pathway': 'QueryReactomeExtended',
-        'protein': 'QueryMyGene',
+        'protein': 'QueryMyGeneExtended',
         'disease': 'QueryBioLinkExtended',
         'chemical_substance': 'QueryMyChem',
         'bio_process': 'QueryBioLinkExtended'
@@ -55,12 +55,12 @@ class UpdateNodesInfo:
     @staticmethod
     def __update_nodes(node_type):
 
-        f = open('user_pass.json', 'r')
-        user_data = f.read()
+        f = open('config.json', 'r')
+        config_data = f.read()
         f.close()
-        user = json.loads(user_data)
+        config = json.loads(config_data)
 
-        conn = Neo4jConnection("bolt://localhost:7687", user['username'], user['password'])
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
         get_nodes_mtd_name = "get_" + node_type + "_nodes"
         get_nodes_mtd = getattr(conn, get_nodes_mtd_name)
         nodes = get_nodes_mtd()

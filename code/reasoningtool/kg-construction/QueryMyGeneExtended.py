@@ -23,7 +23,7 @@ import json
 # configure requests package to use the "orangeboard.sqlite" cache
 requests_cache.install_cache('orangeboard')
 
-class QueryMyGene:
+class QueryMyGeneExtended:
 
     @staticmethod
     def get_protein_entity(protein_id):
@@ -59,5 +59,5 @@ if __name__ == '__main__':
         json.dump(json_data, f)
         f.close()
 
-    save_to_test_file('UniProt:O60884', QueryMyGene.get_protein_entity("UniProt:O60884"))
-    save_to_test_file('NCBIGene: 100847086', QueryMyGene.get_microRNA_entity("NCBIGene: 100847086"))
+    save_to_test_file('UniProt:O60884', QueryMyGeneExtended.get_protein_entity("UniProt:O60884"))
+    save_to_test_file('NCBIGene: 100847086', QueryMyGeneExtended.get_microRNA_entity("NCBIGene: 100847086"))
