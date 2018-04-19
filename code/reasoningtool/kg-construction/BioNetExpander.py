@@ -90,7 +90,7 @@ class BioNetExpander:
 
         curie_prefix = self.NODE_SIMPLE_TYPE_TO_CURIE_PREFIX[simple_node_type_fixed]
         if name.startswith("CL:"):
-            curie_prefix = "CL:"
+            curie_prefix = "CL"
 
         iri_prefix = self.CURIE_PREFIX_TO_IRI_PREFIX[curie_prefix]
         if ":" not in name:
