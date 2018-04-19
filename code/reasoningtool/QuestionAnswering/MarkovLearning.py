@@ -11,7 +11,7 @@ driver = GraphDatabase.driver("bolt://rtx.ncats.io:7687", auth=basic_auth("neo4j
 session = driver.session()
 
 # Connection information for the ipython-cypher package
-connection = "http://neo4j:precisionmedicine@rtx.ncats.io:7473/db/data"
+connection = "http://neo4j:precisionmedicine@rtx.ncats.io:7474/db/data"
 DEFAULT_CONFIGURABLE = {
 	"auto_limit": 0,
 	"style": 'DEFAULT',
@@ -37,7 +37,7 @@ config = DefaultConfigurable(**DEFAULT_CONFIGURABLE)
 def initialize_Markov_chain(connection, config):
 	"""
 	This initializes an empty Markov chain and returns the transition matrix and state space
-	:param connection: ipython-cypher connection string (eg: http://username:password@host.ip/7473/db/data
+	:param connection: ipython-cypher connection string (eg: http://username:password@host.ip/7474/db/data
 	:param config: ipython-cypher configuration named tuple
 	:return: transition matrix (numpy array) and state space (list of tuples: (rel, node))
 	"""
