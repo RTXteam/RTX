@@ -24,7 +24,7 @@ response = FormatOutput.FormatResponse(1)
 
 	
 # Connection information for the ipython-cypher package
-connection = "http://neo4j:precisionmedicine@rtx.ncats.io:7473/db/data"
+connection = "http://neo4j:precisionmedicine@rtx.ncats.io:7474/db/data"
 DEFAULT_CONFIGURABLE = {
 	"auto_limit": 0,
 	"style": 'DEFAULT',
