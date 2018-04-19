@@ -109,8 +109,8 @@ class BioNetExpander:
                                          name,
                                          seed_node_bool,
                                          desc)
-        node.set_extra_props({"iri": iri,
-                              "curie_id": curie_id,
+        node.set_extra_props({"uri": iri,
+                              "id": curie_id,
                               "accession": accession})
         return node
 
