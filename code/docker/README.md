@@ -45,4 +45,6 @@ The above steps should prepare the RTX POC software to be used with your Docker 
 
     sudo docker exec -it rtxsteve /usr/bin/sudo -H -u rt bash -c 'cd ~/kg-construction && sh run_build_master_kg.sh'
 
+# Starting the RTX docker container
 
+    docker run -td -p 7474:7474 -p 80:80 -p 7687:7687 --name PRODUCTION --mount type=bind,source=/mnt/data,target=/mnt/data ncats:version2
