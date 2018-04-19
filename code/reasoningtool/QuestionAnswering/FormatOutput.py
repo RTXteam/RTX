@@ -86,6 +86,9 @@ class FormatResponse:
 		node_uuids = dict()
 		node_accessions = dict()
 		node_iris = dict()
+		node_uuids2iri = dict()
+		node_curies = dict()
+		node_uuids2curie = dict()
 		for u, data in nodes:
 			node_keys.append(u)
 			node_descriptions[u] = data['properties']['description']
@@ -94,39 +97,46 @@ class FormatResponse:
 			node_uuids[u] = data['properties']['UUID']
 			node_accessions[u] = data['properties']['accession']
 			node_iris[u] = data['properties']['iri']
+			node_uuids2iri[data['properties']['UUID']] = data['properties']['iri']
+			node_curies[u] = data['properties']['curie_id']
+			node_uuids2curie[data['properties']['UUID']] = data['properties']['curie_id']
 
 		edge_keys = []
 		edge_types = dict()
 		edge_source_db = dict()
-		edge_source_uuid = dict()
-		edge_target_uuid = dict()
+		edge_source_iri = dict()
+		edge_target_iri = dict()
+		edge_source_curie = dict()
+		edge_target_curie = dict()
 		for u, v, data in edges:
 			edge_keys.append((u, v))
 			edge_types[(u, v)] = data['type']
 			edge_source_db[(u, v)] = data['properties']['sourcedb']
-			edge_source_uuid[(u, v)] = data['properties']['source_node_uuid']
-			edge_target_uuid[(u, v)] = data['properties']['target_node_uuid']
+			edge_source_iri[(u, v)] = node_uuids2iri[data['properties']['source_node_uuid']]
+			edge_target_iri[(u, v)] = node_uuids2iri[data['properties']['target_node_uuid']]
+			edge_source_curie[(u,v)] = node_uuids2curie[data['properties']['source_node_uuid']]
+			edge_target_curie[(u, v)] = node_uuids2curie[data['properties']['target_node_uuid']]
 
 		# For each node, populate the relevant information
 		node_objects = []
-		node_uuid_to_node_object = dict()
+		node_iris_to_node_object = dict()
 		for node_key in node_keys:
 			node = Node()
-			node.id = node_uuids[node_key]
+			node.id = node_curies[node_key]
 			node.type = node_labels[node_key]
 			node.name = node_names[node_key]
-			node.accession = node_iris[node_key]
+			node.accession = node_accessions[node_key]
 			node.description = node_descriptions[node_key]
 			node_objects.append(node)
-			node_uuid_to_node_object[node_uuids[node_key]] = node
+			node_iris_to_node_object[node_iris[node_key]] = node
 
 		# for each edge, create an edge between them
 		edge_objects = []
 		for u, v in edge_keys:
 			edge = Edge()
 			edge.type = edge_types[(u, v)]
-			edge.source_id = node_uuid_to_node_object[edge_source_uuid[(u, v)]].id
-			edge.target_id = node_uuid_to_node_object[edge_target_uuid[(u, v)]].id
+			edge.source_id = node_iris_to_node_object[edge_source_iri[(u, v)]].id
+			edge.target_id = node_iris_to_node_object[edge_target_iri[(u, v)]].id
 			edge.origin_list = []
 			edge.origin_list.append(edge_source_db[(u, v)])  # TODO: check with eric if this really should be a list and if it should contain the source DB('s)
 			edge_objects.append(edge)
