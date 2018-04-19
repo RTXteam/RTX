@@ -313,7 +313,8 @@ def get_graph(res, directed=True, multigraph=False):
 	:return: networkx graph (MultiDiGraph or MultiGraph)
 	"""
 	if not res:
-		raise Exception("Empty graph. Cypher query input returned no results.")
+		#raise Exception("Empty graph. Cypher query input returned no results.")
+		raise CustomExceptions.EmptyCypherError("unkown query")
 	if nx is None:
 		raise ImportError("Try installing NetworkX first.")
 	if multigraph:
@@ -407,12 +408,20 @@ def return_subgraph_paths_of_type(source_node, source_node_label, target_node, t
 	:return: networkx graph
 	"""
 	if not any(isinstance(el, list) for el in relationship_list):  # It's a single list of relationships
-		query = "MATCH path=(s:%s)-" % source_node_label
-		for i in range(len(relationship_list) - 1):
-			query += "[:" + relationship_list[i] + "]-()-"
-		query += "[:" + relationship_list[-1] + "]-" + "(t:%s) " % target_node_label
-		query += "WHERE s.name='%s' and t.name='%s' " % (source_node, target_node)
-		query += "RETURN path"
+		if target_node is not None:
+			query = "MATCH path=(s:%s)-" % source_node_label
+			for i in range(len(relationship_list) - 1):
+				query += "[:" + relationship_list[i] + "]-()-"
+			query += "[:" + relationship_list[-1] + "]-" + "(t:%s) " % target_node_label
+			query += "WHERE s.name='%s' and t.name='%s' " % (source_node, target_node)
+			query += "RETURN path"
+		else:
+			query = "MATCH path=(s:%s)-" % source_node_label
+			for i in range(len(relationship_list) - 1):
+				query += "[:" + relationship_list[i] + "]-()-"
+			query += "[:" + relationship_list[-1] + "]-" + "(t:%s) " % target_node_label
+			query += "WHERE s.name='%s'" % (source_node)
+			query += "RETURN path"
 		if debug:
 			return query
 	else:  # it's a list of lists
@@ -430,7 +439,10 @@ def return_subgraph_paths_of_type(source_node, source_node_label, target_node, t
 		query += "collect(path%d)" % (len(relationship_list) - 1)
 		if debug:
 			return query
-	graph = get_graph(cypher.run(query, conn=connection, config=defaults), directed=directed)
+	try:
+		graph = get_graph(cypher.run(query, conn=connection, config=defaults), directed=directed)
+	except CustomExceptions.EmptyCypherError:
+		raise CustomExceptions.EmptyCypherError(query)
 	return graph
 
 

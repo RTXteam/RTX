@@ -9,6 +9,7 @@ except ImportError:
 	import ReasoningUtilities as RU
 
 import FormatOutput
+import CustomExceptions
 
 # eg: what proteins does drug X target? One hop question
 class Q3:
@@ -32,9 +33,9 @@ class Q3:
 		source_label = RU.get_node_property(source_name, "label")
 		# get the actual directly_interacts_with
 		directly_interacts_with = RU.get_one_hop_target(source_label, source_name, target_label, relationship_type)
-		# Look 2 steps beyone if we didn't get any directly_interacts_with
+		# Look 2 steps beyond if we didn't get any directly_interacts_with
 		if directly_interacts_with == []:
-			for max_path_len in range(2, 5):
+			for max_path_len in range(2, 3):
 				#print(max_path_len)
 				directly_interacts_with = RU.get_node_names_of_type_connected_to_target(source_label, source_name, target_label, max_path_len=max_path_len, direction="u")
 				if directly_interacts_with:
@@ -54,11 +55,17 @@ class Q3:
 			response = FormatOutput.FormatResponse(3)  # it's a Q3 question
 			source_description = RU.get_node_property(source_name, 'description')
 			for target in directly_interacts_with:
-				g = RU.return_subgraph_paths_of_type(source_name, source_label, target, target_label, [relationship_type], directed=False)
-				response.add_subgraph(g.nodes(data=True), g.edges(data=True),
-									"%s and %s are connected by the relationship %s" % (
-									source_description, RU.get_node_property(target, 'description'),
-									relationship_type), 1)
+				try:
+					g = RU.return_subgraph_paths_of_type(source_name, source_label, target, target_label, [relationship_type], directed=False)
+				except CustomExceptions.EmptyCypherError:
+					error_message = "No path between %s and %s via relationship %s" %(source_name, target, relationship_type)
+					error_code = "NoPathsFound"
+					response.add_error_message(error_code, error_message)
+				else:
+					response.add_subgraph(g.nodes(data=True), g.edges(data=True),
+										"%s and %s are connected by the relationship %s" % (
+										source_description, RU.get_node_property(target, 'description'),
+										relationship_type), 1)
 			return response
 
 	def describe(self):
