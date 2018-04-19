@@ -16,6 +16,7 @@ except ImportError:
 	import QueryNCBIeUtils
 import math
 import MarkovLearning
+import ReasoningUtilities as RU
 
 requests_cache.install_cache('orangeboard')
 
@@ -348,7 +349,7 @@ def get_results_object_model(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_
 			ret_omims_dict[omim] = omim_dict
 	return ret_obj
 
-def display_results_str(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=False):
+def display_results_str(doid, paths_dict, probs=False):
 	"""
 	Format the results in a pretty manner
 	:param doid: souce doid DOID:1234
@@ -361,39 +362,45 @@ def display_results_str(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disea
 	to_print = ''
 	omim_list = paths_dict.keys()
 	if len(omim_list) > 0:
-		if doid in q1_doid_to_disease:
-			doid_name = q1_doid_to_disease[doid]
-		else:
-			doid_name = doid
+		#if doid in q1_doid_to_disease:
+		#	doid_name = q1_doid_to_disease[doid]
+		#else:
+		#	doid_name = doid
+		doid_name = RU.get_node_property(doid, 'description')
 		omim_names = []
 		for omim in omim_list:
-			if omim in omim_to_genetic_cond:
-				omim_names.append(omim_to_genetic_cond[omim])
-			else:
-				omim_names.append(omim)
+			#if omim in omim_to_genetic_cond:
+			#	omim_names.append(omim_to_genetic_cond[omim])
+			#else:
+			#	omim_names.append(omim)
+			omim_name = RU.get_node_property(omim, 'description')
+			omim_names.append(omim_name)
 		ret_str = "Possible genetic conditions that protect against {doid_name}: ".format(doid_name=doid_name) + str(omim_names) + '\n'
 		for omim in omim_list:
-			if omim in omim_to_genetic_cond:
-				to_print += "The proposed mechanism of action for %s (%s) is: " % (omim_to_genetic_cond[omim], omim)
-			else:
-				to_print += "The proposed mechanism of action for %s is: " % omim
+			#if omim in omim_to_genetic_cond:
+			to_print += "The proposed mechanism of action for %s (%s) is: " % (RU.get_node_property(omim, 'description'), omim)
+			#else:
+			#	to_print += "The proposed mechanism of action for %s is: " % omim
 			path_names, path_types = paths_dict[omim]
 			if len(path_names) == 1:
 				path_names = path_names[0]
 				path_types = path_types[0]
-				if omim in omim_to_genetic_cond:
-					to_print += "(%s)" % (omim_to_genetic_cond[omim])
-				else:
-					to_print += "(%s:%s)" % (path_types[0], path_names[0])
+				#if omim in omim_to_genetic_cond:
+				#	to_print += "(%s)" % (omim_to_genetic_cond[omim])
+				#else:
+				#to_print += "(%s:%s)" % (path_types[0], path_names[0])
+				to_print += "(%s:%s)" % (omim, RU.get_node_property(omim, 'description'))
 				for index in range(1, len(path_names) - 1):
 					if index % 2 == 1:
 						to_print += "--[%s]-->" % (path_types[index])
 					else:
-						to_print += "(%s:%s:%s)" % (node_to_description(path_names[index]), path_names[index], path_types[index])
-				if doid in q1_doid_to_disease:
-					to_print += "(%s). " % q1_doid_to_disease[doid]
-				else:
-					to_print += "(%s:%s). " % (path_names[-1], path_types[-1])
+						#to_print += "(%s:%s:%s)" % (node_to_description(path_names[index]), path_names[index], path_types[index])
+						to_print += "(%s:%s:%s)" % (node_to_description(path_names[index]), path_names[index], RU.get_node_property(path_names[index], 'label'))
+				#if doid in q1_doid_to_disease:
+				#	to_print += "(%s). " % q1_doid_to_disease[doid]
+				#else:
+				#to_print += "(%s:%s). " % (path_names[-1], path_types[-1])
+				to_print += "(%s:%s:%s). " % (path_names[-1], RU.get_node_property(path_names[-1], 'description'), RU.get_node_property(path_names[-1], 'label'))
 				if probs:
 					if omim in probs:
 						to_print += "Confidence: %f" % probs[omim]
@@ -418,10 +425,11 @@ def display_results_str(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disea
 					to_print = "%d. " % (index + 1)
 					to_print += ("There were %d paths of the form " % count) + str(relationship) + '\n'
 	else:
-		if doid in q1_doid_to_disease:
-			name = q1_doid_to_disease[doid]
-		else:
-			name = doid
+		name = RU.get_node_property(doid, 'description')
+		#if doid in q1_doid_to_disease:
+		#	name = q1_doid_to_disease[doid]
+		#else:
+		#	name = doid
 		to_print = "Sorry, I was unable to find a genetic condition that protects against {name}".format(name=name) + '\n'
 	return to_print
 
@@ -471,7 +479,7 @@ def refine_omims_graph_distance(omims, doid, directed=False, max_path_len=3, ver
 		print("Found %d omims nearby (according to the random walk)" % len(prioritized_omims))
 	return prioritized_omims
 
-def refine_omims_well_studied(omims, doid, omim_to_mesh, q1_doid_to_mesh, verbose=False):
+def refine_omims_well_studied(omims, doid, verbose=False):
 	"""
 	Subset given omims to those that are well studied (have low google distance between the source
 	omim mesh name and the target doid mesh name
@@ -485,20 +493,21 @@ def refine_omims_well_studied(omims, doid, omim_to_mesh, q1_doid_to_mesh, verbos
 	# Getting well-studied omims
 	omims_GD = list()
 	for omim in omims:  # only the on the prioritized ones
-		if omim in omim_to_mesh:
-			# res = QueryNCBIeUtils.QueryNCBIeUtils.normalized_google_distance(omim_to_mesh[omim], input_disease)
-			omim_mesh = QueryNCBIeUtils.QueryNCBIeUtils.get_mesh_terms_for_omim_id(omim.split(':')[1])
-			if len(omim_mesh) > 1:
+		#if omim in omim_to_mesh:
+		# res = QueryNCBIeUtils.QueryNCBIeUtils.normalized_google_distance(omim_to_mesh[omim], input_disease)
+		omim_mesh = QueryNCBIeUtils.QueryNCBIeUtils.get_mesh_terms_for_omim_id(omim.split(':')[1])
+		if len(omim_mesh) > 1:
+			omim_mesh = omim_mesh[0]
+		if omim_mesh:
+			if isinstance(omim_mesh, list):
 				omim_mesh = omim_mesh[0]
-			if omim_mesh:
-				if isinstance(omim_mesh, list):
-					omim_mesh = omim_mesh[0]
-				mesh1 = QueryNCBIeUtils.QueryNCBIeUtils.is_mesh_term(omim_mesh)
-				mesh2 = QueryNCBIeUtils.QueryNCBIeUtils.is_mesh_term(q1_doid_to_mesh[doid])
-				res = QueryNCBIeUtils.QueryNCBIeUtils.normalized_google_distance(omim_mesh, q1_doid_to_mesh[doid], mesh1=mesh1, mesh2=mesh2)
-			else:
-				res = math.nan
-			omims_GD.append((omim, res))
+			mesh1 = QueryNCBIeUtils.QueryNCBIeUtils.is_mesh_term(omim_mesh)
+			doid_name = RU.get_node_property(doid, 'description')
+			mesh2 = QueryNCBIeUtils.QueryNCBIeUtils.is_mesh_term(doid_name)
+			res = QueryNCBIeUtils.QueryNCBIeUtils.normalized_google_distance(omim_mesh, doid_name, mesh1=mesh1, mesh2=mesh2)
+		else:
+			res = math.nan
+		omims_GD.append((omim, res))
 	well_studied_omims = list()
 	for tup in omims_GD:
 		if tup[1] != math.nan and tup[1] > 0:

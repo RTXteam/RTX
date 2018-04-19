@@ -167,20 +167,20 @@ def answerQ1(doid, directed=True, max_path_len=3, verbose=False, use_json=False)
 	#doid = input_disease
 
 	# TODO: synonyms for diseases
-	if doid not in q1_doid_to_disease:
-		try:
-			disease_description = RU.get_node_property(doid, 'description')
-		except:
-			disease_description = doid
-		if not use_json:
-			print("Sorry, the disease %s is not one of the Q1 diseases." % disease_description)
-			return
-		else:
-			error_code = "NotInDiseaseList"
-			error_message = "Sorry, the disease %s is not one of the Q1 diseases." % disease_description
-			response.add_error_message(error_code, error_message)
-			response.print()
-			return
+	#if doid not in q1_doid_to_disease:
+	#	try:
+	#		disease_description = RU.get_node_property(doid, 'description')
+	#	except:
+	#		disease_description = doid
+	#	if not use_json:
+	#		print("Sorry, the disease %s is not one of the Q1 diseases." % disease_description)
+	#		return
+	#	else:
+	#		error_code = "NotInDiseaseList"
+	#		error_message = "Sorry, the disease %s is not one of the Q1 diseases." % disease_description
+	#		response.add_error_message(error_code, error_message)
+	#		response.print()
+	#		return
 
 	# Getting nearby genetic diseases
 	#omims = Q1Utils.get_omims_connecting_to_fixed_doid(doid, directed=directed, max_path_len=max_path_len, verbose=verbose)
@@ -197,11 +197,18 @@ def answerQ1(doid, directed=True, max_path_len=3, verbose=False, use_json=False)
 	#omims = Q1Utils.refine_omims_graph_distance(omims, doid, directed=directed, max_path_len=max_path_len, verbose=verbose)
 	omims = RU.refine_omims_graph_distance(omims, 'disease', doid, 'disease', directed=False, max_path_len=max_path_len, verbose=verbose)
 
+	omims_no_doid = []
+	for omim in omims:
+		prefix = omim.split(':')[0]
+		if prefix == 'OMIM':
+			omims_no_doid.append(omim)
+	omims = omims_no_doid
+
 	# get the ones that have high probability according to a Markov chain model
 	omims, paths_dict, prob_dict = Q1Utils.refine_omims_Markov_chain(omims, doid, max_path_len=max_path_len, verbose=verbose)
 
 	# get the ones that have low google distance (are "well studied")
-	omims = Q1Utils.refine_omims_well_studied(omims, doid, omim_to_mesh, q1_doid_to_mesh, verbose=verbose)
+	omims = Q1Utils.refine_omims_well_studied(omims, doid, verbose=verbose)
 
 	if not omims:
 		if verbose and not use_json:
@@ -212,10 +219,10 @@ def answerQ1(doid, directed=True, max_path_len=3, verbose=False, use_json=False)
 	to_display_paths_dict = dict()
 	to_display_probs_dict = dict()
 	for omim in omims:
-		if omim in disease_ignore_list\
-			or q1_doid_to_disease[doid].lower() in omim_to_genetic_cond[omim].lower()\
-			or omim_to_genetic_cond[omim].lower() in q1_doid_to_disease[doid].lower()\
-			or q1_doid_to_mesh[doid].split(',')[0].lower() in omim_to_genetic_cond[omim].lower():
+		if omim in disease_ignore_list:
+			#or q1_doid_to_disease[doid].lower() in omim_to_genetic_cond[omim].lower()\
+			#or omim_to_genetic_cond[omim].lower() in q1_doid_to_disease[doid].lower()\
+			#or q1_doid_to_mesh[doid].split(',')[0].lower() in omim_to_genetic_cond[omim].lower():
 			# do something with the deleted guys?
 			pass
 		else:
@@ -236,8 +243,7 @@ def answerQ1(doid, directed=True, max_path_len=3, verbose=False, use_json=False)
 		temp_path_dict = dict()
 		temp_path_dict[key] = path_pair
 		node_rel_list = path_pair[0]
-		results_text = Q1Utils.display_results_str(doid, temp_path_dict, omim_to_genetic_cond,
-													q1_doid_to_disease, probs=to_display_probs_dict)
+		results_text = Q1Utils.display_results_str(doid, temp_path_dict, probs=to_display_probs_dict)
 		for i, path in enumerate(node_rel_list):
 			node_list = path[0::2]
 			rel_list = path[1::2]
@@ -245,8 +251,7 @@ def answerQ1(doid, directed=True, max_path_len=3, verbose=False, use_json=False)
 			response.add_subgraph(g.nodes(data=True), g.edges(data=True), results_text, to_display_probs_dict[node_list[0]])
 
 	if not use_json:
-		results_text = Q1Utils.display_results_str(doid, to_display_paths_dict, omim_to_genetic_cond,
-													q1_doid_to_disease, probs=to_display_probs_dict)
+		results_text = Q1Utils.display_results_str(doid, to_display_paths_dict, probs=to_display_probs_dict)
 		print(results_text)
 	else:
 		#ret_obj = Q1Utils.get_results_object_model(doid, to_display_paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=to_display_probs_dict)
