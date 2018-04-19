@@ -56,10 +56,11 @@ class Node:
 
     def get_props(self):
         basic_props = {'UUID': self.uuid,
-                       'name': self.name,
+                       'rtx_name': self.name,
                        'seed_node_uuid': self.seed_node.uuid,
                        'expanded': self.expanded,
-                       'description': self.desc}
+                       'category': self.nodetype,
+                       'name': self.desc}
         ret_dict = {**basic_props, **self.extra_props}
         # for key, value in ret_dict.items():
         #     if type(value) == str and any(i in value for i in ' '):
