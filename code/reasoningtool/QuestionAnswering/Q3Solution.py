@@ -31,41 +31,70 @@ class Q3:
 		"""
 		# Get label/kind of node the source is
 		source_label = RU.get_node_property(source_name, "label")
-		# get the actual directly_interacts_with
-		directly_interacts_with = RU.get_one_hop_target(source_label, source_name, target_label, relationship_type)
-		# Look 2 steps beyond if we didn't get any directly_interacts_with
-		if directly_interacts_with == []:
-			for max_path_len in range(2, 3):
-				#print(max_path_len)
-				directly_interacts_with = RU.get_node_names_of_type_connected_to_target(source_label, source_name, target_label, max_path_len=max_path_len, direction="u")
-				if directly_interacts_with:
-					break
+
+		# Get the subgraph (all targets along relationship)
+		has_intermediate_node = False
+		try:
+			g = RU.return_subgraph_paths_of_type(source_name, source_label, None, target_label, [relationship_type], directed=False)
+		except CustomExceptions.EmptyCypherError:
+			try:
+				has_intermediate_node = True
+				g = RU.return_subgraph_paths_of_type(source_name, source_label, None, target_label, ['subclass_of', relationship_type], directed=False)
+			except CustomExceptions.EmptyCypherError:
+				error_message = "No path between %s and %s via relationship %s" % (source_name, target_label, relationship_type)
+				error_code = "NoPathsFound"
+				response = FormatOutput.FormatResponse(3)
+				response.add_error_message(error_code, error_message)
+				return response
+
+		# extract the source_node_number
+		for node, data in g.nodes(data=True):
+			if data['properties']['name'] == source_name:
+				source_node_number = node
+				break
+
+		# Get all the target numbers
+		target_numbers = []
+		for node, data in g.nodes(data=True):
+			if data['properties']['name'] != source_name:
+				target_numbers.append(node)
+
+		# if there's an intermediate node, get the name
+		if has_intermediate_node:
+			neighbors = g.neighbors(source_node_number)
+			if len(neighbors) > 1:
+				error_message = "More than one intermediate node"
+				error_code = "AmbiguousPath"
+				response = FormatOutput.FormatResponse(3)
+				response.add_error_message(error_code, error_message)
+				return response
+			else:
+				intermediate_node = neighbors.pop()
+
 
 		# Format the results.
 		if not use_json:
 			results_list = list()
-			for target in directly_interacts_with:
+			for target_number in target_numbers:
+				data = g.node[target_number]
 				results_list.append(
-					{'type': 'node',
-					 'name': target,
-					 'desc': RU.get_node_property(target, "description", node_label=target_label),
+					{'type': list(set(data['labels'])-{'Base'}).pop(),
+					 'name': data['properties']['name'],
+					 'desc': data['properties']['description'],
 					 'prob': 1})  # All these are known to be true
 			return results_list
 		else:  # You want the standardized API output format
 			response = FormatOutput.FormatResponse(3)  # it's a Q3 question
-			source_description = RU.get_node_property(source_name, 'description')
-			for target in directly_interacts_with:
-				try:
-					g = RU.return_subgraph_paths_of_type(source_name, source_label, target, target_label, [relationship_type], directed=False)
-				except CustomExceptions.EmptyCypherError:
-					error_message = "No path between %s and %s via relationship %s" %(source_name, target, relationship_type)
-					error_code = "NoPathsFound"
-					response.add_error_message(error_code, error_message)
+			source_description = g.node[source_node_number]['properties']['description']
+			for target_number in target_numbers:
+				target_description = g.node[target_number]['properties']['description']
+				if not has_intermediate_node:
+					subgraph = g.subgraph([source_node_number, target_number])
 				else:
-					response.add_subgraph(g.nodes(data=True), g.edges(data=True),
-										"%s and %s are connected by the relationship %s" % (
-										source_description, RU.get_node_property(target, 'description'),
-										relationship_type), 1)
+					subgraph = g.subgraph([source_node_number, intermediate_node, target_number])
+				response.add_subgraph(subgraph.nodes(data=True), subgraph.edges(data=True),
+									"%s and %s are connected by the relationship %s" % (
+									source_description, target_description,	relationship_type), 1)
 			return response
 
 	def describe(self):
