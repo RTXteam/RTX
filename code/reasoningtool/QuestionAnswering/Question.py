@@ -26,6 +26,10 @@ except ImportError:
 	sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 	import WordnetDistance as wd
 
+import string
+import re
+
+re_no_punc = re.compile('[%s]|\s' % re.escape(string.punctuation))
 
 #################################################
 # Required data about the knowledge graph
@@ -36,6 +40,8 @@ names2descrip = dict()
 descrip2names = dict()  # TODO: this assumes that descriptions are unique, and this may change soon
 lower_name2upper_name = dict()
 lower_desc2upper_name = dict()
+no_punc_name2upper_name = dict()
+no_punc_desc2upper_name = dict()
 for line in fid.readlines():
 	line = line.strip()
 	line_split = line.split('\t')
@@ -48,6 +54,8 @@ for line in fid.readlines():
 	descrip2names[descr] = name
 	lower_name2upper_name[name.lower()] = name
 	lower_desc2upper_name[descr.lower()] = name
+	no_punc_name2upper_name[re_no_punc.sub('', name.lower())] = name
+	no_punc_desc2upper_name[re_no_punc.sub('', descr.lower())] = name
 fid.close()
 
 # TODO: replace this stuff with the RU.get_node_property (along with RU.node_exists_with_property)
@@ -113,6 +121,17 @@ def find_node_name(string):
 	#	if descr.lower() == query_lower:
 	#		res = descrip2names[descr]
 	#		res_list.append(res)
+
+	# last resort, delete punctuation and spaces
+	if not res_list:
+		query_no_punc = re_no_punc.sub('', query_lower)
+		if query_no_punc in no_punc_name2upper_name:
+			res = no_punc_name2upper_name[query_no_punc]
+			res_list.append(res)
+		if query_no_punc in no_punc_desc2upper_name:
+			res = no_punc_desc2upper_name[query_no_punc]
+			res_list.append(res)
+
 	return res_list
 
 def find_target_label(string):
