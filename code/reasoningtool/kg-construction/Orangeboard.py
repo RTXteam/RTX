@@ -536,7 +536,9 @@ class Orangeboard:
                                'CREATE (n1)-[:`' + reltype + \
                                '` { source_node_uuid: rel_data_map.source_node_uuid,' + \
                                ' target_node_uuid: rel_data_map.target_node_uuid,' + \
-                               ' sourcedb: rel_data_map.sourcedb,' + \
+                               ' isDefinedBy: \'RTX\',' + \
+                               ' providedBy: rel_data_map.sourcedb,' + \
+                               ' predicate: \'' + reltype + '\',' + \
                                ' seed_node_uuid: rel_data_map.seed_node_uuid,' + \
                                ' probability: rel_data_map.prob,' + \
                                ' extended_reltype: rel_data_map.extended_reltype' + \
