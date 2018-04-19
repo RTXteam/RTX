@@ -41,6 +41,8 @@ The above steps should prepare the RTX POC software to be used with your Docker 
 
     screen
     
-- Run the KG generator:
+- Within the screen session, run the knowledge graph generator:
+
     sudo docker exec -it rtxsteve /usr/bin/sudo -H -u rt bash -c 'cd ~/kg-construction && sh run_build_master_kg.sh'
-    
+
+
