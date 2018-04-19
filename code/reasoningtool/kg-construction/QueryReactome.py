@@ -14,6 +14,7 @@ __status__ = 'Prototype'
 
 import requests
 import sys
+import re
 
 class QueryReactome:
 
@@ -149,7 +150,11 @@ class QueryReactome:
 #            uniprot_ids_list = [[id.split(' ')[0].split(':')[1], id.split(' ')[1]] for id in participant_ids_list if 'UniProt:' in id]
         return ret_dict
 
-    ## called from BioNetExpander
+    @staticmethod
+    def is_valid_uniprot_accession(accession_str):
+        return re.match("[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}", accession_str) is not None
+
+    # called from BioNetExpander
     @staticmethod
     def query_uniprot_id_to_interacting_uniprot_ids_desc(uniprot_id):
         res = QueryReactome.send_query_get('interactors/static/molecule', uniprot_id + '/details')
@@ -189,12 +194,15 @@ class QueryReactome:
                                                 else:
                                                     print('For query protein ' + uniprot_id + ' and interactant protein ' + int_uniprot_id + ', check for potential other species name in Reactome output: ' + alt_species, file=sys.stderr)
                                                     int_alias = None
-                                            if int_alias is not None:
+                                        if int_alias is not None and QueryReactome.is_valid_uniprot_accession(int_uniprot_id):
                                                 res_uniprot_ids[int_uniprot_id] = int_alias
         return res_uniprot_ids
 
     @staticmethod
     def test():
+        print(QueryReactome.is_valid_uniprot_accession("Q16665"))
+        print(QueryReactome.is_valid_uniprot_accession("EBI"))
+        print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc("Q16665"))
         print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc('P04150'))
         print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc('Q06609'))
         print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc('Q13501'))
