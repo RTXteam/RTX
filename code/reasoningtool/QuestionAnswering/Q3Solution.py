@@ -61,7 +61,7 @@ class Q3:
 
 		# if there's an intermediate node, get the name
 		if has_intermediate_node:
-			neighbors = g.neighbors(source_node_number)
+			neighbors = list(g.neighbors(source_node_number))
 			if len(neighbors) > 1:
 				error_message = "More than one intermediate node"
 				error_code = "AmbiguousPath"
