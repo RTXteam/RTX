@@ -105,6 +105,9 @@ class BioNetExpander:
             curie_id = name
             accession = name.split(":")[1]
             iri = iri_prefix + accession
+
+        assert name != "UniProt:null"  # :DEBUG: code for tracking down issue #74
+        
         node = self.orangeboard.add_node(simple_node_type,
                                          name,
                                          seed_node_bool,
