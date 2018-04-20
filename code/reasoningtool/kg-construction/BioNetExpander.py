@@ -25,6 +25,7 @@ from operator import methodcaller
 import timeit
 import argparse
 import sys
+import traceback
 
 from Orangeboard import Orangeboard
 from QueryOMIM import QueryOMIM
@@ -106,8 +107,10 @@ class BioNetExpander:
             accession = name.split(":")[1]
             iri = iri_prefix + accession
 
-        assert name != "UniProt:null"  # :DEBUG: code for tracking down issue #74
-        
+        if name == "UniProt:null":  # :DEBUG: code for tracking down issue #74
+            print("ERROR: UniProt:null found", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+            
         node = self.orangeboard.add_node(simple_node_type,
                                          name,
                                          seed_node_bool,
