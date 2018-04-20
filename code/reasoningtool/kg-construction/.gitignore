@@ -7,3 +7,6 @@ config.json
 #   system files in Mac
 .idea/
 .DS_Store
+
+#   unit test
+.cache
