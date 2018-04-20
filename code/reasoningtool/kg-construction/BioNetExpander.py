@@ -115,9 +115,15 @@ class BioNetExpander:
                                          name,
                                          seed_node_bool,
                                          desc)
-        node.set_extra_props({"uri": iri,
-                              "id": curie_id,
-                              "accession": accession})
+        extra_props = {"uri": iri,
+                       "id": curie_id,
+                       "accession": accession}
+
+        if simple_node_type == "protein":
+            extra_props["symbol"] = desc
+
+        node.set_extra_props(extra_props)
+
         return node
 
     @staticmethod
@@ -452,7 +458,7 @@ class BioNetExpander:
         ob = Orangeboard(debug=False)
         ob.set_dict_reltype_dirs({'targets': True})
         bne = BioNetExpander(ob)
-        protein_node = bne.add_node_smart('protein', 'Q05925', seed_node_bool=True, desc='')
+        protein_node = bne.add_node_smart('protein', 'Q05925', seed_node_bool=True, desc='XYZ1')
         bne.expand_protein(protein_node)
         ob.neo4j_set_url()
         ob.neo4j_set_auth()
