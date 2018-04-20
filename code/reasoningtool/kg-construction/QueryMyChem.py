@@ -62,7 +62,8 @@ class QueryMyChem:
 
     @staticmethod
     def get_chemical_substance_entity(chemical_substance_id):
-        chemical_substance_id = chemical_substance_id.replace("ChEMBL:", "CHEMBL")
+        if chemical_substance_id[:7] == "ChEMBL:":
+            chemical_substance_id = chemical_substance_id.replace("ChEMBL:", "CHEMBL")
         return QueryMyChem.__get_entity("get_chemical_substance", chemical_substance_id)
 
 

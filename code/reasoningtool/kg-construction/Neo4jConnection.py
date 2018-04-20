@@ -129,42 +129,42 @@ class Neo4jConnection:
 
     @staticmethod
     def _get_anatomy_nodes(tx):
-        result = tx.run("MATCH (n:anatomical_entity) RETURN n.id LIMIT 200")
+        result = tx.run("MATCH (n:anatomical_entity) RETURN n.id")
         return [record["n.id"] for record in result]
 
     @staticmethod
     def _get_phenotype_nodes(tx):
-        result = tx.run("MATCH (n:phenotypic_feature) RETURN n.id LIMIT 200")
+        result = tx.run("MATCH (n:phenotypic_feature) RETURN n.id")
         return [record["n.id"] for record in result]
 
     @staticmethod
     def _get_microRNA_nodes(tx):
-        result = tx.run("MATCH (n:microRNA) RETURN n.id LIMIT 200")
+        result = tx.run("MATCH (n:microRNA) RETURN n.id")
         return [record["n.id"] for record in result]
 
     @staticmethod
     def _get_pathway_nodes(tx):
-        result = tx.run("MATCH (n:pathway) RETURN n.id LIMIT 200")
+        result = tx.run("MATCH (n:pathway) RETURN n.id")
         return [record["n.id"] for record in result]
 
     @staticmethod
     def _get_protein_nodes(tx):
-        result = tx.run("MATCH (n:protein) RETURN n.id LIMIT 200")
+        result = tx.run("MATCH (n:protein) RETURN n.id")
         return [record["n.id"] for record in result]
 
     @staticmethod
     def _get_disease_nodes(tx):
-        result = tx.run("MATCH (n:disease) RETURN n.id LIMIT 200")
+        result = tx.run("MATCH (n:disease) RETURN n.id")
         return [record["n.id"] for record in result]
 
     @staticmethod
     def _get_chemical_substance_nodes(tx):
-        result = tx.run("MATCH (n:chemical_substance) RETURN n.id LIMIT 200")
+        result = tx.run("MATCH (n:chemical_substance) RETURN n.id")
         return [record["n.id"] for record in result]
 
     @staticmethod
     def _get_bio_process_nodes(tx):
-        result = tx.run("MATCH (n:biological_process) RETURN n.id LIMIT 200")
+        result = tx.run("MATCH (n:biological_process) RETURN n.id")
         return [record["n.id"] for record in result]
 
     @staticmethod
