@@ -5,5 +5,5 @@ orangeboard.sqlite
 config.json
 
 #   system files in Mac
-.idea
+.idea/
 .DS_Store
