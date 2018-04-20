@@ -62,13 +62,14 @@ class QueryMyChem:
 
     @staticmethod
     def get_chemical_substance_entity(chemical_substance_id):
+        chemical_substance_id = chemical_substance_id.replace("ChEMBL:", "CHEMBL")
         return QueryMyChem.__get_entity("get_chemical_substance", chemical_substance_id)
 
 
 if __name__ == '__main__':
 
     def save_to_test_file(key, value):
-        f = open('test_data.json', 'r+')
+        f = open('tests/query_test_data.json', 'r+')
         try:
             json_data = json.load(f)
         except ValueError:
@@ -79,4 +80,4 @@ if __name__ == '__main__':
         json.dump(json_data, f)
         f.close()
 
-    save_to_test_file('CHEMBL1201217', QueryMyChem.get_chemical_substance_entity('CHEMBL1201217'))
+    save_to_test_file('ChEMBL:1200766', QueryMyChem.get_chemical_substance_entity('ChEMBL:1200766'))
