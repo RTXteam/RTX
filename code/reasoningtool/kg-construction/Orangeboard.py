@@ -56,10 +56,11 @@ class Node:
 
     def get_props(self):
         basic_props = {'UUID': self.uuid,
-                       'name': self.name,
+                       'rtx_name': self.name,
                        'seed_node_uuid': self.seed_node.uuid,
                        'expanded': self.expanded,
-                       'description': self.desc}
+                       'category': self.nodetype,
+                       'name': self.desc}
         ret_dict = {**basic_props, **self.extra_props}
         # for key, value in ret_dict.items():
         #     if type(value) == str and any(i in value for i in ' '):
@@ -536,7 +537,9 @@ class Orangeboard:
                                'CREATE (n1)-[:`' + reltype + \
                                '` { source_node_uuid: rel_data_map.source_node_uuid,' + \
                                ' target_node_uuid: rel_data_map.target_node_uuid,' + \
-                               ' sourcedb: rel_data_map.sourcedb,' + \
+                               ' isDefinedBy: \'RTX\',' + \
+                               ' providedBy: rel_data_map.sourcedb,' + \
+                               ' predicate: \'' + reltype + '\',' + \
                                ' seed_node_uuid: rel_data_map.seed_node_uuid,' + \
                                ' probability: rel_data_map.prob,' + \
                                ' extended_reltype: rel_data_map.extended_reltype' + \
