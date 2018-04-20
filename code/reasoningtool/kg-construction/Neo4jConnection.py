@@ -149,8 +149,8 @@ class Neo4jConnection:
 
     @staticmethod
     def _get_protein_nodes(tx):
-        result = tx.run("MATCH (n:protein) RETURN n.curie_id LIMIT 200")
-        return [record["n.curie_id"] for record in result]
+        result = tx.run("MATCH (n:protein) RETURN n.id LIMIT 200")
+        return [record["n.id"] for record in result]
 
     @staticmethod
     def _get_disease_nodes(tx):
@@ -225,7 +225,7 @@ class Neo4jConnection:
             """
             UNWIND {nodes} AS row
             WITH row.node_id AS node_id, row.extended_info_json AS extended_info_json
-            MATCH (n:protein{curie_id:node_id})
+            MATCH (n:protein{id:node_id})
             SET n.extended_info_json=extended_info_json
             """,
             nodes=nodes,
@@ -293,7 +293,7 @@ class Neo4jConnection:
 
     @staticmethod
     def _get_protein_node(tx, id):
-        result = tx.run("MATCH (n:protein{curie_id:'%s'}) RETURN n" % id)
+        result = tx.run("MATCH (n:protein{id:'%s'}) RETURN n" % id)
         return result.single()
 
     @staticmethod
