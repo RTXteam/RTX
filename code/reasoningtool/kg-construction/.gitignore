@@ -1,0 +1,9 @@
+#   cache file
+orangeboard.sqlite
+
+#   configuration file
+config.json
+
+#   system files in Mac
+.idea
+.DS_Store
