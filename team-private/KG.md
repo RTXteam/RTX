@@ -28,10 +28,10 @@
 
 # Node properties
 
-name: the human-readable name for the node (e.g. G protein-coupled receptor, rhodopsin-like)
-id: the CURIE ID for the node (e.g., UniProt:Q9NS67)
-uri: a URI for the node (e.g., http://www.uniprot.org/uniprot/Q9NS67)
-category: the biolink semantic type of the node
-rtx_name: DEPRECATED; currently used internally by BioNetExpander.py in the RTX system
-extended_info_json: the full node properties JSON blob (per David K.'s request, issue #49)
+- name: the human-readable name for the node (e.g. G protein-coupled receptor, rhodopsin-like)
+- id: the CURIE ID for the node (e.g., UniProt:Q9NS67)
+- uri: a URI for the node (e.g., http://www.uniprot.org/uniprot/Q9NS67)
+- category: the biolink semantic type of the node
+- rtx_name: DEPRECATED; currently used internally by BioNetExpander.py in the RTX system
+- extended_info_json: the full node properties JSON blob (per David K.'s request, issue #49)
 
