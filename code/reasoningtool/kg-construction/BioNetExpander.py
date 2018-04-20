@@ -109,7 +109,7 @@ class BioNetExpander:
 
         if name == "UniProt:null":  # :DEBUG: code for tracking down issue #74
             print("ERROR: UniProt:null found", file=sys.stderr)
-            traceback.print_exc(file=sys.stderr)
+            traceback.print_stack(file=sys.stderr)
             
         node = self.orangeboard.add_node(simple_node_type,
                                          name,
