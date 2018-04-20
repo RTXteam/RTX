@@ -454,7 +454,7 @@ def return_subgraph_through_node_labels(source_node, source_node_label, target_n
 	list with_rel.
 	:param source_node: Source node name (eg. 'naproxen')
 	:param source_node_label:  source node label (eg. 'drug')
-	:param target_node: target node name (eg. 'DOID:8398')
+	:param target_node: target node name (eg. 'DOID:8398') or a list of names (["x","y","z"]) all must be of target_node_label type
 	:param target_node_label: target node lable (eg. 'disease')
 	:param node_list: list of node labels that all paths must go through
 	:param with_rel: an optional triplet where with_rel[0] is a node label, with_rel[1] is a relationship type,
@@ -478,12 +478,23 @@ def return_subgraph_through_node_labels(source_node, source_node_label, target_n
 		if debug:
 			return query
 	elif not any(isinstance(el, list) for el in node_list):  # It's a single list of relationships
-		query = "MATCH path=(s:%s)" % source_node_label
-		for i in range(len(node_list) - 1):
-			query += "-[]-(:" + node_list[i] + ")"
-		query += "-[]-(:" + node_list[-1] + ")-[]-" + "(t:%s) " % target_node_label
-		query += "WHERE s.name='%s' and t.name='%s' " % (source_node, target_node)
-		query += "RETURN path"
+		if not isinstance(target_node, list):
+			query = "MATCH path=(s:%s)" % source_node_label
+			for i in range(len(node_list) - 1):
+				query += "-[]-(:" + node_list[i] + ")"
+			query += "-[]-(:" + node_list[-1] + ")-[]-" + "(t:%s) " % target_node_label
+			query += "WHERE s.name='%s' and t.name='%s' " % (source_node, target_node)
+			query += "RETURN path"
+		else:
+			query = "MATCH path=(s:%s)" % source_node_label
+			for i in range(len(node_list) - 1):
+				query += "-[]-(:" + node_list[i] + ")"
+			query += "-[]-(:" + node_list[-1] + ")-[]-" + "(t:%s) " % target_node_label
+			query += "WHERE s.name='%s' and t.name in ['%s'" % (source_node, target_node[0])
+			for node in target_node:
+				query += ",'%s'" % node
+			query += "] "
+			query += "RETURN path"
 		if debug:
 			return query
 	else:  # it's a list of lists
