@@ -55,6 +55,7 @@ def run_test_suite(question_number):
 				if not error_found:
 					try:
 						print("Running: %s" % solution_script)
+						print("%s" % nat_lang_question)
 						os.system("/home/dkoslicki/Dropbox/Repositories/RTX/VE3/bin/python3 %s > /dev/null" % solution_script)
 					except:
 						print("ERROR on question: %s" % nat_lang_question)

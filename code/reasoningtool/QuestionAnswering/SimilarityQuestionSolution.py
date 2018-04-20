@@ -49,6 +49,9 @@ class SimilarityQuestionSolution:
 		# Get the nodes in common
 		node_jaccard_tuples_sorted, error_code, error_message = similar_nodes_in_common.get_similar_nodes_in_common_source_target_association(source_node_ID, target_node_type, association_node_type, threshold)
 
+		# reduce to top 100
+		if len(node_jaccard_tuples_sorted) > 100:  # TODO: hard coded parameter
+			node_jaccard_tuples_sorted = node_jaccard_tuples_sorted[0:100]
 		# check for an error
 		if error_code is not None or error_message is not None:
 			if not use_json:
