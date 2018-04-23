@@ -6,6 +6,7 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from swagger_server.models.base_model_ import Model
+from swagger_server.models.query_terms import QueryTerms  # noqa: F401,E501
 from swagger_server import util
 
 
@@ -15,7 +16,7 @@ class Query(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, original_question: str=None, restated_question: str=None, message: str=None, known_query_type_id: str=None, terms: List[str]=None):  # noqa: E501
+    def __init__(self, original_question: str=None, restated_question: str=None, message: str=None, known_query_type_id: str=None, terms: QueryTerms=None):  # noqa: E501
         """Query - a model defined in Swagger
 
         :param original_question: The original_question of this Query.  # noqa: E501
@@ -27,21 +28,21 @@ class Query(Model):
         :param known_query_type_id: The known_query_type_id of this Query.  # noqa: E501
         :type known_query_type_id: str
         :param terms: The terms of this Query.  # noqa: E501
-        :type terms: List[str]
+        :type terms: QueryTerms
         """
         self.swagger_types = {
             'original_question': str,
             'restated_question': str,
             'message': str,
             'known_query_type_id': str,
-            'terms': List[str]
+            'terms': QueryTerms
         }
 
         self.attribute_map = {
-            'original_question': 'originalQuestion',
-            'restated_question': 'restatedQuestion',
+            'original_question': 'original_question',
+            'restated_question': 'restated_question',
             'message': 'message',
-            'known_query_type_id': 'knownQueryTypeId',
+            'known_query_type_id': 'known_query_type_id',
             'terms': 'terms'
         }
 
@@ -155,24 +156,22 @@ class Query(Model):
         self._known_query_type_id = known_query_type_id
 
     @property
-    def terms(self) -> List[str]:
+    def terms(self) -> QueryTerms:
         """Gets the terms of this Query.
 
-        Ordered list of terms needed by the specific query type  # noqa: E501
 
         :return: The terms of this Query.
-        :rtype: List[str]
+        :rtype: QueryTerms
         """
         return self._terms
 
     @terms.setter
-    def terms(self, terms: List[str]):
+    def terms(self, terms: QueryTerms):
         """Sets the terms of this Query.
 
-        Ordered list of terms needed by the specific query type  # noqa: E501
 
         :param terms: The terms of this Query.
-        :type terms: List[str]
+        :type terms: QueryTerms
         """
 
         self._terms = terms

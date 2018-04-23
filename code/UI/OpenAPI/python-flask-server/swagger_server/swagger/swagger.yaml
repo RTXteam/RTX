@@ -10,24 +10,24 @@ info:
     name: "Apache 2.0"
     url: "http://www.apache.org/licenses/LICENSE-2.0.html"
 host: "rtx.ncats.io"
-basePath: "/api/rtx/v1"
+basePath: "/devED/api/rtx/v1"
 tags:
 - name: "translate"
   description: "Translate natural language question into a standardized query"
   externalDocs:
     description: "Documentation for the RTX translate function"
-    url: "http://rtx.ncats.io/overview.html#translate"
+    url: "http://rtx.ncats.io/devED/overview.html#translate"
 - name: "query"
   description: "Query RTX using a predefined question type"
   externalDocs:
     description: "Documentation for the RTX query function"
-    url: "http://rtx.ncats.io/overview.html#query"
+    url: "http://rtx.ncats.io/devED/overview.html#query"
 - name: "getPubmedMeshNgd"
   description: "Query to get the Normalized Google Distance between two MeSH terms\
     \ based on co-occurance in all PubMed article annotations"
   externalDocs:
     description: "Documentation for the RTX query function"
-    url: "http://rtx.ncats.io/overview.html#getPubmedMeshNgd"
+    url: "http://rtx.ncats.io/devED/overview.html#getPubmedMeshNgd"
 schemes:
 - "http"
 paths:
@@ -134,36 +134,31 @@ definitions:
   Query:
     type: "object"
     properties:
-      originalQuestion:
+      original_question:
         type: "string"
         example: "what genetic conditions offer protection against malaria"
         description: "Original question as it was typed in by the user"
-      restatedQuestion:
+      restated_question:
         type: "string"
         example: "Which genetic conditions may offer protection against malaria?"
         description: "Restatement of the question as understood by the translator"
       message:
         type: "string"
-        example: "Sorry, RTX was not able to understand your question."
+        example: "Your question was understood."
         description: "Response from the translation engine to the user"
-      knownQueryTypeId:
+      known_query_type_id:
         type: "string"
         example: "Q1"
         description: "RTX identifier for the specific query type"
       terms:
-        type: "array"
-        description: "Ordered list of terms needed by the specific query type"
-        items:
-          type: "string"
-          example: "malaria"
+        $ref: "#/definitions/Query_terms"
     example:
-      originalQuestion: "what genetic conditions offer protection against malaria"
-      restatedQuestion: "Which genetic conditions may offer protection against malaria?"
+      original_question: "what genetic conditions offer protection against malaria"
       terms:
-      - "malaria"
-      - "malaria"
-      knownQueryTypeId: "Q1"
-      message: "Sorry, RTX was not able to understand your question."
+        disease: "malaria"
+      restated_question: "Which genetic conditions may offer protection against malaria?"
+      known_query_type_id: "Q1"
+      message: "Your question was understood."
   Response:
     type: "object"
     properties:
@@ -177,7 +172,7 @@ definitions:
         description: "Entity type of this response"
       id:
         type: "string"
-        example: "http://rtx.ncats.io/api/v1/response/1234"
+        example: "http://rtx.ncats.io/devED/api/v1/response/1234"
         description: "URI for this response"
       tool_version:
         type: "string"
@@ -315,7 +310,7 @@ definitions:
               id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
               type: "Monarch_BioLink_API_Relationship"
         confidence: 0.9234
-        id: "http://rtx.ncats.io/api/v1/response/1234/result/2345"
+        id: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345"
         text: "The genetic condition sickle cell anemia may provide protection from\
           \ cerebral malaria via genetic alterations of proteins HBB (P68871) and\
           \ HMOX1 (P09601)."
@@ -411,12 +406,12 @@ definitions:
               id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
               type: "Monarch_BioLink_API_Relationship"
         confidence: 0.9234
-        id: "http://rtx.ncats.io/api/v1/response/1234/result/2345"
+        id: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345"
         text: "The genetic condition sickle cell anemia may provide protection from\
           \ cerebral malaria via genetic alterations of proteins HBB (P68871) and\
           \ HMOX1 (P09601)."
       result_code: "OK"
-      id: "http://rtx.ncats.io/api/v1/response/1234"
+      id: "http://rtx.ncats.io/devED/api/v1/response/1234"
       type: "medical_translator_query_result"
       original_question_text: "what proteins are affected by sickle cell anemia"
       message: "1 answer found"
@@ -426,7 +421,7 @@ definitions:
     properties:
       id:
         type: "string"
-        example: "http://rtx.ncats.io/api/v1/response/1234/result/2345"
+        example: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345"
         description: "URI for this response"
       text:
         type: "string"
@@ -537,7 +532,7 @@ definitions:
             id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
             type: "Monarch_BioLink_API_Relationship"
       confidence: 0.9234
-      id: "http://rtx.ncats.io/api/v1/response/1234/result/2345"
+      id: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345"
       text: "The genetic condition sickle cell anemia may provide protection from\
         \ cerebral malaria via genetic alterations of proteins HBB (P68871) and HMOX1\
         \ (P09601)."
@@ -860,6 +855,14 @@ definitions:
       result_code: "TermNotFound"
       message: "Term 1 'malria' not found in MeSH"
       value: 0.714
+  Query_terms:
+    properties:
+      disease:
+        type: "string"
+        example: "malaria"
+    description: "Dict of terms needed by the specific query type"
+    example:
+      disease: "malaria"
 externalDocs:
   description: "Documentation for the RTX web service"
-  url: "http://rtx.ncats.io/overview.html"
+  url: "http://rtx.ncats.io/devED/overview.html"

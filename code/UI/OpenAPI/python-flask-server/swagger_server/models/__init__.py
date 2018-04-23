@@ -10,6 +10,7 @@ from swagger_server.models.node import Node
 from swagger_server.models.node_attribute import NodeAttribute
 from swagger_server.models.origin import Origin
 from swagger_server.models.query import Query
+from swagger_server.models.query_terms import QueryTerms
 from swagger_server.models.question import Question
 from swagger_server.models.response import Response
 from swagger_server.models.result import Result
