@@ -21,6 +21,7 @@ How to run this module
 
 # BEGIN config.json format
 # {
+#   "url":"bolt://localhost:7687"
 #   "username":"xxx",
 #   "password":"xxx"
 # }
@@ -79,7 +80,7 @@ class UpdateNodesInfo:
             get_entity_mtd = getattr(query_class, get_entity_mtd_name)
             node['extended_info_json'] = get_entity_mtd(node_id)
             nodes_array.append(node)
-            print(node_type + " node No. %d" % (i))
+            print(node_type + " node No. %d : %s" % (i, node_id))
 
         print("api pulling time: %f" % (time() - t))
 

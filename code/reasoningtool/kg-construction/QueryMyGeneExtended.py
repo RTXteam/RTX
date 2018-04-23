@@ -48,7 +48,7 @@ class QueryMyGeneExtended:
 if __name__ == '__main__':
 
     def save_to_test_file(key, value):
-        f = open('test_data.json', 'r+')
+        f = open('tests/query_test_data.json', 'r+')
         try:
             json_data = json.load(f)
         except ValueError:

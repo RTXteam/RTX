@@ -13,6 +13,7 @@ except ImportError:
 import FormatOutput
 
 import SimilarNodesInCommon
+import networkx as nx
 
 
 class SimilarityQuestionSolution:
@@ -21,7 +22,7 @@ class SimilarityQuestionSolution:
 		None
 
 	@staticmethod
-	def answer(source_node_ID, target_node_type, association_node_type, use_json=False, threshold=0.2):
+	def answer(source_node_ID, target_node_type, association_node_type, use_json=False, threshold=0.2, n=20):
 		"""
 		Answers the question what X are similar to Y based on overlap of common Z nodes. X is target_node_type,
 		Y is source_node_ID, Z is association_node_type. The relationships are automatically determined in
@@ -31,6 +32,7 @@ class SimilarityQuestionSolution:
 		:param association_node_type: kind of node you are computing the Jaccard overlap on
 		:param use_json: print the results in standardized format
 		:param threshold: only return results where jaccard is >= this threshold
+		:param n: number of results to return (default 20)
 		:return: reponse (or printed text)
 		"""
 
@@ -50,8 +52,12 @@ class SimilarityQuestionSolution:
 		node_jaccard_tuples_sorted, error_code, error_message = similar_nodes_in_common.get_similar_nodes_in_common_source_target_association(source_node_ID, target_node_type, association_node_type, threshold)
 
 		# reduce to top 100
-		if len(node_jaccard_tuples_sorted) > 100:  # TODO: hard coded parameter
-			node_jaccard_tuples_sorted = node_jaccard_tuples_sorted[0:100]
+		if len(node_jaccard_tuples_sorted) > n:
+			node_jaccard_tuples_sorted = node_jaccard_tuples_sorted[0:n]
+
+		# make sure that the input node isn't in the list
+		node_jaccard_tuples_sorted = [i for i in node_jaccard_tuples_sorted if i[0] != source_node_ID]
+
 		# check for an error
 		if error_code is not None or error_message is not None:
 			if not use_json:
@@ -69,13 +75,46 @@ class SimilarityQuestionSolution:
 				to_print += "%s\t%s\tJaccard %f\n" % (other_disease_ID, RU.get_node_property(other_disease_ID, 'description'), jaccard)
 			print(to_print)
 		else:
+			node_jaccard_ID_sorted = [id for id, jac in node_jaccard_tuples_sorted]
+
+			print(RU.return_subgraph_through_node_labels(source_node_ID, source_node_label, node_jaccard_ID_sorted, target_node_type,
+													[association_node_type], with_rel=[], directed=True, debug=True))
+
+			# get the entire subgraph
+			g = RU.return_subgraph_through_node_labels(source_node_ID, source_node_label, node_jaccard_ID_sorted, target_node_type,
+													[association_node_type], with_rel=[], directed=True, debug=False)
+
+			# extract the source_node_number
+			for node, data in g.nodes(data=True):
+				if data['properties']['name'] == source_node_ID:
+					source_node_number = node
+					break
+
+			# Get all the target numbers
+			target_id2numbers = dict()
+			node_jaccard_ID_sorted_set = set(node_jaccard_ID_sorted)
+			for node, data in g.nodes(data=True):
+				if data['properties']['name'] in node_jaccard_ID_sorted_set:
+					target_id2numbers[data['properties']['name']] = node
+
 			for other_disease_ID, jaccard in node_jaccard_tuples_sorted:
 				to_print = "The %s %s involves similar %s's as %s with similarity value %f" % (
 					target_node_type, RU.get_node_property(other_disease_ID, 'description'), association_node_type, source_node_description, jaccard)
-				#g = RU.get_node_as_graph(other_disease_ID)
-				g = RU.return_subgraph_through_node_labels(source_node_ID, source_node_label, other_disease_ID, target_node_type,
-													[association_node_type], with_rel=[], directed=True, debug=False)
-				response.add_subgraph(g.nodes(data=True), g.edges(data=True), to_print, jaccard)
+
+				# get all the shortest paths between source and target
+				all_paths = nx.all_shortest_paths(g, source_node_number, target_id2numbers[other_disease_ID])
+
+				# get all the nodes on these paths
+				rel_nodes = set()
+				for path in all_paths:
+					for node in path:
+						rel_nodes.add(node)
+
+				# extract the relevant subgraph
+				sub_g = nx.subgraph(g, rel_nodes)
+
+				# add it to the response
+				response.add_subgraph(sub_g.nodes(data=True), sub_g.edges(data=True), to_print, jaccard)
 			response.print()
 
 	@staticmethod
@@ -94,6 +133,7 @@ def main():
 	parser.add_argument('-j', '--json', action='store_true', help='Flag specifying that results should be printed in JSON format (to stdout)', default=False)
 	parser.add_argument('--describe', action='store_true', help='Print a description of the question to stdout and quit', default=False)
 	parser.add_argument('--threshold', type=float, help='Jaccard index threshold (only report other diseases above this)', default=0.2)
+	parser.add_argument('-n', '--num_res', type=int, help='Maximum number of results to return', default=20)
 
 	# Parse and check args
 	args = parser.parse_args()
@@ -103,6 +143,7 @@ def main():
 	threshold = args.threshold
 	target_node_type = args.target
 	association_node_type = args.association
+	n = args.num_res
 
 	# Initialize the question class
 	Q = SimilarityQuestionSolution()
@@ -111,7 +152,7 @@ def main():
 		res = Q.describe()
 		print(res)
 	else:
-		Q.answer(source_node_ID, target_node_type, association_node_type, use_json=use_json, threshold=threshold)
+		Q.answer(source_node_ID, target_node_type, association_node_type, use_json=use_json, threshold=threshold, n=n)
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@
 
 # macOS finder folder-level attributes
 **/.DS_store
+.idea
 
 # ipython notebook checkpoints
 **/.ipynb_checkpoints

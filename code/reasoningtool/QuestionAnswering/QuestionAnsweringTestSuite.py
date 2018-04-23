@@ -6,7 +6,7 @@ import os, sys
 import argparse
 
 
-def run_test_suite(question_number):
+def run_test_suite(question_number, python_loc, res_loc):
 	p = ParseQuestion.ParseQuestion()
 
 	# get a random selection of nodes
@@ -56,7 +56,7 @@ def run_test_suite(question_number):
 					try:
 						print("Running: %s" % solution_script)
 						print("%s" % nat_lang_question)
-						os.system("/home/dkoslicki/Dropbox/Repositories/RTX/VE3/bin/python3 %s > /dev/null" % solution_script)
+						os.system("%s %s > %s" % (python_loc, solution_script, res_loc))
 					except:
 						print("ERROR on question: %s" % nat_lang_question)
 						print("Try running %s and see what went wrong." % solution_script)
@@ -65,6 +65,9 @@ def main():
 	parser = argparse.ArgumentParser(description="Runs a test suite for the entire QuestionAnswering framework",
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 	parser.add_argument('-q', '--question', type=str, help="query ID (eg Q1 or Q23 or 'a' for all", default='a')
+	parser.add_argument('-p', '--python', type=str, help="location of python", default='/home/dkoslicki/Dropbox/Repositories/RTX/VE3/bin/python3')
+	parser.add_argument('-r', '--res_loc', type=str, help="Where to put the result",
+						default='/dev/null')
 
 	if '-h' in sys.argv or '--help' in sys.argv:
 		RU.session.close()
@@ -73,8 +76,10 @@ def main():
 	# Parse and check args
 	args = parser.parse_args()
 	question_id = args.question
+	python_loc = args.python
+	res_loc = args.res_loc
 
-	run_test_suite(question_id)
+	run_test_suite(question_id, python_loc, res_loc)
 
 if __name__ == "__main__":
 	main()
