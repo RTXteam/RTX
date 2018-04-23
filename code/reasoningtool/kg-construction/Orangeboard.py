@@ -542,7 +542,7 @@ class Orangeboard:
                                ' predicate: \'' + reltype + '\',' + \
                                ' seed_node_uuid: rel_data_map.seed_node_uuid,' + \
                                ' probability: rel_data_map.prob,' + \
-                               ' extended_reltype: rel_data_map.extended_reltype' + \
+                               ' relation: rel_data_map.extended_reltype' + \
                                ' }]->(n2)'
             res = self.neo4j_run_cypher_query(cypher_query_str, query_params)
             if self.debug:
