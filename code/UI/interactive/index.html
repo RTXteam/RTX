@@ -68,19 +68,20 @@ function sendQuestion(e) {
 
   xhr.onloadend = function() {
     var jsonObj = JSON.parse(xhr.responseText);
+  document.getElementById("result").innerHTML = JSON.stringify(jsonObj);
 
-    if ( jsonObj[0].knownQueryTypeId ) {
-      document.getElementById("result").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;"+jsonObj[0]["restatedQuestion"]+"<BR>Please ensure that this is an accurate restatement of the intended question.<BR>Looking for answer...<BR><BR>";
+    if ( jsonObj.known_query_type_id ) {
+      document.getElementById("result").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;"+jsonObj["restated_question"]+"<BR>Please ensure that this is an accurate restatement of the intended question.<BR>Looking for answer...<BR><BR>";
       var xhr2 = new XMLHttpRequest();
       xhr2.open("post", "api/rtx/v1/query", true);
       xhr2.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
       // send the collected data as JSON
-      xhr2.send(JSON.stringify(jsonObj[0]));
+      xhr2.send(JSON.stringify(jsonObj));
 
       xhr2.onloadend = function() {
         var jsonObj2 = JSON.parse(xhr2.responseText);
-        document.getElementById("result").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;"+jsonObj[0]["restatedQuestion"]+"<BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR>";
+        document.getElementById("result").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;"+jsonObj["restated_question"]+"<BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR>";
 
         document.getElementById("result").innerHTML += "<PRE>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
       };
