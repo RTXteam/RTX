@@ -1,6 +1,6 @@
 __author__ = 'Stephen Ramsey'
 __copyright__ = 'Oregon State University'
-__credits__ = ['Stephen Ramsey']
+__credits__ = ['Stephen Ramsey', 'Finn Womack']
 __license__ = 'MIT'
 __version__ = '0.1.0'
 __maintainer__ = ''
@@ -17,7 +17,7 @@ import re
 import pandas
 import CachedMethods
 import requests_cache
-#requests_cache.install_cache('QueryNCBIeUtilsCache')
+requests_cache.install_cache('QueryNCBIeUtilsCache')
 
 # MeSH Terms for Q1 diseases: (see git/q1/README.md)
 #   Osteoporosis
@@ -60,6 +60,29 @@ class QueryNCBIeUtils:
 #        print(url_str)
         try:
             res = requests.get(url_str, headers={'accept': 'application/json'}, timeout=QueryNCBIeUtils.TIMEOUT_SEC)
+        except requests.exceptions.Timeout:
+            print('HTTP timeout in QueryNCBIeUtils.py; URL: ' + url_str, file=sys.stderr)
+            time.sleep(1)  ## take a timeout because NCBI rate-limits connections
+            return None
+        except requests.exceptions.ConnectionError:
+            print('HTTP connection error in QueryNCBIeUtils.py; URL: ' + url_str, file=sys.stderr)
+            time.sleep(1)  ## take a timeout because NCBI rate-limits connections
+            return None
+        status_code = res.status_code
+        if status_code != 200:
+            print('HTTP response status code: ' + str(status_code) + ' for URL:\n' + url_str, file=sys.stderr)
+            res = None
+        return res
+
+    @staticmethod
+    #@CachedMethods.register
+    def send_query_post(handler, params, retmax = 1000):
+        url_str = QueryNCBIeUtils.API_BASE_URL + '/' + handler
+        params['retmax'] = str(retmax)
+        params['retmode'] = 'json'
+#        print(url_str)
+        try:
+            res = requests.post(url_str, headers={'accept': 'application/json'}, data = params, timeout=QueryNCBIeUtils.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
             print('HTTP timeout in QueryNCBIeUtils.py; URL: ' + url_str, file=sys.stderr)
             time.sleep(1)  ## take a timeout because NCBI rate-limits connections
@@ -176,7 +199,7 @@ class QueryNCBIeUtils:
     :returns: list(str) of MeSH terms
     '''
     @staticmethod
-    @CachedMethods.register
+    #@CachedMethods.register
     def get_mesh_terms_for_mesh_uid(mesh_uid):
         assert type(mesh_uid)==int
         res = QueryNCBIeUtils.send_query_get('esummary.fcgi',
@@ -320,10 +343,169 @@ class QueryNCBIeUtils:
         return ngd
 
     @staticmethod
+    def multi_pubmed_hits_count(term_str, n_terms = 1):
+        '''
+        This is almost the same as the above get_pubmed_hit_counts but is made to work with multi_normalized_google_distance
+        '''
+        term_str_encoded = urllib.parse.quote(term_str, safe='')
+        params = {
+            'db':'pubmed',
+            'term' : term_str
+        }
+        res = QueryNCBIeUtils.send_query_post('esearch.fcgi',
+                                             params)
+        res_int = None
+        if res is not None:
+            status_code = res.status_code
+            if status_code == 200:
+                res_int = [int(res.json()['esearchresult']['count'])]
+                if n_terms >= 2:
+                    if 'errorlist' in res.json()['esearchresult'].keys():
+                        if 'phrasesnotfound' in res.json()['esearchresult']['errorlist'].keys():
+                                res_int += res.json()['esearchresult']['errorlist']['phrasesnotfound']
+                    else:
+                        for a in range(n_terms):
+                            if res.json()['esearchresult']['translationstack'][a] != 'AND':
+                                res_int += [int(res.json()['esearchresult']['translationstack'][a]['count'])]
+            else:
+                print('HTTP response status code: ' + str(status_code) + ' for query term string {term}'.format(term=term_str))
+        return res_int
+
+    @staticmethod
+    def multi_nomalized_google_distance(name_list, mesh_flags = None):
+        """
+        returns the normalized Google distance for a list of n MeSH Terms
+        :param name_list: a list of strings containing search terms for each node
+        :param mesh_flags: a list of boolean values indicating which terms need [MeSH Terms] appended to it.
+        :returns: NGD, as a float (or math.nan if any counts are zero, or None if HTTP error)
+        """
+
+        if mesh_flags is None:
+            mesh_flags = [True]*len(name_list)
+        elif len(name_list) != len(mesh_flags):
+            print('Warning: mismatching lengths for input lists of names and flags returning None...')
+            return None
+
+        search_string='('
+
+        if sum(mesh_flags) == len(mesh_flags):
+            search_string += '[MeSH Terms]) AND ('.join(name_list) + '[MeSH Terms]'
+            counts = QueryNCBIeUtils.multi_pubmed_hits_count(search_string, n_terms=len(name_list))
+        else:
+            for a in range(len(name_list)):
+                search_string += name_list[a]
+                if mesh_flags[a]:
+                    search_string += "[MeSH Terms]"
+                if a < len(name_list)-1:
+                    search_string += ') AND ('
+            search_string += ')'
+            counts = QueryNCBIeUtils.multi_pubmed_hits_count(search_string, n_terms =1)
+            for a in range(len(name_list)):
+                name = name_list[a]
+                if mesh_flags[a]:
+                    name += "[MeSH Terms]"
+                counts += QueryNCBIeUtils.multi_pubmed_hits_count(name, n_terms = 1)
+
+        if type(counts[1]) == str:
+            missed_names = counts[1:]
+            counts = [counts[0]]
+            for name in name_list:
+                name_decorated = name + '[MeSH Terms]'
+                if name_decorated in missed_names:
+                    counts += QueryNCBIeUtils.multi_pubmed_hits_count(name, n_terms=1)
+                else:
+                    counts += QueryNCBIeUtils.multi_pubmed_hits_count(name_decorated, n_terms=1)
+
+
+        N = 2.7e+7 * 20  # from PubMed home page there are 27 million articles; avg 20 MeSH terms per article
+        if None in counts:
+            return math.nan
+        if 0 in counts:
+            return math.nan
+        numerator = max([math.log(x) for x in counts[1:]]) - math.log(counts[0])
+        denominator = math.log(N) - min([ math.log(x) for x in counts[1:]])
+        ngd = numerator/denominator
+        return ngd
+
+    @staticmethod
+    @CachedMethods.register
+    def get_pubmed_from_ncbi_gene(gene_id):
+        '''
+        Returns a list of pubmed ids associated with a given ncbi gene id
+        :param gene_id: A string containing the ncbi gene id
+        '''
+        res = QueryNCBIeUtils.send_query_get('elink.fcgi',
+                                             'db=pubmed&dbfrom=gene&id=' + str(gene_id))
+        ret_pubmed_ids = set()
+        pubmed_list = None
+
+        if res is not None:
+            res_json = res.json()
+            res_linksets = res_json.get('linksets', None)
+            if res_linksets is not None:
+                for res_linkset in res_linksets:
+                    res_linksetdbs = res_linkset.get('linksetdbs', None)
+                    if res_linksetdbs is not None:
+                        for res_linksetdb in res_linksetdbs:
+                            res_pubmed_ids = res_linksetdb.get('links', None)
+                            if res_pubmed_ids is not None:
+                                ret_pubmed_ids |= set(res_pubmed_ids)
+        if len(ret_pubmed_ids) > 0:
+            pubmed_list = [ str(x) + '[uid]' for x in ret_pubmed_ids]
+        return pubmed_list
+
+
+    @staticmethod
     @CachedMethods.register
     def is_mesh_term(mesh_term):
         ret_list = QueryNCBIeUtils.get_mesh_uids_for_mesh_term(mesh_term)
         return ret_list is not None and len(ret_list) > 0
+
+    @staticmethod
+    #@CachedMethods.register
+    def get_mesh_terms_for_hp_id(hp_id):
+        '''
+        This takes a hp id and converts it into a list of mesh term strings with [MeSH Terms] appened to the end
+        :param hp_id: a string containing the hp id formatted as follows: "HP:000000"
+        '''
+        if(hp_id[0])!='"':
+            hp_id = '"' + hp_id + '"'
+        hp_id+= "[Source ID]"
+        res = QueryNCBIeUtils.send_query_get('esearch.fcgi',
+                                             'db=medgen&term=' + str(hp_id))
+        ret_medgen_ids = set()
+
+        if res is not None:
+            res_json = res.json()
+            res_result = res_json.get('esearchresult', None)
+            if res_result is not None:
+                res_idlist = res_result.get('idlist', None)
+                if res_idlist is not None:
+                    ret_medgen_ids |= set(res_idlist)
+        mesh_ids = set()
+        for medgen_id in ret_medgen_ids:
+            res = QueryNCBIeUtils.send_query_get('elink.fcgi',
+                                             'dbfrom=medgen&db=mesh&id=' + str(medgen_id))
+            if res is not None:
+                res_json = res.json()
+                res_linksets = res_json.get('linksets', None)
+                if res_linksets is not None:
+                    for res_linkset in res_linksets:
+                        res_linksetdbs = res_linkset.get('linksetdbs', None)
+                        if res_linksetdbs is not None:
+                            for res_linksetdb in res_linksetdbs:
+                                res_mesh_ids = res_linksetdb.get('links', None)
+                                if res_mesh_ids is not None:
+                                    mesh_ids |= set(res_mesh_ids)
+        mesh_terms = set()
+        if len(mesh_ids) > 0:
+            for mesh_id in mesh_ids:
+                mesh_terms|= set(QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(int(mesh_id)))
+        if len(mesh_terms) > 0:
+            mesh_terms = [mesh_term + '[MeSH Terms]' for mesh_term in mesh_terms]
+            return mesh_terms
+        else:
+            return None
     
     @staticmethod
     def test_ngd():
