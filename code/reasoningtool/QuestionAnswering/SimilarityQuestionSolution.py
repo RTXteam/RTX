@@ -77,8 +77,8 @@ class SimilarityQuestionSolution:
 		else:
 			node_jaccard_ID_sorted = [id for id, jac in node_jaccard_tuples_sorted]
 
-			print(RU.return_subgraph_through_node_labels(source_node_ID, source_node_label, node_jaccard_ID_sorted, target_node_type,
-													[association_node_type], with_rel=[], directed=True, debug=True))
+			#print(RU.return_subgraph_through_node_labels(source_node_ID, source_node_label, node_jaccard_ID_sorted, target_node_type,
+			#										[association_node_type], with_rel=[], directed=True, debug=True))
 
 			# get the entire subgraph
 			g = RU.return_subgraph_through_node_labels(source_node_ID, source_node_label, node_jaccard_ID_sorted, target_node_type,
