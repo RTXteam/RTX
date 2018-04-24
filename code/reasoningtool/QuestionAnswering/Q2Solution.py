@@ -109,7 +109,8 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 					response.print()
 					return 1
 	# Decorate with normalized google distance
-	RU.weight_graph_with_google_distance(g, default_value=max_gd)
+	disease_descr = RU.get_node_property(disease_name, 'description')
+	RU.weight_graph_with_google_distance(g, context_node_id=disease_name, context_node_descr=disease_descr, default_value=max_gd)
 
 	# Decorate with drug binding probability (1-x since these will be multiplicatively merged
 	#RU.weight_graph_with_property(g, 'probability', transformation=lambda x: 1-x, default_value=2)
@@ -258,7 +259,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 def main():
 	parser = argparse.ArgumentParser(description="Runs the reasoning tool on Question 2",
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-	parser.add_argument('-r', '--drug', type=str, help="Input drug (name in the graph, eg. 'naproxen')", default='CHEMBL154')
+	parser.add_argument('-r', '--drug', type=str, help="Input drug (name in the graph, eg. 'CHEMBL154' (naproxen))", default='CHEMBL154')
 	parser.add_argument('-d', '--disease', type=str, help="Input disease (Identifier in the graph, eg 'DOID:8398')", default='DOID:8398')
 	parser.add_argument('-a', '--all', action="store_true", help="Flag indicating you want to run it on all Q2 drugs + diseases",
 						default=False)

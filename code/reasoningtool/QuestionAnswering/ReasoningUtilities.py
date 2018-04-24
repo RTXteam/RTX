@@ -30,6 +30,12 @@ except ImportError:
 	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../kg-construction')))  # Go up one level and look for it
 	import QueryEBIOLS
 
+try:
+	from NormGoogleDistance import NormGoogleDistance
+except ImportError:
+	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../kg-construction')))  # Go up one level and look for it
+	from NormGoogleDistance import NormGoogleDistance
+
 QueryEBIOLS = QueryEBIOLS.QueryEBIOLS()
 QueryNCBIeUtils = QueryNCBIeUtils.QueryNCBIeUtils()
 
@@ -779,7 +785,7 @@ def get_results_object_model(target_node, paths_dict, name_to_description, q1_do
 	return ret_obj
 
 
-def weight_graph_with_google_distance(g, default_value=10):
+def weight_graph_with_google_distance(g, context_node_id=None, context_node_descr=None, default_value=10):
 	"""
 	Creates a new property on the edges called 'gd_weight' that gives the google distance between source/target between that edge
 	:param g: a networkx graph
@@ -794,75 +800,26 @@ def weight_graph_with_google_distance(g, default_value=10):
 	# convert the nodes to mesh terms
 	# TODO: get this to work for drugs, uniprot_proteins, and check if working
 	for edge in edges:
-		i = 0
-		for node in edge:
-			mesh_terms = []
-			if QueryNCBIeUtils.is_mesh_term(names[node]):
-				mesh_terms = [names[node]]
-			elif QueryNCBIeUtils.is_mesh_term(descriptions[node]):
-				mesh_terms = [descriptions[node]]
-			elif "anatomical_entity" in labels[node]:
-				id = names[node]
-				mesh_ids = QueryEBIOLS.get_mesh_id_for_uberon_id(id)
-				mesh_terms = []
-				for mesh_id in mesh_ids:
-					if "MESH:D" in mesh_id:
-						mesh_id_number = mesh_id.split(':D')[1]
-						try:
-							mesh_id_number_int = int(mesh_id_number)
-							mesh_terms_temp = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(mesh_id_number_int)
-							if not mesh_terms_temp:
-								mesh_terms_temp = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(mesh_id_number_int + 68000000)
-							if mesh_terms_temp:
-								mesh_terms.extend(mesh_terms_temp)
-						except ValueError:
-							pass
-			elif "disease" in labels[node]:
-				id = names[node]
-				mesh_terms = QueryNCBIeUtils.get_mesh_terms_for_omim_id(id)
-			elif "disease" in labels[node] or "phenotypic_feature" in labels[node]:
-				# TODO: no way to convert clinvar to mesh yet
-				#description = descriptions[node]
-				#mesh_ids = QueryNCBIeUtils.get_clinvar_uids_for_disease_or_phenotype_string(description)
-				#if len(mesh_ids) > 300:  # too many mesh_id's to pass to eutils
-				#	mesh_ids = set(list(mesh_ids)[0:300])
-				#mesh_terms = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(mesh_ids)
-				pass
-			elif "protein" in labels[node]:
-				mesh_terms = [QueryNCBIeUtils.get_uniprot_names(names[node])]
-			elif "pathway" in labels[node]:
-				mesh_terms = [QueryNCBIeUtils.get_reactome_names(names[node])]
-			if i == 0:
-				source_mesh_terms = mesh_terms
-				i += 1
-			else:
-				target_mesh_terms = mesh_terms
+		source_id = names[edge[0]]
+		target_id = names[edge[1]]
+		source_descr = descriptions[edge[0]]
+		target_descr = descriptions[edge[1]]
 		gd = np.inf
-		# Loop over all mesh terms and look for the smallest GD
-		for source_mesh_term in source_mesh_terms:
-			if "|" in source_mesh_term:
-				mesh1 = False
-			else:
-				mesh1 = True
-			for target_mesh_term in target_mesh_terms:
-				if "|" in target_mesh_term:
-					mesh2 = False
-				else:
-					mesh2 = True
-				try:
-					gd_temp = QueryNCBIeUtils.normalized_google_distance(source_mesh_term, target_mesh_term, mesh1=mesh1, mesh2=mesh2)
-				except:
-					gd_temp = QueryNCBIeUtils.normalized_google_distance(source_mesh_term, target_mesh_term, mesh1=False, mesh2=False)
-				if not np.isnan(gd_temp):
-					if gd_temp < gd:
-						gd = gd_temp
+		if context_node_id is not None and context_node_descr is not None:
+			gd_temp = NormGoogleDistance.get_ngd_for_all([source_id, target_id, context_node_id], [source_descr, target_descr, context_node_descr])
+		else:
+			gd_temp = NormGoogleDistance.get_ngd_for_all([source_id, target_id], [source_descr, target_descr])
+		if not np.isnan(gd_temp):
+			if gd_temp < gd:
+				gd = gd_temp
 		if not np.isinf(gd):
 			if gd > default_value:
 				gd = default_value
 			edges2gd[edge] = gd
 		else:
 			edges2gd[edge] = default_value  # TODO: check if this default threshold (10) is acceptable
-		# decorate the edges with these weights
+
+	# decorate the edges with these weights
 	#g2 = nx.set_edge_attributes(g, edges2gd)  # This only works if I use the keys of the multigraph, not sure I want that since I'm basing it off source/target
 	for u, v, d in g.edges(data=True):
 		d['gd_weight'] = edges2gd[(u, v)]
