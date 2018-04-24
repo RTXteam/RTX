@@ -77,12 +77,14 @@ class SimilarityQuestionSolution:
 		else:
 			node_jaccard_ID_sorted = [id for id, jac in node_jaccard_tuples_sorted]
 
-			print(RU.return_subgraph_through_node_labels(source_node_ID, source_node_label, node_jaccard_ID_sorted, target_node_type,
-													[association_node_type], with_rel=[], directed=True, debug=True))
+			# print(RU.return_subgraph_through_node_labels(source_node_ID, source_node_label, node_jaccard_ID_sorted, target_node_type,
+			#										[association_node_type], with_rel=[], directed=True, debug=True))
 
 			# get the entire subgraph
-			g = RU.return_subgraph_through_node_labels(source_node_ID, source_node_label, node_jaccard_ID_sorted, target_node_type,
-													[association_node_type], with_rel=[], directed=True, debug=False)
+			g = RU.return_subgraph_through_node_labels(source_node_ID, source_node_label, node_jaccard_ID_sorted,
+													target_node_type,
+													[association_node_type], with_rel=[], directed=False,
+													debug=False)
 
 			# extract the source_node_number
 			for node, data in g.nodes(data=True):
@@ -99,22 +101,27 @@ class SimilarityQuestionSolution:
 
 			for other_disease_ID, jaccard in node_jaccard_tuples_sorted:
 				to_print = "The %s %s involves similar %s's as %s with similarity value %f" % (
-					target_node_type, RU.get_node_property(other_disease_ID, 'description'), association_node_type, source_node_description, jaccard)
+					target_node_type, RU.get_node_property(other_disease_ID, 'description'), association_node_type,
+					source_node_description, jaccard)
 
 				# get all the shortest paths between source and target
 				all_paths = nx.all_shortest_paths(g, source_node_number, target_id2numbers[other_disease_ID])
 
 				# get all the nodes on these paths
-				rel_nodes = set()
-				for path in all_paths:
-					for node in path:
-						rel_nodes.add(node)
+				try:
+					rel_nodes = set()
+					for path in all_paths:
+						for node in path:
+							rel_nodes.add(node)
 
-				# extract the relevant subgraph
-				sub_g = nx.subgraph(g, rel_nodes)
+					if rel_nodes:
+						# extract the relevant subgraph
+						sub_g = nx.subgraph(g, rel_nodes)
 
-				# add it to the response
-				response.add_subgraph(sub_g.nodes(data=True), sub_g.edges(data=True), to_print, jaccard)
+						# add it to the response
+						response.add_subgraph(sub_g.nodes(data=True), sub_g.edges(data=True), to_print, jaccard)
+				except:
+					pass
 			response.print()
 
 	@staticmethod

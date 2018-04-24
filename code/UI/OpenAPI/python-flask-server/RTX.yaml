@@ -131,28 +131,30 @@ definitions:
   Query:
     type: "object"
     properties:
-      originalQuestion:
+      original_question:
         type: "string"
         example: "what genetic conditions offer protection against malaria"
         description: "Original question as it was typed in by the user"
-      restatedQuestion:
+      restated_question:
         type: "string"
         example: "Which genetic conditions may offer protection against malaria?"
         description: "Restatement of the question as understood by the translator"
       message:
         type: "string"
-        example: "Sorry, RTX was not able to understand your question."
+        example: "Your question was understood."
         description: "Response from the translation engine to the user"
-      knownQueryTypeId:
+      known_query_type_id:
         type: "string"
         example: "Q1"
         description: "RTX identifier for the specific query type"
       terms:
-        type: "array"
-        description: "Ordered list of terms needed by the specific query type"
-        items:
-          type: "string"
-          example: "malaria"
+        type: "object"
+        description: "Dict of terms needed by the specific query type"
+        properties:
+          disease:
+            type: "string"
+            example: "malaria"
+        additionalProperties: true
   Response:
     type: "object"
     properties:

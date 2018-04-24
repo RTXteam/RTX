@@ -7,7 +7,7 @@ from swagger_server import util
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../reasoningtool/QuestionAnswering/")
-from QuestionTranslator import QuestionTranslator
+from ParseQuestion import ParseQuestion
 
 
 def translate(body):  # noqa: E501
@@ -22,6 +22,6 @@ def translate(body):  # noqa: E501
     """
     if connexion.request.is_json:
         question = connexion.request.get_json()
-        txltr = QuestionTranslator()
-        query = txltr.translate(question)
+        txltr = ParseQuestion()
+        query = txltr.format_response(question)
     return query
