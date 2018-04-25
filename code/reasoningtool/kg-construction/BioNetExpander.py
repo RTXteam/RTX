@@ -110,7 +110,11 @@ class BioNetExpander:
         if curie_id == "UniProt:null":  # :DEBUG: code for tracking down issue #74
             print("ERROR: UniProt:null found", file=sys.stderr)
             traceback.print_stack(file=sys.stderr)
-            
+
+        if desc.endswith(" MOUSE") or desc.endswith(" YEAST"):
+            print("ERROR: nonhuman species protein found for ID " + name + " desc: " + desc, file=sys.stderr)
+            traceback.print_stack(file=sys.stderr)
+
         node = self.orangeboard.add_node(simple_node_type,
                                          name,
                                          seed_node_bool,
