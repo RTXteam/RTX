@@ -38,7 +38,8 @@ __status__ = 'Prototype'
 
 from Neo4jConnection import Neo4jConnection
 import json
-
+from QueryEBIOLSExtended import QueryEBIOLSExtended
+from QueryOMIM import QueryOMIM
 
 class UpdateNodesInfo:
 
@@ -130,13 +131,173 @@ class UpdateNodesInfo:
     def update_bio_process_nodes():
         UpdateNodesInfo.__update_nodes('bio_process')
 
+    @staticmethod
+    def update_anatomy_nodes_desc():
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        rf = open("result_output.txt", 'a')
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_anatomy_nodes()
+        print("anatomy: %d"%len(nodes), file=rf)
+
+        from time import time
+        t = time()
+
+        nodes_array = []
+        for i, node_id in enumerate(nodes):
+            node = dict()
+            node['node_id'] = node_id
+            node['desc'] = QueryEBIOLSExtended.get_anatomy_description(node_id)
+            nodes_array.append(node)
+
+        print("anatomy api pulling time: %f" % (time() - t), file=rf)
+
+        nodes_nums = len(nodes_array)
+        chunk_size = 10000
+        group_nums = nodes_nums // chunk_size + 1
+        for i in range(group_nums):
+            start = i * chunk_size
+            end = (i + 1) * chunk_size if (i + 1) * chunk_size < nodes_nums else nodes_nums
+            conn.update_anatomy_nodes_desc(nodes_array[start:end])
+
+        print("total time: %f" % (time() - t), file=rf)
+
+        conn.close()
+
+    @staticmethod
+    def update_phenotype_nodes_desc():
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        rf = open("result_output.txt", 'a')
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_phenotype_nodes()
+        print("phenotype: %d"%len(nodes), file=rf)
+
+        from time import time
+        t = time()
+
+        nodes_array = []
+        for i, node_id in enumerate(nodes):
+            node = dict()
+            node['node_id'] = node_id
+            node['desc'] = QueryEBIOLSExtended.get_phenotype_description(node_id)
+            nodes_array.append(node)
+
+        print("phenotype api pulling time: %f" % (time() - t), file=rf)
+
+        nodes_nums = len(nodes_array)
+        chunk_size = 10000
+        group_nums = nodes_nums // chunk_size + 1
+        for i in range(group_nums):
+            start = i * chunk_size
+            end = (i + 1) * chunk_size if (i + 1) * chunk_size < nodes_nums else nodes_nums
+            conn.update_phenotype_nodes_desc(nodes_array[start:end])
+
+        print("total time: %f" % (time() - t), file=rf)
+
+        conn.close()
+
+    @staticmethod
+    def update_disease_nodes_desc():
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        rf = open("result_output.txt", 'a')
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_disease_nodes()
+        print("disease: %d"%len(nodes), file=rf)
+
+        from time import time
+        t = time()
+
+        nodes_array = []
+        for i, node_id in enumerate(nodes):
+            node = dict()
+            node['node_id'] = node_id
+            if node_id[:4] == "OMIM":
+                node['desc'] = QueryOMIM().disease_mim_to_description(node_id)
+            elif node_id[:4] == "DOID":
+                node['desc'] = QueryEBIOLSExtended.get_disease_description(node_id)
+            nodes_array.append(node)
+
+        print("disease api pulling time: %f" % (time() - t), file=rf)
+
+        nodes_nums = len(nodes_array)
+        chunk_size = 10000
+        group_nums = nodes_nums // chunk_size + 1
+        for i in range(group_nums):
+            start = i * chunk_size
+            end = (i + 1) * chunk_size if (i + 1) * chunk_size < nodes_nums else nodes_nums
+            conn.update_disease_nodes_desc(nodes_array[start:end])
+
+        print("total time: %f" % (time() - t), file=rf)
+
+        rf.close()
+
+        conn.close()
+
+    @staticmethod
+    def update_bio_process_nodes_desc():
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        rf = open("result_output.txt", 'a')
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_bio_process_nodes()
+        print("bio_process: %d"%len(nodes), file=rf)
+
+        from time import time
+        t = time()
+
+        nodes_array = []
+        for i, node_id in enumerate(nodes):
+            node = dict()
+            node['node_id'] = node_id
+            node['desc'] = QueryEBIOLSExtended.get_bio_process_description(node_id)
+            nodes_array.append(node)
+
+        print("api pulling time: %f" % (time() - t), file=rf)
+
+        nodes_nums = len(nodes_array)
+        chunk_size = 10000
+        group_nums = nodes_nums // chunk_size + 1
+        for i in range(group_nums):
+            start = i * chunk_size
+            end = (i + 1) * chunk_size if (i + 1) * chunk_size < nodes_nums else nodes_nums
+            conn.update_bio_process_nodes_desc(nodes_array[start:end])
+
+        print("total time: %f" % (time() - t), file=rf)
+
+        rf.close()
+
+        conn.close()
+
 if __name__ == '__main__':
 
-    UpdateNodesInfo.update_anatomy_nodes()
-    UpdateNodesInfo.update_phenotype_nodes()
-    UpdateNodesInfo.update_microRNA_nodes()
-    UpdateNodesInfo.update_pathway_nodes()
-    UpdateNodesInfo.update_protein_nodes()
-    UpdateNodesInfo.update_disease_nodes()
-    UpdateNodesInfo.update_chemical_substance_nodes()
-    UpdateNodesInfo.update_bio_process_nodes()
+    # UpdateNodesInfo.update_anatomy_nodes()
+    # UpdateNodesInfo.update_phenotype_nodes()
+    # UpdateNodesInfo.update_microRNA_nodes()
+    # UpdateNodesInfo.update_pathway_nodes()
+    # UpdateNodesInfo.update_protein_nodes()
+    # UpdateNodesInfo.update_disease_nodes()
+    # UpdateNodesInfo.update_chemical_substance_nodes()
+    # UpdateNodesInfo.update_bio_process_nodes()
+    UpdateNodesInfo.update_anatomy_nodes_desc()
+    UpdateNodesInfo.update_phenotype_nodes_desc()
+    UpdateNodesInfo.update_disease_nodes_desc()
+    UpdateNodesInfo.update_bio_process_nodes_desc()
+

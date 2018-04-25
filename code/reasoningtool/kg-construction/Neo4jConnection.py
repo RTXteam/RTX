@@ -127,14 +127,30 @@ class Neo4jConnection:
         with self._driver.session() as session:
             return session.write_transaction(self._get_bio_process_node, id)
 
+    def update_anatomy_nodes_desc(self, nodes):
+        with self._driver.session() as session:
+            return session.write_transaction(self._update_anatomy_nodes_desc, nodes)
+
+    def update_phenotype_nodes_desc(self, nodes):
+        with self._driver.session() as session:
+            return session.write_transaction(self._update_phenotype_nodes_desc, nodes)
+
+    def update_disease_nodes_desc(self, nodes):
+        with self._driver.session() as session:
+            return session.write_transaction(self._update_disease_nodes_desc, nodes)
+
+    def update_bio_process_nodes_desc(self, nodes):
+        with self._driver.session() as session:
+            return session.write_transaction(self._update_bio_process_nodes_desc, nodes)
+
     @staticmethod
     def _get_anatomy_nodes(tx):
-        result = tx.run("MATCH (n:anatomical_entity) RETURN n.id")
+        result = tx.run("MATCH (n:anatomical_entity) RETURN n.id LIMIT 100")
         return [record["n.id"] for record in result]
 
     @staticmethod
     def _get_phenotype_nodes(tx):
-        result = tx.run("MATCH (n:phenotypic_feature) RETURN n.id")
+        result = tx.run("MATCH (n:phenotypic_feature) RETURN n.id LIMIT 100")
         return [record["n.id"] for record in result]
 
     @staticmethod
@@ -154,7 +170,7 @@ class Neo4jConnection:
 
     @staticmethod
     def _get_disease_nodes(tx):
-        result = tx.run("MATCH (n:disease) RETURN n.id")
+        result = tx.run("MATCH (n:disease) RETURN n.id LIMIT 100")
         return [record["n.id"] for record in result]
 
     @staticmethod
@@ -164,7 +180,7 @@ class Neo4jConnection:
 
     @staticmethod
     def _get_bio_process_nodes(tx):
-        result = tx.run("MATCH (n:biological_process) RETURN n.id")
+        result = tx.run("MATCH (n:biological_process) RETURN n.id LIMIT 100")
         return [record["n.id"] for record in result]
 
     @staticmethod
@@ -310,3 +326,55 @@ class Neo4jConnection:
     def _get_bio_process_node(tx, id):
         result = tx.run("MATCH (n:biological_process{id:'%s'}) RETURN n" % id)
         return result.single()
+
+    @staticmethod
+    def _update_anatomy_nodes_desc(tx, nodes):
+        result = tx.run(
+            """
+            UNWIND {nodes} AS row
+            WITH row.node_id AS node_id, row.desc AS description
+            MATCH (n:anatomical_entity{id:node_id})
+            SET n.description=description
+            """,
+            nodes=nodes,
+        )
+        return result
+
+    @staticmethod
+    def _update_phenotype_nodes_desc(tx, nodes):
+        result = tx.run(
+            """
+            UNWIND {nodes} AS row
+            WITH row.node_id AS node_id, row.desc AS description
+            MATCH (n:phenotypic_feature{id:node_id})
+            SET n.description=description
+            """,
+            nodes=nodes,
+        )
+        return result
+
+    @staticmethod
+    def _update_disease_nodes_desc(tx, nodes):
+        result = tx.run(
+            """
+            UNWIND {nodes} AS row
+            WITH row.node_id AS node_id, row.desc AS description
+            MATCH (n:disease{id:node_id})
+            SET n.description=description
+            """,
+            nodes=nodes,
+        )
+        return result
+
+    @staticmethod
+    def _update_bio_process_nodes_desc(tx, nodes):
+        result = tx.run(
+            """
+            UNWIND {nodes} AS row
+            WITH row.node_id AS node_id, row.desc AS description
+            MATCH (n:biological_process{id:node_id})
+            SET n.description=description
+            """,
+            nodes=nodes,
+        )
+        return result
