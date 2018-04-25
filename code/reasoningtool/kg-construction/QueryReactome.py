@@ -178,6 +178,7 @@ class QueryReactome:
                                         alt_species = None
                                         if ' ' in int_alias:
                                             int_alias_split = int_alias.split(' ')
+                                            int_alias = int_alias_split[0]
                                             alt_species = int_alias_split[1]
                                         if alt_species is None or (alt_species not in QueryReactome.SPECIES_MNEMONICS and \
                                                                    not (alt_species[0] == '9')):
