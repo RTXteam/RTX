@@ -161,6 +161,7 @@ class QueryReactome:
         res_uniprot_ids = dict()
         if res is not None:
             res_json = res.json()
+#            print(res_json)
             if res_json is not None:
                 res_entities = res_json.get('entities', None)
                 if res_entities is not None:
@@ -194,7 +195,7 @@ class QueryReactome:
                                                 else:
                                                     print('For query protein ' + uniprot_id + ' and interactant protein ' + int_uniprot_id + ', check for potential other species name in Reactome output: ' + alt_species, file=sys.stderr)
                                                     int_alias = None
-                                        if int_alias is not None and QueryReactome.is_valid_uniprot_accession(int_uniprot_id):
+                                        if int_alias is not None and int_alias != "" and QueryReactome.is_valid_uniprot_accession(int_uniprot_id):
                                                 res_uniprot_ids[int_uniprot_id] = int_alias
         return res_uniprot_ids
 
@@ -208,11 +209,12 @@ class QueryReactome:
         print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc('Q13501'))
         print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc('P68871'))
         print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc('O75521-2'))
-#        print(QueryReactome.query_reactome_pathway_id_to_uniprot_ids_desc('R-HSA-5423646'))
-#        print(QueryReactome.query_uniprot_id_to_reactome_pathway_ids_desc('P68871'))
-#        print(QueryReactome.__query_uniprot_to_reactome_entity_id('O75521-2'))
-#        print(QueryReactome.__query_reactome_entity_id_to_reactome_pathway_ids_desc('R-HSA-2230989'))
-#        print(QueryReactome.__query_uniprot_to_reactome_entity_id_desc('P68871'))
-        
+        print(QueryReactome.query_reactome_pathway_id_to_uniprot_ids_desc('R-HSA-5423646'))
+        print(QueryReactome.query_uniprot_id_to_reactome_pathway_ids_desc('P68871'))
+        print(QueryReactome.__query_uniprot_to_reactome_entity_id('O75521-2'))
+        print(QueryReactome.__query_reactome_entity_id_to_reactome_pathway_ids_desc('R-HSA-2230989'))
+        print(QueryReactome.__query_uniprot_to_reactome_entity_id_desc('P68871'))
+
+
 if __name__ == '__main__':
     QueryReactome.test()
