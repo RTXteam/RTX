@@ -30,7 +30,6 @@ class QueryDisont:
             return None
         status_code = res.status_code
         if status_code != 200:
-            print(url, file=sys.stderr)
             print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
             return None            
         return res
