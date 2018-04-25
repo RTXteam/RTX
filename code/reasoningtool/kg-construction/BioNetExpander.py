@@ -315,6 +315,10 @@ class BioNetExpander:
         int_dict = QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc(uniprot_id_str)
         for int_uniprot_id in int_dict.keys():
             int_alias = int_dict[int_uniprot_id]
+            if int_alias.endswith(" YEAST"):
+                print(int_dict, file=sys.stderr)
+                print("Query protein: " + uniprot_id_str)
+                assert False
             if 'BINDSGENE:' not in int_alias:
                 node2 = self.add_node_smart('protein', int_uniprot_id, desc=int_alias)
                 if node2 is not None and node2.uuid != node1.uuid:
