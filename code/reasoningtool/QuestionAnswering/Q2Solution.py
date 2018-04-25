@@ -110,6 +110,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 					return 1
 	# Decorate with normalized google distance
 	disease_descr = RU.get_node_property(disease_name, 'description')
+	# include context in the google distance TODO: this may not actually help things... need to test
 	RU.weight_graph_with_google_distance(g, context_node_id=disease_name, context_node_descr=disease_descr, default_value=max_gd)
 
 	# Decorate with drug binding probability (1-x since these will be multiplicatively merged
