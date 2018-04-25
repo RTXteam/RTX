@@ -111,9 +111,7 @@ class BioNetExpander:
             print("ERROR: UniProt:null found", file=sys.stderr)
             traceback.print_stack(file=sys.stderr)
 
-        if desc.endswith(" MOUSE") or desc.endswith(" YEAST"):
-            print("ERROR: nonhuman species protein found for ID " + name + " desc: " + desc, file=sys.stderr)
-            traceback.print_stack(file=sys.stderr)
+        assert not (desc.endswith(" MOUSE") or desc.endswith(" YEAST"))
 
         node = self.orangeboard.add_node(simple_node_type,
                                          name,
@@ -315,10 +313,6 @@ class BioNetExpander:
         int_dict = QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc(uniprot_id_str)
         for int_uniprot_id in int_dict.keys():
             int_alias = int_dict[int_uniprot_id]
-            if int_alias.endswith(" YEAST"):
-                print(int_dict, file=sys.stderr)
-                print("Query protein: " + uniprot_id_str)
-                assert False
             if 'BINDSGENE:' not in int_alias:
                 node2 = self.add_node_smart('protein', int_uniprot_id, desc=int_alias)
                 if node2 is not None and node2.uuid != node1.uuid:
@@ -508,4 +502,4 @@ if __name__ == '__main__':
 
     running_time = timeit.timeit(lambda: run_method(), number=1)
     print('running time for function: ' + str(running_time))
- 
+
