@@ -107,7 +107,7 @@ class BioNetExpander:
             accession = name.split(":")[1]
             iri = iri_prefix + accession
 
-        if name == "UniProt:null":  # :DEBUG: code for tracking down issue #74
+        if curie_id == "UniProt:null":  # :DEBUG: code for tracking down issue #74
             print("ERROR: UniProt:null found", file=sys.stderr)
             traceback.print_stack(file=sys.stderr)
             
