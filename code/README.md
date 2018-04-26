@@ -8,10 +8,6 @@
 
 - Contains the user-interface code for the RTX proof-of-concept software.
 
-### Subdirectory `docker`
-
-- Contains the script for deploying a Docker image in which the RTX proof-of-concept software runs.
-
 ### Subdirectory `NLPCode`
 
 - Contains the natural language processing code to be used in the RTX software (not yet implemented).  
