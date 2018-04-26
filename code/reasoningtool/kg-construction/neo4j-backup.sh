@@ -11,6 +11,7 @@
 #
 #   How to run it:
 #       ssh ubuntu@rtxsteve.saramsey.org
+#       screen                               (backup can take a while; best to run in a "screen" session)
 #       sudo docker start rtxsteve           (if the rtxsteve container is not already running)
 #       sudo docker exec -it rtxsteve /usr/bin/sudo -H -u rt bash -c 'cd ~/kg-construction && git pull origin master'
 #       sudo docker exec rtxsteve /mnt/data/orangeboard/RTX/code/reasoningtool/kg-construction/neo4j-backup.sh
