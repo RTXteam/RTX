@@ -8,8 +8,8 @@ sys.path.insert(0,parentdir)
 from QueryMyGeneExtended import QueryMyGeneExtended
 
 
-def get_from_test_file(key):
-    f = open('query_test_data.json', 'r')
+def get_from_test_file(filename, key):
+    f = open(filename, 'r')
     test_data = f.read()
     try:
         test_data_dict = json.loads(test_data)
@@ -28,7 +28,8 @@ class QueryMyGeneExtendedTestCase(unittest.TestCase):
         self.maxDiff = None
         self.assertIsNotNone(extended_info_json)
         if extended_info_json != "UNKNOWN":
-            self.assertEqual(len(json.loads(extended_info_json)), len(json.loads(get_from_test_file('UniProt:O60884'))))
+            self.assertEqual(len(json.loads(extended_info_json)),
+                             len(json.loads(get_from_test_file('query_test_data.json', 'UniProt:O60884'))))
 
     def test_get_microRNA_entity(self):
 
@@ -36,7 +37,20 @@ class QueryMyGeneExtendedTestCase(unittest.TestCase):
         self.maxDiff = None
         self.assertIsNotNone(extended_info_json)
         if extended_info_json != "UNKNOWN":
-            self.assertEqual(len(json.loads(extended_info_json)), len(json.loads(get_from_test_file('NCBIGene: 100847086'))))
+            self.assertEqual(len(json.loads(extended_info_json)),
+                             len(json.loads(get_from_test_file('query_test_data.json', 'NCBIGene: 100847086'))))
+
+    def test_get_protein_desc(self):
+
+        desc = QueryMyGeneExtended.get_protein_desc("UniProt:O60884")
+        self.assertIsNotNone(desc)
+        self.assertEqual(desc, get_from_test_file('query_desc_test_data.json','UniProt:O60884'))
+
+    def test_get_microRNA_desc(self):
+
+        desc = QueryMyGeneExtended.get_microRNA_desc("NCBIGene: 100847086")
+        self.assertIsNotNone(desc)
+        self.assertEqual(desc, get_from_test_file('query_desc_test_data.json', 'NCBIGene: 100847086'))
 
 
 if __name__ == '__main__':
