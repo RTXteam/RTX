@@ -2,12 +2,24 @@
 
 ### BEGIN INTRO
 #   Function: This script is to dump the Neo4j database and transfer the backup file to http://rtxkgdump.saramsey.org/
-#   Instance: 'kgdump' docker container in 'rtxsteve.saramesy.org' instance
+#   Instance: 'rtxsteve' docker container in 'rtxsteve.saramesy.org' instance
 #   Where to run the script: any directory
 #   Who can run the script: root
 #   How to run the script: sh neo4j-backup.sh
 #   The backup files will be stored in the /var/www/html folder of the 'rtxkgdump.saramsey.org' instance.
 #   The backup files can be accessed in http://rtxkgdump.saramsey.org/
+#
+#   How to run it:
+#       ssh ubuntu@rtxsteve.saramsey.org
+#       docker start rtxsteve           (if the rtxsteve container is not already running)
+#       docker exec -it rtxsteve bash
+#       su - rt
+#       cd kg-construction
+#       git pull origin master          (this just updates the neo4-backup.sh script)
+#       exit
+#       service neo4j start
+#       /mnt/data/orangeboard/RTX/code/reasoningtool/kg-construction/neo4j-backup.sh
+#
 ### END INTRO
 
 ### BEGIN PREREQUISITE
