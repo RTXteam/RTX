@@ -30,6 +30,12 @@
 #   sudo chmod -R 755 /var/www/html
 ### END PREREQUISITE
 
+### BEGIN HOW TO LOAD
+#   command:
+#   neo4j-admin load --from=[absolute directory]/xxxx.dump --database=graph --force
+#   ref: https://neo4j.com/docs/operations-manual/current/tools/dump-load/
+### END HOW TO LOAD
+
 # Author: Deqing Qu
 
 set -e
@@ -45,7 +51,7 @@ echo 'start backup ...'
 if [ ! -d "/mnt/data/backup/" ]; then
     mkdir /mnt/data/backup/
 fi
-neo4j-admin dump --database=graph --to=/mnt/data/backup/$file.cypher
+neo4j-admin dump --database=graph --to=/mnt/data/backup/$file.dump
 
 echo 'backup complete ...'
 echo 'start Neo4j ...'
@@ -53,7 +59,8 @@ service neo4j start
 
 echo 'zip the backup file ...'
 cd /mnt/data/backup/
-tar -czvf $file.tar.gz $file.cypher
+tar -czvf $file.tar.gz $file.dump
+rm $file.dump
 
 echo 'start transfering the backup file ...'
 chown rt:rt $file.tar.gz

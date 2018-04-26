@@ -135,6 +135,14 @@ class Neo4jConnection:
         with self._driver.session() as session:
             return session.write_transaction(self._update_phenotype_nodes_desc, nodes)
 
+    def update_microRNA_nodes_desc(self, nodes):
+        with self._driver.session() as session:
+            return session.write_transaction(self._update_microRNA_nodes_desc, nodes)
+
+    def update_protein_nodes_desc(self, nodes):
+        with self._driver.session() as session:
+            return session.write_transaction(self._update_protein_nodes_desc, nodes)
+
     def update_disease_nodes_desc(self, nodes):
         with self._driver.session() as session:
             return session.write_transaction(self._update_disease_nodes_desc, nodes)
@@ -145,12 +153,12 @@ class Neo4jConnection:
 
     @staticmethod
     def _get_anatomy_nodes(tx):
-        result = tx.run("MATCH (n:anatomical_entity) RETURN n.id LIMIT 100")
+        result = tx.run("MATCH (n:anatomical_entity) RETURN n.id")
         return [record["n.id"] for record in result]
 
     @staticmethod
     def _get_phenotype_nodes(tx):
-        result = tx.run("MATCH (n:phenotypic_feature) RETURN n.id LIMIT 100")
+        result = tx.run("MATCH (n:phenotypic_feature) RETURN n.id")
         return [record["n.id"] for record in result]
 
     @staticmethod
@@ -170,7 +178,7 @@ class Neo4jConnection:
 
     @staticmethod
     def _get_disease_nodes(tx):
-        result = tx.run("MATCH (n:disease) RETURN n.id LIMIT 100")
+        result = tx.run("MATCH (n:disease) RETURN n.id")
         return [record["n.id"] for record in result]
 
     @staticmethod
@@ -180,7 +188,7 @@ class Neo4jConnection:
 
     @staticmethod
     def _get_bio_process_nodes(tx):
-        result = tx.run("MATCH (n:biological_process) RETURN n.id LIMIT 100")
+        result = tx.run("MATCH (n:biological_process) RETURN n.id")
         return [record["n.id"] for record in result]
 
     @staticmethod
@@ -354,12 +362,38 @@ class Neo4jConnection:
         return result
 
     @staticmethod
+    def _update_microRNA_nodes_desc(tx, nodes):
+        result = tx.run(
+            """
+            UNWIND {nodes} AS row
+            WITH row.node_id AS node_id, row.desc AS description
+            MATCH (n:microRNA{id:node_id})
+            SET n.description=description
+            """,
+            nodes=nodes,
+        )
+        return result
+
+    @staticmethod
     def _update_disease_nodes_desc(tx, nodes):
         result = tx.run(
             """
             UNWIND {nodes} AS row
             WITH row.node_id AS node_id, row.desc AS description
             MATCH (n:disease{id:node_id})
+            SET n.description=description
+            """,
+            nodes=nodes,
+        )
+        return result
+
+    @staticmethod
+    def _update_protein_nodes_desc(tx, nodes):
+        result = tx.run(
+            """
+            UNWIND {nodes} AS row
+            WITH row.node_id AS node_id, row.desc AS description
+            MATCH (n:protein{id:node_id})
             SET n.description=description
             """,
             nodes=nodes,
