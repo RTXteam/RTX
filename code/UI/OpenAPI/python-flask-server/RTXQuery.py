@@ -30,7 +30,6 @@ class RTXQuery:
       # call out to QueryMeSH here to satify the query "What is XXXXXX?"
       meshQuery = QueryMeSH()
       response = meshQuery.queryTerm(terms["term"])
-      print(query)
       if 'original_question' in query:
         response.original_question_text = query["original_question"]
         response.restated_question_text = query["restated_question"]
@@ -69,9 +68,9 @@ class RTXQuery:
           response.message = "Error parsing the response from the reasoner. This is an internal bug that needs to be fixed. Unable to respond to this question at this time. The unparsable response was: " + reformattedText
 
       print(query)
-      if 'originalQuestion' in query:
-        response.original_question_text = query["originalQuestion"]
-        response.restated_question_text = query["restatedQuestion"]
+      if 'original_question' in query:
+        response.original_question_text = query["original_question"]
+        response.restated_question_text = query["restated_question"]
 
       #### Log the result and return the Response object
       self.logQuery(response.id,response.result_code,terms)
