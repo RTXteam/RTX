@@ -61,16 +61,35 @@ class QueryMyChem:
         return result_str
 
     @staticmethod
+    def __get_description(entity_type, entity_id):
+        handler = QueryMyChem.HANDLER_MAP[entity_type].format(id=entity_id)
+        results = QueryMyChem.__access_api(handler)
+        result_str = 'UNKNOWN'
+        if results is not None:
+            #   remove all \n characters using json api and convert the string to one line
+            json_dict = json.loads(results)
+            if "chebi" in json_dict.keys():
+                if "definition" in json_dict['chebi']:
+                    result_str = json_dict['chebi']['definition']
+        return result_str
+
+    @staticmethod
     def get_chemical_substance_entity(chemical_substance_id):
         if chemical_substance_id[:7] == "ChEMBL:":
             chemical_substance_id = chemical_substance_id.replace("ChEMBL:", "CHEMBL")
         return QueryMyChem.__get_entity("get_chemical_substance", chemical_substance_id)
 
+    @staticmethod
+    def get_chemical_substance_description(chemical_substance_id):
+        if chemical_substance_id[:7] == "ChEMBL:":
+            chemical_substance_id = chemical_substance_id.replace("ChEMBL:", "CHEMBL")
+        return QueryMyChem.__get_description("get_chemical_substance", chemical_substance_id)
+
 
 if __name__ == '__main__':
 
-    def save_to_test_file(key, value):
-        f = open('tests/query_test_data.json', 'r+')
+    def save_to_test_file(filename, key, value):
+        f = open(filename, 'r+')
         try:
             json_data = json.load(f)
         except ValueError:
@@ -81,4 +100,11 @@ if __name__ == '__main__':
         json.dump(json_data, f)
         f.close()
 
-    save_to_test_file('ChEMBL:1200766', QueryMyChem.get_chemical_substance_entity('ChEMBL:1200766'))
+    save_to_test_file('tests/query_test_data.json', 'ChEMBL:1200766',
+                      QueryMyChem.get_chemical_substance_entity('ChEMBL:1200766'))
+    save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:154',
+                      QueryMyChem.get_chemical_substance_description('ChEMBL:154'))
+    save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:20883',
+                      QueryMyChem.get_chemical_substance_description('ChEMBL:20883'))   # no definition field
+    save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:110101020',
+                      QueryMyChem.get_chemical_substance_description('ChEMBL:110101020'))   # wrong id
