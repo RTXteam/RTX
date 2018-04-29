@@ -11,7 +11,7 @@ import requests
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server")
 from swagger_server.models.response import Response
 
-url = "http://rtx.ncats.io/devED/api/rtx/v1/query"
+url = "http://rtx.ncats.io/api/rtx/v1/query"
 
 query = {
   "known_query_type_id": "Q3",
@@ -23,6 +23,16 @@ query = {
     "target_label": "protein"
     }
   }
+
+query = {
+  "known_query_type_id": "Q0",
+  "original_question": "what is malaria",
+  "restated_question": "What is malaria",
+  "terms": {
+    "term": "malaria"
+  }
+}
+
 
 #### Create an RTX Feedback management object
 rtxFeedback = RTXFeedback()
@@ -36,7 +46,7 @@ rtxFeedback.connect()
 
 #### Fetch a cached response based on this query if there is one
 cachedResponse = rtxFeedback.getCachedResponse(query)
-cachedResponse = None
+#cachedResponse = None
 
 #### If there was one, then return it
 if ( cachedResponse is not None ):
