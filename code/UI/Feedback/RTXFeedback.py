@@ -181,8 +181,12 @@ class RTXFeedback:
     session = self.session
     result_hash = "xxxx"
     for result in response.result_list:
-      n_nodes = len(result.result_graph.node_list)
-      n_edges = len(result.result_graph.edge_list)
+      n_nodes = 0
+      n_edges = 0
+      try:
+        n_nodes = len(result.result_graph.node_list)
+      try:
+        n_edges = len(result.result_graph.edge_list)
 
       #### Calculate a hash from the list of nodes and edges in the result
       result_hash = self.calcResultHash(result)
@@ -200,14 +204,16 @@ class RTXFeedback:
 
     #### Get a sorted list of node ids
     nodes = []
-    for node in result.result_graph.node_list:
-      nodes.append(node.id)
+    if result.result_graph.node_list is not None:
+      for node in result.result_graph.node_list:
+        nodes.append(node.id)
     nodes.sort()
 
     #### Get a sorted list of edge types
     edges = []
-    for edge in result.result_graph.edge_list:
-      edges.append(edge.type)
+    if result.result_graph.edge_list is not None:
+      for edge in result.result_graph.edge_list:
+        edges.append(edge.type)
     edges.sort()
 
     result_hash = str(hash(",".join(nodes)+"_"+"-".join(edges)))
