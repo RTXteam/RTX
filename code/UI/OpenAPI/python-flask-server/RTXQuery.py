@@ -18,6 +18,9 @@ from swagger_server.models.response import Response
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/QuestionAnswering/")
 from ParseQuestion import ParseQuestion
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../Feedback/")
+from RTXFeedback import RTXFeedback
+
 class RTXQuery:
 
   def query(self,query):
@@ -26,6 +29,16 @@ class RTXQuery:
     id = query["known_query_type_id"]
     terms = query["terms"]
 
+    #### Create an RTX Feedback management object
+    rtxFeedback = RTXFeedback()
+    cachedResponse = rtxFeedback.getCachedResponse(query)
+
+    #### If we can find a cached response for this query and this version of RTX, then return the cached response
+    if ( cachedResponse is not None ):
+      apiResponse = Response().from_dict(cachedResponse)
+      return apiResponse
+
+    #### Still have special handling for Q0
     if id == 'Q0':
       # call out to QueryMeSH here to satify the query "What is XXXXXX?"
       meshQuery = QueryMeSH()
@@ -36,6 +49,7 @@ class RTXQuery:
       id = response.id
       codeString = response.result_code
       self.logQuery(id,codeString,terms)
+      rtxFeedback.addNewResponse(response,query)
       return(response)
 
     #### Call out to OrangeBoard to answer the query "What genetic conditions might offer protection against XXXXXX?"
@@ -74,6 +88,7 @@ class RTXQuery:
 
       #### Log the result and return the Response object
       self.logQuery(response.id,response.result_code,terms)
+      rtxFeedback.addNewResponse(response,query)
       return(response)
 
 
