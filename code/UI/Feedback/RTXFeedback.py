@@ -183,9 +183,9 @@ class RTXFeedback:
     for result in response.result_list:
       n_nodes = 0
       n_edges = 0
-      try:
+      if result.result_graph.node_list is not None:
         n_nodes = len(result.result_graph.node_list)
-      try:
+      if result.result_graph.edge_list is not None:
         n_edges = len(result.result_graph.edge_list)
 
       #### Calculate a hash from the list of nodes and edges in the result
