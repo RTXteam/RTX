@@ -168,11 +168,15 @@ class RTXFeedback:
       terms=str(query["terms"]),tool_version=response.tool_version,result_code=response.result_code,message=response.message,n_results=n_results,response_object=ast.literal_eval(repr(response)))
     session.add(storedResponse)
     session.flush()
-    session.commit()
-    print("Returned response_id is "+str(storedResponse.response_id))
+    #print("Returned response_id is "+str(storedResponse.response_id))
     response.id = "http://rtx.ncats.io/api/v1/response/"+str(storedResponse.response_id)
 
     self.addNewResults(storedResponse.response_id,response)
+
+    #### After updating all the ids, store an updated object
+    storedResponse.response_object=ast.literal_eval(repr(response))
+    session.commit()
+
     return storedResponse.response_id
 
 
@@ -194,7 +198,8 @@ class RTXFeedback:
       session.add(storedResult)
       session.flush()
       result.id = response.id+"/result/"+str(storedResult.result_id)
-      print("Returned result_id is "+str(storedResult.result_id)+", n_nodes="+str(n_nodes)+", n_edges="+str(n_edges)+", hash="+result_hash)
+      #print("Returned result_id is "+str(storedResult.result_id)+", n_nodes="+str(n_nodes)+", n_edges="+str(n_edges)+", hash="+result_hash)
+      storedResult.result_object=ast.literal_eval(repr(result))
 
     session.commit()
     return
