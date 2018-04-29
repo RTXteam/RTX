@@ -31,6 +31,7 @@ class RTXQuery:
 
     #### Create an RTX Feedback management object
     rtxFeedback = RTXFeedback()
+    rtxFeedback.connect()
     cachedResponse = rtxFeedback.getCachedResponse(query)
 
     #### If we can find a cached response for this query and this version of RTX, then return the cached response
