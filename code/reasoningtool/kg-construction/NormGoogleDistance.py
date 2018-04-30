@@ -22,6 +22,9 @@ from QueryNCBIeUtils import QueryNCBIeUtils
 from QueryDisont import QueryDisont #DOID -> MeSH
 from QueryEBIOLS import QueryEBIOLS #UBERON -> MeSH
 from QueryPubChem import QueryPubChem #ChEMBL -> PubMed id
+from QueryMyChem import QueryMyChem
+
+requests_cache.install_cache('NGDCache')
 
 
 
@@ -105,9 +108,10 @@ class NormGoogleDistance:
 				return names
 		if curie_list[0] == "ChEMBL":
 			chembl_id = curie_id.replace(':', '').upper()
-			pub_id = QueryPubChem.get_pubchem_id_for_chembl_id(chembl_id)
-			if pub_id is not None:
-				names = QueryPubChem.get_pubmed_id_for_pubchem_id(pub_id)
+			mesh_id = QueryMyChem.get_mesh_id(chembl_id)
+			if mesh_id is not None:
+				mesh_id = int(mesh_id[1:]) + 68000000
+				names = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(mesh_id)
 				if names is not None:
 					return names
 		return [description.replace(';','|')]
@@ -121,8 +125,7 @@ class NormGoogleDistance:
 			curie_id_list - a list of strings containing the curie ids of the nodes. Formatted <source abbreviation>:<number> e.g. DOID:8398
 			description_list - a list of strings containing the English names for the nodes
 		'''
-		if(len(curie_id_list) != len(description_list)):
-			print('Warning: unequal number of curie ids and descriptions')
+		assert len(curie_id_list) == len(description_list)
 		terms = [None]*len(curie_id_list)
 		for a in range(len(description_list)):
 			terms[a]=NormGoogleDistance.get_mesh_term_for_all(curie_id_list[a],description_list[a])
