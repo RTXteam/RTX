@@ -281,15 +281,6 @@ class SemMedInterface():
 			pass
 
 if __name__ == '__main__':
-	sms = SemMedInterface()
-	#print(sms.QuerySemRep('Naprosyn'))
-	#print(sms.QuerySemRep('Naprosyn treats cancer'))
-	#print(sms.QuerySemRep('afsagavqe'))
-	#print(sms.smdb.get_edges_for_cui('C0700017'))
-	#print(sms.get_cui_from_oxo('D009288', True))
-	t0 = time.time()
-	print(sms.get_edges_between_subject_object_with_pivot('UniProt:P26992', 'CNTFR','NCBIGene:693204','MIR619', pivot = 0))
-	print(sms.get_edges_between_subject_object_with_pivot('UniProt:B4F437', 'COX1','ChEMBL:154','Naprosyn', pivot = 0))
-	print(time.time()-t0)
+	pass
 
 
