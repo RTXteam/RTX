@@ -135,13 +135,4 @@ class QueryUMLSSQL():
 
 
 if __name__=='__main__':
-	umlsdb = QueryUMLSSQL("rtxdev.saramsey.org",3406, "rtx_read","rtxd3vT3amXray","umls")
-	print(umlsdb.get_cui_for_go_id('GO:0000252'))
-	print(umlsdb.get_cui_for_hp_id('HP:0000176'))
-	print(list(umlsdb.get_cui_for_omim_id('OMIM:300864')['CUI']))
-	#print(umlsdb.get_cui_cloud_for_word('cox1'))
-	#print(umlsdb.get_cui_cloud_for_word('ptgs1'))
-	#print(umlsdb.get_mesh_id_for_go_id('GO:1905222'))
-	#print(umlsdb.get_mesh_id_for_hp_id('HP:0000854'))
-	#print(umlsdb.get_mesh_id_for_omim_id('OMIM:612634'))
-	print(umlsdb.get_cui_for_mesh_id('gegegegeg') is None)
+	pass
