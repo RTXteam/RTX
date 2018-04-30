@@ -7,7 +7,7 @@ to communicate with MyChem APIs and their corresponding data sources. The availa
 
 __author__ = 'Deqing Qu'
 __copyright__ = 'Oregon State University'
-__credits__ = ['Deqing Qu', 'Stephen Ramsey']
+__credits__ = ['Deqing Qu', 'Stephen Ramsey', 'Finn Womack']
 __license__ = 'MIT'
 __version__ = '0.1.0'
 __maintainer__ = ''
@@ -84,7 +84,56 @@ class QueryMyChem:
         if chemical_substance_id[:7] == "ChEMBL:":
             chemical_substance_id = chemical_substance_id.replace("ChEMBL:", "CHEMBL")
         return QueryMyChem.__get_description("get_chemical_substance", chemical_substance_id)
+    
+    @staticmethod
+    def get_mesh_id(chemical_substance_id):
+        if chemical_substance_id[:7] == "ChEMBL:":
+            chemical_substance_id = chemical_substance_id.replace("ChEMBL:", "CHEMBL")
+        handler = 'chem/' + chemical_substance_id + '?fields=drugcentral.xref.mesh_descriptor_ui'
 
+        url = QueryMyChem.API_BASE_URL + '/' + handler
+
+        try:
+            res = requests.get(url, timeout=QueryMyChem.TIMEOUT_SEC)
+        except requests.exceptions.Timeout:
+            print(url, file=sys.stderr)
+            print('Timeout in QueryMyChem for URL: ' + url, file=sys.stderr)
+            return None
+        status_code = res.status_code
+        if status_code != 200:
+            print(url, file=sys.stderr)
+            print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
+            return None
+        id_json = res.json()
+        if 'drugcentral' in id_json.keys():
+            return id_json['drugcentral']['xref']['mesh_descriptor_ui']
+        else:
+            return None
+
+    @staticmethod
+    def get_cui(chemical_substance_id):
+        if chemical_substance_id[:7] == "ChEMBL:":
+            chemical_substance_id = chemical_substance_id.replace("ChEMBL:", "CHEMBL")
+        handler = 'chem/' + chemical_substance_id + '?fields=drugcentral.xref.umlscui'
+
+        url = QueryMyChem.API_BASE_URL + '/' + handler
+
+        try:
+            res = requests.get(url, timeout=QueryMyChem.TIMEOUT_SEC)
+        except requests.exceptions.Timeout:
+            #print(url, file=sys.stderr)
+            #print('Timeout in QueryMyChem for URL: ' + url, file=sys.stderr)
+            return None
+        status_code = res.status_code
+        if status_code != 200:
+            #print(url, file=sys.stderr)
+            #print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
+            return None
+        id_json = res.json()
+        if 'drugcentral' in id_json.keys():
+            return id_json['drugcentral']['xref']['umlscui']
+        else:
+            return None   
 
 if __name__ == '__main__':
 
