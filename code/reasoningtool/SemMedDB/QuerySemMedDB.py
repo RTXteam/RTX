@@ -168,30 +168,5 @@ class QuerySemMedDB():
 
 
 if __name__=='__main__':
-	smdb = QuerySemMedDB("rtxdev.saramsey.org",3306,"rtx_read","rtxd3vT3amXray","semmeddb")	
-	#print(smdb.get_dataframe_from_db("SELECT " +  
-	#	"a.SUBJECT_CUI as element1, " +
-	#	"a.PREDICATE as predicate1, " +
-	#	"a.OBJECT_CUI as pivot1, " +
-	#	"b.PREDICATE as predicate2, " +
-	#	"b.OBJECT_CUI as pivot2, " +
-	#	"c.PREDICATE as predicate3, " + 
-	#	"c.OBJECT_CUI as element2 FROM " +
-	#	"PREDICATION a JOIN " +
-	#	"PREDICATION b ON a.OBJECT_CUI = b.SUBJECT_CUI " +
-	#	"JOIN PREDICATION c ON b.OBJECT_CUI = c.SUBJECT_CUI "
-	#	"WHERE a.SUBJECT_CUI='C0700017' AND c.OBJECT_CUI='C0029408' "
-	#	"LIMIT 10"))
-	
-	#print(smdb.get_short_paths_between_subject_object('C0700017', 'C0029408'))
-
-	#print(smdb.get_edges_between_subject_object_with_pivot('C0700017', 'C0029408'))
-
-	#print(smdb.get_short_paths_between_subject_object('C0700017', 'C0003864'))
-
-	#print(smdb.get_short_paths_between_subject_object('C0700017', 'C0718343',7))
-
-	#print(smdb.get_edges_between_subject_object('C0700017', 'C0027396'))
-
-	print(smdb.get_edges_for_cui('C4023738'))
+	pass
 
