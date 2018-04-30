@@ -42,6 +42,7 @@ from QueryEBIOLSExtended import QueryEBIOLSExtended
 from QueryOMIMExtended import QueryOMIM
 from QueryMyGeneExtended import QueryMyGeneExtended
 from QueryMyChem import QueryMyChem
+from QueryReactomeExtended import  QueryReactomeExtended
 
 class UpdateNodesInfo:
 
@@ -245,6 +246,43 @@ class UpdateNodesInfo:
         conn.close()
 
     @staticmethod
+    def update_pathway_nodes_desc():
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        rf = open("result_output.txt", 'a')
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_pathway_nodes()
+        print("protein: %d" % len(nodes), file=rf)
+
+        from time import time
+        t = time()
+
+        nodes_array = []
+        for i, node_id in enumerate(nodes):
+            node = dict()
+            node['node_id'] = node_id
+            node['desc'] = QueryReactomeExtended.get_pathway_desc(node_id)
+            nodes_array.append(node)
+
+        print("protein api pulling time: %f" % (time() - t), file=rf)
+
+        nodes_nums = len(nodes_array)
+        chunk_size = 10000
+        group_nums = nodes_nums // chunk_size + 1
+        for i in range(group_nums):
+            start = i * chunk_size
+            end = (i + 1) * chunk_size if (i + 1) * chunk_size < nodes_nums else nodes_nums
+            conn.update_pathway_nodes_desc(nodes_array[start:end])
+
+        print("total time: %f" % (time() - t), file=rf)
+
+        conn.close()
+
+    @staticmethod
     def update_protein_nodes_desc():
         f = open('config.json', 'r')
         config_data = f.read()
@@ -411,10 +449,11 @@ if __name__ == '__main__':
     # UpdateNodesInfo.update_disease_nodes()
     # UpdateNodesInfo.update_chemical_substance_nodes()
     # UpdateNodesInfo.update_bio_process_nodes()
-    UpdateNodesInfo.update_anatomy_nodes_desc()
-    UpdateNodesInfo.update_phenotype_nodes_desc()
-    UpdateNodesInfo.update_disease_nodes_desc()
-    UpdateNodesInfo.update_bio_process_nodes_desc()
-    UpdateNodesInfo.update_microRNA_nodes_desc()
-    UpdateNodesInfo.update_protein_nodes_desc()
-    UpdateNodesInfo.update_chemical_substance_desc()
+    # UpdateNodesInfo.update_anatomy_nodes_desc()
+    # UpdateNodesInfo.update_phenotype_nodes_desc()
+    # UpdateNodesInfo.update_disease_nodes_desc()
+    # UpdateNodesInfo.update_bio_process_nodes_desc()
+    # UpdateNodesInfo.update_microRNA_nodes_desc()
+    # UpdateNodesInfo.update_protein_nodes_desc()
+    # UpdateNodesInfo.update_chemical_substance_desc()
+    UpdateNodesInfo.update_pathway_nodes_desc()

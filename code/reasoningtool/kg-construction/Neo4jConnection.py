@@ -139,6 +139,10 @@ class Neo4jConnection:
         with self._driver.session() as session:
             return session.write_transaction(self._update_microRNA_nodes_desc, nodes)
 
+    def update_pathway_nodes_desc(self, nodes):
+        with self._driver.session() as session:
+            return session.write_transaction(self._update_pathway_nodes_desc, nodes)
+
     def update_protein_nodes_desc(self, nodes):
         with self._driver.session() as session:
             return session.write_transaction(self._update_protein_nodes_desc, nodes)
@@ -385,6 +389,19 @@ class Neo4jConnection:
             UNWIND {nodes} AS row
             WITH row.node_id AS node_id, row.desc AS description
             MATCH (n:disease{id:node_id})
+            SET n.description=description
+            """,
+            nodes=nodes,
+        )
+        return result
+
+    @staticmethod
+    def _update_pathway_nodes_desc(tx, nodes):
+        result = tx.run(
+            """
+            UNWIND {nodes} AS row
+            WITH row.node_id AS node_id, row.desc AS description
+            MATCH (n:pathway{id:node_id})
             SET n.description=description
             """,
             nodes=nodes,
