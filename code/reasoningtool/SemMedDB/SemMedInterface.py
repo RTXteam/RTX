@@ -262,8 +262,10 @@ class SemMedInterface():
 				subj_cuis = None
 				obj_cuis = None
 			else:
-				subj_cuis = new_subj_cuis
-				obj_cuis = new_obj_cuis
+				if new_subj_cuis is not None:
+					subj_cuis = new_subj_cuis
+				if new_obj_cuis is not None:
+					obj_cuis = new_obj_cuis
 			if (subj_cuis and obj_cuis) is not None:
 				dfs = []
 				for subj_cui in subj_cuis:
@@ -278,7 +280,58 @@ class SemMedInterface():
 		return df
 
 	def get_shortest_path_between_subject_object(self, subj_id, subj_name, obj_id, obj_name, max_length = 3, mesh_flags = [False, False]):
-			pass
+		for n in range(max_length + 1):
+			df = self.get_edges_between_subject_object_with_pivot(subj_id, subj_name, obj_id, obj_name, pivot = n, mesh_flags = mesh_flag)
+			if df is not None:
+				return df
+		return None
+
+	def get_edges_between_nodes(self, subj_id, subj_name, obj_id, obj_name, predicate = None, result_col = ['PMID', 'SUBJECT_NAME', 'PREDICATE', 'OBJECT_NAME'], bidirectional=True):
+		subj_cuis = self.get_cui_for_id(subj_id, mesh_flags[0])
+		obj_cuis = self.get_cui_for_id(obj_id, mesh_flags[1])
+		df = None
+		if subj_cuis is not None and obj_cuis is not None:
+			dfs = []
+			for subj_cui in subj_cuis:
+				for obj_cui in obj_cuis:
+					edges = self.smdb.get_edges_between_nodes(self, subj_cui, obj_cui, predicate = predicate, result_col = result_col)
+					if edges is not None:
+						dfs.append(edges)
+					if bidirectional:
+						edges = self.smdb.get_edges_between_nodes(self, obj_cui, subj_cui, predicate = predicate, result_col = result_col)
+						if edges is not None:
+							dfs.append(edges)
+			try:
+				df = pandas.concat(dfs).drop_duplicates()
+			except ValueError:
+				df = None
+		if df is None:
+			new_subj_cuis = self.get_cui_for_name(subj_name)
+			new_obj_cuis = self.get_cui_for_name(obj_name)
+			if new_obj_cuis == obj_cuis and new_subj_cuis == subj_cuis:
+				subj_cuis = None
+				obj_cuis = None
+			else:
+				if new_subj_cuis is not None:
+					subj_cuis = new_subj_cuis
+				if new_obj_cuis is not None:
+					obj_cuis = new_obj_cuis
+			if (subj_cuis and obj_cuis) is not None:
+				dfs = []
+				for subj_cui in subj_cuis:
+					for obj_cui in obj_cuis:
+						edges = self.smdb.get_edges_between_subject_object_with_pivot(subj_cui, obj_cui, pivot = pivot)
+						if edges is not None:
+							dfs.append(edges)
+							if bidirectional:
+								edges = self.smdb.get_edges_between_nodes(self, obj_cui, subj_cui, predicate = predicate, result_col = result_col)
+								if edges is not None:
+									dfs.append(edges)
+				try:
+					df = pandas.concat(dfs).drop_duplicates()
+				except ValueError:
+					df = None
+		return df
 
 if __name__ == '__main__':
 	pass
