@@ -170,7 +170,9 @@ class RTXFeedback:
   #### Store a new Response into the database
   def addNewResponse(self,response,query):
     session = self.session
-    n_results = len(response.result_list)
+    n_results = 0
+    if response.result_list is not None:
+      n_results = len(response.result_list)
     storedResponse = Response(response_datetime=datetime.now(),restated_question=response.restated_question_text,query_type=query["known_query_type_id"],
       terms=str(query["terms"]),tool_version=response.tool_version,result_code=response.result_code,message=response.message,n_results=n_results,response_object=pickle.dumps(ast.literal_eval(repr(response))))
     session.add(storedResponse)
@@ -191,25 +193,27 @@ class RTXFeedback:
   def addNewResults(self,response_id,response):
     session = self.session
     result_hash = "xxxx"
-    for result in response.result_list:
-      n_nodes = 0
-      n_edges = 0
-      if result.result_graph.node_list is not None:
-        n_nodes = len(result.result_graph.node_list)
-      if result.result_graph.edge_list is not None:
-        n_edges = len(result.result_graph.edge_list)
+    if response.result_list is not None:
+      for result in response.result_list:
+        n_nodes = 0
+        n_edges = 0
+        if result.result_graph.node_list is not None:
+          n_nodes = len(result.result_graph.node_list)
+        if result.result_graph.edge_list is not None:
+          n_edges = len(result.result_graph.edge_list)
 
-      #### Calculate a hash from the list of nodes and edges in the result
-      result_hash = self.calcResultHash(result)
-      storedResult = Result(response_id=response_id,confidence=result.confidence,n_nodes=n_nodes,n_edges=n_edges,result_text=result.text,result_object=pickle.dumps(ast.literal_eval(repr(result))),result_hash=result_hash)
-      session.add(storedResult)
-      session.flush()
-      result.id = response.id+"/result/"+str(storedResult.result_id)
-      #print("Returned result_id is "+str(storedResult.result_id)+", n_nodes="+str(n_nodes)+", n_edges="+str(n_edges)+", hash="+result_hash)
-      storedResult.result_object=pickle.dumps(ast.literal_eval(repr(result)))
+        #### Calculate a hash from the list of nodes and edges in the result
+        result_hash = self.calcResultHash(result)
+        storedResult = Result(response_id=response_id,confidence=result.confidence,n_nodes=n_nodes,n_edges=n_edges,result_text=result.text,result_object=pickle.dumps(ast.literal_eval(repr(result))),result_hash=result_hash)
+        session.add(storedResult)
+        session.flush()
+        result.id = response.id+"/result/"+str(storedResult.result_id)
+        #print("Returned result_id is "+str(storedResult.result_id)+", n_nodes="+str(n_nodes)+", n_edges="+str(n_edges)+", hash="+result_hash)
+        storedResult.result_object=pickle.dumps(ast.literal_eval(repr(result)))
 
     session.commit()
     return
+
 
   #### Calculate a hash from the list of nodes and edges in a result
   def calcResultHash(self,result):
