@@ -10,7 +10,8 @@ from Neo4jConnection import Neo4jConnection
 from QueryEBIOLSExtended import QueryEBIOLSExtended
 from QueryOMIMExtended import QueryOMIM
 from QueryMyGeneExtended import QueryMyGeneExtended
-
+from QueryMyChem import QueryMyChem
+from QueryReactomeExtended import QueryReactomeExtended
 
 def random_int_list(start, stop, length):
     start, stop = (int(start), int(stop)) if start <= stop else (int(stop), int(start))
@@ -101,6 +102,32 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
 
         conn.close()
 
+    def test_update_pathway_nodes_desc(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_pathway_nodes()
+
+        # generate random number array
+        random_indexes = random_int_list(0, len(nodes) - 1, 100)
+
+        for i in random_indexes:
+            # retrieve data from API
+            node_id = nodes[i]
+            desc = QueryReactomeExtended.get_pathway_desc(node_id)
+
+            # retrieve data from Neo4j
+            node = conn.get_pathway_node(node_id)
+            self.assertIsNotNone(node['n']['id'])
+            self.assertIsNotNone(node['n']['description'])
+            self.assertEqual(node_id, node['n']['id'])
+            self.assertEqual(desc, node['n']['description'])
+
+        conn.close()
+
     def test_update_protein_nodes_desc(self):
         f = open('config.json', 'r')
         config_data = f.read()
@@ -156,6 +183,32 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
 
         conn.close()
 
+    def test_update_chemical_substance_entity(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_chemical_substance_nodes()
+
+        # generate random number array
+        random_indexes = random_int_list(0, len(nodes)-1, 100)
+
+        for i in random_indexes:
+            # retrieve data from API
+            node_id = nodes[i]
+            desc = QueryMyChem.get_chemical_substance_description(node_id)
+
+            # retrieve data from Neo4j
+            node = conn.get_chemical_substance_node(node_id)
+            self.assertIsNotNone(node['n']['id'])
+            self.assertIsNotNone(node['n']['description'])
+            self.assertEqual(node_id, node['n']['id'])
+            self.assertEqual(desc, node['n']['description'])
+
+        conn.close()
+
     def test_update_bio_process_entity(self):
         f = open('config.json', 'r')
         config_data = f.read()
@@ -171,7 +224,7 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
         for i in random_indexes:
             # retrieve data from API
             node_id = nodes[i]
-            desc = QueryEBIOLSExtended.get_anatomy_description(node_id)
+            desc = QueryEBIOLSExtended.get_bio_process_description(node_id)
 
             # retrieve data from Neo4j
             node = conn.get_bio_process_node(node_id)

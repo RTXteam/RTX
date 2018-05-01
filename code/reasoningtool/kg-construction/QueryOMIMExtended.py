@@ -16,6 +16,7 @@ import sys
 import requests
 # import CachedMethods
 import requests_cache
+import json
 
 # configure requests package to use the "orangeboard.sqlite" cache
 requests_cache.install_cache('orangeboard')
@@ -65,6 +66,8 @@ class QueryOMIM:
         omim_handler = "entry"
         url_suffix = "mimNumber=" + mim_num_str + "&include=geneMap,externalLinks&exclude=text"
         r = self.send_query_get(omim_handler, url_suffix)
+        if r is None:
+            return {'gene_symbols': set(), 'uniprot_ids': set()}
         result_dict = r.json()
 #        print(result_dict)
         result_entry = result_dict["omim"]["entryList"][0]["entry"]
@@ -82,13 +85,15 @@ class QueryOMIM:
                                     range(0, len(phenotype_map_list))]
         return {'gene_symbols': set(gene_symbols),
                 'uniprot_ids': set(uniprot_ids)}
-    
+
     def disease_mim_to_description(self, mim_id):
         assert type(mim_id) == str
         mim_num_str = mim_id.replace('OMIM:', '')
         omim_handler = "entry"
         url_suffix = "mimNumber=" + mim_num_str + "&include=text:description"
         r = self.send_query_get(omim_handler, url_suffix)
+        if r is None:
+            return "UNKNOWN"
         result_dict = r.json()
         # print(result_dict)
         result_entry = result_dict["omim"]["entryList"][0]["entry"]
@@ -104,6 +109,19 @@ class QueryOMIM:
 
 
 if __name__ == '__main__':
+
+    def save_to_test_file(filename, key, value):
+        f = open(filename, 'r+')
+        try:
+            json_data = json.load(f)
+        except ValueError:
+            json_data = {}
+        f.seek(0)
+        f.truncate()
+        json_data[key] = value
+        json.dump(json_data, f)
+        f.close()
+
     qo = QueryOMIM()
     # print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:145270'))
     # print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:601351'))
@@ -121,3 +139,9 @@ if __name__ == '__main__':
     # print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:613074'))
     # print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:603918'))  # test issue 1
     print(qo.disease_mim_to_description('OMIM:100100'))
+    print(qo.disease_mim_to_description('OMIM:614747'))  # no textSectionContent field
+    print(qo.disease_mim_to_description('OMIM:61447'))  # wrong ID
+    save_to_test_file('tests/query_desc_test_data.json', 'OMIM:100100', qo.disease_mim_to_description('OMIM:100100'))
+    save_to_test_file('tests/query_desc_test_data.json', 'OMIM:614747', qo.disease_mim_to_description('OMIM:614747'))
+    save_to_test_file('tests/query_desc_test_data.json', 'OMIM:61447', qo.disease_mim_to_description('OMIM:61447'))
+

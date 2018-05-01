@@ -22,7 +22,7 @@ class QueryUMLSSQL():
 			password = the password assigned to the user assigned to the ip you are connecting from
 			database = the name that the umls database is saved under
 		'''
-		self.db = _mysql.connect(host=host,port=int(port),user = username,passwd=password,db=database)
+		self.db = _mysql.connect(host=host,port=int(port),user = username, passwd=password,db=database)
 
 	def get_dataframe_from_db(self, query):
 		'''
@@ -85,6 +85,16 @@ class QueryUMLSSQL():
 		df = self.get_dataframe_from_db(query)
 		return df
 
+	def get_cui_for_mesh_id(self,mesh_id):
+		'''
+		This gets a list of cuis associated with a given hp id
+		params:
+			mesh_id = a string containing the go id formated as such: 'HP:0000000'
+		'''
+		query = "select distinct CUI from MRCONSO where CODE = '" + mesh_id + "'"
+		df = self.get_dataframe_from_db(query)
+		return df
+
 	def get_cui_for_omim_id(self,omim_id):
 		'''
 		This gets a list of cuis associated with a given omim id
@@ -95,3 +105,34 @@ class QueryUMLSSQL():
 		df = self.get_dataframe_from_db(query)
 		return df
 
+	def get_mesh_id_for_id(self, name, uuid):
+		'''
+		This gets a list of mesh ids associated with a given id
+		'''
+		query = "select distinct b.CODE from MRCONSO a join MRCONSO b on a.CUI = b.CUI where a.SAB = '" + name + "' and b.SAB = 'MSH' and a.CODE = '" + uuid + "'"
+		df = self.get_dataframe_from_db(query)
+		return df
+
+	def get_mesh_id_for_go_id(self, go_id):
+		df = self.get_mesh_id_for_id('GO', go_id)
+		return df
+
+	def get_mesh_id_for_hp_id(self, hp_id):
+		df = self.get_mesh_id_for_id('HP', hp_id)
+		return df
+
+	def get_mesh_id_for_omim_id(self, omim_id):
+		df = self.get_mesh_id_for_id('OMIM', omim_id.replace('OMIM:', ''))
+		return df
+
+	def get_id_for_mesh_id(self, mesh_id):
+		'''
+		This gets a list of ids for a given mesh id
+		'''
+		query = "select distinct b.SAB, b.CODE from MRCONSO a join MRCONSO b on a.CUI = b.CUI where b.SAB != 'MSH' and a.SAB = 'MSH' and a.CODE = '" + mesh_id + "'"
+		df = self.get_dataframe_from_db(query)
+		return df
+
+
+if __name__=='__main__':
+	pass

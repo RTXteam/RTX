@@ -10,3 +10,6 @@ config.json
 
 #   unit test
 .cache
+
+#   output file
+result_output.txt

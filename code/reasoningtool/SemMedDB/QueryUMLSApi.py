@@ -87,3 +87,8 @@ class QueryUMLS:
 			return [a['ui'] for a in r.json()['result']['results']]
 		else:
 			return None
+
+
+if __name__=='__main__':
+	tgt = QueryUMLS.get_ticket_gen()
+	print(QueryUMLS.get_cuis_from_string('log15',tgt))

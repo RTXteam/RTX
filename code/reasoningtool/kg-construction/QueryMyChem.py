@@ -7,7 +7,7 @@ to communicate with MyChem APIs and their corresponding data sources. The availa
 
 __author__ = 'Deqing Qu'
 __copyright__ = 'Oregon State University'
-__credits__ = ['Deqing Qu', 'Stephen Ramsey']
+__credits__ = ['Deqing Qu', 'Stephen Ramsey', 'Finn Womack']
 __license__ = 'MIT'
 __version__ = '0.1.0'
 __maintainer__ = ''
@@ -61,16 +61,84 @@ class QueryMyChem:
         return result_str
 
     @staticmethod
+    def __get_description(entity_type, entity_id):
+        handler = QueryMyChem.HANDLER_MAP[entity_type].format(id=entity_id)
+        results = QueryMyChem.__access_api(handler)
+        result_str = 'UNKNOWN'
+        if results is not None:
+            #   remove all \n characters using json api and convert the string to one line
+            json_dict = json.loads(results)
+            if "chebi" in json_dict.keys():
+                if "definition" in json_dict['chebi']:
+                    result_str = json_dict['chebi']['definition']
+        return result_str
+
+    @staticmethod
     def get_chemical_substance_entity(chemical_substance_id):
         if chemical_substance_id[:7] == "ChEMBL:":
             chemical_substance_id = chemical_substance_id.replace("ChEMBL:", "CHEMBL")
         return QueryMyChem.__get_entity("get_chemical_substance", chemical_substance_id)
 
+    @staticmethod
+    def get_chemical_substance_description(chemical_substance_id):
+        if chemical_substance_id[:7] == "ChEMBL:":
+            chemical_substance_id = chemical_substance_id.replace("ChEMBL:", "CHEMBL")
+        return QueryMyChem.__get_description("get_chemical_substance", chemical_substance_id)
+    
+    @staticmethod
+    def get_mesh_id(chemical_substance_id):
+        if chemical_substance_id[:7] == "ChEMBL:":
+            chemical_substance_id = chemical_substance_id.replace("ChEMBL:", "CHEMBL")
+        handler = 'chem/' + chemical_substance_id + '?fields=drugcentral.xref.mesh_descriptor_ui'
+
+        url = QueryMyChem.API_BASE_URL + '/' + handler
+
+        try:
+            res = requests.get(url, timeout=QueryMyChem.TIMEOUT_SEC)
+        except requests.exceptions.Timeout:
+            print(url, file=sys.stderr)
+            print('Timeout in QueryMyChem for URL: ' + url, file=sys.stderr)
+            return None
+        status_code = res.status_code
+        if status_code != 200:
+            print(url, file=sys.stderr)
+            print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
+            return None
+        id_json = res.json()
+        if 'drugcentral' in id_json.keys():
+            return id_json['drugcentral']['xref']['mesh_descriptor_ui']
+        else:
+            return None
+
+    @staticmethod
+    def get_cui(chemical_substance_id):
+        if chemical_substance_id[:7] == "ChEMBL:":
+            chemical_substance_id = chemical_substance_id.replace("ChEMBL:", "CHEMBL")
+        handler = 'chem/' + chemical_substance_id + '?fields=drugcentral.xref.umlscui'
+
+        url = QueryMyChem.API_BASE_URL + '/' + handler
+
+        try:
+            res = requests.get(url, timeout=QueryMyChem.TIMEOUT_SEC)
+        except requests.exceptions.Timeout:
+            #print(url, file=sys.stderr)
+            #print('Timeout in QueryMyChem for URL: ' + url, file=sys.stderr)
+            return None
+        status_code = res.status_code
+        if status_code != 200:
+            #print(url, file=sys.stderr)
+            #print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
+            return None
+        id_json = res.json()
+        if 'drugcentral' in id_json.keys():
+            return id_json['drugcentral']['xref']['umlscui']
+        else:
+            return None   
 
 if __name__ == '__main__':
 
-    def save_to_test_file(key, value):
-        f = open('tests/query_test_data.json', 'r+')
+    def save_to_test_file(filename, key, value):
+        f = open(filename, 'r+')
         try:
             json_data = json.load(f)
         except ValueError:
@@ -81,4 +149,11 @@ if __name__ == '__main__':
         json.dump(json_data, f)
         f.close()
 
-    save_to_test_file('ChEMBL:1200766', QueryMyChem.get_chemical_substance_entity('ChEMBL:1200766'))
+    save_to_test_file('tests/query_test_data.json', 'ChEMBL:1200766',
+                      QueryMyChem.get_chemical_substance_entity('ChEMBL:1200766'))
+    save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:154',
+                      QueryMyChem.get_chemical_substance_description('ChEMBL:154'))
+    save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:20883',
+                      QueryMyChem.get_chemical_substance_description('ChEMBL:20883'))   # no definition field
+    save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:110101020',
+                      QueryMyChem.get_chemical_substance_description('ChEMBL:110101020'))   # wrong id

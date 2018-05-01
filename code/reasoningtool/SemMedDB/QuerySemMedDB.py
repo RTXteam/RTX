@@ -122,7 +122,7 @@ class QuerySemMedDB():
 		NOTE: Currently this is hardcoded to output name | predicate | name | predicate | name ... etc 
 		NOTE2: this currently prevents hitting the begining or end nodes until the requested number of pivots are made. I plan on adding to this so it does not hit any nodes twice.
 		'''
-		query = "SELECT " + \
+		query = "SELECT DISTINCT " + \
 			"a.SUBJECT_NAME as element1, " + \
 			"a.PREDICATE as predicate1, " + \
 			"a.OBJECT_NAME as element2"
@@ -165,4 +165,8 @@ class QuerySemMedDB():
 					return df
 		return None
 
+
+
+if __name__=='__main__':
+	pass
 

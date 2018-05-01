@@ -15,6 +15,8 @@ __status__ = "Prototype"
 import mygene
 import sys
 import requests
+import json
+import requests_cache
 
 class QueryMyGene:
     def __init__(self, debug=False):
@@ -152,6 +154,30 @@ class QueryMyGene:
                                     res_add = {item["id"]: item["term"] for item in q_res_bp}
                                     res.update(res_add)
         return res
+
+    def get_cui(self, gene_id):
+        if gene_id.startswith('NCBIGene:'):
+            gene_id = int(gene_id.split(':')[1])
+            res = self.mygene_obj.getgene(gene_id, fields = 'umls', verbose = False)
+            cui_res = res.get('umls', None)
+            cuis = None
+            if cui_res is not None:
+                cuis = [cui_res['cui']]
+            return cuis
+        elif gene_id.startswith('UniProt:'):
+            res = self.mygene_obj.query(gene_id, fields = 'umls', verbose = False)
+            if res is not None:
+                cuis = []
+                if 'hits' in res.keys():
+                    for hit in res['hits']:
+                        if 'umls' in hit.keys():
+                            cuis.append(hit['umls']['cui'])
+                if len(cuis) >0:
+                    return cuis
+                else:
+                    return None
+        return None
+
 
 
 if __name__ == '__main__':

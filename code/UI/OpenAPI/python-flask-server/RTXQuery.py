@@ -18,25 +18,53 @@ from swagger_server.models.response import Response
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/QuestionAnswering/")
 from ParseQuestion import ParseQuestion
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../Feedback/")
+from RTXFeedback import RTXFeedback
+
 class RTXQuery:
 
   def query(self,query):
+
+    #### If there is no known_query_type_id, then return an error
+    if "known_query_type_id" not in query:
+      response = Response()
+      response.result_code = "No_known_query_type_id"
+      response.message = "There was no known_query_type_id specified in the query"
+      return(response)
+
+    #### If there is no terms, then return an error
+    if "terms" not in query:
+      response = Response()
+      response.result_code = "No_terms"
+      response.message = "There was no terms element specified in the query"
+      return(response)
 
     #### Extract the id and the terms from the incoming parameters
     id = query["known_query_type_id"]
     terms = query["terms"]
 
+    #### Create an RTX Feedback management object
+    rtxFeedback = RTXFeedback()
+    rtxFeedback.connect()
+    cachedResponse = rtxFeedback.getCachedResponse(query)
+
+    #### If we can find a cached response for this query and this version of RTX, then return the cached response
+    if ( cachedResponse is not None ):
+      apiResponse = Response().from_dict(cachedResponse)
+      return apiResponse
+
+    #### Still have special handling for Q0
     if id == 'Q0':
       # call out to QueryMeSH here to satify the query "What is XXXXXX?"
       meshQuery = QueryMeSH()
       response = meshQuery.queryTerm(terms["term"])
-      print(query)
       if 'original_question' in query:
         response.original_question_text = query["original_question"]
         response.restated_question_text = query["restated_question"]
       id = response.id
       codeString = response.result_code
       self.logQuery(id,codeString,terms)
+      rtxFeedback.addNewResponse(response,query)
       return(response)
 
     #### Call out to OrangeBoard to answer the query "What genetic conditions might offer protection against XXXXXX?"
@@ -69,12 +97,13 @@ class RTXQuery:
           response.message = "Error parsing the response from the reasoner. This is an internal bug that needs to be fixed. Unable to respond to this question at this time. The unparsable response was: " + reformattedText
 
       print(query)
-      if 'originalQuestion' in query:
-        response.original_question_text = query["originalQuestion"]
-        response.restated_question_text = query["restatedQuestion"]
+      if 'original_question' in query:
+        response.original_question_text = query["original_question"]
+        response.restated_question_text = query["restated_question"]
 
       #### Log the result and return the Response object
       self.logQuery(response.id,response.result_code,terms)
+      rtxFeedback.addNewResponse(response,query)
       return(response)
 
 
