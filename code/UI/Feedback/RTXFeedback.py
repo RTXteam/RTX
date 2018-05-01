@@ -6,8 +6,9 @@ import sys
 import json
 import ast
 from datetime import datetime
+import pickle
 
-from sqlalchemy import Column, ForeignKey, Integer, Float, String, DateTime, Text, PickleType
+from sqlalchemy import Column, ForeignKey, Integer, Float, String, DateTime, Text, PickleType, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy import create_engine
@@ -28,7 +29,9 @@ class Response(Base):
   result_code = Column(String(50), nullable=False)
   message = Column(String(255), nullable=False)
   n_results = Column(Integer, nullable=False)
-  response_object = Column(PickleType, nullable=False)
+  # PickleType uses BLOB on MySQL, which is only 65k. Could not seem to work around it. Resort to LargeBinary with explicit length and my own pickling.
+  #response_object = Column(PickleType, nullable=False)
+  response_object = Column(LargeBinary(length=100500500), nullable=False)
 
 class Result(Base):
   __tablename__ = 'result'
@@ -38,7 +41,8 @@ class Result(Base):
   n_nodes = Column(Integer, nullable=False)
   n_edges = Column(Integer, nullable=False)
   result_text = Column(String(1024), nullable=False)
-  result_object = Column(PickleType, nullable=False)
+  #result_object = Column(PickleType, nullable=False)
+  result_object = Column(LargeBinary(length=16777200), nullable=False)
   result_hash = Column(String(255), nullable=False)
   response = relationship(Response)
 
@@ -87,7 +91,8 @@ class RTXFeedback:
 
   #### Constructor
   def __init__(self):
-    self.databaseName = "RTXFeedback.sqlite.db"
+    #self.databaseName = "RTXFeedback.sqlite.db"
+    self.databaseName = "RTXFeedback"
 
 
   #### Define attribute session
@@ -113,15 +118,17 @@ class RTXFeedback:
   #### Delete and create the RTXFeedback SQLite database. Careful!
   def createDatabase(self):
     print("Creating database")
-    if os.path.exists(self.databaseName):
-      os.remove(self.databaseName)
-    engine = create_engine("sqlite:///"+self.databaseName)
+    #if os.path.exists(self.databaseName):
+    #  os.remove(self.databaseName)
+    #engine = create_engine("sqlite:///"+self.databaseName)
+    engine = create_engine("mysql+pymysql://rt:Steve1000Ramsey@localhost/"+self.databaseName)
     Base.metadata.create_all(engine)
     self.connect()
 
   #### Create and store a database connection
   def connect(self):
-    engine = create_engine("sqlite:///"+self.databaseName)
+    #engine = create_engine("sqlite:///"+self.databaseName)
+    engine = create_engine("mysql+pymysql://rt:Steve1000Ramsey@localhost/"+self.databaseName)
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
     self.session = session
@@ -165,7 +172,7 @@ class RTXFeedback:
     session = self.session
     n_results = len(response.result_list)
     storedResponse = Response(response_datetime=datetime.now(),restated_question=response.restated_question_text,query_type=query["known_query_type_id"],
-      terms=str(query["terms"]),tool_version=response.tool_version,result_code=response.result_code,message=response.message,n_results=n_results,response_object=ast.literal_eval(repr(response)))
+      terms=str(query["terms"]),tool_version=response.tool_version,result_code=response.result_code,message=response.message,n_results=n_results,response_object=pickle.dumps(ast.literal_eval(repr(response))))
     session.add(storedResponse)
     session.flush()
     #print("Returned response_id is "+str(storedResponse.response_id))
@@ -174,7 +181,7 @@ class RTXFeedback:
     self.addNewResults(storedResponse.response_id,response)
 
     #### After updating all the ids, store an updated object
-    storedResponse.response_object=ast.literal_eval(repr(response))
+    storedResponse.response_object=pickle.dumps(ast.literal_eval(repr(response)))
     session.commit()
 
     return storedResponse.response_id
@@ -194,12 +201,12 @@ class RTXFeedback:
 
       #### Calculate a hash from the list of nodes and edges in the result
       result_hash = self.calcResultHash(result)
-      storedResult = Result(response_id=response_id,confidence=result.confidence,n_nodes=n_nodes,n_edges=n_edges,result_text=result.text,result_object=ast.literal_eval(repr(result)),result_hash=result_hash)
+      storedResult = Result(response_id=response_id,confidence=result.confidence,n_nodes=n_nodes,n_edges=n_edges,result_text=result.text,result_object=pickle.dumps(ast.literal_eval(repr(result))),result_hash=result_hash)
       session.add(storedResult)
       session.flush()
       result.id = response.id+"/result/"+str(storedResult.result_id)
       #print("Returned result_id is "+str(storedResult.result_id)+", n_nodes="+str(n_nodes)+", n_edges="+str(n_edges)+", hash="+result_hash)
-      storedResult.result_object=ast.literal_eval(repr(result))
+      storedResult.result_object=pickle.dumps(ast.literal_eval(repr(result)))
 
     session.commit()
     return
@@ -232,7 +239,7 @@ class RTXFeedback:
     #### Look for previous responses we could use
     storedResponse = session.query(Response).filter(Response.query_type==query["known_query_type_id"]).filter(Response.tool_version==tool_version).filter(Response.terms==str(query["terms"])).order_by(desc(Response.response_datetime)).first()
     if ( storedResponse is not None ):
-      return storedResponse.response_object
+      return pickle.loads(storedResponse.response_object)
     return
 
 #### If this class is run from the command line, perform a short little test to see if it is working correctly
