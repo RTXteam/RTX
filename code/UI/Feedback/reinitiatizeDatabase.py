@@ -8,6 +8,9 @@ import ast
 
 from RTXFeedback import RTXFeedback
 
+You will need to delete this line if you really want to run this. Careful!
+
+
 #### Create an RTX Feedback management object
 rtxFeedback = RTXFeedback()
 
