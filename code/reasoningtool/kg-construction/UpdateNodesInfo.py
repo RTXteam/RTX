@@ -256,7 +256,7 @@ class UpdateNodesInfo:
 
         conn = Neo4jConnection(config['url'], config['username'], config['password'])
         nodes = conn.get_pathway_nodes()
-        print("protein: %d" % len(nodes), file=rf)
+        print("pathway: %d" % len(nodes), file=rf)
 
         from time import time
         t = time()
@@ -268,7 +268,7 @@ class UpdateNodesInfo:
             node['desc'] = QueryReactomeExtended.get_pathway_desc(node_id)
             nodes_array.append(node)
 
-        print("protein api pulling time: %f" % (time() - t), file=rf)
+        print("pathway api pulling time: %f" % (time() - t), file=rf)
 
         nodes_nums = len(nodes_array)
         chunk_size = 10000
@@ -278,7 +278,7 @@ class UpdateNodesInfo:
             end = (i + 1) * chunk_size if (i + 1) * chunk_size < nodes_nums else nodes_nums
             conn.update_pathway_nodes_desc(nodes_array[start:end])
 
-        print("total time: %f" % (time() - t), file=rf)
+        print("pathway total time: %f" % (time() - t), file=rf)
 
         conn.close()
 
@@ -449,11 +449,11 @@ if __name__ == '__main__':
     # UpdateNodesInfo.update_disease_nodes()
     # UpdateNodesInfo.update_chemical_substance_nodes()
     # UpdateNodesInfo.update_bio_process_nodes()
-    # UpdateNodesInfo.update_anatomy_nodes_desc()
-    # UpdateNodesInfo.update_phenotype_nodes_desc()
-    # UpdateNodesInfo.update_disease_nodes_desc()
-    # UpdateNodesInfo.update_bio_process_nodes_desc()
-    # UpdateNodesInfo.update_microRNA_nodes_desc()
-    # UpdateNodesInfo.update_protein_nodes_desc()
-    # UpdateNodesInfo.update_chemical_substance_desc()
+    UpdateNodesInfo.update_anatomy_nodes_desc()
+    UpdateNodesInfo.update_phenotype_nodes_desc()
+    UpdateNodesInfo.update_disease_nodes_desc()
+    UpdateNodesInfo.update_bio_process_nodes_desc()
+    UpdateNodesInfo.update_microRNA_nodes_desc()
+    UpdateNodesInfo.update_protein_nodes_desc()
+    UpdateNodesInfo.update_chemical_substance_desc()
     UpdateNodesInfo.update_pathway_nodes_desc()
