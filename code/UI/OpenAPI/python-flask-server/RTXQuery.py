@@ -25,6 +25,20 @@ class RTXQuery:
 
   def query(self,query):
 
+    #### If there is no known_query_type_id, then return an error
+    if "known_query_type_id" not in query:
+      response = Response()
+      response.result_code = "No_known_query_type_id"
+      response.message = "There was no known_query_type_id specified in the query"
+      return(response)
+
+    #### If there is no terms, then return an error
+    if "terms" not in query:
+      response = Response()
+      response.result_code = "No_terms"
+      response.message = "There was no terms element specified in the query"
+      return(response)
+
     #### Extract the id and the terms from the incoming parameters
     id = query["known_query_type_id"]
     terms = query["terms"]
