@@ -70,7 +70,7 @@ function sendQuestion(e) {
     var jsonObj = JSON.parse(xhr.responseText);
   document.getElementById("result").innerHTML = JSON.stringify(jsonObj);
 
-    if ( jsonObj.known_query_type_id ) {
+    if ( jsonObj.known_query_type_id && jsonObj.terms ) {
       document.getElementById("result").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;"+jsonObj["restated_question"]+"<BR>Please ensure that this is an accurate restatement of the intended question.<BR>Looking for answer...<BR><BR>";
       var xhr2 = new XMLHttpRequest();
       xhr2.open("post", "api/rtx/v1/query", true);
@@ -86,7 +86,13 @@ function sendQuestion(e) {
         document.getElementById("result").innerHTML += "<PRE>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
       };
     } else {
-      document.getElementById("result").innerHTML = jsonObj[0].message;
+      if ( jsonObj.message ) {
+        document.getElementById("result").innerHTML = "ERROR: " + jsonObj.message;
+      } else if ( jsonObj.error_message ) {
+        document.getElementById("result").innerHTML = "ERROR: " + jsonObj.error_message;
+      } else {
+        document.getElementById("result").innerHTML = "ERROR: Unknown error. No message returned.";
+      }
     };
 
   };
