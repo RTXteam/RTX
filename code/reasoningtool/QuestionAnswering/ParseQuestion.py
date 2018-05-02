@@ -146,8 +146,9 @@ class ParseQuestion:
 				response['restated_question'] = None
 				response['known_query_type_id'] = None
 			response['original_question'] = input_question
-			response['error_message'] = error_message
-			response['error_code'] = error_code
+			#response['error_message'] = error_message
+			response['message'] = error_message
+			#response['error_code'] = error_code
 			return response
 
 
@@ -199,26 +200,26 @@ def tests():
 	question = "what proteins are four score and seven years ago, our fathers..."
 	question = {"language": "English", "text": question}
 	results_dict = txltr.format_response(question)
-	assert results_dict["error_message"] is not None
+	assert results_dict["message"] is not None
 
 	question = "what genetic conditions may offer protection against malaria osteoarthritis"
 	question = {"language": "English", "text": question}
 	results_dict = txltr.format_response(question)
-	assert results_dict['error_message'] is not None
-	assert results_dict['error_code'] == 'multiple_terms'
+	assert results_dict['message'] is not None
+	#assert results_dict['error_code'] == 'multiple_terms'
 
 	question = "what genetic conditions may offer protection against"
 	question = {"language": "English", "text": question}
 	results_dict = txltr.format_response(question)
-	assert results_dict['error_message'] is not None
-	assert results_dict['error_code'] == 'missing_term'
+	assert results_dict['message'] is not None
+	#assert results_dict['error_code'] == 'missing_term'
 
 	question = "what diseases are similar to naproxen"
 	q, params, error_message, error_code = txltr.parse_question(question)
 	assert error_code == "missing_term"
 	res = txltr.format_response({"language": "English", "text": question})
-	assert "error_message" in res
-	assert isinstance(res["error_message"], str)
+	assert "message" in res
+	assert isinstance(res["message"], str)
 
 	question = "what diseases are similar to malaria"
 	q, params, error_message, error_code = txltr.parse_question(question)
@@ -227,7 +228,7 @@ def tests():
 	assert "disease" in params
 	assert params["disease"] == "DOID:12365"
 	res = txltr.format_response({"language": "English", "text": question})
-	assert "error_message" not in res
+	assert "message" not in res
 	assert 'terms' in res
 	assert 'DOID:12365' in res['terms'].values()
 	assert res['known_query_type_id'] == 'Q13'
@@ -239,7 +240,7 @@ def tests():
 	assert "disease" in params
 	assert params["disease"] == "DOID:14069"
 	res = txltr.format_response({"language": "English", "text": question})
-	assert "error_message" not in res
+	assert "message" not in res
 	assert 'terms' in res
 	assert 'DOID:14069' in res['terms'].values()
 	assert res['known_query_type_id'] == 'Q13'
@@ -256,7 +257,7 @@ def tests():
 	assert params["association"] == "protein"
 	assert params["target"] == "chemical_substance"
 	res = txltr.format_response({"language": "English", "text": question})
-	assert "error_message" not in res
+	assert "message" not in res
 	assert 'terms' in res
 	assert 'DOID:8398' in res['terms'].values()
 	assert res['known_query_type_id'] == 'Q23'

@@ -300,6 +300,8 @@ class Orangeboard:
             # given one now, add the description to the existing node object
             if desc != '' and existing_node.desc == '':
                 existing_node.desc = desc
+                if nodetype == "protein" or nodetype == "microRNA":
+                    existing_node.symbol = desc
 
             # if seed_node_bool=True, this is a special case that must be handled
             if seed_node_bool:
