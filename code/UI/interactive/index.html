@@ -1,106 +1,52 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>RTX UI</title>
-  <link rel="stylesheet" href="plain.css" />
-  </head>
-
+<title>RTX User Interface</title>
+<link rel="stylesheet" type="text/css" href="rtx.css">
+<script src="cytoscape.min.js"></script>
+<script src="rtx.js"></script>
+</head>
 <body>
 
-<H1 id="header">RTX User Interface</H1>
-
-
-<div id="page">
-
-<P>The RTX team presents its pilot Reasoning Tool for evaluation. This page provides a simple web interface on top of the OpenAPI web service interface to RTX.
-At present only a few question types are supported. Select from one of the example queries to test the tool. Different drugs, diseases, etc. may be substituted for the default ones, but note that not all drugs, diseases, etc. are yet present in our knowledge graph.</P>
-
-<BR>
-<H2>Documentation</H2>
-<UL>
-<LI> <a target="_blank" href="overview.html">Overview documentation</a>
-<LI> <a target="_blank" href="api/rtx/v1/ui/">OpenAPI interface documentation</a>
-</UL>
-
-<BR>
-<H2>Example Questions</H2>
-<UL>
-<LI> Q0: What is lovastatin? <button onClick="javascript:pasteQuestion('what is lovastatin')">PASTE</button>
-<LI> Q1: What genetic conditions might offer protection against malaria?  <button onClick="javascript:pasteQuestion('what genetic conditions might offer protection against malaria')">PASTE</button>
-<LI> Q2: What is the clinical outcome pathway of physostigmine for treatment of glaucoma?  <button onClick="javascript:pasteQuestion('what is the clinical outcome pathway of physostigmine for treatment of glaucoma?')">PASTE</button>
-<LI> Q3: What proteins does acetaminophen target?  <button onClick="javascript:pasteQuestion('what proteins does acetaminophen target')">PASTE</button>
-<LI> Q4: What diseases are similar to malaria?  <button onClick="javascript:pasteQuestion('what diseases are similar to malaria?')">PASTE</button>
-
-</UL>
-
-<H2>Enter question:</H2>
-<form id="questionForm" name="questionForm" method="post" action="javascript:sendQuestion()">
-<input type="text" id="questionText" name="questionText" size="150" maxlength="1000"/><BR>
-<input type="button" name="action" value="GO" onClick="javascript:sendQuestion()"/>
-</form>
-
-<BR>
-<H2>Result:</H2>
-<div id="result">Results will be here</div>
-
+<div class="banner" banner-bg-text="RTX User Interface">
+<span class="menulinks">Documentation: 
+<a href="overview.html">Overview</a>
+<a href="api/rtx/v1/ui/">API</a>
+</span>
 </div>
 
-<script language="JavaScript" type = "application/javascript">
-
-function pasteQuestion(question) {
-  document.getElementById("questionForm").elements["questionText"].value = question;
-};
-
-function sendQuestion(e) {
-
-  // collect the form data while iterating over the inputs
-  var data = { 'text': document.getElementById("questionForm").elements["questionText"].value, 'language': 'English' };
-  document.getElementById("result").innerHTML = "Interpreting your question...";
-
-  // construct an HTTP request
-  var xhr = new XMLHttpRequest();
-  xhr.open("post", "api/rtx/v1/translate", true);
-  xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-
-  // send the collected data as JSON
-  xhr.send(JSON.stringify(data));
-
-  xhr.onloadend = function() {
-    var jsonObj = JSON.parse(xhr.responseText);
-  document.getElementById("result").innerHTML = JSON.stringify(jsonObj);
-
-    if ( jsonObj.known_query_type_id && jsonObj.terms ) {
-      document.getElementById("result").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;"+jsonObj["restated_question"]+"<BR>Please ensure that this is an accurate restatement of the intended question.<BR>Looking for answer...<BR><BR>";
-      var xhr2 = new XMLHttpRequest();
-      xhr2.open("post", "api/rtx/v1/query", true);
-      xhr2.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-
-      // send the collected data as JSON
-      xhr2.send(JSON.stringify(jsonObj));
-
-      xhr2.onloadend = function() {
-        var jsonObj2 = JSON.parse(xhr2.responseText);
-        document.getElementById("result").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;"+jsonObj["restated_question"]+"<BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR>";
-
-        document.getElementById("result").innerHTML += "<PRE>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
-      };
-    } else {
-      if ( jsonObj.message ) {
-        document.getElementById("result").innerHTML = "ERROR: " + jsonObj.message;
-      } else if ( jsonObj.error_message ) {
-        document.getElementById("result").innerHTML = "ERROR: " + jsonObj.error_message;
-      } else {
-        document.getElementById("result").innerHTML = "ERROR: Unknown error. No message returned.";
-      }
-    };
-
-  };
-
-};
+<div class="page">
 
 
-</script>
+<p>The RTX team presents its pilot Reasoning Tool for evaluation. This page provides a simple web interface on top of the OpenAPI web service interface to RTX. At present only a few question types are supported. Select from one of the example queries to test the tool. Different drugs, diseases, etc. may be substituted for the default ones, but note that not all drugs, diseases, etc. are yet present in our knowledge graph.</p>
 
+
+<h2 style="display:inline;">Enter question:</h2>
+<div class="sampleqs">
+<select id="qqq" onchange="javascript:pasteQuestion(this.value);">
+<option style="border-bottom:1px solid black;" value="">Example Questions&nbsp;&nbsp;&nbsp;&#8675;</option>
+<option value="what is lovastatin?">Q0: What is lovastatin?</option>
+<option value="what genetic conditions might offer protection against malaria?">Q1: What genetic conditions might offer protection against malaria?</option>
+<option value="what is the clinical outcome pathway of physostigmine for treatment of glaucoma?">Q2: What is the clinical outcome pathway of physostigmine for treatment of glaucoma?</option>
+<option value="what proteins does acetaminophen target?">Q3: What proteins does acetaminophen target?</option>
+<option value="what diseases are similar to malaria?">Q4: What diseases are similar to malaria?</option>
+</select>
+</div>
+
+
+<form id="questionForm" name="questionForm" method="post" action="javascript:sendQuestion();">
+<span title="clear question" class="clq" onclick="javascript:pasteQuestion('');">&#215;</span>
+<input type="text" id="questionText" name="questionText" size="100" maxlength="1000"/>
+<input type="button" class="button" name="action" value="ASK" onClick="javascript:sendQuestion();"/>
+</form>
+
+
+<div id="status_container"></div>
+
+<div id="result_container"></div>
+
+<div id="dev_result_json_container"></div>
+
+</div>
 </body>
 </html>
