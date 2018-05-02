@@ -146,8 +146,9 @@ class ParseQuestion:
 				response['restated_question'] = None
 				response['known_query_type_id'] = None
 			response['original_question'] = input_question
-			response['error_message'] = error_message
-			response['error_code'] = error_code
+			#response['error_message'] = error_message
+			response['message'] = error_message
+			#response['error_code'] = error_code
 			return response
 
 
