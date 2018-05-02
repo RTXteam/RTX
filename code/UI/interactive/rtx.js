@@ -105,7 +105,7 @@ function sendQuestion(e) {
 
 
 function add_status_divs() {
-    document.getElementById("status_container").innerHTML = "<div onclick='sesame(null,statusdiv);' title='click to expand / collapse status' class='statushead'>Status  <i style='float:right; font-weight:normal;'>( using /devLM/ )</i></div><div class='status' id='statusdiv'></div>";
+    document.getElementById("status_container").innerHTML = "<div onclick='sesame(null,statusdiv);' title='click to expand / collapse status' class='statushead'>Status</div><div class='status' id='statusdiv'></div>";
 
     document.getElementById("dev_result_json_container").innerHTML = "<div onclick='sesame(null,devdiv);' title='click to expand / collapse dev info' class='statushead'>Dev Info <i style='float:right; font-weight:normal;'>( json responses )</i></div><div class='status' id='devdiv'></div>";
 }
