@@ -18,6 +18,7 @@ import pandas
 import pprint
 import CachedMethods
 import requests_cache
+import numpy
 from QueryNCBIeUtils import QueryNCBIeUtils
 from QueryDisont import QueryDisont #DOID -> MeSH
 from QueryEBIOLS import QueryEBIOLS #UBERON -> MeSH
@@ -51,24 +52,24 @@ class NormGoogleDistance:
 			"OMIM" +
 			"ChEMBL" +
 		'''
+		curie_list = curie_id.split(':')
 		if QueryNCBIeUtils.is_mesh_term(description):
 			return [description + '[MeSH Terms]']
-		curie_list = curie_id.split(':')
-		if curie_list[0] == "Reactome":
+		elif curie_list[0] == "Reactome":
 			names = QueryNCBIeUtils.get_reactome_names(curie_list[1]).split('|')
 			if names is not None:
 				return names
-		if curie_list[0] == "GO":
+		elif curie_list[0] == "GO":
 			pass
-		if curie_list[0] == "UniProt":
+		elif curie_list[0] == "UniProt":
 			names = QueryNCBIeUtils.get_uniprot_names(curie_list[1]).split('|')
 			if names is not None:
 				return names
-		if curie_list[0] == "HP":
+		elif curie_list[0] == "HP":
 			names = QueryNCBIeUtils.get_mesh_terms_for_hp_id(curie_id)
 			if names is not None:
 				return names
-		if curie_list[0] == "UBERON":
+		elif curie_list[0] == "UBERON":
 			if curie_id.endswith('PHENOTYPE'):
 				curie_id = curie_id[:-9]
 			mesh_id = QueryEBIOLS.get_mesh_id_for_uberon_id(curie_id)
@@ -85,14 +86,12 @@ class NormGoogleDistance:
 					names = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(uid_num)
 			if len(names) > 0:
 				return names
-		if curie_list[0] == "CL":
-			pass
-		if curie_list[0] == "NCBIGene":
+		elif curie_list[0] == "NCBIGene":
 			gene_id = curie_id.split(':')[1]
 			names = QueryNCBIeUtils.get_pubmed_from_ncbi_gene(gene_id)
 			if names is not None:
 				return names
-		if curie_list[0] == "DOID":
+		elif curie_list[0] == "DOID":
 			mesh_id = QueryDisont.query_disont_to_mesh_id(curie_id)
 			names = []
 			for uid in mesh_id:
@@ -102,11 +101,11 @@ class NormGoogleDistance:
 					names += name
 			if len(names)>0:
 				return names
-		if curie_list[0] == "OMIM":
+		elif curie_list[0] == "OMIM":
 			names = QueryNCBIeUtils.get_mesh_terms_for_omim_id(curie_list[1])
 			if names is not None:
 				return names
-		if curie_list[0] == "ChEMBL":
+		elif curie_list[0] == "ChEMBL":
 			chembl_id = curie_id.replace(':', '').upper()
 			mesh_id = QueryMyChem.get_mesh_id(chembl_id)
 			if mesh_id is not None:
@@ -145,11 +144,12 @@ class NormGoogleDistance:
 				mesh_flags[a] = False
 			else:
 				terms_combined[a] = terms[a][0]
-				if not QueryNCBIeUtils.is_mesh_term(terms[a][0]):
+				if terms[a][0].endswith('[MeSH Terms]'):
+					terms_combined[a] = terms[a][0][:-12]
+				elif not QueryNCBIeUtils.is_mesh_term(terms[a][0]):
 					mesh_flags[a] = False
-		ngd = QueryNCBIeUtils.multi_nomalized_google_distance(terms_combined,mesh_flags)
+		ngd = QueryNCBIeUtils.multi_normalized_google_distance(terms_combined,mesh_flags)
 		return ngd
-
 
 
 
