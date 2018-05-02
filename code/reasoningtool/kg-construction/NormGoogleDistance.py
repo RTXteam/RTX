@@ -57,7 +57,9 @@ class NormGoogleDistance:
 		if QueryNCBIeUtils.is_mesh_term(description):
 			return [description + '[MeSH Terms]']
 		elif curie_list[0] == "Reactome":
-			names = QueryNCBIeUtils.get_reactome_names(curie_list[1]).split('|')
+			res = QueryNCBIeUtils.get_reactome_names(curie_list[1])
+			if res is not None:
+				names = res.split('|')
 		elif curie_list[0] == "GO":
 			pass
 		elif curie_list[0] == "UniProt":
@@ -151,6 +153,8 @@ class NormGoogleDistance:
 					mesh_flags[a] = False
 		ngd = QueryNCBIeUtils.multi_normalized_google_distance(terms_combined,mesh_flags)
 		return ngd
+
+
 
 
 if __name__ == '__main__':
