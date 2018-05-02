@@ -526,10 +526,12 @@ class QueryNCBIeUtils:
         """
         url = 'https://www.uniprot.org/uniprot/?query=id:' + id + '&sort=score&columns=entry name,protein names,genes&format=tab' # hardcoded url for uniprot data
         r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})  # send get request
-        df = pandas.read_csv(StringIO(r.content.decode('utf-8')), sep='\t')
         if r.status_code != 200:  # checks for error
             print('HTTP response status code: ' + str(r.status_code) + ' for URL:\n' + url, file=sys.stderr)
             return None
+        if r.content.decode('utf-8') == '':
+            return None
+        df = pandas.read_csv(StringIO(r.content.decode('utf-8')), sep='\t')
         search = df.loc[0, 'Entry name']  # initializes search term variable
         for name in re.compile("[()]").split(df.loc[0, 'Protein names']):  # checks for protein section
             if len(name) > 1:
