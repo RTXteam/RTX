@@ -15,6 +15,7 @@ from itertools import islice
 import itertools
 import functools
 import CustomExceptions
+import QueryCOHD
 # Import stuff from one level up
 try:
 	import QueryNCBIeUtils
@@ -38,6 +39,7 @@ except ImportError:
 
 QueryEBIOLS = QueryEBIOLS.QueryEBIOLS()
 QueryNCBIeUtils = QueryNCBIeUtils.QueryNCBIeUtils()
+QueryCOHD = QueryCOHD.QueryCOHD()
 
 
 requests_cache.install_cache('orangeboard')
@@ -950,6 +952,18 @@ def get_top_shortest_paths(g, source_name, target_name, k, property='gd_weight',
 		decorated_path_edges.append(edge_list)
 		path_lengths.append(path_length)
 	return decorated_paths, decorated_path_edges, path_lengths
+
+def cohd_ngd(node_descr1, node_descr2):
+	"""
+	This function will return the normalized google distance between terms based on the columbia open health
+	data (cohd.nsides.io)
+	:param node_descr1: human readable name of a node (eg. naproxen)
+	:param node_descr2: human readable name of a node (eg. hypertension)
+	:return: float
+	"""
+
+
+
 ############################################################################################
 # Stopping point 3/22/18 DK
 
