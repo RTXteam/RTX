@@ -32,7 +32,8 @@ class FormatResponse:
 		# Create the response object and fill it with attributes about the response
 		self.response = Response()
 		self.response.context = "http://translator.ncats.io"
-		self.response.id = "http://rtx.ncats.io/api/v1/response/1234"  # TODO: Eric to figure out how to populate
+		#self.response.id = "http://rtx.ncats.io/api/v1/response/1234"
+		self.response.id = "-1"
 		self.response.type = "medical_translator_query_result"
 		self.response.tool_version = "RTX 0.4"
 		self.response.schema_version = "0.5"
@@ -61,7 +62,8 @@ class FormatResponse:
 
 	def add_text(self, plain_text):
 		result1 = Result()
-		result1.id = "http://rtx.ncats.io/api/v1/response/1234/result/2345"  # TODO: eric to change this
+		#result1.id = "http://rtx.ncats.io/api/v1/response/1234/result/2345"
+		result1.id = "-1"
 		result1.text = plain_text
 		self._result_list.append(result1)
 		self.response.result_list = self._result_list
@@ -142,7 +144,8 @@ class FormatResponse:
 
 		# Create the result (potential answer)
 		result1 = Result()
-		result1.id = "http://rtx.ncats.io/api/v1/response/1234/result/2345"  # TODO: eric to change this
+		#result1.id = "http://rtx.ncats.io/api/v1/response/1234/result/2345"
+		result1.id = "-1"
 		result1.text = plain_text
 		result1.confidence = confidence
 
@@ -234,7 +237,8 @@ class FormatResponse:
 
 		# Create the result (potential answer)
 		result1 = Result()
-		result1.id = "http://rtx.ncats.io/api/v1/response/1234/result/2345"  # TODO: eric to change this
+		#result1.id = "http://rtx.ncats.io/api/v1/response/1234/result/2345"
+		result1.id = "-1"
 		#result1.text = plain_text
 		#result1.confidence = confidence
 
