@@ -255,7 +255,7 @@ class FormatResponse:
 
 if __name__ == '__main__':
 	test = FormatResponse(2)
-	g = RU.return_subgraph_through_node_labels("zopiclone", 'drug', 'DOID:0050433', 'disease',
+	g = RU.return_subgraph_through_node_labels("CHEMBL154", 'chemical_substance', 'DOID:8398', 'disease',
 											   ['protein', 'anatomical_entity', 'phenotypic_feature'],
 											   directed=False)
 	test.add_subgraph(g.nodes(data=True), g.edges(data=True), "This is a test", 0.95)
