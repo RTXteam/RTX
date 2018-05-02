@@ -969,6 +969,52 @@ def cohd_pair_frequency(node_descr1, node_descr2):
 	:param node_descr2:
 	:return:
 	"""
+	# First, get all the concept IDs, select an exact match if it's in there
+	concept_ids_list1 = QueryCOHD.find_concept_ids(node_descr1)
+	concept_id1 = None
+	for res in concept_ids_list1:
+		if res['concept_name'].lower() == node_descr1.lower():
+			concept_id1 = res['concept_id']
+			concept_ids_list1 = [res]  # discard the rest of them
+			break
+
+	concept_ids_list2 = QueryCOHD.find_concept_ids(node_descr2)
+	concept_id2 = None
+	for res in concept_ids_list2:
+		if res['concept_name'].lower() == node_descr2.lower():
+			concept_id2 = res['concept_id']
+			concept_ids_list2 = [res]  # discard the rest of them
+			break
+
+	# If I found unique concept ids for both, go ahead and return them
+	if concept_id1 is not None and concept_id2 is not None:
+		paired_concept_freq = QueryCOHD.get_paired_concept_freq(concept_id1, concept_id2)
+		return paired_concept_freq
+
+	#otherwise, sum up the counts and frequencies
+	count = 0
+	freq = 0
+	print(concept_ids_list1)
+	print(concept_ids_list2)
+	for res1 in concept_ids_list1:
+		id1 = res1['concept_id']
+		for res2 in concept_ids_list2:
+			id2 = res2['concept_id']
+			paired_concept_freq = QueryCOHD.get_paired_concept_freq(id1, id2)
+			if paired_concept_freq:
+				if "concept_count" in paired_concept_freq and "concept_frequency" in paired_concept_freq:
+					if isinstance(paired_concept_freq["concept_count"], int) and isinstance(paired_concept_freq["concept_frequency"], float):
+						print(paired_concept_freq["concept_count"])
+						count += paired_concept_freq["concept_count"]
+						freq += paired_concept_freq["concept_frequency"]
+	paired_concept_freq = dict()
+	paired_concept_freq["concept_count"] = count
+	paired_concept_freq["concept_frequency"] = freq
+	return paired_concept_freq
+
+
+
+
 
 
 
