@@ -18,6 +18,7 @@ import pandas
 import CachedMethods
 import requests_cache
 requests_cache.install_cache('QueryNCBIeUtilsCache')
+import numpy
 
 # MeSH Terms for Q1 diseases: (see git/q1/README.md)
 #   Osteoporosis
@@ -372,7 +373,7 @@ class QueryNCBIeUtils:
         return res_int
 
     @staticmethod
-    def multi_nomalized_google_distance(name_list, mesh_flags = None):
+    def multi_normalized_google_distance(name_list, mesh_flags = None):
         """
         returns the normalized Google distance for a list of n MeSH Terms
         :param name_list: a list of strings containing search terms for each node
