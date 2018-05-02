@@ -962,6 +962,14 @@ def cohd_ngd(node_descr1, node_descr2):
 	:return: float
 	"""
 
+def cohd_pair_frequency(node_descr1, node_descr2):
+	"""
+	This function returns node co-occurance based on columbia open health data
+	:param node_descr1: human readable name of a node (eg. naproxen)
+	:param node_descr2:
+	:return:
+	"""
+
 
 
 ############################################################################################
