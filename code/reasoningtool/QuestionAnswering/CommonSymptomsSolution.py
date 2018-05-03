@@ -38,13 +38,56 @@ class CommonSymptomsSolution:
 		# get subgraph of all all the symptom nodes connecting to the disease
 		g = RU.return_subgraph_paths_of_type(disease_id,"disease",None,"phenotypic_feature",["has_phenotype"], directed=False)
 
+		# decorate with cohd data
+		RU.weight_graph_with_cohd_frequency(g, normalized=False)  # TODO: check if normalized on returns better results
+
+		# sort the phenotypes by frequency
+		top_n_nodes = []
+		names = nx.get_node_attributes(g, 'names')
+		descriptions = nx.get_node_attributes(g, 'description')
+		labels = nx.get_node_attributes(g, 'labels')
+
+		# get the node corresponding to the disease
+		disease_node = None
+		for node in names.keys():
+			if "disease" == list(set(labels[node]) - {"Base"}).pop():
+				disease_node = node
+
+		# get all the nodes and the frequencies in one place
+		node_freq_tuples = []
+		for node in names.keys():
+			if "phenotypic_feature" == list(set(labels[node])-{"Base"}).pop():
+				# get the corresponding edge frequency (try both directions)
+				edge_data = g.get_edge_data(disease_node, node)
+				if "cohd_freq" in edge_data and isinstance(edge_data["cohd_freq"], float):
+					freq = edge_data["cohd_freq"]
+				else:
+					edge_data = g.get_edge_data(node, disease_node)
+					if "cohd_freq" in edge_data and isinstance(edge_data["cohd_freq"], float):
+						freq = edge_data["cohd_freq"]
+					else:
+						freq = 0
+				node_freq_tuples.append((node,freq))
+
+		# sort the node freqs
+		node_freq_tuples_sorted = sorted(node_freq_tuples, key=lambda x: x[1], reverse=True)
+
 		# reduce to top 100
-		if len(node_jaccard_tuples_sorted) > n:
-			node_jaccard_tuples_sorted = node_jaccard_tuples_sorted[0:n]
+		node_freq_tuples_sorted_top_n = node_freq_tuples_sorted
+		if len(node_freq_tuples_sorted_top_n) > num_show:
+			node_freq_tuples_sorted_top_n = node_freq_tuples_sorted_top_n[0:num_show]
 
-		# make sure that the input node isn't in the list
-		node_jaccard_tuples_sorted = [i for i in node_jaccard_tuples_sorted if i[0] != source_node_ID]
+		# good nodes
+		good_nodes = set([tup[0] for tup in node_freq_tuples_sorted_top_n])
 
+		# all nodes
+		all_nodes = set([tup[0] for tup in node_freq_tuples_sorted])
+
+		# remove the other nodes from the graph
+		g.remove_nodes_from(all_nodes-good_nodes)
+
+		######################################################################
+		# Stopped here 5/2/18
 		# check for an error
 		if error_code is not None or error_message is not None:
 			if not use_json:
