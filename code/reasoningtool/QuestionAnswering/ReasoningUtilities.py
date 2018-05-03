@@ -1049,7 +1049,7 @@ def weight_graph_with_cohd_frequency(g, default_value=0, normalized=False):
 		total = float(np.sum(list(edges2freq.values())))
 		if total > 0:
 			for key in edges2freq.keys():
-				edges2freq[edge] = edges2freq[edge] / total
+				edges2freq[key] = edges2freq[key] / total
 
 	# decorate the edges with these weights
 	for u, v, d in g.edges(data=True):

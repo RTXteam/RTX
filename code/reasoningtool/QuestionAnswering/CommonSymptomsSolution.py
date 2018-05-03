@@ -115,7 +115,7 @@ class CommonSymptomsSolution:
 
 	@staticmethod
 	def describe():
-		output = "Answers questions of the form: 'What are the most common symptoms of X?' where X is a disease." + "\n"
+		output = "Answers questions of the form: 'What are the most/least common symptoms of X?' where X is a disease." + "\n"
 		# TODO: subsample disease nodes
 		return output
 
