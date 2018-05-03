@@ -52,6 +52,8 @@ class NormGoogleDistance:
 			"OMIM" +
 			"ChEMBL" +
 		'''
+		if type(description) != str:
+			description = str(description)
 		curie_list = curie_id.split(':')
 		names = None
 		if QueryNCBIeUtils.is_mesh_term(description):
@@ -77,12 +79,20 @@ class NormGoogleDistance:
 				if len(entry.split('.')) > 1:
 					uids=QueryNCBIeUtils.get_mesh_uids_for_mesh_tree(entry.split(':')[1])
 					for uid in uids:
-						uid_num = int(uid.split(':')[1][1:]) + 68000000
-						names += [QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(uid_num)]
+						try:
+							uid_num = int(uid.split(':')[1][1:]) + 68000000
+							names += QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(uid_num)
+						except IndexError:
+							uid_num = int(uid)
+							names += QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(uid_num)
 				else:
-					uid = entry.split(':')[1]
-					uid_num = int(uid[1:]) + 68000000
-					names = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(uid_num)
+					try:
+						uid = entry.split(':')[1]
+						uid_num = int(uid[1:]) + 68000000
+						names += QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(uid_num)
+					except IndexError:
+						uid_num = int(entry)
+						names += QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(uid_num)
 			if len(names) == 0:
 				names = None
 			else:
