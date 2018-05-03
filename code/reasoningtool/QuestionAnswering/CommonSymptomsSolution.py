@@ -18,6 +18,8 @@ except ImportError:
 	sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 	from QueryCOHD import QueryCOHD
 
+import CustomExceptions
+
 
 class CommonSymptomsSolution:
 
@@ -25,7 +27,7 @@ class CommonSymptomsSolution:
 		None
 
 	@staticmethod
-	def answer(disease_id, use_json=False, num_show=20):
+	def answer(disease_id, use_json=False, num_show=20, rev=True):
 		"""
 		"""
 
@@ -36,15 +38,20 @@ class CommonSymptomsSolution:
 		disease_description = RU.get_node_property(disease_id, 'description')
 
 		# get subgraph of all all the symptom nodes connecting to the disease
-		g = RU.return_subgraph_paths_of_type(disease_id,"disease",None,"phenotypic_feature",["has_phenotype"], directed=False)
+		try:
+			g = RU.return_subgraph_paths_of_type(disease_id, "disease", None, "phenotypic_feature", ["has_phenotype"], directed=False)
+		except CustomExceptions.EmptyCypherError:
+			error_code = "EmptyGraph"
+			error_message = "Sorry, but there are no phenotypes associated to %s" % disease_description
+			response.add_error_message(error_code, error_message)
+			response.print()
+			return 1
 
 		# decorate with cohd data
 		RU.weight_graph_with_cohd_frequency(g, normalized=False)  # TODO: check if normalized on returns better results
 
 		# sort the phenotypes by frequency
-		top_n_nodes = []
 		names = nx.get_node_attributes(g, 'names')
-		descriptions = nx.get_node_attributes(g, 'description')
 		labels = nx.get_node_attributes(g, 'labels')
 
 		# get the node corresponding to the disease
@@ -67,12 +74,12 @@ class CommonSymptomsSolution:
 						freq = edge_data["cohd_freq"]
 					else:
 						freq = 0
-				node_freq_tuples.append((node,freq))
+				node_freq_tuples.append((node, freq))
 
 		# sort the node freqs
-		node_freq_tuples_sorted = sorted(node_freq_tuples, key=lambda x: x[1], reverse=True)
+		node_freq_tuples_sorted = sorted(node_freq_tuples, key=lambda x: x[1], reverse=rev)
 
-		# reduce to top 100
+		# reduce to top n
 		node_freq_tuples_sorted_top_n = node_freq_tuples_sorted
 		if len(node_freq_tuples_sorted_top_n) > num_show:
 			node_freq_tuples_sorted_top_n = node_freq_tuples_sorted_top_n[0:num_show]
@@ -86,8 +93,6 @@ class CommonSymptomsSolution:
 		# remove the other nodes from the graph
 		g.remove_nodes_from(all_nodes-good_nodes)
 
-		######################################################################
-		# Stopped here 5/2/18
 		# check for an error
 		if error_code is not None or error_message is not None:
 			if not use_json:
