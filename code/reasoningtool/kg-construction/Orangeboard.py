@@ -261,6 +261,9 @@ class Orangeboard:
 
     def add_node(self, nodetype, name, seed_node_bool=False, desc=''):
         assert type(name)==str
+        if nodetype == "protein" and " " in desc:
+            print(name, file=sys.stderr)  # :DEBUG: code for issue 21
+            assert False
         if seed_node_bool:
             old_seed_node = self.seed_node
             if old_seed_node is not None:
@@ -301,7 +304,7 @@ class Orangeboard:
             if desc != '' and existing_node.desc == '':
                 existing_node.desc = desc
                 if nodetype == "protein" or nodetype == "microRNA":
-                    existing_node.symbol = desc
+                    existing_node.extra_props["symbol"] = desc
 
             # if seed_node_bool=True, this is a special case that must be handled
             if seed_node_bool:
