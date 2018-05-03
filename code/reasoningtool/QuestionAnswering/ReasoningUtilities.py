@@ -994,8 +994,6 @@ def cohd_pair_frequency(node_descr1, node_descr2):
 	#otherwise, sum up the counts and frequencies
 	count = 0
 	freq = 0
-	print(concept_ids_list1)
-	print(concept_ids_list2)
 	for res1 in concept_ids_list1:
 		id1 = res1['concept_id']
 		for res2 in concept_ids_list2:
@@ -1004,7 +1002,6 @@ def cohd_pair_frequency(node_descr1, node_descr2):
 			if paired_concept_freq:
 				if "concept_count" in paired_concept_freq and "concept_frequency" in paired_concept_freq:
 					if isinstance(paired_concept_freq["concept_count"], int) and isinstance(paired_concept_freq["concept_frequency"], float):
-						print(paired_concept_freq["concept_count"])
 						count += paired_concept_freq["concept_count"]
 						freq += paired_concept_freq["concept_frequency"]
 	paired_concept_freq = dict()
@@ -1013,6 +1010,47 @@ def cohd_pair_frequency(node_descr1, node_descr2):
 	return paired_concept_freq
 
 
+def weight_graph_with_cohd_frequency(g, default_value=0, normalized=False):
+	"""
+	Weight a graph with the cohd frequency data
+	:param g: networkx graph
+	:param default_value: default value for the property
+	:param normalized: if you want the results to all sum to 1 or not
+	:return: None (modifies graph directly)
+	"""
+	descriptions = nx.get_node_attributes(g, 'description')
+	names = nx.get_node_attributes(g, 'names')
+	labels = nx.get_node_attributes(g, 'labels')
+	nodes = list(nx.nodes(g))
+	edges = list(nx.edges(g))
+	edges2freq = dict()
+	for edge in edges:
+		source_id = names[edge[0]]
+		target_id = names[edge[1]]
+		source_descr = descriptions[edge[0]]
+		target_descr = descriptions[edge[1]]
+		res = cohd_pair_frequency(source_descr, target_descr)
+		if res:
+			if "concept_frequency" in res:
+				if isinstance(res["concept_frequency"], float):
+					freq = res["concept_frequency"]
+				else:
+					freq = default_value
+			else:
+				freq = default_value
+		else:
+			freq = default_value
+		edges2freq[edge] = freq
+
+	if normalized:
+		total = float(np.sum(list(edges2freq.values())))
+		if total > 0:
+			for key in edges2freq.keys():
+				edges2freq[edge] = edges2freq[edge] / total
+
+	# decorate the edges with these weights
+	for u, v, d in g.edges(data=True):
+		d['cohd_freq'] = edges2freq[(u, v)]
 
 
 
