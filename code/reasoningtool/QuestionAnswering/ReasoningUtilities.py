@@ -15,7 +15,11 @@ from itertools import islice
 import itertools
 import functools
 import CustomExceptions
-import QueryCOHD
+try:
+	from QueryCOHD import QueryCOHD
+except ImportError:
+	sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+	from QueryCOHD import QueryCOHD
 # Import stuff from one level up
 try:
 	import QueryNCBIeUtils
@@ -39,7 +43,6 @@ except ImportError:
 
 QueryEBIOLS = QueryEBIOLS.QueryEBIOLS()
 QueryNCBIeUtils = QueryNCBIeUtils.QueryNCBIeUtils()
-QueryCOHD = QueryCOHD.QueryCOHD()
 
 
 requests_cache.install_cache('orangeboard')
