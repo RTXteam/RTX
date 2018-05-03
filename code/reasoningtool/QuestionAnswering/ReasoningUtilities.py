@@ -18,7 +18,7 @@ import CustomExceptions
 try:
 	from QueryCOHD import QueryCOHD
 except ImportError:
-	sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+	sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'kg-construction'))
 	from QueryCOHD import QueryCOHD
 # Import stuff from one level up
 try:
