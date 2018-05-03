@@ -15,7 +15,11 @@ from itertools import islice
 import itertools
 import functools
 import CustomExceptions
-import QueryCOHD
+try:
+	from QueryCOHD import QueryCOHD
+except ImportError:
+	sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'kg-construction'))
+	from QueryCOHD import QueryCOHD
 # Import stuff from one level up
 try:
 	import QueryNCBIeUtils
@@ -39,7 +43,6 @@ except ImportError:
 
 QueryEBIOLS = QueryEBIOLS.QueryEBIOLS()
 QueryNCBIeUtils = QueryNCBIeUtils.QueryNCBIeUtils()
-QueryCOHD = QueryCOHD.QueryCOHD()
 
 
 requests_cache.install_cache('orangeboard')
@@ -1046,7 +1049,7 @@ def weight_graph_with_cohd_frequency(g, default_value=0, normalized=False):
 		total = float(np.sum(list(edges2freq.values())))
 		if total > 0:
 			for key in edges2freq.keys():
-				edges2freq[edge] = edges2freq[edge] / total
+				edges2freq[key] = edges2freq[key] / total
 
 	# decorate the edges with these weights
 	for u, v, d in g.edges(data=True):

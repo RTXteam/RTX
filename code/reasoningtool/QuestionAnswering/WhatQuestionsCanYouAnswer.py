@@ -108,7 +108,7 @@ def main():
 		else:
 			res = display_n_questions(number_of_questions, use_json=use_json)
 			if use_json:
-				print(res)
+				res.print()
 
 
 if __name__ == "__main__":
