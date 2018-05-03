@@ -107,12 +107,6 @@ class BioNetExpander:
             accession = name.split(":")[1]
             iri = iri_prefix + accession
 
-        if curie_id == "UniProt:null":  # :DEBUG: code for tracking down issue #74
-            print("ERROR: UniProt:null found", file=sys.stderr)
-            traceback.print_stack(file=sys.stderr)
-
-        assert not (desc.endswith(" MOUSE") or desc.endswith(" YEAST"))
-
         node = self.orangeboard.add_node(simple_node_type,
                                          name,
                                          seed_node_bool,
@@ -144,12 +138,14 @@ class BioNetExpander:
                 target_node = self.add_node_smart('protein', target_uniprot_id, desc=node_desc)
                 if target_node is not None:
                     self.orangeboard.add_rel('directly_interacts_with', 'ChEMBL', node, target_node, prob=probability, extended_reltype='targets')
+
         targets = QueryPharos.query_drug_name_to_targets(compound_desc)
         if targets is not None:
             for target in targets:
                 uniprot_id = QueryPharos.query_target_uniprot_accession(str(target["id"]))
                 assert '-' not in uniprot_id
-                target_node = self.add_node_smart('protein', uniprot_id, desc=target["name"])
+                gene_symbol = self.query_mygene_obj.query_uniprot_id_to_gene_symbol(uniprot_id)
+                target_node = self.add_node_smart('protein', uniprot_id, desc=gene_symbol)
                 if target_node is not None:
                     self.orangeboard.add_rel('directly_interacts_with', 'Pharos', node, target_node, extended_reltype="targets")
 
