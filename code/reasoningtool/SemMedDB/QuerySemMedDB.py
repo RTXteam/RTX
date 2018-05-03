@@ -89,7 +89,7 @@ class QuerySemMedDB():
 			object_cui = a string containing the object cui
 			(optional) predicate = a string containing the predicate you wish to search for
 		'''
-		query = "select " + ', '.join(result_col) + " from PREDICATION where (OBJECT_CUI='" + cui_object + "' and SUBJECT_CUI='" + cui_subject + "')"
+		query = "select distinct " + ', '.join(result_col) + " from PREDICATION where (OBJECT_CUI='" + cui_object + "' and SUBJECT_CUI='" + cui_subject + "')"
 		if predicate is not None:
 			query = query + " and PREDICATE='" + predicate + "'"
 		df = self.get_dataframe_from_db(query)
@@ -109,6 +109,10 @@ class QuerySemMedDB():
 			df = pd.concat([df1,df2])
 			return df
 		else:
+			if df1 is not None:
+				return df1
+			if df2 is not None:
+				return df2
 			return None
 
 	def get_edges_between_subject_object_with_pivot(self, subject_cui, object_cui, pivot = 1, limit = 0):

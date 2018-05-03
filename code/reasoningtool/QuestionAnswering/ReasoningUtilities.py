@@ -15,6 +15,7 @@ from itertools import islice
 import itertools
 import functools
 import CustomExceptions
+import QueryCOHD
 # Import stuff from one level up
 try:
 	import QueryNCBIeUtils
@@ -38,6 +39,7 @@ except ImportError:
 
 QueryEBIOLS = QueryEBIOLS.QueryEBIOLS()
 QueryNCBIeUtils = QueryNCBIeUtils.QueryNCBIeUtils()
+QueryCOHD = QueryCOHD.QueryCOHD()
 
 
 requests_cache.install_cache('orangeboard')
@@ -950,6 +952,110 @@ def get_top_shortest_paths(g, source_name, target_name, k, property='gd_weight',
 		decorated_path_edges.append(edge_list)
 		path_lengths.append(path_length)
 	return decorated_paths, decorated_path_edges, path_lengths
+
+def cohd_ngd(node_descr1, node_descr2):
+	"""
+	This function will return the normalized google distance between terms based on the columbia open health
+	data (cohd.nsides.io)
+	:param node_descr1: human readable name of a node (eg. naproxen)
+	:param node_descr2: human readable name of a node (eg. hypertension)
+	:return: float
+	"""
+
+def cohd_pair_frequency(node_descr1, node_descr2):
+	"""
+	This function returns node co-occurance based on columbia open health data
+	:param node_descr1: human readable name of a node (eg. naproxen)
+	:param node_descr2:
+	:return:
+	"""
+	# First, get all the concept IDs, select an exact match if it's in there
+	concept_ids_list1 = QueryCOHD.find_concept_ids(node_descr1)
+	concept_id1 = None
+	for res in concept_ids_list1:
+		if res['concept_name'].lower() == node_descr1.lower():
+			concept_id1 = res['concept_id']
+			concept_ids_list1 = [res]  # discard the rest of them
+			break
+
+	concept_ids_list2 = QueryCOHD.find_concept_ids(node_descr2)
+	concept_id2 = None
+	for res in concept_ids_list2:
+		if res['concept_name'].lower() == node_descr2.lower():
+			concept_id2 = res['concept_id']
+			concept_ids_list2 = [res]  # discard the rest of them
+			break
+
+	# If I found unique concept ids for both, go ahead and return them
+	if concept_id1 is not None and concept_id2 is not None:
+		paired_concept_freq = QueryCOHD.get_paired_concept_freq(concept_id1, concept_id2)
+		return paired_concept_freq
+
+	#otherwise, sum up the counts and frequencies
+	count = 0
+	freq = 0
+	for res1 in concept_ids_list1:
+		id1 = res1['concept_id']
+		for res2 in concept_ids_list2:
+			id2 = res2['concept_id']
+			paired_concept_freq = QueryCOHD.get_paired_concept_freq(id1, id2)
+			if paired_concept_freq:
+				if "concept_count" in paired_concept_freq and "concept_frequency" in paired_concept_freq:
+					if isinstance(paired_concept_freq["concept_count"], int) and isinstance(paired_concept_freq["concept_frequency"], float):
+						count += paired_concept_freq["concept_count"]
+						freq += paired_concept_freq["concept_frequency"]
+	paired_concept_freq = dict()
+	paired_concept_freq["concept_count"] = count
+	paired_concept_freq["concept_frequency"] = freq
+	return paired_concept_freq
+
+
+def weight_graph_with_cohd_frequency(g, default_value=0, normalized=False):
+	"""
+	Weight a graph with the cohd frequency data
+	:param g: networkx graph
+	:param default_value: default value for the property
+	:param normalized: if you want the results to all sum to 1 or not
+	:return: None (modifies graph directly)
+	"""
+	descriptions = nx.get_node_attributes(g, 'description')
+	names = nx.get_node_attributes(g, 'names')
+	labels = nx.get_node_attributes(g, 'labels')
+	nodes = list(nx.nodes(g))
+	edges = list(nx.edges(g))
+	edges2freq = dict()
+	for edge in edges:
+		source_id = names[edge[0]]
+		target_id = names[edge[1]]
+		source_descr = descriptions[edge[0]]
+		target_descr = descriptions[edge[1]]
+		res = cohd_pair_frequency(source_descr, target_descr)
+		if res:
+			if "concept_frequency" in res:
+				if isinstance(res["concept_frequency"], float):
+					freq = res["concept_frequency"]
+				else:
+					freq = default_value
+			else:
+				freq = default_value
+		else:
+			freq = default_value
+		edges2freq[edge] = freq
+
+	if normalized:
+		total = float(np.sum(list(edges2freq.values())))
+		if total > 0:
+			for key in edges2freq.keys():
+				edges2freq[edge] = edges2freq[edge] / total
+
+	# decorate the edges with these weights
+	for u, v, d in g.edges(data=True):
+		d['cohd_freq'] = edges2freq[(u, v)]
+
+
+
+
+
 ############################################################################################
 # Stopping point 3/22/18 DK
 

@@ -1,0 +1,273 @@
+body {
+    padding: 0px;
+    margin:  0px;
+    box-sizing:border-box;
+    background-color:#eef;
+    font-size: 12pt;
+    font-family: Arial, sans-serif;
+}
+
+.banner {
+    width: 100%;
+    min-height: 80px;
+    z-index: 999;
+    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+    font-size: 20px;
+    color: #fff;
+    background-color: #047;
+    background-image: url(banner.png);
+}
+.banner::before {
+    font-size: 60px;
+    left: 30px;
+    top: 0px;
+    position: absolute;
+    color: rgba(255,255,255,0.8);
+    font-weight: bold;
+    letter-spacing: 15px;
+    content: attr(banner-bg-text);
+    pointer-events: none;
+}
+
+.menulinks {
+    position: relative;
+    top:55px;
+    right: 30px;
+    float: right;
+}
+.banner a, .banner a:visited {
+    text-decoration: none;
+    color: #eef;
+    font-weight:bold;
+    padding: 55px 15px 25px 15px;
+}
+.banner a:hover, .banner a:active{
+    text-decoration: none;
+    color: #c40;
+    background-color: #eef;
+}
+.currentpage {
+    color: #c40;
+    background-color: #eef;
+    font-weight:bold;
+    padding: 55px 15px 25px 15px;
+}
+
+.page {
+    margin: 20px;
+}
+
+.sampleqs {
+    display: inline-flex;
+    position: relative;
+    left: 300px;
+    padding: 0;
+    margin: 0;
+    border: 1px solid #aaa;
+    color: #ccc;
+    width: 150px;
+    border-radius: 3px;
+    overflow: hidden;
+    background-color: #ddd;
+}
+.sampleqs:hover {
+    background-color: #eee;
+}
+.clq {
+    text-align: center;
+    padding: 5px;
+    margin: 0;
+    color: #888;
+    cursor: pointer;
+}
+.clq:hover {
+    font-weight: bold;
+    color: #eee;
+    background-color: #c40;
+}
+.sampleqs select {
+    padding: 5px 8px;
+    width: 130%;
+    border: none;
+    box-shadow: none;
+    background-color: transparent;
+    background-image: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+.sampleqs select:focus {
+    outline: none;
+    background-color: #eee;
+}
+
+.statushead {
+    background-color: #ccc;
+    color: #000;
+    cursor: pointer;
+    margin-top: 15px;
+    padding: 4px 10px;
+    max-width: 100%;
+    border-top: 1px solid #444;
+    border-left: 25px solid #444;
+    border-right: 1px solid #444;
+    text-align: left;
+    outline: none;
+    font-size: 15px;
+    font-weight:bold;
+    transition: 0.1s;
+}
+.status {
+    border-top: 1px solid #999;
+    border-bottom: 1px solid #444;
+    border-left: 1px solid #444;
+    border-right: 1px solid #444;
+    padding: 0 25px;
+    background-color: #fff;
+    max-width: 100%;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease-out;
+}
+
+.accordion {
+    background-color: #047;
+    color: #fff;
+    cursor: pointer;
+    margin-top: 15px;
+    padding: 10px;
+    max-width: 100%;
+    border-top: 3px solid black;
+    border-left: 3px solid black;
+    border-right: 3px solid black;
+    border-radius: 12px 12px 0 0;
+    text-align: left;
+    outline: none;
+    font-size: 15px;
+    transition: 0.1s;
+}
+
+.active {
+    border-bottom: 0px;
+    background-color: #9bc;
+    color: #333;
+    font-weight:bold;
+}
+
+.accordion:hover {
+    background-color: #9bc;
+    color: #333;
+}
+
+.accordion:before {
+    content: ' \002B ';
+    color: #fff;
+    font-weight: bold;
+    float: right;
+    margin-left: 5px;
+}
+
+.active:before {
+    content: "\2212";
+}
+
+.qprob {
+    color: #fff;
+    border-radius: 12px;
+    border: 3px solid #fff;
+    padding: 3px 15px;
+    position: relative;
+    left:300px;
+    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+}
+.p9 { background-color: #291; }
+.p7 { background-color: #7b4; }
+.p5 { background-color: #cc5; }
+.p3 { background-color: #f80; }
+.p1 { background-color: #821; }
+
+h1 {
+    margin-top: 40px;
+    margin-bottom: -5px;
+    border-bottom: 1px solid black;
+}
+h1 b {
+    color: #9bc;
+}
+
+a, a:visited {
+    text-decoration: none;
+    color: #c40;
+}
+a:hover, a:active {
+    text-decoration: underline;
+}
+
+pre {
+    white-space: pre-wrap;
+}
+
+
+.panel {
+    border-top: 1px solid #444;
+    border-bottom: 3px solid black;
+    border-left: 3px solid black;
+    border-right: 3px solid black;
+    border-radius: 0 0 12px 12px;
+    padding: 0 18px;
+    background-color: #ccd8e2;
+    max-width: 100%;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease-out;
+}
+
+table {
+    width: 100%;
+}
+.textanswer {
+    width: 50%;
+    vertical-align:top;
+}
+.cytograph_controls {
+    vertical-align:top;
+}
+.cytograph_controls a:hover {
+    text-decoration: none;
+    border: 1px solid #fff;
+    background-color: #c40;
+    color: #fff;
+    cursor: pointer;
+}
+.cytograph {
+    border: 1px solid #444;
+    height: 200px;
+    width: 50%;
+    background-color: #bcd;
+    box-shadow: inset 0 4px 8px 0 rgba(0,0,0,0.2), inset 0 6px 20px 0 rgba(0,0,0,0.19);
+}
+
+input  {
+    font-size: large;
+    margin: 4px;
+    padding: 6px;
+    border: 2px solid black;
+}
+
+.button {
+    padding-left: 30px;
+    padding-right: 30px;
+    background-color: #047;
+    color: #fff;
+    transition-duration: 0.2s;
+}
+.button:hover {
+    background-color: #9bc;
+    color: #333;
+}
+
+.error {
+    font-weight: bold;
+    color: #c40;
+}
+
