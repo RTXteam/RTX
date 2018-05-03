@@ -533,18 +533,20 @@ class QueryNCBIeUtils:
             return None
         df = pandas.read_csv(StringIO(r.content.decode('utf-8')), sep='\t')
         search = df.loc[0, 'Entry name']  # initializes search term variable
-        for name in re.compile("[()]").split(df.loc[0, 'Protein names']):  # checks for protein section
-            if len(name) > 1:
-                if QueryNCBIeUtils.is_mesh_term(name):
-                    search += '|' + name + '[MeSH Terms]'
-                else:
-                    search += '|' + name
-        for name in df.loc[0, 'Gene names'].split(' '):
-            if len(name) > 1:
-                if QueryNCBIeUtils.is_mesh_term(name):
-                    search += '|' + name + '[MeSH Terms]'
-                else:
-                    search += '|' + name
+        if type(df.loc[0, 'Protein names']) == str:
+            for name in re.compile("[()\[\]]").split(df.loc[0, 'Protein names']):  # checks for protein section
+                if len(name) > 1:
+                    if QueryNCBIeUtils.is_mesh_term(name):
+                        search += '|' + name + '[MeSH Terms]'
+                    else:
+                        search += '|' + name
+        if type(df.loc[0, 'Gene names']) == str:
+            for name in df.loc[0, 'Gene names'].split(' '):
+                if len(name) > 1:
+                    if QueryNCBIeUtils.is_mesh_term(name):
+                        search += '|' + name + '[MeSH Terms]'
+                    else:
+                        search += '|' + name
         return search
 
     @staticmethod
@@ -674,6 +676,7 @@ class QueryNCBIeUtils:
         t0 = time.time()
         QueryNCBIeUtils.normalized_google_distance('Naprosyn','lymph nodes')
         print(time.time() - t0)
+              
               
 if __name__ == '__main__':
     pass
