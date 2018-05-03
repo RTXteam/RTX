@@ -260,13 +260,16 @@ class Orangeboard:
         return set(self.dict_nodetype_to_dict_name_to_node[nodetype].values())
 
     def add_node(self, nodetype, name, seed_node_bool=False, desc=''):
-        assert type(name)==str
+        assert type(name) == str
+
+        assert not ((nodetype == "protein" or nodetype == "microRNA") and " " in desc)
+
         if seed_node_bool:
-            old_seed_node = self.seed_node
-            if old_seed_node is not None:
-                old_seed_node_uuid = old_seed_node.uuid
-            else:
-                old_seed_node_uuid = None
+            # old_seed_node = self.seed_node
+            # if old_seed_node is not None:
+            #     old_seed_node_uuid = old_seed_node.uuid
+            # else:
+            #     old_seed_node_uuid = None
             self.set_seed_node(None)
         else:
             if self.seed_node is None:
@@ -274,7 +277,7 @@ class Orangeboard:
                 exit(1)
         existing_node = self.get_node(nodetype, name)
         if existing_node is None:
-            ## this is a new node we are adding
+            # this is a new node we are adding
             subdict = self.dict_nodetype_to_dict_name_to_node.get(nodetype, None)
             if subdict is None:
                 self.dict_nodetype_to_dict_name_to_node[nodetype] = dict()
@@ -301,7 +304,7 @@ class Orangeboard:
             if desc != '' and existing_node.desc == '':
                 existing_node.desc = desc
                 if nodetype == "protein" or nodetype == "microRNA":
-                    existing_node.symbol = desc
+                    existing_node.extra_props["symbol"] = desc
 
             # if seed_node_bool=True, this is a special case that must be handled
             if seed_node_bool:

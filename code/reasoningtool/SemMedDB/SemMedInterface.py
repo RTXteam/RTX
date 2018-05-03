@@ -115,7 +115,7 @@ class SemMedInterface():
 		if curie_list[0] == "HP":
 			df_cui = self.umls.get_cui_for_hp_id(curie_id)
 			if df_cui is not None:
-				cui_list = list(df_cuis['CUI'])
+				cui_list = list(df_cui['CUI'])
 				return cui_list
 		if curie_list[0] == "UBERON":
 			pass
@@ -198,6 +198,7 @@ class SemMedInterface():
 		return cuis
 
 	def get_cui_for_id(self, curie_id, mesh_flag=False):
+		cuis = None
 		if not mesh_flag:
 			if curie_id.startswith('ChEMBL'):
 				cuis = QueryMyChem.get_cui(curie_id)
@@ -280,13 +281,13 @@ class SemMedInterface():
 		return df
 
 	def get_shortest_path_between_subject_object(self, subj_id, subj_name, obj_id, obj_name, max_length = 3, mesh_flags = [False, False]):
-		for n in range(max_length + 1):
-			df = self.get_edges_between_subject_object_with_pivot(subj_id, subj_name, obj_id, obj_name, pivot = n, mesh_flags = mesh_flag)
+		for n in range(max_length):
+			df = self.get_edges_between_subject_object_with_pivot(subj_id, subj_name, obj_id, obj_name, pivot = n, mesh_flags = mesh_flags)
 			if df is not None:
 				return df
 		return None
 
-	def get_edges_between_nodes(self, subj_id, subj_name, obj_id, obj_name, predicate = None, result_col = ['PMID', 'SUBJECT_NAME', 'PREDICATE', 'OBJECT_NAME'], bidirectional=True):
+	def get_edges_between_nodes(self, subj_id, subj_name, obj_id, obj_name, predicate = None, result_col = ['PMID', 'SUBJECT_NAME', 'PREDICATE', 'OBJECT_NAME'], bidirectional=True, mesh_flags = [False, False]):
 		subj_cuis = self.get_cui_for_id(subj_id, mesh_flags[0])
 		obj_cuis = self.get_cui_for_id(obj_id, mesh_flags[1])
 		df = None
@@ -294,11 +295,12 @@ class SemMedInterface():
 			dfs = []
 			for subj_cui in subj_cuis:
 				for obj_cui in obj_cuis:
-					edges = self.smdb.get_edges_between_nodes(self, subj_cui, obj_cui, predicate = predicate, result_col = result_col)
-					if edges is not None:
-						dfs.append(edges)
 					if bidirectional:
-						edges = self.smdb.get_edges_between_nodes(self, obj_cui, subj_cui, predicate = predicate, result_col = result_col)
+						edges = self.smdb.get_edges_between_nodes(subj_cui, obj_cui, predicate = predicate, result_col = result_col)
+						if edges is not None:
+							dfs.append(edges)
+					else:
+						edges = self.smdb.get_edges_between_subject_object(subj_cui, obj_cui, predicate = predicate, result_col = result_col)
 						if edges is not None:
 							dfs.append(edges)
 			try:
@@ -320,18 +322,20 @@ class SemMedInterface():
 				dfs = []
 				for subj_cui in subj_cuis:
 					for obj_cui in obj_cuis:
-						edges = self.smdb.get_edges_between_subject_object_with_pivot(subj_cui, obj_cui, pivot = pivot)
-						if edges is not None:
-							dfs.append(edges)
-							if bidirectional:
-								edges = self.smdb.get_edges_between_nodes(self, obj_cui, subj_cui, predicate = predicate, result_col = result_col)
-								if edges is not None:
-									dfs.append(edges)
+						if bidirectional:
+							edges = self.smdb.get_edges_between_nodes(subj_cui, obj_cui, predicate = predicate, result_col = result_col)
+							if edges is not None:
+								dfs.append(edges)
+						else:
+							edges = self.smdb.get_edges_between_subject_object(subj_cui, obj_cui, predicate = predicate, result_col = result_col)
+							if edges is not None:
+								dfs.append(edges)
 				try:
 					df = pandas.concat(dfs).drop_duplicates()
 				except ValueError:
 					df = None
 		return df
+
 
 if __name__ == '__main__':
 	pass
