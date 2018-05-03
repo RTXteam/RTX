@@ -27,7 +27,7 @@ class CommonSymptomsSolution:
 		None
 
 	@staticmethod
-	def answer(disease_id, use_json=False, num_show=20, rev=True):
+	def answer(disease_id, use_json=False, num_show=20, rev=True, normalize=False):
 		"""
 		"""
 
@@ -48,16 +48,17 @@ class CommonSymptomsSolution:
 			return 1
 
 		# decorate with cohd data
-		RU.weight_graph_with_cohd_frequency(g, normalized=False)  # TODO: check if normalized on returns better results
+		RU.weight_graph_with_cohd_frequency(g, normalized=normalize)  # TODO: check if normalized on returns better results
 
 		# sort the phenotypes by frequency
 		names = nx.get_node_attributes(g, 'names')
 		labels = nx.get_node_attributes(g, 'labels')
+		descriptions = nx.get_node_attributes(g, 'description')
 
 		# get the node corresponding to the disease
 		disease_node = None
 		for node in names.keys():
-			if "disease" == list(set(labels[node]) - {"Base"}).pop():
+			if names[node] == disease_id:
 				disease_node = node
 
 		# get all the nodes and the frequencies in one place
@@ -86,6 +87,7 @@ class CommonSymptomsSolution:
 
 		# good nodes
 		good_nodes = set([tup[0] for tup in node_freq_tuples_sorted_top_n])
+		good_nodes.add(disease_node)
 
 		# all nodes
 		all_nodes = set([tup[0] for tup in node_freq_tuples_sorted])
@@ -93,85 +95,37 @@ class CommonSymptomsSolution:
 		# remove the other nodes from the graph
 		g.remove_nodes_from(all_nodes-good_nodes)
 
-		# check for an error
-		if error_code is not None or error_message is not None:
-			if not use_json:
-				print(error_message)
-				return
-			else:
-				response.add_error_message(error_code, error_message)
-				response.print()
-				return
-
-		# Otherwise return the results
+		# return the results
 		if not use_json:
-			to_print = "The %s's involving similar %s's as %s are: \n" % (target_node_type, association_node_type, source_node_description)
-			for other_disease_ID, jaccard in node_jaccard_tuples_sorted:
-				to_print += "%s\t%s\tJaccard %f\n" % (other_disease_ID, RU.get_node_property(other_disease_ID, 'description'), jaccard)
+			if rev:
+				to_print = "The most common phenotypes "
+			else:
+				tp_print = "The least common phenotypes "
+			to_print += "associated with %s, according to the Columbia Open Health Data, are:\n" % disease_description
+			for node, freq in node_freq_tuples_sorted_top_n:
+				to_print += "phenotype: %s\t frequency %f " % (descriptions[node], freq)
 			print(to_print)
 		else:
-			node_jaccard_ID_sorted = [id for id, jac in node_jaccard_tuples_sorted]
-
-			# print(RU.return_subgraph_through_node_labels(source_node_ID, source_node_label, node_jaccard_ID_sorted, target_node_type,
-			#										[association_node_type], with_rel=[], directed=True, debug=True))
-
-			# get the entire subgraph
-			g = RU.return_subgraph_through_node_labels(source_node_ID, source_node_label, node_jaccard_ID_sorted,
-													target_node_type,
-													[association_node_type], with_rel=[], directed=False,
-													debug=False)
-
-			# extract the source_node_number
-			for node, data in g.nodes(data=True):
-				if data['properties']['name'] == source_node_ID:
-					source_node_number = node
-					break
-
-			# Get all the target numbers
-			target_id2numbers = dict()
-			node_jaccard_ID_sorted_set = set(node_jaccard_ID_sorted)
-			for node, data in g.nodes(data=True):
-				if data['properties']['name'] in node_jaccard_ID_sorted_set:
-					target_id2numbers[data['properties']['name']] = node
-
-			for other_disease_ID, jaccard in node_jaccard_tuples_sorted:
-				to_print = "The %s %s involves similar %s's as %s with similarity value %f" % (
-					target_node_type, RU.get_node_property(other_disease_ID, 'description'), association_node_type,
-					source_node_description, jaccard)
-
-				# get all the shortest paths between source and target
-				all_paths = nx.all_shortest_paths(g, source_node_number, target_id2numbers[other_disease_ID])
-
-				# get all the nodes on these paths
-				try:
-					rel_nodes = set()
-					for path in all_paths:
-						for node in path:
-							rel_nodes.add(node)
-
-					if rel_nodes:
-						# extract the relevant subgraph
-						sub_g = nx.subgraph(g, rel_nodes)
-
-						# add it to the response
-						response.add_subgraph(sub_g.nodes(data=True), sub_g.edges(data=True), to_print, jaccard)
-				except:
-					pass
+			for node, freq in node_freq_tuples_sorted_top_n:
+				to_print = "According to the Columbia Open Health Data, %s has the phenotype %s with frequency %f" % (disease_description, descriptions[node], freq)
+				sub_g = nx.subgraph(g, [disease_node, node])
+				# add it to the response
+				response.add_subgraph(sub_g.nodes(data=True), sub_g.edges(data=True), to_print, freq)
 			response.print()
 
 	@staticmethod
 	def describe():
-		output = "Answers questions of the form: 'What diseases involve similar genes to disease X?' where X is a disease." + "\n"
+		output = "Answers questions of the form: 'What are the most common symptoms of X?' where X is a disease." + "\n"
 		# TODO: subsample disease nodes
 		return output
 
 
 def main():
-	parser = argparse.ArgumentParser(description="Answers questions of the type 'What X involve similar Y as Z?'.",
+	parser = argparse.ArgumentParser(description="Answers questions of the type 'What are the most common symptoms of disease X?",
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-	parser.add_argument('-s', '--source', type=str, help="source node name (or other name of node in the KG)", default="DOID:8398")
-	parser.add_argument('-t', '--target', type=str, help="target node type", default="disease")
-	parser.add_argument('-a', '--association', type=str, help="association node type", default="phenotypic_feature")
+	parser.add_argument('-d', '--disease', type=str, help="Disease ID/name", default="DOID:8398")
+	parser.add_argument('-r', '--rare', action='store_true', help="Include if you want the least common diseases, don't include if you want the most common")
+	parser.add_argument('-n', '--normalize', action='store_true', help="association node type", default="phenotypic_feature")
 	parser.add_argument('-j', '--json', action='store_true', help='Flag specifying that results should be printed in JSON format (to stdout)', default=False)
 	parser.add_argument('--describe', action='store_true', help='Print a description of the question to stdout and quit', default=False)
 	parser.add_argument('--threshold', type=float, help='Jaccard index threshold (only report other diseases above this)', default=0.2)
