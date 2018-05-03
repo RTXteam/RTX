@@ -121,7 +121,7 @@ function add_result(reslist) {
 	var pcl = (prb>=0.9) ? "p9" : (prb>=0.7) ? "p7" : (prb>=0.5) ? "p5" : (prb>=0.3) ? "p3" : "p1";
 
 	var html = "<div onclick='sesame(this,a"+num+"_div);' id='h"+num+"_div' title='Click to expand / collapse result "+num+"' class='accordion'>Result "+num+"<span title='confidence="+prb+"' class='"+pcl+" qprob'>"+prb+"</span></div>";
-	html += "<div id='a"+num+"_div' class='panel'><table><tr><td class='textanswer'>"+reslist[i].text+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+i+"].reset();'>&#8635;</a></td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr></table></div>";
+	html += "<div id='a"+num+"_div' class='panel'><table><tr><td class='textanswer'>"+reslist[i].text+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+i+"].reset();'>&#8635;</a></td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td></td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
 
 	document.getElementById("result_container").innerHTML += html;
 
@@ -130,6 +130,7 @@ function add_result(reslist) {
 	var gd = reslist[i].result_graph;
 
 	for (var g in gd.node_list) {
+	    gd.node_list[g].parentdivnum = num; // helps link node to div when displaying node info on click
 	    var tmpdata = { "data" : gd.node_list[g] }; // already contains id
 	    cytodata[i].push(tmpdata);
 
@@ -141,6 +142,7 @@ function add_result(reslist) {
 	for (var g in gd.edge_list) {
 	    var tmpdata = { "data" : 
 			    {
+				parentdivnum : num,
 				id : gd.edge_list[g].source_id + '--' + gd.edge_list[g].target_id,
 				source : gd.edge_list[g].source_id,
 				target : gd.edge_list[g].target_id,
@@ -201,15 +203,41 @@ function add_cyto() {
 
 	    elements: cytodata[i],
 
+	    wheelSensitivity: 0.2,
+
 	    layout: {
 		name: 'breadthfirst',
 		padding: 10
 	    },
 
-	    ready: function(){
+	    ready: function() {
 		// ready 1
 	    }
 	});
+
+
+	cyobj[i].on('tap','node', function() {
+	    var dnum = 'd'+this.data('parentdivnum')+'_div';
+
+	    document.getElementById(dnum).innerHTML = "<b>Accession:</b> " + this.data('accession') + "<br>";
+	    document.getElementById(dnum).innerHTML+= "<b>Name:</b> " + this.data('name') + "<br>";
+	    document.getElementById(dnum).innerHTML+= "<b>ID:</b> " + this.data('id') + "<br>";
+	    document.getElementById(dnum).innerHTML+= "<b>Type:</b> " + this.data('type') + "<br>";
+	    document.getElementById(dnum).innerHTML+= "<b>Description:</b> " + this.data('description') + "<br>";
+
+	    sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
+	});
+
+	cyobj[i].on('tap','edge', function() {
+	    var dnum = 'd'+this.data('parentdivnum')+'_div';
+
+	    document.getElementById(dnum).innerHTML = this.data('source');
+	    document.getElementById(dnum).innerHTML+= " <b>" + this.data('type') + "</b> ";
+	    document.getElementById(dnum).innerHTML+= this.data('target') + "<br>";
+
+	    sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
+	});
+
 
 
     }
