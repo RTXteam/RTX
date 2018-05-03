@@ -100,14 +100,14 @@ class CommonSymptomsSolution:
 			if rev:
 				to_print = "The most common phenotypes "
 			else:
-				tp_print = "The least common phenotypes "
+				to_print = "The least common phenotypes "
 			to_print += "associated with %s, according to the Columbia Open Health Data, are:\n" % disease_description
 			for node, freq in node_freq_tuples_sorted_top_n:
-				to_print += "phenotype: %s\t frequency %f " % (descriptions[node], freq)
+				to_print += "phenotype: %s\t frequency %f \n" % (descriptions[node], freq)
 			print(to_print)
 		else:
 			for node, freq in node_freq_tuples_sorted_top_n:
-				to_print = "According to the Columbia Open Health Data, %s has the phenotype %s with frequency %f" % (disease_description, descriptions[node], freq)
+				to_print = "According to the Columbia Open Health Data, %s has the phenotype %s with frequency %f." % (disease_description, descriptions[node], freq)
 				sub_g = nx.subgraph(g, [disease_node, node])
 				# add it to the response
 				response.add_subgraph(sub_g.nodes(data=True), sub_g.edges(data=True), to_print, freq)
@@ -125,30 +125,29 @@ def main():
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 	parser.add_argument('-d', '--disease', type=str, help="Disease ID/name", default="DOID:8398")
 	parser.add_argument('-r', '--rare', action='store_true', help="Include if you want the least common diseases, don't include if you want the most common")
-	parser.add_argument('-n', '--normalize', action='store_true', help="association node type", default="phenotypic_feature")
+	parser.add_argument('-n', '--normalize', action='store_true', help="Use if you want to normalize so all probabilities sum to 1 (instead of using the raw numbers from COHD).")
 	parser.add_argument('-j', '--json', action='store_true', help='Flag specifying that results should be printed in JSON format (to stdout)', default=False)
 	parser.add_argument('--describe', action='store_true', help='Print a description of the question to stdout and quit', default=False)
-	parser.add_argument('--threshold', type=float, help='Jaccard index threshold (only report other diseases above this)', default=0.2)
-	parser.add_argument('-n', '--num_res', type=int, help='Maximum number of results to return', default=20)
+	parser.add_argument('--num_show', type=int, help='Maximum number of results to return', default=20)
 
 	# Parse and check args
 	args = parser.parse_args()
-	source_node_ID = args.source
+	disease = args.disease
+	is_rare = args.rare
+	normalize = args.normalize
 	use_json = args.json
 	describe_flag = args.describe
-	threshold = args.threshold
-	target_node_type = args.target
-	association_node_type = args.association
-	n = args.num_res
+	num_show = args.num_show
+
 
 	# Initialize the question class
-	Q = SimilarityQuestionSolution()
+	Q = CommonSymptomsSolution()
 
 	if describe_flag:
 		res = Q.describe()
 		print(res)
 	else:
-		Q.answer(source_node_ID, target_node_type, association_node_type, use_json=use_json, threshold=threshold, n=n)
+		Q.answer(disease, use_json=use_json, num_show=num_show, rev=not(is_rare), normalize=normalize)
 
 
 if __name__ == "__main__":
