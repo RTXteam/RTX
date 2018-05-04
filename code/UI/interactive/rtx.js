@@ -29,6 +29,8 @@ function pasteQuestion(question) {
 function sendQuestion(e) {
     add_status_divs();
     document.getElementById("result_container").innerHTML = "";
+    cyobj = [];
+    cytodata = [];
 
     // collect the form data while iterating over the inputs
     var data = { 'text': document.getElementById("questionForm").elements["questionText"].value, 'language': 'English' };
@@ -120,41 +122,43 @@ function add_result(reslist) {
 
 	var pcl = (prb>=0.9) ? "p9" : (prb>=0.7) ? "p7" : (prb>=0.5) ? "p5" : (prb>=0.3) ? "p3" : "p1";
 
-	var html = "<div onclick='sesame(this,a"+num+"_div);' id='h"+num+"_div' title='Click to expand / collapse result "+num+"' class='accordion'>Result "+num+"<span title='confidence="+prb+"' class='"+pcl+" qprob'>"+prb+"</span></div>";
-	html += "<div id='a"+num+"_div' class='panel'><table><tr><td class='textanswer'>"+reslist[i].text+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+i+"].reset();'>&#8635;</a></td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td></td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
+	document.getElementById("result_container").innerHTML += "<div onclick='sesame(this,a"+num+"_div);' id='h"+num+"_div' title='Click to expand / collapse result "+num+"' class='accordion'>Result "+num+"<span title='confidence="+prb+"' class='"+pcl+" qprob'>"+prb+"</span></div>";
 
-	document.getElementById("result_container").innerHTML += html;
+	if (reslist[i].result_graph == null) {
+	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><br>"+reslist[i].text+"<br><br></div>";
 
-
-	cytodata[i] = [];
-	var gd = reslist[i].result_graph;
-
-	for (var g in gd.node_list) {
-	    gd.node_list[g].parentdivnum = num; // helps link node to div when displaying node info on click
-	    var tmpdata = { "data" : gd.node_list[g] }; // already contains id
-	    cytodata[i].push(tmpdata);
-
-	    // DEBUG
-	    //document.getElementById("cy"+num).innerHTML += "NODE: name="+ gd.node_list[g].name + " -- accession=" + gd.node_list[g].accession + "<BR>";
 	}
+	else {
+	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table><tr><td class='textanswer'>"+reslist[i].text+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+i+"].reset();'>&#8635;</a></td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td></td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
 
 
-	for (var g in gd.edge_list) {
-	    var tmpdata = { "data" : 
-			    {
-				parentdivnum : num,
-				id : gd.edge_list[g].source_id + '--' + gd.edge_list[g].target_id,
-				source : gd.edge_list[g].source_id,
-				target : gd.edge_list[g].target_id,
-				type   : gd.edge_list[g].type
-	                    }
-			  };
 
-	    cytodata[i].push(tmpdata);
+	    cytodata[i] = [];
+	    var gd = reslist[i].result_graph;
+
+	    for (var g in gd.node_list) {
+		gd.node_list[g].parentdivnum = num; // helps link node to div when displaying node info on click
+		var tmpdata = { "data" : gd.node_list[g] }; // already contains id
+		cytodata[i].push(tmpdata);
+
+		// DEBUG
+		//document.getElementById("cy"+num).innerHTML += "NODE: name="+ gd.node_list[g].name + " -- accession=" + gd.node_list[g].accession + "<BR>";
+	    }
+
+	    for (var g in gd.edge_list) {
+		var tmpdata = { "data" : 
+				{
+				    parentdivnum : num,
+				    id : gd.edge_list[g].source_id + '--' + gd.edge_list[g].target_id,
+				    source : gd.edge_list[g].source_id,
+				    target : gd.edge_list[g].target_id,
+				    type   : gd.edge_list[g].type
+				}
+			      };
+
+		cytodata[i].push(tmpdata);
+	    }
 	}
-
-
-
     }
 
     sesame(h1_div,a1_div);
@@ -166,6 +170,10 @@ function add_result(reslist) {
 function add_cyto() {
 
     for (var i in cytodata) {
+	if (cytodata[i] == null) {
+	    continue;
+	}
+
 	var num = Number(i) + 1;
 
 	cyobj[i] = cytoscape({
@@ -238,9 +246,6 @@ function add_cyto() {
 	    sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
 	});
 
-
-
     }
-
 
 }
