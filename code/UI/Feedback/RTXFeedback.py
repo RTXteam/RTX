@@ -173,6 +173,9 @@ class RTXFeedback:
     n_results = 0
     if response.result_list is not None:
       n_results = len(response.result_list)
+    if response.tool_version is None:
+      response.tool_version = "RTX 0.4"
+
     storedResponse = Response(response_datetime=datetime.now(),restated_question=response.restated_question_text,query_type=query["known_query_type_id"],
       terms=str(query["terms"]),tool_version=response.tool_version,result_code=response.result_code,message=response.message,n_results=n_results,response_object=pickle.dumps(ast.literal_eval(repr(response))))
     session.add(storedResponse)
