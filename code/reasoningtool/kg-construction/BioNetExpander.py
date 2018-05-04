@@ -145,6 +145,10 @@ class BioNetExpander:
                 uniprot_id = QueryPharos.query_target_uniprot_accession(str(target["id"]))
                 assert '-' not in uniprot_id
                 gene_symbol = self.query_mygene_obj.convert_uniprot_id_to_gene_symbol(uniprot_id)
+                if gene_symbol is not None:
+                    gene_symbol = ';'.join(list(gene_symbol))
+                else:
+                    gene_symbol = ''
                 target_node = self.add_node_smart('protein', uniprot_id, desc=gene_symbol)
                 if target_node is not None:
                     self.orangeboard.add_rel('directly_interacts_with', 'Pharos', node, target_node, extended_reltype="targets")
