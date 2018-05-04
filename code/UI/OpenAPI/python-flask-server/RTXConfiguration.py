@@ -15,11 +15,11 @@ class RTXConfiguration:
   #### Define attribute version
   @property
   def version(self) -> str:
-    return self.version
+    return self._version
 
   @version.setter
   def version(self, version: str):
-    self._session = version
+    self._version = version
 
 
 def main():
