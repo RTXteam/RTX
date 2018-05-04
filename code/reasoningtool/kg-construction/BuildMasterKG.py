@@ -70,76 +70,6 @@ def get_curie_ont_ids_for_mesh_term(mesh_term):
             ret_curie_ids.append(human_phenont_id)
     return ret_curie_ids
 
-
-def seed_nodes_q2(seed_parts=None):
-
-    drug_dis_df = pandas.read_csv('../../../data/q2/q2-drugandcondition-list.txt',
-                                  sep='\t')
-
-    all_drugs = set()
-
-    if seed_parts is None or 'conditions' in seed_parts:
-
-        print('=====================> seeding disease nodes for Q2')
-        mesh_terms_set = set()
-        mesh_term_to_curie_ids_dict = dict()
-        curie_ids_for_df = []
-        for index, row in drug_dis_df.iterrows():
-            drug_name = row["Drug"]
-            all_drugs.add(drug_name.lower())
-            mesh_term = row['Condition']
-            if mesh_term not in mesh_terms_set:
-                mesh_term_to_curie_ids_dict[mesh_term] = None
-                mesh_terms_set.add(mesh_term)
-                curie_ids = get_curie_ont_ids_for_mesh_term(mesh_term)
-                if len(curie_ids) > 0:
-                    assert type(curie_ids) == list
-                    for curie_id in curie_ids:
-                        if 'DOID:' in curie_id:
-                            disont_desc = QueryDisont.query_disont_to_label(curie_id)
-                            bne.add_node_smart('disease', curie_id, seed_node_bool=False, desc=disont_desc)
-                            mesh_term_to_curie_ids_dict[mesh_term] = curie_id
-                        else:
-                            if 'HP:' in curie_id:
-                                bne.add_node_smart("phenotypic_feature", curie_id, seed_node_bool=False, desc=mesh_term)
-                                mesh_term_to_curie_ids_dict[mesh_term] = curie_id
-                            else:
-                                assert False  # should never get here
-
-            curie_ids_for_df.append(mesh_term_to_curie_ids_dict[mesh_term])
-        drug_dis_df['CURIE_ID'] = pandas.Series(curie_ids_for_df, index=drug_dis_df.index)
-        drug_dis_df.to_csv('../../../data/q2/q2-drugandcondition-list-mapped-output.txt', sep='\t')
-
-    if seed_parts is None or 'drugs' in seed_parts:
-        print('=====================> seeding drug nodes for Q2')
-        for index, row in drug_dis_df.iterrows():
-            drug_name = row['Drug'].lower()
-            all_drugs.add(drug_name.lower())
-
-        fda_drug_df = pandas.read_csv('../../../data/q2/drugset2017_filt.txt',
-                                      sep='\t')
-
-        for index, row in fda_drug_df.iterrows():
-            drug_name = row['NAME'].lower()
-            all_drugs.add(drug_name)
-
-        for drug_name in all_drugs:
-            chembl_ids = QueryChEMBL.get_chembl_ids_for_drug(drug_name)
-            if chembl_ids is not None:
-                if len(chembl_ids) > 0:
-                    chembl_id = next(iter(chembl_ids))
-                else:
-                    # query PubChem
-                    chembl_ids = QueryPubChem.get_chembl_ids_for_drug(drug_name)
-                    if chembl_ids is not None:
-                        if len(chembl_ids) > 0:
-                            chembl_id = next(iter(chembl_ids))
-            else:
-                print("None returned from QueryChEMBL.get_chembl_ids_for_drug for drug name: " + drug_name)
-                assert False
-            bne.add_node_smart("chemical_substance", chembl_id, seed_node_bool=False, desc=drug_name)
-
-
 def add_pc2_to_kg():
     sif_data = pandas.read_csv('../../../data/pc2/PathwayCommons9.All.hgnc.sif',
                                sep='\t', names=['gene1', 'interaction_type', 'gene2'])
@@ -195,7 +125,6 @@ def seed_nodes_from_master_tsv_file():
 
 def make_master_kg():
     seed_nodes_from_master_tsv_file()
-    seed_nodes_q2()
     add_pc2_to_kg()
     bne.expand_all_nodes()
     bne.expand_all_nodes()
