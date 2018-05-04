@@ -111,23 +111,26 @@ class QueryMyGene:
         return entrez_ids
 
     def convert_entrez_gene_ID_to_mirbase_ID(self, entrez_gene_id):
-        assert type(entrez_gene_id)==int
+        assert type(entrez_gene_id) == int
         res = self.mygene_obj.query('entrezgene:' + str(entrez_gene_id), species='human', fields='miRBase', verbose=False)
         mirbase_id = set()
         if len(res) > 0:
             mirbase_id = set([hit['miRBase'] for hit in res['hits']])
         return mirbase_id
 
-
     def get_gene_ontology_ids_bp_for_uniprot_id(self, uniprot_id):
-        assert type(uniprot_id)==str
-        q_res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human', fields='go', verbose=False)
+        assert type(uniprot_id) == str
         res = dict()
+        try:
+            q_res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human', fields='go', verbose=False)
+        except requests.exceptions.HTTPError:
+            print("HTTP error in mygene_obj.query for GO fields for query string: " + uniprot_id, file=sys.stderr)
+            return res
         q_res_hits = q_res.get('hits', None)
         if q_res_hits is not None:
-            if type(q_res_hits)==list and len(q_res_hits) > 0:
+            if type(q_res_hits) == list and len(q_res_hits) > 0:
                 for q_res_hit in q_res_hits:
-                    if type(q_res_hit)==dict:
+                    if type(q_res_hit) == dict:
                         q_res_go = q_res_hit.get('go', None)
                         if q_res_go is not None:
                             q_res_bp = q_res_go.get('BP', None)
