@@ -136,7 +136,7 @@ paths:
       responses:
         200:
           description: "successful operation"
-      x-swagger-router-controller: "swagger_server.controllers.example_questions"
+      x-swagger-router-controller: "swagger_server.controllers.example_questions_controller"
   /response/{response_id}:
     get:
       tags:
@@ -159,7 +159,7 @@ paths:
             $ref: "#/definitions/Response"
         404:
           description: "Response_id not found"
-      x-swagger-router-controller: "swagger_server.controllers.get_response_controller"
+      x-swagger-router-controller: "swagger_server.controllers.response_controller"
   /response/{response_id}/result/{result_id}:
     get:
       tags:
@@ -187,7 +187,7 @@ paths:
             $ref: "#/definitions/Result"
         404:
           description: "result_id not found"
-      x-swagger-router-controller: "swagger_server.controllers.get_result_controller"
+      x-swagger-router-controller: "swagger_server.controllers.result_controller"
   /response/{response_id}/feedback:
     get:
       tags:
@@ -210,7 +210,7 @@ paths:
             $ref: "#/definitions/ResponseFeedback"
         404:
           description: "Response_id not found"
-      x-swagger-router-controller: "swagger_server.controllers.get_response_feedback_controller"
+      x-swagger-router-controller: "swagger_server.controllers.response_controller"
   /response/{response_id}/result/{result_id}/feedback:
     get:
       tags:
@@ -238,7 +238,7 @@ paths:
             $ref: "#/definitions/ResultFeedback"
         404:
           description: "result_id not found"
-      x-swagger-router-controller: "swagger_server.controllers.get_result_feedback_controller"
+      x-swagger-router-controller: "swagger_server.controllers.result_controller"
     post:
       tags:
       - "response"
@@ -273,7 +273,7 @@ paths:
             $ref: "#/definitions/Response"
         400:
           description: "Invalid status value"
-      x-swagger-router-controller: "swagger_server.controllers.post_result_feedback_controller"
+      x-swagger-router-controller: "swagger_server.controllers.result_controller"
 definitions:
   Question:
     type: "object"
