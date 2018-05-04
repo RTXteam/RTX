@@ -198,7 +198,8 @@ def seed_and_expand_nodes_from_master_tsv_file(num_expansions=3):
     q2_cop_data = pandas.read_csv('../../../data/seed_nodes.tsv',
                                   sep="\t",
                                   names=['type', 'rtx_name', 'term', 'purpose'],
-                                  header=0)
+                                  header=0,
+                                  dtype = str)
     first_row = True
     for index, row in q2_cop_data.iterrows():
         bne.add_node_smart(row['type'], row['rtx_name'], seed_node_bool=first_row, desc=row['term'])
