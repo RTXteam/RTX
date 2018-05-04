@@ -197,11 +197,11 @@ def add_pc2_to_kg():
 def seed_and_expand_nodes_from_master_tsv_file(num_expansions=3):
     q2_cop_data = pandas.read_csv('../../../data/seed_nodes.tsv',
                                   sep="\t",
-                                  names=['type', 'curie_id', 'term', 'purpose'],
+                                  names=['type', 'rtx_name', 'term', 'purpose'],
                                   header=0)
     first_row = True
     for index, row in q2_cop_data.iterrows():
-        bne.add_node_smart(row['type'], row['curie_id'], seed_node_bool=first_row, desc=row['term'])
+        bne.add_node_smart(row['type'], row['rtx_name'], seed_node_bool=first_row, desc=row['term'])
         if first_row is True:
             first_row = False
     for _ in range(0, num_expansions):
