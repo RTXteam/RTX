@@ -124,7 +124,7 @@ class QueryMyGene:
         try:
             q_res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human', fields='go', verbose=False)
         except requests.exceptions.HTTPError:
-            print("HTTP error in mygene_obj.query for GO fields for query string: " + uniprot_id, sys.stderr)
+            print("HTTP error in mygene_obj.query for GO fields for query string: " + uniprot_id, file=sys.stderr)
             return res
         q_res_hits = q_res.get('hits', None)
         if q_res_hits is not None:
