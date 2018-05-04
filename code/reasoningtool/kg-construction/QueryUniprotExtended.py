@@ -80,7 +80,11 @@ class QueryUniprotExtended:
         if entity_obj is not None:
             if 'gene' in entity_obj.keys():
                 if "name" in entity_obj["gene"].keys():
-                    for name_dict in entity_obj["gene"]["name"]:
+                    gene_name_obj = entity_obj["gene"]["name"]
+                    if not type(gene_name_obj) == list:
+                        gene_name_obj = [ gene_name_obj ]
+                    for name_dict in gene_name_obj:
+                        #                        print(name_dict)
                         if "primary" in name_dict.values() and "#text" in name_dict.keys():
                             ret_symbol = name_dict["#text"]
         return ret_symbol
@@ -103,10 +107,11 @@ class QueryUniprotExtended:
         return QueryUniprotExtended.__get_name("get_protein", protein_id)
 
 if __name__ == '__main__':
+    print(QueryUniprotExtended.get_protein_gene_symbol('UniProt:P20848'))
     print(QueryUniprotExtended.get_protein_gene_symbol("UniProt:P01358"))
+    print(QueryUniprotExtended.get_protein_gene_symbol("UniProt:Q96P88"))
     print(QueryUniprotExtended.get_protein_name('UniProt:P01358'))
     print(QueryUniprotExtended.get_protein_name('UniProt:P20848'))
-    print(QueryUniprotExtended.get_protein_gene_symbol('UniProt:P20848'))
     print(QueryUniprotExtended.get_protein_name('UniProt:Q9Y471'))
     print(QueryUniprotExtended.get_protein_name('UniProt:O60397'))
     print(QueryUniprotExtended.get_protein_name('UniProt:Q8IZJ3'))
