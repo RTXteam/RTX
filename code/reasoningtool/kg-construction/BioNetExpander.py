@@ -25,7 +25,6 @@ from operator import methodcaller
 import timeit
 import argparse
 import sys
-import traceback
 
 from Orangeboard import Orangeboard
 from QueryOMIM import QueryOMIM
@@ -40,7 +39,7 @@ from QueryMiRBase import QueryMiRBase
 from QueryPharos import QueryPharos
 from QuerySciGraph import QuerySciGraph
 from QueryChEMBL import QueryChEMBL
-
+from QueryUniprotExtended import QueryUniprotExtended
 
 class BioNetExpander:
 
@@ -106,6 +105,10 @@ class BioNetExpander:
             curie_id = name
             accession = name.split(":")[1]
             iri = iri_prefix + accession
+
+        if simple_node_type == "protein" and desc == "":
+            gene_symbol = QueryUniprotExtended.get_protein_gene_symbol(curie_id)
+            desc = gene_symbol
 
         node = self.orangeboard.add_node(simple_node_type,
                                          name,
