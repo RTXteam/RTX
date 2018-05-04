@@ -15,6 +15,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import desc
 
+# sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
+from RTXConfiguration import RTXConfiguration
+
 Base = declarative_base()
 
 #### Define the database tables as classes
@@ -173,8 +176,11 @@ class RTXFeedback:
     n_results = 0
     if response.result_list is not None:
       n_results = len(response.result_list)
+    rtxConfig = RTXConfiguration()
+    response.tool_version = rtxConfig.version
+
     storedResponse = Response(response_datetime=datetime.now(),restated_question=response.restated_question_text,query_type=query["known_query_type_id"],
-      terms=str(query["terms"]),tool_version=response.tool_version,result_code=response.result_code,message=response.message,n_results=n_results,response_object=pickle.dumps(ast.literal_eval(repr(response))))
+      terms=str(query["terms"]),tool_version=rtxConfig.version,result_code=response.result_code,message=response.message,n_results=n_results,response_object=pickle.dumps(ast.literal_eval(repr(response))))
     session.add(storedResponse)
     session.flush()
     #print("Returned response_id is "+str(storedResponse.response_id))
@@ -197,13 +203,17 @@ class RTXFeedback:
       for result in response.result_list:
         n_nodes = 0
         n_edges = 0
-        if result.result_graph.node_list is not None:
-          n_nodes = len(result.result_graph.node_list)
-        if result.result_graph.edge_list is not None:
-          n_edges = len(result.result_graph.edge_list)
+        result_hash = result.text
+        if result.confidence is None:
+          result.confidence = 0
+        if result.result_graph is not None:
+          result_hash = self.calcResultHash(result)
+          if result.result_graph.node_list is not None:
+            n_nodes = len(result.result_graph.node_list)
+          if result.result_graph.edge_list is not None:
+            n_edges = len(result.result_graph.edge_list)
 
         #### Calculate a hash from the list of nodes and edges in the result
-        result_hash = self.calcResultHash(result)
         storedResult = Result(response_id=response_id,confidence=result.confidence,n_nodes=n_nodes,n_edges=n_edges,result_text=result.text,result_object=pickle.dumps(ast.literal_eval(repr(result))),result_hash=result_hash)
         session.add(storedResult)
         session.flush()
@@ -239,7 +249,8 @@ class RTXFeedback:
   #### Get a previously stored response for this query from the database
   def getCachedResponse(self,query):
     session = self.session
-    tool_version = "RTX 0.4"
+    rtxConfig = RTXConfiguration()
+    tool_version = rtxConfig.version
     #### Look for previous responses we could use
     storedResponse = session.query(Response).filter(Response.query_type==query["known_query_type_id"]).filter(Response.tool_version==tool_version).filter(Response.terms==str(query["terms"])).order_by(desc(Response.response_datetime)).first()
     if ( storedResponse is not None ):
