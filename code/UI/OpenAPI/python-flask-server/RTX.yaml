@@ -34,6 +34,11 @@ tags:
   externalDocs:
     description: "Documentation for the RTX response function"
     url: "http://rtx.ncats.io/overview.html#response"
+- name: "exampleQuestions"
+  description: "Request a list of example questions that can be answered by the system"
+  externalDocs:
+    description: "Documentation for the RTX exampleQuestions function"
+    url: "http://rtx.ncats.io/overview.html#exampleQuestions"
 schemes:
 - "http"
 paths:
@@ -119,6 +124,19 @@ paths:
         400:
           description: "Invalid terms"
       x-swagger-router-controller: "swagger_server.controllers.get_pubmed_mesh_ngd_controller"
+  /exampleQuestions:
+    get:
+      tags:
+      - "exampleQuestions"
+      summary: "Request a list of example questions that RTX can answer"
+      description: ""
+      operationId: "example_questions"
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "successful operation"
+      x-swagger-router-controller: "swagger_server.controllers.example_questions"
   /response/{response_id}:
     get:
       tags:
@@ -289,6 +307,10 @@ definitions:
         type: "string"
         example: "Q1"
         description: "RTX identifier for the specific query type"
+      bypass_cache:
+        type: "string"
+        example: "true"
+        description: "Set to true in order to bypass any possible cached response and try to answer the query over again"
       terms:
         type: "object"
         description: "Dict of terms needed by the specific query type"
@@ -332,6 +354,14 @@ definitions:
         type: "string"
         example: "Which proteins are affected by sickle cell anemia?"
         description: "A precise restatement of the question, as understood by the Translator, for which the answer applies. The user should verify that the restated question matches the intent of their original question (it might not)."
+      known_query_type_id:
+        type: "string"
+        example: "Q2"
+        description: "The query type id if one is known for the query/response (as defined in https://docs.google.com/spreadsheets/d/18zW81wteUfOn3rFRVG0z8mW-ecNhdsfD_6s73ETJnUw/edit#gid=1742835901 )"
+      terms:
+        type: "object"
+        example: "{ 'disease': 'malaria' }"
+        description: "The is string of the query type id if one is known for the query/response"
       result_code:
         type: "string"
         example: "OK"
@@ -363,6 +393,10 @@ definitions:
         format: "float"
         example: 0.9234
         description: "Confidence metric for this result, a value 0.0 (no confidence) and 1.0 (highest confidence)"
+      result_type:
+        type: "string"
+        example: "answer"
+        description: "One of several possible result types: 'individual query answer', 'neighborhood graph', 'type summary graph'"
       result_graph:
         $ref: "#/definitions/Result_graph"
   Result_graph:
@@ -405,31 +439,7 @@ definitions:
         type: "string"
         example: "Haptoglobin captures, and combines with free plasma hemoglobin..."
         description: "One to three sentences of description/definition of this entity"
-      node_attributes:
-        type: "array"
-        description: "A list of arbitrary attributes for the node"
-        items:
-          $ref: "#/definitions/Node_attribute"
-  Node_attribute:
-    type: "object"
-    description: "A generic attribute for a node"
-    properties:
-      type:
-        type: "string"
-        example: "article"
-        description: "Entity type of this attribute"
-      name:
-        type: "string"
-        example: "Wikipedia article"
-        description: "Formal name of the attribute"
-      value:
-        type: "string"
-        example: "7.23e-12"
-        description: "Value of the attribute"
-      url:
-        type: "string"
-        example: "https://en.wikipedia.org/wiki/Malaria"
-        description: "A URL corresponding to this attribute"
+    additionalProperties: true
   Edge:
     type: "object"
     description: "An edge in the thought subgraph linking two nodes"
@@ -456,6 +466,7 @@ definitions:
         description: "A list of origins (sources) for this edge and attributes from those origins"
         items:
           $ref: "#/definitions/Origin"
+    additionalProperties: true
   Origin:
     type: "object"
     description: "An origin (source) for this edge"
@@ -472,31 +483,6 @@ definitions:
         type: "string"
         example: "Wikipedia article"
         description: "Formal name of the piece evidence that yielded the edge"
-      attribute_list:
-        type: "array"
-        description: "A list of attributes for this edge from this origin (source)"
-        items:
-          $ref: "#/definitions/Edge_attribute"
-  Edge_attribute:
-    type: "object"
-    description: "A generic attribute for an edge"
-    properties:
-      type:
-        type: "string"
-        example: "PubMed_article"
-        description: "Entity type of this attribute"
-      name:
-        type: "string"
-        example: "Orthopaedic Manifestations of Sickle Cell Disease"
-        description: "Formal name of the attribute"
-      value:
-        type: "string"
-        example: "0.5"
-        description: "Value of the attribute. While all attributes should have a name, many will not have a value"
-      url:
-        type: "string"
-        example: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-        description: "A URL corresponding to this attribute"
   MeshNgdResponse:
     type: "object"
     properties:
