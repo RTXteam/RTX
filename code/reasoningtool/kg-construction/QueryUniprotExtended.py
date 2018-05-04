@@ -74,6 +74,18 @@ class QueryUniprotExtended:
         return entity
 
     @staticmethod
+    def get_protein_gene_symbol(entity_id):
+        ret_symbol = ""
+        entity_obj = QueryUniprotExtended.__get_entity("get_protein", entity_id)
+        if entity_obj is not None:
+            if 'gene' in entity_obj.keys():
+                if "name" in entity_obj["gene"].keys():
+                    for name_dict in entity_obj["gene"]["name"]:
+                        if "primary" in name_dict.values() and "#text" in name_dict.keys():
+                            ret_symbol = name_dict["#text"]
+        return ret_symbol
+        
+    @staticmethod
     def __get_name(entity_type, entity_id):
         entity_obj = QueryUniprotExtended.__get_entity(entity_type, entity_id)
         name = "UNKNOWN"
@@ -91,8 +103,10 @@ class QueryUniprotExtended:
         return QueryUniprotExtended.__get_name("get_protein", protein_id)
 
 if __name__ == '__main__':
+    print(QueryUniprotExtended.get_protein_gene_symbol("UniProt:P01358"))
     print(QueryUniprotExtended.get_protein_name('UniProt:P01358'))
     print(QueryUniprotExtended.get_protein_name('UniProt:P20848'))
+    print(QueryUniprotExtended.get_protein_gene_symbol('UniProt:P20848'))
     print(QueryUniprotExtended.get_protein_name('UniProt:Q9Y471'))
     print(QueryUniprotExtended.get_protein_name('UniProt:O60397'))
     print(QueryUniprotExtended.get_protein_name('UniProt:Q8IZJ3'))
