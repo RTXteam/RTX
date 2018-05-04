@@ -40,11 +40,11 @@ class Result(Base):
   __tablename__ = 'result'
   result_id = Column(Integer, primary_key=True)
   response_id = Column(Integer, ForeignKey('response.response_id'))
+  result_type = Column(String(255), nullable=False)
   confidence = Column(Float, nullable=False)
   n_nodes = Column(Integer, nullable=False)
   n_edges = Column(Integer, nullable=False)
   result_text = Column(String(1024), nullable=False)
-  #result_object = Column(PickleType, nullable=False)
   result_object = Column(LargeBinary(length=16777200), nullable=False)
   result_hash = Column(String(255), nullable=False)
   response = relationship(Response)
@@ -204,6 +204,8 @@ class RTXFeedback:
         n_nodes = 0
         n_edges = 0
         result_hash = result.text
+        if result.result_type is None:
+          result.result_type = "individual query answer"
         if result.confidence is None:
           result.confidence = 0
         if result.result_graph is not None:
@@ -214,7 +216,7 @@ class RTXFeedback:
             n_edges = len(result.result_graph.edge_list)
 
         #### Calculate a hash from the list of nodes and edges in the result
-        storedResult = Result(response_id=response_id,confidence=result.confidence,n_nodes=n_nodes,n_edges=n_edges,result_text=result.text,result_object=pickle.dumps(ast.literal_eval(repr(result))),result_hash=result_hash)
+        storedResult = Result(response_id=response_id,result_type=result.result_type,confidence=result.confidence,n_nodes=n_nodes,n_edges=n_edges,result_text=result.text,result_object=pickle.dumps(ast.literal_eval(repr(result))),result_hash=result_hash)
         session.add(storedResult)
         session.flush()
         result.id = response.id+"/result/"+str(storedResult.result_id)
