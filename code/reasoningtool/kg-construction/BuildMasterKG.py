@@ -46,13 +46,13 @@ def convert_mesh_entrez_uid_to_curie_form(mesh_entrez_uid):
     assert mesh_entrez_uid > MESH_ENTREZ_UID_BASE
     return 'MESH:D' + format(mesh_entrez_uid - MESH_ENTREZ_UID_BASE, '06')
 
+
 human_phenont_name_id_dict = ParsePhenont.get_name_id_dict('../../../data/hpo/hp.obo')
 
 
 def get_curie_ont_ids_for_mesh_term(mesh_term):
     ret_curie_ids = []
     mesh_uids = QueryNCBIeUtils.get_mesh_uids_for_mesh_term(mesh_term)
-#    print(mesh_uids)
     if len(mesh_uids) > 0:
         for mesh_uid in mesh_uids:
             mesh_uid_int = int(mesh_uid)
@@ -71,7 +71,7 @@ def get_curie_ont_ids_for_mesh_term(mesh_term):
     return ret_curie_ids
 
 
-def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
+def seed_nodes_q2(seed_parts=None):
 
     drug_dis_df = pandas.read_csv('../../../data/q2/q2-drugandcondition-list.txt',
                                   sep='\t')
@@ -81,7 +81,6 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
     if seed_parts is None or 'conditions' in seed_parts:
 
         print('=====================> seeding disease nodes for Q2')
-        first_row = True
         mesh_terms_set = set()
         mesh_term_to_curie_ids_dict = dict()
         curie_ids_for_df = []
@@ -98,14 +97,12 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
                     for curie_id in curie_ids:
                         if 'DOID:' in curie_id:
                             disont_desc = QueryDisont.query_disont_to_label(curie_id)
-                            bne.add_node_smart('disease', curie_id, seed_node_bool=first_row, desc=disont_desc)
+                            bne.add_node_smart('disease', curie_id, seed_node_bool=False, desc=disont_desc)
                             mesh_term_to_curie_ids_dict[mesh_term] = curie_id
-                            first_row = False
                         else:
                             if 'HP:' in curie_id:
-                                bne.add_node_smart("phenotypic_feature", curie_id, seed_node_bool=first_row, desc=mesh_term)
+                                bne.add_node_smart("phenotypic_feature", curie_id, seed_node_bool=False, desc=mesh_term)
                                 mesh_term_to_curie_ids_dict[mesh_term] = curie_id
-                                first_row = False
                             else:
                                 assert False  # should never get here
 
@@ -113,14 +110,8 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
         drug_dis_df['CURIE_ID'] = pandas.Series(curie_ids_for_df, index=drug_dis_df.index)
         drug_dis_df.to_csv('../../../data/q2/q2-drugandcondition-list-mapped-output.txt', sep='\t')
 
-        # triple-expand the knowledge graph
-        for _ in range(0, num_expansions):
-            bne.expand_all_nodes()
-
     if seed_parts is None or 'drugs' in seed_parts:
         print('=====================> seeding drug nodes for Q2')
-        first_row = True
-
         for index, row in drug_dis_df.iterrows():
             drug_name = row['Drug'].lower()
             all_drugs.add(drug_name.lower())
@@ -146,12 +137,7 @@ def seed_and_expand_kg_q2(num_expansions=3, seed_parts=None):
             else:
                 print("None returned from QueryChEMBL.get_chembl_ids_for_drug for drug name: " + drug_name)
                 assert False
-            bne.add_node_smart("chemical_substance", chembl_id, seed_node_bool=first_row, desc=drug_name)
-            first_row = False
-
-        # triple-expand the knowledge graph
-        for _ in range(0, num_expansions):
-            bne.expand_all_nodes()
+            bne.add_node_smart("chemical_substance", chembl_id, seed_node_bool=False, desc=drug_name)
 
 
 def add_pc2_to_kg():
@@ -161,7 +147,7 @@ def add_pc2_to_kg():
                              'controls-expression-of',
                              'controls-state-change-of',
                              'controls-phosphorylation-of'])
-    sif_data = sif_data[sif_data.interaction_type.isin(interaction_types)]    
+    sif_data = sif_data[sif_data.interaction_type.isin(interaction_types)]
     genes = set(sif_data['gene1'].tolist() + sif_data['gene2'].tolist())
     genes_uniprot_dict = dict()
     print('converting gene names')
@@ -194,45 +180,30 @@ def add_pc2_to_kg():
                             assert False
 
 
-def seed_and_expand_nodes_from_master_tsv_file(num_expansions=3):
-    q2_cop_data = pandas.read_csv('../../../data/seed_nodes.tsv',
-                                  sep="\t",
-                                  names=['type', 'rtx_name', 'term', 'purpose'],
-                                  header=0,
-                                  dtype={'rtx_name': str})
+def seed_nodes_from_master_tsv_file():
+    seed_node_data = pandas.read_csv('../../../data/seed_nodes.tsv',
+                                     sep="\t",
+                                     names=['type', 'rtx_name', 'term', 'purpose'],
+                                     header=0,
+                                     dtype={'rtx_name': str})
     first_row = True
-    for index, row in q2_cop_data.iterrows():
+    for index, row in seed_node_data.iterrows():
         bne.add_node_smart(row['type'], row['rtx_name'], seed_node_bool=first_row, desc=row['term'])
         if first_row is True:
             first_row = False
-    for _ in range(0, num_expansions):
-        bne.expand_all_nodes()
 
 
 def make_master_kg():
-    seed_and_expand_nodes_from_master_tsv_file(num_expansions=3)
-    seed_and_expand_kg_q2(num_expansions=3)
+    seed_nodes_from_master_tsv_file()
+    seed_nodes_q2()
     add_pc2_to_kg()
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
     ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
     print("count(Node) = {}".format(ob.count_nodes()))
     print("count(Rel) = {}".format(ob.count_rels()))
-
-
-def test_seed_q2_drugs():
-    seed_and_expand_kg_q2(num_expansions=1, seed_parts=['drugs'])
-    ob.neo4j_set_url('bolt://0.0.0.0:7687')
-    ob.neo4j_push()
-    print("count(Node) = {}".format(ob.count_nodes()))
-    print("count(Rel) = {}".format(ob.count_rels()))
-
-
-def test_fa():
-    print(get_curie_ont_ids_for_mesh_term("Fanconi Anemia"))
-
-
-def make_file_q2_mapping():
-    seed_and_expand_kg_q2(num_expansions=0)
 
 
 if __name__ == '__main__':
