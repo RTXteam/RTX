@@ -107,7 +107,6 @@ class BioNetExpander:
             iri = iri_prefix + accession
 
         if simple_node_type == "protein" and desc == "":
-            print("looking for gene symbol for protein ID: " + curie_id)
             gene_symbol = QueryUniprotExtended.get_protein_gene_symbol(curie_id)
             desc = gene_symbol
 
