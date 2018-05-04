@@ -45,7 +45,7 @@ def display_n_questions(n, use_json=False):
 		if not use_json:
 			print(question.restate_question(parameters))
 		else:
-			response.add_text(question.restate_question(parameters))
+			response.add_text(question.restate_question(parameters), confidence=1)
 	return response
 
 def shell_out_n_questions(n, execute=False, use_json=False):

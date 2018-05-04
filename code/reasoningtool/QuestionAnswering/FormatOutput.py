@@ -60,11 +60,12 @@ class FormatResponse:
 		response.result_code = code
 		response.message = message
 
-	def add_text(self, plain_text):
+	def add_text(self, plain_text, confidence=1):
 		result1 = Result()
 		#result1.id = "http://rtx.ncats.io/api/v1/response/1234/result/2345"
 		result1.id = "-1"
 		result1.text = plain_text
+		result1.confidence = confidence
 		self._result_list.append(result1)
 		self.response.result_list = self._result_list
 		# Increment the number of results
