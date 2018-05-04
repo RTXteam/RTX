@@ -15,6 +15,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import desc
 
+from RTXVersion import RTXVersion
+
 Base = declarative_base()
 
 #### Define the database tables as classes
@@ -173,11 +175,11 @@ class RTXFeedback:
     n_results = 0
     if response.result_list is not None:
       n_results = len(response.result_list)
-    if response.tool_version is None:
-      response.tool_version = "RTX 0.4"
+    rtxConfig = RTXConfiguration()
+    response.tool_version = rtxConfig.version
 
     storedResponse = Response(response_datetime=datetime.now(),restated_question=response.restated_question_text,query_type=query["known_query_type_id"],
-      terms=str(query["terms"]),tool_version=response.tool_version,result_code=response.result_code,message=response.message,n_results=n_results,response_object=pickle.dumps(ast.literal_eval(repr(response))))
+      terms=str(query["terms"]),rtxConfig.version,result_code=response.result_code,message=response.message,n_results=n_results,response_object=pickle.dumps(ast.literal_eval(repr(response))))
     session.add(storedResponse)
     session.flush()
     #print("Returned response_id is "+str(storedResponse.response_id))
@@ -242,7 +244,8 @@ class RTXFeedback:
   #### Get a previously stored response for this query from the database
   def getCachedResponse(self,query):
     session = self.session
-    tool_version = "RTX 0.4"
+    rtxConfig = RTXConfiguration()
+    tool_version = rtxConfig.version
     #### Look for previous responses we could use
     storedResponse = session.query(Response).filter(Response.query_type==query["known_query_type_id"]).filter(Response.tool_version==tool_version).filter(Response.terms==str(query["terms"])).order_by(desc(Response.response_datetime)).first()
     if ( storedResponse is not None ):
