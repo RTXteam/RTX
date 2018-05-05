@@ -249,6 +249,8 @@ class RTXFeedback:
 
   #### Get a previously stored response for this query from the database
   def getCachedResponse(self,query):
+    if "bypass_cache" in query and query["bypass_cache"] == "true":
+      return
     session = self.session
     rtxConfig = RTXConfiguration()
     tool_version = rtxConfig.version
