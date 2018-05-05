@@ -32,9 +32,9 @@ function sendQuestion(e) {
     cyobj = [];
     cytodata = [];
 
-    var bypass_cache = true;
+    var bypass_cache = "true";
     if (document.getElementById("useCache").checked) {
-	bypass_cache = false;
+	bypass_cache = "false";
     }
 
     // collect the form data while iterating over the inputs
@@ -59,6 +59,7 @@ function sendQuestion(e) {
 
 	    if ( jsonObj.known_query_type_id && jsonObj.terms ) {
 		document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR>Looking for answer...";
+		jsonObj.bypass_cache = bypass_cache;
 		sesame('openmax',statusdiv);
 		var xhr2 = new XMLHttpRequest();
 		xhr2.open("post", "api/rtx/v1/query", true);
