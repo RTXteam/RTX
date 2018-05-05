@@ -187,7 +187,7 @@ paths:
             $ref: "#/definitions/Result"
         404:
           description: "result_id not found"
-      x-swagger-router-controller: "swagger_server.controllers.result_controller"
+      x-swagger-router-controller: "swagger_server.controllers.response_controller"
   /response/{response_id}/feedback:
     get:
       tags:
