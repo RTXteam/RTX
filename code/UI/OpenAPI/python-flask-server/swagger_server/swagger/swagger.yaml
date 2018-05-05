@@ -2,7 +2,7 @@
 swagger: "2.0"
 info:
   description: "OpenAPI for RTX"
-  version: "1.1.0"
+  version: "1.2.0"
   title: "RTX"
   contact:
     email: "edeutsch@systemsbiology.org"
@@ -28,6 +28,16 @@ tags:
   externalDocs:
     description: "Documentation for the RTX query function"
     url: "http://rtx.ncats.io/devED/overview.html#getPubmedMeshNgd"
+- name: "response"
+  description: "Request stored responses and results from RTX"
+  externalDocs:
+    description: "Documentation for the RTX response function"
+    url: "http://rtx.ncats.io/devED/overview.html#response"
+- name: "exampleQuestions"
+  description: "Request a list of example questions that can be answered by the system"
+  externalDocs:
+    description: "Documentation for the RTX exampleQuestions function"
+    url: "http://rtx.ncats.io/devED/overview.html#exampleQuestions"
 schemes:
 - "http"
 paths:
@@ -114,6 +124,157 @@ paths:
         400:
           description: "Invalid terms"
       x-swagger-router-controller: "swagger_server.controllers.get_pubmed_mesh_ngd_controller"
+  /exampleQuestions:
+    get:
+      tags:
+      - "exampleQuestions"
+      summary: "Request a list of example questions that RTX can answer"
+      description: ""
+      operationId: "example_questions"
+      produces:
+      - "application/json"
+      parameters: []
+      responses:
+        200:
+          description: "successful operation"
+      x-swagger-router-controller: "swagger_server.controllers.example_questions_controller"
+  /response/{response_id}:
+    get:
+      tags:
+      - "response"
+      summary: "Request stored responses and results from RTX"
+      description: ""
+      operationId: "get_response"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "response_id"
+        in: "path"
+        description: "Integer identifier of the response to return"
+        required: true
+        type: "integer"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/Response"
+        404:
+          description: "Response_id not found"
+      x-swagger-router-controller: "swagger_server.controllers.response_controller"
+  /response/{response_id}/result/{result_id}:
+    get:
+      tags:
+      - "response"
+      summary: "Request stored responses and results from RTX"
+      description: ""
+      operationId: "get_result"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "response_id"
+        in: "path"
+        description: "Integer identifier of the response to return"
+        required: true
+        type: "integer"
+      - name: "result_id"
+        in: "path"
+        description: "Integer identifier of the result to return"
+        required: true
+        type: "integer"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/Result"
+        404:
+          description: "result_id not found"
+      x-swagger-router-controller: "swagger_server.controllers.response_controller"
+  /response/{response_id}/feedback:
+    get:
+      tags:
+      - "response"
+      summary: "Request stored feedback for this response from RTX"
+      description: ""
+      operationId: "get_response_feedback"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "response_id"
+        in: "path"
+        description: "Integer identifier of the response to return"
+        required: true
+        type: "integer"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/ResponseFeedback"
+        404:
+          description: "Response_id not found"
+      x-swagger-router-controller: "swagger_server.controllers.response_controller"
+  /response/{response_id}/result/{result_id}/feedback:
+    get:
+      tags:
+      - "response"
+      summary: "Request stored feedback for this result from RTX"
+      description: ""
+      operationId: "get_result_feedback"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "response_id"
+        in: "path"
+        description: "Integer identifier of the response to return"
+        required: true
+        type: "integer"
+      - name: "result_id"
+        in: "path"
+        description: "Integer identifier of the result to return"
+        required: true
+        type: "integer"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/ResultFeedback"
+        404:
+          description: "result_id not found"
+      x-swagger-router-controller: "swagger_server.controllers.response_controller"
+    post:
+      tags:
+      - "response"
+      summary: "Store feedback for a particular result"
+      description: ""
+      operationId: "post_result_feedback"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "response_id"
+        in: "path"
+        description: "Integer identifier of the response to return"
+        required: true
+        type: "integer"
+      - name: "result_id"
+        in: "path"
+        description: "Integer identifier of the result to return"
+        required: true
+        type: "integer"
+      - in: "body"
+        name: "body"
+        description: "Feedback information to be submitted"
+        required: true
+        schema:
+          $ref: "#/definitions/Query"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/Response"
+        400:
+          description: "Invalid status value"
+      x-swagger-router-controller: "swagger_server.controllers.response_controller"
 definitions:
   Question:
     type: "object"
@@ -150,10 +311,16 @@ definitions:
         type: "string"
         example: "Q1"
         description: "RTX identifier for the specific query type"
+      bypass_cache:
+        type: "string"
+        example: "true"
+        description: "Set to true in order to bypass any possible cached response\
+          \ and try to answer the query over again"
       terms:
         $ref: "#/definitions/Query_terms"
     example:
       original_question: "what genetic conditions offer protection against malaria"
+      bypass_cache: "true"
       terms:
         disease: "malaria"
       restated_question: "Which genetic conditions may offer protection against malaria?"
@@ -198,6 +365,17 @@ definitions:
           \ Translator, for which the answer applies. The user should verify that\
           \ the restated question matches the intent of their original question (it\
           \ might not)."
+      known_query_type_id:
+        type: "string"
+        example: "Q2"
+        description: "The query type id if one is known for the query/response (as\
+          \ defined in https://docs.google.com/spreadsheets/d/18zW81wteUfOn3rFRVG0z8mW-ecNhdsfD_6s73ETJnUw/edit#gid=1742835901\
+          \ )"
+      terms:
+        type: "object"
+        example: "{ 'disease': 'malaria' }"
+        description: "The is string of the query type id if one is known for the query/response"
+        properties: {}
       result_code:
         type: "string"
         example: "OK"
@@ -213,12 +391,18 @@ definitions:
         items:
           $ref: "#/definitions/Result"
     example:
+      type: "medical_translator_query_result"
+      original_question_text: "what proteins are affected by sickle cell anemia"
+      message: "1 answer found"
       schema_version: "0.5"
       datetime: "2018-01-09 12:34:45"
       tool_version: "RTX 0.4.0"
+      terms: "{ 'disease': 'malaria' }"
       context: "http://translator.ncats.io"
+      known_query_type_id: "Q2"
       result_list:
-      - result_graph:
+      - result_type: "answer"
+        result_graph:
           node_list:
           - symbol: "HP"
             node_attributes:
@@ -314,7 +498,8 @@ definitions:
         text: "The genetic condition sickle cell anemia may provide protection from\
           \ cerebral malaria via genetic alterations of proteins HBB (P68871) and\
           \ HMOX1 (P09601)."
-      - result_graph:
+      - result_type: "answer"
+        result_graph:
           node_list:
           - symbol: "HP"
             node_attributes:
@@ -412,9 +597,6 @@ definitions:
           \ HMOX1 (P09601)."
       result_code: "OK"
       id: "http://rtx.ncats.io/devED/api/v1/response/1234"
-      type: "medical_translator_query_result"
-      original_question_text: "what proteins are affected by sickle cell anemia"
-      message: "1 answer found"
       restated_question_text: "Which proteins are affected by sickle cell anemia?"
   Result:
     type: "object"
@@ -436,10 +618,16 @@ definitions:
         example: 0.9234
         description: "Confidence metric for this result, a value 0.0 (no confidence)\
           \ and 1.0 (highest confidence)"
+      result_type:
+        type: "string"
+        example: "answer"
+        description: "One of several possible result types: 'individual query answer',\
+          \ 'neighborhood graph', 'type summary graph'"
       result_graph:
         $ref: "#/definitions/Result_graph"
     description: "One of potentially several results or answers for a query"
     example:
+      result_type: "answer"
       result_graph:
         node_list:
         - symbol: "HP"
@@ -855,6 +1043,56 @@ definitions:
       result_code: "TermNotFound"
       message: "Term 1 'malria' not found in MeSH"
       value: 0.714
+  ResultFeedback:
+    type: "object"
+    properties:
+      id:
+        type: "string"
+        example: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345/feedback/4567"
+        description: "URI for this feedback item"
+      result_id:
+        type: "string"
+        example: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345"
+        description: "URI for the result that this feedback corresponds to"
+      expertise_level_id:
+        type: "integer"
+        example: 1
+        description: "Identifier of the claimed expertise level"
+      rating_id:
+        type: "integer"
+        example: 1
+        description: "Identifier of the applied rating"
+      comment:
+        type: "string"
+        example: "This is a great result because..."
+        description: "A free text comment about this result"
+    description: "Feedback for one result"
+    example:
+      rating_id: 1
+      result_id: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345"
+      expertise_level_id: 1
+      comment: "This is a great result because..."
+      id: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345/feedback/4567"
+  ResponseFeedback:
+    type: "object"
+    properties:
+      result_feedback_list:
+        type: "array"
+        items:
+          $ref: "#/definitions/ResultFeedback"
+    description: "Feedback for all the results corresponding to this result"
+    example:
+      result_feedback_list:
+      - rating_id: 1
+        result_id: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345"
+        expertise_level_id: 1
+        comment: "This is a great result because..."
+        id: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345/feedback/4567"
+      - rating_id: 1
+        result_id: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345"
+        expertise_level_id: 1
+        comment: "This is a great result because..."
+        id: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345/feedback/4567"
   Query_terms:
     properties:
       disease:
