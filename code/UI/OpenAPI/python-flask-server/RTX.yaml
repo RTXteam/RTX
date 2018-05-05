@@ -238,7 +238,7 @@ paths:
             $ref: "#/definitions/ResultFeedback"
         404:
           description: "result_id not found"
-      x-swagger-router-controller: "swagger_server.controllers.result_controller"
+      x-swagger-router-controller: "swagger_server.controllers.response_controller"
     post:
       tags:
       - "response"
@@ -273,7 +273,7 @@ paths:
             $ref: "#/definitions/Response"
         400:
           description: "Invalid status value"
-      x-swagger-router-controller: "swagger_server.controllers.result_controller"
+      x-swagger-router-controller: "swagger_server.controllers.response_controller"
 definitions:
   Question:
     type: "object"
