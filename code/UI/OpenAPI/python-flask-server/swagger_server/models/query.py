@@ -16,7 +16,7 @@ class Query(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, original_question: str=None, restated_question: str=None, message: str=None, known_query_type_id: str=None, terms: QueryTerms=None):  # noqa: E501
+    def __init__(self, original_question: str=None, restated_question: str=None, message: str=None, known_query_type_id: str=None, bypass_cache: str=None, terms: QueryTerms=None):  # noqa: E501
         """Query - a model defined in Swagger
 
         :param original_question: The original_question of this Query.  # noqa: E501
@@ -27,6 +27,8 @@ class Query(Model):
         :type message: str
         :param known_query_type_id: The known_query_type_id of this Query.  # noqa: E501
         :type known_query_type_id: str
+        :param bypass_cache: The bypass_cache of this Query.  # noqa: E501
+        :type bypass_cache: str
         :param terms: The terms of this Query.  # noqa: E501
         :type terms: QueryTerms
         """
@@ -35,6 +37,7 @@ class Query(Model):
             'restated_question': str,
             'message': str,
             'known_query_type_id': str,
+            'bypass_cache': str,
             'terms': QueryTerms
         }
 
@@ -43,6 +46,7 @@ class Query(Model):
             'restated_question': 'restated_question',
             'message': 'message',
             'known_query_type_id': 'known_query_type_id',
+            'bypass_cache': 'bypass_cache',
             'terms': 'terms'
         }
 
@@ -50,6 +54,7 @@ class Query(Model):
         self._restated_question = restated_question
         self._message = message
         self._known_query_type_id = known_query_type_id
+        self._bypass_cache = bypass_cache
         self._terms = terms
 
     @classmethod
@@ -154,6 +159,29 @@ class Query(Model):
         """
 
         self._known_query_type_id = known_query_type_id
+
+    @property
+    def bypass_cache(self) -> str:
+        """Gets the bypass_cache of this Query.
+
+        Set to true in order to bypass any possible cached response and try to answer the query over again  # noqa: E501
+
+        :return: The bypass_cache of this Query.
+        :rtype: str
+        """
+        return self._bypass_cache
+
+    @bypass_cache.setter
+    def bypass_cache(self, bypass_cache: str):
+        """Sets the bypass_cache of this Query.
+
+        Set to true in order to bypass any possible cached response and try to answer the query over again  # noqa: E501
+
+        :param bypass_cache: The bypass_cache of this Query.
+        :type bypass_cache: str
+        """
+
+        self._bypass_cache = bypass_cache
 
     @property
     def terms(self) -> QueryTerms:
