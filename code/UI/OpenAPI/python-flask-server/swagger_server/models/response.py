@@ -16,7 +16,7 @@ class Response(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, context: str=None, type: str=None, id: str=None, tool_version: str=None, schema_version: str=None, datetime: str=None, original_question_text: str=None, restated_question_text: str=None, result_code: str=None, message: str=None, result_list: List[Result]=None):  # noqa: E501
+    def __init__(self, context: str=None, type: str=None, id: str=None, tool_version: str=None, schema_version: str=None, datetime: str=None, original_question_text: str=None, restated_question_text: str=None, known_query_type_id: str=None, terms: object=None, result_code: str=None, message: str=None, result_list: List[Result]=None):  # noqa: E501
         """Response - a model defined in Swagger
 
         :param context: The context of this Response.  # noqa: E501
@@ -35,6 +35,10 @@ class Response(Model):
         :type original_question_text: str
         :param restated_question_text: The restated_question_text of this Response.  # noqa: E501
         :type restated_question_text: str
+        :param known_query_type_id: The known_query_type_id of this Response.  # noqa: E501
+        :type known_query_type_id: str
+        :param terms: The terms of this Response.  # noqa: E501
+        :type terms: object
         :param result_code: The result_code of this Response.  # noqa: E501
         :type result_code: str
         :param message: The message of this Response.  # noqa: E501
@@ -51,6 +55,8 @@ class Response(Model):
             'datetime': str,
             'original_question_text': str,
             'restated_question_text': str,
+            'known_query_type_id': str,
+            'terms': object,
             'result_code': str,
             'message': str,
             'result_list': List[Result]
@@ -65,6 +71,8 @@ class Response(Model):
             'datetime': 'datetime',
             'original_question_text': 'original_question_text',
             'restated_question_text': 'restated_question_text',
+            'known_query_type_id': 'known_query_type_id',
+            'terms': 'terms',
             'result_code': 'result_code',
             'message': 'message',
             'result_list': 'result_list'
@@ -78,6 +86,8 @@ class Response(Model):
         self._datetime = datetime
         self._original_question_text = original_question_text
         self._restated_question_text = restated_question_text
+        self._known_query_type_id = known_query_type_id
+        self._terms = terms
         self._result_code = result_code
         self._message = message
         self._result_list = result_list
@@ -276,6 +286,52 @@ class Response(Model):
         """
 
         self._restated_question_text = restated_question_text
+
+    @property
+    def known_query_type_id(self) -> str:
+        """Gets the known_query_type_id of this Response.
+
+        The query type id if one is known for the query/response (as defined in https://docs.google.com/spreadsheets/d/18zW81wteUfOn3rFRVG0z8mW-ecNhdsfD_6s73ETJnUw/edit#gid=1742835901 )  # noqa: E501
+
+        :return: The known_query_type_id of this Response.
+        :rtype: str
+        """
+        return self._known_query_type_id
+
+    @known_query_type_id.setter
+    def known_query_type_id(self, known_query_type_id: str):
+        """Sets the known_query_type_id of this Response.
+
+        The query type id if one is known for the query/response (as defined in https://docs.google.com/spreadsheets/d/18zW81wteUfOn3rFRVG0z8mW-ecNhdsfD_6s73ETJnUw/edit#gid=1742835901 )  # noqa: E501
+
+        :param known_query_type_id: The known_query_type_id of this Response.
+        :type known_query_type_id: str
+        """
+
+        self._known_query_type_id = known_query_type_id
+
+    @property
+    def terms(self) -> object:
+        """Gets the terms of this Response.
+
+        The is string of the query type id if one is known for the query/response  # noqa: E501
+
+        :return: The terms of this Response.
+        :rtype: object
+        """
+        return self._terms
+
+    @terms.setter
+    def terms(self, terms: object):
+        """Sets the terms of this Response.
+
+        The is string of the query type id if one is known for the query/response  # noqa: E501
+
+        :param terms: The terms of this Response.
+        :type terms: object
+        """
+
+        self._terms = terms
 
     @property
     def result_code(self) -> str:
