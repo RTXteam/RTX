@@ -32,9 +32,16 @@ function sendQuestion(e) {
     cyobj = [];
     cytodata = [];
 
+    var bypass_cache = true;
+    if (document.getElementById("useCache").checked) {
+	bypass_cache = false;
+    }
+
     // collect the form data while iterating over the inputs
-    var data = { 'text': document.getElementById("questionForm").elements["questionText"].value, 'language': 'English' };
+    var data = { 'text': document.getElementById("questionForm").elements["questionText"].value, 'language': 'English', 'bypass_cache' : bypass_cache };
     document.getElementById("statusdiv").innerHTML = "Interpreting your question...";
+    document.getElementById("statusdiv").innerHTML+= " (bypassing cache : " + bypass_cache + ")";
+
     sesame('openmax',statusdiv);
 
     // construct an HTTP request
