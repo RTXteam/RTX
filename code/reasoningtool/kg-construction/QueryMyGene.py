@@ -115,7 +115,14 @@ class QueryMyGene:
         res = self.mygene_obj.query('entrezgene:' + str(entrez_gene_id), species='human', fields='miRBase', verbose=False)
         mirbase_id = set()
         if len(res) > 0:
-            mirbase_id = set([hit['miRBase'] for hit in res['hits']])
+            res_hits = res.get("hits", None)
+            if res_hits is not None and type(res_hits) == list:
+                for hit in res_hits:
+                    res_mirbase_id = hit.get("miRBase", None)
+                    if res_mirbase_id is not None:
+                        mirbase_id.add(res_mirbase_id)
+                    else:
+                        print("QueryMyGene.convert_entrez_gene_ID_to_mirbase_ID result missing miRBase field where it was expected; Entrez Gene ID: " + entrez_gene_id, file=sys.stderr)
         return mirbase_id
 
     def get_gene_ontology_ids_bp_for_uniprot_id(self, uniprot_id):
@@ -135,8 +142,8 @@ class QueryMyGene:
                         if q_res_go is not None:
                             q_res_bp = q_res_go.get('BP', None)
                             if q_res_bp is not None:
-                                if type(q_res_bp)==list and len(q_res_bp) > 0:
-                                    res_add = {item["id"]:item["term"] for item in q_res_bp}
+                                if type(q_res_bp) == list and len(q_res_bp) > 0:
+                                    res_add = {item["id"]: item["term"] for item in q_res_bp}
                                     res.update(res_add)
         return res
 
@@ -185,13 +192,13 @@ class QueryMyGene:
 
 if __name__ == '__main__':
     mg = QueryMyGene()
+    print(mg.convert_entrez_gene_ID_to_mirbase_ID(407053))
     print(mg.get_gene_ontology_ids_bp_for_entrez_gene_id(406991))
     print(mg.get_gene_ontology_ids_bp_for_uniprot_id('Q05925'))
     print(mg.convert_uniprot_id_to_gene_symbol('Q05925'))
     print(mg.convert_gene_symbol_to_uniprot_id('A2M'))
     print(mg.convert_gene_symbol_to_uniprot_id('A1BG'))
     print(mg.convert_gene_symbol_to_entrez_gene_ID('MIR96'))
-    print(mg.convert_entrez_gene_ID_to_mirbase_ID(407053))
     print(mg.convert_gene_symbol_to_uniprot_id("HMOX1"))
     print(mg.convert_gene_symbol_to_uniprot_id('RAD54B'))
     print(mg.convert_gene_symbol_to_uniprot_id('NS2'))
