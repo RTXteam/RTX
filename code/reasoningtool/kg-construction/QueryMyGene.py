@@ -122,7 +122,8 @@ class QueryMyGene:
                     if res_mirbase_id is not None:
                         mirbase_id.add(res_mirbase_id)
                     else:
-                        print("QueryMyGene.convert_entrez_gene_ID_to_mirbase_ID result missing miRBase field where it was expected; Entrez Gene ID: " + entrez_gene_id, file=sys.stderr)
+                        print("QueryMyGene.convert_entrez_gene_ID_to_mirbase_ID result missing miRBase field where it was expected; Entrez Gene ID: " +
+                              entrez_gene_id, file=sys.stderr)
         return mirbase_id
 
     def get_gene_ontology_ids_bp_for_uniprot_id(self, uniprot_id):
