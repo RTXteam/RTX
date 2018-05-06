@@ -136,7 +136,7 @@ paths:
       responses:
         200:
           description: "successful operation"
-      x-swagger-router-controller: "swagger_server.controllers.example_questions"
+      x-swagger-router-controller: "swagger_server.controllers.example_questions_controller"
   /response/{response_id}:
     get:
       tags:
@@ -159,7 +159,7 @@ paths:
             $ref: "#/definitions/Response"
         404:
           description: "Response_id not found"
-      x-swagger-router-controller: "swagger_server.controllers.get_response_controller"
+      x-swagger-router-controller: "swagger_server.controllers.response_controller"
   /response/{response_id}/result/{result_id}:
     get:
       tags:
@@ -187,7 +187,7 @@ paths:
             $ref: "#/definitions/Result"
         404:
           description: "result_id not found"
-      x-swagger-router-controller: "swagger_server.controllers.get_result_controller"
+      x-swagger-router-controller: "swagger_server.controllers.response_controller"
   /response/{response_id}/feedback:
     get:
       tags:
@@ -210,7 +210,7 @@ paths:
             $ref: "#/definitions/ResponseFeedback"
         404:
           description: "Response_id not found"
-      x-swagger-router-controller: "swagger_server.controllers.get_response_feedback_controller"
+      x-swagger-router-controller: "swagger_server.controllers.response_controller"
   /response/{response_id}/result/{result_id}/feedback:
     get:
       tags:
@@ -238,7 +238,7 @@ paths:
             $ref: "#/definitions/ResultFeedback"
         404:
           description: "result_id not found"
-      x-swagger-router-controller: "swagger_server.controllers.get_result_feedback_controller"
+      x-swagger-router-controller: "swagger_server.controllers.response_controller"
     post:
       tags:
       - "response"
@@ -273,7 +273,7 @@ paths:
             $ref: "#/definitions/Response"
         400:
           description: "Invalid status value"
-      x-swagger-router-controller: "swagger_server.controllers.post_result_feedback_controller"
+      x-swagger-router-controller: "swagger_server.controllers.response_controller"
 definitions:
   Question:
     type: "object"
@@ -439,7 +439,32 @@ definitions:
         type: "string"
         example: "Haptoglobin captures, and combines with free plasma hemoglobin..."
         description: "One to three sentences of description/definition of this entity"
+      node_attributes:
+        type: "array"
+        description: "A list of arbitrary attributes for the node"
+        items:
+          $ref: "#/definitions/Node_attribute"
     additionalProperties: true
+  Node_attribute:
+    type: "object"
+    description: "A generic attribute for a node"
+    properties:
+      type:
+        type: "string"
+        example: "article"
+        description: "Entity type of this attribute"
+      name:
+        type: "string"
+        example: "Wikipedia article"
+        description: "Formal name of the attribute"
+      value:
+        type: "string"
+        example: "7.23e-12"
+        description: "Value of the attribute"
+      url:
+        type: "string"
+        example: "https://en.wikipedia.org/wiki/Malaria"
+        description: "A URL corresponding to this attribute"
   Edge:
     type: "object"
     description: "An edge in the thought subgraph linking two nodes"
@@ -483,6 +508,31 @@ definitions:
         type: "string"
         example: "Wikipedia article"
         description: "Formal name of the piece evidence that yielded the edge"
+      attribute_list:
+        type: "array"
+        description: "A list of attributes for this edge from this origin (source)"
+        items:
+          $ref: "#/definitions/Edge_attribute"
+  Edge_attribute:
+    type: "object"
+    description: "A generic attribute for an edge"
+    properties:
+      type:
+        type: "string"
+        example: "PubMed_article"
+        description: "Entity type of this attribute"
+      name:
+        type: "string"
+        example: "Orthopaedic Manifestations of Sickle Cell Disease"
+        description: "Formal name of the attribute"
+      value:
+        type: "string"
+        example: "0.5"
+        description: "Value of the attribute. While all attributes should have a name, many will not have a value"
+      url:
+        type: "string"
+        example: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+        description: "A URL corresponding to this attribute"
   MeshNgdResponse:
     type: "object"
     properties:

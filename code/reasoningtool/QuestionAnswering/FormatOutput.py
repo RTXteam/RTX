@@ -31,15 +31,15 @@ class FormatResponse:
 		self._num_results = 0
 		# Create the response object and fill it with attributes about the response
 		self.response = Response()
-		self.response.context = "http://translator.ncats.io"
+		#self.response.context = "http://translator.ncats.io"
 		#self.response.id = "http://rtx.ncats.io/api/v1/response/1234"
-		self.response.id = "-1"
+		#self.response.id = "-1"
 		self.response.type = "medical_translator_query_result"
 		self.response.tool_version = "RTX 0.4"
 		self.response.schema_version = "0.5"
-		self.response.datetime = self._now.strftime("%Y-%m-%d %H:%M:%S")
-		self.response.original_question_text = "ERIC FILL THIS IN FROM QuestionTranslator.py"  # TODO
-		self.response.restated_question_text = "ERIC FILL THIS IN FROM QuestionTranslator.py"  # TODO
+		#self.response.datetime = self._now.strftime("%Y-%m-%d %H:%M:%S")
+		#self.response.original_question_text = "ERIC FILL THIS IN FROM QuestionTranslator.py"  # TODO
+		#self.response.restated_question_text = "ERIC FILL THIS IN FROM QuestionTranslator.py"  # TODO
 		self.response.result_code = "OK"
 		self.response.message = "%s result(s) found" % self._num_results
 
@@ -60,11 +60,12 @@ class FormatResponse:
 		response.result_code = code
 		response.message = message
 
-	def add_text(self, plain_text):
+	def add_text(self, plain_text, confidence=1):
 		result1 = Result()
 		#result1.id = "http://rtx.ncats.io/api/v1/response/1234/result/2345"
-		result1.id = "-1"
+		#result1.id = "-1"
 		result1.text = plain_text
+		result1.confidence = confidence
 		self._result_list.append(result1)
 		self.response.result_list = self._result_list
 		# Increment the number of results
@@ -145,7 +146,7 @@ class FormatResponse:
 		# Create the result (potential answer)
 		result1 = Result()
 		#result1.id = "http://rtx.ncats.io/api/v1/response/1234/result/2345"
-		result1.id = "-1"
+		#result1.id = "-1"
 		result1.text = plain_text
 		result1.confidence = confidence
 
@@ -238,7 +239,7 @@ class FormatResponse:
 		# Create the result (potential answer)
 		result1 = Result()
 		#result1.id = "http://rtx.ncats.io/api/v1/response/1234/result/2345"
-		result1.id = "-1"
+		#result1.id = "-1"
 		#result1.text = plain_text
 		#result1.confidence = confidence
 

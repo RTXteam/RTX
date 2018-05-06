@@ -16,7 +16,7 @@ class Result(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, id: str=None, text: str=None, confidence: float=None, result_graph: ResultGraph=None):  # noqa: E501
+    def __init__(self, id: str=None, text: str=None, confidence: float=None, result_type: str=None, result_graph: ResultGraph=None):  # noqa: E501
         """Result - a model defined in Swagger
 
         :param id: The id of this Result.  # noqa: E501
@@ -25,6 +25,8 @@ class Result(Model):
         :type text: str
         :param confidence: The confidence of this Result.  # noqa: E501
         :type confidence: float
+        :param result_type: The result_type of this Result.  # noqa: E501
+        :type result_type: str
         :param result_graph: The result_graph of this Result.  # noqa: E501
         :type result_graph: ResultGraph
         """
@@ -32,6 +34,7 @@ class Result(Model):
             'id': str,
             'text': str,
             'confidence': float,
+            'result_type': str,
             'result_graph': ResultGraph
         }
 
@@ -39,12 +42,14 @@ class Result(Model):
             'id': 'id',
             'text': 'text',
             'confidence': 'confidence',
+            'result_type': 'result_type',
             'result_graph': 'result_graph'
         }
 
         self._id = id
         self._text = text
         self._confidence = confidence
+        self._result_type = result_type
         self._result_graph = result_graph
 
     @classmethod
@@ -126,6 +131,29 @@ class Result(Model):
         """
 
         self._confidence = confidence
+
+    @property
+    def result_type(self) -> str:
+        """Gets the result_type of this Result.
+
+        One of several possible result types: 'individual query answer', 'neighborhood graph', 'type summary graph'  # noqa: E501
+
+        :return: The result_type of this Result.
+        :rtype: str
+        """
+        return self._result_type
+
+    @result_type.setter
+    def result_type(self, result_type: str):
+        """Sets the result_type of this Result.
+
+        One of several possible result types: 'individual query answer', 'neighborhood graph', 'type summary graph'  # noqa: E501
+
+        :param result_type: The result_type of this Result.
+        :type result_type: str
+        """
+
+        self._result_type = result_type
 
     @property
     def result_graph(self) -> ResultGraph:

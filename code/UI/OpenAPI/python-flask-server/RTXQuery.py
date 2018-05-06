@@ -44,6 +44,7 @@ class RTXQuery:
     terms = query["terms"]
 
     #### Create an RTX Feedback management object
+    #eprint(query)
     rtxFeedback = RTXFeedback()
     rtxFeedback.connect()
     cachedResponse = rtxFeedback.getCachedResponse(query)
