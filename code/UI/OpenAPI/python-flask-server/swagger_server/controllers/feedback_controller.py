@@ -40,4 +40,4 @@ def get_feedback_ratings():  # noqa: E501
     :rtype: None
     """
     rtxFeedback = RTXFeedback()
-	return rtxFeedback.getRatings()
+    return rtxFeedback.getRatings()
