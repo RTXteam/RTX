@@ -28,7 +28,8 @@ def get_feedback_expertise_levels():  # noqa: E501
 
     :rtype: None
     """
-    return 'do some magic!'
+    rtxFeedback = RTXFeedback()
+    return rtxFeedback.getExpertiseLevels()
 
 
 def get_feedback_ratings():  # noqa: E501
