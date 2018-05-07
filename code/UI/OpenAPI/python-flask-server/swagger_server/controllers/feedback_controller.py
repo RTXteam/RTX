@@ -3,6 +3,11 @@ import six
 
 from swagger_server import util
 
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../Feedback/")
+from RTXFeedback import RTXFeedback
+
 
 def get_feedback_all():  # noqa: E501
     """Request a list of all feedback provided thus far
@@ -34,4 +39,5 @@ def get_feedback_ratings():  # noqa: E501
 
     :rtype: None
     """
-    return 'do some magic!'
+    rtxFeedback = RTXFeedback()
+	return rtxFeedback.getRatings()
