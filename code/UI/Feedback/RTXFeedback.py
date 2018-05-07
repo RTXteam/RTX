@@ -260,6 +260,14 @@ class RTXFeedback:
       return pickle.loads(storedResponse.response_object)
     return
 
+
+  #### Get the list of ratings
+  def getRatings(self):
+    session = self.session
+    ratings = session.query(Rating).all()
+    return(ratings)
+
+
 #### If this class is run from the command line, perform a short little test to see if it is working correctly
 def main():
 
