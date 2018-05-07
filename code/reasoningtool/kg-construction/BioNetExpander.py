@@ -315,19 +315,20 @@ class BioNetExpander:
         # protein-protein interactions:
         int_dict = QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc(uniprot_id_str)
         for int_uniprot_id in int_dict.keys():
-            int_alias = int_dict[int_uniprot_id]
-            if 'BINDSGENE:' not in int_alias:
-                node2 = self.add_node_smart('protein', int_uniprot_id, desc=int_alias)
-                if node2 is not None and node2.uuid != node1.uuid:
-                    self.orangeboard.add_rel('directly_interacts_with', 'reactome', node1, node2, extended_reltype="directly_interacts_with")
-            else:
-                target_gene_symbol = int_alias.split(':')[1]
-                target_uniprot_ids_set = self.query_mygene_obj.convert_gene_symbol_to_uniprot_id(target_gene_symbol)
-                for target_uniprot_id in target_uniprot_ids_set:
-                    assert '-' not in target_uniprot_id
-                    node2 = self.add_node_smart('protein', target_uniprot_id, desc=target_gene_symbol)
-                    if node2 is not None and node2 != node1:
-                        self.orangeboard.add_rel('regulates', 'Reactome', node1, node2, extended_reltype="regulates_expression_of")
+            if self.query_mygene_obj.uniprot_id_is_human(int_uniprot_id):
+                int_alias = int_dict[int_uniprot_id]
+                if 'BINDSGENE:' not in int_alias:
+                    node2 = self.add_node_smart('protein', int_uniprot_id, desc=int_alias)
+                    if node2 is not None and node2.uuid != node1.uuid:
+                        self.orangeboard.add_rel('directly_interacts_with', 'reactome', node1, node2, extended_reltype="directly_interacts_with")
+                else:
+                    target_gene_symbol = int_alias.split(':')[1]
+                    target_uniprot_ids_set = self.query_mygene_obj.convert_gene_symbol_to_uniprot_id(target_gene_symbol)
+                    for target_uniprot_id in target_uniprot_ids_set:
+                        assert '-' not in target_uniprot_id
+                        node2 = self.add_node_smart('protein', target_uniprot_id, desc=target_gene_symbol)
+                        if node2 is not None and node2 != node1:
+                            self.orangeboard.add_rel('regulates', 'Reactome', node1, node2, extended_reltype="regulates_expression_of")
 
         # protein-to-GO (biological process):
         go_bp_dict = self.query_mygene_obj.get_gene_ontology_ids_bp_for_uniprot_id(uniprot_id_str)
