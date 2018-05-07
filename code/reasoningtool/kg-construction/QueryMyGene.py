@@ -166,6 +166,11 @@ class QueryMyGene:
                                     res.update(res_add)
         return res
 
+    def uniprot_id_is_human(self, uniprot_id_str):
+        res_json = self.mygene_obj.query("uniprot:" + uniprot_id_str, species="human")
+        hits = res_json.get("hits", None)
+        return hits is not None and len(hits) > 0
+
     def get_cui(self, gene_id):
         if gene_id.startswith('NCBIGene:'):
             gene_id = int(gene_id.split(':')[1])
@@ -193,6 +198,8 @@ class QueryMyGene:
 
 if __name__ == '__main__':
     mg = QueryMyGene()
+    print(mg.uniprot_id_is_human("P02794"))
+    print(mg.uniprot_id_is_human("P10592"))
     print(mg.convert_entrez_gene_ID_to_mirbase_ID(407053))
     print(mg.get_gene_ontology_ids_bp_for_entrez_gene_id(406991))
     print(mg.get_gene_ontology_ids_bp_for_uniprot_id('Q05925'))
