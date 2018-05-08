@@ -38,9 +38,31 @@ class QuerySciGraph:
             return None
 
         return res.json()
-             
-    '''returns the disease ontology IDs (DOID:NNNNN) for a given mesh ID in CURIE format, 'MESH:D012345'
 
+    @staticmethod
+    def get_gene_ontology_curie_ids_for_disease_curie_id(disease_curie_id_str):
+        results = QuerySciGraph.__access_api(QuerySciGraph.API_BASE_URL['graph_neighbors'].format(node_id=disease_curie_id_str))
+        go_curie_id_str_dict = dict()
+        if results is not None:
+            res_edges = results.get("edges", None)
+            if res_edges is not None:
+                assert type(res_edges) == list
+                for res_edge in res_edges:
+                    object_curie_id = res_edge.get("obj", None)
+                    if object_curie_id is not None:
+                        if object_curie_id.startswith("GO:"):
+                            edge_object_meta = res_edge.get("meta", None)
+                            if edge_object_meta is not None:
+                                assert type(edge_object_meta) == dict
+                                edge_label = edge_object_meta.get("lbl", None)
+                                if edge_label is not None:
+                                    assert type(edge_label) == list
+                                    go_curie_id_str_dict.update({object_curie_id: edge_label[0]})
+        return go_curie_id_str_dict
+
+    
+    '''returns the disease ontology IDs (DOID:NNNNN) for a given mesh ID in CURIE format, 'MESH:D012345'
+    
     :param mesh_id: str containing the MeSH ID in CURIE format, i.e., MESH:D003550
     :return: set(str)
     '''
@@ -51,7 +73,7 @@ class QuerySciGraph:
         if results is not None:
             res_nodes = results.get('nodes', None)
             if res_nodes is not None:
-                assert type(res_nodes)==list
+                assert type(res_nodes) == list
                 for res_node in res_nodes:
                     id = res_node.get('id', None)
                     if id is not None:
@@ -121,11 +143,12 @@ class QuerySciGraph:
         return sub_nodes_with_labels
 
 if __name__ == '__main__':
-#    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D005199'))
-#    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D006937'))
-#    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D000856'))
+    print(QuerySciGraph.get_gene_ontology_curie_ids_for_disease_curie_id("MONDO:0019053"))
+    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D005199'))
+    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D006937'))
+    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D000856'))
     print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term('HP:12072'))
     print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term('GO:1904685'))
-#    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015473'))
+    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015473'))
     print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term("HP:0000107"))  # Renal cyst
-#    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015470'))
+    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015470'))
