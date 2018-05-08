@@ -12,10 +12,34 @@ except ImportError:
 import requests_cache
 requests_cache.install_cache('orangeboard')
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+from RTXConfiguration import RTXConfiguration
+RTXConfiguration = RTXConfiguration()
+
 # Connection information for the neo4j server, populated with orangeboard
-driver = GraphDatabase.driver("bolt://rtx.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))  # production server
-#driver = GraphDatabase.driver("bolt://ncats.saramsey.org:7687", auth=basic_auth("neo4j", "precisionmedicine"))  # test server
+driver = GraphDatabase.driver(RTXConfiguration.bolt, auth=basic_auth("neo4j", "precisionmedicine"))
 session = driver.session()
+
+# Connection information for the ipython-cypher package
+connection = "http://neo4j:precisionmedicine@" + RTXConfiguration.database
+DEFAULT_CONFIGURABLE = {
+	"auto_limit": 0,
+	"style": 'DEFAULT',
+	"short_errors": True,
+	"data_contents": True,
+	"display_limit": 0,
+	"auto_pandas": False,
+	"auto_html": False,
+	"auto_networkx": False,
+	"rest": False,
+	"feedback": False,  # turn off verbosity in ipython-cypher
+	"uri": connection,
+}
+DefaultConfigurable = namedtuple(
+	"DefaultConfigurable",
+	", ".join([k for k in DEFAULT_CONFIGURABLE.keys()])
+)
+defaults = DefaultConfigurable(**DEFAULT_CONFIGURABLE)
 
 
 def has_drug(drug, session=session, debug=False):

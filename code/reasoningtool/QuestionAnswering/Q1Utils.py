@@ -20,12 +20,16 @@ import ReasoningUtilities as RU
 
 requests_cache.install_cache('orangeboard')
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+from RTXConfiguration import RTXConfiguration
+RTXConfiguration = RTXConfiguration()
+
 # Connection information for the neo4j server, populated with orangeboard
-driver = GraphDatabase.driver("bolt://rtx.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))
+driver = GraphDatabase.driver(RTXConfiguration.bolt, auth=basic_auth("neo4j", "precisionmedicine"))
 session = driver.session()
 
 # Connection information for the ipython-cypher package
-connection = "http://neo4j:precisionmedicine@rtx.ncats.io:7474/db/data"
+connection = "http://neo4j:precisionmedicine@" + RTXConfiguration.database
 DEFAULT_CONFIGURABLE = {
 	"auto_limit": 0,
 	"style": 'DEFAULT',
@@ -44,6 +48,7 @@ DefaultConfigurable = namedtuple(
 	", ".join([k for k in DEFAULT_CONFIGURABLE.keys()])
 )
 defaults = DefaultConfigurable(**DEFAULT_CONFIGURABLE)
+
 
 def node_to_description(name, session=session, debug=False):
 	"""

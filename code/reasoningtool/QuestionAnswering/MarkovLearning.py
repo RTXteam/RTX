@@ -4,14 +4,20 @@ import cypher
 from collections import namedtuple
 from neo4j.v1 import GraphDatabase, basic_auth
 import Q1Utils
+import sys
+import os
 
 
-# Connection information for the neo4j server
-driver = GraphDatabase.driver("bolt://rtx.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+from RTXConfiguration import RTXConfiguration
+RTXConfiguration = RTXConfiguration()
+
+# Connection information for the neo4j server, populated with orangeboard
+driver = GraphDatabase.driver(RTXConfiguration.bolt, auth=basic_auth("neo4j", "precisionmedicine"))
 session = driver.session()
 
 # Connection information for the ipython-cypher package
-connection = "http://neo4j:precisionmedicine@rtx.ncats.io:7474/db/data"
+connection = "http://neo4j:precisionmedicine@" + RTXConfiguration.database
 DEFAULT_CONFIGURABLE = {
 	"auto_limit": 0,
 	"style": 'DEFAULT',
@@ -29,7 +35,7 @@ DefaultConfigurable = namedtuple(
 	"DefaultConfigurable",
 	", ".join([k for k in DEFAULT_CONFIGURABLE.keys()])
 )
-config = DefaultConfigurable(**DEFAULT_CONFIGURABLE)
+defaults = DefaultConfigurable(**DEFAULT_CONFIGURABLE)
 
 # state space is a tuple (relationship_type, node_label), first order markov chain
 
