@@ -46,30 +46,6 @@ def convert_mesh_entrez_uid_to_curie_form(mesh_entrez_uid):
     assert mesh_entrez_uid > MESH_ENTREZ_UID_BASE
     return 'MESH:D' + format(mesh_entrez_uid - MESH_ENTREZ_UID_BASE, '06')
 
-
-human_phenont_name_id_dict = ParsePhenont.get_name_id_dict('../../../data/hpo/hp.obo')
-
-
-def get_curie_ont_ids_for_mesh_term(mesh_term):
-    ret_curie_ids = []
-    mesh_uids = QueryNCBIeUtils.get_mesh_uids_for_mesh_term(mesh_term)
-    if len(mesh_uids) > 0:
-        for mesh_uid in mesh_uids:
-            mesh_uid_int = int(mesh_uid)
-            if mesh_uid_int > MESH_ENTREZ_UID_BASE:
-                mesh_id_curie = convert_mesh_entrez_uid_to_curie_form(mesh_uid_int)
-                disont_ids = QuerySciGraph.get_disont_ids_for_mesh_id(mesh_id_curie)
-                if len(disont_ids) > 0:
-                    ret_curie_ids += disont_ids
-            else:
-                print('Got MeSH UID less than ' + str(MESH_ENTREZ_UID_BASE) + ': ' + mesh_uid + 
-                      '; for MeSH term: ' + mesh_term, file=sys.stderr)
-    if len(ret_curie_ids) == 0:
-        human_phenont_id = human_phenont_name_id_dict.get(mesh_term, None)
-        if human_phenont_id is not None:
-            ret_curie_ids.append(human_phenont_id)
-    return ret_curie_ids
-
 def add_pc2_to_kg():
     sif_data = pandas.read_csv('../../../data/pc2/PathwayCommons9.All.hgnc.sif',
                                sep='\t', names=['gene1', 'interaction_type', 'gene2'])
