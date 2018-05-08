@@ -1,5 +1,9 @@
 #!/usr/bin/python3
 # Database definition and RTXFeedback class
+from __future__ import print_function
+import sys
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
 import os
 import sys
@@ -302,18 +306,6 @@ class RTXFeedback:
     session.commit()
     return(200)
 
-class Result_rating(Base):
-  __tablename__ = 'result_rating'
-  result_rating_id = Column(Integer, primary_key=True)
-  result_id = Column(Integer, ForeignKey('result.result_id'))
-  commenter_id = Column(Integer, ForeignKey('commenter.commenter_id'))
-  expertise_level_id = Column(Integer, ForeignKey('expertise_level.expertise_level_id'))
-  rating_id = Column(Integer, ForeignKey('rating.rating_id'))
-  comment = Column(Text, nullable=True)
-  result = relationship(Result)
-  commenter = relationship(Commenter)
-  expertise_level = relationship(Expertise_level)
-  rating = relationship(Rating)
 
 ############################################ General function for converting a query row into a dict ###############################################
 #### Turn a row into a dict
