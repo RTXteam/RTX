@@ -27,8 +27,6 @@ import pandas
 import timeit
 import argparse
 
-MESH_ENTREZ_UID_BASE = 68000000
-
 # configure requests package to use the "orangeboard.sqlite" cache
 requests_cache.install_cache('orangeboard')
 
@@ -40,11 +38,6 @@ ob.neo4j_set_url()
 ob.neo4j_set_auth()
 
 bne = BioNetExpander(ob)
-
-
-def convert_mesh_entrez_uid_to_curie_form(mesh_entrez_uid):
-    assert mesh_entrez_uid > MESH_ENTREZ_UID_BASE
-    return 'MESH:D' + format(mesh_entrez_uid - MESH_ENTREZ_UID_BASE, '06')
 
 def add_pc2_to_kg():
     sif_data = pandas.read_csv('../../../data/pc2/PathwayCommons9.All.hgnc.sif',
