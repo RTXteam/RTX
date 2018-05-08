@@ -43,8 +43,8 @@ from QueryUniprotExtended import QueryUniprotExtended
 
 class BioNetExpander:
 
-    CURIE_PREFIX_TO_IRI_PREFIX = {"OMIM": "https://www.omim.org/entry/",
-                                  "UniProtKB": "http://www.uniprot.org/uniprot/",
+    CURIE_PREFIX_TO_IRI_PREFIX = {"OMIM": "http://purl.obolibrary.org/obo/OMIM_",
+                                  "UniProtKB": "http://identifiers.org/uniprot/",
                                   "NCBIGene": "https://www.ncbi.nlm.nih.gov/gene/",
                                   "HP": "http://purl.obolibrary.org/obo/HP_",
                                   "DOID": "http://purl.obolibrary.org/obo/DOID_",
