@@ -3,6 +3,9 @@
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+from RTXConfiguration import RTXConfiguration
+RTXConfiguration = RTXConfiguration()
 
 from swagger_server.models.response import Response
 from swagger_server.models.result import Result
@@ -35,7 +38,7 @@ class FormatResponse:
 		#self.response.id = "http://rtx.ncats.io/api/v1/response/1234"
 		#self.response.id = "-1"
 		self.response.type = "medical_translator_query_result"
-		self.response.tool_version = "RTX 0.4"
+		self.response.tool_version = RTXConfiguration.version
 		self.response.schema_version = "0.5"
 		#self.response.datetime = self._now.strftime("%Y-%m-%d %H:%M:%S")
 		#self.response.original_question_text = ""  # Eric fills it in
