@@ -44,24 +44,24 @@ from QueryUniprotExtended import QueryUniprotExtended
 class BioNetExpander:
 
     CURIE_PREFIX_TO_IRI_PREFIX = {"OMIM": "https://www.omim.org/entry/",
-                                  "UniProt": "http://www.uniprot.org/uniprot/",
+                                  "UniProtKB": "http://www.uniprot.org/uniprot/",
                                   "NCBIGene": "https://www.ncbi.nlm.nih.gov/gene/",
                                   "HP": "http://purl.obolibrary.org/obo/HP_",
                                   "DOID": "http://purl.obolibrary.org/obo/DOID_",
-                                  "Reactome": "https://reactome.org/content/detail/",
+                                  "REACT": "https://reactome.org/content/detail/",
                                   "ChEMBL": "https://www.ebi.ac.uk/chembl/compound/inspect/",
                                   "UBERON": "http://purl.obolibrary.org/obo/UBERON_",
                                   "GO": "http://purl.obolibrary.org/obo/GO_",
                                   "CL": "http://purl.obolibrary.org/obo/CL_"}
 
     NODE_SIMPLE_TYPE_TO_CURIE_PREFIX = {"chemical_substance": "ChEMBL",
-                                        "protein": "UniProt",
+                                        "protein": "UniProtKB",
                                         "genetic_condition": "OMIM",
                                         "anatomical_entity": "UBERON",
                                         "microRNA": "NCBIGene",
                                         "phenotypic_feature": "HP",
                                         "disease": "DOID",
-                                        "pathway": "Reactome",
+                                        "pathway": "REACT",
                                         "biological_process": "GO"}
 
     MASTER_REL_IS_DIRECTED = {"subclass_of": True,
@@ -134,7 +134,7 @@ class BioNetExpander:
         target_uniprot_ids = QueryChEMBL.get_target_uniprot_ids_for_drug(compound_desc)
         if target_uniprot_ids is not None:
             for target_uniprot_id_curie in target_uniprot_ids.keys():
-                target_uniprot_id = target_uniprot_id_curie.replace("UniProt:", "")
+                target_uniprot_id = target_uniprot_id_curie.replace("UniProtKB:", "")
                 probability = target_uniprot_ids[target_uniprot_id]
                 gene_names = self.query_mygene_obj.convert_uniprot_id_to_gene_symbol(target_uniprot_id)
                 node_desc = ';'.join(list(gene_names))
