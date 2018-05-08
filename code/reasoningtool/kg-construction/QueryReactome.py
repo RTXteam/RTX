@@ -202,6 +202,7 @@ class QueryReactome:
 
     @staticmethod
     def test():
+        print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc("P62991"))
         print(QueryReactome.is_valid_uniprot_accession("Q16665"))
         print(QueryReactome.is_valid_uniprot_accession("EBI"))
         print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc("Q16665"))
