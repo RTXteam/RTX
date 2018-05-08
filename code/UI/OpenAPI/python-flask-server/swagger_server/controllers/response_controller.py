@@ -8,6 +8,10 @@ from swagger_server.models.result import Result  # noqa: E501
 from swagger_server.models.result_feedback import ResultFeedback  # noqa: E501
 from swagger_server import util
 
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../Feedback/")
+from RTXFeedback import RTXFeedback
 
 def get_response(response_id):  # noqa: E501
     """Request stored responses and results from RTX
@@ -32,7 +36,8 @@ def get_response_feedback(response_id):  # noqa: E501
 
     :rtype: ResponseFeedback
     """
-    return 'do some magic!'
+    rtxFeedback = RTXFeedback()
+    return rtxFeedback.getResponseFeedback(response_id)
 
 
 def get_result(response_id, result_id):  # noqa: E501
@@ -62,7 +67,8 @@ def get_result_feedback(response_id, result_id):  # noqa: E501
 
     :rtype: ResultFeedback
     """
-    return 'do some magic!'
+    rtxFeedback = RTXFeedback()
+    return rtxFeedback.getResultFeedback(response_id, result_id)
 
 
 def post_result_feedback(response_id, result_id, body):  # noqa: E501
@@ -80,5 +86,9 @@ def post_result_feedback(response_id, result_id, body):  # noqa: E501
     :rtype: Response
     """
     if connexion.request.is_json:
-        body = Query.from_dict(connexion.request.get_json())  # noqa: E501
-    return 'do some magic!'
+        ratingData = connexion.request.get_json()  # noqa: E501
+        rtxFeedback = RTXFeedback()
+        response = rtxFeedback.addNewResultRating(result_id, ratingData)
+        return(response)
+    return( { "status": 502, "title": "body content not JSON", "detail": "Required body content is not JSON", "type": "about:blank" }, 502 )
+

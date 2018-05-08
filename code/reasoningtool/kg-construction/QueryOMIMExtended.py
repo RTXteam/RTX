@@ -22,21 +22,21 @@ import json
 requests_cache.install_cache('orangeboard')
 
 
-class QueryOMIM:
+class QueryOMIMExtended:
     API_KEY = '1YCxuN7PRHyrpuZnO7F5gQ'
     API_BASE_URL = 'https://api.omim.org/api'
     TIMEOUT_SEC = 120
  
     def __init__(self):
-        url = QueryOMIM.API_BASE_URL + "/apiKey"
-        session_data = {'apiKey': QueryOMIM.API_KEY,
+        url = QueryOMIMExtended.API_BASE_URL + "/apiKey"
+        session_data = {'apiKey': QueryOMIMExtended.API_KEY,
                         'format': 'json'}
         r = requests.post(url, data=session_data)
         assert 200 == r.status_code
         self.cookie = r.cookies
 
     def send_query_get(self, omim_handler, url_suffix):
-        url = "{api_base_url}/{omim_handler}?{url_suffix}&format=json".format(api_base_url=QueryOMIM.API_BASE_URL,
+        url = "{api_base_url}/{omim_handler}?{url_suffix}&format=json".format(api_base_url=QueryOMIMExtended.API_BASE_URL,
                                                                               omim_handler=omim_handler,
                                                                               url_suffix=url_suffix)
         #print(url)
@@ -122,7 +122,7 @@ if __name__ == '__main__':
         json.dump(json_data, f)
         f.close()
 
-    qo = QueryOMIM()
+    qo = QueryOMIMExtended()
     # print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:145270'))
     # print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:601351'))
     # print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:248260'))

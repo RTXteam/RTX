@@ -1,5 +1,9 @@
 #!/usr/bin/python3
 # Database definition and RTXFeedback class
+from __future__ import print_function
+import sys
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
 import os
 import sys
@@ -18,6 +22,7 @@ from sqlalchemy import inspect
 
 # sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
 from RTXConfiguration import RTXConfiguration
+from swagger_server.models.result_feedback import ResultFeedback
 
 Base = declarative_base()
 
@@ -170,6 +175,14 @@ class RTXFeedback:
     session.commit()
 
 
+  #### Pre-populate the database with reference data
+  def prepopulateCommenter(self):
+    session = self.session
+    commenter = Commenter(full_name='Test User',email_address='a@b.com',password='None')
+    session.add(commenter)
+    session.commit()
+
+
   #### Store a new Response into the database
   def addNewResponse(self,response,query):
     session = self.session
@@ -286,7 +299,87 @@ class RTXFeedback:
     response["n_expertise_levels"] = count
     return(response)
 
+  #### Store all the results from a response into the database
+  def addNewResultRating(self, result_id, rating):
+    self.connect()
+    session = self.session
 
+    if result_id is None:
+      return( { "status": 450, "title": "result_id missing", "detail": "Required attribute result_id is missing from URL", "type": "about:blank" }, 450)
+    if "commenter_id" not in rating or rating["commenter_id"] is None:
+      return( { "status": 451, "title": "commenter_id missing", "detail": "Required attribute commenter_id missing from body content", "type": "about:blank" }, 451)
+    if "expertise_level_id" not in rating or rating["expertise_level_id"] is None:
+      return( { "status": 452, "title": "expertise_level_id missing", "detail": "Required attribute expertise_level_id missing from body content", "type": "about:blank" }, 452)
+    if "rating_id" not in rating or rating["rating_id"] is None:
+      return( { "status": 453, "title": "rating_id missing", "detail": "Required attribute rating_id missing from body content", "type": "about:blank" }, 453)
+    if "comment" not in rating or rating["comment"] is None:
+      return( { "status": 454, "title": "comment missing", "detail": "Required attribute comment missing from body content", "type": "about:blank" }, 454)
+
+    try:
+      insertResult = Result_rating(result_id=result_id, commenter_id=rating["commenter_id"], expertise_level_id=rating["expertise_level_id"],
+        rating_id = rating["rating_id"], comment=rating["comment"])
+      session.add(insertResult)
+      session.flush()
+      session.commit()
+    except Exception as error:
+      return( { "status": 460, "title": "Error storing feedback", "detail": "Your feedback was not stored because of error: "+str(error), "type": "about:blank" }, 460 )
+
+    return( { "status": 200, "title": "Feedback stored", "detail": "Your feedback has been stored by RTX as id="+str(insertResult.result_rating_id), "type": "about:blank" }, 200 )
+
+
+  #### Fetch the feedback for a result
+  def getResultFeedback(self, response_id, result_id):
+    self.connect()
+    session = self.session
+
+    if response_id is None:
+      return( { "status": 450, "title": "response_id missing", "detail": "Required attribute response_id is missing from URL", "type": "about:blank" }, 450)
+    if result_id is None:
+      return( { "status": 451, "title": "result_id missing", "detail": "Required attribute result_id is missing from URL", "type": "about:blank" }, 451)
+
+    #### Look for ratings we could use
+    storedRatings = session.query(Result_rating).filter(Result_rating.result_id==result_id).first()
+    if storedRatings is not None:
+      #resultRatings = []
+      #for rating in storedRatings:
+      rating = storedRatings
+      resultRating = ResultFeedback()
+      resultRating.result_id = "http://rtx.ncats.io/api/v1/response/"+str(response_id)+"/result/"+str(result_id)
+      resultRating.id = resultRating.result_id + "/feedback/" + str(rating.result_rating_id)
+      resultRating.expertise_level_id = rating.expertise_level_id
+      resultRating.rating_id = rating.rating_id
+      resultRating.comment = rating.comment
+      #  resultRatings.append(resultRating)
+      #return(resultRatings)
+      return(resultRating)
+    else:
+      return
+
+
+  #### Fetch the feedback for a response
+  def getResponseFeedback(self, response_id):
+    self.connect()
+    session = self.session
+
+    if response_id is None:
+      return( { "status": 450, "title": "response_id missing", "detail": "Required attribute response_id is missing from URL", "type": "about:blank" }, 450)
+
+    #### Look for results for this response
+    storedResults = session.query(Result).filter(Result.response_id==response_id).all()
+    if storedResults is not None:
+      resultRatings = []
+      for storedResult in storedResults:
+        resultRating = self.getResultFeedback(response_id,storedResult.result_id)
+        if resultRating is not None:
+          resultRatings.append(resultRating)
+      return(resultRatings)
+    else:
+      return( { "status": 404, "title": "Ratings not found", "detail": "There were no ratings found for this response", "type": "about:blank" }, 404)
+
+
+
+
+############################################ General function for converting a query row into a dict ###############################################
 #### Turn a row into a dict
 def object_as_dict(obj):
   return {c.key: getattr(obj, c.key)
@@ -302,6 +395,8 @@ def main():
   #### Careful, don't destroy an important database!!!
   ###rtxFeedback.createDatabase()
   ###rtxFeedback.prepopulateDatabase()
+  rtxFeedback.prepopulateCommenter()
+  sys.exit()
 
   #### Connect to the database
   rtxFeedback.connect()

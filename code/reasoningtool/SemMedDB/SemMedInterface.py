@@ -20,6 +20,7 @@ import requests
 import pandas
 import time
 import requests_cache
+import numpy
 
 
 class SemMedInterface():
@@ -108,7 +109,7 @@ class SemMedInterface():
 		if curie_list[0] == "GO":
 			df_cui = self.umls.get_cui_for_go_id(curie_id)
 			if df_cui is not None:
-				cui_list = list(df_cuis['CUI'])
+				cui_list = list(df_cui['CUI'])
 				return cui_list
 		if curie_list[0] == "UniProt":
 			pass
@@ -192,7 +193,10 @@ class SemMedInterface():
 			cuis = None
 		if cuis is None:
 			name_list = name.split(' ')
-			cuis = self.umls.get_cui_cloud_for_multiple_words(name_list)
+			if len(name_list) > 1:
+				cuis = self.umls.get_cui_cloud_for_multiple_words(name_list)
+			else:
+				cuis = self.umls.get_cui_cloud_for_word(name)
 			if cuis is not None:
 				cuis = cuis['CUI'].tolist()
 		return cuis
@@ -205,7 +209,10 @@ class SemMedInterface():
 				if cuis is not None:
 					cuis = [cuis]
 			elif curie_id.startswith('UniProt') or curie_id.startswith('NCBIGene'):
-				cuis = self.mg.get_cui(curie_id)
+				try:
+					cuis = self.mg.get_cui(curie_id)
+				except requests.exceptions.HTTPError:
+					print('myGene Servers are busy')
 		if cuis is None:
 			cuis = self.get_cui_from_oxo(curie_id, mesh_flag)
 		if cuis is None:
@@ -281,10 +288,40 @@ class SemMedInterface():
 		return df
 
 	def get_shortest_path_between_subject_object(self, subj_id, subj_name, obj_id, obj_name, max_length = 3, mesh_flags = [False, False]):
+		assert max_length > -1
+		assert len(mesh_flags) == 2
+		subj_cuis = self.get_cui_for_id(subj_id, mesh_flags[0])
+		obj_cuis = self.get_cui_for_id(obj_id, mesh_flags[1])
+		name_subj_cuis = self.get_cui_for_name(subj_name)
+		name_obj_cuis = self.get_cui_for_name(obj_name)
+		df = None
 		for n in range(max_length):
-			df = self.get_edges_between_subject_object_with_pivot(subj_id, subj_name, obj_id, obj_name, pivot = n, mesh_flags = mesh_flags)
-			if df is not None:
-				return df
+			if (subj_cuis and obj_cuis) is not None:
+				dfs = []
+				for subj_cui in subj_cuis:
+					for obj_cui in obj_cuis:
+						edges = self.smdb.get_edges_between_subject_object_with_pivot(subj_cui, obj_cui, pivot = n)
+						if edges is not None:
+							dfs.append(edges)
+				try:
+					df = pandas.concat(dfs).drop_duplicates()
+				except ValueError:
+					df = None
+				if df is not None:
+					return df
+			if (name_subj_cuis and name_obj_cuis) is not None:
+				dfs = []
+				for subj_cui in name_subj_cuis:
+					for obj_cui in name_obj_cuis:
+						edges = self.smdb.get_edges_between_subject_object_with_pivot(subj_cui, obj_cui, pivot = n)
+						if edges is not None:
+							dfs.append(edges)
+				try:
+					df = pandas.concat(dfs).drop_duplicates()
+				except ValueError:
+					df = None
+				if df is not None:
+					return df
 		return None
 
 	def get_edges_between_nodes(self, subj_id, subj_name, obj_id, obj_name, predicate = None, result_col = ['PMID', 'SUBJECT_NAME', 'PREDICATE', 'OBJECT_NAME'], bidirectional=True, mesh_flags = [False, False]):

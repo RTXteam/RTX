@@ -39,10 +39,10 @@ __status__ = 'Prototype'
 from Neo4jConnection import Neo4jConnection
 import json
 from QueryEBIOLSExtended import QueryEBIOLSExtended
-from QueryOMIMExtended import QueryOMIM
+from QueryOMIMExtended import QueryOMIMExtended
 from QueryMyGeneExtended import QueryMyGeneExtended
 from QueryMyChem import QueryMyChem
-from QueryReactomeExtended import  QueryReactomeExtended
+from QueryReactomeExtended import QueryReactomeExtended
 
 class UpdateNodesInfo:
 
@@ -141,11 +141,9 @@ class UpdateNodesInfo:
         f.close()
         config = json.loads(config_data)
 
-        rf = open("result_output.txt", 'a')
-
         conn = Neo4jConnection(config['url'], config['username'], config['password'])
         nodes = conn.get_anatomy_nodes()
-        print("anatomy: %d"%len(nodes), file=rf)
+        print("the number of anatomy nodes: %d" % len(nodes))
 
         from time import time
         t = time()
@@ -157,7 +155,7 @@ class UpdateNodesInfo:
             node['desc'] = QueryEBIOLSExtended.get_anatomy_description(node_id)
             nodes_array.append(node)
 
-        print("anatomy api pulling time: %f" % (time() - t), file=rf)
+        print("anatomy api pulling time: %f" % (time() - t))
 
         nodes_nums = len(nodes_array)
         chunk_size = 10000
@@ -167,7 +165,7 @@ class UpdateNodesInfo:
             end = (i + 1) * chunk_size if (i + 1) * chunk_size < nodes_nums else nodes_nums
             conn.update_anatomy_nodes_desc(nodes_array[start:end])
 
-        print("total time: %f" % (time() - t), file=rf)
+        print("anatomy total time: %f" % (time() - t))
 
         conn.close()
 
@@ -178,11 +176,9 @@ class UpdateNodesInfo:
         f.close()
         config = json.loads(config_data)
 
-        rf = open("result_output.txt", 'a')
-
         conn = Neo4jConnection(config['url'], config['username'], config['password'])
         nodes = conn.get_phenotype_nodes()
-        print("phenotype: %d"%len(nodes), file=rf)
+        print("the number of phenotype nodes: %d" % len(nodes))
 
         from time import time
         t = time()
@@ -194,7 +190,7 @@ class UpdateNodesInfo:
             node['desc'] = QueryEBIOLSExtended.get_phenotype_description(node_id)
             nodes_array.append(node)
 
-        print("phenotype api pulling time: %f" % (time() - t), file=rf)
+        print("phenotype api pulling time: %f" % (time() - t))
 
         nodes_nums = len(nodes_array)
         chunk_size = 10000
@@ -204,7 +200,7 @@ class UpdateNodesInfo:
             end = (i + 1) * chunk_size if (i + 1) * chunk_size < nodes_nums else nodes_nums
             conn.update_phenotype_nodes_desc(nodes_array[start:end])
 
-        print("total time: %f" % (time() - t), file=rf)
+        print("phenotype total time: %f" % (time() - t))
 
         conn.close()
 
@@ -215,11 +211,9 @@ class UpdateNodesInfo:
         f.close()
         config = json.loads(config_data)
 
-        rf = open("result_output.txt", 'a')
-
         conn = Neo4jConnection(config['url'], config['username'], config['password'])
         nodes = conn.get_microRNA_nodes()
-        print("microRNA: %d"%len(nodes), file=rf)
+        print("the number of microRNA nodes: %d" % len(nodes))
 
         from time import time
         t = time()
@@ -231,7 +225,7 @@ class UpdateNodesInfo:
             node['desc'] = QueryMyGeneExtended.get_microRNA_desc(node_id)
             nodes_array.append(node)
 
-        print("microRNA api pulling time: %f" % (time() - t), file=rf)
+        print("microRNA api pulling time: %f" % (time() - t))
 
         nodes_nums = len(nodes_array)
         chunk_size = 10000
@@ -241,7 +235,7 @@ class UpdateNodesInfo:
             end = (i + 1) * chunk_size if (i + 1) * chunk_size < nodes_nums else nodes_nums
             conn.update_microRNA_nodes_desc(nodes_array[start:end])
 
-        print("total time: %f" % (time() - t), file=rf)
+        print("microRNA total time: %f" % (time() - t))
 
         conn.close()
 
@@ -252,11 +246,9 @@ class UpdateNodesInfo:
         f.close()
         config = json.loads(config_data)
 
-        rf = open("result_output.txt", 'a')
-
         conn = Neo4jConnection(config['url'], config['username'], config['password'])
         nodes = conn.get_pathway_nodes()
-        print("pathway: %d" % len(nodes), file=rf)
+        print("the number of pathway: %d" % len(nodes))
 
         from time import time
         t = time()
@@ -268,7 +260,7 @@ class UpdateNodesInfo:
             node['desc'] = QueryReactomeExtended.get_pathway_desc(node_id)
             nodes_array.append(node)
 
-        print("pathway api pulling time: %f" % (time() - t), file=rf)
+        print("pathway api pulling time: %f" % (time() - t))
 
         nodes_nums = len(nodes_array)
         chunk_size = 10000
@@ -278,7 +270,7 @@ class UpdateNodesInfo:
             end = (i + 1) * chunk_size if (i + 1) * chunk_size < nodes_nums else nodes_nums
             conn.update_pathway_nodes_desc(nodes_array[start:end])
 
-        print("pathway total time: %f" % (time() - t), file=rf)
+        print("pathway total time: %f" % (time() - t))
 
         conn.close()
 
@@ -289,11 +281,9 @@ class UpdateNodesInfo:
         f.close()
         config = json.loads(config_data)
 
-        rf = open("result_output.txt", 'a')
-
         conn = Neo4jConnection(config['url'], config['username'], config['password'])
         nodes = conn.get_protein_nodes()
-        print("protein: %d"%len(nodes), file=rf)
+        print("the number of protein nodes: %d" % len(nodes))
 
         from time import time
         t = time()
@@ -305,7 +295,7 @@ class UpdateNodesInfo:
             node['desc'] = QueryMyGeneExtended.get_protein_desc(node_id)
             nodes_array.append(node)
 
-        print("protein api pulling time: %f" % (time() - t), file=rf)
+        print("protein api pulling time: %f" % (time() - t))
 
         nodes_nums = len(nodes_array)
         chunk_size = 10000
@@ -315,7 +305,7 @@ class UpdateNodesInfo:
             end = (i + 1) * chunk_size if (i + 1) * chunk_size < nodes_nums else nodes_nums
             conn.update_protein_nodes_desc(nodes_array[start:end])
 
-        print("total time: %f" % (time() - t), file=rf)
+        print("protein total time: %f" % (time() - t))
 
         conn.close()
 
@@ -326,26 +316,25 @@ class UpdateNodesInfo:
         f.close()
         config = json.loads(config_data)
 
-        rf = open("result_output.txt", 'a')
-
         conn = Neo4jConnection(config['url'], config['username'], config['password'])
         nodes = conn.get_disease_nodes()
-        print("disease: %d"%len(nodes), file=rf)
+        print("the number of disease nodes: %d" % len(nodes))
 
         from time import time
         t = time()
 
         nodes_array = []
+        qo = QueryOMIMExtended()
         for i, node_id in enumerate(nodes):
             node = dict()
             node['node_id'] = node_id
             if node_id[:4] == "OMIM":
-                node['desc'] = QueryOMIM().disease_mim_to_description(node_id)
+                node['desc'] = qo.disease_mim_to_description(node_id)
             elif node_id[:4] == "DOID":
                 node['desc'] = QueryEBIOLSExtended.get_disease_description(node_id)
             nodes_array.append(node)
 
-        print("disease api pulling time: %f" % (time() - t), file=rf)
+        print("disease api pulling time: %f" % (time() - t))
 
         nodes_nums = len(nodes_array)
         chunk_size = 10000
@@ -355,9 +344,7 @@ class UpdateNodesInfo:
             end = (i + 1) * chunk_size if (i + 1) * chunk_size < nodes_nums else nodes_nums
             conn.update_disease_nodes_desc(nodes_array[start:end])
 
-        print("total time: %f" % (time() - t), file=rf)
-
-        rf.close()
+        print("disease total time: %f" % (time() - t))
 
         conn.close()
 
@@ -368,11 +355,9 @@ class UpdateNodesInfo:
         f.close()
         config = json.loads(config_data)
 
-        rf = open("result_output.txt", 'a')
-
         conn = Neo4jConnection(config['url'], config['username'], config['password'])
         nodes = conn.get_chemical_substance_nodes()
-        print("chemical_substance: %d"%len(nodes), file=rf)
+        print("the number of chemical_substance nodes: %d" % len(nodes))
 
         from time import time
         t = time()
@@ -384,7 +369,7 @@ class UpdateNodesInfo:
             node['desc'] = QueryMyChem.get_chemical_substance_description(node_id)
             nodes_array.append(node)
 
-        print("chemical_substance pulling time: %f" % (time() - t), file=rf)
+        print("chemical_substance pulling time: %f" % (time() - t))
 
         nodes_nums = len(nodes_array)
         chunk_size = 10000
@@ -394,9 +379,7 @@ class UpdateNodesInfo:
             end = (i + 1) * chunk_size if (i + 1) * chunk_size < nodes_nums else nodes_nums
             conn.update_chemical_substance_nodes_desc(nodes_array[start:end])
 
-        print("total time: %f" % (time() - t), file=rf)
-
-        rf.close()
+        print("chemical substance total time: %f" % (time() - t))
 
         conn.close()
 
@@ -407,11 +390,9 @@ class UpdateNodesInfo:
         f.close()
         config = json.loads(config_data)
 
-        rf = open("result_output.txt", 'a')
-
         conn = Neo4jConnection(config['url'], config['username'], config['password'])
         nodes = conn.get_bio_process_nodes()
-        print("bio_process: %d"%len(nodes), file=rf)
+        print("the number of bio_process nodes: %d" % len(nodes))
 
         from time import time
         t = time()
@@ -423,7 +404,7 @@ class UpdateNodesInfo:
             node['desc'] = QueryEBIOLSExtended.get_bio_process_description(node_id)
             nodes_array.append(node)
 
-        print("bio_process pulling time: %f" % (time() - t), file=rf)
+        print("bio_process pulling time: %f" % (time() - t))
 
         nodes_nums = len(nodes_array)
         chunk_size = 10000
@@ -433,9 +414,7 @@ class UpdateNodesInfo:
             end = (i + 1) * chunk_size if (i + 1) * chunk_size < nodes_nums else nodes_nums
             conn.update_bio_process_nodes_desc(nodes_array[start:end])
 
-        print("total time: %f" % (time() - t), file=rf)
-
-        rf.close()
+        print("bio_process total time: %f" % (time() - t))
 
         conn.close()
 

@@ -1,0 +1,41 @@
+#known query type ID	example question
+Q0	What is lovastatin
+Q0	What is hemoglobin
+Q1	Which genetic conditions might offer protection against malaria
+Q1	Which genetic conditions might offer protection against cholera
+Q2	What is the clinical outcome pathway of physostigmine for treatment of glaucoma
+Q3	What proteins does acetaminophen target
+Q4	what proteins are in the pathway $pathway
+Q5	what are the phenotypes of the disease $disease
+Q6	what micrornas control the expression of $protein
+Q7	what genes are associated with $disease
+Q8	what genes are expressed in $anatomical_entity
+Q9	what are the drugs that target $protein
+Q10	what proteins are associated with $phenotypic_feature
+Q11	what micrornas are expressed in $anatomical_entity
+Q12	what proteins interact with $protein
+Q13	What diseases are similar to malaria
+Q14	what diseases involve similar genes to $disease
+Q15	what diseases involve similar micrornas to $disease
+Q16	what drugs have similar protein targets to $chemical_substance
+Q17	what proteins are members of similar pathways to $protein
+Q18	what proteins are expressed in similar anatomy to $protein
+Q19	what proteins are associated with similar phenotypes to $protein
+Q20	what pathways involve similar genes to $pathway
+Q21	what genetic conditions involve similar genes to $disease
+Q22	what genetic conditions involve similar micrornas to $disease
+Q23	what drugs target proteins associated with $disease
+Q24	what drugs target proteins expressed in $anatomical_entity
+Q25	what drugs target proteins associated with $phenotypic_feature
+Q26	what drugs target proteins in the pathway $pathway
+Q27	what drugs target proteins associated with $anatomical_entity
+Q28	what anatomy are associated with $chemical_substance
+Q29	what phenotypes are associated with $chemical_substance
+Q30	what diseases are associated with $chemical_substance
+Q31	what kinds of questions can RTX answer
+Q32	what drugs target proteins associated with $biological_process
+Q33	what biological processes involve proteins target by $chemical_substance
+Q34	what are the most common phenotypes of $disease
+Q35	what are the least common phenotypes of $disease
+Q36	what proteins involve similar biological processes as $protein
+Q37	what drugs target proteins that interact with the protein $protein
