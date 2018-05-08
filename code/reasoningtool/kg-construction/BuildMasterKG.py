@@ -125,10 +125,10 @@ def seed_nodes_from_master_tsv_file():
 
 def make_master_kg():
     seed_nodes_from_master_tsv_file()
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
     add_pc2_to_kg()
-    bne.expand_all_nodes()
-    bne.expand_all_nodes()
-    bne.expand_all_nodes()
     ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
     print("count(Node) = {}".format(ob.count_nodes()))
