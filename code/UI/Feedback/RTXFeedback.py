@@ -169,6 +169,11 @@ class RTXFeedback:
     session.add(expertise_level)
     session.commit()
 
+  #### Pre-populate the database with reference data
+  def prepopulateCommenter(self):
+    session = self.session
+    commenter = Rating(full_name='Test User',email_address='a@b.com',password='None')
+    session.add(rating)
 
   #### Store a new Response into the database
   def addNewResponse(self,response,query):
@@ -286,7 +291,31 @@ class RTXFeedback:
     response["n_expertise_levels"] = count
     return(response)
 
+  #### Store all the results from a response into the database
+  def addNewResultRating(self,rating):
+    session = self.session
 
+    if rating.result_id is None:
+      return(450)
+    eprint("Would store a result with comment="+rating.comment)
+
+    session.commit()
+    return(200)
+
+class Result_rating(Base):
+  __tablename__ = 'result_rating'
+  result_rating_id = Column(Integer, primary_key=True)
+  result_id = Column(Integer, ForeignKey('result.result_id'))
+  commenter_id = Column(Integer, ForeignKey('commenter.commenter_id'))
+  expertise_level_id = Column(Integer, ForeignKey('expertise_level.expertise_level_id'))
+  rating_id = Column(Integer, ForeignKey('rating.rating_id'))
+  comment = Column(Text, nullable=True)
+  result = relationship(Result)
+  commenter = relationship(Commenter)
+  expertise_level = relationship(Expertise_level)
+  rating = relationship(Rating)
+
+############################################ General function for converting a query row into a dict ###############################################
 #### Turn a row into a dict
 def object_as_dict(obj):
   return {c.key: getattr(obj, c.key)
@@ -302,6 +331,8 @@ def main():
   #### Careful, don't destroy an important database!!!
   ###rtxFeedback.createDatabase()
   ###rtxFeedback.prepopulateDatabase()
+  rtxFeedback.prepopulateCommenter()
+  sys.exit()
 
   #### Connect to the database
   rtxFeedback.connect()
