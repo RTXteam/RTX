@@ -12,8 +12,8 @@ class RTXConfiguration:
 		self.version = "RTX 0.4.1"
 
 		# This is the flag/property to switch between the two containers
-		self.live = "Production"
-		#self.live = "KG2"
+		#self.live = "Production"
+		self.live = "KG2"
 
 		if self.live == "Production":
 			self.bolt = "bolt://rtx.ncats.io:7687"
@@ -33,6 +33,30 @@ class RTXConfiguration:
 	@version.setter
 	def version(self, version: str):
 		self._version = version
+
+	@property
+	def live(self) -> str:
+		return self._live
+
+	@live.setter
+	def live(self, live: str):
+		self._live = live
+
+	@property
+	def bolt(self) -> str:
+		return self._bolt
+
+	@bolt.setter
+	def bolt(self, bolt: str):
+		self._bolt = bolt
+
+	@property
+	def database(self) -> str:
+		return self._database
+
+	@database.setter
+	def database(self, database: str):
+		self._database = database
 
 
 def main():
