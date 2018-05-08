@@ -308,8 +308,6 @@ paths:
         name: "body"
         description: "Feedback information to be submitted"
         required: true
-        schema:
-          $ref: "#/definitions/Query"
       responses:
         200:
           description: "successful operation"
