@@ -14,6 +14,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import desc
+from sqlalchemy import inspect
 
 # sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
 from RTXConfiguration import RTXConfiguration
@@ -260,6 +261,38 @@ class RTXFeedback:
       return pickle.loads(storedResponse.response_object)
     return
 
+
+  #### Get the list of ratings
+  def getRatings(self):
+    self.connect()
+    session = self.session
+    response = { "ratings": [] }
+    count = 0
+    for rating in session.query(Rating).all():
+      response["ratings"].append(object_as_dict(rating))
+      count += 1
+    response["n_ratings"] = count
+    return(response)
+
+  #### Get the list of expertise levels
+  def getExpertiseLevels(self):
+    self.connect()
+    session = self.session
+    response = { "expertise_levels": [] }
+    count = 0
+    for level in session.query(Expertise_level).all():
+      response["expertise_levels"].append(object_as_dict(level))
+      count += 1
+    response["n_expertise_levels"] = count
+    return(response)
+
+
+#### Turn a row into a dict
+def object_as_dict(obj):
+  return {c.key: getattr(obj, c.key)
+    for c in inspect(obj).mapper.column_attrs}
+
+
 #### If this class is run from the command line, perform a short little test to see if it is working correctly
 def main():
 
@@ -283,6 +316,8 @@ def main():
   for expertise_level in session.query(Expertise_level).all():
     print(expertise_level)
     print("expertise_level_id="+str(expertise_level.expertise_level_id)+"  name="+expertise_level.name+"\n")
+
+  print(rtxFeedback.getRatings())
 
 
 if __name__ == "__main__": main()

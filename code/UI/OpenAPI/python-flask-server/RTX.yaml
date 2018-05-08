@@ -39,6 +39,11 @@ tags:
   externalDocs:
     description: "Documentation for the RTX exampleQuestions function"
     url: "http://rtx.ncats.io/overview.html#exampleQuestions"
+- name: "feedback"
+  description: "Request feedback data"
+  externalDocs:
+    description: "Documentation for the RTX feedback function"
+    url: "http://rtx.ncats.io/overview.html#feedback"
 schemes:
 - "http"
 paths:
@@ -137,6 +142,45 @@ paths:
         200:
           description: "successful operation"
       x-swagger-router-controller: "swagger_server.controllers.example_questions_controller"
+  /feedback/ratings:
+    get:
+      tags:
+      - "feedback"
+      summary: "Request a list of allowable ratings"
+      description: ""
+      operationId: "get_feedback_ratings"
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "successful operation"
+      x-swagger-router-controller: "swagger_server.controllers.feedback_controller"
+  /feedback/expertise_levels:
+    get:
+      tags:
+      - "feedback"
+      summary: "Request a list of allowable expertise levels"
+      description: ""
+      operationId: "get_feedback_expertise_levels"
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "successful operation"
+      x-swagger-router-controller: "swagger_server.controllers.feedback_controller"
+  /feedback/all:
+    get:
+      tags:
+      - "feedback"
+      summary: "Request a list of all feedback provided thus far"
+      description: ""
+      operationId: "get_feedback_all"
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "successful operation"
+      x-swagger-router-controller: "swagger_server.controllers.feedback_controller"
   /response/{response_id}:
     get:
       tags:

@@ -68,7 +68,7 @@ class RTXQuery:
       rtxFeedback.addNewResponse(response,query)
       return(response)
 
-    #### Call out to OrangeBoard to answer the query "What genetic conditions might offer protection against XXXXXX?"
+    #### Call out to OrangeBoard to answer the other types of queries
     else:
 
       txltr = ParseQuestion()
