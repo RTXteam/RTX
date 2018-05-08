@@ -39,10 +39,10 @@ __status__ = 'Prototype'
 from Neo4jConnection import Neo4jConnection
 import json
 from QueryEBIOLSExtended import QueryEBIOLSExtended
-from QueryOMIMExtended import QueryOMIM
+from QueryOMIMExtended import QueryOMIMExtended
 from QueryMyGeneExtended import QueryMyGeneExtended
 from QueryMyChem import QueryMyChem
-from QueryReactomeExtended import  QueryReactomeExtended
+from QueryReactomeExtended import QueryReactomeExtended
 
 class UpdateNodesInfo:
 
@@ -324,7 +324,7 @@ class UpdateNodesInfo:
         t = time()
 
         nodes_array = []
-        qo = QueryOMIM()
+        qo = QueryOMIMExtended()
         for i, node_id in enumerate(nodes):
             node = dict()
             node['node_id'] = node_id

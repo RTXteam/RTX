@@ -8,7 +8,7 @@ sys.path.insert(0,parentdir)
 
 from Neo4jConnection import Neo4jConnection
 from QueryEBIOLSExtended import QueryEBIOLSExtended
-from QueryOMIMExtended import QueryOMIM
+from QueryOMIMExtended import QueryOMIMExtended
 from QueryMyGeneExtended import QueryMyGeneExtended
 from QueryMyChem import QueryMyChem
 from QueryReactomeExtended import QueryReactomeExtended
@@ -166,11 +166,12 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
         # generate random number array
         random_indexes = random_int_list(0, len(nodes)-1, 100)
 
+        qo = QueryOMIMExtended()
         for i in random_indexes:
             # retrieve data from API
             node_id = nodes[i]
             if node_id[:4] == "OMIM":
-                desc = QueryOMIM().disease_mim_to_description(node_id)
+                desc = qo.disease_mim_to_description(node_id)
             elif node_id[:4] == "DOID":
                 desc = QueryEBIOLSExtended.get_disease_description(node_id)
 
