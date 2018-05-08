@@ -41,7 +41,11 @@ class FormatResponse:
 		#self.response.original_question_text = ""  # Eric fills it in
 		#self.response.restated_question_text = ""  # Eric fills it in
 		self.response.result_code = "OK"
-		self.response.message = "%s result(s) found" % self._num_results
+		if self._num_results == 1:
+			self.response.message = "%s result found" % self._num_results
+		else:
+			self.response.message = "%s results found" % self._num_results
+
 
 	def __str__(self):
 		return repr(self.response)
@@ -70,7 +74,10 @@ class FormatResponse:
 		self.response.result_list = self._result_list
 		# Increment the number of results
 		self._num_results += 1
-		self.response.message = "%s result found" % self._num_results
+		if self._num_results == 1:
+			self.response.message = "%s result found" % self._num_results
+		else:
+			self.response.message = "%s results found" % self._num_results
 
 	def add_subgraph(self, nodes, edges, plain_text, confidence):
 		"""
@@ -163,7 +170,10 @@ class FormatResponse:
 		self.response.result_list = self._result_list
 		# Increment the number of results
 		self._num_results += 1
-		self.response.message = "%s result found" % self._num_results
+		if self._num_results == 1:
+			self.response.message = "%s result found" % self._num_results
+		else:
+			self.response.message = "%s results found" % self._num_results
 
 	def add_result_subgraph(self, nodes, edges):
 		"""
@@ -256,7 +266,10 @@ class FormatResponse:
 		self.response.result_list = self._result_list
 		# Increment the number of results
 		self._num_results += 1
-		self.response.message = "%s result found" % self._num_results
+		if self._num_results == 1:
+			self.response.message = "%s result found" % self._num_results
+		else:
+			self.response.message = "%s results found" % self._num_results
 
 if __name__ == '__main__':
 	test = FormatResponse(2)
