@@ -38,8 +38,8 @@ class FormatResponse:
 		self.response.tool_version = "RTX 0.4"
 		self.response.schema_version = "0.5"
 		#self.response.datetime = self._now.strftime("%Y-%m-%d %H:%M:%S")
-		#self.response.original_question_text = "ERIC FILL THIS IN FROM QuestionTranslator.py"  # TODO
-		#self.response.restated_question_text = "ERIC FILL THIS IN FROM QuestionTranslator.py"  # TODO
+		#self.response.original_question_text = ""  # Eric fills it in
+		#self.response.restated_question_text = ""  # Eric fills it in
 		self.response.result_code = "OK"
 		self.response.message = "%s result(s) found" % self._num_results
 
