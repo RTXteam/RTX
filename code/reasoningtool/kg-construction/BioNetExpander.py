@@ -75,7 +75,8 @@ class BioNetExpander:
                               "directly_interacts_with": False,
                               "causes_or_contributes_to": True,
                               "participates_in": True,
-                              "has_phenotype": True}
+                              "has_phenotype": True,
+                              "capable_of": True}
 
     def __init__(self, orangeboard):
         orangeboard.set_dict_reltype_dirs(self.MASTER_REL_IS_DIRECTED)
@@ -233,11 +234,16 @@ class BioNetExpander:
                 self.orangeboard.add_rel('participates_in', rel_sourcedb_dict[uniprot_id], target_node, source_node, extended_reltype="participates_in")
 
     def expand_anatomical_entity(self, node):
-        """
-        This a placeholder.
-        Please do not remove it otherwise expanding nodes of type "anatomical_entity" would raise errors.
-        """
-        pass
+        anatomy_curie_id_str = node.name
+        assert anatomy_curie_id_str.startswith("UBERON:")
+        gene_ontology_dict = QuerySciGraph.get_gene_ontology_curie_ids_for_uberon_curie_id(anatomy_curie_id_str)
+        for gene_ontology_curie_id_str, gene_ontology_term_dict in gene_ontology_dict.items():
+            gene_ontology_type_str = gene_ontology_term_dict["ontology"].replace(" ", "_")
+            target_node = self.add_node_smart(gene_ontology_type_str, gene_ontology_curie_id_str,
+                                              desc=gene_ontology_term_dict["name"])
+            if target_node is not None:
+                predicate_str = gene_ontology_term_dict["predicate"].replace(" ", "_")
+                self.orangeboard.add_rel("capable_of", "Monarch_SciGraph", node, target_node, extended_reltype=predicate_str)
 
     def expand_protein(self, node):
         uniprot_id_str = node.name
@@ -512,7 +518,7 @@ class BioNetExpander:
         ob.neo4j_set_auth()
         ob.neo4j_push()
 
-    def test_disease_go():
+    def test_disease_to_go():
         ob = Orangeboard(debug=False)
         ob.set_dict_reltype_dirs({'affects': True})
         bne = BioNetExpander(ob)
@@ -521,7 +527,17 @@ class BioNetExpander:
         ob.neo4j_set_url()
         ob.neo4j_set_auth()
         ob.neo4j_push()
- 
+
+    def test_anatomy_to_go():
+        ob = Orangeboard(debug=False)
+        ob.set_dict_reltype_dirs({'capable_of': True})
+        bne = BioNetExpander(ob)
+        node = bne.add_node_smart('anatomical_entity', 'UBERON:0000171', seed_node_bool=True, desc='respiration organ')
+        bne.expand_disease(node)
+        ob.neo4j_set_url()
+        ob.neo4j_set_auth()
+        ob.neo4j_push()
+        
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Builds the master knowledge graph')
     parser.add_argument('--runfunc', dest='runfunc')
