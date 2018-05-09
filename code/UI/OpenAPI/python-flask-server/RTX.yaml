@@ -30,10 +30,15 @@ tags:
     description: "Documentation for the RTX query function"
     url: "http://rtx.ncats.io/overview.html#getPubmedMeshNgd"
 - name: "response"
-  description: "Request stored responses and results from RTX"
+  description: "Request stored responses and feedback for responses"
   externalDocs:
     description: "Documentation for the RTX response function"
     url: "http://rtx.ncats.io/overview.html#response"
+- name: "result"
+  description: "Request stored results and feedback for results"
+  externalDocs:
+    description: "Documentation for the RTX result function"
+    url: "http://rtx.ncats.io/overview.html#result"
 - name: "exampleQuestions"
   description: "Request a list of example questions that can be answered by the system"
   externalDocs:
@@ -204,34 +209,6 @@ paths:
         404:
           description: "Response_id not found"
       x-swagger-router-controller: "swagger_server.controllers.response_controller"
-  /response/{response_id}/result/{result_id}:
-    get:
-      tags:
-      - "response"
-      summary: "Request stored responses and results from RTX"
-      description: ""
-      operationId: "get_result"
-      produces:
-      - "application/json"
-      parameters:
-      - in: "path"
-        name: "response_id"
-        description: "Integer identifier of the response to return"
-        required: true
-        type: "integer"
-      - in: "path"
-        name: "result_id"
-        description: "Integer identifier of the result to return"
-        required: true
-        type: "integer"
-      responses:
-        200:
-          description: "successful operation"
-          schema:
-            $ref: "#/definitions/Result"
-        404:
-          description: "result_id not found"
-      x-swagger-router-controller: "swagger_server.controllers.response_controller"
   /response/{response_id}/feedback:
     get:
       tags:
@@ -255,21 +232,39 @@ paths:
         404:
           description: "Response_id not found"
       x-swagger-router-controller: "swagger_server.controllers.response_controller"
-  /response/{response_id}/result/{result_id}/feedback:
+  /result/{result_id}:
     get:
       tags:
-      - "response"
-      summary: "Request stored feedback for this result from RTX"
+      - "result"
+      summary: "Request stored result"
+      description: ""
+      operationId: "get_result"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "path"
+        name: "result_id"
+        description: "Integer identifier of the result to return"
+        required: true
+        type: "integer"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/Result"
+        404:
+          description: "result_id not found"
+      x-swagger-router-controller: "swagger_server.controllers.result_controller"
+  /result/{result_id}/feedback:
+    get:
+      tags:
+      - "result"
+      summary: "Request stored feedback for this result"
       description: ""
       operationId: "get_result_feedback"
       produces:
       - "application/json"
       parameters:
-      - in: "path"
-        name: "response_id"
-        description: "Integer identifier of the response to return"
-        required: true
-        type: "integer"
       - in: "path"
         name: "result_id"
         description: "Integer identifier of the result to return"
@@ -282,10 +277,10 @@ paths:
             $ref: "#/definitions/ResultFeedback"
         404:
           description: "result_id not found"
-      x-swagger-router-controller: "swagger_server.controllers.response_controller"
+      x-swagger-router-controller: "swagger_server.controllers.result_controller"
     post:
       tags:
-      - "response"
+      - "result"
       summary: "Store feedback for a particular result"
       description: ""
       operationId: "post_result_feedback"
@@ -295,19 +290,10 @@ paths:
       - "application/json"
       parameters:
       - in: "path"
-        name: "response_id"
-        description: "Integer identifier of the response to return"
-        required: true
-        type: "integer"
-      - in: "path"
         name: "result_id"
         description: "Integer identifier of the result to return"
         required: true
         type: "integer"
-      - in: "body"
-        name: "body"
-        description: "Feedback information to be submitted"
-        required: true
       responses:
         200:
           description: "successful operation"
@@ -315,7 +301,7 @@ paths:
             $ref: "#/definitions/Response"
         400:
           description: "Invalid status value"
-      x-swagger-router-controller: "swagger_server.controllers.response_controller"
+      x-swagger-router-controller: "swagger_server.controllers.result_controller"
 definitions:
   Question:
     type: "object"
@@ -353,6 +339,18 @@ definitions:
         type: "string"
         example: "true"
         description: "Set to true in order to bypass any possible cached response and try to answer the query over again"
+      max_results:
+        type: "integer"
+        example: "100"
+        description: "Maximum number of individual results to return"
+      page_size:
+        type: "integer"
+        example: 100
+        description: "Split the results into pages with this number of results each"
+      page_number:
+        type: "integer"
+        example: 1
+        description: "Page number of results when the number of results exceeds the page_size"
       terms:
         type: "object"
         description: "Dict of terms needed by the specific query type"
@@ -366,7 +364,7 @@ definitions:
     properties:
       context:
         type: "string"
-        example: "http://translator.ncats.io"
+        example: "http://rtx.ncats.io/ns/translator.jsonld"
         description: "JSON-LD context URI"
       type:
         type: "string"
@@ -374,7 +372,7 @@ definitions:
         description: "Entity type of this response"
       id:
         type: "string"
-        example: "http://rtx.ncats.io/api/v1/response/1234"
+        example: "http://rtx.ncats.io/api/rtx/v1/response/1234"
         description: "URI for this response"
       tool_version:
         type: "string"
@@ -422,7 +420,7 @@ definitions:
     properties:
       id:
         type: "string"
-        example: "http://rtx.ncats.io/api/v1/response/1234/result/2345"
+        example: "http://rtx.ncats.io/api/rtx/v1/result/2345"
         description: "URI for this response"
       text:
         type: "string"
@@ -591,35 +589,55 @@ definitions:
         format: "float"
         description: "Calculated Normalized Google Distance for the two supplied terms"
         example: 0.714
-  ResultFeedback:
+  Feedback:
     type: "object"
-    description: "Feedback for one result"
+    description: "A single unit of Feedback"
     properties:
       id:
         type: "string"
-        example: "http://rtx.ncats.io/api/v1/response/1234/result/2345/feedback/4567"
+        example: "http://rtx.ncats.io/api/rtx/v1/result/2345/feedback/4567"
         description: "URI for this feedback item"
       result_id:
         type: "string"
-        example: "http://rtx.ncats.io/api/v1/response/1234/result/2345"
+        example: "http://rtx.ncats.io/api/rtx/v1/result/2345"
         description: "URI for the result that this feedback corresponds to"
       expertise_level_id:
         type: "integer"
         example: "1"
-        description: "Identifier of the claimed expertise level"
+        description: "Integer identifier of the claimed expertise level"
       rating_id:
         type: "integer"
         example: "1"
-        description: "Identifier of the applied rating"
+        description: "Integer identifier of the applied rating"
+      commenter_id:
+        type: "integer"
+        example: "1"
+        description: "Integer identifier of the commenter"
+      commenter_full_name:
+        type: "string"
+        example: "John Smith"
+        description: "Full name of the commenter"
+      datetime:
+        type: "string"
+        example: "2018-05-08 12:00"
+        description: "Datetime when the feedback was provided"
       comment:
         type: "string"
         example: "This is a great result because..."
         description: "A free text comment about this result"
-  ResponseFeedback:
+  ResultFeedback:
     type: "object"
-    description: "Feedback for all the results corresponding to this result"
+    description: "Feedback for one result"
     properties:
-      result_feedback_list:
+      feedback_list:
         type: "array"
         items:
-          $ref: "#/definitions/ResultFeedback"
+          $ref: "#/definitions/Feedback"
+  ResponseFeedback:
+    type: "object"
+    description: "Feedback for all the results corresponding to this response"
+    properties:
+      feedback_list:
+        type: "array"
+        items:
+          $ref: "#/definitions/Feedback"
