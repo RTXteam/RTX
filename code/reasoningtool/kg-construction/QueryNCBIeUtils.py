@@ -367,10 +367,7 @@ class QueryNCBIeUtils:
                     else:
                         for a in range(n_terms):
                             if type(res.json()['esearchresult']['translationstack'][a]) == dict:
-                                try:
-                                    res_int += [int(res.json()['esearchresult']['translationstack'][a]['count'])]
-                                except TypeError:
-                                    pass
+                                res_int += [int(res.json()['esearchresult']['translationstack'][a]['count'])]
             else:
                 print('HTTP response status code: ' + str(status_code) + ' for query term string {term}'.format(term=term_str))
         return res_int
@@ -393,7 +390,7 @@ class QueryNCBIeUtils:
         search_string='('
 
         if sum(mesh_flags) == len(mesh_flags):
-            search_string += '[MeSH Terms]) AND ('.join(name_list) + '[MeSH Terms]'
+            search_string += '[MeSH Terms]) AND ('.join(name_list) + '[MeSH Terms])'
             counts = QueryNCBIeUtils.multi_pubmed_hits_count(search_string, n_terms=len(name_list))
         else:
             for a in range(len(name_list)):
