@@ -18,6 +18,7 @@ import sys
 class QuerySciGraph:
     TIMEOUT_SEC=120
     API_BASE_URL = {
+        'node_properties': 'https://scigraph-ontology.monarchinitiative.org/scigraph/graph/{node_id}',
         'graph_neighbors': 'https://scigraph-ontology.monarchinitiative.org/scigraph/graph/neighbors/{node_id}',
         'cypher_query': 'https://scigraph-ontology.monarchinitiative.org/scigraph/cypher/execute.json'
     }
@@ -38,9 +39,43 @@ class QuerySciGraph:
             return None
 
         return res.json()
-             
-    '''returns the disease ontology IDs (DOID:NNNNN) for a given mesh ID in CURIE format, 'MESH:D012345'
 
+    @staticmethod
+    def get_gene_ontology_curie_ids_for_disease_curie_id(disease_curie_id_str):
+        results = QuerySciGraph.__access_api(QuerySciGraph.API_BASE_URL['graph_neighbors'].format(node_id=disease_curie_id_str))
+        go_curie_id_str_dict = dict()
+        mondo_curie_id_str = None
+        is_mondo_bool = disease_curie_id_str.startswith("MONDO:")
+        if results is not None:
+            res_edges = results.get("edges", None)
+            if res_edges is not None:
+                assert type(res_edges) == list
+                for res_edge in res_edges:
+                    object_curie_id = res_edge.get("obj", None)
+                    if object_curie_id is not None:
+                        if object_curie_id.startswith("GO:"):
+                            edge_object_meta = res_edge.get("meta", None)
+                            if edge_object_meta is not None:
+                                assert type(edge_object_meta) == dict
+                                edge_label = edge_object_meta.get("lbl", None)
+                                if edge_label is not None:
+                                    assert type(edge_label) == list
+                                    ontology = QuerySciGraph.query_get_ontology_node_category(object_curie_id)
+                                    if len(ontology) > 0:
+                                        go_curie_id_str_dict.update({object_curie_id: {"label": edge_label[0],
+                                                                                       "ontology": next(iter(ontology))}})
+                        else:
+                            if (not is_mondo_bool) and object_curie_id.startswith("MONDO:"):
+                                edge_pred = res_edge.get("pred", None)
+                                if edge_pred is not None and edge_pred == "equivalentClass":
+                                    mondo_curie_id_str = object_curie_id
+        if (not is_mondo_bool) and mondo_curie_id_str is not None:
+            go_curie_id_str_dict.update(QuerySciGraph.get_gene_ontology_curie_ids_for_disease_curie_id(mondo_curie_id_str))
+        return go_curie_id_str_dict
+
+    
+    '''returns the disease ontology IDs (DOID:NNNNN) for a given mesh ID in CURIE format, 'MESH:D012345'
+    
     :param mesh_id: str containing the MeSH ID in CURIE format, i.e., MESH:D003550
     :return: set(str)
     '''
@@ -51,7 +86,7 @@ class QuerySciGraph:
         if results is not None:
             res_nodes = results.get('nodes', None)
             if res_nodes is not None:
-                assert type(res_nodes)==list
+                assert type(res_nodes) == listq
                 for res_node in res_nodes:
                     id = res_node.get('id', None)
                     if id is not None:
@@ -77,7 +112,26 @@ class QuerySciGraph:
                     if results_xref is not None:
                         disont_ids = set([x for x in results_xref if 'DOID:' in x])
         return disont_ids
-    
+
+    @staticmethod
+    def query_get_ontology_node_category(ontology_term_id_str):
+        results = QuerySciGraph.__access_api(QuerySciGraph.API_BASE_URL["node_properties"].format(node_id=ontology_term_id_str))
+        category_str = set()
+        if results is not None:
+            results_nodes = results.get("nodes", None)
+            if results_nodes is not None:
+                assert type(results_nodes) == list
+                for results_node in results_nodes:
+                    assert type(results_node) == dict
+                    results_node_meta = results_node.get("meta", None)
+                    if results_node_meta is not None:
+                        assert type(results_node_meta) == dict
+                        results_category = results_node_meta.get("category", None)
+                        if results_category is not None:
+                            assert type(results_category) == list
+                            category_str.add(results_category[0])
+        return(category_str)
+                                                                
     @staticmethod
     def query_sub_ontology_terms_for_ontology_term(ontology_term_id):
         """
@@ -121,11 +175,15 @@ class QuerySciGraph:
         return sub_nodes_with_labels
 
 if __name__ == '__main__':
-#    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D005199'))
-#    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D006937'))
-#    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D000856'))
+    print(QuerySciGraph.query_get_ontology_node_category("GO:0005777"))
+    print(QuerySciGraph.get_gene_ontology_curie_ids_for_disease_curie_id("MONDO:0019053"))
+    print(QuerySciGraph.get_gene_ontology_curie_ids_for_disease_curie_id("DOID:906"))
+    print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term("GO:0005777"))
+    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D005199'))
+    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D006937'))
+    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D000856'))
     print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term('HP:12072'))
     print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term('GO:1904685'))
-#    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015473'))
+    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015473'))
     print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term("HP:0000107"))  # Renal cyst
-#    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015470'))
+    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015470'))
