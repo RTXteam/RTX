@@ -43,6 +43,7 @@ class QuerySciGraph:
     @staticmethod
     def get_gene_ontology_curie_ids_for_disease_curie_id(disease_curie_id_str):
         results = QuerySciGraph.__access_api(QuerySciGraph.API_BASE_URL['graph_neighbors'].format(node_id=disease_curie_id_str))
+#        print(results)
         go_curie_id_str_dict = dict()
         mondo_curie_id_str = None
         is_mondo_bool = disease_curie_id_str.startswith("MONDO:")
@@ -60,10 +61,11 @@ class QuerySciGraph:
                                 edge_label = edge_object_meta.get("lbl", None)
                                 if edge_label is not None:
                                     assert type(edge_label) == list
-                                    ontology = QuerySciGraph.query_get_ontology_node_category(object_curie_id)
-                                    if len(ontology) > 0:
-                                        go_curie_id_str_dict.update({object_curie_id: {"label": edge_label[0],
-                                                                                       "ontology": next(iter(ontology))}})
+                                    go_dict = QuerySciGraph.query_get_ontology_node_category_and_term(object_curie_id)
+                                    if len(go_dict) > 0:
+                                        go_curie_id_str_dict.update({object_curie_id: {"predicate": edge_label[0],
+                                                                                       "ontology": go_dict["category"],
+                                                                                       "name": go_dict["name"]}})
                         else:
                             if (not is_mondo_bool) and object_curie_id.startswith("MONDO:"):
                                 edge_pred = res_edge.get("pred", None)
@@ -114,9 +116,10 @@ class QuerySciGraph:
         return disont_ids
 
     @staticmethod
-    def query_get_ontology_node_category(ontology_term_id_str):
+    def query_get_ontology_node_category_and_term(ontology_term_id_str):
         results = QuerySciGraph.__access_api(QuerySciGraph.API_BASE_URL["node_properties"].format(node_id=ontology_term_id_str))
-        category_str = set()
+        res_dict = dict()
+#        print(results)
         if results is not None:
             results_nodes = results.get("nodes", None)
             if results_nodes is not None:
@@ -129,8 +132,13 @@ class QuerySciGraph:
                         results_category = results_node_meta.get("category", None)
                         if results_category is not None:
                             assert type(results_category) == list
-                            category_str.add(results_category[0])
-        return(category_str)
+                            category_str = results_category[0]
+                            label = results_node.get("lbl", None)
+                            if label is not None:
+                                assert type(label) == str
+                                res_dict.update({"name": label,
+                                                 "category": category_str})
+        return(res_dict)
                                                                 
     @staticmethod
     def query_sub_ontology_terms_for_ontology_term(ontology_term_id):
@@ -175,7 +183,8 @@ class QuerySciGraph:
         return sub_nodes_with_labels
 
 if __name__ == '__main__':
-    print(QuerySciGraph.query_get_ontology_node_category("GO:0005777"))
+    print(QuerySciGraph.query_get_ontology_node_category_and_term("GO:0005777"))
+    print(QuerySciGraph.query_get_ontology_node_category_and_term("GO:XXXXXXX"))
     print(QuerySciGraph.get_gene_ontology_curie_ids_for_disease_curie_id("MONDO:0019053"))
     print(QuerySciGraph.get_gene_ontology_curie_ids_for_disease_curie_id("DOID:906"))
     print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term("GO:0005777"))
