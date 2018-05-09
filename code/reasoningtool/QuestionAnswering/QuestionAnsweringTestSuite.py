@@ -12,7 +12,7 @@ def run_test_suite(question_number, python_loc, res_loc):
 	# get a random selection of nodes
 	property_to_nodes = dict()
 	for label in RU.get_node_labels():
-		nodes = RU.get_random_nodes(label, property="description")
+		nodes = RU.get_random_nodes(label, property="name")
 		property_to_nodes[label] = nodes
 
 	# Go through each of the questions and populate terms
