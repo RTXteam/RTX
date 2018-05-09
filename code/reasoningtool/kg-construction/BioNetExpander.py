@@ -76,7 +76,7 @@ class BioNetExpander:
                               "causes_or_contributes_to": True,
                               "participates_in": True,
                               "has_phenotype": True,
-                              "capable_of": True}
+                              "enables": True}
 
     def __init__(self, orangeboard):
         orangeboard.set_dict_reltype_dirs(self.MASTER_REL_IS_DIRECTED)
@@ -243,7 +243,7 @@ class BioNetExpander:
                                               desc=gene_ontology_term_dict["name"])
             if target_node is not None:
                 predicate_str = gene_ontology_term_dict["predicate"].replace(" ", "_")
-                self.orangeboard.add_rel("capable_of", "Monarch_SciGraph", node, target_node, extended_reltype=predicate_str)
+                self.orangeboard.add_rel("enables", "Monarch_SciGraph", node, target_node, extended_reltype=predicate_str)
 
     def expand_protein(self, node):
         uniprot_id_str = node.name
