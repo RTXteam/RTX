@@ -800,7 +800,7 @@ def weight_graph_with_google_distance(g, context_node_id=None, context_node_desc
 	:param g: a networkx graph
 	:return: None (graph properties are updated)
 	"""
-	descriptions = nx.get_node_attributes(g, 'name')
+	descriptions = nx.get_node_attributes(g, 'description')
 	names = nx.get_node_attributes(g, 'names')
 	labels = nx.get_node_attributes(g, 'labels')
 	nodes = list(nx.nodes(g))
@@ -1025,7 +1025,7 @@ def weight_graph_with_cohd_frequency(g, default_value=0, normalized=False):
 	:param normalized: if you want the results to all sum to 1 or not
 	:return: None (modifies graph directly)
 	"""
-	descriptions = nx.get_node_attributes(g, 'name')
+	descriptions = nx.get_node_attributes(g, 'description')
 	names = nx.get_node_attributes(g, 'names')
 	labels = nx.get_node_attributes(g, 'labels')
 	nodes = list(nx.nodes(g))

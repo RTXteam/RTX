@@ -50,7 +50,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 	:return: Text answer
 	"""
 	response = FormatOutput.FormatResponse(2)
-	if not RU.node_exists_with_property(drug_name, 'name'):
+	if not RU.node_exists_with_property(drug_name, 'rtx_name'):
 		error_message = "Sorry, the drug %s is not yet in our knowledge graph." % drug_name
 		error_code = "DrugNotFound"
 		if not use_json:
@@ -60,7 +60,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 			response.add_error_message(error_code, error_message)
 			response.print()
 			return 1
-	if not RU.node_exists_with_property(disease_name, 'name'):
+	if not RU.node_exists_with_property(disease_name, 'rtx_name'):
 		error_message = "Sorry, the disease %s is not yet in our knowledge graph." % disease_name
 		error_code = "DiseaseNotFound"
 		if not use_json:
@@ -96,11 +96,11 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 					error_message = "Sorry, I could not find any paths connecting %s to %s via protein, pathway, "\
 						"tissue, and phenotype. The drug and/or disease may not be one of the entities I know about, or they "\
 						"do not connect via a known pathway, tissue, and phenotype (understudied)" % (
-						RU.get_node_property(drug_name, 'description'), RU.get_node_property(disease_name, 'description'))
+						RU.get_node_property(drug_name, 'name'), RU.get_node_property(disease_name, 'name'))
 				except:
 					error_message = "Sorry, I could not find any paths connecting %s to %s via protein, pathway, "\
 						"tissue, and phenotype. The drug and/or disease may not be one of the entities I know about, or they "\
-						"do not connect via a known pathway, tissue, and phenotype (understudied)" % (RU.get_node_property(drug_name, 'description'), RU.get_node_property(disease_name, 'description'))
+						"do not connect via a known pathway, tissue, and phenotype (understudied)" % (RU.get_node_property(drug_name, 'name'), RU.get_node_property(disease_name, 'name'))
 				if not use_json:
 					print(error_message)
 					return 1
@@ -109,7 +109,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 					response.print()
 					return 1
 	# Decorate with normalized google distance
-	disease_descr = RU.get_node_property(disease_name, 'description')
+	disease_descr = RU.get_node_property(disease_name, 'name')
 	# include context in the google distance TODO: this may not actually help things... need to test
 	RU.weight_graph_with_google_distance(g, context_node_id=disease_name, context_node_descr=disease_descr, default_value=max_gd)
 
@@ -157,7 +157,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 	# Look for the pathway that has both a small GD between protein and disease
 	best_pathways_per_path = []
 	best_pathways_per_path_gd = []
-	disease_common_name = RU.get_node_property(disease_name, 'description', node_label='disease')
+	disease_common_name = RU.get_node_property(disease_name, 'name', node_label='disease')
 	for j, pathways in enumerate(pathways_per_path):
 		smallest_gd = np.inf
 		best_pathway = ""
@@ -225,7 +225,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 			edge_path = edge_paths[path_ind]
 			to_print = ""
 			for node_index in range(len(node_path)):
-				to_print += " (" + str(node_path[node_index]['names']) + "," + str(node_path[node_index]['description']) + ")"
+				to_print += " (" + str(node_path[node_index]['names']) + "," + str(node_path[node_index]['name']) + ")"
 				if node_index < len(edge_path):
 					to_print += " -[" + str(edge_path[node_index]['type']) + "]-"
 			to_print += ". Distance (smaller is better): %f." % weights[path_ind]
@@ -237,7 +237,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 			edge_path = edge_paths[path_ind]
 			to_print = ""
 			for node_index in range(len(node_path)):
-				to_print += " " + str(node_path[node_index]['description'])
+				to_print += " " + str(node_path[node_index]['name'])
 				if node_index < len(edge_path):
 					to_print += " -" + str(edge_path[node_index]['type']) + "->"
 			to_print += ". Distance (smaller is better): %f." % weights[path_ind]
