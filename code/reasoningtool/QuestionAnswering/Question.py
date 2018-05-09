@@ -237,7 +237,7 @@ class Question:
 		if parameters:
 			for parameter in parameters:
 				try:
-					description = RU.get_node_property(parameters[parameter], 'description')
+					description = RU.get_node_property(parameters[parameter], 'name')
 				except:
 					description = parameters[parameter]
 				parameters_as_descriptions[parameter] = description
