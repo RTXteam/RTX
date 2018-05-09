@@ -225,7 +225,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 			edge_path = edge_paths[path_ind]
 			to_print = ""
 			for node_index in range(len(node_path)):
-				to_print += " (" + str(node_path[node_index]['names']) + "," + str(node_path[node_index]['name']) + ")"
+				to_print += " (" + str(node_path[node_index]['names']) + "," + str(node_path[node_index]['properties']['name']) + ")"
 				if node_index < len(edge_path):
 					to_print += " -[" + str(edge_path[node_index]['type']) + "]-"
 			to_print += ". Distance (smaller is better): %f." % weights[path_ind]
@@ -237,7 +237,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 			edge_path = edge_paths[path_ind]
 			to_print = ""
 			for node_index in range(len(node_path)):
-				to_print += " " + str(node_path[node_index]['name'])
+				to_print += " " + str(node_path[node_index]['properties']['name'])
 				if node_index < len(edge_path):
 					to_print += " -" + str(edge_path[node_index]['type']) + "->"
 			to_print += ". Distance (smaller is better): %f." % weights[path_ind]
