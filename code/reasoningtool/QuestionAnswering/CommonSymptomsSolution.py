@@ -35,7 +35,7 @@ class CommonSymptomsSolution:
 		response = FormatOutput.FormatResponse(6)
 
 		# get the description
-		disease_description = RU.get_node_property(disease_id, 'description')
+		disease_description = RU.get_node_property(disease_id, 'name')
 
 		# get subgraph of all all the symptom nodes connecting to the disease
 		try:
