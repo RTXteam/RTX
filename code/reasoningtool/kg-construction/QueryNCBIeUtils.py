@@ -367,7 +367,10 @@ class QueryNCBIeUtils:
                     else:
                         for a in range(n_terms):
                             if res.json()['esearchresult']['translationstack'][a] != 'AND':
-                                res_int += [int(res.json()['esearchresult']['translationstack'][a]['count'])]
+                                try:
+                                    res_int += [int(res.json()['esearchresult']['translationstack'][a]['count'])]
+                                except TypeError:
+                                    pass
             else:
                 print('HTTP response status code: ' + str(status_code) + ' for query term string {term}'.format(term=term_str))
         return res_int
