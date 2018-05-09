@@ -28,7 +28,7 @@ class QueryMyGeneExtended:
     @staticmethod
     def get_protein_entity(protein_id):
         mg = mygene.MyGeneInfo()
-        results = str(mg.query(protein_id, fields='all', return_raw='True'))
+        results = str(mg.query(protein_id, fields='all', return_raw='True', verbose=False))
         result_str = 'UNKNOWN'
         if len(results) > 100:
             json_dict = json.loads(results)
@@ -38,7 +38,7 @@ class QueryMyGeneExtended:
     @staticmethod
     def get_microRNA_entity(microrna_id):
         mg = mygene.MyGeneInfo()
-        results = str(mg.query(microrna_id.replace('NCBIGene', 'entrezgene'), fields='all', return_raw='True'))
+        results = str(mg.query(microrna_id.replace('NCBIGene', 'entrezgene'), fields='all', return_raw='True', verbose=False))
         result_str = 'UNKNOWN'
         if len(results) > 100:
             json_dict = json.loads(results)

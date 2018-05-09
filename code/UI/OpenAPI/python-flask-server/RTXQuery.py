@@ -52,6 +52,7 @@ class RTXQuery:
     #### If we can find a cached response for this query and this version of RTX, then return the cached response
     if ( cachedResponse is not None ):
       apiResponse = Response().from_dict(cachedResponse)
+      rtxFeedback.disconnect()
       return apiResponse
 
     #### Still have special handling for Q0
@@ -66,6 +67,7 @@ class RTXQuery:
       codeString = response.result_code
       self.logQuery(id,codeString,terms)
       rtxFeedback.addNewResponse(response,query)
+      rtxFeedback.disconnect()
       return(response)
 
     #### Call out to OrangeBoard to answer the other types of queries
@@ -105,6 +107,7 @@ class RTXQuery:
       #### Log the result and return the Response object
       self.logQuery(response.id,response.result_code,terms)
       rtxFeedback.addNewResponse(response,query)
+      rtxFeedback.disconnect()
       return(response)
 
 
@@ -112,6 +115,7 @@ class RTXQuery:
     response = Response()
     response.result_code = "UnsupportedQueryTypeID"
     response.message = "The specified query id '" + id + "' is not supported at this time"
+    rtxFeedback.disconnect()
     return(response)
 
 
