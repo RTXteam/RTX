@@ -11,6 +11,7 @@ except ImportError:
 	import QueryNCBIeUtils
 QueryNCBIeUtils =QueryNCBIeUtils.QueryNCBIeUtils()
 #import Q1Utils
+from neo4j.v1 import GraphDatabase, basic_auth
 import argparse
 import sys
 import json
