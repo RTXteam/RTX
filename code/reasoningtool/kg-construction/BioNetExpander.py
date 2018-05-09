@@ -530,7 +530,7 @@ class BioNetExpander:
 
     def test_anatomy_to_go():
         ob = Orangeboard(debug=False)
-        ob.set_dict_reltype_dirs({'capable_of': True})
+        ob.set_dict_reltype_dirs({'enables': True})
         bne = BioNetExpander(ob)
         node = bne.add_node_smart('anatomical_entity', 'UBERON:0000171', seed_node_bool=True, desc='respiration organ')
         bne.expand_disease(node)
