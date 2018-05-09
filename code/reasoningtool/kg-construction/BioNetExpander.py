@@ -41,6 +41,7 @@ from QuerySciGraph import QuerySciGraph
 from QueryChEMBL import QueryChEMBL
 from QueryUniprotExtended import QueryUniprotExtended
 
+
 class BioNetExpander:
 
     CURIE_PREFIX_TO_IRI_PREFIX = {"OMIM": "http://purl.obolibrary.org/obo/OMIM_",
@@ -62,7 +63,9 @@ class BioNetExpander:
                                         "phenotypic_feature": "HP",
                                         "disease": "DOID",
                                         "pathway": "REACT",
-                                        "biological_process": "GO"}
+                                        "biological_process": "GO",
+                                        "cellular_component": "GO",
+                                        "molecular_function": "GO"}
 
     MASTER_REL_IS_DIRECTED = {"subclass_of": True,
                               "associated_with_condition": True,
@@ -337,14 +340,23 @@ class BioNetExpander:
             if node2 is not None:
                 self.orangeboard.add_rel("participates_in", 'gene_ontology', node1, node2, extended_reltype="participates_in")
 
-    def expand_biological_process(self, node):
+    def expand_gene_ontology(self, node, gene_ontology_type_str):
         node_go_id = node.name
         child_go_ids_dict = QuerySciGraph.query_sub_ontology_terms_for_ontology_term(node_go_id)
         if child_go_ids_dict is not None:
             for child_go_id, child_go_term in child_go_ids_dict.items():
-                child_node = self.add_node_smart('biological_process', child_go_id, desc=child_go_term)
+                child_node = self.add_node_smart(gene_ontology_type_str, child_go_id, desc=child_go_term)
                 if child_node is not None and child_node != node:
                     self.orangeboard.add_rel("subclass_of", 'gene_ontology', child_node, node, extended_reltype="subclass_of")
+
+    def expand_molecular_function(self, node):
+        self.expand_gene_ontology(node, "molecular_function")
+
+    def expand_cellular_component(self, node):
+        self.expand_gene_ontology(node, "cellular_component")
+
+    def expand_biological_process(self, node):
+        self.expand_gene_ontology(node, "biological_process")
 
     def expand_phenotypic_feature(self, node):
         # expand phenotype=>anatomy
@@ -402,10 +414,20 @@ class BioNetExpander:
     def expand_disease(self, node):
         disease_name = node.name
 
+        gene_ontology_dict = QuerySciGraph.get_gene_ontology_curie_ids_for_disease_curie_id(disease_name)
+        for gene_ontology_curie_id_str, gene_ontology_term_dict in gene_ontology_dict.items():
+            gene_ontology_type_str = gene_ontology_term_dict["ontology"].replace(" ", "_")
+            target_node = self.add_node_smart(gene_ontology_type_str, gene_ontology_curie_id_str,
+                                              desc=gene_ontology_term_dict["name"])
+            if target_node is not None:
+                predicate_str = gene_ontology_term_dict["predicate"].replace(" ", "_")
+                self.orangeboard.add_rel("affects", "Monarch_SciGraph", node, target_node, extended_reltype=predicate_str)
+
         if "OMIM:" in disease_name:
             self.expand_genetic_condition(node)
             return
 
+        # if we get here, this is a Disease Ontology disease
         disont_id = disease_name
 
         child_disease_ids_dict = QueryDisont.query_disont_to_child_disonts_desc(disont_id)
@@ -490,7 +512,16 @@ class BioNetExpander:
         ob.neo4j_set_auth()
         ob.neo4j_push()
 
-
+    def test_disease_go():
+        ob = Orangeboard(debug=False)
+        ob.set_dict_reltype_dirs({'affects': True})
+        bne = BioNetExpander(ob)
+        node = bne.add_node_smart('disease', 'DOID:906', seed_node_bool=True, desc='peroxisomal disease')
+        bne.expand_disease(node)
+        ob.neo4j_set_url()
+        ob.neo4j_set_auth()
+        ob.neo4j_push()
+ 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Builds the master knowledge graph')
     parser.add_argument('--runfunc', dest='runfunc')
