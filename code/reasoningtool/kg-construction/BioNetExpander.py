@@ -537,7 +537,8 @@ class BioNetExpander:
         ob.neo4j_set_url()
         ob.neo4j_set_auth()
         ob.neo4j_push()
-        
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Builds the master knowledge graph')
     parser.add_argument('--runfunc', dest='runfunc')
