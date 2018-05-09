@@ -218,6 +218,7 @@ class QueryBioLink:
 
         return ret_dict
 
+
 if __name__ == '__main__':
     print(QueryBioLink.get_phenotypes_for_disease_desc('OMIM:605543'))
     print(QueryBioLink.get_genes_for_disease_desc('OMIM:XXXXXX'))
