@@ -30,7 +30,7 @@ def display_n_questions(n, use_json=False):
 	# get a random selection of nodes
 	label_to_nodes = dict()
 	for label in RU.get_node_labels():
-		nodes = RU.get_random_nodes(label, property="name")
+		nodes = RU.get_random_nodes(label, property="rtx_name")
 		label_to_nodes[label] = nodes
 
 	# pick n of the questions to spit back
@@ -60,7 +60,7 @@ def shell_out_n_questions(n, execute=False, use_json=False):
 	# get a random selection of nodes
 	label_to_nodes = dict()
 	for label in RU.get_node_labels():
-		nodes = RU.get_random_nodes(label, property="name")
+		nodes = RU.get_random_nodes(label, property="rtx_name")
 		label_to_nodes[label] = nodes
 
 	# pick n of the questions to spit back

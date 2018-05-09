@@ -42,8 +42,8 @@ with open(os.path.abspath('../../../data/q2/q2-drugandcondition-list-mapped.txt'
 def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 	"""
 	Find the clinical outcome pathway connecting the drug to the disease
-	:param drug_name: a name of a drug (node.name in the KG)
-	:param disease_name: a name of a disease (node.name in the KG, eg DOID:)
+	:param drug_name: a name of a drug (node.rtx_name in the KG)
+	:param disease_name: a name of a disease (node.rtx_name in the KG, eg DOID:)
 	:param k: Number of paths to return (int)
 	:param use_json: if you want the answers as JSON.
 	:param max_gd: maximum value for google distance

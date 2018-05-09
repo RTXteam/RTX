@@ -214,7 +214,7 @@ def get_node_names_of_type_connected_to_target(source_label, source_name, target
 	"""
 	if is_omim:
 		query = "MATCH path=shortestPath((t:%s)-[*1..%d]-(s:%s))" \
-				" WHERE s.rtx_name='%s' AND t<>s AND t.rtx_name=~'OMIM:.*' WITH distinct nodes(path)[0] as p RETURN p.name" % (
+				" WHERE s.rtx_name='%s' AND t<>s AND t.rtx_name=~'OMIM:.*' WITH distinct nodes(path)[0] as p RETURN p.rtx_name" % (
 				target_label, max_path_len, source_label, source_name)
 	elif direction == "r":
 		query = "MATCH path=shortestPath((t:%s)-[*1..%d]->(s:%s))" \
@@ -520,7 +520,7 @@ def return_subgraph_through_node_labels(source_node, source_node_label, target_n
 			for i in range(len(rel_list) - 1):
 				query += "-[]-(:" + rel_list[i] + ")"
 			query += "-[]-(:" + rel_list[-1] + ")-[]-" + "(t:%s)" % target_node_label
-			query += " WHERE t.name='%s' " % target_node
+			query += " WHERE t.rtx_name='%s' " % target_node
 		query += "RETURN "
 		for rel_index in range(len(node_list) - 1):
 			query += "collect(path%d)+" % rel_index
@@ -643,7 +643,7 @@ def count_nodes_of_type_for_nodes_that_connect_to_label(source_name, source_labe
 	This function will take a source node, get all the target nodes of node_label type that connect to the source via node_label_list
 	and relationship_label list, it then takes each target node, and counts the number of nodes of type node_label_list[node_of_interest] that are connected to the target.
 	An example cypher result is:
-	MATCH (t:disease)-[:has_phenotype]-(n:phenotypic_feature) WHERE (:disease{name:'DOID:8398'})-[:has_phenotype]-(:phenotypic_feature)-[:has_phenotype]-(t:disease) RETURN t.name, count(distinct n.name)
+	MATCH (t:disease)-[:has_phenotype]-(n:phenotypic_feature) WHERE (:disease{rtx_name:'DOID:8398'})-[:has_phenotype]-(:phenotypic_feature)-[:has_phenotype]-(t:disease) RETURN t.rtx_name, count(distinct n.name)
 	which will return
 	DOID:001	18
 	DOID:002	200
@@ -671,7 +671,7 @@ def count_nodes_of_type_for_nodes_that_connect_to_label(source_name, source_labe
 	for i in range(len(relationship_label_list) - 1):
 		query += "[:%s]-(:%s)-" % (relationship_label_list[i], node_label_list[i])
 	query += "[:%s]-(t:%s) " % (relationship_label_list[-1], target_label)
-	query += "RETURN t.rtx_name, count(distinct n.name)"
+	query += "RETURN t.rtx_name, count(distinct n.rtx_name)"
 	if debug:
 		return query
 	else:
