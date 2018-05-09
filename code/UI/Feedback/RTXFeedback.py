@@ -113,6 +113,16 @@ class RTXFeedback:
     self._session = session
 
 
+  #### Define attribute engine
+  @property
+  def engine(self) -> str:
+    return self._engine
+
+  @engine.setter
+  def engine(self, engine: str):
+    self._engine = engine
+
+
   #### Define attribute databaseName
   @property
   def databaseName(self) -> str:
@@ -140,6 +150,14 @@ class RTXFeedback:
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
     self.session = session
+    self.engine = engine
+
+  #### Create and store a database connection
+  def disconnect(self):
+    session = self.session
+    engine = self.engine
+    session.close()
+    engine.dispose()
 
   #### Pre-populate the database with reference data
   def prepopulateDatabase(self):
