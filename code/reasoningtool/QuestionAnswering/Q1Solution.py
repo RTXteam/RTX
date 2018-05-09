@@ -214,7 +214,7 @@ def answerQ1(doid, directed=True, max_path_len=3, verbose=False, use_json=False)
 
 	# get the ones that have low google distance (are "well studied")
 	#omims = Q1Utils.refine_omims_well_studied(omims, doid, verbose=verbose)
-	omims = RU.refine_omims_well_studied(omims, doid, verbose=verbose)
+	omims = RU.refine_omims_well_studied(omims, doid, omim_to_mesh, q1_doid_to_mesh, verbose=verbose)
 
 	if not omims:
 		if verbose and not use_json:

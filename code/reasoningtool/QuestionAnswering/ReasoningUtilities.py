@@ -154,7 +154,7 @@ def get_name_to_description_dict(session=session):
 	res = session.run(query)
 	for item in res:
 		item_dict = item['n']
-		name_to_descr[item_dict['rtx_name']] = item_dict['description']
+		name_to_descr[item_dict['rtx_name']] = item_dict['name']
 	return name_to_descr
 
 
@@ -344,7 +344,7 @@ def get_graph(res, directed=True, multigraph=False):
 			graph = nx.Graph()
 	for item in res._results.graph:
 		for node in item['nodes']:
-			graph.add_node(node['id'], properties=node['properties'], labels=node['labels'], names=node['properties']['rtx_name'], description=node['properties']['description'])
+			graph.add_node(node['id'], properties=node['properties'], labels=node['labels'], names=node['properties']['rtx_name'], description=node['properties']['name'])
 		for rel in item['relationships']:
 			graph.add_edge(rel['startNode'], rel['endNode'], id=rel['id'], properties=rel['properties'], type=rel['type'])
 	return graph
@@ -760,7 +760,7 @@ def get_results_object_model(target_node, paths_dict, name_to_description, q1_do
 					else:
 						path_list.append({'type': 'node',
 										  'name': path_names[index],
-										  'desc': get_node_property(path_names[index], 'description')})
+										  'desc': get_node_property(path_names[index], 'name')})
 				path_list.append({'type': 'node',
 								  'name': target_node,
 								  'desc': q1_doid_to_disease.get(target_node, '')})
@@ -800,7 +800,7 @@ def weight_graph_with_google_distance(g, context_node_id=None, context_node_desc
 	:param g: a networkx graph
 	:return: None (graph properties are updated)
 	"""
-	descriptions = nx.get_node_attributes(g, 'description')
+	descriptions = nx.get_node_attributes(g, 'name')
 	names = nx.get_node_attributes(g, 'names')
 	labels = nx.get_node_attributes(g, 'labels')
 	nodes = list(nx.nodes(g))
@@ -1025,7 +1025,7 @@ def weight_graph_with_cohd_frequency(g, default_value=0, normalized=False):
 	:param normalized: if you want the results to all sum to 1 or not
 	:return: None (modifies graph directly)
 	"""
-	descriptions = nx.get_node_attributes(g, 'description')
+	descriptions = nx.get_node_attributes(g, 'name')
 	names = nx.get_node_attributes(g, 'names')
 	labels = nx.get_node_attributes(g, 'labels')
 	nodes = list(nx.nodes(g))
@@ -1070,7 +1070,7 @@ def weight_graph_with_cohd_frequency(g, default_value=0, normalized=False):
 
 
 
-def display_results_str(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=False):
+def display_results_str(doid, paths_dict, probs=False):
 	"""
 	Format the results in a pretty manner
 	:param doid: souce doid DOID:1234
@@ -1083,41 +1083,45 @@ def display_results_str(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disea
 	to_print = ''
 	omim_list = paths_dict.keys()
 	if len(omim_list) > 0:
-		if doid in q1_doid_to_disease:
-			doid_name = q1_doid_to_disease[doid]
-		else:
-			doid_name = doid
+		#if doid in q1_doid_to_disease:
+		#	doid_name = q1_doid_to_disease[doid]
+		#else:
+		#	doid_name = doid
+		doid_name = get_node_property(doid, 'name')
 		omim_names = []
 		for omim in omim_list:
-			if omim in omim_to_genetic_cond:
-				omim_names.append(omim_to_genetic_cond[omim])
-			else:
-				omim_names.append(omim)
-		ret_str = "Possible genetic conditions that protect against {doid_name}: ".format(doid_name=doid_name) + str(
-			omim_names) + '\n'
+			#if omim in omim_to_genetic_cond:
+			#	omim_names.append(omim_to_genetic_cond[omim])
+			#else:
+			#	omim_names.append(omim)
+			omim_name = get_node_property(omim, 'name')
+			omim_names.append(omim_name)
+		ret_str = "Possible genetic conditions that protect against {doid_name}: ".format(doid_name=doid_name) + str(omim_names) + '\n'
 		for omim in omim_list:
-			if omim in omim_to_genetic_cond:
-				to_print += "The proposed mechanism of action for %s (%s) is: " % (omim_to_genetic_cond[omim], omim)
-			else:
-				to_print += "The proposed mechanism of action for %s is: " % omim
+			#if omim in omim_to_genetic_cond:
+			to_print += "The proposed mechanism of action for %s (%s) is: " % (get_node_property(omim, 'name'), omim)
+			#else:
+			#	to_print += "The proposed mechanism of action for %s is: " % omim
 			path_names, path_types = paths_dict[omim]
 			if len(path_names) == 1:
 				path_names = path_names[0]
 				path_types = path_types[0]
-				if omim in omim_to_genetic_cond:
-					to_print += "(%s)" % (omim_to_genetic_cond[omim])
-				else:
-					to_print += "(%s:%s)" % (path_types[0], path_names[0])
+				#if omim in omim_to_genetic_cond:
+				#	to_print += "(%s)" % (omim_to_genetic_cond[omim])
+				#else:
+				#to_print += "(%s:%s)" % (path_types[0], path_names[0])
+				to_print += "(%s:%s)" % (omim, get_node_property(omim, 'name'))
 				for index in range(1, len(path_names) - 1):
 					if index % 2 == 1:
 						to_print += "--[%s]-->" % (path_types[index])
 					else:
-						to_print += "(%s:%s:%s)" % (
-						get_node_property(path_names[index], 'description'), path_names[index], path_types[index])
-				if doid in q1_doid_to_disease:
-					to_print += "(%s). " % q1_doid_to_disease[doid]
-				else:
-					to_print += "(%s:%s). " % (path_names[-1], path_types[-1])
+						#to_print += "(%s:%s:%s)" % (node_to_description(path_names[index]), path_names[index], path_types[index])
+						to_print += "(%s:%s:%s)" % (get_node_property(path_names[index], "name"), path_names[index], get_node_property(path_names[index], 'label'))
+				#if doid in q1_doid_to_disease:
+				#	to_print += "(%s). " % q1_doid_to_disease[doid]
+				#else:
+				#to_print += "(%s:%s). " % (path_names[-1], path_types[-1])
+				to_print += "(%s:%s:%s). " % (path_names[-1], get_node_property(path_names[-1], 'name'), get_node_property(path_names[-1], 'label'))
 				if probs:
 					if omim in probs:
 						to_print += "Confidence: %f" % probs[omim]
@@ -1126,8 +1130,7 @@ def display_results_str(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disea
 				to_print += '\n'
 				if probs:
 					if omim in probs:
-						to_print += "With confidence %f, the mechanism is one of the following paths: " % probs[
-							omim] + '\n'
+						to_print += "With confidence %f, the mechanism is one of the following paths: " % probs[omim] + '\n'
 				relationships_and_counts_dict = Counter(map(tuple, path_types))
 				relationships = list(relationships_and_counts_dict.keys())
 				counts = []
@@ -1143,12 +1146,12 @@ def display_results_str(doid, paths_dict, omim_to_genetic_cond, q1_doid_to_disea
 					to_print = "%d. " % (index + 1)
 					to_print += ("There were %d paths of the form " % count) + str(relationship) + '\n'
 	else:
-		if doid in q1_doid_to_disease:
-			name = q1_doid_to_disease[doid]
-		else:
-			name = doid
-		to_print = "Sorry, I was unable to find a genetic condition that protects against {name}".format(
-			name=name) + '\n'
+		name = get_node_property(doid, 'description')
+		#if doid in q1_doid_to_disease:
+		#	name = q1_doid_to_disease[doid]
+		#else:
+		#	name = doid
+		to_print = "Sorry, I was unable to find a genetic condition that protects against {name}".format(name=name) + '\n'
 	return to_print
 
 
@@ -1213,13 +1216,10 @@ def refine_omims_well_studied(omims, doid, omim_to_mesh, q1_doid_to_mesh, verbos
 	# Getting well-studied omims
 	omims_GD = list()
 	for omim in omims:  # only the on the prioritized ones
-		if omim in omim_to_mesh:
-			# res = QueryNCBIeUtils.QueryNCBIeUtils.normalized_google_distance(omim_to_mesh[omim], input_disease)
-			omim_mesh = QueryNCBIeUtils.QueryNCBIeUtils.get_mesh_terms_for_omim_id(omim.split(':')[1])
-			if len(omim_mesh) > 1:
-				omim_mesh = omim_mesh[0]
-			res = QueryNCBIeUtils.QueryNCBIeUtils.normalized_google_distance(omim_mesh, q1_doid_to_mesh[doid])
-			omims_GD.append((omim, res))
+		omim_descr = get_node_property(omim, "name", node_label="disease")
+		doid_descr = get_node_property(doid, "name", node_label="disease")
+		res = NormGoogleDistance.get_ngd_for_all([omim, doid], [omim_descr, doid_descr])
+		omims_GD.append((omim, res))
 	well_studied_omims = list()
 	for tup in omims_GD:
 		if tup[1] != math.nan and tup[1] > 0:
@@ -1249,7 +1249,7 @@ def refine_omims_Markov_chain(omim_list, doid, max_path_len=3, verbose=False):
 	paths_dict_selected = dict()
 	# get the probabilities for each path
 	for omim in omim_list:
-		path_name, path_type = interleave_nodes_and_relationships(session, omim, doid, max_path_len=max_path_len)
+		path_name, path_type = interleave_nodes_and_relationships(session, omim, "disease", doid, "disease", max_path_len=max_path_len)
 		probabilities = []
 		for path in path_type:
 			prob = MarkovLearning.path_probability(trained_MC, quad_to_matrix_index, path)

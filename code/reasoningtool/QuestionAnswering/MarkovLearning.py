@@ -156,9 +156,9 @@ def trained_MC():
 	for omim in known_solutions.keys():
 		doid = known_solutions[omim]
 		#path_name, path_type = Q1Utils.interleave_nodes_and_relationships(session, omim, doid, max_path_len=5)
-		path_name, path_type = RU.interleave_nodes_and_relationships(session, omim, doid, max_path_len=5)
+		path_name, path_type = RU.interleave_nodes_and_relationships(session, omim, "disease", doid, "disease", max_path_len=5)
 		paths_dict[omim] = (path_name, path_type)
-	state_space, quad_to_matrix_index = initialize_Markov_chain(connection, config)  # TODO: config is an unresolved reference, but doesn't throw an error. Investigate.
+	state_space, quad_to_matrix_index = initialize_Markov_chain(connection, defaults)  # TODO: config is an unresolved reference, but doesn't throw an error. Investigate.
 	trained = train(state_space, quad_to_matrix_index, paths_dict, type='L')
 	return trained, quad_to_matrix_index
 
