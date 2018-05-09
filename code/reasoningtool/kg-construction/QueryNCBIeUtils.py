@@ -366,7 +366,7 @@ class QueryNCBIeUtils:
                                 res_int += res.json()['esearchresult']['errorlist']['phrasesnotfound']
                     else:
                         for a in range(n_terms):
-                            if res.json()['esearchresult']['translationstack'][a] != 'AND':
+                            if type(res.json()['esearchresult']['translationstack'][a]) == dict:
                                 try:
                                     res_int += [int(res.json()['esearchresult']['translationstack'][a]['count'])]
                                 except TypeError:
