@@ -9,10 +9,11 @@ from collections import namedtuple
 from neo4j.v1 import GraphDatabase, basic_auth
 import requests_cache
 import os
+import sys
 
 requests_cache.install_cache('orangeboard')
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../code")  # code directory
 from RTXConfiguration import RTXConfiguration
 RTXConfiguration = RTXConfiguration()
 
