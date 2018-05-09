@@ -215,7 +215,7 @@ class RTXFeedback:
     session.add(storedResponse)
     session.flush()
     #print("Returned response_id is "+str(storedResponse.response_id))
-    response.id = "http://rtx.ncats.io/api/v1/response/"+str(storedResponse.response_id)
+    response.id = "http://rtx.ncats.io/api/rtx/v1/response/"+str(storedResponse.response_id)
 
     self.addNewResults(storedResponse.response_id,response)
 
@@ -356,20 +356,21 @@ class RTXFeedback:
       return( { "status": 451, "title": "result_id missing", "detail": "Required attribute result_id is missing from URL", "type": "about:blank" }, 451)
 
     #### Look for ratings we could use
-    storedRatings = session.query(Result_rating).filter(Result_rating.result_id==result_id).first()
+    storedRatings = session.query(Result_rating).filter(Result_rating.result_id==result_id).all()
     if storedRatings is not None:
-      #resultRatings = []
-      #for rating in storedRatings:
-      rating = storedRatings
-      resultRating = ResultFeedback()
-      resultRating.result_id = "http://rtx.ncats.io/api/v1/response/"+str(response_id)+"/result/"+str(result_id)
-      resultRating.id = resultRating.result_id + "/feedback/" + str(rating.result_rating_id)
-      resultRating.expertise_level_id = rating.expertise_level_id
-      resultRating.rating_id = rating.rating_id
-      resultRating.comment = rating.comment
-      #  resultRatings.append(resultRating)
-      #return(resultRatings)
-      return(resultRating)
+      resultRatings = []
+      for rating in storedRatings:
+        resultRating = ResultFeedback()
+        resultRating.result_id = "http://rtx.ncats.io/api/rtx/v1/response/"+str(response_id)+"/result/"+str(result_id)
+        resultRating.id = resultRating.result_id + "/feedback/" + str(rating.result_rating_id)
+        resultRating.expertise_level_id = rating.expertise_level_id
+        resultRating.rating_id = rating.rating_id
+        resultRating.commenter_id = rating.commenter_id
+        resultRating.commenter_name = 'elmer fudd'
+        resultRating.comment = rating.comment
+        resultRating.foobar = -1		# turns out you can put in anything you want, but it doesn't show up in the output
+        resultRatings.append(resultRating)
+      return(resultRatings)
     else:
       return
 
@@ -385,12 +386,13 @@ class RTXFeedback:
     #### Look for results for this response
     storedResults = session.query(Result).filter(Result.response_id==response_id).all()
     if storedResults is not None:
-      resultRatings = []
+      allResultRatings = []
       for storedResult in storedResults:
-        resultRating = self.getResultFeedback(response_id,storedResult.result_id)
-        if resultRating is not None:
-          resultRatings.append(resultRating)
-      return(resultRatings)
+        resultRatings = self.getResultFeedback(response_id,storedResult.result_id)
+        if resultRatings is not None:
+          for resultRating in resultRatings:
+            allResultRatings.append(resultRating)
+      return(allResultRatings)
     else:
       return( { "status": 404, "title": "Ratings not found", "detail": "There were no ratings found for this response", "type": "about:blank" }, 404)
 
