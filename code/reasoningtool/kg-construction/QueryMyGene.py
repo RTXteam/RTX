@@ -181,7 +181,7 @@ class QueryMyGene:
                 cuis = [cui_res['cui']]
             return cuis
         elif gene_id.startswith('UniProt'):
-            uni_id = 'uniprot:' + gene_id.split(':')
+            uni_id = 'uniprot:' + gene_id.split(':')[1]
             res = self.mygene_obj.query(uni_id, fields = 'umls', verbose = False)
             if res is not None:
                 cuis = []
