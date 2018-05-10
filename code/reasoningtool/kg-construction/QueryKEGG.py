@@ -11,7 +11,8 @@ available methods include:
         kegg_id (str): The ID of the kegg compound, e.g., "KEGG:C00022"
 
     Returns:
-        ids (array): the array of the enzyme commission ids, or [] if no enzyme commission id can be obtained.
+        ids (set): a set of the enzyme commission ids, or empty set if no enzyme commission id can be obtained or the
+                    response status code is not 200.
 '''
 
 
@@ -57,21 +58,21 @@ class QueryKEGG:
     # like "acetaminophen" or "heart disease", or an empty list if no concept IDs could be obtained for the given label
     @staticmethod
     def map_kegg_compound_to_enzyme_commission_ids(kegg_id):
+        res_set = set()
         if not isinstance(kegg_id, str):
-            return []
+            return res_set
         kegg_id = kegg_id[5:]
         handler = QueryKEGG.HANDLER_MAP['map_kegg_compound_to_enzyme_commission_ids'].format(id=kegg_id)
         res = QueryKEGG.__access_api(handler)
-        arr = []
         if res is not None:
             tab_pos = res.find('\t')
             while tab_pos != -1:
                 return_pos = res.find('\n')
                 ec_id = res[tab_pos+1:return_pos]
-                arr.append(ec_id)
+                res_set.add(ec_id)
                 res = res[return_pos+1:]
                 tab_pos = res.find('\t')
-        return arr
+        return res_set
 
 if __name__ == '__main__':
     print(QueryKEGG.map_kegg_compound_to_enzyme_commission_ids('KEGG:C00022'))

@@ -1,5 +1,18 @@
-""" This module defines the class QueryPharos which connects to APIs at
+""" This module defines the class QueryUniprot which connects to APIs at
 http://www.uniprot.org/uploadlists/, querying reactome pathways from uniprot id.
+
+*   map_enzyme_commission_id_to_uniprot_ids(ec_id)
+
+    Description:
+        map enzyme commission id to UniProt ids
+
+    Args:
+        ec_id (str): enzyme commission id, e.g., "ec:1.4.1.17"
+
+    Returns:
+        ids (set): a set of the enzyme commission ids, or empty set if no UniProt id can be obtained or the response
+                    status code is not 200.
+
 """
 
 __author__ = ""
@@ -19,6 +32,7 @@ import urllib.parse
 
 # configure requests package to use the "orangeboard.sqlite" cache
 requests_cache.install_cache('orangeboard')
+
 
 class QueryUniprot:
     API_BASE_URL = "http://www.uniprot.org/uploadlists/"
@@ -42,8 +56,18 @@ class QueryUniprot:
                     'query':  uniprot_id }
         contact = "stephen.ramsey@oregonstate.edu"
         header = {'User-Agent': 'Python %s' % contact}
-        res = requests.post(QueryUniprot.API_BASE_URL, data=payload, headers=header)
-        assert 200 == res.status_code
+        try:
+            res = requests.post(QueryUniprot.API_BASE_URL, data=payload, headers=header)
+        except requests.exceptions.Timeout:
+            print(QueryUniprot.API_BASE_URL, file=sys.stderr)
+            print('Timeout in QueryUniprot for URL: ' + QueryUniprot.API_BASE_URL, file=sys.stderr)
+            return None
+        status_code = res.status_code
+        if status_code != 200:
+            print(QueryUniprot.API_BASE_URL, file=sys.stderr)
+            print('Status code ' + str(status_code) + ' for url: ' + QueryUniprot.API_BASE_URL, file=sys.stderr)
+            return None
+#        assert 200 == res.status_code
         res_set = set()
         for line in res.text.splitlines():
             field_str = line.split("\t")[1]
@@ -73,12 +97,13 @@ class QueryUniprot:
         return res.text
 
     @staticmethod
-    @CachedMethods.register
     def map_enzyme_commission_id_to_uniprot_ids(ec_id):
+        res_set = set()
+        if not isinstance(ec_id, str):
+            return res_set
         ec_id_encoded = urllib.parse.quote_plus(ec_id)
         handler = QueryUniprot.HANDLER_MAP['map_enzyme_commission_id_to_uniprot_ids'].format(id=ec_id_encoded)
         res = QueryUniprot.__access_api(handler)
-        res_set = set()
         if res is not None:
             res = res[res.find('\n')+1:]
             for line in res.splitlines():
@@ -87,10 +112,10 @@ class QueryUniprot:
 
 
 if __name__ == '__main__':
-    # print(QueryUniprot.uniprot_id_to_reactome_pathways("P68871"))
-    # print(QueryUniprot.uniprot_id_to_reactome_pathways("Q16621"))
-    # print(QueryUniprot.uniprot_id_to_reactome_pathways("P09601"))
-    # print(CachedMethods.cache_info())
+    print(QueryUniprot.uniprot_id_to_reactome_pathways("P68871"))
+    print(QueryUniprot.uniprot_id_to_reactome_pathways("Q16621"))
+    print(QueryUniprot.uniprot_id_to_reactome_pathways("P09601"))
+    print(CachedMethods.cache_info())
 
     print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:1.4.1.17"))  # small results
     print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:1.3.1.110")) # empty result

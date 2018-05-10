@@ -31,7 +31,12 @@ class QueryUniprotTestCase(TestCase):
         self.assertIsNotNone(ids)
         self.assertEqual(len(ids), 0)
 
-        # wrong id
+        # wrong arg format
         ids = QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("R-HSA-1912422")
+        self.assertIsNotNone(ids)
+        self.assertEqual(len(ids), 0)
+
+        # wrong arg type
+        ids = QueryUniprot.map_enzyme_commission_id_to_uniprot_ids(1912422)
         self.assertIsNotNone(ids)
         self.assertEqual(len(ids), 0)
