@@ -235,6 +235,8 @@ class BioNetExpander:
 
     def expand_anatomical_entity(self, node):
         anatomy_curie_id_str = node.name
+        if not anatomy_curie_id_str.startswith("UBERON:"):
+            print("Anatomy node does not start with UBERON: " + anatomy_curie_id_str, file=sys.stderr)
 #        assert anatomy_curie_id_str.startswith("UBERON:")
         gene_ontology_dict = QuerySciGraph.get_gene_ontology_curie_ids_for_uberon_curie_id(anatomy_curie_id_str)
         for gene_ontology_curie_id_str, gene_ontology_term_dict in gene_ontology_dict.items():
