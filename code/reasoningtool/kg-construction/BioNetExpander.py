@@ -235,7 +235,7 @@ class BioNetExpander:
 
     def expand_anatomical_entity(self, node):
         anatomy_curie_id_str = node.name
-        assert anatomy_curie_id_str.startswith("UBERON:")
+#        assert anatomy_curie_id_str.startswith("UBERON:")
         gene_ontology_dict = QuerySciGraph.get_gene_ontology_curie_ids_for_uberon_curie_id(anatomy_curie_id_str)
         for gene_ontology_curie_id_str, gene_ontology_term_dict in gene_ontology_dict.items():
             gene_ontology_type_str = gene_ontology_term_dict["ontology"].replace(" ", "_")
