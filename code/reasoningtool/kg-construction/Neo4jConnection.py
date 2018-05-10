@@ -163,6 +163,10 @@ class Neo4jConnection:
         with self._driver.session() as session:
             return session.write_transaction(self._update_protein_nodes_name, nodes)
 
+    def get_node_names(self, type):
+        with self._driver.session() as session:
+            return session.write_transaction(self._get_node_names, type)
+
     @staticmethod
     def _get_anatomy_nodes(tx):
         result = tx.run("MATCH (n:anatomical_entity) RETURN n.id")
@@ -463,3 +467,8 @@ class Neo4jConnection:
             nodes=nodes,
         )
         return result
+
+    @staticmethod
+    def _get_node_names(tx, type):
+        result = tx.run("MATCH (n:%s) RETURN n.name" % type)
+        return [record["n.name"] for record in result]
