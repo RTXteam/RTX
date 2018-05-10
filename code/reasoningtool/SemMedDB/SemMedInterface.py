@@ -202,8 +202,8 @@ class SemMedInterface():
 			if cuis is not None:
 				cuis = cuis['CUI'].tolist()
 		if cuis is not None:
-			if len(cuis) > 8:
-				cuis = list(numpy.random.choice(cuis,8,replace=False))
+			if len(cuis) > 10:
+				cuis = list(numpy.random.choice(cuis,10,replace=False))
 		return cuis
 
 	def get_cui_for_id(self, curie_id, mesh_flag=False):
@@ -213,9 +213,28 @@ class SemMedInterface():
 				cuis = QueryMyChem.get_cui(curie_id)
 				if cuis is not None:
 					cuis = [cuis]
-			elif curie_id.startswith('UniProt') or curie_id.startswith('NCBIGene'):
+			elif curie_id.startswith('UniProt'):
+				cuis = []
 				try:
-					cuis = self.mg.get_cui(curie_id)
+					res = self.mg.get_cui(curie_id)
+					if res is not None:
+						cuis += res
+				except requests.exceptions.HTTPError:
+					print('myGene Servers are busy')
+				try:
+					res = self.mg.convert_uniprot_id_to_entrez_gene_ID(curie_id.split(':')[1])
+					if res is not None:
+						cuis += [str(eid) for eid in res]
+				except requests.exceptions.HTTPError:
+					print('myGene Servers are busy')
+				if len(cuis) == 0:
+					cuis = None
+			elif curie_id.startswith('NCBIGene'):
+				cuis = [curie_id.split(':')[1]]
+				try:
+					res = self.mg.get_cui(curie_id)
+					if res is not None:
+						cuis += res
 				except requests.exceptions.HTTPError:
 					print('myGene Servers are busy')
 		if cuis is None:
