@@ -172,16 +172,17 @@ class QueryMyGene:
         return hits is not None and len(hits) > 0
 
     def get_cui(self, gene_id):
-        if gene_id.startswith('NCBIGene:'):
+        if gene_id.startswith('NCBIGene'):
             gene_id = int(gene_id.split(':')[1])
-            res = self.mygene_obj.getgene(gene_id, fields='umls', verbose=False)
+            res = self.mygene_obj.getgene(gene_id, fields = 'umls', verbose = False)
             cui_res = res.get('umls', None)
             cuis = None
             if cui_res is not None:
                 cuis = [cui_res['cui']]
             return cuis
-        elif gene_id.startswith('UniProt:'):
-            res = self.mygene_obj.query(gene_id, fields='umls', verbose=False)
+        elif gene_id.startswith('UniProt'):
+            uni_id = 'uniprot:' + gene_id.split(':')
+            res = self.mygene_obj.query(uni_id, fields = 'umls', verbose = False)
             if res is not None:
                 cuis = []
                 if 'hits' in res.keys():
