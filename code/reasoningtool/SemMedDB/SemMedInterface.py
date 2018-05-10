@@ -106,35 +106,21 @@ class SemMedInterface():
 				cui_list = list(df_cuis['CUI'])
 				return cui_list
 		curie_list = curie_id.split(':')
-		if curie_list[0] == "Reactome":
-			pass
 		if curie_list[0] == "GO":
 			df_cui = self.umls.get_cui_for_go_id(curie_id)
 			if df_cui is not None:
 				cui_list = list(df_cui['CUI'])
 				return cui_list
-		if curie_list[0] == "UniProt":
-			pass
-		if curie_list[0] == "HP":
+		elif curie_list[0] == "HP":
 			df_cui = self.umls.get_cui_for_hp_id(curie_id)
 			if df_cui is not None:
 				cui_list = list(df_cui['CUI'])
 				return cui_list
-		if curie_list[0] == "UBERON":
-			pass
-		if curie_list[0] == "CL":
-			pass
-		if curie_list[0] == "NCBIGene":
-			pass
-		if curie_list[0] == "DOID":
-			pass
-		if curie_list[0] == "OMIM":
+		elif curie_list[0] == "OMIM":
 			df_cui = self.umls.get_cui_for_omim_id(curie_id)
 			if df_cui is not None:
 				cui_list = list(df_cuis['CUI'])
 				return cui_list
-		if curie_list[0] == "ChEMBL":
-			pass
 		return None
 
 	def get_cui_from_oxo(self, curie_id, mesh_flag = False):
@@ -194,11 +180,11 @@ class SemMedInterface():
 		else: 
 			cuis = None
 		if cuis is None:
-			name_list = name.split(' ')
+			name_list = name.lower().split(' ')
 			if len(name_list) > 1:
 				cuis = self.umls.get_cui_cloud_for_multiple_words(name_list)
 			else:
-				cuis = self.umls.get_cui_cloud_for_word(name)
+				cuis = self.umls.get_cui_cloud_for_word(name.lower())
 			if cuis is not None:
 				cuis = cuis['CUI'].tolist()
 		if cuis is not None:
