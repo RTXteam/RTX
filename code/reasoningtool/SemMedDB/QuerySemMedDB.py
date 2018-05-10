@@ -49,7 +49,7 @@ class QuerySemMedDB():
 			cui = string containing the cui you wish to search for
 			(optional) predicate = string containing the predicate you whish to search for
 		'''
-		query = "select PMID, SUBJECT_NAME, PREDICATE, OBJECT_NAME from PREDICATION where (OBJECT_CUI='" + cui + "' or SUBJECT_CUI='" + cui + "')"
+		query = "select PMID, SUBJECT_NAME, PREDICATE, OBJECT_NAME from SPLIT_PREDICATION where (OBJECT_CUI='" + cui + "' or SUBJECT_CUI='" + cui + "')"
 		if predicate is not None:
 			query = query + " and PREDICATE='" + predicate + "'"
 		df = self.get_dataframe_from_db(query)
@@ -62,7 +62,7 @@ class QuerySemMedDB():
 			cui = string containing the cui you wish to search for
 			(optional) predicate = string containing the predicate you whish to search for
 		'''
-		query = "select PMID, SUBJECT_NAME, PREDICATE, OBJECT_NAME from PREDICATION where SUBJECT_CUI='" + cui + "'"
+		query = "select PMID, SUBJECT_NAME, PREDICATE, OBJECT_NAME from SPLIT_PREDICATION where SUBJECT_CUI='" + cui + "'"
 		if predicate is not None:
 			query = query + " and PREDICATE='" + predicate + "'"
 		df = self.get_dataframe_from_db(query)
@@ -75,7 +75,7 @@ class QuerySemMedDB():
 			cui = string containing the cui you wish to search for
 			(optional) predicate = string containing the predicate you whish to search for
 		'''
-		query = "select PMID, SUBJECT_NAME, PREDICATE, OBJECT_NAME from PREDICATION where OBJECT_CUI='" + cui + "'"
+		query = "select PMID, SUBJECT_NAME, PREDICATE, OBJECT_NAME from SPLIT_PREDICATION where OBJECT_CUI='" + cui + "'"
 		if predicate is not None:
 			query = query + " and PREDICATE='" + predicate + "'"
 		df = self.get_dataframe_from_db(query)
@@ -89,7 +89,7 @@ class QuerySemMedDB():
 			object_cui = a string containing the object cui
 			(optional) predicate = a string containing the predicate you wish to search for
 		'''
-		query = "select distinct " + ', '.join(result_col) + " from PREDICATION where (OBJECT_CUI='" + cui_object + "' and SUBJECT_CUI='" + cui_subject + "')"
+		query = "select distinct " + ', '.join(result_col) + " from SPLIT_PREDICATION where (OBJECT_CUI='" + cui_object + "' and SUBJECT_CUI='" + cui_subject + "')"
 		if predicate is not None:
 			query = query + " and PREDICATE='" + predicate + "'"
 		df = self.get_dataframe_from_db(query)
@@ -134,9 +134,9 @@ class QuerySemMedDB():
 			query += ", " + \
 				chr(ord('b') + r) + ".PREDICATE as predicate" + str(r + 2) + ", " + \
 				chr(ord('b') + r) + ".OBJECT_NAME as element" + str(r + 3)
-		query += " FROM PREDICATION a "
+		query += " FROM SPLIT_PREDICATION a "
 		for r in range(pivot):
-			query += "JOIN PREDICATION " + chr(ord('b') + r) + \
+			query += "JOIN SPLIT_PREDICATION " + chr(ord('b') + r) + \
 				" ON " + chr(ord('b') + r-1) + ".OBJECT_CUI = " + \
 				chr(ord('b') + r) + ".SUBJECT_CUI "
 		query += "WHERE a.SUBJECT_CUI='" + subject_cui + "' AND " + \
