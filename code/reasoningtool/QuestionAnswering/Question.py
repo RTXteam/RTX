@@ -237,7 +237,7 @@ class Question:
 		if parameters:
 			for parameter in parameters:
 				try:
-					description = RU.get_node_property(parameters[parameter], 'description')
+					description = RU.get_node_property(parameters[parameter], 'name')
 				except:
 					description = parameters[parameter]
 				parameters_as_descriptions[parameter] = description
@@ -338,7 +338,7 @@ class Question:
 				parameter_name_positions = []
 				pos = 0
 				for node, node_label in candidate_node_names_labels:
-					if node_label == parameter_name:
+					if node_label == parameter_name and node != "DOID:4":
 						parameter_name_positions.append(pos)
 					pos += 1
 				if len(parameter_name_positions) > 1:

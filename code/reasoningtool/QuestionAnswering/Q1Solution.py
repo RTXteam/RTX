@@ -10,7 +10,8 @@ except ImportError:
 	sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../kg-construction')))  # Go up one level and look for it
 	import QueryNCBIeUtils
 QueryNCBIeUtils =QueryNCBIeUtils.QueryNCBIeUtils()
-import Q1Utils
+#import Q1Utils
+from neo4j.v1 import GraphDatabase, basic_auth
 import argparse
 import sys
 import json
@@ -18,13 +19,16 @@ import ReasoningUtilities as RU
 import FormatOutput
 response = FormatOutput.FormatResponse(1)
 
-# Connection information for the neo4j server, populated with orangeboard
-#driver = GraphDatabase.driver("bolt://rtx.ncats.io:7687", auth=basic_auth("neo4j", "precisionmedicine"))
-#session = driver.session()
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+from RTXConfiguration import RTXConfiguration
+RTXConfiguration = RTXConfiguration()
 
-	
+# Connection information for the neo4j server, populated with orangeboard
+driver = GraphDatabase.driver(RTXConfiguration.bolt, auth=basic_auth("neo4j", "precisionmedicine"))
+session = driver.session()
+
 # Connection information for the ipython-cypher package
-connection = "http://neo4j:precisionmedicine@rtx.ncats.io:7474/db/data"
+connection = "http://neo4j:precisionmedicine@" + RTXConfiguration.database
 DEFAULT_CONFIGURABLE = {
 	"auto_limit": 0,
 	"style": 'DEFAULT',
@@ -205,10 +209,12 @@ def answerQ1(doid, directed=True, max_path_len=3, verbose=False, use_json=False)
 	omims = omims_no_doid
 
 	# get the ones that have high probability according to a Markov chain model
-	omims, paths_dict, prob_dict = Q1Utils.refine_omims_Markov_chain(omims, doid, max_path_len=max_path_len, verbose=verbose)
+	#omims, paths_dict, prob_dict = Q1Utils.refine_omims_Markov_chain(omims, doid, max_path_len=max_path_len, verbose=verbose)
+	omims, paths_dict, prob_dict = RU.refine_omims_Markov_chain(omims, doid, max_path_len=max_path_len, verbose=verbose)
 
 	# get the ones that have low google distance (are "well studied")
-	omims = Q1Utils.refine_omims_well_studied(omims, doid, verbose=verbose)
+	#omims = Q1Utils.refine_omims_well_studied(omims, doid, verbose=verbose)
+	omims = RU.refine_omims_well_studied(omims, doid, omim_to_mesh, q1_doid_to_mesh, verbose=verbose)
 
 	if not omims:
 		if verbose and not use_json:
@@ -243,7 +249,8 @@ def answerQ1(doid, directed=True, max_path_len=3, verbose=False, use_json=False)
 		temp_path_dict = dict()
 		temp_path_dict[key] = path_pair
 		node_rel_list = path_pair[0]
-		results_text = Q1Utils.display_results_str(doid, temp_path_dict, probs=to_display_probs_dict)
+		#results_text = Q1Utils.display_results_str(doid, temp_path_dict, probs=to_display_probs_dict)
+		results_text = RU.display_results_str(doid, temp_path_dict, probs=to_display_probs_dict)
 		for i, path in enumerate(node_rel_list):
 			node_list = path[0::2]
 			rel_list = path[1::2]
@@ -251,7 +258,8 @@ def answerQ1(doid, directed=True, max_path_len=3, verbose=False, use_json=False)
 			response.add_subgraph(g.nodes(data=True), g.edges(data=True), results_text, to_display_probs_dict[node_list[0]])
 
 	if not use_json:
-		results_text = Q1Utils.display_results_str(doid, to_display_paths_dict, probs=to_display_probs_dict)
+		#results_text = Q1Utils.display_results_str(doid, to_display_paths_dict, probs=to_display_probs_dict)
+		results_text = RU.display_results_str(doid, to_display_paths_dict, probs=to_display_probs_dict)
 		print(results_text)
 	else:
 		#ret_obj = Q1Utils.get_results_object_model(doid, to_display_paths_dict, omim_to_genetic_cond, q1_doid_to_disease, probs=to_display_probs_dict)
@@ -275,8 +283,10 @@ def main():
 	parser.add_argument('-j', '--json', action='store_true', help='Flag specifying that results should be printed in JSON format (to stdout)', default=False)
 
 	if '-h' in sys.argv or '--help' in sys.argv:
-		Q1Utils.session.close()
-		Q1Utils.driver.close()
+		#Q1Utils.session.close()
+		RU.session.close()
+		#Q1Utils.driver.close()
+		RU.driver.close()
 
 	# Parse and check args
 	args = parser.parse_args()

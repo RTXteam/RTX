@@ -1,9 +1,9 @@
 participates_in
-subclass_of
 regulates
-directly_interacts_with
-associated_with_condition
 expressed_in
+associated_with_condition
 causes_or_contributes_to
 has_phenotype
 affects
+directly_interacts_with
+subclass_of

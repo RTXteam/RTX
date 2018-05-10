@@ -43,7 +43,7 @@ class SimilarityQuestionSolution:
 		similar_nodes_in_common = SimilarNodesInCommon.SimilarNodesInCommon()
 
 		# get the description
-		source_node_description = RU.get_node_property(source_node_ID, 'description')
+		source_node_description = RU.get_node_property(source_node_ID, 'name')
 
 		# get the source node label
 		source_node_label = RU.get_node_property(source_node_ID, 'label')
@@ -72,7 +72,7 @@ class SimilarityQuestionSolution:
 		if not use_json:
 			to_print = "The %s's involving similar %s's as %s are: \n" % (target_node_type, association_node_type, source_node_description)
 			for other_disease_ID, jaccard in node_jaccard_tuples_sorted:
-				to_print += "%s\t%s\tJaccard %f\n" % (other_disease_ID, RU.get_node_property(other_disease_ID, 'description'), jaccard)
+				to_print += "%s\t%s\tJaccard %f\n" % (other_disease_ID, RU.get_node_property(other_disease_ID, 'name'), jaccard)
 			print(to_print)
 		else:
 			node_jaccard_ID_sorted = [id for id, jac in node_jaccard_tuples_sorted]
@@ -88,7 +88,7 @@ class SimilarityQuestionSolution:
 
 			# extract the source_node_number
 			for node, data in g.nodes(data=True):
-				if data['properties']['name'] == source_node_ID:
+				if data['properties']['rtx_name'] == source_node_ID:
 					source_node_number = node
 					break
 
@@ -96,12 +96,12 @@ class SimilarityQuestionSolution:
 			target_id2numbers = dict()
 			node_jaccard_ID_sorted_set = set(node_jaccard_ID_sorted)
 			for node, data in g.nodes(data=True):
-				if data['properties']['name'] in node_jaccard_ID_sorted_set:
-					target_id2numbers[data['properties']['name']] = node
+				if data['properties']['rtx_name'] in node_jaccard_ID_sorted_set:
+					target_id2numbers[data['properties']['rtx_name']] = node
 
 			for other_disease_ID, jaccard in node_jaccard_tuples_sorted:
 				to_print = "The %s %s involves similar %s's as %s with similarity value %f" % (
-					target_node_type, RU.get_node_property(other_disease_ID, 'description'), association_node_type,
+					target_node_type, RU.get_node_property(other_disease_ID, 'name'), association_node_type,
 					source_node_description, jaccard)
 
 				# get all the shortest paths between source and target

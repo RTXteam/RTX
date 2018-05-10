@@ -3,6 +3,9 @@
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+from RTXConfiguration import RTXConfiguration
+RTXConfiguration = RTXConfiguration()
 
 from swagger_server.models.response import Response
 from swagger_server.models.result import Result
@@ -35,7 +38,7 @@ class FormatResponse:
 		#self.response.id = "http://rtx.ncats.io/api/v1/response/1234"
 		#self.response.id = "-1"
 		self.response.type = "medical_translator_query_result"
-		self.response.tool_version = "RTX 0.4"
+		self.response.tool_version = RTXConfiguration.version
 		self.response.schema_version = "0.5"
 		#self.response.datetime = self._now.strftime("%Y-%m-%d %H:%M:%S")
 		#self.response.original_question_text = ""  # Eric fills it in
@@ -105,10 +108,10 @@ class FormatResponse:
 			node_labels[u] = list(set(data['labels']).difference({'Base'}))[0]
 			node_uuids[u] = data['properties']['UUID']
 			node_accessions[u] = data['properties']['accession']
-			node_iris[u] = data['properties']['iri']
-			node_uuids2iri[data['properties']['UUID']] = data['properties']['iri']
-			node_curies[u] = data['properties']['curie_id']
-			node_uuids2curie[data['properties']['UUID']] = data['properties']['curie_id']
+			node_iris[u] = data['properties']['id']
+			node_uuids2iri[data['properties']['UUID']] = data['properties']['id']
+			node_curies[u] = data['properties']['uri']
+			node_uuids2curie[data['properties']['UUID']] = data['properties']['uri']
 
 		edge_keys = []
 		edge_types = dict()
@@ -120,7 +123,7 @@ class FormatResponse:
 		for u, v, data in edges:
 			edge_keys.append((u, v))
 			edge_types[(u, v)] = data['type']
-			edge_source_db[(u, v)] = data['properties']['sourcedb']
+			edge_source_db[(u, v)] = data['properties']['provided_by']
 			edge_source_iri[(u, v)] = node_uuids2iri[data['properties']['source_node_uuid']]
 			edge_target_iri[(u, v)] = node_uuids2iri[data['properties']['target_node_uuid']]
 			edge_source_curie[(u,v)] = node_uuids2curie[data['properties']['source_node_uuid']]
@@ -201,10 +204,10 @@ class FormatResponse:
 			node_labels[u] = list(set(data['labels']).difference({'Base'}))[0]
 			node_uuids[u] = data['properties']['UUID']
 			node_accessions[u] = data['properties']['accession']
-			node_iris[u] = data['properties']['iri']
-			node_uuids2iri[data['properties']['UUID']] = data['properties']['iri']
-			node_curies[u] = data['properties']['curie_id']
-			node_uuids2curie[data['properties']['UUID']] = data['properties']['curie_id']
+			node_iris[u] = data['properties']['id']
+			node_uuids2iri[data['properties']['UUID']] = data['properties']['id']
+			node_curies[u] = data['properties']['uri']
+			node_uuids2curie[data['properties']['UUID']] = data['properties']['uri']
 
 		edge_keys = []
 		edge_types = dict()
@@ -216,7 +219,7 @@ class FormatResponse:
 		for u, v, data in edges:
 			edge_keys.append((u, v))
 			edge_types[(u, v)] = data['type']
-			edge_source_db[(u, v)] = data['properties']['sourcedb']
+			edge_source_db[(u, v)] = data['properties']['provided_by']
 			edge_source_iri[(u, v)] = node_uuids2iri[data['properties']['source_node_uuid']]
 			edge_target_iri[(u, v)] = node_uuids2iri[data['properties']['target_node_uuid']]
 			edge_source_curie[(u,v)] = node_uuids2curie[data['properties']['source_node_uuid']]

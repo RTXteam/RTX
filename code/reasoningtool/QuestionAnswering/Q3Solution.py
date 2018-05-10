@@ -49,14 +49,14 @@ class Q3:
 
 		# extract the source_node_number
 		for node, data in g.nodes(data=True):
-			if data['properties']['name'] == source_name:
+			if data['properties']['rtx_name'] == source_name:
 				source_node_number = node
 				break
 
 		# Get all the target numbers
 		target_numbers = []
 		for node, data in g.nodes(data=True):
-			if data['properties']['name'] != source_name:
+			if data['properties']['rtx_name'] != source_name:
 				target_numbers.append(node)
 
 		# if there's an intermediate node, get the name
@@ -80,14 +80,14 @@ class Q3:
 				results_list.append(
 					{'type': list(set(data['labels'])-{'Base'}).pop(),
 					 'name': data['properties']['name'],
-					 'desc': data['properties']['description'],
+					 'desc': data['properties']['name'],
 					 'prob': 1})  # All these are known to be true
 			return results_list
 		else:  # You want the standardized API output format
 			response = FormatOutput.FormatResponse(3)  # it's a Q3 question
-			source_description = g.node[source_node_number]['properties']['description']
+			source_description = g.node[source_node_number]['properties']['name']
 			for target_number in target_numbers:
-				target_description = g.node[target_number]['properties']['description']
+				target_description = g.node[target_number]['properties']['name']
 				if not has_intermediate_node:
 					subgraph = g.subgraph([source_node_number, target_number])
 				else:

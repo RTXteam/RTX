@@ -142,7 +142,7 @@ class SimilarNodesInCommon:
 				target_association_relationship, target_node_label)
 		"""
 		# Check if node exists
-		if not RU.node_exists_with_property(node_ID, 'name'):
+		if not RU.node_exists_with_property(node_ID, 'rtx_name'):
 			error_message = "Sorry, the disease %s is not yet in our knowledge graph." % node_ID
 			error_code = "DiseaseNotFound"
 			return dict(), error_code, error_message
@@ -161,7 +161,7 @@ class SimilarNodesInCommon:
 			if parent:
 				parent = parent.pop()
 				error_message += "\n Note that %s is a parent of %s, so you might try that instead." % (
-				RU.get_node_property(parent, 'description'), RU.get_node_property(input_node_ID, 'description'))
+				RU.get_node_property(parent, 'name'), RU.get_node_property(input_node_ID, 'name'))
 			return dict(), error_code, error_message
 		input_association_relationship = rels.pop()
 
