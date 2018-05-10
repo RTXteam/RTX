@@ -22,6 +22,8 @@ import time
 import requests_cache
 import numpy
 
+numpy.random.seed(int(time.time()))
+
 
 class SemMedInterface():
 
@@ -199,6 +201,9 @@ class SemMedInterface():
 				cuis = self.umls.get_cui_cloud_for_word(name)
 			if cuis is not None:
 				cuis = cuis['CUI'].tolist()
+		if cuis is not None:
+			if len(cuis) > 8:
+				cuis = list(numpy.random.choice(cuis,8,replace=False))
 		return cuis
 
 	def get_cui_for_id(self, curie_id, mesh_flag=False):
@@ -229,7 +234,7 @@ class SemMedInterface():
 				dfs[c] = self.smdb.get_edges_for_cui(cui)
 				c+=1
 			try:
-				df = pandas.concat([x for x in dfs if x is not None])
+				df = pandas.concat([x for x in dfs if x is not None],ignore_index=True)
 			except ValueError:
 				df = None
 		if df is None:
@@ -242,7 +247,7 @@ class SemMedInterface():
 						dfs[c] = self.smdb.get_edges_for_cui(cui)
 						c+=1
 					try:
-						df = pandas.concat([x for x in dfs if x is not None])
+						df = pandas.concat([x for x in dfs if x is not None],ignore_index=True)
 					except ValueError:
 						df = None
 		return df
@@ -260,7 +265,7 @@ class SemMedInterface():
 					if edges is not None:
 						dfs.append(edges)
 			try:
-				df = pandas.concat(dfs).drop_duplicates()
+				df = pandas.concat(dfs,ignore_index=True).drop_duplicates()
 			except ValueError:
 				df = None
 		if df is None:
@@ -282,7 +287,7 @@ class SemMedInterface():
 						if edges is not None:
 							dfs.append(edges)
 				try:
-					df = pandas.concat(dfs).drop_duplicates()
+					df = pandas.concat(dfs,ignore_index=True).drop_duplicates()
 				except ValueError:
 					df = None
 		return df
@@ -296,7 +301,7 @@ class SemMedInterface():
 		name_obj_cuis = self.get_cui_for_name(obj_name)
 		df = None
 		for n in range(max_length):
-			if (subj_cuis and obj_cuis) is not None:
+			if subj_cuis is not None and obj_cuis is not None:
 				dfs = []
 				for subj_cui in subj_cuis:
 					for obj_cui in obj_cuis:
@@ -304,10 +309,10 @@ class SemMedInterface():
 						if edges is not None:
 							dfs.append(edges)
 				if len(dfs) > 0:
-					df = pandas.concat(dfs).drop_duplicates()
+					df = pandas.concat(dfs,ignore_index=True).drop_duplicates()
 				if df is not None:
 					return df
-			if (name_subj_cuis and name_obj_cuis) is not None:
+			if name_subj_cuis is not None and name_obj_cuis is not None:
 				dfs = []
 				for subj_cui in name_subj_cuis:
 					for obj_cui in name_obj_cuis:
@@ -315,7 +320,7 @@ class SemMedInterface():
 						if edges is not None:
 							dfs.append(edges)
 				if len(dfs) > 0:
-					df = pandas.concat(dfs).drop_duplicates()
+					df = pandas.concat(dfs,ignore_index=True).drop_duplicates()
 				if df is not None:
 					return df
 		return None
@@ -337,7 +342,7 @@ class SemMedInterface():
 						if edges is not None:
 							dfs.append(edges)
 			try:
-				df = pandas.concat(dfs).drop_duplicates()
+				df = pandas.concat(dfs,ignore_index=True).drop_duplicates()
 			except ValueError:
 				df = None
 		if df is None:
@@ -364,7 +369,7 @@ class SemMedInterface():
 							if edges is not None:
 								dfs.append(edges)
 				try:
-					df = pandas.concat(dfs).drop_duplicates()
+					df = pandas.concat(dfs,ignore_index=True).drop_duplicates()
 				except ValueError:
 					df = None
 		return df
