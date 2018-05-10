@@ -12,11 +12,20 @@ __email__ = ""
 __status__ = "Prototype"
 
 import requests
+import requests_cache
 import CachedMethods
+import sys
+import urllib.parse
 
+# configure requests package to use the "orangeboard.sqlite" cache
+requests_cache.install_cache('orangeboard')
 
 class QueryUniprot:
     API_BASE_URL = "http://www.uniprot.org/uploadlists/"
+    TIMEOUT_SEC = 120
+    HANDLER_MAP = {
+        'map_enzyme_commission_id_to_uniprot_ids': 'uniprot/?query=({id})&format=tab&columns=id'
+    }
 
     @staticmethod
     @CachedMethods.register
@@ -42,8 +51,49 @@ class QueryUniprot:
                 res_set.add(field_str)
         return res_set
 
+    @staticmethod
+    def __access_api(handler):
+
+        api_base_url = 'http://www.uniprot.org'
+        url = api_base_url + '/' + handler
+        #print(url)
+        contact = "stephen.ramsey@oregonstate.edu"
+        header = {'User-Agent': 'Python %s' % contact}
+        try:
+            res = requests.get(url, timeout=QueryUniprot.TIMEOUT_SEC, headers=header)
+        except requests.exceptions.Timeout:
+            print(url, file=sys.stderr)
+            print('Timeout in QueryUniprot for URL: ' + url, file=sys.stderr)
+            return None
+        status_code = res.status_code
+        if status_code != 200:
+            print(url, file=sys.stderr)
+            print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
+            return None
+        return res.text
+
+    @staticmethod
+    @CachedMethods.register
+    def map_enzyme_commission_id_to_uniprot_ids(ec_id):
+        ec_id_encoded = urllib.parse.quote_plus(ec_id)
+        handler = QueryUniprot.HANDLER_MAP['map_enzyme_commission_id_to_uniprot_ids'].format(id=ec_id_encoded)
+        res = QueryUniprot.__access_api(handler)
+        res_set = set()
+        if res is not None:
+            res = res[res.find('\n')+1:]
+            for line in res.splitlines():
+                res_set.add(line)
+        return res_set
+
+
 if __name__ == '__main__':
-    print(QueryUniprot.uniprot_id_to_reactome_pathways("P68871"))
-    print(QueryUniprot.uniprot_id_to_reactome_pathways("Q16621"))
-    print(QueryUniprot.uniprot_id_to_reactome_pathways("P09601"))
-    print(CachedMethods.cache_info())
+    # print(QueryUniprot.uniprot_id_to_reactome_pathways("P68871"))
+    # print(QueryUniprot.uniprot_id_to_reactome_pathways("Q16621"))
+    # print(QueryUniprot.uniprot_id_to_reactome_pathways("P09601"))
+    # print(CachedMethods.cache_info())
+
+    print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:1.4.1.17"))  # small results
+    print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:1.3.1.110")) # empty result
+    print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:1.2.1.22"))  # large results
+    print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:4.4.1.xx"))  # fake id
+    print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("R-HSA-1912422"))   # wrong id
