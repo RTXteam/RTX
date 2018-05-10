@@ -288,7 +288,7 @@ class SemMedInterface():
 		return df
 
 	def get_shortest_path_between_subject_object(self, subj_id, subj_name, obj_id, obj_name, max_length = 3, mesh_flags = [False, False]):
-		assert max_length > -1
+		assert max_length > 0
 		assert len(mesh_flags) == 2
 		subj_cuis = self.get_cui_for_id(subj_id, mesh_flags[0])
 		obj_cuis = self.get_cui_for_id(obj_id, mesh_flags[1])
@@ -303,10 +303,8 @@ class SemMedInterface():
 						edges = self.smdb.get_edges_between_subject_object_with_pivot(subj_cui, obj_cui, pivot = n)
 						if edges is not None:
 							dfs.append(edges)
-				try:
+				if len(dfs) > 0:
 					df = pandas.concat(dfs).drop_duplicates()
-				except ValueError:
-					df = None
 				if df is not None:
 					return df
 			if (name_subj_cuis and name_obj_cuis) is not None:
@@ -316,10 +314,8 @@ class SemMedInterface():
 						edges = self.smdb.get_edges_between_subject_object_with_pivot(subj_cui, obj_cui, pivot = n)
 						if edges is not None:
 							dfs.append(edges)
-				try:
+				if len(dfs) > 0:
 					df = pandas.concat(dfs).drop_duplicates()
-				except ValueError:
-					df = None
 				if df is not None:
 					return df
 		return None
