@@ -368,6 +368,11 @@ class QueryNCBIeUtils:
                         for a in range(len(res.json()['esearchresult']['translationstack'])):
                             if type(res.json()['esearchresult']['translationstack'][a]) == dict:
                                 res_int += [int(res.json()['esearchresult']['translationstack'][a]['count'])]
+                            elif res.json()['esearchresult']['translationstack'][a] == 'OR':
+                                res_int = [res_int[0]]
+                                res_int += ['null_flag']
+                                return res_int
+
             else:
                 print('HTTP response status code: ' + str(status_code) + ' for query term string {term}'.format(term=term_str))
         return res_int
@@ -408,7 +413,10 @@ class QueryNCBIeUtils:
                 counts += QueryNCBIeUtils.multi_pubmed_hits_count(name, n_terms = 1)
 
         if type(counts[1]) == str:
-            missed_names = counts[1:]
+            if counts[1] == 'null_flag':
+                missed_names = [name + '[MeSH Terms]' for name in name_list]
+            else:
+                missed_names = counts[1:]
             counts = [counts[0]]
             for name in name_list:
                 name_decorated = name + '[MeSH Terms]'
@@ -416,7 +424,6 @@ class QueryNCBIeUtils:
                     counts += QueryNCBIeUtils.multi_pubmed_hits_count(name, n_terms=1)
                 else:
                     counts += QueryNCBIeUtils.multi_pubmed_hits_count(name_decorated, n_terms=1)
-
 
         N = 2.7e+7 * 20  # from PubMed home page there are 27 million articles; avg 20 MeSH terms per article
         if None in counts:
