@@ -13,7 +13,8 @@ class RTXConfiguration:
 
 		# This is the flag/property to switch between the two containers
 		#self.live = "Production"
-		self.live = "KG2"
+		#self.live = "KG2"
+		self.live = "rtxdev"
 
 		if self.live == "Production":
 			self.bolt = "bolt://rtx.ncats.io:7687"
@@ -23,6 +24,9 @@ class RTXConfiguration:
 			self.bolt = "bolt://rtx.ncats.io:7787"
 			self.database = "rtx.ncats.io:7574/db/data"
 
+		if self.live == "rtxdev":
+			self.bolt = "bolt://rtxdev.saramsey.org:7887"
+			self.database = "rtxdev.saramsey.org:7674/db/data"
 
 
 	#### Define attribute version
