@@ -20,6 +20,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import desc
 from sqlalchemy import inspect
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
+from RTXConfiguration import RTXConfiguration
+
 # sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
 from RTXConfiguration import RTXConfiguration
 from swagger_server.models.result_feedback import ResultFeedback
