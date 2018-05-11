@@ -145,9 +145,7 @@ class BioNetExpander:
     def expand_metabolite(self, node):
         assert node.nodetype == "metabolite"
         metabolite_kegg_id = node.name
-        metabolite_name = node.desc
         ec_ids = QueryKEGG.map_kegg_compound_to_enzyme_commission_ids(metabolite_kegg_id)
-        print(ec_ids)
         if len(ec_ids) > 0:
             for ec_id in ec_ids:
                 uniprot_ids = QueryUniprot.map_enzyme_commission_id_to_uniprot_ids(ec_id)
