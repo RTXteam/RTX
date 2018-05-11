@@ -434,7 +434,7 @@ class UpdateNodesInfo:
 
         nodes_array = []
         for i, node_id in enumerate(nodes):
-            print("no %d" % i)
+            # print("no %d" % i)
             node = dict()
             node['node_id'] = node_id
             node['desc'] = QueryEBIOLSExtended.get_cellular_component_description(node_id)
@@ -470,7 +470,7 @@ class UpdateNodesInfo:
 
         nodes_array = []
         for i, node_id in enumerate(nodes):
-            print("no %d" % i)
+            # print("no %d" % i)
             node = dict()
             node['node_id'] = node_id
             node['desc'] = QueryEBIOLSExtended.get_molecular_function_description(node_id)
