@@ -103,7 +103,7 @@ class SemMedInterface():
 		if mesh_flag:
 			df_cui = self.umls.get_cui_for_mesh_id(curie_id)
 			if df_cui is not None:
-				cui_list = list(df_cuis['CUI'])
+				cui_list = list(df_cui['CUI'])
 				return cui_list
 		curie_list = curie_id.split(':')
 		if curie_list[0] == "GO":
@@ -119,7 +119,7 @@ class SemMedInterface():
 		elif curie_list[0] == "OMIM":
 			df_cui = self.umls.get_cui_for_omim_id(curie_id)
 			if df_cui is not None:
-				cui_list = list(df_cuis['CUI'])
+				cui_list = list(df_cui['CUI'])
 				return cui_list
 		return None
 
