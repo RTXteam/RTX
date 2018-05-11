@@ -90,6 +90,7 @@ class Result_rating(Base):
   commenter_id = Column(Integer, ForeignKey('commenter.commenter_id'))
   expertise_level_id = Column(Integer, ForeignKey('expertise_level.expertise_level_id'))
   rating_id = Column(Integer, ForeignKey('rating.rating_id'))
+  comment_datetime = Column(DateTime, nullable=True)
   comment = Column(Text, nullable=True)
   result = relationship(Result)
   commenter = relationship(Commenter)
