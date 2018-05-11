@@ -40,6 +40,8 @@ from QueryPharos import QueryPharos
 from QuerySciGraph import QuerySciGraph
 from QueryChEMBL import QueryChEMBL
 from QueryUniprotExtended import QueryUniprotExtended
+from QueryKEGG import QueryKEGG
+from QueryUniprot import QueryUniprot
 
 
 class BioNetExpander:
@@ -53,7 +55,8 @@ class BioNetExpander:
                                   "ChEMBL": "https://www.ebi.ac.uk/chembl/compound/inspect/",
                                   "UBERON": "http://purl.obolibrary.org/obo/UBERON_",
                                   "GO": "http://purl.obolibrary.org/obo/GO_",
-                                  "CL": "http://purl.obolibrary.org/obo/CL_"}
+                                  "CL": "http://purl.obolibrary.org/obo/CL_",
+                                  "KEGG": "http://www.genome.jp/dbget-bin/www_bget?"}
 
     NODE_SIMPLE_TYPE_TO_CURIE_PREFIX = {"chemical_substance": "ChEMBL",
                                         "protein": "UniProtKB",
@@ -65,7 +68,8 @@ class BioNetExpander:
                                         "pathway": "REACT",
                                         "biological_process": "GO",
                                         "cellular_component": "GO",
-                                        "molecular_function": "GO"}
+                                        "molecular_function": "GO",
+                                        "metabolite": "KEGG"}
 
     MASTER_REL_IS_DIRECTED = {"subclass_of": True,
                               "associated_with_condition": True,
@@ -76,8 +80,13 @@ class BioNetExpander:
                               "causes_or_contributes_to": True,
                               "participates_in": True,
                               "has_phenotype": True,
-                              "enables": True}
+                              "enables": True,
+                              "has_function": True}
 
+    GO_ONTOLOGY_TO_PREDICATE = {"biological_process": "participates_in",
+                                "cellular_component": "expressed_in",
+                                "molecular_function": "has_function"}
+    
     def __init__(self, orangeboard):
         orangeboard.set_dict_reltype_dirs(self.MASTER_REL_IS_DIRECTED)
         self.orangeboard = orangeboard
@@ -133,7 +142,26 @@ class BioNetExpander:
     def is_mir(gene_symbol):
         return re.match('MIR\d.*', gene_symbol) is not None or re.match('MIRLET\d.*', gene_symbol) is not None
 
+    def expand_metabolite(self, node):
+        assert node.nodetype == "metabolite"
+        metabolite_kegg_id = node.name
+        metabolite_name = node.desc
+        ec_ids = QueryKEGG.map_kegg_compound_to_enzyme_commission_ids(metabolite_kegg_id)
+        print(ec_ids)
+        if len(ec_ids) > 0:
+            for ec_id in ec_ids:
+                uniprot_ids = QueryUniprot.map_enzyme_commission_id_to_uniprot_ids(ec_id)
+                if len(uniprot_ids) > 0:
+                    for uniprot_id in uniprot_ids:
+                        gene_symbols = self.query_mygene_obj.convert_uniprot_id_to_gene_symbol(uniprot_id)
+                        if len(gene_symbols) > 0:
+                            gene_symbol = ";".join(list(gene_symbols))
+                            prot_node = self.add_node_smart("protein", uniprot_id, desc=gene_symbol)
+                            if prot_node is not None:
+                                self.orangeboard.add_rel("directly_interacts_with", "KEGG;UniProtKB", node, prot_node, extended_reltype="directly_interacts_with")
+        
     def expand_chemical_substance(self, node):
+        assert node.nodetype == "chemical_substance"
         compound_desc = node.desc
         target_uniprot_ids = QueryChEMBL.get_target_uniprot_ids_for_drug(compound_desc)
         if target_uniprot_ids is not None:
@@ -161,6 +189,7 @@ class BioNetExpander:
                     self.orangeboard.add_rel('directly_interacts_with', 'Pharos', node, target_node, extended_reltype="targets")
 
     def expand_microRNA(self, node):
+        assert node.nodetype == "microRNA"
         ncbi_gene_id = node.name
         assert 'NCBIGene:' in ncbi_gene_id
 
@@ -168,9 +197,14 @@ class BioNetExpander:
         # microRNA-to-GO (biological process):
         go_bp_dict = self.query_mygene_obj.get_gene_ontology_ids_bp_for_entrez_gene_id(entrez_gene_id)
         for go_id, go_term in go_bp_dict.items():
-            node2 = self.add_node_smart('biological_process', go_id, desc=go_term)
-            if node2 is not None:
-                self.orangeboard.add_rel('participates_in', 'gene_ontology', node, node2, extended_reltype="participates_in")
+            gene_ontology_category_and_term_dict = QuerySciGraph.query_get_ontology_node_category_and_term(go_id)
+            if len(gene_ontology_category_and_term_dict) > 0:
+                ontology_name_str = gene_ontology_category_and_term_dict["category"].replace(" ", "_")
+                node2 = self.add_node_smart(ontology_name_str, go_id, desc=go_term)
+                if node2 is not None:
+                    predicate = self.GO_ONTOLOGY_TO_PREDICATE[ontology_name_str]
+                    self.orangeboard.add_rel(predicate,
+                                             'gene_ontology', node, node2, extended_reltype=predicate)
 
         anatomy_dict = QueryBioLink.get_anatomies_for_gene(ncbi_gene_id)
         for anatomy_id, anatomy_desc in anatomy_dict.items():
@@ -223,6 +257,7 @@ class BioNetExpander:
                                     self.orangeboard.add_rel('regulates', 'miRGate', node, target_mir_node, extended_reltype="regulates_expression_of")
 
     def expand_pathway(self, node):
+        assert node.nodetype == "pathway"
         reactome_id_str = node.name
         uniprot_ids_from_reactome_dict = QueryReactome.query_reactome_pathway_id_to_uniprot_ids_desc(reactome_id_str)
         rel_sourcedb_dict = dict.fromkeys(uniprot_ids_from_reactome_dict.keys(), 'reactome')
@@ -234,6 +269,7 @@ class BioNetExpander:
                 self.orangeboard.add_rel('participates_in', rel_sourcedb_dict[uniprot_id], target_node, source_node, extended_reltype="participates_in")
 
     def expand_anatomical_entity(self, node):
+        assert node.nodetype == "anatomical_entity"
         anatomy_curie_id_str = node.name
         if not anatomy_curie_id_str.startswith("UBERON:"):
             print("Anatomy node does not start with UBERON: " + anatomy_curie_id_str, file=sys.stderr)
@@ -248,9 +284,10 @@ class BioNetExpander:
                 self.orangeboard.add_rel("enables", "Monarch_SciGraph", node, target_node, extended_reltype=predicate_str)
 
     def expand_protein(self, node):
+        assert node.nodetype == "protein"
         uniprot_id_str = node.name
 
-        # SAR:  I suspect these pathways are too high-level and not useful:
+        # # SAR:  I suspect these pathways are too high-level and not useful:
         # pathways_set_from_pc2 = QueryPC2.uniprot_id_to_reactome_pathways(uniprot_id_str)
         # doesn't provide pathway descriptions; see if we can get away with not using it?
         # pathways_set_from_uniprot = QueryUniprot.uniprot_id_to_reactome_pathways(uniprot_id_str)
@@ -344,9 +381,14 @@ class BioNetExpander:
         # protein-to-GO (biological process):
         go_bp_dict = self.query_mygene_obj.get_gene_ontology_ids_bp_for_uniprot_id(uniprot_id_str)
         for go_id, go_term in go_bp_dict.items():
-            node2 = self.add_node_smart('biological_process', go_id, desc=go_term)
-            if node2 is not None:
-                self.orangeboard.add_rel("participates_in", 'gene_ontology', node1, node2, extended_reltype="participates_in")
+            gene_ontology_category_and_term_dict = QuerySciGraph.query_get_ontology_node_category_and_term(go_id)
+            if len(gene_ontology_category_and_term_dict) > 0:
+                ontology_name_str = gene_ontology_category_and_term_dict["category"].replace(" ", "_")
+                node2 = self.add_node_smart(ontology_name_str, go_id, desc=go_term)
+                if node2 is not None:
+                    predicate = self.GO_ONTOLOGY_TO_PREDICATE[ontology_name_str]
+                    self.orangeboard.add_rel(predicate,
+                                             'gene_ontology', node1, node2, extended_reltype=predicate)
 
     def expand_gene_ontology(self, node, gene_ontology_type_str):
         node_go_id = node.name
@@ -358,15 +400,19 @@ class BioNetExpander:
                     self.orangeboard.add_rel("subclass_of", 'gene_ontology', child_node, node, extended_reltype="subclass_of")
 
     def expand_molecular_function(self, node):
+        assert node.nodetype == "molecular_function"
         self.expand_gene_ontology(node, "molecular_function")
 
     def expand_cellular_component(self, node):
+        assert node.nodetype == "cellular_component"
         self.expand_gene_ontology(node, "cellular_component")
 
     def expand_biological_process(self, node):
+        assert node.nodetype == "biological_process"
         self.expand_gene_ontology(node, "biological_process")
 
     def expand_phenotypic_feature(self, node):
+        assert node.nodetype == "phenotypic_feature"
         # expand phenotype=>anatomy
         phenotype_id = node.name
         anatomy_dict = QueryBioLink.get_anatomies_for_phenotype(phenotype_id)
@@ -382,6 +428,7 @@ class BioNetExpander:
                 self.orangeboard.add_rel("subclass_of", 'Monarch_SciGraph', sub_phe_node, node, extended_reltype="subclass_of")
 
     def expand_genetic_condition(self, node):
+        assert node.name.startswith("OMIM:")
         res_dict = self.query_omim_obj.disease_mim_to_gene_symbols_and_uniprot_ids(node.name)
         uniprot_ids = res_dict['uniprot_ids']
         gene_symbols = res_dict['gene_symbols']
@@ -420,6 +467,7 @@ class BioNetExpander:
                                          extended_reltype="causes_or_contributes_to")
 
     def expand_disease(self, node):
+        assert node.nodetype == "disease"
         disease_name = node.name
 
         gene_ontology_dict = QuerySciGraph.get_gene_ontology_curie_ids_for_disease_curie_id(disease_name)
@@ -536,6 +584,16 @@ class BioNetExpander:
         bne = BioNetExpander(ob)
         node = bne.add_node_smart('anatomical_entity', 'UBERON:0000171', seed_node_bool=True, desc='respiration organ')
         bne.expand_disease(node)
+        ob.neo4j_set_url()
+        ob.neo4j_set_auth()
+        ob.neo4j_push()
+
+    def test_metabolite_to_protein():
+        ob = Orangeboard(debug=False)
+        ob.set_dict_reltype_dirs({'directly_interacts_with': True})
+        bne = BioNetExpander(ob)
+        node = bne.add_node_smart('metabolite', 'KEGG:C00190', seed_node_bool=True, desc='UDP-D-xylose')
+        bne.expand_metabolite(node)
         ob.neo4j_set_url()
         ob.neo4j_set_auth()
         ob.neo4j_push()
