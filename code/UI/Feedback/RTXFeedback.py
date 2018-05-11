@@ -25,6 +25,7 @@ from RTXConfiguration import RTXConfiguration
 
 # sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
 from swagger_server.models.result_feedback import ResultFeedback
+from swagger_server.models.feedback import Feedback
 
 Base = declarative_base()
 
@@ -89,7 +90,7 @@ class Result_rating(Base):
   commenter_id = Column(Integer, ForeignKey('commenter.commenter_id'))
   expertise_level_id = Column(Integer, ForeignKey('expertise_level.expertise_level_id'))
   rating_id = Column(Integer, ForeignKey('rating.rating_id'))
-  comment_datetime = Column(DateTime, nullable=True)
+  comment_datetime = Column(DateTime, nullable=False)
   comment = Column(Text, nullable=True)
   result = relationship(Result)
   commenter = relationship(Commenter)
@@ -195,11 +196,7 @@ class RTXFeedback:
     session.add(expertise_level)
     session.commit()
 
-
-  #### Pre-populate the database with reference data
-  def prepopulateCommenter(self):
-    session = self.session
-    commenter = Commenter(full_name='Test User',email_address='a@b.com',password='None')
+    commenter = Commenter(full_name='Test User',email_address='testuser@systemsbioloy.org',password='None')
     session.add(commenter)
     session.commit()
 
@@ -259,7 +256,7 @@ class RTXFeedback:
         storedResult = Result(response_id=response_id,confidence=result.confidence,n_nodes=n_nodes,n_edges=n_edges,result_text=result.text,result_object=pickle.dumps(ast.literal_eval(repr(result))),result_hash=result_hash)
         session.add(storedResult)
         session.flush()
-        result.id = response.id+"/result/"+str(storedResult.result_id)
+        result.id = "http://rtx.ncats.io/api/rtx/v1/result/"+str(storedResult.result_id)
         #print("Returned result_id is "+str(storedResult.result_id)+", n_nodes="+str(n_nodes)+", n_edges="+str(n_edges)+", hash="+result_hash)
         storedResult.result_object=pickle.dumps(ast.literal_eval(repr(result)))
 
@@ -344,7 +341,7 @@ class RTXFeedback:
 
     try:
       insertResult = Result_rating(result_id=result_id, commenter_id=rating["commenter_id"], expertise_level_id=rating["expertise_level_id"],
-        rating_id = rating["rating_id"], comment=rating["comment"])
+        rating_id = rating["rating_id"], comment=rating["comment"], comment_datetime=datetime.now().strftime("%Y-%m-%d %H:%M:%S") )
       session.add(insertResult)
       session.flush()
       session.commit()
@@ -355,28 +352,27 @@ class RTXFeedback:
 
 
   #### Fetch the feedback for a result
-  def getResultFeedback(self, response_id, result_id):
+  def getResultFeedback(self, result_id):
     self.connect()
     session = self.session
 
-    if response_id is None:
-      return( { "status": 450, "title": "response_id missing", "detail": "Required attribute response_id is missing from URL", "type": "about:blank" }, 450)
     if result_id is None:
-      return( { "status": 451, "title": "result_id missing", "detail": "Required attribute result_id is missing from URL", "type": "about:blank" }, 451)
+      return( { "status": 450, "title": "result_id missing", "detail": "Required attribute result_id is missing from URL", "type": "about:blank" }, 450)
 
     #### Look for ratings we could use
     storedRatings = session.query(Result_rating).filter(Result_rating.result_id==result_id).all()
     if storedRatings is not None:
       resultRatings = []
       for rating in storedRatings:
-        resultRating = ResultFeedback()
-        resultRating.result_id = "http://rtx.ncats.io/api/rtx/v1/response/"+str(response_id)+"/result/"+str(result_id)
+        resultRating = Feedback()
+        resultRating.result_id = "http://rtx.ncats.io/api/rtx/v1/result/"+str(result_id)
         resultRating.id = resultRating.result_id + "/feedback/" + str(rating.result_rating_id)
         resultRating.expertise_level_id = rating.expertise_level_id
         resultRating.rating_id = rating.rating_id
         resultRating.commenter_id = rating.commenter_id
-        resultRating.commenter_name = 'elmer fudd'
+        resultRating.commenter_name = 'not available'
         resultRating.comment = rating.comment
+        resultRating.datetime = rating.comment_datetime
         resultRating.foobar = -1		# turns out you can put in anything you want, but it doesn't show up in the output
         resultRatings.append(resultRating)
       return(resultRatings)
@@ -397,13 +393,16 @@ class RTXFeedback:
     if storedResults is not None:
       allResultRatings = []
       for storedResult in storedResults:
-        resultRatings = self.getResultFeedback(response_id,storedResult.result_id)
+        resultRatings = self.getResultFeedback(storedResult.result_id)
         if resultRatings is not None:
           for resultRating in resultRatings:
             allResultRatings.append(resultRating)
-      return(allResultRatings)
+      if len(allResultRatings) > 0:
+        return(allResultRatings)
+      else:
+        return( { "status": 404, "title": "Ratings not found", "detail": "There were no ratings found for this response", "type": "about:blank" }, 404)
     else:
-      return( { "status": 404, "title": "Ratings not found", "detail": "There were no ratings found for this response", "type": "about:blank" }, 404)
+      return( { "status": 404, "title": "Results not found", "detail": "There were no results found for this response", "type": "about:blank" }, 404)
 
 
 
