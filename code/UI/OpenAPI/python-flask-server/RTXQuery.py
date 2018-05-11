@@ -12,7 +12,7 @@ import json
 import datetime
 import ast
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../")
 from RTXConfiguration import RTXConfiguration
 
 from QueryMeSH import QueryMeSH
