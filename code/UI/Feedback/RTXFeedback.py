@@ -11,6 +11,7 @@ import json
 import ast
 from datetime import datetime
 import pickle
+import hashlib
 
 from sqlalchemy import Column, ForeignKey, Integer, Float, String, DateTime, Text, PickleType, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
@@ -220,7 +221,6 @@ class RTXFeedback:
       terms=str(query["terms"]),tool_version=rtxConfig.version,result_code=response.result_code,message=response.message,n_results=n_results,response_object=pickle.dumps(ast.literal_eval(repr(response))))
     session.add(storedResponse)
     session.flush()
-    #print("Returned response_id is "+str(storedResponse.response_id))
     response.id = "http://rtx.ncats.io/api/rtx/v1/response/"+str(storedResponse.response_id)
 
     self.addNewResults(storedResponse.response_id,response)
@@ -246,19 +246,26 @@ class RTXFeedback:
         if result.confidence is None:
           result.confidence = 0
         if result.result_graph is not None:
+          #### Calculate a hash from the list of nodes and edges in the result
           result_hash = self.calcResultHash(result)
           if result.result_graph.node_list is not None:
             n_nodes = len(result.result_graph.node_list)
           if result.result_graph.edge_list is not None:
             n_edges = len(result.result_graph.edge_list)
 
-        #### Calculate a hash from the list of nodes and edges in the result
-        storedResult = Result(response_id=response_id,confidence=result.confidence,n_nodes=n_nodes,n_edges=n_edges,result_text=result.text,result_object=pickle.dumps(ast.literal_eval(repr(result))),result_hash=result_hash)
-        session.add(storedResult)
-        session.flush()
-        result.id = "http://rtx.ncats.io/api/rtx/v1/result/"+str(storedResult.result_id)
-        #print("Returned result_id is "+str(storedResult.result_id)+", n_nodes="+str(n_nodes)+", n_edges="+str(n_edges)+", hash="+result_hash)
-        storedResult.result_object=pickle.dumps(ast.literal_eval(repr(result)))
+        #### See if there is an existing result that matches this hash
+        previousResult = session.query(Result).filter(Result.result_hash==result_hash).order_by(desc(Result.result_id)).first()
+        if previousResult is not None:
+          result.id = "http://rtx.ncats.io/api/rtx/v1/result/"+str(previousResult.result_id)
+          #eprint("Reused result_id " + str(result.id))
+
+        else:
+          storedResult = Result(response_id=response_id,confidence=result.confidence,n_nodes=n_nodes,n_edges=n_edges,result_text=result.text,result_object=pickle.dumps(ast.literal_eval(repr(result))),result_hash=result_hash)
+          session.add(storedResult)
+          session.flush()
+          result.id = "http://rtx.ncats.io/api/rtx/v1/result/"+str(storedResult.result_id)
+          #print("Returned result_id is "+str(storedResult.result_id)+", n_nodes="+str(n_nodes)+", n_edges="+str(n_edges)+", hash="+result_hash)
+          storedResult.result_object=pickle.dumps(ast.literal_eval(repr(result)))
 
     session.commit()
     return
@@ -281,8 +288,11 @@ class RTXFeedback:
         edges.append(edge.type)
     edges.sort()
 
-    result_hash = str(hash(",".join(nodes)+"_"+"-".join(edges)))
-    return result_hash
+    hashing_string = ",".join(nodes)+"_"+"-".join(edges)
+    result_hash = hashlib.md5(hashing_string.encode('utf-8'))
+    result_hash_string = result_hash.hexdigest()
+    #eprint(result_hash_string + " from " + hashing_string)
+    return result_hash_string
 
 
   #### Get a previously stored response for this query from the database
