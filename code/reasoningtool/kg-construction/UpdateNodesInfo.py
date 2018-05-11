@@ -418,6 +418,78 @@ class UpdateNodesInfo:
 
         conn.close()
 
+    @staticmethod
+    def update_cellular_component_nodes_desc():
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_cellular_component_nodes()
+        print("the number of cellular_component nodes: %d" % len(nodes))
+
+        from time import time
+        t = time()
+
+        nodes_array = []
+        for i, node_id in enumerate(nodes):
+            print("no %d" % i)
+            node = dict()
+            node['node_id'] = node_id
+            node['desc'] = QueryEBIOLSExtended.get_cellular_component_description(node_id)
+            nodes_array.append(node)
+
+        print("cellular_component pulling time: %f" % (time() - t))
+
+        nodes_nums = len(nodes_array)
+        chunk_size = 10000
+        group_nums = nodes_nums // chunk_size + 1
+        for i in range(group_nums):
+            start = i * chunk_size
+            end = (i + 1) * chunk_size if (i + 1) * chunk_size < nodes_nums else nodes_nums
+            conn.update_cellular_component_nodes_desc(nodes_array[start:end])
+
+        print("cellular_component total time: %f" % (time() - t))
+
+        conn.close()
+
+    @staticmethod
+    def update_molecular_function_nodes_desc():
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_molecular_function_nodes()
+        print("the number of molecular_function nodes: %d" % len(nodes))
+
+        from time import time
+        t = time()
+
+        nodes_array = []
+        for i, node_id in enumerate(nodes):
+            print("no %d" % i)
+            node = dict()
+            node['node_id'] = node_id
+            node['desc'] = QueryEBIOLSExtended.get_molecular_function_description(node_id)
+            nodes_array.append(node)
+
+        print("molecular_function pulling time: %f" % (time() - t))
+
+        nodes_nums = len(nodes_array)
+        chunk_size = 10000
+        group_nums = nodes_nums // chunk_size + 1
+        for i in range(group_nums):
+            start = i * chunk_size
+            end = (i + 1) * chunk_size if (i + 1) * chunk_size < nodes_nums else nodes_nums
+            conn.update_molecular_function_nodes_desc(nodes_array[start:end])
+
+        print("molecular_function total time: %f" % (time() - t))
+
+        conn.close()
+
 if __name__ == '__main__':
 
     # UpdateNodesInfo.update_anatomy_nodes()
@@ -428,11 +500,14 @@ if __name__ == '__main__':
     # UpdateNodesInfo.update_disease_nodes()
     # UpdateNodesInfo.update_chemical_substance_nodes()
     # UpdateNodesInfo.update_bio_process_nodes()
-    UpdateNodesInfo.update_anatomy_nodes_desc()
-    UpdateNodesInfo.update_phenotype_nodes_desc()
-    UpdateNodesInfo.update_disease_nodes_desc()
-    UpdateNodesInfo.update_bio_process_nodes_desc()
-    UpdateNodesInfo.update_microRNA_nodes_desc()
-    UpdateNodesInfo.update_protein_nodes_desc()
-    UpdateNodesInfo.update_chemical_substance_desc()
-    UpdateNodesInfo.update_pathway_nodes_desc()
+    # UpdateNodesInfo.update_anatomy_nodes_desc()
+    # UpdateNodesInfo.update_phenotype_nodes_desc()
+    # UpdateNodesInfo.update_disease_nodes_desc()
+    # UpdateNodesInfo.update_bio_process_nodes_desc()
+    # UpdateNodesInfo.update_microRNA_nodes_desc()
+    # UpdateNodesInfo.update_protein_nodes_desc()
+    # UpdateNodesInfo.update_chemical_substance_desc()
+    # UpdateNodesInfo.update_pathway_nodes_desc()
+    UpdateNodesInfo.update_cellular_component_nodes_desc()
+    UpdateNodesInfo.update_molecular_function_nodes_desc()
+

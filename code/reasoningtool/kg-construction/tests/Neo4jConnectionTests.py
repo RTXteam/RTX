@@ -158,14 +158,41 @@ class Neo4jConnectionTestCase(unittest.TestCase):
 
         names = conn.get_node_names('disease')
         self.assertIsNotNone(names)
-        self.assertEqual(len(names), 12472)
+        self.assertEqual(len(names), 19572)
 
         names = conn.get_node_names('chemical_substance')
         self.assertIsNotNone(names)
-        self.assertEqual(len(names), 2225)
+        self.assertEqual(len(names), 2226)
 
         conn.close()
 
+    def test_get_cellular_component_nodes(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_cellular_component_nodes()
+        print(len(nodes))
+        self.assertIsNotNone(nodes)
+        self.assertLess(0, len(nodes))
+
+        conn.close()
+
+    def test_get_molecular_function_nodes(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_molecular_function_nodes()
+        print(len(nodes))
+        self.assertIsNotNone(nodes)
+        self.assertLess(0, len(nodes))
+
+        conn.close()
 
 if __name__ == '__main__':
     unittest.main()
