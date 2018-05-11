@@ -32,7 +32,9 @@ class QueryEBIOLSExtended:
         'get_anatomy': '{ontology}/terms/{id}',
         'get_phenotype': '{ontology}/terms/{id}',
         'get_disease': '{ontology}/terms/{id}',
-        'get_bio_process': '{ontology}/terms/{id}'
+        'get_bio_process': '{ontology}/terms/{id}',
+        'get_cellular_component': '{ontology}/terms/{id}',
+        'get_molecular_function': '{ontology}/terms/{id}'
     }
 
     @staticmethod
@@ -87,6 +89,13 @@ class QueryEBIOLSExtended:
     def get_disease_description(disease_id):
         return QueryEBIOLSExtended.__get_entity("get_disease", disease_id)
 
+    @staticmethod
+    def get_cellular_component_description(cc_id):
+        return QueryEBIOLSExtended.__get_entity("get_cellular_component", cc_id)
+
+    @staticmethod
+    def get_molecular_function_description(mf_id):
+        return QueryEBIOLSExtended.__get_entity("get_molecular_function", mf_id)
 
 if __name__ == '__main__':
 
@@ -106,4 +115,6 @@ if __name__ == '__main__':
     save_to_test_file('CL:0000038', QueryEBIOLSExtended.get_anatomy_description('CL:0000038'))
     save_to_test_file('GO:0042535', QueryEBIOLSExtended.get_bio_process_description('GO:0042535'))
     save_to_test_file('HP:0011105', QueryEBIOLSExtended.get_phenotype_description('HP:0011105'))
+    save_to_test_file('GO:0005573', QueryEBIOLSExtended.get_cellular_component_description('GO:0005573'))
+    save_to_test_file('GO:0004689', QueryEBIOLSExtended.get_molecular_function_description('GO:0004689'))
     # print(QueryEBIOLSExtended.get_disease_description('OMIM:613573'))

@@ -58,13 +58,13 @@ class NormGoogleDistance:
 		names = None
 		if QueryNCBIeUtils.is_mesh_term(description):
 			return [description + '[MeSH Terms]']
-		elif curie_list[0] == "Reactome":
+		elif curie_list[0].lower().startswith("react"):
 			res = QueryNCBIeUtils.get_reactome_names(curie_list[1])
 			if res is not None:
 				names = res.split('|')
 		elif curie_list[0] == "GO":
 			pass
-		elif curie_list[0] == "UniProt":
+		elif curie_list[0].startswith("UniProt"):
 			res = QueryNCBIeUtils.get_uniprot_names(curie_list[1])
 			if res is not None:
 				names = res.split('|')
