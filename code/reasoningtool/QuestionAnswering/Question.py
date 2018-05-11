@@ -11,7 +11,7 @@ import CustomExceptions
 import random
 # Import reasoning utilities
 try:
-	from code.reasoningtool import ReasoningUtilities as RU
+	from ReasoningUtilities import ReasoningUtilities as RU
 except ImportError:
 	# noinspection PyUnboundLocalVariable
 	try:
