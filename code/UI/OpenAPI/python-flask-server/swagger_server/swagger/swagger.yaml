@@ -29,10 +29,15 @@ tags:
     description: "Documentation for the RTX query function"
     url: "http://rtx.ncats.io/devED/overview.html#getPubmedMeshNgd"
 - name: "response"
-  description: "Request stored responses and results from RTX"
+  description: "Request stored responses and feedback for responses"
   externalDocs:
     description: "Documentation for the RTX response function"
     url: "http://rtx.ncats.io/devED/overview.html#response"
+- name: "result"
+  description: "Request stored results and feedback for results"
+  externalDocs:
+    description: "Documentation for the RTX result function"
+    url: "http://rtx.ncats.io/devED/overview.html#result"
 - name: "exampleQuestions"
   description: "Request a list of example questions that can be answered by the system"
   externalDocs:
@@ -208,34 +213,6 @@ paths:
         404:
           description: "Response_id not found"
       x-swagger-router-controller: "swagger_server.controllers.response_controller"
-  /response/{response_id}/result/{result_id}:
-    get:
-      tags:
-      - "response"
-      summary: "Request stored responses and results from RTX"
-      description: ""
-      operationId: "get_result"
-      produces:
-      - "application/json"
-      parameters:
-      - name: "response_id"
-        in: "path"
-        description: "Integer identifier of the response to return"
-        required: true
-        type: "integer"
-      - name: "result_id"
-        in: "path"
-        description: "Integer identifier of the result to return"
-        required: true
-        type: "integer"
-      responses:
-        200:
-          description: "successful operation"
-          schema:
-            $ref: "#/definitions/Result"
-        404:
-          description: "result_id not found"
-      x-swagger-router-controller: "swagger_server.controllers.response_controller"
   /response/{response_id}/feedback:
     get:
       tags:
@@ -259,21 +236,39 @@ paths:
         404:
           description: "Response_id not found"
       x-swagger-router-controller: "swagger_server.controllers.response_controller"
-  /response/{response_id}/result/{result_id}/feedback:
+  /result/{result_id}:
     get:
       tags:
-      - "response"
-      summary: "Request stored feedback for this result from RTX"
+      - "result"
+      summary: "Request stored result"
+      description: ""
+      operationId: "get_result"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "result_id"
+        in: "path"
+        description: "Integer identifier of the result to return"
+        required: true
+        type: "integer"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/Result"
+        404:
+          description: "result_id not found"
+      x-swagger-router-controller: "swagger_server.controllers.result_controller"
+  /result/{result_id}/feedback:
+    get:
+      tags:
+      - "result"
+      summary: "Request stored feedback for this result"
       description: ""
       operationId: "get_result_feedback"
       produces:
       - "application/json"
       parameters:
-      - name: "response_id"
-        in: "path"
-        description: "Integer identifier of the response to return"
-        required: true
-        type: "integer"
       - name: "result_id"
         in: "path"
         description: "Integer identifier of the result to return"
@@ -286,10 +281,10 @@ paths:
             $ref: "#/definitions/ResultFeedback"
         404:
           description: "result_id not found"
-      x-swagger-router-controller: "swagger_server.controllers.response_controller"
+      x-swagger-router-controller: "swagger_server.controllers.result_controller"
     post:
       tags:
-      - "response"
+      - "result"
       summary: "Store feedback for a particular result"
       description: ""
       operationId: "post_result_feedback"
@@ -298,22 +293,11 @@ paths:
       produces:
       - "application/json"
       parameters:
-      - name: "response_id"
-        in: "path"
-        description: "Integer identifier of the response to return"
-        required: true
-        type: "integer"
       - name: "result_id"
         in: "path"
         description: "Integer identifier of the result to return"
         required: true
         type: "integer"
-      - in: "body"
-        name: "body"
-        description: "Feedback information to be submitted"
-        required: true
-        schema:
-          $ref: "#/definitions/Query"
       responses:
         200:
           description: "successful operation"
@@ -321,7 +305,7 @@ paths:
             $ref: "#/definitions/Response"
         400:
           description: "Invalid status value"
-      x-swagger-router-controller: "swagger_server.controllers.response_controller"
+      x-swagger-router-controller: "swagger_server.controllers.result_controller"
 definitions:
   Question:
     type: "object"
@@ -363,22 +347,38 @@ definitions:
         example: "true"
         description: "Set to true in order to bypass any possible cached response\
           \ and try to answer the query over again"
+      max_results:
+        type: "integer"
+        example: 100
+        description: "Maximum number of individual results to return"
+      page_size:
+        type: "integer"
+        example: 100
+        description: "Split the results into pages with this number of results each"
+      page_number:
+        type: "integer"
+        example: 1
+        description: "Page number of results when the number of results exceeds the\
+          \ page_size"
       terms:
         $ref: "#/definitions/Query_terms"
     example:
       original_question: "what genetic conditions offer protection against malaria"
       bypass_cache: "true"
+      page_number: 1
       terms:
         disease: "malaria"
       restated_question: "Which genetic conditions may offer protection against malaria?"
       known_query_type_id: "Q1"
+      max_results: 100
       message: "Your question was understood."
+      page_size: 100
   Response:
     type: "object"
     properties:
       context:
         type: "string"
-        example: "http://translator.ncats.io"
+        example: "http://rtx.ncats.io/devED/ns/translator.jsonld"
         description: "JSON-LD context URI"
       type:
         type: "string"
@@ -386,7 +386,7 @@ definitions:
         description: "Entity type of this response"
       id:
         type: "string"
-        example: "http://rtx.ncats.io/devED/api/v1/response/1234"
+        example: "http://rtx.ncats.io/devED/api/rtx/v1/response/1234"
         description: "URI for this response"
       tool_version:
         type: "string"
@@ -445,7 +445,7 @@ definitions:
       datetime: "2018-01-09 12:34:45"
       tool_version: "RTX 0.4.0"
       terms: "{ 'disease': 'malaria' }"
-      context: "http://translator.ncats.io"
+      context: "http://rtx.ncats.io/devED/ns/translator.jsonld"
       known_query_type_id: "Q2"
       result_list:
       - result_type: "answer"
@@ -463,9 +463,9 @@ definitions:
               url: "https://en.wikipedia.org/wiki/Malaria"
             name: "Haptoglobin"
             description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
-            id: "https://www.uniprot.org/uniprot/P00738"
-            accession: "OMIM:603903"
+            id: "OMIM:603903"
             type: "protein"
+            uri: "https://www.uniprot.org/uniprot/P00738"
           - symbol: "HP"
             node_attributes:
             - name: "Wikipedia article"
@@ -478,70 +478,52 @@ definitions:
               url: "https://en.wikipedia.org/wiki/Malaria"
             name: "Haptoglobin"
             description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
-            id: "https://www.uniprot.org/uniprot/P00738"
-            accession: "OMIM:603903"
+            id: "OMIM:603903"
             type: "protein"
+            uri: "https://www.uniprot.org/uniprot/P00738"
           edge_list:
-          - confidence: 0.99
+          - is_defined_by: "RTX"
+            negated: true
+            evidence_type: "ECO:0000220"
+            attribute_list:
+            - name: "Cell type limitation"
+              type: "localization"
+              value: "MFC cells"
+              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+            - name: "Cell type limitation"
+              type: "localization"
+              value: "MFC cells"
+              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+            confidence: 0.99
+            provided_by: "OMIM"
+            qualifiers: "ECO:0000220"
             target_id: "https://www.uniprot.org/uniprot/P00738"
             source_id: "http://omim.org/entry/603903"
             type: "affects"
-            origin_list:
-            - attribute_list:
-              - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-                type: "PubMed_article"
-                value: "0.5"
-                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-              - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-                type: "PubMed_article"
-                value: "0.5"
-                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-              name: "Wikipedia article"
-              id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
-              type: "Monarch_BioLink_API_Relationship"
-            - attribute_list:
-              - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-                type: "PubMed_article"
-                value: "0.5"
-                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-              - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-                type: "PubMed_article"
-                value: "0.5"
-                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-              name: "Wikipedia article"
-              id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
-              type: "Monarch_BioLink_API_Relationship"
-          - confidence: 0.99
+            relation: "affects"
+            publications: "PubMed:12345562"
+          - is_defined_by: "RTX"
+            negated: true
+            evidence_type: "ECO:0000220"
+            attribute_list:
+            - name: "Cell type limitation"
+              type: "localization"
+              value: "MFC cells"
+              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+            - name: "Cell type limitation"
+              type: "localization"
+              value: "MFC cells"
+              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+            confidence: 0.99
+            provided_by: "OMIM"
+            qualifiers: "ECO:0000220"
             target_id: "https://www.uniprot.org/uniprot/P00738"
             source_id: "http://omim.org/entry/603903"
             type: "affects"
-            origin_list:
-            - attribute_list:
-              - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-                type: "PubMed_article"
-                value: "0.5"
-                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-              - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-                type: "PubMed_article"
-                value: "0.5"
-                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-              name: "Wikipedia article"
-              id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
-              type: "Monarch_BioLink_API_Relationship"
-            - attribute_list:
-              - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-                type: "PubMed_article"
-                value: "0.5"
-                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-              - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-                type: "PubMed_article"
-                value: "0.5"
-                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-              name: "Wikipedia article"
-              id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
-              type: "Monarch_BioLink_API_Relationship"
+            relation: "affects"
+            publications: "PubMed:12345562"
         confidence: 0.9234
-        id: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345"
+        id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345"
         text: "The genetic condition sickle cell anemia may provide protection from\
           \ cerebral malaria via genetic alterations of proteins HBB (P68871) and\
           \ HMOX1 (P09601)."
@@ -560,9 +542,9 @@ definitions:
               url: "https://en.wikipedia.org/wiki/Malaria"
             name: "Haptoglobin"
             description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
-            id: "https://www.uniprot.org/uniprot/P00738"
-            accession: "OMIM:603903"
+            id: "OMIM:603903"
             type: "protein"
+            uri: "https://www.uniprot.org/uniprot/P00738"
           - symbol: "HP"
             node_attributes:
             - name: "Wikipedia article"
@@ -575,82 +557,64 @@ definitions:
               url: "https://en.wikipedia.org/wiki/Malaria"
             name: "Haptoglobin"
             description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
-            id: "https://www.uniprot.org/uniprot/P00738"
-            accession: "OMIM:603903"
+            id: "OMIM:603903"
             type: "protein"
+            uri: "https://www.uniprot.org/uniprot/P00738"
           edge_list:
-          - confidence: 0.99
+          - is_defined_by: "RTX"
+            negated: true
+            evidence_type: "ECO:0000220"
+            attribute_list:
+            - name: "Cell type limitation"
+              type: "localization"
+              value: "MFC cells"
+              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+            - name: "Cell type limitation"
+              type: "localization"
+              value: "MFC cells"
+              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+            confidence: 0.99
+            provided_by: "OMIM"
+            qualifiers: "ECO:0000220"
             target_id: "https://www.uniprot.org/uniprot/P00738"
             source_id: "http://omim.org/entry/603903"
             type: "affects"
-            origin_list:
-            - attribute_list:
-              - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-                type: "PubMed_article"
-                value: "0.5"
-                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-              - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-                type: "PubMed_article"
-                value: "0.5"
-                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-              name: "Wikipedia article"
-              id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
-              type: "Monarch_BioLink_API_Relationship"
-            - attribute_list:
-              - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-                type: "PubMed_article"
-                value: "0.5"
-                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-              - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-                type: "PubMed_article"
-                value: "0.5"
-                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-              name: "Wikipedia article"
-              id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
-              type: "Monarch_BioLink_API_Relationship"
-          - confidence: 0.99
+            relation: "affects"
+            publications: "PubMed:12345562"
+          - is_defined_by: "RTX"
+            negated: true
+            evidence_type: "ECO:0000220"
+            attribute_list:
+            - name: "Cell type limitation"
+              type: "localization"
+              value: "MFC cells"
+              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+            - name: "Cell type limitation"
+              type: "localization"
+              value: "MFC cells"
+              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+            confidence: 0.99
+            provided_by: "OMIM"
+            qualifiers: "ECO:0000220"
             target_id: "https://www.uniprot.org/uniprot/P00738"
             source_id: "http://omim.org/entry/603903"
             type: "affects"
-            origin_list:
-            - attribute_list:
-              - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-                type: "PubMed_article"
-                value: "0.5"
-                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-              - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-                type: "PubMed_article"
-                value: "0.5"
-                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-              name: "Wikipedia article"
-              id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
-              type: "Monarch_BioLink_API_Relationship"
-            - attribute_list:
-              - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-                type: "PubMed_article"
-                value: "0.5"
-                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-              - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-                type: "PubMed_article"
-                value: "0.5"
-                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-              name: "Wikipedia article"
-              id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
-              type: "Monarch_BioLink_API_Relationship"
+            relation: "affects"
+            publications: "PubMed:12345562"
         confidence: 0.9234
-        id: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345"
+        id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345"
         text: "The genetic condition sickle cell anemia may provide protection from\
           \ cerebral malaria via genetic alterations of proteins HBB (P68871) and\
           \ HMOX1 (P09601)."
       result_code: "OK"
-      id: "http://rtx.ncats.io/devED/api/v1/response/1234"
+      id: "http://rtx.ncats.io/devED/api/rtx/v1/response/1234"
       restated_question_text: "Which proteins are affected by sickle cell anemia?"
   Result:
     type: "object"
     properties:
       id:
         type: "string"
-        example: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345"
+        example: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345"
         description: "URI for this response"
       text:
         type: "string"
@@ -689,9 +653,9 @@ definitions:
             url: "https://en.wikipedia.org/wiki/Malaria"
           name: "Haptoglobin"
           description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
-          id: "https://www.uniprot.org/uniprot/P00738"
-          accession: "OMIM:603903"
+          id: "OMIM:603903"
           type: "protein"
+          uri: "https://www.uniprot.org/uniprot/P00738"
         - symbol: "HP"
           node_attributes:
           - name: "Wikipedia article"
@@ -704,70 +668,52 @@ definitions:
             url: "https://en.wikipedia.org/wiki/Malaria"
           name: "Haptoglobin"
           description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
-          id: "https://www.uniprot.org/uniprot/P00738"
-          accession: "OMIM:603903"
+          id: "OMIM:603903"
           type: "protein"
+          uri: "https://www.uniprot.org/uniprot/P00738"
         edge_list:
-        - confidence: 0.99
+        - is_defined_by: "RTX"
+          negated: true
+          evidence_type: "ECO:0000220"
+          attribute_list:
+          - name: "Cell type limitation"
+            type: "localization"
+            value: "MFC cells"
+            url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+          - name: "Cell type limitation"
+            type: "localization"
+            value: "MFC cells"
+            url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+          confidence: 0.99
+          provided_by: "OMIM"
+          qualifiers: "ECO:0000220"
           target_id: "https://www.uniprot.org/uniprot/P00738"
           source_id: "http://omim.org/entry/603903"
           type: "affects"
-          origin_list:
-          - attribute_list:
-            - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-              type: "PubMed_article"
-              value: "0.5"
-              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-            - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-              type: "PubMed_article"
-              value: "0.5"
-              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-            name: "Wikipedia article"
-            id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
-            type: "Monarch_BioLink_API_Relationship"
-          - attribute_list:
-            - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-              type: "PubMed_article"
-              value: "0.5"
-              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-            - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-              type: "PubMed_article"
-              value: "0.5"
-              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-            name: "Wikipedia article"
-            id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
-            type: "Monarch_BioLink_API_Relationship"
-        - confidence: 0.99
+          relation: "affects"
+          publications: "PubMed:12345562"
+        - is_defined_by: "RTX"
+          negated: true
+          evidence_type: "ECO:0000220"
+          attribute_list:
+          - name: "Cell type limitation"
+            type: "localization"
+            value: "MFC cells"
+            url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+          - name: "Cell type limitation"
+            type: "localization"
+            value: "MFC cells"
+            url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+          confidence: 0.99
+          provided_by: "OMIM"
+          qualifiers: "ECO:0000220"
           target_id: "https://www.uniprot.org/uniprot/P00738"
           source_id: "http://omim.org/entry/603903"
           type: "affects"
-          origin_list:
-          - attribute_list:
-            - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-              type: "PubMed_article"
-              value: "0.5"
-              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-            - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-              type: "PubMed_article"
-              value: "0.5"
-              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-            name: "Wikipedia article"
-            id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
-            type: "Monarch_BioLink_API_Relationship"
-          - attribute_list:
-            - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-              type: "PubMed_article"
-              value: "0.5"
-              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-            - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-              type: "PubMed_article"
-              value: "0.5"
-              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-            name: "Wikipedia article"
-            id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
-            type: "Monarch_BioLink_API_Relationship"
+          relation: "affects"
+          publications: "PubMed:12345562"
       confidence: 0.9234
-      id: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345"
+      id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345"
       text: "The genetic condition sickle cell anemia may provide protection from\
         \ cerebral malaria via genetic alterations of proteins HBB (P68871) and HMOX1\
         \ (P09601)."
@@ -799,9 +745,9 @@ definitions:
           url: "https://en.wikipedia.org/wiki/Malaria"
         name: "Haptoglobin"
         description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
-        id: "https://www.uniprot.org/uniprot/P00738"
-        accession: "OMIM:603903"
+        id: "OMIM:603903"
         type: "protein"
+        uri: "https://www.uniprot.org/uniprot/P00738"
       - symbol: "HP"
         node_attributes:
         - name: "Wikipedia article"
@@ -814,95 +760,77 @@ definitions:
           url: "https://en.wikipedia.org/wiki/Malaria"
         name: "Haptoglobin"
         description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
-        id: "https://www.uniprot.org/uniprot/P00738"
-        accession: "OMIM:603903"
+        id: "OMIM:603903"
         type: "protein"
+        uri: "https://www.uniprot.org/uniprot/P00738"
       edge_list:
-      - confidence: 0.99
+      - is_defined_by: "RTX"
+        negated: true
+        evidence_type: "ECO:0000220"
+        attribute_list:
+        - name: "Cell type limitation"
+          type: "localization"
+          value: "MFC cells"
+          url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+        - name: "Cell type limitation"
+          type: "localization"
+          value: "MFC cells"
+          url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+        confidence: 0.99
+        provided_by: "OMIM"
+        qualifiers: "ECO:0000220"
         target_id: "https://www.uniprot.org/uniprot/P00738"
         source_id: "http://omim.org/entry/603903"
         type: "affects"
-        origin_list:
-        - attribute_list:
-          - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-            type: "PubMed_article"
-            value: "0.5"
-            url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-          - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-            type: "PubMed_article"
-            value: "0.5"
-            url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-          name: "Wikipedia article"
-          id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
-          type: "Monarch_BioLink_API_Relationship"
-        - attribute_list:
-          - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-            type: "PubMed_article"
-            value: "0.5"
-            url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-          - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-            type: "PubMed_article"
-            value: "0.5"
-            url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-          name: "Wikipedia article"
-          id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
-          type: "Monarch_BioLink_API_Relationship"
-      - confidence: 0.99
+        relation: "affects"
+        publications: "PubMed:12345562"
+      - is_defined_by: "RTX"
+        negated: true
+        evidence_type: "ECO:0000220"
+        attribute_list:
+        - name: "Cell type limitation"
+          type: "localization"
+          value: "MFC cells"
+          url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+        - name: "Cell type limitation"
+          type: "localization"
+          value: "MFC cells"
+          url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+        confidence: 0.99
+        provided_by: "OMIM"
+        qualifiers: "ECO:0000220"
         target_id: "https://www.uniprot.org/uniprot/P00738"
         source_id: "http://omim.org/entry/603903"
         type: "affects"
-        origin_list:
-        - attribute_list:
-          - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-            type: "PubMed_article"
-            value: "0.5"
-            url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-          - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-            type: "PubMed_article"
-            value: "0.5"
-            url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-          name: "Wikipedia article"
-          id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
-          type: "Monarch_BioLink_API_Relationship"
-        - attribute_list:
-          - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-            type: "PubMed_article"
-            value: "0.5"
-            url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-          - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-            type: "PubMed_article"
-            value: "0.5"
-            url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-          name: "Wikipedia article"
-          id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
-          type: "Monarch_BioLink_API_Relationship"
+        relation: "affects"
+        publications: "PubMed:12345562"
   Node:
     type: "object"
     properties:
-      type:
-        type: "string"
-        example: "protein"
-        description: "Entity type of this node (e.g., protein, disease, etc.)"
       id:
         type: "string"
-        example: "https://www.uniprot.org/uniprot/P00738"
-        description: "URI identifier for this response"
-      symbol:
+        example: "OMIM:603903"
+        description: "CURIE identifier for this node"
+      uri:
         type: "string"
-        example: "HP"
-        description: "Short abbreviation or symbol for this entity"
+        example: "https://www.uniprot.org/uniprot/P00738"
+        description: "URI identifier for this node\""
       name:
         type: "string"
         example: "Haptoglobin"
         description: "Formal name of the entity"
-      accession:
+      type:
         type: "string"
-        example: "OMIM:603903"
-        description: "Accession number in an external resource for this entity"
+        example: "protein"
+        description: "Entity type of this node (e.g., protein, disease, etc.)"
       description:
         type: "string"
         example: "Haptoglobin captures, and combines with free plasma hemoglobin..."
         description: "One to three sentences of description/definition of this entity"
+      symbol:
+        type: "string"
+        example: "HP"
+        description: "Short abbreviation or symbol for this entity"
       node_attributes:
         type: "array"
         description: "A list of arbitrary attributes for the node"
@@ -922,9 +850,9 @@ definitions:
         url: "https://en.wikipedia.org/wiki/Malaria"
       name: "Haptoglobin"
       description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
-      id: "https://www.uniprot.org/uniprot/P00738"
-      accession: "OMIM:603903"
+      id: "OMIM:603903"
       type: "protein"
+      uri: "https://www.uniprot.org/uniprot/P00738"
   Node_attribute:
     type: "object"
     properties:
@@ -956,7 +884,11 @@ definitions:
       type:
         type: "string"
         example: "affects"
-        description: "Entity type of this response"
+        description: "Higher-level relationship type of this edge"
+      relation:
+        type: "string"
+        example: "affects"
+        description: "Lower-level relationship type of this edge"
       source_id:
         type: "string"
         example: "http://omim.org/entry/603903"
@@ -965,108 +897,91 @@ definitions:
         type: "string"
         example: "https://www.uniprot.org/uniprot/P00738"
         description: "Corresponds to the @id of target node of this edge"
+      is_defined_by:
+        type: "string"
+        example: "RTX"
+        description: "A CURIE/URI for the translator group that made the KG"
+      provided_by:
+        type: "string"
+        example: "OMIM"
+        description: "A CURIE/URI for the knowledge source that defined this edge"
       confidence:
         type: "number"
         format: "float"
         example: 0.99
         description: "Confidence metric for this edge, a value 0.0 (no confidence)\
           \ and 1.0 (highest confidence)"
-      origin_list:
+      publications:
+        type: "string"
+        example: "PubMed:12345562"
+        description: "A CURIE/URI for publications associated with this edge"
+      evidence_type:
+        type: "string"
+        example: "ECO:0000220"
+        description: "A CURIE/URI for class of evidence supporting the statement made\
+          \ in an edge - typically a class from the ECO ontology"
+      qualifiers:
+        type: "string"
+        example: "ECO:0000220"
+        description: "Terms representing qualifiers that modify or qualify the meaning\
+          \ of the statement made in an edge"
+      negated:
+        type: "boolean"
+        example: true
+        description: "Boolean that if set to true, indicates the edge statement is\
+          \ negated i.e. is not true"
+      attribute_list:
         type: "array"
-        description: "A list of origins (sources) for this edge and attributes from\
-          \ those origins"
+        description: "A list of additional attributes for this edge"
         items:
-          $ref: "#/definitions/Origin"
+          $ref: "#/definitions/Edge_attribute"
     description: "An edge in the thought subgraph linking two nodes"
     example:
+      is_defined_by: "RTX"
+      negated: true
+      evidence_type: "ECO:0000220"
+      attribute_list:
+      - name: "Cell type limitation"
+        type: "localization"
+        value: "MFC cells"
+        url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+      - name: "Cell type limitation"
+        type: "localization"
+        value: "MFC cells"
+        url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
       confidence: 0.99
+      provided_by: "OMIM"
+      qualifiers: "ECO:0000220"
       target_id: "https://www.uniprot.org/uniprot/P00738"
       source_id: "http://omim.org/entry/603903"
       type: "affects"
-      origin_list:
-      - attribute_list:
-        - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-          type: "PubMed_article"
-          value: "0.5"
-          url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-        - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-          type: "PubMed_article"
-          value: "0.5"
-          url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-        name: "Wikipedia article"
-        id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
-        type: "Monarch_BioLink_API_Relationship"
-      - attribute_list:
-        - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-          type: "PubMed_article"
-          value: "0.5"
-          url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-        - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-          type: "PubMed_article"
-          value: "0.5"
-          url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-        name: "Wikipedia article"
-        id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
-        type: "Monarch_BioLink_API_Relationship"
-  Origin:
-    type: "object"
-    properties:
-      id:
-        type: "string"
-        example: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
-        description: "URI for the origin of the edge"
-      type:
-        type: "string"
-        example: "Monarch_BioLink_API_Relationship"
-        description: "Entity type of the origin"
-      name:
-        type: "string"
-        example: "Wikipedia article"
-        description: "Formal name of the piece evidence that yielded the edge"
-      attribute_list:
-        type: "array"
-        description: "A list of attributes for this edge from this origin (source)"
-        items:
-          $ref: "#/definitions/Edge_attribute"
-    description: "An origin (source) for this edge"
-    example:
-      attribute_list:
-      - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-        type: "PubMed_article"
-        value: "0.5"
-        url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-      - name: "Orthopaedic Manifestations of Sickle Cell Disease"
-        type: "PubMed_article"
-        value: "0.5"
-        url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-      name: "Wikipedia article"
-      id: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
-      type: "Monarch_BioLink_API_Relationship"
+      relation: "affects"
+      publications: "PubMed:12345562"
   Edge_attribute:
     type: "object"
     properties:
       type:
         type: "string"
-        example: "PubMed_article"
+        example: "localization"
         description: "Entity type of this attribute"
       name:
         type: "string"
-        example: "Orthopaedic Manifestations of Sickle Cell Disease"
+        example: "Cell type limitation"
         description: "Formal name of the attribute"
       value:
         type: "string"
-        example: "0.5"
+        example: "MFC cells"
         description: "Value of the attribute. While all attributes should have a name,\
           \ many will not have a value"
       url:
         type: "string"
         example: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
         description: "A URL corresponding to this attribute"
-    description: "A generic attribute for an edge"
+    description: "A generic additional attribute for an edge"
     example:
-      name: "Orthopaedic Manifestations of Sickle Cell Disease"
-      type: "PubMed_article"
-      value: "0.5"
+      name: "Cell type limitation"
+      type: "localization"
+      value: "MFC cells"
       url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
   MeshNgdResponse:
     type: "object"
@@ -1090,56 +1005,103 @@ definitions:
       result_code: "TermNotFound"
       message: "Term 1 'malria' not found in MeSH"
       value: 0.714
-  ResultFeedback:
+  Feedback:
     type: "object"
     properties:
       id:
         type: "string"
-        example: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345/feedback/4567"
+        example: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345/feedback/4567"
         description: "URI for this feedback item"
       result_id:
         type: "string"
-        example: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345"
+        example: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345"
         description: "URI for the result that this feedback corresponds to"
       expertise_level_id:
         type: "integer"
         example: 1
-        description: "Identifier of the claimed expertise level"
+        description: "Integer identifier of the claimed expertise level"
       rating_id:
         type: "integer"
         example: 1
-        description: "Identifier of the applied rating"
+        description: "Integer identifier of the applied rating"
+      commenter_id:
+        type: "integer"
+        example: 1
+        description: "Integer identifier of the commenter"
+      commenter_full_name:
+        type: "string"
+        example: "John Smith"
+        description: "Full name of the commenter"
+      datetime:
+        type: "string"
+        example: "2018-05-08 12:00"
+        description: "Datetime when the feedback was provided"
       comment:
         type: "string"
         example: "This is a great result because..."
         description: "A free text comment about this result"
-    description: "Feedback for one result"
+    description: "A single unit of Feedback"
     example:
+      commenter_id: 1
+      datetime: "2018-05-08 12:00"
       rating_id: 1
-      result_id: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345"
+      result_id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345"
       expertise_level_id: 1
       comment: "This is a great result because..."
-      id: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345/feedback/4567"
+      id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345/feedback/4567"
+      commenter_full_name: "John Smith"
+  ResultFeedback:
+    type: "object"
+    properties:
+      feedback_list:
+        type: "array"
+        items:
+          $ref: "#/definitions/Feedback"
+    description: "Feedback for one result"
+    example:
+      feedback_list:
+      - commenter_id: 1
+        datetime: "2018-05-08 12:00"
+        rating_id: 1
+        result_id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345"
+        expertise_level_id: 1
+        comment: "This is a great result because..."
+        id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345/feedback/4567"
+        commenter_full_name: "John Smith"
+      - commenter_id: 1
+        datetime: "2018-05-08 12:00"
+        rating_id: 1
+        result_id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345"
+        expertise_level_id: 1
+        comment: "This is a great result because..."
+        id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345/feedback/4567"
+        commenter_full_name: "John Smith"
   ResponseFeedback:
     type: "object"
     properties:
-      result_feedback_list:
+      feedback_list:
         type: "array"
         items:
-          $ref: "#/definitions/ResultFeedback"
-    description: "Feedback for all the results corresponding to this result"
+          $ref: "#/definitions/Feedback"
+    description: "Feedback for all the results corresponding to this response"
     example:
-      result_feedback_list:
-      - rating_id: 1
-        result_id: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345"
+      feedback_list:
+      - commenter_id: 1
+        datetime: "2018-05-08 12:00"
+        rating_id: 1
+        result_id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345"
         expertise_level_id: 1
         comment: "This is a great result because..."
-        id: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345/feedback/4567"
-      - rating_id: 1
-        result_id: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345"
+        id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345/feedback/4567"
+        commenter_full_name: "John Smith"
+      - commenter_id: 1
+        datetime: "2018-05-08 12:00"
+        rating_id: 1
+        result_id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345"
         expertise_level_id: 1
         comment: "This is a great result because..."
-        id: "http://rtx.ncats.io/devED/api/v1/response/1234/result/2345/feedback/4567"
+        id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345/feedback/4567"
+        commenter_full_name: "John Smith"
   Query_terms:
     properties:
       disease:
