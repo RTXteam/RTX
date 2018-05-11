@@ -24,7 +24,6 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 from RTXConfiguration import RTXConfiguration
 
 # sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
-from RTXConfiguration import RTXConfiguration
 from swagger_server.models.result_feedback import ResultFeedback
 
 Base = declarative_base()
@@ -211,8 +210,14 @@ class RTXFeedback:
     n_results = 0
     if response.result_list is not None:
       n_results = len(response.result_list)
+
+    #### Update the response with current information
     rtxConfig = RTXConfiguration()
     response.tool_version = rtxConfig.version
+    response.schema_version = "0.5.1"
+    response.type = "medical_translator_query_result"
+    response.context = "http://rtx.ncats.io/ns/translator.jsonld"
+    response.datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     storedResponse = Response(response_datetime=datetime.now(),restated_question=response.restated_question_text,query_type=query["known_query_type_id"],
       terms=str(query["terms"]),tool_version=rtxConfig.version,result_code=response.result_code,message=response.message,n_results=n_results,response_object=pickle.dumps(ast.literal_eval(repr(response))))
