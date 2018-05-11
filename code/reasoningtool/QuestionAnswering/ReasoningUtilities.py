@@ -344,7 +344,7 @@ def get_graph(res, directed=True, multigraph=False):
 			graph = nx.Graph()
 	for item in res._results.graph:
 		for node in item['nodes']:
-			graph.add_node(node['id'], properties=node['properties'], labels=node['labels'], names=node['properties']['rtx_name'], description=node['properties']['name'])
+			graph.add_node(node['id'], properties=node['properties'], labels=node['labels'], names=node['properties']['rtx_name'], description=node['properties']['name'], id=node['properties']['id'])
 		for rel in item['relationships']:
 			graph.add_edge(rel['startNode'], rel['endNode'], id=rel['id'], properties=rel['properties'], type=rel['type'])
 	return graph
@@ -801,16 +801,14 @@ def weight_graph_with_google_distance(g, context_node_id=None, context_node_desc
 	:return: None (graph properties are updated)
 	"""
 	descriptions = nx.get_node_attributes(g, 'description')
-	names = nx.get_node_attributes(g, 'names')
+	curie_id = nx.get_node_attributes(g, 'id')
 	labels = nx.get_node_attributes(g, 'labels')
 	nodes = list(nx.nodes(g))
 	edges = list(nx.edges(g))
 	edges2gd = dict()
-	# convert the nodes to mesh terms
-	# TODO: get this to work for drugs, uniprot_proteins, and check if working
 	for edge in edges:
-		source_id = names[edge[0]]
-		target_id = names[edge[1]]
+		source_id = curie_id[edge[0]]
+		target_id = curie_id[edge[1]]
 		source_descr = descriptions[edge[0]]
 		target_descr = descriptions[edge[1]]
 		gd = np.inf
