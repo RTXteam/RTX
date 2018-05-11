@@ -673,7 +673,7 @@ def count_nodes_of_type_for_nodes_that_connect_to_label(source_name, source_labe
 		else:
 			query += "-[:%s]-(:%s)" % (temp_rel_list[i], temp_node_list[i])
 
-	query += "RETURN t.rtx_name, count(distinct n.rtx_name)"
+	query += " RETURN t.rtx_name, count(distinct n.rtx_name)"
 	if debug:
 		return query
 	else:
