@@ -36,7 +36,7 @@ def get_result_feedback(result_id):  # noqa: E501
     :rtype: ResultFeedback
     """
     rtxFeedback = RTXFeedback()
-    return rtxFeedback.getResultFeedback(response_id, result_id)
+    return rtxFeedback.getResultFeedback(result_id)
 
 
 def post_result_feedback(result_id):  # noqa: E501
