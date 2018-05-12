@@ -236,6 +236,60 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
 
         conn.close()
 
+    def test_update_cellular_component_desc(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_cellular_component_nodes()
+
+        # generate random number array
+        random_indexes = random_int_list(0, len(nodes)-1, 100)
+
+        for i in random_indexes:
+            # retrieve data from BioLink API
+            node_id = nodes[i]
+            desc = QueryEBIOLSExtended.get_cellular_component_description(node_id)
+
+            # retrieve data from Neo4j
+            node = conn.get_node(node_id)
+            self.assertIsNotNone(node['n']['id'])
+            self.assertIsNotNone(node['n']['description'])
+            self.assertEqual(node_id, node['n']['id'])
+            if node['n']['description'] != "UNKNOWN":
+                self.assertEqual(desc, node['n']['description'])
+
+        conn.close()
+
+    def test_update_molecular_function_desc(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_molecular_function_nodes()
+
+        # generate random number array
+        random_indexes = random_int_list(0, len(nodes)-1, 100)
+
+        for i in random_indexes:
+            # retrieve data from BioLink API
+            node_id = nodes[i]
+            desc = QueryEBIOLSExtended.get_molecular_function_description(node_id)
+
+            # retrieve data from Neo4j
+            node = conn.get_node(node_id)
+            self.assertIsNotNone(node['n']['id'])
+            self.assertIsNotNone(node['n']['description'])
+            self.assertEqual(node_id, node['n']['id'])
+            if node['n']['description'] != "UNKNOWN":
+                self.assertEqual(desc, node['n']['description'])
+
+        conn.close()
+
 if __name__ == '__main__':
     unittest.main()
 
