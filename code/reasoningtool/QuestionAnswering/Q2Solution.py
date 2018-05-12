@@ -231,6 +231,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 			to_print += ". Distance (smaller is better): %f." % weights[path_ind]
 			print(to_print)
 	else:  # you want the result object model
+		response.add_neighborhood_graph(g.nodes(data=True), g.edges(data=True), text="Subgraph of the knowledge graph relevant to the query.", confidence=None)
 		for path_ind in range(len(node_paths)):
 			# Format the free text portion
 			node_path = node_paths[path_ind]

@@ -178,7 +178,7 @@ class FormatResponse:
 		else:
 			self.response.message = "%s results found" % self._num_results
 
-	def add_result_subgraph(self, nodes, edges):
+	def add_neighborhood_graph(self, nodes, edges, text="", confidence=None):
 		"""
 		Populate the object model using networkx neo4j subgraph
 		:param nodes: nodes in the subgraph (g.nodes(data=True))
@@ -253,8 +253,9 @@ class FormatResponse:
 		result1 = Result()
 		#result1.id = "http://rtx.ncats.io/api/v1/response/1234/result/2345"
 		#result1.id = "-1"
-		#result1.text = plain_text
-		#result1.confidence = confidence
+		result1.text = text
+		result1.confidence = confidence
+		result1.result_type = "neighborhood graph"
 
 		# Create a ResultGraph object and put the list of nodes and edges into it
 		result_graph = ResultGraph()
@@ -279,7 +280,7 @@ if __name__ == '__main__':
 	g = RU.return_subgraph_through_node_labels("CHEMBL154", 'chemical_substance', 'DOID:8398', 'disease',
 											   ['protein', 'anatomical_entity', 'phenotypic_feature'],
 											   directed=False)
-	test.add_subgraph(g.nodes(data=True), g.edges(data=True), "This is a test", 0.95)
-	test.add_subgraph(g.nodes(data=True), g.edges(data=True), "This is a SECOND test", 0.00)
+	test.add_neighborhood_graph(g.nodes(data=True), g.edges(data=True), "This is a test", 0.95)
+	test.add_neighborhood_graph(g.nodes(data=True), g.edges(data=True), "This is a SECOND test", 0.00)
 	print(test)
 
