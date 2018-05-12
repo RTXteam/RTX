@@ -12,7 +12,7 @@ available methods include:
         protein_id (str): The ID of the protein entity, e.g., "UniProt:P01358"
 
     Returns:
-        name (str): the name of the protein entity, or 'UNKNOWN' if no protein object can be obtained.
+        name (str): the name of the protein entity, or 'None' if no protein object can be obtained.
 '''
 
 
@@ -92,7 +92,7 @@ class QueryUniprotExtended:
     @staticmethod
     def __get_name(entity_type, entity_id):
         entity_obj = QueryUniprotExtended.__get_entity(entity_type, entity_id)
-        name = "UNKNOWN"
+        name = "None"
         if entity_obj is not None:
             if 'protein' in entity_obj.keys():
                 if 'recommendedName' in entity_obj['protein'].keys():

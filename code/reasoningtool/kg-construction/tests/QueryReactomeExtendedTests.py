@@ -32,5 +32,8 @@ class QueryReactomeExtendedTestCase(unittest.TestCase):
         self.assertIsNotNone(desc)
         self.assertEqual(desc, get_from_test_file('query_desc_test_data.json', 'REACT:R-HSA-70326'))
 
+        desc = QREx.get_pathway_desc('REACT:R-HSA-703260')
+        self.assertEqual(desc, 'None')
+
 if __name__ == '__main__':
     unittest.main()

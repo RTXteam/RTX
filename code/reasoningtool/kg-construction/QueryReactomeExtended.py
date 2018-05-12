@@ -53,7 +53,7 @@ class QueryReactomeExtended:
     def __get_entity(entity_type, entity_id):
         handler = QueryReactomeExtended.HANDLER_MAP[entity_type].format(id=entity_id)
         results = QueryReactomeExtended.__access_api(handler)
-        result_str = 'UNKNOWN'
+        result_str = 'None'
         if results is not None:
             #   remove all \n characters using json api and convert the string to one line
             json_dict = json.loads(results)
@@ -64,7 +64,7 @@ class QueryReactomeExtended:
     def __get_desc(entity_type, entity_id):
         handler = QueryReactomeExtended.HANDLER_MAP[entity_type].format(id=entity_id)
         results = QueryReactomeExtended.__access_api(handler)
-        result_str = 'UNKNOWN'
+        result_str = 'None'
         if results is not None:
             #   remove all \n characters using json api and convert the string to one line
             json_dict = json.loads(results)
@@ -106,3 +106,5 @@ if __name__ == '__main__':
 
     save_to_test_file('tests/query_test_data.json', 'REACT:R-HSA-70326', QueryReactomeExtended.get_pathway_entity('REACT:R-HSA-70326'))
     save_to_test_file('tests/query_desc_test_data.json', 'REACT:R-HSA-70326', QueryReactomeExtended.get_pathway_desc('REACT:R-HSA-70326'))
+    save_to_test_file('tests/query_desc_test_data.json', 'REACT:R-HSA-703260', QueryReactomeExtended.get_pathway_desc('REACT:R-HSA-703260'))
+    print(QueryReactomeExtended.get_pathway_desc('REACT:R-HSA-703260'))

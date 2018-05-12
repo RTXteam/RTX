@@ -16,10 +16,10 @@ class Neo4jConnectionTestCase(unittest.TestCase):
         config = json.loads(config_data)
 
         conn = Neo4jConnection(config['url'], config['username'], config['password'])
-        nodes = conn.get_pathway_node("Reactome:R-HSA-8866654")
+        nodes = conn.get_pathway_node("REACT:R-HSA-8866654")
 
         self.assertIsNotNone(nodes)
-        self.assertEqual(nodes['n']['id'], "Reactome:R-HSA-8866654")
+        self.assertEqual(nodes['n']['id'], "REACT:R-HSA-8866654")
 
         conn.close()
 
@@ -44,10 +44,10 @@ class Neo4jConnectionTestCase(unittest.TestCase):
         config = json.loads(config_data)
 
         conn = Neo4jConnection(config['url'], config['username'], config['password'])
-        nodes = conn.get_protein_node("UniProt:P53814")
+        nodes = conn.get_protein_node("UniProtKB:P53814")
 
         self.assertIsNotNone(nodes)
-        self.assertEqual(nodes['n']['id'], "UniProt:P53814")
+        self.assertEqual(nodes['n']['id'], "UniProtKB:P53814")
 
         conn.close()
 

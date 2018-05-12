@@ -53,7 +53,7 @@ class QueryMyChem:
     def __get_entity(entity_type, entity_id):
         handler = QueryMyChem.HANDLER_MAP[entity_type].format(id=entity_id)
         results = QueryMyChem.__access_api(handler)
-        result_str = 'UNKNOWN'
+        result_str = 'None'
         if results is not None:
             #   remove all \n characters using json api and convert the string to one line
             json_dict = json.loads(results)
@@ -64,7 +64,7 @@ class QueryMyChem:
     def __get_description(entity_type, entity_id):
         handler = QueryMyChem.HANDLER_MAP[entity_type].format(id=entity_id)
         results = QueryMyChem.__access_api(handler)
-        result_str = 'UNKNOWN'
+        result_str = 'None'
         if results is not None:
             #   remove all \n characters using json api and convert the string to one line
             json_dict = json.loads(results)

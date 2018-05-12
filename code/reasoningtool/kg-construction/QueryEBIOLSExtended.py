@@ -63,7 +63,7 @@ class QueryEBIOLSExtended:
         iri_double_encoded = urllib.parse.quote_plus(urllib.parse.quote_plus(iri))
         handler = QueryEBIOLSExtended.HANDLER_MAP[entity_type].format(ontology=ontology_id.lower(), id=iri_double_encoded)
         results = QueryEBIOLSExtended.__access_api(handler)
-        result_str = "UNKNOWN"
+        result_str = "None"
         if results is not None:
             res_json = json.loads(results)
             # print(res_json)
@@ -112,9 +112,16 @@ if __name__ == '__main__':
         f.close()
 
     save_to_test_file('UBERON:0004476', QueryEBIOLSExtended.get_anatomy_description('UBERON:0004476'))
+    save_to_test_file('UBERON:00044760', QueryEBIOLSExtended.get_anatomy_description('UBERON:00044760'))
     save_to_test_file('CL:0000038', QueryEBIOLSExtended.get_anatomy_description('CL:0000038'))
+    save_to_test_file('CL:00000380', QueryEBIOLSExtended.get_anatomy_description('CL:00000380'))
     save_to_test_file('GO:0042535', QueryEBIOLSExtended.get_bio_process_description('GO:0042535'))
+    save_to_test_file('GO:00425350', QueryEBIOLSExtended.get_bio_process_description('GO:00425350'))
     save_to_test_file('HP:0011105', QueryEBIOLSExtended.get_phenotype_description('HP:0011105'))
+    save_to_test_file('HP:00111050', QueryEBIOLSExtended.get_phenotype_description('HP:00111050'))
     save_to_test_file('GO:0005573', QueryEBIOLSExtended.get_cellular_component_description('GO:0005573'))
+    save_to_test_file('GO:00055730', QueryEBIOLSExtended.get_cellular_component_description('GO:00055730'))
     save_to_test_file('GO:0004689', QueryEBIOLSExtended.get_molecular_function_description('GO:0004689'))
-    # print(QueryEBIOLSExtended.get_disease_description('OMIM:613573'))
+    save_to_test_file('GO:00046890', QueryEBIOLSExtended.get_molecular_function_description('GO:00046890'))
+    save_to_test_file('OMIM:613573', QueryEBIOLSExtended.get_disease_description('OMIM:613573'))
+    save_to_test_file('OMIM:6135730', QueryEBIOLSExtended.get_disease_description('OMIM:6135730'))
