@@ -34,15 +34,9 @@ class FormatResponse:
 		self._num_results = 0
 		# Create the response object and fill it with attributes about the response
 		self.response = Response()
-		#self.response.context = "http://translator.ncats.io"
-		#self.response.id = "http://rtx.ncats.io/api/v1/response/1234"
-		#self.response.id = "-1"
 		self.response.type = "medical_translator_query_result"
 		self.response.tool_version = RTXConfiguration.version
 		self.response.schema_version = "0.5"
-		#self.response.datetime = self._now.strftime("%Y-%m-%d %H:%M:%S")
-		#self.response.original_question_text = ""  # Eric fills it in
-		#self.response.restated_question_text = ""  # Eric fills it in
 		self.response.result_code = "OK"
 		if self._num_results == 1:
 			self.response.message = "%s result found" % self._num_results
