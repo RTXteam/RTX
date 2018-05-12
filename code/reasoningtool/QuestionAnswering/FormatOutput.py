@@ -69,8 +69,6 @@ class FormatResponse:
 
 	def add_text(self, plain_text, confidence=1):
 		result1 = Result()
-		#result1.id = "http://rtx.ncats.io/api/v1/response/1234/result/2345"
-		#result1.id = "-1"
 		result1.text = plain_text
 		result1.confidence = confidence
 		self._result_list.append(result1)
@@ -155,8 +153,6 @@ class FormatResponse:
 
 		# Create the result (potential answer)
 		result1 = Result()
-		#result1.id = "http://rtx.ncats.io/api/v1/response/1234/result/2345"
-		#result1.id = "-1"
 		result1.text = plain_text
 		result1.confidence = confidence
 
@@ -251,8 +247,6 @@ class FormatResponse:
 
 		# Create the result (potential answer)
 		result1 = Result()
-		#result1.id = "http://rtx.ncats.io/api/v1/response/1234/result/2345"
-		#result1.id = "-1"
 		result1.text = text
 		result1.confidence = confidence
 		result1.result_type = "neighborhood graph"
