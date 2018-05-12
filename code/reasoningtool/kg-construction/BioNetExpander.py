@@ -81,11 +81,11 @@ class BioNetExpander:
                               "participates_in": True,
                               "has_phenotype": True,
                               "enables": True,
-                              "has_function": True}
+                              "is_capable_of": True}  # the "has_function" predicate may have to get changed per the emerging standard; check back here: https://github.com/biolink/biolink-model/issues/67
 
     GO_ONTOLOGY_TO_PREDICATE = {"biological_process": "participates_in",
                                 "cellular_component": "expressed_in",
-                                "molecular_function": "has_function"}
+                                "molecular_function": "is_capable_of"}
     
     def __init__(self, orangeboard):
         orangeboard.set_dict_reltype_dirs(self.MASTER_REL_IS_DIRECTED)
@@ -147,6 +147,9 @@ class BioNetExpander:
         metabolite_kegg_id = node.name
         ec_ids = QueryKEGG.map_kegg_compound_to_enzyme_commission_ids(metabolite_kegg_id)
         if len(ec_ids) > 0:
+            if len(ec_ids) > 300:
+                print("Warning: metabolite " + metabolite_kegg_id + " has a huge number of associated ECs: " + str(len(ec_ids)),
+                      file=sys.stderr)
             for ec_id in ec_ids:
                 uniprot_ids = QueryUniprot.map_enzyme_commission_id_to_uniprot_ids(ec_id)
                 if len(uniprot_ids) > 0:
