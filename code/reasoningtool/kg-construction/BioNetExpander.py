@@ -147,6 +147,9 @@ class BioNetExpander:
         metabolite_kegg_id = node.name
         ec_ids = QueryKEGG.map_kegg_compound_to_enzyme_commission_ids(metabolite_kegg_id)
         if len(ec_ids) > 0:
+            if len(ec_ids) > 300:
+                print("Warning: metabolite " + metabolite_kegg_id + " has a huge number of associated ECs: " + str(len(ec_ids)),
+                      file=sys.stderr)
             for ec_id in ec_ids:
                 uniprot_ids = QueryUniprot.map_enzyme_commission_id_to_uniprot_ids(ec_id)
                 if len(uniprot_ids) > 0:
