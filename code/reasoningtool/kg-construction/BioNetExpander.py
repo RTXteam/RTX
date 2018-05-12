@@ -81,11 +81,11 @@ class BioNetExpander:
                               "participates_in": True,
                               "has_phenotype": True,
                               "enables": True,
-                              "has_function": True}
+                              "is_capable_of": True}  # the "has_function" predicate may have to get changed per the emerging standard; check back here: https://github.com/biolink/biolink-model/issues/67
 
     GO_ONTOLOGY_TO_PREDICATE = {"biological_process": "participates_in",
                                 "cellular_component": "expressed_in",
-                                "molecular_function": "has_function"}
+                                "molecular_function": "is_capable_of"}
     
     def __init__(self, orangeboard):
         orangeboard.set_dict_reltype_dirs(self.MASTER_REL_IS_DIRECTED)
