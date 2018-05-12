@@ -39,7 +39,11 @@ class QueryReactomeExtended:
             res = requests.get(url, timeout=QueryReactomeExtended.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
             print(url, file=sys.stderr)
-            print('Timeout in QueryBioLink for URL: ' + url, file=sys.stderr)
+            print('Timeout in QueryReactome for URL: ' + url, file=sys.stderr)
+            return None
+        except BaseException as e:
+            print(url, file=sys.stderr)
+            print('%s received in QueryReactome for URL: %s' % (e, url), file=sys.stderr)
             return None
         status_code = res.status_code
         if status_code != 200:
