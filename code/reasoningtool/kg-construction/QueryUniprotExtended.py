@@ -12,7 +12,7 @@ available methods include:
         protein_id (str): The ID of the protein entity, e.g., "UniProt:P01358"
 
     Returns:
-        name (str): the name of the protein entity, or 'UNKNOWN' if no protein object can be obtained.
+        name (str): the name of the protein entity, or 'None' if no protein object can be obtained.
 '''
 
 
@@ -61,8 +61,8 @@ class QueryUniprotExtended:
 
     @staticmethod
     def __get_entity(entity_type, entity_id):
-        if entity_id[:8] == 'UniProt:':
-            entity_id = entity_id[8:]
+        if entity_id[:10] == 'UniProtKB:':
+            entity_id = entity_id[10:]
         handler = QueryUniprotExtended.HANDLER_MAP[entity_type].format(id=entity_id)
         results = QueryUniprotExtended.__access_api(handler)
         entity = None
@@ -92,7 +92,7 @@ class QueryUniprotExtended:
     @staticmethod
     def __get_name(entity_type, entity_id):
         entity_obj = QueryUniprotExtended.__get_entity(entity_type, entity_id)
-        name = "UNKNOWN"
+        name = "None"
         if entity_obj is not None:
             if 'protein' in entity_obj.keys():
                 if 'recommendedName' in entity_obj['protein'].keys():
@@ -107,14 +107,14 @@ class QueryUniprotExtended:
         return QueryUniprotExtended.__get_name("get_protein", protein_id)
 
 if __name__ == '__main__':
-    print(QueryUniprotExtended.get_protein_gene_symbol('UniProt:P20848'))
-    print(QueryUniprotExtended.get_protein_gene_symbol("UniProt:P01358"))
-    print(QueryUniprotExtended.get_protein_gene_symbol("UniProt:Q96P88"))
-    print(QueryUniprotExtended.get_protein_name('UniProt:P01358'))
-    print(QueryUniprotExtended.get_protein_name('UniProt:P20848'))
-    print(QueryUniprotExtended.get_protein_name('UniProt:Q9Y471'))
-    print(QueryUniprotExtended.get_protein_name('UniProt:O60397'))
-    print(QueryUniprotExtended.get_protein_name('UniProt:Q8IZJ3'))
-    print(QueryUniprotExtended.get_protein_name('UniProt:Q7Z2Y8'))
-    print(QueryUniprotExtended.get_protein_name('UniProt:Q8IWN7'))
-    print(QueryUniprotExtended.get_protein_name('UniProt:Q156A1'))
+    print(QueryUniprotExtended.get_protein_gene_symbol('UniProtKB:P20848'))
+    print(QueryUniprotExtended.get_protein_gene_symbol("UniProtKB:P01358"))
+    print(QueryUniprotExtended.get_protein_gene_symbol("UniProtKB:Q96P88"))
+    print(QueryUniprotExtended.get_protein_name('UniProtKB:P01358'))
+    print(QueryUniprotExtended.get_protein_name('UniProtKB:P20848'))
+    print(QueryUniprotExtended.get_protein_name('UniProtKB:Q9Y471'))
+    print(QueryUniprotExtended.get_protein_name('UniProtKB:O60397'))
+    print(QueryUniprotExtended.get_protein_name('UniProtKB:Q8IZJ3'))
+    print(QueryUniprotExtended.get_protein_name('UniProtKB:Q7Z2Y8'))
+    print(QueryUniprotExtended.get_protein_name('UniProtKB:Q8IWN7'))
+    print(QueryUniprotExtended.get_protein_name('UniProtKB:Q156A1'))

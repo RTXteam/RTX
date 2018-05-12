@@ -16,50 +16,50 @@ class Node(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, type: str=None, id: str=None, symbol: str=None, name: str=None, accession: str=None, description: str=None, node_attributes: List[NodeAttribute]=None):  # noqa: E501
+    def __init__(self, id: str=None, uri: str=None, name: str=None, type: str=None, description: str=None, symbol: str=None, node_attributes: List[NodeAttribute]=None):  # noqa: E501
         """Node - a model defined in Swagger
 
-        :param type: The type of this Node.  # noqa: E501
-        :type type: str
         :param id: The id of this Node.  # noqa: E501
         :type id: str
-        :param symbol: The symbol of this Node.  # noqa: E501
-        :type symbol: str
+        :param uri: The uri of this Node.  # noqa: E501
+        :type uri: str
         :param name: The name of this Node.  # noqa: E501
         :type name: str
-        :param accession: The accession of this Node.  # noqa: E501
-        :type accession: str
+        :param type: The type of this Node.  # noqa: E501
+        :type type: str
         :param description: The description of this Node.  # noqa: E501
         :type description: str
+        :param symbol: The symbol of this Node.  # noqa: E501
+        :type symbol: str
         :param node_attributes: The node_attributes of this Node.  # noqa: E501
         :type node_attributes: List[NodeAttribute]
         """
         self.swagger_types = {
-            'type': str,
             'id': str,
-            'symbol': str,
+            'uri': str,
             'name': str,
-            'accession': str,
+            'type': str,
             'description': str,
+            'symbol': str,
             'node_attributes': List[NodeAttribute]
         }
 
         self.attribute_map = {
-            'type': 'type',
             'id': 'id',
-            'symbol': 'symbol',
+            'uri': 'uri',
             'name': 'name',
-            'accession': 'accession',
+            'type': 'type',
             'description': 'description',
+            'symbol': 'symbol',
             'node_attributes': 'node_attributes'
         }
 
-        self._type = type
         self._id = id
-        self._symbol = symbol
+        self._uri = uri
         self._name = name
-        self._accession = accession
+        self._type = type
         self._description = description
+        self._symbol = symbol
         self._node_attributes = node_attributes
 
     @classmethod
@@ -74,33 +74,10 @@ class Node(Model):
         return util.deserialize_model(dikt, cls)
 
     @property
-    def type(self) -> str:
-        """Gets the type of this Node.
-
-        Entity type of this node (e.g., protein, disease, etc.)  # noqa: E501
-
-        :return: The type of this Node.
-        :rtype: str
-        """
-        return self._type
-
-    @type.setter
-    def type(self, type: str):
-        """Sets the type of this Node.
-
-        Entity type of this node (e.g., protein, disease, etc.)  # noqa: E501
-
-        :param type: The type of this Node.
-        :type type: str
-        """
-
-        self._type = type
-
-    @property
     def id(self) -> str:
         """Gets the id of this Node.
 
-        URI identifier for this response  # noqa: E501
+        CURIE identifier for this node  # noqa: E501
 
         :return: The id of this Node.
         :rtype: str
@@ -111,7 +88,7 @@ class Node(Model):
     def id(self, id: str):
         """Sets the id of this Node.
 
-        URI identifier for this response  # noqa: E501
+        CURIE identifier for this node  # noqa: E501
 
         :param id: The id of this Node.
         :type id: str
@@ -120,27 +97,27 @@ class Node(Model):
         self._id = id
 
     @property
-    def symbol(self) -> str:
-        """Gets the symbol of this Node.
+    def uri(self) -> str:
+        """Gets the uri of this Node.
 
-        Short abbreviation or symbol for this entity  # noqa: E501
+        URI identifier for this node\"  # noqa: E501
 
-        :return: The symbol of this Node.
+        :return: The uri of this Node.
         :rtype: str
         """
-        return self._symbol
+        return self._uri
 
-    @symbol.setter
-    def symbol(self, symbol: str):
-        """Sets the symbol of this Node.
+    @uri.setter
+    def uri(self, uri: str):
+        """Sets the uri of this Node.
 
-        Short abbreviation or symbol for this entity  # noqa: E501
+        URI identifier for this node\"  # noqa: E501
 
-        :param symbol: The symbol of this Node.
-        :type symbol: str
+        :param uri: The uri of this Node.
+        :type uri: str
         """
 
-        self._symbol = symbol
+        self._uri = uri
 
     @property
     def name(self) -> str:
@@ -166,27 +143,27 @@ class Node(Model):
         self._name = name
 
     @property
-    def accession(self) -> str:
-        """Gets the accession of this Node.
+    def type(self) -> str:
+        """Gets the type of this Node.
 
-        Accession number in an external resource for this entity  # noqa: E501
+        Entity type of this node (e.g., protein, disease, etc.)  # noqa: E501
 
-        :return: The accession of this Node.
+        :return: The type of this Node.
         :rtype: str
         """
-        return self._accession
+        return self._type
 
-    @accession.setter
-    def accession(self, accession: str):
-        """Sets the accession of this Node.
+    @type.setter
+    def type(self, type: str):
+        """Sets the type of this Node.
 
-        Accession number in an external resource for this entity  # noqa: E501
+        Entity type of this node (e.g., protein, disease, etc.)  # noqa: E501
 
-        :param accession: The accession of this Node.
-        :type accession: str
+        :param type: The type of this Node.
+        :type type: str
         """
 
-        self._accession = accession
+        self._type = type
 
     @property
     def description(self) -> str:
@@ -210,6 +187,29 @@ class Node(Model):
         """
 
         self._description = description
+
+    @property
+    def symbol(self) -> str:
+        """Gets the symbol of this Node.
+
+        Short abbreviation or symbol for this entity  # noqa: E501
+
+        :return: The symbol of this Node.
+        :rtype: str
+        """
+        return self._symbol
+
+    @symbol.setter
+    def symbol(self, symbol: str):
+        """Sets the symbol of this Node.
+
+        Short abbreviation or symbol for this entity  # noqa: E501
+
+        :param symbol: The symbol of this Node.
+        :type symbol: str
+        """
+
+        self._symbol = symbol
 
     @property
     def node_attributes(self) -> List[NodeAttribute]:

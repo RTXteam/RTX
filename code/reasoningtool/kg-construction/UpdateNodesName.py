@@ -63,6 +63,6 @@ class UpdateNodesName:
 
 
 if __name__ == '__main__':
-    protein_nodes_ids = ['UniProt:P01358', 'UniProt:P20848', 'UniProt:Q9Y471', 'UniProt:O60397',
-                         'UniProt:Q8IZJ3', 'UniProt:Q7Z2Y8', 'UniProt:Q8IWN7', 'UniProt:Q156A1']
+    protein_nodes_ids = ['UniProtKB:P01358', 'UniProtKB:P20848', 'UniProtKB:Q9Y471', 'UniProtKB:O60397',
+                         'UniProtKB:Q8IZJ3', 'UniProtKB:Q7Z2Y8', 'UniProtKB:Q8IWN7', 'UniProtKB:Q156A1']
     UpdateNodesName.update_protein_names(protein_nodes_ids)

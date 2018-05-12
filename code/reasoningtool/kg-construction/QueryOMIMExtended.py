@@ -93,11 +93,11 @@ class QueryOMIMExtended:
         url_suffix = "mimNumber=" + mim_num_str + "&include=text:description"
         r = self.send_query_get(omim_handler, url_suffix)
         if r is None:
-            return "UNKNOWN"
+            return "None"
         result_dict = r.json()
         # print(result_dict)
         result_entry = result_dict["omim"]["entryList"][0]["entry"]
-        res_description = "UNKNOWN"
+        res_description = "None"
         text_section_list = result_entry.get('textSectionList', None)
         if text_section_list is not None and len(text_section_list) > 0:
             res_description_dict = text_section_list[0].get("textSection", None)

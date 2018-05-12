@@ -660,18 +660,20 @@ def count_nodes_of_type_for_nodes_that_connect_to_label(source_name, source_labe
 	"""
 	temp_rel_list = list(reversed(relationship_label_list))
 	temp_node_list = list(reversed(node_label_list))
-	query = "MATCH (t:%s)" % (target_label)
+	query = " MATCH (:%s{rtx_name:'%s'})-" % (source_label, source_name)
+	for i in range(len(relationship_label_list) - 1):
+		query += "[:%s]-(:%s)-" % (relationship_label_list[i], node_label_list[i])
+	query += "[:%s]-(t:%s) " % (relationship_label_list[-1], target_label)
+
+	query += "MATCH (t:%s)" % (target_label)
 	for i in range(len(relationship_label_list) - 1):
 		if i == node_of_interest_position:
 			query += "-[:%s]-(n:%s)" % (temp_rel_list[i], temp_node_list[i])
 			break
 		else:
 			query += "-[:%s]-(:%s)" % (temp_rel_list[i], temp_node_list[i])
-	query += " WHERE (:%s{rtx_name:'%s'})-" % (source_label, source_name)
-	for i in range(len(relationship_label_list) - 1):
-		query += "[:%s]-(:%s)-" % (relationship_label_list[i], node_label_list[i])
-	query += "[:%s]-(t:%s) " % (relationship_label_list[-1], target_label)
-	query += "RETURN t.rtx_name, count(distinct n.rtx_name)"
+
+	query += " RETURN t.rtx_name, count(distinct n.rtx_name)"
 	if debug:
 		return query
 	else:

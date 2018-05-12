@@ -6,7 +6,7 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from swagger_server.models.base_model_ import Model
-from swagger_server.models.result_feedback import ResultFeedback  # noqa: F401,E501
+from swagger_server.models.feedback import Feedback  # noqa: F401,E501
 from swagger_server import util
 
 
@@ -16,21 +16,21 @@ class ResponseFeedback(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, result_feedback_list: List[ResultFeedback]=None):  # noqa: E501
+    def __init__(self, feedback_list: List[Feedback]=None):  # noqa: E501
         """ResponseFeedback - a model defined in Swagger
 
-        :param result_feedback_list: The result_feedback_list of this ResponseFeedback.  # noqa: E501
-        :type result_feedback_list: List[ResultFeedback]
+        :param feedback_list: The feedback_list of this ResponseFeedback.  # noqa: E501
+        :type feedback_list: List[Feedback]
         """
         self.swagger_types = {
-            'result_feedback_list': List[ResultFeedback]
+            'feedback_list': List[Feedback]
         }
 
         self.attribute_map = {
-            'result_feedback_list': 'result_feedback_list'
+            'feedback_list': 'feedback_list'
         }
 
-        self._result_feedback_list = result_feedback_list
+        self._feedback_list = feedback_list
 
     @classmethod
     def from_dict(cls, dikt) -> 'ResponseFeedback':
@@ -44,22 +44,22 @@ class ResponseFeedback(Model):
         return util.deserialize_model(dikt, cls)
 
     @property
-    def result_feedback_list(self) -> List[ResultFeedback]:
-        """Gets the result_feedback_list of this ResponseFeedback.
+    def feedback_list(self) -> List[Feedback]:
+        """Gets the feedback_list of this ResponseFeedback.
 
 
-        :return: The result_feedback_list of this ResponseFeedback.
-        :rtype: List[ResultFeedback]
+        :return: The feedback_list of this ResponseFeedback.
+        :rtype: List[Feedback]
         """
-        return self._result_feedback_list
+        return self._feedback_list
 
-    @result_feedback_list.setter
-    def result_feedback_list(self, result_feedback_list: List[ResultFeedback]):
-        """Sets the result_feedback_list of this ResponseFeedback.
+    @feedback_list.setter
+    def feedback_list(self, feedback_list: List[Feedback]):
+        """Sets the feedback_list of this ResponseFeedback.
 
 
-        :param result_feedback_list: The result_feedback_list of this ResponseFeedback.
-        :type result_feedback_list: List[ResultFeedback]
+        :param feedback_list: The feedback_list of this ResponseFeedback.
+        :type feedback_list: List[Feedback]
         """
 
-        self._result_feedback_list = result_feedback_list
+        self._feedback_list = feedback_list

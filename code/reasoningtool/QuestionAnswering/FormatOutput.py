@@ -34,15 +34,9 @@ class FormatResponse:
 		self._num_results = 0
 		# Create the response object and fill it with attributes about the response
 		self.response = Response()
-		#self.response.context = "http://translator.ncats.io"
-		#self.response.id = "http://rtx.ncats.io/api/v1/response/1234"
-		#self.response.id = "-1"
 		self.response.type = "medical_translator_query_result"
 		self.response.tool_version = RTXConfiguration.version
 		self.response.schema_version = "0.5"
-		#self.response.datetime = self._now.strftime("%Y-%m-%d %H:%M:%S")
-		#self.response.original_question_text = ""  # Eric fills it in
-		#self.response.restated_question_text = ""  # Eric fills it in
 		self.response.result_code = "OK"
 		if self._num_results == 1:
 			self.response.message = "%s result found" % self._num_results
@@ -69,8 +63,6 @@ class FormatResponse:
 
 	def add_text(self, plain_text, confidence=1):
 		result1 = Result()
-		#result1.id = "http://rtx.ncats.io/api/v1/response/1234/result/2345"
-		#result1.id = "-1"
 		result1.text = plain_text
 		result1.confidence = confidence
 		self._result_list.append(result1)
@@ -155,8 +147,6 @@ class FormatResponse:
 
 		# Create the result (potential answer)
 		result1 = Result()
-		#result1.id = "http://rtx.ncats.io/api/v1/response/1234/result/2345"
-		#result1.id = "-1"
 		result1.text = plain_text
 		result1.confidence = confidence
 
@@ -178,7 +168,7 @@ class FormatResponse:
 		else:
 			self.response.message = "%s results found" % self._num_results
 
-	def add_result_subgraph(self, nodes, edges):
+	def add_neighborhood_graph(self, nodes, edges, confidence=None):
 		"""
 		Populate the object model using networkx neo4j subgraph
 		:param nodes: nodes in the subgraph (g.nodes(data=True))
@@ -251,10 +241,12 @@ class FormatResponse:
 
 		# Create the result (potential answer)
 		result1 = Result()
-		#result1.id = "http://rtx.ncats.io/api/v1/response/1234/result/2345"
-		#result1.id = "-1"
-		#result1.text = plain_text
-		#result1.confidence = confidence
+		text = "This is a subgraph extracted from the full RTX knowledge graph, including nodes and edges relevant to the query." \
+			   " This is not an answer to the query per se, but rather an opportunity to examine a small region of the RTX knowledge graph for further study. " \
+			   "Formal answers to the query are below."
+		result1.text = text
+		result1.confidence = confidence
+		result1.result_type = "neighborhood graph"
 
 		# Create a ResultGraph object and put the list of nodes and edges into it
 		result_graph = ResultGraph()
@@ -268,18 +260,18 @@ class FormatResponse:
 		self._result_list.append(result1)
 		self.response.result_list = self._result_list
 		# Increment the number of results
-		self._num_results += 1
-		if self._num_results == 1:
-			self.response.message = "%s result found" % self._num_results
-		else:
-			self.response.message = "%s results found" % self._num_results
+		#self._num_results += 1
+		#if self._num_results == 1:
+		#	self.response.message = "%s result found" % self._num_results
+		#else:
+		#	self.response.message = "%s results found" % self._num_results
 
 if __name__ == '__main__':
 	test = FormatResponse(2)
 	g = RU.return_subgraph_through_node_labels("CHEMBL154", 'chemical_substance', 'DOID:8398', 'disease',
 											   ['protein', 'anatomical_entity', 'phenotypic_feature'],
 											   directed=False)
-	test.add_subgraph(g.nodes(data=True), g.edges(data=True), "This is a test", 0.95)
-	test.add_subgraph(g.nodes(data=True), g.edges(data=True), "This is a SECOND test", 0.00)
+	test.add_neighborhood_graph(g.nodes(data=True), g.edges(data=True), "This is a test", 0.95)
+	test.add_neighborhood_graph(g.nodes(data=True), g.edges(data=True), "This is a SECOND test", 0.00)
 	print(test)
 

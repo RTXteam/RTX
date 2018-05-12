@@ -12,6 +12,9 @@ import json
 import datetime
 import ast
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../")
+from RTXConfiguration import RTXConfiguration
+
 from QueryMeSH import QueryMeSH
 from swagger_server.models.response import Response
 
@@ -24,6 +27,10 @@ from RTXFeedback import RTXFeedback
 class RTXQuery:
 
   def query(self,query):
+
+    #### Get our configuration information
+    
+
 
     #### If there is no known_query_type_id, then return an error
     if "known_query_type_id" not in query:
@@ -53,6 +60,7 @@ class RTXQuery:
     if ( cachedResponse is not None ):
       apiResponse = Response().from_dict(cachedResponse)
       rtxFeedback.disconnect()
+      self.limitResponse(apiResponse,query)
       return apiResponse
 
     #### Still have special handling for Q0
@@ -68,6 +76,7 @@ class RTXQuery:
       self.logQuery(id,codeString,terms)
       rtxFeedback.addNewResponse(response,query)
       rtxFeedback.disconnect()
+      self.limitResponse(response,query)
       return(response)
 
     #### Call out to OrangeBoard to answer the other types of queries
@@ -108,6 +117,9 @@ class RTXQuery:
       self.logQuery(response.id,response.result_code,terms)
       rtxFeedback.addNewResponse(response,query)
       rtxFeedback.disconnect()
+
+      #### Limit response
+      self.limitResponse(response,query)
       return(response)
 
 
@@ -125,6 +137,14 @@ class RTXQuery:
       id = '000'
     with open(os.path.dirname(os.path.abspath(__file__))+"/RTXQueries.log","a") as logfile:
       logfile.write(datetimeString+"\t"+codeString+"\t"+id+"\t"+",".join(terms)+"\n")
+
+
+  def limitResponse(self,response,query):
+    if "max_results" in query and query["max_results"] is not None:
+      if response.result_list is not None:
+        if len(response.result_list) > query["max_results"]:
+          del response.result_list[query["max_results"]:]
+          response.message += " (output is limited to "+str(query["max_results"]) + " results)"
 
 
   def __init__(self):

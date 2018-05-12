@@ -16,7 +16,7 @@ class Query(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, original_question: str=None, restated_question: str=None, message: str=None, known_query_type_id: str=None, bypass_cache: str=None, terms: QueryTerms=None):  # noqa: E501
+    def __init__(self, original_question: str=None, restated_question: str=None, message: str=None, known_query_type_id: str=None, bypass_cache: str=None, max_results: int=None, page_size: int=None, page_number: int=None, terms: QueryTerms=None):  # noqa: E501
         """Query - a model defined in Swagger
 
         :param original_question: The original_question of this Query.  # noqa: E501
@@ -29,6 +29,12 @@ class Query(Model):
         :type known_query_type_id: str
         :param bypass_cache: The bypass_cache of this Query.  # noqa: E501
         :type bypass_cache: str
+        :param max_results: The max_results of this Query.  # noqa: E501
+        :type max_results: int
+        :param page_size: The page_size of this Query.  # noqa: E501
+        :type page_size: int
+        :param page_number: The page_number of this Query.  # noqa: E501
+        :type page_number: int
         :param terms: The terms of this Query.  # noqa: E501
         :type terms: QueryTerms
         """
@@ -38,6 +44,9 @@ class Query(Model):
             'message': str,
             'known_query_type_id': str,
             'bypass_cache': str,
+            'max_results': int,
+            'page_size': int,
+            'page_number': int,
             'terms': QueryTerms
         }
 
@@ -47,6 +56,9 @@ class Query(Model):
             'message': 'message',
             'known_query_type_id': 'known_query_type_id',
             'bypass_cache': 'bypass_cache',
+            'max_results': 'max_results',
+            'page_size': 'page_size',
+            'page_number': 'page_number',
             'terms': 'terms'
         }
 
@@ -55,6 +67,9 @@ class Query(Model):
         self._message = message
         self._known_query_type_id = known_query_type_id
         self._bypass_cache = bypass_cache
+        self._max_results = max_results
+        self._page_size = page_size
+        self._page_number = page_number
         self._terms = terms
 
     @classmethod
@@ -182,6 +197,75 @@ class Query(Model):
         """
 
         self._bypass_cache = bypass_cache
+
+    @property
+    def max_results(self) -> int:
+        """Gets the max_results of this Query.
+
+        Maximum number of individual results to return  # noqa: E501
+
+        :return: The max_results of this Query.
+        :rtype: int
+        """
+        return self._max_results
+
+    @max_results.setter
+    def max_results(self, max_results: int):
+        """Sets the max_results of this Query.
+
+        Maximum number of individual results to return  # noqa: E501
+
+        :param max_results: The max_results of this Query.
+        :type max_results: int
+        """
+
+        self._max_results = max_results
+
+    @property
+    def page_size(self) -> int:
+        """Gets the page_size of this Query.
+
+        Split the results into pages with this number of results each  # noqa: E501
+
+        :return: The page_size of this Query.
+        :rtype: int
+        """
+        return self._page_size
+
+    @page_size.setter
+    def page_size(self, page_size: int):
+        """Sets the page_size of this Query.
+
+        Split the results into pages with this number of results each  # noqa: E501
+
+        :param page_size: The page_size of this Query.
+        :type page_size: int
+        """
+
+        self._page_size = page_size
+
+    @property
+    def page_number(self) -> int:
+        """Gets the page_number of this Query.
+
+        Page number of results when the number of results exceeds the page_size  # noqa: E501
+
+        :return: The page_number of this Query.
+        :rtype: int
+        """
+        return self._page_number
+
+    @page_number.setter
+    def page_number(self, page_number: int):
+        """Sets the page_number of this Query.
+
+        Page number of results when the number of results exceeds the page_size  # noqa: E501
+
+        :param page_number: The page_number of this Query.
+        :type page_number: int
+        """
+
+        self._page_number = page_number
 
     @property
     def terms(self) -> QueryTerms:

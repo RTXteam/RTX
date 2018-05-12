@@ -23,7 +23,6 @@ from swagger_server.models.result import Result
 from swagger_server.models.result_graph import ResultGraph
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
-from swagger_server.models.origin import Origin
 from swagger_server.models.edge_attribute import EdgeAttribute
 from swagger_server.models.node_attribute import NodeAttribute
 

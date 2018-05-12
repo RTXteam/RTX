@@ -34,7 +34,7 @@ class SimilarNodesInCommon:
 		:return: a list of tuples, an error_code, and an error_message. tuple[0] is a target node with tuple[1] jaccard index based on association nodes
 		"""
 		# get the description
-		input_node_description = RU.get_node_property(input_node_ID, 'description')
+		input_node_description = RU.get_node_property(input_node_ID, 'name')
 
 		# get the nodes associated to the input node
 		input_node_associated_nodes = RU.get_one_hop_target(input_node_label, input_node_ID, association_node_label,
@@ -64,10 +64,10 @@ class SimilarNodesInCommon:
 		relationship_label_list = [input_association_relationship, target_association_relationship]
 		node_of_interest_position = 0
 		other_node_IDs_to_intersection_counts = dict()
-		if target_node_label == "disease" or target_node_label == "disease":
-			target_labels = ["disease", "disease"]
-		else:
-			target_labels = [target_node_label]
+		#if target_node_label == "disease" or target_node_label == "disease":
+		#	target_labels = ["disease", "disease"]
+		#else:
+		target_labels = [target_node_label]
 		for target_label in target_labels:
 			names2counts, names2nodes = RU.count_nodes_of_type_on_path_of_type_to_label(input_node_ID, input_node_label,
 																						target_label, node_label_list,
@@ -86,7 +86,7 @@ class SimilarNodesInCommon:
 			if parent:
 				parent = parent.pop()
 				error_message += "\n Note that %s is a parent of %s, so you might try that instead." % (
-				RU.get_node_property(parent, 'description'), input_node_description)
+				RU.get_node_property(parent, 'name'), input_node_description)
 			return [], error_code, error_message
 
 		# Now for each of the nodes connecting to source, count number of association nodes

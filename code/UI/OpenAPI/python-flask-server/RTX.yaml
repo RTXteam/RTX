@@ -294,11 +294,15 @@ paths:
         description: "Integer identifier of the result to return"
         required: true
         type: "integer"
+      - in: "body"
+        name: "body"
+        description: "Comment information"
+        required: true
+        schema:
+          $ref: "#/definitions/Feedback"
       responses:
         200:
           description: "successful operation"
-          schema:
-            $ref: "#/definitions/Response"
         400:
           description: "Invalid status value"
       x-swagger-router-controller: "swagger_server.controllers.result_controller"
@@ -455,30 +459,30 @@ definitions:
     type: "object"
     description: "A node in the thought subgraph"
     properties:
-      type:
-        type: "string"
-        example: "protein"
-        description: "Entity type of this node (e.g., protein, disease, etc.)"
       id:
         type: "string"
-        example: "https://www.uniprot.org/uniprot/P00738"
-        description: "URI identifier for this response"
-      symbol:
+        example: "OMIM:603903"
+        description: "CURIE identifier for this node"
+      uri:
         type: "string"
-        example: "HP"
-        description: "Short abbreviation or symbol for this entity"
+        example: "https://www.uniprot.org/uniprot/P00738"
+        description: URI identifier for this node"
       name:
         type: "string"
         example: "Haptoglobin"
         description: "Formal name of the entity"
-      accession:
+      type:
         type: "string"
-        example: "OMIM:603903"
-        description: "Accession number in an external resource for this entity"
+        example: "protein"
+        description: "Entity type of this node (e.g., protein, disease, etc.)"
       description:
         type: "string"
         example: "Haptoglobin captures, and combines with free plasma hemoglobin..."
         description: "One to three sentences of description/definition of this entity"
+      symbol:
+        type: "string"
+        example: "HP"
+        description: "Short abbreviation or symbol for this entity"
       node_attributes:
         type: "array"
         description: "A list of arbitrary attributes for the node"
@@ -512,7 +516,11 @@ definitions:
       type:
         type: "string"
         example: "affects"
-        description: "Entity type of this response"
+        description: "Higher-level relationship type of this edge"
+      relation:
+        type: "string"
+        example: "affects"
+        description: "Lower-level relationship type of this edge"
       source_id:
         type: "string"
         example: "http://omim.org/entry/603903"
@@ -521,53 +529,56 @@ definitions:
         type: "string"
         example: "https://www.uniprot.org/uniprot/P00738"
         description: "Corresponds to the @id of target node of this edge"
+      is_defined_by:
+        type: "string"
+        example: "RTX"
+        description: "A CURIE/URI for the translator group that made the KG"
+      provided_by:
+        type: "string"
+        example: "OMIM"
+        description: "A CURIE/URI for the knowledge source that defined this edge"
       confidence:
         type: "number"
         format: "float"
         example: 0.99
         description: "Confidence metric for this edge, a value 0.0 (no confidence) and 1.0 (highest confidence)"
-      origin_list:
-        type: "array"
-        description: "A list of origins (sources) for this edge and attributes from those origins"
-        items:
-          $ref: "#/definitions/Origin"
-    additionalProperties: true
-  Origin:
-    type: "object"
-    description: "An origin (source) for this edge"
-    properties:
-      id:
+      publications:
         type: "string"
-        example: "https://api.monarchinitiative.org/api/bioentity/disease/OMIM:603903/genes/"
-        description: "URI for the origin of the edge"
-      type:
+        example: "PubMed:12345562"
+        description: "A CURIE/URI for publications associated with this edge"
+      evidence_type:
         type: "string"
-        example: "Monarch_BioLink_API_Relationship"
-        description: "Entity type of the origin"
-      name:
+        example: "ECO:0000220"
+        description: "A CURIE/URI for class of evidence supporting the statement made in an edge - typically a class from the ECO ontology"
+      qualifiers:
         type: "string"
-        example: "Wikipedia article"
-        description: "Formal name of the piece evidence that yielded the edge"
+        example: "ECO:0000220"
+        description: "Terms representing qualifiers that modify or qualify the meaning of the statement made in an edge"
+      negated:
+        type: "boolean"
+        example: "true"
+        description: "Boolean that if set to true, indicates the edge statement is negated i.e. is not true"
       attribute_list:
         type: "array"
-        description: "A list of attributes for this edge from this origin (source)"
+        description: "A list of additional attributes for this edge"
         items:
           $ref: "#/definitions/Edge_attribute"
+    additionalProperties: true
   Edge_attribute:
     type: "object"
-    description: "A generic attribute for an edge"
+    description: "A generic additional attribute for an edge"
     properties:
       type:
         type: "string"
-        example: "PubMed_article"
+        example: "localization"
         description: "Entity type of this attribute"
       name:
         type: "string"
-        example: "Orthopaedic Manifestations of Sickle Cell Disease"
+        example: "Cell type limitation"
         description: "Formal name of the attribute"
       value:
         type: "string"
-        example: "0.5"
+        example: "MFC cells"
         description: "Value of the attribute. While all attributes should have a name, many will not have a value"
       url:
         type: "string"
