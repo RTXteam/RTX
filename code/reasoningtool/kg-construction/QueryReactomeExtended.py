@@ -76,17 +76,17 @@ class QueryReactomeExtended:
         return result_str
 
     @staticmethod
-    #   example of pathway_id: Reactome:R-HSA-70326
+    #   example of pathway_id: REACT:R-HSA-70326
     def get_pathway_entity(pathway_id):
-        if pathway_id[:9] == "Reactome:":
-            pathway_id = pathway_id[9:]
+        if pathway_id[:6] == "REACT:":
+            pathway_id = pathway_id[6:]
         return QueryReactomeExtended.__get_entity("get_pathway", pathway_id)
 
     @staticmethod
     #   example of pathway_id: Reactome:R-HSA-70326
     def get_pathway_desc(pathway_id):
-        if pathway_id[:9] == "Reactome:":
-            pathway_id = pathway_id[9:]
+        if pathway_id[:6] == "REACT:":
+            pathway_id = pathway_id[6:]
         return QueryReactomeExtended.__get_desc("get_pathway_desc", pathway_id)
 
 
@@ -104,5 +104,5 @@ if __name__ == '__main__':
         json.dump(json_data, f)
         f.close()
 
-    save_to_test_file('tests/query_test_data.json', 'Reactome:R-HSA-70326', QueryReactomeExtended.get_pathway_entity('Reactome:R-HSA-70326'))
-    save_to_test_file('tests/query_desc_test_data.json', 'Reactome:R-HSA-70326', QueryReactomeExtended.get_pathway_desc('Reactome:R-HSA-70326'))
+    save_to_test_file('tests/query_test_data.json', 'REACT:R-HSA-70326', QueryReactomeExtended.get_pathway_entity('REACT:R-HSA-70326'))
+    save_to_test_file('tests/query_desc_test_data.json', 'REACT:R-HSA-70326', QueryReactomeExtended.get_pathway_desc('REACT:R-HSA-70326'))

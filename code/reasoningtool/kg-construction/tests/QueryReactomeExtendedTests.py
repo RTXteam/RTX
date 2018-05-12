@@ -21,16 +21,16 @@ def get_from_test_file(filename, key):
 
 class QueryReactomeExtendedTestCase(unittest.TestCase):
     def test_get_pathway_entity(self):
-        extended_info_json = QREx.get_pathway_entity('Reactome:R-HSA-70326')
+        extended_info_json = QREx.get_pathway_entity('REACT:R-HSA-70326')
         self.maxDiff = None
         self.assertIsNotNone(extended_info_json)
         if extended_info_json != "UNKNOWN":
-            self.assertEqual(json.loads(extended_info_json), json.loads(get_from_test_file('query_test_data.json', 'Reactome:R-HSA-70326')))
+            self.assertEqual(json.loads(extended_info_json), json.loads(get_from_test_file('query_test_data.json', 'REACT:R-HSA-70326')))
 
     def test_get_pathway_desc(self):
-        desc = QREx.get_pathway_desc('Reactome:R-HSA-70326')
+        desc = QREx.get_pathway_desc('REACT:R-HSA-70326')
         self.assertIsNotNone(desc)
-        self.assertEqual(desc, get_from_test_file('query_desc_test_data.json', 'Reactome:R-HSA-70326'))
+        self.assertEqual(desc, get_from_test_file('query_desc_test_data.json', 'REACT:R-HSA-70326'))
 
 if __name__ == '__main__':
     unittest.main()
