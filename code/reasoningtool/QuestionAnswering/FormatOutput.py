@@ -168,7 +168,7 @@ class FormatResponse:
 		else:
 			self.response.message = "%s results found" % self._num_results
 
-	def add_neighborhood_graph(self, nodes, edges, text="", confidence=None):
+	def add_neighborhood_graph(self, nodes, edges, confidence=None):
 		"""
 		Populate the object model using networkx neo4j subgraph
 		:param nodes: nodes in the subgraph (g.nodes(data=True))
@@ -241,6 +241,9 @@ class FormatResponse:
 
 		# Create the result (potential answer)
 		result1 = Result()
+		text = "This is a subgraph extracted from the full RTX knowledge graph, including nodes and edges relevant to the query." \
+			   " This is not an answer to the query per se, but rather an opportunity to examine a small region of the RTX knowledge graph for further study. " \
+			   "Formal answers to the query are below."
 		result1.text = text
 		result1.confidence = confidence
 		result1.result_type = "neighborhood graph"
