@@ -257,11 +257,11 @@ class FormatResponse:
 		self._result_list.append(result1)
 		self.response.result_list = self._result_list
 		# Increment the number of results
-		self._num_results += 1
-		if self._num_results == 1:
-			self.response.message = "%s result found" % self._num_results
-		else:
-			self.response.message = "%s results found" % self._num_results
+		#self._num_results += 1
+		#if self._num_results == 1:
+		#	self.response.message = "%s result found" % self._num_results
+		#else:
+		#	self.response.message = "%s results found" % self._num_results
 
 if __name__ == '__main__':
 	test = FormatResponse(2)
