@@ -102,12 +102,6 @@ class QueryMeSH:
     def createResponse(self):
         #### Create the response object and fill it with attributes about the response
         response = Response()
-        response.context = "http://translator.ncats.io"
-        response.id = "http://rtx.ncats.io/api/v1/response/0000"
-        response.type = "medical_translator_query_response"
-        response.tool_version = "RTX 0.4"
-        response.schema_version = "0.5"
-        response.datetime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         response.result_code = "OK"
         response.message = "1 result found"
         return response
@@ -119,15 +113,15 @@ class QueryMeSH:
         response = self.createResponse()
         if ( attributes["status"] == 'OK' ):
             node1 = Node()
-            node1.id = "https://www.ncbi.nlm.nih.gov/mesh/?term=" + attributes["id"]
+            node1.id = "MESH:" + attributes["id"]
+            node1.uri = "http://purl.obolibrary.org/obo/MESH_" + attributes["id"]
             node1.type = attributes["type"]
             node1.name = attributes["name"]
-            node1.accession = "MeSH:" + attributes["id"]
             node1.description = attributes["description"]
 
             #### Create the first result (potential answer)
             result1 = Result()
-            result1.id = "http://rtx.ncats.io/api/v1/response/0000/result/0000"
+            result1.id = "http://rtx.ncats.io/api/v1/result/0000"
             result1.text = "The term " + attributes["name"] + " refers to " + attributes["description"]
             result1.confidence = 1.0
 
