@@ -24,6 +24,8 @@ import numpy
 
 numpy.random.seed(int(time.time()))
 
+requests_cache.install_cache('SemMedCache')
+
 
 class SemMedInterface():
 
