@@ -110,8 +110,12 @@ class RTXFeedback:
 
   #### Constructor
   def __init__(self):
-    #self.databaseName = "RTXFeedback.sqlite.db"
     self.databaseName = "RTXFeedback"
+    self.connect()
+
+  #### Destructor
+  def __del__(self):
+    self.disconnect()
 
 
   #### Define attribute session
@@ -328,7 +332,6 @@ class RTXFeedback:
 
   #### Get the list of ratings
   def getRatings(self):
-    self.connect()
     session = self.session
     response = { "ratings": [] }
     count = 0
@@ -340,7 +343,6 @@ class RTXFeedback:
 
   #### Get the list of expertise levels
   def getExpertiseLevels(self):
-    self.connect()
     session = self.session
     response = { "expertise_levels": [] }
     count = 0
@@ -352,7 +354,6 @@ class RTXFeedback:
 
   #### Store all the results from a response into the database
   def addNewResultRating(self, result_id, rating):
-    self.connect()
     session = self.session
 
     if result_id is None:
@@ -380,7 +381,6 @@ class RTXFeedback:
 
   #### Fetch the feedback for a result
   def getResultFeedback(self, result_id):
-    self.connect()
     session = self.session
 
     if result_id is None:
@@ -409,7 +409,6 @@ class RTXFeedback:
 
   #### Fetch the feedback for a response
   def getResponseFeedback(self, response_id):
-    self.connect()
     session = self.session
 
     if response_id is None:
@@ -456,7 +455,6 @@ def main():
   sys.exit()
 
   #### Connect to the database
-  rtxFeedback.connect()
   session = rtxFeedback.session
 
   #### Query and print some rows from the reference tables
