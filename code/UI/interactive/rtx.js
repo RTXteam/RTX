@@ -1,6 +1,8 @@
 var cyobj = [];
 var cytodata = [];
-
+var fb_explvls = [];
+var fb_ratings = [];
+var response_id = null;
 
 function sesame(head,content) {
     if (head == "openmax") {
@@ -59,7 +61,10 @@ function sendQuestion(e) {
 
 	    if ( jsonObj.known_query_type_id && jsonObj.terms ) {
 		document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR>Looking for answer...";
+
 		jsonObj.bypass_cache = bypass_cache;
+		jsonObj.max_results = 100;
+
 		sesame('openmax',statusdiv);
 		var xhr2 = new XMLHttpRequest();
 		xhr2.open("post", "api/rtx/v1/query", true);
@@ -71,13 +76,17 @@ function sendQuestion(e) {
 		xhr2.onloadend = function() {
 		    if ( xhr2.status == 200 ) {
 			var jsonObj2 = JSON.parse(xhr2.responseText);
-			document.getElementById("devdiv").innerHTML += "=================================================================<PRE>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
+			document.getElementById("devdiv").innerHTML += "================================================================= QUERY::<PRE>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
 
 			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question_text"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["message"]+"</I>";
 			sesame('openmax',statusdiv);
-			
+
+			response_id = jsonObj2.id.substr(jsonObj2.id.lastIndexOf('/') + 1);
+
 			if ( jsonObj2["result_list"] ) {
-			    add_result(jsonObj2["result_list"] );
+			    add_result(jsonObj2["result_list"]);
+			    add_feedback();
+			    //sesame(h1_div,a1_div);
 			}
 			else {
 			    document.getElementById("result_container").innerHTML += "<H2>No results...</H2>";
@@ -126,20 +135,20 @@ function add_result(reslist) {
 
     for (var i in reslist) {
 	var num = Number(i) + 1;
-	var prb = Number(reslist[i].confidence).toFixed(2);
 
+	var prb = Number(reslist[i].confidence).toFixed(2);
 	var pcl = (prb>=0.9) ? "p9" : (prb>=0.7) ? "p7" : (prb>=0.5) ? "p5" : (prb>=0.3) ? "p3" : "p1";
+
+	var fid = "feedback_" + reslist[i].id.substr(reslist[i].id.lastIndexOf('/') + 1);
 
 	document.getElementById("result_container").innerHTML += "<div onclick='sesame(this,a"+num+"_div);' id='h"+num+"_div' title='Click to expand / collapse result "+num+"' class='accordion'>Result "+num+"<span title='confidence="+prb+"' class='"+pcl+" qprob'>"+prb+"</span></div>";
 
 	if (reslist[i].result_graph == null) {
-	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><br>"+reslist[i].text+"<br><br></div>";
+	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><br>"+reslist[i].text+"<br><br><span id='"+fid+"'><i>User Feedback</i></span></div>";
 
 	}
 	else {
-	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table><tr><td class='textanswer'>"+reslist[i].text+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+i+"].reset();'>&#8635;</a></td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td></td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
-
-
+	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table><tr><td class='textanswer'>"+reslist[i].text+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+i+"].reset();'>&#8635;</a></td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td><span id='"+fid+"'><i>User Feedback</i><hr></span></td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
 
 	    cytodata[i] = [];
 	    var gd = reslist[i].result_graph;
@@ -169,7 +178,7 @@ function add_result(reslist) {
 	}
     }
 
-    sesame(h1_div,a1_div);
+//    sesame(h1_div,a1_div);
     add_cyto();
 }
 
@@ -255,5 +264,83 @@ function add_cyto() {
 	});
 
     }
+
+}
+
+
+function add_feedback() {
+    get_feedback_fields();
+
+    var xhr3 = new XMLHttpRequest();
+    xhr3.open("get", "api/rtx/v1/response/" + response_id + "/feedback", true);
+    xhr3.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+    xhr3.send(null);
+
+    xhr3.onloadend = function() {
+	if ( xhr3.status == 200 ) {
+	    var jsonObj3 = JSON.parse(xhr3.responseText);
+	    document.getElementById("devdiv").innerHTML += "================================================================= FEEDBACK::<PRE>\n" + JSON.stringify(jsonObj3,null,2) + "</PRE>";
+
+	    for (var i in jsonObj3) {
+		var fid = "feedback_" + jsonObj3[i].result_id.substr(jsonObj3[i].result_id.lastIndexOf('/') + 1);
+
+		if (document.getElementById(fid)) {
+		    document.getElementById(fid).innerHTML += "<b>Rating:</b> " + jsonObj3[i].rating_id +  " (" + fb_ratings[jsonObj3[i].rating_id].tag + ")<br>";
+		    document.getElementById(fid).innerHTML += "<b>Expertise:</b> " + jsonObj3[i].expertise_level_id + " (" + fb_explvls[jsonObj3[i].expertise_level_id].tag + ")<br>";
+		    document.getElementById(fid).innerHTML += "<b>Comment:</b> " + jsonObj3[i].comment + "<hr>";
+		}
+		else {
+		    document.getElementById("devdiv").innerHTML += "[warn] Feedback " + fid + " does not exist in response!<br>";
+		}
+	    }
+
+	}
+	sesame(h1_div,a1_div);
+    };
+
+
+}
+
+
+
+function get_feedback_fields() {
+    var xhr4 = new XMLHttpRequest();
+    xhr4.open("get", "api/rtx/v1/feedback/expertise_levels", true);
+    xhr4.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+    xhr4.send(null);
+
+    xhr4.onloadend = function() {
+	if ( xhr4.status == 200 ) {
+	    var jsonObj4 = JSON.parse(xhr4.responseText);
+	    document.getElementById("devdiv").innerHTML += "================================================================= FEEDBACK FIELDS::<PRE>\n" + JSON.stringify(jsonObj4,null,2) + "</PRE>";
+
+	    for (var i in jsonObj4.expertise_levels) {
+		fb_explvls[jsonObj4.expertise_levels[i].expertise_level_id] = {};
+		fb_explvls[jsonObj4.expertise_levels[i].expertise_level_id].desc = jsonObj4.expertise_levels[i].description;
+		fb_explvls[jsonObj4.expertise_levels[i].expertise_level_id].name = jsonObj4.expertise_levels[i].name;
+		fb_explvls[jsonObj4.expertise_levels[i].expertise_level_id].tag  = jsonObj4.expertise_levels[i].tag;
+	    }
+	}
+    };
+
+
+    var xhr5 = new XMLHttpRequest();
+    xhr5.open("get", "api/rtx/v1/feedback/ratings", true);
+    xhr5.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+    xhr5.send(null);
+
+    xhr5.onloadend = function() {
+	if ( xhr5.status == 200 ) {
+	    var jsonObj5 = JSON.parse(xhr5.responseText);
+	    document.getElementById("devdiv").innerHTML += "---------------------------------- <PRE>\n" + JSON.stringify(jsonObj5,null,2) + "</PRE>";
+
+	    for (var i in jsonObj5.ratings) {
+		fb_ratings[jsonObj5.ratings[i].rating_id] = {};
+		fb_ratings[jsonObj5.ratings[i].rating_id].desc = jsonObj5.ratings[i].description;
+		fb_ratings[jsonObj5.ratings[i].rating_id].name = jsonObj5.ratings[i].name;
+		fb_ratings[jsonObj5.ratings[i].rating_id].tag  = jsonObj5.ratings[i].tag;
+	    }
+	}
+    };
 
 }
