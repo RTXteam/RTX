@@ -199,11 +199,12 @@ class QueryMyGene:
 
 if __name__ == '__main__':
     mg = QueryMyGene()
+    print(mg.convert_uniprot_id_to_gene_symbol('Q8NBZ7'))
+    print(mg.get_gene_ontology_ids_bp_for_uniprot_id('Q05925'))
     print(mg.uniprot_id_is_human("P02794"))
     print(mg.uniprot_id_is_human("P10592"))
     print(mg.convert_entrez_gene_ID_to_mirbase_ID(407053))
     print(mg.get_gene_ontology_ids_bp_for_entrez_gene_id(406991))
-    print(mg.get_gene_ontology_ids_bp_for_uniprot_id('Q05925'))
     print(mg.convert_uniprot_id_to_gene_symbol('Q05925'))
     print(mg.convert_gene_symbol_to_uniprot_id('A2M'))
     print(mg.convert_gene_symbol_to_uniprot_id('A1BG'))
