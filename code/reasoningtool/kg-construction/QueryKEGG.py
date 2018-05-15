@@ -75,6 +75,7 @@ class QueryKEGG:
         return res_set
 
 if __name__ == '__main__':
+    print(QueryKEGG.map_kegg_compound_to_enzyme_commission_ids('KEGG:C00190'))
     print(QueryKEGG.map_kegg_compound_to_enzyme_commission_ids('KEGG:C00022'))
     print(QueryKEGG.map_kegg_compound_to_enzyme_commission_ids('KEGG:C00100'))
     print(QueryKEGG.map_kegg_compound_to_enzyme_commission_ids('KEGG:C00200'))
