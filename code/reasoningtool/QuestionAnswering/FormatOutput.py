@@ -100,10 +100,10 @@ class FormatResponse:
 			node_labels[u] = list(set(data['labels']).difference({'Base'}))[0]
 			node_uuids[u] = data['properties']['UUID']
 			node_accessions[u] = data['properties']['accession']
-			node_iris[u] = data['properties']['id']
-			node_uuids2iri[data['properties']['UUID']] = data['properties']['id']
-			node_curies[u] = data['properties']['uri']
-			node_uuids2curie[data['properties']['UUID']] = data['properties']['uri']
+			node_iris[u] = data['properties']['uri']
+			node_uuids2iri[data['properties']['UUID']] = data['properties']['uri']
+			node_curies[u] = data['properties']['id']  # These are the actual CURIE IDS eg UBERON:00000941 (uri is the web address)
+			node_uuids2curie[data['properties']['UUID']] = data['properties']['id']
 
 		edge_keys = []
 		edge_types = dict()
@@ -129,6 +129,7 @@ class FormatResponse:
 			node.id = node_curies[node_key]
 			node.type = node_labels[node_key]
 			node.name = node_names[node_key]
+			node.uri = node_iris[node_key]
 			node.accession = node_accessions[node_key]
 			node.description = node_descriptions[node_key]
 			node_objects.append(node)
@@ -194,10 +195,10 @@ class FormatResponse:
 			node_labels[u] = list(set(data['labels']).difference({'Base'}))[0]
 			node_uuids[u] = data['properties']['UUID']
 			node_accessions[u] = data['properties']['accession']
-			node_iris[u] = data['properties']['id']
-			node_uuids2iri[data['properties']['UUID']] = data['properties']['id']
-			node_curies[u] = data['properties']['uri']
-			node_uuids2curie[data['properties']['UUID']] = data['properties']['uri']
+			node_iris[u] = data['properties']['uri']
+			node_uuids2iri[data['properties']['UUID']] = data['properties']['uri']
+			node_curies[u] = data['properties']['id']
+			node_uuids2curie[data['properties']['UUID']] = data['properties']['id']
 
 		edge_keys = []
 		edge_types = dict()
@@ -223,6 +224,7 @@ class FormatResponse:
 			node.id = node_curies[node_key]
 			node.type = node_labels[node_key]
 			node.name = node_names[node_key]
+			node.uri = node_iris[node_key]
 			node.accession = node_accessions[node_key]
 			node.description = node_descriptions[node_key]
 			node_objects.append(node)

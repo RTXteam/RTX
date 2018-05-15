@@ -48,6 +48,10 @@ class QueryEBIOLSExtended:
             print(url, file=sys.stderr)
             print('Timeout in QueryEBIOLSExtended for URL: ' + url, file=sys.stderr)
             return None
+        except BaseException as e:
+            print(url, file=sys.stderr)
+            print('%s received in QueryEBIOLSExtended for URL: %s' % (e, url), file=sys.stderr)
+            return None
         status_code = res.status_code
         if status_code != 200:
             print(url, file=sys.stderr)

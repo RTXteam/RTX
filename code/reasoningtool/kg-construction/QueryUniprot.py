@@ -57,14 +57,15 @@ class QueryUniprot:
         contact = "stephen.ramsey@oregonstate.edu"
         header = {'User-Agent': 'Python %s' % contact}
         try:
+            url =QueryUniprot.API_BASE_URL
             res = requests.post(QueryUniprot.API_BASE_URL, data=payload, headers=header)
         except requests.exceptions.Timeout:
-            print(QueryUniprot.API_BASE_URL, file=sys.stderr)
+            print(url, file=sys.stderr)
             print('Timeout in QueryUniprot for URL: ' + QueryUniprot.API_BASE_URL, file=sys.stderr)
             return None
-        except requests.exceptions.ChunkedEncodingError:
-            print(QueryUniprot.API_BASE_URL, file=sys.stderr)
-            print('ChunkedEncodingError for URL: ' + QueryUniprot.API_BASE_URL, file=sys.stderr)
+        except BaseException as e:
+            print(url, file=sys.stderr)
+            print('%s received in QueryUniprot for URL: %s' % (e, url), file=sys.stderr)
             return None
         status_code = res.status_code
         if status_code != 200:
