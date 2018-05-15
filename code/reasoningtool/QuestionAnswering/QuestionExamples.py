@@ -24,7 +24,7 @@ class QuestionExamples:
 				if line[0] == "#":
 					pass
 				else:
-					columns = line.split("\t")
+					columns = line.strip("\n").split("\t")
 					if columns[1] == "true":
 						question = { "query_type_id": columns[0], "question_text": columns[2] }
 					questions.append(question)
