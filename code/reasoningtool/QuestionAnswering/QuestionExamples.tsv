@@ -5,25 +5,27 @@ Q1	true	Which genetic conditions might offer protection against malaria
 Q1	true	Which genetic conditions might offer protection against cholera
 Q2	true	What is the clinical outcome pathway of physostigmine for treatment of glaucoma
 Q3	true	Which proteins does acetaminophen target
-Q4	false	What proteins are in the pathway $pathway
-Q5	false	What are the phenotypes of the disease $disease
-Q6	false	What micrornas control the expression of $protein
-Q7	false	What genes are associated with $disease
-Q8	false	What genes are expressed in $anatomical_entity
-Q9	false	What are the drugs that target $protein
-Q10	false	What proteins are associated with $phenotypic_feature
-Q11	false	What micrornas are expressed in $anatomical_entity
-Q12	false	What proteins interact with $protein
+Q4	true	What proteins are in mRNA editing
+Q4	true	What proteins are in the phenylketonuria pathway
+Q5	true	What are the phenotypes of Fanconi anemia
+Q6	true	What micrornas control the expression of G6PD
+Q7	true	What genes are associated with Fanconi anemia
+Q8	true	What genes are expressed in retina
+Q9	true	What are the drugs that target PTGS1
+Q10	true	What proteins are associated with anemia
+Q11	true	What microRNAs are expressed in the retina
+Q12	true	What proteins interact with PTGS1
 Q13	true	What diseases are similar to malaria
 Q14	true	What diseases involve similar genes to Fanconi anemia
-Q15	false	What diseases involve similar micrornas to $disease
-Q16	false	What drugs have similar protein targets to $chemical_substance
-Q17	false	What proteins are members of similar pathways to $protein
-Q18	false	What proteins are expressed in similar anatomy to $protein
+Q14	true	What diseases involve similar genes to sickle cell anemia
+Q15	true	What diseases involve similar microRNAs to sickle cell anemia
+Q16	true	What drugs have similar protein targets to naproxen
+Q17	true	What proteins are members of similar pathways to DHODH
+Q18	true	What proteins are expressed in similar anatomy to RPE65
 Q19	true	What proteins are associated with similar phenotypes to USH2A
-Q20	false	What pathways involve similar genes to $pathway
+Q20	true	What pathways involve similar genes to the phenylketonuria pathway
 Q21	true	What genetic conditions involve similar genes to retinitis pigmentosa
-Q22	false	What genetic conditions involve similar micrornas to $disease
+Q22	true	What genetic conditions involve similar microRNAs to sickle cell anemia
 Q23	false	What drugs target proteins associated with $disease
 Q24	false	What drugs target proteins expressed in $anatomical_entity
 Q25	false	What drugs target proteins associated with $phenotypic_feature
