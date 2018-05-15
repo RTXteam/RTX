@@ -95,7 +95,7 @@ class QueryUniprot:
             return None
         except requests.exceptions.ChunkedEncodingError:
             print(url, file=sys.stderr)
-            print('ChunkedEncodingError for URL: ' + QueryUniprot.API_BASE_URL, file=sys.stderr)
+            print('ChunkedEncodingError for URL: ' + url, file=sys.stderr)
             return None
         status_code = res.status_code
         if status_code != 200:
