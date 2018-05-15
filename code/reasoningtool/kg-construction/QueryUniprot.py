@@ -94,7 +94,7 @@ class QueryUniprot:
             print('Timeout in QueryUniprot for URL: ' + url, file=sys.stderr)
             return None
         except requests.exceptions.ChunkedEncodingError:
-            print(QueryUniprot.API_BASE_URL, file=sys.stderr)
+            print(url, file=sys.stderr)
             print('ChunkedEncodingError for URL: ' + QueryUniprot.API_BASE_URL, file=sys.stderr)
             return None
         status_code = res.status_code
