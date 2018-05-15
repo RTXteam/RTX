@@ -212,9 +212,9 @@ class RTXFeedback:
     #### Update the response with current information
     rtxConfig = RTXConfiguration()
     response.tool_version = rtxConfig.version
-    response.schema_version = "0.5.1"
-    response.type = "medical_translator_query_result"
-    response.context = "http://rtx.ncats.io/ns/translator.jsonld"
+    response.schema_version = "0.7.0"
+    response.type = "medical_translator_query_response"
+    response.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
     response.datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     storedResponse = Response(response_datetime=datetime.now(),restated_question=response.restated_question_text,query_type=query["known_query_type_id"],
