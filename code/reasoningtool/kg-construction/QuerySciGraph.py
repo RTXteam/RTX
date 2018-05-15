@@ -210,8 +210,8 @@ class QuerySciGraph:
 
 
 if __name__ == '__main__':
-    print(QuerySciGraph.get_gene_ontology_curie_ids_for_uberon_curie_id("UBERON:0000171"))
-    # print(QuerySciGraph.query_get_ontology_node_category_and_term("GO:0005777"))
+    print(QuerySciGraph.query_get_ontology_node_category_and_term("GO:0005777"))
+    # print(QuerySciGraph.get_gene_ontology_curie_ids_for_uberon_curie_id("UBERON:0000171"))
     # print(QuerySciGraph.query_get_ontology_node_category_and_term("GO:XXXXXXX"))
     # print(QuerySciGraph.get_gene_ontology_curie_ids_for_disease_curie_id("MONDO:0019053"))
     # print(QuerySciGraph.get_gene_ontology_curie_ids_for_disease_curie_id("DOID:906"))
