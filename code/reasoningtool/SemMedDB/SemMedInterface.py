@@ -129,6 +129,10 @@ class SemMedInterface():
 		'''
 		This formats the curie id then processes the reponse from query_oxo returning a list of cuis
 		'''
+		if type(curie_id) != str:
+			curie_id = str(curie_id)
+		if curie_id.startswith('REACT:'):
+			curie_id = curie_id.replace('REACT', 'Reactome')
 		if mesh_flag:
 			mesh_id = 'MeSH:' + curie_id
 			res = self.query_oxo(mesh_id)
