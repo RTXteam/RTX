@@ -27,9 +27,9 @@ numpy.random.seed(int(time.time()))
 requests_cache.install_cache('SemMedCache')
 
 
-class SemMedInterface(mysql_timeout = 30):
+class SemMedInterface():
 
-	def __init__(self):
+	def __init__(self, mysql_timeout = 30):
 		self.smdb = QuerySemMedDB("rtxdev.saramsey.org",3306,"rtx_read","rtxd3vT3amXray","semmeddb", mysql_timeout)
 		self.umls = QueryUMLSSQL("rtxdev.saramsey.org",3406, "rtx_read","rtxd3vT3amXray","umls")
 		self.semrep_url = "http://rtxdev.saramsey.org:5000/semrep/convert?string="
@@ -225,7 +225,7 @@ class SemMedInterface(mysql_timeout = 30):
 			cuis = self.get_cui_from_umls(curie_id, mesh_flag)
 		return cuis
 
-	def get_edges_for_node(self, curie_id, name, mesh_flag=False):
+	def get_edges_for_node(self, curie_id, name, predicate = None, mesh_flag=False):
 		'''
 		Takes the curie id and name for a node and finds all the edges connected to it
 		'''
@@ -235,7 +235,7 @@ class SemMedInterface(mysql_timeout = 30):
 			dfs = [None]*len(cuis)
 			c=0
 			for cui in cuis:
-				dfs[c] = self.smdb.get_edges_for_cui(cui)
+				dfs[c] = self.smdb.get_edges_for_cui(cui, predicate = predicate)
 				c+=1
 			try:
 				df = pandas.concat([x for x in dfs if x is not None],ignore_index=True)
@@ -248,7 +248,7 @@ class SemMedInterface(mysql_timeout = 30):
 					dfs = [None]*len(cuis)
 					c=0
 					for cui in cuis:
-						dfs[c] = self.smdb.get_edges_for_cui(cui)
+						dfs[c] = self.smdb.get_edges_for_cui(cui, predicate = predicate)
 						c+=1
 					try:
 						df = pandas.concat([x for x in dfs if x is not None],ignore_index=True)
@@ -300,6 +300,9 @@ class SemMedInterface(mysql_timeout = 30):
 		return df
 
 	def get_shortest_path_between_subject_object(self, subj_id, subj_name, obj_id, obj_name, max_length = 3, mesh_flags = [False, False]):
+		'''
+		Takes a subject and a object then finds the sortest path between them up to some maximum height
+		'''
 		assert max_length > 0
 		assert len(mesh_flags) == 2
 		subj_cuis = self.get_cui_for_id(subj_id, mesh_flags[0])
@@ -336,6 +339,27 @@ class SemMedInterface(mysql_timeout = 30):
 		return None
 
 	def get_edges_between_nodes(self, subj_id, subj_name, obj_id, obj_name, predicate = None, result_col = ['PMID', 'SUBJECT_NAME', 'PREDICATE', 'OBJECT_NAME'], bidirectional=True, mesh_flags = [False, False]):
+		'''
+		This takes two nodes and finds the edges between them.
+		current result_column options:
+			* 'PMID' 
+			* 'PREDICATE'
+			* 'SUBJECT__CUI'
+			* 'SUBJECT_NAME'
+			* 'SUBJECT_SEMTYPE'
+			* 'OBJECT__CUI'
+			* 'OBJECT_NAME'
+			* 'OBJECT_SEMTYPE'
+		Params
+			* subj_id - The curie id for the subject
+			* subj_name - The name of the subject
+			* obj_id - The curie id for the object
+			* obj_name - The name of the object
+			* predicate - A string containing the predicate you wish to search for (defaults to None which means return all predicates)\
+			* result_col - A list of strings containing the columns you wish to return (defaults to ['PMID', 'SUBJECT_NAME', 'PREDICATE', 'OBJECT_NAME'])
+			* bidirectional - boolian value dictating weither results should be bidirectional (defaults to True)
+			* mesh_flags - A 2 element list of boolian values dictating if each input is a mesh id (default set to [False, False])
+		'''
 		subj_cuis = self.get_cui_for_id(subj_id, mesh_flags[0])
 		obj_cuis = self.get_cui_for_id(obj_id, mesh_flags[1])
 		df = None
