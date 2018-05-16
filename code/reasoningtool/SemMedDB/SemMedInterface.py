@@ -27,10 +27,10 @@ numpy.random.seed(int(time.time()))
 requests_cache.install_cache('SemMedCache')
 
 
-class SemMedInterface():
+class SemMedInterface(mysql_timeout = 30):
 
 	def __init__(self):
-		self.smdb = QuerySemMedDB("rtxdev.saramsey.org",3306,"rtx_read","rtxd3vT3amXray","semmeddb",30)
+		self.smdb = QuerySemMedDB("rtxdev.saramsey.org",3306,"rtx_read","rtxd3vT3amXray","semmeddb", mysql_timeout)
 		self.umls = QueryUMLSSQL("rtxdev.saramsey.org",3406, "rtx_read","rtxd3vT3amXray","umls")
 		self.semrep_url = "http://rtxdev.saramsey.org:5000/semrep/convert?string="
 		self.timeout_sec = 120
@@ -56,7 +56,10 @@ class SemMedInterface():
 		return res
 
 	def query_oxo(self, uid):
-		url_str =  'https://www.ebi.ac.uk/spot/oxo/api/mappings?fromId=' + uid
+		'''
+		This takes a curie id and send that id to EMBL-EBI OXO to convert to cui
+		'''
+		url_str =  'https://www.ebi.ac.uk/spot/oxo/api/mappings?fromId=' + str(uid)
 		try:
 			res = requests.get(url_str, headers={'accept': 'application/json'}, timeout=self.timeout_sec)
 		except requests.exceptions.Timeout:
@@ -74,7 +77,10 @@ class SemMedInterface():
 		return res
 
 	def QuerySemRep(self, string):
-		url = self.semrep_url + string
+		'''
+		This takes a string and extracts cuis from it using SemRep (what SemMedDB uses to extract relationships from pubmed articles)
+		'''
+		url = self.semrep_url + str(string)
 		res = self.send_query_get(url)
 		if res.status_code == 200:
 			data = res.json()
@@ -84,22 +90,16 @@ class SemMedInterface():
 
 	def get_cui_from_umls(self, curie_id, mesh_flag = False):
 		'''
-		Takes a curie ID, detects the ontology from the curie id, and then finds the mesh term
+		Takes a curie ID, detects the ontology from the curie id, and then queries UMLS to find the cui
 		Params:
 			curie_id - A string containing the curie id of the node. Formatted <source abbreviation>:<number> e.g. DOID:8398
 			mesh_flag - True/False depending on if a mesh id is passed (defaults to false)
 
-		current functionality (+ means has it, - means does not have it)
-			"Reactome" -
-			"GO" - 
-			"UniProt" -
-			"HP" -
-			"UBERON" -
-			"CL" - not supposed to be here?
-			"NCBIGene" -
-			"DOID" -
-			"OMIM" -
-			"ChEMBL" -
+		current functionality
+			"Mesh"
+			"GO"
+			"HP"
+			"OMIM"
 
 		'''
 		if mesh_flag:
@@ -127,23 +127,7 @@ class SemMedInterface():
 
 	def get_cui_from_oxo(self, curie_id, mesh_flag = False):
 		'''
-		Takes a curie ID, detects the ontology from the curie id, and then finds the mesh term
-		Params:
-			curie_id - A string containing the curie id of the node. Formatted <source abbreviation>:<number> e.g. DOID:8398
-			mesh_flag - True/False depending on if a mesh id is passed (defaults to false)
-
-		current functionality (+ means has it, - means does not have it)
-			"Reactome" -
-			"GO" - 
-			"UniProt" -
-			"HP" -
-			"UBERON" -
-			"CL" - not supposed to be here?
-			"NCBIGene" -
-			"DOID" -
-			"OMIM" -
-			"ChEMBL" -
-
+		This formats the curie id then processes the reponse from query_oxo returning a list of cuis
 		'''
 		if mesh_flag:
 			mesh_id = 'MeSH:' + curie_id
@@ -169,6 +153,9 @@ class SemMedInterface():
 		return cui
 
 	def get_cui_for_name(self, name, umls_flag = False):
+		'''
+		takes a string and then converts it to a cui or list of cuis by first querying SemRep then UMLS
+		'''
 		if not umls_flag:
 			entities = self.QuerySemRep(name)['entity']
 		else:
@@ -195,6 +182,13 @@ class SemMedInterface():
 		return cuis
 
 	def get_cui_for_id(self, curie_id, mesh_flag=False):
+		'''
+		Converts curie ids (or mesh ids) into cuis by querying the fiollowing services in the order listed:
+		*MyChem
+		*MyGene
+		*EMBL-EBI OXO
+		*UMLS
+		'''
 		cuis = None
 		if not mesh_flag:
 			if curie_id.startswith('ChEMBL'):
@@ -232,6 +226,9 @@ class SemMedInterface():
 		return cuis
 
 	def get_edges_for_node(self, curie_id, name, mesh_flag=False):
+		'''
+		Takes the curie id and name for a node and finds all the edges connected to it
+		'''
 		cuis = self.get_cui_for_id(curie_id, mesh_flag)
 		df = None
 		if cuis is not None:
@@ -260,6 +257,9 @@ class SemMedInterface():
 		return df
 
 	def get_edges_between_subject_object_with_pivot(self, subj_id, subj_name, obj_id, obj_name, pivot = 0, mesh_flags = [False, False]):
+		'''
+		takes the curie id and name of 2 nodes and finds the edges between them with a specified number of hops
+		'''
 		assert len(mesh_flags) == 2
 		subj_cuis = self.get_cui_for_id(subj_id, mesh_flags[0])
 		obj_cuis = self.get_cui_for_id(obj_id, mesh_flags[1])
