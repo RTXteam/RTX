@@ -1,4 +1,5 @@
 from SemMedInterface import SemMedInterface
+import pandas
 
 # The value entered on initialization dictates the timeout (seconds) on large mysql queries
 # This defaults to 30
