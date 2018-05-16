@@ -181,12 +181,13 @@ class NormGoogleDistance:
 			value = QueryNCBIeUtils.multi_normalized_google_distance([mesh_term1,mesh_term2])
 			print(type(value))
 			if math.isnan(value):
-				response['message'] = "No term overlap found"
-				response['response_code'] = "NoOverlap"
+				response['value'] = None
+				response['response_code'] = "OK"
 			else:
 				response['response_code'] = "OK"
 				response['value'] = value
 		return response
+
 
 
 
