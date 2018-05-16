@@ -22,7 +22,8 @@ def get_result(result_id):  # noqa: E501
 
     :rtype: Result
     """
-    return 'do some magic!'
+    rtxFeedback = RTXFeedback()
+    return rtxFeedback.getResult(result_id)
 
 
 def get_result_feedback(result_id):  # noqa: E501
