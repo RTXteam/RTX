@@ -27,7 +27,7 @@ class QuestionExamples:
 					columns = line.strip("\n").split("\t")
 					if columns[1] == "true":
 						question = { "query_type_id": columns[0], "question_text": columns[2] }
-					questions.append(question)
+						questions.append(question)
 			self._questions = questions
 
 

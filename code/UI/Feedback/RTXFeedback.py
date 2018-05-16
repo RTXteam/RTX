@@ -49,7 +49,7 @@ class Response(Base):
 class Result(Base):
   __tablename__ = 'result'
   result_id = Column(Integer, primary_key=True)
-  response_id = Column(Integer, ForeignKey('response.response_id'))
+  response_id = Column(Integer, ForeignKey('response.response_id'))   # for backward compat, this is retained as the *first* response_id
   confidence = Column(Float, nullable=False)
   n_nodes = Column(Integer, nullable=False)
   n_edges = Column(Integer, nullable=False)
@@ -57,6 +57,12 @@ class Result(Base):
   result_object = Column(LargeBinary(length=16777200), nullable=False)
   result_hash = Column(String(255), nullable=False)
   response = relationship(Response)
+
+class Response_result(Base):
+  __tablename__ = 'response_result'
+  response_result_id = Column(Integer, primary_key=True)
+  result_id = Column(Integer, ForeignKey('result.result_id'))
+  response_id = Column(Integer, ForeignKey('response.response_id'))
 
 class Commenter(Base):
   __tablename__ = 'commenter'
@@ -104,8 +110,12 @@ class RTXFeedback:
 
   #### Constructor
   def __init__(self):
-    #self.databaseName = "RTXFeedback.sqlite.db"
     self.databaseName = "RTXFeedback"
+    self.connect()
+
+  #### Destructor
+  def __del__(self):
+    self.disconnect()
 
 
   #### Define attribute session
@@ -212,9 +222,9 @@ class RTXFeedback:
     #### Update the response with current information
     rtxConfig = RTXConfiguration()
     response.tool_version = rtxConfig.version
-    response.schema_version = "0.5.1"
-    response.type = "medical_translator_query_result"
-    response.context = "http://rtx.ncats.io/ns/translator.jsonld"
+    response.schema_version = "0.7.0"
+    response.type = "medical_translator_query_response"
+    response.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
     response.datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     storedResponse = Response(response_datetime=datetime.now(),restated_question=response.restated_question_text,query_type=query["known_query_type_id"],
@@ -259,12 +269,23 @@ class RTXFeedback:
           result.id = "http://rtx.ncats.io/api/rtx/v1/result/"+str(previousResult.result_id)
           #eprint("Reused result_id " + str(result.id))
 
+          #### Also update the linking table
+          storedLink = Response_result(response_id=response_id,result_id=previousResult.result_id)
+          session.add(storedLink)
+          session.flush()
+
         else:
           storedResult = Result(response_id=response_id,confidence=result.confidence,n_nodes=n_nodes,n_edges=n_edges,result_text=result.text,result_object=pickle.dumps(ast.literal_eval(repr(result))),result_hash=result_hash)
           session.add(storedResult)
           session.flush()
+
+          #### Also update the linking table
+          storedLink = Response_result(response_id=response_id,result_id=storedResult.result_id)
+          session.add(storedLink)
+          session.flush()
+
           result.id = "http://rtx.ncats.io/api/rtx/v1/result/"+str(storedResult.result_id)
-          #print("Returned result_id is "+str(storedResult.result_id)+", n_nodes="+str(n_nodes)+", n_edges="+str(n_edges)+", hash="+result_hash)
+          #eprint("Returned result_id is "+str(storedResult.result_id)+", n_nodes="+str(n_nodes)+", n_edges="+str(n_edges)+", hash="+result_hash)
           storedResult.result_object=pickle.dumps(ast.literal_eval(repr(result)))
 
     session.commit()
@@ -311,7 +332,6 @@ class RTXFeedback:
 
   #### Get the list of ratings
   def getRatings(self):
-    self.connect()
     session = self.session
     response = { "ratings": [] }
     count = 0
@@ -323,7 +343,6 @@ class RTXFeedback:
 
   #### Get the list of expertise levels
   def getExpertiseLevels(self):
-    self.connect()
     session = self.session
     response = { "expertise_levels": [] }
     count = 0
@@ -335,7 +354,6 @@ class RTXFeedback:
 
   #### Store all the results from a response into the database
   def addNewResultRating(self, result_id, rating):
-    self.connect()
     session = self.session
 
     if result_id is None:
@@ -363,7 +381,6 @@ class RTXFeedback:
 
   #### Fetch the feedback for a result
   def getResultFeedback(self, result_id):
-    self.connect()
     session = self.session
 
     if result_id is None:
@@ -392,18 +409,19 @@ class RTXFeedback:
 
   #### Fetch the feedback for a response
   def getResponseFeedback(self, response_id):
-    self.connect()
     session = self.session
 
     if response_id is None:
       return( { "status": 450, "title": "response_id missing", "detail": "Required attribute response_id is missing from URL", "type": "about:blank" }, 450)
 
     #### Look for results for this response
-    storedResults = session.query(Result).filter(Result.response_id==response_id).all()
-    if storedResults is not None:
+    storedResponseResults = session.query(Response_result).filter(Response_result.response_id==response_id).all()
+    eprint("DEBUG: Getting results for response_id="+str(response_id))
+    if storedResponseResults is not None:
       allResultRatings = []
-      for storedResult in storedResults:
-        resultRatings = self.getResultFeedback(storedResult.result_id)
+      for storedResponseResult in storedResponseResults:
+        eprint("DEBUG:   Getting feedback for result_id="+str(storedResponseResult.result_id))
+        resultRatings = self.getResultFeedback(storedResponseResult.result_id)
         if resultRatings is not None:
           for resultRating in resultRatings:
             allResultRatings.append(resultRating)
@@ -437,7 +455,6 @@ def main():
   sys.exit()
 
   #### Connect to the database
-  rtxFeedback.connect()
   session = rtxFeedback.session
 
   #### Query and print some rows from the reference tables

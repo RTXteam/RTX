@@ -30,7 +30,7 @@ requests_cache.install_cache('SemMedCache')
 class SemMedInterface():
 
 	def __init__(self):
-		self.smdb = QuerySemMedDB("rtxdev.saramsey.org",3306,"rtx_read","rtxd3vT3amXray","semmeddb")
+		self.smdb = QuerySemMedDB("rtxdev.saramsey.org",3306,"rtx_read","rtxd3vT3amXray","semmeddb",30)
 		self.umls = QueryUMLSSQL("rtxdev.saramsey.org",3406, "rtx_read","rtxd3vT3amXray","umls")
 		self.semrep_url = "http://rtxdev.saramsey.org:5000/semrep/convert?string="
 		self.timeout_sec = 120
@@ -306,6 +306,9 @@ class SemMedInterface():
 		obj_cuis = self.get_cui_for_id(obj_id, mesh_flags[1])
 		name_subj_cuis = self.get_cui_for_name(subj_name)
 		name_obj_cuis = self.get_cui_for_name(obj_name)
+		if name_subj_cuis == subj_cuis and name_obj_cuis == obj_cuis:
+			name_subj_cuis = None
+			name_obj_cuis = None
 		df = None
 		for n in range(max_length):
 			if subj_cuis is not None and obj_cuis is not None:

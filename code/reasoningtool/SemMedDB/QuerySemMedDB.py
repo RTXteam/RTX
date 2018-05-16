@@ -9,11 +9,12 @@ __status__ = 'Prototype'
 
 import _mysql
 import pandas as pd
+import _mysql_exceptions
 
 
 class QuerySemMedDB():
 
-	def __init__(self, host, port, username, password, database):
+	def __init__(self, host, port, username, password, database, timeout = 90):
 		'''
 		This initializes the class such that it will be able to connect to the semmeddb database in mysql.
 		params:
@@ -22,7 +23,8 @@ class QuerySemMedDB():
 			password = the password assigned to the user assigned to the ip you are connecting from
 			database = the name that the semmeddb database is saved under
 		'''
-		self.db = _mysql.connect(host=host,port=int(port),user = username,passwd=password,db=database)
+		self.db = _mysql.connect(host=host,port=int(port),user = username,passwd=password,db=database, connect_timeout=120)
+		self.timeout = timeout * 1000
 
 	def get_dataframe_from_db(self, query):
 		'''
@@ -126,7 +128,7 @@ class QuerySemMedDB():
 		NOTE: Currently this is hardcoded to output name | predicate | name | predicate | name ... etc 
 		NOTE2: this currently prevents hitting the begining or end nodes until the requested number of pivots are made. I plan on adding to this so it does not hit any nodes twice.
 		'''
-		query = "SELECT DISTINCT " + \
+		query = "SELECT "+ '/*+ MAX_EXECUTION_TIME('+ str(self.timeout) +') */' + " DISTINCT " + \
 			"a.SUBJECT_NAME as element1, " + \
 			"a.PREDICATE as predicate1, " + \
 			"a.OBJECT_NAME as element2"
@@ -147,7 +149,10 @@ class QuerySemMedDB():
 					" AND " + chr(ord('b') + r) + ".SUBJECT_CUI != '" + object_cui + "'"
 		if limit > 0:
 			query += " LIMIT " + str(limit)
-		df = self.get_dataframe_from_db(query)
+		try:
+			df = self.get_dataframe_from_db(query)
+		except _mysql_exceptions.OperationalError:
+			return None
 		return df
 
 	def get_short_paths_between_subject_object(self,subject_cui,object_cui,max_length=5):
