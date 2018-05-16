@@ -433,6 +433,38 @@ class RTXFeedback:
       return( { "status": 404, "title": "Results not found", "detail": "There were no results found for this response", "type": "about:blank" }, 404)
 
 
+  #### Fetch a cached response
+  def getResponse(self, response_id):
+    session = self.session
+
+    if response_id is None:
+      return( { "status": 450, "title": "response_id missing", "detail": "Required attribute response_id is missing from URL", "type": "about:blank" }, 450)
+
+    #### Find the response
+    storedResponse = session.query(Response).filter(Response.response_id==response_id).first()
+    if storedResponse is not None:
+      return pickle.loads(storedResponse.response_object)
+    else:
+      return( { "status": 404, "title": "Response not found", "detail": "There is no response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
+
+
+  #### Fetch a cached result
+  def getResult(self, result_id):
+    session = self.session
+
+    if result_id is None:
+      return( { "status": 450, "title": "result_id missing", "detail": "Required attribute result_id is missing from URL", "type": "about:blank" }, 450)
+
+    #### Find the result
+    storedResult = session.query(Result).filter(Result.result_id==result_id).first()
+    if storedResult is not None:
+      return pickle.loads(storedResult.result_object)
+    else:
+      return( { "status": 404, "title": "Result not found", "detail": "There is no result corresponding to result_id="+str(result_id), "type": "about:blank" }, 404)
+
+
+
+
 
 
 ############################################ General function for converting a query row into a dict ###############################################
