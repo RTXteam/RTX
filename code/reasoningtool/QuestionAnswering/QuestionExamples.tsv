@@ -1,43 +1,43 @@
 #known_query_type_id	is_ready	example_question
-Q0	true	What is lovastatin
-Q0	true	What is hemoglobin
-Q1	true	Which genetic conditions might offer protection against malaria
-Q1	true	Which genetic conditions might offer protection against cholera
-Q2	true	What is the clinical outcome pathway of physostigmine for treatment of glaucoma
-Q3	true	Which proteins does acetaminophen target
-Q4	true	What proteins are in mRNA editing
-Q4	true	What proteins are in the phenylketonuria pathway
-Q5	true	What are the phenotypes of Fanconi anemia
-Q6	true	What micrornas control the expression of G6PD
-Q7	true	What genes are associated with Fanconi anemia
-Q8	true	What genes are expressed in retina
-Q9	true	What are the drugs that target PTGS1
-Q10	true	What proteins are associated with anemia
-Q11	true	What microRNAs are expressed in the retina
-Q12	true	What proteins interact with PTGS1
-Q13	true	What diseases are similar to malaria
-Q14	true	What diseases involve similar genes to Fanconi anemia
-Q14	true	What diseases involve similar genes to sickle cell anemia
-Q15	true	What diseases involve similar microRNAs to sickle cell anemia
-Q16	true	What drugs have similar protein targets to naproxen
-Q17	true	What proteins are members of similar pathways to DHODH
-Q18	true	What proteins are expressed in similar anatomy to RPE65
-Q19	true	What proteins are associated with similar phenotypes to USH2A
+Q0	true	What is lovastatin?
+Q0	true	What is hemoglobin?
+Q1	true	Which genetic conditions might offer protection against malaria?
+Q1	true	Which genetic conditions might offer protection against cholera?
+Q2	true	What is the clinical outcome pathway of physostigmine for treatment of glaucoma?
+Q3	true	Which proteins does acetaminophen target?
+Q4	true	What proteins are in mRNA editing?
+Q4	true	What proteins are in the phenylketonuria pathway?
+Q5	true	What are the phenotypes of Fanconi anemia?
+Q6	true	What micrornas control the expression of G6PD?
+Q7	true	What genes are associated with Fanconi anemia?
+Q8	true	What genes are expressed in retina?
+Q9	true	What are the drugs that target PTGS1?
+Q10	true	What proteins are associated with anemia?
+Q11	true	What microRNAs are expressed in the retina?
+Q12	true	What proteins interact with PTGS1?
+Q13	true	What diseases are similar to malaria?
+Q14	true	What diseases involve similar genes to Fanconi anemia?
+Q14	true	What diseases involve similar genes to sickle cell anemia?
+Q15	true	What diseases involve similar microRNAs to sickle cell anemia?
+Q16	true	What drugs have similar protein targets to naproxen?
+Q17	true	What proteins are members of similar pathways to DHODH?
+Q18	true	What proteins are expressed in similar anatomy to RPE65?
+Q19	true	What proteins are associated with similar phenotypes to USH2A?
 Q20	true	What pathways involve similar genes to the phenylketonuria pathway
-Q21	true	What genetic conditions involve similar genes to retinitis pigmentosa
-Q22	true	What genetic conditions involve similar microRNAs to sickle cell anemia
-Q23	false	What drugs target proteins associated with $disease
-Q24	false	What drugs target proteins expressed in $anatomical_entity
-Q25	false	What drugs target proteins associated with $phenotypic_feature
-Q26	false	What drugs target proteins in the pathway $pathway
-Q27	false	What drugs target proteins associated with $anatomical_entity
-Q28	false	What anatomy are associated with $chemical_substance
-Q29	false	What phenotypes are associated with $chemical_substance
-Q30	false	What diseases are associated with $chemical_substance
-Q31	false	What kinds of questions can RTX answer
-Q32	false	What drugs target proteins associated with $biological_process
-Q33	false	What biological processes involve proteins target by $chemical_substance
-Q34	false	What are the most common phenotypes of $disease
-Q35	false	What are the least common phenotypes of $disease
-Q36	false	What proteins involve similar biological processes as $protein
-Q37	false	What drugs target proteins that interact with the protein $protein
+Q21	true	What genetic conditions involve similar genes to retinitis pigmentosa?
+Q22	true	What genetic conditions involve similar microRNAs to sickle cell anemia?
+Q23	true	What drugs target proteins associated with phenylketonuria?
+Q24	true	What drugs target proteins expressed in the retina? 
+Q25	true	What drugs target proteins associated with fatigue?
+Q26	true	What drugs target proteins in the phenylketonuria pathway?
+Q27	true	What drugs target proteins associated with the kidney?
+Q28	true	What anatomy are associated with nitric oxide?
+Q29	true	What What phenotypes are associated with phenylalanine?
+Q30	true	What diseases are associated with phenylalanine?
+Q31	true	What kinds of questions can RTX answer?
+Q32	false	What drugs target proteins associated with synaptic function?
+Q33	true	What biological processes involve proteins targeted by naproxen?
+Q34	true	What are the most common phenotypes of rickets?
+Q35	true	What are the least common phenotypes of rickets?
+Q36	true	What proteins involve similar biological processes as RUNX3?
+Q37	true	What drugs target proteins that interact with the protein RUNX1?
