@@ -117,7 +117,7 @@ def get_random_nodes(label, property="rtx_name", num=10, debug=False):
 
 def get_relationship_types():
 	"""
-	Get all the node labels in the neo4j database
+	Get all the edge labels in the neo4j database
 	:param sessions: neo4j bolt session
 	:return: list of node labels
 	"""
@@ -129,7 +129,7 @@ def get_relationship_types():
 
 def get_node_labels():
 	"""
-	Get all the edge labels in the neo4j database
+	Get all the node labels in the neo4j database
 	:param sessions: neo4j bolt session
 	:return: list of relationship types
 	"""
