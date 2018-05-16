@@ -379,6 +379,29 @@ class RTXFeedback:
     return( { "status": 200, "title": "Feedback stored", "detail": "Your feedback has been stored by RTX as id="+str(insertResult.result_rating_id), "type": "about:blank" }, 200 )
 
 
+  #### Fetch all available feedback
+  def getAllFeedback(self):
+    session = self.session
+
+    storedRatings = session.query(Result_rating).all()
+    if storedRatings is not None:
+      resultRatings = []
+      for rating in storedRatings:
+        resultRating = Feedback()
+        resultRating.result_id = "http://rtx.ncats.io/api/rtx/v1/result/"+str(rating.result_id)
+        resultRating.id = resultRating.result_id + "/feedback/" + str(rating.result_rating_id)
+        resultRating.expertise_level_id = rating.expertise_level_id
+        resultRating.rating_id = rating.rating_id
+        resultRating.commenter_id = rating.commenter_id
+        resultRating.commenter_name = 'not available'
+        resultRating.comment = rating.comment
+        resultRating.datetime = rating.comment_datetime
+        resultRatings.append(resultRating)
+      return(resultRatings)
+    else:
+      return
+
+
   #### Fetch the feedback for a result
   def getResultFeedback(self, result_id):
     session = self.session
