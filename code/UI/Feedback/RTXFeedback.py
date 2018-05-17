@@ -439,11 +439,11 @@ class RTXFeedback:
 
     #### Look for results for this response
     storedResponseResults = session.query(Response_result).filter(Response_result.response_id==response_id).all()
-    eprint("DEBUG: Getting results for response_id="+str(response_id))
+    #eprint("DEBUG: Getting results for response_id="+str(response_id))
     if storedResponseResults is not None:
       allResultRatings = []
       for storedResponseResult in storedResponseResults:
-        eprint("DEBUG:   Getting feedback for result_id="+str(storedResponseResult.result_id))
+        #eprint("DEBUG:   Getting feedback for result_id="+str(storedResponseResult.result_id))
         resultRatings = self.getResultFeedback(storedResponseResult.result_id)
         if resultRatings is not None:
           for resultRating in resultRatings:
