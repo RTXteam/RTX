@@ -341,6 +341,7 @@ class RTXFeedback:
     response["n_ratings"] = count
     return(response)
 
+
   #### Get the list of expertise levels
   def getExpertiseLevels(self):
     session = self.session
@@ -352,14 +353,13 @@ class RTXFeedback:
     response["n_expertise_levels"] = count
     return(response)
 
+
   #### Store all the results from a response into the database
   def addNewResultRating(self, result_id, rating):
     session = self.session
 
     if result_id is None:
       return( { "status": 450, "title": "result_id missing", "detail": "Required attribute result_id is missing from URL", "type": "about:blank" }, 450)
-    if "commenter_id" not in rating or rating["commenter_id"] is None:
-      return( { "status": 451, "title": "commenter_id missing", "detail": "Required attribute commenter_id missing from body content", "type": "about:blank" }, 451)
     if "expertise_level_id" not in rating or rating["expertise_level_id"] is None:
       return( { "status": 452, "title": "expertise_level_id missing", "detail": "Required attribute expertise_level_id missing from body content", "type": "about:blank" }, 452)
     if "rating_id" not in rating or rating["rating_id"] is None:
@@ -368,6 +368,19 @@ class RTXFeedback:
       return( { "status": 454, "title": "comment missing", "detail": "Required attribute comment missing from body content", "type": "about:blank" }, 454)
     if len(rating["comment"]) > 65000:
       return( { "status": 455, "title": "comment too long", "detail": "Comment attribute max lenth is 65 kB", "type": "about:blank" }, 455)
+
+    if "commenter_id" not in rating or rating["commenter_id"] is None:
+      if "commenter_full_name" not in rating or rating["commenter_full_name"] is None:
+        return( { "status": 451, "title": "commenter_id and commenter_name are missing", "detail": "Required attributes either commenter_id or commenter_full_name are missing from body content", "type": "about:blank" }, 451)
+      else:
+        existingCommenter = session.query(Commenter).filter(Commenter.full_name==rating["commenter_full_name"]).first()
+        if existingCommenter is None:
+          newCommenter = Commenter(full_name=rating["commenter_full_name"],email_address="?",password="?")
+          session.add(newCommenter)
+          session.flush()
+          rating["commenter_id"] = newCommenter.commenter_id
+        else:
+          rating["commenter_id"] = existingCommenter.commenter_id
 
     try:
       insertResult = Result_rating(result_id=result_id, commenter_id=rating["commenter_id"], expertise_level_id=rating["expertise_level_id"],
@@ -422,10 +435,13 @@ class RTXFeedback:
         resultRating.expertise_level_id = rating.expertise_level_id
         resultRating.rating_id = rating.rating_id
         resultRating.commenter_id = rating.commenter_id
-        resultRating.commenter_name = 'not available'
         resultRating.comment = rating.comment
         resultRating.datetime = rating.comment_datetime
-        resultRating.foobar = -1		# turns out you can put in anything you want, but it doesn't show up in the output
+        resultRating.foobar = -1		# turns out you can put in anything you want, but it doesn't show up in the output unless the YAML says it can
+
+        commenterFullName = session.query(Commenter).filter(Commenter.commenter_id==rating.commenter_id).first().full_name
+        resultRating.commenter_full_name = commenterFullName
+
         resultRatings.append(resultRating)
       return(resultRatings)
     else:
