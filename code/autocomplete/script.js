@@ -17,7 +17,7 @@ function autocomplete(){
     console.log("autocomplete");
     var text = autoTextInput.value;
     remove_suggestions(autoWordsList);
-    console.log($.ajax({url: "auto?word="+text+"&limit="+max_suggs,
+    console.log($.ajax({url: "http://rtxcomplete.ixlab.org/auto?word="+text+"&limit="+max_suggs,
 			cache:false,
 			dataType:'jsonp',
 			//jsonpCallback: "autocompleteDisplay",
@@ -49,7 +49,7 @@ function spellcheck(){
     var text = spellTextInput.value;
     remove_suggestions(spellWordsList);
     if (text.length != 0){
-	console.log($.ajax({url: "fuzzy?word="+text+"&limit="+max_suggs,
+	console.log($.ajax({url: "http://rtxcomplete.ixlab.org/fuzzy?word="+text+"&limit="+max_suggs,
 			    cache:false,
 			    dataType:'jsonp',
 			    //jsonpCallback: "autocompleteDisplay",
