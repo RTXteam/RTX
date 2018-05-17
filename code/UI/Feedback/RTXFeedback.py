@@ -410,7 +410,7 @@ class RTXFeedback:
       return( { "status": 450, "title": "result_id missing", "detail": "Required attribute result_id is missing from URL", "type": "about:blank" }, 450)
 
     #### Look for ratings we could use
-    storedRatings = session.query(Result_rating).filter(Result_rating.result_id==result_id).all()
+    storedRatings = session.query(Result_rating).filter(Result_rating.result_id==result_id).order_by(desc(Result_rating.comment_datetime)).all()
     if storedRatings is not None:
       resultRatings = []
       for rating in storedRatings:
