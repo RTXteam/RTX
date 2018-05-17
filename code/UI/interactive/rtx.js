@@ -246,8 +246,7 @@ function add_cyto() {
 	cyobj[i].on('tap','node', function() {
 	    var dnum = 'd'+this.data('parentdivnum')+'_div';
 
-	    document.getElementById(dnum).innerHTML = "<b>Accession:</b> " + this.data('accession') + "<br>";
-	    document.getElementById(dnum).innerHTML+= "<b>Name:</b> " + this.data('name') + "<br>";
+	    document.getElementById(dnum).innerHTML = "<b>Name:</b> " + this.data('name') + "<br>";
 	    document.getElementById(dnum).innerHTML+= "<b>ID:</b> " + this.data('id') + "<br>";
 	    document.getElementById(dnum).innerHTML+= "<b>URI:</b> <a target='_blank' href='" + this.data('uri') + "'>" + this.data('uri') + "</a><br>";
 	    document.getElementById(dnum).innerHTML+= "<b>Type:</b> " + this.data('type') + "<br>";
@@ -369,7 +368,9 @@ function submitFeedback(res_id) {
 
 
 function add_feedback() {
-    get_feedback_fields();
+    if (fb_explvls.length == 0 || fb_ratings.length == 0) {
+	get_feedback_fields();
+    }
 
     var xhr3 = new XMLHttpRequest();
     xhr3.open("get", "api/rtx/v1/response/" + response_id + "/feedback", true);
@@ -402,7 +403,7 @@ function add_feedback() {
 
 function insert_feedback_item(el_id, feed_obj) {
     var prb = feed_obj.rating_id;
-    var pcl = (prb<=2) ? "p9" : (prb<=4) ? "p7" : (prb<=5) ? "p5" : (prb<=6) ? "p3" : (prb<=7) ? "p1" : "p0";
+    var pcl = (prb<=2) ? "p9" : (prb<=4) ? "p7" : (prb<=5) ? "p5" : (prb<=6) ? "p3" : (prb<=7) ? "p0" : "p1";
 
     document.getElementById(el_id).innerHTML += "<table><tr><td><b>Rating:</b></td><td style='width:100%'><span class='"+pcl+" frating' title='" + fb_ratings[feed_obj.rating_id].desc +  "'>" + fb_ratings[feed_obj.rating_id].tag + "</u><i class='tiny' style='float:right'>" + feed_obj.datetime + "</i></td></tr><tr><td><b>Expertise:</b></td><td><u title='" + fb_explvls[feed_obj.expertise_level_id].desc + "'>" + fb_explvls[feed_obj.expertise_level_id].tag + "</u></td></tr><tr><td><b>Comment:</b></td><td>" + feed_obj.comment + "</td></tr></table><hr>";
 
@@ -461,7 +462,6 @@ function get_example_questions() {
     xhr8.onloadend = function() {
 	if ( xhr8.status == 200 ) {
 	    var ex_qs = JSON.parse(xhr8.responseText);
-	    // document.getElementById("devdiv").innerHTML += "================================================================= EXAMPLE QUESTIONS::<PRE>\n" + JSON.stringify(ex_qs,null,2) + "</PRE>";
 
 	    document.getElementById("qqq").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Example Questions&nbsp;&nbsp;&nbsp;&#8675;</option>";
 
