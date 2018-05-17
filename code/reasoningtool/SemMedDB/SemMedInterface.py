@@ -232,6 +232,11 @@ class SemMedInterface():
 	def get_edges_for_node(self, curie_id, name, predicate = None, mesh_flag=False):
 		'''
 		Takes the curie id and name for a node and finds all the edges connected to it
+		Params
+			* curie_id - A string containing the curie id of the node
+			* name - A string containing the name of the node
+			* predicate - A string containing the predivate you wish to return (defaults to None which means all predicates)
+			* mesh_flag - A boolien indicating if the input is a mesh id (defaults to False)
 		'''
 		cuis = self.get_cui_for_id(curie_id, mesh_flag)
 		df = None
@@ -263,6 +268,13 @@ class SemMedInterface():
 	def get_edges_between_subject_object_with_pivot(self, subj_id, subj_name, obj_id, obj_name, pivot = 0, mesh_flags = [False, False]):
 		'''
 		takes the curie id and name of 2 nodes and finds the edges between them with a specified number of hops
+		Params
+			* subj_id - The curie id for the subject
+			* subj_name - The name of the subject
+			* obj_id - The curie id for the object
+			* obj_name - The name of the object
+			* pivot - an integer dictating the the number of pivot nodes to use between the subject and object (defaults to 0 i.e. directly connected)
+			* mesh_flags - A 2 element list of boolian values dictating if each input is a mesh id (default set to [False, False])
 		'''
 		assert len(mesh_flags) == 2
 		subj_cuis = self.get_cui_for_id(subj_id, mesh_flags[0])
@@ -306,6 +318,13 @@ class SemMedInterface():
 	def get_shortest_path_between_subject_object(self, subj_id, subj_name, obj_id, obj_name, max_length = 3, mesh_flags = [False, False]):
 		'''
 		Takes a subject and a object then finds the sortest path between them up to some maximum height
+		Params
+			* subj_id - The curie id for the subject
+			* subj_name - The name of the subject
+			* obj_id - The curie id for the object
+			* obj_name - The name of the object
+			* max_length - an integer dictating the maximum length this function should check for the shorest path (defaults to 3)
+			* mesh_flags - A 2 element list of boolian values dictating if each input is a mesh id (default set to [False, False])
 		'''
 		assert max_length > 0
 		assert len(mesh_flags) == 2
