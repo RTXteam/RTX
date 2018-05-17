@@ -251,7 +251,10 @@ function add_cyto() {
 	    document.getElementById(dnum).innerHTML+= "<b>ID:</b> " + this.data('id') + "<br>";
 	    document.getElementById(dnum).innerHTML+= "<b>URI:</b> <a target='_blank' href='" + this.data('uri') + "'>" + this.data('uri') + "</a><br>";
 	    document.getElementById(dnum).innerHTML+= "<b>Type:</b> " + this.data('type') + "<br>";
-	    document.getElementById(dnum).innerHTML+= "<b>Description:</b> " + this.data('description') + "<br>";
+
+	    if (this.data('description') !== 'UNKNOWN' && this.data('description') !== 'None') {
+		document.getElementById(dnum).innerHTML+= "<b>Description:</b> " + this.data('description') + "<br>";
+	    }
 
 	    sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
 	});
@@ -355,7 +358,6 @@ function submitFeedback(res_id) {
 		}
 	    }
 
-
 	}
 	else {
 	    document.getElementById(fff+"_msgs").innerHTML = "There was an error with this submission ("+jsonObj6.detail+"). Please try again.";
@@ -404,9 +406,6 @@ function insert_feedback_item(el_id, feed_obj) {
 
     document.getElementById(el_id).innerHTML += "<table><tr><td><b>Rating:</b></td><td style='width:100%'><span class='"+pcl+" frating' title='" + fb_ratings[feed_obj.rating_id].desc +  "'>" + fb_ratings[feed_obj.rating_id].tag + "</u><i class='tiny' style='float:right'>" + feed_obj.datetime + "</i></td></tr><tr><td><b>Expertise:</b></td><td><u title='" + fb_explvls[feed_obj.expertise_level_id].desc + "'>" + fb_explvls[feed_obj.expertise_level_id].tag + "</u></td></tr><tr><td><b>Comment:</b></td><td>" + feed_obj.comment + "</td></tr></table><hr>";
 
-
-//    document.getElementById(el_id).innerHTML += "<table><tr><td><b>Date:</b></td><td>" + feed_obj.datetime + "</td></tr><tr><td><b>Rating:</b></td><td style='width=100%'><u title='" + fb_ratings[feed_obj.rating_id].desc +  "'>" + fb_ratings[feed_obj.rating_id].tag + "</u><i style='float:right'>" + feed_obj.datetime + "</i></td></tr><tr><td><b>Expertise:</b></td><td><u title='" + fb_explvls[feed_obj.expertise_level_id].desc + "'>" + fb_explvls[feed_obj.expertise_level_id].tag + "</u></td></tr><tr><td><b>Comment:</b></td><td>" + feed_obj.comment + "</td></tr></table><hr>";
-
 }
 
 
@@ -448,6 +447,33 @@ function get_feedback_fields() {
 		fb_ratings[jsonObj5.ratings[i].rating_id].tag  = jsonObj5.ratings[i].tag;
 	    }
 	}
+    };
+
+}
+
+
+function get_example_questions() {
+    var xhr8 = new XMLHttpRequest();
+    xhr8.open("get", "api/rtx/v1/exampleQuestions", true);
+    xhr8.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+    xhr8.send(null);
+
+    xhr8.onloadend = function() {
+	if ( xhr8.status == 200 ) {
+	    var ex_qs = JSON.parse(xhr8.responseText);
+	    // document.getElementById("devdiv").innerHTML += "================================================================= EXAMPLE QUESTIONS::<PRE>\n" + JSON.stringify(ex_qs,null,2) + "</PRE>";
+
+	    document.getElementById("qqq").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Example Questions&nbsp;&nbsp;&nbsp;&#8675;</option>";
+
+	    for (var i in ex_qs) {
+		var opt = document.createElement('option');
+		opt.value = ex_qs[i].question_text;
+		opt.innerHTML = ex_qs[i].query_type_id+": "+ex_qs[i].question_text;
+		document.getElementById("qqq").appendChild(opt);
+	    }
+
+	}
+
     };
 
 }
