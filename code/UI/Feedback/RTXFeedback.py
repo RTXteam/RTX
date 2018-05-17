@@ -366,10 +366,12 @@ class RTXFeedback:
       return( { "status": 453, "title": "rating_id missing", "detail": "Required attribute rating_id missing from body content", "type": "about:blank" }, 453)
     if "comment" not in rating or rating["comment"] is None:
       return( { "status": 454, "title": "comment missing", "detail": "Required attribute comment missing from body content", "type": "about:blank" }, 454)
+    if len(rating["comment"]) > 65000:
+      return( { "status": 455, "title": "comment too long", "detail": "Comment attribute max lenth is 65 kB", "type": "about:blank" }, 455)
 
     try:
       insertResult = Result_rating(result_id=result_id, commenter_id=rating["commenter_id"], expertise_level_id=rating["expertise_level_id"],
-        rating_id = rating["rating_id"], comment=rating["comment"], comment_datetime=datetime.now().strftime("%Y-%m-%d %H:%M:%S") )
+        rating_id = rating["rating_id"], comment=rating["comment"].encode('utf-8'), comment_datetime=datetime.now().strftime("%Y-%m-%d %H:%M:%S") )
       session.add(insertResult)
       session.flush()
       session.commit()
