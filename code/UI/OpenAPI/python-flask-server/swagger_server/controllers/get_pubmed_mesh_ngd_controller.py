@@ -21,6 +21,9 @@ def get_pubmed_mesh_ngd(term1, term2):  # noqa: E501
 
     :rtype: MeshNgdResponse
     """
+    cwd = os.getcwd()
+    os.chdir(os.path.dirname(os.path.abspath(__file__))+"/../../../../../reasoningtool/kg-construction")
     ngd = NormGoogleDistance()
     response = ngd.api_ngd(term1,term2)
+    os.chdir(cwd)
     return(response)
