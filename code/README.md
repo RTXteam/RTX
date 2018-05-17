@@ -12,6 +12,10 @@
 
 - Contains the natural language processing code to be used in the RTX software (not yet implemented).  
 
+### Subdirectory `autocomplete`
+
+- Contains the query suggestion backend and frontend code to be used in the RTX UI
+
 ### License
 
 - The RTX team will be open-sourcing the RTX software under the MIT license. The
