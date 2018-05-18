@@ -501,7 +501,6 @@ class SemMedInterface():
 		for key in inputKeys:
 			query += key + " = '" + constraints[key].replace("'", '') + "' and "
 		query = query[:-5]
-		print(query)
 		df = self.smdb.get_dataframe_from_db(query)
 		df2 = None
 		if bidirectional:
@@ -512,7 +511,6 @@ class SemMedInterface():
 				elif 'SUBJECT' in query_list[a]:
 					query_list[a] = query_list[a].replace('SUBJECT', 'OBJECT')
 			query2 = ' '.join(query_list)
-			print(query2)
 			df2 = self.smdb.get_dataframe_from_db(query2)
 		if df2 is None:
 			return df
