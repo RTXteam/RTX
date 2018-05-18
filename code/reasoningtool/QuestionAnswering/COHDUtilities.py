@@ -20,11 +20,13 @@ except ImportError:
 
 import CustomExceptions
 
+
 class COHDUtilities:
 	def __init__(self):
 		None
 
-	def get_conditions_treating(self, drug_description, conservative=False):
+	@staticmethod
+	def get_conditions_treating(drug_description, conservative=False):
 		"""
 		Get all the conditions that are associated with a drug.
 		:param drug_description: string (eg. 'Naproxen')

@@ -564,14 +564,18 @@ def get_shortest_subgraph_between_nodes(source_name, source_label, target_name, 
 		return graph
 
 
-def get_node_as_graph(node_name, debug=False):
+def get_node_as_graph(node_name, debug=False, use_description=False):
 	"""
 	Get a node and return it as a networkx graph model
 	:param node_name: KG neo4j node name
 	:param debug: just return the cypher command
+	:param use_description: use the description of the node, not the name
 	:return: networkx graph
 	"""
-	query = "MATCH (n{rtx_name:'%s'}) return n" % node_name
+	if use_description:
+		query = "MATCH (n{name:'%s'}) return n" % node_name
+	else:
+		query = "MATCH (n{rtx_name:'%s'}) return n" % node_name
 	if debug:
 		return query
 
