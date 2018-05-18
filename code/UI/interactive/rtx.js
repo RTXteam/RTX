@@ -282,10 +282,11 @@ function rem_fefo(res_id,res_div_id) {
 
 function add_fefo(res_id,res_div_id) {
     var fff = "feedback_form_" + res_id;
+    var uuu = getCookie('RTXuser');
 
     document.getElementById(fff).innerHTML = "Please provide feedback on this result:<br>";
 
-    document.getElementById(fff).innerHTML+= "<table><tr><td><b>Rating:</b></td><td><span class='ratings'><select id='"+fff+"_rating'><option value=''>Please select a rating&nbsp;&nbsp;&nbsp;&#8675;</option></select></span></td></tr><tr><td><b>Expertise:</b></td><td><span class='ratings'><select id='"+fff+"_expertise'><option value=''>What is your expertise on this subject?&nbsp;&nbsp;&nbsp;&#8675;</option></select></span></td></tr><tr><td><b>Comment:</b></td><td><textarea id='"+fff+"_comment' rows='7' cols='60'></textarea></td</tr><tr><td></td><td><input type='button' class='button' name='action' value='Submit' onClick='javascript:submitFeedback(\""+res_id+"\");'/>&nbsp;&nbsp;&nbsp;&nbsp;<a href='javascript:rem_fefo(\""+res_id+"\",\""+res_div_id+"\");'>Cancel</a></td></tr></table><span id='"+fff+"_msgs' class='error'></span>";
+    document.getElementById(fff).innerHTML+= "<table><tr><td><b>Rating:</b></td><td><span class='ratings'><select id='"+fff+"_rating'><option value=''>Please select a rating&nbsp;&nbsp;&nbsp;&#8675;</option></select></span></td></tr><tr><td><b>Expertise:</b></td><td><span class='ratings'><select id='"+fff+"_expertise'><option value=''>What is your expertise on this subject?&nbsp;&nbsp;&nbsp;&#8675;</option></select></span></td></tr><tr><td><b>Full Name:</b></td><td><input type='text' id='"+fff+"_fullname' value='"+uuu+"' maxlength='60' size='60'></input></td</tr><tr><td><b>Comment:</b></td><td><textarea id='"+fff+"_comment' maxlength='60000' rows='7' cols='60'></textarea></td</tr><tr><td></td><td><input type='button' class='questionBox button' name='action' value='Submit' onClick='javascript:submitFeedback(\""+res_id+"\");'/>&nbsp;&nbsp;&nbsp;&nbsp;<a href='javascript:rem_fefo(\""+res_id+"\",\""+res_div_id+"\");'>Cancel</a></td></tr></table><span id='"+fff+"_msgs' class='error'></span>";
 
     for (var i in fb_ratings) {
 	var opt = document.createElement('option');
@@ -309,10 +310,11 @@ function submitFeedback(res_id) {
 
     var rat = document.getElementById(fff+"_rating").value;
     var exp = document.getElementById(fff+"_expertise").value;
+    var nom = document.getElementById(fff+"_fullname").value;
     var cmt = document.getElementById(fff+"_comment").value;
 
-    if (!rat || !exp ) {
-	document.getElementById(fff+"_msgs").innerHTML = "Please provide a <u>rating</u> and an <u>expertise level</u> in your feedback on this result";
+    if (!rat || !exp || !nom) {
+	document.getElementById(fff+"_msgs").innerHTML = "Please provide a <u>rating</u>, <u>expertise level</u>, and <u>name</u> in your feedback on this result";
 	return;
     }
 
@@ -320,8 +322,9 @@ function submitFeedback(res_id) {
     feedback.rating_id = parseInt(rat);
     feedback.expertise_level_id = parseInt(exp);
     feedback.comment = cmt;
+    feedback.commenter_full_name = nom;
 
-    feedback.commenter_id = 1; // anon commenters until we have user management
+    // feedback.commenter_id = 1;
 
 
     var xhr6 = new XMLHttpRequest();
@@ -335,6 +338,7 @@ function submitFeedback(res_id) {
 
 	if ( xhr6.status == 200 ) {
 	    document.getElementById(fff+"_msgs").innerHTML = "Your feedback has been recorded...";
+	    setRTXUserCookie(nom);
 
 	    var xhr7 = new XMLHttpRequest();
 	    xhr7.open("get", "api/rtx/v1/result/" + res_id + "/feedback", true);
@@ -345,7 +349,7 @@ function submitFeedback(res_id) {
 		var jsonObj7 = JSON.parse(xhr7.responseText);
 		if ( xhr7.status == 200 ) {
 		    var fid = "feedback_" + res_id;
-		    document.getElementById(fid).innerHTML = "<i>User Feedback (updated)</i><hr><span class='error'>Your feedback has been recorded.  Thank you!</span><hr>";
+		    document.getElementById(fid).innerHTML = "<i>User Feedback (updated)</i><hr><span class='error'>Your feedback has been recorded.  Thank you, "+nom+"!</span><hr>";
 
 		    for (var i in jsonObj7) {
 			insert_feedback_item(fid, jsonObj7[i]);
@@ -404,8 +408,10 @@ function add_feedback() {
 function insert_feedback_item(el_id, feed_obj) {
     var prb = feed_obj.rating_id;
     var pcl = (prb<=2) ? "p9" : (prb<=4) ? "p7" : (prb<=5) ? "p5" : (prb<=6) ? "p3" : (prb<=7) ? "p0" : "p1";
+    var pex = feed_obj.expertise_level_id;
+    var pxl = (pex==1) ? "p9" : (pex==2) ? "p7" : (pex==3) ? "p5" : (pex==4) ? "p3" : "p1";
 
-    document.getElementById(el_id).innerHTML += "<table><tr><td><b>Rating:</b></td><td style='width:100%'><span class='"+pcl+" frating' title='" + fb_ratings[feed_obj.rating_id].desc +  "'>" + fb_ratings[feed_obj.rating_id].tag + "</u><i class='tiny' style='float:right'>" + feed_obj.datetime + "</i></td></tr><tr><td><b>Expertise:</b></td><td><u title='" + fb_explvls[feed_obj.expertise_level_id].desc + "'>" + fb_explvls[feed_obj.expertise_level_id].tag + "</u></td></tr><tr><td><b>Comment:</b></td><td>" + feed_obj.comment + "</td></tr></table><hr>";
+    document.getElementById(el_id).innerHTML += "<table><tr><td><b>Rating:</b></td><td style='width:100%'><span class='"+pcl+" frating' title='" + fb_ratings[feed_obj.rating_id].desc +  "'>" + fb_ratings[feed_obj.rating_id].tag + "</u><i class='tiny' style='float:right'>" + feed_obj.datetime + "</i></td></tr><tr><td><b>Commenter:</b></td><td>"+feed_obj.commenter_full_name+" <span class='"+pxl+" tiny explevel' title='" + fb_explvls[feed_obj.expertise_level_id].tag + " :: " + fb_explvls[feed_obj.expertise_level_id].desc + "'>&nbsp;</span></td></tr><tr><td><b>Comment:</b></td><td>" + feed_obj.comment + "</td></tr></table><hr>";
 
 }
 
@@ -476,4 +482,24 @@ function get_example_questions() {
 
     };
 
+}
+
+
+function setRTXUserCookie(fullname) {
+    var cname = "RTXuser";
+    var exdays = 7;
+    var d = new Date();
+    d.setTime(d.getTime()+(exdays*24*60*60*1000));
+    var expires = "expires="+d.toGMTString();
+    document.cookie = cname+"="+fullname+"; "+expires;
+}
+
+function getCookie(cname) {
+    var name = cname + "=";
+    var ca = document.cookie.split(';');
+    for(var i=0; i<ca.length; i++) {
+	var c = ca[i].trim();
+	if (c.indexOf(name)==0) return c.substring(name.length,c.length);
+    }
+    return "";
 }
