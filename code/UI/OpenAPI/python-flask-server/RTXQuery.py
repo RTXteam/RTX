@@ -72,6 +72,8 @@ class RTXQuery:
       if 'original_question' in query:
         response.original_question_text = query["original_question"]
         response.restated_question_text = query["restated_question"]
+      response.known_query_type_id = query["known_query_type_id"]
+      response.terms = query["terms"]
       id = response.id
       codeString = response.result_code
       self.logQuery(query,response)
@@ -113,6 +115,8 @@ class RTXQuery:
       if 'original_question' in query:
         response.original_question_text = query["original_question"]
         response.restated_question_text = query["restated_question"]
+      response.known_query_type_id = query["known_query_type_id"]
+      response.terms = query["terms"]
 
       #### Log the result and return the Response object
       self.logQuery(query,response)
@@ -143,7 +147,7 @@ class RTXQuery:
     if "terms" not in query or query['terms'] is None:
       terms = "{}"
     else:
-      terms = repr(query['terms'])
+      terms = stringifyDict(query['terms'])
 
     if "restated_question" not in query or query["restated_question"] is None:
       restated_question = ""
@@ -166,6 +170,15 @@ class RTXQuery:
 
   def __init__(self):
      None
+
+def stringifyDict(inputDict):
+  outString = "{"
+  for key,value in sorted(inputDict.items(), key=lambda t: t[0]):
+    if outString != "{":
+      outString += ","
+    outString += "'"+str(key)+"':'"+str(value)+"'"
+  outString += "}"
+  return(outString)
 
 
 def main():
