@@ -61,7 +61,7 @@ class RTXQuery:
       apiResponse = Response().from_dict(cachedResponse)
       rtxFeedback.disconnect()
       self.limitResponse(apiResponse,query)
-      self.logQuery(query,apiResponse)
+      self.logQuery(query,apiResponse,'cached')
       return apiResponse
 
     #### Still have special handling for Q0
@@ -76,7 +76,7 @@ class RTXQuery:
       response.terms = query["terms"]
       id = response.id
       codeString = response.result_code
-      self.logQuery(query,response)
+      self.logQuery(query,response,'new')
       rtxFeedback.addNewResponse(response,query)
       rtxFeedback.disconnect()
       self.limitResponse(response,query)
@@ -119,7 +119,7 @@ class RTXQuery:
       response.terms = query["terms"]
 
       #### Log the result and return the Response object
-      self.logQuery(query,response)
+      self.logQuery(query,response,'new')
       rtxFeedback.addNewResponse(response,query)
       rtxFeedback.disconnect()
 
@@ -136,7 +136,7 @@ class RTXQuery:
     return(response)
 
 
-  def logQuery(self,query,response):
+  def logQuery(self,query,response,cacheStatus):
     datetimeString = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     if "known_query_type_id" not in query or query["known_query_type_id"] is None:
@@ -157,7 +157,7 @@ class RTXQuery:
     response_code = response.result_code
 
     with open(os.path.dirname(os.path.abspath(__file__))+"/RTXQueries.log","a") as logfile:
-      logfile.write(datetimeString+"\t"+response_code+"\t"+id+"\t"+terms+"\t"+restated_question+"\n")
+      logfile.write(datetimeString+"\t"+cacheStatus+"\t"+response_code+"\t"+id+"\t"+terms+"\t"+restated_question+"\n")
 
 
   def limitResponse(self,response,query):
