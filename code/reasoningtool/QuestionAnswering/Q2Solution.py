@@ -113,9 +113,10 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 	# include context in the google distance TODO: this may not actually help things... need to test
 	RU.weight_graph_with_google_distance(g, context_node_id=disease_name, context_node_descr=disease_descr, default_value=max_gd)
 
-	# Decorate with drug binding probability (1-x since these will be multiplicatively merged
+	# Decorate with drug binding probability (1-x since these will be multiplicatively merged)
 	#RU.weight_graph_with_property(g, 'probability', transformation=lambda x: 1-x, default_value=2)
-	RU.weight_graph_with_property(g, 'probability', transformation=lambda x: 1/float(x), default_value=100)
+	max_prob_weight = 100
+	RU.weight_graph_with_property(g, 'probability', transformation=lambda x: min(1/float(x), max_prob_weight), default_value=max_prob_weight)
 
 	# Combine the properties
 	RU.merge_graph_properties(g, ['gd_weight', 'probability'], 'merged', operation=lambda x,y: x*y)
@@ -228,10 +229,11 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 				to_print += " (" + str(node_path[node_index]['names']) + "," + str(node_path[node_index]['properties']['name']) + ")"
 				if node_index < len(edge_path):
 					to_print += " -[" + str(edge_path[node_index]['type']) + "]-"
-			to_print += ". Distance (smaller is better): %f." % weights[path_ind]
+			#to_print += ". Distance (smaller is better): %f." % weights[path_ind]
+			to_print += ". Confidence (larger is better): %f." % (1-weights[path_ind]/float(len(edge_path)*max_gd*max_prob_weight))
 			print(to_print)
 	else:  # you want the result object model
-		response.add_neighborhood_graph(g.nodes(data=True), g.edges(data=True), confidence=None)
+		response.add_neighborhood_graph(g.nodes(data=True), g.edges(data=True), confidence=None)  # Adding the neighborhood graph
 		for path_ind in range(len(node_paths)):
 			# Format the free text portion
 			node_path = node_paths[path_ind]
@@ -241,7 +243,8 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 				to_print += " " + str(node_path[node_index]['properties']['name'])
 				if node_index < len(edge_path):
 					to_print += " -" + str(edge_path[node_index]['type']) + "->"
-			to_print += ". Distance (smaller is better): %f." % weights[path_ind]
+			#to_print += ". Distance (smaller is better): %f." % weights[path_ind]
+			to_print += ". Confidence (larger is better): %f." % (1-weights[path_ind]/float(len(edge_path)*max_gd*max_prob_weight))
 			# put the nodes/edges into a networkx graph
 			g = nx.Graph()
 			nodes_to_add = []
