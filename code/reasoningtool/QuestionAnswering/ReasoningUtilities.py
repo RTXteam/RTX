@@ -143,6 +143,26 @@ def get_node_labels():
 	return labels
 
 
+def get_rtx_name_from_property(property_value, property_name, label=None, debug=False):
+	"""
+	Get a node with property having value property_value
+	:param property_value: string
+	:param property_name: string (eg. name)
+	:return: string
+	"""
+	if label:
+		query = "match (n:%s{%s:'%s'}) return n.rtx_name" % (label, property_name, property_value)
+	else:
+		query = "match (n{%s:'%s'}) return n.rtx_name" % (property_name, property_value)
+	if debug:
+		return query
+	res = session.run(query)
+	res = [i for i in res]
+	if res:
+		return res[0]["n.rtx_name"]
+	else:
+		return None
+
 def get_name_to_description_dict(session=session):
 	"""
 	Create a dictionary of all nodes, keys being the names, items being the descriptions
@@ -348,6 +368,23 @@ def get_graph(res, directed=True, multigraph=False):
 		for rel in item['relationships']:
 			graph.add_edge(rel['startNode'], rel['endNode'], id=rel['id'], properties=rel['properties'], type=rel['type'])
 	return graph
+
+
+def get_graph_from_nodes(id_list, debug=False):
+	query = "match (n) where n.rtx_name in ["
+	for ID in id_list:
+		if ID != id_list[-1]:
+			query += " '%s'," % ID
+		else:
+			query += " '%s'] return n" % ID
+	if debug:
+		return query
+	else:
+		try:
+			graph = get_graph(cypher.run(query, conn=connection, config=defaults), directed=False)
+		except CustomExceptions.EmptyCypherError:
+			raise CustomExceptions.EmptyCypherError(query)
+		return graph
 
 
 # since multiple paths can connect two nodes, treat it as a Markov chain and compute the expected path length
@@ -564,14 +601,18 @@ def get_shortest_subgraph_between_nodes(source_name, source_label, target_name, 
 		return graph
 
 
-def get_node_as_graph(node_name, debug=False):
+def get_node_as_graph(node_name, debug=False, use_description=False):
 	"""
 	Get a node and return it as a networkx graph model
 	:param node_name: KG neo4j node name
 	:param debug: just return the cypher command
+	:param use_description: use the description of the node, not the name
 	:return: networkx graph
 	"""
-	query = "MATCH (n{rtx_name:'%s'}) return n" % node_name
+	if use_description:
+		query = "MATCH (n{name:'%s'}) return n" % node_name
+	else:
+		query = "MATCH (n{rtx_name:'%s'}) return n" % node_name
 	if debug:
 		return query
 
