@@ -35,6 +35,7 @@ class QueryUMLSSQL():
 			self.db.query(query)
 		except _mysql_exceptions.ProgrammingError:
 			print('MySQL error when handling the following query:')
+			print(query)
 			return None
 		r = self.db.store_result()
 		if r.num_rows() >0:
