@@ -228,7 +228,7 @@ class RTXFeedback:
     response.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
     response.datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    termsString = str(collections.OrderedDict(sorted(query["terms"].items(), key=lambda t: t[0])))
+    termsString = stringifyDict(query["terms"])
     storedResponse = Response(response_datetime=datetime.now(),restated_question=response.restated_question_text,query_type=query["known_query_type_id"],
       terms=termsString,tool_version=rtxConfig.version,result_code=response.result_code,message=response.message,n_results=n_results,response_object=pickle.dumps(ast.literal_eval(repr(response))))
     session.add(storedResponse)
@@ -325,7 +325,7 @@ class RTXFeedback:
     session = self.session
     rtxConfig = RTXConfiguration()
     tool_version = rtxConfig.version
-    termsString = str(collections.OrderedDict(sorted(query["terms"].items(), key=lambda t: t[0])))
+    termsString = stringifyDict(query["terms"])
 
     #### Look for previous responses we could use
     storedResponse = session.query(Response).filter(Response.query_type==query["known_query_type_id"]).filter(Response.tool_version==tool_version).filter(Response.terms==termsString).order_by(desc(Response.response_datetime)).first()
@@ -512,11 +512,22 @@ class RTXFeedback:
 
 
 
-############################################ General function for converting a query row into a dict ###############################################
+############################################ General functions ###############################################
 #### Turn a row into a dict
 def object_as_dict(obj):
   return {c.key: getattr(obj, c.key)
     for c in inspect(obj).mapper.column_attrs}
+
+#### convert a dict into a string in guaranteed repeatable order i.e. sorted
+def stringifyDict(inputDict):
+  outString = "{"
+  for key,value in sorted(inputDict.items(), key=lambda t: t[0]):
+    if outString != "{":
+      outString += ","
+    outString += "'"+str(key)+"':'"+str(value)+"'"
+  outString += "}"
+  return(outString)
+
 
 
 #### If this class is run from the command line, perform a short little test to see if it is working correctly
