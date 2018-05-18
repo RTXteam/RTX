@@ -49,3 +49,21 @@ class QueryCOHDTestCases(TestCase):
         # wrong parameter format
         result = QueryCOHD.get_individual_concept_freq(2008271)
         self.assertIsNone(result)
+
+    def test_get_associated_concept_domain_freq(self):
+        result = QueryCOHD.get_associated_concept_domain_freq('192855', 'drug')
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0]['concept_frequency'], 0.0000713065059493082)
+        self.assertEqual(len(result), 358)
+
+        # wrong concept ID
+        result = QueryCOHD.get_associated_concept_domain_freq("0", "drug")
+        self.assertEqual(result, [])
+
+        # wrong domain
+        result = QueryCOHD.get_associated_concept_domain_freq("192855", "dru")
+        self.assertEqual(result, [])
+
+        # wrong parameter format
+        result = QueryCOHD.get_associated_concept_domain_freq(192855, "drug")
+        self.assertEqual(result, [])

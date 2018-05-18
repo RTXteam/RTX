@@ -75,6 +75,38 @@ obtain a "co-occurrence" probability between any two terms in medical records.
                 'concept_frequency': 0.0003831786451275983
             }
 
+*   get_associated_concept_domain_freq(concept_id, domain)
+
+    Description:
+        Retrieves observed clinical frequencies of all pairs of concepts given a concept id restricted by domain of
+        the associated concept_id
+
+    Args:
+        concept_id (str): an OMOP id, e.g., "192855"
+        domain (str): An OMOP domain id, e.g., "Condition", "Drug", "Procedure", etc.
+
+    Returns:
+        array: an array which contains frequency dictionaries, or an empty array if no data obtained
+
+        example:
+        [
+            {
+                "associated_concept_id": 19041324,
+                "associated_concept_name": "Acetaminophen 325 MG Oral Tablet [Tylenol]",
+                "concept_count": 380,
+                "concept_frequency": 0.0000713065059493082,
+                "concept_id": 192855
+            },
+            {
+                "associated_concept_id": 40231925,
+                "associated_concept_name": "Acetaminophen 325 MG / Oxycodone Hydrochloride 5 MG Oral Tablet",
+                "concept_count": 356,
+                "concept_frequency": 0.0000668029371525098,
+                "concept_id": 192855
+            }
+        ]
+
+
 Test Cases in
     [repo]/code/reasoningtool/kg-construction/tests/QueryCOHDTests.py
 
@@ -90,24 +122,27 @@ __email__ = ''
 __status__ = 'Prototype'
 
 import requests
+import requests_cache
 import sys
 import urllib.parse
-import json
 
+# configure requests package to use the "orangeboard.sqlite" cache
+requests_cache.install_cache('orangeboard')
 
 class QueryCOHD:
     TIMEOUT_SEC = 120
     API_BASE_URL = 'http://cohd.nsides.io/api/v1'
     HANDLER_MAP = {
-        'find_concept_id':             'omop/findConceptIDs',
-        'get_paired_concept_freq':     'frequencies/pairedConceptFreq',
-        'get_individual_concept_freq': 'frequencies/singleConceptFreq'
+        'find_concept_id':                      'omop/findConceptIDs',
+        'get_paired_concept_freq':              'frequencies/pairedConceptFreq',
+        'get_individual_concept_freq':          'frequencies/singleConceptFreq',
+        'get_associated_concept_domain_freq':   '/frequencies/associatedConceptDomainFreq'
     }
 
     @staticmethod
     def __access_api(handler, url_suffix):
         
-        url = QueryCOHD.API_BASE_URL + '/' + handler + '?q=' + url_suffix
+        url = QueryCOHD.API_BASE_URL + '/' + handler + '?' + url_suffix
         
         try:
             res = requests.get(url, timeout=QueryCOHD.TIMEOUT_SEC)
@@ -133,7 +168,7 @@ class QueryCOHD:
         if not isinstance(node_label, str):
             return None
         handler = QueryCOHD.HANDLER_MAP['find_concept_id']
-        url_suffix = urllib.parse.quote_plus(node_label)
+        url_suffix = "q=" + urllib.parse.quote_plus(node_label)
         res_json = QueryCOHD.__access_api(handler, url_suffix)
         results_list = list()
         if res_json is not None:
@@ -151,8 +186,7 @@ class QueryCOHD:
         if not isinstance(concept_id1, str) or not isinstance(concept_id2, str):
             return None
         handler = QueryCOHD.HANDLER_MAP['get_paired_concept_freq']
-        url_suffix = urllib.parse.quote_plus(concept_id1 + ',' +
-                                             concept_id2)
+        url_suffix = "q=" + urllib.parse.quote_plus(concept_id1 + ',' + concept_id2)
         res_json = QueryCOHD.__access_api(handler, url_suffix)
         results_dict = None
         if res_json is not None:
@@ -170,7 +204,7 @@ class QueryCOHD:
         if not isinstance(concept_id, str):
             return None
         handler = QueryCOHD.HANDLER_MAP['get_individual_concept_freq']
-        url_suffix = urllib.parse.quote_plus(concept_id)
+        url_suffix = "q=" + urllib.parse.quote_plus(concept_id)
         res_json = QueryCOHD.__access_api(handler, url_suffix)
         results_dict = None
         if res_json is not None:
@@ -180,7 +214,22 @@ class QueryCOHD:
                 del results_dict['concept_id']
         return results_dict
 
+
+    @staticmethod
+    def get_associated_concept_domain_freq(concept_id, domain):
+        if not isinstance(concept_id, str) or not isinstance(domain, str):
+            return []
+        handler = QueryCOHD.HANDLER_MAP['get_associated_concept_domain_freq']
+        url_suffix = 'concept_id=' + concept_id + '&domain=' + domain
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
+
+
 if __name__ == '__main__':
     print(QueryCOHD.find_concept_ids("cancer"))
     print(QueryCOHD.get_paired_concept_freq('192855', '2008271'))
     print(QueryCOHD.get_individual_concept_freq('2008271'))
+    print(QueryCOHD.get_associated_concept_domain_freq('192855', 'drug'))
