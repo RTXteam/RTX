@@ -118,6 +118,13 @@ class CommonlyTreatsSolution:
 				if id_to_KG_name[id] is not None:
 					KG_names.append(id_to_KG_name[id])
 
+			if not KG_names:
+				error_message = "Sorry, Columbia Open Health Data has no data on the use of %s" % drug_description
+				error_code = "EmptyResult"
+				response.add_error_message(error_code, error_message)
+				response.print()
+				return 1
+
 			all_conditions_graph = RU.get_graph_from_nodes(KG_names)
 
 			# Get the info of the mapped nodes
@@ -130,7 +137,7 @@ class CommonlyTreatsSolution:
 			# for each condition, return the results (with the nice sub-graph if the cohd id's were mapped)
 			for id in ids_sorted_top_n:
 				if id_to_KG_name[id] is not None:
-					to_print = "According to the Columbia Open Health Data, %s treats the condition %s with frequency " \
+					to_print = "According to the Columbia Open Health Data, %s is used to treat patients with the condition %s with frequency " \
 							   "%f out of all patients treated with %s (count=%d)." % (
 					drug_description, id_to_name[id], id_to_frequency[id], drug_description, id_to_count[id])
 					nodes = []
@@ -147,7 +154,7 @@ class CommonlyTreatsSolution:
 							'type': 'treats'})]
 					response.add_subgraph(nodes, edges, to_print, id_to_frequency[id])
 				else:
-					to_print = "According to the Columbia Open Health Data, %s treats the condition %s with frequency " \
+					to_print = "According to the Columbia Open Health Data, %s is used to treat patients with the condition %s with frequency " \
 							"%f out of all patients treated with %s (count=%d). This condition is not in our " \
 							"Knowledge graph, so no graph is shown." % (
 						drug_description, id_to_name[id], id_to_frequency[id], drug_description, id_to_count[id])
