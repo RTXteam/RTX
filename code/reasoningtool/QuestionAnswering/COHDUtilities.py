@@ -76,7 +76,7 @@ class COHDUtilities:
 			total_associated_condition_counts += result_dict[id]['concept_count']
 
 		for id in result_dict:
-			result_dict[id]['concept_frequency'] /= float(total_associated_condition_counts)
+			result_dict[id]['concept_frequency'] = result_dict[id]['concept_count'] / float(total_associated_condition_counts)
 
 		return result_dict
 

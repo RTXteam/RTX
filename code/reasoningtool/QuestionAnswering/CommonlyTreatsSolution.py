@@ -110,7 +110,7 @@ class CommonlyTreatsSolution:
 							'relation': 'treats',
 							'seed_node_uuid': '-1',
 							'source_node_uuid': drug_node_info['properties']['UUID'],
-							'target_node_uuid': drug_node_info['properties']['UUID']},
+							'target_node_uuid': disease_node_info['properties']['UUID']},
 							'type': 'treats'})]
 					response.add_subgraph(nodes, edges, to_print, disease_frequency)
 				else:
