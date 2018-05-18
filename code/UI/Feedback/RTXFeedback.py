@@ -12,6 +12,7 @@ import ast
 from datetime import datetime
 import pickle
 import hashlib
+import collections
 
 from sqlalchemy import Column, ForeignKey, Integer, Float, String, DateTime, Text, PickleType, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
@@ -227,8 +228,9 @@ class RTXFeedback:
     response.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
     response.datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    termsString = stringifyDict(query["terms"])
     storedResponse = Response(response_datetime=datetime.now(),restated_question=response.restated_question_text,query_type=query["known_query_type_id"],
-      terms=str(query["terms"]),tool_version=rtxConfig.version,result_code=response.result_code,message=response.message,n_results=n_results,response_object=pickle.dumps(ast.literal_eval(repr(response))))
+      terms=termsString,tool_version=rtxConfig.version,result_code=response.result_code,message=response.message,n_results=n_results,response_object=pickle.dumps(ast.literal_eval(repr(response))))
     session.add(storedResponse)
     session.flush()
     response.id = "http://rtx.ncats.io/api/rtx/v1/response/"+str(storedResponse.response_id)
@@ -323,8 +325,10 @@ class RTXFeedback:
     session = self.session
     rtxConfig = RTXConfiguration()
     tool_version = rtxConfig.version
+    termsString = stringifyDict(query["terms"])
+
     #### Look for previous responses we could use
-    storedResponse = session.query(Response).filter(Response.query_type==query["known_query_type_id"]).filter(Response.tool_version==tool_version).filter(Response.terms==str(query["terms"])).order_by(desc(Response.response_datetime)).first()
+    storedResponse = session.query(Response).filter(Response.query_type==query["known_query_type_id"]).filter(Response.tool_version==tool_version).filter(Response.terms==termsString).order_by(desc(Response.response_datetime)).first()
     if ( storedResponse is not None ):
       return pickle.loads(storedResponse.response_object)
     return
@@ -508,11 +512,22 @@ class RTXFeedback:
 
 
 
-############################################ General function for converting a query row into a dict ###############################################
+############################################ General functions ###############################################
 #### Turn a row into a dict
 def object_as_dict(obj):
   return {c.key: getattr(obj, c.key)
     for c in inspect(obj).mapper.column_attrs}
+
+#### convert a dict into a string in guaranteed repeatable order i.e. sorted
+def stringifyDict(inputDict):
+  outString = "{"
+  for key,value in sorted(inputDict.items(), key=lambda t: t[0]):
+    if outString != "{":
+      outString += ","
+    outString += "'"+str(key)+"':'"+str(value)+"'"
+  outString += "}"
+  return(outString)
+
 
 
 #### If this class is run from the command line, perform a short little test to see if it is working correctly
