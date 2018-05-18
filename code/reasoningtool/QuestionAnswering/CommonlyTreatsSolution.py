@@ -78,30 +78,63 @@ class CommonlyTreatsSolution:
 				to_print += "condition: %s\t count %d \t frequency %f \n" % (conditions_treated[id]['associated_concept_name'], conditions_treated[id]['concept_count'], conditions_treated[id]['concept_frequency'])
 			print(to_print)
 		else:
-			for id in ids_sorted_top_n:
-				disease_name = conditions_treated[id]['associated_concept_name']
-				disease_count = conditions_treated[id]['concept_count']
-				disease_frequency = conditions_treated[id]['concept_frequency']
-				in_graph = False
-				if RU.node_exists_with_property(disease_name, 'name'):
-					disease_as_graph = RU.get_node_as_graph(disease_name, use_description=True)
-					disease_properties = list(nx.get_node_attributes(disease_as_graph, 'properties').values())[0]
-					disease_id = disease_properties['rtx_name']
-					in_graph = True
-				elif RU.node_exists_with_property(disease_name.lower(), 'name'):
-					disease_as_graph = RU.get_node_as_graph(disease_name.lower(), use_description=True)
-					disease_properties = list(nx.get_node_attributes(disease_as_graph, 'properties').values())[0]
-					disease_id = disease_properties['rtx_name']
-					in_graph = True
+			#  otherwise, you want a JSON output
+			#  Attempt to map the COHD names to the KG (this takes some time)l. TODO: find further speed improvements
+			drug_as_graph = RU.get_node_as_graph(drug_id)
+			drug_node_info = drug_as_graph.nodes(data=True)[0][1]
+			id_to_KG_name = dict()
+			id_to_name = dict()
+			id_to_count = dict()
+			id_to_frequency = dict()
+			rtx_name_to_id = dict()
 
-				if in_graph:
+			# Map ID's to all relevant values
+			for id in ids_sorted_top_n:
+				id_to_name[id] = conditions_treated[id]['associated_concept_name']
+				id_to_count[id] = conditions_treated[id]['concept_count']
+				id_to_frequency[id] = conditions_treated[id]['concept_frequency']
+				id_to_KG_name[id] = None
+				try:
+					id_to_KG_name[id] = RU.get_rtx_name_from_property(id_to_name[id], 'name', label="phenotypic_feature")
+					rtx_name_to_id[id_to_KG_name[id]] = id
+				except:
+					try:
+						id_to_KG_name[id] = RU.get_rtx_name_from_property(id_to_name[id], 'name', label="disease")
+						rtx_name_to_id[id_to_KG_name[id]] = id
+					except:
+						try:
+							id_to_KG_name[id] = RU.get_rtx_name_from_property(id_to_name[id].lower(), 'name', label="phenotypic_feature")
+							rtx_name_to_id[id_to_KG_name[id]] = id
+						except:
+							try:
+								id_to_KG_name[id] = RU.get_rtx_name_from_property(id_to_name[id].lower(), 'name', label="disease")
+								rtx_name_to_id[id_to_KG_name[id]] = id
+							except:
+								pass
+
+			# get the graph (one call) of all the nodes that wer mapped
+			KG_names = []
+			for id in ids_sorted_top_n:
+				if id_to_KG_name[id] is not None:
+					KG_names.append(id_to_KG_name[id])
+
+			all_conditions_graph = RU.get_graph_from_nodes(KG_names)
+
+			# Get the info of the mapped nodes
+			id_to_info = dict()
+			for u, data in all_conditions_graph.nodes(data=True):
+				rtx_name = data['properties']['rtx_name']
+				id = rtx_name_to_id[rtx_name]
+				id_to_info[id] = data
+
+			# for each condition, return the results (with the nice sub-graph if the cohd id's were mapped)
+			for id in ids_sorted_top_n:
+				if id_to_KG_name[id] is not None:
 					to_print = "According to the Columbia Open Health Data, %s treats the condition %s with frequency " \
 							   "%f out of all patients treated with %s (count=%d)." % (
-					drug_description, disease_name, disease_frequency, drug_description, disease_count)
-					drug_as_graph = RU.get_node_as_graph(drug_id)
+					drug_description, id_to_name[id], id_to_frequency[id], drug_description, id_to_count[id])
 					nodes = []
-					disease_node_info = disease_as_graph.nodes(data=True)[0][1]
-					drug_node_info = drug_as_graph.nodes(data=True)[0][1]
+					disease_node_info = id_to_info[id]
 					nodes.append((2, disease_node_info))
 					nodes.append((1, drug_node_info))
 					edges = [(1, 2, {'id': 3, 'properties': {'is_defined_by': 'RTX',
@@ -112,14 +145,14 @@ class CommonlyTreatsSolution:
 							'source_node_uuid': drug_node_info['properties']['UUID'],
 							'target_node_uuid': disease_node_info['properties']['UUID']},
 							'type': 'treats'})]
-					response.add_subgraph(nodes, edges, to_print, disease_frequency)
+					response.add_subgraph(nodes, edges, to_print, id_to_frequency[id])
 				else:
 					to_print = "According to the Columbia Open Health Data, %s treats the condition %s with frequency " \
-							   "%f out of all patients treated with %s (count=%d). This condition is not in our " \
-							   "Knowledge graph, so no graph is shown." % (
-								   drug_description, disease_name, disease_frequency, drug_description, disease_count)
+							"%f out of all patients treated with %s (count=%d). This condition is not in our " \
+							"Knowledge graph, so no graph is shown." % (
+						drug_description, id_to_name[id], id_to_frequency[id], drug_description, id_to_count[id])
 					g = RU.get_node_as_graph(drug_id)
-					response.add_subgraph(g.nodes(data=True), g.edges(data=True), to_print, disease_frequency)
+					response.add_subgraph(g.nodes(data=True), g.edges(data=True), to_print, id_to_frequency[id])
 			response.print()
 
 	@staticmethod
@@ -137,7 +170,7 @@ def main():
 	parser.add_argument('-c', '--conservative', action='store_true', help="Include if you want exact matches to drug name (so excluding combo drugs)")
 	parser.add_argument('-j', '--json', action='store_true', help='Flag specifying that results should be printed in JSON format (to stdout)', default=False)
 	parser.add_argument('--describe', action='store_true', help='Print a description of the question to stdout and quit', default=False)
-	parser.add_argument('--num_show', type=int, help='Maximum number of results to return', default=50)
+	parser.add_argument('--num_show', type=int, help='Maximum number of results to return', default=20)
 
 	# Parse and check args
 	args = parser.parse_args()
@@ -156,8 +189,8 @@ def main():
 		res = Q.describe()
 		print(res)
 	else:
-		Q.answer(drug_id, use_json=use_json, num_show=num_show, rev=not(is_rare), conservative=is_conservative)
-
+		#Q.answer(drug_id, use_json=use_json, num_show=num_show, rev=not(is_rare), conservative=is_conservative)
+		Q.answer(drug_id, use_json=True, num_show=num_show, rev=not (is_rare), conservative=is_conservative)
 
 if __name__ == "__main__":
 	main()
