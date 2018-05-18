@@ -42,7 +42,7 @@ function sendQuestion(e) {
     // collect the form data while iterating over the inputs
     var data = { 'text': document.getElementById("questionForm").elements["questionText"].value, 'language': 'English', 'bypass_cache' : bypass_cache };
     document.getElementById("statusdiv").innerHTML = "Interpreting your question...";
-    document.getElementById("statusdiv").innerHTML+= " (bypassing cache : " + bypass_cache + ")";
+    document.getElementById("devdiv").innerHTML = " (bypassing cache : " + bypass_cache + ")";
 
     sesame('openmax',statusdiv);
 
@@ -57,7 +57,7 @@ function sendQuestion(e) {
     xhr.onloadend = function() {
 	if ( xhr.status == 200 ) {
 	    var jsonObj = JSON.parse(xhr.responseText);
-	    document.getElementById("devdiv").innerHTML = "<PRE>\n" + JSON.stringify(jsonObj,null,2) + "</PRE>";
+	    document.getElementById("devdiv").innerHTML += "<PRE>\n" + JSON.stringify(jsonObj,null,2) + "</PRE>";
 
 	    if ( jsonObj.known_query_type_id && jsonObj.terms ) {
 		document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR>Looking for answer...";
@@ -411,7 +411,7 @@ function insert_feedback_item(el_id, feed_obj) {
     var pex = feed_obj.expertise_level_id;
     var pxl = (pex==1) ? "p9" : (pex==2) ? "p7" : (pex==3) ? "p5" : (pex==4) ? "p3" : "p1";
 
-    document.getElementById(el_id).innerHTML += "<table><tr><td><b>Rating:</b></td><td style='width:100%'><span class='"+pcl+" frating' title='" + fb_ratings[feed_obj.rating_id].desc +  "'>" + fb_ratings[feed_obj.rating_id].tag + "</u><i class='tiny' style='float:right'>" + feed_obj.datetime + "</i></td></tr><tr><td><b>Commenter:</b></td><td>"+feed_obj.commenter_full_name+" <span class='"+pxl+" tiny explevel' title='" + fb_explvls[feed_obj.expertise_level_id].tag + " :: " + fb_explvls[feed_obj.expertise_level_id].desc + "'>&nbsp;</span></td></tr><tr><td><b>Comment:</b></td><td>" + feed_obj.comment + "</td></tr></table><hr>";
+    document.getElementById(el_id).innerHTML += "<table><tr><td><b>Rating:</b></td><td style='width:100%'><span class='"+pcl+" frating' title='" + fb_ratings[feed_obj.rating_id].desc +  "'>" + fb_ratings[feed_obj.rating_id].tag + "</span>&nbsp;<span class='tiny'>by <b>" + feed_obj.commenter_full_name + "</b> <span class='"+pxl+" explevel' title='" + fb_explvls[feed_obj.expertise_level_id].tag + " :: " + fb_explvls[feed_obj.expertise_level_id].desc + "'>&nbsp;</span></span><i class='tiny' style='float:right'>" + feed_obj.datetime + "</i></td></tr><tr><td><b>Comment:</b></td><td>" + feed_obj.comment + "</td></tr></table><hr>";
 
 }
 
@@ -502,4 +502,13 @@ function getCookie(cname) {
 	if (c.indexOf(name)==0) return c.substring(name.length,c.length);
     }
     return "";
+}
+
+function togglecolor(obj,tid) {
+    var col = '#888';
+    if (obj.checked == true) {
+	col = '#047';
+    }
+    document.getElementById(tid).style.color = col;
+
 }

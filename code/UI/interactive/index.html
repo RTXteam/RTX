@@ -41,9 +41,9 @@
 <input type="text" class="questionBox" id="questionText" name="questionText" size="100" maxlength="1000"/>
 <input type="button" class="questionBox button" name="action" value="ASK" onClick="javascript:sendQuestion();"/>
 <br>
-<label class="tiny">
+<label id="useCacheText" class="tiny blue">
   <span class="switch">
-    <input id="useCache" type="checkbox" checked="checked">
+    <input id="useCache" type="checkbox" checked="checked" onchange="togglecolor(this,'useCacheText');">
     <span class="slider"></span>
   </span>
 Use cache</label>
