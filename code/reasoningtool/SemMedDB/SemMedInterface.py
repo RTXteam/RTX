@@ -173,6 +173,7 @@ class SemMedInterface():
 		else: 
 			cuis = None
 		if cuis is None:
+			name = name.replace("'", "")
 			name_list = name.lower().split(' ')
 			if len(name_list) > 1:
 				cuis = self.umls.get_cui_cloud_for_multiple_words(name_list)
@@ -241,10 +242,18 @@ class SemMedInterface():
 		cuis = self.get_cui_for_id(curie_id, mesh_flag)
 		df = None
 		if cuis is not None:
-			dfs = [None]*len(cuis)
+			dfs = [None]*2*len(cuis)
 			c=0
 			for cui in cuis:
-				dfs[c] = self.smdb.get_edges_for_cui(cui, predicate = predicate)
+				dfs[c] = self.smdb.get_edges_for_subject_cui(cui, predicate = predicate)
+				if dfs[c] is not None:
+					dfs.insert(0,'SUBJECT_INPUT', [name]*len(df))
+					df['OBJECT_INPUT'] = ['nan']*len(df)
+				c+=1
+				dfs[c] = self.smdb.get_edges_for_object_cui(cui, predicate = predicate)
+				if dfs[c] is not None:
+					dfs.insert(0,'SUBJECT_INPUT', ['nan']*len(df))
+					df['OBJECT_INPUT'] = [name]*len(df)
 				c+=1
 			try:
 				df = pandas.concat([x for x in dfs if x is not None],ignore_index=True)
@@ -257,8 +266,15 @@ class SemMedInterface():
 					dfs = [None]*len(cuis)
 					c=0
 					for cui in cuis:
-						dfs[c] = self.smdb.get_edges_for_cui(cui, predicate = predicate)
+						dfs[c] = self.smdb.get_edges_for_subject_cui(cui, predicate = predicate)
+						if dfs[c] is not None:
+							dfs[c].insert(0,'SUBJECT_INPUT', [name]*len(dfs[c]))
+							dfs[c]['OBJECT_INPUT'] = ['nan']*len(dfs[c])
 						c+=1
+						dfs[c] = self.smdb.get_edges_for_object_cui(cui, predicate = predicate)
+						if dfs[c] is not None:
+							dfs[c].insert(0,'SUBJECT_INPUT', ['nan']*len(dfs[c]))
+							dfs[c]['OBJECT_INPUT'] = [name]*len(dfc[c])
 					try:
 						df = pandas.concat([x for x in dfs if x is not None],ignore_index=True)
 					except ValueError:
@@ -391,12 +407,21 @@ class SemMedInterface():
 			for subj_cui in subj_cuis:
 				for obj_cui in obj_cuis:
 					if bidirectional:
-						edges = self.smdb.get_edges_between_nodes(subj_cui, obj_cui, predicate = predicate, result_col = result_col)
+						edges = self.smdb.get_edges_between_subject_object(subj_cui, obj_cui, predicate = predicate, result_col = result_col)
+						edges2 = self.smdb.get_edges_between_subject_object(obj_cui, subj_cui, predicate = predicate, result_col = result_col)
 						if edges is not None:
+							edges.insert(0,'SUBJECT_INPUT', [subj_name]*len(edges))
+							edges['OBJECT_INPUT'] = [obj_name]*len(edges)
 							dfs.append(edges)
+						if edges2 is not None:
+							edges2.insert(0,'SUBJECT_INPUT', [obj_name]*len(edges2))
+							edges2['OBJECT_INPUT'] = [subj_name]*len(edges2)
+							dfs.append(edges2)
 					else:
 						edges = self.smdb.get_edges_between_subject_object(subj_cui, obj_cui, predicate = predicate, result_col = result_col)
 						if edges is not None:
+							edges.insert(0,'SUBJECT_INPUT', [subj_name]*len(edges))
+							edges['OBJECT_INPUT'] = [obj_name]*len(edges)
 							dfs.append(edges)
 			try:
 				df = pandas.concat(dfs,ignore_index=True).drop_duplicates()
@@ -430,6 +455,71 @@ class SemMedInterface():
 				except ValueError:
 					df = None
 		return df
+
+	def get_node_info(self, constraints, output, bidirectional = False):
+		'''
+		This finds a node in SemMedDB using a dict of constraints and then return requested output.
+		Params:
+			* contraints = a dict containing the contraints you wish to find the node with. All values should be strings e.g. {'field': 'value'}
+			* output a list of fields you wish to retrieve\
+		Avalable feilds for constaints and outputs :
+			* 'PMID'
+			* 'SUBJECT_CUI'
+			* 'SUBJECT_NAME'
+			* 'SUBJECT_SEMTYPE'
+			* 'OBJECT_CUI'
+			* 'OBJECT_NAME'
+			* 'OBJECT_SEMTYPE'
+			* 'PREDICATE'
+		'''
+		keys = [
+			'PMID', 
+			'SUBJECT_CUI', 
+			'SUBJECT_NAME', 
+			'SUBJECT_SEMTYPE',
+			'OBJECT_CUI',
+			'OBJECT_NAME',
+			'OBJECT_SEMTYPE',
+			'PREDICATE']
+
+		output = [x.upper() for x in output]
+		constraints = {x.upper(): v for x, v in constraints.items()}
+		inputKeys = list(constraints.keys())
+
+		assert type(constraints) == dict and type(output) == list
+		if not set(inputKeys) < set(keys):
+			print('Invalid field inputs in constraints argument: ' + ', '.join(list(set(inputKeys) - set(keys))))
+			print('Valid fields are the following:')
+			print(', '.join(keys))
+			return None
+		if not set(output) < set(keys):
+			print('Invalid field inputs in output argument: ' + ', '.join(list(set(output) - set(keys))))
+			print('Valid fields are the following:')
+			print(', '.join(keys))
+			return None
+		query = 'select distinct ' + ', '.join(output) + ' from SPLIT_PREDICATION where '
+		for key in inputKeys:
+			query += key + " = '" + constraints[key].replace("'", '') + "' and "
+		query = query[:-5]
+		print(query)
+		df = self.smdb.get_dataframe_from_db(query)
+		df2 = None
+		if bidirectional:
+			query_list = query.split(' ')
+			for a in range(len(query_list)):
+				if 'OBJECT' in query_list[a]:
+					query_list[a] = query_list[a].replace('OBJECT', 'SUBJECT')
+				elif 'SUBJECT' in query_list[a]:
+					query_list[a] = query_list[a].replace('SUBJECT', 'OBJECT')
+			query2 = ' '.join(query_list)
+			print(query2)
+			df2 = self.smdb.get_dataframe_from_db(query2)
+		if df2 is None:
+			return df
+		elif df is None:
+			return df2
+		else:
+			return pandas.concat([df,df2], ignore_index = True)
 
 
 if __name__ == '__main__':
