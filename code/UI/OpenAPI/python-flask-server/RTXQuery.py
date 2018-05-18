@@ -61,6 +61,7 @@ class RTXQuery:
       apiResponse = Response().from_dict(cachedResponse)
       rtxFeedback.disconnect()
       self.limitResponse(apiResponse,query)
+      self.logQuery(query,apiResponse)
       return apiResponse
 
     #### Still have special handling for Q0
@@ -73,7 +74,7 @@ class RTXQuery:
         response.restated_question_text = query["restated_question"]
       id = response.id
       codeString = response.result_code
-      self.logQuery(id,codeString,terms)
+      self.logQuery(query,response)
       rtxFeedback.addNewResponse(response,query)
       rtxFeedback.disconnect()
       self.limitResponse(response,query)
@@ -114,7 +115,7 @@ class RTXQuery:
         response.restated_question_text = query["restated_question"]
 
       #### Log the result and return the Response object
-      self.logQuery(response.id,response.result_code,terms)
+      self.logQuery(query,response)
       rtxFeedback.addNewResponse(response,query)
       rtxFeedback.disconnect()
 
@@ -131,12 +132,28 @@ class RTXQuery:
     return(response)
 
 
-  def logQuery(self,id,codeString,terms):
+  def logQuery(self,query,response):
     datetimeString = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    if id == None:
-      id = '000'
+
+    if "known_query_type_id" not in query or query["known_query_type_id"] is None:
+      id = "?"
+    else:
+      id = query['known_query_type_id']
+
+    if "terms" not in query or query['terms'] is None:
+      terms = "{}"
+    else:
+      terms = repr(query['terms'])
+
+    if "restated_question" not in query or query["restated_question"] is None:
+      restated_question = ""
+    else:
+      restated_question = query["restated_question"]
+
+    response_code = response.result_code
+
     with open(os.path.dirname(os.path.abspath(__file__))+"/RTXQueries.log","a") as logfile:
-      logfile.write(datetimeString+"\t"+codeString+"\t"+id+"\t"+",".join(terms)+"\n")
+      logfile.write(datetimeString+"\t"+response_code+"\t"+id+"\t"+terms+"\t"+restated_question+"\n")
 
 
   def limitResponse(self,response,query):
