@@ -11,7 +11,7 @@ except ImportError:
 	import ReasoningUtilities as RU
 
 import FormatOutput
-
+import networkx as nx
 try:
 	from QueryCOHD import QueryCOHD
 except ImportError:
@@ -85,12 +85,41 @@ class CommonlyTreatsSolution:
 				in_graph = False
 				if RU.node_exists_with_property(disease_name, 'name'):
 					disease_as_graph = RU.get_node_as_graph(disease_name, use_description=True)
+					disease_properties = list(nx.get_node_attributes(disease_as_graph, 'properties').values())[0]
+					disease_id = disease_properties['rtx_name']
+					in_graph = True
+				elif RU.node_exists_with_property(disease_name.lower(), 'name'):
+					disease_as_graph = RU.get_node_as_graph(disease_name.lower(), use_description=True)
+					disease_properties = list(nx.get_node_attributes(disease_as_graph, 'properties').values())[0]
+					disease_id = disease_properties['rtx_name']
+					in_graph = True
 
-			for node, freq in node_freq_tuples_sorted_top_n:
-				to_print = "According to the Columbia Open Health Data, %s has the phenotype %s with frequency %f." % (disease_description, descriptions[node], freq)
-				sub_g = nx.subgraph(g, [disease_node, node])
-				# add it to the response
-				response.add_subgraph(sub_g.nodes(data=True), sub_g.edges(data=True), to_print, freq)
+				if in_graph:
+					to_print = "According to the Columbia Open Health Data, %s treats the condition %s with frequency " \
+							   "%f out of all patients treated with %s (count=%d)." % (
+					drug_description, disease_name, disease_frequency, drug_description, disease_count)
+					drug_as_graph = RU.get_node_as_graph(drug_id)
+					nodes = []
+					disease_node_info = disease_as_graph.nodes(data=True)[0][1]
+					drug_node_info = drug_as_graph.nodes(data=True)[0][1]
+					nodes.append((2, disease_node_info))
+					nodes.append((1, drug_node_info))
+					edges = [(1, 2, {'id': 3, 'properties': {'is_defined_by': 'RTX',
+							'predicate': 'treats',
+							'provided_by': 'COHD',
+							'relation': 'treats',
+							'seed_node_uuid': '-1',
+							'source_node_uuid': drug_node_info['properties']['UUID'],
+							'target_node_uuid': drug_node_info['properties']['UUID']},
+							'type': 'treats'})]
+					response.add_subgraph(nodes, edges, to_print, disease_frequency)
+				else:
+					to_print = "According to the Columbia Open Health Data, %s treats the condition %s with frequency " \
+							   "%f out of all patients treated with %s (count=%d). This condition is not in our " \
+							   "Knowledge graph, so no graph is shown." % (
+								   drug_description, disease_name, disease_frequency, drug_description, disease_count)
+					g = RU.get_node_as_graph(drug_id)
+					response.add_subgraph(g.nodes(data=True), g.edges(data=True), to_print, disease_frequency)
 			response.print()
 
 	@staticmethod
