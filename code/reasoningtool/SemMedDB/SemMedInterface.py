@@ -502,6 +502,8 @@ class SemMedInterface():
 			query += key + " = '" + constraints[key].replace("'", '') + "' and "
 		query = query[:-5]
 		df = self.smdb.get_dataframe_from_db(query)
+		if df is not None and bidirectional:
+			df['ORIENTATION'] = ['original']*len(df)
 		df2 = None
 		if bidirectional:
 			query_list = query.split(' ')
@@ -512,6 +514,8 @@ class SemMedInterface():
 					query_list[a] = query_list[a].replace('SUBJECT', 'OBJECT')
 			query2 = ' '.join(query_list)
 			df2 = self.smdb.get_dataframe_from_db(query2)
+			if df2 is not None:
+				df['ORIENTATION'] = ['inverted']*len(df)
 		if df2 is None:
 			return df
 		elif df is None:

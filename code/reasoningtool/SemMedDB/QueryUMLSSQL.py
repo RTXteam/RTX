@@ -9,6 +9,7 @@ __status__ = 'Prototype'
 
 import _mysql
 import pandas as pd
+import _mysql_exceptions
 
 
 class QueryUMLSSQL():
@@ -30,7 +31,12 @@ class QueryUMLSSQL():
 		params:
 			query = a string containing the mysql query
 		'''
-		self.db.query(query)
+		try:
+			self.db.query(query)
+		except _mysql_exceptions.ProgrammingError:
+			print('MySQL error when handling the following query:')
+			print(query)
+			return None
 		r = self.db.store_result()
 		if r.num_rows() >0:
 			names = [i[0] for i in r.describe()]
