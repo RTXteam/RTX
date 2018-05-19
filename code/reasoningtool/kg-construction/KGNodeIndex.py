@@ -5,6 +5,7 @@
 import os
 import sys
 import re
+import timeit
 
 from sqlalchemy import Column, String, Integer
 from sqlalchemy.ext.declarative import declarative_base
@@ -18,7 +19,7 @@ class KGNode(Base):
   __tablename__ = 'kgnode'
   kgnode_id = Column(Integer, primary_key=True)
   curie = Column(String(255), nullable=False)
-  name = Column(String(255), nullable=False)
+  name = Column(String(255), nullable=False, index=True)
   type = Column(String(255), nullable=False)
 
 #### Main class
@@ -63,7 +64,7 @@ class KGNodeIndex:
     self._databaseName = databaseName
 
 
-  #### Delete and create the RTXFeedback SQLite database. Careful!
+  #### Delete and create the SQLite database. Careful!
   def createDatabase(self):
     if os.path.exists(self.databaseName):
       print("INFO: Removing previous database "+self.databaseName)
@@ -93,8 +94,8 @@ class KGNodeIndex:
     session.close()
     engine.dispose()
 
-  #### Create the KG index
-  def createIndex(self):
+  #### Create the KG node table
+  def createNodeTable(self):
 
     self.connect()
     session = self.session
@@ -104,15 +105,11 @@ class KGNodeIndex:
       fh = open("../../../data/KGmetadata/NodeNamesDescriptions.tsv", 'r', encoding='utf-8')
     except FileNotFoundError:
       fh = open("../../data/KGmetadata/NodeNamesDescriptions.tsv", 'r', encoding='utf-8')
-    #with open("../../../data/KGmetadata/NodeNamesDescriptions.tsv", 'r', encoding='utf-8') as fh:
     for line in fh.readlines():
       columns = line.strip("\n").split("\t")
-      curie = columns[0]  # TODO: note that this is not actually the curie, but the rtx_name. Should change KG meta dump to use curie instead, and sed replace rtx_name with id
+      curie = columns[0] # TODO: note that this is not actually the curie, but the rtx_name. Should change KG meta dump to use curie instead, and sed replace rtx_name with id
       name = columns[1]
       type = "?"
-
-      #if re.match("OMIM",curie) is None:
-      #  continue
 
       names = [ name ]
 
@@ -187,6 +184,7 @@ class KGNodeIndex:
       #### Add all the possible names to the database
       namesDict = {}
       for name in names:
+        name = name.upper()
         if name in namesDict:
           continue
         #print(type+" "+curie+"="+name)
@@ -197,7 +195,7 @@ class KGNodeIndex:
       #### Commit every now and then
       if int(lineCounter/1000) == lineCounter/1000:
         session.commit()
-        print(str(lineCounter)+"..\n",end='',flush=True)
+        print(str(lineCounter)+"..",end='',flush=True)
 
       #### Throttle the system for testing
       lineCounter += 1
@@ -209,10 +207,16 @@ class KGNodeIndex:
     print("")
 
 
+  def createIndex(self):
+    self.connect()
+    engine = self.engine
+    engine.execute("CREATE INDEX idx_name ON kgnode(name)")
+
+
   def get_curies(self,name):
     self.connect()
     session = self.session
-    matches = session.query(KGNode).filter(KGNode.name.ilike(name)).all()
+    matches = session.query(KGNode).filter(KGNode.name==name.upper()).all()
     if matches is None:
       return None
     curies = []
@@ -227,15 +231,19 @@ def main():
   #### To rebuild
   if not os.path.exists(kgNodeIndex.databaseName):
     kgNodeIndex.createDatabase()
-    kgNodeIndex.createIndex()
+    kgNodeIndex.createNodeTable()
+    #kgNodeIndex.createIndex()
 
   tests = [ "APS2", "phenylketonuria","Gaucher's disease","Gauchers disease","Gaucher disease",
     "Alzheimer Disease","Alzheimers disease","Alzheimer's Disease","kidney","Kidney","P06865","HEXA",
     "rickets","fanconi anemia","retina" ]
 
+  t0 = timeit.default_timer()
   for test in tests:
     curies = kgNodeIndex.get_curies(test)
     print(test+" = "+str(curies))
+  t1 = timeit.default_timer()
+  print("Elapsed time: "+str(t1-t0))
 
 
 if __name__ == "__main__":
