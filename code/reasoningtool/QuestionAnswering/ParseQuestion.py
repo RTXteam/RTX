@@ -32,6 +32,7 @@ class ParseQuestion:
 		:param input_question: input user query
 		:return: question (Question class, or None), parameters (dict or None), error_message (string or None), error_code (string or None)
 		"""
+		input_question = input_question.replace("?", "")
 		# first, compute the wordnet distance for each corpus
 		wd_distances = []
 		for question in self._question_templates:
