@@ -30,7 +30,7 @@ Q23	true	What drugs target proteins associated with phenylketonuria?
 Q24	true	What drugs target proteins expressed in the retina? 
 Q25	true	What drugs target proteins associated with fatigue?
 Q26	true	What drugs target proteins in the phenylketonuria pathway?
-Q27	true	What drugs target proteins associated with the kidney?
+#Q27	false	This was a duplicate. Reuse my number
 Q28	true	What anatomy are associated with nitric oxide?
 Q29	true	What phenotypes are associated with phenylalanine?
 Q30	true	What diseases are associated with phenylalanine?
