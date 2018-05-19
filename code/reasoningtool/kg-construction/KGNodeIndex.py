@@ -100,105 +100,109 @@ class KGNodeIndex:
     session = self.session
 
     lineCounter = 0
-    with open("../../../data/KGmetadata/NodeNamesDescriptions.tsv", 'r', encoding='utf-8') as fh:
-      for line in fh.readlines():
-        columns = line.strip("\n").split("\t")
-        curie = columns[0]
-        name = columns[1]
-        type = "?"
+    try:
+      fh = open("../../../data/KGmetadata/NodeNamesDescriptions.tsv", 'r', encoding='utf-8')
+    except FileNotFoundError:
+      fh = open("../../data/KGmetadata/NodeNamesDescriptions.tsv", 'r', encoding='utf-8')
+    #with open("../../../data/KGmetadata/NodeNamesDescriptions.tsv", 'r', encoding='utf-8') as fh:
+    for line in fh.readlines():
+      columns = line.strip("\n").split("\t")
+      curie = columns[0]
+      name = columns[1]
+      type = "?"
 
-        #if re.match("OMIM",curie) is None:
-        #  continue
+      #if re.match("OMIM",curie) is None:
+      #  continue
 
-        names = [ name ]
+      names = [ name ]
 
-        if re.match("OMIM:",curie):
-          type = "disease"
-          multipleNames = name.split("; ")
-          if len(multipleNames) > 1:
-            for possibleName in multipleNames:
-              if possibleName == multipleNames[0]:
-                next
-              names.append(possibleName)
+      if re.match("OMIM:",curie):
+        type = "disease"
+        multipleNames = name.split("; ")
+        if len(multipleNames) > 1:
+          for possibleName in multipleNames:
+            if possibleName == multipleNames[0]:
+              next
+            names.append(possibleName)
 
-        elif re.match("DOID",curie):
-          type = "disease"
+      elif re.match("DOID",curie):
+        type = "disease"
 
-        elif re.match("R-HSA-",curie):
-          type = "pathway"
-          if re.search(r' \([A-Z0-9]{1,8}\)',name):
-            newName = re.sub(r' \([A-Z0-9]{1,8}\)',"",name,flags=re.IGNORECASE)
-            names.append(newName)
-            #print("  duplicated _"+name+"_ to _"+newName+"_")
-
-        elif re.match("NCBIGene:",curie):
-          type = "microRNA"
-
-        elif re.match("UBERON:",curie):
-          type = "anatomical_part"
-
-        elif re.match("CL:",curie):
-          type = "cell_type"
-
-        elif re.match("AQTLTrait:",curie):
-          type = "phenotype"
-
-        elif re.match("HP:",curie):
-          type = "phenotype"
-
-        elif re.match("GO:",curie):
-          type = "process"
-
-        elif re.match("[A-Z][A-Z0-9]{5}",curie) or re.match("A[A-Z0-9]{9}",curie):
-          type = "protein"
-          names.append(curie)
-
-        elif re.match("[A-Z0-9]+\_HUMAN",curie):
-          type = "protein"
-
-        else:
-          print("No match for: "+curie)
-          break
-
-        #### Create duplicates for various DoctorName's diseases
-        for name in names:
-          if re.search("'s ",name):
-            newName = re.sub("'s ","s ",name)
-            names.append(newName)
-            #print("  duplicated _"+name+"_ to _"+newName+"_")
-            newName = re.sub("'s "," ",name)
-            names.append(newName)
-            #print("  duplicated _"+name+"_ to _"+newName+"_")
-
-        #### A few special cases
-        if re.search("alzheimer ",name,flags=re.IGNORECASE):
-          newName = re.sub("alzheimer ","alzheimers ",name,flags=re.IGNORECASE)
+      elif re.match("R-HSA-",curie):
+        type = "pathway"
+        if re.search(r' \([A-Z0-9]{1,8}\)',name):
+          newName = re.sub(r' \([A-Z0-9]{1,8}\)',"",name,flags=re.IGNORECASE)
           names.append(newName)
           #print("  duplicated _"+name+"_ to _"+newName+"_")
 
-          newName = re.sub("alzheimer ","alzheimer's ",name,flags=re.IGNORECASE)
+      elif re.match("NCBIGene:",curie):
+        type = "microRNA"
+
+      elif re.match("UBERON:",curie):
+        type = "anatomical_part"
+
+      elif re.match("CL:",curie):
+        type = "cell_type"
+
+      elif re.match("AQTLTrait:",curie):
+        type = "phenotype"
+
+      elif re.match("HP:",curie):
+        type = "phenotype"
+
+      elif re.match("GO:",curie):
+        type = "process"
+
+      elif re.match("[A-Z][A-Z0-9]{5}",curie) or re.match("A[A-Z0-9]{9}",curie):
+        type = "protein"
+        names.append(curie)
+
+      elif re.match("[A-Z0-9]+\_HUMAN",curie):
+        type = "protein"
+
+      else:
+        print("No match for: "+curie)
+        break
+
+      #### Create duplicates for various DoctorName's diseases
+      for name in names:
+        if re.search("'s ",name):
+          newName = re.sub("'s ","s ",name)
+          names.append(newName)
+          #print("  duplicated _"+name+"_ to _"+newName+"_")
+          newName = re.sub("'s "," ",name)
           names.append(newName)
           #print("  duplicated _"+name+"_ to _"+newName+"_")
 
-        #### Add all the possible names to the database
-        namesDict = {}
-        for name in names:
-          if name in namesDict:
-            continue
-          #print(type+" "+curie+"="+name)
-          kgnode = KGNode(curie=curie,name=name,type=type)
-          session.add(kgnode)
-          namesDict[name] = 1
+      #### A few special cases
+      if re.search("alzheimer ",name,flags=re.IGNORECASE):
+        newName = re.sub("alzheimer ","alzheimers ",name,flags=re.IGNORECASE)
+        names.append(newName)
+        #print("  duplicated _"+name+"_ to _"+newName+"_")
 
-        #### Commit every now and then
-        if int(lineCounter/1000) == lineCounter/1000:
-          session.commit()
-          print(str(lineCounter)+"..",end='',flush=True)
+        newName = re.sub("alzheimer ","alzheimer's ",name,flags=re.IGNORECASE)
+        names.append(newName)
+        #print("  duplicated _"+name+"_ to _"+newName+"_")
 
-        #### Throttle the system for testing
-        lineCounter += 1
-        #if lineCounter > 100:
-        #  break
+      #### Add all the possible names to the database
+      namesDict = {}
+      for name in names:
+        if name in namesDict:
+          continue
+        #print(type+" "+curie+"="+name)
+        kgnode = KGNode(curie=curie,name=name,type=type)
+        session.add(kgnode)
+        namesDict[name] = 1
+
+      #### Commit every now and then
+      if int(lineCounter/1000) == lineCounter/1000:
+        session.commit()
+        print(str(lineCounter)+"..",end='',flush=True)
+
+      #### Throttle the system for testing
+      lineCounter += 1
+      #if lineCounter > 100:
+      #  break
 
     fh.close()
     session.flush()
