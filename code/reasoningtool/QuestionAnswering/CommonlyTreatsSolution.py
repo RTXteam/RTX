@@ -81,7 +81,7 @@ class CommonlyTreatsSolution:
 			#  otherwise, you want a JSON output
 			#  Attempt to map the COHD names to the KG (this takes some time)l. TODO: find further speed improvements
 			drug_as_graph = RU.get_node_as_graph(drug_id)
-			drug_node_info = drug_as_graph.nodes(data=True)[0][1]
+			drug_node_info = list(drug_as_graph.nodes(data=True))[0][1]
 			id_to_KG_name = dict()
 			id_to_name = dict()
 			id_to_count = dict()
@@ -196,8 +196,8 @@ def main():
 		res = Q.describe()
 		print(res)
 	else:
-		#Q.answer(drug_id, use_json=use_json, num_show=num_show, rev=not(is_rare), conservative=is_conservative)
-		Q.answer(drug_id, use_json=True, num_show=num_show, rev=not (is_rare), conservative=is_conservative)
+		Q.answer(drug_id, use_json=use_json, num_show=num_show, rev=not(is_rare), conservative=is_conservative)
+		#Q.answer(drug_id, use_json=True, num_show=num_show, rev=not (is_rare), conservative=is_conservative)
 
 if __name__ == "__main__":
 	main()

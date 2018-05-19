@@ -42,7 +42,7 @@ function sendQuestion(e) {
     // collect the form data while iterating over the inputs
     var data = { 'text': document.getElementById("questionForm").elements["questionText"].value, 'language': 'English', 'bypass_cache' : bypass_cache };
     document.getElementById("statusdiv").innerHTML = "Interpreting your question...";
-    document.getElementById("statusdiv").innerHTML+= " (bypassing cache : " + bypass_cache + ")";
+    document.getElementById("devdiv").innerHTML = " (bypassing cache : " + bypass_cache + ")";
 
     sesame('openmax',statusdiv);
 
@@ -57,7 +57,7 @@ function sendQuestion(e) {
     xhr.onloadend = function() {
 	if ( xhr.status == 200 ) {
 	    var jsonObj = JSON.parse(xhr.responseText);
-	    document.getElementById("devdiv").innerHTML = "<PRE>\n" + JSON.stringify(jsonObj,null,2) + "</PRE>";
+	    document.getElementById("devdiv").innerHTML += "<PRE>\n" + JSON.stringify(jsonObj,null,2) + "</PRE>";
 
 	    if ( jsonObj.known_query_type_id && jsonObj.terms ) {
 		document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR>Looking for answer...";
@@ -286,7 +286,7 @@ function add_fefo(res_id,res_div_id) {
 
     document.getElementById(fff).innerHTML = "Please provide feedback on this result:<br>";
 
-    document.getElementById(fff).innerHTML+= "<table><tr><td><b>Rating:</b></td><td><span class='ratings'><select id='"+fff+"_rating'><option value=''>Please select a rating&nbsp;&nbsp;&nbsp;&#8675;</option></select></span></td></tr><tr><td><b>Expertise:</b></td><td><span class='ratings'><select id='"+fff+"_expertise'><option value=''>What is your expertise on this subject?&nbsp;&nbsp;&nbsp;&#8675;</option></select></span></td></tr><tr><td><b>Full Name:</b></td><td><input type='text' id='"+fff+"_fullname' value='"+uuu+"' maxlength='60' size='60'></input></td</tr><tr><td><b>Comment:</b></td><td><textarea id='"+fff+"_comment' maxlength='60000' rows='7' cols='60'></textarea></td</tr><tr><td></td><td><input type='button' class='questionBox button' name='action' value='Submit' onClick='javascript:submitFeedback(\""+res_id+"\");'/>&nbsp;&nbsp;&nbsp;&nbsp;<a href='javascript:rem_fefo(\""+res_id+"\",\""+res_div_id+"\");'>Cancel</a></td></tr></table><span id='"+fff+"_msgs' class='error'></span>";
+    document.getElementById(fff).innerHTML+= "<table><tr><td><b>Rating:</b></td><td><span class='ratings'><select id='"+fff+"_rating'><option value=''>Please select a rating&nbsp;&nbsp;&nbsp;&#8675;</option></select></span></td></tr><tr><td><b>Expertise:</b></td><td><span class='ratings'><select id='"+fff+"_expertise'><option value=''>What is your expertise on this subject?&nbsp;&nbsp;&nbsp;&#8675;</option></select></span></td></tr><tr><td><b>Full Name:</b></td><td><input type='text' id='"+fff+"_fullname' value='"+uuu+"' maxlength='60' size='60'></input></td</tr><tr><td><b>Comment:</b></td><td><textarea id='"+fff+"_comment' maxlength='60000' rows='7' cols='60'></textarea></td</tr><tr><td></td><td><input type='button' class='questionBox button' name='action' value='Submit' onClick='javascript:submitFeedback(\""+res_id+"\",\""+res_div_id+"\");'/>&nbsp;&nbsp;&nbsp;&nbsp;<a href='javascript:rem_fefo(\""+res_id+"\",\""+res_div_id+"\");'>Cancel</a></td></tr></table><span id='"+fff+"_msgs' class='error'></span>";
 
     for (var i in fb_ratings) {
 	var opt = document.createElement('option');
@@ -305,7 +305,7 @@ function add_fefo(res_id,res_div_id) {
     sesame('openmax',document.getElementById(res_div_id));
 }
 
-function submitFeedback(res_id) {
+function submitFeedback(res_id,res_div_id) {
     var fff = "feedback_form_" + res_id;
 
     var rat = document.getElementById(fff+"_rating").value;
@@ -354,7 +354,7 @@ function submitFeedback(res_id) {
 		    for (var i in jsonObj7) {
 			insert_feedback_item(fid, jsonObj7[i]);
 		    }
-
+		    sesame('openmax',document.getElementById(res_div_id));
 		}
 		else {
 		    document.getElementById(fff+"_msgs").innerHTML = "There was an error with this ("+jsonObj7.detail+"). Please try again.";
@@ -411,7 +411,7 @@ function insert_feedback_item(el_id, feed_obj) {
     var pex = feed_obj.expertise_level_id;
     var pxl = (pex==1) ? "p9" : (pex==2) ? "p7" : (pex==3) ? "p5" : (pex==4) ? "p3" : "p1";
 
-    document.getElementById(el_id).innerHTML += "<table><tr><td><b>Rating:</b></td><td style='width:100%'><span class='"+pcl+" frating' title='" + fb_ratings[feed_obj.rating_id].desc +  "'>" + fb_ratings[feed_obj.rating_id].tag + "</u><i class='tiny' style='float:right'>" + feed_obj.datetime + "</i></td></tr><tr><td><b>Commenter:</b></td><td>"+feed_obj.commenter_full_name+" <span class='"+pxl+" tiny explevel' title='" + fb_explvls[feed_obj.expertise_level_id].tag + " :: " + fb_explvls[feed_obj.expertise_level_id].desc + "'>&nbsp;</span></td></tr><tr><td><b>Comment:</b></td><td>" + feed_obj.comment + "</td></tr></table><hr>";
+    document.getElementById(el_id).innerHTML += "<table><tr><td><b>Rating:</b></td><td style='width:100%'><span class='"+pcl+" frating' title='" + fb_ratings[feed_obj.rating_id].desc +  "'>" + fb_ratings[feed_obj.rating_id].tag + "</span>&nbsp;<span class='tiny'>by <b>" + feed_obj.commenter_full_name + "</b> <span class='"+pxl+" explevel' title='" + fb_explvls[feed_obj.expertise_level_id].tag + " :: " + fb_explvls[feed_obj.expertise_level_id].desc + "'>&nbsp;</span></span><i class='tiny' style='float:right'>" + feed_obj.datetime + "</i></td></tr><tr><td><b>Comment:</b></td><td>" + feed_obj.comment + "</td></tr></table><hr>";
 
 }
 
@@ -502,4 +502,13 @@ function getCookie(cname) {
 	if (c.indexOf(name)==0) return c.substring(name.length,c.length);
     }
     return "";
+}
+
+function togglecolor(obj,tid) {
+    var col = '#888';
+    if (obj.checked == true) {
+	col = '#047';
+    }
+    document.getElementById(tid).style.color = col;
+
 }
