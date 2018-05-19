@@ -28,11 +28,13 @@ class KGNodeIndex:
   #### Constructor
   def __init__(self):
     self.databaseName = os.path.dirname(os.path.abspath(__file__))+"/KGNodeIndex.sqlite"
+    self.engine = None
     self.session = None
 
   #### Destructor
   def __del__(self):
-    self.disconnect()
+    #self.disconnect()
+    pass
 
   #### Define attribute session
   @property
@@ -88,11 +90,17 @@ class KGNodeIndex:
 
   #### Create and store a database connection
   def disconnect(self):
-    #print("INFO: Disconnecting from database")
     session = self.session
     engine = self.engine
+    if self.session is None or self.engine is None:
+      print("INFO: Skip disconnecting from database")
+      return
+    print("INFO: Disconnecting from database")
     session.close()
+    print(engine)
     engine.dispose()
+    self.session = None
+    self.engine = None
 
   #### Create the KG node table
   def createNodeTable(self):
