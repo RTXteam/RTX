@@ -29,6 +29,15 @@ except ImportError:
 import string
 import re
 
+from KGNodeIndex import KGNodeIndex
+
+KGNodeIndex = KGNodeIndex()
+
+# If the database isn't built, build it now (will take a bit)
+if not os.path.exists(KGNodeIndex.databaseName):
+	KGNodeIndex.createDatabase()
+	KGNodeIndex.createIndex()
+
 re_no_punc = re.compile('[%s]|\s' % re.escape(string.punctuation))
 
 #################################################

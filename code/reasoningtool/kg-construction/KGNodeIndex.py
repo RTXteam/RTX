@@ -197,7 +197,7 @@ class KGNodeIndex:
       #### Commit every now and then
       if int(lineCounter/1000) == lineCounter/1000:
         session.commit()
-        print(str(lineCounter)+"..",end='',flush=True)
+        print(str(lineCounter)+"..\n",end='',flush=True)
 
       #### Throttle the system for testing
       lineCounter += 1
