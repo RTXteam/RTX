@@ -32,6 +32,7 @@ import re
 from KGNodeIndex import KGNodeIndex
 
 KGNodeIndex = KGNodeIndex()
+KGNodeIndex.connect()
 
 # If the database isn't built, build it now (will take a bit)
 if not os.path.exists(KGNodeIndex.databaseName):
@@ -43,6 +44,7 @@ re_no_punc = re.compile('[%s]|\s' % re.escape(string.punctuation))
 #################################################
 # Required data about the knowledge graph
 ################################################
+# TODO: get rid of this since NodeNamesDescriptions.tsv is now in an SQLite database
 # get all the node names and descriptions
 fid = open(os.path.dirname(os.path.abspath(__file__))+'/../../../data/KGmetadata/NodeNamesDescriptions.tsv', 'r', encoding='utf-8', errors='replace')
 names2descrip = dict()
@@ -95,6 +97,14 @@ fid.close()
 #################################################
 # A variety of functions to help with term extraction
 def find_node_name(string):
+	"""
+	Look for all the curies for nodes in the graph
+	:param string: a string you're trying to match to a node name in the KG
+	:return: list of strings (of rtx_name's)
+	"""
+	return KGNodeIndex.get_curies(string)
+
+def find_node_name_depreciated(string):
 	"""
 	Find an acutal Neo4j KG node name in the string
 	:param string: input string (chunk of text)
