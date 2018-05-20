@@ -327,6 +327,8 @@ class Question:
 			question_tokenized = question_tokenized_no_apos_split
 
 			for block_size in range(1, len(question_tokenized)):
+				#if block_size > 10:  # TODO: so far, none of our nodes has more than 9 spaces, so don't bother with these. cat NodeNamesDescriptions.tsv | awk -F" " '{print NF-1}' | sort -r
+				#	break
 				for i in range(len(question_tokenized) - block_size + 1):
 					block = " ".join(question_tokenized[i:(i + block_size)])
 					blocks.append(block)
