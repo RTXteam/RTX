@@ -18,7 +18,7 @@ Q12	true	What proteins interact with PTGS1?
 Q13	true	What diseases are similar to malaria?
 Q14	true	What diseases involve similar genes to Fanconi anemia?
 Q14	false	What diseases involve similar genes to sickle cell anemia?
-Q15	true	What diseases involve similar microRNAs to sickle cell anemia?
+Q15	false	What diseases involve similar microRNAs to sickle cell anemia?
 Q16	true	What drugs have similar protein targets to naproxen?
 Q17	true	What proteins are members of similar pathways to DHODH?
 Q18	true	What proteins are expressed in similar anatomy to RPE65?
