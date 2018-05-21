@@ -19,7 +19,7 @@ class KGNode(Base):
   __tablename__ = 'kgnode'
   kgnode_id = Column(Integer, primary_key=True)
   curie = Column(String(255), nullable=False)
-  name = Column(String(255), nullable=False, index=True)
+  name = Column(String(255), nullable=False)
   type = Column(String(255), nullable=False)
 
 #### Main class
@@ -27,13 +27,13 @@ class KGNodeIndex:
 
   #### Constructor
   def __init__(self):
-    self.databaseName = os.path.dirname(os.path.abspath(__file__))+"/KGNodeIndex.sqlite"
+    self.databaseName = "RTXFeedback"
     self.engine = None
     self.session = None
 
   #### Destructor
   def __del__(self):
-    #self.disconnect()
+    self.disconnect()
     pass
 
   #### Define attribute session
@@ -72,17 +72,19 @@ class KGNodeIndex:
       print("INFO: Removing previous database "+self.databaseName)
       os.remove(self.databaseName)
     print("INFO: Creating database "+self.databaseName)
-    engine = create_engine("sqlite:///"+self.databaseName)
+    #engine = create_engine("sqlite:///"+self.databaseName)
+    engine = create_engine("mysql+pymysql://rt:Steve1000Ramsey@localhost/"+self.databaseName)
     Base.metadata.create_all(engine)
 
   #### Create and store a database connection
   def connect(self):
     if self.session is not None:
       return
-    if not os.path.isfile(self.databaseName):
-      self.createDatabase()
+    #if not os.path.isfile(self.databaseName):
+    #  self.createDatabase()
     #print("INFO: Connecting to database")
-    engine = create_engine("sqlite:///"+self.databaseName)
+    #engine = create_engine("sqlite:///"+self.databaseName)
+    engine = create_engine("mysql+pymysql://rt:Steve1000Ramsey@localhost/"+self.databaseName)
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
     self.session = session
@@ -107,12 +109,14 @@ class KGNodeIndex:
 
     self.connect()
     session = self.session
+    engine = self.engine
+    engine.execute("TRUNCATE TABLE kgnode")
 
     lineCounter = 0
     try:
-      fh = open("../../../data/KGmetadata/NodeNamesDescriptions.tsv", 'r', encoding='utf-8')
+      fh = open("../../../data/KGmetadata/NodeNamesDescriptions.tsv", 'r', encoding="latin-1", errors="replace")
     except FileNotFoundError:
-      fh = open("../../data/KGmetadata/NodeNamesDescriptions.tsv", 'r', encoding='utf-8')
+      fh = open("../../data/KGmetadata/NodeNamesDescriptions.tsv", 'r', encoding="latin-1", errors="replace")
     for line in fh.readlines():
       columns = line.strip("\n").split("\t")
       curie = columns[0] # TODO: note that this is not actually the curie, but the rtx_name. Should change KG meta dump to use curie instead, and sed replace rtx_name with id
@@ -218,7 +222,7 @@ class KGNodeIndex:
   def createIndex(self):
     self.connect()
     engine = self.engine
-    engine.execute("CREATE INDEX idx_name ON kgnode(name)")
+    #engine.execute("CREATE INDEX idx_name ON kgnode(name)")
 
 
   def get_curies(self,name):
