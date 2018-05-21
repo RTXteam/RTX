@@ -31,7 +31,7 @@ class KGNodeIndex:
     is_rtx_production = False
     if re.match("/mnt/data/orangeboard",filepath):
       is_rtx_production = True
-    print("is_rtx_production="+str(is_rtx_production))
+    #print("is_rtx_production="+str(is_rtx_production))
 
     if is_rtx_production:
       self.databaseName = "RTXFeedback"
