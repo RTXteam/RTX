@@ -26,7 +26,7 @@ Q19	true	What proteins are associated with similar phenotypes to USH2A?
 Q20	true	What pathways involve similar genes to the phenylketonuria pathway
 Q21	true	What genetic conditions involve similar genes to retinitis pigmentosa?
 Q22	false	What genetic conditions involve similar microRNAs to sickle cell anemia?
-Q23	true	What drugs target proteins associated with phenylketonuria?
+Q23	false	What drugs target proteins associated with phenylketonuria?
 Q24	true	What drugs target proteins expressed in the retina? 
 Q25	true	What drugs target proteins associated with fatigue?
 Q26	true	What drugs target proteins in the phenylketonuria pathway?
