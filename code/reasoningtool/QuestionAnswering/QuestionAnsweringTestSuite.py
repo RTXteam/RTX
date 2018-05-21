@@ -5,7 +5,8 @@ import random
 import os, sys
 import argparse
 import QuestionExamples
-
+QuestionExamples = QuestionExamples.QuestionExamples()
+p = ParseQuestion.ParseQuestion()
 
 
 def run_question_examples(question_number, python_loc, res_loc):
@@ -14,7 +15,6 @@ def run_question_examples(question_number, python_loc, res_loc):
 	:param question_number: question number you want to test
 	:return: none
 	"""
-	QuestionExamples = QuestionExamples.QuestionExamples()
 	QuestionExamples.read_reference_file()
 	for id_text_dict in QuestionExamples.questions:
 		q_id = id_text_dict['query_type_id']
@@ -52,6 +52,8 @@ def run_question_examples(question_number, python_loc, res_loc):
 					print("ERROR on question: %s" % nat_lang_question)
 					print("Try running %s and see what went wrong." % solution_script)
 					raise Exception
+			else:
+				raise Exception
 
 
 
