@@ -233,7 +233,7 @@ function add_cyto() {
 	    wheelSensitivity: 0.2,
 
 	    layout: {
-		name: 'breadthfirst',
+		name: 'cose',
 		padding: 10
 	    },
 
