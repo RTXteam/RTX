@@ -705,7 +705,7 @@ def count_nodes_of_type_for_nodes_that_connect_to_label(source_name, source_labe
 	for i in range(len(relationship_label_list) - 1):
 		query += "[:%s]-(:%s)-" % (relationship_label_list[i], node_label_list[i])
 	query += "[:%s]-(t:%s) " % (relationship_label_list[-1], target_label)
-
+	query += "with distinct t as t "
 	query += "MATCH (t:%s)" % (target_label)
 	for i in range(len(relationship_label_list) - 1):
 		if i == node_of_interest_position:
