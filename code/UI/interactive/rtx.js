@@ -287,7 +287,7 @@ function cylayout(index,layname) {
 	var layout = cyobj[index].layout({
 		name: layname,
 		animationDuration: 500,
-		animate: true
+		animate: 'end'
 	});
 	
 	layout.run();
