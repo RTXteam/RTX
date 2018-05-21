@@ -13,7 +13,7 @@ Q7	true	What genes are associated with Fanconi anemia?
 Q8	true	What genes are expressed in retina?
 Q9	true	What are the drugs that target PTGS1?
 Q10	true	What proteins are associated with anemia?
-Q11	true	What microRNAs are expressed in the retina?
+Q11	false	What microRNAs are expressed in the retina?
 Q12	true	What proteins interact with PTGS1?
 Q13	true	What diseases are similar to malaria?
 Q14	true	What diseases involve similar genes to Fanconi anemia?
