@@ -67,15 +67,12 @@ def get_seed_node_uuid(tx):
 
 
 protein_dict = conn._driver.session().read_transaction(get_proteins)
-print(protein_dict)
 
 molfunc_dict = conn._driver.session().read_transaction(get_molfunc)
-print(molfunc_dict)
 
 cellcomp_dict = conn._driver.session().read_transaction(get_cellcomp)
 
 seed_node_uuid = conn._driver.session().read_transaction(get_seed_node_uuid)
-print(seed_node_uuid)
 
 i = 0
 for protein_curie_id, protein_uuid in protein_dict.items():
