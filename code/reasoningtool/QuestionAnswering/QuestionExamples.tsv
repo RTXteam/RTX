@@ -38,7 +38,7 @@ Q31	true	What kinds of questions can RTX answer?
 Q32	false	What drugs target proteins associated with synaptic function?
 Q33	true	What biological processes involve proteins targeted by naproxen?
 Q34	true	What are the most common phenotypes of rickets?
-Q35	true	What are the least common phenotypes of rickets?
+Q35	false	What are the least common phenotypes of rickets?
 Q36	true	What proteins involve similar biological processes as RUNX3?
 Q37	true	What drugs target proteins that interact with the protein RUNX1?
 Q39	true	What conditions are commonly treated by Naproxen, in any form?
