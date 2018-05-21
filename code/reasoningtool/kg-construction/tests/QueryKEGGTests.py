@@ -39,5 +39,17 @@ class QueryKEGGTestCases(TestCase):
         self.assertIsNotNone(ids)
         self.assertEqual(len(ids), 0)
 
+    def test_map_kegg_compound_to_pub_chem_id(self):
 
+        pubchem_id = QueryKEGG.map_kegg_compound_to_pub_chem_id("KEGG:C00190")
+        self.assertIsNotNone(pubchem_id)
+        self.assertEqual(pubchem_id, "3490")
+
+        #   wrong arg format
+        pubchem_id = QueryKEGG.map_kegg_compound_to_pub_chem_id("GO:2342343")
+        self.assertIsNone(pubchem_id)
+
+        #   wrong arg type
+        pubchem_id = QueryKEGG.map_kegg_compound_to_pub_chem_id(100)
+        self.assertIsNone(pubchem_id)
 

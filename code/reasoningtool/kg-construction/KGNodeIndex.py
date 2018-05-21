@@ -18,8 +18,8 @@ Base = declarative_base()
 class KGNode(Base):
   __tablename__ = 'kgnode'
   kgnode_id = Column(Integer, primary_key=True)
-  curie = Column(String(255), nullable=False)
-  name = Column(String(255), nullable=False)
+  curie = Column(String(255), nullable=False, index=True)
+  name = Column(String(255), nullable=False, index=True)
   type = Column(String(255), nullable=False)
 
 #### Main class
@@ -27,7 +27,16 @@ class KGNodeIndex:
 
   #### Constructor
   def __init__(self):
-    self.databaseName = "RTXFeedback"
+    filepath = os.path.dirname(os.path.abspath(__file__))
+    is_rtx_production = False
+    if re.match("/mnt/data/orangeboard",filepath):
+      is_rtx_production = True
+    print("is_rtx_production="+str(is_rtx_production))
+
+    if is_rtx_production:
+      self.databaseName = "RTXFeedback"
+    else:
+      self.databaseName = "KGNodeIndex.sqlite"
     self.engine = None
     self.session = None
 
@@ -68,27 +77,37 @@ class KGNodeIndex:
 
   #### Delete and create the SQLite database. Careful!
   def createDatabase(self):
-    if os.path.exists(self.databaseName):
-      print("INFO: Removing previous database "+self.databaseName)
-      os.remove(self.databaseName)
+    if re.search("sqlite",self.databaseName):
+      if os.path.exists(self.databaseName):
+        print("INFO: Removing previous database "+self.databaseName)
+        os.remove(self.databaseName)
+
     print("INFO: Creating database "+self.databaseName)
-    #engine = create_engine("sqlite:///"+self.databaseName)
-    engine = create_engine("mysql+pymysql://rt:Steve1000Ramsey@localhost/"+self.databaseName)
+    if re.search("sqlite",self.databaseName):
+      engine = create_engine("sqlite:///"+self.databaseName)
+    else:
+      engine = create_engine("mysql+pymysql://rt:Steve1000Ramsey@localhost/"+self.databaseName)
     Base.metadata.create_all(engine)
+
 
   #### Create and store a database connection
   def connect(self):
     if self.session is not None:
       return
-    #if not os.path.isfile(self.databaseName):
-    #  self.createDatabase()
-    #print("INFO: Connecting to database")
-    #engine = create_engine("sqlite:///"+self.databaseName)
-    engine = create_engine("mysql+pymysql://rt:Steve1000Ramsey@localhost/"+self.databaseName)
+    if re.search("sqlite",self.databaseName):
+      if not os.path.isfile(self.databaseName):
+        self.createDatabase()
+
+    print("INFO: Connecting to database")
+    if re.search("sqlite",self.databaseName):
+      engine = create_engine("sqlite:///"+self.databaseName)
+    else:
+      engine = create_engine("mysql+pymysql://rt:Steve1000Ramsey@localhost/"+self.databaseName)
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
     self.session = session
     self.engine = engine
+
 
   #### Create and store a database connection
   def disconnect(self):
@@ -110,7 +129,10 @@ class KGNodeIndex:
     self.connect()
     session = self.session
     engine = self.engine
-    engine.execute("TRUNCATE TABLE kgnode")
+    if re.search("sqlite",self.databaseName):
+      pass
+    else:
+      engine.execute("TRUNCATE TABLE kgnode")
 
     lineCounter = 0
     try:
@@ -222,6 +244,7 @@ class KGNodeIndex:
   def createIndex(self):
     self.connect()
     engine = self.engine
+    #engine.execute("DROP INDEX idx_name ON kgnode")
     #engine.execute("CREATE INDEX idx_name ON kgnode(name)")
 
 
@@ -237,15 +260,26 @@ class KGNodeIndex:
     return(curies)
 
 
+  def is_curie_present(self,curie):
+    self.connect()
+    session = self.session
+    match = session.query(KGNode).filter(KGNode.curie==curie).first()
+    if match is None:
+      return(False)
+    return(True)
+
+
 def main():
   kgNodeIndex = KGNodeIndex()
 
   #### To rebuild
-  if not os.path.exists(kgNodeIndex.databaseName):
-    kgNodeIndex.createDatabase()
-    kgNodeIndex.createNodeTable()
-    #kgNodeIndex.createIndex()
+  if re.search("sqlite",kgNodeIndex.databaseName):
+    if not os.path.exists(kgNodeIndex.databaseName):
+      kgNodeIndex.createDatabase()
+      kgNodeIndex.createNodeTable()
+      #kgNodeIndex.createIndex()
 
+  print("==== Testing for finding curies by name ====")
   tests = [ "APS2", "phenylketonuria","Gaucher's disease","Gauchers disease","Gaucher disease",
     "Alzheimer Disease","Alzheimers disease","Alzheimer's Disease","kidney","Kidney","P06865","HEXA",
     "rickets","fanconi anemia","retina" ]
@@ -254,6 +288,17 @@ def main():
   for test in tests:
     curies = kgNodeIndex.get_curies(test)
     print(test+" = "+str(curies))
+  t1 = timeit.default_timer()
+  print("Elapsed time: "+str(t1-t0))
+
+
+  print("==== Testing presence of CURIEs ============================")
+  tests = [ "R-HSA-2160456", "DOID:9281", "OMIM:261600", "DOID:1926xx", "HP:0002511", "UBERON:0002113", "P06865", "DOID:13636", "OMIM:104300", "DOID:10652xx" ]
+
+  t0 = timeit.default_timer()
+  for test in tests:
+    is_present = kgNodeIndex.is_curie_present(test)
+    print(test+" = "+str(is_present))
   t1 = timeit.default_timer()
   print("Elapsed time: "+str(t1-t0))
 

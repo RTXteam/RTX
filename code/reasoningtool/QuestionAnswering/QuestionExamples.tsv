@@ -8,7 +8,7 @@ Q3	true	What proteins does acetaminophen target?
 Q4	true	What proteins are in mRNA editing?
 Q4	true	What proteins are in the phenylketonuria pathway?
 Q5	true	What are the phenotypes of Fanconi anemia?
-Q6	true	What micrornas control the expression of G6PD?
+Q6	false	What micrornas control the expression of G6PD?
 Q7	true	What genes are associated with Fanconi anemia?
 Q8	true	What genes are expressed in retina?
 Q9	true	What are the drugs that target PTGS1?
