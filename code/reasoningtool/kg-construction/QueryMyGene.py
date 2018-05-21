@@ -23,6 +23,10 @@ class QueryMyGene:
         self.mygene_obj = mygene.MyGeneInfo()
         self.debug = debug
 
+    ONT_NAME_TO_SIMPLE_NODE_TYPE = {'BP': 'biological_process',
+                                    'MF': 'molecular_function',
+                                    'CC': 'cellular_component'}
+
     @staticmethod
     def unnest(lst, skip_type):
         """
@@ -147,6 +151,31 @@ class QueryMyGene:
                                     res_add = {item["id"]: item["term"] for item in q_res_bp}
                                     res.update(res_add)
         return res
+    
+    def get_gene_ontology_ids_for_uniprot_id(self, uniprot_id):
+        assert type(uniprot_id) == str
+        res = dict()
+        try:
+            q_res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human', fields='go', verbose=False)
+        except requests.exceptions.HTTPError:
+            print("HTTP error in mygene_obj.query for GO fields for query string: " + uniprot_id, file=sys.stderr)
+            return res
+        q_res_hits = q_res.get('hits', None)
+        if q_res_hits is not None:
+            if type(q_res_hits) == list and len(q_res_hits) > 0:
+                for q_res_hit in q_res_hits:
+                    if type(q_res_hit) == dict:
+                        q_res_go = q_res_hit.get('go', None)
+                        if q_res_go is not None:
+                            for ont_name, ont_dict_list in q_res_go.items():
+                                ont_name_simple_node_type = self.ONT_NAME_TO_SIMPLE_NODE_TYPE[ont_name]
+                                for ont_dict in ont_dict_list:
+                                    if type(ont_dict) == dict:
+                                        term = ont_dict.get('term', None)
+                                        id = ont_dict.get('id', None)
+                                        res.update({id: {'term': term,
+                                                         'ont': ont_name_simple_node_type}})
+        return res
 
     def get_gene_ontology_ids_bp_for_entrez_gene_id(self, entrez_gene_id):
         assert type(entrez_gene_id) == int
@@ -199,8 +228,8 @@ class QueryMyGene:
 
 if __name__ == '__main__':
     mg = QueryMyGene()
+    print(mg.get_gene_ontology_ids_for_uniprot_id('Q05925'))
     print(mg.convert_uniprot_id_to_gene_symbol('Q8NBZ7'))
-    print(mg.get_gene_ontology_ids_bp_for_uniprot_id('Q05925'))
     print(mg.uniprot_id_is_human("P02794"))
     print(mg.uniprot_id_is_human("P10592"))
     print(mg.convert_entrez_gene_ID_to_mirbase_ID(407053))
