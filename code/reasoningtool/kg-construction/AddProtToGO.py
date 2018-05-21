@@ -34,6 +34,10 @@ import json
 import sys
 from time import time
 from QueryMyGene import QueryMyGene
+import requests_cache
+
+# configure requests package to use the "orangeboard.sqlite" cache
+requests_cache.install_cache('orangeboard')
 
 t = time()
 
