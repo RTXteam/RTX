@@ -95,7 +95,10 @@ class FormatResponse:
 		node_uuids2curie = dict()
 		for u, data in nodes:
 			node_keys.append(u)
-			node_descriptions[u] = data['properties']['description']
+			if 'description' in data['properties']:
+				node_descriptions[u] = data['properties']['description']
+			else:
+				node_descriptions[u] = "None"
 			node_names[u] = data['properties']['name']
 			node_labels[u] = list(set(data['labels']).difference({'Base'}))[0]
 			node_uuids[u] = data['properties']['UUID']

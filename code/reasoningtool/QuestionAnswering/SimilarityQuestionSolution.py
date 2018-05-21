@@ -117,6 +117,7 @@ class SimilarityQuestionSolution:
 					if rel_nodes:
 						# extract the relevant subgraph
 						sub_g = nx.subgraph(g, rel_nodes)
+						print(sub_g.nodes(data=True))
 
 						# add it to the response
 						response.add_subgraph(sub_g.nodes(data=True), sub_g.edges(data=True), to_print, jaccard)

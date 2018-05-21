@@ -165,6 +165,9 @@ class KGNodeIndex:
       elif re.match("[A-Z0-9]+\_HUMAN",curie):
         type = "protein"
 
+      elif re.match("KEGG:", curie):
+        type = "metabolite"
+
       else:
         print("No match for: "+curie)
         break
