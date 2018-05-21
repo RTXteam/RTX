@@ -543,7 +543,7 @@ class BioNetExpander:
         ob = Orangeboard(debug=False)
         ob.set_dict_reltype_dirs({'targets': True})
         bne = BioNetExpander(ob)
-        protein_node = bne.add_node_smart('protein', 'Q05925', seed_node_bool=True, desc='XYZ1')
+        protein_node = bne.add_node_smart('protein', 'Q75MH2', seed_node_bool=True, desc='IL6')
         bne.expand_protein(protein_node)
         ob.neo4j_set_url()
         ob.neo4j_set_auth()
