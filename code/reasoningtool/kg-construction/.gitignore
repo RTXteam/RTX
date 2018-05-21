@@ -1,5 +1,5 @@
 #   cache file
-orangeboard.sqlite
+*.sqlite
 
 #   configuration file
 config.json

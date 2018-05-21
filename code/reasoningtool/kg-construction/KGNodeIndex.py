@@ -31,7 +31,7 @@ class KGNodeIndex:
     is_rtx_production = False
     if re.match("/mnt/data/orangeboard",filepath):
       is_rtx_production = True
-    print("is_rtx_production="+str(is_rtx_production))
+    #print("is_rtx_production="+str(is_rtx_production))
 
     if is_rtx_production:
       self.databaseName = "RTXFeedback"
@@ -42,7 +42,7 @@ class KGNodeIndex:
 
   #### Destructor
   def __del__(self):
-    self.disconnect()
+    #self.disconnect()
     pass
 
   #### Define attribute session
@@ -79,10 +79,10 @@ class KGNodeIndex:
   def createDatabase(self):
     if re.search("sqlite",self.databaseName):
       if os.path.exists(self.databaseName):
-        print("INFO: Removing previous database "+self.databaseName)
+        #print("INFO: Removing previous database "+self.databaseName)
         os.remove(self.databaseName)
 
-    print("INFO: Creating database "+self.databaseName)
+    #print("INFO: Creating database "+self.databaseName)
     if re.search("sqlite",self.databaseName):
       engine = create_engine("sqlite:///"+self.databaseName)
     else:
@@ -98,7 +98,7 @@ class KGNodeIndex:
       if not os.path.isfile(self.databaseName):
         self.createDatabase()
 
-    print("INFO: Connecting to database")
+    #print("INFO: Connecting to database")
     if re.search("sqlite",self.databaseName):
       engine = create_engine("sqlite:///"+self.databaseName)
     else:
@@ -114,11 +114,11 @@ class KGNodeIndex:
     session = self.session
     engine = self.engine
     if self.session is None or self.engine is None:
-      print("INFO: Skip disconnecting from database")
+      #print("INFO: Skip disconnecting from database")
       return
-    print("INFO: Disconnecting from database")
+    #print("INFO: Disconnecting from database")
     session.close()
-    print(engine)
+    #print(engine)
     engine.dispose()
     self.session = None
     self.engine = None

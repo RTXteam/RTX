@@ -244,7 +244,8 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 				if node_index < len(edge_path):
 					to_print += " -" + str(edge_path[node_index]['type']) + "->"
 			#to_print += ". Distance (smaller is better): %f." % weights[path_ind]
-			to_print += ". Confidence (larger is better): %f." % (1-weights[path_ind]/float(len(edge_path)*max_gd*max_prob_weight))
+			conf = 1-weights[path_ind]/float(len(edge_path)*max_gd*max_prob_weight)
+			to_print += ". Confidence (larger is better): %f." % conf
 			# put the nodes/edges into a networkx graph
 			g = nx.Graph()
 			nodes_to_add = []
@@ -257,7 +258,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 			g.add_edges_from(edges_to_add)
 			# populate the response. Quick hack to convert
 			#response.add_subgraph(g.nodes(data=True), g.edges(data=True), to_print, 1-weights[path_ind]/float(max([len(x) for x in edge_paths])*max_gd))
-			response.add_subgraph(g.nodes(data=True), g.edges(data=True), to_print, weights[path_ind])
+			response.add_subgraph(g.nodes(data=True), g.edges(data=True), to_print, conf)
 		response.print()
 
 

@@ -3,8 +3,7 @@ to communicate with KEGG APIs and their corresponding data sources. The
 available methods include:
 
 *   map_kegg_compound_to_enzyme_commission_ids(kegg_id)
-
-    Description:
+*   map_kegg_compound_to_pub_chem_id(kegg_id)
 
 '''
 
@@ -19,7 +18,11 @@ __email__ = ''
 __status__ = 'Prototype'
 
 import requests
+import requests_cache
 import sys
+
+# configure requests package to use the "orangeboard.sqlite" cache
+requests_cache.install_cache('orangeboard')
 
 
 class QueryKEGG:
