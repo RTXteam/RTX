@@ -38,6 +38,10 @@ class GenerateMetabolitesTSV:
             print(GenerateMetabolitesTSV.URL, file=sys.stderr)
             print("Timeout for URL: " + GenerateMetabolitesTSV.URL, file=sys.stderr)
             return False
+        except BaseException as e:
+            print(GenerateMetabolitesTSV.URL, file=sys.stderr)
+            print('%s received in GenerateMetabolitesTSV for URL: %s' % (e, GenerateMetabolitesTSV.URL), file=sys.stderr)
+            return None
         status_code = res.status_code
         if status_code != 200:
             print(GenerateMetabolitesTSV.URL, file=sys.stderr)

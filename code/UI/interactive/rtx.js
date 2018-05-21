@@ -92,10 +92,17 @@ function sendQuestion(e) {
 			    document.getElementById("result_container").innerHTML += "<H2>No results...</H2>";
 			}
 		    }
-		    else {
+			
+			else if ( jsonObj.message ) {
 			document.getElementById("statusdiv").innerHTML += "<BR><BR>An error was encountered:<BR><SPAN CLASS='error'>"+jsonObj.message+"</SPAN>";
 			sesame('openmax',statusdiv);
 		    }
+			else {
+			document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr2.status+")</SPAN>";
+			document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<BR>"+xhr2.responseText;
+			sesame('openmax',statusdiv);
+			}
+
 		};
 	    }
 	    else {
@@ -150,7 +157,7 @@ function add_result(reslist) {
 
 	}
 	else {
-	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table class='t100'><tr><td class='textanswer'>"+reslist[i].text+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+i+"].reset();'>&#8635;</a></td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td><span id='"+fid+"'><i>User Feedback</i><hr><span id='"+fff+"'><a href='javascript:add_fefo(\""+rid+"\",\"a"+num+"_div\");'>Add Feedback</a></span><hr></span></td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
+	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table class='t100'><tr><td class='textanswer'>"+reslist[i].text+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+i+"].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout("+i+",\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout("+i+",\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout("+i+",\"circle\");'>C</a><br><a title='random layout' onclick='cylayout("+i+",\"random\");'>R</a>	</td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td><span id='"+fid+"'><i>User Feedback</i><hr><span id='"+fff+"'><a href='javascript:add_fefo(\""+rid+"\",\"a"+num+"_div\");'>Add Feedback</a></span><hr></span></td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
 
 	    cytodata[i] = [];
 	    var gd = reslist[i].result_graph;
@@ -269,7 +276,17 @@ function add_cyto() {
 	});
 
     }
+	
+}
 
+function cylayout(index,layname) {
+	var layout = cyobj[index].layout({
+		name: layname,
+		animationDuration: 500,
+		animate: true
+	});
+	
+	layout.run();
 }
 
 function rem_fefo(res_id,res_div_id) {
@@ -512,3 +529,4 @@ function togglecolor(obj,tid) {
     document.getElementById(tid).style.color = col;
 
 }
+
