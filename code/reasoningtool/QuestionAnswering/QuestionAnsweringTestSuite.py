@@ -4,6 +4,56 @@ import ParseQuestion
 import random
 import os, sys
 import argparse
+import QuestionExamples
+
+
+
+def run_question_examples(question_number, python_loc, res_loc):
+	"""
+	Run questions from QuestionExamples.tsv
+	:param question_number: question number you want to test
+	:return: none
+	"""
+	QuestionExamples = QuestionExamples.QuestionExamples()
+	QuestionExamples.read_reference_file()
+	for id_text_dict in QuestionExamples.questions:
+		q_id = id_text_dict['query_type_id']
+		if q_id == question_number or question_number == "a":
+
+			# template match it
+			nat_lang_question = id_text_dict['question_text']
+			matched_question, extracted_params, error_message, error_code = p.parse_question(nat_lang_question)
+
+			# check for error
+			error_found = False
+			if error_message:
+				print("ERROR on question: %s" % nat_lang_question)
+				print(error_message)
+				print(error_code)
+				error_found = True
+				#raise Exception
+
+			# check for right query number matched
+			if q_id != matched_question.known_query_type_id:
+				print("WARNING: for the query: %s\n I matched to template %s while it should have been %s" % (
+				nat_lang_question, matched_question.known_query_type_id, q_id))
+				error_found = True
+
+			# get the solution script
+			solution_script = matched_question.solution_script.safe_substitute(extracted_params)
+
+			# if no errors, then run the solution script
+			if not error_found:
+				try:
+					print("Running: %s" % solution_script)
+					print("%s" % nat_lang_question)
+					os.system("%s %s > %s" % (python_loc, solution_script, res_loc))
+				except:
+					print("ERROR on question: %s" % nat_lang_question)
+					print("Try running %s and see what went wrong." % solution_script)
+					raise Exception
+
+
 
 
 def run_test_suite(question_number, python_loc, res_loc):
@@ -68,6 +118,7 @@ def main():
 	parser.add_argument('-p', '--python', type=str, help="location of python", default='/home/dkoslicki/Dropbox/Repositories/RTX/VE3/bin/python3')
 	parser.add_argument('-r', '--res_loc', type=str, help="Where to put the result",
 						default='/dev/null')
+	parser.add_argument('-e', '--example', action='store_true', help="Include this flag if pulling questions from QuestionExamples.tsv")
 
 	if '-h' in sys.argv or '--help' in sys.argv:
 		RU.session.close()
@@ -78,8 +129,12 @@ def main():
 	question_id = args.question
 	python_loc = args.python
 	res_loc = args.res_loc
+	is_example = args.example
 
-	run_test_suite(question_id, python_loc, res_loc)
+	if not is_example:
+		run_test_suite(question_id, python_loc, res_loc)
+	else:
+		run_question_examples(question_id, python_loc, res_loc)
 
 if __name__ == "__main__":
 	main()
