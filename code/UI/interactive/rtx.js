@@ -146,6 +146,10 @@ function add_result(reslist) {
 	var prb = Number(reslist[i].confidence).toFixed(2);
 	var pcl = (prb>=0.9) ? "p9" : (prb>=0.7) ? "p7" : (prb>=0.5) ? "p5" : (prb>=0.3) ? "p3" : "p1";
 
+	if (reslist[i].result_type == "neighborhood graph") {
+		prb = "Neighborhood Graph";
+		pcl = "p0";
+	}
 	var rid = reslist[i].id.substr(reslist[i].id.lastIndexOf('/') + 1);
 	var fid = "feedback_" + rid;
 	var fff = "feedback_form_" + rid;
