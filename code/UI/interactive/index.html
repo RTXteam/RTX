@@ -2,16 +2,18 @@
 <html>
 <head>
 <title>RTX User Interface</title>
+<link rel="shortcut icon" href="favicon.ico">
 <link rel="stylesheet" type="text/css" href="rtx.css">
 <script src="cytoscape.min.js"></script>
 <script src="rtx.js"></script>
 </head>
-<body>
+<body onload="get_example_questions();">
 
 <div class="banner" banner-bg-text="RTX User Interface">
 <span class="menulinks">Documentation: 
 <a href="overview.html">Overview</a>
 <a href="api/rtx/v1/ui/">API</a>
+<a href="https://github.com/RTXteam/RTX/wiki/RTX-Home">Resources</a>
 </span>
 </div>
 
@@ -36,12 +38,12 @@
 
 <form id="questionForm" name="questionForm" method="post" action="javascript:sendQuestion();">
 <span title="clear question" class="clq" onclick="javascript:pasteQuestion('');">&#215;</span>
-<input type="text" id="questionText" name="questionText" size="100" maxlength="1000"/>
-<input type="button" class="button" name="action" value="ASK" onClick="javascript:sendQuestion();"/>
+<input type="text" class="questionBox" id="questionText" name="questionText" size="100" maxlength="1000"/>
+<input type="button" class="questionBox button" name="action" value="ASK" onClick="javascript:sendQuestion();"/>
 <br>
-<label class="tiny">
+<label id="useCacheText" class="tiny blue">
   <span class="switch">
-    <input id="useCache" type="checkbox" checked="checked">
+    <input id="useCache" type="checkbox" checked="checked" onchange="togglecolor(this,'useCacheText');">
     <span class="slider"></span>
   </span>
 Use cache</label>

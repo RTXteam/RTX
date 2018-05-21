@@ -164,6 +164,31 @@ class NormGoogleDistance:
 		ngd = QueryNCBIeUtils.multi_normalized_google_distance(terms_combined,mesh_flags)
 		return ngd
 
+	@staticmethod
+	def api_ngd(mesh_term1, mesh_term2):
+		response = {}
+		if not QueryNCBIeUtils.is_mesh_term(mesh_term2):
+			response['message'] = "Term 2 '" + mesh_term2 + "' not found in MeSH"
+		if not QueryNCBIeUtils.is_mesh_term(mesh_term1):
+			if 'message' in response.keys():
+				response['message'] = "Term 1 '" + mesh_term1 + "' and " + response['message']
+			else:
+				response['message'] = "Term 1 '" + mesh_term1 + "' not found in MeSH"
+		if 'message' in response:
+			response["response_code"] = "TermNotFound"
+			return response
+		else:
+			value = QueryNCBIeUtils.multi_normalized_google_distance([mesh_term1,mesh_term2])
+			print(type(value))
+			if math.isnan(value):
+				response['value'] = None
+				response['response_code'] = "OK"
+			else:
+				response['response_code'] = "OK"
+				response['value'] = value
+		return response
+
+
 
 
 

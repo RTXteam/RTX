@@ -29,8 +29,8 @@ requests_cache.install_cache('SemMedCache')
 
 class SemMedInterface():
 
-	def __init__(self):
-		self.smdb = QuerySemMedDB("rtxdev.saramsey.org",3306,"rtx_read","rtxd3vT3amXray","semmeddb",30)
+	def __init__(self, mysql_timeout = 30):
+		self.smdb = QuerySemMedDB("rtxdev.saramsey.org",3306,"rtx_read","rtxd3vT3amXray","semmeddb", mysql_timeout)
 		self.umls = QueryUMLSSQL("rtxdev.saramsey.org",3406, "rtx_read","rtxd3vT3amXray","umls")
 		self.semrep_url = "http://rtxdev.saramsey.org:5000/semrep/convert?string="
 		self.timeout_sec = 120
@@ -56,7 +56,10 @@ class SemMedInterface():
 		return res
 
 	def query_oxo(self, uid):
-		url_str =  'https://www.ebi.ac.uk/spot/oxo/api/mappings?fromId=' + uid
+		'''
+		This takes a curie id and send that id to EMBL-EBI OXO to convert to cui
+		'''
+		url_str =  'https://www.ebi.ac.uk/spot/oxo/api/mappings?fromId=' + str(uid)
 		try:
 			res = requests.get(url_str, headers={'accept': 'application/json'}, timeout=self.timeout_sec)
 		except requests.exceptions.Timeout:
@@ -74,7 +77,10 @@ class SemMedInterface():
 		return res
 
 	def QuerySemRep(self, string):
-		url = self.semrep_url + string
+		'''
+		This takes a string and extracts cuis from it using SemRep (what SemMedDB uses to extract relationships from pubmed articles)
+		'''
+		url = self.semrep_url + str(string)
 		res = self.send_query_get(url)
 		if res.status_code == 200:
 			data = res.json()
@@ -84,22 +90,16 @@ class SemMedInterface():
 
 	def get_cui_from_umls(self, curie_id, mesh_flag = False):
 		'''
-		Takes a curie ID, detects the ontology from the curie id, and then finds the mesh term
+		Takes a curie ID, detects the ontology from the curie id, and then queries UMLS to find the cui
 		Params:
 			curie_id - A string containing the curie id of the node. Formatted <source abbreviation>:<number> e.g. DOID:8398
 			mesh_flag - True/False depending on if a mesh id is passed (defaults to false)
 
-		current functionality (+ means has it, - means does not have it)
-			"Reactome" -
-			"GO" - 
-			"UniProt" -
-			"HP" -
-			"UBERON" -
-			"CL" - not supposed to be here?
-			"NCBIGene" -
-			"DOID" -
-			"OMIM" -
-			"ChEMBL" -
+		current functionality
+			"Mesh"
+			"GO"
+			"HP"
+			"OMIM"
 
 		'''
 		if mesh_flag:
@@ -127,24 +127,12 @@ class SemMedInterface():
 
 	def get_cui_from_oxo(self, curie_id, mesh_flag = False):
 		'''
-		Takes a curie ID, detects the ontology from the curie id, and then finds the mesh term
-		Params:
-			curie_id - A string containing the curie id of the node. Formatted <source abbreviation>:<number> e.g. DOID:8398
-			mesh_flag - True/False depending on if a mesh id is passed (defaults to false)
-
-		current functionality (+ means has it, - means does not have it)
-			"Reactome" -
-			"GO" - 
-			"UniProt" -
-			"HP" -
-			"UBERON" -
-			"CL" - not supposed to be here?
-			"NCBIGene" -
-			"DOID" -
-			"OMIM" -
-			"ChEMBL" -
-
+		This formats the curie id then processes the reponse from query_oxo returning a list of cuis
 		'''
+		if type(curie_id) != str:
+			curie_id = str(curie_id)
+		if curie_id.startswith('REACT:'):
+			curie_id = curie_id.replace('REACT', 'Reactome')
 		if mesh_flag:
 			mesh_id = 'MeSH:' + curie_id
 			res = self.query_oxo(mesh_id)
@@ -169,6 +157,9 @@ class SemMedInterface():
 		return cui
 
 	def get_cui_for_name(self, name, umls_flag = False):
+		'''
+		takes a string and then converts it to a cui or list of cuis by first querying SemRep then UMLS
+		'''
 		if not umls_flag:
 			entities = self.QuerySemRep(name)['entity']
 		else:
@@ -182,6 +173,7 @@ class SemMedInterface():
 		else: 
 			cuis = None
 		if cuis is None:
+			name = name.replace("'", "")
 			name_list = name.lower().split(' ')
 			if len(name_list) > 1:
 				cuis = self.umls.get_cui_cloud_for_multiple_words(name_list)
@@ -195,6 +187,13 @@ class SemMedInterface():
 		return cuis
 
 	def get_cui_for_id(self, curie_id, mesh_flag=False):
+		'''
+		Converts curie ids (or mesh ids) into cuis by querying the fiollowing services in the order listed:
+		*MyChem
+		*MyGene
+		*EMBL-EBI OXO
+		*UMLS
+		'''
 		cuis = None
 		if not mesh_flag:
 			if curie_id.startswith('ChEMBL'):
@@ -231,14 +230,30 @@ class SemMedInterface():
 			cuis = self.get_cui_from_umls(curie_id, mesh_flag)
 		return cuis
 
-	def get_edges_for_node(self, curie_id, name, mesh_flag=False):
+	def get_edges_for_node(self, curie_id, name, predicate = None, mesh_flag=False):
+		'''
+		Takes the curie id and name for a node and finds all the edges connected to it
+		Params
+			* curie_id - A string containing the curie id of the node
+			* name - A string containing the name of the node
+			* predicate - A string containing the predivate you wish to return (defaults to None which means all predicates)
+			* mesh_flag - A boolien indicating if the input is a mesh id (defaults to False)
+		'''
 		cuis = self.get_cui_for_id(curie_id, mesh_flag)
 		df = None
 		if cuis is not None:
-			dfs = [None]*len(cuis)
+			dfs = [None]*2*len(cuis)
 			c=0
 			for cui in cuis:
-				dfs[c] = self.smdb.get_edges_for_cui(cui)
+				dfs[c] = self.smdb.get_edges_for_subject_cui(cui, predicate = predicate)
+				if dfs[c] is not None:
+					dfs.insert(0,'SUBJECT_INPUT', [name]*len(df))
+					df['OBJECT_INPUT'] = ['nan']*len(df)
+				c+=1
+				dfs[c] = self.smdb.get_edges_for_object_cui(cui, predicate = predicate)
+				if dfs[c] is not None:
+					dfs.insert(0,'SUBJECT_INPUT', ['nan']*len(df))
+					df['OBJECT_INPUT'] = [name]*len(df)
 				c+=1
 			try:
 				df = pandas.concat([x for x in dfs if x is not None],ignore_index=True)
@@ -251,8 +266,15 @@ class SemMedInterface():
 					dfs = [None]*len(cuis)
 					c=0
 					for cui in cuis:
-						dfs[c] = self.smdb.get_edges_for_cui(cui)
+						dfs[c] = self.smdb.get_edges_for_subject_cui(cui, predicate = predicate)
+						if dfs[c] is not None:
+							dfs[c].insert(0,'SUBJECT_INPUT', [name]*len(dfs[c]))
+							dfs[c]['OBJECT_INPUT'] = ['nan']*len(dfs[c])
 						c+=1
+						dfs[c] = self.smdb.get_edges_for_object_cui(cui, predicate = predicate)
+						if dfs[c] is not None:
+							dfs[c].insert(0,'SUBJECT_INPUT', ['nan']*len(dfs[c]))
+							dfs[c]['OBJECT_INPUT'] = [name]*len(dfc[c])
 					try:
 						df = pandas.concat([x for x in dfs if x is not None],ignore_index=True)
 					except ValueError:
@@ -260,6 +282,16 @@ class SemMedInterface():
 		return df
 
 	def get_edges_between_subject_object_with_pivot(self, subj_id, subj_name, obj_id, obj_name, pivot = 0, mesh_flags = [False, False]):
+		'''
+		takes the curie id and name of 2 nodes and finds the edges between them with a specified number of hops
+		Params
+			* subj_id - The curie id for the subject
+			* subj_name - The name of the subject
+			* obj_id - The curie id for the object
+			* obj_name - The name of the object
+			* pivot - an integer dictating the the number of pivot nodes to use between the subject and object (defaults to 0 i.e. directly connected)
+			* mesh_flags - A 2 element list of boolian values dictating if each input is a mesh id (default set to [False, False])
+		'''
 		assert len(mesh_flags) == 2
 		subj_cuis = self.get_cui_for_id(subj_id, mesh_flags[0])
 		obj_cuis = self.get_cui_for_id(obj_id, mesh_flags[1])
@@ -300,6 +332,16 @@ class SemMedInterface():
 		return df
 
 	def get_shortest_path_between_subject_object(self, subj_id, subj_name, obj_id, obj_name, max_length = 3, mesh_flags = [False, False]):
+		'''
+		Takes a subject and a object then finds the sortest path between them up to some maximum height
+		Params
+			* subj_id - The curie id for the subject
+			* subj_name - The name of the subject
+			* obj_id - The curie id for the object
+			* obj_name - The name of the object
+			* max_length - an integer dictating the maximum length this function should check for the shorest path (defaults to 3)
+			* mesh_flags - A 2 element list of boolian values dictating if each input is a mesh id (default set to [False, False])
+		'''
 		assert max_length > 0
 		assert len(mesh_flags) == 2
 		subj_cuis = self.get_cui_for_id(subj_id, mesh_flags[0])
@@ -336,6 +378,27 @@ class SemMedInterface():
 		return None
 
 	def get_edges_between_nodes(self, subj_id, subj_name, obj_id, obj_name, predicate = None, result_col = ['PMID', 'SUBJECT_NAME', 'PREDICATE', 'OBJECT_NAME'], bidirectional=True, mesh_flags = [False, False]):
+		'''
+		This takes two nodes and finds the edges between them.
+		current result_column options:
+			* 'PMID' 
+			* 'PREDICATE'
+			* 'SUBJECT__CUI'
+			* 'SUBJECT_NAME'
+			* 'SUBJECT_SEMTYPE'
+			* 'OBJECT__CUI'
+			* 'OBJECT_NAME'
+			* 'OBJECT_SEMTYPE'
+		Params
+			* subj_id - The curie id for the subject
+			* subj_name - The name of the subject
+			* obj_id - The curie id for the object
+			* obj_name - The name of the object
+			* predicate - A string containing the predicate you wish to search for (defaults to None which means return all predicates)\
+			* result_col - A list of strings containing the columns you wish to return (defaults to ['PMID', 'SUBJECT_NAME', 'PREDICATE', 'OBJECT_NAME'])
+			* bidirectional - boolian value dictating weither results should be bidirectional (defaults to True)
+			* mesh_flags - A 2 element list of boolian values dictating if each input is a mesh id (default set to [False, False])
+		'''
 		subj_cuis = self.get_cui_for_id(subj_id, mesh_flags[0])
 		obj_cuis = self.get_cui_for_id(obj_id, mesh_flags[1])
 		df = None
@@ -344,12 +407,21 @@ class SemMedInterface():
 			for subj_cui in subj_cuis:
 				for obj_cui in obj_cuis:
 					if bidirectional:
-						edges = self.smdb.get_edges_between_nodes(subj_cui, obj_cui, predicate = predicate, result_col = result_col)
+						edges = self.smdb.get_edges_between_subject_object(subj_cui, obj_cui, predicate = predicate, result_col = result_col)
+						edges2 = self.smdb.get_edges_between_subject_object(obj_cui, subj_cui, predicate = predicate, result_col = result_col)
 						if edges is not None:
+							edges.insert(0,'SUBJECT_INPUT', [subj_name]*len(edges))
+							edges['OBJECT_INPUT'] = [obj_name]*len(edges)
 							dfs.append(edges)
+						if edges2 is not None:
+							edges2.insert(0,'SUBJECT_INPUT', [obj_name]*len(edges2))
+							edges2['OBJECT_INPUT'] = [subj_name]*len(edges2)
+							dfs.append(edges2)
 					else:
 						edges = self.smdb.get_edges_between_subject_object(subj_cui, obj_cui, predicate = predicate, result_col = result_col)
 						if edges is not None:
+							edges.insert(0,'SUBJECT_INPUT', [subj_name]*len(edges))
+							edges['OBJECT_INPUT'] = [obj_name]*len(edges)
 							dfs.append(edges)
 			try:
 				df = pandas.concat(dfs,ignore_index=True).drop_duplicates()
@@ -383,6 +455,73 @@ class SemMedInterface():
 				except ValueError:
 					df = None
 		return df
+
+	def get_node_info(self, constraints, output, bidirectional = False):
+		'''
+		This finds a node in SemMedDB using a dict of constraints and then return requested output.
+		Params:
+			* contraints = a dict containing the contraints you wish to find the node with. All values should be strings e.g. {'field': 'value'}
+			* output a list of fields you wish to retrieve\
+		Avalable feilds for constaints and outputs :
+			* 'PMID'
+			* 'SUBJECT_CUI'
+			* 'SUBJECT_NAME'
+			* 'SUBJECT_SEMTYPE'
+			* 'OBJECT_CUI'
+			* 'OBJECT_NAME'
+			* 'OBJECT_SEMTYPE'
+			* 'PREDICATE'
+		'''
+		keys = [
+			'PMID', 
+			'SUBJECT_CUI', 
+			'SUBJECT_NAME', 
+			'SUBJECT_SEMTYPE',
+			'OBJECT_CUI',
+			'OBJECT_NAME',
+			'OBJECT_SEMTYPE',
+			'PREDICATE']
+
+		output = [x.upper() for x in output]
+		constraints = {x.upper(): v for x, v in constraints.items()}
+		inputKeys = list(constraints.keys())
+
+		assert type(constraints) == dict and type(output) == list
+		if not set(inputKeys) < set(keys):
+			print('Invalid field inputs in constraints argument: ' + ', '.join(list(set(inputKeys) - set(keys))))
+			print('Valid fields are the following:')
+			print(', '.join(keys))
+			return None
+		if not set(output) < set(keys):
+			print('Invalid field inputs in output argument: ' + ', '.join(list(set(output) - set(keys))))
+			print('Valid fields are the following:')
+			print(', '.join(keys))
+			return None
+		query = 'select distinct ' + ', '.join(output) + ' from SPLIT_PREDICATION where '
+		for key in inputKeys:
+			query += key + " = '" + constraints[key].replace("'", '') + "' and "
+		query = query[:-5]
+		df = self.smdb.get_dataframe_from_db(query)
+		if df is not None and bidirectional:
+			df['ORIENTATION'] = ['original']*len(df)
+		df2 = None
+		if bidirectional:
+			query_list = query.split(' ')
+			for a in range(len(query_list)):
+				if 'OBJECT' in query_list[a]:
+					query_list[a] = query_list[a].replace('OBJECT', 'SUBJECT')
+				elif 'SUBJECT' in query_list[a]:
+					query_list[a] = query_list[a].replace('SUBJECT', 'OBJECT')
+			query2 = ' '.join(query_list)
+			df2 = self.smdb.get_dataframe_from_db(query2)
+			if df2 is not None:
+				df['ORIENTATION'] = ['inverted']*len(df)
+		if df2 is None:
+			return df
+		elif df is None:
+			return df2
+		else:
+			return pandas.concat([df,df2], ignore_index = True)
 
 
 if __name__ == '__main__':

@@ -42,7 +42,7 @@ function sendQuestion(e) {
     // collect the form data while iterating over the inputs
     var data = { 'text': document.getElementById("questionForm").elements["questionText"].value, 'language': 'English', 'bypass_cache' : bypass_cache };
     document.getElementById("statusdiv").innerHTML = "Interpreting your question...";
-    document.getElementById("statusdiv").innerHTML+= " (bypassing cache : " + bypass_cache + ")";
+    document.getElementById("devdiv").innerHTML = " (bypassing cache : " + bypass_cache + ")";
 
     sesame('openmax',statusdiv);
 
@@ -57,7 +57,7 @@ function sendQuestion(e) {
     xhr.onloadend = function() {
 	if ( xhr.status == 200 ) {
 	    var jsonObj = JSON.parse(xhr.responseText);
-	    document.getElementById("devdiv").innerHTML = "<PRE>\n" + JSON.stringify(jsonObj,null,2) + "</PRE>";
+	    document.getElementById("devdiv").innerHTML += "<PRE>\n" + JSON.stringify(jsonObj,null,2) + "</PRE>";
 
 	    if ( jsonObj.known_query_type_id && jsonObj.terms ) {
 		document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR>Looking for answer...";
@@ -139,7 +139,9 @@ function add_result(reslist) {
 	var prb = Number(reslist[i].confidence).toFixed(2);
 	var pcl = (prb>=0.9) ? "p9" : (prb>=0.7) ? "p7" : (prb>=0.5) ? "p5" : (prb>=0.3) ? "p3" : "p1";
 
-	var fid = "feedback_" + reslist[i].id.substr(reslist[i].id.lastIndexOf('/') + 1);
+	var rid = reslist[i].id.substr(reslist[i].id.lastIndexOf('/') + 1);
+	var fid = "feedback_" + rid;
+	var fff = "feedback_form_" + rid;
 
 	document.getElementById("result_container").innerHTML += "<div onclick='sesame(this,a"+num+"_div);' id='h"+num+"_div' title='Click to expand / collapse result "+num+"' class='accordion'>Result "+num+"<span title='confidence="+prb+"' class='"+pcl+" qprob'>"+prb+"</span></div>";
 
@@ -148,7 +150,7 @@ function add_result(reslist) {
 
 	}
 	else {
-	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table><tr><td class='textanswer'>"+reslist[i].text+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+i+"].reset();'>&#8635;</a></td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td><span id='"+fid+"'><i>User Feedback</i><hr></span></td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
+	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table class='t100'><tr><td class='textanswer'>"+reslist[i].text+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+i+"].reset();'>&#8635;</a></td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td><span id='"+fid+"'><i>User Feedback</i><hr><span id='"+fff+"'><a href='javascript:add_fefo(\""+rid+"\",\"a"+num+"_div\");'>Add Feedback</a></span><hr></span></td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
 
 	    cytodata[i] = [];
 	    var gd = reslist[i].result_graph;
@@ -231,7 +233,7 @@ function add_cyto() {
 	    wheelSensitivity: 0.2,
 
 	    layout: {
-		name: 'breadthfirst',
+		name: 'cose',
 		padding: 10
 	    },
 
@@ -244,11 +246,14 @@ function add_cyto() {
 	cyobj[i].on('tap','node', function() {
 	    var dnum = 'd'+this.data('parentdivnum')+'_div';
 
-	    document.getElementById(dnum).innerHTML = "<b>Accession:</b> " + this.data('accession') + "<br>";
-	    document.getElementById(dnum).innerHTML+= "<b>Name:</b> " + this.data('name') + "<br>";
+	    document.getElementById(dnum).innerHTML = "<b>Name:</b> " + this.data('name') + "<br>";
 	    document.getElementById(dnum).innerHTML+= "<b>ID:</b> " + this.data('id') + "<br>";
+	    document.getElementById(dnum).innerHTML+= "<b>URI:</b> <a target='_blank' href='" + this.data('uri') + "'>" + this.data('uri') + "</a><br>";
 	    document.getElementById(dnum).innerHTML+= "<b>Type:</b> " + this.data('type') + "<br>";
-	    document.getElementById(dnum).innerHTML+= "<b>Description:</b> " + this.data('description') + "<br>";
+
+	    if (this.data('description') !== 'UNKNOWN' && this.data('description') !== 'None') {
+		document.getElementById(dnum).innerHTML+= "<b>Description:</b> " + this.data('description') + "<br>";
+	    }
 
 	    sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
 	});
@@ -267,9 +272,109 @@ function add_cyto() {
 
 }
 
+function rem_fefo(res_id,res_div_id) {
+    var fff = "feedback_form_" + res_id;
+
+    document.getElementById(fff).innerHTML = "<a href='javascript:add_fefo(\""+res_id+"\",\""+res_div_id+"\");'>Add Feedback</a>";
+
+    sesame('openmax',document.getElementById(res_div_id));
+}
+
+function add_fefo(res_id,res_div_id) {
+    var fff = "feedback_form_" + res_id;
+    var uuu = getCookie('RTXuser');
+
+    document.getElementById(fff).innerHTML = "Please provide feedback on this result:<br>";
+
+    document.getElementById(fff).innerHTML+= "<table><tr><td><b>Rating:</b></td><td><span class='ratings'><select id='"+fff+"_rating'><option value=''>Please select a rating&nbsp;&nbsp;&nbsp;&#8675;</option></select></span></td></tr><tr><td><b>Expertise:</b></td><td><span class='ratings'><select id='"+fff+"_expertise'><option value=''>What is your expertise on this subject?&nbsp;&nbsp;&nbsp;&#8675;</option></select></span></td></tr><tr><td><b>Full Name:</b></td><td><input type='text' id='"+fff+"_fullname' value='"+uuu+"' maxlength='60' size='60'></input></td</tr><tr><td><b>Comment:</b></td><td><textarea id='"+fff+"_comment' maxlength='60000' rows='7' cols='60'></textarea></td</tr><tr><td></td><td><input type='button' class='questionBox button' name='action' value='Submit' onClick='javascript:submitFeedback(\""+res_id+"\",\""+res_div_id+"\");'/>&nbsp;&nbsp;&nbsp;&nbsp;<a href='javascript:rem_fefo(\""+res_id+"\",\""+res_div_id+"\");'>Cancel</a></td></tr></table><span id='"+fff+"_msgs' class='error'></span>";
+
+    for (var i in fb_ratings) {
+	var opt = document.createElement('option');
+	opt.value = i;
+	opt.innerHTML = fb_ratings[i].tag+" :: "+fb_ratings[i].desc;
+	document.getElementById(fff+"_rating").appendChild(opt);
+    }
+
+    for (var i in fb_explvls) {
+	var opt = document.createElement('option');
+	opt.value = i;
+	opt.innerHTML = fb_explvls[i].tag+" :: "+fb_explvls[i].desc;
+	document.getElementById(fff+"_expertise").appendChild(opt);
+    }
+
+    sesame('openmax',document.getElementById(res_div_id));
+}
+
+function submitFeedback(res_id,res_div_id) {
+    var fff = "feedback_form_" + res_id;
+
+    var rat = document.getElementById(fff+"_rating").value;
+    var exp = document.getElementById(fff+"_expertise").value;
+    var nom = document.getElementById(fff+"_fullname").value;
+    var cmt = document.getElementById(fff+"_comment").value;
+
+    if (!rat || !exp || !nom) {
+	document.getElementById(fff+"_msgs").innerHTML = "Please provide a <u>rating</u>, <u>expertise level</u>, and <u>name</u> in your feedback on this result";
+	return;
+    }
+
+    var feedback = {};
+    feedback.rating_id = parseInt(rat);
+    feedback.expertise_level_id = parseInt(exp);
+    feedback.comment = cmt;
+    feedback.commenter_full_name = nom;
+
+    // feedback.commenter_id = 1;
+
+
+    var xhr6 = new XMLHttpRequest();
+    xhr6.open("post", "api/rtx/v1/result/" + res_id + "/feedback", true);
+    xhr6.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+    xhr6.send(JSON.stringify(feedback));
+
+    xhr6.onloadend = function() {
+	var jsonObj6 = JSON.parse(xhr6.responseText);
+	document.getElementById("devdiv").innerHTML += "================================================================= FEEDBACK-POST::<PRE>\nPOST to api/rtx/v1/result/" + res_id + "/feedback ::<br>" + JSON.stringify(feedback,null,2) + "<br>------<br>" + JSON.stringify(jsonObj6,null,2) + "</PRE>";
+
+	if ( xhr6.status == 200 ) {
+	    document.getElementById(fff+"_msgs").innerHTML = "Your feedback has been recorded...";
+	    setRTXUserCookie(nom);
+
+	    var xhr7 = new XMLHttpRequest();
+	    xhr7.open("get", "api/rtx/v1/result/" + res_id + "/feedback", true);
+	    xhr7.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+	    xhr7.send(null);
+
+	    xhr7.onloadend = function() {
+		var jsonObj7 = JSON.parse(xhr7.responseText);
+		if ( xhr7.status == 200 ) {
+		    var fid = "feedback_" + res_id;
+		    document.getElementById(fid).innerHTML = "<i>User Feedback (updated)</i><hr><span class='error'>Your feedback has been recorded.  Thank you, "+nom+"!</span><hr>";
+
+		    for (var i in jsonObj7) {
+			insert_feedback_item(fid, jsonObj7[i]);
+		    }
+		    sesame('openmax',document.getElementById(res_div_id));
+		}
+		else {
+		    document.getElementById(fff+"_msgs").innerHTML = "There was an error with this ("+jsonObj7.detail+"). Please try again.";
+		}
+	    }
+
+	}
+	else {
+	    document.getElementById(fff+"_msgs").innerHTML = "There was an error with this submission ("+jsonObj6.detail+"). Please try again.";
+	}
+
+    }
+
+}
+
 
 function add_feedback() {
-    get_feedback_fields();
+    if (fb_explvls.length == 0 || fb_ratings.length == 0) {
+	get_feedback_fields();
+    }
 
     var xhr3 = new XMLHttpRequest();
     xhr3.open("get", "api/rtx/v1/response/" + response_id + "/feedback", true);
@@ -285,9 +390,7 @@ function add_feedback() {
 		var fid = "feedback_" + jsonObj3[i].result_id.substr(jsonObj3[i].result_id.lastIndexOf('/') + 1);
 
 		if (document.getElementById(fid)) {
-		    document.getElementById(fid).innerHTML += "<b>Rating:</b> " + jsonObj3[i].rating_id +  " (" + fb_ratings[jsonObj3[i].rating_id].tag + ")<br>";
-		    document.getElementById(fid).innerHTML += "<b>Expertise:</b> " + jsonObj3[i].expertise_level_id + " (" + fb_explvls[jsonObj3[i].expertise_level_id].tag + ")<br>";
-		    document.getElementById(fid).innerHTML += "<b>Comment:</b> " + jsonObj3[i].comment + "<hr>";
+		    insert_feedback_item(fid, jsonObj3[i]);
 		}
 		else {
 		    document.getElementById("devdiv").innerHTML += "[warn] Feedback " + fid + " does not exist in response!<br>";
@@ -301,6 +404,16 @@ function add_feedback() {
 
 }
 
+
+function insert_feedback_item(el_id, feed_obj) {
+    var prb = feed_obj.rating_id;
+    var pcl = (prb<=2) ? "p9" : (prb<=4) ? "p7" : (prb<=5) ? "p5" : (prb<=6) ? "p3" : (prb<=7) ? "p0" : "p1";
+    var pex = feed_obj.expertise_level_id;
+    var pxl = (pex==1) ? "p9" : (pex==2) ? "p7" : (pex==3) ? "p5" : (pex==4) ? "p3" : "p1";
+
+    document.getElementById(el_id).innerHTML += "<table><tr><td><b>Rating:</b></td><td style='width:100%'><span class='"+pcl+" frating' title='" + fb_ratings[feed_obj.rating_id].desc +  "'>" + fb_ratings[feed_obj.rating_id].tag + "</span>&nbsp;<span class='tiny'>by <b>" + feed_obj.commenter_full_name + "</b> <span class='"+pxl+" explevel' title='" + fb_explvls[feed_obj.expertise_level_id].tag + " :: " + fb_explvls[feed_obj.expertise_level_id].desc + "'>&nbsp;</span></span><i class='tiny' style='float:right'>" + feed_obj.datetime + "</i></td></tr><tr><td><b>Comment:</b></td><td>" + feed_obj.comment + "</td></tr></table><hr>";
+
+}
 
 
 function get_feedback_fields() {
@@ -342,5 +455,60 @@ function get_feedback_fields() {
 	    }
 	}
     };
+
+}
+
+
+function get_example_questions() {
+    var xhr8 = new XMLHttpRequest();
+    xhr8.open("get", "api/rtx/v1/exampleQuestions", true);
+    xhr8.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+    xhr8.send(null);
+
+    xhr8.onloadend = function() {
+	if ( xhr8.status == 200 ) {
+	    var ex_qs = JSON.parse(xhr8.responseText);
+
+	    document.getElementById("qqq").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Example Questions&nbsp;&nbsp;&nbsp;&#8675;</option>";
+
+	    for (var i in ex_qs) {
+		var opt = document.createElement('option');
+		opt.value = ex_qs[i].question_text;
+		opt.innerHTML = ex_qs[i].query_type_id+": "+ex_qs[i].question_text;
+		document.getElementById("qqq").appendChild(opt);
+	    }
+
+	}
+
+    };
+
+}
+
+
+function setRTXUserCookie(fullname) {
+    var cname = "RTXuser";
+    var exdays = 7;
+    var d = new Date();
+    d.setTime(d.getTime()+(exdays*24*60*60*1000));
+    var expires = "expires="+d.toGMTString();
+    document.cookie = cname+"="+fullname+"; "+expires;
+}
+
+function getCookie(cname) {
+    var name = cname + "=";
+    var ca = document.cookie.split(';');
+    for(var i=0; i<ca.length; i++) {
+	var c = ca[i].trim();
+	if (c.indexOf(name)==0) return c.substring(name.length,c.length);
+    }
+    return "";
+}
+
+function togglecolor(obj,tid) {
+    var col = '#888';
+    if (obj.checked == true) {
+	col = '#047';
+    }
+    document.getElementById(tid).style.color = col;
 
 }

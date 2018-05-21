@@ -204,7 +204,10 @@ class QueryMyGene:
         if gene_id.startswith('NCBIGene'):
             gene_id = int(gene_id.split(':')[1])
             res = self.mygene_obj.getgene(gene_id, fields = 'umls', verbose = False)
-            cui_res = res.get('umls', None)
+            if res is not None:
+                cui_res = res.get('umls', None)
+            else:
+                cui_res = None
             cuis = None
             if cui_res is not None:
                 cuis = [cui_res['cui']]

@@ -70,7 +70,7 @@ class SimilarityQuestionSolution:
 
 		# Otherwise return the results
 		if not use_json:
-			to_print = "The %s's involving similar %s's as %s are: \n" % (target_node_type, association_node_type, source_node_description)
+			to_print = "The %s's involving similar %ss as %s are: \n" % (target_node_type, association_node_type, source_node_description)
 			for other_disease_ID, jaccard in node_jaccard_tuples_sorted:
 				to_print += "%s\t%s\tJaccard %f\n" % (other_disease_ID, RU.get_node_property(other_disease_ID, 'name'), jaccard)
 			print(to_print)
@@ -100,7 +100,7 @@ class SimilarityQuestionSolution:
 					target_id2numbers[data['properties']['rtx_name']] = node
 
 			for other_disease_ID, jaccard in node_jaccard_tuples_sorted:
-				to_print = "The %s %s involves similar %s's as %s with similarity value %f" % (
+				to_print = "The %s %s involves similar %ss as %s with similarity value %f" % (
 					target_node_type, RU.get_node_property(other_disease_ID, 'name'), association_node_type,
 					source_node_description, jaccard)
 

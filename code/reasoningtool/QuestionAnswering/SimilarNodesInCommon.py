@@ -172,6 +172,9 @@ class SimilarNodesInCommon:
 			error_message = "Sorry, no %s is not connected to any %s." % (target_node_label, association_node_label)
 			return dict(), error_code, error_message
 		target_association_relationship = rels.pop()
+		# TODO: kludgy fix for microRNA's having multiple relationship types, only one of which shows up frequently
+		if target_association_relationship == "causes_or_contributes_to":
+			target_association_relationship = "associated_with_condition"
 
 		# populate the arguments
 		arguments = dict(input_node_ID=input_node_ID,

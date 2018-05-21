@@ -12,6 +12,7 @@ import ast
 from datetime import datetime
 import pickle
 import hashlib
+import collections
 
 from sqlalchemy import Column, ForeignKey, Integer, Float, String, DateTime, Text, PickleType, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
@@ -227,8 +228,9 @@ class RTXFeedback:
     response.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
     response.datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    termsString = stringifyDict(query["terms"])
     storedResponse = Response(response_datetime=datetime.now(),restated_question=response.restated_question_text,query_type=query["known_query_type_id"],
-      terms=str(query["terms"]),tool_version=rtxConfig.version,result_code=response.result_code,message=response.message,n_results=n_results,response_object=pickle.dumps(ast.literal_eval(repr(response))))
+      terms=termsString,tool_version=rtxConfig.version,result_code=response.result_code,message=response.message,n_results=n_results,response_object=pickle.dumps(ast.literal_eval(repr(response))))
     session.add(storedResponse)
     session.flush()
     response.id = "http://rtx.ncats.io/api/rtx/v1/response/"+str(storedResponse.response_id)
@@ -323,8 +325,10 @@ class RTXFeedback:
     session = self.session
     rtxConfig = RTXConfiguration()
     tool_version = rtxConfig.version
+    termsString = stringifyDict(query["terms"])
+
     #### Look for previous responses we could use
-    storedResponse = session.query(Response).filter(Response.query_type==query["known_query_type_id"]).filter(Response.tool_version==tool_version).filter(Response.terms==str(query["terms"])).order_by(desc(Response.response_datetime)).first()
+    storedResponse = session.query(Response).filter(Response.query_type==query["known_query_type_id"]).filter(Response.tool_version==tool_version).filter(Response.terms==termsString).order_by(desc(Response.response_datetime)).first()
     if ( storedResponse is not None ):
       return pickle.loads(storedResponse.response_object)
     return
@@ -341,6 +345,7 @@ class RTXFeedback:
     response["n_ratings"] = count
     return(response)
 
+
   #### Get the list of expertise levels
   def getExpertiseLevels(self):
     session = self.session
@@ -352,24 +357,38 @@ class RTXFeedback:
     response["n_expertise_levels"] = count
     return(response)
 
+
   #### Store all the results from a response into the database
   def addNewResultRating(self, result_id, rating):
     session = self.session
 
     if result_id is None:
       return( { "status": 450, "title": "result_id missing", "detail": "Required attribute result_id is missing from URL", "type": "about:blank" }, 450)
-    if "commenter_id" not in rating or rating["commenter_id"] is None:
-      return( { "status": 451, "title": "commenter_id missing", "detail": "Required attribute commenter_id missing from body content", "type": "about:blank" }, 451)
     if "expertise_level_id" not in rating or rating["expertise_level_id"] is None:
       return( { "status": 452, "title": "expertise_level_id missing", "detail": "Required attribute expertise_level_id missing from body content", "type": "about:blank" }, 452)
     if "rating_id" not in rating or rating["rating_id"] is None:
       return( { "status": 453, "title": "rating_id missing", "detail": "Required attribute rating_id missing from body content", "type": "about:blank" }, 453)
     if "comment" not in rating or rating["comment"] is None:
       return( { "status": 454, "title": "comment missing", "detail": "Required attribute comment missing from body content", "type": "about:blank" }, 454)
+    if len(rating["comment"]) > 65000:
+      return( { "status": 455, "title": "comment too long", "detail": "Comment attribute max lenth is 65 kB", "type": "about:blank" }, 455)
+
+    if "commenter_id" not in rating or rating["commenter_id"] is None:
+      if "commenter_full_name" not in rating or rating["commenter_full_name"] is None:
+        return( { "status": 451, "title": "commenter_id and commenter_name are missing", "detail": "Required attributes either commenter_id or commenter_full_name are missing from body content", "type": "about:blank" }, 451)
+      else:
+        existingCommenter = session.query(Commenter).filter(Commenter.full_name==rating["commenter_full_name"]).first()
+        if existingCommenter is None:
+          newCommenter = Commenter(full_name=rating["commenter_full_name"],email_address="?",password="?")
+          session.add(newCommenter)
+          session.flush()
+          rating["commenter_id"] = newCommenter.commenter_id
+        else:
+          rating["commenter_id"] = existingCommenter.commenter_id
 
     try:
       insertResult = Result_rating(result_id=result_id, commenter_id=rating["commenter_id"], expertise_level_id=rating["expertise_level_id"],
-        rating_id = rating["rating_id"], comment=rating["comment"], comment_datetime=datetime.now().strftime("%Y-%m-%d %H:%M:%S") )
+        rating_id = rating["rating_id"], comment=rating["comment"].encode('utf-8'), comment_datetime=datetime.now().strftime("%Y-%m-%d %H:%M:%S") )
       session.add(insertResult)
       session.flush()
       session.commit()
@@ -377,6 +396,29 @@ class RTXFeedback:
       return( { "status": 460, "title": "Error storing feedback", "detail": "Your feedback was not stored because of error: "+str(error), "type": "about:blank" }, 460 )
 
     return( { "status": 200, "title": "Feedback stored", "detail": "Your feedback has been stored by RTX as id="+str(insertResult.result_rating_id), "type": "about:blank" }, 200 )
+
+
+  #### Fetch all available feedback
+  def getAllFeedback(self):
+    session = self.session
+
+    storedRatings = session.query(Result_rating).all()
+    if storedRatings is not None:
+      resultRatings = []
+      for rating in storedRatings:
+        resultRating = Feedback()
+        resultRating.result_id = "http://rtx.ncats.io/api/rtx/v1/result/"+str(rating.result_id)
+        resultRating.id = resultRating.result_id + "/feedback/" + str(rating.result_rating_id)
+        resultRating.expertise_level_id = rating.expertise_level_id
+        resultRating.rating_id = rating.rating_id
+        resultRating.commenter_id = rating.commenter_id
+        resultRating.commenter_name = 'not available'
+        resultRating.comment = rating.comment
+        resultRating.datetime = rating.comment_datetime
+        resultRatings.append(resultRating)
+      return(resultRatings)
+    else:
+      return
 
 
   #### Fetch the feedback for a result
@@ -387,7 +429,7 @@ class RTXFeedback:
       return( { "status": 450, "title": "result_id missing", "detail": "Required attribute result_id is missing from URL", "type": "about:blank" }, 450)
 
     #### Look for ratings we could use
-    storedRatings = session.query(Result_rating).filter(Result_rating.result_id==result_id).all()
+    storedRatings = session.query(Result_rating).filter(Result_rating.result_id==result_id).order_by(desc(Result_rating.comment_datetime)).all()
     if storedRatings is not None:
       resultRatings = []
       for rating in storedRatings:
@@ -397,10 +439,13 @@ class RTXFeedback:
         resultRating.expertise_level_id = rating.expertise_level_id
         resultRating.rating_id = rating.rating_id
         resultRating.commenter_id = rating.commenter_id
-        resultRating.commenter_name = 'not available'
         resultRating.comment = rating.comment
         resultRating.datetime = rating.comment_datetime
-        resultRating.foobar = -1		# turns out you can put in anything you want, but it doesn't show up in the output
+        resultRating.foobar = -1		# turns out you can put in anything you want, but it doesn't show up in the output unless the YAML says it can
+
+        commenterFullName = session.query(Commenter).filter(Commenter.commenter_id==rating.commenter_id).first().full_name
+        resultRating.commenter_full_name = commenterFullName
+
         resultRatings.append(resultRating)
       return(resultRatings)
     else:
@@ -416,11 +461,11 @@ class RTXFeedback:
 
     #### Look for results for this response
     storedResponseResults = session.query(Response_result).filter(Response_result.response_id==response_id).all()
-    eprint("DEBUG: Getting results for response_id="+str(response_id))
+    #eprint("DEBUG: Getting results for response_id="+str(response_id))
     if storedResponseResults is not None:
       allResultRatings = []
       for storedResponseResult in storedResponseResults:
-        eprint("DEBUG:   Getting feedback for result_id="+str(storedResponseResult.result_id))
+        #eprint("DEBUG:   Getting feedback for result_id="+str(storedResponseResult.result_id))
         resultRatings = self.getResultFeedback(storedResponseResult.result_id)
         if resultRatings is not None:
           for resultRating in resultRatings:
@@ -433,13 +478,56 @@ class RTXFeedback:
       return( { "status": 404, "title": "Results not found", "detail": "There were no results found for this response", "type": "about:blank" }, 404)
 
 
+  #### Fetch a cached response
+  def getResponse(self, response_id):
+    session = self.session
+
+    if response_id is None:
+      return( { "status": 450, "title": "response_id missing", "detail": "Required attribute response_id is missing from URL", "type": "about:blank" }, 450)
+
+    #### Find the response
+    storedResponse = session.query(Response).filter(Response.response_id==response_id).first()
+    if storedResponse is not None:
+      return pickle.loads(storedResponse.response_object)
+    else:
+      return( { "status": 404, "title": "Response not found", "detail": "There is no response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
 
 
-############################################ General function for converting a query row into a dict ###############################################
+  #### Fetch a cached result
+  def getResult(self, result_id):
+    session = self.session
+
+    if result_id is None:
+      return( { "status": 450, "title": "result_id missing", "detail": "Required attribute result_id is missing from URL", "type": "about:blank" }, 450)
+
+    #### Find the result
+    storedResult = session.query(Result).filter(Result.result_id==result_id).first()
+    if storedResult is not None:
+      return pickle.loads(storedResult.result_object)
+    else:
+      return( { "status": 404, "title": "Result not found", "detail": "There is no result corresponding to result_id="+str(result_id), "type": "about:blank" }, 404)
+
+
+
+
+
+
+############################################ General functions ###############################################
 #### Turn a row into a dict
 def object_as_dict(obj):
   return {c.key: getattr(obj, c.key)
     for c in inspect(obj).mapper.column_attrs}
+
+#### convert a dict into a string in guaranteed repeatable order i.e. sorted
+def stringifyDict(inputDict):
+  outString = "{"
+  for key,value in sorted(inputDict.items(), key=lambda t: t[0]):
+    if outString != "{":
+      outString += ","
+    outString += "'"+str(key)+"':'"+str(value)+"'"
+  outString += "}"
+  return(outString)
+
 
 
 #### If this class is run from the command line, perform a short little test to see if it is working correctly
