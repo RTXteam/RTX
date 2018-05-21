@@ -380,11 +380,11 @@ class BioNetExpander:
                             self.orangeboard.add_rel('regulates', 'Reactome', node1, node2, extended_reltype="regulates_expression_of")
 
         # protein-to-GO (biological process):
-        go_bp_dict = self.query_mygene_obj.get_gene_ontology_ids_bp_for_uniprot_id(uniprot_id_str)
-        for go_id, go_term in go_bp_dict.items():
-            gene_ontology_category_and_term_dict = QuerySciGraph.query_get_ontology_node_category_and_term(go_id)
-            if len(gene_ontology_category_and_term_dict) > 0:
-                ontology_name_str = gene_ontology_category_and_term_dict["category"].replace(" ", "_")
+        go_dict = self.query_mygene_obj.get_gene_ontology_ids_for_uniprot_id(uniprot_id_str)
+        for go_id, go_term_dict in go_dict.items():
+            go_term = go_term_dict.get('term', None)
+            ontology_name_str = go_term_dict.get('ont', None)
+            if go_term is not None and ontology_name_str is not None:
                 node2 = self.add_node_smart(ontology_name_str, go_id, desc=go_term)
                 if node2 is not None:
                     predicate = self.GO_ONTOLOGY_TO_PREDICATE[ontology_name_str]
@@ -543,7 +543,7 @@ class BioNetExpander:
         ob = Orangeboard(debug=False)
         ob.set_dict_reltype_dirs({'targets': True})
         bne = BioNetExpander(ob)
-        protein_node = bne.add_node_smart('protein', 'Q05925', seed_node_bool=True, desc='XYZ1')
+        protein_node = bne.add_node_smart('protein', 'Q75MH2', seed_node_bool=True, desc='IL6')
         bne.expand_protein(protein_node)
         ob.neo4j_set_url()
         ob.neo4j_set_auth()

@@ -5,14 +5,7 @@ available methods include:
 *   map_kegg_compound_to_enzyme_commission_ids(kegg_id)
 
     Description:
-        map kegg compond id to enzyme commission ids
 
-    Args:
-        kegg_id (str): The ID of the kegg compound, e.g., "KEGG:C00022"
-
-    Returns:
-        ids (set): a set of the enzyme commission ids, or empty set if no enzyme commission id can be obtained or the
-                    response status code is not 200.
 '''
 
 
@@ -33,7 +26,8 @@ class QueryKEGG:
     TIMEOUT_SEC = 120
     API_BASE_URL = ' http://rest.kegg.jp'
     HANDLER_MAP = {
-        'map_kegg_compound_to_enzyme_commission_ids': 'link/ec/{id}'
+        'map_kegg_compound_to_enzyme_commission_ids': 'link/ec/{id}',
+        'map_kegg_compound_to_pub_chem_id': 'conv/pubchem/compound:{id}'
     }
 
     @staticmethod
@@ -58,10 +52,17 @@ class QueryKEGG:
             return None
         return res.text
 
-    # returns a list of dictionary, which contains a concept ID and a concept name, based on a single node label
-    # like "acetaminophen" or "heart disease", or an empty list if no concept IDs could be obtained for the given label
     @staticmethod
     def map_kegg_compound_to_enzyme_commission_ids(kegg_id):
+        """ map kegg compond id to enzyme commission ids
+
+        Args:
+            kegg_id (str): The ID of the kegg compound, e.g., "KEGG:C00022"
+
+        Returns:
+            ids (set): a set of the enzyme commission ids, or empty set if no enzyme commission id can be obtained or the
+                        response status code is not 200.
+        """
         res_set = set()
         if not isinstance(kegg_id, str):
             return res_set
@@ -78,6 +79,29 @@ class QueryKEGG:
                 tab_pos = res.find('\t')
         return res_set
 
+    @staticmethod
+    def map_kegg_compound_to_pub_chem_id(kegg_id):
+        """ map kegg compound id to PubChem id
+
+        Args:
+            kegg_id (str): The ID of the kegg compound, e.g., "KEGG:C00022"
+
+        Returns:
+            id (str): the PubChem ID, or None if no id is retrieved
+        """
+        result_id = None
+        if not isinstance(kegg_id, str):
+            return result_id
+        kegg_id = kegg_id[5:]
+        handler = QueryKEGG.HANDLER_MAP['map_kegg_compound_to_pub_chem_id'].format(id=kegg_id)
+        res = QueryKEGG.__access_api(handler)
+        if res is not None:
+            tab_pos = res.find('\t')
+            if tab_pos > 0:
+                result_id = res[tab_pos+9:len(res)-1]
+        return result_id
+
+
 if __name__ == '__main__':
     print(QueryKEGG.map_kegg_compound_to_enzyme_commission_ids('KEGG:C00190'))
     print(QueryKEGG.map_kegg_compound_to_enzyme_commission_ids('KEGG:C00022'))
@@ -85,3 +109,10 @@ if __name__ == '__main__':
     print(QueryKEGG.map_kegg_compound_to_enzyme_commission_ids('KEGG:C00200'))
     print(QueryKEGG.map_kegg_compound_to_enzyme_commission_ids('GO:2342343'))
     print(QueryKEGG.map_kegg_compound_to_enzyme_commission_ids(1000))
+
+    print(QueryKEGG.map_kegg_compound_to_pub_chem_id('KEGG:C00190'))
+    print(QueryKEGG.map_kegg_compound_to_pub_chem_id('KEGG:C00022'))
+    print(QueryKEGG.map_kegg_compound_to_pub_chem_id('KEGG:C00100'))
+    print(QueryKEGG.map_kegg_compound_to_pub_chem_id('KEGG:C00200'))
+    print(QueryKEGG.map_kegg_compound_to_pub_chem_id('GO:2342343'))
+    print(QueryKEGG.map_kegg_compound_to_pub_chem_id(1000))
