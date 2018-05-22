@@ -71,6 +71,10 @@ class Neo4jConnection:
         with self._driver.session() as session:
             return session.write_transaction(self._get_molecular_function_nodes)
 
+    def get_metabolite_nodes(self):
+        with self._driver.session() as session:
+            return session.read_transaction(self._get_metabolite_nodes)
+
     def update_anatomy_nodes(self, nodes):
         with self._driver.session() as session:
             return session.write_transaction(self._update_anatomy_nodes, nodes)
@@ -183,6 +187,10 @@ class Neo4jConnection:
         with self._driver.session() as session:
             return session.write_transaction(self._update_protein_nodes_name, nodes)
 
+    def update_metabolite_nodes_desc(self, nodes):
+        with self._driver.session() as session:
+            return session.write_transaction(self._update_metabolite_desc, nodes)
+
     def get_node_names(self, type):
         with self._driver.session() as session:
             return session.write_transaction(self._get_node_names, type)
@@ -235,6 +243,11 @@ class Neo4jConnection:
     @staticmethod
     def _get_molecular_function_nodes(tx):
         result = tx.run("MATCH (n:molecular_function) RETURN n.id")
+        return [record["n.id"] for record in result]
+
+    @staticmethod
+    def _get_metabolite_nodes(tx):
+        result = tx.run("MATCH (n:metabolite) RETURN n.id")
         return [record["n.id"] for record in result]
 
     @staticmethod
@@ -524,6 +537,19 @@ class Neo4jConnection:
             WITH row.node_id AS node_id, row.name AS name
             MATCH (n:protein{id:node_id})
             SET n.name=name
+            """,
+            nodes=nodes,
+        )
+        return result
+
+    @staticmethod
+    def _update_metabolite_desc(tx, nodes):
+        result = tx.run(
+            """
+            UNWIND {nodes} AS row
+            WITH row.node_id AS node_id, row.desc AS description
+            MATCH (n:metabolite{id:node_id})
+            SET n.description=description
             """,
             nodes=nodes,
         )
