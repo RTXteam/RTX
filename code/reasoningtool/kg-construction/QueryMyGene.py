@@ -112,7 +112,10 @@ class QueryMyGene:
                 if uniprot_id_dict is not None:
                     uniprot_id = uniprot_id_dict.get('Swiss-Prot', None)
                     if uniprot_id is not None:
-                        uniprot_ids.add(uniprot_id)
+                        if type(uniprot_id) == str:
+                            uniprot_ids.add(uniprot_id)
+                        else:
+                            uniprot_ids.union(uniprot_id)
         return uniprot_ids
     
     def convert_gene_symbol_to_entrez_gene_ID(self, gene_symbol):
