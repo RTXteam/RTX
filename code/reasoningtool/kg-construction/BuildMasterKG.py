@@ -93,7 +93,7 @@ def seed_nodes_from_master_tsv_file():
 
 
 def make_master_kg_dili():
-    bne.add_node_smart("disease", "MONDO:0005359", seed_node=True, desc="drug-induced liver injury")
+    bne.add_node_smart("disease", "MONDO:0005359", seed_node_bool=True, desc="drug-induced liver injury")
     bne.expand_all_nodes()
     bne.expand_all_nodes()
     bne.expand_all_nodes()
