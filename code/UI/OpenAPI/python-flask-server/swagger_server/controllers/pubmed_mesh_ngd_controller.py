@@ -9,7 +9,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../reasoningtool/kg-construction/")
 from NormGoogleDistance import NormGoogleDistance
 
-def get_pubmed_mesh_ngd(term1, term2):  # noqa: E501
+def pubmed_mesh_ngd(term1, term2):  # noqa: E501
     """Query to get the Normalized Google Distance between two MeSH terms based on co-occurance in all PubMed article annotations
 
      # noqa: E501

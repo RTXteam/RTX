@@ -16,3 +16,5 @@ nltk
 # nltk.download('punkt')
 # nltk.download('stopwords')
 # TODO: I may be missing a few nltk packages
+sqlalchemy
+

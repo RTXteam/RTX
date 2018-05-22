@@ -21,10 +21,36 @@ import requests_cache
 import json
 requests_cache.install_cache('QueryPubChemCache')
 
+
 class QueryPubChem:
 	API_BASE_URL = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug'
 	TIMEOUT_SEC = 120
-	
+	HANDLER_MAP = {
+		'get_description_url': 'compound/cid/{id}/description/JSON'
+	}
+
+	@staticmethod
+	def __access_api(handler):
+
+		url = QueryPubChem.API_BASE_URL + '/' + handler
+		# print(url)
+		try:
+			res = requests.get(url, timeout=QueryPubChem.TIMEOUT_SEC)
+		except requests.exceptions.Timeout:
+			print(url, file=sys.stderr)
+			print('Timeout in QueryPubChem for URL: ' + url, file=sys.stderr)
+			return None
+		except BaseException as e:
+			print(url, file=sys.stderr)
+			print('%s received in QueryPubChem for URL: %s' % (e, url), file=sys.stderr)
+			return None
+		status_code = res.status_code
+		if status_code != 200:
+			print(url, file=sys.stderr)
+			print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
+			return None
+		return res.json()
+
 	@staticmethod
 	def send_query_get(handler, url_suffix):
 		url = QueryPubChem.API_BASE_URL + '/' + handler + '/' + url_suffix
@@ -103,7 +129,37 @@ class QueryPubChem:
 		else:
 			return None
 
+	@staticmethod
+	def get_description_url(pubchem_id):
+		"""	query the description URL from HMDB
+
+		Args:
+            pubchem_id (str): PubChem ID, e.g. 123689
+
+		Returns:
+		    desc_url (str): the URL of HMDB website, which contains the description of the compound
+		"""
+		res_url = None
+		if not isinstance(pubchem_id, str):
+			return res_url
+		handler = QueryPubChem.HANDLER_MAP['get_description_url'].format(id=pubchem_id)
+		res = QueryPubChem.__access_api(handler)
+		if res is not None:
+			if 'InformationList' in res.keys():
+				info_list = res['InformationList']
+				if 'Information' in info_list.keys():
+					infos = info_list['Information']
+					for info in infos:
+						if 'DescriptionSourceName' in info.keys() and 'DescriptionURL' in info.keys():
+							if info['DescriptionSourceName'] == "Human Metabolome Database (HMDB)":
+								return info['DescriptionURL']
+		return res_url
+
+
 
 if __name__=='__main__':
-	pass
 	#QueryPubChem.test()
+	print(QueryPubChem.get_description_url('123689'))
+	print(QueryPubChem.get_description_url('3500'))
+	print(QueryPubChem.get_description_url('3400'))
+	print(QueryPubChem.get_description_url(3400))
