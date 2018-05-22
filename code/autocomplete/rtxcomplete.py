@@ -21,3 +21,8 @@ def fuzzy(word,limit):
     cursor.execute("SELECT word FROM spell WHERE word MATCH \"%s\" LIMIT %s" % (word,limit))                                                             
     rows = cursor.fetchall()
     return rows
+
+def autofuzzy(word,limit):
+    cursor.execute("SELECT word FROM spell WHERE word MATCH \"%s*\" LIMIT %s" % (word,limit))                                                             
+    rows = cursor.fetchall()
+    return rows

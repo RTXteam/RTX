@@ -59,7 +59,7 @@ class QueryHMDB:
         Returns:
             res_desc (str): the description of metabolite
         """
-        res_desc = None
+        res_desc = "None"
         if not isinstance(hmdb_url, str):
             return res_desc
         results = QueryHMDB.__access_api(hmdb_url)
