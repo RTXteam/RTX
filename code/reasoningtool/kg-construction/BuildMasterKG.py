@@ -92,6 +92,17 @@ def seed_nodes_from_master_tsv_file():
             first_row = False
 
 
+def make_master_kg_dili():
+    bne.add_node_smart("disease", "MONDO:0005359", seed_node=True, desc="drug-induced liver injury")
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
+    ob.neo4j_set_url("bolt://0.0.0.0:7687")
+    ob.neo4j_push()
+    print("count(Node) = {}".format(ob.count_nodes()))
+    print("count(Rel) = {}".format(ob.count_rels()))
+
+
 def make_master_kg():
     seed_nodes_from_master_tsv_file()
     bne.expand_all_nodes()
