@@ -102,6 +102,9 @@ def find_node_name(string):
 	:param string: a string you're trying to match to a node name in the KG
 	:return: list of strings (of rtx_name's)
 	"""
+	if KGNodeIndex.is_curie_present(string):
+		return [string]
+
 	if string.lower() != "is" and string.lower() != "as":
 		return KGNodeIndex.get_curies(string)
 	else:
