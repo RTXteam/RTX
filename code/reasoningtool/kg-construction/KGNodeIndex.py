@@ -6,13 +6,16 @@ import os
 import sys
 import re
 import timeit
+import argparse
 
-from sqlalchemy import Column, String, Integer
+from sqlalchemy import Column, String, Integer, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 Base = declarative_base()
+
+DEBUG = False
 
 #### Define the database tables as classes
 class KGNode(Base):
@@ -21,6 +24,12 @@ class KGNode(Base):
   curie = Column(String(255), nullable=False, index=True)
   name = Column(String(255), nullable=False, index=True)
   type = Column(String(255), nullable=False)
+
+class KGNodeSource(Base):
+  __tablename__ = 'kgnode_source'
+  kgnode_source_id = Column(Integer, primary_key=True)
+  mtime = Column(DateTime, nullable=False)
+
 
 #### Main class
 class KGNodeIndex:
@@ -31,7 +40,7 @@ class KGNodeIndex:
     is_rtx_production = False
     if re.match("/mnt/data/orangeboard",filepath):
       is_rtx_production = True
-    #print("is_rtx_production="+str(is_rtx_production))
+    if DEBUG: print("is_rtx_production="+str(is_rtx_production))
 
     if is_rtx_production:
       self.databaseName = "RTXFeedback"
@@ -40,36 +49,35 @@ class KGNodeIndex:
     self.engine = None
     self.session = None
 
+
   #### Destructor
   def __del__(self):
     #self.disconnect()
     pass
 
-  #### Define attribute session
+
+  #### session
   @property
   def session(self) -> str:
     return self._session
-
   @session.setter
   def session(self, session: str):
     self._session = session
 
 
-  #### Define attribute engine
+  #### engine
   @property
   def engine(self) -> str:
     return self._engine
-
   @engine.setter
   def engine(self, engine: str):
     self._engine = engine
 
 
-  #### Define attribute databaseName
+  #### databaseName
   @property
   def databaseName(self) -> str:
     return self._databaseName
-
   @databaseName.setter
   def databaseName(self, databaseName: str):
     self._databaseName = databaseName
@@ -166,6 +174,9 @@ class KGNodeIndex:
           names.append(newName)
           #print("  duplicated _"+name+"_ to _"+newName+"_")
 
+      elif re.match("KEGG:",curie):
+        type = "pathway"
+
       elif re.match("NCBIGene:",curie):
         type = "microRNA"
 
@@ -190,9 +201,6 @@ class KGNodeIndex:
 
       elif re.match("[A-Z0-9]+\_HUMAN",curie):
         type = "protein"
-
-      elif re.match("KEGG:", curie):
-        type = "metabolite"
 
       else:
         print("No match for: "+curie)
@@ -273,14 +281,27 @@ class KGNodeIndex:
 
 
 def main():
+  parser = argparse.ArgumentParser(description="Tests or rebuilds the KG Node Index",formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+  parser.add_argument('-b', '--build', action="store_true", help="If set, (re)build the index from scratch", default=False)
+  parser.add_argument('-t', '--test', action="store_true", help="If set, run a test of the index by doing several lookups", default=False)
+  args = parser.parse_args()
+
+  if not args.build and not args.test:
+    parser.print_help()
+    sys.exit(2)
+
+
   kgNodeIndex = KGNodeIndex()
 
-  #### To rebuild
-  if re.search("sqlite",kgNodeIndex.databaseName):
-    if not os.path.exists(kgNodeIndex.databaseName):
-      kgNodeIndex.createDatabase()
-      kgNodeIndex.createNodeTable()
-      #kgNodeIndex.createIndex()
+  #### To (re)build
+  if args.build:
+    kgNodeIndex.createDatabase()
+    kgNodeIndex.createNodeTable()
+    #kgNodeIndex.createIndex()
+
+  #### Exit here if tests are not requested
+  if not args.test: sys.exit(0)
+
 
   print("==== Testing for finding curies by name ====")
   tests = [ "APS2", "phenylketonuria","Gaucher's disease","Gauchers disease","Gaucher disease",
