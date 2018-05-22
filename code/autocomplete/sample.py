@@ -6,12 +6,12 @@ import rtxcomplete
 
 def test_prefix():
   completions = rtxcomplete.prefix("NF", 10)
-  print completions
+  print(completions)
   # add assertion here
 
 def test_fuzzy():
   matches = rtxcomplete.fuzzy("NF", 10)
-  print matches
+  print(matches)
   # add assertion here
   
 if rtxcomplete.load():

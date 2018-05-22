@@ -15,7 +15,7 @@ class QueryHMDBTestCases(TestCase):
 
         #   wrong url
         desc = QueryHMDB.get_compound_desc('http://www.hmdb.ca/metabolites/HMDB00602880')
-        self.assertIsNone(desc)
+        self.assertEqual(desc, "None")
 
         desc = QueryHMDB.get_compound_desc(820)
-        self.assertIsNone(desc)
+        self.assertEqual(desc, "None")
