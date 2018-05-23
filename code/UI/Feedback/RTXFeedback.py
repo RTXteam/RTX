@@ -25,7 +25,7 @@ from sqlalchemy import inspect
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 from RTXConfiguration import RTXConfiguration
 
-# sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
+#sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
 from swagger_server.models.result_feedback import ResultFeedback
 from swagger_server.models.feedback import Feedback
 
@@ -111,7 +111,7 @@ class RTXFeedback:
 
   #### Constructor
   def __init__(self):
-    self.databaseName = "RTXFeedback"
+    self.databaseName = "RTXFeedback_test"
     self.connect()
 
   #### Destructor
@@ -223,14 +223,14 @@ class RTXFeedback:
     #### Update the response with current information
     rtxConfig = RTXConfiguration()
     response.tool_version = rtxConfig.version
-    response.schema_version = "0.7.0"
+    response.schema_version = "0.8.0"
     response.type = "medical_translator_query_response"
     response.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
     response.datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     termsString = stringifyDict(query["terms"])
     storedResponse = Response(response_datetime=datetime.now(),restated_question=response.restated_question_text,query_type=query["known_query_type_id"],
-      terms=termsString,tool_version=rtxConfig.version,result_code=response.result_code,message=response.message,n_results=n_results,response_object=pickle.dumps(ast.literal_eval(repr(response))))
+      terms=termsString,tool_version=rtxConfig.version,result_code=response.response_code,message=response.message,n_results=n_results,response_object=pickle.dumps(ast.literal_eval(repr(response))))
     session.add(storedResponse)
     session.flush()
     response.id = "http://rtx.ncats.io/api/rtx/v1/response/"+str(storedResponse.response_id)
@@ -537,9 +537,8 @@ def main():
   rtxFeedback = RTXFeedback()
 
   #### Careful, don't destroy an important database!!!
-  ###rtxFeedback.createDatabase()
-  ###rtxFeedback.prepopulateDatabase()
-  rtxFeedback.prepopulateCommenter()
+  ##rtxFeedback.createDatabase()
+  ##rtxFeedback.prepopulateDatabase()
   sys.exit()
 
   #### Connect to the database
