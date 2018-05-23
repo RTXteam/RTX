@@ -12,6 +12,9 @@ from QueryOMIMExtended import QueryOMIMExtended
 from QueryMyGeneExtended import QueryMyGeneExtended
 from QueryMyChem import QueryMyChem
 from QueryReactomeExtended import QueryReactomeExtended
+from QueryKEGG import QueryKEGG
+from QueryPubChem import QueryPubChem
+from QueryHMDB import QueryHMDB
 
 def random_int_list(start, stop, length):
     start, stop = (int(start), int(stop)) if start <= stop else (int(stop), int(start))
@@ -46,7 +49,8 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
             self.assertIsNotNone(node['n']['id'])
             self.assertIsNotNone(node['n']['description'])
             self.assertEqual(node_id, node['n']['id'])
-            self.assertEqual(desc, node['n']['description'])
+            if node['n']['description'] != "None":
+                self.assertEqual(desc, node['n']['description'])
 
         conn.close()
 
@@ -72,7 +76,8 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
             self.assertIsNotNone(node['n']['id'])
             self.assertIsNotNone(node['n']['description'])
             self.assertEqual(node_id, node['n']['id'])
-            self.assertEqual(desc, node['n']['description'])
+            if node['n']['description'] != "None":
+                self.assertEqual(desc, node['n']['description'])
 
         conn.close()
 
@@ -98,7 +103,8 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
             self.assertIsNotNone(node['n']['id'])
             self.assertIsNotNone(node['n']['description'])
             self.assertEqual(node_id, node['n']['id'])
-            self.assertEqual(desc, node['n']['description'])
+            if node['n']['description'] != "None":
+                self.assertEqual(desc, node['n']['description'])
 
         conn.close()
 
@@ -124,7 +130,8 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
             self.assertIsNotNone(node['n']['id'])
             self.assertIsNotNone(node['n']['description'])
             self.assertEqual(node_id, node['n']['id'])
-            self.assertEqual(desc, node['n']['description'])
+            if node['n']['description'] != "None":
+                self.assertEqual(desc, node['n']['description'])
 
         conn.close()
 
@@ -150,7 +157,8 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
             self.assertIsNotNone(node['n']['id'])
             self.assertIsNotNone(node['n']['description'])
             self.assertEqual(node_id, node['n']['id'])
-            self.assertEqual(desc, node['n']['description'])
+            if node['n']['description'] != "None":
+                self.assertEqual(desc, node['n']['description'])
 
         conn.close()
 
@@ -180,7 +188,8 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
             self.assertIsNotNone(node['n']['id'])
             self.assertIsNotNone(node['n']['description'])
             self.assertEqual(node_id, node['n']['id'])
-            self.assertEqual(desc, node['n']['description'])
+            if node['n']['description'] != "None":
+                self.assertEqual(desc, node['n']['description'])
 
         conn.close()
 
@@ -206,7 +215,8 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
             self.assertIsNotNone(node['n']['id'])
             self.assertIsNotNone(node['n']['description'])
             self.assertEqual(node_id, node['n']['id'])
-            self.assertEqual(desc, node['n']['description'])
+            if node['n']['description'] != "None":
+                self.assertEqual(desc, node['n']['description'])
 
         conn.close()
 
@@ -232,7 +242,8 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
             self.assertIsNotNone(node['n']['id'])
             self.assertIsNotNone(node['n']['description'])
             self.assertEqual(node_id, node['n']['id'])
-            self.assertEqual(desc, node['n']['description'])
+            if node['n']['description'] != "None":
+                self.assertEqual(desc, node['n']['description'])
 
         conn.close()
 
@@ -258,7 +269,7 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
             self.assertIsNotNone(node['n']['id'])
             self.assertIsNotNone(node['n']['description'])
             self.assertEqual(node_id, node['n']['id'])
-            if node['n']['description'] != "UNKNOWN":
+            if node['n']['description'] != "None":
                 self.assertEqual(desc, node['n']['description'])
 
         conn.close()
@@ -285,7 +296,36 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
             self.assertIsNotNone(node['n']['id'])
             self.assertIsNotNone(node['n']['description'])
             self.assertEqual(node_id, node['n']['id'])
-            if node['n']['description'] != "UNKNOWN":
+            if node['n']['description'] != "None":
+                self.assertEqual(desc, node['n']['description'])
+
+        conn.close()
+
+    def test_update_metabolite_desc(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_metabolite_nodes()
+
+        # generate random number array
+        random_indexes = random_int_list(0, len(nodes) - 1, 100)
+
+        for i in random_indexes:
+            # retrieve data from BioLink API
+            node_id = nodes[i]
+            pubchem_id = QueryKEGG.map_kegg_compound_to_pub_chem_id(node_id)
+            hmdb_url = QueryPubChem.get_description_url(pubchem_id)
+            desc = QueryHMDB.get_compound_desc(hmdb_url)
+
+            # retrieve data from Neo4j
+            node = conn.get_node(node_id)
+            self.assertIsNotNone(node['n']['id'])
+            self.assertIsNotNone(node['n']['description'])
+            self.assertEqual(node_id, node['n']['id'])
+            if node['n']['description'] != "None":
                 self.assertEqual(desc, node['n']['description'])
 
         conn.close()

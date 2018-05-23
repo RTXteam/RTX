@@ -43,6 +43,10 @@ from QueryOMIMExtended import QueryOMIMExtended
 from QueryMyGeneExtended import QueryMyGeneExtended
 from QueryMyChem import QueryMyChem
 from QueryReactomeExtended import QueryReactomeExtended
+from QueryKEGG import QueryKEGG
+from QueryPubChem import QueryPubChem
+from QueryHMDB import QueryHMDB
+
 
 class UpdateNodesInfo:
 
@@ -490,6 +494,52 @@ class UpdateNodesInfo:
 
         conn.close()
 
+    @staticmethod
+    def update_metabolite_nodes_desc():
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_metabolite_nodes()
+        print("the number of metabolite nodes: %d" % len(nodes))
+
+        from time import time
+        t = time()
+
+        none_count = 0;
+        nodes_array = []
+        for i, node_id in enumerate(nodes):
+            # print("no %d" % i)
+            node = dict()
+            node['node_id'] = node_id
+            print(node_id)
+            pubchem_id = QueryKEGG.map_kegg_compound_to_pub_chem_id(node_id)
+            hmdb_url = QueryPubChem.get_description_url(pubchem_id)
+            # if hmdb_url is None:
+            #     print('# %d hmdb url is None' % i)
+            node['desc'] = QueryHMDB.get_compound_desc(hmdb_url)
+            if node['desc'] == "None":
+                none_count += 1
+            nodes_array.append(node)
+
+        print("none count = " + str(none_count))
+        print("metabolite pulling time: %f" % (time() - t))
+
+        nodes_nums = len(nodes_array)
+        chunk_size = 10000
+        group_nums = nodes_nums // chunk_size + 1
+        for i in range(group_nums):
+            start = i * chunk_size
+            end = (i + 1) * chunk_size if (i + 1) * chunk_size < nodes_nums else nodes_nums
+            conn.update_metabolite_nodes_desc(nodes_array[start:end])
+
+        print("metabolite total time: %f" % (time() - t))
+
+        conn.close()
+
+
 if __name__ == '__main__':
 
     # UpdateNodesInfo.update_anatomy_nodes()
@@ -500,6 +550,7 @@ if __name__ == '__main__':
     # UpdateNodesInfo.update_disease_nodes()
     # UpdateNodesInfo.update_chemical_substance_nodes()
     # UpdateNodesInfo.update_bio_process_nodes()
+
     UpdateNodesInfo.update_anatomy_nodes_desc()
     UpdateNodesInfo.update_phenotype_nodes_desc()
     UpdateNodesInfo.update_disease_nodes_desc()
@@ -510,4 +561,5 @@ if __name__ == '__main__':
     UpdateNodesInfo.update_pathway_nodes_desc()
     UpdateNodesInfo.update_cellular_component_nodes_desc()
     UpdateNodesInfo.update_molecular_function_nodes_desc()
+    UpdateNodesInfo.update_metabolite_nodes_desc()
 

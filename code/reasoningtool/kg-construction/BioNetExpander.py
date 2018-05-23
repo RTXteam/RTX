@@ -467,6 +467,21 @@ class BioNetExpander:
                                          "OMIM", target_node, source_node,
                                          extended_reltype="causes_or_contributes_to")
 
+    def expand_mondo_disease(self, node):
+        genes_list = QueryBioLink.get_genes_for_disease_desc(node.name)
+        for hgnc_gene_id in genes_list:
+            if hgnc_gene_id.startswith("HGNC:"):
+                uniprot_id_set = self.query_mygene_obj.convert_hgnc_gene_id_to_uniprot_id(hgnc_gene_id)
+                if len(uniprot_id_set) > 0:
+                    uniprot_id = next(iter(uniprot_id_set))
+                    gene_symbol_set = self.query_mygene_obj.convert_uniprot_id_to_gene_symbol(uniprot_id)
+                    if len(gene_symbol_set) > 0:
+                        protein_node = self.add_node_smart('protein', uniprot_id,
+                                                           desc=next(iter(gene_symbol_set)))
+                        self.orangeboard.add_rel("associated_with_condition",
+                                                 "BioLink",
+                                                 protein_node, node, extended_reltype="associated_with_disease")
+
     def expand_disease(self, node):
         assert node.nodetype == "disease"
         disease_name = node.name
@@ -484,6 +499,10 @@ class BioNetExpander:
             self.expand_genetic_condition(node)
             return
 
+        if "MONDO:" in disease_name:
+            self.expand_mondo_disease(node)
+            return
+        
         # if we get here, this is a Disease Ontology disease
         disont_id = disease_name
 
@@ -599,6 +618,16 @@ class BioNetExpander:
         ob.neo4j_set_auth()
         ob.neo4j_push()
 
+    def test_mondo_liver():
+        ob = Orangeboard(debug=False)
+        ob.set_dict_reltype_dirs({'associated_with_condition': True,
+                                  'has_phenotype': True})
+        bne = BioNetExpander(ob)
+        node = bne.add_node_smart('disease', 'MONDO:0005359', seed_node_bool=True, desc='drug-induced liver injury')
+        bne.expand_disease(node)
+        ob.neo4j_set_url()
+        ob.neo4j_set_auth()
+        ob.neo4j_push()        
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Builds the master knowledge graph')

@@ -194,6 +194,20 @@ class Neo4jConnectionTestCase(unittest.TestCase):
 
         conn.close()
 
+    def test_get_metabolite_nodes(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_metabolite_nodes()
+        print(len(nodes))
+        self.assertIsNotNone(nodes)
+        self.assertLess(0, len(nodes))
+
+        conn.close()
+
 if __name__ == '__main__':
     unittest.main()
 

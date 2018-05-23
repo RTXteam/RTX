@@ -33,7 +33,7 @@ class QueryPubChem:
 	def __access_api(handler):
 
 		url = QueryPubChem.API_BASE_URL + '/' + handler
-		print(url)
+		# print(url)
 		try:
 			res = requests.get(url, timeout=QueryPubChem.TIMEOUT_SEC)
 		except requests.exceptions.Timeout:
