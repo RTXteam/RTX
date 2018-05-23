@@ -127,3 +127,38 @@ class QueryCOHDTestCases(TestCase):
         # empty concept_ids
         result = QueryCOHD.get_concepts(["192855", 2008271])
         self.assertEqual(result, [])
+
+    def test_get_xref_from_OMOP(self):
+        result = QueryCOHD.get_xref_from_OMOP("192855", "UMLS", 2)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 6)
+        self.assertEqual(result[0], {"intermediate_omop_concept_code": "92546004",
+                                     "intermediate_omop_concept_id": 192855,
+                                     "intermediate_omop_concept_name": "Cancer in situ of urinary bladder",
+                                     "intermediate_omop_vocabulary_id": "SNOMED",
+                                     "intermediate_oxo_curie": "SNOMEDCT:92546004",
+                                     "intermediate_oxo_label": "Cancer in situ of urinary bladder",
+                                     "omop_distance": 0,
+                                     "oxo_distance": 1,
+                                     "source_omop_concept_code": "92546004",
+                                     "source_omop_concept_id": 192855,
+                                     "source_omop_concept_name": "Cancer in situ of urinary bladder",
+                                     "source_omop_vocabulary_id": "SNOMED",
+                                     "target_curie": "UMLS:C0154091",
+                                     "target_label": "Cancer in situ of urinary bladder",
+                                     "total_distance": 1
+                                     })
+
+        #   wrong concept id
+        result = QueryCOHD.get_xref_from_OMOP("1928551", "UMLS", 2)
+        self.assertEqual(result, [])
+
+        #   wrong mapping_targets
+        result = QueryCOHD.get_xref_from_OMOP("1928551", "UMS", 2)
+        self.assertEqual(result, [])
+
+        #   wrong distance format
+        #   wrong concept id
+        result = QueryCOHD.get_xref_from_OMOP("1928551", "UMLS", "2")
+        self.assertEqual(result, [])
+

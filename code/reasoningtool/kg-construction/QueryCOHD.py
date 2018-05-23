@@ -32,7 +32,8 @@ class QueryCOHD:
         'get_paired_concept_freq':              'frequencies/pairedConceptFreq',
         'get_individual_concept_freq':          'frequencies/singleConceptFreq',
         'get_associated_concept_domain_freq':   'frequencies/associatedConceptDomainFreq',
-        'get_concepts':                         'omop/concepts'
+        'get_concepts':                         'omop/concepts',
+        'get_xref_from_OMOP':                   'omop/xrefFromOMOP'
     }
 
     @staticmethod
@@ -236,17 +237,65 @@ class QueryCOHD:
         distance + OMOP distance) in ascending order.
 
         Args:
-            concept_id (str): OMOP standard concept_id to map, e.g., 192855
+            concept_id (str): OMOP standard concept_id to map, e.g., "192855"
 
-            mapping_targets (str): Target ontologies for OxO. Comma separated target prefixes, e.g., "DOID,UMLS"
+            mapping_targets (str): Target ontologies for OxO. Comma separated target prefixes, e.g., "DOID, UMLS"
 
             distance (int): Mapping distance for OxO. Note: this is the distance used in the OxO API to map from an
             ICD9CM, ICD10CM, SNOMEDCT, or MeSH concept to the desired ontology. One additional step may be taken by the
             COHD API to map to the OMOP standard concept to ICD9CM, ICD10CM, SNOMEDCT, or MeSH. Default: 2.
 
         Returns:
+            array: an array which contains cross-reference dictionaries, or an empty array if no data obtained.
+
+            example:
+            [
+                {
+                  "intermediate_omop_concept_code": "92546004",
+                  "intermediate_omop_concept_id": 192855,
+                  "intermediate_omop_concept_name": "Cancer in situ of urinary bladder",
+                  "intermediate_omop_vocabulary_id": "SNOMED",
+                  "intermediate_oxo_curie": "SNOMEDCT:92546004",
+                  "intermediate_oxo_label": "Cancer in situ of urinary bladder",
+                  "omop_distance": 0,
+                  "oxo_distance": 1,
+                  "source_omop_concept_code": "92546004",
+                  "source_omop_concept_id": 192855,
+                  "source_omop_concept_name": "Cancer in situ of urinary bladder",
+                  "source_omop_vocabulary_id": "SNOMED",
+                  "target_curie": "UMLS:C0154091",
+                  "target_label": "Cancer in situ of urinary bladder",
+                  "total_distance": 1
+                },
+                {
+                  "intermediate_omop_concept_code": "D09.0",
+                  "intermediate_omop_concept_id": 35206494,
+                  "intermediate_omop_concept_name": "Carcinoma in situ of bladder",
+                  "intermediate_omop_vocabulary_id": "ICD10CM",
+                  "intermediate_oxo_curie": "ICD10CM:D09.0",
+                  "intermediate_oxo_label": "Carcinoma in situ of bladder",
+                  "omop_distance": 1,
+                  "oxo_distance": 1,
+                  "source_omop_concept_code": "92546004",
+                  "source_omop_concept_id": 192855,
+                  "source_omop_concept_name": "Cancer in situ of urinary bladder",
+                  "source_omop_vocabulary_id": "SNOMED",
+                  "target_curie": "UMLS:C0154091",
+                  "target_label": "Cancer in situ of urinary bladder",
+                  "total_distance": 2
+                },
+                ...
+            ]
         """
-        return None
+        if not isinstance(concept_id, str) or not isinstance(mapping_targets, str) or not isinstance(distance, int):
+            return []
+        handler = QueryCOHD.HANDLER_MAP['get_xref_from_OMOP']
+        url_suffix = 'concept_id=' + concept_id + '&mapping_targets=' + mapping_targets + "&distance=" + str(distance)
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
 
     @staticmethod
     def get_xref_to_OMOP(curie, distance):
@@ -259,7 +308,7 @@ class QueryCOHD:
         sorted by total_distance (OxO distance + OMOP distance) in ascending order.
 
         Args:
-            curie (str): Compacy URI (CURIE) of the concept to map, e.g., DOID:8398
+            curie (str): Compacy URI (CURIE) of the concept to map, e.g., "DOID:8398"
 
             distance (str): Mapping distance for OxO. Note: this is the distance used in the OxO API to map from the
             original concept to an ICD9CM, ICD10CM, SNOMEDCT, or MeSH concept. One additional step may be taken by the
@@ -327,7 +376,7 @@ class QueryCOHD:
          vocabulary.
 
         Args:
-            concept_id (str): The standard OMOP concept id to map from, e.g., 72990
+            concept_id (str): The standard OMOP concept id to map from, e.g., "72990"
 
             vocabulary_id (str): The vocabulary (e.g., "ICD9CM") to map to. If this parameter is not specified, the
             method will return mappings to any matching vocabularies. See /omop/vocabularies for the list of supported
@@ -341,7 +390,7 @@ class QueryCOHD:
     def get_map_to_standard_concept_id(concept_id, vocabulary_id):
         """Map from a non-standard concept code to a standard OMOP concept ID.
             Args:
-            concept_id (str): The concept code to map from, e.g., 715.3
+            concept_id (str): The concept code to map from, e.g., "715.3"
 
             vocabulary_id (str): The vocabulary (e.g., "ICD9CM") that the concept code belongs to. If this parameter is
             not specified, the method will return mappings from any source vocabulary with matching concept code. See
@@ -359,3 +408,4 @@ if __name__ == '__main__':
     print(QueryCOHD.get_associated_concept_domain_freq('192855', 'Procedure', 1))
     print(QueryCOHD.get_concepts(["192855"]))
     print(QueryCOHD.get_concepts(["192855", "2008271"]))
+    print(QueryCOHD.get_xref_from_OMOP("192855", "UMLS", 2))
