@@ -442,6 +442,10 @@ definitions:
         description: "A precise restatement of the question, as understood by the Translator, for which the answer applies. The user should verify that the restated question matches the intent of their original question (it might not)."
       known_query_type_id:
         type: "string"
+        example: "DEPRECATED"
+        description: "DEPRECATED"
+      query_type_id:
+        type: "string"
         example: "Q2"
         description: "The query type id if one is known for the query/response (as defined in https://docs.google.com/spreadsheets/d/18zW81wteUfOn3rFRVG0z8mW-ecNhdsfD_6s73ETJnUw/edit#gid=1742835901 )"
       terms:
