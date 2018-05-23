@@ -14,18 +14,12 @@ __status__ = 'Prototype'
 
 import requests_cache
 import sys
-from Orangeboard import Orangeboard
-from BioNetExpander import BioNetExpander
-from QueryNCBIeUtils import QueryNCBIeUtils
-from QuerySciGraph import QuerySciGraph
-from QueryDisont import QueryDisont
-from ParsePhenont import ParsePhenont
-from QueryChEMBL import QueryChEMBL
-from QueryPubChem import QueryPubChem
-
 import pandas
 import timeit
 import argparse
+
+from Orangeboard import Orangeboard
+from BioNetExpander import BioNetExpander
 
 # configure requests package to use the "orangeboard.sqlite" cache
 requests_cache.install_cache('orangeboard')
