@@ -24,11 +24,11 @@ class QueryEBIOLS:
             res = requests.get(url_str, headers={'Accept': 'application/json'}, timeout=QueryEBIOLS.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
             print('HTTP timeout in QueryNCBIeUtils.py; URL: ' + url_str, file=sys.stderr)
-            time.sleep(1)  ## take a timeout because NCBI rate-limits connections
+            time.sleep(1)  # take a timeout because NCBI rate-limits connections
             return None
         except requests.exceptions.ConnectionError:
             print('HTTP connection error in QueryNCBIeUtils.py; URL: ' + url_str, file=sys.stderr)
-            time.sleep(1)  ## take a timeout because NCBI rate-limits connections
+            time.sleep(1)  # take a timeout because NCBI rate-limits connections
             return None
         status_code = res.status_code
         if status_code != 200:
@@ -37,13 +37,49 @@ class QueryEBIOLS:
         return res
 
     @staticmethod
+    def get_bto_term_for_bto_id(bto_curie_id):
+        """
+        Converts an anatomy BTO ID to the BTO term
+        :param bto_curie_id: eg. "BTO:0001259"
+        :return: a set of BTO terms (eg. {"blood"})
+        """
+        bto_iri = "http://purl.obolibrary.org/obo/" + bto_curie_id.replace(":", "_")
+        bto_iri_double_encoded = urllib.parse.quote_plus(urllib.parse.quote_plus(bto_iri))
+        res = QueryEBIOLS.send_query_get("bto/terms/", bto_iri_double_encoded)
+        ret_label = None
+        if res is not None:
+            res_json = res.json()
+            ret_label = res_json.get("label", None)
+        return ret_label
+    
+    @staticmethod
+    def get_bto_id_for_uberon_id(uberon_curie_id):
+        """
+        Converts an anatomy uberon ID to BTO id
+        :param uberon_curie_id: eg. "UBERON:0001259"
+        :return: a set of BTO id's (eg. {"BTO:D008099"})
+        """
+        uberon_iri = "http://purl.obolibrary.org/obo/" + uberon_curie_id.replace(":", "_")
+        uberon_iri_double_encoded = urllib.parse.quote_plus(urllib.parse.quote_plus(uberon_iri))
+        res = QueryEBIOLS.send_query_get("uberon/terms/", uberon_iri_double_encoded)
+        ret_list = list()
+        if res is not None:
+            res_json = res.json()
+            res_annotation = res_json.get("annotation", None)
+            if res_annotation is not None:
+                db_x_refs = res_annotation.get("database_cross_reference", None)
+                if db_x_refs is not None:
+                    ret_list = [bto_id for bto_id in db_x_refs if "BTO:" in bto_id]
+        return set(ret_list)
+    
+    @staticmethod
     def get_mesh_id_for_uberon_id(uberon_curie_id):
         """
         Converts an anatomy uberon ID to MeSH id
         :param uberon_curie_id: eg. "UBERON:0001259"
         :return: a set of MeSH id's (eg. {"MESH:D008099"})
         """
-        uberon_iri = "http://purl.obolibrary.org/obo/" + uberon_curie_id.replace(":","_")
+        uberon_iri = "http://purl.obolibrary.org/obo/" + uberon_curie_id.replace(":", "_")
         uberon_iri_double_encoded = urllib.parse.quote_plus(urllib.parse.quote_plus(uberon_iri))
         res = QueryEBIOLS.send_query_get("uberon/terms/", uberon_iri_double_encoded)
         ret_list = list()
@@ -57,8 +93,7 @@ class QueryEBIOLS:
         return set(ret_list)
                                          
 if __name__ == "__main__":
-#    print(QueryEBIOLS.send_query_get("uberon/terms/" + urllib.parse.quote_plus(urllib.parse.quote_plus("http://purl.obolibrary.org/obo/UBERON_0002107")), ""))
+    print(QueryEBIOLS.get_bto_id_for_uberon_id("UBERON:0000178"))
+    print(QueryEBIOLS.get_bto_term_for_bto_id("BTO:0000089"))
     print(QueryEBIOLS.get_mesh_id_for_uberon_id("UBERON:0002107"))
     print(QueryEBIOLS.get_mesh_id_for_uberon_id("UBERON:0001162"))
-    
-    
