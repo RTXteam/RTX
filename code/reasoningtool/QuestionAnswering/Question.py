@@ -377,8 +377,8 @@ class Question:
 					parameters[parameter_name] = candidate_node_names_labels[pos][0]
 
 			# Throw in the extra parameters
-			for key, value in self.other_parameters.items():
-				parameters[key] = value
+			#for key, value in self.other_parameters.items():
+			#	parameters[key] = value
 			return parameters
 
 

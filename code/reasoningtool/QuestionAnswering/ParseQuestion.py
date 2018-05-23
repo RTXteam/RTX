@@ -92,7 +92,13 @@ class ParseQuestion:
 			q = self._query_type_id_to_question[query_type_id]
 		else:
 			raise Exception("Unknown query type id: %s" % query_type_id)
-		execution_string = q.solution_script.safe_substitute(parameters)
+		all_parameters = dict()
+		for k, v in parameters.items():
+			all_parameters[k] = v
+		for k, v in q.other_parameters.items():
+			all_parameters[k] = v
+		execution_string = q.solution_script.safe_substitute(all_parameters)
+
 		if "$" in execution_string:
 			raise Exception("Unpopulated parameter: %s" % execution_string)
 		return execution_string
