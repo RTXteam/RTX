@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+  <link rel="stylesheet" href="bootstrap.css">
+  <style>
+    body, input {
+    font-family: Arial;
+    font-size: 14pt;
+    padding:10px;
+    margin: 10px;
+    border: 1px solid #000;
+    }
+
+    .column {
+    float: left;
+    width: 50%;
+    }
+
+    /* Clear floats after the columns */
+    .row:after {
+    content: "";
+    display: table;
+    clear: both;
+    }
+      </style>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="http://rtxcomplete.ixlab.org/bootstrap.js"></script>
+  <script src="http://rtxcomplete.ixlab.org/bootstrap3-typeahead.js"></script>
+  <script src="http://rtxcomplete.ixlab.org/rtxcomplete.js"></script>
+  <body> 
+    <center>
+      <h1> AUTOCOMPLETE DEMO</h1>
+      <div class="row">
+	<div class="column">
+	  <h6>Autocomplete</h6>
+
+        <input type="text" class="typeInput" data-provide="typeahead" />
+	</div>
+</div>
+     
+    </center>
+  </body>
+
+</html>
