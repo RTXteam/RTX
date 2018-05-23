@@ -220,10 +220,16 @@ class RTXFeedback:
     if response.result_list is not None:
       n_results = len(response.result_list)
 
+    #### Add result metadata
+    for result in response.result_list:
+      result.reasoner_id = "RTX"
+
     #### Update the response with current information
     rtxConfig = RTXConfiguration()
     response.tool_version = rtxConfig.version
     response.schema_version = "0.8.0"
+    response.reasoner_id = "RTX"
+    response.n_reasoner = n_results
     response.type = "medical_translator_query_response"
     response.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
     response.datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
