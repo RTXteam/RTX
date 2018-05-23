@@ -1,8 +1,11 @@
-pathway
-microRNA
-anatomical_entity
+metabolite
 protein
-phenotypic_feature
-chemical_substance
-biological_process
+anatomical_entity
+molecular_function
 disease
+phenotypic_feature
+biological_process
+microRNA
+pathway
+cellular_component
+chemical_substance
