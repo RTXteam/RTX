@@ -57,7 +57,7 @@ class RTXQuery:
       if re.match("CHEMBL:",terms["chemical_substance"]):
         eprint(terms["chemical_substance"])
         terms["chemical_substance"] = re.sub("CHEMBL:","",terms["chemical_substance"])
-        eprint(terms["chemical_substance"])
+        #eprint(terms["chemical_substance"])
     query["known_query_type_id"] = query["query_type_id"]
 
 
@@ -73,6 +73,13 @@ class RTXQuery:
       apiResponse = Response().from_dict(cachedResponse)
       rtxFeedback.disconnect()
       self.limitResponse(apiResponse,query)
+
+      if response.response_code is None:
+        if response.result_code is not None:
+          response.response_code = response.result_code
+        else:
+          response.response_code = "wha??"
+
       self.logQuery(query,apiResponse,'cached')
       return apiResponse
 
@@ -116,6 +123,11 @@ class RTXQuery:
           #data = ast.literal_eval(reformattedText)
           data = json.loads(reformattedText)
           response = Response.from_dict(data)
+          if response.response_code is None:
+            if response.result_code is not None:
+              response.response_code = response.result_code
+            else:
+              response.response_code = "wha??"
 
       #### If it fails, the just create a new Response object with a notice about the failure
       except:
@@ -123,7 +135,7 @@ class RTXQuery:
           response.response_code = "InternalError"
           response.message = "Error parsing the response from the reasoner. This is an internal bug that needs to be fixed. Unable to respond to this question at this time. The unparsable response was: " + reformattedText
 
-      print(query)
+      #print(query)
       if 'original_question' in query:
         response.original_question_text = query["original_question"]
         response.restated_question_text = query["restated_question"]
