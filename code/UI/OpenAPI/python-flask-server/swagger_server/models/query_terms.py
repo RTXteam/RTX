@@ -15,21 +15,41 @@ class QueryTerms(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, disease: str=None):  # noqa: E501
+    def __init__(self, disease: str=None, protein: str=None, anatomical_entity: str=None, chemical_substance: str=None, metabolite: str=None):  # noqa: E501
         """QueryTerms - a model defined in Swagger
 
         :param disease: The disease of this QueryTerms.  # noqa: E501
         :type disease: str
+        :param protein: The protein of this QueryTerms.  # noqa: E501
+        :type protein: str
+        :param anatomical_entity: The anatomical_entity of this QueryTerms.  # noqa: E501
+        :type anatomical_entity: str
+        :param chemical_substance: The chemical_substance of this QueryTerms.  # noqa: E501
+        :type chemical_substance: str
+        :param metabolite: The metabolite of this QueryTerms.  # noqa: E501
+        :type metabolite: str
         """
         self.swagger_types = {
-            'disease': str
+            'disease': str,
+            'protein': str,
+            'anatomical_entity': str,
+            'chemical_substance': str,
+            'metabolite': str
         }
 
         self.attribute_map = {
-            'disease': 'disease'
+            'disease': 'disease',
+            'protein': 'protein',
+            'anatomical_entity': 'anatomical_entity',
+            'chemical_substance': 'chemical_substance',
+            'metabolite': 'metabolite'
         }
 
         self._disease = disease
+        self._protein = protein
+        self._anatomical_entity = anatomical_entity
+        self._chemical_substance = chemical_substance
+        self._metabolite = metabolite
 
     @classmethod
     def from_dict(cls, dikt) -> 'QueryTerms':
@@ -62,3 +82,87 @@ class QueryTerms(Model):
         """
 
         self._disease = disease
+
+    @property
+    def protein(self) -> str:
+        """Gets the protein of this QueryTerms.
+
+
+        :return: The protein of this QueryTerms.
+        :rtype: str
+        """
+        return self._protein
+
+    @protein.setter
+    def protein(self, protein: str):
+        """Sets the protein of this QueryTerms.
+
+
+        :param protein: The protein of this QueryTerms.
+        :type protein: str
+        """
+
+        self._protein = protein
+
+    @property
+    def anatomical_entity(self) -> str:
+        """Gets the anatomical_entity of this QueryTerms.
+
+
+        :return: The anatomical_entity of this QueryTerms.
+        :rtype: str
+        """
+        return self._anatomical_entity
+
+    @anatomical_entity.setter
+    def anatomical_entity(self, anatomical_entity: str):
+        """Sets the anatomical_entity of this QueryTerms.
+
+
+        :param anatomical_entity: The anatomical_entity of this QueryTerms.
+        :type anatomical_entity: str
+        """
+
+        self._anatomical_entity = anatomical_entity
+
+    @property
+    def chemical_substance(self) -> str:
+        """Gets the chemical_substance of this QueryTerms.
+
+
+        :return: The chemical_substance of this QueryTerms.
+        :rtype: str
+        """
+        return self._chemical_substance
+
+    @chemical_substance.setter
+    def chemical_substance(self, chemical_substance: str):
+        """Sets the chemical_substance of this QueryTerms.
+
+
+        :param chemical_substance: The chemical_substance of this QueryTerms.
+        :type chemical_substance: str
+        """
+
+        self._chemical_substance = chemical_substance
+
+    @property
+    def metabolite(self) -> str:
+        """Gets the metabolite of this QueryTerms.
+
+
+        :return: The metabolite of this QueryTerms.
+        :rtype: str
+        """
+        return self._metabolite
+
+    @metabolite.setter
+    def metabolite(self, metabolite: str):
+        """Sets the metabolite of this QueryTerms.
+
+
+        :param metabolite: The metabolite of this QueryTerms.
+        :type metabolite: str
+        """
+
+        self._metabolite = metabolite
