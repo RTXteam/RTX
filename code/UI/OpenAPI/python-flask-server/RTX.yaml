@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   description: "OpenAPI for RTX"
-  version: "1.2.0"
+  version: "1.3.0"
   title: "RTX"
   contact:
     email: "edeutsch@systemsbiology.org"
@@ -320,6 +320,7 @@ definitions:
         description: "Human language in which the question is posed"
         enum:
         - "English"
+    additionalProperties: true
   Query:
     type: "object"
     properties:
@@ -337,12 +338,24 @@ definitions:
         description: "Response from the translation engine to the user"
       known_query_type_id:
         type: "string"
+        example: "DEPRECATED"
+        description: "DEPRECATED in favor of query_type_id"
+      query_type_id:
+        type: "string"
         example: "Q1"
-        description: "RTX identifier for the specific query type"
+        description: "Identifier for the specific query type"
       bypass_cache:
         type: "string"
         example: "true"
         description: "Set to true in order to bypass any possible cached response and try to answer the query over again"
+      asynchronous:
+        type: "string"
+        example: "False"
+        description: "Set to true in order to receive an incomplete response_id if the query will take a while. Client can then periodically request that response_id for a status update and eventual complete response"
+      options:
+        type: "string"
+        example: "coalesce=True,threshold=0.9"
+        description: "A string of options that can be sent with the query. Options are tool specific and not stipulated here"
       max_results:
         type: "integer"
         example: "100"
@@ -362,7 +375,32 @@ definitions:
           disease:
             type: "string"
             example: "malaria"
+          protein:
+            type: "string"
+            example: "P12345"
+          anatomical_entity:
+            type: "string"
+            example: "liver"
+          chemical_substance:
+            type: "string"
+            example: "ibuprofen"
+          metabolite:
+            type: "string"
+            example: "ibuprofen"
         additionalProperties: true
+      reasoner_ids:
+        type: "array"
+        example: [ "RTX", "Robokop", "Indigo" ]
+        description: "List of reasoners to consult for the query"
+        items:
+          type: "string"
+      query_plan:
+        type: "array"
+        example: [ { "node_type": "chemical_substance", "node_name": "ibuprofen" }, { "edge_type": "interacts_with" }, { "node_type": "protein" } ]
+        description: "List of node types and edge types in a series that constitute a query plan. Experimental."
+        items:
+          type: "object"
+    additionalProperties: true
   Response:
     type: "object"
     properties:
@@ -378,13 +416,17 @@ definitions:
         type: "string"
         example: "http://rtx.ncats.io/api/rtx/v1/response/1234"
         description: "URI for this response"
+      reasoner_id:
+        type: "string"
+        example: "RTX"
+        description: "Identifier string of the reasoner that provided this response (e.g., RTX, Robokop, Indigo, Integrator)"
       tool_version:
         type: "string"
         example: "RTX 0.4.0"
         description: "Version label of the tool that generated this response"
       schema_version:
         type: "string"
-        example: "0.5"
+        example: "0.8.0"
         description: "Version label of this JSON-LD schema"
       datetime:
         type: "string"
@@ -406,18 +448,33 @@ definitions:
         type: "object"
         example: "{ 'disease': 'malaria' }"
         description: "The is string of the query type id if one is known for the query/response"
-      result_code:
+      n_results:
+        type: "integer"
+        example: 42
+        description: "Total number of results in the response (which may be less than what is returned if limits were placed on the results to return)"
+      response_code:
         type: "string"
         example: "OK"
         description: "Set to OK for success, or some other short string to indicate and error (e.g., KGUnavailable, TermNotFound, etc.)"
+      result_code:
+        type: "string"
+        example: "OK"
+        description: "DEPRECATED"
       message:
         type: "string"
         example: "1 answer found"
         description: "Extended message denoting the success or mode of failure for the response"
+      table_column_names:
+        type: "array"
+        example: [ "chemical_substance.name", "chemical_substance.id" ]
+        description: "List of column names that corresponds to the row_data for each result"
+        items:
+          type: "string"
       result_list:
         type: "array"
         items:
           $ref: "#/definitions/Result"
+    additionalProperties: true
   Result:
     type: "object"
     description: "One of potentially several results or answers for a query"
@@ -426,12 +483,39 @@ definitions:
         type: "string"
         example: "http://rtx.ncats.io/api/rtx/v1/result/2345"
         description: "URI for this response"
-      text:
+      description:
         type: "string"
         example: "The genetic condition sickle cell anemia may provide protection\
           \ from cerebral malaria via genetic alterations of proteins HBB (P68871)\
           \ and HMOX1 (P09601)."
-        description: "A free text description or comment from the reasoner about this answer"
+        description: "A free text description of this result answer from the reasoner"
+      text:
+        type: "string"
+        example: "DEPRECATED"
+        description: "DEPRECATED"
+      essence:
+        type: "string"
+        example: "ibuprofen"
+        description: "A single string that is the terse essence of the result (useful for simple answers)"
+      row_data:
+        type: "array"
+        example: [ "ibuprofen", "CHEMBL:CHEMBL521" ]
+        description: "An arbitrary list of values that captures the essence of the result that can be turned into a tabular result across all answers (each result is a row) for a user that wants tabular output"
+        items:
+          type: "string"
+      score:
+        type: "number"
+        format: "float"
+        example: 163.233
+        description: "Any type of score associated with this result (highest confidence)"
+      score_name:
+        type: "string"
+        example: "Jaccard distance"
+        description: "Name for the score"
+      score_direction:
+        type: "string"
+        example: "Jaccard distance"
+        description: "Sorting indicator for the score: one of higher_is_better or lower_is_better"
       confidence:
         type: "number"
         format: "float"
@@ -441,8 +525,22 @@ definitions:
         type: "string"
         example: "answer"
         description: "One of several possible result types: 'individual query answer', 'neighborhood graph', 'type summary graph'"
+      result_group:
+        type: "integer"
+        example: "1"
+        description: "An integer group number for results for use in cases where several results should be grouped together. Also useful to control sorting ascending."
+      result_group_similarity_score:
+        type: "number"
+        format: "float"
+        example: 0.95
+        description: "A score that denotes the similarity of this result to other members of the result_group"
+      reasoner_id:
+        type: "string"
+        example: "RTX"
+        description: "Identifier string of the reasoner that provided this result (e.g., RTX, Robokop, Indigo, Integrator)"
       result_graph:
         $ref: "#/definitions/Result_graph"
+    additionalProperties: true
   Result_graph:
     type: "object"
     description: "A thought graph associated with this result. This will commonly be a linear path subgraph from one concept to another, but related items aside of the path may be included."
@@ -455,6 +553,7 @@ definitions:
         type: "array"
         items:
           $ref: "#/definitions/Edge"
+    additionalProperties: true
   Node:
     type: "object"
     description: "A node in the thought subgraph"
@@ -509,6 +608,7 @@ definitions:
         type: "string"
         example: "https://en.wikipedia.org/wiki/Malaria"
         description: "A URL corresponding to this attribute"
+    additionalProperties: true
   Edge:
     type: "object"
     description: "An edge in the thought subgraph linking two nodes"
@@ -584,22 +684,7 @@ definitions:
         type: "string"
         example: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
         description: "A URL corresponding to this attribute"
-  MeshNgdResponse:
-    type: "object"
-    properties:
-      result_code:
-        type: "string"
-        example: "TermNotFound"
-        description: "Set to OK for success, or some other short string to indicate and error (e.g., TermNotFound, etc.)"
-      message:
-        type: "string"
-        example: "Term 1 'malria' not found in MeSH"
-        description: "Extended message denoting the success or mode of failure for request"
-      value:
-        type: "number"
-        format: "float"
-        description: "Calculated Normalized Google Distance for the two supplied terms"
-        example: 0.714
+    additionalProperties: true
   Feedback:
     type: "object"
     description: "A single unit of Feedback"
@@ -652,3 +737,19 @@ definitions:
         type: "array"
         items:
           $ref: "#/definitions/Feedback"
+  MeshNgdResponse:
+    type: "object"
+    properties:
+      result_code:
+        type: "string"
+        example: "TermNotFound"
+        description: "Set to OK for success, or some other short string to indicate and error (e.g., TermNotFound, etc.)"
+      message:
+        type: "string"
+        example: "Term 1 'malria' not found in MeSH"
+        description: "Extended message denoting the success or mode of failure for request"
+      value:
+        type: "number"
+        format: "float"
+        description: "Calculated Normalized Google Distance for the two supplied terms"
+        example: 0.714
