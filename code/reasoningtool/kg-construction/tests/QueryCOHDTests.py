@@ -1,8 +1,9 @@
 from unittest import TestCase
 
-import os,sys
+import os, sys
+
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0,parentdir)
+sys.path.insert(0, parentdir)
 
 from QueryCOHD import QueryCOHD
 
@@ -11,7 +12,33 @@ class QueryCOHDTestCases(TestCase):
     def test_find_concept_ids(self):
         ids = QueryCOHD.find_concept_ids("ibuprofen", "Condition", 1)
         self.assertIsNotNone(ids)
-        correct_results = [{'concept_class_id': 'Clinical Finding', 'concept_code': '212602006', 'concept_count': 0.0, 'concept_id': 4059406, 'concept_name': 'Ibuprofen poisoning', 'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'}, {'concept_class_id': 'Clinical Finding', 'concept_code': '218613000', 'concept_count': 0.0, 'concept_id': 4329188, 'concept_name': 'Adverse reaction to ibuprofen', 'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'}, {'concept_class_id': 'Clinical Finding', 'concept_code': '295250003', 'concept_count': 0.0, 'concept_id': 4170835, 'concept_name': 'Ibuprofen overdose', 'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'}, {'concept_class_id': 'Clinical Finding', 'concept_code': '295252006', 'concept_count': 0.0, 'concept_id': 4172259, 'concept_name': 'Intentional ibuprofen overdose', 'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'}, {'concept_class_id': 'Clinical Finding', 'concept_code': '290260009', 'concept_count': 0.0, 'concept_id': 4156776, 'concept_name': 'Intentional ibuprofen poisoning', 'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'}, {'concept_class_id': 'Clinical Finding', 'concept_code': '295253001', 'concept_count': 0.0, 'concept_id': 4170836, 'concept_name': 'Ibuprofen overdose of undetermined intent', 'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'}, {'concept_class_id': 'Clinical Finding', 'concept_code': '216487007', 'concept_count': 0.0, 'concept_id': 4313103, 'concept_name': 'Accidental poisoning by ibuprofen', 'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'}, {'concept_class_id': 'Clinical Finding', 'concept_code': '290261008', 'concept_count': 0.0, 'concept_id': 4156777, 'concept_name': 'Ibuprofen poisoning of undetermined intent', 'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'}, {'concept_class_id': 'Clinical Finding', 'concept_code': '295251004', 'concept_count': 0.0, 'concept_id': 4172258, 'concept_name': 'Accidental ibuprofen overdose', 'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'}]
+        correct_results = [{'concept_class_id': 'Clinical Finding', 'concept_code': '212602006', 'concept_count': 0.0,
+                            'concept_id': 4059406, 'concept_name': 'Ibuprofen poisoning', 'domain_id': 'Condition',
+                            'vocabulary_id': 'SNOMED'},
+                           {'concept_class_id': 'Clinical Finding', 'concept_code': '218613000', 'concept_count': 0.0,
+                            'concept_id': 4329188, 'concept_name': 'Adverse reaction to ibuprofen',
+                            'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'},
+                           {'concept_class_id': 'Clinical Finding', 'concept_code': '295250003', 'concept_count': 0.0,
+                            'concept_id': 4170835, 'concept_name': 'Ibuprofen overdose', 'domain_id': 'Condition',
+                            'vocabulary_id': 'SNOMED'},
+                           {'concept_class_id': 'Clinical Finding', 'concept_code': '295252006', 'concept_count': 0.0,
+                            'concept_id': 4172259, 'concept_name': 'Intentional ibuprofen overdose',
+                            'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'},
+                           {'concept_class_id': 'Clinical Finding', 'concept_code': '290260009', 'concept_count': 0.0,
+                            'concept_id': 4156776, 'concept_name': 'Intentional ibuprofen poisoning',
+                            'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'},
+                           {'concept_class_id': 'Clinical Finding', 'concept_code': '295253001', 'concept_count': 0.0,
+                            'concept_id': 4170836, 'concept_name': 'Ibuprofen overdose of undetermined intent',
+                            'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'},
+                           {'concept_class_id': 'Clinical Finding', 'concept_code': '216487007', 'concept_count': 0.0,
+                            'concept_id': 4313103, 'concept_name': 'Accidental poisoning by ibuprofen',
+                            'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'},
+                           {'concept_class_id': 'Clinical Finding', 'concept_code': '290261008', 'concept_count': 0.0,
+                            'concept_id': 4156777, 'concept_name': 'Ibuprofen poisoning of undetermined intent',
+                            'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'},
+                           {'concept_class_id': 'Clinical Finding', 'concept_code': '295251004', 'concept_count': 0.0,
+                            'concept_id': 4172258, 'concept_name': 'Accidental ibuprofen overdose',
+                            'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'}]
         self.assertEqual(ids, correct_results)
 
         # wrong name
@@ -72,4 +99,31 @@ class QueryCOHDTestCases(TestCase):
 
         # wrong parameter format
         result = QueryCOHD.get_associated_concept_domain_freq(192855, "drug")
+        self.assertEqual(result, [])
+
+    def test_get_concepts(self):
+        result = QueryCOHD.get_concepts(["192855", "2008271"])
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result, [{'concept_class_id': 'Clinical Finding', 'concept_code': '92546004',
+                                   'concept_id': 192855, 'concept_name': 'Cancer in situ of urinary bladder',
+                                   'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'},
+                                  {'concept_class_id': '4-dig billing code', 'concept_code': '99.25',
+                                   'concept_id': 2008271, 'concept_name': 'Injection or infusion of cancer '
+                                                                          'chemotherapeutic substance',
+                                   'domain_id': 'Procedure', 'vocabulary_id': 'ICD9Proc'}])
+
+        result = QueryCOHD.get_concepts(["192855"])
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result, [{'concept_class_id': 'Clinical Finding', 'concept_code': '92546004',
+                                   'concept_id': 192855, 'concept_name': 'Cancer in situ of urinary bladder',
+                                   'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'}])
+
+        # wrong concept_id type
+        result = QueryCOHD.get_concepts(["192855", 2008271])
+        self.assertEqual(result, [])
+
+        # empty concept_ids
+        result = QueryCOHD.get_concepts(["192855", 2008271])
         self.assertEqual(result, [])

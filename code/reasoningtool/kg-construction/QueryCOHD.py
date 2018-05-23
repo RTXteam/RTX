@@ -31,7 +31,8 @@ class QueryCOHD:
         'find_concept_id':                      'omop/findConceptIDs',
         'get_paired_concept_freq':              'frequencies/pairedConceptFreq',
         'get_individual_concept_freq':          'frequencies/singleConceptFreq',
-        'get_associated_concept_domain_freq':   'frequencies/associatedConceptDomainFreq'
+        'get_associated_concept_domain_freq':   'frequencies/associatedConceptDomainFreq',
+        'get_concepts':                         'omop/concepts'
     }
 
     @staticmethod
@@ -224,6 +225,131 @@ class QueryCOHD:
             results_array = res_json.get('results', [])
         return results_array
 
+    @staticmethod
+    def get_xref_from_OMOP(concept_id, mapping_targets, distance):
+        """Cross-reference from an ontology to OMOP standard concepts
+
+        Attempts to map a concept from an external ontology to an OMOP standard concept ID using the EMBL-EBI
+        Ontology Xref Service (OxO): https://www.ebi.ac.uk/spot/oxo/index. This method maps from the OMOP standard
+        concept to an intermediate vocabulary included is OxO (ICD9CM, ICD10CM, SNOMEDCT, and MeSH), then uses the OxO
+        API to map to other ontologies. Multiple mappings may be returned. Results are sorted by total_distance (OxO
+        distance + OMOP distance) in ascending order.
+
+        Args:
+            concept_id (str): OMOP standard concept_id to map, e.g., 192855
+
+            mapping_targets (str): Target ontologies for OxO. Comma separated target prefixes, e.g., "DOID,UMLS"
+
+            distance (int): Mapping distance for OxO. Note: this is the distance used in the OxO API to map from an
+            ICD9CM, ICD10CM, SNOMEDCT, or MeSH concept to the desired ontology. One additional step may be taken by the
+            COHD API to map to the OMOP standard concept to ICD9CM, ICD10CM, SNOMEDCT, or MeSH. Default: 2.
+
+        Returns:
+        """
+        return None
+
+    @staticmethod
+    def get_xref_to_OMOP(curie, distance):
+        """Cross-reference from an ontology to OMOP standard concepts
+
+        Attempts to map a concept from an external ontology to an OMOP standard concept ID using the EMBL-EBI
+        Ontology Xref Service (OxO): https://www.ebi.ac.uk/spot/oxo/index. This method attempts to use OxO to map from
+        the original ontology to an intermediate ontology that is included in OMOP (ICD9CM, ICD10CM, SNOMEDCT, and
+        MeSH), then uses the OMOP mappings to the standard concepts. Multiple mappings may be returned. Results are
+        sorted by total_distance (OxO distance + OMOP distance) in ascending order.
+
+        Args:
+            curie (str): Compacy URI (CURIE) of the concept to map, e.g., DOID:8398
+
+            distance (str): Mapping distance for OxO. Note: this is the distance used in the OxO API to map from the
+            original concept to an ICD9CM, ICD10CM, SNOMEDCT, or MeSH concept. One additional step may be taken by the
+            COHD API to map to the OMOP standard concept. Default: 2.
+
+        Returns:
+        """
+        return None
+
+    @staticmethod
+    def get_concepts(concept_ids):
+        """Concept definitions from concept ID
+
+        Returns the OMOP concept names and domains for the given list of concept IDs.
+
+        Args:
+            concept_ids (array): concept id array,  e.g., ["192855", "2008271"]
+
+        Returns:
+            array: an array which contains concept name, domain id and etc., or an empty array if no data obtained
+
+            example:
+            [
+                {
+                    "concept_class_id": "Clinical Finding",
+                    "concept_code": "92546004",
+                    "concept_id": 192855,
+                    "concept_name": "Cancer in situ of urinary bladder",
+                    "domain_id": "Condition",
+                    "vocabulary_id": "SNOMED"
+                },
+                {
+                    "concept_class_id": "4-dig billing code",
+                    "concept_code": "99.25",
+                    "concept_id": 2008271,
+                    "concept_name": "Injection or infusion of cancer chemotherapeutic substance",
+                    "domain_id": "Procedure",
+                    "vocabulary_id": "ICD9Proc"
+                }
+              ]
+        """
+        if not isinstance(concept_ids, list) or len(concept_ids) <= 0:
+            return []
+        for concept_id in concept_ids:
+            if not isinstance(concept_id, str):
+                return []
+        handler = QueryCOHD.HANDLER_MAP['get_concepts']
+        concept_ids_str = concept_ids[0]
+        for i, concept_id in enumerate(concept_ids):
+            if i > 0:
+                concept_ids_str += "," + concept_id
+        url_suffix = 'q=' + urllib.parse.quote_plus(concept_ids_str)
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
+
+    @staticmethod
+    def get_map_from_standard_concept_id(concept_id, vocabulary_id):
+        """Map from a standard concept ID to concept code(s) in an external vocabulary.
+
+        Uses the OMOP concept_relationship table to map from a standard concept ID (e.g., 72990) to concept code(s)
+        (e.g., ICD9CM 715.3, 715.31, 715.32, etc.). An OMOP standard concept ID may map to many concepts in the external
+         vocabulary.
+
+        Args:
+            concept_id (str): The standard OMOP concept id to map from, e.g., 72990
+
+            vocabulary_id (str): The vocabulary (e.g., "ICD9CM") to map to. If this parameter is not specified, the
+            method will return mappings to any matching vocabularies. See /omop/vocabularies for the list of supported
+            vocabularies.
+
+        Returns:
+        """
+        return None
+
+    @staticmethod
+    def get_map_to_standard_concept_id(concept_id, vocabulary_id):
+        """Map from a non-standard concept code to a standard OMOP concept ID.
+            Args:
+            concept_id (str): The concept code to map from, e.g., 715.3
+
+            vocabulary_id (str): The vocabulary (e.g., "ICD9CM") that the concept code belongs to. If this parameter is
+            not specified, the method will return mappings from any source vocabulary with matching concept code. See
+            /omop/vocabularies for the list of supported vocabularies.
+
+        Returns:
+        """
+        return None
 
 if __name__ == '__main__':
     print(QueryCOHD.find_concept_ids("ibuprofen", "Condition", 1))
@@ -231,3 +357,5 @@ if __name__ == '__main__':
     print(QueryCOHD.get_paired_concept_freq('192855', '2008271', 1))
     print(QueryCOHD.get_individual_concept_freq('192855'))
     print(QueryCOHD.get_associated_concept_domain_freq('192855', 'Procedure', 1))
+    print(QueryCOHD.get_concepts(["192855"]))
+    print(QueryCOHD.get_concepts(["192855", "2008271"]))
