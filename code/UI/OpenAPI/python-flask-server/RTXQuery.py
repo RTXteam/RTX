@@ -32,23 +32,35 @@ class RTXQuery:
     
 
 
-    #### If there is no known_query_type_id, then return an error
-    if "known_query_type_id" not in query:
+    #### If there is no query_type_id, then return an error
+    if "query_type_id" not in query:
       response = Response()
-      response.result_code = "No_known_query_type_id"
-      response.message = "There was no known_query_type_id specified in the query"
+      response.response_code = "No_query_type_id"
+      response.message = "There was no query_type_id specified in the query"
       return(response)
 
     #### If there is no terms, then return an error
     if "terms" not in query:
       response = Response()
-      response.result_code = "No_terms"
+      response.response_code = "No_terms"
       response.message = "There was no terms element specified in the query"
       return(response)
 
     #### Extract the id and the terms from the incoming parameters
-    id = query["known_query_type_id"]
+    id = query["query_type_id"]
     terms = query["terms"]
+    eprint("here")
+
+
+    #### Temportary hack FIXME
+    if "chemical_substance" in terms:
+      if re.match("CHEMBL:",terms["chemical_substance"]):
+        eprint(terms["chemical_substance"])
+        terms["chemical_substance"] = re.sub("CHEMBL:","",terms["chemical_substance"])
+        eprint(terms["chemical_substance"])
+    query["known_query_type_id"] = query["query_type_id"]
+
+
 
     #### Create an RTX Feedback management object
     #eprint(query)
@@ -72,10 +84,10 @@ class RTXQuery:
       if 'original_question' in query:
         response.original_question_text = query["original_question"]
         response.restated_question_text = query["restated_question"]
-      response.known_query_type_id = query["known_query_type_id"]
+      response.query_type_id = query["query_type_id"]
       response.terms = query["terms"]
       id = response.id
-      codeString = response.result_code
+      codeString = response.response_code
       self.logQuery(query,response,'new')
       rtxFeedback.addNewResponse(response,query)
       rtxFeedback.disconnect()
@@ -108,14 +120,14 @@ class RTXQuery:
       #### If it fails, the just create a new Response object with a notice about the failure
       except:
           response = Response()
-          response.result_code = "InternalError"
+          response.response_code = "InternalError"
           response.message = "Error parsing the response from the reasoner. This is an internal bug that needs to be fixed. Unable to respond to this question at this time. The unparsable response was: " + reformattedText
 
       print(query)
       if 'original_question' in query:
         response.original_question_text = query["original_question"]
         response.restated_question_text = query["restated_question"]
-      response.known_query_type_id = query["known_query_type_id"]
+      response.query_type_id = query["query_type_id"]
       response.terms = query["terms"]
 
       #### Log the result and return the Response object
@@ -130,7 +142,7 @@ class RTXQuery:
 
     #### If the query type id is not triggered above, then return an error
     response = Response()
-    response.result_code = "UnsupportedQueryTypeID"
+    response.response_code = "UnsupportedQueryTypeID"
     response.message = "The specified query id '" + id + "' is not supported at this time"
     rtxFeedback.disconnect()
     return(response)
@@ -139,10 +151,10 @@ class RTXQuery:
   def logQuery(self,query,response,cacheStatus):
     datetimeString = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    if "known_query_type_id" not in query or query["known_query_type_id"] is None:
+    if "query_type_id" not in query or query["query_type_id"] is None:
       id = "?"
     else:
-      id = query['known_query_type_id']
+      id = query['query_type_id']
 
     if "terms" not in query or query['terms'] is None:
       terms = "{}"
@@ -154,7 +166,7 @@ class RTXQuery:
     else:
       restated_question = query["restated_question"]
 
-    response_code = response.result_code
+    response_code = response.response_code
 
     with open(os.path.dirname(os.path.abspath(__file__))+"/RTXQueries.log","a") as logfile:
       logfile.write(datetimeString+"\t"+cacheStatus+"\t"+response_code+"\t"+id+"\t"+terms+"\t"+restated_question+"\n")
@@ -183,11 +195,11 @@ def stringifyDict(inputDict):
 
 def main():
   rtxq = RTXQuery()
-  query = { "known_query_type_id": "Q0", "terms": { "term": "lovastatin" } }
+  query = { "query_type_id": "Q0", "terms": { "term": "lovastatin" } }
   #query = { "knownQueryTypeId": "Q0", "terms": [ "foo" ] }
-  #query = { "known_query_type_id": "Q1", "terms": [ "malaria" ] }
+  #query = { "query_type_id": "Q1", "terms": [ "malaria" ] }
   #query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "glaucoma" ] }
-  query = { "known_query_type_id": "Q2", "terms": {'chemical_substance': 'CHEMBL154', 'disease': 'DOID:8398'} }
+  query = { "query_type_id": "Q2", "terms": {'chemical_substance': 'CHEMBL154', 'disease': 'DOID:8398'} }
   #query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "DOID:1686" ] }
   #query = { "knownQueryTypeId": "Q2", "terms": [ "DOID:1686", "physostigmine" ] }
   #query = { "knownQueryTypeId": "Q3", "terms": [ "acetaminophen" ] }
