@@ -9,6 +9,9 @@ from QueryMyGene import QueryMyGene
 import mygene
 import requests
 from QueryMyChem import QueryMyChem
+import requests_cache
+
+requests_cache.install_cache('SynonymCache')
 
 
 class SynonymMapper():
@@ -124,6 +127,8 @@ class SynonymMapper():
         except requests.exceptions.Timeout:
             #print(url, file=sys.stderr)
             #print('Timeout in QueryMyChem for URL: ' + url, file=sys.stderr)
+            return None
+        if res is None:
             return None
         status_code = res.status_code
         if status_code != 200:
