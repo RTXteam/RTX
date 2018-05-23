@@ -233,7 +233,7 @@ class Question:
 	def __init__(self, row):
 		#print(row)
 		row_split = row.strip().split("\t")  # See Questions.tsv for the expected format
-		self.known_query_type_id = row_split[0]
+		self.query_type_id = row_split[0]
 		self.restated_question_template = Template(row_split[1])  # this is a question template, such as "what is $entity"
 		self.corpus = eval(row_split[2])
 		self.types = eval(row_split[3])
