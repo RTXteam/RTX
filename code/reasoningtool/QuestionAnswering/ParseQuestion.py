@@ -8,6 +8,7 @@ import string
 import WordnetDistance as wd
 import CustomExceptions
 import datetime
+import re
 
 # get all the question templates we've made so far, import each as a Question class
 question_templates = []
@@ -22,9 +23,9 @@ with open(os.path.join(os.path.dirname(__file__), 'Questions.tsv'), 'r') as fid:
 class ParseQuestion:
 	def __init__(self):
 		self._question_templates = question_templates
-		self._known_query_type_id_to_question = dict()
+		self._query_type_id_to_question = dict()
 		for q in question_templates:
-			self._known_query_type_id_to_question[q.known_query_type_id] = q
+			self._query_type_id_to_question[q.query_type_id] = q
 
 	def parse_question(self, input_question):
 		"""
@@ -80,17 +81,17 @@ class ParseQuestion:
 		parameters = question.get_parameters(input_question)
 		return question, parameters, error_message, error_code
 
-	def get_execution_string(self, known_query_type_id, parameters):
+	def get_execution_string(self, query_type_id, parameters):
 		"""
 		Simple function for returning the command that will need to be run to answer the question
-		:param known_query_type_id: str
+		:param query_type_id: str
 		:param parameters: dict
 		:return: string
 		"""
-		if known_query_type_id in self._known_query_type_id_to_question:
-			q = self._known_query_type_id_to_question[known_query_type_id]
+		if query_type_id in self._query_type_id_to_question:
+			q = self._query_type_id_to_question[query_type_id]
 		else:
-			raise Exception("Unknown query type id: %s" % known_query_type_id)
+			raise Exception("Unknown query type id: %s" % query_type_id)
 		execution_string = q.solution_script.safe_substitute(parameters)
 		if "$" in execution_string:
 			raise Exception("Unpopulated parameter: %s" % execution_string)
@@ -126,9 +127,21 @@ class ParseQuestion:
 			#response['execution_string'] = execution_string
 			response['original_question'] = input_question
 			#response['terms'] = list(parameters.values())
+
+
+
+
+			#### Temportaryk hack. FIXME
+			if "chemical_substance" in parameters:
+				if re.match('(?i)CHEMBL[0-9]+',parameters["chemical_substance"]):
+					parameters["chemical_substance"] = "CHEMBL:" + parameters["chemical_substance"]
+
+
+
+
 			response['terms'] = parameters
 			#response['solution_script'] = question.solution_script.template.split()[0]
-			response['known_query_type_id'] = question.known_query_type_id
+			response['query_type_id'] = question.query_type_id
 			return response
 		else:
 			self.log_query(error_code, "-", error_message)
@@ -139,13 +152,13 @@ class ParseQuestion:
 						parameters_without_none[key] = value
 				restated_question = question.restate_question(parameters_without_none)
 				response['restated_question'] = restated_question
-				response['known_query_type_id'] = question.known_query_type_id
+				response['query_type_id'] = question.query_type_id
 			elif question:
 				response['restated_question'] = question.restate_question({})
-				response['known_query_type_id'] = question.known_query_type_id
+				response['query_type_id'] = question.query_type_id
 			else:
 				response['restated_question'] = None
-				response['known_query_type_id'] = None
+				response['query_type_id'] = None
 			response['original_question'] = input_question
 			#response['error_message'] = error_message
 			response['message'] = error_message
@@ -191,7 +204,7 @@ def main():
 	print("Getting execution string for: %s" % text)
 	question = {"language": "English", "text": text}
 	res = p.format_response(question)
-	execution_string = p.get_execution_string(res["known_query_type_id"], res["terms"])
+	execution_string = p.get_execution_string(res["query_type_id"], res["terms"])
 	print(execution_string)
 
 
@@ -232,7 +245,7 @@ def tests():
 	assert "message" not in res
 	assert 'terms' in res
 	assert 'DOID:12365' in res['terms'].values()
-	assert res['known_query_type_id'] == 'Q13'
+	assert res['query_type_id'] == 'Q13'
 
 	question = "what diseases are similar to cerebral malaria"
 	q, params, error_message, error_code = txltr.parse_question(question)
@@ -244,7 +257,7 @@ def tests():
 	assert "message" not in res
 	assert 'terms' in res
 	assert 'DOID:14069' in res['terms'].values()
-	assert res['known_query_type_id'] == 'Q13'
+	assert res['query_type_id'] == 'Q13'
 	#assert 'execution_string' in res
 	#assert 'solution_script' in res
 	#assert res['solution_script'] == 'SimilarityQuestionSolution.py'
@@ -261,7 +274,7 @@ def tests():
 	assert "message" not in res
 	assert 'terms' in res
 	assert 'DOID:8398' in res['terms'].values()
-	assert res['known_query_type_id'] == 'Q23'
+	assert res['query_type_id'] == 'Q23'
 	#assert 'execution_string' in res
 	#assert 'solution_script' in res
 	#assert res['solution_script'] == 'SimilarityQuestionSolution.py'
@@ -271,9 +284,9 @@ def tests():
 	text = "What are the protein targets of naproxen"
 	question = {"language": "English", "text": text}
 	res = txltr.format_response(question)
-	known_query_type_id = res['known_query_type_id']
+	query_type_id = res['query_type_id']
 	parameters = res['terms']
-	execution_string = txltr.get_execution_string(known_query_type_id, parameters)
+	execution_string = txltr.get_execution_string(query_type_id, parameters)
 	assert execution_string == "Q3Solution.py -s 'CHEMBL154' -t 'protein' -r 'directly_interacts_with' -j"
 
 	return
