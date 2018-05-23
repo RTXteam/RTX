@@ -18,10 +18,9 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-#import requests
 import urllib.request
 import urllib.parse
-#import requests_cache
+# NOTE: this module *WILL NOT WORK* if you use requests package if caching via requests-cache is turned on
 import json
 import pandas
 import time
