@@ -37,7 +37,8 @@ class QueryCOHD:
         'get_xref_from_OMOP':                   'omop/xrefFromOMOP',
         'get_xref_to_OMOP':                     'omop/xrefToOMOP',
         'get_map_from_standard_concept_id':     'omop/mapFromStandardConceptID',
-        'get_map_to_standard_concept_id':       'omop/mapToStandardConceptID'
+        'get_map_to_standard_concept_id':       'omop/mapToStandardConceptID',
+        'get_vocabularies':                     'omop/vocabularies'
     }
 
     @staticmethod
@@ -390,7 +391,8 @@ class QueryCOHD:
                     "concept_name": "Injection or infusion of cancer chemotherapeutic substance",
                     "domain_id": "Procedure",
                     "vocabulary_id": "ICD9Proc"
-                }
+                },
+                ...
               ]
         """
         if not isinstance(concept_ids, list) or len(concept_ids) <= 0:
@@ -487,7 +489,8 @@ class QueryCOHD:
                   "standard_concept_id": 72990,
                   "standard_concept_name": "Localized osteoarthrosis uncertain if primary OR secondary",
                   "standard_domain_id": "Condition"
-                }
+                },
+                ...
              ]
 
         """
@@ -497,6 +500,40 @@ class QueryCOHD:
         url_suffix = 'concept_code=' + concept_code
         if vocabulary_id != "":
             url_suffix += "&vocabulary_id=" + vocabulary_id
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
+
+    @staticmethod
+    def get_vocabularies():
+        """List of vocabularies.
+
+        List of vocabulary_ids. Useful if you need to use /omop/mapToStandardConceptID to map a concept code from a source vocabulary to the OMOP standard vocabulary.
+
+        Returns:
+            array: an array of all vocabularies
+
+            example:
+            [
+                {
+                  "vocabulary_id": ""
+                },
+                {
+                  "vocabulary_id": "ABMS"
+                },
+                {
+                  "vocabulary_id": "AMT"
+                },
+                {
+                  "vocabulary_id": "APC"
+                },
+                ...
+            ]
+        """
+        handler = QueryCOHD.HANDLER_MAP['get_vocabularies']
+        url_suffix = ''
         res_json = QueryCOHD.__access_api(handler, url_suffix)
         results_array = []
         if res_json is not None:
@@ -516,3 +553,4 @@ if __name__ == '__main__':
     print(QueryCOHD.get_map_from_standard_concept_id("72990", "ICD9CM"))
     print(QueryCOHD.get_map_from_standard_concept_id("72990"))
     print(QueryCOHD.get_map_to_standard_concept_id("715.3", "ICD9CM"))
+    print(len(QueryCOHD.get_vocabularies()))

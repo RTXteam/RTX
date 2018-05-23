@@ -238,3 +238,10 @@ class QueryCOHDTestCases(TestCase):
         #   wrong concept_code format
         result = QueryCOHD.get_map_from_standard_concept_id(725.3)
         self.assertEqual(result, [])
+
+    def test_get_vocabularies(self):
+        result = QueryCOHD.get_vocabularies()
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 73)
+        self.assertEqual(result[0]['vocabulary_id'], '')
+        self.assertEqual(result[1]['vocabulary_id'], 'ABMS')
