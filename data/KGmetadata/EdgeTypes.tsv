@@ -1,9 +1,10 @@
-participates_in
-regulates
-expressed_in
-associated_with_condition
-causes_or_contributes_to
-has_phenotype
-affects
 directly_interacts_with
+expressed_in
+regulates
+participates_in
+has_phenotype
+causes_or_contributes_to
+associated_with_condition
+enables
+affects
 subclass_of
