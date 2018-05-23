@@ -11,7 +11,7 @@ https://github.com/NCATS-Tangerine/cq-notebooks/blob/master/BigGIM/lilGIM%20and%
 
 __author__ = 'Stephen Ramsey'
 __copyright__ = 'Oregon State University'
-__credits__ = ['Stephen Ramsey', 'Theo Knijnenburg', 'John Earls']
+__credits__ = ['Stephen Ramsey', 'Theo Knijnenburg', 'John Earls', 'David Palzer']
 __license__ = 'MIT'
 __version__ = '0.1.0'
 __maintainer__ = ''
