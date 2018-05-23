@@ -183,3 +183,58 @@ class QueryCOHDTestCases(TestCase):
         result = QueryCOHD.get_xref_to_OMOP("DOID:8398", "2")
         self.assertEqual(result, [])
 
+    def test_get_map_from_standard_concept_id(self):
+        result = QueryCOHD.get_map_from_standard_concept_id("72990", "ICD9CM")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 10)
+        self.assertEqual(result[0], {"concept_class_id": "4-dig nonbill code", "concept_code": "715.3",
+                                     "concept_id": 44834979,
+                                     "concept_name": "Osteoarthrosis, localized, not specified whether primary or secondary",
+                                     "domain_id": "Condition", "standard_concept": None, "vocabulary_id": "ICD9CM"
+                                     })
+
+        #   default vocabulary
+        result = QueryCOHD.get_map_from_standard_concept_id("72990")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 12)
+        self.assertEqual(result[0], {"concept_class_id": "Diagnosis", "concept_code": "116253", "concept_id": 45930832,
+                                     "concept_name": "Localized Osteoarthrosis Uncertain If Primary or Secondary",
+                                     "domain_id": "Condition", "standard_concept": None, "vocabulary_id": "CIEL"})
+
+        #   wrong concept_id id
+        result = QueryCOHD.get_map_from_standard_concept_id("DOID:839812", 2)
+        self.assertEqual(result, [])
+
+        #   wrong concept_id format
+        result = QueryCOHD.get_map_from_standard_concept_id(8398, 2)
+        self.assertEqual(result, [])
+
+    def test_get_map_to_standard_concept_id(self):
+        result = QueryCOHD.get_map_to_standard_concept_id("715.3", "ICD9CM")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], {"source_concept_code": "715.3", "source_concept_id": 44834979,
+                                     "source_concept_name": "Osteoarthrosis, localized, not specified whether primary or secondary",
+                                     "source_vocabulary_id": "ICD9CM", "standard_concept_id": 72990,
+                                     "standard_concept_name": "Localized osteoarthrosis uncertain if primary OR secondary",
+                                     "standard_domain_id": "Condition"
+                                     })
+
+        # default vocabulary
+        result = QueryCOHD.get_map_to_standard_concept_id("715.3")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], {"source_concept_code": "715.3", "source_concept_id": 44834979,
+                                     "source_concept_name": "Osteoarthrosis, localized, not specified whether primary or secondary",
+                                     "source_vocabulary_id": "ICD9CM", "standard_concept_id": 72990,
+                                     "standard_concept_name": "Localized osteoarthrosis uncertain if primary OR secondary",
+                                     "standard_domain_id": "Condition"
+                                     })
+
+        #   wrong concept_code id
+        result = QueryCOHD.get_map_from_standard_concept_id("725.3")
+        self.assertEqual(result, [])
+
+        #   wrong concept_code format
+        result = QueryCOHD.get_map_from_standard_concept_id(725.3)
+        self.assertEqual(result, [])
