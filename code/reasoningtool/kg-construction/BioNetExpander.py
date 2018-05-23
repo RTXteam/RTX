@@ -81,7 +81,6 @@ class BioNetExpander:
                               "participates_in": True,
                               "involved_in": True,
                               "has_phenotype": True,
-                              "enables": True,
                               "capable_of": True}  # the "has_function" predicate may have to get changed per the emerging standard; check back here: https://github.com/biolink/biolink-model/issues/67
 
     GO_ONTOLOGY_TO_PREDICATE = {"biological_process": "involved_in",
