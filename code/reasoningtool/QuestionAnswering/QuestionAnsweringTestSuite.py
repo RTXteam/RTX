@@ -34,9 +34,9 @@ def run_question_examples(question_number, python_loc, res_loc):
 				#raise Exception
 
 			# check for right query number matched
-			if q_id != matched_question.known_query_type_id:
+			if q_id != matched_question.query_type_id:
 				print("WARNING: for the query: %s\n I matched to template %s while it should have been %s" % (
-				nat_lang_question, matched_question.known_query_type_id, q_id))
+				nat_lang_question, matched_question.query_type_id, q_id))
 				error_found = True
 
 			# get the solution script
@@ -69,9 +69,9 @@ def run_test_suite(question_number, python_loc, res_loc):
 
 	# Go through each of the questions and populate terms
 	for question in ParseQuestion.question_templates:
-		if question_number == "a" or question_number == question.known_query_type_id:
+		if question_number == "a" or question_number == question.query_type_id:
 			# ignore "what is"
-			if question.known_query_type_id != 'Q0':
+			if question.query_type_id != 'Q0':
 				question_template = question.restated_question_template
 
 				# populate the parameters
@@ -97,8 +97,8 @@ def run_test_suite(question_number, python_loc, res_loc):
 					#raise Exception
 
 				# make sure the correct template was matched
-				if question.known_query_type_id != matched_question.known_query_type_id:
-					print("WARNING: for the query: %s\n I matched to template %s while it should have been %s" % (nat_lang_question, matched_question.known_query_type_id, question.known_query_type_id))
+				if question.query_type_id != matched_question.query_type_id:
+					print("WARNING: for the query: %s\n I matched to template %s while it should have been %s" % (nat_lang_question, matched_question.query_type_id, question.query_type_id))
 
 				# get the solution script
 				solution_script = matched_question.solution_script.safe_substitute(extracted_params)
