@@ -37,7 +37,7 @@ class FormatResponse:
 		self.response.type = "medical_translator_query_result"
 		self.response.tool_version = RTXConfiguration.version
 		self.response.schema_version = "0.5"
-		self.response.result_code = "OK"
+		self.response.response_code = "OK"
 		if self._num_results == 1:
 			self.response.message = "%s result found" % self._num_results
 		else:
@@ -58,7 +58,7 @@ class FormatResponse:
 		:return: None (modifies response)
 		"""
 		response = self.response
-		response.result_code = code
+		response.response_code = code
 		response.message = message
 
 	def add_text(self, plain_text, confidence=1):
