@@ -19,7 +19,9 @@ import re
 class QueryReactome:
 
     API_BASE_URL = 'https://reactome.org/ContentService'
-    
+
+    TIMEOUT_SEC = 120
+
     SPECIES_MNEMONICS = ['BOVIN',
                          'ACAVI',
                          'VACCW',
@@ -62,11 +64,16 @@ class QueryReactome:
     def send_query_get(handler, url_suffix):
         url_str = QueryReactome.API_BASE_URL + '/' + handler + '/' + url_suffix
 #        print(url_str)
-        res = requests.get(url_str, headers={'accept': 'application/json'})
+        try:
+            res = requests.get(url_str, headers={'accept': 'application/json'},
+                               timeout=QueryReactome.TIMEOUT_SEC)
+        except BaseException as e:
+            print('%s received in QueryReactome for URL: %s' % (e, url_str), file=sys.stderr)
+            return None
         status_code = res.status_code
         if status_code != 200:
-            print('HTTP response status code: ' + str(status_code) + ' for URL:\n' + url_str, file=sys.stderr)
-            res = None
+            print('Status code ' + str(status_code) + ' for url: ' + url_str, file=sys.stderr)
+            return None
         return res
 
     @staticmethod
@@ -75,7 +82,7 @@ class QueryReactome:
         if res is not None:
             res_json = res.json()
             #        print(res_json)
-            if type(res_json)==list:
+            if type(res_json) == list:
                 ret_ids = set([res_entry['stId'] for res_entry in res_json])
             else:
                 ret_ids = set()
@@ -89,7 +96,7 @@ class QueryReactome:
         ret_ids = dict()
         if res is not None:
             res_json = res.json()
-            if type(res_json)==list:
+            if type(res_json) == list:
                 for res_entry in res_json:
                     entity_id = res_entry['stId']
                     if 'R-HSA-' in entity_id:
@@ -212,7 +219,7 @@ class QueryReactome:
         print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc('P68871'))
         print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc('O75521-2'))
         print(QueryReactome.query_reactome_pathway_id_to_uniprot_ids_desc('R-HSA-5423646'))
-        print(QueryReactome.query_uniprot_id_to_reactome_pathway_ids_desc('P68871'))
+        print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc("P68871"))
         print(QueryReactome.__query_uniprot_to_reactome_entity_id('O75521-2'))
         print(QueryReactome.__query_reactome_entity_id_to_reactome_pathway_ids_desc('R-HSA-2230989'))
         print(QueryReactome.__query_uniprot_to_reactome_entity_id_desc('P68871'))
