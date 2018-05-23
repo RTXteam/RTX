@@ -49,15 +49,12 @@ class RTXQuery:
     #### Extract the id and the terms from the incoming parameters
     id = query["query_type_id"]
     terms = query["terms"]
-    eprint("here")
 
 
     #### Temportary hack FIXME
     if "chemical_substance" in terms:
       if re.match("CHEMBL:",terms["chemical_substance"]):
-        eprint(terms["chemical_substance"])
         terms["chemical_substance"] = re.sub("CHEMBL:","",terms["chemical_substance"])
-        #eprint(terms["chemical_substance"])
     query["known_query_type_id"] = query["query_type_id"]
 
 
@@ -74,11 +71,11 @@ class RTXQuery:
       rtxFeedback.disconnect()
       self.limitResponse(apiResponse,query)
 
-      if response.response_code is None:
-        if response.result_code is not None:
-          response.response_code = response.result_code
+      if apiResponse.response_code is None:
+        if apiResponse.result_code is not None:
+          apiResponse.response_code = apiResponse.result_code
         else:
-          response.response_code = "wha??"
+          apiResponse.response_code = "wha??"
 
       self.logQuery(query,apiResponse,'cached')
       return apiResponse
