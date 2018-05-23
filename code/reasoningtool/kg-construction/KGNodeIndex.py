@@ -15,7 +15,7 @@ from sqlalchemy.orm import sessionmaker
 
 Base = declarative_base()
 
-DEBUG = True
+DEBUG = False
 
 #### Define the database tables as classes
 class KGNode(Base):
@@ -174,6 +174,9 @@ class KGNodeIndex:
           names.append(newName)
           #print("  duplicated _"+name+"_ to _"+newName+"_")
 
+      elif re.match("KEGG:",curie):
+        type = "pathway"
+
       elif re.match("NCBIGene:",curie):
         type = "microRNA"
 
@@ -198,9 +201,6 @@ class KGNodeIndex:
 
       elif re.match("[A-Z0-9]+\_HUMAN",curie):
         type = "protein"
-
-      elif re.match("KEGG:", curie):
-        type = "metabolite"
 
       else:
         print("No match for: "+curie)
