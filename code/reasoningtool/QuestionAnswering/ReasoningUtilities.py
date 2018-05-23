@@ -77,7 +77,7 @@ DefaultConfigurable = namedtuple(
 defaults = DefaultConfigurable(**DEFAULT_CONFIGURABLE)
 
 
-def node_exists_with_property(term, property_name, session=session):
+def node_exists_with_property(term, property_name, node_label="",session=session):
 	"""
 	Check if the neo4j has a node with the given name as a given property
 	:param term: term to check (eg. 'naproxen')
@@ -85,7 +85,10 @@ def node_exists_with_property(term, property_name, session=session):
 	:param session: neo4j instance
 	:return: Boolean
 	"""
-	query = "match (n) where n.%s='%s' return n" % (property_name, term)
+	if node_label == "":
+		query = "match (n) where n.%s='%s' return n" % (property_name, term)
+	else:
+		query = "match (n:%s{%s:'%s'}) return n" % (node_label, property_name, term)
 	res = session.run(query)
 	res = [i for i in res]
 	if not res:
@@ -370,8 +373,15 @@ def get_graph(res, directed=True, multigraph=False):
 	return graph
 
 
-def get_graph_from_nodes(id_list, debug=False):
-	query = "match (n) where n.rtx_name in ["
+def get_graph_from_nodes(id_list, node_property_label="rtx_name", debug=False):
+	"""
+	For a list of property names, return a subgraph with those nodes in it
+	:param id_list: a list of identifiers
+	:param node_property_label: what the identier property is (eg. rtx_name)
+	:param debug:
+	:return:
+	"""
+	query = "match (n) where n.%s in [" % node_property_label
 	for ID in id_list:
 		if ID != id_list[-1]:
 			query += " '%s'," % ID
