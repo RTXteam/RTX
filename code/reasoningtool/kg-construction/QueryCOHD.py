@@ -26,12 +26,13 @@ requests_cache.install_cache('orangeboard')
 
 class QueryCOHD:
     TIMEOUT_SEC = 120
-    API_BASE_URL = 'http://cohd.nsides.io/api/v1'
+    API_BASE_URL = 'http://cohd.nsides.io/api'
     HANDLER_MAP = {
         'find_concept_id':                      'omop/findConceptIDs',
         'get_paired_concept_freq':              'frequencies/pairedConceptFreq',
         'get_individual_concept_freq':          'frequencies/singleConceptFreq',
-        'get_associated_concept_domain_freq':   '/frequencies/associatedConceptDomainFreq'
+        'get_associated_concept_domain_freq':   'frequencies/associatedConceptDomainFreq',
+        'get_concepts':                         'omop/concepts'
     }
 
     @staticmethod
@@ -56,129 +57,137 @@ class QueryCOHD:
             return None
         return res.json()
 
-    # returns a list of dictionary, which contains a concept ID and a concept name, based on a single node label
-    # like "acetaminophen" or "heart disease", or an empty list if no concept IDs could be obtained for the given label
     @staticmethod
-    def find_concept_ids(node_label):
-        """search for OMOP concepts
+    def find_concept_ids(node_label, domain, dataset_id=1):
+        """search for OMOP concepts by name
 
         Args:
             node_label (str): The name of the concept to search for, e.g., "cancer" or "ibuprofen"
 
-        Returns:
-            list: a list of dictionary, which contains a concept ID and a concept name, or an empty list if no concept IDs
-            could be obtained for the given label
+            domain (str): The domain (e.g., "Condition", "Drug", "Procedure") to restrict the search to. If not
+                specified, the search will be unrestricted.
 
-            dictionary parameters:
-                - 'concept_id' (str): a concept ID
-                - 'concept_name' (str): a concept name
+            dataset_id (int): The dataset to reference when sorting concepts by their frequency. Default: 5-year
+                dataset (1).
+        Returns:
+            list: a list of dictionary, including names and IDs, or an empty list if no concept IDs could be obtained
+                for the given label
 
             example:
                 [
                     {
-                        'concept_id': '192855',
-                        'concept_name': 'Cancer in situ of urinary bladder'
+                        "concept_class_id": "Clinical Finding",
+                        "concept_code": "212602006",
+                        "concept_count": 0,
+                        "concept_id": 4059406,
+                        "concept_name": "Ibuprofen poisoning",
+                        "domain_id": "Condition",
+                        "vocabulary_id": "SNOMED"
                     },
                     {
-                        'concept_id': '2008271',
-                         'concept_name': 'Injection or infusion of cancer chemotherapeutic substance'
-                    }
+                        "concept_class_id": "Clinical Finding",
+                        "concept_code": "218613000",
+                        "concept_count": 0,
+                        "concept_id": 4329188,
+                        "concept_name": "Adverse reaction to ibuprofen",
+                        "domain_id": "Condition",
+                        "vocabulary_id": "SNOMED"
+                    },
+                    ...
                 ]
         """
-        if not isinstance(node_label, str):
-            return None
+        if not isinstance(node_label, str) or not isinstance(dataset_id, int) or not isinstance(domain, str):
+            return []
         handler = QueryCOHD.HANDLER_MAP['find_concept_id']
-        url_suffix = "q=" + urllib.parse.quote_plus(node_label)
+        url_suffix = "q=" + node_label + "&dataset_id=" + str(dataset_id) + "&domain=" + domain
         res_json = QueryCOHD.__access_api(handler, url_suffix)
-        results_list = list()
+        results_list = []
         if res_json is not None:
             results = res_json.get('results', None)
             if results is not None and type(results) == list:
                 results_list = results
-                for obj in results:
-                    obj['concept_id'] = str(obj['concept_id'])
         return results_list
 
     @staticmethod
-    def get_paired_concept_freq(concept_id1, concept_id2):
+    def get_paired_concept_freq(concept_id1, concept_id2, dataset_id=1):
         """Retrieves observed clinical frequencies of a pair of concepts.
 
         Args:
             concept_id1 (str): an OMOP id, e.g., "192855"
+
             concept_id2 (str): an OMOP id, e.g., "2008271"
 
-        Returns:
-            dictionary: a dictionary which contains a numeric frequency and a numeric concept count, or None if no frequency
-             data could be obtained for the given pair of concept IDs
+            dataset_id (str): The dataset_id of the dataset to query. Default dataset is the 5-year dataset
 
-            dictionary parameters:
-                - 'concept_count' (int): a concept count
-                - 'concept_frequency' (double): a numeric frequency
+        Returns:
+            dictionary: a dictionary which contains a numeric frequency and a numeric concept count, or None if no
+            frequency data could be obtained for the given pair of concept IDs
 
             example:
                 {
-                    'concept_count': 27,
-                    'concept_frequency': 5.066514896398214e-06
+                    "concept_count": 10,
+                    "concept_frequency": 0.000005585247351056813,
+                    "concept_id_1": 192855,
+                    "concept_id_2": 2008271,
+                    "dataset_id": 1
                 }
-
         """
-        if not isinstance(concept_id1, str) or not isinstance(concept_id2, str):
-            return None
+        if not isinstance(concept_id1, str) or not isinstance(concept_id2, str) or not isinstance(dataset_id, int):
+            return {}
         handler = QueryCOHD.HANDLER_MAP['get_paired_concept_freq']
-        url_suffix = "q=" + urllib.parse.quote_plus(concept_id1 + ',' + concept_id2)
+        url_suffix = "q=" + urllib.parse.quote_plus(concept_id1 + ',' + concept_id2) + "&dataset_id=" + str(dataset_id)
         res_json = QueryCOHD.__access_api(handler, url_suffix)
-        results_dict = None
+        results_dict = {}
         if res_json is not None:
             results = res_json.get('results', None)
             if results is not None and type(results) == list and len(results) > 0:
                 results_dict = results[0]
-                del results_dict['concept_id_1']
-                del results_dict['concept_id_2']
         return results_dict
 
     @staticmethod
-    def get_individual_concept_freq(concept_id):
-        """Retrieves observed clinical frequencies of individual concepts. Multiple concepts may be requested in a comma
-        separated list.
+    def get_individual_concept_freq(concept_id, dataset_id=1):
+        """Retrieves observed clinical frequencies of individual concepts.
 
         Args:
             concept_id (str): an OMOP id, e.g., "192855"
 
+            dataset_id (str): The dataset_id of the dataset to query. Default dataset is the 5-year dataset
+
         Returns:
             dictionary: a dictionary which contains a numeric frequency and a numeric concept count
 
-            dictionary parameters:
-                - 'concept_count' (int): a concept count
-                - 'concept_frequency' (double): a numeric frequency
-
             example:
                 {
-                    'concept_count': 2042,
-                    'concept_frequency': 0.0003831786451275983
+                    "concept_count": 368,
+                    "concept_frequency": 0.0002055371025188907,
+                    "concept_id": 192855,
+                    "dataset_id": 1
                 }
         """
         if not isinstance(concept_id, str):
-            return None
+            return {}
         handler = QueryCOHD.HANDLER_MAP['get_individual_concept_freq']
-        url_suffix = "q=" + urllib.parse.quote_plus(concept_id)
+        url_suffix = "q=" + urllib.parse.quote_plus(concept_id) + "&dataset_id=" + str(dataset_id)
         res_json = QueryCOHD.__access_api(handler, url_suffix)
-        results_dict = None
+        results_dict = {}
         if res_json is not None:
             results = res_json.get('results', None)
             if results is not None and type(results) == list and len(results) > 0:
                 results_dict = results[0]
-                del results_dict['concept_id']
         return results_dict
 
 
     @staticmethod
-    def get_associated_concept_domain_freq(concept_id, domain):
+    def get_associated_concept_domain_freq(concept_id, domain, dataset_id=1):
         """Retrieves observed clinical frequencies of all pairs of concepts given a concept id restricted by domain of
         the associated concept_id
 
         Args:
             concept_id (str): an OMOP id, e.g., "192855"
+
             domain (str): An OMOP domain id, e.g., "Condition", "Drug", "Procedure", etc.
+
+            dataset_id (int): The dataset_id of the dataset to query. Default dataset is the 5-year dataset (1).
 
         Returns:
             array: an array which contains frequency dictionaries, or an empty array if no data obtained
@@ -186,22 +195,27 @@ class QueryCOHD:
             example:
             [
                 {
-                    "associated_concept_id": 19041324,
-                    "associated_concept_name": "Acetaminophen 325 MG Oral Tablet [Tylenol]",
-                    "concept_count": 380,
-                    "concept_frequency": 0.0000713065059493082,
-                    "concept_id": 192855
+                    "associated_concept_id": 2213283,
+                    "associated_concept_name": "Level IV - Surgical pathology, gross and microscopic examination Abortion - spontaneous/missed Artery, biopsy Bone marrow, biopsy Bone exostosis Brain/meninges, other than for tumor resection Breast, biopsy, not requiring microscopic evaluation of surgica",
+                    "associated_domain_id": "Procedure",
+                    "concept_count": 302,
+                    "concept_frequency": 0.00016867447000191573,
+                    "concept_id": 192855,
+                    "dataset_id": 1
                 },
                 {
-                    "associated_concept_id": 40231925,
-                    "associated_concept_name": "Acetaminophen 325 MG / Oxycodone Hydrochloride 5 MG Oral Tablet",
-                    "concept_count": 356,
-                    "concept_frequency": 0.0000668029371525098,
-                    "concept_id": 192855
-                }
+                    "associated_concept_id": 2211361,
+                    "associated_concept_name": "Radiologic examination, chest, 2 views, frontal and lateral",
+                    "associated_domain_id": "Procedure",
+                    "concept_count": 257,
+                    "concept_frequency": 0.00014354085692216007,
+                    "concept_id": 192855,
+                    "dataset_id": 1
+                },
+                ...
             ]
         """
-        if not isinstance(concept_id, str) or not isinstance(domain, str):
+        if not isinstance(concept_id, str) or not isinstance(domain, str) or not isinstance(dataset_id, int):
             return []
         handler = QueryCOHD.HANDLER_MAP['get_associated_concept_domain_freq']
         url_suffix = 'concept_id=' + concept_id + '&domain=' + domain
@@ -211,9 +225,137 @@ class QueryCOHD:
             results_array = res_json.get('results', [])
         return results_array
 
+    @staticmethod
+    def get_xref_from_OMOP(concept_id, mapping_targets, distance):
+        """Cross-reference from an ontology to OMOP standard concepts
+
+        Attempts to map a concept from an external ontology to an OMOP standard concept ID using the EMBL-EBI
+        Ontology Xref Service (OxO): https://www.ebi.ac.uk/spot/oxo/index. This method maps from the OMOP standard
+        concept to an intermediate vocabulary included is OxO (ICD9CM, ICD10CM, SNOMEDCT, and MeSH), then uses the OxO
+        API to map to other ontologies. Multiple mappings may be returned. Results are sorted by total_distance (OxO
+        distance + OMOP distance) in ascending order.
+
+        Args:
+            concept_id (str): OMOP standard concept_id to map, e.g., 192855
+
+            mapping_targets (str): Target ontologies for OxO. Comma separated target prefixes, e.g., "DOID,UMLS"
+
+            distance (int): Mapping distance for OxO. Note: this is the distance used in the OxO API to map from an
+            ICD9CM, ICD10CM, SNOMEDCT, or MeSH concept to the desired ontology. One additional step may be taken by the
+            COHD API to map to the OMOP standard concept to ICD9CM, ICD10CM, SNOMEDCT, or MeSH. Default: 2.
+
+        Returns:
+        """
+        return None
+
+    @staticmethod
+    def get_xref_to_OMOP(curie, distance):
+        """Cross-reference from an ontology to OMOP standard concepts
+
+        Attempts to map a concept from an external ontology to an OMOP standard concept ID using the EMBL-EBI
+        Ontology Xref Service (OxO): https://www.ebi.ac.uk/spot/oxo/index. This method attempts to use OxO to map from
+        the original ontology to an intermediate ontology that is included in OMOP (ICD9CM, ICD10CM, SNOMEDCT, and
+        MeSH), then uses the OMOP mappings to the standard concepts. Multiple mappings may be returned. Results are
+        sorted by total_distance (OxO distance + OMOP distance) in ascending order.
+
+        Args:
+            curie (str): Compacy URI (CURIE) of the concept to map, e.g., DOID:8398
+
+            distance (str): Mapping distance for OxO. Note: this is the distance used in the OxO API to map from the
+            original concept to an ICD9CM, ICD10CM, SNOMEDCT, or MeSH concept. One additional step may be taken by the
+            COHD API to map to the OMOP standard concept. Default: 2.
+
+        Returns:
+        """
+        return None
+
+    @staticmethod
+    def get_concepts(concept_ids):
+        """Concept definitions from concept ID
+
+        Returns the OMOP concept names and domains for the given list of concept IDs.
+
+        Args:
+            concept_ids (array): concept id array,  e.g., ["192855", "2008271"]
+
+        Returns:
+            array: an array which contains concept name, domain id and etc., or an empty array if no data obtained
+
+            example:
+            [
+                {
+                    "concept_class_id": "Clinical Finding",
+                    "concept_code": "92546004",
+                    "concept_id": 192855,
+                    "concept_name": "Cancer in situ of urinary bladder",
+                    "domain_id": "Condition",
+                    "vocabulary_id": "SNOMED"
+                },
+                {
+                    "concept_class_id": "4-dig billing code",
+                    "concept_code": "99.25",
+                    "concept_id": 2008271,
+                    "concept_name": "Injection or infusion of cancer chemotherapeutic substance",
+                    "domain_id": "Procedure",
+                    "vocabulary_id": "ICD9Proc"
+                }
+              ]
+        """
+        if not isinstance(concept_ids, list) or len(concept_ids) <= 0:
+            return []
+        for concept_id in concept_ids:
+            if not isinstance(concept_id, str):
+                return []
+        handler = QueryCOHD.HANDLER_MAP['get_concepts']
+        concept_ids_str = concept_ids[0]
+        for i, concept_id in enumerate(concept_ids):
+            if i > 0:
+                concept_ids_str += "," + concept_id
+        url_suffix = 'q=' + urllib.parse.quote_plus(concept_ids_str)
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
+
+    @staticmethod
+    def get_map_from_standard_concept_id(concept_id, vocabulary_id):
+        """Map from a standard concept ID to concept code(s) in an external vocabulary.
+
+        Uses the OMOP concept_relationship table to map from a standard concept ID (e.g., 72990) to concept code(s)
+        (e.g., ICD9CM 715.3, 715.31, 715.32, etc.). An OMOP standard concept ID may map to many concepts in the external
+         vocabulary.
+
+        Args:
+            concept_id (str): The standard OMOP concept id to map from, e.g., 72990
+
+            vocabulary_id (str): The vocabulary (e.g., "ICD9CM") to map to. If this parameter is not specified, the
+            method will return mappings to any matching vocabularies. See /omop/vocabularies for the list of supported
+            vocabularies.
+
+        Returns:
+        """
+        return None
+
+    @staticmethod
+    def get_map_to_standard_concept_id(concept_id, vocabulary_id):
+        """Map from a non-standard concept code to a standard OMOP concept ID.
+            Args:
+            concept_id (str): The concept code to map from, e.g., 715.3
+
+            vocabulary_id (str): The vocabulary (e.g., "ICD9CM") that the concept code belongs to. If this parameter is
+            not specified, the method will return mappings from any source vocabulary with matching concept code. See
+            /omop/vocabularies for the list of supported vocabularies.
+
+        Returns:
+        """
+        return None
 
 if __name__ == '__main__':
-    print(QueryCOHD.find_concept_ids("cancer"))
-    print(QueryCOHD.get_paired_concept_freq('192855', '2008271'))
-    print(QueryCOHD.get_individual_concept_freq('2008271'))
-    print(QueryCOHD.get_associated_concept_domain_freq('192855', 'drug'))
+    print(QueryCOHD.find_concept_ids("ibuprofen", "Condition", 1))
+    print(QueryCOHD.find_concept_ids("ibuprofen", "Condition"))
+    print(QueryCOHD.get_paired_concept_freq('192855', '2008271', 1))
+    print(QueryCOHD.get_individual_concept_freq('192855'))
+    print(QueryCOHD.get_associated_concept_domain_freq('192855', 'Procedure', 1))
+    print(QueryCOHD.get_concepts(["192855"]))
+    print(QueryCOHD.get_concepts(["192855", "2008271"]))
