@@ -105,8 +105,11 @@ class FormatResponse:
 			node_accessions[u] = data['properties']['accession']
 			node_iris[u] = data['properties']['uri']
 			node_uuids2iri[data['properties']['UUID']] = data['properties']['uri']
-			node_curies[u] = data['properties']['id']  # These are the actual CURIE IDS eg UBERON:00000941 (uri is the web address)
-			node_uuids2curie[data['properties']['UUID']] = data['properties']['id']
+			curie_id = data['properties']['id']
+			if curie_id.split(':')[0].upper() == "CHEMBL":
+				curie_id = "CHEMBL:CHEMBL" + curie_id.split(':')[1]
+			node_uuids2curie[data['properties']['UUID']] = curie_id
+			node_curies[u] = curie_id  # These are the actual CURIE IDS eg UBERON:00000941 (uri is the web address)
 
 		edge_keys = []
 		edge_types = dict()
@@ -200,8 +203,11 @@ class FormatResponse:
 			node_accessions[u] = data['properties']['accession']
 			node_iris[u] = data['properties']['uri']
 			node_uuids2iri[data['properties']['UUID']] = data['properties']['uri']
-			node_curies[u] = data['properties']['id']
-			node_uuids2curie[data['properties']['UUID']] = data['properties']['id']
+			curie_id = data['properties']['id']
+			if curie_id.split(':')[0].upper() == "CHEMBL":
+				curie_id = "CHEMBL:CHEMBL" + curie_id.split(':')[1]
+			node_uuids2curie[data['properties']['UUID']] = curie_id
+			node_curies[u] = curie_id  # These are the actual CURIE IDS eg UBERON:00000941 (uri is the web address)
 
 		edge_keys = []
 		edge_types = dict()
