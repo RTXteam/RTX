@@ -24,6 +24,7 @@ import urllib.parse
 # configure requests package to use the "orangeboard.sqlite" cache
 requests_cache.install_cache('orangeboard')
 
+
 class QueryCOHD:
     TIMEOUT_SEC = 120
     API_BASE_URL = 'http://cohd.nsides.io/api'
@@ -33,7 +34,8 @@ class QueryCOHD:
         'get_individual_concept_freq':          'frequencies/singleConceptFreq',
         'get_associated_concept_domain_freq':   'frequencies/associatedConceptDomainFreq',
         'get_concepts':                         'omop/concepts',
-        'get_xref_from_OMOP':                   'omop/xrefFromOMOP'
+        'get_xref_from_OMOP':                   'omop/xrefFromOMOP',
+        'get_xref_to_OMOP':                     'omop/xrefToOMOP'
     }
 
     @staticmethod
@@ -227,7 +229,7 @@ class QueryCOHD:
         return results_array
 
     @staticmethod
-    def get_xref_from_OMOP(concept_id, mapping_targets, distance):
+    def get_xref_from_OMOP(concept_id, mapping_targets, distance=2):
         """Cross-reference from an ontology to OMOP standard concepts
 
         Attempts to map a concept from an external ontology to an OMOP standard concept ID using the EMBL-EBI
@@ -298,7 +300,7 @@ class QueryCOHD:
         return results_array
 
     @staticmethod
-    def get_xref_to_OMOP(curie, distance):
+    def get_xref_to_OMOP(curie, distance=2):
         """Cross-reference from an ontology to OMOP standard concepts
 
         Attempts to map a concept from an external ontology to an OMOP standard concept ID using the EMBL-EBI
@@ -315,8 +317,47 @@ class QueryCOHD:
             COHD API to map to the OMOP standard concept. Default: 2.
 
         Returns:
+            array: an array which contains cross-reference dictionaries, or an empty array if no data obtained.
+
+            example:
+            [
+                {
+                  "intermediate_oxo_id": "ICD9CM:715.3",
+                  "intermediate_oxo_label": "",
+                  "omop_concept_name": "Localized osteoarthrosis uncertain if primary OR secondary",
+                  "omop_distance": 1,
+                  "omop_domain_id": "Condition",
+                  "omop_standard_concept_id": 72990,
+                  "oxo_distance": 1,
+                  "source_oxo_id": "DOID:8398",
+                  "source_oxo_label": "osteoarthritis",
+                  "total_distance": 2
+                },
+                {
+                  "intermediate_oxo_id": "SNOMEDCT:396275006",
+                  "intermediate_oxo_label": "Osteoarthritis",
+                  "omop_concept_name": "Osteoarthritis",
+                  "omop_distance": 0,
+                  "omop_domain_id": "Condition",
+                  "omop_standard_concept_id": 80180,
+                  "oxo_distance": 2,
+                  "source_oxo_id": "DOID:8398",
+                  "source_oxo_label": "osteoarthritis",
+                  "total_distance": 2
+                },
+                ...
+            ]
+
         """
-        return None
+        if not isinstance(curie, str) or not isinstance(distance, int):
+            return []
+        handler = QueryCOHD.HANDLER_MAP['get_xref_to_OMOP']
+        url_suffix = 'curie=' + curie + "&distance=" + str(distance)
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
 
     @staticmethod
     def get_concepts(concept_ids):
@@ -409,3 +450,4 @@ if __name__ == '__main__':
     print(QueryCOHD.get_concepts(["192855"]))
     print(QueryCOHD.get_concepts(["192855", "2008271"]))
     print(QueryCOHD.get_xref_from_OMOP("192855", "UMLS", 2))
+    print(len(QueryCOHD.get_xref_to_OMOP("DOID:8398", 2)))
