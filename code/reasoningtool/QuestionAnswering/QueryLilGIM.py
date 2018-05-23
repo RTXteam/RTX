@@ -87,8 +87,8 @@ class QueryLilGIM:
         return pandas.concat(map(pandas.read_csv, query_status['request_uri']))
 
     # anatomy_curie_id_str:  string CURIE ID for an Uberon anatomy term
-    # protein_set_curie_id_str:  a set containing CURIE IDs for proteins (UniProtKB)
-    # return value: a dict in which keys are Uniprot IDs and values are correlation coeffs
+    # protein_set_curie_id_str:  a tuple containing one or more string CURIE IDs for proteins (UniProtKB)
+    # return value: a dict in which keys are string Uniprot CURIE IDs and values are correlation coeffs
     @CachedMethods.register
     @functools.lru_cache(maxsize=1024, typed=False)
     def query_neighbor_genes_for_gene_set_in_a_given_anatomy(self,
