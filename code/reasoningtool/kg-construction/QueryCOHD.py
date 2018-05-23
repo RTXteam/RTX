@@ -35,7 +35,10 @@ class QueryCOHD:
         'get_associated_concept_domain_freq':   'frequencies/associatedConceptDomainFreq',
         'get_concepts':                         'omop/concepts',
         'get_xref_from_OMOP':                   'omop/xrefFromOMOP',
-        'get_xref_to_OMOP':                     'omop/xrefToOMOP'
+        'get_xref_to_OMOP':                     'omop/xrefToOMOP',
+        'get_map_from_standard_concept_id':     'omop/mapFromStandardConceptID',
+        'get_map_to_standard_concept_id':       'omop/mapToStandardConceptID',
+        'get_vocabularies':                     'omop/vocabularies'
     }
 
     @staticmethod
@@ -388,7 +391,8 @@ class QueryCOHD:
                     "concept_name": "Injection or infusion of cancer chemotherapeutic substance",
                     "domain_id": "Procedure",
                     "vocabulary_id": "ICD9Proc"
-                }
+                },
+                ...
               ]
         """
         if not isinstance(concept_ids, list) or len(concept_ids) <= 0:
@@ -409,7 +413,7 @@ class QueryCOHD:
         return results_array
 
     @staticmethod
-    def get_map_from_standard_concept_id(concept_id, vocabulary_id):
+    def get_map_from_standard_concept_id(concept_id, vocabulary_id=""):
         """Map from a standard concept ID to concept code(s) in an external vocabulary.
 
         Uses the OMOP concept_relationship table to map from a standard concept ID (e.g., 72990) to concept code(s)
@@ -424,30 +428,129 @@ class QueryCOHD:
             vocabularies.
 
         Returns:
+            array: an array which contains mapping concepts from external vocabularies.
+
+            example:
+            [
+                {
+                  "concept_class_id": "4-dig nonbill code",
+                  "concept_code": "715.3",
+                  "concept_id": 44834979,
+                  "concept_name": "Osteoarthrosis, localized, not specified whether primary or secondary",
+                  "domain_id": "Condition",
+                  "standard_concept": null,
+                  "vocabulary_id": "ICD9CM"
+                },
+                {
+                  "concept_class_id": "5-dig billing code",
+                  "concept_code": "715.30",
+                  "concept_id": 44828036,
+                  "concept_name": "Osteoarthrosis, localized, not specified whether primary or secondary, site unspecified",
+                  "domain_id": "Condition",
+                  "standard_concept": null,
+                  "vocabulary_id": "ICD9CM"
+                },
+                ...
+            ]
         """
-        return None
+        if not isinstance(concept_id, str) or not isinstance(vocabulary_id, str):
+            return []
+        handler = QueryCOHD.HANDLER_MAP['get_map_from_standard_concept_id']
+        url_suffix = 'concept_id=' + concept_id
+        if vocabulary_id != "":
+            url_suffix += "&vocabulary_id=" + vocabulary_id
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
 
     @staticmethod
-    def get_map_to_standard_concept_id(concept_id, vocabulary_id):
+    def get_map_to_standard_concept_id(concept_code, vocabulary_id=""):
         """Map from a non-standard concept code to a standard OMOP concept ID.
-            Args:
-            concept_id (str): The concept code to map from, e.g., "715.3"
+
+        Args:
+            concept_code (str): The concept code to map from, e.g., "715.3"
 
             vocabulary_id (str): The vocabulary (e.g., "ICD9CM") that the concept code belongs to. If this parameter is
             not specified, the method will return mappings from any source vocabulary with matching concept code. See
             /omop/vocabularies for the list of supported vocabularies.
 
         Returns:
+            array: an array which contains standard OMOP concept IDs
+
+            example:
+             [
+                {
+                  "source_concept_code": "715.3",
+                  "source_concept_id": 44834979,
+                  "source_concept_name": "Osteoarthrosis, localized, not specified whether primary or secondary",
+                  "source_vocabulary_id": "ICD9CM",
+                  "standard_concept_id": 72990,
+                  "standard_concept_name": "Localized osteoarthrosis uncertain if primary OR secondary",
+                  "standard_domain_id": "Condition"
+                },
+                ...
+             ]
+
         """
-        return None
+        if not isinstance(concept_code, str) or not isinstance(vocabulary_id, str):
+            return []
+        handler = QueryCOHD.HANDLER_MAP['get_map_to_standard_concept_id']
+        url_suffix = 'concept_code=' + concept_code
+        if vocabulary_id != "":
+            url_suffix += "&vocabulary_id=" + vocabulary_id
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
+
+    @staticmethod
+    def get_vocabularies():
+        """List of vocabularies.
+
+        List of vocabulary_ids. Useful if you need to use /omop/mapToStandardConceptID to map a concept code from a source vocabulary to the OMOP standard vocabulary.
+
+        Returns:
+            array: an array of all vocabularies
+
+            example:
+            [
+                {
+                  "vocabulary_id": ""
+                },
+                {
+                  "vocabulary_id": "ABMS"
+                },
+                {
+                  "vocabulary_id": "AMT"
+                },
+                {
+                  "vocabulary_id": "APC"
+                },
+                ...
+            ]
+        """
+        handler = QueryCOHD.HANDLER_MAP['get_vocabularies']
+        url_suffix = ''
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
 
 if __name__ == '__main__':
-    print(QueryCOHD.find_concept_ids("ibuprofen", "Condition", 1))
-    print(QueryCOHD.find_concept_ids("ibuprofen", "Condition"))
-    print(QueryCOHD.get_paired_concept_freq('192855', '2008271', 1))
-    print(QueryCOHD.get_individual_concept_freq('192855'))
-    print(QueryCOHD.get_associated_concept_domain_freq('192855', 'Procedure', 1))
-    print(QueryCOHD.get_concepts(["192855"]))
-    print(QueryCOHD.get_concepts(["192855", "2008271"]))
-    print(QueryCOHD.get_xref_from_OMOP("192855", "UMLS", 2))
-    print(len(QueryCOHD.get_xref_to_OMOP("DOID:8398", 2)))
+    # print(QueryCOHD.find_concept_ids("ibuprofen", "Condition", 1))
+    # print(QueryCOHD.find_concept_ids("ibuprofen", "Condition"))
+    # print(QueryCOHD.get_paired_concept_freq('192855', '2008271', 1))
+    # print(QueryCOHD.get_individual_concept_freq('192855'))
+    # print(QueryCOHD.get_associated_concept_domain_freq('192855', 'Procedure', 1))
+    # print(QueryCOHD.get_concepts(["192855"]))
+    # print(QueryCOHD.get_concepts(["192855", "2008271"]))
+    # print(QueryCOHD.get_xref_from_OMOP("192855", "UMLS", 2))
+    # print(QueryCOHD.get_xref_to_OMOP("DOID:8398", 2))
+    print(QueryCOHD.get_map_from_standard_concept_id("72990", "ICD9CM"))
+    print(QueryCOHD.get_map_from_standard_concept_id("72990"))
+    print(QueryCOHD.get_map_to_standard_concept_id("715.3", "ICD9CM"))
+    print(len(QueryCOHD.get_vocabularies()))
