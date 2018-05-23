@@ -130,6 +130,26 @@ class QueryMyGene:
                     entrez_ids.add(entrez_id)
         return entrez_ids
 
+    def convert_entrez_gene_id_to_uniprot_id(self, entrez_gene_id):
+        assert type(entrez_gene_id) == int
+        res = self.mygene_obj.query('entrezgene:' + str(entrez_gene_id), species='human', fields='uniprot', verbose=False)
+        uniprot_id = set()
+        if len(res) > 0:
+            res_hits = res.get("hits", None)
+            if res_hits is not None and type(res_hits) == list:
+                for hit in res_hits:
+                    res_uniprot_id_dict = hit.get("uniprot", None)
+                    if res_uniprot_id_dict is not None:
+                        res_uniprot_id = res_uniprot_id_dict.get("Swiss-Prot", None)
+                        if res_uniprot_id is not None:
+                            if type(res_uniprot_id) == str:
+                                uniprot_id.add(res_uniprot_id)
+                            else:
+                                if type(res_uniprot_id) == list:
+                                    for uniprot_id_item in res_uniprot_id:
+                                        uniprot_id.add(uniprot_id_item)
+        return uniprot_id
+    
     def convert_entrez_gene_ID_to_mirbase_ID(self, entrez_gene_id):
         assert type(entrez_gene_id) == int
         res = self.mygene_obj.query('entrezgene:' + str(entrez_gene_id), species='human', fields='miRBase', verbose=False)
@@ -247,20 +267,21 @@ class QueryMyGene:
 
 if __name__ == '__main__':
     mg = QueryMyGene()
+    print(mg.convert_entrez_gene_id_to_uniprot_id(9837))
     print(mg.convert_hgnc_gene_id_to_uniprot_id('HGNC:4944'))
-    # print(mg.get_gene_ontology_ids_for_uniprot_id('Q05925'))
-    # print(mg.convert_uniprot_id_to_gene_symbol('Q8NBZ7'))
-    # print(mg.uniprot_id_is_human("P02794"))
-    # print(mg.uniprot_id_is_human("P10592"))
-    # print(mg.convert_entrez_gene_ID_to_mirbase_ID(407053))
-    # print(mg.get_gene_ontology_ids_bp_for_entrez_gene_id(406991))
-    # print(mg.convert_uniprot_id_to_gene_symbol('Q05925'))
-    # print(mg.convert_gene_symbol_to_uniprot_id('A2M'))
-    # print(mg.convert_gene_symbol_to_uniprot_id('A1BG'))
-    # print(mg.convert_gene_symbol_to_entrez_gene_ID('MIR96'))
-    # print(mg.convert_gene_symbol_to_uniprot_id("HMOX1"))
-    # print(mg.convert_gene_symbol_to_uniprot_id('RAD54B'))
-    # print(mg.convert_gene_symbol_to_uniprot_id('NS2'))
-    # print(mg.convert_uniprot_id_to_gene_symbol("P09601"))
-    # print(mg.convert_uniprot_id_to_entrez_gene_ID("P09601"))
-    # print(mg.convert_uniprot_id_to_entrez_gene_ID("XYZZY"))
+    print(mg.get_gene_ontology_ids_for_uniprot_id('Q05925'))
+    print(mg.convert_uniprot_id_to_gene_symbol('Q8NBZ7'))
+    print(mg.uniprot_id_is_human("P02794"))
+    print(mg.uniprot_id_is_human("P10592"))
+    print(mg.convert_entrez_gene_ID_to_mirbase_ID(407053))
+    print(mg.get_gene_ontology_ids_bp_for_entrez_gene_id(406991))
+    print(mg.convert_uniprot_id_to_gene_symbol('Q05925'))
+    print(mg.convert_gene_symbol_to_uniprot_id('A2M'))
+    print(mg.convert_gene_symbol_to_uniprot_id('A1BG'))
+    print(mg.convert_gene_symbol_to_entrez_gene_ID('MIR96'))
+    print(mg.convert_gene_symbol_to_uniprot_id("HMOX1"))
+    print(mg.convert_gene_symbol_to_uniprot_id('RAD54B'))
+    print(mg.convert_gene_symbol_to_uniprot_id('NS2'))
+    print(mg.convert_uniprot_id_to_gene_symbol("P09601"))
+    print(mg.convert_uniprot_id_to_entrez_gene_ID("P09601"))
+    print(mg.convert_uniprot_id_to_entrez_gene_ID("XYZZY"))
