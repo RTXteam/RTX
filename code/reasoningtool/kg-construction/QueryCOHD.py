@@ -44,7 +44,8 @@ class QueryCOHD:
         'get_chi_square':                       'association/chiSquare',
         'get_obs_exp_ratio':                    'association/obsExpRatio',
         'get_relative_frequency':               'association/relativeFrequency',
-        'get_datasets':                         'metadata/datasets'
+        'get_datasets':                         'metadata/datasets',
+        'get_domain_counts':                    'metadata/domainCounts'
     }
 
     @staticmethod
@@ -839,6 +840,26 @@ class QueryCOHD:
             results_array = res_json.get('results', [])
         return results_array
 
+    @staticmethod
+    def get_domain_counts(dataset_id=1):
+        """The number of concepts in each domain
+
+        Args:
+            dataset_id (int): The dataset_id of the dataset to query. Default dataset is the 5-year dataset (1).
+
+        Returns:
+            array: a list of domains and the number of concepts in each domain.
+        """
+        if not isinstance(dataset_id, int) or dataset_id <= 0:
+            return []
+        handler = QueryCOHD.HANDLER_MAP['get_domain_counts']
+        url_suffix = 'dataset_id=' + str(dataset_id)
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
+
 if __name__ == '__main__':
     # print(QueryCOHD.find_concept_ids("ibuprofen", "Condition", 1))
     # print(QueryCOHD.find_concept_ids("ibuprofen", "Condition"))
@@ -882,4 +903,6 @@ if __name__ == '__main__':
     # print(len(QueryCOHD.get_relative_frequency("192855", "", "", 2)))
     # print(len(QueryCOHD.get_relative_frequency("192855", "", "Procedure")))
     # print(len(QueryCOHD.get_relative_frequency("192855", "", "Procedure", 2)))
-    print(QueryCOHD.get_datasets())
+    # print(QueryCOHD.get_datasets())
+    print(QueryCOHD.get_domain_counts())
+    print(QueryCOHD.get_domain_counts(2))

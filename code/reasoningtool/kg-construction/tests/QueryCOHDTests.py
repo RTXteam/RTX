@@ -573,3 +573,28 @@ class QueryCOHDTestCases(TestCase):
                                   {'dataset_description': 'Clinical data from all years in the database',
                                    'dataset_id': 2,
                                    'dataset_name': 'Lifetime'}])
+
+    def test_get_domain_counts(self):
+        result = QueryCOHD.get_domain_counts(1)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 10)
+        self.assertEqual(result[0], {'count': 10119,
+                                     'dataset_id': 1,
+                                     'domain_id': 'Condition'})
+
+        #   default dataset_id
+        result = QueryCOHD.get_domain_counts()
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 10)
+        self.assertEqual(result[0], {'count': 10119,
+                                     'dataset_id': 1,
+                                     'domain_id': 'Condition'})
+
+        #   invalid dataset_id value
+        result = QueryCOHD.get_domain_counts(3)
+        self.assertEqual(result, [])
+
+        #   invalid dataset_id type
+        result = QueryCOHD.get_domain_counts("1")
+        self.assertEqual(result, [])
+
