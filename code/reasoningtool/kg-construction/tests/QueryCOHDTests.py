@@ -624,4 +624,21 @@ class QueryCOHDTestCases(TestCase):
         result = QueryCOHD.get_domain_pair_counts('1')
         self.assertEqual(result, [])
 
+    def test_get_patient_count(self):
+        result = QueryCOHD.get_patient_count(2)
+        self.assertIsNotNone(result)
+        self.assertEqual(result, {'count': 5364781.0, 'dataset_id': 2})
+
+        #   default dataset_id
+        result = QueryCOHD.get_patient_count()
+        self.assertIsNotNone(result)
+        self.assertEqual(result, {'count': 1790431.0, 'dataset_id': 1})
+
+        #   invalid dataset_id value
+        result = QueryCOHD.get_patient_count(-1)
+        self.assertEqual(result, {})
+
+        #   invalid dataset_id type
+        result = QueryCOHD.get_patient_count('1')
+        self.assertEqual(result, {})
 

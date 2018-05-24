@@ -46,7 +46,8 @@ class QueryCOHD:
         'get_relative_frequency':               'association/relativeFrequency',
         'get_datasets':                         'metadata/datasets',
         'get_domain_counts':                    'metadata/domainCounts',
-        'get_domain_pair_counts':               'metadata/domainPairCounts'
+        'get_domain_pair_counts':               'metadata/domainPairCounts',
+        'get_patient_count':                    'metadata/patientCount'
     }
 
     @staticmethod
@@ -881,6 +882,36 @@ class QueryCOHD:
             results_array = res_json.get('results', [])
         return results_array
 
+    @staticmethod
+    def get_patient_count(dataset_id=1):
+        """The number of patients in the dataset
+
+            Args:
+                dataset_id (int): The dataset_id of the dataset to query. Default dataset is the 5-year dataset (1).
+
+            Returns:
+                array:  a list of dictionaries which contains the number of patients
+
+                example:
+                [
+                    {
+                      "count": 1790431,
+                      "dataset_id": 1
+                    }
+                ]
+        """
+        if not isinstance(dataset_id, int) or dataset_id <= 0:
+            return {}
+        handler = QueryCOHD.HANDLER_MAP['get_patient_count']
+        url_suffix = 'dataset_id=' + str(dataset_id)
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_dict = {}
+        if res_json is not None:
+            results = res_json.get('results', [])
+            if results is not None and type(results) == list and len(results) > 0:
+                results_dict = results[0]
+        return results_dict
+
 if __name__ == '__main__':
     # print(QueryCOHD.find_concept_ids("ibuprofen", "Condition", 1))
     # print(QueryCOHD.find_concept_ids("ibuprofen", "Condition"))
@@ -927,5 +958,7 @@ if __name__ == '__main__':
     # print(QueryCOHD.get_datasets())
     # print(QueryCOHD.get_domain_counts())
     # print(QueryCOHD.get_domain_counts(2))
-    print(QueryCOHD.get_domain_pair_counts())
-    print(QueryCOHD.get_domain_pair_counts(2))
+    # print(QueryCOHD.get_domain_pair_counts())
+    # print(QueryCOHD.get_domain_pair_counts(2))
+    print(QueryCOHD.get_patient_count())
+    print(QueryCOHD.get_patient_count(2))
