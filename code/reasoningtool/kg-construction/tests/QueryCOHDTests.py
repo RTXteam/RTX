@@ -485,3 +485,80 @@ class QueryCOHDTestCases(TestCase):
         #   invalid dataset_id type
         result = QueryCOHD.get_obs_exp_ratio("192855", "2008271", "", "2")
         self.assertEqual(result, [])
+
+    def test_get_relative_frequency(self):
+        #   default dataset_id
+        result = QueryCOHD.get_relative_frequency("192855", "2008271", "Procedure")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result, [{'concept_2_count': 1494,
+                                   'concept_id_1': 192855,
+                                   'concept_id_2': 2008271,
+                                   'concept_pair_count': 10,
+                                   'dataset_id': 1,
+                                   'relative_frequency': 0.006693440428380187}])
+
+        #   dataset_id == 2
+        result = QueryCOHD.get_relative_frequency("192855", "2008271", "Procedure", 2)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result, [{'concept_2_count': 17127,
+                                   'concept_id_1': 192855,
+                                   'concept_id_2': 2008271,
+                                   'concept_pair_count': 196,
+                                   'dataset_id': 2,
+                                   'relative_frequency': 0.011443918958369825}])
+
+        #   default domain
+        result = QueryCOHD.get_relative_frequency("192855", "2008271")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result, [{'concept_2_count': 1494,
+                                   'concept_id_1': 192855,
+                                   'concept_id_2': 2008271,
+                                   'concept_pair_count': 10,
+                                   'dataset_id': 1,
+                                   'relative_frequency': 0.006693440428380187}])
+
+        #   default domain, dataset_id == 2
+        result = QueryCOHD.get_relative_frequency("192855", "2008271", "", 2)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result, [{'concept_2_count': 17127,
+                                   'concept_id_1': 192855,
+                                   'concept_id_2': 2008271,
+                                   'concept_pair_count': 196,
+                                   'dataset_id': 2,
+                                   'relative_frequency': 0.011443918958369825}])
+
+        #   default concept_id_2, domain and dataset_id
+        result = QueryCOHD.get_relative_frequency("192855")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 768)
+
+        #   default concept_id_2 and domain, dataset_id == 2
+        result = QueryCOHD.get_relative_frequency("192855", "", "", 2)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 2735)
+
+        #   default concept_id_2 and dataset_id
+        result = QueryCOHD.get_relative_frequency("192855", "", "Procedure")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 159)
+
+        #   default concept_id_2
+        result = QueryCOHD.get_relative_frequency("192855", "", "Procedure", 2)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 655)
+
+        #   invalid concept_id_1 type
+        result = QueryCOHD.get_relative_frequency(192855, "2008271", "", 2)
+        self.assertEqual(result, [])
+
+        #   invalid concept_id_2 type
+        result = QueryCOHD.get_relative_frequency("192855", 2008271, "", 2)
+        self.assertEqual(result, [])
+
+        #   invalid dataset_id type
+        result = QueryCOHD.get_relative_frequency("192855", "2008271", "", "2")
+        self.assertEqual(result, [])
