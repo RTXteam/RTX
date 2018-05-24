@@ -92,7 +92,25 @@ class LilGim:
 			print(to_print)
 		else:
 			#  otherwise, you want a JSON output
-			# TODO: blocking on issue #201
+			protein_descriptions = []
+			is_in_KG_list = []
+			for protein in protein_list:
+				try:
+					description = RU.get_node_property(protein, "name", node_label="protein", name_type="id")
+					protein_descriptions.append(description)
+					is_in_KG_list.append(True)
+				except:
+					protein_description = protein
+					protein_descriptions.append(protein_description)
+					is_in_KG_list.append(False)
+
+			# just get the ones that are actually in the KG. TODO: do something with the ones that are not in the KG
+			correlated_proteins_tupes_in_KG = []
+			for i in range(len(correlated_proteins_tupes)):
+				if is_in_KG_list[i]:
+					correlated_proteins_tupes_in_KG.append(correlated_proteins_tupes[i])
+
+			# Return the results
 			full_g = RU.get_graph_from_nodes([id for id, val in correlated_proteins_tupes], node_property_label="id")
 			id2node = dict()
 			for node in full_g.nodes(data=True):
@@ -114,7 +132,7 @@ def main():
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 	parser.add_argument('-t', '--tissue', type=str, help="Tissue id/name", default="UBERON:0002384")
 	parser.add_argument('-r', '--reverse', action='store_true', help="Include flag if you want the least correlations.")
-	parser.add_argument('-p', '--proteins', type=str, help="List of proteins.", default="['UniProtKB:P12004']")
+	parser.add_argument('-p', '--proteins', type=str, help="List of proteins.", default="[\'UniProtKB:P12004\']")
 	parser.add_argument('-j', '--json', action='store_true', help='Flag specifying that results should be printed in JSON format (to stdout)', default=False)
 	parser.add_argument('--describe', action='store_true', help='Print a description of the question to stdout and quit', default=False)
 	parser.add_argument('--num_show', type=int, help='Maximum number of results to return', default=20)
@@ -129,9 +147,21 @@ def main():
 	num_show = args.num_show
 
 	# Convert the string to an actual list
-	print(proteins)
-	#proteins = proteins.replace(",", "','").replace("[", "['").replace("]", "']")
-	protein_list = ast.literal_eval(proteins)
+	#print(proteins)
+	proteins_preserved = proteins
+	try:
+		proteins = proteins.replace(",", "','").replace("[", "['").replace("]", "']")
+		protein_list = ast.literal_eval(proteins)
+		protein_list_strip = []
+		for protein in protein_list:
+			protein_list_strip.append(protein.strip())
+
+		protein_list = protein_list_strip
+
+	except:
+		protein_list = eval(proteins_preserved)
+
+	print(protein_list)
 
 	# Initialize the question class
 	Q = LilGim()
