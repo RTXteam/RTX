@@ -39,7 +39,8 @@ class QueryCOHD:
         'get_map_from_standard_concept_id':     'omop/mapFromStandardConceptID',
         'get_map_to_standard_concept_id':       'omop/mapToStandardConceptID',
         'get_vocabularies':                     'omop/vocabularies',
-        'get_associated_concept_freq':          'frequencies/associatedConceptFreq'
+        'get_associated_concept_freq':          'frequencies/associatedConceptFreq',
+        'get_most_frequent_concepts':           'frequencies/mostFrequentConcepts'
     }
 
     @staticmethod
@@ -588,6 +589,52 @@ class QueryCOHD:
             results_array = res_json.get('results', [])
         return results_array
 
+    @staticmethod
+    def get_most_frequent_concepts(num, domain="", dataset_id=1):
+        """Retrieves the most frequent concepts.
+
+        Args:
+            num (int): The number of concepts to retreieve, e.g., "10"
+
+            domain (str): (Optional) The domain_id to restrict to, e.g., "Condition", "Drug", "Procedure"
+
+            dataset_id (int): The dataset_id of the dataset to query. Default dataset is the 5-year dataset.
+
+        Returns:
+            array: an array which contains frequency dictionaries
+
+            example:
+            [
+                {
+                  "concept_count": 233790,
+                  "concept_frequency": 0.1305774978203572,
+                  "concept_id": 320128,
+                  "concept_name": "Essential hypertension",
+                  "dataset_id": 1,
+                  "domain_id": "Condition"
+                },
+                {
+                  "concept_count": 152005,
+                  "concept_frequency": 0.08489855235973907,
+                  "concept_id": 77670,
+                  "concept_name": "Chest pain",
+                  "dataset_id": 1,
+                  "domain_id": "Condition"
+                },
+            ]
+        """
+        if not isinstance(num, int) or not isinstance(domain, str) or not isinstance(dataset_id, int) or num < 0:
+            return []
+        handler = QueryCOHD.HANDLER_MAP['get_most_frequent_concepts']
+        url_suffix = 'q=' + str(num) + '&dataset_id=' + str(dataset_id)
+        if domain != "":
+            url_suffix += "&domain=" + domain
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
+
 if __name__ == '__main__':
     # print(QueryCOHD.find_concept_ids("ibuprofen", "Condition", 1))
     # print(QueryCOHD.find_concept_ids("ibuprofen", "Condition"))
@@ -598,9 +645,13 @@ if __name__ == '__main__':
     # print(QueryCOHD.get_concepts(["192855", "2008271"]))
     # print(QueryCOHD.get_xref_from_OMOP("192855", "UMLS", 2))
     # print(QueryCOHD.get_xref_to_OMOP("DOID:8398", 2))
-    print(QueryCOHD.get_map_from_standard_concept_id("72990", "ICD9CM"))
-    print(QueryCOHD.get_map_from_standard_concept_id("72990"))
-    print(QueryCOHD.get_map_to_standard_concept_id("715.3", "ICD9CM"))
-    print(QueryCOHD.get_vocabularies())
-    print(QueryCOHD.get_associated_concept_freq("192855"))
-    print(QueryCOHD.get_associated_concept_freq("192855", 2))
+    # print(QueryCOHD.get_map_from_standard_concept_id("72990", "ICD9CM"))
+    # print(QueryCOHD.get_map_from_standard_concept_id("72990"))
+    # print(QueryCOHD.get_map_to_standard_concept_id("715.3", "ICD9CM"))
+    # print(QueryCOHD.get_vocabularies())
+    # print(QueryCOHD.get_associated_concept_freq("192855"))
+    # print(QueryCOHD.get_associated_concept_freq("192855", 2))
+    print(QueryCOHD.get_most_frequent_concepts(2))
+    print(QueryCOHD.get_most_frequent_concepts(2, 'Condition'))
+    print(QueryCOHD.get_most_frequent_concepts(2, 'Condition', 2))
+    print(QueryCOHD.get_most_frequent_concepts(2, '', 2))

@@ -284,3 +284,66 @@ class QueryCOHDTestCases(TestCase):
         #   invalid dataset_id format
         result = QueryCOHD.get_associated_concept_freq("192855", "1")
         self.assertEqual(result, [])
+
+    def test_get_most_frequent_concepts(self):
+        #   default domain and dataset_id
+        result = QueryCOHD.get_most_frequent_concepts(10)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 10)
+        self.assertEqual(result[0], {'concept_count': 1189172,
+                                     'concept_frequency': 0.6641819762950932,
+                                     'concept_id': 44814653,
+                                     'concept_name': 'Unknown',
+                                     'dataset_id': 1,
+                                     'domain_id': 'Observation'})
+
+        #   default dataset_id
+        result = QueryCOHD.get_most_frequent_concepts(10, "Condition")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 10)
+        self.assertEqual(result[0], {'concept_count': 233790,
+                                     'concept_frequency': 0.1305774978203572,
+                                     'concept_id': 320128,
+                                     'concept_name': 'Essential hypertension',
+                                     'dataset_id': 1,
+                                     'domain_id': 'Condition'})
+
+        #   no default value
+        result = QueryCOHD.get_most_frequent_concepts(10, "Condition", 2)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 10)
+        self.assertEqual(result[0], {'concept_count': 459776,
+                                     'concept_frequency': 0.08570265962394365,
+                                     'concept_id': 320128,
+                                     'concept_name': 'Essential hypertension',
+                                     'dataset_id': 2,
+                                     'domain_id': 'Condition'})
+
+        #   wrong num value
+        result = QueryCOHD.get_most_frequent_concepts(-10)
+        self.assertEqual(result, [])
+
+        #   wrong num format
+        result = QueryCOHD.get_most_frequent_concepts("10")
+        self.assertEqual(result, [])
+
+        #   wrong domain value
+        result = QueryCOHD.get_most_frequent_concepts(10, "Condition1")
+        self.assertEqual(result, [])
+
+        #   wrong domain format
+        result = QueryCOHD.get_most_frequent_concepts(10, 1, 2)
+        self.assertEqual(result, [])
+
+        #   wrong dataset_id value
+        result = QueryCOHD.get_most_frequent_concepts(10, "Condition", 3)
+        self.assertEqual(result, [])
+
+        #   wrong dataset_id format
+        result = QueryCOHD.get_most_frequent_concepts(10, "Condition", "2")
+        self.assertEqual(result, [])
+
+        #   num == 0
+        result = QueryCOHD.get_most_frequent_concepts(0, "Condition", 2)
+        self.assertEqual(result, [])
+        
