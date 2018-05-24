@@ -591,10 +591,37 @@ class QueryCOHDTestCases(TestCase):
                                      'domain_id': 'Condition'})
 
         #   invalid dataset_id value
-        result = QueryCOHD.get_domain_counts(3)
+        result = QueryCOHD.get_domain_counts(-1)
         self.assertEqual(result, [])
 
         #   invalid dataset_id type
         result = QueryCOHD.get_domain_counts("1")
         self.assertEqual(result, [])
+
+    def test_get_domain_pair_counts(self):
+        result = QueryCOHD.get_domain_pair_counts(1)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 50)
+        self.assertEqual(result[0], {'count': 1931666,
+                                     'dataset_id': 1,
+                                     'domain_id_1': 'Condition',
+                                     'domain_id_2': 'Condition'})
+
+        #   default dataset_id
+        result = QueryCOHD.get_domain_pair_counts()
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 50)
+        self.assertEqual(result[0], {'count': 1931666,
+                                     'dataset_id': 1,
+                                     'domain_id_1': 'Condition',
+                                     'domain_id_2': 'Condition'})
+
+        #   invalid dataset_id value
+        result = QueryCOHD.get_domain_pair_counts(-1)
+        self.assertEqual(result, [])
+
+        #   invalid dataset_id type
+        result = QueryCOHD.get_domain_pair_counts('1')
+        self.assertEqual(result, [])
+
 
