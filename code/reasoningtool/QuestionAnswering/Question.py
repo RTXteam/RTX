@@ -389,7 +389,7 @@ class Question:
 			if self.known_query_type_id == 'Q46':
 				# look for anatomical_entity
 				anat_indices = [i for i, x in enumerate(candidate_node_names_labels) if x[1] == "anatomical_entity"]
-				if len(anat_indices) > 0:
+				if len(anat_indices) > 1:
 					raise CustomExceptions.MultipleTerms("anatomical_entity", [candidate_node_names_labels[pos][0] for pos in anat_indices])
 				elif len(anat_indices) == 0:
 					pass  # will catch this later

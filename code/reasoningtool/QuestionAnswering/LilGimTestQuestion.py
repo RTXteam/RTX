@@ -129,6 +129,7 @@ def main():
 	num_show = args.num_show
 
 	# Convert the string to an actual list
+	print(proteins)
 	#proteins = proteins.replace(",", "','").replace("[", "['").replace("]", "']")
 	protein_list = ast.literal_eval(proteins)
 
