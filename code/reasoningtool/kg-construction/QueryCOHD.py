@@ -38,7 +38,8 @@ class QueryCOHD:
         'get_xref_to_OMOP':                     'omop/xrefToOMOP',
         'get_map_from_standard_concept_id':     'omop/mapFromStandardConceptID',
         'get_map_to_standard_concept_id':       'omop/mapToStandardConceptID',
-        'get_vocabularies':                     'omop/vocabularies'
+        'get_vocabularies':                     'omop/vocabularies',
+        'get_associated_concept_freq':          'frequencies/associatedConceptFreq'
     }
 
     @staticmethod
@@ -224,7 +225,7 @@ class QueryCOHD:
         if not isinstance(concept_id, str) or not isinstance(domain, str) or not isinstance(dataset_id, int):
             return []
         handler = QueryCOHD.HANDLER_MAP['get_associated_concept_domain_freq']
-        url_suffix = 'concept_id=' + concept_id + '&domain=' + domain
+        url_suffix = 'concept_id=' + concept_id + '&domain=' + domain + '&dataset=' + str(dataset_id)
         res_json = QueryCOHD.__access_api(handler, url_suffix)
         results_array = []
         if res_json is not None:
@@ -540,6 +541,53 @@ class QueryCOHD:
             results_array = res_json.get('results', [])
         return results_array
 
+    @staticmethod
+    def get_associated_concept_freq(concept_id, dataset_id=1):
+        """Retrieves observed clinical frequencies of all pairs of concepts given a concept id. Results are returned in
+        descending order of paired concept count. Note that the largest paired concept counts are often dominated by
+        associated concepts with high prevalence.
+
+        Args:
+            concept_id (str): An OMOP concept id, e.g., "192855"
+
+            dataset_id (int): The dataset_id of the dataset to query. Default dataset is the 5-year dataset (1).
+
+        Returns:
+            array: an array which contains frequency dictionaries, or an empty array if no data obtained
+
+            example:
+            [
+                {
+                  "associated_concept_id": 2213216,
+                  "associated_concept_name": "Cytopathology, selective cellular enhancement technique with interpretation (eg, liquid based slide preparation method), except cervical or vaginal",
+                  "associated_domain_id": "Measurement",
+                  "concept_count": 330,
+                  "concept_frequency": 0.0001843131625848748,
+                  "concept_id": 192855,
+                  "dataset_id": 1
+                },
+                {
+                  "associated_concept_id": 4214956,
+                  "associated_concept_name": "History of clinical finding in subject",
+                  "associated_domain_id": "Observation",
+                  "concept_count": 329,
+                  "concept_frequency": 0.00018375463784976913,
+                  "concept_id": 192855,
+                  "dataset_id": 1
+                },
+                ...
+            ]
+        """
+        if not isinstance(concept_id, str) or not isinstance(dataset_id, int):
+            return []
+        handler = QueryCOHD.HANDLER_MAP['get_associated_concept_freq']
+        url_suffix = 'q=' + concept_id + '&dataset_id=' + str(dataset_id)
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
+
 if __name__ == '__main__':
     # print(QueryCOHD.find_concept_ids("ibuprofen", "Condition", 1))
     # print(QueryCOHD.find_concept_ids("ibuprofen", "Condition"))
@@ -553,4 +601,6 @@ if __name__ == '__main__':
     print(QueryCOHD.get_map_from_standard_concept_id("72990", "ICD9CM"))
     print(QueryCOHD.get_map_from_standard_concept_id("72990"))
     print(QueryCOHD.get_map_to_standard_concept_id("715.3", "ICD9CM"))
-    print(len(QueryCOHD.get_vocabularies()))
+    print(QueryCOHD.get_vocabularies())
+    print(QueryCOHD.get_associated_concept_freq("192855"))
+    print(QueryCOHD.get_associated_concept_freq("192855", 2))

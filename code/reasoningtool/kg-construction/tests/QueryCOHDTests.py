@@ -245,3 +245,42 @@ class QueryCOHDTestCases(TestCase):
         self.assertEqual(len(result), 73)
         self.assertEqual(result[0]['vocabulary_id'], '')
         self.assertEqual(result[1]['vocabulary_id'], 'ABMS')
+
+    def test_get_associated_concept_freq(self):
+        result = QueryCOHD.get_associated_concept_freq("192855")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 768)
+        self.assertEqual(result[0], {'associated_concept_id': 2213216,
+                                     'associated_concept_name': 'Cytopathology, selective cellular enhancement technique with interpretation (eg, liquid based slide preparation method), except cervical or vaginal',
+                                     'associated_domain_id': 'Measurement',
+                                     'concept_count': 330,
+                                     'concept_frequency': 0.0001843131625848748,
+                                     'concept_id': 192855,
+                                     'dataset_id': 1})
+
+        result = QueryCOHD.get_associated_concept_freq("192855", 2)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 2735)
+        self.assertEqual(result[0], {'associated_concept_id': 197508,
+                                     'associated_concept_name': 'Malignant tumor of urinary bladder',
+                                     'associated_domain_id': 'Condition',
+                                     'concept_count': 1477,
+                                     'concept_frequency': 0.0002753141274545969,
+                                     'concept_id': 192855,
+                                     'dataset_id': 2})
+
+        #   invalid conecpt_id value
+        result = QueryCOHD.get_associated_concept_freq("1928551")
+        self.assertEqual(result, [])
+
+        #   invalid dataset_id value
+        result = QueryCOHD.get_associated_concept_freq("192855", 3)
+        self.assertEqual(result, [])
+
+        #   invalid concept format
+        result = QueryCOHD.get_associated_concept_freq(192855)
+        self.assertEqual(result, [])
+
+        #   invalid dataset_id format
+        result = QueryCOHD.get_associated_concept_freq("192855", "1")
+        self.assertEqual(result, [])
