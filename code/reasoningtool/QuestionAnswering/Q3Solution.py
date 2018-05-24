@@ -17,7 +17,7 @@ class Q3:
 	def __init__(self):
 		None
 
-	def answer(self, source_name, target_label, relationship_type, use_json=False):
+	def answer(self, source_name, target_label, relationship_type, use_json=False, directed=False):
 		"""
 		Answer a question of the type "What proteins does drug X target" but is general:
 		 what <node X type> does <node Y grounded> <relatioship Z> that can be answered in one hop in the KG (increasing the step size if necessary).
@@ -35,11 +35,11 @@ class Q3:
 		# Get the subgraph (all targets along relationship)
 		has_intermediate_node = False
 		try:
-			g = RU.return_subgraph_paths_of_type(source_name, source_label, None, target_label, [relationship_type], directed=False)
+			g = RU.return_subgraph_paths_of_type(source_name, source_label, None, target_label, [relationship_type], directed=directed)
 		except CustomExceptions.EmptyCypherError:
 			try:
 				has_intermediate_node = True
-				g = RU.return_subgraph_paths_of_type(source_name, source_label, None, target_label, ['subclass_of', relationship_type], directed=False)
+				g = RU.return_subgraph_paths_of_type(source_name, source_label, None, target_label, ['subclass_of', relationship_type], directed=directed)
 			except CustomExceptions.EmptyCypherError:
 				error_message = "No path between %s and %s via relationship %s" % (source_name, target_label, relationship_type)
 				error_code = "NoPathsFound"
@@ -147,6 +147,7 @@ def main():
 	parser.add_argument('-r', '--rel_type', type=str, help="Relationship type.", default="directly_interacts_with")
 	parser.add_argument('-j', '--json', action='store_true', help='Flag specifying that results should be printed in JSON format (to stdout)', default=False)
 	parser.add_argument('-d', '--describe', action='store_true', help="Describe what kinds of questions this answers.", default=False)
+	parser.add_argument('--directed', action='store_true', help="Treat the relationship as directed", default=False)
 
 	# Parse and check args
 	args = parser.parse_args()
@@ -155,6 +156,7 @@ def main():
 	relationship_type = args.rel_type
 	use_json = args.json
 	describe_flag = args.describe
+	directed = args.directed
 
 	# Initialize the question class
 	Q = Q3()
@@ -163,7 +165,7 @@ def main():
 		res = Q.describe()
 		print(res)
 	else:
-		res = Q.answer(source_name, target_label, relationship_type, use_json)
+		res = Q.answer(source_name, target_label, relationship_type, use_json, directed=directed)
 		if use_json:
 			res.print()
 		else:

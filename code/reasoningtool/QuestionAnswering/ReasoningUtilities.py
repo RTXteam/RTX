@@ -470,37 +470,71 @@ def return_subgraph_paths_of_type(source_node, source_node_label, target_node, t
 	:return: networkx graph
 	"""
 	if not any(isinstance(el, list) for el in relationship_list):  # It's a single list of relationships
-		if target_node is not None:
-			query = "MATCH path=(s:%s)-" % source_node_label
-			for i in range(len(relationship_list) - 1):
-				query += "[:" + relationship_list[i] + "]-()-"
-			query += "[:" + relationship_list[-1] + "]-" + "(t:%s) " % target_node_label
-			query += "WHERE s.rtx_name='%s' and t.rtx_name='%s' " % (source_node, target_node)
-			query += "RETURN path"
+		if directed:
+			if target_node is not None:
+				query = "MATCH path=(s:%s)-" % source_node_label
+				for i in range(len(relationship_list) - 1):
+					query += "[:" + relationship_list[i] + "]->()-"
+				query += "[:" + relationship_list[-1] + "]->" + "(t:%s) " % target_node_label
+				query += "WHERE s.rtx_name='%s' and t.rtx_name='%s' " % (source_node, target_node)
+				query += "RETURN path"
+			else:
+				query = "MATCH path=(s:%s)-" % source_node_label
+				for i in range(len(relationship_list) - 1):
+					query += "[:" + relationship_list[i] + "]->()-"
+				query += "[:" + relationship_list[-1] + "]->" + "(t:%s) " % target_node_label
+				query += "WHERE s.rtx_name='%s'" % (source_node)
+				query += "RETURN path"
+			if debug:
+				return query
 		else:
-			query = "MATCH path=(s:%s)-" % source_node_label
-			for i in range(len(relationship_list) - 1):
-				query += "[:" + relationship_list[i] + "]-()-"
-			query += "[:" + relationship_list[-1] + "]-" + "(t:%s) " % target_node_label
-			query += "WHERE s.rtx_name='%s'" % (source_node)
-			query += "RETURN path"
-		if debug:
-			return query
+			if target_node is not None:
+				query = "MATCH path=(s:%s)-" % source_node_label
+				for i in range(len(relationship_list) - 1):
+					query += "[:" + relationship_list[i] + "]-()-"
+				query += "[:" + relationship_list[-1] + "]-" + "(t:%s) " % target_node_label
+				query += "WHERE s.rtx_name='%s' and t.rtx_name='%s' " % (source_node, target_node)
+				query += "RETURN path"
+			else:
+				query = "MATCH path=(s:%s)-" % source_node_label
+				for i in range(len(relationship_list) - 1):
+					query += "[:" + relationship_list[i] + "]-()-"
+				query += "[:" + relationship_list[-1] + "]-" + "(t:%s) " % target_node_label
+				query += "WHERE s.rtx_name='%s'" % (source_node)
+				query += "RETURN path"
+			if debug:
+				return query
 	else:  # it's a list of lists
-		query = "MATCH (s:%s{rtx_name:'%s'}) " % (source_node_label, source_node)
-		for rel_index in range(len(relationship_list)):
-			rel_list = relationship_list[rel_index]
-			query += "OPTIONAL MATCH path%d=(s)-" % rel_index
-			for i in range(len(rel_list) - 1):
-				query += "[:" + rel_list[i] + "]-()-"
-			query += "[:" + rel_list[-1] + "]-" + "(t:%s)" % target_node_label
-			query += " WHERE t.rtx_name='%s' " % target_node
-		query += "RETURN "
-		for rel_index in range(len(relationship_list) - 1):
-			query += "collect(path%d)+" % rel_index
-		query += "collect(path%d)" % (len(relationship_list) - 1)
-		if debug:
-			return query
+		if directed:
+			query = "MATCH (s:%s{rtx_name:'%s'}) " % (source_node_label, source_node)
+			for rel_index in range(len(relationship_list)):
+				rel_list = relationship_list[rel_index]
+				query += "OPTIONAL MATCH path%d=(s)-" % rel_index
+				for i in range(len(rel_list) - 1):
+					query += "[:" + rel_list[i] + "]->()-"
+				query += "[:" + rel_list[-1] + "]->" + "(t:%s)" % target_node_label
+				query += " WHERE t.rtx_name='%s' " % target_node
+			query += "RETURN "
+			for rel_index in range(len(relationship_list) - 1):
+				query += "collect(path%d)+" % rel_index
+			query += "collect(path%d)" % (len(relationship_list) - 1)
+			if debug:
+				return query
+		else:
+			query = "MATCH (s:%s{rtx_name:'%s'}) " % (source_node_label, source_node)
+			for rel_index in range(len(relationship_list)):
+				rel_list = relationship_list[rel_index]
+				query += "OPTIONAL MATCH path%d=(s)-" % rel_index
+				for i in range(len(rel_list) - 1):
+					query += "[:" + rel_list[i] + "]-()-"
+				query += "[:" + rel_list[-1] + "]-" + "(t:%s)" % target_node_label
+				query += " WHERE t.rtx_name='%s' " % target_node
+			query += "RETURN "
+			for rel_index in range(len(relationship_list) - 1):
+				query += "collect(path%d)+" % rel_index
+			query += "collect(path%d)" % (len(relationship_list) - 1)
+			if debug:
+				return query
 	try:
 		graph = get_graph(cypher.run(query, conn=connection, config=defaults), directed=directed)
 	except CustomExceptions.EmptyCypherError:
