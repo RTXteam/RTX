@@ -81,6 +81,7 @@ class BioNetExpander:
                               "participates_in": True,
                               "involved_in": True,
                               "has_phenotype": True,
+                              "has_part": True,
                               "capable_of": True}
 
     GO_ONTOLOGY_TO_PREDICATE = {"biological_process": "involved_in",
