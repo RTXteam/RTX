@@ -233,7 +233,7 @@ class QueryCOHD:
         if not isinstance(concept_id, str) or not isinstance(domain, str) or not isinstance(dataset_id, int):
             return []
         handler = QueryCOHD.HANDLER_MAP['get_associated_concept_domain_freq']
-        url_suffix = 'concept_id=' + concept_id + '&domain=' + domain + '&dataset=' + str(dataset_id)
+        url_suffix = 'concept_id=' + concept_id + '&domain=' + domain + '&dataset_id=' + str(dataset_id)
         res_json = QueryCOHD.__access_api(handler, url_suffix)
         results_array = []
         if res_json is not None:
