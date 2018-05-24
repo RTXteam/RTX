@@ -151,7 +151,7 @@ class KGNodeIndex:
       columns = line.strip("\n").split("\t")
       curie = columns[0] # TODO: note that this is not actually the curie, but the rtx_name. Should change KG meta dump to use curie instead, and sed replace rtx_name with id
       name = columns[1]
-      type = "?"
+      type = columns[2]
 
       names = [ name ]
 
