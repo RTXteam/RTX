@@ -43,7 +43,8 @@ class QueryCOHD:
         'get_most_frequent_concepts':           'frequencies/mostFrequentConcepts',
         'get_chi_square':                       'association/chiSquare',
         'get_obs_exp_ratio':                    'association/obsExpRatio',
-        'get_relative_frequency':               'association/relativeFrequency'
+        'get_relative_frequency':               'association/relativeFrequency',
+        'get_datasets':                         'metadata/datasets'
     }
 
     @staticmethod
@@ -809,6 +810,35 @@ class QueryCOHD:
             results_array = res_json.get('results', [])
         return results_array
 
+    @staticmethod
+    def get_datasets():
+        """Enumerates the datasets available in COHD
+
+        Returns:
+            array: a list of datasets, including dataset ID, name, and description.
+
+            example:
+                [
+                    {
+                      "dataset_description": "Clinical data from 2013-2017",
+                      "dataset_id": 1,
+                      "dataset_name": "5 year"
+                    },
+                    {
+                      "dataset_description": "Clinical data from all years in the database",
+                      "dataset_id": 2,
+                      "dataset_name": "Lifetime"
+                    }
+                ]
+        """
+        handler = QueryCOHD.HANDLER_MAP['get_datasets']
+        url_suffix = ''
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
+
 if __name__ == '__main__':
     # print(QueryCOHD.find_concept_ids("ibuprofen", "Condition", 1))
     # print(QueryCOHD.find_concept_ids("ibuprofen", "Condition"))
@@ -844,11 +874,12 @@ if __name__ == '__main__':
     # print(len(QueryCOHD.get_obs_exp_ratio("192855", "", "", 2)))
     # print(len(QueryCOHD.get_obs_exp_ratio("192855", "", "Procedure")))
     # print(len(QueryCOHD.get_obs_exp_ratio("192855", "", "Procedure", 2)))
-    print(QueryCOHD.get_relative_frequency("192855", "2008271", "Procedure"))
-    print(QueryCOHD.get_relative_frequency("192855", "2008271", "Procedure", 2))
-    print(QueryCOHD.get_relative_frequency("192855", "2008271", ""))
-    print(QueryCOHD.get_relative_frequency("192855", "2008271", "", 2))
-    print(len(QueryCOHD.get_relative_frequency("192855")))
-    print(len(QueryCOHD.get_relative_frequency("192855", "", "", 2)))
-    print(len(QueryCOHD.get_relative_frequency("192855", "", "Procedure")))
-    print(len(QueryCOHD.get_relative_frequency("192855", "", "Procedure", 2)))
+    # print(QueryCOHD.get_relative_frequency("192855", "2008271", "Procedure"))
+    # print(QueryCOHD.get_relative_frequency("192855", "2008271", "Procedure", 2))
+    # print(QueryCOHD.get_relative_frequency("192855", "2008271", ""))
+    # print(QueryCOHD.get_relative_frequency("192855", "2008271", "", 2))
+    # print(len(QueryCOHD.get_relative_frequency("192855")))
+    # print(len(QueryCOHD.get_relative_frequency("192855", "", "", 2)))
+    # print(len(QueryCOHD.get_relative_frequency("192855", "", "Procedure")))
+    # print(len(QueryCOHD.get_relative_frequency("192855", "", "Procedure", 2)))
+    print(QueryCOHD.get_datasets())

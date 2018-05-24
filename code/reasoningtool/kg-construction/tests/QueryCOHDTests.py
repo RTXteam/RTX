@@ -562,3 +562,14 @@ class QueryCOHDTestCases(TestCase):
         #   invalid dataset_id type
         result = QueryCOHD.get_relative_frequency("192855", "2008271", "", "2")
         self.assertEqual(result, [])
+
+    def test_get_datasets(self):
+        result = QueryCOHD.get_datasets()
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result, [{'dataset_description': 'Clinical data from 2013-2017',
+                                   'dataset_id': 1,
+                                   'dataset_name': '5 year'},
+                                  {'dataset_description': 'Clinical data from all years in the database',
+                                   'dataset_id': 2,
+                                   'dataset_name': 'Lifetime'}])
