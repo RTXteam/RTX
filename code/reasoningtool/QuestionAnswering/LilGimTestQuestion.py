@@ -61,6 +61,7 @@ class LilGim:
 		# sort by freq
 		correlated_proteins_tupes_sorted = sorted(correlated_proteins_tupes, key=lambda x: x[1], reverse=rev)
 		correlated_proteins_tupes_sorted = correlated_proteins_tupes_sorted[0:num_show]
+		correlated_proteins_tupes = correlated_proteins_tupes_sorted
 
 
 		# return the results
