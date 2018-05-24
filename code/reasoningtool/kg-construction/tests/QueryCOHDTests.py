@@ -12,7 +12,7 @@ class QueryCOHDTestCases(TestCase):
     def test_find_concept_ids(self):
         ids = QueryCOHD.find_concept_ids("ibuprofen", "Condition", 1)
         self.assertIsNotNone(ids)
-        correct_results = [{'concept_class_id': 'Clinical Finding', 'concept_code': '212602006', 'concept_count': 0.0,
+        self.assertEqual(ids, [{'concept_class_id': 'Clinical Finding', 'concept_code': '212602006', 'concept_count': 0.0,
                             'concept_id': 4059406, 'concept_name': 'Ibuprofen poisoning', 'domain_id': 'Condition',
                             'vocabulary_id': 'SNOMED'},
                            {'concept_class_id': 'Clinical Finding', 'concept_code': '218613000', 'concept_count': 0.0,
@@ -38,11 +38,10 @@ class QueryCOHDTestCases(TestCase):
                             'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'},
                            {'concept_class_id': 'Clinical Finding', 'concept_code': '295251004', 'concept_count': 0.0,
                             'concept_id': 4172258, 'concept_name': 'Accidental ibuprofen overdose',
-                            'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'}]
-        self.assertEqual(ids, correct_results)
+                            'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'}])
 
         # wrong name
-        ids = QueryCOHD.find_concept_ids("ibuprofe", "Condition")
+        ids = QueryCOHD.find_concept_ids("ibuprof1", "Condition")
         self.assertEqual(ids, [])
 
         # wrong domain
@@ -158,7 +157,91 @@ class QueryCOHDTestCases(TestCase):
         self.assertEqual(result, [])
 
         #   wrong distance format
-        #   wrong concept id
         result = QueryCOHD.get_xref_from_OMOP("1928551", "UMLS", "2")
         self.assertEqual(result, [])
 
+    def test_get_xref_to_OMOP(self):
+        result = QueryCOHD.get_xref_to_OMOP("DOID:8398", 2)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result[0], {'intermediate_oxo_id': 'ICD9CM:715.3', 'intermediate_oxo_label': '',
+                                     'omop_concept_name': 'Localized osteoarthrosis uncertain if primary OR secondary',
+                                     'omop_distance': 1, 'omop_domain_id': 'Condition', 'omop_standard_concept_id': 72990,
+                                     'oxo_distance': 1, 'source_oxo_id': 'DOID:8398', 'source_oxo_label': 'osteoarthritis',
+                                     'total_distance': 2})
+
+        #   default distance
+        result = QueryCOHD.get_xref_to_OMOP("DOID:8398")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 3)
+
+        #   wrong curie id
+        result = QueryCOHD.get_xref_to_OMOP("DOID:83981", 2)
+        self.assertEqual(result, [])
+
+        #   wrong distance format
+        result = QueryCOHD.get_xref_to_OMOP("DOID:8398", "2")
+        self.assertEqual(result, [])
+
+    def test_get_map_from_standard_concept_id(self):
+        result = QueryCOHD.get_map_from_standard_concept_id("72990", "ICD9CM")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 10)
+        self.assertEqual(result[0], {"concept_class_id": "4-dig nonbill code", "concept_code": "715.3",
+                                     "concept_id": 44834979,
+                                     "concept_name": "Osteoarthrosis, localized, not specified whether primary or secondary",
+                                     "domain_id": "Condition", "standard_concept": None, "vocabulary_id": "ICD9CM"
+                                     })
+
+        #   default vocabulary
+        result = QueryCOHD.get_map_from_standard_concept_id("72990")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 12)
+        self.assertEqual(result[0], {"concept_class_id": "Diagnosis", "concept_code": "116253", "concept_id": 45930832,
+                                     "concept_name": "Localized Osteoarthrosis Uncertain If Primary or Secondary",
+                                     "domain_id": "Condition", "standard_concept": None, "vocabulary_id": "CIEL"})
+
+        #   wrong concept_id id
+        result = QueryCOHD.get_map_from_standard_concept_id("DOID:839812", 2)
+        self.assertEqual(result, [])
+
+        #   wrong concept_id format
+        result = QueryCOHD.get_map_from_standard_concept_id(8398, 2)
+        self.assertEqual(result, [])
+
+    def test_get_map_to_standard_concept_id(self):
+        result = QueryCOHD.get_map_to_standard_concept_id("715.3", "ICD9CM")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], {"source_concept_code": "715.3", "source_concept_id": 44834979,
+                                     "source_concept_name": "Osteoarthrosis, localized, not specified whether primary or secondary",
+                                     "source_vocabulary_id": "ICD9CM", "standard_concept_id": 72990,
+                                     "standard_concept_name": "Localized osteoarthrosis uncertain if primary OR secondary",
+                                     "standard_domain_id": "Condition"
+                                     })
+
+        # default vocabulary
+        result = QueryCOHD.get_map_to_standard_concept_id("715.3")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], {"source_concept_code": "715.3", "source_concept_id": 44834979,
+                                     "source_concept_name": "Osteoarthrosis, localized, not specified whether primary or secondary",
+                                     "source_vocabulary_id": "ICD9CM", "standard_concept_id": 72990,
+                                     "standard_concept_name": "Localized osteoarthrosis uncertain if primary OR secondary",
+                                     "standard_domain_id": "Condition"
+                                     })
+
+        #   wrong concept_code id
+        result = QueryCOHD.get_map_from_standard_concept_id("725.3")
+        self.assertEqual(result, [])
+
+        #   wrong concept_code format
+        result = QueryCOHD.get_map_from_standard_concept_id(725.3)
+        self.assertEqual(result, [])
+
+    def test_get_vocabularies(self):
+        result = QueryCOHD.get_vocabularies()
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 73)
+        self.assertEqual(result[0]['vocabulary_id'], '')
+        self.assertEqual(result[1]['vocabulary_id'], 'ABMS')

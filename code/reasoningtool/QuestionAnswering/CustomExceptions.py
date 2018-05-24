@@ -12,3 +12,11 @@ class MultipleTerms(Exception):
 
 	def __str__(self):
 		return (repr(self.value))
+
+
+class ExtraTerms(Exception):
+	def __init__(self, entity_type, values):
+		self.value = "Extra terms found: %s doesn't/don't appear to be of type %s" % (str(values), entity_type)
+
+	def __str__(self):
+		return (repr(self.value))

@@ -50,13 +50,15 @@ def dump_name_description(file_name, session=session):
 	:param session: neo4j session
 	:return: None
 	"""
-	query = "match (n) return properties(n) as n"
+	query = "match (n) return properties(n) as p, labels(n) as l"
 	res = session.run(query)
 	with open(file_name, 'w') as fid:
 		for item in res:
-			item_dict = item['n']
-			fid.write('%s\t' % item_dict['rtx_name'])
-			fid.write('%s\n' % item_dict['name'])
+			prop_dict = item['p']
+			labels = item['l']
+			fid.write('%s\t' % prop_dict['rtx_name'])
+			fid.write('%s\t' % prop_dict['name'])
+			fid.write('%s\n' % list(set(labels) - {'Base'}).pop())
 	return
 
 def dump_node_labels(file_name, session=session):

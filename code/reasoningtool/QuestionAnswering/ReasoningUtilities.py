@@ -77,7 +77,7 @@ DefaultConfigurable = namedtuple(
 defaults = DefaultConfigurable(**DEFAULT_CONFIGURABLE)
 
 
-def node_exists_with_property(term, property_name, session=session):
+def node_exists_with_property(term, property_name, node_label="",session=session):
 	"""
 	Check if the neo4j has a node with the given name as a given property
 	:param term: term to check (eg. 'naproxen')
@@ -85,7 +85,10 @@ def node_exists_with_property(term, property_name, session=session):
 	:param session: neo4j instance
 	:return: Boolean
 	"""
-	query = "match (n) where n.%s='%s' return n" % (property_name, term)
+	if node_label == "":
+		query = "match (n) where n.%s='%s' return n" % (property_name, term)
+	else:
+		query = "match (n:%s{%s:'%s'}) return n" % (node_label, property_name, term)
 	res = session.run(query)
 	res = [i for i in res]
 	if not res:
@@ -178,7 +181,7 @@ def get_name_to_description_dict(session=session):
 	return name_to_descr
 
 
-def get_node_property(name, node_property, node_label="", session=session, debug=False):
+def get_node_property(name, node_property, node_label="", name_type="rtx_name", session=session, debug=False):
 	"""
 	Get a property of a node. This replaces node_to_description by making node_property="description"
 	:param name: name of the node
@@ -190,9 +193,9 @@ def get_node_property(name, node_property, node_label="", session=session, debug
 	"""
 	if node_property != "label":
 		if node_label == "":
-			query = "match (n{rtx_name:'%s'}) return n.%s" % (name, node_property)
+			query = "match (n{%s:'%s'}) return n.%s" % (name_type, name, node_property)
 		else:
-			query = "match (n:%s{rtx_name:'%s'}) return n.%s" % (node_label, name, node_property)
+			query = "match (n:%s{%s:'%s'}) return n.%s" % (node_label, name_type, name, node_property)
 		if debug:
 			return query
 		res = session.run(query)
@@ -203,9 +206,9 @@ def get_node_property(name, node_property, node_label="", session=session, debug
 			raise Exception("No result returned, property doesn't exist? node: %s" % name)
 	else:
 		if node_label == "":
-			query = "match (n{rtx_name:'%s'}) return labels(n)" % (name)
+			query = "match (n{%s:'%s'}) return labels(n)" % (name_type, name)
 		else:
-			query = "match (n:%s{rtx_name:'%s'}) return labels(n)" % (node_label, name)
+			query = "match (n:%s{%s:'%s'}) return labels(n)" % (name_type, node_label, name)
 		if debug:
 			return query
 		res = session.run(query)
@@ -370,8 +373,15 @@ def get_graph(res, directed=True, multigraph=False):
 	return graph
 
 
-def get_graph_from_nodes(id_list, debug=False):
-	query = "match (n) where n.rtx_name in ["
+def get_graph_from_nodes(id_list, node_property_label="rtx_name", debug=False):
+	"""
+	For a list of property names, return a subgraph with those nodes in it
+	:param id_list: a list of identifiers
+	:param node_property_label: what the identier property is (eg. rtx_name)
+	:param debug:
+	:return:
+	"""
+	query = "match (n) where n.%s in [" % node_property_label
 	for ID in id_list:
 		if ID != id_list[-1]:
 			query += " '%s'," % ID
