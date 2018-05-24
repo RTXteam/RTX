@@ -249,6 +249,7 @@ class KGNodeIndex:
 
     fh.close()
     session.flush()
+    session.commit()
     print("")
 
 
