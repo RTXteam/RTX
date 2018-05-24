@@ -300,7 +300,7 @@ class BioNetExpander:
 
         # protein-pathway membership:
         pathways_dict_from_reactome = QueryReactome.query_uniprot_id_to_reactome_pathway_ids_desc(uniprot_id_str)
-        pathways_dict_sourcedb = dict.fromkeys(pathways_dict_from_reactome.keys(), 'reactome_pathway')
+        pathways_dict_sourcedb = dict.fromkeys(pathways_dict_from_reactome.keys(), 'reactome')
         node1 = node
         for pathway_id in pathways_dict_from_reactome.keys():
             target_node = self.add_node_smart('pathway',
