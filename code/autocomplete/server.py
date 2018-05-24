@@ -20,34 +20,30 @@ rtxcomplete.load()
 #cursor = conn.cursor()
 
 class autoSearch(tornado.web.RequestHandler):
+
     def get(self, arg,word=None):
-        #print "matched auto"
+        #print "match auto"
         try:
             limit = self.get_argument("limit")
             word = self.get_argument("word")
-            callback = self.get_argument("callback")
-            #print word
-            result = rtxcomplete.prefix(word,limit)
-            #cursor.execute("SELECT str FROM dict WHERE str like \"" + word + "%\" LIMIT " + limit)
+            callback = self.get_argument("callback") #jsonp
 
-            #rows = cursor.fetchall()
-            #print type(rows)
-            result = callback+"("+json.dumps(result)+");"
-            #print arg, result
-            #if (len(rows) > 0):
+            result = rtxcomplete.prefix(word,limit)
+
+            result = callback+"("+json.dumps(result)+");" #jsonp
+            #result = json.dumps(result) #typeahead
+            
             self.write(result)
-            #else:
-            #    self.write(callback+"("+json.dumps([["NO SUGGESTIONS"]])+");")
-            #self.write(json.dumps(rows))
+            
         except:
-            print (sys.exc_info()[:])
+            print sys.exc_info()[:]
             traceback.print_tb(sys.exc_info()[-1])
             #print sys.exc_info()[2]
             self.write("error")
 
 class fuzzySearch(tornado.web.RequestHandler):
     def get(self, arg,word=None):
-        #print "matched auto"
+        #print "matched fuzzy"
         try:
             limit = self.get_argument("limit")
             word = self.get_argument("word")
@@ -66,14 +62,14 @@ class fuzzySearch(tornado.web.RequestHandler):
             #self.write(callback+"("+json.dumps([["NO SUGGESTIONS"]])+");")
             #self.write(json.dumps(rows))
         except:
-            print (sys.exc_info()[:])
+            print sys.exc_info()[:]
             traceback.print_tb(sys.exc_info()[-1])
             #print sys.exc_info()[:]
             self.write("error")
 
 class autofuzzySearch(tornado.web.RequestHandler):
     def get(self, arg,word=None):
-        #print "matched auto"
+        #print "matched autofuzzy"
         try:
             limit = self.get_argument("limit")
             word = self.get_argument("word")
@@ -92,7 +88,7 @@ class autofuzzySearch(tornado.web.RequestHandler):
             #self.write(callback+"("+json.dumps([["NO SUGGESTIONS"]])+");")
             #self.write(json.dumps(rows))
         except:
-            print (sys.exc_info()[:])
+            print sys.exc_info()[:]
             traceback.print_tb(sys.exc_info()[-1])
             #print sys.exc_info()[:]
             self.write("error")
@@ -103,11 +99,11 @@ def make_app():
         (r"/autofuzzy(.*)", autofuzzySearch),
         (r"/auto(.*)", autoSearch),
         (r"/fuzzy(.*)", fuzzySearch),
-        (r"/(.*)", tornado.web.StaticFileHandler, {"path": root, "default_filename": "index.html"}),
+        (r"/(.*)", tornado.web.StaticFileHandler, {"path": root, "default_filename": "rtxcomplete.html"}),
     ])
 
 if __name__ == "__main__":
-    print ("root: " + root)
+    print "root: " + root
     app = make_app()
     app.listen(80)
     tornado.ioloop.IOLoop.current().start()
