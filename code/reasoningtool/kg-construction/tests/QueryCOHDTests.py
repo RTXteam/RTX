@@ -409,3 +409,79 @@ class QueryCOHDTestCases(TestCase):
         #   invalid dataset_id value
         result = QueryCOHD.get_chi_square("192855", "2008271", "condition", 3)
         self.assertEqual(result, [])
+
+    def test_get_obs_exp_ratio(self):
+        #   default dataset_id
+        result = QueryCOHD.get_obs_exp_ratio("192855", "2008271", "Procedure")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result, [{'concept_id_1': 192855,
+                                   'concept_id_2': 2008271,
+                                   'dataset_id': 1,
+                                   'expected_count': 0.3070724311632227,
+                                   'ln_ratio': 3.483256720088832,
+                                   'observed_count': 10}])
+
+        #   dataset_id == 2
+        result = QueryCOHD.get_obs_exp_ratio("192855", "2008271", "Procedure", 2)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result, [{'concept_id_1': 192855,
+                                   'concept_id_2': 2008271,
+                                   'dataset_id': 2,
+                                   'expected_count': 5.171830872499735,
+                                   'ln_ratio': 3.634887899455015,
+                                   'observed_count': 196}])
+        #   default domain
+        result = QueryCOHD.get_obs_exp_ratio("192855", "2008271")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result, [{'concept_id_1': 192855,
+                                   'concept_id_2': 2008271,
+                                   'dataset_id': 1,
+                                   'expected_count': 0.3070724311632227,
+                                   'ln_ratio': 3.483256720088832,
+                                   'observed_count': 10}])
+
+        #   default domain, dataset_id == 2
+        result = QueryCOHD.get_obs_exp_ratio("192855", "2008271", "", 2)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result, [{'concept_id_1': 192855,
+                                   'concept_id_2': 2008271,
+                                   'dataset_id': 2,
+                                   'expected_count': 5.171830872499735,
+                                   'ln_ratio': 3.634887899455015,
+                                   'observed_count': 196}])
+
+        #   default concept_id_2, domain and dataset_id
+        result = QueryCOHD.get_obs_exp_ratio("192855")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 768)
+
+        #   default concept_id_2 and domain, dataset_id == 2
+        result = QueryCOHD.get_obs_exp_ratio("192855", "", "", 2)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 2735)
+
+        #   default concept_id_2 and dataset_id
+        result = QueryCOHD.get_obs_exp_ratio("192855", "", "Procedure")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 159)
+
+        #   default concept_id_2
+        result = QueryCOHD.get_obs_exp_ratio("192855", "", "Procedure", 2)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 655)
+
+        #   invalid concept_id_1 type
+        result = QueryCOHD.get_obs_exp_ratio(192855, "2008271", "", 2)
+        self.assertEqual(result, [])
+
+        #   invalid concept_id_2 type
+        result = QueryCOHD.get_obs_exp_ratio("192855", 2008271, "", 2)
+        self.assertEqual(result, [])
+
+        #   invalid dataset_id type
+        result = QueryCOHD.get_obs_exp_ratio("192855", "2008271", "", "2")
+        self.assertEqual(result, [])
