@@ -346,4 +346,66 @@ class QueryCOHDTestCases(TestCase):
         #   num == 0
         result = QueryCOHD.get_most_frequent_concepts(0, "Condition", 2)
         self.assertEqual(result, [])
-        
+
+    def test_get_chi_square(self):
+        #   default dataset_id
+        result = QueryCOHD.get_chi_square("192855", "2008271", "Condition")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result, [{'chi_square': 306.2816108187519,
+                                  'concept_id_1': 192855,
+                                  'concept_id_2': 2008271,
+                                  'dataset_id': 1,
+                                  'p-value': 1.4101531778039801e-68}])
+
+        #   dataset_id == 2
+        result = QueryCOHD.get_chi_square("192855", "2008271", "Condition", 2)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result, [{'chi_square': 7065.7865572100745,
+                                   'concept_id_1': 192855,
+                                   'concept_id_2': 2008271,
+                                   'dataset_id': 2,
+                                   'p-value': 0.0}])
+
+        #   default domain and dataset_id
+        result = QueryCOHD.get_chi_square("192855", "2008271")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result, [{'chi_square': 306.2816108187519,
+                                   'concept_id_1': 192855,
+                                   'concept_id_2': 2008271,
+                                   'dataset_id': 1,
+                                   'p-value': 1.4101531778039801e-68}])
+
+        #   no concept_id_2, default domain and dataset_id
+        result = QueryCOHD.get_chi_square("192855")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 768)
+
+        #   no concept_id_2, default dataset_id
+        result = QueryCOHD.get_chi_square("192855", "", "Condition")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 226)
+
+        #   no concept_id_2, dataset_id == 2
+        result = QueryCOHD.get_chi_square("192855", "", "Condition", 2)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 991)
+
+        #   no concept_id_2, dataset_id == 2, default domain
+        result = QueryCOHD.get_chi_square("192855", "", "", 2)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 2735)
+
+        #   invalid concept_id_1 type
+        result = QueryCOHD.get_chi_square(192855, "", "", 1)
+        self.assertEqual(result, [])
+
+        #   invalid concept_id_2 type
+        result = QueryCOHD.get_chi_square("192855", 2008271, "", 1)
+        self.assertEqual(result, [])
+
+        #   invalid dataset_id value
+        result = QueryCOHD.get_chi_square("192855", "2008271", "condition", 3)
+        self.assertEqual(result, [])

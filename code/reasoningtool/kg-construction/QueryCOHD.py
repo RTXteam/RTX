@@ -21,8 +21,8 @@ import requests_cache
 import sys
 import urllib.parse
 
-# configure requests package to use the "orangeboard.sqlite" cache
-requests_cache.install_cache('orangeboard')
+# configure requests package to use the "QueryCOHD.sqlite" cache
+requests_cache.install_cache('QueryCOHD')
 
 
 class QueryCOHD:
@@ -40,7 +40,8 @@ class QueryCOHD:
         'get_map_to_standard_concept_id':       'omop/mapToStandardConceptID',
         'get_vocabularies':                     'omop/vocabularies',
         'get_associated_concept_freq':          'frequencies/associatedConceptFreq',
-        'get_most_frequent_concepts':           'frequencies/mostFrequentConcepts'
+        'get_most_frequent_concepts':           'frequencies/mostFrequentConcepts',
+        'get_chi_square':                       '/association/chiSquare'
     }
 
     @staticmethod
@@ -635,6 +636,62 @@ class QueryCOHD:
             results_array = res_json.get('results', [])
         return results_array
 
+    @staticmethod
+    def get_chi_square(concept_id_1, concept_id_2='', domain='', dataset_id=1):
+        """Returns the chi-square statistic and p-value between pairs of concepts. Results are returned in descending
+        order of the chi-square statistic. Note that due to large sample sizes, the chi-square can become very large.
+
+        The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and
+        assuming independence between concepts. P-value is calculated with 1 DOF.
+
+        This method has overloaded behavior based on the specified parameters:
+
+        concept_id_1 and concept_id_2: Result for the pair (concept_id_1, concept_id_2)
+        concept_id_1: Results for all pairs of concepts that include concept_id_1
+        concept_id_1 and domain: Results for all pairs of concepts including concept_id_1 and where concept_id_2 belongs
+         to the specified domain
+
+        Args:
+            concept_id_1 (str): An OMOP concept id, e.g., "192855"
+
+            concept_id_2 (str): An OMOP concept id, e.g., "2008271". If this parameter is specified, then the chi-square
+                between concept_id_1 and concept_id_2 is returned. If this parameter is not specified, then a list of
+                chi-squared results between concept_id_1 and other concepts is returned.
+
+            domain (str): An OMOP domain id, e.g., "Condition", "Drug", "Procedure", etc., to restrict the associated
+                concept (concept_id_2) to. If this parameter is not specified, then the domain is unrestricted.
+
+            dataset_id (int): The dataset_id of the dataset to query. Default dataset is the 5-year dataset (1).
+
+        Returns:
+            array: an array of chi-square dictionaries.
+
+            example:
+            [
+                {
+                  "chi_square": 306.2816108187519,
+                  "concept_id_1": 192855,
+                  "concept_id_2": 2008271,
+                  "dataset_id": 1,
+                  "p-value": 1.4101531778039801e-68
+                }
+            ]
+
+        """
+        if not isinstance(concept_id_1, str) or not isinstance(concept_id_2, str) or not isinstance(domain, str) or not isinstance(dataset_id, int):
+            return []
+        handler = QueryCOHD.HANDLER_MAP['get_chi_square']
+        url_suffix = 'concept_id_1=' + concept_id_1 + '&dataset_id=' + str(dataset_id)
+        if domain != "":
+            url_suffix += "&domain=" + domain
+        if concept_id_2 != "":
+            url_suffix += "&concept_id_2=" + concept_id_2
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
+
 if __name__ == '__main__':
     # print(QueryCOHD.find_concept_ids("ibuprofen", "Condition", 1))
     # print(QueryCOHD.find_concept_ids("ibuprofen", "Condition"))
@@ -651,7 +708,14 @@ if __name__ == '__main__':
     # print(QueryCOHD.get_vocabularies())
     # print(QueryCOHD.get_associated_concept_freq("192855"))
     # print(QueryCOHD.get_associated_concept_freq("192855", 2))
-    print(QueryCOHD.get_most_frequent_concepts(2))
-    print(QueryCOHD.get_most_frequent_concepts(2, 'Condition'))
-    print(QueryCOHD.get_most_frequent_concepts(2, 'Condition', 2))
-    print(QueryCOHD.get_most_frequent_concepts(2, '', 2))
+    # print(QueryCOHD.get_most_frequent_concepts(2))
+    # print(QueryCOHD.get_most_frequent_concepts(2, 'Condition'))
+    # print(QueryCOHD.get_most_frequent_concepts(2, 'Condition', 2))
+    # print(QueryCOHD.get_most_frequent_concepts(2, '', 2))
+    # print(QueryCOHD.get_chi_square("192855", "2008271", "Condition", 2))
+    # print(QueryCOHD.get_chi_square("192855", "2008271", "Condition"))
+    # print(QueryCOHD.get_chi_square("192855", "2008271"))
+    print(len(QueryCOHD.get_chi_square("192855")))
+    print(len(QueryCOHD.get_chi_square("192855", "", "Condition")))
+    print(len(QueryCOHD.get_chi_square("192855", "", "Condition", 2)))
+    print(len(QueryCOHD.get_chi_square("192855", "", "", 2)))
