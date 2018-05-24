@@ -108,11 +108,13 @@ def find_node_name(string):
 		to_return = []
 		for term in terms:
 			if KGNodeIndex.is_curie_present(term):
-				to_return.append(term)
+				to_return += term
 			if term.lower() != "is" and term.lower() != "as":
-				return KGNodeIndex.get_curies(term)
+				to_return += KGNodeIndex.get_curies(term)
 			else:
-				return to_return
+				pass
+
+		return to_return
 	else:  # Otherwise, treat it as usual
 		if KGNodeIndex.is_curie_present(string):
 			return [string]
