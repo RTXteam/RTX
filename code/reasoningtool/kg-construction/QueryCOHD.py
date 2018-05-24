@@ -41,7 +41,8 @@ class QueryCOHD:
         'get_vocabularies':                     'omop/vocabularies',
         'get_associated_concept_freq':          'frequencies/associatedConceptFreq',
         'get_most_frequent_concepts':           'frequencies/mostFrequentConcepts',
-        'get_chi_square':                       '/association/chiSquare'
+        'get_chi_square':                       '/association/chiSquare',
+        'get_obs_exp_ratio':                    '/association/obsExpRatio'
     }
 
     @staticmethod
@@ -646,10 +647,10 @@ class QueryCOHD:
 
         This method has overloaded behavior based on the specified parameters:
 
-        concept_id_1 and concept_id_2: Result for the pair (concept_id_1, concept_id_2)
-        concept_id_1: Results for all pairs of concepts that include concept_id_1
-        concept_id_1 and domain: Results for all pairs of concepts including concept_id_1 and where concept_id_2 belongs
-         to the specified domain
+            1. concept_id_1 and concept_id_2: Result for the pair (concept_id_1, concept_id_2)
+            2. concept_id_1: Results for all pairs of concepts that include concept_id_1
+            3. concept_id_1 and domain: Results for all pairs of concepts including concept_id_1 and where concept_id_2
+                belongs to the specified domain
 
         Args:
             concept_id_1 (str): An OMOP concept id, e.g., "192855"
@@ -692,6 +693,64 @@ class QueryCOHD:
             results_array = res_json.get('results', [])
         return results_array
 
+    @staticmethod
+    def get_obs_exp_ratio(concept_id_1, concept_id_2="", domain="", dataset_id=1):
+        """Returns the natural logarithm of the ratio between the observed count and expected count. Expected count is
+         calculated from the single concept frequencies and assuming independence between the concepts. Results are
+         returned in descending order of ln_ratio.
+
+        expected_count = Count_1_and_2 * num_patients / (Count_1 * Count_2)
+
+        ln_ratio = ln( expected_count )
+
+        This method has overloaded behavior based on the specified parameters:
+
+            1. concept_id_1 and concept_id_2: Results for the pair (concept_id_1, concept_id_2)
+            2. concept_id_1: Results for all pairs of concepts that include concept_id_1
+            3. concept_id_1 and domain: Results for all pairs of concepts including concept_id_1 and where concept_id_2
+                belongs to the specified domain
+
+        Args:
+            concept_id_1 (str): An OMOP concept id, e.g., "192855"
+
+            concept_id_2 (str): An OMOP concept id, e.g., "2008271". If concept_id_2 is unspecified, then this method
+                will return all pairs of concepts with concept_id_1.
+
+            domain (str): An OMOP domain id, e.g., "Condition", "Drug", "Procedure", etc., to restrict the associated
+                concept (concept_id_2) to. If this parameter is not specified, then the domain is unrestricted.
+
+            dataset_id (int): The dataset_id of the dataset to query. Default dataset is the 5-year dataset (1).
+
+        Returns:
+            array: an array of dictionaries which contains  the natural logarithm of the ratio between the observed
+                count and expected count
+
+            example:
+            [
+                {
+                  "concept_id_1": 192855,
+                  "concept_id_2": 2008271,
+                  "dataset_id": 1,
+                  "expected_count": 0.3070724311632227,
+                  "ln_ratio": 3.483256720088832,
+                  "observed_count": 10
+                }
+            ]
+        """
+        if not isinstance(concept_id_1, str) or not isinstance(concept_id_2, str) or not isinstance(domain, str) or not isinstance(dataset_id, int):
+            return []
+        handler = QueryCOHD.HANDLER_MAP['get_obs_exp_ratio']
+        url_suffix = 'concept_id_1=' + concept_id_1 + '&dataset_id=' + str(dataset_id)
+        if domain != "":
+            url_suffix += "&domain=" + domain
+        if concept_id_2 != "":
+            url_suffix += "&concept_id_2=" + concept_id_2
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
+
 if __name__ == '__main__':
     # print(QueryCOHD.find_concept_ids("ibuprofen", "Condition", 1))
     # print(QueryCOHD.find_concept_ids("ibuprofen", "Condition"))
@@ -715,7 +774,15 @@ if __name__ == '__main__':
     # print(QueryCOHD.get_chi_square("192855", "2008271", "Condition", 2))
     # print(QueryCOHD.get_chi_square("192855", "2008271", "Condition"))
     # print(QueryCOHD.get_chi_square("192855", "2008271"))
-    print(len(QueryCOHD.get_chi_square("192855")))
-    print(len(QueryCOHD.get_chi_square("192855", "", "Condition")))
-    print(len(QueryCOHD.get_chi_square("192855", "", "Condition", 2)))
-    print(len(QueryCOHD.get_chi_square("192855", "", "", 2)))
+    # print(len(QueryCOHD.get_chi_square("192855")))
+    # print(len(QueryCOHD.get_chi_square("192855", "", "Condition")))
+    # print(len(QueryCOHD.get_chi_square("192855", "", "Condition", 2)))
+    # print(len(QueryCOHD.get_chi_square("192855", "", "", 2)))
+    print(QueryCOHD.get_obs_exp_ratio("192855", "2008271", "Procedure"))
+    print(QueryCOHD.get_obs_exp_ratio("192855", "2008271", "Procedure", 2))
+    print(QueryCOHD.get_obs_exp_ratio("192855", "2008271", ""))
+    print(QueryCOHD.get_obs_exp_ratio("192855", "2008271", "", 2))
+    print(len(QueryCOHD.get_obs_exp_ratio("192855")))
+    print(len(QueryCOHD.get_obs_exp_ratio("192855", "", "", 2)))
+    print(len(QueryCOHD.get_obs_exp_ratio("192855", "", "Procedure")))
+    print(len(QueryCOHD.get_obs_exp_ratio("192855", "", "Procedure", 2)))
