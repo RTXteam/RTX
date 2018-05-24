@@ -195,7 +195,7 @@ def get_node_property(name, node_property, node_label="", name_type="rtx_name", 
 		if node_label == "":
 			query = "match (n{%s:'%s'}) return n.%s" % (name_type, name, node_property)
 		else:
-			query = "match (n:%s{%s:'%s'}) return n.%s" % (name_type, node_label, name, node_property)
+			query = "match (n:%s{%s:'%s'}) return n.%s" % (node_label, name_type, name, node_property)
 		if debug:
 			return query
 		res = session.run(query)
