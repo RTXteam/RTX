@@ -14,7 +14,7 @@ import FormatOutput
 import networkx as nx
 import QueryLilGIM
 import CustomExceptions
-
+import ast
 
 class LilGim:
 
@@ -91,22 +91,24 @@ class LilGim:
 def main():
 	parser = argparse.ArgumentParser(description="Answers questions of the form: 'What proteins correlate with [$protein1, $protein2,...,$proteinK?] in blood?'",
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-	parser.add_argument('-d', '--drug', type=str, help="drug ID/name", default="CHEMBL154")
-	parser.add_argument('-r', '--rare', action='store_true', help="Include if you want the least common diseases, don't include if you want the most common")
-	parser.add_argument('-c', '--conservative', action='store_true', help="Include if you want exact matches to drug name (so excluding combo drugs)")
+	parser.add_argument('-t', '--tissue', type=str, help="Tissue id/name", default="UBERON:0000178")
+	parser.add_argument('-r', '--reverse', action='store_true', help="Include flag if you want the least correlations.")
+	parser.add_argument('-p', '--proteins', type=str, help="List of proteins.", default="[UniProtKB:P12004]")
 	parser.add_argument('-j', '--json', action='store_true', help='Flag specifying that results should be printed in JSON format (to stdout)', default=False)
 	parser.add_argument('--describe', action='store_true', help='Print a description of the question to stdout and quit', default=False)
 	parser.add_argument('--num_show', type=int, help='Maximum number of results to return', default=20)
 
 	# Parse and check args
 	args = parser.parse_args()
-	drug_id = args.drug
-	is_rare = args.rare
-	is_conservative = args.conservative
+	tissue_id = args.tissue
+	is_reverse = args.reverse
+	proteins = args.proteins
 	use_json = args.json
 	describe_flag = args.describe
 	num_show = args.num_show
 
+	# Convert the string to an actual list
+	protein_list = ast.literal_eval(proteins)
 
 	# Initialize the question class
 	Q = LilGim()
@@ -115,8 +117,7 @@ def main():
 		res = Q.describe()
 		print(res)
 	else:
-		Q.answer(drug_id, use_json=use_json, num_show=num_show, rev=not(is_rare), conservative=is_conservative)
-		#Q.answer(drug_id, use_json=True, num_show=num_show, rev=not (is_rare), conservative=is_conservative)
+		Q.answer(tissue_id, protein_list, use_json=use_json, num_show=num_show, rev=not(is_reverse))
 
 if __name__ == "__main__":
 	main()
