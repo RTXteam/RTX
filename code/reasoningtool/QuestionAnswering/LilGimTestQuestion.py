@@ -44,8 +44,8 @@ class LilGim:
 
 		# Get the correlated proteins
 		try:
-			#correlated_proteins_dict = q.query_neighbor_genes_for_gene_set_in_a_given_anatomy(tissue_id, tuple(input_protein_list))
-			correlated_proteins_dict = {'UniProtKB:Q99618': 0.4276333333333333, 'UniProtKB:Q92698': 0.464, 'UniProtKB:P56282': 0.5810000000000001, 'UniProtKB:P49454': 0.4441, 'UniProtKB:P49642': 0.5188333333333334, 'UniProtKB:Q9BZD4': 0.5042666666666668, 'UniProtKB:P38398': 0.4464, 'UniProtKB:Q9BXL8': 0.5009, 'UniProtKB:P42166': 0.4263000000000001, 'UniProtKB:Q96CS2': 0.5844333333333332, 'UniProtKB:Q9BQP7': 0.4903333333333333, 'UniProtKB:O95997': 0.4743333333333333, 'UniProtKB:Q9H4K1': 0.4709, 'UniProtKB:Q9H967': 0.5646666666666667, 'UniProtKB:Q12834': 0.4478, 'UniProtKB:Q71F23': 0.4361, 'UniProtKB:Q9UQ84': 0.4800666666666666, 'UniProtKB:Q9NSP4': 0.4347}
+			correlated_proteins_dict = q.query_neighbor_genes_for_gene_set_in_a_given_anatomy(tissue_id, tuple(input_protein_list))
+			#correlated_proteins_dict = {'UniProtKB:Q99618': 0.4276333333333333, 'UniProtKB:Q92698': 0.464, 'UniProtKB:P56282': 0.5810000000000001, 'UniProtKB:P49454': 0.4441, 'UniProtKB:P49642': 0.5188333333333334, 'UniProtKB:Q9BZD4': 0.5042666666666668, 'UniProtKB:P38398': 0.4464, 'UniProtKB:Q9BXL8': 0.5009, 'UniProtKB:P42166': 0.4263000000000001, 'UniProtKB:Q96CS2': 0.5844333333333332, 'UniProtKB:Q9BQP7': 0.4903333333333333, 'UniProtKB:O95997': 0.4743333333333333, 'UniProtKB:Q9H4K1': 0.4709, 'UniProtKB:Q9H967': 0.5646666666666667, 'UniProtKB:Q12834': 0.4478, 'UniProtKB:Q71F23': 0.4361, 'UniProtKB:Q9UQ84': 0.4800666666666666, 'UniProtKB:Q9NSP4': 0.4347}
 		except:
 			error_message = "Lil'GIM is experiencing a problem."
 			error_code = "LilGIMerror"
@@ -113,7 +113,6 @@ class LilGim:
 
 			# Return the results
 			full_g = RU.get_graph_from_nodes([id for id, val in correlated_proteins_tupes_in_KG], node_property_label="id")
-			print(full_g.nodes(data=True))
 			id2node = dict()
 			for nx_id, node in full_g.nodes(data=True):
 				id2node[node['properties']['id']] = node

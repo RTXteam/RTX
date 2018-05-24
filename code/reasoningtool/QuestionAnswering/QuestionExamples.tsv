@@ -48,3 +48,4 @@ Q42	true	What drugs target proteins that interact with Glutathione?
 Q43	true	What proteins interact with Formate?
 Q44	true	What metabolites interact with PTGS1?
 Q45	true	What metabolites interact with similar proteins as ROH?
+Q46	true	Which proteins have expression levels that correlate with [PCNA,WRN,RMI1,RMI2] in connective tissue?
