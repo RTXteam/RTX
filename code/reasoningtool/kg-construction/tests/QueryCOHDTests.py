@@ -245,3 +245,167 @@ class QueryCOHDTestCases(TestCase):
         self.assertEqual(len(result), 73)
         self.assertEqual(result[0]['vocabulary_id'], '')
         self.assertEqual(result[1]['vocabulary_id'], 'ABMS')
+
+    def test_get_associated_concept_freq(self):
+        result = QueryCOHD.get_associated_concept_freq("192855")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 768)
+        self.assertEqual(result[0], {'associated_concept_id': 2213216,
+                                     'associated_concept_name': 'Cytopathology, selective cellular enhancement technique with interpretation (eg, liquid based slide preparation method), except cervical or vaginal',
+                                     'associated_domain_id': 'Measurement',
+                                     'concept_count': 330,
+                                     'concept_frequency': 0.0001843131625848748,
+                                     'concept_id': 192855,
+                                     'dataset_id': 1})
+
+        result = QueryCOHD.get_associated_concept_freq("192855", 2)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 2735)
+        self.assertEqual(result[0], {'associated_concept_id': 197508,
+                                     'associated_concept_name': 'Malignant tumor of urinary bladder',
+                                     'associated_domain_id': 'Condition',
+                                     'concept_count': 1477,
+                                     'concept_frequency': 0.0002753141274545969,
+                                     'concept_id': 192855,
+                                     'dataset_id': 2})
+
+        #   invalid conecpt_id value
+        result = QueryCOHD.get_associated_concept_freq("1928551")
+        self.assertEqual(result, [])
+
+        #   invalid dataset_id value
+        result = QueryCOHD.get_associated_concept_freq("192855", 3)
+        self.assertEqual(result, [])
+
+        #   invalid concept format
+        result = QueryCOHD.get_associated_concept_freq(192855)
+        self.assertEqual(result, [])
+
+        #   invalid dataset_id format
+        result = QueryCOHD.get_associated_concept_freq("192855", "1")
+        self.assertEqual(result, [])
+
+    def test_get_most_frequent_concepts(self):
+        #   default domain and dataset_id
+        result = QueryCOHD.get_most_frequent_concepts(10)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 10)
+        self.assertEqual(result[0], {'concept_count': 1189172,
+                                     'concept_frequency': 0.6641819762950932,
+                                     'concept_id': 44814653,
+                                     'concept_name': 'Unknown',
+                                     'dataset_id': 1,
+                                     'domain_id': 'Observation'})
+
+        #   default dataset_id
+        result = QueryCOHD.get_most_frequent_concepts(10, "Condition")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 10)
+        self.assertEqual(result[0], {'concept_count': 233790,
+                                     'concept_frequency': 0.1305774978203572,
+                                     'concept_id': 320128,
+                                     'concept_name': 'Essential hypertension',
+                                     'dataset_id': 1,
+                                     'domain_id': 'Condition'})
+
+        #   no default value
+        result = QueryCOHD.get_most_frequent_concepts(10, "Condition", 2)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 10)
+        self.assertEqual(result[0], {'concept_count': 459776,
+                                     'concept_frequency': 0.08570265962394365,
+                                     'concept_id': 320128,
+                                     'concept_name': 'Essential hypertension',
+                                     'dataset_id': 2,
+                                     'domain_id': 'Condition'})
+
+        #   wrong num value
+        result = QueryCOHD.get_most_frequent_concepts(-10)
+        self.assertEqual(result, [])
+
+        #   wrong num format
+        result = QueryCOHD.get_most_frequent_concepts("10")
+        self.assertEqual(result, [])
+
+        #   wrong domain value
+        result = QueryCOHD.get_most_frequent_concepts(10, "Condition1")
+        self.assertEqual(result, [])
+
+        #   wrong domain format
+        result = QueryCOHD.get_most_frequent_concepts(10, 1, 2)
+        self.assertEqual(result, [])
+
+        #   wrong dataset_id value
+        result = QueryCOHD.get_most_frequent_concepts(10, "Condition", 3)
+        self.assertEqual(result, [])
+
+        #   wrong dataset_id format
+        result = QueryCOHD.get_most_frequent_concepts(10, "Condition", "2")
+        self.assertEqual(result, [])
+
+        #   num == 0
+        result = QueryCOHD.get_most_frequent_concepts(0, "Condition", 2)
+        self.assertEqual(result, [])
+
+    def test_get_chi_square(self):
+        #   default dataset_id
+        result = QueryCOHD.get_chi_square("192855", "2008271", "Condition")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result, [{'chi_square': 306.2816108187519,
+                                  'concept_id_1': 192855,
+                                  'concept_id_2': 2008271,
+                                  'dataset_id': 1,
+                                  'p-value': 1.4101531778039801e-68}])
+
+        #   dataset_id == 2
+        result = QueryCOHD.get_chi_square("192855", "2008271", "Condition", 2)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result, [{'chi_square': 7065.7865572100745,
+                                   'concept_id_1': 192855,
+                                   'concept_id_2': 2008271,
+                                   'dataset_id': 2,
+                                   'p-value': 0.0}])
+
+        #   default domain and dataset_id
+        result = QueryCOHD.get_chi_square("192855", "2008271")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result, [{'chi_square': 306.2816108187519,
+                                   'concept_id_1': 192855,
+                                   'concept_id_2': 2008271,
+                                   'dataset_id': 1,
+                                   'p-value': 1.4101531778039801e-68}])
+
+        #   no concept_id_2, default domain and dataset_id
+        result = QueryCOHD.get_chi_square("192855")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 768)
+
+        #   no concept_id_2, default dataset_id
+        result = QueryCOHD.get_chi_square("192855", "", "Condition")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 226)
+
+        #   no concept_id_2, dataset_id == 2
+        result = QueryCOHD.get_chi_square("192855", "", "Condition", 2)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 991)
+
+        #   no concept_id_2, dataset_id == 2, default domain
+        result = QueryCOHD.get_chi_square("192855", "", "", 2)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 2735)
+
+        #   invalid concept_id_1 type
+        result = QueryCOHD.get_chi_square(192855, "", "", 1)
+        self.assertEqual(result, [])
+
+        #   invalid concept_id_2 type
+        result = QueryCOHD.get_chi_square("192855", 2008271, "", 1)
+        self.assertEqual(result, [])
+
+        #   invalid dataset_id value
+        result = QueryCOHD.get_chi_square("192855", "2008271", "condition", 3)
+        self.assertEqual(result, [])
