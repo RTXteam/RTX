@@ -73,7 +73,7 @@ class QueryCOHD:
         return res.json()
 
     @staticmethod
-    def find_concept_ids(node_label, domain, dataset_id=1):
+    def find_concept_ids(node_label, domain="", dataset_id=1):
         """search for OMOP concepts by name
 
         Args:
@@ -114,7 +114,9 @@ class QueryCOHD:
         if not isinstance(node_label, str) or not isinstance(dataset_id, int) or not isinstance(domain, str):
             return []
         handler = QueryCOHD.HANDLER_MAP['find_concept_id']
-        url_suffix = "q=" + node_label + "&dataset_id=" + str(dataset_id) + "&domain=" + domain
+        url_suffix = "q=" + node_label + "&dataset_id=" + str(dataset_id)
+        if domain == "":
+            url_suffix += "&domain=" + domain
         res_json = QueryCOHD.__access_api(handler, url_suffix)
         results_list = []
         if res_json is not None:
@@ -913,8 +915,9 @@ class QueryCOHD:
         return results_dict
 
 if __name__ == '__main__':
-    # print(QueryCOHD.find_concept_ids("ibuprofen", "Condition", 1))
-    # print(QueryCOHD.find_concept_ids("ibuprofen", "Condition"))
+    print(QueryCOHD.find_concept_ids("ibuprofen", "Condition", 1))
+    print(QueryCOHD.find_concept_ids("ibuprofen", "Condition"))
+    print(QueryCOHD.find_concept_ids("ibuprofen"))
     # print(QueryCOHD.get_paired_concept_freq('192855', '2008271', 1))
     # print(QueryCOHD.get_individual_concept_freq('192855'))
     # print(QueryCOHD.get_associated_concept_domain_freq('192855', 'Procedure', 1))
@@ -960,5 +963,5 @@ if __name__ == '__main__':
     # print(QueryCOHD.get_domain_counts(2))
     # print(QueryCOHD.get_domain_pair_counts())
     # print(QueryCOHD.get_domain_pair_counts(2))
-    print(QueryCOHD.get_patient_count())
-    print(QueryCOHD.get_patient_count(2))
+    # print(QueryCOHD.get_patient_count())
+    # print(QueryCOHD.get_patient_count(2))
