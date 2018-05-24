@@ -102,13 +102,25 @@ def find_node_name(string):
 	:param string: a string you're trying to match to a node name in the KG
 	:return: list of strings (of rtx_name's)
 	"""
-	if KGNodeIndex.is_curie_present(string):
-		return [string]
+	# if it's a string, convert "[COX1,PTGS1]" -> ['Uniprot:123', 'Uniprot:234']
+	if "[" == string[0] and "]" == string[-1]:
+		terms = [x.replace("]", "").replace("[", "").strip() for x in string.split(",")]
+		to_return = []
+		for term in terms:
+			if KGNodeIndex.is_curie_present(term):
+				to_return.append(term)
+			if term.lower() != "is" and term.lower() != "as":
+				return KGNodeIndex.get_curies(term)
+			else:
+				return to_return
+	else:  # Otherwise, treat it as usual
+		if KGNodeIndex.is_curie_present(string):
+			return [string]
 
-	if string.lower() != "is" and string.lower() != "as":
-		return KGNodeIndex.get_curies(string)
-	else:
-		return []
+		if string.lower() != "is" and string.lower() != "as":
+			return KGNodeIndex.get_curies(string)
+		else:
+			return []
 
 def find_node_name_depreciated(string):
 	"""
@@ -332,6 +344,19 @@ class Question:
 					question_tokenized_no_apos_split.append(block)
 			question_tokenized = question_tokenized_no_apos_split
 
+			# Put back together the list (if there is one)
+			if "[" in input_question and "]" in input_question:
+				start = question_tokenized.index("[")
+				end = question_tokenized.index("]") + 1
+				the_list = "".join(question_tokenized[start:end])
+				question_tokenized_with_list = []
+				for item in question_tokenized[0:start]:
+					question_tokenized_with_list.append(item)
+				question_tokenized_with_list.append(the_list)
+				for item in question_tokenized[end:]:
+					question_tokenized_with_list.append(item)
+				question_tokenized = question_tokenized_with_list
+
 			for block_size in range(1, len(question_tokenized)):
 				#if block_size > 10:  # TODO: so far, none of our nodes has more than 9 spaces, so don't bother with these. cat NodeNamesDescriptions.tsv | awk -F" " '{print NF-1}' | sort -r
 				#	break
@@ -361,20 +386,36 @@ class Question:
 			candidate_node_names_labels = list(candidate_node_names_labels)
 
 			# For each of the parameter names, make sure it only shows up once, and if so, populate it
-			for parameter_name in self.parameter_names:
-				parameter_name_positions = []
-				pos = 0
-				for node, node_label in candidate_node_names_labels:
-					if node_label == parameter_name and node != "DOID:4":
-						parameter_name_positions.append(pos)
-					pos += 1
-				if len(parameter_name_positions) > 1:
-					raise CustomExceptions.MultipleTerms(parameter_name, [candidate_node_names_labels[pos][0] for pos in parameter_name_positions])
-				elif len(parameter_name_positions) == 0:
-					pass
-				else:  # There's exactly one term
-					pos = parameter_name_positions.pop()
-					parameters[parameter_name] = candidate_node_names_labels[pos][0]
+			if self.known_query_type_id == 'Q46':
+				# look for anatomical_entity
+				anat_indices = [i for i, x in enumerate(candidate_node_names_labels) if x[1] == "anatomical_entity"]
+				if len(anat_indices) > 0:
+					raise CustomExceptions.MultipleTerms("anatomical_entity", [candidate_node_names_labels[pos][0] for pos in anat_indices])
+				elif len(anat_indices) == 0:
+					pass  # will catch this later
+				else:
+					parameters["anatomical_entity"] = candidate_node_names_labels[anat_indices[0]][0]
+				protein_indicies = [i for i, x in enumerate(candidate_node_names_labels) if x[1] == "protein"]
+				# TODO: should probably check for other node types in here, problem is that some proteins are also listed as pathways, so just hope people craft legit queries
+				proteins = []
+				for ind in protein_indicies:
+					proteins.append(candidate_node_names_labels[ind][0])
+				parameters["protein_list"] = str(proteins)
+			else:
+				for parameter_name in self.parameter_names:
+					parameter_name_positions = []
+					pos = 0
+					for node, node_label in candidate_node_names_labels:
+						if node_label == parameter_name and node != "DOID:4":  # DOID:4 was "disease" which wrecks havoc with things
+							parameter_name_positions.append(pos)
+						pos += 1
+					if len(parameter_name_positions) > 1:
+						raise CustomExceptions.MultipleTerms(parameter_name, [candidate_node_names_labels[pos][0] for pos in parameter_name_positions])
+					elif len(parameter_name_positions) == 0:
+						pass  # nothing to do, will catch this error later
+					else:  # There's exactly one term
+						pos = parameter_name_positions.pop()
+						parameters[parameter_name] = candidate_node_names_labels[pos][0]
 
 			# Throw in the extra parameters
 			for key, value in self.other_parameters.items():

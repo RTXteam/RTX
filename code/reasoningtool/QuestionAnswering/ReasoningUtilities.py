@@ -181,7 +181,7 @@ def get_name_to_description_dict(session=session):
 	return name_to_descr
 
 
-def get_node_property(name, node_property, node_label="", session=session, debug=False):
+def get_node_property(name, node_property, node_label="", name_type="rtx_name", session=session, debug=False):
 	"""
 	Get a property of a node. This replaces node_to_description by making node_property="description"
 	:param name: name of the node
@@ -193,9 +193,9 @@ def get_node_property(name, node_property, node_label="", session=session, debug
 	"""
 	if node_property != "label":
 		if node_label == "":
-			query = "match (n{rtx_name:'%s'}) return n.%s" % (name, node_property)
+			query = "match (n{%s:'%s'}) return n.%s" % (name_type, name, node_property)
 		else:
-			query = "match (n:%s{rtx_name:'%s'}) return n.%s" % (node_label, name, node_property)
+			query = "match (n:%s{%s:'%s'}) return n.%s" % (name_type, node_label, name, node_property)
 		if debug:
 			return query
 		res = session.run(query)
@@ -206,9 +206,9 @@ def get_node_property(name, node_property, node_label="", session=session, debug
 			raise Exception("No result returned, property doesn't exist? node: %s" % name)
 	else:
 		if node_label == "":
-			query = "match (n{rtx_name:'%s'}) return labels(n)" % (name)
+			query = "match (n{%s:'%s'}) return labels(n)" % (name_type, name)
 		else:
-			query = "match (n:%s{rtx_name:'%s'}) return labels(n)" % (node_label, name)
+			query = "match (n:%s{%s:'%s'}) return labels(n)" % (name_type, node_label, name)
 		if debug:
 			return query
 		res = session.run(query)

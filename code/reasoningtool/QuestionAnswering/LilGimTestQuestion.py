@@ -43,7 +43,14 @@ class LilGim:
 		tissue_description = RU.get_node_property(tissue_id, 'name', node_label="anatomical_entity")
 
 		# Get the correlated proteins
-		correlated_proteins_dict = q.query_neighbor_genes_for_gene_set_in_a_given_anatomy(tissue_id, tuple(protein_list))
+		try:
+			correlated_proteins_dict = q.query_neighbor_genes_for_gene_set_in_a_given_anatomy(tissue_id, tuple(protein_list))
+		except:
+			error_message = "Lil'GIM is experiencing a problem."
+			error_code = "LilGIMerror"
+			response.add_error_message(error_code, error_message)
+			response.print()
+			return 1
 
 		# as a list of tuples
 		correlated_proteins_tupes = []
@@ -51,24 +58,24 @@ class LilGim:
 			correlated_proteins_tupes.append((k, v))
 
 		# sort by freq
-		correlated_proteins_tupes_sorted = sorted(correlated_proteins_tupes, key=lambda x: x[1], reversed=rev)
+		correlated_proteins_tupes_sorted = sorted(correlated_proteins_tupes, key=lambda x: x[1], reverse=rev)
 		correlated_proteins_tupes_sorted = correlated_proteins_tupes_sorted[0:num_show]
 
 
 		# return the results
 		if not use_json:
-			protein_descriptions = RU.get_node_property(protein_list[0], "name", node_label="protein")
+			protein_descriptions = RU.get_node_property(protein_list[0], "name", node_label="protein", name_type="id")
 			for id in protein_list[1:-1]:
 				protein_descriptions += ", "
-				protein_descriptions += RU.get_node_property(id, "name", node_label="protein")
-			protein_descriptions += ", and %s" % RU.get_node_property(protein_list[-1], "name", node_label="protein")
+				protein_descriptions += RU.get_node_property(id, "name", node_label="protein", name_type="id")
+			protein_descriptions += ", and %s" % RU.get_node_property(protein_list[-1], "name", node_label="protein", name_type="id")
 			if rev:
 				to_print = "In the tissue: %s, the proteins that correlate most with %s" % (tissue_description, protein_descriptions)
 			else:
 				to_print = "In the tissue: %s, the proteins that correlate least with %s" % (tissue_description, protein_descriptions)
 			to_print += "according to Lil'GIM, are:\n"
 			for id, val in correlated_proteins_tupes_sorted:
-				to_print += "protein: %s\t correlation %d" % (RU.get_node_property(id, "name", node_label="protein"), val)
+				to_print += "protein: %s\t correlation %d" % (RU.get_node_property(id, "name", node_label="protein", name_type="id"), val)
 			print(to_print)
 		else:
 			#  otherwise, you want a JSON output
@@ -93,7 +100,7 @@ def main():
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 	parser.add_argument('-t', '--tissue', type=str, help="Tissue id/name", default="UBERON:0000178")
 	parser.add_argument('-r', '--reverse', action='store_true', help="Include flag if you want the least correlations.")
-	parser.add_argument('-p', '--proteins', type=str, help="List of proteins.", default="[UniProtKB:P12004]")
+	parser.add_argument('-p', '--proteins', type=str, help="List of proteins.", default="['UniProtKB:P12004']")
 	parser.add_argument('-j', '--json', action='store_true', help='Flag specifying that results should be printed in JSON format (to stdout)', default=False)
 	parser.add_argument('--describe', action='store_true', help='Print a description of the question to stdout and quit', default=False)
 	parser.add_argument('--num_show', type=int, help='Maximum number of results to return', default=20)
@@ -108,6 +115,7 @@ def main():
 	num_show = args.num_show
 
 	# Convert the string to an actual list
+	#proteins = proteins.replace(",", "','").replace("[", "['").replace("]", "']")
 	protein_list = ast.literal_eval(proteins)
 
 	# Initialize the question class
