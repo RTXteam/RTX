@@ -64,21 +64,35 @@ class LilGim:
 
 		# return the results
 		if not use_json:
-			protein_descriptions = RU.get_node_property(protein_list[0], "name", node_label="protein", name_type="id")
+			try:
+				protein_descriptions = RU.get_node_property(protein_list[0], "name", node_label="protein", name_type="id")
+			except:
+				protein_descriptions = protein_list[0]
 			for id in protein_list[1:-1]:
 				protein_descriptions += ", "
-				protein_descriptions += RU.get_node_property(id, "name", node_label="protein", name_type="id")
-			protein_descriptions += ", and %s" % RU.get_node_property(protein_list[-1], "name", node_label="protein", name_type="id")
+				try:
+					protein_descriptions += RU.get_node_property(id, "name", node_label="protein", name_type="id")
+				except:
+					protein_descriptions += id
+			if len(protein_list) > 1:
+				try:
+					protein_descriptions += ", and %s" % RU.get_node_property(protein_list[-1], "name", node_label="protein", name_type="id")
+				except:
+					protein_descriptions += ", and %s" % protein_list[-1]
 			if rev:
 				to_print = "In the tissue: %s, the proteins that correlate most with %s" % (tissue_description, protein_descriptions)
 			else:
 				to_print = "In the tissue: %s, the proteins that correlate least with %s" % (tissue_description, protein_descriptions)
-			to_print += "according to Lil'GIM, are:\n"
+			to_print += " according to Lil'GIM, are:\n"
 			for id, val in correlated_proteins_tupes_sorted:
-				to_print += "protein: %s\t correlation %d" % (RU.get_node_property(id, "name", node_label="protein", name_type="id"), val)
+				try:
+					to_print += "protein: %s\t correlation %f\n" % (RU.get_node_property(id, "name", node_label="protein", name_type="id"), val)
+				except:
+					to_print += "protein: %s\t correlation %f\n" % (id, val)
 			print(to_print)
 		else:
 			#  otherwise, you want a JSON output
+			# TODO: blocking on issue #201
 			full_g = RU.get_graph_from_nodes([id for id, val in correlated_proteins_tupes], node_property_label="id")
 			id2node = dict()
 			for node in full_g.nodes(data=True):
@@ -98,7 +112,7 @@ class LilGim:
 def main():
 	parser = argparse.ArgumentParser(description="Answers questions of the form: 'What proteins correlate with [$protein1, $protein2,...,$proteinK?] in blood?'",
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-	parser.add_argument('-t', '--tissue', type=str, help="Tissue id/name", default="UBERON:0000178")
+	parser.add_argument('-t', '--tissue', type=str, help="Tissue id/name", default="UBERON:0002384")
 	parser.add_argument('-r', '--reverse', action='store_true', help="Include flag if you want the least correlations.")
 	parser.add_argument('-p', '--proteins', type=str, help="List of proteins.", default="['UniProtKB:P12004']")
 	parser.add_argument('-j', '--json', action='store_true', help='Flag specifying that results should be printed in JSON format (to stdout)', default=False)
