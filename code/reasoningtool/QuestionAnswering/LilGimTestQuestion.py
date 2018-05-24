@@ -22,7 +22,7 @@ class LilGim:
 		None
 
 	@staticmethod
-	def answer(tissue_id, protein_list, use_json=False, num_show=20, rev=True):
+	def answer(tissue_id, input_protein_list, use_json=False, num_show=20, rev=True):
 
 		# Initialize the response class
 		response = FormatOutput.FormatResponse(6)
@@ -31,10 +31,10 @@ class LilGim:
 		if not RU.node_exists_with_property(tissue_id, "id"):
 			tissue_id = RU.get_node_property(tissue_id, "id", node_label="anatomical_entity")
 
-		for i in range(len(protein_list)):
-			id = protein_list[i]
+		for i in range(len(input_protein_list)):
+			id = input_protein_list[i]
 			if not RU.node_exists_with_property(id, "id"):
-				protein_list[i] = RU.get_node_property(id, "id", node_label="protein")
+				input_protein_list[i] = RU.get_node_property(id, "id", node_label="protein")
 
 		# Initialize the QueryLilGim class
 		q = QueryLilGIM.QueryLilGIM()
@@ -44,7 +44,8 @@ class LilGim:
 
 		# Get the correlated proteins
 		try:
-			correlated_proteins_dict = q.query_neighbor_genes_for_gene_set_in_a_given_anatomy(tissue_id, tuple(protein_list))
+			#correlated_proteins_dict = q.query_neighbor_genes_for_gene_set_in_a_given_anatomy(tissue_id, tuple(input_protein_list))
+			correlated_proteins_dict = {'UniProtKB:Q99618': 0.4276333333333333, 'UniProtKB:Q92698': 0.464, 'UniProtKB:P56282': 0.5810000000000001, 'UniProtKB:P49454': 0.4441, 'UniProtKB:P49642': 0.5188333333333334, 'UniProtKB:Q9BZD4': 0.5042666666666668, 'UniProtKB:P38398': 0.4464, 'UniProtKB:Q9BXL8': 0.5009, 'UniProtKB:P42166': 0.4263000000000001, 'UniProtKB:Q96CS2': 0.5844333333333332, 'UniProtKB:Q9BQP7': 0.4903333333333333, 'UniProtKB:O95997': 0.4743333333333333, 'UniProtKB:Q9H4K1': 0.4709, 'UniProtKB:Q9H967': 0.5646666666666667, 'UniProtKB:Q12834': 0.4478, 'UniProtKB:Q71F23': 0.4361, 'UniProtKB:Q9UQ84': 0.4800666666666666, 'UniProtKB:Q9NSP4': 0.4347}
 		except:
 			error_message = "Lil'GIM is experiencing a problem."
 			error_code = "LilGIMerror"
@@ -65,20 +66,20 @@ class LilGim:
 		# return the results
 		if not use_json:
 			try:
-				protein_descriptions = RU.get_node_property(protein_list[0], "name", node_label="protein", name_type="id")
+				protein_descriptions = RU.get_node_property(input_protein_list[0], "name", node_label="protein", name_type="id")
 			except:
-				protein_descriptions = protein_list[0]
-			for id in protein_list[1:-1]:
+				protein_descriptions = input_protein_list[0]
+			for id in input_protein_list[1:-1]:
 				protein_descriptions += ", "
 				try:
 					protein_descriptions += RU.get_node_property(id, "name", node_label="protein", name_type="id")
 				except:
 					protein_descriptions += id
-			if len(protein_list) > 1:
+			if len(input_protein_list) > 1:
 				try:
-					protein_descriptions += ", and %s" % RU.get_node_property(protein_list[-1], "name", node_label="protein", name_type="id")
+					protein_descriptions += ", and %s" % RU.get_node_property(input_protein_list[-1], "name", node_label="protein", name_type="id")
 				except:
-					protein_descriptions += ", and %s" % protein_list[-1]
+					protein_descriptions += ", and %s" % input_protein_list[-1]
 			if rev:
 				to_print = "In the tissue: %s, the proteins that correlate most with %s" % (tissue_description, protein_descriptions)
 			else:
@@ -94,7 +95,7 @@ class LilGim:
 			#  otherwise, you want a JSON output
 			protein_descriptions = []
 			is_in_KG_list = []
-			for protein in protein_list:
+			for protein, corr in correlated_proteins_tupes:
 				try:
 					description = RU.get_node_property(protein, "name", node_label="protein", name_type="id")
 					protein_descriptions.append(description)
@@ -111,13 +112,14 @@ class LilGim:
 					correlated_proteins_tupes_in_KG.append(correlated_proteins_tupes[i])
 
 			# Return the results
-			full_g = RU.get_graph_from_nodes([id for id, val in correlated_proteins_tupes], node_property_label="id")
+			full_g = RU.get_graph_from_nodes([id for id, val in correlated_proteins_tupes_in_KG], node_property_label="id")
+			print(full_g.nodes(data=True))
 			id2node = dict()
-			for node in full_g.nodes(data=True):
+			for nx_id, node in full_g.nodes(data=True):
 				id2node[node['properties']['id']] = node
-			for id, corr in correlated_proteins_tupes_sorted:
-				to_print = "In the tissue: %s, the protein %s has correlation %f with the given list of proteins." %(tissue_description, RU.get_node_property(id, "name", node_label="protein"), corr)
-				response.add_subgraph([id2node[id]], [], to_print, corr)
+			for id, corr in correlated_proteins_tupes_in_KG:
+				to_print = "In the tissue: %s, the protein %s has correlation %f with the given list of proteins." %(tissue_description, RU.get_node_property(id, "name", node_label="protein", name_type="id"), corr)
+				response.add_subgraph([(id, id2node[id])], [], to_print, corr)
 			response.print()
 
 	@staticmethod
@@ -160,8 +162,6 @@ def main():
 
 	except:
 		protein_list = eval(proteins_preserved)
-
-	print(protein_list)
 
 	# Initialize the question class
 	Q = LilGim()
