@@ -296,10 +296,9 @@ def main():
 
   #### To (re)build
   if args.build:
-    if re.search("sqlite",kgNodeIndex.databaseName):
-      kgNodeIndex.createDatabase()
-      kgNodeIndex.createNodeTable()
-      #kgNodeIndex.createIndex()
+    kgNodeIndex.createDatabase()
+    kgNodeIndex.createNodeTable()
+    #kgNodeIndex.createIndex()
 
   #### Exit here if tests are not requested
   if not args.test: sys.exit(0)
