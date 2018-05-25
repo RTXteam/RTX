@@ -41,34 +41,6 @@ if not os.path.exists(KGNodeIndex.databaseName):
 
 re_no_punc = re.compile('[%s]|\s' % re.escape(string.punctuation))
 
-#################################################
-# Required data about the knowledge graph
-################################################
-# TODO: get rid of this since NodeNamesDescriptions.tsv is now in an SQLite database
-# get all the node names and descriptions
-fid = open(os.path.dirname(os.path.abspath(__file__))+'/../../../data/KGmetadata/NodeNamesDescriptions.tsv', 'r', encoding='utf-8', errors='replace')
-names2descrip = dict()
-descrip2names = dict()  # TODO: this assumes that descriptions are unique, and this may change soon
-lower_name2upper_name = dict()
-lower_desc2upper_name = dict()
-no_punc_name2upper_name = dict()
-no_punc_desc2upper_name = dict()
-for line in fid.readlines():
-	line = line.strip()
-	line_split = line.split('\t')
-	name = line_split[0]
-	try:
-		descr = line_split[1]
-	except IndexError:
-		descr = "N/A"
-	names2descrip[name] = descr
-	descrip2names[descr] = name
-	lower_name2upper_name[name.lower()] = name
-	lower_desc2upper_name[descr.lower()] = name
-	no_punc_name2upper_name[re_no_punc.sub('', name.lower())] = name
-	no_punc_desc2upper_name[re_no_punc.sub('', descr.lower())] = name
-fid.close()
-
 # TODO: replace this stuff with the RU.get_node_property (along with RU.node_exists_with_property)
 # get the edge types
 try:
@@ -123,55 +95,6 @@ def find_node_name(string):
 			return KGNodeIndex.get_curies(string)
 		else:
 			return []
-
-def find_node_name_depreciated(string):
-	"""
-	Find an acutal Neo4j KG node name in the string
-	:param string: input string (chunk of text)
-	:param names2descrip: dictionary containing the names and descriptions of the nodes (see dumpdata.py)
-	:param descrip2names: reversed names2descrip dictionary
-	:return: one of the node names (key (string) of names2descrip)
-	"""
-	# exact match
-	query = string
-	res_list = []
-	if query in names2descrip:
-		res = query
-		res_list.append(res)
-	elif query in descrip2names:
-		res = descrip2names[query]
-		res_list.append(res)
-	elif False:
-		pass
-	# TODO: put Arnabs ULMS metathesaurus lookup here
-	# Case insensitive match
-	query_lower = string.lower()
-	if query_lower in lower_name2upper_name:
-		res = lower_name2upper_name[query_lower]
-		res_list.append(res)
-	if query_lower in lower_desc2upper_name:
-		res = lower_desc2upper_name[query_lower]
-		res_list.append(res)
-	#for name in names2descrip:
-	#	if name.lower() == query_lower:
-	#		res = name
-	#		res_list.append(res)
-	#for descr in descrip2names:
-	#	if descr.lower() == query_lower:
-	#		res = descrip2names[descr]
-	#		res_list.append(res)
-
-	# last resort, delete punctuation and spaces
-	if not res_list:
-		query_no_punc = re_no_punc.sub('', query_lower)
-		if query_no_punc in no_punc_name2upper_name:
-			res = no_punc_name2upper_name[query_no_punc]
-			res_list.append(res)
-		if query_no_punc in no_punc_desc2upper_name:
-			res = no_punc_desc2upper_name[query_no_punc]
-			res_list.append(res)
-
-	return res_list
 
 def find_target_label(string):
 	"""

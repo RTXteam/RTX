@@ -9,7 +9,7 @@ QuestionExamples = QuestionExamples.QuestionExamples()
 p = ParseQuestion.ParseQuestion()
 
 
-def run_question_examples(question_number, python_loc, res_loc):
+def run_question_examples(question_number, python_loc, res_loc, after=0):
 	"""
 	Run questions from QuestionExamples.tsv
 	:param question_number: question number you want to test
@@ -18,7 +18,7 @@ def run_question_examples(question_number, python_loc, res_loc):
 	QuestionExamples.read_reference_file()
 	for id_text_dict in QuestionExamples.questions:
 		q_id = id_text_dict['query_type_id']
-		if q_id == question_number or question_number == "a":
+		if q_id == question_number or question_number == "a" and int(q_id.replace("Q", "")) > after:
 
 			# template match it
 			nat_lang_question = id_text_dict['question_text']
@@ -56,9 +56,7 @@ def run_question_examples(question_number, python_loc, res_loc):
 				raise Exception
 
 
-
-
-def run_test_suite(question_number, python_loc, res_loc):
+def run_test_suite(question_number, python_loc, res_loc, after=0):
 	p = ParseQuestion.ParseQuestion()
 
 	# get a random selection of nodes
@@ -69,7 +67,8 @@ def run_test_suite(question_number, python_loc, res_loc):
 
 	# Go through each of the questions and populate terms
 	for question in ParseQuestion.question_templates:
-		if question_number == "a" or question_number == question.known_query_type_id:
+		q_id = question.known_query_type_id
+		if question_number == "a" or question_number == q_id and int(q_id.replace("Q", "")) > after:
 			# ignore "what is"
 			if question.known_query_type_id != 'Q0':
 				question_template = question.restated_question_template
@@ -121,6 +120,7 @@ def main():
 	parser.add_argument('-r', '--res_loc', type=str, help="Where to put the result",
 						default='/dev/null')
 	parser.add_argument('-e', '--example', action='store_true', help="Include this flag if pulling questions from QuestionExamples.tsv")
+	parser.add_argument('-a', '--after', type=int, help="Only do question after the given int value", default=0)
 
 	if '-h' in sys.argv or '--help' in sys.argv:
 		RU.session.close()
@@ -132,11 +132,12 @@ def main():
 	python_loc = args.python
 	res_loc = args.res_loc
 	is_example = args.example
+	after = int(args.after)
 
 	if not is_example:
-		run_test_suite(question_id, python_loc, res_loc)
+		run_test_suite(question_id, python_loc, res_loc, after=after)
 	else:
-		run_question_examples(question_id, python_loc, res_loc)
+		run_question_examples(question_id, python_loc, res_loc, after=after)
 
 if __name__ == "__main__":
 	main()
