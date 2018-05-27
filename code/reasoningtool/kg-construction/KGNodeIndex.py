@@ -18,7 +18,7 @@ Base = declarative_base()
 #### Testing and debugging flags
 DEBUG = True
 TESTSUFFIX = ""
-TESTSUFFIX = "_test2"
+#TESTSUFFIX = "_test2"
 
 
 #### Define the database tables as classes
@@ -318,6 +318,9 @@ def main():
     "Alzheimer Disease","Alzheimers disease","Alzheimer's Disease","kidney","Kidney","P06865","HEXA",
     "rickets","fanconi anemia","retina","is" ]
 
+  #### The first one takes a bit longer, so do one before starting the timer
+  test = kgNodeIndex.get_curies("ibuprofen")
+
   t0 = timeit.default_timer()
   for test in tests:
     curies = kgNodeIndex.get_curies(test)
@@ -327,7 +330,7 @@ def main():
 
 
   print("==== Testing presence of CURIEs ============================")
-  tests = [ "R-HSA-2160456", "DOID:9281", "OMIM:261600", "DOID:1926xx", "HP:0002511", "UBERON:0002113", "P06865", "DOID:13636", "OMIM:104300", "DOID:10652xx" ]
+  tests = [ "R-HSA-2160456", "DOID:9281", "OMIM:261600", "DOID:1926xx", "HP:0002511", "UBERON:0002113", "P06865", "KEGG:C10399", "GO:0034187", "DOID:10652xx" ]
 
   t0 = timeit.default_timer()
   for test in tests:
