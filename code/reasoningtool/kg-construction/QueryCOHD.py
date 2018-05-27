@@ -21,8 +21,8 @@ import requests_cache
 import sys
 import urllib.parse
 
-# configure requests package to use the "orangeboard.sqlite" cache
-requests_cache.install_cache('orangeboard')
+# configure requests package to use the "QueryCOHD.sqlite" cache
+requests_cache.install_cache('QueryCOHD')
 
 
 class QueryCOHD:
@@ -38,7 +38,16 @@ class QueryCOHD:
         'get_xref_to_OMOP':                     'omop/xrefToOMOP',
         'get_map_from_standard_concept_id':     'omop/mapFromStandardConceptID',
         'get_map_to_standard_concept_id':       'omop/mapToStandardConceptID',
-        'get_vocabularies':                     'omop/vocabularies'
+        'get_vocabularies':                     'omop/vocabularies',
+        'get_associated_concept_freq':          'frequencies/associatedConceptFreq',
+        'get_most_frequent_concepts':           'frequencies/mostFrequentConcepts',
+        'get_chi_square':                       'association/chiSquare',
+        'get_obs_exp_ratio':                    'association/obsExpRatio',
+        'get_relative_frequency':               'association/relativeFrequency',
+        'get_datasets':                         'metadata/datasets',
+        'get_domain_counts':                    'metadata/domainCounts',
+        'get_domain_pair_counts':               'metadata/domainPairCounts',
+        'get_patient_count':                    'metadata/patientCount'
     }
 
     @staticmethod
@@ -64,7 +73,7 @@ class QueryCOHD:
         return res.json()
 
     @staticmethod
-    def find_concept_ids(node_label, domain, dataset_id=1):
+    def find_concept_ids(node_label, domain="", dataset_id=1):
         """search for OMOP concepts by name
 
         Args:
@@ -105,7 +114,9 @@ class QueryCOHD:
         if not isinstance(node_label, str) or not isinstance(dataset_id, int) or not isinstance(domain, str):
             return []
         handler = QueryCOHD.HANDLER_MAP['find_concept_id']
-        url_suffix = "q=" + node_label + "&dataset_id=" + str(dataset_id) + "&domain=" + domain
+        url_suffix = "q=" + node_label + "&dataset_id=" + str(dataset_id)
+        if domain == "":
+            url_suffix += "&domain=" + domain
         res_json = QueryCOHD.__access_api(handler, url_suffix)
         results_list = []
         if res_json is not None:
@@ -224,7 +235,7 @@ class QueryCOHD:
         if not isinstance(concept_id, str) or not isinstance(domain, str) or not isinstance(dataset_id, int):
             return []
         handler = QueryCOHD.HANDLER_MAP['get_associated_concept_domain_freq']
-        url_suffix = 'concept_id=' + concept_id + '&domain=' + domain
+        url_suffix = 'concept_id=' + concept_id + '&domain=' + domain + '&dataset_id=' + str(dataset_id)
         res_json = QueryCOHD.__access_api(handler, url_suffix)
         results_array = []
         if res_json is not None:
@@ -540,9 +551,373 @@ class QueryCOHD:
             results_array = res_json.get('results', [])
         return results_array
 
+    @staticmethod
+    def get_associated_concept_freq(concept_id, dataset_id=1):
+        """Retrieves observed clinical frequencies of all pairs of concepts given a concept id. Results are returned in
+        descending order of paired concept count. Note that the largest paired concept counts are often dominated by
+        associated concepts with high prevalence.
+
+        Args:
+            concept_id (str): An OMOP concept id, e.g., "192855"
+
+            dataset_id (int): The dataset_id of the dataset to query. Default dataset is the 5-year dataset (1).
+
+        Returns:
+            array: an array which contains frequency dictionaries, or an empty array if no data obtained
+
+            example:
+            [
+                {
+                  "associated_concept_id": 2213216,
+                  "associated_concept_name": "Cytopathology, selective cellular enhancement technique with interpretation (eg, liquid based slide preparation method), except cervical or vaginal",
+                  "associated_domain_id": "Measurement",
+                  "concept_count": 330,
+                  "concept_frequency": 0.0001843131625848748,
+                  "concept_id": 192855,
+                  "dataset_id": 1
+                },
+                {
+                  "associated_concept_id": 4214956,
+                  "associated_concept_name": "History of clinical finding in subject",
+                  "associated_domain_id": "Observation",
+                  "concept_count": 329,
+                  "concept_frequency": 0.00018375463784976913,
+                  "concept_id": 192855,
+                  "dataset_id": 1
+                },
+                ...
+            ]
+        """
+        if not isinstance(concept_id, str) or not isinstance(dataset_id, int):
+            return []
+        handler = QueryCOHD.HANDLER_MAP['get_associated_concept_freq']
+        url_suffix = 'q=' + concept_id + '&dataset_id=' + str(dataset_id)
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
+
+    @staticmethod
+    def get_most_frequent_concepts(num, domain="", dataset_id=1):
+        """Retrieves the most frequent concepts.
+
+        Args:
+            num (int): The number of concepts to retreieve, e.g., "10"
+
+            domain (str): (Optional) The domain_id to restrict to, e.g., "Condition", "Drug", "Procedure"
+
+            dataset_id (int): The dataset_id of the dataset to query. Default dataset is the 5-year dataset.
+
+        Returns:
+            array: an array which contains frequency dictionaries
+
+            example:
+            [
+                {
+                  "concept_count": 233790,
+                  "concept_frequency": 0.1305774978203572,
+                  "concept_id": 320128,
+                  "concept_name": "Essential hypertension",
+                  "dataset_id": 1,
+                  "domain_id": "Condition"
+                },
+                {
+                  "concept_count": 152005,
+                  "concept_frequency": 0.08489855235973907,
+                  "concept_id": 77670,
+                  "concept_name": "Chest pain",
+                  "dataset_id": 1,
+                  "domain_id": "Condition"
+                },
+            ]
+        """
+        if not isinstance(num, int) or not isinstance(domain, str) or not isinstance(dataset_id, int) or num < 0:
+            return []
+        handler = QueryCOHD.HANDLER_MAP['get_most_frequent_concepts']
+        url_suffix = 'q=' + str(num) + '&dataset_id=' + str(dataset_id)
+        if domain != "":
+            url_suffix += "&domain=" + domain
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
+
+    @staticmethod
+    def get_chi_square(concept_id_1, concept_id_2='', domain='', dataset_id=1):
+        """Returns the chi-square statistic and p-value between pairs of concepts. Results are returned in descending
+        order of the chi-square statistic. Note that due to large sample sizes, the chi-square can become very large.
+
+        The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and
+        assuming independence between concepts. P-value is calculated with 1 DOF.
+
+        This method has overloaded behavior based on the specified parameters:
+
+            1. concept_id_1 and concept_id_2: Result for the pair (concept_id_1, concept_id_2)
+            2. concept_id_1: Results for all pairs of concepts that include concept_id_1
+            3. concept_id_1 and domain: Results for all pairs of concepts including concept_id_1 and where concept_id_2
+                belongs to the specified domain
+
+        Args:
+            concept_id_1 (str): An OMOP concept id, e.g., "192855"
+
+            concept_id_2 (str): An OMOP concept id, e.g., "2008271". If this parameter is specified, then the chi-square
+                between concept_id_1 and concept_id_2 is returned. If this parameter is not specified, then a list of
+                chi-squared results between concept_id_1 and other concepts is returned.
+
+            domain (str): An OMOP domain id, e.g., "Condition", "Drug", "Procedure", etc., to restrict the associated
+                concept (concept_id_2) to. If this parameter is not specified, then the domain is unrestricted.
+
+            dataset_id (int): The dataset_id of the dataset to query. Default dataset is the 5-year dataset (1).
+
+        Returns:
+            array: an array of chi-square dictionaries.
+
+            example:
+            [
+                {
+                  "chi_square": 306.2816108187519,
+                  "concept_id_1": 192855,
+                  "concept_id_2": 2008271,
+                  "dataset_id": 1,
+                  "p-value": 1.4101531778039801e-68
+                }
+            ]
+
+        """
+        if not isinstance(concept_id_1, str) or not isinstance(concept_id_2, str) or not isinstance(domain, str) or not isinstance(dataset_id, int):
+            return []
+        handler = QueryCOHD.HANDLER_MAP['get_chi_square']
+        url_suffix = 'concept_id_1=' + concept_id_1 + '&dataset_id=' + str(dataset_id)
+        if domain != "":
+            url_suffix += "&domain=" + domain
+        if concept_id_2 != "":
+            url_suffix += "&concept_id_2=" + concept_id_2
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
+
+    @staticmethod
+    def get_obs_exp_ratio(concept_id_1, concept_id_2="", domain="", dataset_id=1):
+        """Returns the natural logarithm of the ratio between the observed count and expected count. Expected count is
+         calculated from the single concept frequencies and assuming independence between the concepts. Results are
+         returned in descending order of ln_ratio.
+
+        expected_count = Count_1_and_2 * num_patients / (Count_1 * Count_2)
+
+        ln_ratio = ln( expected_count )
+
+        This method has overloaded behavior based on the specified parameters:
+
+            1. concept_id_1 and concept_id_2: Results for the pair (concept_id_1, concept_id_2)
+            2. concept_id_1: Results for all pairs of concepts that include concept_id_1
+            3. concept_id_1 and domain: Results for all pairs of concepts including concept_id_1 and where concept_id_2
+                belongs to the specified domain
+
+        Args:
+            concept_id_1 (str): An OMOP concept id, e.g., "192855"
+
+            concept_id_2 (str): An OMOP concept id, e.g., "2008271". If concept_id_2 is unspecified, then this method
+                will return all pairs of concepts with concept_id_1.
+
+            domain (str): An OMOP domain id, e.g., "Condition", "Drug", "Procedure", etc., to restrict the associated
+                concept (concept_id_2) to. If this parameter is not specified, then the domain is unrestricted.
+
+            dataset_id (int): The dataset_id of the dataset to query. Default dataset is the 5-year dataset (1).
+
+        Returns:
+            array: an array of dictionaries which contains  the natural logarithm of the ratio between the observed
+                count and expected count
+
+            example:
+            [
+                {
+                  "concept_id_1": 192855,
+                  "concept_id_2": 2008271,
+                  "dataset_id": 1,
+                  "expected_count": 0.3070724311632227,
+                  "ln_ratio": 3.483256720088832,
+                  "observed_count": 10
+                }
+            ]
+        """
+        if not isinstance(concept_id_1, str) or not isinstance(concept_id_2, str) or not isinstance(domain, str) or not isinstance(dataset_id, int):
+            return []
+        handler = QueryCOHD.HANDLER_MAP['get_obs_exp_ratio']
+        url_suffix = 'concept_id_1=' + concept_id_1 + '&dataset_id=' + str(dataset_id)
+        if domain != "":
+            url_suffix += "&domain=" + domain
+        if concept_id_2 != "":
+            url_suffix += "&concept_id_2=" + concept_id_2
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
+
+    @staticmethod
+    def get_relative_frequency(concept_id_1, concept_id_2="", domain="", dataset_id=1):
+        """Relative frequency between pairs of concepts
+
+        Calculates the relative frequency (i.e., conditional probability) between pairs of concepts. Results are
+        returned in descending order of relative frequency. Note that due to the randomization of the counts, the
+        calcaulted relative frequencies can exceed the limit of 1.0.
+
+        Relative Frequency = Count_1_and_2 / Count_2
+
+        This method has overloaded behavior based on the specified parameters:
+
+            1. concept_id_1 and concept_id_2: Result for the pair (concept_id_1, concept_id_2)
+            2. concept_id_1: Results for all pairs of concepts that include concept_id_1
+            3. concept_id_1 and domain: Results for all pairs of concepts including concept_id_1 and where concept_id_2
+                belongs to the specified domain
+
+        Args:
+            concept_id_1 (str): An OMOP concept id, e.g., "192855"
+
+            concept_id_2 (str): An OMOP concept id, e.g., "2008271". If concept_id_2 is unspecified, then this method
+                will return all pairs of concepts with concept_id_1.
+
+            domain (str): An OMOP domain id, e.g., "Condition", "Drug", "Procedure", etc., to restrict the associated
+                concept (concept_id_2) to. If this parameter is not specified, then the domain is unrestricted.
+
+            dataset_id (int): The dataset_id of the dataset to query. Default dataset is the 5-year dataset (1).
+
+        Returns:
+            array: an array of dictionaries which contains the relative frequency between pairs of concepts
+
+            example:
+            [
+                {
+                  "concept_2_count": 1494,
+                  "concept_id_1": 192855,
+                  "concept_id_2": 2008271,
+                  "concept_pair_count": 10,
+                  "dataset_id": 1,
+                  "relative_frequency": 0.006693440428380187
+                }
+            ]
+        """
+        if not isinstance(concept_id_1, str) or not isinstance(concept_id_2, str) or not isinstance(domain, str) or not isinstance(dataset_id, int):
+            return []
+        handler = QueryCOHD.HANDLER_MAP['get_relative_frequency']
+        url_suffix = 'concept_id_1=' + concept_id_1 + '&dataset_id=' + str(dataset_id)
+        if domain != "":
+            url_suffix += "&domain=" + domain
+        if concept_id_2 != "":
+            url_suffix += "&concept_id_2=" + concept_id_2
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
+
+    @staticmethod
+    def get_datasets():
+        """Enumerates the datasets available in COHD
+
+        Returns:
+            array: a list of datasets, including dataset ID, name, and description.
+
+            example:
+                [
+                    {
+                      "dataset_description": "Clinical data from 2013-2017",
+                      "dataset_id": 1,
+                      "dataset_name": "5 year"
+                    },
+                    {
+                      "dataset_description": "Clinical data from all years in the database",
+                      "dataset_id": 2,
+                      "dataset_name": "Lifetime"
+                    }
+                ]
+        """
+        handler = QueryCOHD.HANDLER_MAP['get_datasets']
+        url_suffix = ''
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
+
+    @staticmethod
+    def get_domain_counts(dataset_id=1):
+        """The number of concepts in each domain
+
+        Args:
+            dataset_id (int): The dataset_id of the dataset to query. Default dataset is the 5-year dataset (1).
+
+        Returns:
+            array: a list of domains and the number of concepts in each domain.
+        """
+        if not isinstance(dataset_id, int) or dataset_id <= 0:
+            return []
+        handler = QueryCOHD.HANDLER_MAP['get_domain_counts']
+        url_suffix = 'dataset_id=' + str(dataset_id)
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
+
+    @staticmethod
+    def get_domain_pair_counts(dataset_id=1):
+        """The number of pairs of concepts in each pair of domains
+
+            Args:
+                dataset_id (int): The dataset_id of the dataset to query. Default dataset is the 5-year dataset (1).
+
+            Returns:
+                array:  a list of pairs of domains and the number of pairs of concepts in each.
+        """
+        if not isinstance(dataset_id, int) or dataset_id <= 0:
+            return []
+        handler = QueryCOHD.HANDLER_MAP['get_domain_pair_counts']
+        url_suffix = 'dataset_id=' + str(dataset_id)
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
+
+    @staticmethod
+    def get_patient_count(dataset_id=1):
+        """The number of patients in the dataset
+
+            Args:
+                dataset_id (int): The dataset_id of the dataset to query. Default dataset is the 5-year dataset (1).
+
+            Returns:
+                array:  a list of dictionaries which contains the number of patients
+
+                example:
+                [
+                    {
+                      "count": 1790431,
+                      "dataset_id": 1
+                    }
+                ]
+        """
+        if not isinstance(dataset_id, int) or dataset_id <= 0:
+            return {}
+        handler = QueryCOHD.HANDLER_MAP['get_patient_count']
+        url_suffix = 'dataset_id=' + str(dataset_id)
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_dict = {}
+        if res_json is not None:
+            results = res_json.get('results', [])
+            if results is not None and type(results) == list and len(results) > 0:
+                results_dict = results[0]
+        return results_dict
+
 if __name__ == '__main__':
-    # print(QueryCOHD.find_concept_ids("ibuprofen", "Condition", 1))
-    # print(QueryCOHD.find_concept_ids("ibuprofen", "Condition"))
+    print(QueryCOHD.find_concept_ids("ibuprofen", "Condition", 1))
+    print(QueryCOHD.find_concept_ids("ibuprofen", "Condition"))
+    print(QueryCOHD.find_concept_ids("ibuprofen"))
     # print(QueryCOHD.get_paired_concept_freq('192855', '2008271', 1))
     # print(QueryCOHD.get_individual_concept_freq('192855'))
     # print(QueryCOHD.get_associated_concept_domain_freq('192855', 'Procedure', 1))
@@ -550,7 +925,43 @@ if __name__ == '__main__':
     # print(QueryCOHD.get_concepts(["192855", "2008271"]))
     # print(QueryCOHD.get_xref_from_OMOP("192855", "UMLS", 2))
     # print(QueryCOHD.get_xref_to_OMOP("DOID:8398", 2))
-    print(QueryCOHD.get_map_from_standard_concept_id("72990", "ICD9CM"))
-    print(QueryCOHD.get_map_from_standard_concept_id("72990"))
-    print(QueryCOHD.get_map_to_standard_concept_id("715.3", "ICD9CM"))
-    print(len(QueryCOHD.get_vocabularies()))
+    # print(QueryCOHD.get_map_from_standard_concept_id("72990", "ICD9CM"))
+    # print(QueryCOHD.get_map_from_standard_concept_id("72990"))
+    # print(QueryCOHD.get_map_to_standard_concept_id("715.3", "ICD9CM"))
+    # print(QueryCOHD.get_vocabularies())
+    # print(QueryCOHD.get_associated_concept_freq("192855"))
+    # print(QueryCOHD.get_associated_concept_freq("192855", 2))
+    # print(QueryCOHD.get_most_frequent_concepts(2))
+    # print(QueryCOHD.get_most_frequent_concepts(2, 'Condition'))
+    # print(QueryCOHD.get_most_frequent_concepts(2, 'Condition', 2))
+    # print(QueryCOHD.get_most_frequent_concepts(2, '', 2))
+    # print(QueryCOHD.get_chi_square("192855", "2008271", "Condition", 2))
+    # print(QueryCOHD.get_chi_square("192855", "2008271", "Condition"))
+    # print(QueryCOHD.get_chi_square("192855", "2008271"))
+    # print(len(QueryCOHD.get_chi_square("192855")))
+    # print(len(QueryCOHD.get_chi_square("192855", "", "Condition")))
+    # print(len(QueryCOHD.get_chi_square("192855", "", "Condition", 2)))
+    # print(len(QueryCOHD.get_chi_square("192855", "", "", 2)))
+    # print(QueryCOHD.get_obs_exp_ratio("192855", "2008271", "Procedure"))
+    # print(QueryCOHD.get_obs_exp_ratio("192855", "2008271", "Procedure", 2))
+    # print(QueryCOHD.get_obs_exp_ratio("192855", "2008271", ""))
+    # print(QueryCOHD.get_obs_exp_ratio("192855", "2008271", "", 2))
+    # print(len(QueryCOHD.get_obs_exp_ratio("192855")))
+    # print(len(QueryCOHD.get_obs_exp_ratio("192855", "", "", 2)))
+    # print(len(QueryCOHD.get_obs_exp_ratio("192855", "", "Procedure")))
+    # print(len(QueryCOHD.get_obs_exp_ratio("192855", "", "Procedure", 2)))
+    # print(QueryCOHD.get_relative_frequency("192855", "2008271", "Procedure"))
+    # print(QueryCOHD.get_relative_frequency("192855", "2008271", "Procedure", 2))
+    # print(QueryCOHD.get_relative_frequency("192855", "2008271", ""))
+    # print(QueryCOHD.get_relative_frequency("192855", "2008271", "", 2))
+    # print(len(QueryCOHD.get_relative_frequency("192855")))
+    # print(len(QueryCOHD.get_relative_frequency("192855", "", "", 2)))
+    # print(len(QueryCOHD.get_relative_frequency("192855", "", "Procedure")))
+    # print(len(QueryCOHD.get_relative_frequency("192855", "", "Procedure", 2)))
+    # print(QueryCOHD.get_datasets())
+    # print(QueryCOHD.get_domain_counts())
+    # print(QueryCOHD.get_domain_counts(2))
+    # print(QueryCOHD.get_domain_pair_counts())
+    # print(QueryCOHD.get_domain_pair_counts(2))
+    # print(QueryCOHD.get_patient_count())
+    # print(QueryCOHD.get_patient_count(2))
