@@ -74,7 +74,7 @@ def add_pc2_to_kg():
 
 
 def seed_nodes_from_master_tsv_file():
-    seed_node_data = pandas.read_csv('../../../data/seed_nodes.tsv',
+    seed_node_data = pandas.read_csv('../../../data/seed_nodes_filtered.tsv',
                                      sep="\t",
                                      names=['type', 'rtx_name', 'term', 'purpose'],
                                      header=0,
