@@ -87,12 +87,13 @@ class BioNetExpander:
     GO_ONTOLOGY_TO_PREDICATE = {"biological_process": "involved_in",
                                 "cellular_component": "expressed_in",
                                 "molecular_function": "capable_of"}
-    
+
     def __init__(self, orangeboard):
         orangeboard.set_dict_reltype_dirs(self.MASTER_REL_IS_DIRECTED)
         self.orangeboard = orangeboard
         self.query_omim_obj = QueryOMIM()
         self.query_mygene_obj = QueryMyGene(debug=False)
+        self.gene_symbols_to_protein_nodes = dict()
 
     def add_node_smart(self, simple_node_type, name, seed_node_bool=False, desc=''):
         if name.endswith("PHENOTYPE") or name.startswith("MP:"):
@@ -124,18 +125,31 @@ class BioNetExpander:
             gene_symbol = QueryUniprotExtended.get_protein_gene_symbol(curie_id)
             desc = gene_symbol
 
-        node = self.orangeboard.add_node(simple_node_type,
-                                         name,
-                                         seed_node_bool,
-                                         desc)
-        extra_props = {"uri": iri,
-                       "id": curie_id,
-                       "accession": accession}
+        node = None
 
-        if simple_node_type == "protein" or simple_node_type == "microRNA":
-            extra_props["symbol"] = desc
+        if simple_node_type == "protein":
+            gene_symbol = desc
+            if gene_symbol in self.gene_symbols_to_protein_nodes:
+                node = self.gene_symbols_to_protein_nodes[gene_symbol]
 
-        node.set_extra_props(extra_props)
+        if node is None:
+            node = self.orangeboard.add_node(simple_node_type,
+                                             name,
+                                             seed_node_bool,
+                                             desc)
+
+            extra_props = {"uri": iri,
+                           "id": curie_id,
+                           "accession": accession}
+
+            if simple_node_type == "protein" or simple_node_type == "microRNA":
+                extra_props["symbol"] = desc
+
+                node.set_extra_props(extra_props)
+
+            if simple_node_type == "protein":
+                gene_symbol = desc
+                self.gene_symbols_to_protein_nodes[gene_symbol] = node
 
         return node
 
@@ -632,7 +646,19 @@ class BioNetExpander:
         bne.expand_disease(node)
         ob.neo4j_set_url()
         ob.neo4j_set_auth()
-        ob.neo4j_push()        
+        ob.neo4j_push()
+
+    def test_double_proteins():
+        ob = Orangeboard(debug=False)
+        bne = BioNetExpander(ob)
+        bne.add_node_smart('protein', 'Q59F02', seed_node_bool=True, desc='PMM2')
+        bne.add_node_smart('protein', 'H3BV55', seed_node_bool=True, desc='PMM2')
+        bne.add_node_smart('protein', 'A0A0S2Z4J6', seed_node_bool=True, desc='PMM2')
+        bne.add_node_smart('protein', 'H3BV34', seed_node_bool=True, desc='PMM2')
+        ob.neo4j_set_url()
+        ob.neo4j_set_auth()
+        ob.neo4j_push()
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Builds the master knowledge graph')
