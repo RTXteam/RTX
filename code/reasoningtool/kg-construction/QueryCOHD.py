@@ -115,7 +115,7 @@ class QueryCOHD:
             return []
         handler = QueryCOHD.HANDLER_MAP['find_concept_id']
         url_suffix = "q=" + node_label + "&dataset_id=" + str(dataset_id)
-        if domain == "":
+        if domain != "":
             url_suffix += "&domain=" + domain
         res_json = QueryCOHD.__access_api(handler, url_suffix)
         results_list = []
@@ -914,10 +914,10 @@ class QueryCOHD:
                 results_dict = results[0]
         return results_dict
 
-if __name__ == '__main__':
-    print(QueryCOHD.find_concept_ids("ibuprofen", "Condition", 1))
-    print(QueryCOHD.find_concept_ids("ibuprofen", "Condition"))
-    print(QueryCOHD.find_concept_ids("ibuprofen"))
+# if __name__ == '__main__':
+    # print(QueryCOHD.find_concept_ids("cancer", "Condition", 1))
+    # print(QueryCOHD.find_concept_ids("cancer", "Condition"))
+    # print(QueryCOHD.find_concept_ids("cancer"))
     # print(QueryCOHD.get_paired_concept_freq('192855', '2008271', 1))
     # print(QueryCOHD.get_individual_concept_freq('192855'))
     # print(QueryCOHD.get_associated_concept_domain_freq('192855', 'Procedure', 1))
