@@ -61,7 +61,7 @@ def add_pc2_to_kg():
             node2 = ob.get_node('protein', uniprot2)
             if node1 is not None and node2 is not None and node1.uuid != node2.uuid:
                 if interaction_type == 'interacts-with':
-                    ob.add_rel('directly_interacts_with', 'PC2', node1, node2, extended_reltype="directly_interacts_with")
+                    ob.add_rel('physically_interacts_with', 'PC2', node1, node2, extended_reltype="physically_interacts_with")
                 else:
                     if interaction_type == 'controls-expression-of':
                         ob.add_rel("regulates", 'PC2', node1, node2, extended_reltype="regulates_expression_of")
