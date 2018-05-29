@@ -10,53 +10,45 @@ from QueryCOHD import QueryCOHD
 
 class QueryCOHDTestCases(TestCase):
     def test_find_concept_ids(self):
-        result = QueryCOHD.find_concept_ids("ibuprofen", "Condition", 1)
+        result = QueryCOHD.find_concept_ids("cancer", "Condition", 1)
         self.assertIsNotNone(result)
-        self.assertEqual(result, [{'concept_class_id': 'Clinical Finding', 'concept_code': '212602006', 'concept_count': 0.0,
-                            'concept_id': 4059406, 'concept_name': 'Ibuprofen poisoning', 'domain_id': 'Condition',
-                            'vocabulary_id': 'SNOMED'},
-                           {'concept_class_id': 'Clinical Finding', 'concept_code': '218613000', 'concept_count': 0.0,
-                            'concept_id': 4329188, 'concept_name': 'Adverse reaction to ibuprofen',
-                            'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'},
-                           {'concept_class_id': 'Clinical Finding', 'concept_code': '295250003', 'concept_count': 0.0,
-                            'concept_id': 4170835, 'concept_name': 'Ibuprofen overdose', 'domain_id': 'Condition',
-                            'vocabulary_id': 'SNOMED'},
-                           {'concept_class_id': 'Clinical Finding', 'concept_code': '295252006', 'concept_count': 0.0,
-                            'concept_id': 4172259, 'concept_name': 'Intentional ibuprofen overdose',
-                            'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'},
-                           {'concept_class_id': 'Clinical Finding', 'concept_code': '290260009', 'concept_count': 0.0,
-                            'concept_id': 4156776, 'concept_name': 'Intentional ibuprofen poisoning',
-                            'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'},
-                           {'concept_class_id': 'Clinical Finding', 'concept_code': '295253001', 'concept_count': 0.0,
-                            'concept_id': 4170836, 'concept_name': 'Ibuprofen overdose of undetermined intent',
-                            'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'},
-                           {'concept_class_id': 'Clinical Finding', 'concept_code': '216487007', 'concept_count': 0.0,
-                            'concept_id': 4313103, 'concept_name': 'Accidental poisoning by ibuprofen',
-                            'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'},
-                           {'concept_class_id': 'Clinical Finding', 'concept_code': '290261008', 'concept_count': 0.0,
-                            'concept_id': 4156777, 'concept_name': 'Ibuprofen poisoning of undetermined intent',
-                            'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'},
-                           {'concept_class_id': 'Clinical Finding', 'concept_code': '295251004', 'concept_count': 0.0,
-                            'concept_id': 4172258, 'concept_name': 'Accidental ibuprofen overdose',
-                            'domain_id': 'Condition', 'vocabulary_id': 'SNOMED'}])
+        self.assertEqual(len(result), 84)
+        self.assertEqual(result[0], {'concept_class_id': 'Clinical Finding',
+                                     'concept_code': '92546004',
+                                     'concept_count': 368.0,
+                                     'concept_id': 192855,
+                                     'concept_name': 'Cancer in situ of urinary bladder', 'domain_id': 'Condition',
+                                     'vocabulary_id': 'SNOMED'})
 
         #   default dataset_id
-        result = QueryCOHD.find_concept_ids("ibuprofen", "Condition")
+        result = QueryCOHD.find_concept_ids("cancer", "Condition")
         self.assertIsNotNone(result)
+        self.assertEqual(len(result), 84)
         self.assertEqual(result[0], {'concept_class_id': 'Clinical Finding',
-                                  'concept_code': '212602006',
-                                  'concept_count': 0.0,
-                                  'concept_id': 4059406,
-                                  'concept_name': 'Ibuprofen poisoning',
-                                  'domain_id': 'Condition',
-                                  'vocabulary_id': 'SNOMED'})
+                                     'concept_code': '92546004',
+                                     'concept_count': 368.0,
+                                     'concept_id': 192855,
+                                     'concept_name': 'Cancer in situ of urinary bladder', 'domain_id': 'Condition',
+                                     'vocabulary_id': 'SNOMED'})
+
+        #   default dataset_id and domain
+        result = QueryCOHD.find_concept_ids("cancer")
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1000)
+        self.assertEqual(result[0], {'concept_class_id': 'Procedure',
+                                     'concept_code': '15886004',
+                                     'concept_count': 4195.0,
+                                     'concept_id': 4048727,
+                                     'concept_name': 'Screening for cancer',
+                                     'domain_id': 'Procedure',
+                                     'vocabulary_id': 'SNOMED'})
 
         #   invalid name value
-        result = QueryCOHD.find_concept_ids("ibuprof1", "Condition")
+        result = QueryCOHD.find_concept_ids("cancer1", "Condition")
         self.assertEqual(result, [])
 
         #   invalid domain value
-        result = QueryCOHD.find_concept_ids("ibuprofe", "Conditi")
+        result = QueryCOHD.find_concept_ids("cancer", "Conditi")
         self.assertEqual(result, [])
 
     def test_get_paired_concept_freq(self):
