@@ -1,5 +1,19 @@
 # Conecting to and using the SemMedDB MySQL container on rtxdev
 
+## Starting the necisary containers from a stopped state
+
+First, make sure that rtxdev.saramsey.org is running then ssh into it and run the following commands:
+
+```
+sudo docker start semmeddb
+sudo docker start umls
+sudo docker start semrep
+sudo docker exec -d semrep /semrep/public_mm/bin/skrmedpostctl start
+sudo docker exec -d semrep /semrep/public_mm/bin/wsdserverctl start
+```
+
+Then wait a few seconds for everything to initialize and you should be good to go.
+
 ## Using SemMedInterface.py
 
 **NOTE:** Currently all functions return the response as a pandas dataframe with column headers
