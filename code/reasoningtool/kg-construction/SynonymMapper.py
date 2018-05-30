@@ -10,6 +10,7 @@ import mygene
 import requests
 from QueryMyChem import QueryMyChem
 import requests_cache
+import pandas
 
 requests_cache.install_cache('SynonymCache')
 
@@ -66,9 +67,15 @@ class SynonymMapper():
             if vega_res is not None:
                 vega_ids |= set([vega_res])
             if ensembl_res is not None:
-                ensembl_gene_res = ensembl_res.get('gene', None)
-                if ensembl_gene_res is not None:
-                    ensembl_ids |= set([ensembl_gene_res])
+                if type(ensembl_res) == list:
+                    for ens_res in ensembl_res:
+                        ensembl_gene_res = ens_res.get('gene', None)
+                        if ensembl_gene_res is not None:
+                            ensembl_ids |= set([ensembl_gene_res])
+                else:
+                    ensembl_gene_res = ensembl_res.get('gene', None)
+                    if ensembl_gene_res is not None:
+                        ensembl_ids |= set([ensembl_gene_res])
 
         for hgnc_id in hgnc_ids:
             synonyms += ['HGNC:' + str(hgnc_id)]
@@ -125,15 +132,15 @@ class SynonymMapper():
         try:
             res = requests.get(url, timeout=QueryMyChem.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
-            #print(url, file=sys.stderr)
-            #print('Timeout in QueryMyChem for URL: ' + url, file=sys.stderr)
+            print(url, file=sys.stderr)
+            print('Timeout in QueryMyChem for URL: ' + url, file=sys.stderr)
             return None
         if res is None:
             return None
         status_code = res.status_code
         if status_code != 200:
-            #print(url, file=sys.stderr)
-            #print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
+            print(url, file=sys.stderr)
+            print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
             return None
         id_json = res.json()
         if 'chebi' in id_json.keys():
