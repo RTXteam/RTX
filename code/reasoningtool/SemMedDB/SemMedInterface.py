@@ -21,6 +21,8 @@ import pandas
 import time
 import requests_cache
 import numpy
+import urllib
+import ast
 
 numpy.random.seed(int(time.time()))
 
@@ -29,12 +31,26 @@ requests_cache.install_cache('SemMedCache')
 
 class SemMedInterface():
 
-	def __init__(self, mysql_timeout = 30):
+	def __init__(self, mapfile = 'node_cui_map.csv', mysql_timeout = 30):
 		self.smdb = QuerySemMedDB("rtxdev.saramsey.org",3306,"rtx_read","rtxd3vT3amXray","semmeddb", mysql_timeout)
 		self.umls = QueryUMLSSQL("rtxdev.saramsey.org",3406, "rtx_read","rtxd3vT3amXray","umls")
 		self.semrep_url = "http://rtxdev.saramsey.org:5000/semrep/convert?string="
 		self.timeout_sec = 120
 		self.mg = QueryMyGene()
+		try:
+			df = pandas.read_csv(mapfile, converters={'cuis':ast.literal_eval})
+			cui_dict = {}
+			if 'cuis' in df.columns and 'id' in df.columns:
+				for a in range(len(df)):
+					for df_cui in df['cuis'][a]:
+						if df_cui in cui_dict.keys():
+							cui_dict[df_cui] += [df['id'][a]]
+						else:
+							cui_dict[df_cui] = [df['id'][a]]
+				self.map_df = df
+			self.cui_dict = cui_dict
+		except FileNotFoundError:
+			self.cui_dict = {}
 
 	def send_query_get(self, url, retmax = 1000):
 		url_str = url + '&retmax=' + str(retmax)
@@ -82,7 +98,9 @@ class SemMedInterface():
 		'''
 		url = self.semrep_url + str(string)
 		res = self.send_query_get(url)
-		if res.status_code == 200:
+		if res is None:
+			return None
+		elif res.status_code == 200:
 			data = res.json()
 			return data
 		else:
@@ -161,7 +179,11 @@ class SemMedInterface():
 		takes a string and then converts it to a cui or list of cuis by first querying SemRep then UMLS
 		'''
 		if not umls_flag:
-			entities = self.QuerySemRep(name)['entity']
+			res = self.QuerySemRep(name)
+			if res is not None:
+				entities = res['entity']
+			else:
+				entities = []
 		else:
 			entities = []
 		if len(entities) > 0:
@@ -503,7 +525,7 @@ class SemMedInterface():
 		query = query[:-5]
 		df = self.smdb.get_dataframe_from_db(query)
 		if df is not None and bidirectional:
-			df['ORIENTATION'] = ['original']*len(df)
+			df['orientation'] = ['original']*len(df)
 		df2 = None
 		if bidirectional:
 			query_list = query.split(' ')
@@ -515,13 +537,25 @@ class SemMedInterface():
 			query2 = ' '.join(query_list)
 			df2 = self.smdb.get_dataframe_from_db(query2)
 			if df2 is not None:
-				df['ORIENTATION'] = ['inverted']*len(df)
+				df['orientation'] = ['inverted']*len(df)
 		if df2 is None:
 			return df
 		elif df is None:
 			return df2
 		else:
 			return pandas.concat([df,df2], ignore_index = True)
+
+	def get_node_from_cui(self, cui, name_flag = False):
+		if cui in self.cui_dict.keys():
+			curie_ids = self.cui_dict[cui]
+			if name_flag:
+				names = []
+				for curie_id in curie_ids:
+					names += [self.map_df.loc[self.map_df['id'] == curie_id, 'name'].iloc[0]]
+				return names
+			return curie_ids
+		else:
+			return None
 
 
 if __name__ == '__main__':
