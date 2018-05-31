@@ -29,6 +29,56 @@ requests_cache.install_cache('NGDCache')
 
 
 class NormGoogleDistance:
+
+    @staticmethod
+    @CachedMethods.register
+    def query_oxo(uid):
+        """
+        This takes a curie id and send that id to EMBL-EBI OXO to convert to cui
+        """
+        url_str =  'https://www.ebi.ac.uk/spot/oxo/api/mappings?fromId=' + str(uid)
+        try:
+            res = requests.get(url_str, headers={'accept': 'application/json'}, timeout=120)
+        except requests.exceptions.Timeout:
+            print('HTTP timeout in SemMedInterface.py; URL: ' + url_str, file=sys.stderr)
+            time.sleep(1)  ## take a timeout because NCBI rate-limits connections
+            return None
+        except requests.exceptions.ConnectionError:
+            print('HTTP connection error in SemMedInterface.py; URL: ' + url_str, file=sys.stderr)
+            time.sleep(1)  ## take a timeout because NCBI rate-limits connections
+            return None
+        status_code = res.status_code
+        if status_code != 200:
+            print('HTTP response status code: ' + str(status_code) + ' for URL:\n' + url_str, file=sys.stderr)
+            res = None
+        return res
+
+    @staticmethod
+    @CachedMethods.register
+    def get_mesh_from_oxo(curie_id):
+        if type(curie_id) != str:
+            curie_id = str(curie_id)
+        if curie_id.startswith('REACT:'):
+            curie_id = curie_id.replace('REACT', 'Reactome')
+        res = NormGoogleDistance.query_oxo(curie_id)
+        mesh_ids=None
+        if res is not None:
+            res = res.json()
+            mesh_ids = set()
+            n_res = res['page']['totalElements']
+            if int(n_res) > 0:
+                mappings = res['_embedded']['mappings']
+                for mapping in mappings:
+                    if mapping['fromTerm']['curie'].startswith('MeSH'):
+                        mesh_ids |= set([mapping['fromTerm']['curie'].split(':')[1]])
+                    elif mapping['toTerm']['curie'].startswith('UMLS'):
+                        mesh_ids |= set([mapping['toTerm']['curie'].split(':')[1]])
+            if len(mesh_ids) == 0:
+                mesh_ids = None
+            else:
+                mesh_ids = list(mesh_ids)
+        return mesh_ids
+
     @staticmethod
     @CachedMethods.register
     def get_mesh_term_for_all(curie_id, description):
@@ -55,68 +105,70 @@ class NormGoogleDistance:
         names = None
         if QueryNCBIeUtils.is_mesh_term(description):
             return [description + '[MeSH Terms]']
-        elif curie_list[0].lower().startswith("react"):
-            res = QueryNCBIeUtils.get_reactome_names(curie_list[1])
-            if res is not None:
-                names = res.split('|')
-        elif curie_list[0] == "GO":
-            pass
-        elif curie_list[0].startswith("UniProt"):
-            res = QueryNCBIeUtils.get_uniprot_names(curie_list[1])
-            if res is not None:
-                names = res.split('|')
-        elif curie_list[0] == "HP":
-            names = QueryNCBIeUtils.get_mesh_terms_for_hp_id(curie_id)
-        elif curie_list[0] == "UBERON":
-            if curie_id.endswith('PHENOTYPE'):
-                curie_id = curie_id[:-9]
-            mesh_id = QueryEBIOLS.get_mesh_id_for_uberon_id(curie_id)
-            names = []
-            for entry in mesh_id:
-                if len(entry.split('.')) > 1:
-                    uids = QueryNCBIeUtils.get_mesh_uids_for_mesh_tree(entry.split(':')[1])
-                    for uid in uids:
+        names = NormGoogleDistance.get_mesh_from_oxo(curie_id)
+        if names is None:
+            if curie_list[0].lower().startswith("react"):
+                res = QueryNCBIeUtils.get_reactome_names(curie_list[1])
+                if res is not None:
+                    names = res.split('|')
+            elif curie_list[0] == "GO":
+                pass
+            elif curie_list[0].startswith("UniProt"):
+                res = QueryNCBIeUtils.get_uniprot_names(curie_list[1])
+                if res is not None:
+                    names = res.split('|')
+            elif curie_list[0] == "HP":
+                names = QueryNCBIeUtils.get_mesh_terms_for_hp_id(curie_id)
+            elif curie_list[0] == "UBERON":
+                if curie_id.endswith('PHENOTYPE'):
+                    curie_id = curie_id[:-9]
+                mesh_id = QueryEBIOLS.get_mesh_id_for_uberon_id(curie_id)
+                names = []
+                for entry in mesh_id:
+                    if len(entry.split('.')) > 1:
+                        uids=QueryNCBIeUtils.get_mesh_uids_for_mesh_tree(entry.split(':')[1])
+                        for uid in uids:
+                            try:
+                                uid_num = int(uid.split(':')[1][1:]) + 68000000
+                                names += QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(uid_num)
+                            except IndexError:
+                                uid_num = int(uid)
+                                names += QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(uid_num)
+                    else:
                         try:
-                            uid_num = int(uid.split(':')[1][1:]) + 68000000
+                            uid = entry.split(':')[1]
+                            uid_num = int(uid[1:]) + 68000000
                             names += QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(uid_num)
                         except IndexError:
-                            uid_num = int(uid)
+                            uid_num = int(entry)
                             names += QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(uid_num)
+                if len(names) == 0:
+                    names = None
                 else:
-                    try:
-                        uid = entry.split(':')[1]
-                        uid_num = int(uid[1:]) + 68000000
-                        names += QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(uid_num)
-                    except IndexError:
-                        uid_num = int(entry)
-                        names += QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(uid_num)
-            if len(names) == 0:
-                names = None
-            else:
-                names[0] = names[0] + '[MeSH Terms]'
-        elif curie_list[0] == "NCBIGene":
-            gene_id = curie_id.split(':')[1]
-            names = QueryNCBIeUtils.get_pubmed_from_ncbi_gene(gene_id)
-        elif curie_list[0] == "DOID":
-            mesh_id = QueryDisont.query_disont_to_mesh_id(curie_id)
-            names = []
-            for uid in mesh_id:
-                uid_num = int(uid[1:]) + 68000000
-                name = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(uid_num)
-                if name is not None:
-                    names += name
-            if len(names) == 0:
-                names = None
-            else:
-                names[0] = names[0] + '[MeSH Terms]'
-        elif curie_list[0] == "OMIM":
-            names = QueryNCBIeUtils.get_mesh_terms_for_omim_id(curie_list[1])
-        elif curie_list[0] == "ChEMBL":
-            chembl_id = curie_id.replace(':', '').upper()
-            mesh_id = QueryMyChem.get_mesh_id(chembl_id)
-            if mesh_id is not None:
-                mesh_id = int(mesh_id[1:]) + 68000000
-                names = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(mesh_id)
+                    names[0] = names[0] + '[MeSH Terms]'
+            elif curie_list[0] == "NCBIGene":
+                gene_id = curie_id.split(':')[1]
+                names = QueryNCBIeUtils.get_pubmed_from_ncbi_gene(gene_id)
+            elif curie_list[0] == "DOID":
+                mesh_id = QueryDisont.query_disont_to_mesh_id(curie_id)
+                names = []
+                for uid in mesh_id:
+                    uid_num = int(uid[1:]) + 68000000
+                    name = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(uid_num)
+                    if name is not None:
+                        names += name
+                if len(names) == 0:
+                    names = None
+                else:
+                    names[0] = names[0] + '[MeSH Terms]'
+            elif curie_list[0] == "OMIM":
+                names = QueryNCBIeUtils.get_mesh_terms_for_omim_id(curie_list[1])
+            elif curie_list[0] == "ChEMBL":
+                chembl_id = curie_id.replace(':', '').upper()
+                mesh_id = QueryMyChem.get_mesh_id(chembl_id)
+                if mesh_id is not None:
+                    mesh_id = int(mesh_id[1:]) + 68000000
+                    names = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(mesh_id)
         if names is not None:
             if type(names) == list:
                 for name in names:
@@ -184,6 +236,7 @@ class NormGoogleDistance:
                 response['response_code'] = "OK"
                 response['value'] = value
         return response
+
 
 
 if __name__ == '__main__':
