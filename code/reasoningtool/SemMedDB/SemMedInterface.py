@@ -546,6 +546,12 @@ class SemMedInterface():
 			return pandas.concat([df,df2], ignore_index = True)
 
 	def get_node_from_cui(self, cui, name_flag = False):
+		'''
+		This takes a cui then looks up corresponding curie ids or names from a provided csv generated using BuildCuiCache.py
+		Params:
+			* cui - A string containing the cui you wish to convert
+			* name_flag - A boolean indicating what to return. (curie id if False, name if True) This defaults to False
+		'''
 		if cui in self.cui_dict.keys():
 			curie_ids = self.cui_dict[cui]
 			if name_flag:
