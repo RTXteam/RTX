@@ -74,5 +74,18 @@ smdb.get_edges_between_subject_object_with_pivot('C0000001','Name1','C0000002','
 If you want the shortest path between a subject and object (under a maximum length) instead use the following:
 
 ```
-get_short_paths_between_subject_object('C0000001','Name1','C0000002','Name2',max_length = 3)
+smdb.get_short_paths_between_subject_object('C0000001','Name1','C0000002','Name2',max_length = 3)
+```
+## Converting cuis back into node identifiers from KG
+
+If you want the curie id for a cui simply run the following command:
+
+```
+smdb.get_node_from_cui('C0000001')
+```
+
+If instead you wish to get the name of the node simply add True as a second argument:
+
+```
+smdb.get_node_from_cui('C0000001', True)
 ```
