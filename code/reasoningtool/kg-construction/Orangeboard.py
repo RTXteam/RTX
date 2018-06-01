@@ -535,6 +535,7 @@ class Orangeboard:
             ]
 
         index_commands = [
+            'CALL apoc.schema.assert({}, {})',
             'CREATE CONSTRAINT ON (n:Base) ASSERT n.rtx_name IS UNIQUE',
             'CREATE CONSTRAINT ON (n:Base) ASSERT n.id IS UNIQUE',
             'CREATE CONSTRAINT ON (n:Base) ASSERT n.UUID IS UNIQUE',
