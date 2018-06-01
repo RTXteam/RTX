@@ -520,39 +520,8 @@ class Orangeboard:
             if self.debug:
                 print(res.summary().counters)
 
-        node_label_list = [
-            'metabolite',
-            'protein',
-            'anatomical_entity',
-            'molecular_function',
-            'disease',
-            'phenotypic_feature',
-            'biological_process',
-            'microRNA',
-            'pathway',
-            'cellular_component',
-            'chemical_substance'
-            ]
-
-        index_commands = [
-            'CALL apoc.schema.assert({}, {})',
-            'CREATE CONSTRAINT ON (n:Base) ASSERT n.rtx_name IS UNIQUE',
-            'CREATE CONSTRAINT ON (n:Base) ASSERT n.id IS UNIQUE',
-            'CREATE CONSTRAINT ON (n:Base) ASSERT n.UUID IS UNIQUE',
-            'CREATE CONSTRAINT ON (n:Base) ASSERT n.uri IS UNIQUE',
-            'CREATE INDEX ON :Base(name)',
-            'CREATE INDEX ON :Base(seed_node_uuid)'
-            ]
-
-        index_commands += ['CREATE CONSTRAINT ON (n:' + label + ') ASSERT n.rtx_name IS UNIQUE' for label in node_label_list]
-        index_commands += ['CREATE CONSTRAINT ON (n:' + label + ') ASSERT n.id IS UNIQUE' for label in node_label_list]
-        index_commands += ['CREATE INDEX ON :' + label + '(name)' for label in node_label_list]
-
-        for command in index_commands:
-            self.neo4j_run_cypher_query(command)
-
-        #self.neo4j_run_cypher_query('CREATE INDEX ON :Base(UUID)')
-        #self.neo4j_run_cypher_query('CREATE INDEX ON :Base(seed_node_uuid)')
+        self.neo4j_run_cypher_query('CREATE INDEX ON :Base(UUID)')
+        self.neo4j_run_cypher_query('CREATE INDEX ON :Base(seed_node_uuid)')
 
         reltypes = self.get_all_reltypes()
         for reltype in reltypes:
