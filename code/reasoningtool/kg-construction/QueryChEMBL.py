@@ -47,6 +47,9 @@ class QueryChEMBL:
 
     @staticmethod
     def get_chembl_ids_for_drug(drug_name):
+        if not isinstance(drug_name, str):
+            return set()
+
         drug_name_safe = urllib.parse.quote(drug_name, safe='')
         res = QueryChEMBL.send_query_get(handler='compound_record.json',
                                          url_suffix='compound_name__iexact=' + drug_name_safe)
@@ -62,6 +65,9 @@ class QueryChEMBL:
 
     @staticmethod
     def get_target_uniprot_ids_for_chembl_id(chembl_id):
+        if not isinstance(chembl_id, str):
+            return dict()
+
         res = QueryChEMBL.send_query_get(handler='target_prediction.json',
                                          url_suffix='molecule_chembl_id__exact=' + chembl_id + '&target_organism__exact=Homo%20sapiens')
         res_targets_dict = dict()
@@ -79,6 +85,9 @@ class QueryChEMBL:
 
     @staticmethod
     def get_target_uniprot_ids_for_drug(drug_name):
+        if not isinstance(drug_name, str):
+            return dict()
+
         chembl_ids_for_drug = QueryChEMBL.get_chembl_ids_for_drug(drug_name)
         res_uniprot_ids = dict()
         for chembl_id in chembl_ids_for_drug:
@@ -90,8 +99,8 @@ class QueryChEMBL:
     
     @staticmethod
     def test():
-        print(QueryChEMBL.get_chembl_ids_for_drug('acetaminophen'))
-#        print(QueryChEMBL.get_target_uniprot_ids_for_drug('clothiapine'))
+        # print(QueryChEMBL.get_chembl_ids_for_drug('acetaminophen'))
+        print(QueryChEMBL.get_target_uniprot_ids_for_chembl_id('CHEMBL304902'))
         
 if __name__ == '__main__':
     QueryChEMBL.test()
