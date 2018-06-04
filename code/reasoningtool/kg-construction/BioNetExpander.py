@@ -145,7 +145,7 @@ class BioNetExpander:
             if simple_node_type == "protein" or simple_node_type == "microRNA":
                 extra_props["symbol"] = desc
 
-                node.set_extra_props(extra_props)
+            node.set_extra_props(extra_props)
 
             if simple_node_type == "protein":
                 gene_symbol = desc
@@ -659,6 +659,15 @@ class BioNetExpander:
         ob.neo4j_set_auth()
         ob.neo4j_push()
 
+    def test_issue_228():
+        ob = Orangeboard(debug=False)
+        bne = BioNetExpander(ob)
+        bne.add_node_smart('disease', 'MONDO:0005359', seed_node_bool=True, desc='drug-induced liver injury')
+        bne.add_node_smart('protein', 'Q59F02', seed_node_bool=True, desc='PMM2')
+        ob.neo4j_set_url()
+        ob.neo4j_set_auth()
+        ob.neo4j_push()
+        
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Builds the master knowledge graph')
