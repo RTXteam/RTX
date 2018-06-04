@@ -102,10 +102,10 @@ class QueryChEMBL:
         """Retrieves mechanism of action and target of each drug.
 
         Args:
-            concept_id1 (str): an OMOP id, e.g., "192855"
+            chembl_id (str): a ChEMBL id, e.g., "CHEMBL521"
 
         Returns:
-            dictionary: an array of mechanism of actions, or [] if no mechanism data could be obtained for the given
+            array: an array of mechanism of actions, or [] if no mechanism data could be obtained for the given
             ChEMBL ID
 
             example:
