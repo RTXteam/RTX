@@ -23,7 +23,13 @@ __email__ = ''
 __status__ = 'Prototype'
 
 import requests
+import requests_cache
 import sys
+import json
+
+# configure requests package to use the "orangeboard.sqlite" cache
+requests_cache.install_cache('orangeboard')
+
 
 class QueryBioLink:
     TIMEOUT_SEC = 120
@@ -39,7 +45,11 @@ class QueryBioLink:
         'get_anatomies_for_gene':      'gene/{gene_id}/expression/anatomy',
         'get_genes_for_anatomy':       'anatomy/{anatomy_id}/genes',
         'get_anatomies_for_phenotype': 'phenotype/{phenotype_id}/anatomy',
-        'get_synonyms_for_disease':    '{disease_id}/associations'
+        'get_synonyms_for_disease':    '{disease_id}/associations',
+        'get_anatomy':                  'anatomy/{id}',
+        'get_phenotype':                'phenotype/{id}',
+        'get_disease':                  'disease/{id}',
+        'get_bio_process':              '{id}'
     }
 
     @staticmethod
@@ -48,11 +58,14 @@ class QueryBioLink:
         url = QueryBioLink.API_BASE_URL + '/' + handler
         
         try:
-            res = requests.get(url,
-                               timeout=QueryBioLink.TIMEOUT_SEC)
+            res = requests.get(url, timeout=QueryBioLink.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
             print(url, file=sys.stderr)
             print('Timeout in QueryBioLink for URL: ' + url, file=sys.stderr)
+            return None
+        except BaseException as e:
+            print(url, file=sys.stderr)
+            print('%s received in QueryBioLink for URL: %s' % (e, url), file=sys.stderr)
             return None
         status_code = res.status_code
         if status_code != 200:
@@ -218,9 +231,34 @@ class QueryBioLink:
 
         return ret_dict
 
+    @staticmethod
+    def __get_entity(entity_type, entity_id):
+        handler = QueryBioLink.HANDLER_MAP[entity_type].format(id=entity_id)
+        results = QueryBioLink.__access_api(handler)
+        result_str = 'UNKNOWN'
+        if results is not None:
+            #   remove all \n characters using json api and convert the string to one line
+            result_str = json.dumps(results)
+        return result_str
+
+    @staticmethod
+    def get_anatomy_entity(anatomy_id):
+        return QueryBioLink.__get_entity("get_anatomy", anatomy_id)
+
+    @staticmethod
+    def get_phenotype_entity(phenotype_id):
+        return QueryBioLink.__get_entity("get_phenotype", phenotype_id)
+
+    @staticmethod
+    def get_disease_entity(disease_id):
+        return QueryBioLink.__get_entity("get_disease", disease_id)
+
+    @staticmethod
+    def get_bio_process_entity(bio_process_id):
+        return QueryBioLink.__get_entity("get_bio_process", bio_process_id)
 
 if __name__ == '__main__':
-    print(QueryBioLink.get_genes_for_disease_desc('MONDO:0005359'))
+    # print(QueryBioLink.get_genes_for_disease_desc('MONDO:0005359'))
     # print(QueryBioLink.get_phenotypes_for_disease_desc('MONDO:0005359'))
     # print(QueryBioLink.get_phenotypes_for_disease_desc('OMIM:605543'))
     # print(QueryBioLink.get_genes_for_disease_desc('OMIM:XXXXXX'))
@@ -238,3 +276,20 @@ if __name__ == '__main__':
     # print(QueryBioLink.get_anatomies_for_gene('NCBIGene:407053'))
     # print(QueryBioLink.get_genes_for_anatomy('UBERON:0000006'))
     # print(QueryBioLink.get_anatomies_for_phenotype('HP:0000003'))
+
+    def save_to_test_file(key, value):
+        f = open('tests/query_test_data.json', 'r+')
+        try:
+            json_data = json.load(f)
+        except ValueError:
+            json_data = {}
+        f.seek(0)
+        f.truncate()
+        json_data[key] = value
+        json.dump(json_data, f)
+        f.close()
+
+    save_to_test_file('UBERON:0004476', QueryBioLink.get_anatomy_entity('UBERON:0004476'))
+    save_to_test_file('HP:0011515', QueryBioLink.get_phenotype_entity('HP:0011515'))
+    save_to_test_file('DOID:3965', QueryBioLink.get_disease_entity('DOID:3965'))
+    save_to_test_file('GO:0097289', QueryBioLink.get_bio_process_entity('GO:0097289'))
