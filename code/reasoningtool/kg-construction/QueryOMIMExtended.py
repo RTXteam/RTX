@@ -137,11 +137,11 @@ if __name__ == '__main__':
     # print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:250300'))
     # print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:142700'))
     # print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:312500'))
-    # print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:166710'))
-    # print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:129905'))
-    # print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:603903'))
-    # print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:613074'))
-    # print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:603918'))  # test issue 1
+    print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:166710'))
+    print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:129905'))
+    print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:603903'))
+    print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:613074'))
+    print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:603918'))  # test issue 1
     print(qo.disease_mim_to_description('OMIM:100100'))
     print(qo.disease_mim_to_description('OMIM:614747'))  # no textSectionContent field
     print(qo.disease_mim_to_description('OMIM:61447'))  # wrong ID
