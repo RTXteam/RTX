@@ -79,7 +79,7 @@ class QueryBioLink:
     def get_label_for_disease(disease_id):
         handler = QueryBioLink.HANDLER_MAP['get_label_for_disease'].format(disease_id=disease_id)
         results = QueryBioLink.__access_api(handler)
-        result_str = 'UNKNOWN'
+        result_str = 'None'
         if results is not None:
             result_str = results['label']
         return result_str
@@ -141,7 +141,7 @@ class QueryBioLink:
     def get_label_for_phenotype(phenotype_id_str):
         handler = QueryBioLink.HANDLER_MAP['get_label_for_phenotype'].format(phenotype_id=phenotype_id_str)
         results = QueryBioLink.__access_api(handler)
-        result_str = 'UNKNOWN'
+        result_str = 'None'
         if results is not None:
             result_str = results['label']
         return result_str
@@ -235,7 +235,7 @@ class QueryBioLink:
     def __get_entity(entity_type, entity_id):
         handler = QueryBioLink.HANDLER_MAP[entity_type].format(id=entity_id)
         results = QueryBioLink.__access_api(handler)
-        result_str = 'UNKNOWN'
+        result_str = 'None'
         if results is not None:
             #   remove all \n characters using json api and convert the string to one line
             result_str = json.dumps(results)
