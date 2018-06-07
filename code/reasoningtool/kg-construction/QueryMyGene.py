@@ -18,6 +18,7 @@ import requests
 import json
 import requests_cache
 
+
 class QueryMyGene:
     def __init__(self, debug=False):
         self.mygene_obj = mygene.MyGeneInfo()
@@ -263,6 +264,45 @@ class QueryMyGene:
                     return None
         return None
 
+    def get_protein_entity(self, protein_id):
+        results = str(self.mygene_obj.query(protein_id.replace('UniProtKB', 'UniProt'), fields='all',
+                                            return_raw='True', verbose=False))
+        result_str = 'None'
+        if len(results) > 100:
+            json_dict = json.loads(results)
+            result_str = json.dumps(json_dict)
+        return result_str
+
+    def get_microRNA_entity(self, microrna_id):
+        results = str(self.mygene_obj.query(microrna_id.replace('NCBIGene', 'entrezgene'), fields='all',
+                                            return_raw='True', verbose=False))
+        result_str = 'None'
+        if len(results) > 100:
+            json_dict = json.loads(results)
+            result_str = json.dumps(json_dict)
+        return result_str
+
+    def get_protein_desc(self, protein_id):
+        result_str = self.get_protein_entity(protein_id)
+        desc = "None"
+        if result_str != "None":
+            result_dict = json.loads(result_str)
+            if "hits" in result_dict.keys():
+                if len(result_dict["hits"]) > 0:
+                    if "summary" in result_dict["hits"][0].keys():
+                        desc = result_dict["hits"][0]["summary"]
+        return desc
+
+    def get_microRNA_desc(self, protein_id):
+        result_str = self.get_microRNA_entity(protein_id)
+        desc = "None"
+        if result_str != "None":
+            result_dict = json.loads(result_str)
+            if "hits" in result_dict.keys():
+                if len(result_dict["hits"]) > 0:
+                    if "summary" in result_dict["hits"][0].keys():
+                        desc = result_dict["hits"][0]["summary"]
+        return desc
 
 
 if __name__ == '__main__':
@@ -285,3 +325,23 @@ if __name__ == '__main__':
     print(mg.convert_uniprot_id_to_gene_symbol("P09601"))
     print(mg.convert_uniprot_id_to_entrez_gene_ID("P09601"))
     print(mg.convert_uniprot_id_to_entrez_gene_ID("XYZZY"))
+
+    def save_to_test_file(filename, key, value):
+        f = open(filename, 'r+')
+        try:
+            json_data = json.load(f)
+        except ValueError:
+            json_data = {}
+        f.seek(0)
+        f.truncate()
+        json_data[key] = value
+        json.dump(json_data, f)
+        f.close()
+
+    save_to_test_file('tests/query_test_data.json', 'UniProtKB:O60884', mg.get_protein_entity("UniProtKB:O60884"))
+    save_to_test_file('tests/query_test_data.json', 'NCBIGene:100847086', mg.get_microRNA_entity("NCBIGene:100847086"))
+    print(mg.get_protein_desc("UniProtKB:O60884"))
+    print(mg.get_protein_desc("UniProtKB:O608840"))
+    print(mg.get_microRNA_desc("NCBIGene:100847086"))
+    print(mg.get_microRNA_desc("NCBIGene:1008470860"))
+    # print(QueryMyGeneExtended.get_microRNA_desc("NCBIGene:1008470860"))
