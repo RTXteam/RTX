@@ -79,17 +79,17 @@ class UpdateNodesInfo:
         t = time()
 
         nodes_array = []
+        query_class_name = UpdateNodesInfo.GET_QUERY_CLASS[node_type]
+        query_class = getattr(__import__(query_class_name), query_class_name)
+        get_entity_mtd_name = "get_" + node_type + "_entity"
+        get_entity_mtd = getattr(query_class, get_entity_mtd_name)
+        query_instance = query_class()
         for i, node_id in enumerate(nodes):
             node = dict()
             node['node_id'] = node_id
-            query_class_name = UpdateNodesInfo.GET_QUERY_CLASS[node_type]
-            query_class = getattr(__import__(query_class_name), query_class_name)
-            if node_type == "protein":
-                node['extended_info_json'] = None
-            else:
-                get_entity_mtd_name = "get_" + node_type + "_entity"
-                get_entity_mtd = getattr(query_class, get_entity_mtd_name)
-                node['extended_info_json'] = get_entity_mtd(node_id)
+            if node_type == "protein" or node_type == "microRNA":
+                get_entity_mtd = getattr(query_instance, get_entity_mtd_name)
+            node['extended_info_json'] = get_entity_mtd(node_id)
             nodes_array.append(node)
             print(node_type + " node No. %d : %s" % (i, node_id))
 
