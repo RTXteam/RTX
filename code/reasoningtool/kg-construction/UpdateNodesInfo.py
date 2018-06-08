@@ -38,11 +38,11 @@ __status__ = 'Prototype'
 
 from Neo4jConnection import Neo4jConnection
 import json
-from QueryEBIOLSExtended import QueryEBIOLSExtended
-from QueryOMIMExtended import QueryOMIMExtended
-from QueryMyGeneExtended import QueryMyGeneExtended
+from QueryEBIOLS import QueryEBIOLS
+from QueryOMIM import QueryOMIM
+from QueryMyGene import QueryMyGene
 from QueryMyChem import QueryMyChem
-from QueryReactomeExtended import QueryReactomeExtended
+from QueryReactome import QueryReactome
 from QueryKEGG import QueryKEGG
 from QueryPubChem import QueryPubChem
 from QueryHMDB import QueryHMDB
@@ -51,14 +51,14 @@ from QueryHMDB import QueryHMDB
 class UpdateNodesInfo:
 
     GET_QUERY_CLASS = {
-        'anatomy': 'QueryBioLinkExtended',
-        'phenotype': 'QueryBioLinkExtended',
-        'microRNA': 'QueryMyGeneExtended',
-        'pathway': 'QueryReactomeExtended',
-        'protein': 'QueryMyGeneExtended',
-        'disease': 'QueryBioLinkExtended',
+        'anatomy': 'QueryBioLink',
+        'phenotype': 'QueryBioLink',
+        'microRNA': 'QueryMyGene',
+        'pathway': 'QueryReactome',
+        'protein': 'QueryMyGene',
+        'disease': 'QueryBioLink',
         'chemical_substance': 'QueryMyChem',
-        'bio_process': 'QueryBioLinkExtended'
+        'bio_process': 'QueryBioLink'
     }
 
     @staticmethod
@@ -84,9 +84,12 @@ class UpdateNodesInfo:
             node['node_id'] = node_id
             query_class_name = UpdateNodesInfo.GET_QUERY_CLASS[node_type]
             query_class = getattr(__import__(query_class_name), query_class_name)
-            get_entity_mtd_name = "get_" + node_type + "_entity"
-            get_entity_mtd = getattr(query_class, get_entity_mtd_name)
-            node['extended_info_json'] = get_entity_mtd(node_id)
+            if node_type == "protein":
+                node['extended_info_json'] = None
+            else:
+                get_entity_mtd_name = "get_" + node_type + "_entity"
+                get_entity_mtd = getattr(query_class, get_entity_mtd_name)
+                node['extended_info_json'] = get_entity_mtd(node_id)
             nodes_array.append(node)
             print(node_type + " node No. %d : %s" % (i, node_id))
 
@@ -156,7 +159,7 @@ class UpdateNodesInfo:
         for i, node_id in enumerate(nodes):
             node = dict()
             node['node_id'] = node_id
-            node['desc'] = QueryEBIOLSExtended.get_anatomy_description(node_id)
+            node['desc'] = QueryEBIOLS.get_anatomy_description(node_id)
             nodes_array.append(node)
 
         print("anatomy api pulling time: %f" % (time() - t))
@@ -191,7 +194,7 @@ class UpdateNodesInfo:
         for i, node_id in enumerate(nodes):
             node = dict()
             node['node_id'] = node_id
-            node['desc'] = QueryEBIOLSExtended.get_phenotype_description(node_id)
+            node['desc'] = QueryEBIOLS.get_phenotype_description(node_id)
             nodes_array.append(node)
 
         print("phenotype api pulling time: %f" % (time() - t))
@@ -223,10 +226,11 @@ class UpdateNodesInfo:
         t = time()
 
         nodes_array = []
+        mg = QueryMyGene()
         for i, node_id in enumerate(nodes):
             node = dict()
             node['node_id'] = node_id
-            node['desc'] = QueryMyGeneExtended.get_microRNA_desc(node_id)
+            node['desc'] = mg.get_microRNA_desc(node_id)
             nodes_array.append(node)
 
         print("microRNA api pulling time: %f" % (time() - t))
@@ -261,7 +265,7 @@ class UpdateNodesInfo:
         for i, node_id in enumerate(nodes):
             node = dict()
             node['node_id'] = node_id
-            node['desc'] = QueryReactomeExtended.get_pathway_desc(node_id)
+            node['desc'] = QueryReactome.get_pathway_desc(node_id)
             nodes_array.append(node)
 
         print("pathway api pulling time: %f" % (time() - t))
@@ -293,10 +297,11 @@ class UpdateNodesInfo:
         t = time()
 
         nodes_array = []
+        mg = QueryMyGene()
         for i, node_id in enumerate(nodes):
             node = dict()
             node['node_id'] = node_id
-            node['desc'] = QueryMyGeneExtended.get_protein_desc(node_id)
+            node['desc'] = mg.get_protein_desc(node_id)
             nodes_array.append(node)
 
         print("protein api pulling time: %f" % (time() - t))
@@ -328,14 +333,14 @@ class UpdateNodesInfo:
         t = time()
 
         nodes_array = []
-        qo = QueryOMIMExtended()
+        qo = QueryOMIM()
         for i, node_id in enumerate(nodes):
             node = dict()
             node['node_id'] = node_id
             if node_id[:4] == "OMIM":
                 node['desc'] = qo.disease_mim_to_description(node_id)
             elif node_id[:4] == "DOID":
-                node['desc'] = QueryEBIOLSExtended.get_disease_description(node_id)
+                node['desc'] = QueryEBIOLS.get_disease_description(node_id)
             nodes_array.append(node)
 
         print("disease api pulling time: %f" % (time() - t))
@@ -405,7 +410,7 @@ class UpdateNodesInfo:
         for i, node_id in enumerate(nodes):
             node = dict()
             node['node_id'] = node_id
-            node['desc'] = QueryEBIOLSExtended.get_bio_process_description(node_id)
+            node['desc'] = QueryEBIOLS.get_bio_process_description(node_id)
             nodes_array.append(node)
 
         print("bio_process pulling time: %f" % (time() - t))
@@ -441,7 +446,7 @@ class UpdateNodesInfo:
             # print("no %d" % i)
             node = dict()
             node['node_id'] = node_id
-            node['desc'] = QueryEBIOLSExtended.get_cellular_component_description(node_id)
+            node['desc'] = QueryEBIOLS.get_cellular_component_description(node_id)
             nodes_array.append(node)
 
         print("cellular_component pulling time: %f" % (time() - t))
@@ -477,7 +482,7 @@ class UpdateNodesInfo:
             # print("no %d" % i)
             node = dict()
             node['node_id'] = node_id
-            node['desc'] = QueryEBIOLSExtended.get_molecular_function_description(node_id)
+            node['desc'] = QueryEBIOLS.get_molecular_function_description(node_id)
             nodes_array.append(node)
 
         print("molecular_function pulling time: %f" % (time() - t))
@@ -514,7 +519,7 @@ class UpdateNodesInfo:
             # print("no %d" % i)
             node = dict()
             node['node_id'] = node_id
-            print(node_id)
+            # print(node_id)
             pubchem_id = QueryKEGG.map_kegg_compound_to_pub_chem_id(node_id)
             hmdb_url = QueryPubChem.get_description_url(pubchem_id)
             # if hmdb_url is None:
