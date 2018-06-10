@@ -1,16 +1,26 @@
 from unittest import TestCase
 import json
-
+import random
 import os,sys
+
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0,parentdir)
 
 from Neo4jConnection import Neo4jConnection
 from QueryUniprot import QueryUniprot
+from QueryMyGene import QueryMyGene
 
+
+def random_int_list(start, stop, length):
+    start, stop = (int(start), int(stop)) if start <= stop else (int(stop), int(start))
+    length = int(abs(length)) if length else 0
+    random_list = []
+    for i in range(length):
+        random_list.append(random.randint(start, stop))
+    return random_list
 
 class UpdateNodesNameTestCase(TestCase):
-    def test_update_protein_names(self):
+    def test_update_protein_names_old(self):
         f = open('config.json', 'r')
         config_data = f.read()
         f.close()
@@ -26,4 +36,29 @@ class UpdateNodesNameTestCase(TestCase):
 
             self.assertIsNotNone(node)
             self.assertIsNotNone(name)
+            self.assertEqual(name, node['n']['name'])
+
+    def test_update_protein_names(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_protein_nodes()
+
+        # generate random number array
+        random_indexes = random_int_list(0, len(nodes) - 1, 100)
+
+        mg = QueryMyGene()
+
+        for i in random_indexes:
+            # retrieve data from BioLink API
+            node_id = nodes[i]
+            name = mg.get_protein_name(node_id)
+
+            # retrieve data from Neo4j
+            node = conn.get_protein_node(node_id)
+            self.assertIsNotNone(node['n']['id'])
+            self.assertIsNotNone(node['n']['name'])
+            self.assertEqual(node_id, node['n']['id'])
             self.assertEqual(name, node['n']['name'])

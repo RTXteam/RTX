@@ -322,7 +322,7 @@ class QueryMyGene:
             result_dict = json.loads(result_str)
             if "hits" in result_dict.keys():
                 if len(result_dict["hits"]) > 0:
-                    if "summary" in result_dict["hits"][0].keys():
+                    if "name" in result_dict["hits"][0].keys():
                         name = result_dict["hits"][0]["name"]
         return name
 
@@ -368,3 +368,4 @@ if __name__ == '__main__':
     # print(QueryMyGeneExtended.get_microRNA_desc("NCBIGene:1008470860"))
 
     print(mg.get_protein_name("UniProtKB:P05231"))
+    print(mg.get_protein_name("UniProtKB:Q8IW03"))
