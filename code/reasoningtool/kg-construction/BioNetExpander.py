@@ -681,7 +681,17 @@ class BioNetExpander:
         ob.neo4j_set_auth()
         ob.neo4j_push()        
 
-
+    def test_issue_235():
+        ob = Orangeboard(debug=False)
+        bne = BioNetExpander(ob)
+        omim_node = bne.add_node_smart('disease',
+                                       'OMIM:105150', seed_node_bool=True,
+                                       desc='CEREBRAL AMYLOID ANGIOPATHY, CST3-RELATED')
+        bne.expand_genetic_condition(omim_node)
+        ob.neo4j_set_url()
+        ob.neo4j_set_auth()
+        ob.neo4j_push()
+        
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Builds the master knowledge graph')
     parser.add_argument('--runfunc', dest='runfunc')
