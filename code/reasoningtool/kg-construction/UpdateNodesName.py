@@ -29,7 +29,7 @@ __email__ = ''
 __status__ = 'Prototype'
 
 from Neo4jConnection import Neo4jConnection
-from QueryUniprotExtended import QueryUniprotExtended
+from QueryUniprot import QueryUniprot
 import json
 
 
@@ -45,7 +45,7 @@ class UpdateNodesName:
         for protein_id in protein_ids:
             node = dict()
             node['node_id'] = protein_id
-            node['name'] = QueryUniprotExtended.get_protein_name(protein_id)
+            node['name'] = QueryUniprot.get_protein_name(protein_id)
             nodes_array.append(node)
 
         print("Uniprot api pulling time: %f" % (time() - t))

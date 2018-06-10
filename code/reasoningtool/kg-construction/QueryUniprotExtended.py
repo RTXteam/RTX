@@ -45,6 +45,7 @@ class QueryUniprotExtended:
     def __access_api(handler):
 
         url = QueryUniprotExtended.API_BASE_URL + '/' + handler
+        print(url)
         try:
             res = requests.get(url, timeout=QueryUniprotExtended.TIMEOUT_SEC)
         except requests.exceptions.Timeout:

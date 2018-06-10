@@ -18,15 +18,15 @@ import sys
 # configure requests package to use the "orangeboard.sqlite" cache
 requests_cache.install_cache('orangeboard')
 
-class QueryChEMBL:
 
+class QueryChEMBL:
     API_BASE_URL = 'https://www.ebi.ac.uk/chembl/api/data'
     TIMEOUT_SEC = 120
-    
+
     @staticmethod
     def send_query_get(handler, url_suffix):
         url = QueryChEMBL.API_BASE_URL + '/' + handler + '?' + url_suffix
-#        print(url)
+        #        print(url)
         try:
             res = requests.get(url,
                                timeout=QueryChEMBL.TIMEOUT_SEC)
@@ -75,7 +75,7 @@ class QueryChEMBL:
             target_predictions_list = res.get('target_predictions', None)
             if target_predictions_list is not None:
                 for target_prediction in target_predictions_list:
-#                    print(target_prediction)
+                    #                    print(target_prediction)
                     target_uniprot_id = target_prediction.get('target_accession', None)
                     target_probability = target_prediction.get('probability', None)
                     if target_uniprot_id is not None:
@@ -91,19 +91,64 @@ class QueryChEMBL:
         chembl_ids_for_drug = QueryChEMBL.get_chembl_ids_for_drug(drug_name)
         res_uniprot_ids = dict()
         for chembl_id in chembl_ids_for_drug:
-#            print(chembl_id)
+            #            print(chembl_id)
             uniprot_ids_dict = QueryChEMBL.get_target_uniprot_ids_for_chembl_id(chembl_id)
             for uniprot_id in uniprot_ids_dict.keys():
                 res_uniprot_ids[uniprot_id] = uniprot_ids_dict[uniprot_id]
         return res_uniprot_ids
-    
-    @staticmethod
-    def test():
-        # print(QueryChEMBL.get_chembl_ids_for_drug('acetaminophen'))
-        print(QueryChEMBL.get_target_uniprot_ids_for_chembl_id('CHEMBL304902'))
-        
-if __name__ == '__main__':
-    QueryChEMBL.test()
-    
-    
 
+    @staticmethod
+    def get_mechanisms_for_chembl_id(chembl_id):
+        """Retrieves mechanism of action and target of each drug.
+
+        Args:
+            chembl_id (str): a ChEMBL id, e.g., "CHEMBL521"
+
+        Returns:
+            array: an array of mechanism of actions, or [] if no mechanism data could be obtained for the given
+            ChEMBL ID
+
+            example:
+                [
+                    {"action_type": "INHIBITOR",
+                    "binding_site_comment": null,
+                    "direct_interaction": true,
+                    "disease_efficacy": true,
+                    "max_phase": 4,
+                    "mec_id": 1180,
+                    "mechanism_comment": null,
+                    "mechanism_of_action": "Cyclooxygenase inhibitor",
+                    "mechanism_refs": [
+                        {"ref_id": "0443-059748 PP. 229",
+                        "ref_type": "ISBN",
+                        "ref_url": "http://www.isbnsearch.org/isbn/0443059748"
+                        },
+                        {"ref_id": "Ibuprofen",
+                        "ref_type": "Wikipedia",
+                        "ref_url": "http://en.wikipedia.org/wiki/Ibuprofen"}
+                        ],
+                    "molecular_mechanism": true,
+                    "molecule_chembl_id": "CHEMBL521",
+                    "record_id": 1343587,
+                    "selectivity_comment": null,
+                    "site_id": null,
+                    "target_chembl_id": "CHEMBL2094253"}
+                ]
+        """
+        if not isinstance(chembl_id, str):
+            return []
+
+        res = QueryChEMBL.send_query_get(handler='mechanism.json',
+                                         url_suffix='molecule_chembl_id=' + chembl_id)
+        res_mechanisms_array = []
+        if res is not None:
+            mechanism_records = res.get('mechanisms', None)
+            if mechanism_records is not None and len(mechanism_records) > 0:
+                res_mechanisms_array = mechanism_records
+        return res_mechanisms_array
+
+
+if __name__ == '__main__':
+    print(QueryChEMBL.get_target_uniprot_ids_for_chembl_id('CHEMBL521'))
+    print(QueryChEMBL.get_mechanisms_for_chembl_id("CHEMBL521"))
+    print(QueryChEMBL.get_mechanisms_for_chembl_id("CHEMBL2094253"))
