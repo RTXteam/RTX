@@ -669,7 +669,18 @@ class BioNetExpander:
         ob.neo4j_set_url()
         ob.neo4j_set_auth()
         ob.neo4j_push()
-        
+
+    def test_issue_237():
+        ob = Orangeboard(debug=False)
+        bne = BioNetExpander(ob)
+        chem_node = bne.add_node_smart('chemical_substance',
+                                       'CHEMBL8', seed_node_bool=True,
+                                       desc='ciprofloxacin')
+        bne.expand_chemical_substance(chem_node)
+        ob.neo4j_set_url()
+        ob.neo4j_set_auth()
+        ob.neo4j_push()        
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Builds the master knowledge graph')
