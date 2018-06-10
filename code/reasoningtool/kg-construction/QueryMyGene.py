@@ -265,6 +265,8 @@ class QueryMyGene:
         return None
 
     def get_protein_entity(self, protein_id):
+        if not isinstance(protein_id, str):
+            return "None"
         results = str(self.mygene_obj.query(protein_id.replace('UniProtKB', 'UniProt'), fields='all',
                                             return_raw='True', verbose=False))
         result_str = 'None'
@@ -274,6 +276,8 @@ class QueryMyGene:
         return result_str
 
     def get_microRNA_entity(self, microrna_id):
+        if not isinstance(microrna_id, str):
+            return "None"
         results = str(self.mygene_obj.query(microrna_id.replace('NCBIGene', 'entrezgene'), fields='all',
                                             return_raw='True', verbose=False))
         result_str = 'None'
@@ -283,6 +287,8 @@ class QueryMyGene:
         return result_str
 
     def get_protein_desc(self, protein_id):
+        if not isinstance(protein_id, str):
+            return "None"
         result_str = self.get_protein_entity(protein_id)
         desc = "None"
         if result_str != "None":
@@ -293,8 +299,10 @@ class QueryMyGene:
                         desc = result_dict["hits"][0]["summary"]
         return desc
 
-    def get_microRNA_desc(self, protein_id):
-        result_str = self.get_microRNA_entity(protein_id)
+    def get_microRNA_desc(self, microrna_id):
+        if not isinstance(microrna_id, str):
+            return "None"
+        result_str = self.get_microRNA_entity(microrna_id)
         desc = "None"
         if result_str != "None":
             result_dict = json.loads(result_str)
@@ -304,6 +312,19 @@ class QueryMyGene:
                         desc = result_dict["hits"][0]["summary"]
         return desc
 
+
+    def get_protein_name(self, protein_id):
+        if not isinstance(protein_id, str):
+            return "None"
+        result_str = self.get_protein_entity(protein_id)
+        name = "None"
+        if result_str != "None":
+            result_dict = json.loads(result_str)
+            if "hits" in result_dict.keys():
+                if len(result_dict["hits"]) > 0:
+                    if "summary" in result_dict["hits"][0].keys():
+                        name = result_dict["hits"][0]["name"]
+        return name
 
 if __name__ == '__main__':
     mg = QueryMyGene()
@@ -345,3 +366,5 @@ if __name__ == '__main__':
     print(mg.get_microRNA_desc("NCBIGene:100847086"))
     print(mg.get_microRNA_desc("NCBIGene:1008470860"))
     # print(QueryMyGeneExtended.get_microRNA_desc("NCBIGene:1008470860"))
+
+    print(mg.get_protein_name("UniProtKB:P05231"))
