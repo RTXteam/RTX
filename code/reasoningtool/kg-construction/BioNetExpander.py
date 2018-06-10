@@ -52,13 +52,13 @@ class BioNetExpander:
                                   "HP": "http://purl.obolibrary.org/obo/HP_",
                                   "DOID": "http://purl.obolibrary.org/obo/DOID_",
                                   "REACT": "https://reactome.org/content/detail/",
-                                  "ChEMBL": "https://www.ebi.ac.uk/chembl/compound/inspect/",
+                                  "CHEMBL.COMPOUND": "https://www.ebi.ac.uk/chembl/compound/inspect/",
                                   "UBERON": "http://purl.obolibrary.org/obo/UBERON_",
                                   "GO": "http://purl.obolibrary.org/obo/GO_",
                                   "CL": "http://purl.obolibrary.org/obo/CL_",
                                   "KEGG": "http://www.genome.jp/dbget-bin/www_bget?"}
 
-    NODE_SIMPLE_TYPE_TO_CURIE_PREFIX = {"chemical_substance": "ChEMBL",
+    NODE_SIMPLE_TYPE_TO_CURIE_PREFIX = {"chemical_substance": "CHEMBL.COMPOUND",
                                         "protein": "UniProtKB",
                                         "genetic_condition": "OMIM",
                                         "anatomical_entity": "UBERON",
@@ -77,7 +77,7 @@ class BioNetExpander:
                               "regulates": True,
                               "expressed_in": True,
                               "physically_interacts_with": False,
-                              "contributes_to": True,
+                              "gene_mutations_contribute_to": True,
                               "participates_in": True,
                               "involved_in": True,
                               "has_phenotype": True,
@@ -468,7 +468,9 @@ class BioNetExpander:
                                                         curie_entrez_gene_id,
                                                         desc=gene_symbol)
                             if node2 is not None:
-                                self.orangeboard.add_rel("contributes_to", "OMIM", node2, node, extended_reltype="contributes_to")
+                                self.orangeboard.add_rel("gene_mutations_contribute_to",
+                                                         "OMIM", node2, node,
+                                                         extended_reltype="gene_mutations_contribute_to")
             for uniprot_id in uniprot_ids:
                 uniprot_ids_to_gene_symbols_dict[uniprot_id] = gene_symbol
         for uniprot_id in uniprot_ids:
@@ -482,9 +484,9 @@ class BioNetExpander:
             target_node = self.add_node_smart('protein', uniprot_id,
                                               desc=uniprot_ids_to_gene_symbols_dict[uniprot_id])
             if target_node is not None:
-                self.orangeboard.add_rel("contributes_to",
+                self.orangeboard.add_rel("gene_mutations_contribute_to",
                                          "OMIM", target_node, source_node,
-                                         extended_reltype="contributes_to")
+                                         extended_reltype="gene_mutations_contribute_to")
 
     def expand_mondo_disease(self, node):
         genes_list = QueryBioLink.get_genes_for_disease_desc(node.name)
