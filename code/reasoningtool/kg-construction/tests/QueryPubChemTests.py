@@ -42,9 +42,9 @@ class QueryPubChemTestCase(unittest.TestCase):
 
     def test_get_description_url(self):
 
-        url = QueryPubChem.get_description_url("123689")
+        url = QueryPubChem.get_description_url("3324")
         self.assertIsNotNone(url)
-        self.assertEqual(url, "http://www.hmdb.ca/metabolites/HMDB0060288")
+        self.assertEqual(url, "http://www.hmdb.ca/metabolites/HMDB0000243")
 
         #   empty result
         url = QueryPubChem.get_description_url("3500")
