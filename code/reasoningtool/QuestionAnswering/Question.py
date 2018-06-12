@@ -41,34 +41,6 @@ if not os.path.exists(KGNodeIndex.databaseName):
 
 re_no_punc = re.compile('[%s]|\s' % re.escape(string.punctuation))
 
-#################################################
-# Required data about the knowledge graph
-################################################
-# TODO: get rid of this since NodeNamesDescriptions.tsv is now in an SQLite database
-# get all the node names and descriptions
-fid = open(os.path.dirname(os.path.abspath(__file__))+'/../../../data/KGmetadata/NodeNamesDescriptions.tsv', 'r', encoding='utf-8', errors='replace')
-names2descrip = dict()
-descrip2names = dict()  # TODO: this assumes that descriptions are unique, and this may change soon
-lower_name2upper_name = dict()
-lower_desc2upper_name = dict()
-no_punc_name2upper_name = dict()
-no_punc_desc2upper_name = dict()
-for line in fid.readlines():
-	line = line.strip()
-	line_split = line.split('\t')
-	name = line_split[0]
-	try:
-		descr = line_split[1]
-	except IndexError:
-		descr = "N/A"
-	names2descrip[name] = descr
-	descrip2names[descr] = name
-	lower_name2upper_name[name.lower()] = name
-	lower_desc2upper_name[descr.lower()] = name
-	no_punc_name2upper_name[re_no_punc.sub('', name.lower())] = name
-	no_punc_desc2upper_name[re_no_punc.sub('', descr.lower())] = name
-fid.close()
-
 # TODO: replace this stuff with the RU.get_node_property (along with RU.node_exists_with_property)
 # get the edge types
 try:
@@ -102,62 +74,27 @@ def find_node_name(string):
 	:param string: a string you're trying to match to a node name in the KG
 	:return: list of strings (of rtx_name's)
 	"""
-	if KGNodeIndex.is_curie_present(string):
-		return [string]
+	# if it's a string, convert "[COX1,PTGS1]" -> ['Uniprot:123', 'Uniprot:234']
+	if "[" == string[0] and "]" == string[-1]:
+		terms = [x.replace("]", "").replace("[", "").strip() for x in string.split(",")]
+		to_return = []
+		for term in terms:
+			if KGNodeIndex.is_curie_present(term):
+				to_return += term
+			if term.lower() != "is" and term.lower() != "as":
+				to_return += KGNodeIndex.get_curies(term)
+			else:
+				pass
 
-	if string.lower() != "is" and string.lower() != "as":
-		return KGNodeIndex.get_curies(string)
-	else:
-		return []
+		return to_return
+	else:  # Otherwise, treat it as usual
+		if KGNodeIndex.is_curie_present(string):
+			return [string]
 
-def find_node_name_depreciated(string):
-	"""
-	Find an acutal Neo4j KG node name in the string
-	:param string: input string (chunk of text)
-	:param names2descrip: dictionary containing the names and descriptions of the nodes (see dumpdata.py)
-	:param descrip2names: reversed names2descrip dictionary
-	:return: one of the node names (key (string) of names2descrip)
-	"""
-	# exact match
-	query = string
-	res_list = []
-	if query in names2descrip:
-		res = query
-		res_list.append(res)
-	elif query in descrip2names:
-		res = descrip2names[query]
-		res_list.append(res)
-	elif False:
-		pass
-	# TODO: put Arnabs ULMS metathesaurus lookup here
-	# Case insensitive match
-	query_lower = string.lower()
-	if query_lower in lower_name2upper_name:
-		res = lower_name2upper_name[query_lower]
-		res_list.append(res)
-	if query_lower in lower_desc2upper_name:
-		res = lower_desc2upper_name[query_lower]
-		res_list.append(res)
-	#for name in names2descrip:
-	#	if name.lower() == query_lower:
-	#		res = name
-	#		res_list.append(res)
-	#for descr in descrip2names:
-	#	if descr.lower() == query_lower:
-	#		res = descrip2names[descr]
-	#		res_list.append(res)
-
-	# last resort, delete punctuation and spaces
-	if not res_list:
-		query_no_punc = re_no_punc.sub('', query_lower)
-		if query_no_punc in no_punc_name2upper_name:
-			res = no_punc_name2upper_name[query_no_punc]
-			res_list.append(res)
-		if query_no_punc in no_punc_desc2upper_name:
-			res = no_punc_desc2upper_name[query_no_punc]
-			res_list.append(res)
-
-	return res_list
+		if string.lower() != "is" and string.lower() != "as":
+			return KGNodeIndex.get_curies(string)
+		else:
+			return []
 
 def find_target_label(string):
 	"""
@@ -332,6 +269,19 @@ class Question:
 					question_tokenized_no_apos_split.append(block)
 			question_tokenized = question_tokenized_no_apos_split
 
+			# Put back together the list (if there is one)
+			if "[" in input_question and "]" in input_question:
+				start = question_tokenized.index("[")
+				end = question_tokenized.index("]") + 1
+				the_list = "".join(question_tokenized[start:end])
+				question_tokenized_with_list = []
+				for item in question_tokenized[0:start]:
+					question_tokenized_with_list.append(item)
+				question_tokenized_with_list.append(the_list)
+				for item in question_tokenized[end:]:
+					question_tokenized_with_list.append(item)
+				question_tokenized = question_tokenized_with_list
+
 			for block_size in range(1, len(question_tokenized)):
 				#if block_size > 10:  # TODO: so far, none of our nodes has more than 9 spaces, so don't bother with these. cat NodeNamesDescriptions.tsv | awk -F" " '{print NF-1}' | sort -r
 				#	break
@@ -361,20 +311,36 @@ class Question:
 			candidate_node_names_labels = list(candidate_node_names_labels)
 
 			# For each of the parameter names, make sure it only shows up once, and if so, populate it
-			for parameter_name in self.parameter_names:
-				parameter_name_positions = []
-				pos = 0
-				for node, node_label in candidate_node_names_labels:
-					if node_label == parameter_name and node != "DOID:4":
-						parameter_name_positions.append(pos)
-					pos += 1
-				if len(parameter_name_positions) > 1:
-					raise CustomExceptions.MultipleTerms(parameter_name, [candidate_node_names_labels[pos][0] for pos in parameter_name_positions])
-				elif len(parameter_name_positions) == 0:
-					pass
-				else:  # There's exactly one term
-					pos = parameter_name_positions.pop()
-					parameters[parameter_name] = candidate_node_names_labels[pos][0]
+			if self.known_query_type_id == 'Q46':
+				# look for anatomical_entity
+				anat_indices = [i for i, x in enumerate(candidate_node_names_labels) if x[1] == "anatomical_entity"]
+				if len(anat_indices) > 1:
+					raise CustomExceptions.MultipleTerms("anatomical_entity", [candidate_node_names_labels[pos][0] for pos in anat_indices])
+				elif len(anat_indices) == 0:
+					pass  # will catch this later
+				else:
+					parameters["anatomical_entity"] = candidate_node_names_labels[anat_indices[0]][0]
+				protein_indicies = [i for i, x in enumerate(candidate_node_names_labels) if x[1] == "protein"]
+				# TODO: should probably check for other node types in here, problem is that some proteins are also listed as pathways, so just hope people craft legit queries
+				proteins = []
+				for ind in protein_indicies:
+					proteins.append(candidate_node_names_labels[ind][0])
+				parameters["protein_list"] = str(proteins)
+			else:
+				for parameter_name in self.parameter_names:
+					parameter_name_positions = []
+					pos = 0
+					for node, node_label in candidate_node_names_labels:
+						if node_label == parameter_name and node != "DOID:4":  # DOID:4 was "disease" which wrecks havoc with things
+							parameter_name_positions.append(pos)
+						pos += 1
+					if len(parameter_name_positions) > 1:
+						raise CustomExceptions.MultipleTerms(parameter_name, [candidate_node_names_labels[pos][0] for pos in parameter_name_positions])
+					elif len(parameter_name_positions) == 0:
+						pass  # nothing to do, will catch this error later
+					else:  # There's exactly one term
+						pos = parameter_name_positions.pop()
+						parameters[parameter_name] = candidate_node_names_labels[pos][0]
 
 			# Throw in the extra parameters
 			#for key, value in self.other_parameters.items():

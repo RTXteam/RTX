@@ -18,6 +18,7 @@ import requests
 import json
 import requests_cache
 
+
 class QueryMyGene:
     def __init__(self, debug=False):
         self.mygene_obj = mygene.MyGeneInfo()
@@ -130,6 +131,26 @@ class QueryMyGene:
                     entrez_ids.add(entrez_id)
         return entrez_ids
 
+    def convert_entrez_gene_id_to_uniprot_id(self, entrez_gene_id):
+        assert type(entrez_gene_id) == int
+        res = self.mygene_obj.query('entrezgene:' + str(entrez_gene_id), species='human', fields='uniprot', verbose=False)
+        uniprot_id = set()
+        if len(res) > 0:
+            res_hits = res.get("hits", None)
+            if res_hits is not None and type(res_hits) == list:
+                for hit in res_hits:
+                    res_uniprot_id_dict = hit.get("uniprot", None)
+                    if res_uniprot_id_dict is not None:
+                        res_uniprot_id = res_uniprot_id_dict.get("Swiss-Prot", None)
+                        if res_uniprot_id is not None:
+                            if type(res_uniprot_id) == str:
+                                uniprot_id.add(res_uniprot_id)
+                            else:
+                                if type(res_uniprot_id) == list:
+                                    for uniprot_id_item in res_uniprot_id:
+                                        uniprot_id.add(uniprot_id_item)
+        return uniprot_id
+    
     def convert_entrez_gene_ID_to_mirbase_ID(self, entrez_gene_id):
         assert type(entrez_gene_id) == int
         res = self.mygene_obj.query('entrezgene:' + str(entrez_gene_id), species='human', fields='miRBase', verbose=False)
@@ -243,24 +264,108 @@ class QueryMyGene:
                     return None
         return None
 
+    def get_protein_entity(self, protein_id):
+        if not isinstance(protein_id, str):
+            return "None"
+        results = str(self.mygene_obj.query(protein_id.replace('UniProtKB', 'UniProt'), fields='all',
+                                            return_raw='True', verbose=False))
+        result_str = 'None'
+        if len(results) > 100:
+            json_dict = json.loads(results)
+            result_str = json.dumps(json_dict)
+        return result_str
 
+    def get_microRNA_entity(self, microrna_id):
+        if not isinstance(microrna_id, str):
+            return "None"
+        results = str(self.mygene_obj.query(microrna_id.replace('NCBIGene', 'entrezgene'), fields='all',
+                                            return_raw='True', verbose=False))
+        result_str = 'None'
+        if len(results) > 100:
+            json_dict = json.loads(results)
+            result_str = json.dumps(json_dict)
+        return result_str
+
+    def get_protein_desc(self, protein_id):
+        if not isinstance(protein_id, str):
+            return "None"
+        result_str = self.get_protein_entity(protein_id)
+        desc = "None"
+        if result_str != "None":
+            result_dict = json.loads(result_str)
+            if "hits" in result_dict.keys():
+                if len(result_dict["hits"]) > 0:
+                    if "summary" in result_dict["hits"][0].keys():
+                        desc = result_dict["hits"][0]["summary"]
+        return desc
+
+    def get_microRNA_desc(self, microrna_id):
+        if not isinstance(microrna_id, str):
+            return "None"
+        result_str = self.get_microRNA_entity(microrna_id)
+        desc = "None"
+        if result_str != "None":
+            result_dict = json.loads(result_str)
+            if "hits" in result_dict.keys():
+                if len(result_dict["hits"]) > 0:
+                    if "summary" in result_dict["hits"][0].keys():
+                        desc = result_dict["hits"][0]["summary"]
+        return desc
+
+
+    def get_protein_name(self, protein_id):
+        if not isinstance(protein_id, str):
+            return "None"
+        result_str = self.get_protein_entity(protein_id)
+        name = "None"
+        if result_str != "None":
+            result_dict = json.loads(result_str)
+            if "hits" in result_dict.keys():
+                if len(result_dict["hits"]) > 0:
+                    if "name" in result_dict["hits"][0].keys():
+                        name = result_dict["hits"][0]["name"]
+        return name
 
 if __name__ == '__main__':
     mg = QueryMyGene()
+    print(mg.convert_entrez_gene_id_to_uniprot_id(9837))
     print(mg.convert_hgnc_gene_id_to_uniprot_id('HGNC:4944'))
-    # print(mg.get_gene_ontology_ids_for_uniprot_id('Q05925'))
-    # print(mg.convert_uniprot_id_to_gene_symbol('Q8NBZ7'))
-    # print(mg.uniprot_id_is_human("P02794"))
-    # print(mg.uniprot_id_is_human("P10592"))
-    # print(mg.convert_entrez_gene_ID_to_mirbase_ID(407053))
-    # print(mg.get_gene_ontology_ids_bp_for_entrez_gene_id(406991))
-    # print(mg.convert_uniprot_id_to_gene_symbol('Q05925'))
-    # print(mg.convert_gene_symbol_to_uniprot_id('A2M'))
-    # print(mg.convert_gene_symbol_to_uniprot_id('A1BG'))
-    # print(mg.convert_gene_symbol_to_entrez_gene_ID('MIR96'))
-    # print(mg.convert_gene_symbol_to_uniprot_id("HMOX1"))
-    # print(mg.convert_gene_symbol_to_uniprot_id('RAD54B'))
-    # print(mg.convert_gene_symbol_to_uniprot_id('NS2'))
-    # print(mg.convert_uniprot_id_to_gene_symbol("P09601"))
-    # print(mg.convert_uniprot_id_to_entrez_gene_ID("P09601"))
-    # print(mg.convert_uniprot_id_to_entrez_gene_ID("XYZZY"))
+    print(mg.get_gene_ontology_ids_for_uniprot_id('Q05925'))
+    print(mg.convert_uniprot_id_to_gene_symbol('Q8NBZ7'))
+    print(mg.uniprot_id_is_human("P02794"))
+    print(mg.uniprot_id_is_human("P10592"))
+    print(mg.convert_entrez_gene_ID_to_mirbase_ID(407053))
+    print(mg.get_gene_ontology_ids_bp_for_entrez_gene_id(406991))
+    print(mg.convert_uniprot_id_to_gene_symbol('Q05925'))
+    print(mg.convert_gene_symbol_to_uniprot_id('A2M'))
+    print(mg.convert_gene_symbol_to_uniprot_id('A1BG'))
+    print(mg.convert_gene_symbol_to_entrez_gene_ID('MIR96'))
+    print(mg.convert_gene_symbol_to_uniprot_id("HMOX1"))
+    print(mg.convert_gene_symbol_to_uniprot_id('RAD54B'))
+    print(mg.convert_gene_symbol_to_uniprot_id('NS2'))
+    print(mg.convert_uniprot_id_to_gene_symbol("P09601"))
+    print(mg.convert_uniprot_id_to_entrez_gene_ID("P09601"))
+    print(mg.convert_uniprot_id_to_entrez_gene_ID("XYZZY"))
+
+    def save_to_test_file(filename, key, value):
+        f = open(filename, 'r+')
+        try:
+            json_data = json.load(f)
+        except ValueError:
+            json_data = {}
+        f.seek(0)
+        f.truncate()
+        json_data[key] = value
+        json.dump(json_data, f)
+        f.close()
+
+    save_to_test_file('tests/query_test_data.json', 'UniProtKB:O60884', mg.get_protein_entity("UniProtKB:O60884"))
+    save_to_test_file('tests/query_test_data.json', 'NCBIGene:100847086', mg.get_microRNA_entity("NCBIGene:100847086"))
+    print(mg.get_protein_desc("UniProtKB:O60884"))
+    print(mg.get_protein_desc("UniProtKB:O608840"))
+    print(mg.get_microRNA_desc("NCBIGene:100847086"))
+    print(mg.get_microRNA_desc("NCBIGene:1008470860"))
+    # print(QueryMyGeneExtended.get_microRNA_desc("NCBIGene:1008470860"))
+
+    print(mg.get_protein_name("UniProtKB:P05231"))
+    print(mg.get_protein_name("UniProtKB:Q8IW03"))

@@ -29,6 +29,7 @@ import requests_cache
 import CachedMethods
 import sys
 import urllib.parse
+import xmltodict
 
 # configure requests package to use the "orangeboard.sqlite" cache
 requests_cache.install_cache('orangeboard')
@@ -38,7 +39,8 @@ class QueryUniprot:
     API_BASE_URL = "http://www.uniprot.org/uploadlists/"
     TIMEOUT_SEC = 120
     HANDLER_MAP = {
-        'map_enzyme_commission_id_to_uniprot_ids': 'uniprot/?query=({id})&format=tab&columns=id'
+        'map_enzyme_commission_id_to_uniprot_ids': 'uniprot/?query=({id})&format=tab&columns=id',
+        'get_protein': 'uniprot/{id}.xml'
     }
 
     @staticmethod
@@ -123,6 +125,57 @@ class QueryUniprot:
                 res_set.add(line)
         return res_set
 
+    @staticmethod
+    def __get_entity(entity_type, entity_id):
+        if entity_id[:10] == 'UniProtKB:':
+            entity_id = entity_id[10:]
+        handler = QueryUniprot.HANDLER_MAP[entity_type].format(id=entity_id)
+        results = QueryUniprot.__access_api(handler)
+        entity = None
+        if results is not None:
+            obj = xmltodict.parse(results)
+            if 'uniprot' in obj.keys():
+                if 'entry' in obj['uniprot'].keys():
+                    entity = obj['uniprot']['entry']
+        return entity
+
+    @staticmethod
+    def get_protein_gene_symbol(entity_id):
+        ret_symbol = "None"
+        if not isinstance(entity_id, str):
+            return ret_symbol
+        entity_obj = QueryUniprot.__get_entity("get_protein", entity_id)
+        if entity_obj is not None:
+            if 'gene' in entity_obj.keys():
+                if "name" in entity_obj["gene"].keys():
+                    gene_name_obj = entity_obj["gene"]["name"]
+                    if not type(gene_name_obj) == list:
+                        gene_name_obj = [gene_name_obj]
+                    for name_dict in gene_name_obj:
+                        #                        print(name_dict)
+                        if "primary" in name_dict.values() and "#text" in name_dict.keys():
+                            ret_symbol = name_dict["#text"]
+        return ret_symbol
+
+    @staticmethod
+    def __get_name(entity_type, entity_id):
+        entity_obj = QueryUniprot.__get_entity(entity_type, entity_id)
+        name = "None"
+        if entity_obj is not None:
+            if 'protein' in entity_obj.keys():
+                if 'recommendedName' in entity_obj['protein'].keys():
+                    if 'fullName' in entity_obj['protein']['recommendedName'].keys():
+                        name = entity_obj['protein']['recommendedName']['fullName']
+                        if isinstance(name, dict):
+                            name = name['#text']
+        return name
+
+    @staticmethod
+    def get_protein_name(protein_id):
+        if not isinstance(protein_id, str):
+            return "None"
+        return QueryUniprot.__get_name("get_protein", protein_id)
+
 
 if __name__ == '__main__':
     print(QueryUniprot.uniprot_id_to_reactome_pathways("P68871"))
@@ -135,3 +188,15 @@ if __name__ == '__main__':
     print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:1.2.1.22"))  # large results
     print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:4.4.1.xx"))  # fake id
     print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("R-HSA-1912422"))   # wrong id
+
+    print(QueryUniprot.get_protein_gene_symbol('UniProtKB:P20848'))
+    print(QueryUniprot.get_protein_gene_symbol("UniProtKB:P01358"))
+    print(QueryUniprot.get_protein_gene_symbol("UniProtKB:Q96P88"))
+    print(QueryUniprot.get_protein_name('UniProtKB:P01358'))
+    print(QueryUniprot.get_protein_name('UniProtKB:P20848'))
+    print(QueryUniprot.get_protein_name('UniProtKB:Q9Y471'))
+    print(QueryUniprot.get_protein_name('UniProtKB:O60397'))
+    print(QueryUniprot.get_protein_name('UniProtKB:Q8IZJ3'))
+    print(QueryUniprot.get_protein_name('UniProtKB:Q7Z2Y8'))
+    print(QueryUniprot.get_protein_name('UniProtKB:Q8IWN7'))
+    print(QueryUniprot.get_protein_name('UniProtKB:Q156A1'))

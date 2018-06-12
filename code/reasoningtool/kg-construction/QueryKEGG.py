@@ -119,3 +119,4 @@ if __name__ == '__main__':
     print(QueryKEGG.map_kegg_compound_to_pub_chem_id('KEGG:C00200'))
     print(QueryKEGG.map_kegg_compound_to_pub_chem_id('GO:2342343'))
     print(QueryKEGG.map_kegg_compound_to_pub_chem_id(1000))
+    print(QueryKEGG.map_kegg_compound_to_pub_chem_id('KEGG:C00022'))

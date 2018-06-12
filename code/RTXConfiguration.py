@@ -9,7 +9,7 @@ class RTXConfiguration:
 
 	#### Constructor
 	def __init__(self):
-		self.version = "RTX 0.5.1"
+		self.version = "RTX 0.5.2"
 
 		# This is the flag/property to switch between the two containers
 		self.live = "Production"

@@ -29,14 +29,15 @@ __email__ = ''
 __status__ = 'Prototype'
 
 from Neo4jConnection import Neo4jConnection
-from QueryUniprotExtended import QueryUniprotExtended
+from QueryUniprot import QueryUniprot
+from QueryMyGene import QueryMyGene
 import json
 
 
 class UpdateNodesName:
 
     @staticmethod
-    def update_protein_names(protein_ids):
+    def update_protein_names_old(protein_ids):
 
         from time import time
         t = time()
@@ -45,7 +46,7 @@ class UpdateNodesName:
         for protein_id in protein_ids:
             node = dict()
             node['node_id'] = protein_id
-            node['name'] = QueryUniprotExtended.get_protein_name(protein_id)
+            node['name'] = QueryUniprot.get_protein_name(protein_id)
             nodes_array.append(node)
 
         print("Uniprot api pulling time: %f" % (time() - t))
@@ -61,8 +62,46 @@ class UpdateNodesName:
 
         print("total time: %f" % (time() - t))
 
+    @staticmethod
+    def update_protein_nodes_name():
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_protein_nodes()
+        print("the number of protein nodes: %d" % len(nodes))
+
+        from time import time
+        t = time()
+
+        nodes_array = []
+        mg = QueryMyGene()
+        for i, node_id in enumerate(nodes):
+            node = dict()
+            node['node_id'] = node_id
+            node['name'] = mg.get_protein_name(node_id)
+            nodes_array.append(node)
+
+        print("protein api pulling time: %f" % (time() - t))
+
+        nodes_nums = len(nodes_array)
+        chunk_size = 10000
+        group_nums = nodes_nums // chunk_size + 1
+        for i in range(group_nums):
+            start = i * chunk_size
+            end = (i + 1) * chunk_size if (i + 1) * chunk_size < nodes_nums else nodes_nums
+            conn.update_protein_nodes_name(nodes_array[start:end])
+
+        print("protein total time: %f" % (time() - t))
+
+        conn.close()
+
 
 if __name__ == '__main__':
-    protein_nodes_ids = ['UniProtKB:P01358', 'UniProtKB:P20848', 'UniProtKB:Q9Y471', 'UniProtKB:O60397',
-                         'UniProtKB:Q8IZJ3', 'UniProtKB:Q7Z2Y8', 'UniProtKB:Q8IWN7', 'UniProtKB:Q156A1']
-    UpdateNodesName.update_protein_names(protein_nodes_ids)
+    # protein_nodes_ids = ['UniProtKB:P01358', 'UniProtKB:P20848', 'UniProtKB:Q9Y471', 'UniProtKB:O60397',
+    #                      'UniProtKB:Q8IZJ3', 'UniProtKB:Q7Z2Y8', 'UniProtKB:Q8IWN7', 'UniProtKB:Q156A1']
+    # UpdateNodesName.update_protein_names_old(protein_nodes_ids)
+
+    UpdateNodesName.update_protein_nodes_name()

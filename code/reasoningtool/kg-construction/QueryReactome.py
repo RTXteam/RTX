@@ -15,11 +15,24 @@ __status__ = 'Prototype'
 import requests
 import sys
 import re
+import requests_cache
+import json
+
+# configure requests package to use the "orangeboard.sqlite" cache
+requests_cache.install_cache('orangeboard')
+
 
 class QueryReactome:
 
     API_BASE_URL = 'https://reactome.org/ContentService'
-    
+
+    TIMEOUT_SEC = 120
+
+    HANDLER_MAP = {
+        'get_pathway': 'data/pathway/{id}/containedEvents',
+        'get_pathway_desc': 'data/query/{id}'
+    }
+
     SPECIES_MNEMONICS = ['BOVIN',
                          'ACAVI',
                          'VACCW',
@@ -62,11 +75,16 @@ class QueryReactome:
     def send_query_get(handler, url_suffix):
         url_str = QueryReactome.API_BASE_URL + '/' + handler + '/' + url_suffix
 #        print(url_str)
-        res = requests.get(url_str, headers={'accept': 'application/json'})
+        try:
+            res = requests.get(url_str, headers={'accept': 'application/json'},
+                               timeout=QueryReactome.TIMEOUT_SEC)
+        except BaseException as e:
+            print('%s received in QueryReactome for URL: %s' % (e, url_str), file=sys.stderr)
+            return None
         status_code = res.status_code
         if status_code != 200:
-            print('HTTP response status code: ' + str(status_code) + ' for URL:\n' + url_str, file=sys.stderr)
-            res = None
+            print('Status code ' + str(status_code) + ' for url: ' + url_str, file=sys.stderr)
+            return None
         return res
 
     @staticmethod
@@ -75,7 +93,7 @@ class QueryReactome:
         if res is not None:
             res_json = res.json()
             #        print(res_json)
-            if type(res_json)==list:
+            if type(res_json) == list:
                 ret_ids = set([res_entry['stId'] for res_entry in res_json])
             else:
                 ret_ids = set()
@@ -89,7 +107,7 @@ class QueryReactome:
         ret_ids = dict()
         if res is not None:
             res_json = res.json()
-            if type(res_json)==list:
+            if type(res_json) == list:
                 for res_entry in res_json:
                     entity_id = res_entry['stId']
                     if 'R-HSA-' in entity_id:
@@ -201,6 +219,73 @@ class QueryReactome:
         return res_uniprot_ids
 
     @staticmethod
+    def __access_api(handler):
+
+        url = QueryReactome.API_BASE_URL + '/' + handler
+
+        try:
+            res = requests.get(url, timeout=QueryReactome.TIMEOUT_SEC)
+        except requests.exceptions.Timeout:
+            print(url, file=sys.stderr)
+            print('Timeout in QueryReactome for URL: ' + url, file=sys.stderr)
+            return None
+        except BaseException as e:
+            print(url, file=sys.stderr)
+            print('%s received in QueryReactome for URL: %s' % (e, url), file=sys.stderr)
+            return None
+        status_code = res.status_code
+        if status_code != 200:
+            print(url, file=sys.stderr)
+            print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
+            return None
+
+        return res.text
+
+    @staticmethod
+    def __get_entity(entity_type, entity_id):
+        handler = QueryReactome.HANDLER_MAP[entity_type].format(id=entity_id)
+        results = QueryReactome.__access_api(handler)
+        result_str = 'None'
+        if results is not None:
+            #   remove all \n characters using json api and convert the string to one line
+            json_dict = json.loads(results)
+            result_str = json.dumps(json_dict)
+        return result_str
+
+    @staticmethod
+    def __get_desc(entity_type, entity_id):
+        handler = QueryReactome.HANDLER_MAP[entity_type].format(id=entity_id)
+        results = QueryReactome.__access_api(handler)
+        result_str = 'None'
+        if results is not None:
+            #   remove all \n characters using json api and convert the string to one line
+            json_dict = json.loads(results)
+            if 'summation' in json_dict.keys():
+                summation = json_dict['summation']
+                if len(summation) > 0:
+                    if 'text' in summation[0].keys():
+                        result_str = summation[0]['text']
+        return result_str
+
+    @staticmethod
+    #   example of pathway_id: REACT:R-HSA-70326
+    def get_pathway_entity(pathway_id):
+        if not isinstance(pathway_id, str):
+            return 'None'
+        if pathway_id[:6] == "REACT:":
+            pathway_id = pathway_id[6:]
+        return QueryReactome.__get_entity("get_pathway", pathway_id)
+
+    @staticmethod
+    #   example of pathway_id: Reactome:R-HSA-70326
+    def get_pathway_desc(pathway_id):
+        if not isinstance(pathway_id, str):
+            return 'None'
+        if pathway_id[:6] == "REACT:":
+            pathway_id = pathway_id[6:]
+        return QueryReactome.__get_desc("get_pathway_desc", pathway_id)
+
+    @staticmethod
     def test():
         print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc("P62991"))
         print(QueryReactome.is_valid_uniprot_accession("Q16665"))
@@ -212,7 +297,7 @@ class QueryReactome:
         print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc('P68871'))
         print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc('O75521-2'))
         print(QueryReactome.query_reactome_pathway_id_to_uniprot_ids_desc('R-HSA-5423646'))
-        print(QueryReactome.query_uniprot_id_to_reactome_pathway_ids_desc('P68871'))
+        print(QueryReactome.query_uniprot_id_to_interacting_uniprot_ids_desc("P68871"))
         print(QueryReactome.__query_uniprot_to_reactome_entity_id('O75521-2'))
         print(QueryReactome.__query_reactome_entity_id_to_reactome_pathway_ids_desc('R-HSA-2230989'))
         print(QueryReactome.__query_uniprot_to_reactome_entity_id_desc('P68871'))
@@ -220,3 +305,18 @@ class QueryReactome:
 
 if __name__ == '__main__':
     QueryReactome.test()
+
+    def save_to_test_file(filename, key, value):
+        f = open(filename, 'r+')
+        try:
+            json_data = json.load(f)
+        except ValueError:
+            json_data = {}
+        f.seek(0)
+        f.truncate()
+        json_data[key] = value
+        json.dump(json_data, f)
+        f.close()
+
+    save_to_test_file('tests/query_test_data.json', 'REACT:R-HSA-70326', QueryReactome.get_pathway_entity('REACT:R-HSA-70326'))
+    print(QueryReactome.get_pathway_desc('REACT:R-HSA-70326'))

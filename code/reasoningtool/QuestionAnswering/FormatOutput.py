@@ -151,6 +151,17 @@ class FormatResponse:
 			edge.origin_list = []
 			edge.origin_list.append(edge_source_db[(u, v)])  # TODO: check with eric if this really should be a list and if it should contain the source DB('s)
 			edge_objects.append(edge)
+			#edge.attribute_list
+			#edge.confidence
+			#edge.evidence_type
+			edge.is_defined_by = "RTX"
+			edge.provided_by = node_iris_to_node_object[edge_source_iri[(u, v)]].uri
+			#edge.publications
+			#edge.qualifiers
+			#edge.relation
+			#edge.source_id
+			#edge.target_id
+			#edge.type
 
 		# Create the result (potential answer)
 		result1 = Result()

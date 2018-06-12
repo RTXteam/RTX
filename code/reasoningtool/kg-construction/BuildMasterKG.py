@@ -14,18 +14,12 @@ __status__ = 'Prototype'
 
 import requests_cache
 import sys
-from Orangeboard import Orangeboard
-from BioNetExpander import BioNetExpander
-from QueryNCBIeUtils import QueryNCBIeUtils
-from QuerySciGraph import QuerySciGraph
-from QueryDisont import QueryDisont
-from ParsePhenont import ParsePhenont
-from QueryChEMBL import QueryChEMBL
-from QueryPubChem import QueryPubChem
-
 import pandas
 import timeit
 import argparse
+
+from Orangeboard import Orangeboard
+from BioNetExpander import BioNetExpander
 
 # configure requests package to use the "orangeboard.sqlite" cache
 requests_cache.install_cache('orangeboard')
@@ -67,7 +61,7 @@ def add_pc2_to_kg():
             node2 = ob.get_node('protein', uniprot2)
             if node1 is not None and node2 is not None and node1.uuid != node2.uuid:
                 if interaction_type == 'interacts-with':
-                    ob.add_rel('directly_interacts_with', 'PC2', node1, node2, extended_reltype="directly_interacts_with")
+                    ob.add_rel('physically_interacts_with', 'PC2', node1, node2, extended_reltype="physically_interacts_with")
                 else:
                     if interaction_type == 'controls-expression-of':
                         ob.add_rel("regulates", 'PC2', node1, node2, extended_reltype="regulates_expression_of")
@@ -80,7 +74,7 @@ def add_pc2_to_kg():
 
 
 def seed_nodes_from_master_tsv_file():
-    seed_node_data = pandas.read_csv('../../../data/seed_nodes.tsv',
+    seed_node_data = pandas.read_csv('../../../data/seed_nodes_filtered.tsv',
                                      sep="\t",
                                      names=['type', 'rtx_name', 'term', 'purpose'],
                                      header=0,

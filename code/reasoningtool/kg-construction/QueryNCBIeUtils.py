@@ -349,12 +349,15 @@ class QueryNCBIeUtils:
         This is almost the same as the above get_pubmed_hit_counts but is made to work with multi_normalized_google_distance
         '''
         term_str_encoded = urllib.parse.quote(term_str, safe='')
-        params = {
-            'db':'pubmed',
-            'term' : term_str
-        }
-        res = QueryNCBIeUtils.send_query_post('esearch.fcgi',
-                                             params)
+        res = QueryNCBIeUtils.send_query_get('esearch.fcgi',
+                                             'db=pubmed&term=' + term_str_encoded)
+        if res is None:
+            params = {
+                'db':'pubmed',
+                'term' : term_str
+            }
+            res = QueryNCBIeUtils.send_query_post('esearch.fcgi',
+                                                 params)
         res_int = None
         if res is not None:
             status_code = res.status_code

@@ -52,13 +52,13 @@ class BioNetExpander:
                                   "HP": "http://purl.obolibrary.org/obo/HP_",
                                   "DOID": "http://purl.obolibrary.org/obo/DOID_",
                                   "REACT": "https://reactome.org/content/detail/",
-                                  "ChEMBL": "https://www.ebi.ac.uk/chembl/compound/inspect/",
+                                  "CHEMBL.COMPOUND": "https://www.ebi.ac.uk/chembl/compound/inspect/",
                                   "UBERON": "http://purl.obolibrary.org/obo/UBERON_",
                                   "GO": "http://purl.obolibrary.org/obo/GO_",
                                   "CL": "http://purl.obolibrary.org/obo/CL_",
                                   "KEGG": "http://www.genome.jp/dbget-bin/www_bget?"}
 
-    NODE_SIMPLE_TYPE_TO_CURIE_PREFIX = {"chemical_substance": "ChEMBL",
+    NODE_SIMPLE_TYPE_TO_CURIE_PREFIX = {"chemical_substance": "CHEMBL.COMPOUND",
                                         "protein": "UniProtKB",
                                         "genetic_condition": "OMIM",
                                         "anatomical_entity": "UBERON",
@@ -77,21 +77,23 @@ class BioNetExpander:
                               "regulates": True,
                               "expressed_in": True,
                               "physically_interacts_with": False,
-                              "contributes_to": True,
+                              "gene_mutations_contribute_to": True,
                               "participates_in": True,
                               "involved_in": True,
                               "has_phenotype": True,
+                              "has_part": True,
                               "capable_of": True}
 
     GO_ONTOLOGY_TO_PREDICATE = {"biological_process": "involved_in",
                                 "cellular_component": "expressed_in",
                                 "molecular_function": "capable_of"}
-    
+
     def __init__(self, orangeboard):
         orangeboard.set_dict_reltype_dirs(self.MASTER_REL_IS_DIRECTED)
         self.orangeboard = orangeboard
         self.query_omim_obj = QueryOMIM()
         self.query_mygene_obj = QueryMyGene(debug=False)
+        self.gene_symbols_to_protein_nodes = dict()
 
     def add_node_smart(self, simple_node_type, name, seed_node_bool=False, desc=''):
         if name.endswith("PHENOTYPE") or name.startswith("MP:"):
@@ -123,18 +125,31 @@ class BioNetExpander:
             gene_symbol = QueryUniprotExtended.get_protein_gene_symbol(curie_id)
             desc = gene_symbol
 
-        node = self.orangeboard.add_node(simple_node_type,
-                                         name,
-                                         seed_node_bool,
-                                         desc)
-        extra_props = {"uri": iri,
-                       "id": curie_id,
-                       "accession": accession}
+        node = None
 
-        if simple_node_type == "protein" or simple_node_type == "microRNA":
-            extra_props["symbol"] = desc
+        if simple_node_type == "protein":
+            gene_symbol = desc
+            if gene_symbol in self.gene_symbols_to_protein_nodes:
+                node = self.gene_symbols_to_protein_nodes[gene_symbol]
 
-        node.set_extra_props(extra_props)
+        if node is None:
+            node = self.orangeboard.add_node(simple_node_type,
+                                             name,
+                                             seed_node_bool,
+                                             desc)
+
+            extra_props = {"uri": iri,
+                           "id": curie_id,
+                           "accession": accession}
+
+            if simple_node_type == "protein" or simple_node_type == "microRNA":
+                extra_props["symbol"] = desc
+
+            node.set_extra_props(extra_props)
+
+            if simple_node_type == "protein":
+                gene_symbol = desc
+                self.gene_symbols_to_protein_nodes[gene_symbol] = node
 
         return node
 
@@ -299,7 +314,7 @@ class BioNetExpander:
 
         # protein-pathway membership:
         pathways_dict_from_reactome = QueryReactome.query_uniprot_id_to_reactome_pathway_ids_desc(uniprot_id_str)
-        pathways_dict_sourcedb = dict.fromkeys(pathways_dict_from_reactome.keys(), 'reactome_pathway')
+        pathways_dict_sourcedb = dict.fromkeys(pathways_dict_from_reactome.keys(), 'reactome')
         node1 = node
         for pathway_id in pathways_dict_from_reactome.keys():
             target_node = self.add_node_smart('pathway',
@@ -453,7 +468,9 @@ class BioNetExpander:
                                                         curie_entrez_gene_id,
                                                         desc=gene_symbol)
                             if node2 is not None:
-                                self.orangeboard.add_rel("contributes_to", "OMIM", node2, node, extended_reltype="contributes_to")
+                                self.orangeboard.add_rel("gene_mutations_contribute_to",
+                                                         "OMIM", node2, node,
+                                                         extended_reltype="gene_mutations_contribute_to")
             for uniprot_id in uniprot_ids:
                 uniprot_ids_to_gene_symbols_dict[uniprot_id] = gene_symbol
         for uniprot_id in uniprot_ids:
@@ -467,9 +484,9 @@ class BioNetExpander:
             target_node = self.add_node_smart('protein', uniprot_id,
                                               desc=uniprot_ids_to_gene_symbols_dict[uniprot_id])
             if target_node is not None:
-                self.orangeboard.add_rel("contributes_to",
+                self.orangeboard.add_rel("gene_mutations_contribute_to",
                                          "OMIM", target_node, source_node,
-                                         extended_reltype="contributes_to")
+                                         extended_reltype="gene_mutations_contribute_to")
 
     def expand_mondo_disease(self, node):
         genes_list = QueryBioLink.get_genes_for_disease_desc(node.name)
@@ -631,8 +648,50 @@ class BioNetExpander:
         bne.expand_disease(node)
         ob.neo4j_set_url()
         ob.neo4j_set_auth()
+        ob.neo4j_push()
+
+    def test_double_proteins():
+        ob = Orangeboard(debug=False)
+        bne = BioNetExpander(ob)
+        bne.add_node_smart('protein', 'Q59F02', seed_node_bool=True, desc='PMM2')
+        bne.add_node_smart('protein', 'H3BV55', seed_node_bool=True, desc='PMM2')
+        bne.add_node_smart('protein', 'A0A0S2Z4J6', seed_node_bool=True, desc='PMM2')
+        bne.add_node_smart('protein', 'H3BV34', seed_node_bool=True, desc='PMM2')
+        ob.neo4j_set_url()
+        ob.neo4j_set_auth()
+        ob.neo4j_push()
+
+    def test_issue_228():
+        ob = Orangeboard(debug=False)
+        bne = BioNetExpander(ob)
+        bne.add_node_smart('disease', 'MONDO:0005359', seed_node_bool=True, desc='drug-induced liver injury')
+        bne.add_node_smart('protein', 'Q59F02', seed_node_bool=True, desc='PMM2')
+        ob.neo4j_set_url()
+        ob.neo4j_set_auth()
+        ob.neo4j_push()
+
+    def test_issue_237():
+        ob = Orangeboard(debug=False)
+        bne = BioNetExpander(ob)
+        chem_node = bne.add_node_smart('chemical_substance',
+                                       'CHEMBL8', seed_node_bool=True,
+                                       desc='ciprofloxacin')
+        bne.expand_chemical_substance(chem_node)
+        ob.neo4j_set_url()
+        ob.neo4j_set_auth()
         ob.neo4j_push()        
 
+    def test_issue_235():
+        ob = Orangeboard(debug=False)
+        bne = BioNetExpander(ob)
+        omim_node = bne.add_node_smart('disease',
+                                       'OMIM:105150', seed_node_bool=True,
+                                       desc='CEREBRAL AMYLOID ANGIOPATHY, CST3-RELATED')
+        bne.expand_genetic_condition(omim_node)
+        ob.neo4j_set_url()
+        ob.neo4j_set_auth()
+        ob.neo4j_push()
+        
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Builds the master knowledge graph')
     parser.add_argument('--runfunc', dest='runfunc')
