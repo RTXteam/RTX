@@ -1,16 +1,15 @@
 import sys
 import os
-new_path = os.path.join(os.getcwd(), '..', 'SemMedDB')
-sys.path.insert(0, new_path)
+#new_path = os.path.join(os.getcwd(), '..', 'SemMedDB')
+#sys.path.insert(0, new_path)
 
 from NormGoogleDistance import NormGoogleDistance
-from SemMedInterface import SemMedInterface
+#from SemMedInterface import SemMedInterface
 from QueryMyGene import QueryMyGene
 import mygene
 import requests
 from QueryMyChem import QueryMyChem
 import requests_cache
-import pandas
 
 requests_cache.install_cache('SynonymCache')
 
@@ -18,7 +17,7 @@ requests_cache.install_cache('SynonymCache')
 class SynonymMapper():
 
     def __init__(self):
-        self.smi = SemMedInterface()
+        #self.smi = SemMedInterface()
         self.biothings_url = "http://c.biothings.io/v1/query?q="
         self.mygene_obj = mygene.MyGeneInfo()
         self.qmg = QueryMyGene()
@@ -54,7 +53,8 @@ class SynonymMapper():
                 hgnc_res = res.get('HGNC', None)
                 mim_res = res.get('MIM', None)
                 vega_res = res.get('Vega', None)
-                ensembl_res = res.get('ensembl', None)
+                #ensembl_res = res.get('ensembl', None)
+                ensembl_res = None
             else:
                 hgnc_res = None
                 mim_res = None
@@ -67,15 +67,9 @@ class SynonymMapper():
             if vega_res is not None:
                 vega_ids |= set([vega_res])
             if ensembl_res is not None:
-                if type(ensembl_res) == list:
-                    for ens_res in ensembl_res:
-                        ensembl_gene_res = ens_res.get('gene', None)
-                        if ensembl_gene_res is not None:
-                            ensembl_ids |= set([ensembl_gene_res])
-                else:
-                    ensembl_gene_res = ensembl_res.get('gene', None)
-                    if ensembl_gene_res is not None:
-                        ensembl_ids |= set([ensembl_gene_res])
+                ensembl_gene_res = ensembl_res.get('gene', None)
+                if ensembl_gene_res is not None:
+                    ensembl_ids |= set([ensembl_gene_res])
 
         for hgnc_id in hgnc_ids:
             synonyms += ['HGNC:' + str(hgnc_id)]
@@ -116,9 +110,9 @@ class SynonymMapper():
                 synonym_ids = list(synonym_ids)
         return synonym_ids
 
-    def id_to_cui(self, curie_id):
-        cuis = self.smi.get_cui_for_id(curie_id)
-        return cuis
+    #def id_to_cui(self, curie_id):
+    #    cuis = self.smi.get_cui_for_id(curie_id)
+    #    return cuis
 
     def chembl_to_chebi(self, chemical_substance_id):
         if chemical_substance_id[:7] == "ChEMBL:":
@@ -132,15 +126,15 @@ class SynonymMapper():
         try:
             res = requests.get(url, timeout=QueryMyChem.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
-            print(url, file=sys.stderr)
-            print('Timeout in QueryMyChem for URL: ' + url, file=sys.stderr)
+            #print(url, file=sys.stderr)
+            #print('Timeout in QueryMyChem for URL: ' + url, file=sys.stderr)
             return None
         if res is None:
             return None
         status_code = res.status_code
         if status_code != 200:
-            print(url, file=sys.stderr)
-            print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
+            #print(url, file=sys.stderr)
+            #print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
             return None
         id_json = res.json()
         if 'chebi' in id_json.keys():
