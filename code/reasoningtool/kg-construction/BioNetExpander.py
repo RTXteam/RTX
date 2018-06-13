@@ -110,11 +110,7 @@ class BioNetExpander:
         iri_prefix = self.CURIE_PREFIX_TO_IRI_PREFIX[curie_prefix]
         if ":" not in name:
             accession = name
-            if "CHEMBL" in name:
-                shortname = name.replace("CHEMBL", "")
-            else:
-                shortname = name
-            curie_id = curie_prefix + ":" + shortname
+            curie_id = curie_prefix + ":" + name
             iri = iri_prefix + name
         else:
             curie_id = name
