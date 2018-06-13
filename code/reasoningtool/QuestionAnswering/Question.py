@@ -311,7 +311,7 @@ class Question:
 			candidate_node_names_labels = list(candidate_node_names_labels)
 
 			# For each of the parameter names, make sure it only shows up once, and if so, populate it
-			if self.known_query_type_id == 'Q46':
+			if self.query_type_id == 'Q46':
 				# look for anatomical_entity
 				anat_indices = [i for i, x in enumerate(candidate_node_names_labels) if x[1] == "anatomical_entity"]
 				if len(anat_indices) > 1:
