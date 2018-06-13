@@ -79,6 +79,8 @@ class ParseQuestion:
 		# Otherwise, you're all good
 		question = self._question_templates[ind]
 		parameters = question.get_parameters(input_question)
+		# Throw in the extra parameters from the parsed question
+		parameters = {**parameters, **question.other_parameters}
 		return question, parameters, error_message, error_code
 
 	def get_execution_string(self, query_type_id, parameters):
