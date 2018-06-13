@@ -10,6 +10,7 @@ import mygene
 import requests
 from QueryMyChem import QueryMyChem
 import requests_cache
+import pandas
 
 requests_cache.install_cache('SynonymCache')
 
@@ -23,6 +24,9 @@ class SynonymMapper():
         self.qmg = QueryMyGene()
 
     def prot_to_gene(self, curie_id):
+        """
+        This takes a uniprot curie id and converts it into a few different gene ids
+        """
         if len(curie_id.split(':'))>1:
             uniprot_id = curie_id.split(':')[1]
         else:
@@ -53,8 +57,7 @@ class SynonymMapper():
                 hgnc_res = res.get('HGNC', None)
                 mim_res = res.get('MIM', None)
                 vega_res = res.get('Vega', None)
-                #ensembl_res = res.get('ensembl', None)
-                ensembl_res = None
+                ensembl_res = res.get('ensembl', None)
             else:
                 hgnc_res = None
                 mim_res = None
@@ -67,9 +70,15 @@ class SynonymMapper():
             if vega_res is not None:
                 vega_ids |= set([vega_res])
             if ensembl_res is not None:
-                ensembl_gene_res = ensembl_res.get('gene', None)
-                if ensembl_gene_res is not None:
-                    ensembl_ids |= set([ensembl_gene_res])
+                if type(ensembl_res) == list:
+                    for ens_res in ensembl_res:
+                        ensembl_gene_res = ens_res.get('gene', None)
+                        if ensembl_gene_res is not None:
+                            ensembl_ids |= set([ensembl_gene_res])
+                else:
+                    ensembl_gene_res = ensembl_res.get('gene', None)
+                    if ensembl_gene_res is not None:
+                        ensembl_ids |= set([ensembl_gene_res])
 
         for hgnc_id in hgnc_ids:
             synonyms += ['HGNC:' + str(hgnc_id)]
@@ -86,6 +95,9 @@ class SynonymMapper():
             return None
 
     def get_all_from_oxo(self, curie_id):
+        """
+        this takes a curie id and gets all the mappings that oxo has for the given id
+        """
         if type(curie_id) != str:
             curie_id = str(curie_id)
         if curie_id.startswith('REACT:'):
@@ -111,10 +123,16 @@ class SynonymMapper():
         return synonym_ids
 
     #def id_to_cui(self, curie_id):
+    #    """
+    #    this takes a currie id and finds a UMLS cui for it
+    #    """
     #    cuis = self.smi.get_cui_for_id(curie_id)
     #    return cuis
 
     def chembl_to_chebi(self, chemical_substance_id):
+        """
+        This takes a chembl curie id and return a chebi curie id
+        """
         if chemical_substance_id[:7] == "ChEMBL:":
             chemical_substance_id = chemical_substance_id.replace("ChEMBL:", "CHEMBL")
         if chemical_substance_id.startswith('CHEMBL:CHEMBL'):
@@ -141,6 +159,7 @@ class SynonymMapper():
             return id_json['chebi']['chebi_id']
         else:
             return None
+
 
 
 
