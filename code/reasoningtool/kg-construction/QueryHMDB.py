@@ -63,7 +63,7 @@ class QueryHMDB:
         if not isinstance(hmdb_url, str):
             return res_desc
         results = QueryHMDB.__access_api(hmdb_url)
-        if results is not None:
+        if results is not None and results[:5] == "<?xml":
             obj = xmltodict.parse(results)
             if 'metabolite' in obj.keys():
                 metabolite = obj['metabolite']
@@ -74,4 +74,5 @@ class QueryHMDB:
 if __name__ == '__main__':
     print(QueryHMDB.get_compound_desc('http://www.hmdb.ca/metabolites/HMDB0060288'))
     print(QueryHMDB.get_compound_desc('http://www.hmdb.ca/metabolites/HMDB00021820'))
+    print(QueryHMDB.get_compound_desc('http://www.hmdb.ca/metabolites/HMDB0012194'))
     print(QueryHMDB.get_compound_desc(820))
