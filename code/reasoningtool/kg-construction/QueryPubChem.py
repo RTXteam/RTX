@@ -27,7 +27,8 @@ class QueryPubChem:
     API_BASE_URL = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug'
     TIMEOUT_SEC = 120
     HANDLER_MAP = {
-        'get_description_url': 'compound/cid/{id}/description/JSON'
+        'get_pubchem_cid':      'substance/sid/{sid}/JSON',
+        'get_description_url':  'compound/cid/{cid}/description/JSON'
     }
 
     @staticmethod
@@ -147,17 +148,41 @@ class QueryPubChem:
             return None
 
     @staticmethod
-    def get_description_url(pubchem_id):
+    def get_pubchem_cid(pubchem_sid):
+        pubchem_cid = None
+        if not isinstance(pubchem_sid, str):
+            return pubchem_cid
+        handler = QueryPubChem.HANDLER_MAP['get_pubchem_cid'].format(sid=pubchem_sid)
+        res = QueryPubChem.__access_api(handler)
+        if res is not None:
+            if 'PC_Substances' in res.keys():
+                substance = res['PC_Substances'][0]
+                if len(substance) > 0:
+                    if 'compound' in substance.keys():
+                        compounds = substance['compound']
+                        if len(compounds) > 1:
+                            compound = compounds[1]
+                            if 'id' in compound.keys():
+                                obj = compound['id']
+                                if 'id' in obj.keys():
+                                    id_obj = obj['id']
+                                    if 'cid' in id_obj.keys():
+                                        pubchem_cid = str(id_obj['cid'])
+        return pubchem_cid
+
+
+    @staticmethod
+    def get_description_url_from_cid(pubchem_cid):
         """	query the description URL from HMDB
         Args:
-            pubchem_id (str): PubChem ID, e.g. 123689
+            pubchem_cid (str): PubChem CID, e.g. 123689
         Returns:
             desc_url (str): the URL of HMDB website, which contains the description of the compound
         """
         res_url = None
-        if not isinstance(pubchem_id, str):
+        if not isinstance(pubchem_cid, str):
             return res_url
-        handler = QueryPubChem.HANDLER_MAP['get_description_url'].format(id=pubchem_id)
+        handler = QueryPubChem.HANDLER_MAP['get_description_url'].format(cid=pubchem_cid)
         res = QueryPubChem.__access_api(handler)
         if res is not None:
             if 'InformationList' in res.keys():
@@ -171,15 +196,27 @@ class QueryPubChem:
         return res_url
 
 
-# if __name__ == '__main__':
-#     print(QueryPubChem.get_chembl_ids_for_drug('gne-493'))
-#     print(QueryPubChem.get_pubchem_id_for_chembl_id('CHEMBL521'))
-#     print(QueryPubChem.get_pubchem_id_for_chembl_id('chembl521'))
-#     print(QueryPubChem.get_pubchem_id_for_chembl_id('3400'))
-#     print(QueryPubChem.get_pubmed_id_for_pubchem_id('3672'))
-#     print(QueryPubChem.get_pubmed_id_for_pubchem_id('3500'))
-#     print(QueryPubChem.get_pubmed_id_for_pubchem_id('3400'))
-#     print(QueryPubChem.get_description_url('123689'))
-#     print(QueryPubChem.get_description_url('3500'))
-#     print(QueryPubChem.get_description_url('3400'))
-#     print(QueryPubChem.get_description_url(3400))
+    @staticmethod
+    def get_description_url(pubchem_sid):
+        res_url = None
+        if not isinstance(pubchem_sid, str):
+            return res_url
+        pubchem_cid = QueryPubChem.get_pubchem_cid(pubchem_sid)
+        if pubchem_cid is not None:
+            res_url = QueryPubChem.get_description_url_from_cid(pubchem_cid)
+        return res_url
+
+if __name__ == '__main__':
+    # print(QueryPubChem.get_chembl_ids_for_drug('gne-493'))
+    # print(QueryPubChem.get_pubchem_id_for_chembl_id('CHEMBL521'))
+    # print(QueryPubChem.get_pubchem_id_for_chembl_id('chembl521'))
+    # print(QueryPubChem.get_pubchem_id_for_chembl_id('3400'))
+    # print(QueryPubChem.get_pubmed_id_for_pubchem_id('3672'))
+    # print(QueryPubChem.get_pubmed_id_for_pubchem_id('3500'))
+    # print(QueryPubChem.get_pubmed_id_for_pubchem_id('3400'))
+    print(QueryPubChem.get_description_url('6921'))
+    print(QueryPubChem.get_description_url('3500'))
+    print(QueryPubChem.get_description_url('3400'))
+    print(QueryPubChem.get_description_url(3400))
+    print(QueryPubChem.get_description_url('3324'))
+

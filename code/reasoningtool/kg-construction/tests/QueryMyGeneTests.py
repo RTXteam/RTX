@@ -31,6 +31,10 @@ class QueryMyGeneTestCase(unittest.TestCase):
             self.assertEqual(len(json.loads(extended_info_json)),
                              len(json.loads(get_from_test_file('query_test_data.json', 'UniProtKB:O60884'))))
 
+        #   invalid parameter
+        extended_info_json = mg.get_protein_entity(100847086)
+        self.assertEqual(extended_info_json, "None")
+
     def test_get_microRNA_entity(self):
         mg = QueryMyGene()
         extended_info_json = mg.get_microRNA_entity("NCBIGene: 100847086")
@@ -39,6 +43,10 @@ class QueryMyGeneTestCase(unittest.TestCase):
         if extended_info_json != "None":
             self.assertEqual(len(json.loads(extended_info_json)),
                              len(json.loads(get_from_test_file('query_test_data.json', 'NCBIGene:100847086'))))
+
+        #   invalid parameter
+        extended_info_json = mg.get_microRNA_entity(100847086)
+        self.assertEqual(extended_info_json, "None")
 
     def test_get_protein_desc(self):
         mg = QueryMyGene()
@@ -53,6 +61,10 @@ class QueryMyGeneTestCase(unittest.TestCase):
                                "protein import in vitro. [provided by RefSeq, Jul 2008].")
 
         desc = mg.get_protein_desc("UniProtKB:O608840")
+        self.assertEqual(desc, 'None')
+
+        #   invalid parameter
+        desc = mg.get_protein_desc(608840)
         self.assertEqual(desc, 'None')
 
     def test_get_microRNA_desc(self):
@@ -75,6 +87,27 @@ class QueryMyGeneTestCase(unittest.TestCase):
 
         desc = mg.get_microRNA_desc("NCBIGene: 1008470860")
         self.assertEqual(desc, 'None')
+
+        #   invalid parameter
+        desc = mg.get_microRNA_desc(1008470860)
+        self.assertEqual(desc, 'None')
+
+    def test_get_protein_name(self):
+        mg = QueryMyGene()
+        name = mg.get_protein_name("UniProtKB:O60884")
+        self.assertIsNotNone(name)
+        self.assertEqual(name, "DnaJ heat shock protein family (Hsp40) member A2")
+
+        name = mg.get_protein_name("UniProtKB:P05231")
+        self.assertIsNotNone(name)
+        self.assertEqual(name, "interleukin 6")
+
+        name = mg.get_protein_name("UniProtKB:O608840")
+        self.assertEqual(name, 'None')
+
+        #   invalid parameter
+        name = mg.get_protein_name(608840)
+        self.assertEqual(name, 'None')
 
 if __name__ == '__main__':
     unittest.main()
