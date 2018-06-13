@@ -100,44 +100,53 @@ class UpdateIndex():
         for command in index_commands:
             self.neo4j_run_cypher_query(command)
 
-    def drop_index_apocless(self):
+    def drop_index_apocless(self, index_commands = None):
         """
         runs through a list of hardcoded commands to drop all indexes and constaints if apoc is not installed on the neo4j instance.
+        :param index_commands: A list of strings containing the cypher commands for dropping the indexes/constraints. If None method will run through hardcoded list of commands. (default is None)
         :return: nothing
         """
+        if index_commands is None:
+            # This is a list of all the labels in the KG and needs to be updated when new labels are added
+            node_label_list = [
+                'metabolite',
+                'protein',
+                'anatomical_entity',
+                'molecular_function',
+                'disease',
+                'phenotypic_feature',
+                'biological_process',
+                'microRNA',
+                'pathway',
+                'cellular_component',
+                'chemical_substance'
+                ]
 
-        # This is a list of all the labels in the KG and needs to be updated when new labels are added
-        node_label_list = [
-            'metabolite',
-            'protein',
-            'anatomical_entity',
-            'molecular_function',
-            'disease',
-            'phenotypic_feature',
-            'biological_process',
-            'microRNA',
-            'pathway',
-            'cellular_component',
-            'chemical_substance'
-            ]
+            # These are the indexes and constraints on the base label
+            index_commands = [
+                'DROP CONSTRAINT ON (n:Base) ASSERT n.rtx_name IS UNIQUE',
+                'DROP CONSTRAINT ON (n:Base) ASSERT n.id IS UNIQUE',
+                'DROP CONSTRAINT ON (n:Base) ASSERT n.UUID IS UNIQUE',
+                'DROP CONSTRAINT ON (n:Base) ASSERT n.uri IS UNIQUE',
+                'DROP INDEX ON :Base(name)',
+                'DROP INDEX ON :Base(seed_node_uuid)'
+                ]
 
-        # These are the indexes and constraints on the base label
-        index_commands = [
-            'DROP CONSTRAINT ON (n:Base) ASSERT n.rtx_name IS UNIQUE',
-            'DROP CONSTRAINT ON (n:Base) ASSERT n.id IS UNIQUE',
-            'DROP CONSTRAINT ON (n:Base) ASSERT n.UUID IS UNIQUE',
-            'DROP CONSTRAINT ON (n:Base) ASSERT n.uri IS UNIQUE',
-            'DROP INDEX ON :Base(name)',
-            'DROP INDEX ON :Base(seed_node_uuid)'
-            ]
-
-        # These create label specific indexes and constraints
-        index_commands += ['DROP CONSTRAINT ON (n:' + label + ') ASSERT n.rtx_name IS UNIQUE' for label in node_label_list]
-        index_commands += ['DROP CONSTRAINT ON (n:' + label + ') ASSERT n.id IS UNIQUE' for label in node_label_list]
-        index_commands += ['DROP INDEX ON :' + label + '(name)' for label in node_label_list]
+            # These create label specific indexes and constraints
+            index_commands += ['DROP CONSTRAINT ON (n:' + label + ') ASSERT n.rtx_name IS UNIQUE' for label in node_label_list]
+            index_commands += ['DROP CONSTRAINT ON (n:' + label + ') ASSERT n.id IS UNIQUE' for label in node_label_list]
+            index_commands += ['DROP INDEX ON :' + label + '(name)' for label in node_label_list]
 
         for command in index_commands:
             self.neo4j_run_cypher_query(command)
 
-
+    def drop_index_apocless_small(self):
+        """
+        Drops the small list of indexes added using orangeboard.py
+        """
+        index_commands = [
+            'DROP INDEX ON :Base(UUID)',
+            'DROP INDEX ON :Base(seed_node_uuid)'
+            ]
+        self.drop_index_apocless(index_commands)
 
