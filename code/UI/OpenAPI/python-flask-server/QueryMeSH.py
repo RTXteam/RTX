@@ -102,7 +102,7 @@ class QueryMeSH:
     def createResponse(self):
         #### Create the response object and fill it with attributes about the response
         response = Response()
-        response.result_code = "OK"
+        response.response_code = "OK"
         response.message = "1 result found"
         return response
 
@@ -137,7 +137,7 @@ class QueryMeSH:
             response.result_list = result_list
 
         else:
-            response.result_code = "TermNotFound"
+            response.response_code = "TermNotFound"
             response.message = "Unable to find term '" + term + "' in MeSH. No further information is available at this time."
             response.id = None
 

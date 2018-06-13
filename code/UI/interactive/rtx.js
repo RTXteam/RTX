@@ -59,7 +59,7 @@ function sendQuestion(e) {
 	    var jsonObj = JSON.parse(xhr.responseText);
 	    document.getElementById("devdiv").innerHTML += "<PRE>\n" + JSON.stringify(jsonObj,null,2) + "</PRE>";
 
-	    if ( jsonObj.known_query_type_id && jsonObj.terms ) {
+	    if ( jsonObj.query_type_id && jsonObj.terms ) {
 		document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR>Looking for answer...";
 
 		jsonObj.bypass_cache = bypass_cache;

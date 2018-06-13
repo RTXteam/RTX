@@ -16,7 +16,7 @@ class Response(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, context: str=None, type: str=None, id: str=None, tool_version: str=None, schema_version: str=None, datetime: str=None, original_question_text: str=None, restated_question_text: str=None, known_query_type_id: str=None, terms: object=None, result_code: str=None, message: str=None, result_list: List[Result]=None):  # noqa: E501
+    def __init__(self, context: str=None, type: str=None, id: str=None, reasoner_id: str=None, tool_version: str=None, schema_version: str=None, datetime: str=None, original_question_text: str=None, restated_question_text: str=None, known_query_type_id: str=None, query_type_id: str=None, terms: object=None, n_results: int=None, response_code: str=None, result_code: str=None, message: str=None, table_column_names: List[str]=None, result_list: List[Result]=None):  # noqa: E501
         """Response - a model defined in Swagger
 
         :param context: The context of this Response.  # noqa: E501
@@ -25,6 +25,8 @@ class Response(Model):
         :type type: str
         :param id: The id of this Response.  # noqa: E501
         :type id: str
+        :param reasoner_id: The reasoner_id of this Response.  # noqa: E501
+        :type reasoner_id: str
         :param tool_version: The tool_version of this Response.  # noqa: E501
         :type tool_version: str
         :param schema_version: The schema_version of this Response.  # noqa: E501
@@ -37,12 +39,20 @@ class Response(Model):
         :type restated_question_text: str
         :param known_query_type_id: The known_query_type_id of this Response.  # noqa: E501
         :type known_query_type_id: str
+        :param query_type_id: The query_type_id of this Response.  # noqa: E501
+        :type query_type_id: str
         :param terms: The terms of this Response.  # noqa: E501
         :type terms: object
+        :param n_results: The n_results of this Response.  # noqa: E501
+        :type n_results: int
+        :param response_code: The response_code of this Response.  # noqa: E501
+        :type response_code: str
         :param result_code: The result_code of this Response.  # noqa: E501
         :type result_code: str
         :param message: The message of this Response.  # noqa: E501
         :type message: str
+        :param table_column_names: The table_column_names of this Response.  # noqa: E501
+        :type table_column_names: List[str]
         :param result_list: The result_list of this Response.  # noqa: E501
         :type result_list: List[Result]
         """
@@ -50,15 +60,20 @@ class Response(Model):
             'context': str,
             'type': str,
             'id': str,
+            'reasoner_id': str,
             'tool_version': str,
             'schema_version': str,
             'datetime': str,
             'original_question_text': str,
             'restated_question_text': str,
             'known_query_type_id': str,
+            'query_type_id': str,
             'terms': object,
+            'n_results': int,
+            'response_code': str,
             'result_code': str,
             'message': str,
+            'table_column_names': List[str],
             'result_list': List[Result]
         }
 
@@ -66,30 +81,40 @@ class Response(Model):
             'context': 'context',
             'type': 'type',
             'id': 'id',
+            'reasoner_id': 'reasoner_id',
             'tool_version': 'tool_version',
             'schema_version': 'schema_version',
             'datetime': 'datetime',
             'original_question_text': 'original_question_text',
             'restated_question_text': 'restated_question_text',
             'known_query_type_id': 'known_query_type_id',
+            'query_type_id': 'query_type_id',
             'terms': 'terms',
+            'n_results': 'n_results',
+            'response_code': 'response_code',
             'result_code': 'result_code',
             'message': 'message',
+            'table_column_names': 'table_column_names',
             'result_list': 'result_list'
         }
 
         self._context = context
         self._type = type
         self._id = id
+        self._reasoner_id = reasoner_id
         self._tool_version = tool_version
         self._schema_version = schema_version
         self._datetime = datetime
         self._original_question_text = original_question_text
         self._restated_question_text = restated_question_text
         self._known_query_type_id = known_query_type_id
+        self._query_type_id = query_type_id
         self._terms = terms
+        self._n_results = n_results
+        self._response_code = response_code
         self._result_code = result_code
         self._message = message
+        self._table_column_names = table_column_names
         self._result_list = result_list
 
     @classmethod
@@ -171,6 +196,29 @@ class Response(Model):
         """
 
         self._id = id
+
+    @property
+    def reasoner_id(self) -> str:
+        """Gets the reasoner_id of this Response.
+
+        Identifier string of the reasoner that provided this response (e.g., RTX, Robokop, Indigo, Integrator)  # noqa: E501
+
+        :return: The reasoner_id of this Response.
+        :rtype: str
+        """
+        return self._reasoner_id
+
+    @reasoner_id.setter
+    def reasoner_id(self, reasoner_id: str):
+        """Sets the reasoner_id of this Response.
+
+        Identifier string of the reasoner that provided this response (e.g., RTX, Robokop, Indigo, Integrator)  # noqa: E501
+
+        :param reasoner_id: The reasoner_id of this Response.
+        :type reasoner_id: str
+        """
+
+        self._reasoner_id = reasoner_id
 
     @property
     def tool_version(self) -> str:
@@ -291,7 +339,7 @@ class Response(Model):
     def known_query_type_id(self) -> str:
         """Gets the known_query_type_id of this Response.
 
-        The query type id if one is known for the query/response (as defined in https://docs.google.com/spreadsheets/d/18zW81wteUfOn3rFRVG0z8mW-ecNhdsfD_6s73ETJnUw/edit#gid=1742835901 )  # noqa: E501
+        DEPRECATED  # noqa: E501
 
         :return: The known_query_type_id of this Response.
         :rtype: str
@@ -302,13 +350,36 @@ class Response(Model):
     def known_query_type_id(self, known_query_type_id: str):
         """Sets the known_query_type_id of this Response.
 
-        The query type id if one is known for the query/response (as defined in https://docs.google.com/spreadsheets/d/18zW81wteUfOn3rFRVG0z8mW-ecNhdsfD_6s73ETJnUw/edit#gid=1742835901 )  # noqa: E501
+        DEPRECATED  # noqa: E501
 
         :param known_query_type_id: The known_query_type_id of this Response.
         :type known_query_type_id: str
         """
 
         self._known_query_type_id = known_query_type_id
+
+    @property
+    def query_type_id(self) -> str:
+        """Gets the query_type_id of this Response.
+
+        The query type id if one is known for the query/response (as defined in https://docs.google.com/spreadsheets/d/18zW81wteUfOn3rFRVG0z8mW-ecNhdsfD_6s73ETJnUw/edit#gid=1742835901 )  # noqa: E501
+
+        :return: The query_type_id of this Response.
+        :rtype: str
+        """
+        return self._query_type_id
+
+    @query_type_id.setter
+    def query_type_id(self, query_type_id: str):
+        """Sets the query_type_id of this Response.
+
+        The query type id if one is known for the query/response (as defined in https://docs.google.com/spreadsheets/d/18zW81wteUfOn3rFRVG0z8mW-ecNhdsfD_6s73ETJnUw/edit#gid=1742835901 )  # noqa: E501
+
+        :param query_type_id: The query_type_id of this Response.
+        :type query_type_id: str
+        """
+
+        self._query_type_id = query_type_id
 
     @property
     def terms(self) -> object:
@@ -334,10 +405,56 @@ class Response(Model):
         self._terms = terms
 
     @property
+    def n_results(self) -> int:
+        """Gets the n_results of this Response.
+
+        Total number of results in the response (which may be less than what is returned if limits were placed on the results to return)  # noqa: E501
+
+        :return: The n_results of this Response.
+        :rtype: int
+        """
+        return self._n_results
+
+    @n_results.setter
+    def n_results(self, n_results: int):
+        """Sets the n_results of this Response.
+
+        Total number of results in the response (which may be less than what is returned if limits were placed on the results to return)  # noqa: E501
+
+        :param n_results: The n_results of this Response.
+        :type n_results: int
+        """
+
+        self._n_results = n_results
+
+    @property
+    def response_code(self) -> str:
+        """Gets the response_code of this Response.
+
+        Set to OK for success, or some other short string to indicate and error (e.g., KGUnavailable, TermNotFound, etc.)  # noqa: E501
+
+        :return: The response_code of this Response.
+        :rtype: str
+        """
+        return self._response_code
+
+    @response_code.setter
+    def response_code(self, response_code: str):
+        """Sets the response_code of this Response.
+
+        Set to OK for success, or some other short string to indicate and error (e.g., KGUnavailable, TermNotFound, etc.)  # noqa: E501
+
+        :param response_code: The response_code of this Response.
+        :type response_code: str
+        """
+
+        self._response_code = response_code
+
+    @property
     def result_code(self) -> str:
         """Gets the result_code of this Response.
 
-        Set to OK for success, or some other short string to indicate and error (e.g., KGUnavailable, TermNotFound, etc.)  # noqa: E501
+        DEPRECATED  # noqa: E501
 
         :return: The result_code of this Response.
         :rtype: str
@@ -348,7 +465,7 @@ class Response(Model):
     def result_code(self, result_code: str):
         """Sets the result_code of this Response.
 
-        Set to OK for success, or some other short string to indicate and error (e.g., KGUnavailable, TermNotFound, etc.)  # noqa: E501
+        DEPRECATED  # noqa: E501
 
         :param result_code: The result_code of this Response.
         :type result_code: str
@@ -378,6 +495,29 @@ class Response(Model):
         """
 
         self._message = message
+
+    @property
+    def table_column_names(self) -> List[str]:
+        """Gets the table_column_names of this Response.
+
+        List of column names that corresponds to the row_data for each result  # noqa: E501
+
+        :return: The table_column_names of this Response.
+        :rtype: List[str]
+        """
+        return self._table_column_names
+
+    @table_column_names.setter
+    def table_column_names(self, table_column_names: List[str]):
+        """Sets the table_column_names of this Response.
+
+        List of column names that corresponds to the row_data for each result  # noqa: E501
+
+        :param table_column_names: The table_column_names of this Response.
+        :type table_column_names: List[str]
+        """
+
+        self._table_column_names = table_column_names
 
     @property
     def result_list(self) -> List[Result]:
