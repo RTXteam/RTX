@@ -111,7 +111,7 @@ class RTXFeedback:
 
   #### Constructor
   def __init__(self):
-    self.databaseName = "RTXFeedback_test"
+    self.databaseName = "RTXFeedback"
     self.connect()
 
   #### Destructor
@@ -241,7 +241,7 @@ class RTXFeedback:
       response.original_question_text = ""
 
     termsString = stringifyDict(query["terms"])
-    storedResponse = Response(response_datetime=datetime.now(),restated_question=response.restated_question_text,query_type=query["known_query_type_id"],
+    storedResponse = Response(response_datetime=datetime.now(),restated_question=response.restated_question_text,query_type=query["query_type_id"],
       terms=termsString,tool_version=rtxConfig.version,result_code=response.response_code,message=response.message,n_results=n_results,response_object=pickle.dumps(ast.literal_eval(repr(response))))
     session.add(storedResponse)
     session.flush()
@@ -340,7 +340,7 @@ class RTXFeedback:
     termsString = stringifyDict(query["terms"])
 
     #### Look for previous responses we could use
-    storedResponse = session.query(Response).filter(Response.query_type==query["known_query_type_id"]).filter(Response.tool_version==tool_version).filter(Response.terms==termsString).order_by(desc(Response.response_datetime)).first()
+    storedResponse = session.query(Response).filter(Response.query_type==query["query_type_id"]).filter(Response.tool_version==tool_version).filter(Response.terms==termsString).order_by(desc(Response.response_datetime)).first()
     if ( storedResponse is not None ):
       return pickle.loads(storedResponse.response_object)
     return
