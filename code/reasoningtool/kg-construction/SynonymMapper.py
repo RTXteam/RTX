@@ -94,10 +94,17 @@ class SynonymMapper():
         else:
             return None
 
-    def get_all_from_oxo(self, curie_id):
+    def get_all_from_oxo(self, curie_id, map_to = None):
         """
         this takes a curie id and gets all the mappings that oxo has for the given id
+        
+        :param curie_id: The string for the curie id to submit to OXO (e.g. 'HP:0001947')
+        :param map_to: A string containing the prefix for the resulting ids. If set to None it will return all mappings. (default is none)
+        
+        :return: A list of strings containing the found mapped ids or None if none where found
         """
+        if map_to is None:
+            map_to = ''
         if type(curie_id) != str:
             curie_id = str(curie_id)
         if curie_id.startswith('REACT:'):
@@ -113,9 +120,11 @@ class SynonymMapper():
                 mappings = res['_embedded']['mappings']
                 for mapping in mappings:
                     if mapping['fromTerm']['curie'].startswith(prefix):
-                        synonym_ids |= set([mapping['toTerm']['curie']])
+                        if mapping['toTerm']['curie'].startswith(map_to):
+                            synonym_ids |= set([mapping['toTerm']['curie']])
                     elif mapping['toTerm']['curie'].startswith(prefix):
-                        synonym_ids |= set([mapping['fromTerm']['curie']])
+                        if mapping['fromTerm']['curie'].startswith(map_to):
+                            synonym_ids |= set([mapping['fromTerm']['curie']])
             if len(synonym_ids) == 0:
                 synonym_ids = None
             else:
