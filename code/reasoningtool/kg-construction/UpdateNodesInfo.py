@@ -516,7 +516,8 @@ class UpdateNodesInfo:
         none_count = 0;
         nodes_array = []
         for i, node_id in enumerate(nodes):
-            # print("no %d" % i)
+            # if i % 100 == 0:
+            #     print("no %d" % i)
             node = dict()
             node['node_id'] = node_id
             # print(node_id)

@@ -27,7 +27,8 @@ class QueryMyChem:
     TIMEOUT_SEC = 120
     API_BASE_URL = 'http://mychem.info/v1'
     HANDLER_MAP = {
-        'get_chemical_substance': 'chem/{id}',
+        'get_chemical_substance':   'chem/{id}',
+        'get_drug_side_effects':    'chem/{id}'
     }
 
     @staticmethod
@@ -129,8 +130,8 @@ class QueryMyChem:
         try:
             res = requests.get(url, timeout=QueryMyChem.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
-            #print(url, file=sys.stderr)
-            #print('Timeout in QueryMyChem for URL: ' + url, file=sys.stderr)
+            print(url, file=sys.stderr)
+            print('Timeout in QueryMyChem for URL: ' + url, file=sys.stderr)
             return None
         except BaseException as e:
             print(url, file=sys.stderr)
@@ -145,7 +146,23 @@ class QueryMyChem:
         if 'drugcentral' in id_json.keys():
             return id_json['drugcentral']['xref']['umlscui']
         else:
-            return None   
+            return None
+
+    @staticmethod
+    def get_drug_side_effects(chembl_id):
+        if chembl_id[:7] == "ChEMBL:":
+            chembl_id = chembl_id.replace("ChEMBL:", "CHEMBL")
+        handler = QueryMyChem.HANDLER_MAP['get_drug_side_effects'].format(id=chembl_id) + "?fields=sider"
+        results = QueryMyChem.__access_api(handler)
+        side_effects_array = []
+        if results is not None:
+            json_dict = json.loads(results)
+            if "sider" in json_dict.keys():
+                for se in json_dict['sider']:
+                    if 'meddra' in se.keys():
+                        if 'umls_id' in se['meddra']:
+                            side_effects_array.append("UMLS:" + se['meddra']['umls_id'])
+        return side_effects_array
 
 if __name__ == '__main__':
 
@@ -169,3 +186,11 @@ if __name__ == '__main__':
                       QueryMyChem.get_chemical_substance_description('ChEMBL:20883'))   # no definition field
     save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:110101020',
                       QueryMyChem.get_chemical_substance_description('ChEMBL:110101020'))   # wrong id
+
+    umls_array = QueryMyChem.get_drug_side_effects("KWHRDNMACVLHCE-UHFFFAOYSA-N")
+    print(umls_array)
+    print(len(umls_array))
+
+    umls_array = QueryMyChem.get_drug_side_effects("CHEMBL521")
+    print(umls_array)
+    print(len(umls_array))
