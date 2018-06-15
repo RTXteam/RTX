@@ -23,7 +23,7 @@ class QuerySemMedDB():
 			password = the password assigned to the user assigned to the ip you are connecting from
 			database = the name that the semmeddb database is saved under
 		'''
-		self.db = _mysql.connect(host=host,port=int(port),user = username,passwd=password,db=database, connect_timeout=120)
+		self.db = _mysql.connect(host=host,port=int(port),user = username,passwd=password,db=database, connect_timeout=10)
 		self.timeout = timeout * 1000
 
 	def get_dataframe_from_db(self, query):
