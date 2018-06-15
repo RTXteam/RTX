@@ -150,19 +150,29 @@ class QueryMyChem:
 
     @staticmethod
     def get_drug_side_effects(chembl_id):
+        """
+        Retrieving the side effects of a drug from MyChem
+
+        :param chembl_id: The CHEMBL ID for a drug
+        :return: A set of strings containing the founded umls ids, or empty set if none were found
+        """
+        side_effects_set = set()
+        if not isinstance(chembl_id, str):
+            return side_effects_set
         if chembl_id[:7] == "ChEMBL:":
             chembl_id = chembl_id.replace("ChEMBL:", "CHEMBL")
+        if chembl_id[:7] == "CHEMBL:":
+            chembl_id = chembl_id.replace("CHEMBL:", "CHEMBL")
         handler = QueryMyChem.HANDLER_MAP['get_drug_side_effects'].format(id=chembl_id) + "?fields=sider"
         results = QueryMyChem.__access_api(handler)
-        side_effects_array = []
         if results is not None:
             json_dict = json.loads(results)
             if "sider" in json_dict.keys():
                 for se in json_dict['sider']:
                     if 'meddra' in se.keys():
                         if 'umls_id' in se['meddra']:
-                            side_effects_array.append("UMLS:" + se['meddra']['umls_id'])
-        return side_effects_array
+                            side_effects_set.add("UMLS:" + se['meddra']['umls_id'])
+        return side_effects_set
 
 if __name__ == '__main__':
 
@@ -191,6 +201,6 @@ if __name__ == '__main__':
     print(umls_array)
     print(len(umls_array))
 
-    umls_array = QueryMyChem.get_drug_side_effects("CHEMBL521")
+    umls_array = QueryMyChem.get_drug_side_effects("CHEMBL:521")
     print(umls_array)
     print(len(umls_array))

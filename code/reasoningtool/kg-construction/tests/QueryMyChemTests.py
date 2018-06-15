@@ -43,5 +43,22 @@ class QueryMyChemTestCase(unittest.TestCase):
         self.assertIsNotNone(desc)
         self.assertEqual(desc, get_from_test_file('query_desc_test_data.json', 'ChEMBL:110101020'))
 
+    def test_get_drug_side_effects(self):
+        side_effects_set = QMC.get_drug_side_effects('KWHRDNMACVLHCE-UHFFFAOYSA-N')
+        self.assertIsNotNone(side_effects_set)
+        self.assertEqual(122, len(side_effects_set))
+        if 'UMLS:C0013378' not in side_effects_set:
+            self.assertFalse()
+        if 'UMLS:C0022660' not in side_effects_set:
+            self.assertFalse()
+
+        side_effects_set = QMC.get_drug_side_effects('CHEMBL:521')
+        self.assertIsNotNone(side_effects_set)
+        self.assertEqual(0, len(side_effects_set))
+
+        side_effects_set = QMC.get_drug_side_effects('ChEMBL:521')
+        self.assertIsNotNone(side_effects_set)
+        self.assertEqual(0, len(side_effects_set))
+
 if __name__ == '__main__':
     unittest.main()
