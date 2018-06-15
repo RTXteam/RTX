@@ -233,7 +233,6 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 			to_print += ". Confidence (larger is better): %f." % (1-weights[path_ind]/float(len(edge_path)*max_gd*max_prob_weight))
 			print(to_print)
 	else:  # you want the result object model
-		response.add_neighborhood_graph(g.nodes(data=True), g.edges(data=True), confidence=None)  # Adding the neighborhood graph
 		for path_ind in range(len(node_paths)):
 			# Format the free text portion
 			node_path = node_paths[path_ind]
@@ -259,6 +258,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 			# populate the response. Quick hack to convert
 			#response.add_subgraph(g.nodes(data=True), g.edges(data=True), to_print, 1-weights[path_ind]/float(max([len(x) for x in edge_paths])*max_gd))
 			response.add_subgraph(g.nodes(data=True), g.edges(data=True), to_print, conf)
+		response.add_neighborhood_graph(g.nodes(data=True), g.edges(data=True),	confidence=None)  # Adding the neighborhood graph
 		response.print()
 
 
