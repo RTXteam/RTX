@@ -11,6 +11,7 @@ import requests
 from QueryMyChem import QueryMyChem
 import requests_cache
 import pandas
+#import _mysql_exceptions
 
 requests_cache.install_cache('SynonymCache')
 
@@ -18,7 +19,11 @@ requests_cache.install_cache('SynonymCache')
 class SynonymMapper():
 
     def __init__(self):
-        #self.smi = SemMedInterface()
+        #try:
+        #    self.smi = SemMedInterface()
+        #except _mysql_exceptions.OperationalError:
+        #    print('Warning: No connection was made to the SemMEdDB MySQL server.')
+        #    self.smi = None
         self.biothings_url = "http://c.biothings.io/v1/query?q="
         self.mygene_obj = mygene.MyGeneInfo()
         self.qmg = QueryMyGene()
@@ -135,6 +140,7 @@ class SynonymMapper():
     #    """
     #    this takes a currie id and finds a UMLS cui for it
     #    """
+    #    assert self.smi is not None, "No connection was made to the MySQL SemMedDB server on rtxdev.saramsey.org if you want to try to connect again reinitialize the class."
     #    cuis = self.smi.get_cui_for_id(curie_id)
     #    return cuis
 
