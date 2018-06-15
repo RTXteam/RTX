@@ -84,7 +84,6 @@ class UpdateIndex():
 
         # These are the indexes and constraints on the base label
         index_commands = [
-            'CREATE CONSTRAINT ON (n:Base) ASSERT n.rtx_name IS UNIQUE',
             'CREATE CONSTRAINT ON (n:Base) ASSERT n.id IS UNIQUE',
             'CREATE CONSTRAINT ON (n:Base) ASSERT n.UUID IS UNIQUE',
             'CREATE CONSTRAINT ON (n:Base) ASSERT n.uri IS UNIQUE',
@@ -93,7 +92,6 @@ class UpdateIndex():
             ]
 
         # These create label specific indexes and constraints
-        index_commands += ['CREATE CONSTRAINT ON (n:' + label + ') ASSERT n.rtx_name IS UNIQUE' for label in node_label_list]
         index_commands += ['CREATE CONSTRAINT ON (n:' + label + ') ASSERT n.id IS UNIQUE' for label in node_label_list]
         index_commands += ['CREATE INDEX ON :' + label + '(name)' for label in node_label_list]
 
@@ -124,7 +122,6 @@ class UpdateIndex():
 
             # These are the indexes and constraints on the base label
             index_commands = [
-                'DROP CONSTRAINT ON (n:Base) ASSERT n.rtx_name IS UNIQUE',
                 'DROP CONSTRAINT ON (n:Base) ASSERT n.id IS UNIQUE',
                 'DROP CONSTRAINT ON (n:Base) ASSERT n.UUID IS UNIQUE',
                 'DROP CONSTRAINT ON (n:Base) ASSERT n.uri IS UNIQUE',
@@ -133,7 +130,6 @@ class UpdateIndex():
                 ]
 
             # These create label specific indexes and constraints
-            index_commands += ['DROP CONSTRAINT ON (n:' + label + ') ASSERT n.rtx_name IS UNIQUE' for label in node_label_list]
             index_commands += ['DROP CONSTRAINT ON (n:' + label + ') ASSERT n.id IS UNIQUE' for label in node_label_list]
             index_commands += ['DROP INDEX ON :' + label + '(name)' for label in node_label_list]
 
