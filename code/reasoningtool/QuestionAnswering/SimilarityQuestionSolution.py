@@ -88,7 +88,7 @@ class SimilarityQuestionSolution:
 
 			# extract the source_node_number
 			for node, data in g.nodes(data=True):
-				if data['properties']['rtx_name'] == source_node_ID:
+				if data['properties']['id'] == source_node_ID:
 					source_node_number = node
 					break
 
@@ -96,8 +96,8 @@ class SimilarityQuestionSolution:
 			target_id2numbers = dict()
 			node_jaccard_ID_sorted_set = set(node_jaccard_ID_sorted)
 			for node, data in g.nodes(data=True):
-				if data['properties']['rtx_name'] in node_jaccard_ID_sorted_set:
-					target_id2numbers[data['properties']['rtx_name']] = node
+				if data['properties']['id'] in node_jaccard_ID_sorted_set:
+					target_id2numbers[data['properties']['id']] = node
 
 			for other_disease_ID, jaccard in node_jaccard_tuples_sorted:
 				to_print = "The %s %s involves similar %ss as %s with similarity value %f" % (

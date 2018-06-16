@@ -142,7 +142,7 @@ class SimilarNodesInCommon:
 				target_association_relationship, target_node_label)
 		"""
 		# Check if node exists
-		if not RU.node_exists_with_property(node_ID, 'rtx_name'):
+		if not RU.node_exists_with_property(node_ID, 'id'):
 			error_message = "Sorry, the disease %s is not yet in our knowledge graph." % node_ID
 			error_code = "DiseaseNotFound"
 			return dict(), error_code, error_message

@@ -534,6 +534,9 @@ class QueryNCBIeUtils:
         :param id: a string containing the uniprot id
         :returns: a string containing all synonyms uniprot lists for
         """
+        # We want the actual uniprot name P176..., not the curie UniProtKB:P176...
+        if "UniProtKB:" in id:
+            id = ":".join(id.split(":")[1:])
         url = 'https://www.uniprot.org/uniprot/?query=id:' + id + '&sort=score&columns=entry name,protein names,genes&format=tab' # hardcoded url for uniprot data
         r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})  # send get request
         if r.status_code != 200:  # checks for error
@@ -576,6 +579,9 @@ class QueryNCBIeUtils:
         Output:
             search - a string containing all synonyms of the reactome id or a mesh term formatted for the google distance function
         '''
+        # We want the actual reactome name R-HSA..., not the curie REACT:R-HSA...
+        if "REACT:" in id:
+            id = ":".join(id.split(":")[1:])
         url = 'https://reactome.org/ContentService/data/query/'+id+'/name'  # hardcoded url for reactiome names
         r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})  # sends get request that returns a string
         if r.status_code != 200:
