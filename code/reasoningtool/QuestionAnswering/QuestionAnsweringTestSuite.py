@@ -41,7 +41,7 @@ def run_question_examples(question_number, python_loc, res_loc, after=0):
 
 			# get the solution script
 			#solution_script = matched_question.solution_script.safe_substitute(extracted_params)
-			solution_script = p.get_execution_string(matched_question.known_query_type_id, extracted_params)
+			solution_script = p.get_execution_string(matched_question.query_type_id, extracted_params)
 
 			# if no errors, then run the solution script
 			if not error_found:
