@@ -74,7 +74,7 @@ class FormatResponse:
 		else:
 			self.response.message = "%s results found" % self._num_results
 
-	def add_subgraph(self, nodes, edges, plain_text, confidence):
+	def add_subgraph(self, nodes, edges, plain_text, confidence, return_result=False):
 		"""
 		Populate the object model using networkx neo4j subgraph
 		:param nodes: nodes in the subgraph (g.nodes(data=True))
@@ -185,6 +185,10 @@ class FormatResponse:
 			self.response.message = "%s result found" % self._num_results
 		else:
 			self.response.message = "%s results found" % self._num_results
+		if return_result:
+			return result1
+		else:
+			pass
 
 	def add_neighborhood_graph(self, nodes, edges, confidence=None):
 		"""
@@ -293,7 +297,7 @@ if __name__ == '__main__':
 	g = RU.return_subgraph_through_node_labels("CHEMBL154", 'chemical_substance', 'DOID:8398', 'disease',
 											   ['protein', 'anatomical_entity', 'phenotypic_feature'],
 											   directed=False)
-	test.add_neighborhood_graph(g.nodes(data=True), g.edges(data=True), "This is a test", 0.95)
-	test.add_neighborhood_graph(g.nodes(data=True), g.edges(data=True), "This is a SECOND test", 0.00)
+	test.add_neighborhood_graph(g.nodes(data=True), g.edges(data=True), confidence=.95)
+	test.add_neighborhood_graph(g.nodes(data=True), g.edges(data=True), confidence=.00)
 	print(test)
 

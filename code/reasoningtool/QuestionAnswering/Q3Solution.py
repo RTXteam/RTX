@@ -92,9 +92,10 @@ class Q3:
 					subgraph = g.subgraph([source_node_number, target_number])
 				else:
 					subgraph = g.subgraph([source_node_number, intermediate_node, target_number])
-				response.add_subgraph(subgraph.nodes(data=True), subgraph.edges(data=True),
+				res = response.add_subgraph(subgraph.nodes(data=True), subgraph.edges(data=True),
 									"%s and %s are connected by the relationship %s" % (
-									source_description, target_description,	relationship_type), 1)
+									source_description, target_description,	relationship_type), 1, return_result=True)
+				res.essence = "%s" % target_description
 			return response
 
 	def describe(self):
