@@ -73,7 +73,7 @@ class QueryCOHD:
         return res.json()
 
     @staticmethod
-    def find_concept_ids(node_label, domain="", dataset_id=1):
+    def find_concept_ids(node_label, domain="", dataset_id=1, min_count=1):
         """search for OMOP concepts by name
 
         Args:
@@ -84,6 +84,12 @@ class QueryCOHD:
 
             dataset_id (int): The dataset to reference when sorting concepts by their frequency. Default: 5-year
                 dataset (1).
+
+            min_count (int): The minimum concept count (inclusive) to include a concept in the search results. Setting
+             the min_count to 0 will cause findConceptIDs to return all matching standard OMOP concepts (this can be
+             slow). Setting the min_count to 1 will cause findConceptIDs to only return concepts with count data
+             (much faster). Default: 1.
+
         Returns:
             list: a list of dictionary, including names and IDs, or an empty list if no concept IDs could be obtained
                 for the given label
@@ -114,7 +120,7 @@ class QueryCOHD:
         if not isinstance(node_label, str) or not isinstance(dataset_id, int) or not isinstance(domain, str):
             return []
         handler = QueryCOHD.HANDLER_MAP['find_concept_id']
-        url_suffix = "q=" + node_label + "&dataset_id=" + str(dataset_id)
+        url_suffix = "q=" + node_label + "&dataset_id=" + str(dataset_id) + "&min_count=" + str(min_count)
         if domain != "":
             url_suffix += "&domain=" + domain
         res_json = QueryCOHD.__access_api(handler, url_suffix)
