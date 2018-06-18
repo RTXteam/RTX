@@ -5,7 +5,7 @@ from SynonymMapper import SynonymMapper
 class DrugMapper:
 
     @staticmethod
-    def map_drug_to_hp(chembl_id):
+    def map_drug_to_hp_with_side_effects(chembl_id):
         """
         mapping between a drug and human phenotypes corresponding to side effects
 
@@ -29,10 +29,10 @@ class DrugMapper:
 
 
 if __name__ == '__main__':
-    hp_set = DrugMapper.map_drug_to_hp("KWHRDNMACVLHCE-UHFFFAOYSA-N")
+    hp_set = DrugMapper.map_drug_to_hp_with_side_effects("KWHRDNMACVLHCE-UHFFFAOYSA-N")
     print(hp_set)
     print(len(hp_set))
 
-    hp_set = DrugMapper.map_drug_to_hp("CHEMBL521")
+    hp_set = DrugMapper.map_drug_to_hp_with_side_effects("CHEMBL521")
     print(hp_set)
     print(len(hp_set))

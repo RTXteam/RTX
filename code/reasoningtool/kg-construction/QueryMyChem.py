@@ -82,18 +82,24 @@ class QueryMyChem:
     def get_chemical_substance_entity(chemical_substance_id):
         if chemical_substance_id[:7] == "ChEMBL:":
             chemical_substance_id = chemical_substance_id.replace("ChEMBL:", "CHEMBL")
+        if chemical_substance_id[:7] == "CHEMBL:":
+            chemical_substance_id = chemical_substance_id.replace("CHEMBL:", "CHEMBL")
         return QueryMyChem.__get_entity("get_chemical_substance", chemical_substance_id)
 
     @staticmethod
     def get_chemical_substance_description(chemical_substance_id):
         if chemical_substance_id[:7] == "ChEMBL:":
             chemical_substance_id = chemical_substance_id.replace("ChEMBL:", "CHEMBL")
+        if chemical_substance_id[:7] == "CHEMBL:":
+            chemical_substance_id = chemical_substance_id.replace("CHEMBL:", "CHEMBL")
         return QueryMyChem.__get_description("get_chemical_substance", chemical_substance_id)
     
     @staticmethod
     def get_mesh_id(chemical_substance_id):
         if chemical_substance_id[:7] == "ChEMBL:":
             chemical_substance_id = chemical_substance_id.replace("ChEMBL:", "CHEMBL")
+        if chemical_substance_id[:7] == "CHEMBL:":
+            chemical_substance_id = chemical_substance_id.replace("CHEMBL:", "CHEMBL")
         handler = 'chem/' + chemical_substance_id + '?fields=drugcentral.xref.mesh_descriptor_ui'
 
         url = QueryMyChem.API_BASE_URL + '/' + handler
@@ -123,6 +129,8 @@ class QueryMyChem:
     def get_cui(chemical_substance_id):
         if chemical_substance_id[:7] == "ChEMBL:":
             chemical_substance_id = chemical_substance_id.replace("ChEMBL:", "CHEMBL")
+        if chemical_substance_id[:7] == "CHEMBL:":
+            chemical_substance_id = chemical_substance_id.replace("CHEMBL:", "CHEMBL")
         handler = 'chem/' + chemical_substance_id + '?fields=drugcentral.xref.umlscui'
 
         url = QueryMyChem.API_BASE_URL + '/' + handler
@@ -174,6 +182,32 @@ class QueryMyChem:
                             side_effects_set.add("UMLS:" + se['meddra']['umls_id'])
         return side_effects_set
 
+    @staticmethod
+    def get_drug_indications(chembl_id):
+
+        indications = []
+        if not isinstance(chembl_id, str):
+            return indications
+        if chembl_id[:7] == "ChEMBL:":
+            chembl_id = chembl_id.replace("ChEMBL:", "CHEMBL")
+        if chembl_id[:7] == "CHEMBL:":
+            chembl_id = chembl_id.replace("CHEMBL:", "CHEMBL")
+
+        handler = QueryMyChem.HANDLER_MAP['get_drug_side_effects'].format(id=chembl_id)
+        results = QueryMyChem.__access_api(handler)
+        if results is not None:
+            json_dict = json.loads(results)
+            if "drugcentral" in json_dict.keys():
+                drugcentral = json_dict['drugcentral']
+                if "drug_use" in drugcentral.keys():
+                    drug_uses = drugcentral['drug_use']
+                    for drug_use in drug_uses:
+                        if 'relation' in drug_use.keys():
+                            if drug_use['relation'] == 'indication':
+                                indications.append(drug_use)
+        return indications
+
+
 if __name__ == '__main__':
 
     def save_to_test_file(filename, key, value):
@@ -204,3 +238,7 @@ if __name__ == '__main__':
     umls_array = QueryMyChem.get_drug_side_effects("CHEMBL:521")
     print(umls_array)
     print(len(umls_array))
+
+    print(QueryMyChem.get_drug_indications("CHEMBL:521"))
+
+    # QueryMyChem.get_drug_diseases("CHEMBL333179")
