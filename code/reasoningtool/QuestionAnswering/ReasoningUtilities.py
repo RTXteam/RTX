@@ -108,7 +108,7 @@ def count_nodes():
 	return res.single()["count(n)"]
 
 
-def get_random_nodes(label, property="rtx_name", num=10, debug=False):
+def get_random_nodes(label, property="id", num=10, debug=False):
 	query = "match (n:%s) with rand() as r, n as n return n.%s order by r limit %d" % (label, property, num)
 	if debug:
 		return query
@@ -146,7 +146,7 @@ def get_node_labels():
 	return labels
 
 
-def get_rtx_name_from_property(property_value, property_name, label=None, debug=False):
+def get_id_from_property(property_value, property_name, label=None, debug=False):
 	"""
 	Get a node with property having value property_value
 	:param property_value: string
@@ -154,15 +154,15 @@ def get_rtx_name_from_property(property_value, property_name, label=None, debug=
 	:return: string
 	"""
 	if label:
-		query = "match (n:%s{%s:'%s'}) return n.rtx_name" % (label, property_name, property_value)
+		query = "match (n:%s{%s:'%s'}) return n.id" % (label, property_name, property_value)
 	else:
-		query = "match (n{%s:'%s'}) return n.rtx_name" % (property_name, property_value)
+		query = "match (n{%s:'%s'}) return n.id" % (property_name, property_value)
 	if debug:
 		return query
 	res = session.run(query)
 	res = [i for i in res]
 	if res:
-		return res[0]["n.rtx_name"]
+		return res[0]["n.id"]
 	else:
 		return None
 
@@ -177,11 +177,11 @@ def get_name_to_description_dict(session=session):
 	res = session.run(query)
 	for item in res:
 		item_dict = item['n']
-		name_to_descr[item_dict['rtx_name']] = item_dict['name']
+		name_to_descr[item_dict['id']] = item_dict['name']
 	return name_to_descr
 
 
-def get_node_property(name, node_property, node_label="", name_type="rtx_name", session=session, debug=False):
+def get_node_property(name, node_property, node_label="", name_type="id", session=session, debug=False):
 	"""
 	Get a property of a node. This replaces node_to_description by making node_property="description"
 	:param name: name of the node
@@ -237,25 +237,25 @@ def get_node_names_of_type_connected_to_target(source_label, source_name, target
 	"""
 	if is_omim:
 		query = "MATCH path=shortestPath((t:%s)-[*1..%d]-(s:%s))" \
-				" WHERE s.rtx_name='%s' AND t<>s AND t.rtx_name=~'OMIM:.*' WITH distinct nodes(path)[0] as p RETURN p.rtx_name" % (
+				" WHERE s.id='%s' AND t<>s AND t.id=~'OMIM:.*' WITH distinct nodes(path)[0] as p RETURN p.id" % (
 				target_label, max_path_len, source_label, source_name)
 	elif direction == "r":
 		query = "MATCH path=shortestPath((t:%s)-[*1..%d]->(s:%s))" \
-				" WHERE s.rtx_name='%s' AND t<>s WITH distinct nodes(path)[0] as p RETURN p.rtx_name" % (target_label, max_path_len, source_label, source_name)
+				" WHERE s.id='%s' AND t<>s WITH distinct nodes(path)[0] as p RETURN p.id" % (target_label, max_path_len, source_label, source_name)
 	elif direction == "f":
 		query = "MATCH path=shortestPath((t:%s)<-[*1..%d]-(s:%s))" \
-				" WHERE s.rtx_name='%s' AND t<>s WITH distinct nodes(path)[0] as p RETURN p.rtx_name" % (
+				" WHERE s.id='%s' AND t<>s WITH distinct nodes(path)[0] as p RETURN p.id" % (
 				target_label, max_path_len, source_label, source_name)
 	elif direction == "u":
 		query = "MATCH path=shortestPath((t:%s)-[*1..%d]-(s:%s))" \
-				" WHERE s.rtx_name='%s' AND t<>s WITH distinct nodes(path)[0] as p RETURN p.rtx_name" % (target_label, max_path_len, source_label, source_name)
+				" WHERE s.id='%s' AND t<>s WITH distinct nodes(path)[0] as p RETURN p.id" % (target_label, max_path_len, source_label, source_name)
 	else:
 		raise Exception("Sorry, the direction must be one of 'f', 'r', or 'u'")
 	if debug:
 		return query
 	result = session.run(query)
 	result_list = [i for i in result]
-	names = [i['p.rtx_name'] for i in result_list]
+	names = [i['p.id'] for i in result_list]
 	if verbose:
 		print("Found %d nearby %s's" % (len(names), target_label))
 	if debug:
@@ -277,21 +277,21 @@ def get_one_hop_target(source_label, source_name, target_label, edge_type, debug
 	:return: list of omim ID's
 	"""
 	if direction == "r":
-		query = "MATCH path=(s:%s{rtx_name:'%s'})<-[:%s]-(t:%s)" \
-				" WITH distinct nodes(path)[1] as p RETURN p.rtx_name" % (source_label, source_name, edge_type, target_label)
+		query = "MATCH path=(s:%s{id:'%s'})<-[:%s]-(t:%s)" \
+				" WITH distinct nodes(path)[1] as p RETURN p.id" % (source_label, source_name, edge_type, target_label)
 	elif direction == "f":
-		query = "MATCH path=(s:%s{rtx_name:'%s'})-[:%s]->(t:%s)" \
-				" WITH distinct nodes(path)[1] as p RETURN p.rtx_name" % (
+		query = "MATCH path=(s:%s{id:'%s'})-[:%s]->(t:%s)" \
+				" WITH distinct nodes(path)[1] as p RETURN p.id" % (
 				source_label, source_name, edge_type, target_label)
 	elif direction == "u":
-		query = "MATCH path=(s:%s{rtx_name:'%s'})-[:%s]-(t:%s)" \
-				" WITH distinct nodes(path)[1] as p RETURN p.rtx_name" % (
+		query = "MATCH path=(s:%s{id:'%s'})-[:%s]-(t:%s)" \
+				" WITH distinct nodes(path)[1] as p RETURN p.id" % (
 				source_label, source_name, edge_type, target_label)
 	else:
 		raise Exception("Sorry, the direction must be one of 'f', 'r', or 'u'")
 	result = session.run(query)
 	result_list = [i for i in result]
-	names = [i['p.rtx_name'] for i in result_list]
+	names = [i['p.id'] for i in result_list]
 	if verbose:
 		print("Found %d nearby %s's" % (len(names), target_label))
 	if debug:
@@ -311,7 +311,7 @@ def get_relationship_types_between(source_name, source_label, target_name, targe
 	unless max_path_len=1 and it's missing a target_name, then just return the relationship types
 	"""
 	if max_path_len == 1 and source_name and not target_name:
-		query = "match (s:%s{rtx_name:'%s'})-[r]-(t:%s) return distinct type(r)" % (source_label, source_name, target_label)
+		query = "match (s:%s{id:'%s'})-[r]-(t:%s) return distinct type(r)" % (source_label, source_name, target_label)
 		if debug:
 			return query
 		else:
@@ -328,7 +328,7 @@ def get_relationship_types_between(source_name, source_label, target_name, targe
 			return res
 	else:
 		query = "MATCH path=allShortestPaths((s:%s)-[*1..%d]-(t:%s)) " \
-				"WHERE s.rtx_name='%s' AND t.rtx_name='%s' " \
+				"WHERE s.id='%s' AND t.id='%s' " \
 				"RETURN distinct extract (rel in relationships(path) | type(rel) ) as types, count(*)" % (source_label, max_path_len, target_label, source_name, target_name)
 		with session.begin_transaction() as tx:
 			result = tx.run(query)
@@ -367,17 +367,17 @@ def get_graph(res, directed=True, multigraph=False):
 			graph = nx.Graph()
 	for item in res._results.graph:
 		for node in item['nodes']:
-			graph.add_node(node['id'], properties=node['properties'], labels=node['labels'], names=node['properties']['rtx_name'], description=node['properties']['name'], id=node['properties']['id'])
+			graph.add_node(node['id'], properties=node['properties'], labels=node['labels'], names=node['properties']['id'], description=node['properties']['name'], id=node['properties']['id'])
 		for rel in item['relationships']:
 			graph.add_edge(rel['startNode'], rel['endNode'], id=rel['id'], properties=rel['properties'], type=rel['type'])
 	return graph
 
 
-def get_graph_from_nodes(id_list, node_property_label="rtx_name", debug=False):
+def get_graph_from_nodes(id_list, node_property_label="id", debug=False):
 	"""
 	For a list of property names, return a subgraph with those nodes in it
 	:param id_list: a list of identifiers
-	:param node_property_label: what the identier property is (eg. rtx_name)
+	:param node_property_label: what the identier property is (eg. id)
 	:param debug:
 	:return:
 	"""
@@ -416,11 +416,11 @@ def expected_graph_distance(source_node, source_node_label, target_node, target_
 	"""
 	if directed:
 		query = "MATCH path=allShortestPaths((s:%s)-[*1..%d]->(t:%s)) " \
-				"WHERE s.rtx_name='%s' AND t.rtx_name='%s' " \
+				"WHERE s.id='%s' AND t.id='%s' " \
 				"RETURN path" % (source_node_label, max_path_len, target_node_label, source_node, target_node)
 	else:
 		query = "MATCH path=allShortestPaths((s:%s)-[*1..%d]-(t:%s)) " \
-				"WHERE s.rtx_name='%s' AND t.rtx_name='%s' " \
+				"WHERE s.id='%s' AND t.id='%s' " \
 				"RETURN path" % (source_node_label, max_path_len, target_node_label, source_node, target_node)
 	if debug:
 		print(query)
@@ -476,14 +476,14 @@ def return_subgraph_paths_of_type(source_node, source_node_label, target_node, t
 				for i in range(len(relationship_list) - 1):
 					query += "[:" + relationship_list[i] + "]->()-"
 				query += "[:" + relationship_list[-1] + "]->" + "(t:%s) " % target_node_label
-				query += "WHERE s.rtx_name='%s' and t.rtx_name='%s' " % (source_node, target_node)
+				query += "WHERE s.id='%s' and t.id='%s' " % (source_node, target_node)
 				query += "RETURN path"
 			else:
 				query = "MATCH path=(s:%s)-" % source_node_label
 				for i in range(len(relationship_list) - 1):
 					query += "[:" + relationship_list[i] + "]->()-"
 				query += "[:" + relationship_list[-1] + "]->" + "(t:%s) " % target_node_label
-				query += "WHERE s.rtx_name='%s'" % (source_node)
+				query += "WHERE s.id='%s'" % (source_node)
 				query += "RETURN path"
 			if debug:
 				return query
@@ -493,27 +493,27 @@ def return_subgraph_paths_of_type(source_node, source_node_label, target_node, t
 				for i in range(len(relationship_list) - 1):
 					query += "[:" + relationship_list[i] + "]-()-"
 				query += "[:" + relationship_list[-1] + "]-" + "(t:%s) " % target_node_label
-				query += "WHERE s.rtx_name='%s' and t.rtx_name='%s' " % (source_node, target_node)
+				query += "WHERE s.id='%s' and t.id='%s' " % (source_node, target_node)
 				query += "RETURN path"
 			else:
 				query = "MATCH path=(s:%s)-" % source_node_label
 				for i in range(len(relationship_list) - 1):
 					query += "[:" + relationship_list[i] + "]-()-"
 				query += "[:" + relationship_list[-1] + "]-" + "(t:%s) " % target_node_label
-				query += "WHERE s.rtx_name='%s'" % (source_node)
+				query += "WHERE s.id='%s'" % (source_node)
 				query += "RETURN path"
 			if debug:
 				return query
 	else:  # it's a list of lists
 		if directed:
-			query = "MATCH (s:%s{rtx_name:'%s'}) " % (source_node_label, source_node)
+			query = "MATCH (s:%s{id:'%s'}) " % (source_node_label, source_node)
 			for rel_index in range(len(relationship_list)):
 				rel_list = relationship_list[rel_index]
 				query += "OPTIONAL MATCH path%d=(s)-" % rel_index
 				for i in range(len(rel_list) - 1):
 					query += "[:" + rel_list[i] + "]->()-"
 				query += "[:" + rel_list[-1] + "]->" + "(t:%s)" % target_node_label
-				query += " WHERE t.rtx_name='%s' " % target_node
+				query += " WHERE t.id='%s' " % target_node
 			query += "RETURN "
 			for rel_index in range(len(relationship_list) - 1):
 				query += "collect(path%d)+" % rel_index
@@ -521,14 +521,14 @@ def return_subgraph_paths_of_type(source_node, source_node_label, target_node, t
 			if debug:
 				return query
 		else:
-			query = "MATCH (s:%s{rtx_name:'%s'}) " % (source_node_label, source_node)
+			query = "MATCH (s:%s{id:'%s'}) " % (source_node_label, source_node)
 			for rel_index in range(len(relationship_list)):
 				rel_list = relationship_list[rel_index]
 				query += "OPTIONAL MATCH path%d=(s)-" % rel_index
 				for i in range(len(rel_list) - 1):
 					query += "[:" + rel_list[i] + "]-()-"
 				query += "[:" + rel_list[-1] + "]-" + "(t:%s)" % target_node_label
-				query += " WHERE t.rtx_name='%s' " % target_node
+				query += " WHERE t.id='%s' " % target_node
 			query += "RETURN "
 			for rel_index in range(len(relationship_list) - 1):
 				query += "collect(path%d)+" % rel_index
@@ -562,13 +562,13 @@ def return_subgraph_through_node_labels(source_node, source_node_label, target_n
 	if with_rel:
 		if any(isinstance(el, list) for el in node_list):
 			raise Exception("node_list must be a single list of nodes (not a list of lists) if you want to use with_rel.")
-		query = "MATCH path=(%s:%s{rtx_name:'%s'})" % (source_node_label, source_node_label, source_node)
+		query = "MATCH path=(%s:%s{id:'%s'})" % (source_node_label, source_node_label, source_node)
 		for i in range(len(node_list) - 1):
 			if with_rel[0] == node_list[i]:
 				query += "-[]-(%s:%s)" % (node_list[i], node_list[i])
 			else:
 				query += "-[]-(:%s)" % node_list[i]
-		query += "-[]-(:%s)-[]-(%s:%s{rtx_name:'%s'}) " % (node_list[-1], target_node_label, target_node_label, target_node)
+		query += "-[]-(:%s)-[]-(%s:%s{id:'%s'}) " % (node_list[-1], target_node_label, target_node_label, target_node)
 		query += "WHERE exists((%s)-[:%s]-(%s)) " % (with_rel[0], with_rel[1], with_rel[2])
 		query += "RETURN path"
 		if debug:
@@ -579,14 +579,14 @@ def return_subgraph_through_node_labels(source_node, source_node_label, target_n
 			for i in range(len(node_list) - 1):
 				query += "-[]-(:" + node_list[i] + ")"
 			query += "-[]-(:" + node_list[-1] + ")-[]-" + "(t:%s) " % target_node_label
-			query += "WHERE s.rtx_name='%s' and t.rtx_name='%s' " % (source_node, target_node)
+			query += "WHERE s.id='%s' and t.id='%s' " % (source_node, target_node)
 			query += "RETURN path"
 		else:
 			query = "MATCH path=(s:%s)" % source_node_label
 			for i in range(len(node_list) - 1):
 				query += "-[]-(:" + node_list[i] + ")"
 			query += "-[]-(:" + node_list[-1] + ")-[]-" + "(t:%s) " % target_node_label
-			query += "WHERE s.rtx_name='%s' and t.rtx_name in ['%s'" % (source_node, target_node[0])
+			query += "WHERE s.id='%s' and t.id in ['%s'" % (source_node, target_node[0])
 			for node in target_node:
 				query += ",'%s'" % node
 			query += "] "
@@ -594,14 +594,14 @@ def return_subgraph_through_node_labels(source_node, source_node_label, target_n
 		if debug:
 			return query
 	else:  # it's a list of lists
-		query = "MATCH (s:%s{rtx_name:'%s'}) " % (source_node_label, source_node)
+		query = "MATCH (s:%s{id:'%s'}) " % (source_node_label, source_node)
 		for rel_index in range(len(node_list)):
 			rel_list = node_list[rel_index]
 			query += "OPTIONAL MATCH path%d=(s)" % rel_index
 			for i in range(len(rel_list) - 1):
 				query += "-[]-(:" + rel_list[i] + ")"
 			query += "-[]-(:" + rel_list[-1] + ")-[]-" + "(t:%s)" % target_node_label
-			query += " WHERE t.rtx_name='%s' " % target_node
+			query += " WHERE t.id='%s' " % target_node
 		query += "RETURN "
 		for rel_index in range(len(node_list) - 1):
 			query += "collect(path%d)+" % rel_index
@@ -632,7 +632,7 @@ def get_shortest_subgraph_between_nodes(source_name, source_label, target_name, 
 	:return: networkx graph
 	"""
 	query = "MATCH path=allShortestPaths((s:%s)-[*1..%d]-(t:%s)) " \
-			"WHERE s.rtx_name='%s' AND t.rtx_name='%s' " \
+			"WHERE s.id='%s' AND t.id='%s' " \
 			"RETURN path limit %d" % (source_label, max_path_len, target_label, source_name, target_name, limit)
 	if debug:
 		return query
@@ -656,7 +656,7 @@ def get_node_as_graph(node_name, debug=False, use_description=False):
 	if use_description:
 		query = "MATCH (n{name:'%s'}) return n" % node_name
 	else:
-		query = "MATCH (n{rtx_name:'%s'}) return n" % node_name
+		query = "MATCH (n{id:'%s'}) return n" % node_name
 	if debug:
 		return query
 
@@ -677,10 +677,10 @@ def return_exact_path(node_list, relationship_list, directed=True, debug=False):
 	:param debug: just print the cypher query
 	:return: networkx graph of the path
 	"""
-	query = "MATCH path=(s{rtx_name:'%s'})-" % node_list[0]
+	query = "MATCH path=(s{id:'%s'})-" % node_list[0]
 	for i in range(len(relationship_list) - 1):
-		query += "[:" + relationship_list[i] + "]-({rtx_name:'%s'})-" % node_list[i+1]
-	query += "[:" + relationship_list[-1] + "]-" + "(t{rtx_name:'%s'}) " % node_list[-1]
+		query += "[:" + relationship_list[i] + "]-({id:'%s'})-" % node_list[i+1]
+	query += "[:" + relationship_list[-1] + "]-" + "(t{id:'%s'}) " % node_list[-1]
 	query += "RETURN path"
 	if debug:
 		return query
@@ -703,14 +703,14 @@ def count_nodes_of_type_on_path_of_type_to_label(source_name, source_label, targ
 	:param session: neo4j session
 	:return: two dictionaries: names2counts, names2nodes (keys = target node names, counts is number of nodes of interest in the paths, nodes are the actual nodes of interest)
 	"""
-	query = "MATCH (s:%s{rtx_name:'%s'})-" % (source_label, source_name)
+	query = "MATCH (s:%s{id:'%s'})-" % (source_label, source_name)
 	for i in range(len(relationship_label_list) - 1):
 		if i == node_of_interest_position:
 			query += "[:%s]-(n:%s)-" % (relationship_label_list[i], node_label_list[i])
 		else:
 			query += "[:%s]-(:%s)-" % (relationship_label_list[i], node_label_list[i])
 	query += "[:%s]-(t:%s) " % (relationship_label_list[-1], target_label)
-	query += "RETURN t.rtx_name, count(distinct n.rtx_name), collect(distinct n.rtx_name)"
+	query += "RETURN t.id, count(distinct n.id), collect(distinct n.id)"
 	if debug:
 		return query
 	else:
@@ -719,8 +719,8 @@ def count_nodes_of_type_on_path_of_type_to_label(source_name, source_label, targ
 		names2counts = dict()
 		names2nodes = dict()
 		for i in result_list:
-			names2counts[i['t.rtx_name']] = int(i['count(distinct n.rtx_name)'])
-			names2nodes[i['t.rtx_name']] = i['collect(distinct n.rtx_name)']
+			names2counts[i['t.id']] = int(i['count(distinct n.id)'])
+			names2nodes[i['t.id']] = i['collect(distinct n.id)']
 		return names2counts, names2nodes
 
 def count_nodes_of_type_for_nodes_that_connect_to_label(source_name, source_label, target_label, node_label_list, relationship_label_list, node_of_interest_position, debug=False, session=session):
@@ -728,7 +728,7 @@ def count_nodes_of_type_for_nodes_that_connect_to_label(source_name, source_labe
 	This function will take a source node, get all the target nodes of node_label type that connect to the source via node_label_list
 	and relationship_label list, it then takes each target node, and counts the number of nodes of type node_label_list[node_of_interest] that are connected to the target.
 	An example cypher result is:
-	MATCH (t:disease)-[:has_phenotype]-(n:phenotypic_feature) WHERE (:disease{rtx_name:'DOID:8398'})-[:has_phenotype]-(:phenotypic_feature)-[:has_phenotype]-(t:disease) RETURN t.rtx_name, count(distinct n.name)
+	MATCH (t:disease)-[:has_phenotype]-(n:phenotypic_feature) WHERE (:disease{id:'DOID:8398'})-[:has_phenotype]-(:phenotypic_feature)-[:has_phenotype]-(t:disease) RETURN t.id, count(distinct n.name)
 	which will return
 	DOID:001	18
 	DOID:002	200
@@ -745,7 +745,7 @@ def count_nodes_of_type_for_nodes_that_connect_to_label(source_name, source_labe
 	"""
 	temp_rel_list = list(reversed(relationship_label_list))
 	temp_node_list = list(reversed(node_label_list))
-	query = " MATCH (:%s{rtx_name:'%s'})-" % (source_label, source_name)
+	query = " MATCH (:%s{id:'%s'})-" % (source_label, source_name)
 	for i in range(len(relationship_label_list) - 1):
 		query += "[:%s]-(:%s)-" % (relationship_label_list[i], node_label_list[i])
 	query += "[:%s]-(t:%s) " % (relationship_label_list[-1], target_label)
@@ -758,7 +758,7 @@ def count_nodes_of_type_for_nodes_that_connect_to_label(source_name, source_labe
 		else:
 			query += "-[:%s]-(:%s)" % (temp_rel_list[i], temp_node_list[i])
 
-	query += " RETURN t.rtx_name, count(distinct n.rtx_name)"
+	query += " RETURN t.id, count(distinct n.id)"
 	if debug:
 		return query
 	else:
@@ -766,7 +766,7 @@ def count_nodes_of_type_for_nodes_that_connect_to_label(source_name, source_labe
 		result_list = [i for i in result]
 		names2counts = dict()
 		for i in result_list:
-			names2counts[i['t.rtx_name']] = int(i['count(distinct n.rtx_name)'])
+			names2counts[i['t.id']] = int(i['count(distinct n.id)'])
 		return names2counts
 
 def interleave_nodes_and_relationships(session, source_node, source_node_label, target_node, target_node_label, max_path_len=3, debug=False):
@@ -781,14 +781,14 @@ def interleave_nodes_and_relationships(session, source_node, source_node_label, 
 	:return: a list of lists of relationship and node types (strings) linking the source and target
 	"""
 	query_name = "match p= shortestPath((s:%s)-[*1..%d]-(t:%s)) " \
-				 "where s.rtx_name='%s' " \
-				 "and t.rtx_name='%s' " \
+				 "where s.id='%s' " \
+				 "and t.id='%s' " \
 				 "with nodes(p) as ns, rels(p) as rs, range(0,length(nodes(p))+length(rels(p))-1) as idx " \
-				 "return [i in idx | case i %% 2 = 0 when true then coalesce((ns[i/2]).rtx_name, (ns[i/2]).title) else type(rs[i/2]) end] as path " \
+				 "return [i in idx | case i %% 2 = 0 when true then coalesce((ns[i/2]).id, (ns[i/2]).title) else type(rs[i/2]) end] as path " \
 				 "" % (source_node_label, max_path_len, target_node_label ,source_node, target_node)
 	query_type = "match p= shortestPath((s:%s)-[*1..%d]-(t:%s)) " \
-				 "where s.rtx_name='%s' " \
-				 "and t.rtx_name='%s' " \
+				 "where s.id='%s' " \
+				 "and t.id='%s' " \
 				 "with nodes(p) as ns, rels(p) as rs, range(0,length(nodes(p))+length(rels(p))-1) as idx " \
 				 "return [i in idx | case i %% 2 = 0 when true then coalesce(labels(ns[i/2])[1], (ns[i/2]).title) else type(rs[i/2]) end] as path " \
 				 "" % (source_node_label, max_path_len, target_node_label, source_node, target_node)
@@ -1431,7 +1431,7 @@ def test_get_relationship_types_between():
 
 
 def test_get_graph():
-	query = 'match p=(s:disease{rtx_name:"DOID:14325"})-[*1..3]-(t:drug) return p limit 10'
+	query = 'match p=(s:disease{id:"DOID:14325"})-[*1..3]-(t:drug) return p limit 10'
 	res = cypher.run(query, conn=connection, config=defaults)
 	graph = get_graph(res)
 	nodes = set(['138403', '148895', '140062', '140090', '139899', '140317', '138536', '121114', '138632', '147613', '140300', '140008', '140423'])

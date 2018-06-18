@@ -83,7 +83,7 @@ def rtx_fisher_test(input_node_list, input_node_label, compare_node_label, debug
     """
     Answer the question: how signifigant is the connection of the set input_node_list to each of the adjacent
     nodes of type compare_node_label by the fisher's exact test. Used to compute GO term enrichment.
-    :param input_node_list: list of node rtx_name IDs e.g ["Q6UWI4", "P09110",.. etc]
+    :param input_node_list: list of node id IDs e.g ["Q6UWI4", "P09110",.. etc]
     :param input_node_label: node label for types in list e.g. "protein"
     :param compare_node_label: node label to compare against  e.g. "biological_process"
     :return: dictionary of connecting nodes from compare_node_label and corresponding signifigance levels
@@ -91,7 +91,7 @@ def rtx_fisher_test(input_node_list, input_node_label, compare_node_label, debug
     dict_in_compare = {}
 
     for node in input_node_list: # get all the nodes adjacent to those in input_node_list from compare_node_label ex. pathways
-        query = "MATCH (n:%s{rtx_name:'%s'})-[]-(s:%s) RETURN distinct s.rtx_name" % (input_node_label,node,compare_node_label)
+        query = "MATCH (n:%s{id:'%s'})-[]-(s:%s) RETURN distinct s.id" % (input_node_label,node,compare_node_label)
         if debug:
             print(query)
         else:
@@ -106,7 +106,7 @@ def rtx_fisher_test(input_node_list, input_node_label, compare_node_label, debug
     size_of_adjacent={} # degree of each adjacent node with respect to input_node_label in compare_node_label
 
     for node in dict_in_compare: # fill that guy in. ex: find number of proteins (or length) of each involved pathway
-        query = "MATCH (n:%s{rtx_name:'%s'})-[]-(s:%s) return count(distinct s)" % (compare_node_label,node, input_node_label)
+        query = "MATCH (n:%s{id:'%s'})-[]-(s:%s) return count(distinct s)" % (compare_node_label,node, input_node_label)
         if debug:
             print(query)
         else:

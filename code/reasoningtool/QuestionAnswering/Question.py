@@ -72,7 +72,7 @@ def find_node_name(string):
 	"""
 	Look for all the curies for nodes in the graph
 	:param string: a string you're trying to match to a node name in the KG
-	:return: list of strings (of rtx_name's)
+	:return: list of strings (of id's)
 	"""
 	# if it's a string, convert "[COX1,PTGS1]" -> ['Uniprot:123', 'Uniprot:234']
 	if "[" == string[0] and "]" == string[-1]:

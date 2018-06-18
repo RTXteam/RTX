@@ -56,7 +56,7 @@ def dump_name_description(file_name, session=session):
 		for item in res:
 			prop_dict = item['p']
 			labels = item['l']
-			fid.write('%s\t' % prop_dict['rtx_name'])
+			fid.write('%s\t' % prop_dict['id'])
 			fid.write('%s\t' % prop_dict['name'])
 			fid.write('%s\n' % list(set(labels) - {'Base'}).pop())
 	return

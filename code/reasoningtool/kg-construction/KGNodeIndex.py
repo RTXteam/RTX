@@ -170,7 +170,7 @@ class KGNodeIndex:
     fh = open( os.path.dirname(os.path.abspath(__file__)) + "/../../../data/KGmetadata/NodeNamesDescriptions.tsv", 'r', encoding="latin-1", errors="replace")
     for line in fh.readlines():
       columns = line.strip("\n").split("\t")
-      curie = columns[0] # TODO: note that this is not actually the curie, but the rtx_name. Should change KG meta dump to use curie instead, and sed replace rtx_name with id
+      curie = columns[0]
       name = columns[1]
       type = columns[2]
 

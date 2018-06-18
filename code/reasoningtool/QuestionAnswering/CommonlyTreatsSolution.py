@@ -86,7 +86,7 @@ class CommonlyTreatsSolution:
 			id_to_name = dict()
 			id_to_count = dict()
 			id_to_frequency = dict()
-			rtx_name_to_id = dict()
+			id_to_id = dict()
 
 			# Map ID's to all relevant values
 			for id in ids_sorted_top_n:
@@ -95,20 +95,20 @@ class CommonlyTreatsSolution:
 				id_to_frequency[id] = conditions_treated[id]['concept_frequency']
 				id_to_KG_name[id] = None
 				try:
-					id_to_KG_name[id] = RU.get_rtx_name_from_property(id_to_name[id], 'name', label="phenotypic_feature")
-					rtx_name_to_id[id_to_KG_name[id]] = id
+					id_to_KG_name[id] = RU.get_id_from_property(id_to_name[id], 'name', label="phenotypic_feature")
+					id_to_id[id_to_KG_name[id]] = id
 				except:
 					try:
-						id_to_KG_name[id] = RU.get_rtx_name_from_property(id_to_name[id], 'name', label="disease")
-						rtx_name_to_id[id_to_KG_name[id]] = id
+						id_to_KG_name[id] = RU.get_id_from_property(id_to_name[id], 'name', label="disease")
+						id_to_id[id_to_KG_name[id]] = id
 					except:
 						try:
-							id_to_KG_name[id] = RU.get_rtx_name_from_property(id_to_name[id].lower(), 'name', label="phenotypic_feature")
-							rtx_name_to_id[id_to_KG_name[id]] = id
+							id_to_KG_name[id] = RU.get_id_from_property(id_to_name[id].lower(), 'name', label="phenotypic_feature")
+							id_to_id[id_to_KG_name[id]] = id
 						except:
 							try:
-								id_to_KG_name[id] = RU.get_rtx_name_from_property(id_to_name[id].lower(), 'name', label="disease")
-								rtx_name_to_id[id_to_KG_name[id]] = id
+								id_to_KG_name[id] = RU.get_id_from_property(id_to_name[id].lower(), 'name', label="disease")
+								id_to_id[id_to_KG_name[id]] = id
 							except:
 								pass
 
@@ -130,8 +130,8 @@ class CommonlyTreatsSolution:
 			# Get the info of the mapped nodes
 			id_to_info = dict()
 			for u, data in all_conditions_graph.nodes(data=True):
-				rtx_name = data['properties']['rtx_name']
-				id = rtx_name_to_id[rtx_name]
+				id = data['properties']['id']
+				id = id_to_id[id]
 				id_to_info[id] = data
 
 			# for each condition, return the results (with the nice sub-graph if the cohd id's were mapped)
