@@ -85,6 +85,7 @@ class Q3:
 			return results_list
 		else:  # You want the standardized API output format
 			response = FormatOutput.FormatResponse(3)  # it's a Q3 question
+			response.response.table_column_names = ["source name", "source ID", "target name", "target ID"]
 			source_description = g.node[source_node_number]['properties']['name']
 			for target_number in target_numbers:
 				target_description = g.node[target_number]['properties']['name']
@@ -95,7 +96,13 @@ class Q3:
 				res = response.add_subgraph(subgraph.nodes(data=True), subgraph.edges(data=True),
 									"%s and %s are connected by the relationship %s" % (
 									source_description, target_description,	relationship_type), 1, return_result=True)
-				res.essence = "%s" % target_description
+				res.essence = "%s" % target_description  # populate with essence of question result
+				row_data = []  # initialize the row data
+				row_data.append("%s" % source_description)
+				row_data.append("%s" % g.node[source_node_number]['properties']['id'])
+				row_data.append("%s" % target_description)
+				row_data.append("%s" % g.node[target_number]['properties']['id'])
+				res.row_data = row_data
 			return response
 
 	def describe(self):
