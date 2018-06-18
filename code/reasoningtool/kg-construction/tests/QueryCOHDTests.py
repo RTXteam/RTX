@@ -10,7 +10,7 @@ from QueryCOHD import QueryCOHD
 
 class QueryCOHDTestCases(TestCase):
     def test_find_concept_ids(self):
-        result = QueryCOHD.find_concept_ids("cancer", "Condition", 1)
+        result = QueryCOHD.find_concept_ids("cancer", "Condition", dataset_id=1, min_count=0)
         self.assertIsNotNone(result)
         self.assertEqual(len(result), 84)
         self.assertEqual(result[0], {'concept_class_id': 'Clinical Finding',
@@ -20,10 +20,10 @@ class QueryCOHDTestCases(TestCase):
                                      'concept_name': 'Cancer in situ of urinary bladder', 'domain_id': 'Condition',
                                      'vocabulary_id': 'SNOMED'})
 
-        #   default dataset_id
+        #   default dataset_id and min_count
         result = QueryCOHD.find_concept_ids("cancer", "Condition")
         self.assertIsNotNone(result)
-        self.assertEqual(len(result), 84)
+        self.assertEqual(len(result), 3)
         self.assertEqual(result[0], {'concept_class_id': 'Clinical Finding',
                                      'concept_code': '92546004',
                                      'concept_count': 368.0,
@@ -34,7 +34,7 @@ class QueryCOHDTestCases(TestCase):
         #   default dataset_id and domain
         result = QueryCOHD.find_concept_ids("cancer")
         self.assertIsNotNone(result)
-        self.assertEqual(len(result), 1000)
+        self.assertEqual(len(result), 37)
         self.assertEqual(result[0], {'concept_class_id': 'Procedure',
                                      'concept_code': '15886004',
                                      'concept_count': 4195.0,
@@ -50,6 +50,18 @@ class QueryCOHDTestCases(TestCase):
         #   invalid domain value
         result = QueryCOHD.find_concept_ids("cancer", "Conditi")
         self.assertEqual(result, [])
+
+        #   timeout case (backend timeout issue has been fixed)
+        result = QueryCOHD.find_concept_ids("ibuprofen", "Drug", dataset_id=1, min_count=0)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1000)
+        self.assertEqual(result[0], {'concept_class_id': 'Clinical Drug',
+                                     'concept_code': '197806',
+                                     'concept_count': 115101,
+                                     'concept_id': 19019073,
+                                     'concept_name': 'Ibuprofen 600 MG Oral Tablet',
+                                     'domain_id': 'Drug',
+                                     'vocabulary_id': 'RxNorm'})
 
     def test_get_paired_concept_freq(self):
         result = QueryCOHD.get_paired_concept_freq("2008271", "192855", 1)
@@ -623,7 +635,7 @@ class QueryCOHDTestCases(TestCase):
         result = QueryCOHD.get_domain_counts(1)
         self.assertIsNotNone(result)
         self.assertEqual(len(result), 10)
-        self.assertEqual(result[0], {'count': 10119,
+        self.assertEqual(result[0], {'count': 10159,
                                      'dataset_id': 1,
                                      'domain_id': 'Condition'})
 
@@ -631,7 +643,7 @@ class QueryCOHDTestCases(TestCase):
         result = QueryCOHD.get_domain_counts()
         self.assertIsNotNone(result)
         self.assertEqual(len(result), 10)
-        self.assertEqual(result[0], {'count': 10119,
+        self.assertEqual(result[0], {'count': 10159,
                                      'dataset_id': 1,
                                      'domain_id': 'Condition'})
 
@@ -647,7 +659,7 @@ class QueryCOHDTestCases(TestCase):
         result = QueryCOHD.get_domain_pair_counts(1)
         self.assertIsNotNone(result)
         self.assertEqual(len(result), 50)
-        self.assertEqual(result[0], {'count': 1931666,
+        self.assertEqual(result[0], {'count': 1933917,
                                      'dataset_id': 1,
                                      'domain_id_1': 'Condition',
                                      'domain_id_2': 'Condition'})
@@ -656,7 +668,7 @@ class QueryCOHDTestCases(TestCase):
         result = QueryCOHD.get_domain_pair_counts()
         self.assertIsNotNone(result)
         self.assertEqual(len(result), 50)
-        self.assertEqual(result[0], {'count': 1931666,
+        self.assertEqual(result[0], {'count': 1933917,
                                      'dataset_id': 1,
                                      'domain_id_1': 'Condition',
                                      'domain_id_2': 'Condition'})
