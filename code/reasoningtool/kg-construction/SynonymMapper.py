@@ -124,12 +124,21 @@ class SynonymMapper():
             if int(n_res) > 0:
                 mappings = res['_embedded']['mappings']
                 for mapping in mappings:
-                    if mapping['fromTerm']['curie'].startswith(prefix):
-                        if mapping['toTerm']['curie'].startswith(map_to):
-                            synonym_ids |= set([mapping['toTerm']['curie']])
-                    elif mapping['toTerm']['curie'].startswith(prefix):
-                        if mapping['fromTerm']['curie'].startswith(map_to):
-                            synonym_ids |= set([mapping['fromTerm']['curie']])
+                    if type(map_to) == list:
+                        for elm in map_to:
+                            if mapping['fromTerm']['curie'].startswith(prefix):
+                                if mapping['toTerm']['curie'].startswith(elm):
+                                    synonym_ids |= set([mapping['toTerm']['curie']])
+                            elif mapping['toTerm']['curie'].startswith(prefix):
+                                if mapping['fromTerm']['curie'].startswith(elm):
+                                    synonym_ids |= set([mapping['fromTerm']['curie']])
+                    else:
+                        if mapping['fromTerm']['curie'].startswith(prefix):
+                            if mapping['toTerm']['curie'].startswith(map_to):
+                                synonym_ids |= set([mapping['toTerm']['curie']])
+                        elif mapping['toTerm']['curie'].startswith(prefix):
+                            if mapping['fromTerm']['curie'].startswith(map_to):
+                                synonym_ids |= set([mapping['fromTerm']['curie']])
             if len(synonym_ids) == 0:
                 synonym_ids = None
             else:
