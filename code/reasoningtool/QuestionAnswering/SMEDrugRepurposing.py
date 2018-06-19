@@ -38,8 +38,49 @@ class SMEDrugRepurposing:
 		# Initialize the response class
 		response = FormatOutput.FormatResponse(6)
 
-		# get the description
+		# get the description of the disease
 		disease_description = RU.get_node_property(disease_id, 'name')
+
+		# What are the defining symptoms of the disease?
+		# get subgraph of all all the symptom nodes connecting to the disease
+		try:
+			g = RU.return_subgraph_paths_of_type(disease_id, "disease", None, "phenotypic_feature", ["has_phenotype"],
+												 directed=False)
+		except CustomExceptions.EmptyCypherError:
+			error_code = "EmptyGraph"
+			error_message = "Sorry, but there are no phenotypes associated to %s" % disease_description
+			response.add_error_message(error_code, error_message)
+			response.print()
+			return 1
+
+		# decorate with cohd data
+		RU.weight_graph_with_cohd_frequency(g, normalized=True)  # TODO: check if normalized on returns better results
+
+		# sort the phenotypes by frequency
+		names = nx.get_node_attributes(g, 'id')
+		labels = nx.get_node_attributes(g, 'labels')
+
+		# get the node corresponding to the disease
+		disease_node = None
+		for node in names.keys():
+			if names[node] == disease_id:
+				disease_node = node
+
+		# get all the nodes and the frequencies in one place
+		symptom_node_freqs = []
+		for node in names.keys():
+			if "phenotypic_feature" == list(set(labels[node]) - {"Base"}).pop():
+				# get the corresponding edge frequency (try both directions)
+				edge_data = g.get_edge_data(disease_node, node)
+				if "cohd_freq" in edge_data and isinstance(edge_data["cohd_freq"], float):
+					freq = edge_data["cohd_freq"]
+				else:
+					edge_data = g.get_edge_data(node, disease_node)
+					if "cohd_freq" in edge_data and isinstance(edge_data["cohd_freq"], float):
+						freq = edge_data["cohd_freq"]
+					else:
+						freq = 0
+				symptom_node_freqs.append((node, freq))
 
 
 
