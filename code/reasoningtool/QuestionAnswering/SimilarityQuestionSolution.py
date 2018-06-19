@@ -38,6 +38,8 @@ class SimilarityQuestionSolution:
 
 		# Initialize the response class
 		response = FormatOutput.FormatResponse(5)
+		# add the column names for the row data
+		response.response.table_column_names = ["source name", "source ID", "target name", "target ID", "Jaccard index"]
 
 		# Initialize the similar nodes class
 		similar_nodes_in_common = SimilarNodesInCommon.SimilarNodesInCommon()
@@ -100,8 +102,9 @@ class SimilarityQuestionSolution:
 					target_id2numbers[data['properties']['id']] = node
 
 			for other_disease_ID, jaccard in node_jaccard_tuples_sorted:
+				target_name = RU.get_node_property(other_disease_ID, 'name')
 				to_print = "The %s %s involves similar %ss as %s with similarity value %f" % (
-					target_node_type, RU.get_node_property(other_disease_ID, 'name'), association_node_type,
+					target_node_type, target_name, association_node_type,
 					source_node_description, jaccard)
 
 				# get all the shortest paths between source and target
@@ -119,7 +122,15 @@ class SimilarityQuestionSolution:
 						sub_g = nx.subgraph(g, rel_nodes)
 
 						# add it to the response
-						response.add_subgraph(sub_g.nodes(data=True), sub_g.edges(data=True), to_print, jaccard)
+						res = response.add_subgraph(sub_g.nodes(data=True), sub_g.edges(data=True), to_print, jaccard, return_result=True)
+						res.essence = "%s" % target_name  # populate with essence of question result
+						row_data = []  # initialize the row data
+						row_data.append("%s" % source_node_description)
+						row_data.append("%s" % source_node_ID)
+						row_data.append("%s" % target_name)
+						row_data.append("%s" % other_disease_ID)
+						row_data.append("%f" % jaccard)
+						res.row_data = row_data
 				except:
 					pass
 			response.print()
