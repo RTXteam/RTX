@@ -183,11 +183,12 @@ class QueryMyChem:
         return side_effects_set
 
     @staticmethod
-    def get_drug_indications(chembl_id):
+    def get_drug_use(chembl_id):
 
         indications = []
+        contraindications = []
         if not isinstance(chembl_id, str):
-            return indications
+            return {'indications': indications, "contraindications": contraindications}
         if chembl_id[:7] == "ChEMBL:":
             chembl_id = chembl_id.replace("ChEMBL:", "CHEMBL")
         if chembl_id[:7] == "CHEMBL:":
@@ -205,7 +206,9 @@ class QueryMyChem:
                         if 'relation' in drug_use.keys():
                             if drug_use['relation'] == 'indication':
                                 indications.append(drug_use)
-        return indications
+                            if drug_use['relation'] == 'contraindication':
+                                contraindications.append(drug_use)
+        return {'indications': indications, "contraindications": contraindications}
 
 
 if __name__ == '__main__':

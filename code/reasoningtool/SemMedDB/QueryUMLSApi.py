@@ -88,8 +88,8 @@ class QueryUMLS:
             return None
 
     @staticmethod
-    def get_cuis_from_string_precision(string, tgt):
-        cuis = set()
+    def get_cui_from_string_precision(string, tgt):
+        cui = None
         st = QueryUMLS.get_single_ticket(tgt)
         query = '/search/current?string=' + string + '&pageSize=10000'
         r = QueryUMLS.send_query_get(query, st)
@@ -100,12 +100,14 @@ class QueryUMLS:
                     for res_obj in res_json['result']['results']:
                         if 'name' in res_obj.keys() and 'ui' in res_obj.keys():
                             if res_obj['name'].lower() == string.lower():
-                                print(res_obj)
-                                cuis.add(res_obj['ui'])
-        return cuis
+                                cui = res_obj['ui']
+                    if cui is None and len(res_json['result']['results']) > 0:
+                        cui = res_json['result']['results'][0]['ui']
+        return cui
 
 if __name__ == '__main__':
     tgt = QueryUMLS.get_ticket_gen()
     print(QueryUMLS.get_cuis_from_string('log15', tgt))
-    print(QueryUMLS.get_cuis_from_string('pain', tgt))
-    print(QueryUMLS.get_cuis_from_string_precision('pain', tgt))
+    # print(QueryUMLS.get_cuis_from_string('pain', tgt))
+    # print(QueryUMLS.get_cui_from_string_precision('pain', tgt))
+    print(QueryUMLS.get_cui_from_string_precision('Influenza-like symptoms', tgt))
