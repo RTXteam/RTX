@@ -15,6 +15,22 @@ except ImportError:
 class DrugMapper:
 
     @staticmethod
+    def __map_umls_to_onto_id(umls_array):
+        """
+        mapping between umls ids and ontology ids including omim, doid, and hp.
+        :param umls_array:
+        :return: a set of strings containing the found hp / omim / doid ids or empty set if none were found
+        """
+        onto_set = set()
+        sm = SynonymMapper()
+        for umls_id in umls_array:
+            onto_ids = sm.get_all_from_oxo(umls_id, ['DOID', 'OMIM', 'HP'])
+            if onto_ids != None:
+                for onto_id in onto_ids:
+                    onto_set.add(onto_id)
+        return onto_set
+
+    @staticmethod
     def map_drug_to_hp_with_side_effects(chembl_id):
         """
         mapping between a drug and human phenotypes corresponding to side effects
@@ -81,8 +97,6 @@ class DrugMapper:
         #             umls_set.add(cui)
         # return umls_set
 
-
-
     @staticmethod
     def map_drug_to_ontology(chembl_id):
         """
@@ -129,4 +143,8 @@ if __name__ == '__main__':
     print(umls_set)
 
     onto_set = DrugMapper.map_drug_to_ontology("CHEMBL521")
+    print(onto_set)
+
+    onto_set = DrugMapper.map_drug_to_ontology2("CHEMBL521")
+    print("map 2")
     print(onto_set)
