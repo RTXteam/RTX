@@ -373,7 +373,7 @@ def get_graph(res, directed=True, multigraph=False):
 	return graph
 
 
-def get_graph_from_nodes(id_list, node_property_label="id", debug=False):
+def get_graph_from_nodes(id_list, node_property_label="id", debug=False, edges=False):
 	"""
 	For a list of property names, return a subgraph with those nodes in it
 	:param id_list: a list of identifiers
@@ -381,12 +381,18 @@ def get_graph_from_nodes(id_list, node_property_label="id", debug=False):
 	:param debug:
 	:return:
 	"""
-	query = "match (n) where n.%s in [" % node_property_label
-	for ID in id_list:
-		if ID != id_list[-1]:
-			query += " '%s'," % ID
-		else:
-			query += " '%s'] return n" % ID
+	if edges:
+		query = "with ['%s'" % id_list[0]
+		for node_id in id_list[1:]:
+			query += ",'%s'" % node_id
+		query += "] as l match p=(n)-[]-(m) where n.%s in l and m.%s in l return p" % (node_property_label, node_property_label)
+	else:
+		query = "match (n) where n.%s in [" % node_property_label
+		for ID in id_list:
+			if ID != id_list[-1]:
+				query += " '%s'," % ID
+			else:
+				query += " '%s'] return n" % ID
 	if debug:
 		return query
 	else:

@@ -23,7 +23,7 @@ except ImportError:
 		from QueryCOHD import QueryCOHD
 
 from COHDUtilities import COHDUtilities
-
+import SimilarNodesInCommon
 import CustomExceptions
 
 
@@ -42,46 +42,74 @@ class SMEDrugRepurposing:
 		disease_description = RU.get_node_property(disease_id, 'name')
 
 		# What are the defining symptoms of the disease?
-		# get subgraph of all all the symptom nodes connecting to the disease
-		try:
-			g = RU.return_subgraph_paths_of_type(disease_id, "disease", None, "phenotypic_feature", ["has_phenotype"],
-												 directed=False)
-		except CustomExceptions.EmptyCypherError:
-			error_code = "EmptyGraph"
-			error_message = "Sorry, but there are no phenotypes associated to %s" % disease_description
-			response.add_error_message(error_code, error_message)
-			response.print()
-			return 1
+		# get diseases that have many raw symptoms in common
+		# select top N of them
+		# get subraph of these with the input disease
+		# weight by COHD data
+		# pick diseases with maximal (since frequency) average distance i.e. maximal expected graph distance
 
-		# decorate with cohd data
-		RU.weight_graph_with_cohd_frequency(g, normalized=True)  # TODO: check if normalized on returns better results
+		# get disease that have many raw symptoms in common
+		similar_nodes_in_common = SimilarNodesInCommon.SimilarNodesInCommon()
+		node_jaccard_tuples_sorted, error_code, error_message = similar_nodes_in_common.get_similar_nodes_in_common_source_target_association(
+			disease_id, "disease", "phenotypic_feature", 0)
+		# select top N of them
+		num_diseases_to_select = 100
+		diseases_selected = []
+		for n, j in node_jaccard_tuples_sorted[0:num_diseases_to_select]:
+			diseases_selected.append(n)
 
-		# sort the phenotypes by frequency
-		names = nx.get_node_attributes(g, 'id')
-		labels = nx.get_node_attributes(g, 'labels')
+		# get subgraph of these with the input disease
+		# get all symptoms of input disease
+		all_symptoms = RU.get_one_hop_target("disease", disease_id, "phenotypic_feature", "has_phenotype")
+		g = RU.get_graph_from_nodes(all_symptoms + diseases_selected + [disease_id], edges=True)
 
-		# get the node corresponding to the disease
-		disease_node = None
-		for node in names.keys():
-			if names[node] == disease_id:
-				disease_node = node
-
-		# get all the nodes and the frequencies in one place
-		symptom_node_freqs = []
-		for node in names.keys():
-			if "phenotypic_feature" == list(set(labels[node]) - {"Base"}).pop():
-				# get the corresponding edge frequency (try both directions)
-				edge_data = g.get_edge_data(disease_node, node)
-				if "cohd_freq" in edge_data and isinstance(edge_data["cohd_freq"], float):
-					freq = edge_data["cohd_freq"]
+		# weight by COHD data
+		node_properties = nx.get_node_attributes(g, 'properties')
+		node_ids = dict()
+		node_labels = dict()
+		for node in node_properties.keys():
+			node_ids[node] = node_properties[node]['id']
+			node_labels[node] = node_properties[node]['category']
+		for u, v, d in g.edges(data=True):
+			source_id = node_ids[u]
+			source_label = node_labels[u]
+			target_id = node_ids[v]
+			target_label = node_labels[v]
+			if {source_label, target_label} != {"disease", "phenotypic_feature"}:
+				d['cohd_freq'] = 0
+				continue
+			else:
+				if source_label == "disease":
+					disease_id = source_id
+					symptom_id = target_id
 				else:
-					edge_data = g.get_edge_data(node, disease_node)
-					if "cohd_freq" in edge_data and isinstance(edge_data["cohd_freq"], float):
-						freq = edge_data["cohd_freq"]
-					else:
-						freq = 0
-				symptom_node_freqs.append((node, freq))
-
+					disease_id = target_id
+					symptom_id = source_id
+			# look up these in COHD
+			# disease
+			disease_omop_id = None
+			for distance in [1, 2, 3]:
+				xref = QueryCOHD.get_xref_to_OMOP(disease_id, distance=distance)
+				for ref in xref:
+					if ref['omop_domain_id'] == "Condition":
+						disease_omop_id = str(ref["omop_standard_concept_id"])
+						break
+				if disease_omop_id:
+					break
+			# symptom, loop over them all and take the largest
+			if not disease_omop_id:
+				d['cohd_freq'] = 0
+			else:
+				xrefs = QueryCOHD.get_xref_to_OMOP(symptom_id, distance=3)
+				freq = 0
+				for xref in xrefs:
+					symptom_omop_id = str(xref['omop_standard_concept_id'])
+					res = QueryCOHD.get_paired_concept_freq(disease_omop_id, symptom_omop_id)
+					if res:
+						temp_freq = res['concept_frequency']
+						if temp_freq > freq:
+							freq = temp_freq
+				d['cohd_freq'] = freq
 
 
 	@staticmethod
