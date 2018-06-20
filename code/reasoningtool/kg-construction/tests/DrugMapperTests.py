@@ -60,3 +60,36 @@ class DrugMapperTestCase(unittest.TestCase):
         self.assertIsNotNone(umls_results['contraindications'])
         self.assertEqual(24, len(umls_results['indications']))
         self.assertEqual(17, len(umls_results['contraindications']))
+
+    def test_map_drug_to_ontology(self):
+        #   test case for ibuprofen
+        onto_results = DrugMapper.map_drug_to_ontology("ChEMBL:521")
+        self.assertIsNotNone(onto_results)
+        self.assertIsNotNone(onto_results['indications'])
+        self.assertIsNotNone(onto_results['contraindications'])
+        self.assertEqual(8, len(onto_results['indications']))
+        self.assertEqual(89, len(onto_results['contraindications']))
+
+        #   test case for Penicillin V
+        onto_results = DrugMapper.map_drug_to_ontology("CHEMBL615")
+        self.assertIsNotNone(onto_results)
+        self.assertIsNotNone(onto_results['indications'])
+        self.assertIsNotNone(onto_results['contraindications'])
+        self.assertEqual(7, len(onto_results['indications']))
+        self.assertEqual(6, len(onto_results['contraindications']))
+
+        #   test case for Cetirizine
+        onto_results = DrugMapper.map_drug_to_ontology("CHEMBL1000")
+        self.assertIsNotNone(onto_results)
+        self.assertIsNotNone(onto_results['indications'])
+        self.assertIsNotNone(onto_results['contraindications'])
+        self.assertEqual(8, len(onto_results['indications']))
+        self.assertEqual(23, len(onto_results['contraindications']))
+
+        #   test case for Amoxicillin
+        onto_results = DrugMapper.map_drug_to_ontology("CHEMBL1082")
+        self.assertIsNotNone(onto_results)
+        self.assertIsNotNone(onto_results['indications'])
+        self.assertIsNotNone(onto_results['contraindications'])
+        self.assertEqual(6, len(onto_results['indications']))
+        self.assertEqual(21, len(onto_results['contraindications']))
