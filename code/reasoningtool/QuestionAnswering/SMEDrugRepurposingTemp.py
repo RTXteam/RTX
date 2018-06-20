@@ -97,3 +97,21 @@ for u, v, d in g.edges(data=True):
 
 # The other option is to get all the log ratio conditions, then map back to HP and try to intersect them
 # with the known HP curies. Problem is that I would have to do this for each disease in the network...
+
+
+# get the networkx location of the input disease
+for node in node_ids.keys():
+	if node_ids[node] == disease_id:
+		disease_networkx_id = node
+
+# get the networkx location of the other diseases
+other_disease_networkx_ids = []
+for node in node_ids.keys():
+	if node_labels[node] == "disease":
+		if node != disease_networkx_id:
+			other_disease_networkx_ids.append(node)
+
+# get the median path lengths of all the diseases
+other_disease_median_path_weight = dict()
+for other_disease_networkx_id in other_disease_networkx_ids:
+	other_disease_median_path_weight[node_ids[other_disease_networkx_id]] = np.median([RU.get_networkx_path_weight(g, path, 'cohd_freq') for path in nx.all_simple_paths(g, disease_networkx_id, other_disease_networkx_id, cutoff=2)])

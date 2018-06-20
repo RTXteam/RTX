@@ -1152,7 +1152,80 @@ def weight_graph_with_cohd_frequency(g, default_value=0, normalized=False):
 
 
 
+def get_networkx_path_weight(g, path, prop):
+	"""
+	Gets the weight of a networkx path
+	:param g: networkx graph
+	:param path: a path in the networkx
+	:param prop: the property you want to use to compute the weight
+	:return:
+	"""
+	prop_dict = nx.get_edge_attributes(g, prop)
+	# iterate over all pairs in the path
+	weight = 0
+	for first, second in zip(path, path[1:]):
+		if (first, second) in prop_dict:
+			weight += prop_dict[first, second]
+		elif (second, first) in prop_dict:
+			weight += prop_dict[second, first]
+		else:
+			raise Exception("Apparently that wasn't actually a path...")
+	return weight
 
+
+def weight_disease_phenotype_by_cohd(g, max_phenotype_oxo_dist=1):
+	"""
+	Weights a networkx graph by cohd frequency, specialized to disease/phenotypes
+	:param g: networkx graph
+	:param max_phenotype_oxo_dist: maximum distance to try and find HP mapping in oxo
+	:return: nothing (modifies graph in place)
+	"""
+	node_properties = nx.get_node_attributes(g, 'properties')
+	node_ids = dict()
+	node_labels = dict()
+	for node in node_properties.keys():
+		node_ids[node] = node_properties[node]['id']
+		node_labels[node] = node_properties[node]['category']
+	for u, v, d in g.edges(data=True):
+		source_id = node_ids[u]
+		source_label = node_labels[u]
+		target_id = node_ids[v]
+		target_label = node_labels[v]
+		if {source_label, target_label} != {"disease", "phenotypic_feature"}:
+			d['cohd_freq'] = 0
+			continue
+		else:
+			if source_label == "disease":
+				disease_id = source_id
+				symptom_id = target_id
+			else:
+				disease_id = target_id
+				symptom_id = source_id
+		# look up these in COHD
+		# disease
+		disease_omop_id = None
+		for distance in [1, 2, 3]:
+			xref = QueryCOHD.get_xref_to_OMOP(disease_id, distance=distance)
+			for ref in xref:
+				if ref['omop_domain_id'] == "Condition":
+					disease_omop_id = str(ref["omop_standard_concept_id"])
+					break
+			if disease_omop_id:
+				break
+		# symptom, loop over them all and take the largest
+		if not disease_omop_id:
+			d['cohd_freq'] = 0
+		else:
+			xrefs = QueryCOHD.get_xref_to_OMOP(symptom_id, distance=max_phenotype_oxo_dist)
+			freq = 0
+			for xref in xrefs:
+				symptom_omop_id = str(xref['omop_standard_concept_id'])
+				res = QueryCOHD.get_paired_concept_freq(disease_omop_id, symptom_omop_id)
+				if res:
+					temp_freq = res['concept_frequency']
+					if temp_freq > freq:
+						freq = temp_freq
+			d['cohd_freq'] = freq
 
 ############################################################################################
 # Stopping point 3/22/18 DK
