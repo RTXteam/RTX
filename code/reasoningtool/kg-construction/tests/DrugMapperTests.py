@@ -9,21 +9,54 @@ from DrugMapper import DrugMapper
 
 class DrugMapperTestCase(unittest.TestCase):
 
-    def test_map_drug_to_hp(self):
-        hp_set = DrugMapper.map_drug_to_hp('KWHRDNMACVLHCE-UHFFFAOYSA-N')
+    def test_map_drug_to_hp_with_side_effects(self):
+        hp_set = DrugMapper.map_drug_to_hp_with_side_effects('KWHRDNMACVLHCE-UHFFFAOYSA-N')
         self.assertIsNotNone(hp_set)
         self.assertEqual(56, len(hp_set))
         if 'HP:0004395' not in hp_set or 'HP:0000802' not in hp_set or 'HP:0001250' not in hp_set:
             self.assertFalse()
 
-        hp_set = DrugMapper.map_drug_to_hp("CHEMBL521")
+        hp_set = DrugMapper.map_drug_to_hp_with_side_effects("CHEMBL521")
         self.assertIsNotNone(hp_set)
         self.assertEqual(0, len(hp_set))
 
-        hp_set = DrugMapper.map_drug_to_hp("CHEMBL:521")
+        hp_set = DrugMapper.map_drug_to_hp_with_side_effects("CHEMBL:521")
         self.assertIsNotNone(hp_set)
         self.assertEqual(0, len(hp_set))
 
-        hp_set = DrugMapper.map_drug_to_hp("ChEMBL:521")
+        hp_set = DrugMapper.map_drug_to_hp_with_side_effects("ChEMBL:521")
         self.assertIsNotNone(hp_set)
         self.assertEqual(0, len(hp_set))
+
+    def test_map_drug_to_UMLS(self):
+        #   test case for ibuprofen
+        umls_results = DrugMapper.map_drug_to_UMLS("ChEMBL:521")
+        self.assertIsNotNone(umls_results)
+        self.assertIsNotNone(umls_results['indications'])
+        self.assertIsNotNone(umls_results['contraindications'])
+        self.assertEqual(11, len(umls_results['indications']))
+        self.assertEqual(83, len(umls_results['contraindications']))
+
+        #   test case for Penicillin V
+        umls_results = DrugMapper.map_drug_to_UMLS("CHEMBL615")
+        self.assertIsNotNone(umls_results)
+        self.assertIsNotNone(umls_results['indications'])
+        self.assertIsNotNone(umls_results['contraindications'])
+        self.assertEqual(12, len(umls_results['indications']))
+        self.assertEqual(3, len(umls_results['contraindications']))
+
+        #   test case for Cetirizine
+        umls_results = DrugMapper.map_drug_to_UMLS("CHEMBL1000")
+        self.assertIsNotNone(umls_results)
+        self.assertIsNotNone(umls_results['indications'])
+        self.assertIsNotNone(umls_results['contraindications'])
+        self.assertEqual(9, len(umls_results['indications']))
+        self.assertEqual(13, len(umls_results['contraindications']))
+
+        #   test case for Amoxicillin
+        umls_results = DrugMapper.map_drug_to_UMLS("CHEMBL1082")
+        self.assertIsNotNone(umls_results)
+        self.assertIsNotNone(umls_results['indications'])
+        self.assertIsNotNone(umls_results['contraindications'])
+        self.assertEqual(24, len(umls_results['indications']))
+        self.assertEqual(17, len(umls_results['contraindications']))

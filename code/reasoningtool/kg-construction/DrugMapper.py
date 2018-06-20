@@ -139,12 +139,12 @@ if __name__ == '__main__':
     print(hp_set)
     print(len(hp_set))
 
-    umls_set = DrugMapper.map_drug_to_UMLS("CHEMBL521")
+    umls_set = DrugMapper.map_drug_to_UMLS("CHEMBL1082")
     print(umls_set)
 
-    onto_set = DrugMapper.map_drug_to_ontology("CHEMBL521")
-    print(onto_set)
+    # onto_set = DrugMapper.map_drug_to_ontology("CHEMBL521")
+    # print(onto_set)
 
-    onto_set = DrugMapper.map_drug_to_ontology2("CHEMBL521")
-    print("map 2")
-    print(onto_set)
+    sm = SynonymMapper()
+    oxo_results = sm.get_all_from_oxo('SNOMEDCT:233607000', ['UMLS'])
+    print(oxo_results)

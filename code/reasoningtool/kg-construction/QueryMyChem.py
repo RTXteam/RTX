@@ -178,23 +178,23 @@ class QueryMyChem:
         Retrieving the indication and contraindication of a drug from MyChem
 
         :param chembl_id: The CHEMBL ID for a drug
-        :return: A dictionary with two fields ('indication' and 'contraindication'). Each field is an array containing
+        :return: A dictionary with two fields ('indication' and 'contraindication'). Each field is a set containing
             'snomed_id' and 'snomed_name'.
 
             Example:
             {'indications':
-                [
+                {
                     {'relation': 'indication', 'snomed_id': '315642008', 'snomed_name': 'Influenza-like symptoms'},
                     {'relation': 'indication', 'snomed_id': '76948002', 'snomed_name': 'Severe pain'},
                     ...
-                ],
+                },
             'contraindications':
-                [
+                {
                     {'relation': 'contraindication', 'snomed_id': '24526004', 'snomed_name': 'Inflammatory bowel disease'},
                     {'relation': 'contraindication', 'snomed_id': '116290004', 'snomed_name': 'Acute abdominal pain'},
                     {'relation': 'contraindication', 'snomed_id': '13645005', 'snomed_name': 'Chronic obstructive lung disease'},
                     ...
-                ]
+                }
             }
         """
         indications = []
@@ -214,9 +214,9 @@ class QueryMyChem:
                     drug_uses = drugcentral['drug_use']
                     for drug_use in drug_uses:
                         if 'relation' in drug_use.keys() and 'snomed_id' in drug_use.keys():
-                            if drug_use['relation'] == 'indication':
+                            if drug_use['relation'] == 'indication' and drug_use not in indications:
                                 indications.append(drug_use)
-                            if drug_use['relation'] == 'contraindication':
+                            if drug_use['relation'] == 'contraindication' and drug_use not in contraindications:
                                 contraindications.append(drug_use)
         return {'indications': indications, "contraindications": contraindications}
 
@@ -252,10 +252,10 @@ if __name__ == '__main__':
     # print(umls_array)
     # print(len(umls_array))
 
-    # drug_use = QueryMyChem.get_drug_use("CHEMBL:521")
-    # print(drug_use['indications'])
-    # print(drug_use['contraindications'])
+    drug_use = QueryMyChem.get_drug_use("CHEMBL1082")
+    print(drug_use['indications'])
+    print(drug_use['contraindications'])
 
-    drug_use = QueryMyChem.get_drug_use("CHEMBL:1082")
-    print(len(drug_use['indications']))
-    print(len(drug_use['contraindications']))
+    # drug_use = QueryMyChem.get_drug_use("CHEMBL:1082")
+    # print(len(drug_use['indications']))
+    # print(len(drug_use['contraindications']))

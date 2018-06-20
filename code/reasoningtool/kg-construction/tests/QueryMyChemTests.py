@@ -67,7 +67,7 @@ class QueryMyChemTestCase(unittest.TestCase):
         self.assertIsNotNone(drug_use['indications'])
         self.assertIsNotNone(drug_use['contraindications'])
         self.assertEqual(11, len(drug_use['indications']))
-        self.assertEqual(85, len(drug_use['contraindications']))
+        self.assertEqual(83, len(drug_use['contraindications']))
         self.assertDictEqual({'relation': 'indication',
                               'snomed_id': '315642008',
                               'snomed_name': 'Influenza-like symptoms'},
@@ -83,7 +83,7 @@ class QueryMyChemTestCase(unittest.TestCase):
         self.assertIsNotNone(drug_use['indications'])
         self.assertIsNotNone(drug_use['contraindications'])
         self.assertEqual(11, len(drug_use['indications']))
-        self.assertEqual(85, len(drug_use['contraindications']))
+        self.assertEqual(83, len(drug_use['contraindications']))
 
         #   test CHEMBL ID with a lower h
         drug_use = QMC.get_drug_use("ChEMBL:521")
@@ -91,7 +91,7 @@ class QueryMyChemTestCase(unittest.TestCase):
         self.assertIsNotNone(drug_use['indications'])
         self.assertIsNotNone(drug_use['contraindications'])
         self.assertEqual(11, len(drug_use['indications']))
-        self.assertEqual(85, len(drug_use['contraindications']))
+        self.assertEqual(83, len(drug_use['contraindications']))
 
         #   test case for Penicillin V
         drug_use = QMC.get_drug_use("CHEMBL615")
@@ -114,7 +114,7 @@ class QueryMyChemTestCase(unittest.TestCase):
         self.assertIsNotNone(drug_use)
         self.assertIsNotNone(drug_use['indications'])
         self.assertIsNotNone(drug_use['contraindications'])
-        self.assertEqual(31, len(drug_use['indications']))
+        self.assertEqual(25, len(drug_use['indications']))
         self.assertEqual(17, len(drug_use['contraindications']))
 
 if __name__ == '__main__':
