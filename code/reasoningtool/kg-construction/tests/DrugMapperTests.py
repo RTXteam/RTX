@@ -93,3 +93,27 @@ class DrugMapperTestCase(unittest.TestCase):
         self.assertIsNotNone(onto_results['contraindications'])
         self.assertEqual(6, len(onto_results['indications']))
         self.assertEqual(21, len(onto_results['contraindications']))
+
+        #   test case for Amoxicillin
+        onto_results = DrugMapper.map_drug_to_ontology("CHEMBL1082")
+        self.assertIsNotNone(onto_results)
+        self.assertIsNotNone(onto_results['indications'])
+        self.assertIsNotNone(onto_results['contraindications'])
+        self.assertEqual(6, len(onto_results['indications']))
+        self.assertEqual(21, len(onto_results['contraindications']))
+
+        #   test case for CHEMBL2107884
+        onto_results = DrugMapper.map_drug_to_ontology("CHEMBL2107884")
+        self.assertIsNotNone(onto_results)
+        self.assertIsNotNone(onto_results['indications'])
+        self.assertIsNotNone(onto_results['contraindications'])
+        self.assertEqual({'DOID:5870', 'DOID:9498'}, onto_results['indications'])
+        self.assertEqual(set(), onto_results['contraindications'])
+
+        #   test case for CHEMBL250270
+        onto_results = DrugMapper.map_drug_to_ontology("CHEMBL250270")
+        self.assertIsNotNone(onto_results)
+        self.assertIsNotNone(onto_results['indications'])
+        self.assertIsNotNone(onto_results['contraindications'])
+        self.assertEqual({'DOID:10763', 'HP:0000822'}, onto_results['indications'])
+        self.assertEqual(set(), onto_results['contraindications'])

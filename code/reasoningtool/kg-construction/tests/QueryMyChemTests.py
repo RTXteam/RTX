@@ -117,5 +117,21 @@ class QueryMyChemTestCase(unittest.TestCase):
         self.assertEqual(25, len(drug_use['indications']))
         self.assertEqual(17, len(drug_use['contraindications']))
 
+        #   test case for CHEMBL2107884
+        drug_use = QMC.get_drug_use("CHEMBL2107884")
+        self.assertIsNotNone(drug_use)
+        self.assertIsNotNone(drug_use['indications'])
+        self.assertIsNotNone(drug_use['contraindications'])
+        self.assertEqual(1, len(drug_use['indications']))
+        self.assertEqual(0, len(drug_use['contraindications']))
+
+        #   test case for CHEMBL250270
+        drug_use = QMC.get_drug_use("CHEMBL250270")
+        self.assertIsNotNone(drug_use)
+        self.assertIsNotNone(drug_use['indications'])
+        self.assertIsNotNone(drug_use['contraindications'])
+        self.assertEqual(1, len(drug_use['indications']))
+        self.assertEqual(0, len(drug_use['contraindications']))
+
 if __name__ == '__main__':
     unittest.main()

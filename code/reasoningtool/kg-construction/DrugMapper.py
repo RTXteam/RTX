@@ -142,5 +142,5 @@ if __name__ == '__main__':
     # umls_set = DrugMapper.map_drug_to_UMLS("CHEMBL1082")
     # print(umls_set)
 
-    # onto_set = DrugMapper.map_drug_to_ontology("CHEMBL1082")
+    # onto_set = DrugMapper.map_drug_to_ontology("CHEMBL2107884")
     # print(onto_set)

@@ -212,12 +212,19 @@ class QueryMyChem:
                 drugcentral = json_dict['drugcentral']
                 if "drug_use" in drugcentral.keys():
                     drug_uses = drugcentral['drug_use']
-                    for drug_use in drug_uses:
-                        if 'relation' in drug_use.keys() and 'snomed_id' in drug_use.keys():
-                            if drug_use['relation'] == 'indication' and drug_use not in indications:
-                                indications.append(drug_use)
-                            if drug_use['relation'] == 'contraindication' and drug_use not in contraindications:
-                                contraindications.append(drug_use)
+                    if isinstance(drug_uses, list):
+                        for drug_use in drug_uses:
+                            if 'relation' in drug_use.keys() and 'snomed_id' in drug_use.keys():
+                                if drug_use['relation'] == 'indication' and drug_use not in indications:
+                                    indications.append(drug_use)
+                                if drug_use['relation'] == 'contraindication' and drug_use not in contraindications:
+                                    contraindications.append(drug_use)
+                    elif isinstance(drug_uses, dict):
+                        if 'relation' in drug_uses.keys() and 'snomed_id' in drug_uses.keys():
+                            if drug_uses['relation'] == 'indication' and drug_uses not in indications:
+                                indications.append(drug_uses)
+                            if drug_uses['relation'] == 'contraindication' and drug_uses not in contraindications:
+                                contraindications.append(drug_uses)
         return {'indications': indications, "contraindications": contraindications}
 
 
