@@ -49,7 +49,8 @@ class QueryBioLink:
         'get_anatomy':                  'anatomy/{id}',
         'get_phenotype':                'phenotype/{id}',
         'get_disease':                  'disease/{id}',
-        'get_bio_process':              '{id}'
+        'get_bio_process':              '{id}',
+        'map_disease_to_phenotype':    'disease/{disease_id}/phenotypes'
     }
 
     @staticmethod
@@ -257,6 +258,23 @@ class QueryBioLink:
     def get_bio_process_entity(bio_process_id):
         return QueryBioLink.__get_entity("get_bio_process", bio_process_id)
 
+    @staticmethod
+    def map_disease_to_phenotype(disease_id):
+        """
+        Mapping a disease to a list of phenotypes
+        :param disease_id: The DOID / OMIM ID for a disease
+        :return: A list of phenotypes HP IDs, or an empty array if no HP IDs are found
+        """
+        hp_array = []
+        if not isinstance(disease_id, str) or (disease_id[:5] != "OMIM:" and disease_id[:5] != "DOID:"):
+            return hp_array
+        handler = QueryBioLink.HANDLER_MAP['map_disease_to_phenotype'].format(disease_id=disease_id)
+        results = QueryBioLink.__access_api(handler)
+        if results is not None:
+            if 'objects' in results.keys():
+                hp_array = results['objects']
+        return hp_array
+
 if __name__ == '__main__':
     # print(QueryBioLink.get_genes_for_disease_desc('MONDO:0005359'))
     # print(QueryBioLink.get_phenotypes_for_disease_desc('MONDO:0005359'))
@@ -289,7 +307,10 @@ if __name__ == '__main__':
         json.dump(json_data, f)
         f.close()
 
-    save_to_test_file('UBERON:0004476', QueryBioLink.get_anatomy_entity('UBERON:0004476'))
-    save_to_test_file('HP:0011515', QueryBioLink.get_phenotype_entity('HP:0011515'))
-    save_to_test_file('DOID:3965', QueryBioLink.get_disease_entity('DOID:3965'))
-    save_to_test_file('GO:0097289', QueryBioLink.get_bio_process_entity('GO:0097289'))
+    # save_to_test_file('UBERON:0004476', QueryBioLink.get_anatomy_entity('UBERON:0004476'))
+    # save_to_test_file('HP:0011515', QueryBioLink.get_phenotype_entity('HP:0011515'))
+    # save_to_test_file('DOID:3965', QueryBioLink.get_disease_entity('DOID:3965'))
+    # save_to_test_file('GO:0097289', QueryBioLink.get_bio_process_entity('GO:0097289'))
+
+    #   PARKINSON DISEASE 4
+    print(QueryBioLink.map_disease_to_phenotype("OMIM:605543"))

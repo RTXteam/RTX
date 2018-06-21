@@ -191,5 +191,28 @@ class QueryBioLinkTestCase(unittest.TestCase):
 
         self.assertDictEqual(mcd_dict, known_dict)
 
+    def test_map_disease_to_phenotype(self):
+
+        results = QBL.map_disease_to_phenotype("OMIM:605543")
+        self.assertIsNotNone(results)
+        self.assertEqual(['HP:0000726', 'HP:0000738', 'HP:0001278', 'HP:0001300',
+                          'HP:0001824', 'HP:0002459', 'HP:0011999', 'HP:0100315'], results)
+
+        results = QBL.map_disease_to_phenotype("DOID:3218")
+        self.assertIsNotNone(results)
+        self.assertEqual(57, len(results))
+
+        #   invalid parameter
+        results = QBL.map_disease_to_phenotype(605543)
+        self.assertEqual([], results)
+
+        #   invalid parameter
+        results = QBL.map_disease_to_phenotype("OMIM_605543")
+        self.assertEqual([], results)
+
+        #   invalid parameter
+        results = QBL.map_disease_to_phenotype("DOID_14477")
+        self.assertEqual([], results)
+
 if __name__ == '__main__':
     unittest.main()
