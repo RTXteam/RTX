@@ -239,7 +239,7 @@ class Neo4jConnection:
 
     @staticmethod
     def _get_disease_nodes(tx):
-        result = tx.run("MATCH (n:disease) RETURN n.id LIMIT 100")
+        result = tx.run("MATCH (n:disease) RETURN n.id")
         return [record["n.id"] for record in result]
 
     @staticmethod
