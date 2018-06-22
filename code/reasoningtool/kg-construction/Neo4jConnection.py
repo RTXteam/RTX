@@ -203,6 +203,15 @@ class Neo4jConnection:
         with self._driver.session() as session:
             return session.write_transaction(self.__remove_duplicate_has_phenotype_relations)
 
+    def count_has_phenotype_relation(self, relation):
+        """
+
+        :param relation: {"d_id": "DOID:xxxx", "p_id": "HP:xxxx"}
+        :return: count of relations between d_id and p_id
+        """
+        with self._driver.session() as session:
+            return session.write_transaction(self.__count_has_phenotype_relation, relation)
+
     @staticmethod
     def _get_anatomy_nodes(tx):
         result = tx.run("MATCH (n:anatomical_entity) RETURN n.id")
@@ -230,7 +239,7 @@ class Neo4jConnection:
 
     @staticmethod
     def _get_disease_nodes(tx):
-        result = tx.run("MATCH (n:disease) RETURN n.id")
+        result = tx.run("MATCH (n:disease) RETURN n.id LIMIT 100")
         return [record["n.id"] for record in result]
 
     @staticmethod
@@ -575,7 +584,7 @@ class Neo4jConnection:
             UNWIND {array} AS row
             WITH row.d_id AS d_id, row.p_id AS p_id
             MATCH (d:disease {id:d_id}), (p:phenotypic_feature {id:p_id})
-            create (d)-[:has_phenotype {
+            CREATE (d)-[:has_phenotype {
                 source_node_uuid: d.UUID, 
                 target_node_uuid: p.UUID,
                 is_defined_by: \'RTX\',
@@ -600,4 +609,15 @@ class Neo4jConnection:
             """
         )
         return result
+
+    @staticmethod
+    def __count_has_phenotype_relation(tx, relation):
+        result = tx.run(
+            """
+            MATCH p = (a {id:$relation.d_id})-[r:has_phenotype]->(b {id:$relation.p_id})
+            RETURN count(p)
+            """,
+            relation=relation
+        )
+        return result.single()['count(p)']
 
