@@ -208,6 +208,25 @@ class Neo4jConnectionTestCase(unittest.TestCase):
 
         conn.close()
 
+    def test_create_disease_has_phenotype(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+
+        #   fake data
+        array = [{"d_id": "OMIM:605543", "p_id": 'HP:0000726'},
+                 {"d_id": "OMIM:605543", "p_id": 'HP:0000738'},
+                 {"d_id": "OMIM:605543", "p_id": 'HP:0001278'},
+                 {"d_id": "OMIM:605543", "p_id": 'HP:0001300'},
+                 {"d_id": "DOID:3218", "p_id": 'HP:0000476'},
+                 {"d_id": "DOID:3218", "p_id": 'HP:0000952'}]
+
+        conn.create_disease_has_phenotype(array)
+        conn.close()
+
 if __name__ == '__main__':
     unittest.main()
 

@@ -195,6 +195,14 @@ class Neo4jConnection:
         with self._driver.session() as session:
             return session.write_transaction(self._get_node_names, type)
 
+    def create_disease_has_phenotype(self, array):
+        with self._driver.session() as session:
+            return session.write_transaction(self.__create_disease_has_phenotype, array)
+
+    def remove_duplicate_has_phenotype_relations(self):
+        with self._driver.session() as session:
+            return session.write_transaction(self.__remove_duplicate_has_phenotype_relations)
+
     @staticmethod
     def _get_anatomy_nodes(tx):
         result = tx.run("MATCH (n:anatomical_entity) RETURN n.id")
@@ -559,3 +567,37 @@ class Neo4jConnection:
     def _get_node_names(tx, type):
         result = tx.run("MATCH (n:%s) RETURN n.name" % type)
         return [record["n.name"] for record in result]
+
+    @staticmethod
+    def __create_disease_has_phenotype(tx, array):
+        result = tx.run(
+            """
+            UNWIND {array} AS row
+            WITH row.d_id AS d_id, row.p_id AS p_id
+            MATCH (d:disease {id:d_id}), (p:phenotypic_feature {id:p_id})
+            create (d)-[:has_phenotype {
+                source_node_uuid: d.UUID, 
+                target_node_uuid: p.UUID,
+                is_defined_by: \'RTX\',
+                provided_by: \'BioLink\',
+                predicate: \'has_phenotype\',
+                seed_node_uuid: d.seed_node_uuid,
+                relation: \'has_phenotype\'  
+            }]->(p)
+            """,
+            array=array
+        )
+        return result
+
+    @staticmethod
+    def __remove_duplicate_has_phenotype_relations(tx):
+        result = tx.run(
+            """
+            MATCH (a)-[r:has_phenotype]->(b)  
+            WITH a, b, TAIL (COLLECT (r)) as rr  
+            WHERE size(rr)>0  
+            FOREACH (r IN rr | DELETE r)
+            """
+        )
+        return result
+
