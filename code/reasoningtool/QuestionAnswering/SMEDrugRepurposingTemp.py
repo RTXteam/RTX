@@ -45,61 +45,15 @@ all_symptoms = RU.get_one_hop_target("disease", disease_id, "phenotypic_feature"
 g = RU.get_graph_from_nodes(all_symptoms + diseases_selected + [disease_id], edges=True)
 
 # weight by COHD data
+RU.weight_disease_phenotype_by_cohd(g, max_phenotype_oxo_dist=1)
+
+# get the networkx location of the input disease
 node_properties = nx.get_node_attributes(g, 'properties')
 node_ids = dict()
 node_labels = dict()
 for node in node_properties.keys():
 	node_ids[node] = node_properties[node]['id']
 	node_labels[node] = node_properties[node]['category']
-for u, v, d in g.edges(data=True):
-	source_id = node_ids[u]
-	source_label = node_labels[u]
-	target_id = node_ids[v]
-	target_label = node_labels[v]
-	if {source_label, target_label} != {"disease", "phenotypic_feature"}:
-		d['cohd_freq'] = 0
-		continue
-	else:
-		if source_label == "disease":
-			disease_id = source_id
-			symptom_id = target_id
-		else:
-			disease_id = target_id
-			symptom_id = source_id
-	# look up these in COHD
-	# disease
-	disease_omop_id = None
-	for distance in [1, 2, 3]:
-		xref = QueryCOHD.get_xref_to_OMOP(disease_id, distance=distance)
-		for ref in xref:
-			if ref['omop_domain_id'] == "Condition":
-				disease_omop_id = str(ref["omop_standard_concept_id"])
-				break
-		if disease_omop_id:
-			break
-	print("here")
-	# symptom, loop over them all and take the largest
-	if not disease_omop_id:
-		d['cohd_freq'] = 0
-	else:
-		xrefs = QueryCOHD.get_xref_to_OMOP(symptom_id, distance=1)
-		freq = 0
-		for xref in xrefs:
-			symptom_omop_id = str(xref['omop_standard_concept_id'])
-			res = QueryCOHD.get_paired_concept_freq(disease_omop_id, symptom_omop_id)
-			print(res)
-			if res:
-				temp_freq = res['concept_frequency']
-				if temp_freq > freq:
-					freq = temp_freq
-		d['cohd_freq'] = freq
-
-
-# The other option is to get all the log ratio conditions, then map back to HP and try to intersect them
-# with the known HP curies. Problem is that I would have to do this for each disease in the network...
-
-
-# get the networkx location of the input disease
 for node in node_ids.keys():
 	if node_ids[node] == disease_id:
 		disease_networkx_id = node
@@ -111,7 +65,16 @@ for node in node_ids.keys():
 		if node != disease_networkx_id:
 			other_disease_networkx_ids.append(node)
 
-# get the median path lengths of all the diseases
+# get the mean path lengths of all the diseases
 other_disease_median_path_weight = dict()
 for other_disease_networkx_id in other_disease_networkx_ids:
-	other_disease_median_path_weight[node_ids[other_disease_networkx_id]] = np.median([RU.get_networkx_path_weight(g, path, 'cohd_freq') for path in nx.all_simple_paths(g, disease_networkx_id, other_disease_networkx_id, cutoff=2)])
+	other_disease_median_path_weight[node_ids[other_disease_networkx_id]] = np.median(
+		[RU.get_networkx_path_weight(g, path, 'cohd_freq') for path in
+		 nx.all_simple_paths(g, disease_networkx_id, other_disease_networkx_id, cutoff=2)])
+
+other_disease_median_path_weight_sorted = []
+for key in other_disease_median_path_weight.keys():
+	weight = other_disease_median_path_weight[key]
+	other_disease_median_path_weight_sorted.append((key, weight))
+
+other_disease_median_path_weight_sorted.sort(key=lambda x: x[1], reverse=True)

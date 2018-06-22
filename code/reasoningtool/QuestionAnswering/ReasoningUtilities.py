@@ -1227,6 +1227,70 @@ def weight_disease_phenotype_by_cohd(g, max_phenotype_oxo_dist=1):
 						freq = temp_freq
 			d['cohd_freq'] = freq
 
+def get_sorted_path_weights_disease_to_disease(g, disease_id):
+	"""
+	Return a sorted list of disease ID's y based on mean path length between disease_id and y weighted by COHD frequency
+	:param g: network x graph WEIGHTED BY COHD FREQ 'cohd_freq'
+	:param disease_id: id of source node
+	:return: list of tuples (id, weight)
+	"""
+	# get the networkx location of the input disease
+	node_properties = nx.get_node_attributes(g, 'properties')
+	node_ids = dict()
+	node_labels = dict()
+	for node in node_properties.keys():
+		node_ids[node] = node_properties[node]['id']
+		node_labels[node] = node_properties[node]['category']
+	disease_networkx_id = None
+	for node in node_ids.keys():
+		if node_ids[node] == disease_id:
+			disease_networkx_id = node
+
+	if not disease_networkx_id:
+		raise Exception("Disease node %s does not exist in the graph." % disease_id)
+
+	# get the networkx location of the other diseases
+	other_disease_networkx_ids = []
+	for node in node_ids.keys():
+		if node_labels[node] == "disease":
+			if node != disease_networkx_id:
+				other_disease_networkx_ids.append(node)
+
+	# get the mean path lengths of all the diseases
+	other_disease_median_path_weight = dict()
+	for other_disease_networkx_id in other_disease_networkx_ids:
+		other_disease_median_path_weight[node_ids[other_disease_networkx_id]] = np.mean(
+			[get_networkx_path_weight(g, path, 'cohd_freq') for path in
+			 nx.all_simple_paths(g, disease_networkx_id, other_disease_networkx_id, cutoff=2)])
+
+	other_disease_median_path_weight_sorted = []
+	for key in other_disease_median_path_weight.keys():
+		weight = other_disease_median_path_weight[key]
+		other_disease_median_path_weight_sorted.append((key, weight))
+
+	other_disease_median_path_weight_sorted.sort(key=lambda x: x[1], reverse=True)
+
+
+def get_top_n_most_frequent_from_list(id_list, n):
+	"""
+	Get the top n most frequently appearing items in the id_list
+	:param id_list: a list of entities
+	:param n: number to return
+	:return: a subset of id_list consisting of the top n most frequently appearing items in id_list
+	"""
+	id_list_counts_sorted = []
+	ids, counts = np.unique(id_list, return_counts=True)
+	for i in range(len(ids)):
+		id = ids[i]
+		count = counts[i]
+		id_list_counts_sorted.append((id, count))
+	id_list_counts_sorted.sort(key=lambda x: x[1], reverse=True)
+	id_list_counts_sorted = id_list_counts_sorted[:n]
+	top_n = []
+	for id, _ in id_list_counts_sorted:
+		top_n.append(id)
+	return top_n
+
 ############################################################################################
 # Stopping point 3/22/18 DK
 
