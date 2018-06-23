@@ -1,7 +1,7 @@
 """
 
 How to run this module
-$ cd [git repo ] /cod e /reasoningtool /kg -construction
+$ cd [git repo]/code/reasoningtool/kg-construction
 $ python3 PatchKG.py
 """
 
