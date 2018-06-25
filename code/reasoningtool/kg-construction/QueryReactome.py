@@ -78,6 +78,8 @@ class QueryReactome:
         try:
             res = requests.get(url_str, headers={'accept': 'application/json'},
                                timeout=QueryReactome.TIMEOUT_SEC)
+        except KeyboardInterrupt:
+            sys.exit(0)
         except BaseException as e:
             print('%s received in QueryReactome for URL: %s' % (e, url_str), file=sys.stderr)
             return None

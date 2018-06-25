@@ -133,6 +133,8 @@ class QueryMyChem:
             print(url, file=sys.stderr)
             print('Timeout in QueryMyChem for URL: ' + url, file=sys.stderr)
             return None
+        except KeyboardInterrupt:
+            sys.exit(0)
         except BaseException as e:
             print(url, file=sys.stderr)
             print('%s received in QueryMyChem for URL: %s' % (e, url), file=sys.stderr)

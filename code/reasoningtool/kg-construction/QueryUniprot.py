@@ -65,6 +65,8 @@ class QueryUniprot:
             print(url, file=sys.stderr)
             print('Timeout in QueryUniprot for URL: ' + QueryUniprot.API_BASE_URL, file=sys.stderr)
             return None
+        except KeyboardInterrupt:
+            sys.exit(0)
         except BaseException as e:
             print(url, file=sys.stderr)
             print('%s received in QueryUniprot for URL: %s' % (e, url), file=sys.stderr)
