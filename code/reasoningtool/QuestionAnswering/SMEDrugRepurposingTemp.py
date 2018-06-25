@@ -9,7 +9,120 @@ from QueryCOHD import QueryCOHD
 from COHDUtilities import COHDUtilities
 import CustomExceptions
 import SimilarNodesInCommon
-disease_id = "DOID:8398"
+disease_id = "OMIM:605724"
+num_diseases_to_select = 10  # number of diseases with shared phenotypes to keep
+num_omim_keep = 10  # number of genetic conditions to keep
+num_proteins_keep = 10  # number of proteins implicated in diseases to keep
+num_pathways_keep = 10  # number of relevant pathways to keep
+num_proteins_in_pathways_keep = 10  # number of proteins in those pathways to keep
+num_drugs_keep = 10  # number of drugs that target those proteins to keep
+
+# Initialize the response class
+response = FormatOutput.FormatResponse(6)
+
+# get the description of the disease
+disease_description = RU.get_node_property(disease_id, 'name')
+
+# What are the defining symptoms of the disease?
+# get diseases that have many raw symptoms in common
+# select top N of them
+# get subraph of these with the input disease
+# weight by COHD data
+# pick diseases with maximal (since frequency) average distance i.e. maximal expected graph distance
+
+# get disease that have many raw symptoms in common
+similar_nodes_in_common = SimilarNodesInCommon.SimilarNodesInCommon()
+node_jaccard_tuples_sorted, error_code, error_message = similar_nodes_in_common.get_similar_nodes_in_common_source_target_association(
+	disease_id, "disease", "phenotypic_feature", 0)
+
+# select the omims
+diseases_selected = []
+for n, j in node_jaccard_tuples_sorted:
+	if n.split(":")[0] == "OMIM":
+		diseases_selected.append(n)
+
+# if we found no genetic conditions, add error message and quit
+if not diseases_selected:
+	response.add_error_message("NoGeneticConditions", "There appears to be no genetic conditions with phenotypes in common with %s" % disease_description)
+	response.print()
+	return
+
+# get subgraph of these with the input disease
+# get all symptoms of input disease
+#all_symptoms = RU.get_one_hop_target("disease", disease_id, "phenotypic_feature", "has_phenotype")
+all_symptoms = set()
+for selected_disease in diseases_selected:
+	intermediate_phenotypes = RU.get_intermediate_node_ids(disease_id, "disease", "has_phenotype", "phenotypic_feature", "has_phenotype", selected_disease, "disease")
+	all_symptoms.update(intermediate_phenotypes)
+# turn it back into a list
+all_symptoms = list(all_symptoms)
+# get the subgraph of all relevant symptoms, the omims selected, and the input disease
+g = RU.get_graph_from_nodes(all_symptoms + diseases_selected + [disease_id], edges=True)
+
+# weight by COHD data (if you want to)
+#RU.weight_disease_phenotype_by_cohd(g, max_phenotype_oxo_dist=1)
+
+# sort by COHD freq
+#disease_path_weight_sorted = RU.get_sorted_path_weights_disease_to_disease(g, disease_id)
+#genetic_diseases_selected = []
+#num_omim = 0
+#for id, weight in disease_path_weight_sorted:
+#	if id.split(":")[0] == "OMIM":
+#		genetic_diseases_selected.append(id)
+#		num_omim += 1
+#	if num_omim >= num_omim_keep:
+#		break
+
+# select the OMIMS TODO: blocking on #248
+# in the mean-time, use them all
+genetic_diseases_selected = diseases_selected
+
+# select representative diseases
+# Do nothing for now (use all of them)
+
+# get drugs that are connected along the paths we want and count how many such paths there are
+path_type = ["gene_mutations_contribute_to", "protein", "participates_in", "pathway", "participates_in", "protein", "physically_interacts_with", "chemical_substance"]
+genetic_diseases_to_chemical_substance_dict = dict()
+for selected_disease in genetic_diseases_selected:
+	res = RU.count_paths_of_type_source_fixed_target_free(selected_disease, "disease", path_type, limit=5)
+	# turn this dict into a list of tuples
+	tuple_list = []
+	for target_id in res.keys():
+		count = res[target_id]
+		tuple_list.append((target_id, count))
+	tuple_list.sort(key=lambda x: x[1], reverse=True)
+	genetic_diseases_to_chemical_substance_dict[selected_disease] = tuple_list
+
+# get the results in a form suitable for display
+# just the top 2 for now
+for genetic_disease in genetic_diseases_to_chemical_substance_dict.keys():
+	top_drugs_and_counts = genetic_diseases_to_chemical_substance_dict[genetic_disease][0:num_drugs_keep]
+	print("%s:\n" % genetic_disease)
+	for drug, count in top_drugs_and_counts:
+		print("%s, %d\n" % (drug, count))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###################################################
+# OLD CODE
 
 num_diseases_to_select = 10  # number of diseases with shared phenotypes to keep
 num_omim_keep = 10  # number of genetic conditions to keep

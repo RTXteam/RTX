@@ -137,7 +137,7 @@ class SMEDrugRepurposing:
 def main():
 	parser = argparse.ArgumentParser(description="Answers questions of the form: 'What are some potential treatments for $disease?'",
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-	parser.add_argument('-d', '--disease', type=str, help="disease curie ID", default="DOID:8398")
+	parser.add_argument('-d', '--disease', type=str, help="disease curie ID", default="OMIM:605724")
 	parser.add_argument('-j', '--json', action='store_true', help='Flag specifying that results should be printed in JSON format (to stdout)', default=False)
 	parser.add_argument('--describe', action='store_true', help='Print a description of the question to stdout and quit', default=False)
 	parser.add_argument('--num_show', type=int, help='Maximum number of results to return', default=20)
