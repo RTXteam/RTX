@@ -1051,6 +1051,7 @@ def get_top_shortest_paths(g, source_name, target_name, k, property='gd_weight',
 		path_lengths.append(path_length)
 	return decorated_paths, decorated_path_edges, path_lengths
 
+
 def cohd_ngd(node_descr1, node_descr2):
 	"""
 	This function will return the normalized google distance between terms based on the columbia open health
@@ -1059,6 +1060,7 @@ def cohd_ngd(node_descr1, node_descr2):
 	:param node_descr2: human readable name of a node (eg. hypertension)
 	:return: float
 	"""
+
 
 def cohd_pair_frequency(node_descr1, node_descr2):
 	"""
@@ -1290,6 +1292,73 @@ def get_top_n_most_frequent_from_list(id_list, n):
 	for id, _ in id_list_counts_sorted:
 		top_n.append(id)
 	return top_n
+
+
+def count_paths_of_type_source_fixed_target_free(source_id, source_type, rel_type_node_label_list, debug=False, limit=False):
+	"""
+	Given a fixed source node, look for targets along rel_type_node_label_list, counting the number of such paths
+	for each target found
+	:param source_id: id of source node (eg. OMIM:605724)
+	:param source_type: type of source node (eg. disease)
+	:param rel_type_node_label_list: list of path type to look for. eg.
+	[gene_mutations_contribute_to, protein, participates_in, pathway, participates_in, protein, physically_interacts_with, chemical_substance]
+	:param debug: just print the cypher command
+	:param limit: limit the number of targets (for speed debugging purposes)
+	:return: dictionary with keys the id's of nodes of type rel_type_node_label_list[-1] and values the number of paths
+	(of desired kind) connecting source to target.
+	 Example: RU.count_paths_of_type_source_fixed_target_free("DOID:8398","disease",["has_phenotype", "phenotypic_feature", "has_phenotype", "protein"], limit=5)
+	"""
+	path = '(n:%s{id:"%s"})' %(source_type, source_id)
+	is_rel = True
+	for label in rel_type_node_label_list[:-1]:
+		if is_rel:
+			path += "-[:%s]" % label
+			is_rel = False
+		else:
+			path += "-(:%s)" % label
+			is_rel = True
+	path += "-(m:%s)" % rel_type_node_label_list[-1]
+	if limit:
+		query = "MATCH p=" + path + " WITH DISTINCT m AS m limit %d with collect(m) AS L UNWIND range(0, size(L)-1) as i with L[i] as m match p=" % limit
+	else:
+		query = "MATCH p=" + path + " WITH DISTINCT m AS m with collect(m) AS L UNWIND range(0, size(L)-1) as i with L[i] as m match p="
+	query += path + " with count(p) as ct, m.id as ident return ident, ct order by ct desc"
+	if debug:
+		return query
+	res = session.run(query)
+	res_dict = dict()
+	for item in res:
+		res_dict[item['ident']] = item['ct']
+	return res_dict
+
+
+def get_intermediate_node_ids(source_id, source_type, inter_rel_1, inter_type, inter_rel2, target_id, target_type, debug=False):
+	"""
+	Returns the ID's of the intermediate node type inter_type that are connected via the relationship:
+	(source_type{id:"source_id"})-[:inter_rel_1]-(i:inter_type)-[:inter_rel2]-(:target_type{id:"target_id"}) return distinct i.id
+	:param source_id: source node id
+	:param source_type: source node type
+	:param inter_rel_1: relationship type (from source node)
+	:param inter_type: intermediate node type
+	:param inter_rel2: relationship type (to target node)
+	:param target_id: target node id (can be none if you only want to fix the target node type, but not it's id
+	:param target_type: target node type
+	:return: list of ids of type inter_type
+	"""
+	if target_id:
+		query = 'match (s:%s{id:"%s"})-[:%s]-(i:%s)-[:%s]-(t:%s{id:"%s"}) where s<>t return distinct i.id' % (
+			source_type, source_id, inter_rel_1, inter_type, inter_rel2, target_type, target_id)
+	else:
+		query = 'match (s:%s{id:"%s"})-[:%s]-(i:%s)-[:%s]-(t:%s) where s<>t return distinct i.id' % (
+			source_type, source_id, inter_rel_1, inter_type, inter_rel2, target_type)
+	if debug:
+		return query
+	else:
+		res_list = []
+		res = session.run(query)
+		for item in res:
+			res_list.append(item["i.id"])
+		return res_list
 
 ############################################################################################
 # Stopping point 3/22/18 DK

@@ -60,17 +60,31 @@ class SMEDrugRepurposing:
 		node_jaccard_tuples_sorted, error_code, error_message = similar_nodes_in_common.get_similar_nodes_in_common_source_target_association(
 			disease_id, "disease", "phenotypic_feature", 0)
 
-		# select top N of them
+		# select the omims
 		diseases_selected = []
-		for n, j in node_jaccard_tuples_sorted[0:num_diseases_to_select]:
-			diseases_selected.append(n)
+		for n, j in node_jaccard_tuples_sorted:
+			if n.split(":")[0] == "OMIM":
+				diseases_selected.append(n)
+
+		# if we found no genetic conditions, add error message and quit
+		if not diseases_selected:
+			response.add_error_message("NoGeneticConditions", "There appears to be no genetic conditions with phenotypes in common with %s" % disease_description)
+			response.print()
+			return
 
 		# get subgraph of these with the input disease
 		# get all symptoms of input disease
-		all_symptoms = RU.get_one_hop_target("disease", disease_id, "phenotypic_feature", "has_phenotype")
+		#all_symptoms = RU.get_one_hop_target("disease", disease_id, "phenotypic_feature", "has_phenotype")
+		all_symptoms = set()
+		for selected_disease in diseases_selected:
+			intermediate_phenotypes = RU.get_intermediate_node_ids(disease_id, "disease", "has_phenotype", "phenotypic_feature", "has_phenotype", selected_disease, "disease")
+			all_symptoms.update(intermediate_phenotypes)
+		# turn it back into a list
+		all_symptoms = list(all_symptoms)
+		# get the subgraph of all relevant symptoms, the omims selected, and the input disease
 		g = RU.get_graph_from_nodes(all_symptoms + diseases_selected + [disease_id], edges=True)
 
-		# weight by COHD data
+		# weight by COHD data (if you want to)
 		#RU.weight_disease_phenotype_by_cohd(g, max_phenotype_oxo_dist=1)
 
 		# sort by COHD freq
@@ -91,47 +105,26 @@ class SMEDrugRepurposing:
 		# select representative diseases
 		# Do nothing for now (use all of them)
 
-		# find implicated proteins
-		implicated_proteins = []
-		for other_disease_id in genetic_diseases_selected:
-			implicated_proteins += RU.get_one_hop_target("disease", other_disease_id, "protein", "causes_or_contributes_to")
+		# get drugs that are connected along the paths we want and count how many such paths there are
+		path_type = ["gene_mutations_contribute_to", "protein", "participates_in", "pathway", "participates_in", "protein", "physically_interacts_with", "chemical_substance"]
+		genetic_diseases_to_chemical_substance_dict = dict()
+		for selected_disease in genetic_diseases_selected:
+			res = RU.count_paths_of_type_source_fixed_target_free(selected_disease, "disease", path_type, limit=5)
+			# turn this dict into a list of tuples
+			tuple_list = []
+			for target_id in res.keys():
+				count = res[target_id]
+				tuple_list.append((target_id, count))
+			tuple_list.sort(key=lambda x: x[1], reverse=True)
+			genetic_diseases_to_chemical_substance_dict[selected_disease] = tuple_list
 
-		# get the most frequent proteins
-		top_implicated_proteins = RU.get_top_n_most_frequent_from_list(implicated_proteins, num_proteins_keep)
-
-		# what subset of these genes is most representative?
-		# do nothing for now
-
-		# what pathways are these genes members of?
-		relevant_pathways = []
-		for protein_id in top_implicated_proteins:
-			relevant_pathways += RU.get_one_hop_target("protein", protein_id, "pathway", "participates_in")
-
-		# get the most frequent pathways
-		top_relevant_pathways = RU.get_top_n_most_frequent_from_list(relevant_pathways, num_pathways_keep)
-
-		# TODO: may need to prune this as it results in a LOT of pathways...
-
-		# find proteins in those pathways
-		proteins_in_pathway = []
-		for pathway_id in top_relevant_pathways:
-			proteins_in_pathway += RU.get_one_hop_target("pathway", pathway_id, "protein", "participates_in")
-
-		# get the most frequent proteins
-		top_proteins_in_pathway = RU.get_top_n_most_frequent_from_list(proteins_in_pathway, num_proteins_in_pathways_keep)
-
-		# What drugs target those genes?
-		relevant_drugs = []
-		for protein_id in top_proteins_in_pathway:
-			relevant_drugs += RU.get_one_hop_target("protein", protein_id, "chemical_substance", "directly_interacts_with")
-
-		# get the most frequent drugs
-		top_relevant_drugs = RU.get_top_n_most_frequent_from_list(relevant_drugs, num_drugs_keep)
-
-
-
-
-
+		# get the results in a form suitable for display
+		# just the top 2 for now
+		for genetic_disease in genetic_diseases_to_chemical_substance_dict.keys():
+			top_drugs_and_counts = genetic_diseases_to_chemical_substance_dict[genetic_disease][0:num_drugs_keep]
+			print("%s:\n" % genetic_disease)
+			for drug, count in top_drugs_and_counts:
+				print("%s, %d\n" % (drug, count))
 
 
 	@staticmethod
