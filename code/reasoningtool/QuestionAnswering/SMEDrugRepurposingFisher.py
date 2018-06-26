@@ -36,11 +36,11 @@ class SMEDrugRepurposingFisher:
 
 	@staticmethod
 	def answer(disease_id, use_json=False, num_show=20):
-		num_omim_keep = 10  # number of genetic conditions to keep
-		num_protein_keep = 10  # number of implicated proteins to keep
-		num_pathways_keep = 10  # number of pathways to keep
-		num_pathway_proteins_selected = 10  # number of proteins enriched for the above pathways to select
-		num_drugs_keep = 10  # number of drugs that target those proteins to keep
+		num_omim_keep = 15  # number of genetic conditions to keep
+		num_protein_keep = 15  # number of implicated proteins to keep
+		num_pathways_keep = 15  # number of pathways to keep
+		num_pathway_proteins_selected = 15  # number of proteins enriched for the above pathways to select
+		num_drugs_keep = 15  # number of drugs that target those proteins to keep
 
 		# The kinds of paths we're looking for
 		path_type = ["gene_mutations_contribute_to", "protein", "participates_in", "pathway", "participates_in",
@@ -74,8 +74,9 @@ class SMEDrugRepurposingFisher:
 			if num_selected >= num_omim_keep:
 				break
 
-		# find the most representative genes in these diseases
-		fisher_res = fisher_exact.fisher_exact(genetic_diseases_selected, "disease", "protein", rel_type="gene_mutations_contribute_to")
+		# find the most representative proteins in these diseases
+		fisher_res = fisher_exact.fisher_exact(genetic_diseases_selected, "disease", "protein",
+											   rel_type="gene_mutations_contribute_to")
 		fisher_res_tuples_sorted = []
 		for key in fisher_res.keys():
 			odds, prob = fisher_res[key]
@@ -83,9 +84,12 @@ class SMEDrugRepurposingFisher:
 		fisher_res_tuples_sorted.sort(key=lambda x: x[1])
 		implicated_proteins_selected = []
 		num_selected = 0
+		path_type = ["participates_in", "pathway", "participates_in",
+					 "protein", "physically_interacts_with", "chemical_substance"]
 		for id, prob in fisher_res_tuples_sorted:
-			implicated_proteins_selected.append(id)
-			num_selected += 1
+			if RU.paths_of_type_source_fixed_target_free_exists(id, "protein", path_type, limit=1):
+				implicated_proteins_selected.append(id)
+				num_selected += 1
 			if num_selected >= num_protein_keep:
 				break
 
@@ -99,9 +103,11 @@ class SMEDrugRepurposingFisher:
 		fisher_res_tuples_sorted.sort(key=lambda x: x[1])
 		pathways_selected = []
 		num_selected = 0
+		path_type = ["participates_in", "protein", "physically_interacts_with", "chemical_substance"]
 		for id, prob in fisher_res_tuples_sorted:
-			pathways_selected.append(id)
-			num_selected += 1
+			if RU.paths_of_type_source_fixed_target_free_exists(id, "pathway", path_type, limit=1):
+				pathways_selected.append(id)
+				num_selected += 1
 			if num_selected >= num_pathways_keep:
 				break
 
@@ -115,9 +121,12 @@ class SMEDrugRepurposingFisher:
 		fisher_res_tuples_sorted.sort(key=lambda x: x[1])
 		pathway_proteins_selected = []
 		num_selected = 0
+		path_type = ["physically_interacts_with", "chemical_substance"]
 		for id, prob in fisher_res_tuples_sorted:
-			pathway_proteins_selected.append(id)
-			num_selected += 1
+			if RU.paths_of_type_source_fixed_target_free_exists(id, "protein", path_type, limit=1):
+				pathway_proteins_selected.append(
+					id)  # TODO: could also make sure this is not one of the proteins from above
+				num_selected += 1
 			if num_selected >= num_pathway_proteins_selected:
 				break
 
