@@ -132,8 +132,7 @@ def rtx_fisher_test(input_node_list, input_node_label, compare_node_label, debug
 	return output
 
 
-def rtx_fisher_test_faster(input_node_list, input_node_label, compare_node_label, debug=False):
-
+def fisher_exact(input_node_list, input_node_label, compare_node_label, rel_type=False, debug=False):
 	"""
 	Answer the question: how signifigant is the connection of the set input_node_list to each of the adjacent
 	nodes of type compare_node_label by the fisher's exact test. Used to compute GO term enrichment.
@@ -147,7 +146,11 @@ def rtx_fisher_test_faster(input_node_list, input_node_label, compare_node_label
 	for node in input_node_list[1:]:
 		query += ',"%s"' % node
 	query += "]"
-	query += " as inlist match (d:%s)-[]-(s:%s) where s.id in inlist return d.id as ident, count(*) as ct" % (compare_node_label, input_node_label)
+	if not rel_type:
+		query += " as inlist match (d:%s)-[]-(s:%s) where s.id in inlist return d.id as ident, count(*) as ct" % (compare_node_label, input_node_label)
+	else:
+		query += " as inlist match (d:%s)-[:%s]-(s:%s) where s.id in inlist return d.id as ident, count(*) as ct" % (
+		compare_node_label, rel_type, input_node_label)
 	if debug:
 		print(query)
 	else:
@@ -161,7 +164,11 @@ def rtx_fisher_test_faster(input_node_list, input_node_label, compare_node_label
 	for node in input_node_list[1:]:
 		query += ',"%s"' % node
 	query += "]"
-	query += " as inlist match (d:%s)-[]-(s:%s) where s.id in inlist with distinct d as d match (d)-[]-(:%s) return d.id as ident, count(*) as ct" % (compare_node_label, input_node_label, input_node_label)
+	if not rel_type:
+		query += " as inlist match (d:%s)-[]-(s:%s) where s.id in inlist with distinct d as d match (d)-[]-(:%s) return d.id as ident, count(*) as ct" % (compare_node_label, input_node_label, input_node_label)
+	else:
+		query += " as inlist match (d:%s)-[:%s]-(s:%s) where s.id in inlist with distinct d as d match (d)-[:%s]-(:%s) return d.id as ident, count(*) as ct" % (
+		compare_node_label, rel_type, input_node_label, rel_type, input_node_label)
 	if debug:
 		print(query)
 	else:

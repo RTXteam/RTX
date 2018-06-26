@@ -26,7 +26,7 @@ from COHDUtilities import COHDUtilities
 import SimilarNodesInCommon
 import CustomExceptions
 import numpy as np
-from fisher_exact import rtx_fisher_test
+import fisher_exact
 
 
 class SMEDrugRepurposing:
@@ -49,12 +49,31 @@ class SMEDrugRepurposing:
 		# get the description of the disease
 		disease_description = RU.get_node_property(disease_id, 'name')
 
-		# What are the defining symptoms of the disease?
-		# get diseases that have many raw symptoms in common
-		# select top N of them
-		# get subraph of these with the input disease
-		# weight by COHD data
-		# pick diseases with maximal (since frequency) average distance i.e. maximal expected graph distance
+		# Find symptoms of disease
+		symptoms = RU.get_one_hop_target("disease", disease_id, "phenotypic_feature", "has_phenotype")
+
+		# Find diseases enriched for that phenotype
+		fisher_res = fisher_exact.fisher_exact(symptoms, "phenotypic_feature", "disease")
+
+		fisher_res_tuples_sorted = []
+		for key in fisher_res.keys():
+			odds, prob = fisher_res[key]
+			fisher_res_tuples_sorted.append((key, prob))
+		fisher_res_tuples_sorted.sort(key=lambda x: x[1])
+
+		# select only the omims from that, making sure they are on the kinds of paths we want
+		genetic_diseases_selected = []
+		num_selected = 0
+		for id, prob in fisher_res_tuples_sorted:
+			if id.split(":")[0] == "OMIM":
+				if RU.paths_of_type_source_fixed_target_free_exists(id, "disease", path_type, limit=1):
+					genetic_diseases_selected.append(id)
+					num_selected += 1
+			if num_selected >= num_omim_keep:
+				break
+
+		# find the most representative diseases in
+
 
 		# get disease that have many raw symptoms in common
 		similar_nodes_in_common = SimilarNodesInCommon.SimilarNodesInCommon()
