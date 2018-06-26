@@ -29,7 +29,7 @@ import numpy as np
 import fisher_exact
 
 
-class SMEDrugRepurposing:
+class SMEDrugRepurposingFisher:
 
 	def __init__(self):
 		None
@@ -37,6 +37,9 @@ class SMEDrugRepurposing:
 	@staticmethod
 	def answer(disease_id, use_json=False, num_show=20):
 		num_omim_keep = 10  # number of genetic conditions to keep
+		num_protein_keep = 10  # number of implicated proteins to keep
+		num_pathways_keep = 10  # number of pathways to keep
+		num_pathway_proteins_selected = 10  # number of proteins enriched for the above pathways to select
 		num_drugs_keep = 10  # number of drugs that target those proteins to keep
 
 		# The kinds of paths we're looking for
@@ -53,8 +56,7 @@ class SMEDrugRepurposing:
 		symptoms = RU.get_one_hop_target("disease", disease_id, "phenotypic_feature", "has_phenotype")
 
 		# Find diseases enriched for that phenotype
-		fisher_res = fisher_exact.fisher_exact(symptoms, "phenotypic_feature", "disease")
-
+		fisher_res = fisher_exact.fisher_exact(symptoms, "phenotypic_feature", "disease", rel_type="has_phenotype")
 		fisher_res_tuples_sorted = []
 		for key in fisher_res.keys():
 			odds, prob = fisher_res[key]
@@ -72,71 +74,74 @@ class SMEDrugRepurposing:
 			if num_selected >= num_omim_keep:
 				break
 
-		# find the most representative diseases in
-
-
-		# get disease that have many raw symptoms in common
-		similar_nodes_in_common = SimilarNodesInCommon.SimilarNodesInCommon()
-		node_jaccard_tuples_sorted, error_code, error_message = similar_nodes_in_common.get_similar_nodes_in_common_source_target_association(
-			disease_id, "disease", "phenotypic_feature", 0)
-
-		# select the omims
-		diseases_selected = []
-		for n, j in node_jaccard_tuples_sorted:
-			if n.split(":")[0] == "OMIM":
-				diseases_selected.append(n)
-
-		# if we found no genetic conditions, add error message and quit
-		if not diseases_selected:
-			response.add_error_message("NoGeneticConditions",
-									   "There appears to be no genetic conditions with phenotypes in common with %s" % disease_description)
-			response.print()
-			return
-
-		# subset to top N omims that actually have the relationship types that we want:
+		# find the most representative genes in these diseases
+		fisher_res = fisher_exact.fisher_exact(genetic_diseases_selected, "disease", "protein", rel_type="gene_mutations_contribute_to")
+		fisher_res_tuples_sorted = []
+		for key in fisher_res.keys():
+			odds, prob = fisher_res[key]
+			fisher_res_tuples_sorted.append((key, prob))
+		fisher_res_tuples_sorted.sort(key=lambda x: x[1])
+		implicated_proteins_selected = []
 		num_selected = 0
-		diseases_selected_on_desired_path = []
-		for selected_disease in diseases_selected:
-			if RU.paths_of_type_source_fixed_target_free_exists(selected_disease, "disease", path_type, limit=1):
-				diseases_selected_on_desired_path.append(selected_disease)
-				num_selected += 1
-			if num_selected >= num_omim_keep:
+		for id, prob in fisher_res_tuples_sorted:
+			implicated_proteins_selected.append(id)
+			num_selected += 1
+			if num_selected >= num_protein_keep:
 				break
 
-		genetic_diseases_selected = diseases_selected_on_desired_path
+		# find enriched pathways from those proteins
+		fisher_res = fisher_exact.fisher_exact(implicated_proteins_selected, "protein", "pathway",
+											   rel_type="participates_in")
+		fisher_res_tuples_sorted = []
+		for key in fisher_res.keys():
+			odds, prob = fisher_res[key]
+			fisher_res_tuples_sorted.append((key, prob))
+		fisher_res_tuples_sorted.sort(key=lambda x: x[1])
+		pathways_selected = []
+		num_selected = 0
+		for id, prob in fisher_res_tuples_sorted:
+			pathways_selected.append(id)
+			num_selected += 1
+			if num_selected >= num_pathways_keep:
+				break
 
+		# find proteins enriched for those pathways
+		fisher_res = fisher_exact.fisher_exact(pathways_selected, "pathway", "protein",
+											   rel_type="participates_in")
+		fisher_res_tuples_sorted = []
+		for key in fisher_res.keys():
+			odds, prob = fisher_res[key]
+			fisher_res_tuples_sorted.append((key, prob))
+		fisher_res_tuples_sorted.sort(key=lambda x: x[1])
+		pathway_proteins_selected = []
+		num_selected = 0
+		for id, prob in fisher_res_tuples_sorted:
+			pathway_proteins_selected.append(id)
+			num_selected += 1
+			if num_selected >= num_pathway_proteins_selected:
+				break
 
-		# select representative diseases
-		# Do nothing for now (use all of them)
+		# find drugs enriched for targeting those proteins
+		fisher_res = fisher_exact.fisher_exact(pathway_proteins_selected, "protein", "chemical_substance",
+											   rel_type="physically_interacts_with")
+		fisher_res_tuples_sorted = []
+		for key in fisher_res.keys():
+			odds, prob = fisher_res[key]
+			fisher_res_tuples_sorted.append((key, prob))
+		fisher_res_tuples_sorted.sort(key=lambda x: x[1])
+		drugs_selected = []
+		num_selected = 0
+		for id, prob in fisher_res_tuples_sorted:
+			drugs_selected.append(id)
+			num_selected += 1
+			if num_selected >= num_drugs_keep:
+				break
 
-		# get drugs that are connected along the paths we want and count how many such paths there are
-		genetic_diseases_to_chemical_substance_dict = dict()
-		for selected_disease in genetic_diseases_selected:
-			res = RU.count_paths_of_type_source_fixed_target_free(selected_disease, "disease", path_type,
-																  limit=num_drugs_keep)
-			# add it to our dictionary
-			genetic_diseases_to_chemical_substance_dict[selected_disease] = res
-
-		# get the unique drugs
-		drug_counts_tuples = [item for items in genetic_diseases_to_chemical_substance_dict.values() for item in items]
-		drugs_path_counts = dict()
-		for drug, count in drug_counts_tuples:
-			if drug not in drugs_path_counts:
-				drugs_path_counts[drug] = count
-			else:
-				drugs_path_counts[drug] += count
-
-		# put them as tuples in a list, sorted by the ones with the most paths
-		drugs_path_counts_tuples = []
-		for drug in drugs_path_counts.keys():
-			count = drugs_path_counts[drug]
-			drugs_path_counts_tuples.append((drug, count))
-		drugs_path_counts_tuples.sort(key=lambda x: x[1], reverse=True)
-
+		# print out the results
 		if not use_json:
-			for drug, count in drugs_path_counts_tuples:
+			for drug in drugs_selected:
 				name = RU.get_node_property(drug, "name", node_label="chemical_substance")
-				print("%s: %d\n" % (name, count))
+				print("%s\n" % name)
 
 	@staticmethod
 	def describe():
@@ -162,7 +167,7 @@ def main():
 
 
 	# Initialize the question class
-	Q = SMEDrugRepurposing()
+	Q = SMEDrugRepurposingFisher()
 
 	if describe_flag:
 		res = Q.describe()
