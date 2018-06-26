@@ -573,6 +573,8 @@ def return_subgraph_through_node_labels(source_node, source_node_label, target_n
 		for i in range(len(node_list) - 1):
 			if with_rel[0] == node_list[i]:
 				query += "-[]-(%s:%s)" % (node_list[i], node_list[i])
+			elif with_rel[0] == source_node_label:
+				query += "-[]-(%s:%s)" % (node_list[i], node_list[i])
 			else:
 				query += "-[]-(:%s)" % node_list[i]
 		query += "-[]-(:%s)-[]-(%s:%s{id:'%s'}) " % (node_list[-1], target_node_label, target_node_label, target_node)

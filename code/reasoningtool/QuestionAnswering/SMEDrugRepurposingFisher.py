@@ -36,6 +36,7 @@ class SMEDrugRepurposingFisher:
 
 	@staticmethod
 	def answer(disease_id, use_json=False, num_show=20):
+
 		num_omim_keep = 15  # number of genetic conditions to keep
 		num_protein_keep = 15  # number of implicated proteins to keep
 		num_pathways_keep = 15  # number of pathways to keep
@@ -48,6 +49,7 @@ class SMEDrugRepurposingFisher:
 
 		# Initialize the response class
 		response = FormatOutput.FormatResponse(6)
+		response.response.table_column_names = ["disease name", "disease ID", "drug name", "drug ID", "confidence"]
 
 		# get the description of the disease
 		disease_description = RU.get_node_property(disease_id, 'name')
@@ -151,6 +153,29 @@ class SMEDrugRepurposingFisher:
 			for drug in drugs_selected:
 				name = RU.get_node_property(drug, "name", node_label="chemical_substance")
 				print("%s\n" % name)
+		else:
+			path_type = ["gene_mutations_contribute_to", "protein", "participates_in", "pathway", "participates_in",
+						 "protein", "physically_interacts_with", "chemical_substance"]
+			for drug_id in drugs_selected:
+				drug_description = RU.get_node_property(drug_id, "name", node_label="chemical_substance")
+				g = RU.return_subgraph_through_node_labels(disease_id, "disease", drug_id, "chemical_substance",
+														   ["protein", "pathway", "protein"],
+														   with_rel=["disease", "gene_mutations_contribute_to",
+																	 "protein"],
+														   directed=False)
+				res = response.add_subgraph(g.nodes(data=True), g.edges(data=True),
+											"The drug %s is predicted to treat %s." % (
+											drug_description, disease_description), "-1",
+											return_result=True)
+				res.essence = "%s" % drug_description  # populate with essence of question result
+				row_data = []  # initialize the row data
+				row_data.append("%s" % disease_description)
+				row_data.append("%s" % disease_id)
+				row_data.append("%s" % drug_description)
+				row_data.append("%s" % drug_id)
+				row_data.append("%f" % -1)
+				res.row_data = row_data
+			response.print()
 
 	@staticmethod
 	def describe():
