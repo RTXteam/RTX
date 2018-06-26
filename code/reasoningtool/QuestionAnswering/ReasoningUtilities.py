@@ -299,6 +299,7 @@ def get_one_hop_target(source_label, source_name, target_label, edge_type, debug
 	else:
 		return names
 
+
 def get_relationship_types_between(source_name, source_label, target_name, target_label, max_path_len=4, session=session, debug=False):
 	"""
 	This function will return the relationship types between fixed source and target nodes
@@ -729,6 +730,7 @@ def count_nodes_of_type_on_path_of_type_to_label(source_name, source_label, targ
 			names2nodes[i['t.id']] = i['collect(distinct n.id)']
 		return names2counts, names2nodes
 
+
 def count_nodes_of_type_for_nodes_that_connect_to_label(source_name, source_label, target_label, node_label_list, relationship_label_list, node_of_interest_position, debug=False, session=session):
 	"""
 	This function will take a source node, get all the target nodes of node_label type that connect to the source via node_label_list
@@ -774,6 +776,7 @@ def count_nodes_of_type_for_nodes_that_connect_to_label(source_name, source_labe
 		for i in result_list:
 			names2counts[i['t.id']] = int(i['count(distinct n.id)'])
 		return names2counts
+
 
 def interleave_nodes_and_relationships(session, source_node, source_node_label, target_node, target_node_label, max_path_len=3, debug=False):
 	"""
@@ -1060,6 +1063,7 @@ def cohd_ngd(node_descr1, node_descr2):
 	:param node_descr2: human readable name of a node (eg. hypertension)
 	:return: float
 	"""
+	# TODO: finish this
 
 
 def cohd_pair_frequency(node_descr1, node_descr2):
@@ -1220,14 +1224,24 @@ def weight_disease_phenotype_by_cohd(g, max_phenotype_oxo_dist=1):
 		else:
 			xrefs = QueryCOHD.get_xref_to_OMOP(symptom_id, distance=max_phenotype_oxo_dist)
 			freq = 0
+			# look for the most frequently appearing xref TODO: could total this if I wanted to
+			# TODO: figure out which way is better
 			for xref in xrefs:
 				symptom_omop_id = str(xref['omop_standard_concept_id'])
-				res = QueryCOHD.get_paired_concept_freq(disease_omop_id, symptom_omop_id)
+				res = QueryCOHD.get_paired_concept_freq(disease_omop_id, symptom_omop_id, dataset_id=1)
 				if res:
 					temp_freq = res['concept_frequency']
-					if temp_freq > freq:
-						freq = temp_freq
+					#if temp_freq > freq:
+					#	freq = temp_freq
+					freq += temp_freq
+				res = QueryCOHD.get_paired_concept_freq(disease_omop_id, symptom_omop_id, dataset_id=2)
+				if res:
+					temp_freq = res['concept_frequency']
+					#if temp_freq > freq:
+					#	freq = temp_freq
+					freq += temp_freq
 			d['cohd_freq'] = freq
+
 
 def get_sorted_path_weights_disease_to_disease(g, disease_id):
 	"""
@@ -1271,6 +1285,7 @@ def get_sorted_path_weights_disease_to_disease(g, disease_id):
 		other_disease_median_path_weight_sorted.append((key, weight))
 
 	other_disease_median_path_weight_sorted.sort(key=lambda x: x[1], reverse=True)
+	return other_disease_median_path_weight_sorted
 
 
 def get_top_n_most_frequent_from_list(id_list, n):
@@ -1304,7 +1319,7 @@ def count_paths_of_type_source_fixed_target_free(source_id, source_type, rel_typ
 	[gene_mutations_contribute_to, protein, participates_in, pathway, participates_in, protein, physically_interacts_with, chemical_substance]
 	:param debug: just print the cypher command
 	:param limit: limit the number of targets (for speed debugging purposes)
-	:return: dictionary with keys the id's of nodes of type rel_type_node_label_list[-1] and values the number of paths
+	:return: list of tuples the id's of nodes of type rel_type_node_label_list[-1] and values the number of paths
 	(of desired kind) connecting source to target.
 	 Example: RU.count_paths_of_type_source_fixed_target_free("DOID:8398","disease",["has_phenotype", "phenotypic_feature", "has_phenotype", "protein"], limit=5)
 	"""
@@ -1319,17 +1334,55 @@ def count_paths_of_type_source_fixed_target_free(source_id, source_type, rel_typ
 			is_rel = True
 	path += "-(m:%s)" % rel_type_node_label_list[-1]
 	if limit:
-		query = "MATCH p=" + path + " WITH DISTINCT m AS m limit %d with collect(m) AS L UNWIND range(0, size(L)-1) as i with L[i] as m match p=" % limit
+		query = "MATCH " + path + " return m.id as ident, count(*) as ct order by ct desc limit %d" % limit
 	else:
-		query = "MATCH p=" + path + " WITH DISTINCT m AS m with collect(m) AS L UNWIND range(0, size(L)-1) as i with L[i] as m match p="
-	query += path + " with count(p) as ct, m.id as ident return ident, ct order by ct desc"
+		query = "MATCH " + path + " return m.id as ident, count(*) as ct order by ct desc"
 	if debug:
 		return query
 	res = session.run(query)
-	res_dict = dict()
+	res_list = []
 	for item in res:
-		res_dict[item['ident']] = item['ct']
-	return res_dict
+		res_list.append((item['ident'], item['ct']))
+	return res_list
+
+
+
+def paths_of_type_source_fixed_target_free_exists(source_id, source_type, rel_type_node_label_list, debug=False, limit=False):
+	"""
+	Given a fixed source node, look for targets along rel_type_node_label_list, return True iff such paths exist (see above function)
+	:param source_id: id of source node (eg. OMIM:605724)
+	:param source_type: type of source node (eg. disease)
+	:param rel_type_node_label_list: list of path type to look for. eg.
+	[gene_mutations_contribute_to, protein, participates_in, pathway, participates_in, protein, physically_interacts_with, chemical_substance]
+	:param debug: just print the cypher command
+	:param limit: limit the number of targets (for speed debugging purposes)
+	:return: True iff such paths exist
+	 Example: RU.paths_of_type_source_fixed_target_free_exists("DOID:8398","disease",["has_phenotype", "phenotypic_feature", "has_phenotype", "protein"], limit=5)
+	"""
+	path = '(n:%s{id:"%s"})' % (source_type, source_id)
+	is_rel = True
+	for label in rel_type_node_label_list[:-1]:
+		if is_rel:
+			path += "-[:%s]" % label
+			is_rel = False
+		else:
+			path += "-(:%s)" % label
+			is_rel = True
+	path += "-(m:%s)" % rel_type_node_label_list[-1]
+	if limit:
+		query = "MATCH p=" + path + " WITH DISTINCT m AS m limit %d return m.id" % limit
+	else:
+		query = "MATCH p=" + path + " WITH DISTINCT m AS m return m.id"
+	if debug:
+		return query
+	res = session.run(query)
+	res_list = []
+	for item in res:
+		res_list.append(item['m.id'])
+	if res_list:
+		return True
+	else:
+		return False
 
 
 def get_intermediate_node_ids(source_id, source_type, inter_rel_1, inter_type, inter_rel2, target_id, target_type, debug=False):

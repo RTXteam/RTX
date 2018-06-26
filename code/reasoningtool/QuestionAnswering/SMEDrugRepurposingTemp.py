@@ -9,13 +9,18 @@ from QueryCOHD import QueryCOHD
 from COHDUtilities import COHDUtilities
 import CustomExceptions
 import SimilarNodesInCommon
+import numpy as np
 disease_id = "OMIM:605724"
+
 num_diseases_to_select = 10  # number of diseases with shared phenotypes to keep
 num_omim_keep = 10  # number of genetic conditions to keep
 num_proteins_keep = 10  # number of proteins implicated in diseases to keep
 num_pathways_keep = 10  # number of relevant pathways to keep
 num_proteins_in_pathways_keep = 10  # number of proteins in those pathways to keep
 num_drugs_keep = 10  # number of drugs that target those proteins to keep
+
+# The kinds of paths we're looking for
+path_type = ["gene_mutations_contribute_to", "protein", "participates_in", "pathway", "participates_in", "protein", "physically_interacts_with", "chemical_substance"]
 
 # Initialize the response class
 response = FormatOutput.FormatResponse(6)
@@ -47,20 +52,32 @@ if not diseases_selected:
 	response.print()
 	return
 
+# subset to top N omims that actually have the relationship types that we want:
+num_selected = 0
+diseases_selected_on_desired_path = []
+for selected_disease in diseases_selected:
+	if RU.paths_of_type_source_fixed_target_free_exists(selected_disease, "disease", path_type, limit=1):
+		diseases_selected_on_desired_path.append(selected_disease)
+		num_selected += 1
+	if num_selected >= num_omim_keep:
+		break
+
+diseases_selected = diseases_selected_on_desired_path
+
+# Find most representative symptoms by consulting COHD. TODO: see if this actually helps anything
 # get subgraph of these with the input disease
 # get all symptoms of input disease
-#all_symptoms = RU.get_one_hop_target("disease", disease_id, "phenotypic_feature", "has_phenotype")
-all_symptoms = set()
-for selected_disease in diseases_selected:
-	intermediate_phenotypes = RU.get_intermediate_node_ids(disease_id, "disease", "has_phenotype", "phenotypic_feature", "has_phenotype", selected_disease, "disease")
-	all_symptoms.update(intermediate_phenotypes)
+#all_symptoms = set()
+#for selected_disease in diseases_selected:
+#	intermediate_phenotypes = RU.get_intermediate_node_ids(disease_id, "disease", "has_phenotype", "phenotypic_feature", "has_phenotype", selected_disease, "disease")
+#	all_symptoms.update(intermediate_phenotypes)
 # turn it back into a list
-all_symptoms = list(all_symptoms)
+#all_symptoms = list(all_symptoms)
 # get the subgraph of all relevant symptoms, the omims selected, and the input disease
-g = RU.get_graph_from_nodes(all_symptoms + diseases_selected + [disease_id], edges=True)
+#g = RU.get_graph_from_nodes(all_symptoms + diseases_selected + [disease_id], edges=True)
 
 # weight by COHD data (if you want to)
-#RU.weight_disease_phenotype_by_cohd(g, max_phenotype_oxo_dist=1)
+#RU.weight_disease_phenotype_by_cohd(g, max_phenotype_oxo_dist=2)
 
 # sort by COHD freq
 #disease_path_weight_sorted = RU.get_sorted_path_weights_disease_to_disease(g, disease_id)
@@ -73,7 +90,6 @@ g = RU.get_graph_from_nodes(all_symptoms + diseases_selected + [disease_id], edg
 #	if num_omim >= num_omim_keep:
 #		break
 
-# select the OMIMS TODO: blocking on #248
 # in the mean-time, use them all
 genetic_diseases_selected = diseases_selected
 
@@ -81,27 +97,27 @@ genetic_diseases_selected = diseases_selected
 # Do nothing for now (use all of them)
 
 # get drugs that are connected along the paths we want and count how many such paths there are
-path_type = ["gene_mutations_contribute_to", "protein", "participates_in", "pathway", "participates_in", "protein", "physically_interacts_with", "chemical_substance"]
 genetic_diseases_to_chemical_substance_dict = dict()
 for selected_disease in genetic_diseases_selected:
-	res = RU.count_paths_of_type_source_fixed_target_free(selected_disease, "disease", path_type, limit=5)
-	# turn this dict into a list of tuples
-	tuple_list = []
-	for target_id in res.keys():
-		count = res[target_id]
-		tuple_list.append((target_id, count))
-	tuple_list.sort(key=lambda x: x[1], reverse=True)
-	genetic_diseases_to_chemical_substance_dict[selected_disease] = tuple_list
+	res = RU.count_paths_of_type_source_fixed_target_free(selected_disease, "disease", path_type, limit=num_drugs_keep)
+	# add it to our dictionary
+	genetic_diseases_to_chemical_substance_dict[selected_disease] = res
 
-# get the results in a form suitable for display
-# just the top 2 for now
-for genetic_disease in genetic_diseases_to_chemical_substance_dict.keys():
-	top_drugs_and_counts = genetic_diseases_to_chemical_substance_dict[genetic_disease][0:num_drugs_keep]
-	print("%s:\n" % genetic_disease)
-	for drug, count in top_drugs_and_counts:
-		print("%s, %d\n" % (drug, count))
+# get the unique drugs
+drug_counts_tuples = [item for items in genetic_diseases_to_chemical_substance_dict.values() for item in items]
+drugs_path_counts = dict()
+for drug, count in drug_counts_tuples:
+	if drug not in drugs_path_counts:
+		drugs_path_counts[drug] = count
+	else:
+		drugs_path_counts[drug] += count
 
-
+# put them as tuples in a list, sorted by the ones with the most paths
+drugs_path_counts_tuples = []
+for drug in drugs_path_counts.keys():
+	count = drugs_path_counts[drug]
+	drugs_path_counts_tuples.append((drug, count))
+drugs_path_counts_tuples.sort(key=lambda x: x[1], reverse=True)
 
 
 
