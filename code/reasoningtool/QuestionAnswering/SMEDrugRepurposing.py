@@ -146,9 +146,15 @@ class SMEDrugRepurposing:
 		drugs_path_counts_tuples.sort(key=lambda x: x[1], reverse=True)
 
 		if not use_json:
+			#for drug, count in drugs_path_counts_tuples:
+			#	name = RU.get_node_property(drug, "name", node_label="chemical_substance")
+			#	print("%s (%s): %d" % (name, drug, count))
+			print("source,target")
 			for drug, count in drugs_path_counts_tuples:
-				name = RU.get_node_property(drug, "name", node_label="chemical_substance")
-				print("%s: %d\n" % (name, count))
+				drug_old_curie = drug.split(":")[1].replace("L", "L:").replace("H", "h")
+				print("%s,%s" % (drug_old_curie, disease_id))
+			# name = RU.get_node_property(drug, "name", node_label="chemical_substance")
+			# print("%s (%s)" % (name, drug))
 
 	@staticmethod
 	def describe():

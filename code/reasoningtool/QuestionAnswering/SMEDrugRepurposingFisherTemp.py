@@ -127,9 +127,12 @@ for id, prob in fisher_res_tuples_sorted:
 
 # print out the results
 if not use_json:
+	print("source, target")
 	for drug in drugs_selected:
-		name = RU.get_node_property(drug, "name", node_label="chemical_substance")
-		print("%s\n" % name)
+		drug_old_curie = drug.split(":")[1].replace("L", "L:").replace("H","h")
+		print("%s, %s" % (drug_old_curie, disease_id))
+		#name = RU.get_node_property(drug, "name", node_label="chemical_substance")
+		#print("%s (%s)" % (name, drug))
 else:
 	path_type = ["gene_mutations_contribute_to", "protein", "participates_in", "pathway", "participates_in",
 			"protein", "physically_interacts_with", "chemical_substance"]
