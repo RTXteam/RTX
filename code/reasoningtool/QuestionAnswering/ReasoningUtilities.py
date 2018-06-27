@@ -1201,11 +1201,12 @@ def get_networkx_path_weight(g, path, prop):
 	return weight
 
 
-def weight_disease_phenotype_by_cohd(g, max_phenotype_oxo_dist=1):
+def weight_disease_phenotype_by_cohd(g, max_phenotype_oxo_dist=1, default_value=0):
 	"""
 	Weights a networkx graph by cohd frequency, specialized to disease/phenotypes
 	:param g: networkx graph
 	:param max_phenotype_oxo_dist: maximum distance to try and find HP mapping in oxo
+	:param default_value: default value to use
 	:return: nothing (modifies graph in place)
 	"""
 	node_properties = nx.get_node_attributes(g, 'properties')
@@ -1220,7 +1221,7 @@ def weight_disease_phenotype_by_cohd(g, max_phenotype_oxo_dist=1):
 		target_id = node_ids[v]
 		target_label = node_labels[v]
 		if {source_label, target_label} != {"disease", "phenotypic_feature"}:
-			d['cohd_freq'] = 0
+			d['cohd_freq'] = default_value
 			continue
 		else:
 			if source_label == "disease":
@@ -1242,7 +1243,7 @@ def weight_disease_phenotype_by_cohd(g, max_phenotype_oxo_dist=1):
 				break
 		# symptom, loop over them all and take the largest
 		if not disease_omop_id:
-			d['cohd_freq'] = 0
+			d['cohd_freq'] = default_value
 		else:
 			xrefs = QueryCOHD.get_xref_to_OMOP(symptom_id, distance=max_phenotype_oxo_dist)
 			freq = 0

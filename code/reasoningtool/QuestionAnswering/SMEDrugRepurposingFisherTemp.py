@@ -118,10 +118,20 @@ for u, v, d in g.edges(data=True):
 	d["p_value"] = 1
 
 # decorate with COHD data
-RU.weight_disease_phenotype_by_cohd(g, max_phenotype_oxo_dist=2)
+RU.weight_disease_phenotype_by_cohd(g, max_phenotype_oxo_dist=2, default_value=1)  # automatically pulls it out to top-level property
 
 # decorate with drug->target binding probability
-RU.weight_graph_with_property(g, "probability", default_value=0, transformation=lambda x: x)
+RU.weight_graph_with_property(g, "probability", default_value=1, transformation=lambda x: x)  # pulls it out to top level property
+
+# transform the graph properties so they all point the same direction
+# will be finding shortest paths, so make 0=bad, 1=good transform to 0=good, 1=bad
+RU.transform_graph_weight(g, "cohd_freq", default_value=0, transformation=lambda x: 1/float(x+.001)-1/(1+.001))
+RU.transform_graph_weight(g, "probability", default_value=0, transformation=lambda x: 1/float(x+.001)-1/(1+.001))
+
+# merge the graph properties (additively)
+RU.merge_graph_properties(g, ["p_value", "cohd_freq", "probability"], "merged", operation=lambda x, y: x+y)
+
+
 
 # print out the results
 if not use_json:
