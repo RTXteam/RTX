@@ -36,95 +36,28 @@ disease_description = RU.get_node_property(disease_id, 'name')
 symptoms = RU.get_one_hop_target("disease", disease_id, "phenotypic_feature", "has_phenotype")
 
 # Find diseases enriched for that phenotype
-fisher_res = fisher_exact.fisher_exact(symptoms, "phenotypic_feature", "disease", rel_type="has_phenotype")
-fisher_res_tuples_sorted = []
-for key in fisher_res.keys():
-	odds, prob = fisher_res[key]
-	fisher_res_tuples_sorted.append((key, prob))
-fisher_res_tuples_sorted.sort(key=lambda x: x[1])
+(symptoms_dict, genetic_diseases_selected) = RU.top_n_fisher_exact(symptoms, "phenotypic_feature", "disease", rel_type="has_phenotype", n=num_omim_keep, curie_prefix="OMIM", on_path=path_type)
 
-# select only the omims from that, making sure they are on the kinds of paths we want
-genetic_diseases_selected = []
-num_selected = 0
-for id, prob in fisher_res_tuples_sorted:
-	if id.split(":")[0] == "OMIM":
-		if RU.paths_of_type_source_fixed_target_free_exists(id, "disease", path_type, limit=1):
-			genetic_diseases_selected.append(id)
-			num_selected += 1
-	if num_selected >= num_omim_keep:
-		break
 
 # find the most representative proteins in these diseases
-fisher_res = fisher_exact.fisher_exact(genetic_diseases_selected, "disease", "protein",
-									   rel_type="gene_mutations_contribute_to")
-fisher_res_tuples_sorted = []
-for key in fisher_res.keys():
-	odds, prob = fisher_res[key]
-	fisher_res_tuples_sorted.append((key, prob))
-fisher_res_tuples_sorted.sort(key=lambda x: x[1])
-implicated_proteins_selected = []
-num_selected = 0
 path_type = ["participates_in", "pathway", "participates_in",
-			 "protein", "physically_interacts_with", "chemical_substance"]
-for id, prob in fisher_res_tuples_sorted:
-	if RU.paths_of_type_source_fixed_target_free_exists(id, "protein", path_type, limit=1):
-		implicated_proteins_selected.append(id)
-		num_selected += 1
-	if num_selected >= num_protein_keep:
-		break
+			"protein", "physically_interacts_with", "chemical_substance"]
+(implicated_proteins_dict, implicated_proteins_selected) = RU.top_n_fisher_exact(genetic_diseases_selected, "disease", "protein", rel_type="gene_mutations_contribute_to", n=num_protein_keep, on_path=path_type)
+
 
 # find enriched pathways from those proteins
-fisher_res = fisher_exact.fisher_exact(implicated_proteins_selected, "protein", "pathway",
-									   rel_type="participates_in")
-fisher_res_tuples_sorted = []
-for key in fisher_res.keys():
-	odds, prob = fisher_res[key]
-	fisher_res_tuples_sorted.append((key, prob))
-fisher_res_tuples_sorted.sort(key=lambda x: x[1])
-pathways_selected = []
-num_selected = 0
 path_type = ["participates_in", "protein", "physically_interacts_with", "chemical_substance"]
-for id, prob in fisher_res_tuples_sorted:
-	if RU.paths_of_type_source_fixed_target_free_exists(id, "pathway", path_type, limit=1):
-		pathways_selected.append(id)
-		num_selected += 1
-	if num_selected >= num_pathways_keep:
-		break
+(pathways_selected_dict, pathways_selected) = RU.top_n_fisher_exact(implicated_proteins_selected, "protein", "pathway", rel_type="participates_in", n=num_pathways_keep, on_path=path_type)
+
 
 # find proteins enriched for those pathways
-fisher_res = fisher_exact.fisher_exact(pathways_selected, "pathway", "protein",
-									   rel_type="participates_in")
-fisher_res_tuples_sorted = []
-for key in fisher_res.keys():
-	odds, prob = fisher_res[key]
-	fisher_res_tuples_sorted.append((key, prob))
-fisher_res_tuples_sorted.sort(key=lambda x: x[1])
-pathway_proteins_selected = []
-num_selected = 0
 path_type = ["physically_interacts_with", "chemical_substance"]
-for id, prob in fisher_res_tuples_sorted:
-	if RU.paths_of_type_source_fixed_target_free_exists(id, "protein", path_type, limit=1):
-		pathway_proteins_selected.append(
-			id)  # TODO: could also make sure this is not one of the proteins from above
-		num_selected += 1
-	if num_selected >= num_pathway_proteins_selected:
-		break
+(pathway_proteins_dict, pathway_proteins_selected) = RU.top_n_fisher_exact(pathways_selected, "pathway", "protein", rel_type="participates_in", n=num_pathway_proteins_selected, on_path=path_type)
+
 
 # find drugs enriched for targeting those proteins
-fisher_res = fisher_exact.fisher_exact(pathway_proteins_selected, "protein", "chemical_substance",
-									   rel_type="physically_interacts_with")
-fisher_res_tuples_sorted = []
-for key in fisher_res.keys():
-	odds, prob = fisher_res[key]
-	fisher_res_tuples_sorted.append((key, prob))
-fisher_res_tuples_sorted.sort(key=lambda x: x[1])
-drugs_selected = []
-num_selected = 0
-for id, prob in fisher_res_tuples_sorted:
-	drugs_selected.append(id)
-	num_selected += 1
-	if num_selected >= num_drugs_keep:
-		break
+(drugs_selected_dict, drugs_selected) = RU.top_n_fisher_exact(pathway_proteins_selected, "protein", "chemical_substance", rel_type="physically_interacts_with", n=num_drugs_keep)
+
 
 # Next, find the most likely paths
 # extract the relevant subgraph
@@ -134,6 +67,7 @@ path_type = ["disease", "has_phenotype", "phenotypic_feature", "has_phenotype", 
 g = RU.get_subgraph_through_node_sets_known_relationships(path_type, [[disease_id], symptoms, genetic_diseases_selected, implicated_proteins_selected, pathways_selected, pathway_proteins_selected, drugs_selected], debug=True)
 
 # decorate graph with fisher p-values
+
 
 # print out the results
 if not use_json:
