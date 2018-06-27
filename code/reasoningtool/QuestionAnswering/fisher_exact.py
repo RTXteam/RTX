@@ -158,7 +158,7 @@ def fisher_exact(input_node_list, input_node_label, compare_node_label, rel_type
 		for item in res:
 			dict_in_compare[item["ident"]] = item["ct"]
 
-	size_of_adjacent = dict() # degree of each adjacent node with respect to input_node_label in compare_node_label
+	size_of_adjacent = dict()  # degree of each adjacent node with respect to input_node_label in compare_node_label
 
 	query = 'with ["%s"' % input_node_list[0]
 	for node in input_node_list[1:]:
@@ -186,10 +186,10 @@ def fisher_exact(input_node_list, input_node_label, compare_node_label, rel_type
 	size_of_total = res.single()["count(distinct n)"]
 	size_of_set = len(input_node_list)
 
-	output = {} # prep the answer
+	output = {}  # prep the answer
 
 	for node in dict_in_compare: # go find signifigance levels ex. GO term enrichments. table is: [[in pathway and sample, in pathway],[in sample not in pathway],[in proteome and not in pathway]]
-		contingency_table = [[dict_in_compare[node],size_of_adjacent[node]],[size_of_set-dict_in_compare[node],size_of_total-size_of_adjacent[node]]]
+		contingency_table = [[dict_in_compare[node], size_of_adjacent[node]], [size_of_set-dict_in_compare[node], size_of_total-size_of_adjacent[node]]]
 		output[node] = stats.fisher_exact(contingency_table)
 
 	return output

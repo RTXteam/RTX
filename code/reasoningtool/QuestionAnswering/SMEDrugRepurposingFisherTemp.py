@@ -104,7 +104,8 @@ num_selected = 0
 path_type = ["physically_interacts_with", "chemical_substance"]
 for id, prob in fisher_res_tuples_sorted:
 	if RU.paths_of_type_source_fixed_target_free_exists(id, "protein", path_type, limit=1):
-		pathway_proteins_selected.append(id)  # TODO: could also make sure this is not one of the proteins from above
+		pathway_proteins_selected.append(
+			id)  # TODO: could also make sure this is not one of the proteins from above
 		num_selected += 1
 	if num_selected >= num_pathway_proteins_selected:
 		break
@@ -125,24 +126,34 @@ for id, prob in fisher_res_tuples_sorted:
 	if num_selected >= num_drugs_keep:
 		break
 
+# Next, find the most likely paths
+# extract the relevant subgraph
+path_type = ["disease", "has_phenotype", "phenotypic_feature", "has_phenotype", "disease",
+			"gene_mutations_contribute_to", "protein", "participates_in", "pathway", "participates_in",
+			"protein", "physically_interacts_with", "chemical_substance"]
+g = RU.get_subgraph_through_node_sets_known_relationships(path_type, [[disease_id], symptoms, genetic_diseases_selected, implicated_proteins_selected, pathways_selected, pathway_proteins_selected, drugs_selected], debug=True)
+
+# decorate graph with fisher p-values
+
 # print out the results
 if not use_json:
-	print("source, target")
+	print("source,target")
 	for drug in drugs_selected:
-		drug_old_curie = drug.split(":")[1].replace("L", "L:").replace("H","h")
-		print("%s, %s" % (drug_old_curie, disease_id))
-		#name = RU.get_node_property(drug, "name", node_label="chemical_substance")
-		#print("%s (%s)" % (name, drug))
+		drug_old_curie = drug.split(":")[1].replace("L", "L:").replace("H", "h")
+		print("%s,%s" % (drug_old_curie, disease_id))
+	# name = RU.get_node_property(drug, "name", node_label="chemical_substance")
+	# print("%s (%s)" % (name, drug))
 else:
-	path_type = ["gene_mutations_contribute_to", "protein", "participates_in", "pathway", "participates_in",
-			"protein", "physically_interacts_with", "chemical_substance"]
 	for drug_id in drugs_selected:
 		drug_description = RU.get_node_property(drug_id, "name", node_label="chemical_substance")
 		g = RU.return_subgraph_through_node_labels(disease_id, "disease", drug_id, "chemical_substance",
-										["protein", "pathway", "protein"],
-										with_rel=["disease", "gene_mutations_contribute_to", "protein"],
-										directed=False)
-		res = response.add_subgraph(g.nodes(data=True), g.edges(data=True), "The drug %s is predicted to treat %s." % (drug_description, disease_description), "-1",
+												   ["protein", "pathway", "protein"],
+												   with_rel=["disease", "gene_mutations_contribute_to",
+															 "protein"],
+												   directed=False)
+		res = response.add_subgraph(g.nodes(data=True), g.edges(data=True),
+									"The drug %s is predicted to treat %s." % (
+									drug_description, disease_description), "-1",
 									return_result=True)
 		res.essence = "%s" % drug_description  # populate with essence of question result
 		row_data = []  # initialize the row data
@@ -152,3 +163,4 @@ else:
 		row_data.append("%s" % drug_id)
 		row_data.append("%f" % -1)
 		res.row_data = row_data
+	response.print()

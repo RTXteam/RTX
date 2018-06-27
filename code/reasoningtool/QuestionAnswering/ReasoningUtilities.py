@@ -44,6 +44,8 @@ except ImportError:
 QueryEBIOLS = QueryEBIOLS.QueryEBIOLS()
 QueryNCBIeUtils = QueryNCBIeUtils.QueryNCBIeUtils()
 
+import fisher_exact
+
 
 requests_cache.install_cache('orangeboard')
 
@@ -570,11 +572,13 @@ def return_subgraph_through_node_labels(source_node, source_node_label, target_n
 		if any(isinstance(el, list) for el in node_list):
 			raise Exception("node_list must be a single list of nodes (not a list of lists) if you want to use with_rel.")
 		query = "MATCH path=(%s:%s{id:'%s'})" % (source_node_label, source_node_label, source_node)
+		seen_flag = False  # TODO: the node names are not nec. unique, which may cause issues, and ambiguity in with_rel
 		for i in range(len(node_list) - 1):
 			if with_rel[0] == node_list[i]:
 				query += "-[]-(%s:%s)" % (node_list[i], node_list[i])
-			elif with_rel[0] == source_node_label:
+			elif with_rel[0] == source_node_label and not seen_flag:  # since names used need to be unique, only evaluate at most once
 				query += "-[]-(%s:%s)" % (node_list[i], node_list[i])
+				seen_flag = True
 			else:
 				query += "-[]-(:%s)" % node_list[i]
 		query += "-[]-(:%s)-[]-(%s:%s{id:'%s'}) " % (node_list[-1], target_node_label, target_node_label, target_node)
@@ -1414,6 +1418,102 @@ def get_intermediate_node_ids(source_id, source_type, inter_rel_1, inter_type, i
 		for item in res:
 			res_list.append(item["i.id"])
 		return res_list
+
+
+def get_subgraph_through_node_sets_known_relationships(node_label_relationship_type_list, list_of_node_id_lists, directed=False, debug=False):
+	"""
+	Function that extracts a subgraph of a neo4j graph given a list of node labels and relationship types, where the nodes IDs are specified as
+	belonging to a given set
+	:param node_label_relationship_type_list: list of node labels and relationship types (eg. ["drug", "target", "protein"] can have None entries
+	:param list_of_node_id_lists: list of lists to constrain nodes as members of eg. [["drug1", "drug2"], ["protein1","protein2"]] can have None entries
+	:param directed: if the networkx graph should be directed or not
+	:param debug: just print the cypher command
+	:return: networkx graph
+	"""
+	query = "match path="
+	if len(node_label_relationship_type_list) != 2*len(list_of_node_id_lists)-1:
+		raise Exception("node_label_relationship_type_list must be equal in length to 2*len(list_of_node_id_lists)-1")
+	for i in range(0, len(node_label_relationship_type_list) - 1, 2):
+		node_label = node_label_relationship_type_list[i]
+		rel_type = node_label_relationship_type_list[i + 1]
+		if node_label:
+			query += "(n%d:%s)" % (i, node_label)
+		else:
+			query += "(n%d)" % i
+		if rel_type:
+			query += "-[:%s]-" % rel_type
+		else:
+			query += "-[]-"
+	# tack on the last guy
+	node_label = node_label_relationship_type_list[-1]
+	if node_label:
+		query += "(n%d:%s)" % (len(node_label_relationship_type_list)-1, node_label)
+	else:
+		query += "(n%d)" % (len(node_label_relationship_type_list)-1)
+	query += " where "
+	for i in range(len(list_of_node_id_lists)):
+		index = 2*i
+		id_list = list_of_node_id_lists[i]
+		if id_list:
+			query += "n%d.id in [" % index
+			for id in id_list:
+				query += '"%s",' % id
+			query = query[:-1]
+			query += "] and "
+	query = query[:-4]  # drop the last " and"
+	query += "return path"
+	if debug:
+		print(query)
+	else:
+		res = cypher.run(query, conn=connection, config=defaults)
+		if not res:
+			raise CustomExceptions.EmptyCypherError(query)
+		else:
+			graph = get_graph(res, directed=directed)
+			return graph
+
+
+def top_n_fisher_exact(id_list, id_node_label, target_node_label, rel_type=None, n=10, curie_prefix=None, on_path=None):
+	"""
+	Performs a fisher exact test
+	:param id_list: list of node ids eg. ["DOID:8398","DOID:3222"]
+	:param id_node_label: node label of ALL the node in id_list eg. "disease"
+	:param target_node_label: target of the fisher test, eg. "phenotypic_feature"
+	:param rel_type: optional relationship type to consider, eg. "has_phenotype"
+	:param n: Number of results to return
+	:param curie_prefix: Optional string specifying the prefix of the curie ID
+	:param on_path: None, or a path for which the results need to be on. eg. on_path = ["physically_interacts_with", "chemical_substance"]
+	:return: (dict: keys id's, values p-values, sorted list of identities (in ascending p-values))
+	"""
+	if rel_type:
+		fisher_res = fisher_exact.fisher_exact(id_list, id_node_label, target_node_label, rel_type=rel_type)
+	else:
+		fisher_res = fisher_exact.fisher_exact(id_list, id_node_label, target_node_label)
+	fisher_res_tuples_sorted = []
+	for key in fisher_res.keys():
+		odds, prob = fisher_res[key]
+		fisher_res_tuples_sorted.append((key, prob))
+	fisher_res_tuples_sorted.sort(key=lambda x: x[1])
+	selected = []
+	res_dict = dict()
+	num_selected = 0
+	for id, prob in fisher_res_tuples_sorted:
+		if curie_prefix:
+			if id.split(":")[0] == curie_prefix:
+				pass
+			else:
+				continue
+		if on_path:
+			if paths_of_type_source_fixed_target_free_exists(id, target_node_label, on_path, limit=1):
+				pass
+			else:
+				continue
+		res_dict[id] = prob
+		selected.append(id)
+		num_selected += 1
+		if num_selected >= n:
+			break
+	return (res_dict, selected)
 
 ############################################################################################
 # Stopping point 3/22/18 DK

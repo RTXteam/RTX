@@ -157,8 +157,6 @@ class SMEDrugRepurposingFisher:
 			# name = RU.get_node_property(drug, "name", node_label="chemical_substance")
 			# print("%s (%s)" % (name, drug))
 		else:
-			path_type = ["gene_mutations_contribute_to", "protein", "participates_in", "pathway", "participates_in",
-						 "protein", "physically_interacts_with", "chemical_substance"]
 			for drug_id in drugs_selected:
 				drug_description = RU.get_node_property(drug_id, "name", node_label="chemical_substance")
 				g = RU.return_subgraph_through_node_labels(disease_id, "disease", drug_id, "chemical_substance",
