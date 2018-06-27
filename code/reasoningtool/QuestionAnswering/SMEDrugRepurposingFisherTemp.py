@@ -20,6 +20,7 @@ num_protein_keep = 15  # number of implicated proteins to keep
 num_pathways_keep = 15  # number of pathways to keep
 num_pathway_proteins_selected = 15  # number of proteins enriched for the above pathways to select
 num_drugs_keep = 15  # number of drugs that target those proteins to keep
+num_paths = 2  # number of paths to keep for each drug selected
 
 # Initialize the response class
 response = FormatOutput.FormatResponse(6)
@@ -131,7 +132,25 @@ RU.transform_graph_weight(g, "probability", default_value=0, transformation=lamb
 # merge the graph properties (additively)
 RU.merge_graph_properties(g, ["p_value", "cohd_freq", "probability"], "merged", operation=lambda x, y: x+y)
 
+graph_weight_tuples = []
+for drug in drugs_selected:
+	decorated_paths, decorated_path_edges, path_lengths = RU.get_top_shortest_paths(g, disease_id, drug, num_paths, property='merged')
+	for path_ind in range(num_paths):
+		g2 = nx.Graph()
+		path = decorated_paths[path_ind]
+		for node_prop in path:
+			node_uuid = node_prop['properties']['UUID']
+			g2.add_node(node_uuid, **node_prop)
 
+		path = decorated_path_edges[path_ind]
+		for edge_prop in path:
+			source_uuid = edge_prop['properties']['source_node_uuid']
+			target_uuid = edge_prop['properties']['target_node_uuid']
+			g2.add_edge(source_uuid, target_uuid, **edge_prop)
+		graph_weight_tuples.append((g2, path_lengths[path_ind]))
+
+# sort by the path weight
+graph_weight_tuples.sort(key=lambda x: x[1])
 
 # print out the results
 if not use_json:
