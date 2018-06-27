@@ -21,10 +21,6 @@ num_pathways_keep = 15  # number of pathways to keep
 num_pathway_proteins_selected = 15  # number of proteins enriched for the above pathways to select
 num_drugs_keep = 15  # number of drugs that target those proteins to keep
 
-# The kinds of paths we're looking for
-path_type = ["gene_mutations_contribute_to", "protein", "participates_in", "pathway", "participates_in",
-			 "protein", "physically_interacts_with", "chemical_substance"]
-
 # Initialize the response class
 response = FormatOutput.FormatResponse(6)
 response.response.table_column_names = ["disease name", "disease ID", "drug name", "drug ID", "confidence"]
@@ -34,9 +30,12 @@ disease_description = RU.get_node_property(disease_id, 'name')
 
 # Find symptoms of disease
 symptoms = RU.get_one_hop_target("disease", disease_id, "phenotypic_feature", "has_phenotype")
+symptoms_set = set(symptoms)
 
 # Find diseases enriched for that phenotype
-(symptoms_dict, genetic_diseases_selected) = RU.top_n_fisher_exact(symptoms, "phenotypic_feature", "disease", rel_type="has_phenotype", n=num_omim_keep, curie_prefix="OMIM", on_path=path_type)
+path_type = ["gene_mutations_contribute_to", "protein", "participates_in", "pathway", "participates_in",
+			"protein", "physically_interacts_with", "chemical_substance"]
+(genetic_diseases_dict, genetic_diseases_selected) = RU.top_n_fisher_exact(symptoms, "phenotypic_feature", "disease", rel_type="has_phenotype", n=num_omim_keep, curie_prefix="OMIM", on_path=path_type, exclude=disease_id)
 
 
 # find the most representative proteins in these diseases
@@ -64,10 +63,65 @@ path_type = ["physically_interacts_with", "chemical_substance"]
 path_type = ["disease", "has_phenotype", "phenotypic_feature", "has_phenotype", "disease",
 			"gene_mutations_contribute_to", "protein", "participates_in", "pathway", "participates_in",
 			"protein", "physically_interacts_with", "chemical_substance"]
-g = RU.get_subgraph_through_node_sets_known_relationships(path_type, [[disease_id], symptoms, genetic_diseases_selected, implicated_proteins_selected, pathways_selected, pathway_proteins_selected, drugs_selected], debug=True)
+g = RU.get_subgraph_through_node_sets_known_relationships(path_type, [[disease_id], symptoms, genetic_diseases_selected, implicated_proteins_selected, pathways_selected, pathway_proteins_selected, drugs_selected])
 
 # decorate graph with fisher p-values
+# get dict of id to nx nodes
+nx_node_to_id = nx.get_node_attributes(g, "names")
+nx_id_to_node = dict()
+# reverse the dictionary
+for node in nx_node_to_id.keys():
+	id = nx_node_to_id[node]
+	nx_id_to_node[id] = node
 
+i = 0
+for u, v, d in g.edges(data=True):
+	u_id = nx_node_to_id[u]
+	v_id = nx_node_to_id[v]
+	# decorate correct nodes
+	# symptom to disease, decorated by disease p-value
+	if (u_id in symptoms_set and v_id in genetic_diseases_dict) or (v_id in symptoms_set and u_id in genetic_diseases_dict):
+		try:
+			d["p_value"] = genetic_diseases_dict[v_id]
+		except:
+			d["p_value"] = genetic_diseases_dict[u_id]
+		continue
+	# disease to protein
+	if (u_id in genetic_diseases_dict and v_id in implicated_proteins_dict) or (v_id in genetic_diseases_dict and u_id in implicated_proteins_dict):
+		try:
+			d["p_value"] = implicated_proteins_dict[v_id]
+		except:
+			d["p_value"] = implicated_proteins_dict[u_id]
+		continue
+	# protein to pathway
+	if (u_id in implicated_proteins_dict and v_id in pathways_selected_dict) or (v_id in implicated_proteins_dict and u_id in pathways_selected_dict):
+		try:
+			d["p_value"] = pathways_selected_dict[v_id]
+		except:
+			d["p_value"] = pathways_selected_dict[u_id]
+		continue
+	# pathway to protein
+	if (u_id in pathways_selected_dict and v_id in pathway_proteins_dict) or (v_id in pathways_selected_dict and u_id in pathway_proteins_dict):
+		try:
+			d["p_value"] = pathway_proteins_dict[v_id]
+		except:
+			d["p_value"] = pathway_proteins_dict[u_id]
+		continue
+	# protein to drug
+	if (u_id in pathway_proteins_dict and v_id in drugs_selected_dict) or (v_id in pathway_proteins_dict and u_id in drugs_selected_dict):
+		try:
+			d["p_value"] = drugs_selected_dict[v_id]
+		except:
+			d["p_value"] = drugs_selected_dict[u_id]
+		continue
+	# otherwise, stick a p_value of 1
+	d["p_value"] = 1
+
+# decorate with COHD data
+RU.weight_disease_phenotype_by_cohd(g, max_phenotype_oxo_dist=2)
+
+# decorate with drug->target binding probability
+RU.weight_graph_with_property(g, "probability", default_value=0, transformation=lambda x: x)
 
 # print out the results
 if not use_json:

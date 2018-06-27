@@ -934,9 +934,25 @@ def weight_graph_with_google_distance(g, context_node_id=None, context_node_desc
 		d['gd_weight'] = edges2gd[(u, v)]
 
 
+def transform_graph_weight(g, property, default_value=0, transformation=lambda x: x):
+	"""
+	Transform an existing graph property, using the default value if it doesn't exist
+	:param g: networkx graph
+	:param property: the string property name you are trying to transform
+	:param default_value: the default value to use for the property
+	:param transformation: the lambda function way you want to transform the property
+	:return: nothing (modifies the graph in place)
+	"""
+	for u, v, d in g.edges(data=True):
+		if property in d:
+			d[property] = transformation(d[property])
+		else:
+			d[property] = default_value
+
+
 def weight_graph_with_property(g, property, default_value=0, transformation=lambda x: x):
 	"""
-	Adds a new property to the edges in g
+	Adds a new property to the edges in g, extracting it from the 'properties' property if necessary (for drug->target binding prob, for ex)
 	:param g: networkx graph
 	:param property: name of property (eg. 'probability' or 'gd_weight')
 	:param default_value: default value for the property to have
@@ -1473,7 +1489,7 @@ def get_subgraph_through_node_sets_known_relationships(node_label_relationship_t
 			return graph
 
 
-def top_n_fisher_exact(id_list, id_node_label, target_node_label, rel_type=None, n=10, curie_prefix=None, on_path=None):
+def top_n_fisher_exact(id_list, id_node_label, target_node_label, rel_type=None, n=10, curie_prefix=None, on_path=None, exclude=None):
 	"""
 	Performs a fisher exact test
 	:param id_list: list of node ids eg. ["DOID:8398","DOID:3222"]
@@ -1483,6 +1499,7 @@ def top_n_fisher_exact(id_list, id_node_label, target_node_label, rel_type=None,
 	:param n: Number of results to return
 	:param curie_prefix: Optional string specifying the prefix of the curie ID
 	:param on_path: None, or a path for which the results need to be on. eg. on_path = ["physically_interacts_with", "chemical_substance"]
+	:param exclude: an id to exclude eg. "DOID:1234"
 	:return: (dict: keys id's, values p-values, sorted list of identities (in ascending p-values))
 	"""
 	if rel_type:
@@ -1508,6 +1525,11 @@ def top_n_fisher_exact(id_list, id_node_label, target_node_label, rel_type=None,
 				pass
 			else:
 				continue
+		if exclude:
+			if id == exclude:
+				continue
+			else:
+				pass
 		res_dict[id] = prob
 		selected.append(id)
 		num_selected += 1
