@@ -15,11 +15,11 @@ import fisher_exact
 disease_id = "OMIM:605724"
 use_json = False
 
-num_omim_keep = 15  # number of genetic conditions to keep
-num_protein_keep = 15  # number of implicated proteins to keep
-num_pathways_keep = 15  # number of pathways to keep
-num_pathway_proteins_selected = 15  # number of proteins enriched for the above pathways to select
-num_drugs_keep = 15  # number of drugs that target those proteins to keep
+num_omim_keep = 20  # number of genetic conditions to keep
+num_protein_keep = 20  # number of implicated proteins to keep
+num_pathways_keep = 20  # number of pathways to keep
+num_pathway_proteins_selected = 20  # number of proteins enriched for the above pathways to select
+num_drugs_keep = 20  # number of drugs that target those proteins to keep
 num_paths = 2  # number of paths to keep for each drug selected
 
 # Initialize the response class
@@ -153,10 +153,10 @@ for drug in drugs_selected:
 graph_weight_tuples.sort(key=lambda x: x[1])
 
 # Temp print out names
-for graph, _ in graph_weight_tuples:
+for graph, weight in graph_weight_tuples:
 	for u,d in graph.nodes(data=True):
 		if d['names'].split(":")[0] == "CHEMBL.COMPOUND":
-			print(d['properties']['name'])
+			print("%s %f" % (d['properties']['name'], weight)
 
 # print out the results
 if not use_json:
