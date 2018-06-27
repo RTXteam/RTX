@@ -152,6 +152,12 @@ for drug in drugs_selected:
 # sort by the path weight
 graph_weight_tuples.sort(key=lambda x: x[1])
 
+# Temp print out names
+for graph, _ in graph_weight_tuples:
+	for u,d in graph.nodes(data=True):
+		if d['names'].split(":")[0] == "CHEMBL.COMPOUND":
+			print(d['properties']['name'])
+
 # print out the results
 if not use_json:
 	print("source,target")
