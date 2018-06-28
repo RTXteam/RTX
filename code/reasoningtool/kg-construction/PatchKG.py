@@ -99,8 +99,12 @@ def main(argv):
     try:
         opts, args = getopt.getopt(argv, "had", ["add_has_phenotype_relations", "delete_duplicated_react_nodes"])
     except getopt.GetoptError:
+        print("Wrong parameter")
         print("PatchKG.py -a <add_has_phenotype_relations> -d <delete_duplicated_react_nodes>")
         sys.exit(2)
+    if len(opts) == 0:
+        print("Need parameters")
+        print("PatchKG.py -a <add_has_phenotype_relations> -d <delete_duplicated_react_nodes>")
     for opt, arg in opts:
         if opt == '-h':
             print("PatchKG.py -a <add_has_phenotype_relations> -d <delete_duplicated_react_nodes>")
