@@ -156,7 +156,7 @@ graph_weight_tuples.sort(key=lambda x: x[1])
 for graph, weight in graph_weight_tuples:
 	for u,d in graph.nodes(data=True):
 		if d['names'].split(":")[0] == "CHEMBL.COMPOUND":
-			print("%s %f" % (d['properties']['name'], weight)
+			print("%s %f" % (d['properties']['name'], weight))
 
 # print out the results
 if not use_json:

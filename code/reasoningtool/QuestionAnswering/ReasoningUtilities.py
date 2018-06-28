@@ -1458,36 +1458,51 @@ def get_subgraph_through_node_sets_known_relationships(node_label_relationship_t
 		else:
 			query += "(n%d)" % i
 		if rel_type:
-			query += "-[:%s]-" % rel_type
+			query += "-[r%d:%s]-" % (i, rel_type)
 		else:
-			query += "-[]-"
+			query += "-[r%d]-" % i
 	# tack on the last guy
 	node_label = node_label_relationship_type_list[-1]
 	if node_label:
 		query += "(n%d:%s)" % (len(node_label_relationship_type_list)-1, node_label)
 	else:
 		query += "(n%d)" % (len(node_label_relationship_type_list)-1)
-	query += " where "
-	for i in range(len(list_of_node_id_lists)):
-		index = 2*i
-		id_list = list_of_node_id_lists[i]
-		if id_list:
-			query += "n%d.id in [" % index
-			for id in id_list:
-				query += '"%s",' % id
-			query = query[:-1]
-			query += "] and "
-	query = query[:-4]  # drop the last " and"
-	query += "return path"
-	if debug:
-		print(query)
-	else:
-		res = cypher.run(query, conn=connection, config=defaults)
-		if not res:
-			raise CustomExceptions.EmptyCypherError(query)
-		else:
-			graph = get_graph(res, directed=directed)
-			return graph
+	if not all(v is None for v in list_of_node_id_lists):
+		query += " where "
+		for i in range(len(list_of_node_id_lists)):
+			index = 2*i
+			id_list = list_of_node_id_lists[i]
+			if id_list:
+				query += "n%d.id in [" % index
+				for id in id_list:
+					query += '"%s",' % id
+				query = query[:-1]
+				query += "] and "
+		query = query[:-4]  # drop the last " and"
+	##########################################
+	# Hacky way to get it to run fast. If you want neo4j to return two lists of different lengths, you get as many rows
+	# as is in the longer list (and sometimes a cross product)
+	# so do them one at a time, get the unique nodes, then get the unique edges
+	query_nodes = query + " unwind nodes(path) as ns with distinct ns as ns return collect(ns)"
+	query_edges = query + " unwind relationships(path) as rels with distinct rels as rels return collect(rels)"
+	res_nodes = cypher.run(query_nodes, conn=connection, config=defaults)
+	res_edges = cypher.run(query_edges, conn=connection, config=defaults)
+	# stick the relationships in the right place
+	res_nodes._results.graph[0]['relationships'] = res_edges._results.graph[0]['relationships']
+	graph = get_graph(res_nodes, directed=directed)
+	return graph
+	# end hack
+	######################################################
+	# query += " unwind nodes(path) as ns unwind relationships(path) as rels with distinct rels as rels, ns as ns return collect(ns) as ns, collect(rels) as rels"
+	#if debug:
+	#	print(query)
+	#else:
+	#	res = cypher.run(query, conn=connection, config=defaults)
+	#	if not res:
+	#		raise CustomExceptions.EmptyCypherError(query)
+	#	else:
+	#		graph = get_graph(res, directed=directed)
+	#		return graph
 
 
 def top_n_fisher_exact(id_list, id_node_label, target_node_label, rel_type=None, n=10, curie_prefix=None, on_path=None, exclude=None):
