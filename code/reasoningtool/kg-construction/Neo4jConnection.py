@@ -212,6 +212,14 @@ class Neo4jConnection:
         with self._driver.session() as session:
             return session.write_transaction(self.__count_has_phenotype_relation, relation)
 
+    def remove_duplicated_react_nodes(self):
+        with self._driver.session() as session:
+            return session.write_transaction(self.__remove_duplicated_react_nodes)
+
+    def count_duplicated_nodes(self):
+        with self._driver.session() as session:
+            return session.write_transaction(self.__count_duplicated_nodes)
+
     @staticmethod
     def _get_anatomy_nodes(tx):
         result = tx.run("MATCH (n:anatomical_entity) RETURN n.id")
@@ -621,3 +629,23 @@ class Neo4jConnection:
         )
         return result.single()['count(p)']
 
+    @staticmethod
+    def __remove_duplicated_react_nodes(tx):
+        result = tx.run(
+            """
+            MATCH (n), (m) 
+            WHERE n<>m AND n.id=m.id AND split(n.rtx_name, ':')[0] = 'REACT'
+            DELETE n
+            """
+        )
+        return result
+
+    @staticmethod
+    def __count_duplicated_nodes(tx):
+        result = tx.run(
+            """
+            MATCH (n), (m)
+            WHERE n<>m AND n.id=m.id return count(*)
+            """,
+        )
+        return result.single()['count(*)']

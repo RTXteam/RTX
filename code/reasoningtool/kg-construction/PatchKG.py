@@ -73,6 +73,21 @@ class PatchKG:
 
         conn.close()
 
+    @staticmethod
+    def delete_duplicated_react_nodes():
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+
+        if conn.count_duplicated_nodes() != 0:
+            conn.remove_duplicated_react_nodes()
+
+        conn.close()
+
 
 if __name__ == '__main__':
-    PatchKG.add_disease_has_phenotype_relations()
+    # PatchKG.add_disease_has_phenotype_relations()
+    PatchKG.delete_duplicated_react_nodes()
