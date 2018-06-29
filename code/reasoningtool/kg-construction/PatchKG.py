@@ -2,7 +2,8 @@
 
 How to run this module
 $ cd [git repo]/code/reasoningtool/kg-construction
-$ python3 PatchKG.py
+$ python3 PatchKG.py -a         #   add_disease_has_phenotype_relations
+$ python3 PatchKG.py -d         #   delete_duplicated_react_nodes
 """
 
 
@@ -26,10 +27,10 @@ __status__ = 'Prototype'
 from QueryBioLink import QueryBioLink
 from Neo4jConnection import Neo4jConnection
 import json
+import sys, getopt
 
 
 class PatchKG:
-
     @staticmethod
     def add_disease_has_phenotype_relations():
 
@@ -84,10 +85,35 @@ class PatchKG:
 
         if conn.count_duplicated_nodes() != 0:
             conn.remove_duplicated_react_nodes()
+            if conn.count_duplicated_nodes() != 0:
+                print("Delete duplicated reactom nodes unsuccessfully")
+            else:
+                print("Delete duplicated reactom nodes successfully")
+        else:
+            print("no duplicated reactom nodes")
 
         conn.close()
 
 
+def main(argv):
+    try:
+        opts, args = getopt.getopt(argv, "had", ["add_has_phenotype_relations", "delete_duplicated_react_nodes"])
+    except getopt.GetoptError:
+        print("Wrong parameter")
+        print("PatchKG.py -a <add_has_phenotype_relations> -d <delete_duplicated_react_nodes>")
+        sys.exit(2)
+    if len(opts) == 0:
+        print("Need parameters")
+        print("PatchKG.py -a <add_has_phenotype_relations> -d <delete_duplicated_react_nodes>")
+    for opt, arg in opts:
+        if opt == '-h':
+            print("PatchKG.py -a <add_has_phenotype_relations> -d <delete_duplicated_react_nodes>")
+            sys.exit()
+        elif opt in ["-a", "--add_has_phenotype_relations"]:
+            PatchKG.add_disease_has_phenotype_relations()
+        elif opt in ["-d", "--delete_duplicated_react_nodes"]:
+            PatchKG.delete_duplicated_react_nodes()
+
+
 if __name__ == '__main__':
-    # PatchKG.add_disease_has_phenotype_relations()
-    PatchKG.delete_duplicated_react_nodes()
+    main(sys.argv[1:])
