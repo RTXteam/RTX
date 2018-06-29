@@ -12,6 +12,8 @@ import CustomExceptions
 import numpy as np
 import fisher_exact
 import matplotlib.pyplot as mpl
+import NormGoogleDistance
+NormGoogleDistance = NormGoogleDistance.NormGoogleDistance()
 
 #disease_id = "OMIM:605724"
 disease_id = "OMIM:603903"
@@ -170,11 +172,20 @@ for graph, weight, drug_id in graph_weight_tuples:
 	print("%s %f" % (drug_description, weight))
 
 # temp plot it
+graph_num = 1
 labels_dict = dict()
-for key, value in nx.get_node_attributes(graph_weight_tuples[0][0], "properties").items():
+for key, value in nx.get_node_attributes(graph_weight_tuples[graph_num][0], "properties").items():
 	labels_dict[key] = value["name"]
-nx.draw(graph_weight_tuples[0][0], with_labels=True, labels=labels_dict)
+nx.draw(graph_weight_tuples[graph_num][0], with_labels=True, labels=labels_dict)
 mpl.show()
+
+# check the normalized google distance
+for drug_id in drugs_selected:
+	drug_description = RU.get_node_property(drug_id, "name", node_label="chemical_substance")
+	gd = NormGoogleDistance.get_ngd_for_all([drug_id, disease_id], [drug_description, disease_description])
+	print("%s: %f" % (drug_description, gd))
+
+# could also try running the drug disease pairs through COHD
 
 # print out the results
 if not use_json:
