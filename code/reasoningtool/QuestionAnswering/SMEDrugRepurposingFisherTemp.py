@@ -11,15 +11,18 @@ import SimilarNodesInCommon
 import CustomExceptions
 import numpy as np
 import fisher_exact
+import matplotlib.pyplot as mpl
 
-disease_id = "OMIM:605724"
+#disease_id = "OMIM:605724"
+disease_id = "OMIM:603903"
 use_json = False
 
-num_omim_keep = 20  # number of genetic conditions to keep
-num_protein_keep = 20  # number of implicated proteins to keep
-num_pathways_keep = 20  # number of pathways to keep
-num_pathway_proteins_selected = 20  # number of proteins enriched for the above pathways to select
-num_drugs_keep = 20  # number of drugs that target those proteins to keep
+num_input_disease_symptoms = 15  # number of representative symptoms of the disease to keep
+num_omim_keep = 25  # number of genetic conditions to keep
+num_protein_keep = 25  # number of implicated proteins to keep
+num_pathways_keep = 25  # number of pathways to keep
+num_pathway_proteins_selected = 25  # number of proteins enriched for the above pathways to select
+num_drugs_keep = 25  # number of drugs that target those proteins to keep
 num_paths = 2  # number of paths to keep for each drug selected
 
 # Initialize the response class
@@ -30,7 +33,9 @@ response.response.table_column_names = ["disease name", "disease ID", "drug name
 disease_description = RU.get_node_property(disease_id, 'name')
 
 # Find symptoms of disease
-symptoms = RU.get_one_hop_target("disease", disease_id, "phenotypic_feature", "has_phenotype")
+#symptoms = RU.get_one_hop_target("disease", disease_id, "phenotypic_feature", "has_phenotype")
+#symptoms_set = set(symptoms)
+(symptoms_dict, symptoms) = RU.top_n_fisher_exact([disease_id], "disease", "phenotypic_feature", rel_type="has_phenotype", n=num_input_disease_symptoms)
 symptoms_set = set(symptoms)
 
 # Find diseases enriched for that phenotype
@@ -80,6 +85,13 @@ for u, v, d in g.edges(data=True):
 	u_id = nx_node_to_id[u]
 	v_id = nx_node_to_id[v]
 	# decorate correct nodes
+	# input disease to symptoms, decorated by symptom p-value
+	if (u_id in symptoms_set and v_id==disease_id) or (v_id in symptoms_set and u_id==disease_id):
+		try:
+			d["p_value"] = symptoms_dict[v_id]
+		except:
+			d["p_value"] = symptoms_dict[u_id]
+		continue
 	# symptom to disease, decorated by disease p-value
 	if (u_id in symptoms_set and v_id in genetic_diseases_dict) or (v_id in symptoms_set and u_id in genetic_diseases_dict):
 		try:
@@ -147,16 +159,22 @@ for drug in drugs_selected:
 			source_uuid = edge_prop['properties']['source_node_uuid']
 			target_uuid = edge_prop['properties']['target_node_uuid']
 			g2.add_edge(source_uuid, target_uuid, **edge_prop)
-		graph_weight_tuples.append((g2, path_lengths[path_ind]))
+		graph_weight_tuples.append((g2, path_lengths[path_ind], drug))
 
 # sort by the path weight
 graph_weight_tuples.sort(key=lambda x: x[1])
 
 # Temp print out names
-for graph, weight in graph_weight_tuples:
-	for u,d in graph.nodes(data=True):
-		if d['names'].split(":")[0] == "CHEMBL.COMPOUND":
-			print("%s %f" % (d['properties']['name'], weight))
+for graph, weight, drug_id in graph_weight_tuples:
+	drug_description = RU.get_node_property(drug_id, "name", node_label="chemical_substance")
+	print("%s %f" % (drug_description, weight))
+
+# temp plot it
+labels_dict = dict()
+for key, value in nx.get_node_attributes(graph_weight_tuples[0][0], "properties").items():
+	labels_dict[key] = value["name"]
+nx.draw(graph_weight_tuples[0][0], with_labels=True, labels=labels_dict)
+mpl.show()
 
 # print out the results
 if not use_json:
@@ -167,16 +185,13 @@ if not use_json:
 	# name = RU.get_node_property(drug, "name", node_label="chemical_substance")
 	# print("%s (%s)" % (name, drug))
 else:
-	for drug_id in drugs_selected:
+	response.response.table_column_names = ["disease name", "disease ID", "drug name", "drug ID", "path weight"]
+	for graph, weight, drug_id in graph_weight_tuples:
 		drug_description = RU.get_node_property(drug_id, "name", node_label="chemical_substance")
-		g = RU.return_subgraph_through_node_labels(disease_id, "disease", drug_id, "chemical_substance",
-												   ["protein", "pathway", "protein"],
-												   with_rel=["disease", "gene_mutations_contribute_to",
-															 "protein"],
-												   directed=False)
-		res = response.add_subgraph(g.nodes(data=True), g.edges(data=True),
+		confidence = 0.5
+		res = response.add_subgraph(graph.nodes(data=True), graph.edges(data=True),
 									"The drug %s is predicted to treat %s." % (
-									drug_description, disease_description), "-1",
+									drug_description, disease_description), confidence,
 									return_result=True)
 		res.essence = "%s" % drug_description  # populate with essence of question result
 		row_data = []  # initialize the row data
@@ -184,6 +199,6 @@ else:
 		row_data.append("%s" % disease_id)
 		row_data.append("%s" % drug_description)
 		row_data.append("%s" % drug_id)
-		row_data.append("%f" % -1)
+		row_data.append("%f" % weight)
 		res.row_data = row_data
 	response.print()
