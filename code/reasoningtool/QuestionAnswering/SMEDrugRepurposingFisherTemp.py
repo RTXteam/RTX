@@ -14,6 +14,11 @@ import fisher_exact
 import matplotlib.pyplot as mpl
 import NormGoogleDistance
 NormGoogleDistance = NormGoogleDistance.NormGoogleDistance()
+# TODO: Temp file path names etc
+sys.path.append("code/reasoningtool/QuestionAnswering/MLDrugRepurposing/FWPredictor")
+import predictor
+p = predictor.predictor(model_file="code/reasoningtool/QuestionAnswering/MLDrugRepurposing/FWPredictor/LogModel.pkl")
+p.import_file(None, graph_file="code/reasoningtool/QuestionAnswering/MLDrugRepurposing/FWPredictor/rel_max.emb.gz", map_file="code/reasoningtool/QuestionAnswering/MLDrugRepurposing/FWPredictor/map.csv")
 
 #disease_id = "OMIM:605724"
 disease_id = "OMIM:603903"
@@ -187,6 +192,15 @@ for drug_id in drugs_selected:
 
 # could also try running the drug disease pairs through COHD
 
+# Going to annotate with ML method prob(treats) as well
+for drug_id in drugs_selected:
+	drug_description = RU.get_node_property(drug_id, "name", node_label="chemical_substance")
+	drug_id_old_curie = drug_id.replace("CHEMBL.COMPOUND:CHEMBL","ChEMBL:")
+	prob = p.prob_single(drug_id_old_curie, disease_id)
+	if not prob:
+		prob = "-1"
+	print("%s: %f" % (drug_description, prob))
+
 # print out the results
 if not use_json:
 	print("source,target")
@@ -196,10 +210,21 @@ if not use_json:
 	# name = RU.get_node_property(drug, "name", node_label="chemical_substance")
 	# print("%s (%s)" % (name, drug))
 else:
-	response.response.table_column_names = ["disease name", "disease ID", "drug name", "drug ID", "path weight"]
+	response.response.table_column_names = ["disease name", "disease ID", "drug name", "drug ID", "path weight", "drug disease google distance", "ML probability drug treats disease"]
 	for graph, weight, drug_id in graph_weight_tuples:
+		print(drug_id)
 		drug_description = RU.get_node_property(drug_id, "name", node_label="chemical_substance")
-		confidence = 0.5
+		drug_id_old_curie = drug_id.replace("CHEMBL.COMPOUND:CHEMBL", "ChEMBL:")
+		# Machine learning probability of "treats"
+		prob = p.prob_single(drug_id_old_curie, disease_id)
+		if not prob:
+			prob = "-1"
+		else:
+			prob = prob[0]
+		confidence = prob
+		# Google distance
+		gd = NormGoogleDistance.get_ngd_for_all([drug_id, disease_id], [drug_description, disease_description])
+		# populate the graph
 		res = response.add_subgraph(graph.nodes(data=True), graph.edges(data=True),
 									"The drug %s is predicted to treat %s." % (
 									drug_description, disease_description), confidence,
@@ -211,5 +236,7 @@ else:
 		row_data.append("%s" % drug_description)
 		row_data.append("%s" % drug_id)
 		row_data.append("%f" % weight)
+		row_data.append("%f" % gd)
+		row_data.append("%f" % prob)
 		res.row_data = row_data
 	response.print()
