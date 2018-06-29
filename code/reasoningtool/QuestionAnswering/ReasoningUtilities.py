@@ -1485,6 +1485,10 @@ def get_subgraph_through_node_sets_known_relationships(node_label_relationship_t
 	# so do them one at a time, get the unique nodes, then get the unique edges
 	query_nodes = query + " unwind nodes(path) as ns with distinct ns as ns return collect(ns)"
 	query_edges = query + " unwind relationships(path) as rels with distinct rels as rels return collect(rels)"
+	if debug:
+		print(query_nodes)
+		print(query_edges)
+		return
 	res_nodes = cypher.run(query_nodes, conn=connection, config=defaults)
 	res_edges = cypher.run(query_edges, conn=connection, config=defaults)
 	# stick the relationships in the right place
