@@ -21,7 +21,8 @@ p = predictor.predictor(model_file="code/reasoningtool/QuestionAnswering/MLDrugR
 p.import_file(None, graph_file="code/reasoningtool/QuestionAnswering/MLDrugRepurposing/FWPredictor/rel_max.emb.gz", map_file="code/reasoningtool/QuestionAnswering/MLDrugRepurposing/FWPredictor/map.csv")
 
 #disease_id = "OMIM:605724"
-disease_id = "OMIM:603903"
+#disease_id = "OMIM:603903"
+disease_id = "DOID:13636"
 use_json = False
 
 num_input_disease_symptoms = 15  # number of representative symptoms of the disease to keep
@@ -240,3 +241,35 @@ else:
 		row_data.append("%f" % prob)
 		res.row_data = row_data
 	response.print()
+
+
+#g2 = RU.get_subgraph_through_node_sets_known_relationships(path_type, [[disease_id], symptoms, genetic_diseases_selected, implicated_proteins_selected, pathways_selected, pathway_proteins_selected, drugs_selected])
+import copy
+# Write to graphml
+# delete dictionary values
+for u,v,d in g.edges(data=True):
+	for key in [k for k in d.keys()]:
+		if type(d[key]) == dict:
+			for sub_key in d[key].keys():
+				d[sub_key] = d[key][sub_key]
+			del d[key]
+		elif type(d[key]) == list:
+			del d[key]
+for u,d in g.nodes(data=True):
+	for key in [k for k in d.keys()]:
+		if type(d[key]) == dict:
+			for sub_key in d[key].keys():
+				d[sub_key] = d[key][sub_key]
+			del d[key]
+		elif type(d[key]) == list:
+			del d[key]
+for u,d in g.nodes(data=True):
+	if "symbol" in d:
+		d["name"] = d["symbol"]
+for u,v,d in g.edges(data=True):
+	for key in [k for k in d.keys()]:
+		if type(d[key]) == np.float64:
+			d[key] = float(d[key])
+
+
+nx.write_graphml(g, '/home/dkoslicki/Data/Temp/test2.graphml')
