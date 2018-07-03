@@ -67,7 +67,7 @@ class DrugMapperTestCase(unittest.TestCase):
         self.assertIsNotNone(onto_results)
         self.assertIsNotNone(onto_results['indications'])
         self.assertIsNotNone(onto_results['contraindications'])
-        self.assertEqual(8, len(onto_results['indications']))
+        self.assertEqual(10, len(onto_results['indications']))
         self.assertEqual(89, len(onto_results['contraindications']))
 
         #   test case for Penicillin V

@@ -112,7 +112,6 @@ class DrugMapper:
         if not isinstance(chembl_id, str):
             return {'indications': indication_onto_set, "contraindications": contraindication_onto_set}
         drug_use = QueryMyChem.get_drug_use(chembl_id)
-        print(drug_use)
         indications = drug_use['indications']
         contraindications = drug_use['contraindications']
         sm = SynonymMapper()
@@ -143,12 +142,12 @@ if __name__ == '__main__':
     # umls_set = DrugMapper.map_drug_to_UMLS("CHEMBL1082")
     # print(umls_set)
 
-    onto_set = DrugMapper.map_drug_to_ontology("CHEMBL:521")
+    # onto_set = DrugMapper.map_drug_to_ontology("CHEMBL:521")
+    # print(onto_set['contraindications'])
+
+    onto_set = DrugMapper.map_drug_to_ontology("CHEMBL2107884")
     print(onto_set)
 
-    # onto_set = DrugMapper.map_drug_to_ontology("CHEMBL2107884")
-    # print(onto_set)
-    #
-    # onto_set = DrugMapper.map_drug_to_ontology("CHEMBL33")
-    # print(onto_set)
+    onto_set = DrugMapper.map_drug_to_ontology("CHEMBL33")
+    print(onto_set)
 

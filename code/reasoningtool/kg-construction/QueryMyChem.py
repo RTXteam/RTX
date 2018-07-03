@@ -35,7 +35,6 @@ class QueryMyChem:
     def __access_api(handler):
 
         url = QueryMyChem.API_BASE_URL + '/' + handler
-        print(url)
         try:
             res = requests.get(url, timeout=QueryMyChem.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
@@ -226,7 +225,6 @@ class QueryMyChem:
         results = QueryMyChem.__access_api(handler)
         if results is not None:
             json_dict = json.loads(results)
-            print(json_dict['drugcentral']['drug_use'])
             if "drugcentral" in json_dict.keys():
                 drugcentral = json_dict['drugcentral']
                 if "drug_use" in drugcentral.keys():
