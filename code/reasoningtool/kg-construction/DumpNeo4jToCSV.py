@@ -11,15 +11,16 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
+import getopt
+import sys
 import neo4j.v1
 from BioNetExpander import BioNetExpander
 from Orangeboard import Orangeboard
 
-driver = neo4j.v1.GraphDatabase.driver('bolt://localhost:7687',
-                                       auth=('neo4j', 'precisionmedicine'))
 
 def run_cypher(query, parameters=None):
     return driver.session().run(query, parameters)
+
 
 def make_nodes_file(filename='nodes.csv', separator=','):
     query_result = run_cypher('match (n) return n')
@@ -37,11 +38,11 @@ def make_nodes_file(filename='nodes.csv', separator=','):
             nodes_file.write('node' + separator + node_uuid + separator + nodetype + separator + nodename + '\n')
     nodes_file.close()
 
-rels_set = set()
 
 def make_rels_file(filename='rels.csv', separator=','):
     assert ':' not in separator
     query_result = run_cypher('match (n)-[r]-(m) return n.UUID, m.UUID, r')
+    rels_set = set()
     rels_file = open(filename, 'w')
     for record in query_result:
         source_node_uuid = record[0]
@@ -57,10 +58,42 @@ def make_rels_file(filename='rels.csv', separator=','):
             rels_file.write('rel' + separator + source_node_uuid + separator + target_node_uuid + separator + sourcedb + ':' + reltype + '\n')
     rels_file.close()
 
-make_nodes_file()
-make_rels_file()
+def print_help():
+    print('python3 DumpNeo4jToCSV [-h help | -a address | -u username | -p password]\n'
+          'Options and arguments:\n'
+          ' -h  : Show help message and exit\n'
+          ' -a  : Address and port to connect to. (default:bolt://localhost:7687)\n'
+          ' -u  : Username to connect as. (default: )\n'
+          ' -p  : Password to connect with. (default: )\n'
+          '')
 
-        
-        
-        
-        
+if __name__ == '__main__':
+
+    address = 'bolt://localhost:7687'
+    username = ''
+    password = ''
+
+    try:
+        options, args = getopt.getopt(sys.argv[1:], "ha:u:p:", ['help', 'address=' 'username=', 'password='])
+        for opt, arg in options:
+            if opt in ('-h', '--help'):
+                print_help()
+                exit(0)
+            elif opt in ('-a', '--address'):
+                address = arg
+            elif opt in ('-u', '--username'):
+                username = arg
+            elif opt in ('-p', '--password'):
+                password = arg
+    except getopt.GetoptError:
+        print_help()
+        exit(0)
+
+    if username == '' or password == '':
+        print('Invalid username or password\n')
+        print_help()
+        exit(0)
+
+    driver = neo4j.v1.GraphDatabase.driver(address, auth=(username, password))
+    make_nodes_file()
+    make_rels_file()
