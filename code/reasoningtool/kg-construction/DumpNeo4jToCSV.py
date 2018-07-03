@@ -40,7 +40,7 @@ def make_nodes_file(filename='nodes.csv', separator=','):
 
 def make_rels_file(filename='rels.csv', separator=','):
     assert ':' not in separator
-    query_result = run_cypher('match (n)-[r]-(m) return n.UUID, m.UUID, r')
+    query_result = run_cypher('match (n)-[r]-(m) return n.UUID, m.UUID, r LIMIT 10000')
     rels_set = set()
     rels_file = open(filename, 'w')
     for record in query_result:
@@ -50,7 +50,7 @@ def make_rels_file(filename='rels.csv', separator=','):
         rel_properties = rel.properties
         reltype = rel.type
         reltype_dir = BioNetExpander.MASTER_REL_IS_DIRECTED[reltype]
-        sourcedb = rel_properties['sourcedb']
+        sourcedb = rel_properties['provided_by']
         rel_key = Orangeboard.make_rel_dict_key(source_node_uuid, target_node_uuid, reltype_dir)
         if rel_key not in rels_set:
             rels_set.add(rel_key)
@@ -66,15 +66,12 @@ if __name__ == '__main__':
     parser.add_argument("-u", "--username", help="username to connect as. (default: )", default='')
     parser.add_argument("-p", "--password", help="password to connect with. (default: )", default='')
     args = parser.parse_args()
-    address = args.address
-    username = args.username
-    password = args.password
 
-    if username == '' or password == '':
+    if args.username == '' or args.password == '':
         print('usage: DumpNeo4jToCSV.py [-h] [-a ADDRESS] [-u USERNAME] [-p PASSWORD]')
         print('DumpNeo4jToCSV.py: error: invalid username or password')
         exit(0)
 
-    driver = neo4j.v1.GraphDatabase.driver(address, auth=(username, password))
+    driver = neo4j.v1.GraphDatabase.driver(args.address, auth=(args.username, args.password))
     make_nodes_file()
     make_rels_file()
