@@ -11,8 +11,7 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-import getopt
-import sys
+import argparse
 import neo4j.v1
 from BioNetExpander import BioNetExpander
 from Orangeboard import Orangeboard
@@ -58,40 +57,22 @@ def make_rels_file(filename='rels.csv', separator=','):
             rels_file.write('rel' + separator + source_node_uuid + separator + target_node_uuid + separator + sourcedb + ':' + reltype + '\n')
     rels_file.close()
 
-def print_help():
-    print('python3 DumpNeo4jToCSV [-h help | -a address | -u username | -p password]\n'
-          'Options and arguments:\n'
-          ' -h  : Show help message and exit\n'
-          ' -a  : Address and port to connect to. (default:bolt://localhost:7687)\n'
-          ' -u  : Username to connect as. (default: )\n'
-          ' -p  : Password to connect with. (default: )\n'
-          '')
 
 if __name__ == '__main__':
 
-    address = 'bolt://localhost:7687'
-    username = ''
-    password = ''
-
-    try:
-        options, args = getopt.getopt(sys.argv[1:], "ha:u:p:", ['help', 'address=' 'username=', 'password='])
-        for opt, arg in options:
-            if opt in ('-h', '--help'):
-                print_help()
-                exit(0)
-            elif opt in ('-a', '--address'):
-                address = arg
-            elif opt in ('-u', '--username'):
-                username = arg
-            elif opt in ('-p', '--password'):
-                password = arg
-    except getopt.GetoptError:
-        print_help()
-        exit(0)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-a", "--address", help="address and port to connect to. (default:bolt://localhost:7687)",
+                        default="bolt://localhost:7687")
+    parser.add_argument("-u", "--username", help="username to connect as. (default: )", default='')
+    parser.add_argument("-p", "--password", help="password to connect with. (default: )", default='')
+    args = parser.parse_args()
+    address = args.address
+    username = args.username
+    password = args.password
 
     if username == '' or password == '':
-        print('Invalid username or password\n')
-        print_help()
+        print('usage: DumpNeo4jToCSV.py [-h] [-a ADDRESS] [-u USERNAME] [-p PASSWORD]')
+        print('DumpNeo4jToCSV.py: error: invalid username or password')
         exit(0)
 
     driver = neo4j.v1.GraphDatabase.driver(address, auth=(username, password))
