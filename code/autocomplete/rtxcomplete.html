@@ -12,7 +12,7 @@
 
     .column {
     float: left;
-    width: 50%;
+    width: 100%;
     }
 
     /* Clear floats after the columns */
@@ -23,6 +23,7 @@
     }
       </style>
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="/data/quick_def.json"><script>
   <script src="/bootstrap.js"></script>
   <script src="/bootstrap3-typeahead.js"></script>
   <script src="/rtxcomplete.js"></script>
@@ -32,11 +33,10 @@
       <div class="row">
 	<div class="column">
 	  <h6>Autocomplete</h6>
-
-        <input type="text" class="typeInput" data-provide="typeahead" />
+          <input type="text" class="typeInput" data-provide="typeahead" />
+	  <p id="quick_def_field"></p>
 	</div>
-</div>
-     
+     </div>
     </center>
   </body>
 

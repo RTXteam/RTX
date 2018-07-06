@@ -32,6 +32,22 @@ $( document ).ready( function(){
 	name: 'stuff',
 	display: 'value',
 	source: function(query, callback) {
+	    query = query.trim();
+	    if (query.length == 0){
+		return;
+	    }
+	    var hit = false;
+	    var def_tmp = query.split(" ");
+	    for (i = 0; i < def_tmp.length && hit == false; i++){
+		var def = quick_def[def_tmp[i].toLowerCase()];
+		if (def){
+		    hit = true;
+		    $("#quick_def_field").html(def);
+		}
+	    }
+	    if (!hit){
+		$("#quick_def_field").text("");
+	    }
 	    $.ajax({
 		url: "/auto?word="+query+"&limit=10",
 		cache: false,
@@ -47,6 +63,7 @@ $( document ).ready( function(){
 			var idx = lowerItem.indexOf(lowerQuery);
 			var tmp = "";
 			var lastIdx = 0;
+			//can change this later to a more efficient version with split()
 			while (idx > -1){
 			    tmp += item.substring(lastIdx,idx);
 			    tmp += "#";
