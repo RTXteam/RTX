@@ -99,8 +99,10 @@ def make_https_app():
         (r"/autofuzzy(.*)", autofuzzySearch),
         (r"/auto(.*)", autoSearch),
         (r"/fuzzy(.*)", fuzzySearch),
-        (r"/(.*)", tornado.web.StaticFileHandler, {"path": root, "default_filename": "rtxcomplete.html"}),
-    ])
+        (r"/(.*)", tornado.web.StaticFileHandler,
+         {"path": root, "default_filename": "rtxcomplete.html"}),
+    ],
+        compress_response= True)
 
 class redirect_handler(tornado.web.RequestHandler):
     def prepare(self):
