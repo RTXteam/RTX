@@ -33,7 +33,7 @@ $( document ).ready( function(){
 	display: 'value',
 	source: function(query, callback) {
 	    $.ajax({
-		url: "http://rtxcomplete.ixlab.org/auto?word="+query+"&limit=10",
+		url: "/auto?word="+query+"&limit=10",
 		cache: false,
 		dataType:"jsonp",
 		success: function (response) {
