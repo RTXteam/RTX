@@ -83,7 +83,7 @@ To point the server at the certificates using Tornado make an HTTP server with t
 ```
 https_server = tornado.httpserver.HTTPServer(https_app, ssl_options={
         "certfile": "/etc/letsencrypt/live/rtx.ncats.io.ixlab.org/fullchain.pem",
-	"keyfile" : "/etc/letsencrypt/live/rtxncats.io/privkey.pem",
+	"keyfile" : "/etc/letsencrypt/live/rtx.ncats.io/privkey.pem",
 	})
 
 https_server.listen(443)
