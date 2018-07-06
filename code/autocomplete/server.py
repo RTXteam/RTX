@@ -92,6 +92,11 @@ class autofuzzySearch(tornado.web.RequestHandler):
             traceback.print_tb(sys.exc_info()[-1])
             #print sys.exc_info()[:]
             self.write("error")
+
+class defineSearch(tornado.web.RequestHandler):
+    def get(self, arg,word=None):
+        print "matched define search: not implemented"
+        self.write("")
             
 def make_https_app():
     return tornado.web.Application([
@@ -99,6 +104,7 @@ def make_https_app():
         (r"/autofuzzy(.*)", autofuzzySearch),
         (r"/auto(.*)", autoSearch),
         (r"/fuzzy(.*)", fuzzySearch),
+        (r"/define(.*)", defineSearch),
         (r"/(.*)", tornado.web.StaticFileHandler,
          {"path": root, "default_filename": "rtxcomplete.html"}),
     ],
