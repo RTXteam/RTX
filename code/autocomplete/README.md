@@ -80,11 +80,11 @@ $ sudo certbot certonly --standalone -d rtx.ncats.io
 
 To point the server at the certificates using Tornado make an HTTP server with the proper SSL options as demonstrated below;
 
-`
+```
 https_server = tornado.httpserver.HTTPServer(https_app, ssl_options={
         "certfile": "/etc/letsencrypt/live/rtx.ncats.io.ixlab.org/fullchain.pem",
 	"keyfile" : "/etc/letsencrypt/live/rtxncats.io/privkey.pem",
 	})
 
 https_server.listen(443)
-`
+```
