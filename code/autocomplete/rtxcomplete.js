@@ -9,7 +9,7 @@
 
 $( document ).ready( function(){
     $('.typeInput').typeahead({
-	highlighter: function (item) {
+	highlighter: function (item){
 	    var parts = item.split('#');
 	    var html = '';
 	    for (i = 0; i < parts.length; i++){
@@ -22,17 +22,27 @@ $( document ).ready( function(){
 	    return html;
 	},
 	updater: function (item) {
+	    console.log("updater: ");
+	    console.log($('.typeInput').val());
+	    var tmp = $('.typeInput').val().split(",");
+	    tmp = tmp.slice(0,tmp.length-1).join(", ");
 	    var parts = item.split('#');
-	    var text = parts.join("");
+	    var text = tmp + ", " + parts.join("");
 	    return text;
 	},
 	matcher: function (item){
+	    //console.log("matcher");
 	    return true;
 	},
 	name: 'stuff',
 	display: 'value',
 	source: function(query, callback) {
-	    query = query.trim();
+	    //console.log("'"+query+"'");
+	    //console.log(query.split(","));
+	    query = query.split(",");
+	    //var first_part = query.slice(0,query.length-1).join(", ");
+	    //console.log(first_part);
+	    query = query[query.length-1].trim();
 	    if (query.length == 0){
 		return;
 	    }

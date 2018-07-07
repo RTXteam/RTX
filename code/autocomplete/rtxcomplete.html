@@ -2,11 +2,19 @@
 <html>
   <link rel="stylesheet" href="/bootstrap.css">
   <style>
-    body, input {
+    body {
     font-family: Arial;
     font-size: 14pt;
     padding:10px;
     margin: 10px;
+    border: 1px solid #000;
+    }
+
+    input {
+    font-family: Arial;
+    font-size: 14pt;
+    padding:10px;
+    margin: auto;
     border: 1px solid #000;
     }
 
@@ -32,8 +40,7 @@
       <h1> AUTOCOMPLETE DEMO</h1>
       <div class="row">
 	<div class="column">
-	  <h6>Autocomplete</h6>
-          <input type="text" class="typeInput" data-provide="typeahead" />
+          <input type="text" class="typeInput" data-provide="typeahead" style="width:95%"/>
 	  <p id="quick_def_field"></p>
 	</div>
      </div>
