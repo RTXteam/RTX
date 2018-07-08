@@ -120,8 +120,11 @@ class QueryMyGene:
         return uniprot_ids
     
     def convert_gene_symbol_to_entrez_gene_ID(self, gene_symbol):
-        res = self.mygene_obj.query('symbol:' + gene_symbol, species='human',
-                                    fields='entrezgene', verbose=False)
+        try:
+            res = self.mygene_obj.query('symbol:' + gene_symbol, species='human',
+                                        fields='entrezgene', verbose=False)
+        except requests.exceptions.HTTPError:
+            res = set()
         entrez_ids = set()
         if len(res) > 0:
             entrez_ids = set()
