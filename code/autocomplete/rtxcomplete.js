@@ -27,7 +27,11 @@ $( document ).ready( function(){
 	    var tmp = $('.typeInput').val().split(",");
 	    tmp = tmp.slice(0,tmp.length-1).join(", ");
 	    var parts = item.split('#');
-	    var text = tmp + ", " + parts.join("");
+	    var text = "";
+	    if (tmp.length > 0){
+		text += tmp + ", ";
+	    }
+	    text += parts.join("");
 	    return text;
 	},
 	matcher: function (item){
