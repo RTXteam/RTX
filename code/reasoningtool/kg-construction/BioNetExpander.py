@@ -484,6 +484,15 @@ class BioNetExpander:
                                          "OMIM", target_node, source_node,
                                          extended_reltype="gene_mutations_contribute_to")
 
+        # query for phenotypes associated with this disease
+        phenotype_id_dict = QueryBioLink.get_phenotypes_for_disease_desc(node.name)
+        for phenotype_id_str in phenotype_id_dict.keys():
+            phenotype_node = self.add_node_smart("phenotypic_feature", phenotype_id_str,
+                                                desc=phenotype_id_dict[phenotype_id_str])
+        if phenotype_node is not None:
+            self.orangeboard.add_rel("has_phenotype", 'BioLink', node, phenotype_node,
+                                     extended_reltype="has_phenotype")
+
     def expand_mondo_disease(self, node):
         genes_list = QueryBioLink.get_genes_for_disease_desc(node.name)
         for hgnc_gene_id in genes_list:
