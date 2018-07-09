@@ -42,6 +42,8 @@ from QueryChEMBL import QueryChEMBL
 from QueryUniprotExtended import QueryUniprotExtended
 from QueryKEGG import QueryKEGG
 from QueryUniprot import QueryUniprot
+from QueryEBIOLSExtended import QueryEBIOLSExtended
+from DrugMapper import DrugMapper
 
 
 class BioNetExpander:
@@ -82,7 +84,9 @@ class BioNetExpander:
                               "involved_in": True,
                               "has_phenotype": True,
                               "has_part": True,
-                              "capable_of": True}
+                              "capable_of": True,
+                              "indicated_for": True,
+                              "contraindicated_for": True}
 
     GO_ONTOLOGY_TO_PREDICATE = {"biological_process": "involved_in",
                                 "cellular_component": "expressed_in",
@@ -171,7 +175,7 @@ class BioNetExpander:
                             prot_node = self.add_node_smart("protein", uniprot_id, desc=gene_symbol)
                             if prot_node is not None:
                                 self.orangeboard.add_rel("physically_interacts_with", "KEGG;UniProtKB", node, prot_node, extended_reltype="physically_interacts_with")
-        
+
     def expand_chemical_substance(self, node):
         assert node.nodetype == "chemical_substance"
         compound_desc = node.desc
@@ -199,6 +203,31 @@ class BioNetExpander:
                 target_node = self.add_node_smart('protein', uniprot_id, desc=gene_symbol)
                 if target_node is not None:
                     self.orangeboard.add_rel('physically_interacts_with', 'Pharos', node, target_node, extended_reltype="targets")
+
+        res_dict = DrugMapper.map_drug_to_ontology(node.name)
+        res_indications_set = res_dict['indications']
+        res_contraindications_set = res_dict['contraindications']
+
+        for ont_term in res_indications_set:
+            if ont_term.startswith('DOID:'):
+                ont_desc = QueryEBIOLSExtended.get_disease_description(ont_term)
+                ont_node = self.add_node_smart('disease', ont_term, desc=ont_desc)
+                self.orangeboard.add_rel('indicated_for', 'MyChem.info', node, ont_node, extended_reltype='indicated_for')
+            elif ont_term.startswith('HP:'):
+                ont_desc = QueryEBIOLSExtended.get_phenotype_description(ont_term)
+                ont_node = self.add_node_smart('phenotypic_feature', ont_term, desc=ont_desc)
+                self.orangeboard.add_rel('indicated_for', 'MyChem.info', node, ont_node, extended_reltype='indicated_for')
+
+        for ont_term in res_contraindications_set:
+            if ont_term.startswith('DOID:'):
+                ont_desc = QueryEBIOLSExtended.get_disease_description(ont_term)
+                ont_node = self.add_node_smart('disease', ont_term, desc=ont_desc)
+                self.orangeboard.add_rel('contraindicated_for', 'MyChem.info', node, ont_node, extended_reltype='contraindicated_for')
+            elif ont_term.startswith('HP:'):
+                ont_desc = QueryEBIOLSExtended.get_phenotype_description(ont_term)
+                ont_node = self.add_node_smart('phenotypic_feature', ont_term, desc=ont_desc)
+                self.orangeboard.add_rel('contraindicated_for', 'MyChem.info', node, ont_node, extended_reltype='contraindicated_for')
+
 
     def expand_microRNA(self, node):
         assert node.nodetype == "microRNA"
@@ -484,14 +513,6 @@ class BioNetExpander:
                                          "OMIM", target_node, source_node,
                                          extended_reltype="gene_mutations_contribute_to")
 
-        # query for phenotypes associated with this disease
-        phenotype_id_dict = QueryBioLink.get_phenotypes_for_disease_desc(node.name)
-        for phenotype_id_str in phenotype_id_dict.keys():
-            phenotype_node = self.add_node_smart("phenotypic_feature", phenotype_id_str,
-                                                desc=phenotype_id_dict[phenotype_id_str])
-            if phenotype_node is not None:
-                self.orangeboard.add_rel("has_phenotype", 'BioLink', node, phenotype_node, extended_reltype="has_phenotype")
-
     def expand_mondo_disease(self, node):
         genes_list = QueryBioLink.get_genes_for_disease_desc(node.name)
         for hgnc_gene_id in genes_list:
@@ -527,7 +548,7 @@ class BioNetExpander:
         if "MONDO:" in disease_name:
             self.expand_mondo_disease(node)
             return
-        
+
         # if we get here, this is a Disease Ontology disease
         disont_id = disease_name
 
@@ -683,7 +704,7 @@ class BioNetExpander:
         bne.expand_chemical_substance(chem_node)
         ob.neo4j_set_url()
         ob.neo4j_set_auth()
-        ob.neo4j_push()        
+        ob.neo4j_push()
 
     def test_issue_235():
         ob = Orangeboard(debug=False)
@@ -695,7 +716,7 @@ class BioNetExpander:
         ob.neo4j_set_url()
         ob.neo4j_set_auth()
         ob.neo4j_push()
-        
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Builds the master knowledge graph')
     parser.add_argument('--runfunc', dest='runfunc')
@@ -711,3 +732,4 @@ if __name__ == '__main__':
 
     running_time = timeit.timeit(lambda: run_method(), number=1)
     print('running time for function: ' + str(running_time))
+
