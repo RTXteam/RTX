@@ -698,18 +698,27 @@ class BioNetExpander:
         ob.neo4j_push()
         
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Builds the master knowledge graph')
-    parser.add_argument('--runfunc', dest='runfunc')
-    args = parser.parse_args()
-    args_dict = vars(args)
-    if args_dict.get('runfunc', None) is not None:
-        run_function_name = args_dict['runfunc']
-    else:
-        sys.exit("must specify --runfunc")
-    run_method = getattr(BioNetExpander, run_function_name, None)
-    if run_method is None:
-        sys.exit("function not found: " + run_function_name)
+    # parser = argparse.ArgumentParser(description='Builds the master knowledge graph')
+    # parser.add_argument('--runfunc', dest='runfunc')
+    # args = parser.parse_args()
+    # args_dict = vars(args)
+    # if args_dict.get('runfunc', None) is not None:
+    #     run_function_name = args_dict['runfunc']
+    # else:
+    #     sys.exit("must specify --runfunc")
+    # run_method = getattr(BioNetExpander, run_function_name, None)
+    # if run_method is None:
+    #     sys.exit("function not found: " + run_function_name)
+    #
+    # running_time = timeit.timeit(lambda: run_method(), number=1)
+    # print('running time for function: ' + str(running_time))
 
-    running_time = timeit.timeit(lambda: run_method(), number=1)
-    print('running time for function: ' + str(running_time))
-
+    ob = Orangeboard(debug=False)
+    bne = BioNetExpander(ob)
+    omim_node = bne.add_node_smart('disease',
+                                   'OMIM:105150', seed_node_bool=True,
+                                   desc='CEREBRAL AMYLOID ANGIOPATHY, CST3-RELATED')
+    bne.expand_genetic_condition(omim_node)
+    ob.neo4j_set_url()
+    ob.neo4j_set_auth('neo4j', 'precisionmedicine')
+    ob.neo4j_push()
