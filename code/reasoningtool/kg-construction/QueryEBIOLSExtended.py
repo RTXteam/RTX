@@ -71,10 +71,10 @@ class QueryEBIOLSExtended:
         if results is not None:
             res_json = json.loads(results)
             # print(res_json)
-            res_label = res_json.get("label", None)
-            if res_label is not None:
-                if len(res_label) > 0:
-                    result_str = res_label
+            res_description = res_json.get("description", None)
+            if res_description is not None:
+                if len(res_description) > 0:
+                    result_str = res_description[0]
         return result_str
 
     @staticmethod
