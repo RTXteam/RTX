@@ -209,21 +209,21 @@ class BioNetExpander:
         res_contraindications_set = res_dict['contraindications']
 
         for ont_term in res_indications_set:
-            if ont_term.startswith('DOID:') and ont_term is not None:
+            if ont_term.startswith('DOID:'):
                 ont_name = QueryEBIOLSExtended.get_disease_description(ont_term)
                 ont_node = self.add_node_smart('disease', ont_term, desc=ont_name)
                 self.orangeboard.add_rel('indicated_for', 'MyChem.info', node, ont_node, extended_reltype='indicated_for')
-            elif ont_term.startswith('HP:') and ont_term is not None:
+            elif ont_term.startswith('HP:'):
                 ont_name = QueryEBIOLSExtended.get_phenotype_description(ont_term)
                 ont_node = self.add_node_smart('phenotypic_feature', ont_term, desc=ont_name)
                 self.orangeboard.add_rel('indicated_for', 'MyChem.info', node, ont_node, extended_reltype='indicated_for')
 
         for ont_term in res_contraindications_set:
-            if ont_term.startswith('DOID:') and ont_term is not None:
+            if ont_term.startswith('DOID:'):
                 ont_name = QueryEBIOLSExtended.get_disease_description(ont_term)
                 ont_node = self.add_node_smart('disease', ont_term, desc=ont_name)
                 self.orangeboard.add_rel('contraindicated_for', 'MyChem.info', node, ont_node, extended_reltype='contraindicated_for')
-            elif ont_term.startswith('HP:') and ont_term is not None:
+            elif ont_term.startswith('HP:'):
                 ont_name = QueryEBIOLSExtended.get_phenotype_description(ont_term)
                 ont_node = self.add_node_smart('phenotypic_feature', ont_term, desc=ont_name)
                 self.orangeboard.add_rel('contraindicated_for', 'MyChem.info', node, ont_node, extended_reltype='contraindicated_for')
