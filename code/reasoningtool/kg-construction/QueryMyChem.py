@@ -19,6 +19,7 @@ import requests_cache
 import sys
 import json
 
+
 # configure requests package to use the "QueryMyChem.sqlite" cache
 requests_cache.install_cache('QueryMyChem')
 
@@ -227,7 +228,10 @@ class QueryMyChem:
             json_dict = json.loads(results)
             if "drugcentral" in json_dict.keys():
                 drugcentral = json_dict['drugcentral']
-                if "drug_use" in drugcentral.keys():
+                if isinstance(drugcentral, list):
+                    print(str(len(drugcentral)))
+                    drugcentral = drugcentral[0]
+                if isinstance(drugcentral, dict) and "drug_use" in drugcentral.keys():
                     drug_uses = drugcentral['drug_use']
                     if 'contraindication' in drug_uses.keys():
                         if isinstance(drug_uses['contraindication'], list):
@@ -273,6 +277,6 @@ if __name__ == '__main__':
     # print(umls_array)
     # print(len(umls_array))
 
-    drug_use = QueryMyChem.get_drug_use("CHEMBL:521")
+    drug_use = QueryMyChem.get_drug_use("CHEMBL196")
     print(str(len(drug_use['indications'])) + str(drug_use['indications']))
     print(str(len(drug_use['contraindications'])) + str(drug_use['contraindications']))
