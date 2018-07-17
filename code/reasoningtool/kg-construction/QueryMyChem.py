@@ -215,6 +215,7 @@ class QueryMyChem:
                 ]
             }
         """
+        print(chembl_id, file=sys.stderr)
         indications = []
         contraindications = []
         if not isinstance(chembl_id, str):
@@ -229,16 +230,17 @@ class QueryMyChem:
             if "drugcentral" in json_dict.keys():
                 drugcentral = json_dict['drugcentral']
                 if isinstance(drugcentral, list):
-                    print(str(len(drugcentral)))
                     drugcentral = drugcentral[0]
                 if isinstance(drugcentral, dict) and "drug_use" in drugcentral.keys():
                     drug_uses = drugcentral['drug_use']
-                    if 'contraindication' in drug_uses.keys():
+                    if isinstance(drug_uses, list):
+                        drug_uses = drug_uses[0]
+                    if isinstance(drug_uses, dict) and 'contraindication' in drug_uses.keys():
                         if isinstance(drug_uses['contraindication'], list):
                             contraindications = drug_uses['contraindication']
                         elif isinstance(drug_uses['contraindication'], dict):
                             contraindications.append(drug_uses['contraindication'])
-                    if 'indication' in drug_uses.keys():
+                    if isinstance(drug_uses, dict) and 'indication' in drug_uses.keys():
                         if isinstance(drug_uses['indication'], list):
                             indications = drug_uses['indication']
                         elif isinstance(drug_uses['indication'], dict):
@@ -277,6 +279,6 @@ if __name__ == '__main__':
     # print(umls_array)
     # print(len(umls_array))
 
-    drug_use = QueryMyChem.get_drug_use("CHEMBL196")
+    drug_use = QueryMyChem.get_drug_use("CHEMBL521")
     print(str(len(drug_use['indications'])) + str(drug_use['indications']))
     print(str(len(drug_use['contraindications'])) + str(drug_use['contraindications']))
