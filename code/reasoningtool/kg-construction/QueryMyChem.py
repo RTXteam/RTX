@@ -233,14 +233,14 @@ class QueryMyChem:
                 if isinstance(drugcentral, dict) and "drug_use" in drugcentral.keys():
                     drug_uses = drugcentral['drug_use']
                     print(drug_uses)
-                    if QueryMyChem.__has_dirty_cahce(drug_uses):
+                    if QueryMyChem.__has_dirty_cache(drug_uses):
                         indications, contraindications = QueryMyChem.__handle_dirty_cache(drug_uses)
                     else:
                         indications, contraindications = QueryMyChem.__handle_clean_cache(drug_uses)
         return {'indications': indications, "contraindications": contraindications}
 
     @staticmethod
-    def __has_dirty_cahce(drug_uses):
+    def __has_dirty_cache(drug_uses):
         if isinstance(drug_uses, list):
             d_u = drug_uses[0]
             if isinstance(d_u, dict) and 'snomed_id' in d_u.keys():
