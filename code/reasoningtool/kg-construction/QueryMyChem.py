@@ -215,7 +215,6 @@ class QueryMyChem:
                 ]
             }
         """
-        print(chembl_id, file=sys.stderr)
         indications = []
         contraindications = []
         if not isinstance(chembl_id, str):
@@ -233,19 +232,61 @@ class QueryMyChem:
                     drugcentral = drugcentral[0]
                 if isinstance(drugcentral, dict) and "drug_use" in drugcentral.keys():
                     drug_uses = drugcentral['drug_use']
-                    if isinstance(drug_uses, list):
-                        drug_uses = drug_uses[0]
-                    if isinstance(drug_uses, dict) and 'contraindication' in drug_uses.keys():
-                        if isinstance(drug_uses['contraindication'], list):
-                            contraindications = drug_uses['contraindication']
-                        elif isinstance(drug_uses['contraindication'], dict):
-                            contraindications.append(drug_uses['contraindication'])
-                    if isinstance(drug_uses, dict) and 'indication' in drug_uses.keys():
-                        if isinstance(drug_uses['indication'], list):
-                            indications = drug_uses['indication']
-                        elif isinstance(drug_uses['indication'], dict):
-                            indications.append(drug_uses['indication'])
+                    print(drug_uses)
+                    if QueryMyChem.__has_dirty_cahce(drug_uses):
+                        indications, contraindications = QueryMyChem.__handle_dirty_cache(drug_uses)
+                    else:
+                        indications, contraindications = QueryMyChem.__handle_clean_cache(drug_uses)
         return {'indications': indications, "contraindications": contraindications}
+
+    @staticmethod
+    def __has_dirty_cahce(drug_uses):
+        if isinstance(drug_uses, list):
+            d_u = drug_uses[0]
+            if isinstance(d_u, dict) and 'snomed_id' in d_u.keys():
+                return True
+        if isinstance(drug_uses, dict) and 'snomed_id' in drug_uses.keys():
+            return True
+        return False
+
+    @staticmethod
+    def __handle_clean_cache(drug_uses):
+        indications = []
+        contraindications = []
+        if isinstance(drug_uses, list):
+            drug_uses = drug_uses[0]
+        if isinstance(drug_uses, dict) and 'contraindication' in drug_uses.keys():
+            if isinstance(drug_uses['contraindication'], list):
+                contraindications = drug_uses['contraindication']
+            elif isinstance(drug_uses['contraindication'], dict):
+                contraindications.append(drug_uses['contraindication'])
+        if isinstance(drug_uses, dict) and 'indication' in drug_uses.keys():
+            if isinstance(drug_uses['indication'], list):
+                indications = drug_uses['indication']
+            elif isinstance(drug_uses['indication'], dict):
+                indications.append(drug_uses['indication'])
+        return indications, contraindications
+
+    @staticmethod
+    def __handle_dirty_cache(drug_uses):
+        indications = []
+        contraindications = []
+        if isinstance(drug_uses, list):
+            for drug_use in drug_uses:
+                if isinstance(drug_use, dict) and 'relation' in drug_use.keys() and 'snomed_id' in drug_use.keys():
+                    drug_use['snomed_concept_id'] = drug_use['snomed_id']
+                    if drug_use['relation'] == 'indication':
+                        indications.append(drug_use)
+                    elif drug_use['relation'] == 'contraindication':
+                        contraindications.append(drug_use)
+        if isinstance(drug_uses, dict):
+            if 'relation' in drug_uses.keys():
+                drug_uses['snomed_concept_id'] = drug_uses['snomed_id']
+                if drug_uses['relation'] == 'indication':
+                    indications.append(drug_uses)
+                elif drug_uses['relation'] == 'contraindication':
+                    contraindications.append(drug_uses)
+        return indications, contraindications
 
 
 if __name__ == '__main__':
@@ -279,6 +320,6 @@ if __name__ == '__main__':
     # print(umls_array)
     # print(len(umls_array))
 
-    drug_use = QueryMyChem.get_drug_use("CHEMBL521")
+    drug_use = QueryMyChem.get_drug_use("CHEMBL20883")
     print(str(len(drug_use['indications'])) + str(drug_use['indications']))
     print(str(len(drug_use['contraindications'])) + str(drug_use['contraindications']))
