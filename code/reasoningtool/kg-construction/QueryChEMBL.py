@@ -39,7 +39,7 @@ class QueryChEMBL:
             sys.exit(0)
         except BaseException as e:
             print(url, file=sys.stderr)
-            print('%s received in QueryCOHD for URL: %s' % (e, url), file=sys.stderr)
+            print('%s received in QueryChEMBL for URL: %s' % (e, url), file=sys.stderr)
             return None
         status_code = res.status_code
         if status_code != 200:
@@ -194,6 +194,7 @@ class QueryChEMBL:
 
 if __name__ == '__main__':
     print(QueryChEMBL.get_target_uniprot_ids_for_chembl_id('CHEMBL521'))
+    print(QueryChEMBL.get_target_uniprot_ids_for_chembl_id('CHEMBL304902'))
 #    print(QueryChEMBL.get_mechanisms_for_chembl_id("CHEMBL521"))
 #    print(QueryChEMBL.map_chembl_target_to_uniprot_ids("CHEMBL2094253"))
 #    print(QueryChEMBL.get_mechanisms_for_chembl_id("CHEMBL521"))

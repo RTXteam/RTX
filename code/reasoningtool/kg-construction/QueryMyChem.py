@@ -215,6 +215,7 @@ class QueryMyChem:
                 ]
             }
         """
+        print(chembl_id, file=sys.stderr)
         indications = []
         contraindications = []
         if not isinstance(chembl_id, str):
