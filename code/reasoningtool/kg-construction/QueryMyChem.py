@@ -232,7 +232,6 @@ class QueryMyChem:
                     drugcentral = drugcentral[0]
                 if isinstance(drugcentral, dict) and "drug_use" in drugcentral.keys():
                     drug_uses = drugcentral['drug_use']
-                    print(drug_uses)
                     if QueryMyChem.__has_dirty_cache(drug_uses):
                         indications, contraindications = QueryMyChem.__handle_dirty_cache(drug_uses)
                     else:
