@@ -15,9 +15,10 @@ import requests
 import requests_cache
 import sys
 
+from QueryUniprot import QueryUniprot
+
 # configure requests package to use the "orangeboard.sqlite" cache
 requests_cache.install_cache('orangeboard')
-
 
 class QueryChEMBL:
     API_BASE_URL = 'https://www.ebi.ac.uk/chembl/api/data'
@@ -26,7 +27,7 @@ class QueryChEMBL:
     @staticmethod
     def send_query_get(handler, url_suffix):
         url = QueryChEMBL.API_BASE_URL + '/' + handler + '?' + url_suffix
-        #        print(url)
+#        print(url)
         try:
             res = requests.get(url,
                                timeout=QueryChEMBL.TIMEOUT_SEC)
@@ -70,9 +71,18 @@ class QueryChEMBL:
         if not isinstance(chembl_id, str):
             return dict()
 
+        res_targets_dict = dict()
+        
+        target_mechanisms_json = QueryChEMBL.get_mechanisms_for_chembl_id(chembl_id)
+        for target_mechanism in target_mechanisms_json:
+            target_chembl_id = target_mechanism.get("target_chembl_id", None)
+            if target_chembl_id is not None:
+                target_uniprot_ids = QueryChEMBL.map_chembl_target_to_uniprot_ids(target_chembl_id)
+                for target_uniprot_id in target_uniprot_ids:
+                    res_targets_dict[target_uniprot_id] = float(1.0)
+        
         res = QueryChEMBL.send_query_get(handler='target_prediction.json',
                                          url_suffix='molecule_chembl_id__exact=' + chembl_id + '&target_organism__exact=Homo%20sapiens')
-        res_targets_dict = dict()
         if res is not None:
             target_predictions_list = res.get('target_predictions', None)
             if target_predictions_list is not None:
@@ -81,10 +91,42 @@ class QueryChEMBL:
                     target_uniprot_id = target_prediction.get('target_accession', None)
                     target_probability = target_prediction.get('probability', None)
                     if target_uniprot_id is not None:
+                        target_organism = target_prediction.get('target_organism', None)
+                        if target_organism is not None:
+                            assert target_organism == "Homo sapiens"
                         # need to get the gene ID for this Uniprot ID
-                        res_targets_dict[target_uniprot_id] = float(target_probability)
+                        if target_uniprot_id not in res_targets_dict:
+                            res_targets_dict[target_uniprot_id] = float(target_probability)
+
         return res_targets_dict
 
+    @staticmethod
+    def map_chembl_target_to_uniprot_ids(target_chembl_id):
+        res_json = QueryChEMBL.send_query_get(handler="target.json",
+                                              url_suffix="target_chembl_id=" + target_chembl_id)
+        res_set = set()
+#        print(res_json)
+        if res_json is not None:
+            targets = res_json.get("targets", None)
+            if targets is not None and len(targets) > 0:
+                for target in targets:
+                    components = target.get("target_components", None)
+                    if components is not None:
+                        for component in components:
+                            xrefs = component.get("target_component_xrefs", None)
+                            for xref in xrefs:
+                                if xref is not None:
+                                    for xref in xrefs:
+                                        xref_src_db = xref.get("xref_src_db", None)
+                                        if xref_src_db is not None:
+                                            if xref_src_db == "UniProt":
+                                                uniprot_id = xref.get("xref_id", None)
+                                                if uniprot_id is not None:
+                                                    uniprot_id_citeable = QueryUniprot.get_citeable_accession_for_accession(uniprot_id)
+                                                    if uniprot_id_citeable is not None:
+                                                        res_set |= set([uniprot_id_citeable])
+        return res_set
+        
     @staticmethod
     def get_target_uniprot_ids_for_drug(drug_name):
         if not isinstance(drug_name, str):
@@ -152,5 +194,6 @@ class QueryChEMBL:
 
 if __name__ == '__main__':
     print(QueryChEMBL.get_target_uniprot_ids_for_chembl_id('CHEMBL521'))
-    print(QueryChEMBL.get_mechanisms_for_chembl_id("CHEMBL521"))
-    print(QueryChEMBL.get_mechanisms_for_chembl_id("CHEMBL2094253"))
+#    print(QueryChEMBL.get_mechanisms_for_chembl_id("CHEMBL521"))
+#    print(QueryChEMBL.map_chembl_target_to_uniprot_ids("CHEMBL2094253"))
+#    print(QueryChEMBL.get_mechanisms_for_chembl_id("CHEMBL521"))

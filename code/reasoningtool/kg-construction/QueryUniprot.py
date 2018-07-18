@@ -178,27 +178,36 @@ class QueryUniprot:
             return "None"
         return QueryUniprot.__get_name("get_protein", protein_id)
 
+    @staticmethod
+    def get_citeable_accession_for_accession(accession_number):
+        res_tab = QueryUniprot.__access_api("uniprot/" + accession_number + ".tab")
+        res_lines = res_tab.splitlines()
+        res_acc = None
+        if len(res_lines) > 1:
+            res_acc = res_lines[1].split("\t")[0]
+        return res_acc
 
 if __name__ == '__main__':
-    print(QueryUniprot.uniprot_id_to_reactome_pathways("P68871"))
-    print(QueryUniprot.uniprot_id_to_reactome_pathways("Q16621"))
-    print(QueryUniprot.uniprot_id_to_reactome_pathways("P09601"))
-    print(CachedMethods.cache_info())
-
-    print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:1.4.1.17"))  # small results
-    print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:1.3.1.110")) # empty result
-    print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:1.2.1.22"))  # large results
-    print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:4.4.1.xx"))  # fake id
-    print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("R-HSA-1912422"))   # wrong id
-
-    print(QueryUniprot.get_protein_gene_symbol('UniProtKB:P20848'))
-    print(QueryUniprot.get_protein_gene_symbol("UniProtKB:P01358"))
-    print(QueryUniprot.get_protein_gene_symbol("UniProtKB:Q96P88"))
-    print(QueryUniprot.get_protein_name('UniProtKB:P01358'))
-    print(QueryUniprot.get_protein_name('UniProtKB:P20848'))
-    print(QueryUniprot.get_protein_name('UniProtKB:Q9Y471'))
-    print(QueryUniprot.get_protein_name('UniProtKB:O60397'))
-    print(QueryUniprot.get_protein_name('UniProtKB:Q8IZJ3'))
-    print(QueryUniprot.get_protein_name('UniProtKB:Q7Z2Y8'))
-    print(QueryUniprot.get_protein_name('UniProtKB:Q8IWN7'))
-    print(QueryUniprot.get_protein_name('UniProtKB:Q156A1'))
+    print(QueryUniprot.get_citeable_accession_for_accession("P35354"))
+    print(QueryUniprot.get_citeable_accession_for_accession("A8K802"))
+    print(QueryUniprot.get_citeable_accession_for_accession("Q16876"))
+    # print(QueryUniprot.uniprot_id_to_reactome_pathways("P68871"))
+    # print(QueryUniprot.uniprot_id_to_reactome_pathways("Q16621"))
+    # print(QueryUniprot.uniprot_id_to_reactome_pathways("P09601"))
+    # print(CachedMethods.cache_info())
+    # print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:1.4.1.17"))  # small results
+    # print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:1.3.1.110")) # empty result
+    # print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:1.2.1.22"))  # large results
+    # print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:4.4.1.xx"))  # fake id
+    # print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("R-HSA-1912422"))   # wrong id
+    # print(QueryUniprot.get_protein_gene_symbol('UniProtKB:P20848'))
+    # print(QueryUniprot.get_protein_gene_symbol("UniProtKB:P01358"))
+    # print(QueryUniprot.get_protein_gene_symbol("UniProtKB:Q96P88"))
+    # print(QueryUniprot.get_protein_name('UniProtKB:P01358'))
+    # print(QueryUniprot.get_protein_name('UniProtKB:P20848'))
+    # print(QueryUniprot.get_protein_name('UniProtKB:Q9Y471'))
+    # print(QueryUniprot.get_protein_name('UniProtKB:O60397'))
+    # print(QueryUniprot.get_protein_name('UniProtKB:Q8IZJ3'))
+    # print(QueryUniprot.get_protein_name('UniProtKB:Q7Z2Y8'))
+    # print(QueryUniprot.get_protein_name('UniProtKB:Q8IWN7'))
+    # print(QueryUniprot.get_protein_name('UniProtKB:Q156A1'))
