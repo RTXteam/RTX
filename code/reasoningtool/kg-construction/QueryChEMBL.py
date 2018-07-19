@@ -115,9 +115,9 @@ class QueryChEMBL:
                     if components is not None:
                         for component in components:
                             xrefs = component.get("target_component_xrefs", None)
-                            for xref in xrefs:
-                                if xref is not None:
-                                    for xref in xrefs:
+                            if xrefs is not None:
+                                for xref in xrefs:
+                                    if xref is not None:
                                         xref_src_db = xref.get("xref_src_db", None)
                                         if xref_src_db is not None:
                                             if xref_src_db == "UniProt":
