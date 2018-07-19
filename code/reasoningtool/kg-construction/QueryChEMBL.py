@@ -68,6 +68,7 @@ class QueryChEMBL:
 
     @staticmethod
     def get_target_uniprot_ids_for_chembl_id(chembl_id):
+        print(chembl_id, file=sys.stderr)
         if not isinstance(chembl_id, str):
             return dict()
 
@@ -194,7 +195,7 @@ class QueryChEMBL:
 
 if __name__ == '__main__':
     print(QueryChEMBL.get_target_uniprot_ids_for_chembl_id('CHEMBL521'))
-    print(QueryChEMBL.get_target_uniprot_ids_for_chembl_id('CHEMBL304902'))
+    print(QueryChEMBL.get_target_uniprot_ids_for_chembl_id('CHEMBL2364648'))
 #    print(QueryChEMBL.get_mechanisms_for_chembl_id("CHEMBL521"))
 #    print(QueryChEMBL.map_chembl_target_to_uniprot_ids("CHEMBL2094253"))
 #    print(QueryChEMBL.get_mechanisms_for_chembl_id("CHEMBL521"))

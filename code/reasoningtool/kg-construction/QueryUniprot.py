@@ -180,9 +180,11 @@ class QueryUniprot:
 
     @staticmethod
     def get_citeable_accession_for_accession(accession_number):
-        res_tab = QueryUniprot.__access_api("uniprot/" + accession_number + ".tab")
-        res_lines = res_tab.splitlines()
         res_acc = None
+        res_tab = QueryUniprot.__access_api("uniprot/" + accession_number + ".tab")
+        if res_tab is None:
+            return res_acc
+        res_lines = res_tab.splitlines()
         if len(res_lines) > 1:
             res_acc = res_lines[1].split("\t")[0]
         return res_acc
