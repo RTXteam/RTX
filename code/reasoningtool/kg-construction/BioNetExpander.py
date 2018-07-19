@@ -209,7 +209,7 @@ class BioNetExpander:
         res_contraindications_set = res_dict['contraindications']
 
         for ont_term in res_indications_set:
-            if ont_term.startswith('DOID:'):
+            if ont_term.startswith('DOID:') or ont_term.startswith('OMIM:'):
                 ont_name = QueryBioLink.get_label_for_disease(ont_term)
                 ont_node = self.add_node_smart('disease', ont_term, desc=ont_name)
                 self.orangeboard.add_rel('indicated_for', 'MyChem.info', node, ont_node, extended_reltype='indicated_for')
@@ -219,7 +219,7 @@ class BioNetExpander:
                 self.orangeboard.add_rel('indicated_for', 'MyChem.info', node, ont_node, extended_reltype='indicated_for')
 
         for ont_term in res_contraindications_set:
-            if ont_term.startswith('DOID:'):
+            if ont_term.startswith('DOID:') or ont_term.startswith('OMIM:'):
                 ont_name = QueryBioLink.get_label_for_disease(ont_term)
                 ont_node = self.add_node_smart('disease', ont_term, desc=ont_name)
                 self.orangeboard.add_rel('contraindicated_for', 'MyChem.info', node, ont_node, extended_reltype='contraindicated_for')
