@@ -86,7 +86,8 @@ class BioNetExpander:
                               "has_part": True,
                               "capable_of": True,
                               "indicated_for": True,
-                              "contraindicated_for": True}
+                              "contraindicated_for": True,
+                              "causes_or_contributes_to": True}
 
     GO_ONTOLOGY_TO_PREDICATE = {"biological_process": "involved_in",
                                 "cellular_component": "expressed_in",
@@ -227,6 +228,14 @@ class BioNetExpander:
                 ont_name = QueryBioLink.get_label_for_phenotype(ont_term)
                 ont_node = self.add_node_smart('phenotypic_feature', ont_term, desc=ont_name)
                 self.orangeboard.add_rel('contraindicated_for', 'MyChem.info', node, ont_node, extended_reltype='contraindicated_for')
+
+        res_hp_set = DrugMapper.map_drug_to_hp_with_side_effects(node.name)
+
+        for hp_term in res_hp_set:
+            if hp_term.startswith('HP:'):
+                hp_name = QueryBioLink.get_label_for_phenotype(hp_term)
+                hp_node = self.add_node_smart('phenotypic_feature', hp_term, desc=hp_name)
+                self.orangeboard.add_rel('causes_or_contributes_to', 'SIDER', node, hp_node, extended_reltype="causes_or_contributes_to")
 
 
     def expand_microRNA(self, node):
@@ -706,7 +715,7 @@ class BioNetExpander:
         ob = Orangeboard(debug=False)
         bne = BioNetExpander(ob)
         chem_node = bne.add_node_smart('chemical_substance',
-                                       'CHEMBL8', seed_node_bool=True,
+                                       'KWHRDNMACVLHCE-UHFFFAOYSA-N', seed_node_bool=True,
                                        desc='ciprofloxacin')
         bne.expand_chemical_substance(chem_node)
         ob.neo4j_set_url()
