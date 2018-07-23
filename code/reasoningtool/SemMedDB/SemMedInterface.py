@@ -218,7 +218,9 @@ class SemMedInterface():
 		'''
 		cuis = None
 		if not mesh_flag:
-			if curie_id.startswith('ChEMBL'):
+			if curie_id.upper().startswith('CHEMBL'):
+				if curie_id.startswith('CHEMBL.COMPOUND'):
+					curie_id = curie_id.split(':')[1]
 				cuis = QueryMyChem.get_cui(curie_id)
 				if cuis is not None:
 					cuis = [cuis]

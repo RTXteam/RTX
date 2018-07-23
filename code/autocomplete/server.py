@@ -92,18 +92,49 @@ class autofuzzySearch(tornado.web.RequestHandler):
             traceback.print_tb(sys.exc_info()[-1])
             #print sys.exc_info()[:]
             self.write("error")
+
+class defineSearch(tornado.web.RequestHandler):
+    def get(self, arg,word=None):
+        print "matched define search: not implemented"
+        self.write("")
             
-def make_app():
+def make_https_app():
     return tornado.web.Application([
         #(r"/", MainHandler),
         (r"/autofuzzy(.*)", autofuzzySearch),
         (r"/auto(.*)", autoSearch),
         (r"/fuzzy(.*)", fuzzySearch),
-        (r"/(.*)", tornado.web.StaticFileHandler, {"path": root, "default_filename": "rtxcomplete.html"}),
+        (r"/define(.*)", defineSearch),
+        (r"/(.*)", tornado.web.StaticFileHandler,
+         {"path": root, "default_filename": "rtxcomplete.html"}),
+    ],
+        compress_response= True)
+
+class redirect_handler(tornado.web.RequestHandler):
+    def prepare(self):
+        if self.request.protocol == 'http':
+            if self.request.host == "rtxcomplete.ixlab.org":
+                self.redirect('https://'+self.request.host, permanent=False)
+                
+    def get(self):
+        self.write("Looks like you're trying to access rtxcomplete at the wrong host name.")
+        self.write("<br>Please make sure the address is correct: 'rtxcomplete.ixlab.org'")
+
+def make_redirect_app():
+    return tornado.web.Application([
+        (r'/', redirect_handler)
     ])
 
 if __name__ == "__main__":
     print "root: " + root
-    app = make_app()
-    app.listen(80)
+    redirect_app = make_redirect_app()
+    redirect_app.listen(80)
+
+    https_app = make_https_app()
+    https_server = tornado.httpserver.HTTPServer(https_app, ssl_options={
+        "certfile": "/etc/letsencrypt/live/rtxcomplete.ixlab.org/fullchain.pem",
+        "keyfile" : "/etc/letsencrypt/live/rtxcomplete.ixlab.org/privkey.pem",
+        })
+    https_server.listen(443)
+    
     tornado.ioloop.IOLoop.current().start()

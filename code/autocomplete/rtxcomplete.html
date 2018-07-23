@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
-  <link rel="stylesheet" href="bootstrap.css">
+  <link rel="stylesheet" href="/bootstrap.css">
   <style>
-    body, input {
+    body {
     font-family: Arial;
     font-size: 14pt;
     padding:10px;
@@ -10,9 +10,17 @@
     border: 1px solid #000;
     }
 
+    input {
+    font-family: Arial;
+    font-size: 14pt;
+    padding:10px;
+    margin: auto;
+    border: 1px solid #000;
+    }
+
     .column {
     float: left;
-    width: 50%;
+    width: 100%;
     }
 
     /* Clear floats after the columns */
@@ -23,20 +31,19 @@
     }
       </style>
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-  <script src="http://rtxcomplete.ixlab.org/bootstrap.js"></script>
-  <script src="http://rtxcomplete.ixlab.org/bootstrap3-typeahead.js"></script>
-  <script src="http://rtxcomplete.ixlab.org/rtxcomplete.js"></script>
+  <script src="/data/quick_def.json"><script>
+  <script src="/bootstrap.js"></script>
+  <script src="/bootstrap3-typeahead.js"></script>
+  <script src="/rtxcomplete.js"></script>
   <body> 
     <center>
       <h1> AUTOCOMPLETE DEMO</h1>
       <div class="row">
 	<div class="column">
-	  <h6>Autocomplete</h6>
-
-        <input type="text" class="typeInput" data-provide="typeahead" />
+          <input type="text" class="typeInput" data-provide="typeahead" style="width:95%"/>
+	  <p id="quick_def_field"></p>
 	</div>
-</div>
-     
+     </div>
     </center>
   </body>
 

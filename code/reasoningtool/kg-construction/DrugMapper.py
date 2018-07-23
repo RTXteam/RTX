@@ -1,13 +1,13 @@
-from QueryMyChem import QueryMyChem
 from SynonymMapper import SynonymMapper
+from QueryMyChem import QueryMyChem
 
-import os, sys
+import os
+import sys
 
 try:
     from QueryUMLSApi import QueryUMLSApi
 except ImportError:
     insert_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)) + "/../SemMedDB/")
-    print(insert_dir)
     sys.path.insert(0, insert_dir)
     from QueryUMLSApi import QueryUMLS
 
@@ -116,14 +116,14 @@ class DrugMapper:
         contraindications = drug_use['contraindications']
         sm = SynonymMapper()
         for indication in indications:
-            if 'snomed_id' in indication.keys():
-                oxo_results = sm.get_all_from_oxo('SNOMEDCT:' + indication['snomed_id'], ['DOID', 'OMIM', 'HP'])
+            if 'snomed_concept_id' in indication.keys():
+                oxo_results = sm.get_all_from_oxo('SNOMEDCT:' + str(indication['snomed_concept_id']), ['DOID', 'OMIM', 'HP'])
                 if oxo_results is not None:
                     for oxo_result in oxo_results:
                         indication_onto_set.add(oxo_result)
         for contraindication in contraindications:
-            if 'snomed_id' in contraindication.keys():
-                oxo_results = sm.get_all_from_oxo('SNOMEDCT:' + contraindication['snomed_id'], ['DOID', 'OMIM', 'HP'])
+            if 'snomed_concept_id' in contraindication.keys():
+                oxo_results = sm.get_all_from_oxo('SNOMEDCT:' + str(contraindication['snomed_concept_id']), ['DOID', 'OMIM', 'HP'])
                 if oxo_results is not None:
                     for oxo_result in oxo_results:
                         contraindication_onto_set.add(oxo_result)
@@ -131,16 +131,23 @@ class DrugMapper:
 
 
 if __name__ == '__main__':
-    hp_set = DrugMapper.map_drug_to_hp_with_side_effects("KWHRDNMACVLHCE-UHFFFAOYSA-N")
-    print(hp_set)
-    print(len(hp_set))
+    # hp_set = DrugMapper.map_drug_to_hp_with_side_effects("KWHRDNMACVLHCE-UHFFFAOYSA-N")
+    # print(hp_set)
+    # print(len(hp_set))
 
-    hp_set = DrugMapper.map_drug_to_hp_with_side_effects("CHEMBL521")
-    print(hp_set)
-    print(len(hp_set))
+    # hp_set = DrugMapper.map_drug_to_hp_with_side_effects("CHEMBL521")
+    # print(hp_set)
+    # print(len(hp_set))
 
     # umls_set = DrugMapper.map_drug_to_UMLS("CHEMBL1082")
     # print(umls_set)
 
-    # onto_set = DrugMapper.map_drug_to_ontology("CHEMBL2107884")
-    # print(onto_set)
+    # onto_set = DrugMapper.map_drug_to_ontology("CHEMBL:521")
+    # print(onto_set['contraindications'])
+
+    onto_set = DrugMapper.map_drug_to_ontology("CHEMBL2107884")
+    print(onto_set)
+
+    onto_set = DrugMapper.map_drug_to_ontology("CHEMBL33")
+    print(onto_set)
+

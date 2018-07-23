@@ -9,7 +9,7 @@
 
 $( document ).ready( function(){
     $('.typeInput').typeahead({
-	highlighter: function (item) {
+	highlighter: function (item){
 	    var parts = item.split('#');
 	    var html = '';
 	    for (i = 0; i < parts.length; i++){
@@ -22,18 +22,48 @@ $( document ).ready( function(){
 	    return html;
 	},
 	updater: function (item) {
+	    console.log("updater: ");
+	    console.log($('.typeInput').val());
+	    var tmp = $('.typeInput').val().split(",");
+	    tmp = tmp.slice(0,tmp.length-1).join(", ");
 	    var parts = item.split('#');
-	    var text = parts.join("");
+	    var text = "";
+	    if (tmp.length > 0){
+		text += tmp + ", ";
+	    }
+	    text += parts.join("");
 	    return text;
 	},
 	matcher: function (item){
+	    //console.log("matcher");
 	    return true;
 	},
 	name: 'stuff',
 	display: 'value',
 	source: function(query, callback) {
+	    //console.log("'"+query+"'");
+	    //console.log(query.split(","));
+	    query = query.split(",");
+	    //var first_part = query.slice(0,query.length-1).join(", ");
+	    //console.log(first_part);
+	    query = query[query.length-1].trim();
+	    if (query.length == 0){
+		return;
+	    }
+	    var hit = false;
+	    var def_tmp = query.split(" ");
+	    for (i = 0; i < def_tmp.length && hit == false; i++){
+		var def = quick_def[def_tmp[i].toLowerCase()];
+		if (def){
+		    hit = true;
+		    $("#quick_def_field").html(def);
+		}
+	    }
+	    if (!hit){
+		$("#quick_def_field").text("");
+	    }
 	    $.ajax({
-		url: "http://rtxcomplete.ixlab.org/auto?word="+query+"&limit=10",
+		url: "/auto?word="+query+"&limit=10",
 		cache: false,
 		dataType:"jsonp",
 		success: function (response) {
@@ -47,6 +77,7 @@ $( document ).ready( function(){
 			var idx = lowerItem.indexOf(lowerQuery);
 			var tmp = "";
 			var lastIdx = 0;
+			//can change this later to a more efficient version with split()
 			while (idx > -1){
 			    tmp += item.substring(lastIdx,idx);
 			    tmp += "#";

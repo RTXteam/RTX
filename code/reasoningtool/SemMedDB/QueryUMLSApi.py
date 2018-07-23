@@ -83,7 +83,10 @@ class QueryUMLS:
         query = '/search/current?string=' + string + '&pageSize=10000'
         r = QueryUMLS.send_query_get(query, st)
         if r is not None:
-            return [a['ui'] for a in r.json()['result']['results']]
+            ans = [a['ui'] for a in r.json()['result']['results']]
+            if ans[0] == 'NONE':
+                return None
+            return ans
         else:
             return None
 
@@ -103,6 +106,32 @@ class QueryUMLS:
                                 cui = res_obj['ui']
                     if cui is None and len(res_json['result']['results']) > 0:
                         cui = res_json['result']['results'][0]['ui']
+        return cui
+
+    @staticmethod
+    def get_cuis_from_curie(curie, tgt):
+        map_dict = {'HP' : 'HPO',
+                    'OMIM':'OMIM',
+                    'GO':'GO'
+                    }
+        cui = None
+        st = QueryUMLS.get_single_ticket(tgt)
+        if curie.split(':')[0] not in map_dict.keys():
+            return None
+        else:
+            db = map_dict[curie.split(':')[0]]
+            if db == 'OMIM':
+                curie = curie.split(':')[1]
+        query = '/search/2018AA?string=' + curie + '&sabs=' + db + '&searchType=exact&inputType=sourceUi'
+        print(query)
+        r = QueryUMLS.send_query_get(query, st)
+        if r is not None:
+            ans = [a['ui'] for a in r.json()['result']['results']]
+            if ans[0] == 'NONE':
+                return None
+            return ans
+        else:
+            return None
         return cui
 
 if __name__ == '__main__':

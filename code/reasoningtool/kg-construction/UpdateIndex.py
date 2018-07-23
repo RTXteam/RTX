@@ -4,6 +4,13 @@ import pprint
 import neo4j.v1
 import sys
 import timeit
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-u", "--user", type=str, help="The username used to connect to the neo4j instance", default='')
+parser.add_argument("-p", "--password", type=str, help="The password used to connect to the neo4j instance", default='')
+parser.add_argument("-a", "--address", type=str, help="The bolt url and port used to connect to the neo4j instance. (default:bolt://localhost:7687)", default="bolt://localhost:7687")
+args = parser.parse_args()
 
 class UpdateIndex():
     """
@@ -110,4 +117,32 @@ class UpdateIndex():
     def replace(self):
         self.drop_index()
         self.set_index()
+
+    def set_test(self):
+        """
+        Sets the idexes up to test for an error
+        """
+        self.drop_index()
+        index_commands = [
+            'CREATE INDEX ON :Base(UUID)',
+            'CREATE INDEX ON :Base(seed_node_uuid)',
+            'CREATE CONSTRAINT ON (n:biological_process) ASSERT n.id IS UNIQUE',
+            'CREATE CONSTRAINT ON (n:microRNA) ASSERT n.id IS UNIQUE',
+            'CREATE CONSTRAINT ON (n:protein) ASSERT n.id IS UNIQUE'
+            ]
+
+        for command in index_commands:
+            self.neo4j_run_cypher_query(command)
+        
+
+
+if __name__ == '__main__':
+
+    if args.user == '' or args.password == '':
+        print('usage: DumpNeo4jToCSV.py [-h] [-a ADDRESS] [-u USERNAME] [-p PASSWORD]')
+        print('DumpNeo4jToCSV.py: error: invalid username or password')
+        exit(0)
+
+    ui = UpdateIndex(args.user, args.password, args.address)
+    ui.replace()
 

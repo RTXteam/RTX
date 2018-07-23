@@ -58,3 +58,33 @@ Example code is in ```sample.py```. The two core lines are:
 ## Demonstration Link
 http://rtxcomplete.ixlab.org
 
+## HTTPS Support
+
+### Install
+
+Run the following commands to install certbot;
+
+$ sudo apt-get update
+$ sudo apt-get install software-properties-common
+$ sudo add-apt-repository ppa:certbot/certbot
+$ sudo apt-get update
+$ sudo apt-get install certbot
+
+### Create SSL Certificates
+
+Run the following command to create the needed SSL certificates;
+
+$ sudo certbot certonly --standalone -d rtx.ncats.io
+
+### Server SSL Options
+
+To point the server at the certificates using Tornado make an HTTP server with the proper SSL options as demonstrated below;
+
+```
+https_server = tornado.httpserver.HTTPServer(https_app, ssl_options={
+        "certfile": "/etc/letsencrypt/live/rtx.ncats.io.ixlab.org/fullchain.pem",
+	"keyfile" : "/etc/letsencrypt/live/rtx.ncats.io/privkey.pem",
+	})
+
+https_server.listen(443)
+```

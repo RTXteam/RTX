@@ -24,14 +24,6 @@ from BioNetExpander import BioNetExpander
 # configure requests package to use the "orangeboard.sqlite" cache
 requests_cache.install_cache('orangeboard')
 
-# create an Orangeboard object
-ob = Orangeboard(debug=True)
-
-# configure the Orangeboard for Neo4j connectivity
-ob.neo4j_set_url()
-ob.neo4j_set_auth()
-
-bne = BioNetExpander(ob)
 
 def add_pc2_to_kg():
     sif_data = pandas.read_csv('../../../data/pc2/PathwayCommons9.All.hgnc.sif',
@@ -91,7 +83,7 @@ def make_master_kg_dili():
     bne.expand_all_nodes()
     bne.expand_all_nodes()
     bne.expand_all_nodes()
-    ob.neo4j_set_url("bolt://0.0.0.0:7687")
+    # ob.neo4j_set_url("bolt://0.0.0.0:7687")
     ob.neo4j_push()
     print("count(Node) = {}".format(ob.count_nodes()))
     print("count(Rel) = {}".format(ob.count_rels()))
@@ -103,7 +95,7 @@ def make_master_kg():
     bne.expand_all_nodes()
     bne.expand_all_nodes()
     add_pc2_to_kg()
-    ob.neo4j_set_url('bolt://0.0.0.0:7687')
+    # ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
     print("count(Node) = {}".format(ob.count_nodes()))
     print("count(Rel) = {}".format(ob.count_rels()))
@@ -111,8 +103,31 @@ def make_master_kg():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Builds the master knowledge graph')
+    parser.add_argument("-a", "--address", help="The bolt url and port used to connect to the neo4j instance. (default:"
+                                                "bolt://localhost:7687)",
+                        default="bolt://localhost:7687")
+    parser.add_argument("-u", "--username", help="The username used to connect to the neo4j instance. (default: )",
+                        default='')
+    parser.add_argument("-p", "--password", help="The password used to connect to the neo4j instance. (default: )",
+                        default='')
     parser.add_argument('--runfunc', dest='runfunc')
     args = parser.parse_args()
+
+    if args.username == '' or args.password == '':
+        print('usage: BuildMasterKG.py [-h] [-a URL] [-u USERNAME] [-p PASSWORD] [--runfunc RUNFUNC]')
+        print('BuildMasterKG.py: error: invalid username or password')
+        exit(0)
+
+    # create an Orangeboard object
+    ob = Orangeboard(debug=True)
+
+    # configure the Orangeboard for Neo4j connectivity
+    ob.neo4j_set_url(args.address)
+    ob.neo4j_set_auth(user=args.username, password=args.password)
+    ob.neo4j_connect()
+
+    bne = BioNetExpander(ob)
+
     args_dict = vars(args)
     if args_dict.get('runfunc', None) is not None:
         run_function_name = args_dict['runfunc']

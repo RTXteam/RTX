@@ -19,8 +19,8 @@ import requests_cache
 import sys
 import json
 
-# configure requests package to use the "orangeboard.sqlite" cache
-requests_cache.install_cache('orangeboard')
+# configure requests package to use the "QueryMyChem.sqlite" cache
+requests_cache.install_cache('QueryMyChem')
 
 
 class QueryMyChem:
@@ -35,7 +35,6 @@ class QueryMyChem:
     def __access_api(handler):
 
         url = QueryMyChem.API_BASE_URL + '/' + handler
-
         try:
             res = requests.get(url, timeout=QueryMyChem.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
@@ -186,15 +185,31 @@ class QueryMyChem:
             Example:
             {'indications':
                 [
-                    {'relation': 'indication', 'snomed_id': '315642008', 'snomed_name': 'Influenza-like symptoms'},
-                    {'relation': 'indication', 'snomed_id': '76948002', 'snomed_name': 'Severe pain'},
+                    {'concept_name': 'Nosocomial Pneumonia due to Klebsiella Pneumoniae'},
+                    {'concept_name': 'Acute bacterial sinusitis',
+                     'cui_semantic_type': 'T047',
+                     'snomed_concept_id': 75498004,
+                     'snomed_full_name': 'Acute bacterial sinusitis',
+                     'umls_cui': 'C0275556'},
+                    {'concept_name': 'Acute Moraxella catarrhalis bronchitis',
+                     'cui_semantic_type': 'T047',
+                     'snomed_concept_id': 195722003,
+                     'snomed_full_name': 'Acute Moraxella catarrhalis bronchitis',
+                     'umls_cui': 'C0339932'},
                     ...
                 ],
             'contraindications':
                 [
-                    {'relation': 'contraindication', 'snomed_id': '24526004', 'snomed_name': 'Inflammatory bowel disease'},
-                    {'relation': 'contraindication', 'snomed_id': '116290004', 'snomed_name': 'Acute abdominal pain'},
-                    {'relation': 'contraindication', 'snomed_id': '13645005', 'snomed_name': 'Chronic obstructive lung disease'},
+                    {'concept_name': 'Diabetes mellitus',
+                     'cui_semantic_type': 'T047',
+                     'snomed_concept_id': 73211009,
+                     'snomed_full_name': 'Diabetes mellitus',
+                     'umls_cui': 'C0011849'},
+                    {'concept_name': 'Pancytopenia',
+                     'cui_semantic_type': 'T047',
+                     'snomed_concept_id': 127034005,
+                     'snomed_full_name': 'Pancytopenia',
+                     'umls_cui': 'C0030312'},
                     ...
                 ]
             }
@@ -214,19 +229,16 @@ class QueryMyChem:
                 drugcentral = json_dict['drugcentral']
                 if "drug_use" in drugcentral.keys():
                     drug_uses = drugcentral['drug_use']
-                    if isinstance(drug_uses, list):
-                        for drug_use in drug_uses:
-                            if 'relation' in drug_use.keys() and 'snomed_id' in drug_use.keys():
-                                if drug_use['relation'] == 'indication' and drug_use not in indications:
-                                    indications.append(drug_use)
-                                if drug_use['relation'] == 'contraindication' and drug_use not in contraindications:
-                                    contraindications.append(drug_use)
-                    elif isinstance(drug_uses, dict):
-                        if 'relation' in drug_uses.keys() and 'snomed_id' in drug_uses.keys():
-                            if drug_uses['relation'] == 'indication' and drug_uses not in indications:
-                                indications.append(drug_uses)
-                            if drug_uses['relation'] == 'contraindication' and drug_uses not in contraindications:
-                                contraindications.append(drug_uses)
+                    if 'contraindication' in drug_uses.keys():
+                        if isinstance(drug_uses['contraindication'], list):
+                            contraindications = drug_uses['contraindication']
+                        elif isinstance(drug_uses['contraindication'], dict):
+                            contraindications.append(drug_uses['contraindication'])
+                    if 'indication' in drug_uses.keys():
+                        if isinstance(drug_uses['indication'], list):
+                            indications = drug_uses['indication']
+                        elif isinstance(drug_uses['indication'], dict):
+                            indications.append(drug_uses['indication'])
         return {'indications': indications, "contraindications": contraindications}
 
 
@@ -261,6 +273,6 @@ if __name__ == '__main__':
     # print(umls_array)
     # print(len(umls_array))
 
-    # drug_use = QueryMyChem.get_drug_use("CHEMBL1082")
-    # print(drug_use['indications'])
-    # print(drug_use['contraindications'])
+    drug_use = QueryMyChem.get_drug_use("CHEMBL:521")
+    print(str(len(drug_use['indications'])) + str(drug_use['indications']))
+    print(str(len(drug_use['contraindications'])) + str(drug_use['contraindications']))

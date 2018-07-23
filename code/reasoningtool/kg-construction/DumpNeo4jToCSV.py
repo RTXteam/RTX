@@ -11,15 +11,15 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
+import argparse
 import neo4j.v1
 from BioNetExpander import BioNetExpander
 from Orangeboard import Orangeboard
 
-driver = neo4j.v1.GraphDatabase.driver('bolt://localhost:7687',
-                                       auth=('neo4j', 'precisionmedicine'))
 
 def run_cypher(query, parameters=None):
     return driver.session().run(query, parameters)
+
 
 def make_nodes_file(filename='nodes.csv', separator=','):
     query_result = run_cypher('match (n) return n')
@@ -37,11 +37,11 @@ def make_nodes_file(filename='nodes.csv', separator=','):
             nodes_file.write('node' + separator + node_uuid + separator + nodetype + separator + nodename + '\n')
     nodes_file.close()
 
-rels_set = set()
 
 def make_rels_file(filename='rels.csv', separator=','):
     assert ':' not in separator
-    query_result = run_cypher('match (n)-[r]-(m) return n.UUID, m.UUID, r')
+    query_result = run_cypher('match (n)-[r]-(m) return n.UUID, m.UUID, r LIMIT 10000')
+    rels_set = set()
     rels_file = open(filename, 'w')
     for record in query_result:
         source_node_uuid = record[0]
@@ -50,17 +50,31 @@ def make_rels_file(filename='rels.csv', separator=','):
         rel_properties = rel.properties
         reltype = rel.type
         reltype_dir = BioNetExpander.MASTER_REL_IS_DIRECTED[reltype]
-        sourcedb = rel_properties['sourcedb']
+        sourcedb = rel_properties['provided_by']
         rel_key = Orangeboard.make_rel_dict_key(source_node_uuid, target_node_uuid, reltype_dir)
         if rel_key not in rels_set:
             rels_set.add(rel_key)
             rels_file.write('rel' + separator + source_node_uuid + separator + target_node_uuid + separator + sourcedb + ':' + reltype + '\n')
     rels_file.close()
 
-make_nodes_file()
-make_rels_file()
 
-        
-        
-        
-        
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-a", "--address", help="The bolt url and port used to connect to the neo4j instance. (default:"
+                                                "bolt://localhost:7687)",
+                        default="bolt://localhost:7687")
+    parser.add_argument("-u", "--username", help="The username used to connect to the neo4j instance. (default: )",
+                        default='')
+    parser.add_argument("-p", "--password", help="The password used to connect to the neo4j instance. (default: )",
+                        default='')
+    args = parser.parse_args()
+
+    if args.username == '' or args.password == '':
+        print('usage: DumpNeo4jToCSV.py [-h] [-a URL] [-u USERNAME] [-p PASSWORD]')
+        print('DumpNeo4jToCSV.py: error: invalid username or password')
+        exit(0)
+
+    driver = neo4j.v1.GraphDatabase.driver(args.address, auth=(args.username, args.password))
+    make_nodes_file()
+    make_rels_file()
