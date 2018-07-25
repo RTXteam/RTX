@@ -12,6 +12,17 @@ Download the PREDICATION table from the above link and place it into the data di
 
 There are several variables at the top of the MLDR.sh bash script. They are seperated into groups and have decriptions of what they do written above them. You will need to edit some of these (like neo4j log in credentials and url:port) to fit your local system before running MLDR.sh 
 
-# Troubleshooting
+# Make predictions using predictor.py
 
-Likely errors will go here
+If you want to make predictions on a data set format it in a csv with the headers source and target using curie ids (CHEMBL for drugs and DOID/OMIM/HP) as identifiers formatted as such:
+
+source |	target
+----- | ----
+ChEMBL:1622 |	DOID:399
+ChEMBL:730 |	OMIM:613658
+ChEMBL:1484 |	OMIM:601367
+ChEMBL:1237022 |	DOID:0060407
+ChEMBL:504 |	DOID:0050275
+ChEMBL:714 |	DOID:9675
+ChEMBL:504 |	DOID:0050638
+ChEMBL:1909300 | HP:0000421
