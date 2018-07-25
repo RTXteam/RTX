@@ -26,3 +26,6 @@ ChEMBL:504 |	DOID:0050275
 ChEMBL:714 |	DOID:9675
 ChEMBL:504 |	DOID:0050638
 ChEMBL:1909300 | HP:0000421
+
+Then if you wish to make a prediction at the same time simply uncomment the predictor.py commands at the end of MLDR.sh and it do it all in one run. Otherwise, you can simply follow the skeleton of the command and just run it in the termainal after MLDR.sh has generated the model. 
+
