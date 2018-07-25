@@ -12,8 +12,8 @@ semmed="data/semmedVER31_R_PREDICATION_to12312017.sql.gz"
 
 # This is the username and password for the neo4j instance you are using to host the graph. By default the username and password are both "neo4j"
 neo4j_user="neo4j"
-neo4j_pass="precisionmedicine"
-neo4j_url="bolt://rtxdev.saramsey.org:7687"
+neo4j_pass="neo4j"
+neo4j_url="bolt://localhost:7687"
 
 # This is the path to node2vec. download and install from here: https://github.com/snap-stanford/snap/tree/master/examples/node2vec
 # Make sure that you run the makefile before tryig to use
