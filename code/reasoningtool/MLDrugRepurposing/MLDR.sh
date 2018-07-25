@@ -46,34 +46,34 @@ path2="data"
 ################
 
 # This section converts the gzipped mysql dump from SemMedDB to a csv
-#echo "Converting SemMedDB to csv..."
-#eval "zcat ${semmed} | ${py_name} mysqldump_to_csv.py"
+echo "Converting SemMedDB to csv..."
+eval "zcat ${semmed} | ${py_name} mysqldump_to_csv.py"
 
 # This section extracts, counts, and formats positive training data from SemMEdDB
-#echo "Extracting positives from SemMedDB..."
-#echo "pmid,relationship,subject_cui,subject_name,object_cui,object_name" > data/to_split.csv
-#grep ',TREATS,' PREDICATION.csv | csvcut -c=3,4,5,6,9,10 >> data/to_split.csv
-#eval "${py_name} SplitRel.py --f data/to_split.csv --s data/split.csv"
-#rm data/to_split.csv
-#echo "count,source,target" > data/semmed_tp.csv
-#tail -n+2 data/split.csv | csvcut -c=3,5 | sort | uniq --count | sed 's/^ *//g' | sed 's/ /,/g' >> data/semmed_tp.csv
-#rm data/split.csv
+echo "Extracting positives from SemMedDB..."
+echo "pmid,relationship,subject_cui,subject_name,object_cui,object_name" > data/to_split.csv
+grep ',TREATS,' PREDICATION.csv | csvcut -c=3,4,5,6,9,10 >> data/to_split.csv
+eval "${py_name} SplitRel.py --f data/to_split.csv --s data/split.csv"
+rm data/to_split.csv
+echo "count,source,target" > data/semmed_tp.csv
+tail -n+2 data/split.csv | csvcut -c=3,5 | sort | uniq --count | sed 's/^ *//g' | sed 's/ /,/g' >> data/semmed_tp.csv
+rm data/split.csv
 
 # This section extracts, counts, and formats negative training data from SemMEdDB
-#echo "Extracting negatives from SemMedDB..."
-#echo "pmid,relationship,subject_cui,subject_name,object_cui,object_name" > data/to_split.csv
-#grep ',NEG_TREATS,' PREDICATION.csv | csvcut -c=3,4,5,6,9,10 >> data/to_split.csv
-#eval "${py_name} SplitRel.py --f data/to_split.csv --s data/split.csv"
-#rm data/to_split.csv
-#echo "count,source,target" > data/semmed_tn.csv
-#tail -n+2 data/split.csv | csvcut -c=3,5 | sort | uniq --count | sed 's/^ *//g' | sed 's/ /,/g' >> data/semmed_tn.csv
-#rm data/split.csv
+echo "Extracting negatives from SemMedDB..."
+echo "pmid,relationship,subject_cui,subject_name,object_cui,object_name" > data/to_split.csv
+grep ',NEG_TREATS,' PREDICATION.csv | csvcut -c=3,4,5,6,9,10 >> data/to_split.csv
+eval "${py_name} SplitRel.py --f data/to_split.csv --s data/split.csv"
+rm data/to_split.csv
+echo "count,source,target" > data/semmed_tn.csv
+tail -n+2 data/split.csv | csvcut -c=3,5 | sort | uniq --count | sed 's/^ *//g' | sed 's/ /,/g' >> data/semmed_tn.csv
+rm data/split.csv
 
-#mv PREDICATION.csv data/
+mv PREDICATION.csv data/
 
 # This section downloads the graph and nodes needed for cui -> curie mapping
-#echo "Downloading graph..."
-#eval "${py_name} PullGraph.py --user ${neo4j_user} --password ${neo4j_pass} --url ${neo4j_url}"
+echo "Downloading graph..."
+eval "${py_name} PullGraph.py --user ${neo4j_user} --password ${neo4j_pass} --url ${neo4j_url}"
 
 # This section Creates a cui -> curie map file.
 # NOTE: This will only work if a couple of services are runningon our aws instances
@@ -82,19 +82,19 @@ path2="data"
 #eval "${py_name} BuildCuiMap.py --source data/drugs.csv --target data/diseases.csv"
 
 # This section formats the graph for ingestion by node2vec and passes it to node2vec to create vectorizations of our nodes
-#echo "Converting graph to edgelist..."
-#eval "${py_name} EdgelistMaker.py"
-#eval "${node2vec_path} -i:${PWD}/data/rel.edgelist -o:${PWD}/data/graph.emb -q:${QVAR} -p:${PVAR} -e:${EVAR} -d:${DVAR} -l:${LVAR} -r:${RVAR} -v -dr"
+echo "Converting graph to edgelist..."
+eval "${py_name} EdgelistMaker.py"
+eval "${node2vec_path} -i:${PWD}/data/rel.edgelist -o:${PWD}/data/graph.emb -q:${QVAR} -p:${PVAR} -e:${EVAR} -d:${DVAR} -l:${LVAR} -r:${RVAR} -v -dr"
 
 
 # This section downloads the mychem training data
 #echo "Downloading MyChem data..."
-#eval "${py_name} MyChemGT.py"
+eval "${py_name} MyChemGT.py"
 
 # This section converts the training data csvs from cuis to curie ids
-#echo "Converting cuis to curie ids..."
-#eval "${py_name} ConvertCsv.py --tp data/semmed_tp.csv --tn data/semmed_tn.csv"
-#eval "${py_name} ConvertCsv.py --tp data/mychem_tp_umls.csv --tn data/mychem_tn_umls.csv -t True"
+echo "Converting cuis to curie ids..."
+eval "${py_name} ConvertCsv.py --tp data/semmed_tp.csv --tn data/semmed_tn.csv"
+eval "${py_name} ConvertCsv.py --tp data/mychem_tp_umls.csv --tn data/mychem_tn_umls.csv -t True"
 
 # This section builds a model using logistic regression and save it to the file LogReg.pkl for prediction using Pred.py
 echo "Building model..."
