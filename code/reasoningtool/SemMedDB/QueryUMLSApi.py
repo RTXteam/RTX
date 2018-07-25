@@ -135,8 +135,9 @@ class QueryUMLS:
         return cui
 
 if __name__ == '__main__':
-    tgt = QueryUMLS.get_ticket_gen()
-    print(QueryUMLS.get_cuis_from_string('log15', tgt))
+    pass
+    #tgt = QueryUMLS.get_ticket_gen()
+    #print(QueryUMLS.get_cuis_from_string('log15', tgt))
     # print(QueryUMLS.get_cuis_from_string('pain', tgt))
     # print(QueryUMLS.get_cui_from_string_precision('pain', tgt))
-    print(QueryUMLS.get_cui_from_string_precision('Influenza-like symptoms', tgt))
+    #print(QueryUMLS.get_cui_from_string_precision('Influenza-like symptoms', tgt))
