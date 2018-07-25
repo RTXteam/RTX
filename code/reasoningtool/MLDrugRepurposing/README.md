@@ -10,7 +10,7 @@ Download the PREDICATION table from the above link and place it into the data di
 
 # Edit the MLDR.sh file variables
 
-Discriptions of this will go here
+There are several variables at the top of the MLDR.sh bash script. They are seperated into groups and have decriptions of what they do written above them. You will need to edit some of these (like neo4j log in credentials and url:port) to fit your local system before running MLDR.sh 
 
 # Troubleshooting
 
