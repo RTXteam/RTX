@@ -33,6 +33,9 @@ cutoff="2"
 # This indicates if you want a roc curve plotted for the end model (True for yes and False for no)
 roc="True"
 
+# The name of the csv you wish to import to predict on
+data_file="data.csv"
+
 ######## WILL BE REMOVED ##############
 # This is for testing right now
 #path2="/home/womackf/Dropbox/pyUMLS/snap/snap-master/examples/node2vec/LogReg"
@@ -78,7 +81,7 @@ path2="data"
 # generated file on out github.
 #eval "${py_name} BuildCuiMap.py --source data/drugs.csv --target data/diseases.csv"
 
-# This section formats the grpah for ingestion by node2vec and passes it to node2vec to create vectorizations of our nodes
+# This section formats the graph for ingestion by node2vec and passes it to node2vec to create vectorizations of our nodes
 #echo "Converting graph to edgelist..."
 #eval "${py_name} EdgelistMaker.py"
 #eval "${node2vec_path} -i:${PWD}/data/rel.edgelist -o:${PWD}/data/graph.emb -q:${QVAR} -p:${PVAR} -e:${EVAR} -d:${DVAR} -l:${LVAR} -r:${RVAR} -v -dr"
@@ -101,4 +104,12 @@ eval "${py_name} LogReg.py --tp ${path2}/semmed_tp.csv ${path2}/mychem_tp.csv ${
                            --map ${path2}/map.csv \\
                            -c ${cutoff} \\
                            --roc ${roc}"
+
+# This section makes predictions and then saves them to a csv
+#echo "Making predictions..."
+#eval "${py_name} predictor.py --emb data/graph.emb \\
+#                              --model data/LogReg.pkl \\
+#                              --map data/map.csv \\
+#                              --data data/${data_file} \\
+#                              --save prediction.csv"
 
