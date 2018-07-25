@@ -6,7 +6,7 @@ make sure you have python3 installed and that the contents of [Requirements.txt]
 
 Download can be found here: https://skr3.nlm.nih.gov/SemMedDB/download/download.html
 
-Download the PREDICATION table from the above link.
+Download the PREDICATION table from the above link and place it into the data directory.
 
 # Edit the MLDR.sh file variables
 
