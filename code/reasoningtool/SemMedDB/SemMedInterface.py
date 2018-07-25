@@ -16,6 +16,7 @@ from QuerySemMedDB import QuerySemMedDB
 from QueryUMLSSQL import QueryUMLSSQL
 from QueryMyGene import QueryMyGene
 from QueryMyChem import QueryMyChem
+from QueryUMLSApi import QueryUMLS
 import requests
 import pandas
 import time
@@ -568,5 +569,6 @@ class SemMedInterface():
 
 if __name__ == '__main__':
 	pass
+
 
 
