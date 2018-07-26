@@ -92,11 +92,15 @@ class QueryLilGIM:
     @functools.lru_cache(maxsize=1024, typed=False)
     def query_neighbor_genes_for_gene_set_in_a_given_anatomy(self,
                                                              anatomy_curie_id_str,
-                                                             protein_set_curie_id_str):
+                                                             protein_set_curie_id_str,
+                                                             allowed_proteins_filter_tuple=tuple()):
 
         assert type(protein_set_curie_id_str) == tuple
         assert len(protein_set_curie_id_str) > 0
         assert type(anatomy_curie_id_str) == str
+        if allowed_proteins_filter_tuple:
+            assert type(allowed_proteins_filter_tuple) == tuple
+            assert len(allowed_proteins_filter_tuple) > 0
 
         # convert UBERON anatomy curie ID str to a brenda anatomy ID
         assert anatomy_curie_id_str.startswith("UBERON:")
@@ -159,12 +163,19 @@ class QueryLilGIM:
             uniprot_id_set = self.mg.convert_entrez_gene_id_to_uniprot_id(gene_id)
             if len(uniprot_id_set) > 0:
                 for uniprot_id in uniprot_id_set:
-                    ret_dict["UniProtKB:" + uniprot_id] = avg_corr
+                    if len(allowed_proteins_filter_tuple) == 0:
+                        ret_dict["UniProtKB:" + uniprot_id] = avg_corr
+                    else:
+                        if uniprot_id in allowed_proteins_filter_tuple:
+                            ret_dict["UniProtKB:" + uniprot_id] = avg_corr
 
         return ret_dict
 
 if __name__ == '__main__':
     qlg = QueryLilGIM()
     print(qlg.query_neighbor_genes_for_gene_set_in_a_given_anatomy("UBERON:0002384", ("UniProtKB:P12004",)))
-    print(qlg.query_neighbor_genes_for_gene_set_in_a_given_anatomy("UBERON:0002384", ("UniProtKB:P12004",)))
-#    print(qlg.query_neighbor_genes_for_gene_set_in_a_given_anatomy("UBERON:0000178", {"UniProtKB:P01579"}))
+    new_tuple = ('Q14691', 'O75792', 'Q9Y242')
+    print(qlg.query_neighbor_genes_for_gene_set_in_a_given_anatomy("UBERON:0002384", ("UniProtKB:P12004",), new_tuple))
+    empty_tuple = ()
+    print(qlg.query_neighbor_genes_for_gene_set_in_a_given_anatomy("UBERON:0002384", ("UniProtKB:P12004",), empty_tuple))
+    # print(qlg.query_neighbor_genes_for_gene_set_in_a_given_anatomy("UBERON:0000178", {"UniProtKB:P01579"}))
