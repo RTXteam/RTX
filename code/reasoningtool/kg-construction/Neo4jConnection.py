@@ -222,23 +222,23 @@ class Neo4jConnection:
 
     @staticmethod
     def _get_anatomy_nodes(tx):
-        result = tx.run("MATCH (n:anatomical_entity) RETURN n.id")
-        return [record["n.id"] for record in result]
+        result = tx.run("MATCH (n:anatomical_entity) RETURN n.rtx_name")
+        return [record["n.rtx_name"] for record in result]
 
     @staticmethod
     def _get_phenotype_nodes(tx):
-        result = tx.run("MATCH (n:phenotypic_feature) RETURN n.id")
-        return [record["n.id"] for record in result]
+        result = tx.run("MATCH (n:phenotypic_feature) RETURN n.rtx_name")
+        return [record["n.rtx_name"] for record in result]
 
     @staticmethod
     def _get_microRNA_nodes(tx):
-        result = tx.run("MATCH (n:microRNA) RETURN n.id")
-        return [record["n.id"] for record in result]
+        result = tx.run("MATCH (n:microRNA) RETURN n.rtx_name")
+        return [record["n.rtx_name"] for record in result]
 
     @staticmethod
     def _get_pathway_nodes(tx):
-        result = tx.run("MATCH (n:pathway) RETURN n.id")
-        return [record["n.id"] for record in result]
+        result = tx.run("MATCH (n:pathway) RETURN n.rtx_name")
+        return [record["n.rtx_name"] for record in result]
 
     @staticmethod
     def _get_protein_nodes(tx):
@@ -247,33 +247,33 @@ class Neo4jConnection:
 
     @staticmethod
     def _get_disease_nodes(tx):
-        result = tx.run("MATCH (n:disease) RETURN n.id")
-        return [record["n.id"] for record in result]
+        result = tx.run("MATCH (n:disease) RETURN n.rtx_name")
+        return [record["n.rtx_name"] for record in result]
 
     @staticmethod
     def _get_chemical_substance_nodes(tx):
-        result = tx.run("MATCH (n:chemical_substance) RETURN n.id")
-        return [record["n.id"] for record in result]
+        result = tx.run("MATCH (n:chemical_substance) RETURN n.rtx_name")
+        return [record["n.rtx_name"] for record in result]
 
     @staticmethod
     def _get_bio_process_nodes(tx):
-        result = tx.run("MATCH (n:biological_process) RETURN n.id")
-        return [record["n.id"] for record in result]
+        result = tx.run("MATCH (n:biological_process) RETURN n.rtx_name")
+        return [record["n.rtx_name"] for record in result]
 
     @staticmethod
     def _get_cellular_component_nodes(tx):
-        result = tx.run("MATCH (n:cellular_component) RETURN n.id")
-        return [record["n.id"] for record in result]
+        result = tx.run("MATCH (n:cellular_component) RETURN n.rtx_name")
+        return [record["n.rtx_name"] for record in result]
 
     @staticmethod
     def _get_molecular_function_nodes(tx):
-        result = tx.run("MATCH (n:molecular_function) RETURN n.id")
-        return [record["n.id"] for record in result]
+        result = tx.run("MATCH (n:molecular_function) RETURN n.rtx_name")
+        return [record["n.rtx_name"] for record in result]
 
     @staticmethod
     def _get_metabolite_nodes(tx):
-        result = tx.run("MATCH (n:metabolite) RETURN n.id")
-        return [record["n.id"] for record in result]
+        result = tx.run("MATCH (n:metabolite) RETURN n.rtx_name")
+        return [record["n.rtx_name"] for record in result]
 
     @staticmethod
     def _update_anatomy_nodes(tx, nodes):
@@ -281,7 +281,7 @@ class Neo4jConnection:
             """
             UNWIND {nodes} AS row
             WITH row.node_id AS node_id, row.extended_info_json AS extended_info_json
-            MATCH (n:anatomical_entity{id:node_id})
+            MATCH (n:anatomical_entity{rtx_name:node_id})
             SET n.extended_info_json=extended_info_json
             """,
             nodes=nodes,
@@ -294,7 +294,7 @@ class Neo4jConnection:
             """
             UNWIND {nodes} AS row
             WITH row.node_id AS node_id, row.extended_info_json AS extended_info_json
-            MATCH (n:phenotypic_feature{id:node_id})
+            MATCH (n:phenotypic_feature{rtx_name:node_id})
             SET n.extended_info_json=extended_info_json
             """,
             nodes=nodes,
@@ -307,7 +307,7 @@ class Neo4jConnection:
             """
             UNWIND {nodes} AS row
             WITH row.node_id AS node_id, row.extended_info_json AS extended_info_json
-            MATCH (n:microRNA{id:node_id})
+            MATCH (n:microRNA{rtx_name:node_id})
             SET n.extended_info_json=extended_info_json
             """,
             nodes=nodes,
@@ -320,7 +320,7 @@ class Neo4jConnection:
             """
             UNWIND {nodes} AS row
             WITH row.node_id AS node_id, row.extended_info_json AS extended_info_json
-            MATCH (n:pathway{id:node_id})
+            MATCH (n:pathway{rtx_name:node_id})
             SET n.extended_info_json=extended_info_json
             """,
             nodes=nodes,
@@ -346,7 +346,7 @@ class Neo4jConnection:
             """
             UNWIND {nodes} AS row
             WITH row.node_id AS node_id, row.extended_info_json AS extended_info_json
-            MATCH (n:disease{id:node_id})
+            MATCH (n:disease{rtx_name:node_id})
             SET n.extended_info_json=extended_info_json
             """,
             nodes=nodes,
@@ -359,7 +359,7 @@ class Neo4jConnection:
             """
             UNWIND {nodes} AS row
             WITH row.node_id AS node_id, row.extended_info_json AS extended_info_json
-            MATCH (n:chemical_substance{id:node_id})
+            MATCH (n:chemical_substance{rtx_name:node_id})
             SET n.extended_info_json=extended_info_json
             """,
             nodes=nodes,
@@ -372,7 +372,7 @@ class Neo4jConnection:
             """
             UNWIND {nodes} AS row
             WITH row.node_id AS node_id, row.extended_info_json AS extended_info_json
-            MATCH (n:biological_process{id:node_id})
+            MATCH (n:biological_process{rtx_name:node_id})
             SET n.extended_info_json=extended_info_json
             """,
             nodes=nodes,
@@ -381,22 +381,22 @@ class Neo4jConnection:
 
     @staticmethod
     def _get_anatomy_node(tx, id):
-        result = tx.run("MATCH (n:anatomical_entity{id:'%s'}) RETURN n" % id)
+        result = tx.run("MATCH (n:anatomical_entity{rtx_name:'%s'}) RETURN n" % id)
         return result.single()
 
     @staticmethod
     def _get_phenotype_node(tx, id):
-        result = tx.run("MATCH (n:phenotypic_feature{id:'%s'}) RETURN n" % id)
+        result = tx.run("MATCH (n:phenotypic_feature{rtx_name:'%s'}) RETURN n" % id)
         return result.single()
 
     @staticmethod
     def _get_microRNA_node(tx, id):
-        result = tx.run("MATCH (n:microRNA{id:'%s'}) RETURN n" % id)
+        result = tx.run("MATCH (n:microRNA{rtx_name:'%s'}) RETURN n" % id)
         return result.single()
 
     @staticmethod
     def _get_pathway_node(tx, id):
-        result = tx.run("MATCH (n:pathway{id:'%s'}) RETURN n" % id)
+        result = tx.run("MATCH (n:pathway{rtx_name:'%s'}) RETURN n" % id)
         return result.single()
 
     @staticmethod
@@ -406,22 +406,22 @@ class Neo4jConnection:
 
     @staticmethod
     def _get_disease_node(tx, id):
-        result = tx.run("MATCH (n:disease{id:'%s'}) RETURN n" % id)
+        result = tx.run("MATCH (n:disease{rtx_name:'%s'}) RETURN n" % id)
         return result.single()
 
     @staticmethod
     def _get_chemical_substance_node(tx, id):
-        result = tx.run("MATCH (n:chemical_substance{id:'%s'}) RETURN n" % id)
+        result = tx.run("MATCH (n:chemical_substance{rtx_name:'%s'}) RETURN n" % id)
         return result.single()
 
     @staticmethod
     def _get_bio_process_node(tx, id):
-        result = tx.run("MATCH (n:biological_process{id:'%s'}) RETURN n" % id)
+        result = tx.run("MATCH (n:biological_process{rtx_name:'%s'}) RETURN n" % id)
         return result.single()
 
     @staticmethod
     def _get_node(tx, id):
-        result = tx.run("MATCH (n{id:'%s'}) RETURN n" % id)
+        result = tx.run("MATCH (n{rtx_name:'%s'}) RETURN n" % id)
         return result.single()
 
     @staticmethod
@@ -430,7 +430,7 @@ class Neo4jConnection:
             """
             UNWIND {nodes} AS row
             WITH row.node_id AS node_id, row.desc AS description
-            MATCH (n:anatomical_entity{id:node_id})
+            MATCH (n:anatomical_entity{rtx_name:node_id})
             SET n.description=description
             """,
             nodes=nodes,
@@ -443,7 +443,7 @@ class Neo4jConnection:
             """
             UNWIND {nodes} AS row
             WITH row.node_id AS node_id, row.desc AS description
-            MATCH (n:phenotypic_feature{id:node_id})
+            MATCH (n:phenotypic_feature{rtx_name:node_id})
             SET n.description=description
             """,
             nodes=nodes,
@@ -456,7 +456,7 @@ class Neo4jConnection:
             """
             UNWIND {nodes} AS row
             WITH row.node_id AS node_id, row.desc AS description
-            MATCH (n:microRNA{id:node_id})
+            MATCH (n:microRNA{rtx_name:node_id})
             SET n.description=description
             """,
             nodes=nodes,
@@ -469,7 +469,7 @@ class Neo4jConnection:
             """
             UNWIND {nodes} AS row
             WITH row.node_id AS node_id, row.desc AS description
-            MATCH (n:disease{id:node_id})
+            MATCH (n:disease{rtx_name:node_id})
             SET n.description=description
             """,
             nodes=nodes,
@@ -482,7 +482,7 @@ class Neo4jConnection:
             """
             UNWIND {nodes} AS row
             WITH row.node_id AS node_id, row.desc AS description
-            MATCH (n:pathway{id:node_id})
+            MATCH (n:pathway{rtx_name:node_id})
             SET n.description=description
             """,
             nodes=nodes,
@@ -508,7 +508,7 @@ class Neo4jConnection:
             """
             UNWIND {nodes} AS row
             WITH row.node_id AS node_id, row.desc AS description
-            MATCH (n:chemical_substance{id:node_id})
+            MATCH (n:chemical_substance{rtx_name:node_id})
             SET n.description=description
             """,
             nodes=nodes,
@@ -521,7 +521,7 @@ class Neo4jConnection:
             """
             UNWIND {nodes} AS row
             WITH row.node_id AS node_id, row.desc AS description
-            MATCH (n:biological_process{id:node_id})
+            MATCH (n:biological_process{rtx_name:node_id})
             SET n.description=description
             """,
             nodes=nodes,
@@ -534,7 +534,7 @@ class Neo4jConnection:
             """
             UNWIND {nodes} AS row
             WITH row.node_id AS node_id, row.desc AS description
-            MATCH (n:cellular_component{id:node_id})
+            MATCH (n:cellular_component{rtx_name:node_id})
             SET n.description=description
             """,
             nodes=nodes,
@@ -547,7 +547,7 @@ class Neo4jConnection:
             """
             UNWIND {nodes} AS row
             WITH row.node_id AS node_id, row.desc AS description
-            MATCH (n:molecular_function{id:node_id})
+            MATCH (n:molecular_function{rtx_name:node_id})
             SET n.description=description
             """,
             nodes=nodes,
@@ -573,7 +573,7 @@ class Neo4jConnection:
             """
             UNWIND {nodes} AS row
             WITH row.node_id AS node_id, row.desc AS description
-            MATCH (n:metabolite{id:node_id})
+            MATCH (n:metabolite{rtx_name:node_id})
             SET n.description=description
             """,
             nodes=nodes,
@@ -591,7 +591,7 @@ class Neo4jConnection:
             """
             UNWIND {array} AS row
             WITH row.d_id AS d_id, row.p_id AS p_id
-            MATCH (d:disease {id:d_id}), (p:phenotypic_feature {id:p_id})
+            MATCH (d:disease {rtx_name:d_id}), (p:phenotypic_feature {rtx_name:p_id})
             CREATE (d)-[:has_phenotype {
                 source_node_uuid: d.UUID, 
                 target_node_uuid: p.UUID,
@@ -622,7 +622,7 @@ class Neo4jConnection:
     def __count_has_phenotype_relation(tx, relation):
         result = tx.run(
             """
-            MATCH p = (a {id:$relation.d_id})-[r:has_phenotype]->(b {id:$relation.p_id})
+            MATCH p = (a {rtx_name:$relation.d_id})-[r:has_phenotype]->(b {rtx_name:$relation.p_id})
             RETURN count(p)
             """,
             relation=relation
@@ -634,7 +634,7 @@ class Neo4jConnection:
         result = tx.run(
             """
             MATCH (n), (m) 
-            WHERE n<>m AND n.id=m.id AND split(n.rtx_name, ':')[0] = 'REACT'
+            WHERE n<>m AND n.rtx_name=m.rtx_name AND split(n.rtx_name, ':')[0] = 'REACT'
             DELETE n
             """
         )
@@ -645,7 +645,7 @@ class Neo4jConnection:
         result = tx.run(
             """
             MATCH (n), (m)
-            WHERE n<>m AND n.id=m.id return count(*)
+            WHERE n<>m AND n.rtx_name=m.rtx_name return count(*)
             """,
         )
         return result.single()['count(*)']

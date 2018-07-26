@@ -39,7 +39,7 @@ from QueryMiRBase import QueryMiRBase
 from QueryPharos import QueryPharos
 from QuerySciGraph import QuerySciGraph
 from QueryChEMBL import QueryChEMBL
-from QueryUniprotExtended import QueryUniprotExtended
+# from QueryUniprotExtended import QueryUniprotExtended
 from QueryKEGG import QueryKEGG
 from QueryUniprot import QueryUniprot
 from QueryEBIOLSExtended import QueryEBIOLSExtended
@@ -122,7 +122,7 @@ class BioNetExpander:
             iri = iri_prefix + accession
 
         if simple_node_type == "protein" and desc == "":
-            gene_symbol = QueryUniprotExtended.get_protein_gene_symbol(curie_id)
+            gene_symbol = QueryUniprot.get_protein_gene_symbol(curie_id)
             desc = gene_symbol
 
         node = None
