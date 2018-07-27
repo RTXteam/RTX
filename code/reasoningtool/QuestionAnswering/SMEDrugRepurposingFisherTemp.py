@@ -270,6 +270,7 @@ for u,v,d in g.edges(data=True):
 	for key in [k for k in d.keys()]:
 		if type(d[key]) == np.float64:
 			d[key] = float(d[key])
+	d["merged"] = 1/float(d["merged"]+.1)
 
 
 nx.write_graphml(g, '/home/dkoslicki/Data/Temp/test2.graphml')

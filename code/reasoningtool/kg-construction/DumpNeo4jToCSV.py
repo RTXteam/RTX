@@ -61,14 +61,17 @@ def make_rels_file(filename='rels.csv', separator=','):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-a", "--address", help="address and port to connect to. (default:bolt://localhost:7687)",
+    parser.add_argument("-a", "--address", help="The bolt url and port used to connect to the neo4j instance. (default:"
+                                                "bolt://localhost:7687)",
                         default="bolt://localhost:7687")
-    parser.add_argument("-u", "--username", help="username to connect as. (default: )", default='')
-    parser.add_argument("-p", "--password", help="password to connect with. (default: )", default='')
+    parser.add_argument("-u", "--username", help="The username used to connect to the neo4j instance. (default: )",
+                        default='')
+    parser.add_argument("-p", "--password", help="The password used to connect to the neo4j instance. (default: )",
+                        default='')
     args = parser.parse_args()
 
     if args.username == '' or args.password == '':
-        print('usage: DumpNeo4jToCSV.py [-h] [-a ADDRESS] [-u USERNAME] [-p PASSWORD]')
+        print('usage: DumpNeo4jToCSV.py [-h] [-a URL] [-u USERNAME] [-p PASSWORD]')
         print('DumpNeo4jToCSV.py: error: invalid username or password')
         exit(0)
 
