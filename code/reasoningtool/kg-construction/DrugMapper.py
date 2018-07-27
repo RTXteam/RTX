@@ -145,9 +145,9 @@ if __name__ == '__main__':
     # onto_set = DrugMapper.map_drug_to_ontology("CHEMBL:521")
     # print(onto_set['contraindications'])
 
-    onto_set = DrugMapper.map_drug_to_ontology("CHEMBL2107884")
-    print(onto_set)
+    # onto_set = DrugMapper.map_drug_to_ontology("CHEMBL2107884")
+    # print(onto_set)
 
-    onto_set = DrugMapper.map_drug_to_ontology("CHEMBL33")
+    onto_set = DrugMapper.map_drug_to_ontology("CHEMBL8")
     print(onto_set)
 
