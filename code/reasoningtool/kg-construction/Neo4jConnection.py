@@ -634,7 +634,7 @@ class Neo4jConnection:
         result = tx.run(
             """
             MATCH (n), (m) 
-            WHERE n<>m AND n.rtx_name=m.rtx_name AND split(n.rtx_name, ':')[0] = 'REACT'
+            WHERE n<>m AND n.id=m.id AND split(n.rtx_name, ':')[0] = 'REACT'
             DELETE n
             """
         )
@@ -645,7 +645,7 @@ class Neo4jConnection:
         result = tx.run(
             """
             MATCH (n), (m)
-            WHERE n<>m AND n.rtx_name=m.rtx_name return count(*)
+            WHERE n<>m AND n.id=m.id return count(*)
             """,
         )
         return result.single()['count(*)']
