@@ -1,6 +1,10 @@
 # Make sure python is set up correctly
 
-make sure you have python3 installed and that the contents of [Requirements.txt](https://github.com/RTXteam/RTX/blob/master/requirements.txt) are installed
+Make sure you have python3 installed and that the contents of [Requirements.txt](https://github.com/RTXteam/RTX/blob/master/requirements.txt) are installed
+
+# Download and setup node2vec
+
+Node2vec is a program developed by researchers at stanford to vectorize nodes in a graph. It can be found [here](https://github.com/snap-stanford/snap/tree/master/examples/node2vec). And information about it is listed [here](https://snap.stanford.edu/node2vec/).
 
 # Download the SemMedDB MySQL dump
 
@@ -8,9 +12,31 @@ Download can be found here: https://skr3.nlm.nih.gov/SemMedDB/download/download.
 
 Download the PREDICATION table from the above link and place it into the data directory.
 
+NOTE: Don't unzip
+
 # Edit the MLDR.sh file variables
 
-There are several variables at the top of the MLDR.sh bash script. They are seperated into groups and have decriptions of what they do written above them. You will need to edit some of these (like neo4j log in credentials and url:port) to fit your local system before running MLDR.sh 
+There are several variables at the top of the MLDR.sh bash script. They are seperated into groups and have decriptions of what they do written above them. You will need to edit some of these (like neo4j log in credentials and url:port) to fit your local system before running MLDR.sh.
+
+### Descriptions of variables
+
+* `py_name` - how you call python 3 using the terminal in the enviroment you will be running MLDR.sh. (most likely python or python3)
+
+* `semmed` - The path to the SemMedDB PREDICATION table mysql dump.
+
+* `neo4j_user` - The username used in the neo4j instance hosting the knowledge graph. (This defaults to neo4j)
+
+* `neo4j_pass` - The password for the neo4j instance hosting the knowledge graph. (This defaults to neo4j)
+
+* `neo4j_url` - The bolt url and port for access to the neo4j instance. (This defaults to bolt://localhost:7687)
+
+* `PVAR`, `QVAR`, `EVAR`, `DVAR`, `LVAR`, and `RVAR` are the parameters p, q, e, d, l, & r for node2vec and decriptions for these can be found on [github](https://github.com/snap-stanford/snap/tree/master/examples/node2vec). Further reading about how node2vec works and more in depth descriptions of what these parameters do can be found [here](https://arxiv.org/abs/1607.00653).
+
+* `cutoff` - The number of times a relationship need to be encountered in SemMedDB for it to be included in the training data. This helps cut down on some of the noise in SemMedDB.
+
+* `roc` - True of False depending on if you want a roc curve generated for the model.
+
+* `data_file` - Thepath to the data file you want to predict on. Decription on how to set this up in the next section.
 
 # Make predictions using predictor.py
 
