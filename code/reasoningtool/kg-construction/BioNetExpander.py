@@ -42,7 +42,6 @@ from QueryChEMBL import QueryChEMBL
 from QueryUniprotExtended import QueryUniprotExtended
 from QueryKEGG import QueryKEGG
 from QueryUniprot import QueryUniprot
-from QueryEBIOLSExtended import QueryEBIOLSExtended
 from DrugMapper import DrugMapper
 
 

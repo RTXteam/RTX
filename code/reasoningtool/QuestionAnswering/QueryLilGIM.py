@@ -27,6 +27,9 @@ import time
 import sys
 import os
 import functools
+import ast
+
+from ReasoningUtilities import return_nodes_that_match_in_list
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../kg-construction')))  # Go up one level and look for it
 
@@ -92,15 +95,11 @@ class QueryLilGIM:
     @functools.lru_cache(maxsize=1024, typed=False)
     def query_neighbor_genes_for_gene_set_in_a_given_anatomy(self,
                                                              anatomy_curie_id_str,
-                                                             protein_set_curie_id_str,
-                                                             allowed_proteins_filter_tuple=tuple()):
+                                                             protein_set_curie_id_str):
 
         assert type(protein_set_curie_id_str) == tuple
         assert len(protein_set_curie_id_str) > 0
         assert type(anatomy_curie_id_str) == str
-        if allowed_proteins_filter_tuple:
-            assert type(allowed_proteins_filter_tuple) == tuple
-            assert len(allowed_proteins_filter_tuple) > 0
 
         # convert UBERON anatomy curie ID str to a brenda anatomy ID
         assert anatomy_curie_id_str.startswith("UBERON:")
@@ -163,19 +162,20 @@ class QueryLilGIM:
             uniprot_id_set = self.mg.convert_entrez_gene_id_to_uniprot_id(gene_id)
             if len(uniprot_id_set) > 0:
                 for uniprot_id in uniprot_id_set:
-                    if len(allowed_proteins_filter_tuple) == 0:
-                        ret_dict["UniProtKB:" + uniprot_id] = avg_corr
-                    else:
-                        if uniprot_id in allowed_proteins_filter_tuple:
-                            ret_dict["UniProtKB:" + uniprot_id] = avg_corr
+                    ret_dict["UniProtKB:" + uniprot_id] = avg_corr
+
+        query_res = get_nodes_that_match_in_list(ret_dict.keys(), 'protein')
+        res_list = str(query_res[0])
+        res_list = ast.literal_eval(res_list[22:-1])
+
+        for uniprot_id in list(ret_dict):
+            if uniprot_id not in res_list:
+                ret_dict.pop(uniprot_id)
 
         return ret_dict
 
 if __name__ == '__main__':
     qlg = QueryLilGIM()
     print(qlg.query_neighbor_genes_for_gene_set_in_a_given_anatomy("UBERON:0002384", ("UniProtKB:P12004",)))
-    new_tuple = ('Q14691', 'O75792', 'Q9Y242')
-    print(qlg.query_neighbor_genes_for_gene_set_in_a_given_anatomy("UBERON:0002384", ("UniProtKB:P12004",), new_tuple))
-    empty_tuple = ()
-    print(qlg.query_neighbor_genes_for_gene_set_in_a_given_anatomy("UBERON:0002384", ("UniProtKB:P12004",), empty_tuple))
+    print(qlg.query_neighbor_genes_for_gene_set_in_a_given_anatomy("UBERON:0000178", ("UniProtKB:P01579",)))
     # print(qlg.query_neighbor_genes_for_gene_set_in_a_given_anatomy("UBERON:0000178", {"UniProtKB:P01579"}))
