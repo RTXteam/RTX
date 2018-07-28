@@ -157,7 +157,7 @@ class LogReg():
         
         # saves the model
         if save:
-            joblib.dump(model2, 'LogRegModel.pkl')
+            joblib.dump(model2, 'data/LogRegModel.pkl')
         
         # returns the c value or f1 score
         if C_flag:
@@ -261,5 +261,6 @@ if __name__ == "__main__":
     c = lr.max_lr_f1(C_flag = True,save=True)
     if(args.roc):
         lr.lr_roc_curve(c)
+
 
 
