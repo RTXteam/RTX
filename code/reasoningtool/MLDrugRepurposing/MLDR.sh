@@ -22,10 +22,10 @@ node2vec_path="/home/womackf/Dropbox/pyUMLS/snap/snap-master/examples/node2vec/n
 # There are the parameters used in the EMB file creation. Descriptions are listed here: https://github.com/snap-stanford/snap/tree/master/examples/node2vec
 PVAR="1"
 QVAR="5"
-EVAR="3"
-DVAR="128"
-LVAR="100"
-RVAR="5"
+EVAR="5"
+DVAR="256"
+LVAR="128"
+RVAR="15"
 
 # This is the minimum number on entries in SemMedDB needed for a realationship to be considered a ground truth. (Higher numbers cut out noise but at the cost of a smaller training set)
 cutoff="2"
@@ -34,12 +34,7 @@ cutoff="2"
 roc="True"
 
 # The name of the csv you wish to import to predict on
-data_file="data.csv"
-
-######## WILL BE REMOVED ##############
-# This is for testing right now
-#path2="/home/womackf/Dropbox/pyUMLS/snap/snap-master/examples/node2vec/LogReg"
-path2="data"
+data_file="data/test_set.csv"
 
 ################
 ##### Code #####
@@ -88,7 +83,7 @@ eval "${node2vec_path} -i:${PWD}/data/rel.edgelist -o:${PWD}/data/graph.emb -q:$
 
 
 # This section downloads the mychem training data
-#echo "Downloading MyChem data..."
+echo "Downloading MyChem data..."
 eval "${py_name} MyChemGT.py"
 
 # This section converts the training data csvs from cuis to curie ids
@@ -98,18 +93,19 @@ eval "${py_name} ConvertCsv.py --tp data/mychem_tp_umls.csv --tn data/mychem_tn_
 
 # This section builds a model using logistic regression and save it to the file LogReg.pkl for prediction using Pred.py
 echo "Building model..."
-eval "${py_name} LogReg.py --tp ${path2}/semmed_tp.csv ${path2}/mychem_tp.csv ${path2}/mychem_tp_umls.csv ${path2}/ndf_tp.csv \\
-                           --tn ${path2}/semmed_tn.csv ${path2}/mychem_tn.csv ${path2}/mychem_tn_umls.csv ${path2}/ndf_tn.csv \\
+eval "${py_name} LogReg.py --tp data/semmed_tp.csv data/mychem_tp.csv data/mychem_tp_umls.csv data/ndf_tp.csv \\
+                           --tn data/semmed_tn.csv data/mychem_tn.csv data/mychem_tn_umls.csv data/ndf_tn.csv \\
                            --emb /home/bweeder/Data/rtx_data/newer_data/q_5_p_1_e_5_e_5_d_256_l_300_r_15_undirected.emb \\
-                           --map ${path2}/map.csv \\
+                           --map data/map.csv \\
                            -c ${cutoff} \\
                            --roc ${roc}"
 
+
+##### Uncomment to make predictions ######
 # This section makes predictions and then saves them to a csv
 #echo "Making predictions..."
-#eval "${py_name} predictor.py --emb data/graph.emb \\
-#                              --model data/LogReg.pkl \\
+#eval "${py_name} predictor.py --emb /home/bweeder/Data/rtx_data/newer_data/q_5_p_1_e_5_e_5_d_256_l_300_r_15_undirected.emb \\
+#                              --model data/LogRegModel.pkl \\
 #                              --map data/map.csv \\
-#                              --data data/${data_file} \\
-#                              --save prediction.csv"
-
+#                              --data ${data_file} \\
+#                              --save data/prediction.csv"
