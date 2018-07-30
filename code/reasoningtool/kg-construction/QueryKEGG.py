@@ -127,6 +127,8 @@ class QueryKEGG:
             res = res[tab_pos + 6:]
             tab_pos = res.find('\t')
             res = res[:tab_pos]
+            if len(res) == 9:
+                res = res[:4] + "00" + res[4:]
             return res
         else:
             return None
