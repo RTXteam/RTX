@@ -53,3 +53,28 @@ class QueryKEGGTestCases(TestCase):
         pubchem_id = QueryKEGG.map_kegg_compound_to_pub_chem_id(100)
         self.assertIsNone(pubchem_id)
 
+    def test_map_kegg_compound_to_hmdb_id(self):
+
+        hmdb_id = QueryKEGG.map_kegg_compound_to_hmdb_id('KEGG:C00022')
+        self.assertIsNotNone(hmdb_id)
+        self.assertEqual(hmdb_id, "HMDB00243")
+
+        hmdb_id = QueryKEGG.map_kegg_compound_to_hmdb_id('KEGG:C19033')
+        self.assertIsNotNone(hmdb_id)
+        self.assertEqual(hmdb_id, "HMDB36574")
+
+        #   wrong arg format
+        hmdb_id = QueryKEGG.map_kegg_compound_to_hmdb_id("GO:2342343")
+        self.assertIsNone(hmdb_id)
+
+        #   wrong arg format
+        hmdb_id = QueryKEGG.map_kegg_compound_to_hmdb_id("43")
+        self.assertIsNone(hmdb_id)
+
+        #   wrong arg format
+        hmdb_id = QueryKEGG.map_kegg_compound_to_hmdb_id("C00022")
+        self.assertIsNone(hmdb_id)
+
+        #   wrong arg type
+        hmdb_id = QueryKEGG.map_kegg_compound_to_hmdb_id(100)
+        self.assertIsNone(hmdb_id)
