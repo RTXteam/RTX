@@ -513,24 +513,21 @@ class UpdateNodesInfo:
         from time import time
         t = time()
 
-        none_count = 0;
+        success_count = 0
         nodes_array = []
         for i, node_id in enumerate(nodes):
             # if i % 100 == 0:
             #     print("no %d" % i)
             node = dict()
             node['node_id'] = node_id
-            # print(node_id)
-            pubchem_id = QueryKEGG.map_kegg_compound_to_pub_chem_id(node_id)
-            hmdb_url = QueryPubChem.get_description_url(pubchem_id)
-            # if hmdb_url is None:
-            #     print('# %d hmdb url is None' % i)
-            node['desc'] = QueryHMDB.get_compound_desc(hmdb_url)
-            if node['desc'] == "None":
-                none_count += 1
-            nodes_array.append(node)
-
-        print("none count = " + str(none_count))
+            hmdb_id = QueryKEGG.map_kegg_compound_to_hmdb_id(node_id)
+            if hmdb_id:
+                hmdb_url = 'http://www.hmdb.ca/metabolites/' + hmdb_id
+                node['desc'] = QueryHMDB.get_compound_desc(hmdb_url)
+                if node['desc'] != "None":
+                    success_count += 1
+                    nodes_array.append(node)
+        print("success_count = " + str(success_count))
         print("metabolite pulling time: %f" % (time() - t))
 
         nodes_nums = len(nodes_array)
