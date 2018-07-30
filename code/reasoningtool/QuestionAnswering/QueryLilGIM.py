@@ -29,7 +29,7 @@ import os
 import functools
 import ast
 
-from ReasoningUtilities import return_nodes_that_match_in_list
+from ReasoningUtilities import get_nodes_that_match_in_list
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../kg-construction')))  # Go up one level and look for it
 
@@ -166,7 +166,7 @@ class QueryLilGIM:
 
         query_res = get_nodes_that_match_in_list(ret_dict.keys(), 'protein')
         res_list = str(query_res[0])
-        res_list = ast.literal_eval(res_list[22:-1])
+        res_list = ast.literal_eval(res_list[res_list.find('['):-1])
 
         for uniprot_id in list(ret_dict):
             if uniprot_id not in res_list:
