@@ -2,6 +2,14 @@
 
 Make sure you have python3 installed and that the contents of [Requirements.txt](https://github.com/RTXteam/RTX/blob/master/requirements.txt) are installed
 
+# Set up a local version of neo4j and import a dump of our Knowlege Graph
+
+KG dumps can be found [here.](http://rtxkgdump.saramsey.org/)
+
+# Make sure you use the correct data
+
+After importing the KG use a cypher query (such as `match (n) where n.id =~ "(?i)CHEMBL.*" return n.id limit 5`) to look at the format of the chembl curie ids. If you get result like `CHEMBL.COMPOUND:CHEMBL153` then you can don't have to do anything. If, however, you get a result like `ChEMBL:153` then you are using an older version of the knowledge graph and need to rename the files: source_map_old.csv, target_map_old.csv, ndf_tp_old.csv, and ndf_tn_old.csv. Just remove "\_old" from the end of the file names (replacing the other files of the same name) and you will be good to go.
+
 # Download and setup node2vec
 
 Node2vec is a program developed by researchers at stanford to vectorize nodes in a graph. It can be found [here](https://github.com/snap-stanford/snap/tree/master/examples/node2vec). And information about it is listed [here](https://snap.stanford.edu/node2vec/).
