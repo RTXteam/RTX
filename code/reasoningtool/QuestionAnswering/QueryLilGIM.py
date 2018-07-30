@@ -27,6 +27,9 @@ import time
 import sys
 import os
 import functools
+import ast
+
+from ReasoningUtilities import get_nodes_that_match_in_list
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../kg-construction')))  # Go up one level and look for it
 
@@ -161,10 +164,18 @@ class QueryLilGIM:
                 for uniprot_id in uniprot_id_set:
                     ret_dict["UniProtKB:" + uniprot_id] = avg_corr
 
+        query_res = get_nodes_that_match_in_list(ret_dict.keys(), 'protein')
+        res_list = str(query_res[0])
+        res_list = ast.literal_eval(res_list[res_list.find('['):-1])
+
+        for uniprot_id in list(ret_dict):
+            if uniprot_id not in res_list:
+                ret_dict.pop(uniprot_id)
+
         return ret_dict
 
 if __name__ == '__main__':
     qlg = QueryLilGIM()
     print(qlg.query_neighbor_genes_for_gene_set_in_a_given_anatomy("UBERON:0002384", ("UniProtKB:P12004",)))
-    print(qlg.query_neighbor_genes_for_gene_set_in_a_given_anatomy("UBERON:0002384", ("UniProtKB:P12004",)))
-#    print(qlg.query_neighbor_genes_for_gene_set_in_a_given_anatomy("UBERON:0000178", {"UniProtKB:P01579"}))
+    print(qlg.query_neighbor_genes_for_gene_set_in_a_given_anatomy("UBERON:0000178", ("UniProtKB:P01579",)))
+    # print(qlg.query_neighbor_genes_for_gene_set_in_a_given_anatomy("UBERON:0000178", {"UniProtKB:P01579"}))
