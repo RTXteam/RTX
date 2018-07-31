@@ -9,14 +9,31 @@ The available methods include:
     update_protein_nodes : retrieve data from MyGene and update all protein nodes
     update_disease_nodes : retrieve data from BioLink and update all disease nodes
 
+    update_anatomy_nodes_desc : update the descriptions of anatomical_entity nodes
+    update_phenotype_nodes_desc : update the descriptions of phenotypic_feature nodes
+    update_disease_nodes_desc : update the descriptions of disease nodes
+    update_bio_process_nodes_desc : update the descriptions of biological_process nodes
+    update_microRNA_nodes_desc : update the descriptions of microRNA nodes
+    update_protein_nodes_desc : update the descriptions of protein nodes
+    update_chemical_substance_desc : update the descriptions of chemical_substance nodes
+    update_pathway_nodes_desc : update the descriptions of pathway nodes
+    update_cellular_component_nodes_desc : update the descriptions of cellular_component nodes
+    update_molecular_function_nodes_desc : update the descriptions of molecular_function nodes
+    update_metabolite_nodes_desc : update the descriptions of metabolite nodes
+
 Example of method name used from other packages.
     example of get_nodes_mtd_name : get_anatomy_nodes
     example of get_entity_mtd_name : get_anatomy_entity
     example of update_nodes_mtd_name : update_anatomy_nodes
 
-How to run this module
+How to run this module:
+If you want to update the descriptions of all types of nodes, please use the default value of runfunc argument:
         $ cd [git repo]/code/reasoningtool/kg-construction
-        $ python3 UpdateNodesInfo.py
+        $ python3 UpdateNodesInfo.py 1>std_out.log 2>std_err.log
+
+If you want to update the descriptions of the specified nodes, please use the runfunc argument to specify the method:
+        $ cd [git repo]/code/reasoningtool/kg-construction
+        $ python3 UpdateNodesInfo.py --runfunc=update_disease_nodes_desc 1>std_out.log 2>std_err.log
 '''
 
 # BEGIN config.json format
@@ -35,6 +52,9 @@ __version__ = '0.1.0'
 __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
+
+import argparse
+import sys
 
 from Neo4jConnection import Neo4jConnection
 import json
@@ -542,27 +562,44 @@ class UpdateNodesInfo:
 
         conn.close()
 
+    @staticmethod
+    def update_all():
+        # UpdateNodesInfo.update_anatomy_nodes()
+        # UpdateNodesInfo.update_phenotype_nodes()
+        # UpdateNodesInfo.update_microRNA_nodes()
+        # UpdateNodesInfo.update_pathway_nodes()
+        # UpdateNodesInfo.update_protein_nodes()
+        # UpdateNodesInfo.update_disease_nodes()
+        # UpdateNodesInfo.update_chemical_substance_nodes()
+        # UpdateNodesInfo.update_bio_process_nodes()
+        UpdateNodesInfo.update_anatomy_nodes_desc()
+        UpdateNodesInfo.update_phenotype_nodes_desc()
+        UpdateNodesInfo.update_disease_nodes_desc()
+        UpdateNodesInfo.update_bio_process_nodes_desc()
+        UpdateNodesInfo.update_microRNA_nodes_desc()
+        UpdateNodesInfo.update_protein_nodes_desc()
+        UpdateNodesInfo.update_chemical_substance_desc()
+        UpdateNodesInfo.update_pathway_nodes_desc()
+        UpdateNodesInfo.update_cellular_component_nodes_desc()
+        UpdateNodesInfo.update_molecular_function_nodes_desc()
+        UpdateNodesInfo.update_metabolite_nodes_desc()
+
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='update the descriptions of nodes in th knowledge graph')
+    parser.add_argument('--runfunc', dest='runfunc')
 
-    # UpdateNodesInfo.update_anatomy_nodes()
-    # UpdateNodesInfo.update_phenotype_nodes()
-    # UpdateNodesInfo.update_microRNA_nodes()
-    # UpdateNodesInfo.update_pathway_nodes()
-    # UpdateNodesInfo.update_protein_nodes()
-    # UpdateNodesInfo.update_disease_nodes()
-    # UpdateNodesInfo.update_chemical_substance_nodes()
-    # UpdateNodesInfo.update_bio_process_nodes()
+    args = parser.parse_args()
+    args_dict = vars(args)
 
-    UpdateNodesInfo.update_anatomy_nodes_desc()
-    UpdateNodesInfo.update_phenotype_nodes_desc()
-    UpdateNodesInfo.update_disease_nodes_desc()
-    UpdateNodesInfo.update_bio_process_nodes_desc()
-    UpdateNodesInfo.update_microRNA_nodes_desc()
-    UpdateNodesInfo.update_protein_nodes_desc()
-    UpdateNodesInfo.update_chemical_substance_desc()
-    UpdateNodesInfo.update_pathway_nodes_desc()
-    UpdateNodesInfo.update_cellular_component_nodes_desc()
-    UpdateNodesInfo.update_molecular_function_nodes_desc()
-    UpdateNodesInfo.update_metabolite_nodes_desc()
+    if args_dict.get('runfunc', None) is not None:
+        run_function_name = args_dict['runfunc']
+    else:
+        run_function_name = 'update_all'
+
+    try:
+        run_function = getattr(UpdateNodesInfo, run_function_name)
+    except AttributeError:
+        sys.exit('In module UpdateNodesInfo.py, unable to find function named: ' + run_function_name)
+    run_function()
 
