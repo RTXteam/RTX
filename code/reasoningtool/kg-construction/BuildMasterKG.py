@@ -67,7 +67,7 @@ def add_pc2_to_kg():
 
 
 def seed_nodes_from_master_tsv_file():
-    seed_node_data = pandas.read_csv('../../../data/seed_nodes_filtered_1.tsv',
+    seed_node_data = pandas.read_csv('../../../data/seed_nodes_filtered.tsv',
                                      sep="\t",
                                      names=['type', 'rtx_name', 'term', 'purpose'],
                                      header=0,
@@ -96,8 +96,8 @@ def make_master_kg_dili():
 def make_master_kg():
     seed_nodes_from_master_tsv_file()
     bne.expand_all_nodes()
-    # bne.expand_all_nodes()
-    # bne.expand_all_nodes()
+    bne.expand_all_nodes()
+    bne.expand_all_nodes()
     add_pc2_to_kg()
     # ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
