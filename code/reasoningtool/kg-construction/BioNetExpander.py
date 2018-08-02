@@ -169,12 +169,17 @@ class BioNetExpander:
                 uniprot_ids = QueryUniprot.map_enzyme_commission_id_to_uniprot_ids(ec_id)
                 if len(uniprot_ids) > 0:
                     for uniprot_id in uniprot_ids:
-                        gene_symbols = self.query_mygene_obj.convert_uniprot_id_to_gene_symbol(uniprot_id)
-                        if len(gene_symbols) > 0:
-                            gene_symbol = ";".join(list(gene_symbols))
-                            prot_node = self.add_node_smart("protein", uniprot_id, desc=gene_symbol)
-                            if prot_node is not None:
-                                self.orangeboard.add_rel("physically_interacts_with", "KEGG;UniProtKB", node, prot_node, extended_reltype="physically_interacts_with")
+                        gene_name = self.query_mygene_obj.get_protein_name(uniprot_id)
+                        prot_node = self.add_node_smart("protein", uniprot_id, desc=gene_name)
+                        if prot_node is not None:
+                            self.orangeboard.add_rel("physically_interacts_with", "KEGG;UniProtKB", node, prot_node,
+                                                     extended_reltype="physically_interacts_with")
+                        # gene_symbols = self.query_mygene_obj.convert_uniprot_id_to_gene_symbol(uniprot_id)
+                        # if len(gene_symbols) > 0:
+                        #     gene_symbol = ";".join(list(gene_symbols))
+                        #     prot_node = self.add_node_smart("protein", uniprot_id, desc=gene_symbol)
+                        #     if prot_node is not None:
+                        #         self.orangeboard.add_rel("physically_interacts_with", "KEGG;UniProtKB", node, prot_node, extended_reltype="physically_interacts_with")
 
     def expand_chemical_substance(self, node):
         assert node.nodetype == "chemical_substance"
@@ -184,9 +189,11 @@ class BioNetExpander:
             for target_uniprot_id_curie in target_uniprot_ids.keys():
                 target_uniprot_id = target_uniprot_id_curie.replace("UniProtKB:", "")
                 probability = target_uniprot_ids[target_uniprot_id]
-                gene_names = self.query_mygene_obj.convert_uniprot_id_to_gene_symbol(target_uniprot_id)
-                node_desc = ';'.join(list(gene_names))
-                target_node = self.add_node_smart('protein', target_uniprot_id, desc=node_desc)
+                gene_name = self.query_mygene_obj.get_protein_name(target_uniprot_id)
+                target_node = self.add_node_smart('protein', target_uniprot_id, desc=gene_name)
+                # gene_names = self.query_mygene_obj.convert_uniprot_id_to_gene_symbol(target_uniprot_id)
+                # node_desc = ';'.join(list(gene_names))
+                # target_node = self.add_node_smart('protein', target_uniprot_id, desc=node_desc)
                 if target_node is not None:
                     self.orangeboard.add_rel('physically_interacts_with', 'ChEMBL', node, target_node, prob=probability, extended_reltype='targets')
 
@@ -195,12 +202,14 @@ class BioNetExpander:
             for target in targets:
                 uniprot_id = QueryPharos.query_target_uniprot_accession(str(target["id"]))
                 assert '-' not in uniprot_id
-                gene_symbol = self.query_mygene_obj.convert_uniprot_id_to_gene_symbol(uniprot_id)
-                if gene_symbol is not None:
-                    gene_symbol = ';'.join(list(gene_symbol))
-                else:
-                    gene_symbol = ''
-                target_node = self.add_node_smart('protein', uniprot_id, desc=gene_symbol)
+                gene_name = self.query_mygene_obj.get_protein_name(uniprot_id)
+                target_node = self.add_node_smart('protein', uniprot_id, desc=gene_name)
+                # gene_symbol = self.query_mygene_obj.convert_uniprot_id_to_gene_symbol(uniprot_id)
+                # if gene_symbol is not None:
+                #     gene_symbol = ';'.join(list(gene_symbol))
+                # else:
+                #     gene_symbol = ''
+                # target_node = self.add_node_smart('protein', uniprot_id, desc=gene_symbol)
                 if target_node is not None:
                     self.orangeboard.add_rel('physically_interacts_with', 'Pharos', node, target_node, extended_reltype="targets")
 
@@ -291,7 +300,9 @@ class BioNetExpander:
                     uniprot_ids = self.query_mygene_obj.convert_gene_symbol_to_uniprot_id(target_gene_symbol)
                     for uniprot_id in uniprot_ids:
                         assert '-' not in uniprot_id
-                        target_prot_node = self.add_node_smart('protein', uniprot_id, desc=target_gene_symbol)
+                        gene_name = self.query_mygene_obj.get_protein_name(uniprot_id)
+                        target_prot_node = self.add_node_smart('protein', uniprot_id, desc=gene_name)
+                        # target_prot_node = self.add_node_smart('protein', uniprot_id, desc=target_gene_symbol)
                         if target_prot_node is not None:
                             self.orangeboard.add_rel('regulates', 'miRGate', node, target_prot_node, extended_reltype="regulates_expression_of")
                     if len(uniprot_ids) == 0:
@@ -313,7 +324,9 @@ class BioNetExpander:
         source_node = node
         for uniprot_id in uniprot_ids_from_reactome_dict.keys():
             assert '-' not in uniprot_id
-            target_node = self.add_node_smart('protein', uniprot_id, desc=uniprot_ids_from_reactome_dict[uniprot_id])
+            gene_name = self.query_mygene_obj.get_protein_name(uniprot_id)
+            target_node = self.add_node_smart('protein', uniprot_id, desc=gene_name)
+            # target_node = self.add_node_smart('protein', uniprot_id, desc=uniprot_ids_from_reactome_dict[uniprot_id])
             if target_node is not None:
                 self.orangeboard.add_rel('participates_in', rel_sourcedb_dict[uniprot_id], target_node, source_node, extended_reltype="participates_in")
 
@@ -363,7 +376,9 @@ class BioNetExpander:
                 reg_uniprot_ids_set = self.query_mygene_obj.convert_gene_symbol_to_uniprot_id(reg_gene_symbol)
                 for reg_uniprot_id in reg_uniprot_ids_set:
                     assert '-' not in reg_uniprot_id
-                    node2 = self.add_node_smart('protein', reg_uniprot_id, desc=reg_gene_symbol)
+                    gene_name = self.query_mygene_obj.get_protein_name(reg_uniprot_id)
+                    node2 = self.add_node_smart('protein', reg_uniprot_id, desc=gene_name)
+                    # node2 = self.add_node_smart('protein', reg_uniprot_id, desc=reg_gene_symbol)
                     if node2 is not None and node2.uuid != node1.uuid:
                         self.orangeboard.add_rel('regulates', 'GeneProf', node2, node1, extended_reltype="regulates_expression_of")
 
@@ -419,7 +434,9 @@ class BioNetExpander:
             if self.query_mygene_obj.uniprot_id_is_human(int_uniprot_id):
                 int_alias = int_dict[int_uniprot_id]
                 if 'BINDSGENE:' not in int_alias:
-                    node2 = self.add_node_smart('protein', int_uniprot_id, desc=int_alias)
+                    gene_name = self.query_mygene_obj.get_protein_name(int_uniprot_id)
+                    node2 = self.add_node_smart('protein', int_uniprot_id, desc=gene_name)
+                    # node2 = self.add_node_smart('protein', int_uniprot_id, desc=int_alias)
                     if node2 is not None and node2.uuid != node1.uuid:
                         self.orangeboard.add_rel('physically_interacts_with', 'reactome', node1, node2, extended_reltype="physically_interacts_with")
                 else:
@@ -427,7 +444,9 @@ class BioNetExpander:
                     target_uniprot_ids_set = self.query_mygene_obj.convert_gene_symbol_to_uniprot_id(target_gene_symbol)
                     for target_uniprot_id in target_uniprot_ids_set:
                         assert '-' not in target_uniprot_id
-                        node2 = self.add_node_smart('protein', target_uniprot_id, desc=target_gene_symbol)
+                        gene_name = self.query_mygene_obj.get_protein_name(target_uniprot_id)
+                        node2 = self.add_node_smart('protein', target_uniprot_id, desc=gene_name)
+                        # node2 = self.add_node_smart('protein', target_uniprot_id, desc=target_gene_symbol)
                         if node2 is not None and node2 != node1:
                             self.orangeboard.add_rel('regulates', 'Reactome', node1, node2, extended_reltype="regulates_expression_of")
 
@@ -514,8 +533,10 @@ class BioNetExpander:
         source_node = node
         for uniprot_id in uniprot_ids_to_gene_symbols_dict.keys():
             assert '-' not in uniprot_id
-            target_node = self.add_node_smart('protein', uniprot_id,
-                                              desc=uniprot_ids_to_gene_symbols_dict[uniprot_id])
+            gene_name = self.query_mygene_obj.get_protein_name(uniprot_id)
+            target_node = self.add_node_smart('protein', uniprot_id, desc=gene_name)
+            # target_node = self.add_node_smart('protein', uniprot_id,
+            #                                   desc=uniprot_ids_to_gene_symbols_dict[uniprot_id])
             if target_node is not None:
                 self.orangeboard.add_rel("gene_mutations_contribute_to",
                                          "OMIM", target_node, source_node,
@@ -537,8 +558,10 @@ class BioNetExpander:
                     uniprot_id = next(iter(uniprot_id_set))
                     gene_symbol_set = self.query_mygene_obj.convert_uniprot_id_to_gene_symbol(uniprot_id)
                     if len(gene_symbol_set) > 0:
-                        protein_node = self.add_node_smart('protein', uniprot_id,
-                                                           desc=next(iter(gene_symbol_set)))
+                        gene_name = self.query_mygene_obj.get_protein_name(uniprot_id)
+                        protein_node = self.add_node_smart('protein', uniprot_id, desc=gene_name)
+                        # protein_node = self.add_node_smart('protein', uniprot_id,
+                        #                                    desc=next(iter(gene_symbol_set)))
                         self.orangeboard.add_rel("gene_associated_with_condition",
                                                  "BioLink",
                                                  protein_node, node, extended_reltype="associated_with_disease")
@@ -580,8 +603,10 @@ class BioNetExpander:
             uniprot_ids_dict = QueryDisGeNet.query_mesh_id_to_uniprot_ids_desc(mesh_id)
             for uniprot_id in uniprot_ids_dict.keys():
                 assert '-' not in uniprot_id
-                source_node = self.add_node_smart('protein', uniprot_id,
-                                                  desc=uniprot_ids_dict[uniprot_id])
+                gene_name = self.query_mygene_obj.get_protein_name(uniprot_id)
+                source_node = self.add_node_smart('protein', uniprot_id, desc=gene_name)
+                # source_node = self.add_node_smart('protein', uniprot_id,
+                #                                   desc=uniprot_ids_dict[uniprot_id])
                 if source_node is not None:
                     self.orangeboard.add_rel("gene_associated_with_condition", "DisGeNet", source_node,
                                              node, extended_reltype="gene_associated_with_condition")

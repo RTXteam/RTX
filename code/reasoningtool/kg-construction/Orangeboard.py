@@ -261,8 +261,7 @@ class Orangeboard:
 
     def add_node(self, nodetype, name, seed_node_bool=False, desc=''):
         assert type(name) == str
-
-        assert not ((nodetype == "protein" or nodetype == "microRNA") and " " in desc)
+        assert not (nodetype == "microRNA" and " " == desc)
 
         if seed_node_bool:
             # old_seed_node = self.seed_node

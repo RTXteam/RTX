@@ -20,6 +20,7 @@ import argparse
 
 from Orangeboard import Orangeboard
 from BioNetExpander import BioNetExpander
+from QueryMyGene import QueryMyGene
 
 # configure requests package to use the "orangeboard.sqlite" cache
 requests_cache.install_cache('orangeboard')
@@ -66,14 +67,21 @@ def add_pc2_to_kg():
 
 
 def seed_nodes_from_master_tsv_file():
-    seed_node_data = pandas.read_csv('../../../data/seed_nodes_filtered.tsv',
+    seed_node_data = pandas.read_csv('../../../data/seed_nodes_filtered_1.tsv',
                                      sep="\t",
                                      names=['type', 'rtx_name', 'term', 'purpose'],
                                      header=0,
                                      dtype={'rtx_name': str})
+    query_mygene_obj = QueryMyGene(debug=False)
     first_row = True
     for index, row in seed_node_data.iterrows():
-        bne.add_node_smart(row['type'], row['rtx_name'], seed_node_bool=first_row, desc=row['term'])
+        if row['type'] == 'protein':
+            uniprot_id = "UniProtKB:" + row['rtx_name']
+            gene_name = query_mygene_obj.get_protein_name(uniprot_id)
+            print(gene_name)
+            bne.add_node_smart(row['type'], row['rtx_name'], seed_node_bool=first_row, desc=gene_name)
+        else:
+            bne.add_node_smart(row['type'], row['rtx_name'], seed_node_bool=first_row, desc=row['term'])
         if first_row is True:
             first_row = False
 
@@ -92,8 +100,8 @@ def make_master_kg_dili():
 def make_master_kg():
     seed_nodes_from_master_tsv_file()
     bne.expand_all_nodes()
-    bne.expand_all_nodes()
-    bne.expand_all_nodes()
+    # bne.expand_all_nodes()
+    # bne.expand_all_nodes()
     add_pc2_to_kg()
     # ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
