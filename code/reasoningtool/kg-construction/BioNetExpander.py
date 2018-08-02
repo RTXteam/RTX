@@ -136,10 +136,19 @@ class BioNetExpander:
                 desc = protein_name
 
         if node is None:
-            node = self.orangeboard.add_node(simple_node_type,
-                                             name,
-                                             seed_node_bool,
-                                             desc)
+            if simple_node_type == "protein":
+                protein_name = self.query_mygene_obj.get_protein_name(name)
+                if protein_name == "None":
+                    protein_name = desc
+                node = self.orangeboard.add_node(simple_node_type,
+                                                 name,
+                                                 seed_node_bool,
+                                                 protein_name)
+            else:
+                node = self.orangeboard.add_node(simple_node_type,
+                                                 name,
+                                                 seed_node_bool,
+                                                 desc)
 
             extra_props = {"uri": iri,
                            "id": curie_id,
