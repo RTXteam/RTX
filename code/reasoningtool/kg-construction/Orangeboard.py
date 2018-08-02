@@ -261,8 +261,7 @@ class Orangeboard:
 
     def add_node(self, nodetype, name, seed_node_bool=False, desc=''):
         assert type(name) == str
-
-        assert not ((nodetype == "protein" or nodetype == "microRNA") and " " in desc)
+        assert not (nodetype == "microRNA" and " " in desc)
 
         if seed_node_bool:
             # old_seed_node = self.seed_node
@@ -520,8 +519,11 @@ class Orangeboard:
             if self.debug:
                 print(res.summary().counters)
 
-        self.neo4j_run_cypher_query('CREATE INDEX ON :Base(UUID)')
-        self.neo4j_run_cypher_query('CREATE INDEX ON :Base(seed_node_uuid)')
+        try:
+            self.neo4j_run_cypher_query('CREATE INDEX ON :Base(UUID)')
+            self.neo4j_run_cypher_query('CREATE INDEX ON :Base(seed_node_uuid)')
+        except neo4j.exceptions.ClientError as e:
+            print(str(e), file=sys.stderr)
 
         reltypes = self.get_all_reltypes()
         for reltype in reltypes:

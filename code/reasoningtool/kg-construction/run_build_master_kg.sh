@@ -1,2 +1,2 @@
 #!/bin/bash
-python3 -u BuildMasterKG.py 1>stdout.log 2>stderr.log
+python3 BuildMasterKG.py -u neo4j -p precisionmedicine 1>stdout.log 2>stderr.log
