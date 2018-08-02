@@ -72,14 +72,10 @@ def seed_nodes_from_master_tsv_file():
                                      names=['type', 'rtx_name', 'term', 'purpose'],
                                      header=0,
                                      dtype={'rtx_name': str})
-    query_mygene_obj = QueryMyGene(debug=False)
     first_row = True
     for index, row in seed_node_data.iterrows():
         if row['type'] == 'protein':
-            uniprot_id = "UniProtKB:" + row['rtx_name']
-            gene_name = query_mygene_obj.get_protein_name(uniprot_id)
-            print(gene_name)
-            bne.add_node_smart(row['type'], row['rtx_name'], seed_node_bool=first_row, desc=gene_name)
+            bne.add_node_smart(row['type'], "UniProtKB:" + row['rtx_name'], seed_node_bool=first_row, desc=row['term'])
         else:
             bne.add_node_smart(row['type'], row['rtx_name'], seed_node_bool=first_row, desc=row['term'])
         if first_row is True:
