@@ -351,7 +351,7 @@ class BioNetExpander:
         node1 = node
         for pathway_id in pathways_dict_from_reactome.keys():
             target_node = self.add_node_smart('pathway',
-                                              pathway_id,
+                                              "REACT:" + pathway_id,
                                               desc=pathways_dict_from_reactome[pathway_id])
             if target_node is not None:
                 self.orangeboard.add_rel('participates_in', pathways_dict_sourcedb[pathway_id], node1, target_node, extended_reltype="participates_in")
