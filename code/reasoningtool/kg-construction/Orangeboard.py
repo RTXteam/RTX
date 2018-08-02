@@ -519,8 +519,11 @@ class Orangeboard:
             if self.debug:
                 print(res.summary().counters)
 
-        self.neo4j_run_cypher_query('CREATE INDEX ON :Base(UUID)')
-        self.neo4j_run_cypher_query('CREATE INDEX ON :Base(seed_node_uuid)')
+        try:
+            self.neo4j_run_cypher_query('CREATE INDEX ON :Base(UUID)')
+            self.neo4j_run_cypher_query('CREATE INDEX ON :Base(seed_node_uuid)')
+        except neo4j.exceptions.ClientError as e:
+            print(str(e), file=sys.stderr)
 
         reltypes = self.get_all_reltypes()
         for reltype in reltypes:
