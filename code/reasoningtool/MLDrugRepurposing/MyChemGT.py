@@ -76,7 +76,7 @@ for drug in df['id']:
     chembl_id = drug.split(':')[1]
     if not chembl_id.startswith('CHEMBL'):
         chembl_id = 'CHEMBL' + chembl_id
-    elif curie_id.startswith('CHEMBL.COMPOUND'):
+    elif chembl_id.startswith('CHEMBL.COMPOUND'):
         curie_id = curie_id.split(':')[1]
     res = map_drug_to_ontology(chembl_id)
     # Load indications and contraintications into their respective lists
