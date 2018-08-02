@@ -74,10 +74,7 @@ def seed_nodes_from_master_tsv_file():
                                      dtype={'rtx_name': str})
     first_row = True
     for index, row in seed_node_data.iterrows():
-        if row['type'] == 'protein':
-            bne.add_node_smart(row['type'], "UniProtKB:" + row['rtx_name'], seed_node_bool=first_row, desc=row['term'])
-        else:
-            bne.add_node_smart(row['type'], row['rtx_name'], seed_node_bool=first_row, desc=row['term'])
+        bne.add_node_smart(row['type'], row['rtx_name'], seed_node_bool=first_row, desc=row['term'])
         if first_row is True:
             first_row = False
 
