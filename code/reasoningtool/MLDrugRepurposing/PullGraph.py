@@ -63,7 +63,7 @@ class PullGraph():
         pulls a dataframe of all of the graph edges
         """
         #res = self.neo4j_run_cypher_query('match (n)-[r]-(m) where m<>n with distinct n as node1, m as node2 where split(node1.id,":")[0]<>"KEGG" and split(node2.id,":")[0]<>"KEGG" return node1.id as source, node2.id as target')
-        res = self.neo4j_run_cypher_query('match (n)-[r]-(m) where m<>n with distinct n as node1, m as node2 return node1.id as source, node2.id as target')
+        res = self.neo4j_run_cypher_query('match (n)-[r]-(m) where m<>n and type(r)<>"contraindicated_for" and type(r)<>"indicated_for" with distinct n as node1, m as node2 return node1.id as source, node2.id as target')
         df = pd.DataFrame(res.data())
         return df
 
