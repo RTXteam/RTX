@@ -20,7 +20,6 @@ import argparse
 
 from Orangeboard import Orangeboard
 from BioNetExpander import BioNetExpander
-from QueryMyGene import QueryMyGene
 
 # configure requests package to use the "orangeboard.sqlite" cache
 requests_cache.install_cache('orangeboard')
