@@ -131,9 +131,6 @@ class BioNetExpander:
             gene_symbol = desc
             if gene_symbol in self.gene_symbols_to_protein_nodes:
                 node = self.gene_symbols_to_protein_nodes[gene_symbol]
-            protein_name = self.query_mygene_obj.get_protein_name(name)
-            if protein_name != "None":
-                desc = protein_name
 
         if node is None:
             if simple_node_type == "protein":
