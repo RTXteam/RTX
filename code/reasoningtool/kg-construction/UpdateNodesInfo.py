@@ -546,7 +546,9 @@ class UpdateNodesInfo:
                 node['desc'] = QueryHMDB.get_compound_desc(hmdb_url)
                 if node['desc'] != "None":
                     success_count += 1
-                nodes_array.append(node)
+            else:
+                node['desc'] = 'None'
+            nodes_array.append(node)
         print("success_count = " + str(success_count))
         print("metabolite pulling time: %f" % (time() - t))
 
