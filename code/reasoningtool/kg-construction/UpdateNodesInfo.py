@@ -1,4 +1,5 @@
-''' This module defines the class UpdateNodesInfo. UpdateNodesInfo class is designed
+"""
+This module defines the class UpdateNodesInfo. UpdateNodesInfo class is designed
 to retrieve the node properties and update the properties on the Graphic model object.
 The available methods include:
 
@@ -29,20 +30,12 @@ Example of method name used from other packages.
 How to run this module:
 If you want to update the descriptions of all types of nodes, please use the default value of runfunc argument:
         $ cd [git repo]/code/reasoningtool/kg-construction
-        $ python3 UpdateNodesInfo.py 1>stdout_desc.log 2>stderr_desc.log
+        $ python3 UpdateNodesInfo.py -u xxx -p xxx 1>stdout_desc.log 2>stderr_desc.log
 
 If you want to update the descriptions of the specified nodes, please use the runfunc argument to specify the method:
         $ cd [git repo]/code/reasoningtool/kg-construction
-        $ python3 UpdateNodesInfo.py --runfunc=update_disease_nodes_desc 1>stdout_desc.log 2>stderr_desc.log
-'''
-
-# BEGIN config.json format
-# {
-#   "url":"bolt://localhost:7687"
-#   "username":"xxx",
-#   "password":"xxx"
-# }
-# END config.json format
+        $ python3 UpdateNodesInfo.py -u xxx -p xxx --runfunc=update_disease_nodes_desc 1>stdout_desc.log 2>stderr_desc.log
+"""
 
 __author__ = 'Deqing Qu'
 __copyright__ = 'Oregon State University'
@@ -57,14 +50,12 @@ import argparse
 import sys
 
 from Neo4jConnection import Neo4jConnection
-import json
 from QueryEBIOLS import QueryEBIOLS
 from QueryOMIM import QueryOMIM
 from QueryMyGene import QueryMyGene
 from QueryMyChem import QueryMyChem
 from QueryReactome import QueryReactome
 from QueryKEGG import QueryKEGG
-from QueryPubChem import QueryPubChem
 from QueryHMDB import QueryHMDB
 
 
@@ -81,15 +72,13 @@ class UpdateNodesInfo:
         'bio_process': 'QueryBioLink'
     }
 
-    @staticmethod
-    def __update_nodes(node_type):
+    def __init__(self, user, password, url ='bolt://localhost:7687'):
+        self.neo4j_user = user
+        self.neo4j_password = password
+        self.neo4j_url = url
 
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
-
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+    def __update_nodes(self, node_type):
+        conn = Neo4jConnection(self.neo4j_url, self.neo4j_user, self.neo4j_password)
         get_nodes_mtd_name = "get_" + node_type + "_nodes"
         get_nodes_mtd = getattr(conn, get_nodes_mtd_name)
         nodes = get_nodes_mtd()
@@ -129,46 +118,32 @@ class UpdateNodesInfo:
 
         conn.close()
 
-    @staticmethod
-    def update_anatomy_nodes():
-        UpdateNodesInfo.__update_nodes('anatomy')
+    def update_anatomy_nodes(self):
+        self.__update_nodes('anatomy')
 
-    @staticmethod
-    def update_phenotype_nodes():
-        UpdateNodesInfo.__update_nodes('phenotype')
+    def update_phenotype_nodes(self):
+        self.__update_nodes('phenotype')
 
-    @staticmethod
-    def update_microRNA_nodes():
-        UpdateNodesInfo.__update_nodes('microRNA')
+    def update_microRNA_nodes(self):
+        self.__update_nodes('microRNA')
 
-    @staticmethod
-    def update_pathway_nodes():
-        UpdateNodesInfo.__update_nodes('pathway')
+    def update_pathway_nodes(self):
+        self.__update_nodes('pathway')
 
-    @staticmethod
-    def update_protein_nodes():
-        UpdateNodesInfo.__update_nodes('protein')
+    def update_protein_nodes(self):
+        self.__update_nodes('protein')
 
-    @staticmethod
-    def update_disease_nodes():
-        UpdateNodesInfo.__update_nodes('disease')
+    def update_disease_nodes(self):
+        self.__update_nodes('disease')
 
-    @staticmethod
-    def update_chemical_substance_nodes():
-        UpdateNodesInfo.__update_nodes('chemical_substance')
+    def update_chemical_substance_nodes(self):
+        self.__update_nodes('chemical_substance')
 
-    @staticmethod
-    def update_bio_process_nodes():
-        UpdateNodesInfo.__update_nodes('bio_process')
+    def update_bio_process_nodes(self):
+        self.__update_nodes('bio_process')
 
-    @staticmethod
-    def update_anatomy_nodes_desc():
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
-
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+    def update_anatomy_nodes_desc(self):
+        conn = Neo4jConnection(self.neo4j_url, self.neo4j_user, self.neo4j_password)
         nodes = conn.get_anatomy_nodes()
         print("the number of anatomy nodes: %d" % len(nodes))
 
@@ -196,14 +171,8 @@ class UpdateNodesInfo:
 
         conn.close()
 
-    @staticmethod
-    def update_phenotype_nodes_desc():
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
-
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+    def update_phenotype_nodes_desc(self):
+        conn = Neo4jConnection(self.neo4j_url, self.neo4j_user, self.neo4j_password)
         nodes = conn.get_phenotype_nodes()
         print("the number of phenotype nodes: %d" % len(nodes))
 
@@ -231,14 +200,8 @@ class UpdateNodesInfo:
 
         conn.close()
 
-    @staticmethod
-    def update_microRNA_nodes_desc():
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
-
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+    def update_microRNA_nodes_desc(self):
+        conn = Neo4jConnection(self.neo4j_url, self.neo4j_user, self.neo4j_password)
         nodes = conn.get_microRNA_nodes()
         print("the number of microRNA nodes: %d" % len(nodes))
 
@@ -267,14 +230,8 @@ class UpdateNodesInfo:
 
         conn.close()
 
-    @staticmethod
-    def update_pathway_nodes_desc():
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
-
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+    def update_pathway_nodes_desc(self):
+        conn = Neo4jConnection(self.neo4j_url, self.neo4j_user, self.neo4j_password)
         nodes = conn.get_pathway_nodes()
         print("the number of pathway: %d" % len(nodes))
 
@@ -302,14 +259,8 @@ class UpdateNodesInfo:
 
         conn.close()
 
-    @staticmethod
-    def update_protein_nodes_desc():
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
-
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+    def update_protein_nodes_desc(self):
+        conn = Neo4jConnection(self.neo4j_url, self.neo4j_user, self.neo4j_password)
         nodes = conn.get_protein_nodes()
         print("the number of protein nodes: %d" % len(nodes))
 
@@ -338,14 +289,8 @@ class UpdateNodesInfo:
 
         conn.close()
 
-    @staticmethod
-    def update_disease_nodes_desc():
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
-
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+    def update_disease_nodes_desc(self):
+        conn = Neo4jConnection(self.neo4j_url, self.neo4j_user, self.neo4j_password)
         nodes = conn.get_disease_nodes()
         print("the number of disease nodes: %d" % len(nodes))
 
@@ -377,14 +322,8 @@ class UpdateNodesInfo:
 
         conn.close()
 
-    @staticmethod
-    def update_chemical_substance_desc():
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
-
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+    def update_chemical_substance_desc(self):
+        conn = Neo4jConnection(self.neo4j_url, self.neo4j_user, self.neo4j_password)
         nodes = conn.get_chemical_substance_nodes()
         print("the number of chemical_substance nodes: %d" % len(nodes))
 
@@ -412,14 +351,8 @@ class UpdateNodesInfo:
 
         conn.close()
 
-    @staticmethod
-    def update_bio_process_nodes_desc():
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
-
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+    def update_bio_process_nodes_desc(self):
+        conn = Neo4jConnection(self.neo4j_url, self.neo4j_user, self.neo4j_password)
         nodes = conn.get_bio_process_nodes()
         print("the number of bio_process nodes: %d" % len(nodes))
 
@@ -447,14 +380,8 @@ class UpdateNodesInfo:
 
         conn.close()
 
-    @staticmethod
-    def update_cellular_component_nodes_desc():
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
-
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+    def update_cellular_component_nodes_desc(self):
+        conn = Neo4jConnection(self.neo4j_url, self.neo4j_user, self.neo4j_password)
         nodes = conn.get_cellular_component_nodes()
         print("the number of cellular_component nodes: %d" % len(nodes))
 
@@ -483,14 +410,8 @@ class UpdateNodesInfo:
 
         conn.close()
 
-    @staticmethod
-    def update_molecular_function_nodes_desc():
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
-
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+    def update_molecular_function_nodes_desc(self):
+        conn = Neo4jConnection(self.neo4j_url, self.neo4j_user, self.neo4j_password)
         nodes = conn.get_molecular_function_nodes()
         print("the number of molecular_function nodes: %d" % len(nodes))
 
@@ -519,14 +440,8 @@ class UpdateNodesInfo:
 
         conn.close()
 
-    @staticmethod
-    def update_metabolite_nodes_desc():
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
-
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+    def update_metabolite_nodes_desc(self):
+        conn = Neo4jConnection(self.neo4j_url, self.neo4j_user, self.neo4j_password)
         nodes = conn.get_metabolite_nodes()
         print("the number of metabolite nodes: %d" % len(nodes))
 
@@ -564,8 +479,7 @@ class UpdateNodesInfo:
 
         conn.close()
 
-    @staticmethod
-    def update_all():
+    def update_all(self):
         # UpdateNodesInfo.update_anatomy_nodes()
         # UpdateNodesInfo.update_phenotype_nodes()
         # UpdateNodesInfo.update_microRNA_nodes()
@@ -574,25 +488,39 @@ class UpdateNodesInfo:
         # UpdateNodesInfo.update_disease_nodes()
         # UpdateNodesInfo.update_chemical_substance_nodes()
         # UpdateNodesInfo.update_bio_process_nodes()
-        UpdateNodesInfo.update_anatomy_nodes_desc()
-        UpdateNodesInfo.update_phenotype_nodes_desc()
-        UpdateNodesInfo.update_disease_nodes_desc()
-        UpdateNodesInfo.update_bio_process_nodes_desc()
-        UpdateNodesInfo.update_microRNA_nodes_desc()
-        UpdateNodesInfo.update_protein_nodes_desc()
-        UpdateNodesInfo.update_chemical_substance_desc()
-        UpdateNodesInfo.update_pathway_nodes_desc()
-        UpdateNodesInfo.update_cellular_component_nodes_desc()
-        UpdateNodesInfo.update_molecular_function_nodes_desc()
-        UpdateNodesInfo.update_metabolite_nodes_desc()
+        self.update_anatomy_nodes_desc()
+        self.update_phenotype_nodes_desc()
+        self.update_disease_nodes_desc()
+        self.update_bio_process_nodes_desc()
+        self.update_microRNA_nodes_desc()
+        self.update_protein_nodes_desc()
+        self.update_chemical_substance_desc()
+        self.update_pathway_nodes_desc()
+        self.update_cellular_component_nodes_desc()
+        self.update_molecular_function_nodes_desc()
+        self.update_metabolite_nodes_desc()
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='update the descriptions of nodes in th knowledge graph')
+    parser.add_argument("-a", "--address", help="The bolt url and port used to connect to the neo4j instance. (default:"
+                                                "bolt://localhost:7687)",
+                        default="bolt://localhost:7687")
+    parser.add_argument("-u", "--username", help="The username used to connect to the neo4j instance. (default: )",
+                        default='')
+    parser.add_argument("-p", "--password", help="The password used to connect to the neo4j instance. (default: )",
+                        default='')
     parser.add_argument('--runfunc', dest='runfunc')
-
     args = parser.parse_args()
+
+    if args.username == '' or args.password == '':
+        print('usage: BuildMasterKG.py [-h] [-a URL] [-u USERNAME] [-p PASSWORD] [--runfunc RUNFUNC]')
+        print('BuildMasterKG.py: error: invalid username or password')
+        exit(0)
+
     args_dict = vars(args)
+
+    ui = UpdateNodesInfo(args.username, args.password, args.address)
 
     if args_dict.get('runfunc', None) is not None:
         run_function_name = args_dict['runfunc']
@@ -600,7 +528,7 @@ if __name__ == '__main__':
         run_function_name = 'update_all'
 
     try:
-        run_function = getattr(UpdateNodesInfo, run_function_name)
+        run_function = getattr(ui, run_function_name)
     except AttributeError:
         sys.exit('In module UpdateNodesInfo.py, unable to find function named: ' + run_function_name)
     run_function()
