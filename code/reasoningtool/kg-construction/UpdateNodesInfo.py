@@ -29,11 +29,11 @@ Example of method name used from other packages.
 How to run this module:
 If you want to update the descriptions of all types of nodes, please use the default value of runfunc argument:
         $ cd [git repo]/code/reasoningtool/kg-construction
-        $ python3 UpdateNodesInfo.py 1>std_out.log 2>std_err.log
+        $ python3 UpdateNodesInfo.py 1>stdout_desc.log 2>stderr_desc.log
 
 If you want to update the descriptions of the specified nodes, please use the runfunc argument to specify the method:
         $ cd [git repo]/code/reasoningtool/kg-construction
-        $ python3 UpdateNodesInfo.py --runfunc=update_disease_nodes_desc 1>std_out.log 2>std_err.log
+        $ python3 UpdateNodesInfo.py --runfunc=update_disease_nodes_desc 1>stdout_desc.log 2>stderr_desc.log
 '''
 
 # BEGIN config.json format
