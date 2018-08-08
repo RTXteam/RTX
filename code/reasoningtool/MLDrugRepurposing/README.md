@@ -4,7 +4,9 @@ Make sure you have python3 installed and that the contents of [Requirements.txt]
 
 # Set up a local version of neo4j and import a dump of our Knowlege Graph
 
-KG dumps can be found [here.](http://rtxkgdump.saramsey.org/)
+Knowledge graph (KG) dumps can be found [here.](http://rtxkgdump.saramsey.org/)
+
+NOTE: Last test was run on the 07/27/18 KG dump.
 
 # Make sure you use the correct data
 
