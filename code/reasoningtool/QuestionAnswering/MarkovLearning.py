@@ -173,7 +173,7 @@ def test():
 	'R-HSA-168643',
 	'participates_in',
 	'P01584',
-	'associated_with_condition',
+	'gene_associated_with_condition',
 	'DOID:2841']],
 	[['disease',
 	'affects',
@@ -182,7 +182,7 @@ def test():
 	'pathway',
 	'participates_in',
 	'protein',
-	'associated_with_condition',
+	'gene_associated_with_condition',
 	'disease']])
 
 	state_space, quad_to_matrix_index = initialize_Markov_chain(connection, config)

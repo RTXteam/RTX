@@ -63,7 +63,7 @@ class Q4:
 		disease_phenotypes = RU.get_one_hop_target(disease_label, disease_ID, "phenotypic_feature",
 												   "has_phenotype")
 
-		# Look more steps beyond if we didn't get any directly_interacts_with
+		# Look more steps beyond if we didn't get any physically_interacts_with
 		if disease_phenotypes == []:
 			for max_path_len in range(2, 5):
 				disease_phenotypes = RU.get_node_names_of_type_connected_to_target(disease_label, disease_ID,
@@ -106,7 +106,7 @@ class Q4:
 		if not other_disease_IDs_to_intersection_counts:
 			error_code = "NoDiseasesFound"
 			error_message = "No diseases were found with similarity crossing the threshold of %f." % threshold
-			parent = RU.get_one_hop_target(disease_label, disease_ID, disease_label, "subset_of", direction="r")
+			parent = RU.get_one_hop_target(disease_label, disease_ID, disease_label, "subclass_of", direction="r")
 			if parent:
 				parent = parent.pop()
 				error_message += "\n Note that %s is a parent disease to %s, so you might try that instead." % (
@@ -154,7 +154,7 @@ class Q4:
 		if not disease_jaccard_tuples:
 			error_code = "NoDiseasesFound"
 			error_message = "No diseases were found with similarity crossing the threshold of %f." % threshold
-			parent = RU.get_one_hop_target(disease_label, disease_ID, disease_label, "subset_of", direction="r")
+			parent = RU.get_one_hop_target(disease_label, disease_ID, disease_label, "subclass_of", direction="r")
 			if parent:
 				parent = parent.pop()
 				error_message += "\n Note that %s is a parent disease to %s, so you might try that instead." % (
@@ -239,7 +239,7 @@ def other_connection_types():
 	# one is parent of
 	print("one")
 	node_label_list = [disease_label, "phenotypic_feature"]
-	relationship_label_list = ["subset_of", "has_phenotype", "has_phenotype"]
+	relationship_label_list = ["subclass_of", "has_phenotype", "has_phenotype"]
 	node_of_interest_position = 1
 	print(RU.count_nodes_of_type_on_path_of_type_to_label(disease_ID, disease_label,
 														  target_label, node_label_list,
@@ -257,7 +257,7 @@ def other_connection_types():
 	# other is parent of
 	print("other")
 	node_label_list = ["phenotypic_feature", target_label]
-	relationship_label_list = ["has_phenotype", "has_phenotype", "subset_of"]
+	relationship_label_list = ["has_phenotype", "has_phenotype", "subclass_of"]
 	node_of_interest_position = 0
 	names2counts, names2nodes = RU.count_nodes_of_type_on_path_of_type_to_label(disease_ID,
 																				disease_label,
@@ -273,7 +273,7 @@ def other_connection_types():
 	# Both is parent of
 	print("both")
 	node_label_list = [disease_label, "phenotypic_feature", target_label]
-	relationship_label_list = ["subset_of", "has_phenotype", "has_phenotype", "subset_of"]
+	relationship_label_list = ["subclass_of", "has_phenotype", "has_phenotype", "subclass_of"]
 	node_of_interest_position = 1
 	names2counts, names2nodes = RU.count_nodes_of_type_on_path_of_type_to_label(disease_ID,
 																				disease_label,
@@ -324,7 +324,7 @@ def old_answer(disease_ID, use_json=False, threshold=0.2):
 	# get the phenotypes associated to the disease
 	disease_phenotypes = RU.get_one_hop_target(disease_label, disease_ID, "phenotypic_feature", "has_phenotype")
 
-	# Look more steps beyond if we didn't get any directly_interacts_with
+	# Look more steps beyond if we didn't get any physically_interacts_with
 	if disease_phenotypes == []:
 		for max_path_len in range(2, 5):
 			disease_phenotypes = RU.get_node_names_of_type_connected_to_target(disease_label, disease_ID,
@@ -368,7 +368,7 @@ def old_answer(disease_ID, use_json=False, threshold=0.2):
 	if not other_disease_IDs_to_intersection_counts:
 		error_code = "NoDiseasesFound"
 		error_message = "No diseases were found with similarity crossing the threshold of %f." % threshold
-		parent = RU.get_one_hop_target(disease_label, disease_ID, disease_label, "subset_of").pop()
+		parent = RU.get_one_hop_target(disease_label, disease_ID, disease_label, "subclass_of").pop()
 		if parent:
 			error_message += "\n Note that %s is a parent disease to %s, so you might try that instead." % (
 			RU.get_node_property(parent, 'description'), disease_description)
@@ -396,7 +396,7 @@ def old_answer(disease_ID, use_json=False, threshold=0.2):
 		other_disease_phenotypes = RU.get_one_hop_target(other_disease_label, other_disease_ID, "phenotypic_feature",
 														 "has_phenotype")
 
-		# Look more steps beyond if we didn't get any directly_interacts_with
+		# Look more steps beyond if we didn't get any physically_interacts_with
 		if other_disease_phenotypes == []:
 			for max_path_len in range(2, 5):
 				other_disease_phenotypes = RU.get_node_names_of_type_connected_to_target(other_disease_label,
@@ -423,7 +423,7 @@ def old_answer(disease_ID, use_json=False, threshold=0.2):
 	if not disease_jaccard_tuples:
 		error_code = "NoDiseasesFound"
 		error_message = "No diseases were found with similarity crossing the threshold of %f." % threshold
-		parent = RU.get_one_hop_target(disease_label, disease_ID, disease_label, "subset_of")
+		parent = RU.get_one_hop_target(disease_label, disease_ID, disease_label, "subclass_of")
 		if parent:
 			error_message += "\n Note that %s is a parent disease to %s, so you might try that instead." % (
 			RU.get_node_property(parent, 'description'), disease_description)

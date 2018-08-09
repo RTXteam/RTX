@@ -208,7 +208,7 @@ genetic_diseases_selected = diseases_selected
 # find implicated proteins
 implicated_proteins = []
 for other_disease_id in genetic_diseases_selected:
-	implicated_proteins += RU.get_one_hop_target("disease", other_disease_id, "protein", "causes_or_contributes_to")
+	implicated_proteins += RU.get_one_hop_target("disease", other_disease_id, "protein", "gene_mutations_contribute_to")
 
 # get the most frequent proteins
 top_implicated_proteins = RU.get_top_n_most_frequent_from_list(implicated_proteins, num_proteins_keep)
@@ -237,7 +237,7 @@ top_proteins_in_pathway = RU.get_top_n_most_frequent_from_list(proteins_in_pathw
 # What drugs target those genes?
 relevant_drugs = []
 for protein_id in top_proteins_in_pathway:
-	relevant_drugs += RU.get_one_hop_target("protein", protein_id, "chemical_substance", "directly_interacts_with")
+	relevant_drugs += RU.get_one_hop_target("protein", protein_id, "chemical_substance", "physically_interacts_with")
 
 # get the most frequent drugs
 top_relevant_drugs = RU.get_top_n_most_frequent_from_list(relevant_drugs, num_drugs_keep)
