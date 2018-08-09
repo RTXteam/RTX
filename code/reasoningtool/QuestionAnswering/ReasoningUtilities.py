@@ -284,7 +284,7 @@ def get_one_hop_target(source_label, source_name, target_label, edge_type, debug
     :param source_label: kind of source node (eg: disease)
     :param source_name: actual name of the source node (eg: DOID:14793)
     :param target_label: kind of target nodes to look for (eg: disease)
-    :param edge_type: Type of edge to be interested in (eg: directly_interacts_with, affects)
+    :param edge_type: Type of edge to be interested in (eg: physically_interacts_with, affects)
     :param debug: flag indicating if the query should also be returned
     :param direction: Which direction to look (u: undirected, f: source->target, r: source<-target
     :param session: neo4j server session
@@ -1829,22 +1829,22 @@ def test_get_node_property():
 
 
 def test_get_one_hop_target():
-    res = get_one_hop_target("disease", "DOID:14793", "protein", "associated_with_condition")
+    res = get_one_hop_target("disease", "DOID:14793", "protein", "gene_associated_with_condition")
     assert res == ["Q92838"]
-    res = get_one_hop_target("drug", "carbetocin", "protein", "directly_interacts_with")
+    res = get_one_hop_target("drug", "carbetocin", "protein", "physically_interacts_with")
     assert res == ["P30559"]
 
 
 def test_get_relationship_types_between():
     res = get_relationship_types_between("DOID:0110307","disease","DOID:1798","disease",max_path_len=5)
-    known_result = [(['subset_of', 'has_phenotype', 'has_phenotype'], 40), (['subset_of', 'associated_with_condition', 'associated_with_condition'], 2)]
+    known_result = [(['subclass_of', 'has_phenotype', 'has_phenotype'], 40), (['subclass_of', 'gene_associated_with_condition', 'gene_associated_with_condition'], 2)]
     for tup in res:
         assert tup in known_result
     for tup in known_result:
         assert tup in res
 
     res = get_relationship_types_between("benzilonium","drug","DOID:14325","disease",max_path_len=5)
-    known_result = [(['directly_interacts_with', 'regulates', 'associated_with_condition', 'subset_of'], 10), (['directly_interacts_with', 'regulates', 'associated_with_condition', 'subset_of'], 7)]
+    known_result = [(['physically_interacts_with', 'regulates', 'gene_associated_with_condition', 'subclass_of'], 10), (['physically_interacts_with', 'regulates', 'gene_associated_with_condition', 'subclass_of'], 7)]
     for tup in res:
         assert tup in known_result
     for tup in known_result:
