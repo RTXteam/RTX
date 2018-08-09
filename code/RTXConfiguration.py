@@ -9,13 +9,13 @@ class RTXConfiguration:
 
 	#### Constructor
 	def __init__(self):
-		self.version = "RTX 0.5.3"
+		self.version = "RTX 0.5.4"
 
 		# This is the flag/property to switch between the two containers
-		#self.live = "Production"
+		self.live = "Production"
 		#self.live = "KG2"
 		#self.live = "rtxdev"
-		self.live = "staging"
+		#self.live = "staging"
 
 		if self.live == "Production":
 			self.bolt = "bolt://rtx.ncats.io:7687"
