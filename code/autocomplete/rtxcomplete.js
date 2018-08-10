@@ -63,7 +63,7 @@ $( document ).ready( function(){
 		$("#quick_def_field").text("");
 	    }
 	    $.ajax({
-		url: "/auto?word="+query+"&limit=10",
+		url: "/rtxcomplete/auto?word="+query+"&limit=10",
 		cache: false,
 		dataType:"jsonp",
 		success: function (response) {
