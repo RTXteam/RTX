@@ -9,6 +9,7 @@
 
 $( document ).ready( function(){
     $('.typeInput').typeahead({
+	fitToElement : true,
 	highlighter: function (item){
 	    var parts = item.split('#');
 	    var html = '';
@@ -41,7 +42,8 @@ $( document ).ready( function(){
 	name: 'stuff',
 	display: 'value',
 	source: function(query, callback) {
-	    //console.log("'"+query+"'");
+	    console.log("'"+query+"'");
+	    console.log($('.typeInput').innerWidth());
 	    //console.log(query.split(","));
 	    query = query.split(",");
 	    //var first_part = query.slice(0,query.length-1).join(", ");
@@ -52,22 +54,19 @@ $( document ).ready( function(){
 	    }
 	    var hit = false;
 	    var def_tmp = query.split(" ");
-	    for (i = 0; i < def_tmp.length && hit == false; i++){
-		var def = quick_def[def_tmp[i].toLowerCase()];
-		if (def){
-		    hit = true;
-		    $("#quick_def_field").html(def);
-		}
-	    }
-	    if (!hit){
-		$("#quick_def_field").text("");
+	    var def = null;
+	    for (i = 0; i < def_tmp.length && !def; i++){
+		def = quick_def[def_tmp[i].toLowerCase()];
 	    }
 	    $.ajax({
 		url: "/auto?word="+query+"&limit=10",
-		cache: false,
+		cache: true,
 		dataType:"jsonp",
 		success: function (response) {
 		    var results = [];
+		    if (def){
+			results.push("<strong>Quick Def:</strong> "+def);
+		    }
 		    $.each(response, function(i, item){
 			var lowerItem = item.toLowerCase();
 			var lowerQuery = query.trim().toLowerCase();
