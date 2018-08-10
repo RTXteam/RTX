@@ -33,14 +33,14 @@ def insertN(table,item):
 def insertQ(item,rank):
     c.execute("INSERT OR IGNORE INTO questions(str,rank) VALUES(?,?)", (item,rank))
         
-with open("data/NodeNamesDescriptions.tsv") as nodeData:
-    print "working on nodes"
+with open("data/NodeNamesDescriptions.tsv", 'r', encoding="latin-1", errors="replace") as nodeData:
+    print("working on nodes")
     for line in nodeData.readlines():
         trash, name, table = line[:-1].split("\t")
         insertN(table,name)
 
 with open("data/Questions.tsv") as qData:
-    print "working on qs"
+    print("working on qs")
     stripVar = re.compile("\$[a-z0-9]*",re.IGNORECASE)
     stripNon = re.compile("[^a-z^0-9 \t,\$]",re.IGNORECASE)
     whiteToNew = re.compile(" *, *")
@@ -50,7 +50,7 @@ with open("data/Questions.tsv") as qData:
         insertQ(line,1)
 
 with open("data/mostCommonQueries.dat") as common:
-    print "working on common"
+    print("working on common")
     lines = common.readlines()
     for line in lines:
         line = line.strip()

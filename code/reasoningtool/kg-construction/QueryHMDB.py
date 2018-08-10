@@ -69,12 +69,13 @@ class QueryHMDB:
             obj = xmltodict.parse(results)
             if 'metabolite' in obj.keys():
                 metabolite = obj['metabolite']
-                if 'description' in metabolite.keys():
-                    res_desc = metabolite['description']
+                if 'cs_description' in metabolite.keys():
+                    res_desc = metabolite['cs_description']
         return res_desc
 
 if __name__ == '__main__':
-    print(QueryHMDB.get_compound_desc('http://www.hmdb.ca/metabolites/HMDB0060288'))
-    print(QueryHMDB.get_compound_desc('http://www.hmdb.ca/metabolites/HMDB00021820'))
-    print(QueryHMDB.get_compound_desc('http://www.hmdb.ca/metabolites/HMDB0012194'))
-    print(QueryHMDB.get_compound_desc(820))
+    # print(QueryHMDB.get_compound_desc('http://www.hmdb.ca/metabolites/HMDB0060288'))
+    # print(QueryHMDB.get_compound_desc('http://www.hmdb.ca/metabolites/HMDB00021820'))
+    # print(QueryHMDB.get_compound_desc('http://www.hmdb.ca/metabolites/HMDB0012194'))
+    # print(QueryHMDB.get_compound_desc(820))
+    print(QueryHMDB.get_compound_desc('http://www.hmdb.ca/metabolites/HMDB05049'))

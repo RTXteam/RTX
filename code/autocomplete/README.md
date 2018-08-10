@@ -12,41 +12,25 @@ chmod u+x create_load_db.sh
 
 ### From the frontend
 
+#### HTML
 ```
   ...
-  <form>
-      <input id="autoTextInput" list="autoWordsList">
-      <datalist id="autoWordsList">	
-      </datalist>
-  </form>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="/data/quick_def.json"><script>
+  <script src="/bootstrap.js"></script>
+  <script src="/bootstrap3-typeahead.js"></script>
+  <script src="/rtxcomplete.js"></script>
+  ...
+  <input type="text" class="typeInput" data-provide="typeahead">
   ...
 ```
+#### JavaScript
 
-```
-  ...
-  var autoInputBox = document.getElementById("autoTextInput");
-  var text = autoTextInput.value;
-  $.ajax({url: "auto?word="+text+"&limit="+max_suggs,
-          cache:false,
-	  dataType:'jsonp',
-	  success: function(data){
-	      autocompleteDisplay(data);
-          }
-	 });
-  ...
-  ...
-  var autoWordsList = document.getElementById("autoWordsList");
-  autoWordsList.innerHTML = "";
-  for (i = 0; i < array.length; i++){
-      var tmp = document.createElement("option");
-      tmp.text = array[i];
-      autoWordsList.appendChild(tmp);
-  }
-  ...
-```
+See rtxcomplete.js
 
 ### From the backend
 Example code is in ```sample.py```. The two core lines are:
+
 ```
   
   with rtxcomplete.load():
@@ -54,6 +38,10 @@ Example code is in ```sample.py```. The two core lines are:
     matches = rtxcomplete.fuzzy("NF", 10)
 
 ```
+
+### Quick Definitions
+
+create_quick_def.py has been provided, but needs the definition function implemented based on chosen data sources. It also includes the expected format of the quick definitions along with an example.
 
 ## Demonstration Link
 http://rtxcomplete.ixlab.org
@@ -64,11 +52,13 @@ http://rtxcomplete.ixlab.org
 
 Run the following commands to install certbot;
 
+```
 $ sudo apt-get update
 $ sudo apt-get install software-properties-common
 $ sudo add-apt-repository ppa:certbot/certbot
 $ sudo apt-get update
 $ sudo apt-get install certbot
+```
 
 ### Create SSL Certificates
 

@@ -22,7 +22,8 @@ p.import_file(None, graph_file="code/reasoningtool/QuestionAnswering/MLDrugRepur
 
 #disease_id = "OMIM:605724"
 #disease_id = "OMIM:603903"
-disease_id = "DOID:13636"
+#disease_id = "DOID:13636"  # Fanconi Anemia
+disease_id = "DOID:9352"  # type2 diabetes
 use_json = False
 
 num_input_disease_symptoms = 15  # number of representative symptoms of the disease to keep
@@ -270,6 +271,8 @@ for u,v,d in g.edges(data=True):
 	for key in [k for k in d.keys()]:
 		if type(d[key]) == np.float64:
 			d[key] = float(d[key])
+	d["merged"] = 1/float(d["merged"]+.1)
 
 
-nx.write_graphml(g, '/home/dkoslicki/Data/Temp/test2.graphml')
+#nx.write_graphml(g, '/home/dkoslicki/Data/Temp/test2.graphml')
+nx.write_graphml(g, '/home/dkoslicki/Dropbox/Grants/NCATS/SMEWorkflow/RTXType2Diabetes.graphml')

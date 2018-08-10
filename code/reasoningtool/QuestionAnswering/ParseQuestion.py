@@ -196,7 +196,7 @@ def main():
 			 "What diseases are similar to malaria?",
 			 "what diseases are associated with naproxen",
 			 "what phenotypes are associated with naproxen",
-			 "what drugs have similar protein directly_interacts_with to ibuprofen",
+			 "what drugs have similar protein physically_interacts_with to ibuprofen",
 			 ]
 	texts = ["What is the clinical outcome pathway of naproxen for treatment of osteoarthritis"]
 	for text in texts:
@@ -208,7 +208,7 @@ def main():
 		print("=====")
 
 	# Example of how to get the query string
-	text = "What are the protein directly_interacts_with of naproxen"
+	text = "What are the protein physically_interacts_with of naproxen"
 	print("Getting execution string for: %s" % text)
 	question = {"language": "English", "text": text}
 	res = p.format_response(question)
@@ -295,7 +295,7 @@ def tests():
 	query_type_id = res['query_type_id']
 	parameters = res['terms']
 	execution_string = txltr.get_execution_string(query_type_id, parameters)
-	assert execution_string == "Q3Solution.py -s 'CHEMBL154' -t 'protein' -r 'directly_interacts_with' -j"
+	assert execution_string == "Q3Solution.py -s 'CHEMBL154' -t 'protein' -r 'physically_interacts_with' -j"
 
 	return
 	######################################################################

@@ -25,7 +25,7 @@ class Q3:
 		"node label") and the relationship type (KG neo4j "Relationship type")
 		:param source_name: KG neo4j node name (eg "carbetocin")
 		:param target_label: KG node label (eg. "protein")
-		:param relationship_type: KG relationship type (eg. "directly_interacts_with")
+		:param relationship_type: KG relationship type (eg. "physically_interacts_with")
 		:param use_json: If the answer should be in Eric's Json standardized API output format
 		:return: list of dictionaries containing the nodes that are one hop (along relationship type) that connect source to target.
 		"""
@@ -125,7 +125,7 @@ class Q3:
 # Tests
 def testQ3_answer():
 	Q = Q3()
-	res = Q.answer("carbetocin", "protein", "directly_interacts_with")
+	res = Q.answer("carbetocin", "protein", "physically_interacts_with")
 	assert res == [{'desc': 'OXTR', 'name': 'P30559', 'type': 'node','prob': 1}]
 	res = Q.answer("OMIM:263200", "protein", "affects")
 	known_res = [{'desc': 'PKHD1', 'name': 'P08F94', 'type': 'node','prob': 1}, {'desc': 'DZIP1L', 'name': 'Q8IYY4', 'type': 'node','prob': 1}]
@@ -133,7 +133,7 @@ def testQ3_answer():
 		assert item in known_res
 	for item in known_res:
 		assert item in res
-	res = Q.answer("OMIM:263200", "microRNA", "associated_with_condition")
+	res = Q.answer("OMIM:263200", "microRNA", "gene_associated_with_condition")
 	assert res == [{'desc': 'MIR1225', 'name': 'NCBIGene:100188847', 'type': 'node', 'prob': 1}]
 
 
@@ -152,7 +152,7 @@ def main():
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 	parser.add_argument('-s', '--source_name', type=str, help="Source node name.", default="ChEMBL:3301668")
 	parser.add_argument('-t', '--target_label', type=str, help="Target node label", default="protein")
-	parser.add_argument('-r', '--rel_type', type=str, help="Relationship type.", default="directly_interacts_with")
+	parser.add_argument('-r', '--rel_type', type=str, help="Relationship type.", default="physically_interacts_with")
 	parser.add_argument('-j', '--json', action='store_true', help='Flag specifying that results should be printed in JSON format (to stdout)', default=False)
 	parser.add_argument('-d', '--describe', action='store_true', help="Describe what kinds of questions this answers.", default=False)
 	parser.add_argument('--directed', action='store_true', help="Treat the relationship as directed", default=False)

@@ -58,7 +58,12 @@ def dump_name_description(file_name, session=session):
 			labels = item['l']
 			fid.write('%s\t' % prop_dict['id'])
 			fid.write('%s\t' % prop_dict['name'])
-			fid.write('%s\n' % list(set(labels) - {'Base'}).pop())
+			label = list(set(labels) - {'Base'}).pop()
+			fid.write('%s\n' % label)
+			if label == "protein":  # If it's a protein, also do the symbol
+				fid.write('%s\t' % prop_dict['id'])
+				fid.write('%s\t' % prop_dict['symbol'])
+				fid.write('%s\n' % label)
 	return
 
 def dump_node_labels(file_name, session=session):

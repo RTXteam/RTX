@@ -59,8 +59,8 @@ $( document ).ready( function(){
 		def = quick_def[def_tmp[i].toLowerCase()];
 	    }
 	    $.ajax({
-		url: "/auto?word="+query+"&limit=10",
-		cache: true,
+		url: "/rtxcomplete/auto?word="+query+"&limit=10",
+		cache: false,
 		dataType:"jsonp",
 		success: function (response) {
 		    var results = [];
