@@ -79,26 +79,26 @@ def prefix(word,limit):
             #print "no match"
             idx -= 1
     #no matches as to question templates
-    print "no query or template matches"
-    print "looking for variable fits"
+    print("no query or template matches")
+    print("looking for variable fits")
     term_type, full_term = get_term_type(word)
     if term_type is not None:
-        print "found term is variable"
-        print term_type
-        print full_term
+        print("found term is variable")
+        print(term_type)
+        print(full_term)
         cursor.execute("SELECT str FROM questions WHERE str LIKE \"%%%s%%\" ORDER BY rank DESC, length(str)" % ("$"+term_type))
         rows = cursor.fetchall()
         rows = [ "%s" % x for x in rows]
         if len(rows) > int(limit):
             rows = rows[:int(limit)]
-        print "found questions"
-        print rows
+        print("found questions")
+        print(rows)
         results = []
         for item in rows:
             temp = re.sub(r'\$[a-zA-Z_]+',full_term,item)
             results.append(temp)
-        print "replaced term"
-        print results
+        print("replaced term")
+        print(results)
         return results
     return []
 
