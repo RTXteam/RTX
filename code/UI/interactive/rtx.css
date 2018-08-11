@@ -162,7 +162,7 @@ body {
     transition: 0.1s;
 }
 
-.active {
+.openaccordion {
     border-bottom: 0px;
     background-color: #9bc;
     color: #333;
@@ -182,7 +182,7 @@ body {
     margin-left: 5px;
 }
 
-.active:before {
+.openaccordion:before {
     content: "\2212";
 }
 
