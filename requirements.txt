@@ -18,4 +18,5 @@ nltk
 # TODO: I may be missing a few nltk packages
 sqlalchemy
 scipy
+scikit-learn
 
