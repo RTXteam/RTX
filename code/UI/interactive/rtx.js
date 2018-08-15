@@ -10,7 +10,7 @@ function sesame(head,content) {
 	return;
     }
     else if (head) {
-	head.classList.toggle("active");
+	head.classList.toggle("openaccordion");
     }
 
     if (content.style.maxHeight) {
@@ -92,16 +92,15 @@ function sendQuestion(e) {
 			    document.getElementById("result_container").innerHTML += "<H2>No results...</H2>";
 			}
 		    }
-			
-			else if ( jsonObj.message ) {
+		    else if ( jsonObj.message ) {
 			document.getElementById("statusdiv").innerHTML += "<BR><BR>An error was encountered:<BR><SPAN CLASS='error'>"+jsonObj.message+"</SPAN>";
 			sesame('openmax',statusdiv);
 		    }
-			else {
+		    else {
 			document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr2.status+")</SPAN>";
 			document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<BR>"+xhr2.responseText;
 			sesame('openmax',statusdiv);
-			}
+		    }
 
 		};
 	    }
@@ -128,8 +127,6 @@ function sendQuestion(e) {
 }
 
 
-
-
 function add_status_divs() {
     document.getElementById("status_container").innerHTML = "<div onclick='sesame(null,statusdiv);' title='click to expand / collapse status' class='statushead'>Status</div><div class='status' id='statusdiv'></div>";
 
@@ -143,18 +140,32 @@ function add_result(reslist) {
     for (var i in reslist) {
 	var num = Number(i) + 1;
 
-	var prb = Number(reslist[i].confidence).toFixed(2);
+        var ess = '';
+        if (reslist[i].essence) {
+            ess = reslist[i].essence;
+        }
+	var prb = 0;
+	if (Number(reslist[i].confidence)) {
+	    prb = Number(reslist[i].confidence).toFixed(2);
+	}
 	var pcl = (prb>=0.9) ? "p9" : (prb>=0.7) ? "p7" : (prb>=0.5) ? "p5" : (prb>=0.3) ? "p3" : "p1";
 
 	if (reslist[i].result_type == "neighborhood graph") {
-		prb = "Neighborhood Graph";
-		pcl = "p0";
+	    prb = "Neighborhood Graph";
+	    pcl = "p0";
 	}
+
+	var rsrc = '';
+	if (reslist[i].reasoner_id) {
+	    rsrc = reslist[i].reasoner_id;
+	}
+	var rscl = (rsrc=="RTX") ? "srtx" : (rsrc=="Indigo") ? "sind" : (rsrc=="Robokop") ? "srob" : "p0";
+
 	var rid = reslist[i].id.substr(reslist[i].id.lastIndexOf('/') + 1);
 	var fid = "feedback_" + rid;
 	var fff = "feedback_form_" + rid;
 
-	document.getElementById("result_container").innerHTML += "<div onclick='sesame(this,a"+num+"_div);' id='h"+num+"_div' title='Click to expand / collapse result "+num+"' class='accordion'>Result "+num+"<span title='confidence="+prb+"' class='"+pcl+" qprob'>"+prb+"</span></div>";
+	document.getElementById("result_container").innerHTML += "<div onclick='sesame(this,a"+num+"_div);' id='h"+num+"_div' title='Click to expand / collapse result "+num+"' class='accordion'>Result "+num+" :: <b>"+ess+"</b><span title='confidence="+prb+"' class='"+pcl+" qprob'>"+prb+"</span><span title='source="+rsrc+"' class='"+rscl+" qprob'>"+rsrc+"</span></div>";
 
 	if (reslist[i].result_graph == null) {
 	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><br>"+reslist[i].text+"<br><br><span id='"+fid+"'><i>User Feedback</i></span></div>";
@@ -191,7 +202,7 @@ function add_result(reslist) {
 	}
     }
 
-//    sesame(h1_div,a1_div);
+    //    sesame(h1_div,a1_div);
     add_cyto();
 }
 
@@ -212,6 +223,7 @@ function add_cyto() {
 		.selector('node')
 		.css({
 		    'background-color': '#047',
+		    'shape': function(ele) { return mapNodeShape(ele); } ,
 		    'width': '20',
 		    'height': '20',
 		    'content': 'data(name)'
@@ -280,18 +292,38 @@ function add_cyto() {
 	});
 
     }
-	
+
 }
 
 function cylayout(index,layname) {
-	var layout = cyobj[index].layout({
-		name: layname,
-		animationDuration: 500,
-		animate: 'end'
-	});
-	
-	layout.run();
+    var layout = cyobj[index].layout({
+	idealEdgeLength: 100,
+        nodeOverlap: 20,
+	refresh: 20,
+        fit: true,
+        padding: 30,
+        componentSpacing: 100,
+        nodeRepulsion: 10000,
+        edgeElasticity: 100,
+        nestingFactor: 5,
+	name: layname,
+	animationDuration: 500,
+	animate: 'end'
+    });
+
+    layout.run();
 }
+
+function mapNodeShape (ele) {
+    var ntype = ele.data().type;
+    if (ntype == "protein") { return "octagon";}
+    if (ntype == "disease") { return "triangle";}
+    if (ntype == "chemical_substance" ) { return "diamond";}
+    if (ntype == "anatomical_entity") { return "ellipse";}
+    if (ntype == "phenotypic_feature") { return "star";}
+    return "rectangle";
+}
+
 
 function rem_fefo(res_id,res_div_id) {
     var fff = "feedback_form_" + res_id;
@@ -321,7 +353,7 @@ function add_fefo(res_id,res_div_id) {
 	opt.value = i;
 	opt.innerHTML = fb_explvls[i].tag+" :: "+fb_explvls[i].desc;
 	document.getElementById(fff+"_expertise").appendChild(opt);
-    }
+    } 
 
     sesame('openmax',document.getElementById(res_div_id));
 }
@@ -533,4 +565,3 @@ function togglecolor(obj,tid) {
     document.getElementById(tid).style.color = col;
 
 }
-
