@@ -80,7 +80,11 @@ class SMEDrugRepurposingFisher:
 		# Find diseases enriched for that phenotype
 		path_type = ["gene_mutations_contribute_to", "protein", "participates_in", "pathway", "participates_in",
 					 "protein", "physically_interacts_with", "chemical_substance"]
-		(genetic_diseases_dict, genetic_diseases_selected) = RU.top_n_fisher_exact(symptoms, "phenotypic_feature", "disease", rel_type="has_phenotype", n=num_omim_keep, curie_prefix="OMIM", on_path=path_type, exclude=disease_id)
+		(genetic_diseases_dict, genetic_diseases_selected) = RU.top_n_fisher_exact(symptoms, "phenotypic_feature",
+																				   "disease", rel_type="has_phenotype",
+																				   n=num_omim_keep, curie_prefix="OMIM",
+																				   on_path=path_type,
+																				   exclude=disease_id)
 
 		if not genetic_diseases_selected:
 			error_message = "I found no diseases connected to phenotypes of %s." % disease_description
