@@ -1,4 +1,4 @@
-# This script will return X that are similar to Y based on high Jaccard index of common one-hop nodes Z (X<->Z<->Y)
+# solves the SME workflow #1: drug repurposing based on rare diseases
 
 import os
 import sys
@@ -63,7 +63,7 @@ class SMEDrugRepurposingFisher:
 		# symptoms = RU.get_one_hop_target("disease", disease_id, "phenotypic_feature", "has_phenotype")
 		# symptoms_set = set(symptoms)
 		(symptoms_dict, symptoms) = RU.top_n_fisher_exact([disease_id], "disease", "phenotypic_feature",
-														  rel_type="has_phenotype", n=num_input_disease_symptoms)
+														rel_type="has_phenotype", n=num_input_disease_symptoms)
 		symptoms_set = set(symptoms)
 		# check for an error
 		if not symptoms_set:
