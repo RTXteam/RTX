@@ -65,6 +65,8 @@ $( document ).ready( function(){
 		success: function (response) {
 		    var results = [];
 		    if (def){
+			var split_length = 100;
+			def = def.match(/.{1,split_length}/g).join('<br>');
 			results.push("<strong>Quick Def:</strong> "+def);
 		    }
 		    $.each(response, function(i, item){
