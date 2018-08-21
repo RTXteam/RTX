@@ -3,6 +3,7 @@ var cytodata = [];
 var fb_explvls = [];
 var fb_ratings = [];
 var response_id = null;
+var summary_table_html = '';
 
 function sesame(head,content) {
     if (head == "openmax") {
@@ -31,6 +32,8 @@ function pasteQuestion(question) {
 function sendQuestion(e) {
     add_status_divs();
     document.getElementById("result_container").innerHTML = "";
+    document.getElementById("summary_container").innerHTML = "";
+    summary_table_html = '';
     cyobj = [];
     cytodata = [];
 
@@ -83,6 +86,10 @@ function sendQuestion(e) {
 
 			response_id = jsonObj2.id.substr(jsonObj2.id.lastIndexOf('/') + 1);
 
+
+			if ( jsonObj2["table_column_names"] ) {
+			    add_to_summary(jsonObj2["table_column_names"],0);
+			}
 			if ( jsonObj2["result_list"] ) {
 			    add_result(jsonObj2["result_list"]);
 			    add_feedback();
@@ -91,6 +98,12 @@ function sendQuestion(e) {
 			else {
 			    document.getElementById("result_container").innerHTML += "<H2>No results...</H2>";
 			}
+
+			if ( jsonObj2["table_column_names"] ) {
+			    document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' title='click to expand / collapse summary' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br></div>";
+
+			}
+
 		    }
 		    else if ( jsonObj.message ) {
 			document.getElementById("statusdiv").innerHTML += "<BR><BR>An error was encountered:<BR><SPAN CLASS='error'>"+jsonObj.message+"</SPAN>";
@@ -134,6 +147,25 @@ function add_status_divs() {
 }
 
 
+
+function add_to_summary(rowdata, num) {
+    var cell = 'td';
+    if (num == 0) {
+	cell = 'th';
+	summary_table_html += "<tr><th>&nbsp;</th>";
+    }
+    else {
+	summary_table_html += "<tr class='hoverable'><td>"+num+".</td>";
+    }
+
+    for (var i in rowdata) {
+	summary_table_html += '<'+cell+'>' + rowdata[i] + '</'+cell+'>';
+    }
+    summary_table_html += '</tr>';
+}
+
+
+
 function add_result(reslist) {
     document.getElementById("result_container").innerHTML += "<H2>Results:</H2>";
 
@@ -165,7 +197,8 @@ function add_result(reslist) {
 	var fid = "feedback_" + rid;
 	var fff = "feedback_form_" + rid;
 
-	document.getElementById("result_container").innerHTML += "<div onclick='sesame(this,a"+num+"_div);' id='h"+num+"_div' title='Click to expand / collapse result "+num+"' class='accordion'>Result "+num+" :: <b>"+ess+"</b><span title='confidence="+prb+"' class='"+pcl+" qprob'>"+prb+"</span><span title='source="+rsrc+"' class='"+rscl+" qprob'>"+rsrc+"</span></div>";
+	document.getElementById("result_container").innerHTML += "<div onclick='sesame(this,a"+num+"_div);' id='h"+num+"_div' title='Click to expand / collapse result "+num+"' class='accordion'>Result "+num+" :: <b>"+ess+"</b><span class='r100'><span title='confidence="+prb+"' class='"+pcl+" qprob'>"+prb+"</span><span title='source="+rsrc+"' class='"+rscl+" qprob'>"+rsrc+"</span></span></div>";
+
 
 	if (reslist[i].result_graph == null) {
 	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><br>"+reslist[i].text+"<br><br><span id='"+fid+"'><i>User Feedback</i></span></div>";
@@ -173,6 +206,11 @@ function add_result(reslist) {
 	}
 	else {
 	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table class='t100'><tr><td class='textanswer'>"+reslist[i].text+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+i+"].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout("+i+",\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout("+i+",\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout("+i+",\"circle\");'>C</a><br><a title='random layout' onclick='cylayout("+i+",\"random\");'>R</a>	</td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td><span id='"+fid+"'><i>User Feedback</i><hr><span id='"+fff+"'><a href='javascript:add_fefo(\""+rid+"\",\"a"+num+"_div\");'>Add Feedback</a></span><hr></span></td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
+
+
+	    if ( reslist[i].row_data ) {
+		add_to_summary(reslist[i].row_data, num);
+	    }
 
 	    cytodata[i] = [];
 	    var gd = reslist[i].result_graph;
