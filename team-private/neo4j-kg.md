@@ -1,3 +1,4 @@
+# ***NOTE: This document is incomplete***
 # Build, test, and deploy the Neo4j KG for RTX
 
 ## Starting EC2 instance
@@ -28,10 +29,17 @@ su - rt
 cd /mnt/data/orangeboard/RTX
 git pull origin master
 ```
-Change current directory to where the ``run_build_master_kg.sh`` is located:
+Change current directory to where the ``run_build_master_kg.sh`` is located and execute it:
 ```
 cd /mnt/data/orangeboard/RTX/code/reasoningtool/kg-construction
+./run_build_master_kg.sh
 ```
 
-
+## Stopping docker containers
+Once the kg-build is successfully complete, you will need to stop the neo4j instance, and the docker container that were in use with the following commands:
+```
+service neo4j stop
+exit
+exit
+```
 
