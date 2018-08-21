@@ -62,8 +62,7 @@ class SMEDrugRepurposingFisher:
 		# Find symptoms of disease
 		# symptoms = RU.get_one_hop_target("disease", disease_id, "phenotypic_feature", "has_phenotype")
 		# symptoms_set = set(symptoms)
-		(symptoms_dict, symptoms) = RU.top_n_fisher_exact([disease_id], "disease", "phenotypic_feature",
-														rel_type="has_phenotype", n=num_input_disease_symptoms)
+		(symptoms_dict, symptoms) = RU.top_n_fisher_exact([disease_id], "disease", "phenotypic_feature", rel_type="has_phenotype", n=num_input_disease_symptoms)
 		symptoms_set = set(symptoms)
 		# check for an error
 		if not symptoms_set:
@@ -81,11 +80,7 @@ class SMEDrugRepurposingFisher:
 		# Find diseases enriched for that phenotype
 		path_type = ["gene_mutations_contribute_to", "protein", "participates_in", "pathway", "participates_in",
 					 "protein", "physically_interacts_with", "chemical_substance"]
-		(genetic_diseases_dict, genetic_diseases_selected) = RU.top_n_fisher_exact(symptoms, "phenotypic_feature",
-																				   "disease", rel_type="has_phenotype",
-																				   n=num_omim_keep, curie_prefix="OMIM",
-																				   on_path=path_type,
-																				   exclude=disease_id)
+		(genetic_diseases_dict, genetic_diseases_selected) = RU.top_n_fisher_exact(symptoms, "phenotypic_feature", "disease", rel_type="has_phenotype", n=num_omim_keep, curie_prefix="OMIM", on_path=path_type, exclude=disease_id)
 
 		if not genetic_diseases_selected:
 			error_message = "I found no diseases connected to phenotypes of %s." % disease_description
