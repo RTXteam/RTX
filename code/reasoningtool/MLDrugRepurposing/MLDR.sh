@@ -28,10 +28,23 @@ LVAR="128"
 RVAR="15"
 
 # This is the minimum number on entries in SemMedDB needed for a realationship to be considered a ground truth. (Higher numbers cut out noise but at the cost of a smaller training set)
-cutoff="2"
+cutoff="5"
 
 # This indicates if you want a roc curve plotted for the end model (True for yes and False for no)
 roc="True"
+
+# This indicates if you want to plot the precentage of treat predictions for random drug-disease pairs at different cutoffs
+rand_plot="False"
+
+# This is the maximum depth each tree and the number of trees in the random forest model
+trees="1000"
+depth="15"
+
+# This is that name of the file you wish to save the model as
+model_file="data/RandomForestModel.pkl"
+
+# This indicates the type of model you wish to use (RF - randomforest and LR - logistic regression)
+type="RF"
 
 # The name of the csv you wish to import to predict on
 data_file="data/test_set.csv"
@@ -71,7 +84,7 @@ echo "Downloading graph..."
 eval "${py_name} PullGraph.py --user ${neo4j_user} --password ${neo4j_pass} --url ${neo4j_url}"
 
 # This section Creates a cui -> curie map file.
-# NOTE: This will only work if a couple of services are runningon our aws instances
+# NOTE: This will only work if a couple of services are running on our aws instances
 # if you do not know if those are running simply do not uncomment this line and download the pre-
 # generated file on out github.
 #eval "${py_name} BuildCuiMap.py --source data/drugs.csv --target data/diseases.csv"
@@ -95,17 +108,23 @@ eval "${py_name} ConvertCsv.py --tp data/mychem_tp_umls.csv --tn data/mychem_tn_
 echo "Building model..."
 eval "${py_name} LogReg.py --tp data/semmed_tp.csv data/mychem_tp.csv data/mychem_tp_umls.csv data/ndf_tp.csv \\
                            --tn data/semmed_tn.csv data/mychem_tn.csv data/mychem_tn_umls.csv data/ndf_tn.csv \\
-                           --emb /home/bweeder/Data/rtx_data/newer_data/q_5_p_1_e_5_e_5_d_256_l_300_r_15_undirected.emb \\
+                           --emb data/graph.emb \\
                            --map data/map.csv \\
                            -c ${cutoff} \\
-                           --roc ${roc}"
+                           --roc ${roc} \\
+                           --rand ${rand_plot} \\
+                           --save ${model_file} \\
+                           --depth ${depth} \\
+                           --trees ${trees} \\
+                           --type ${type}"
 
 
 ##### Uncomment to make predictions ######
 # This section makes predictions and then saves them to a csv
 #echo "Making predictions..."
-#eval "${py_name} predictor.py --emb /home/bweeder/Data/rtx_data/newer_data/q_5_p_1_e_5_e_5_d_256_l_300_r_15_undirected.emb \\
-#                              --model data/LogRegModel.pkl \\
+#eval "${py_name} predictor.py --emb data/graph.emb \\
+#                              --model ${model_file} \\
 #                              --map data/map.csv \\
 #                              --data ${data_file} \\
 #                              --save data/prediction.csv"
+
