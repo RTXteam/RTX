@@ -156,7 +156,7 @@ class LogReg():
         self.id_list = id_list
 
     
-    def plot_cutoff(self, df, title_post = "Random Pairings", print_flag=True):
+    def plot_cutoff(self, dfs, title_post = ["Random Pairings", "True Negatives", "True Positives"], print_flag=True):
         """
         This plots the treats classification rate for every cutoff of a whole %
 
@@ -164,20 +164,32 @@ class LogReg():
         :title_post: A string containing the Last part of the title
         :print_flag: A boolian indicating whether to print exact numbers for the last 20% of cutoffs or not
         """
-        cutoffs = [x/100 for x in range(101)]
-        cutoff_n = [df["treat_prob"][df["treat_prob"] >= cutoff].count()/len(df) for cutoff in cutoffs]
+        if type(dfs) != list:
+            dfs = [dfs]
 
-        plt.plot(cutoffs,cutoff_n,"m")
+        color = ["xkcd:dark magenta","xkcd:dark turquoise","xkcd:azure","xkcd:purple blue","xkcd:scarlet",
+            "xkcd:orchid", "xkcd:pumpkin", "xkcd:gold", "xkcd:peach", "xkcd:neon green", "xkcd:grey blue"]
+        c = 0
+
+        for df in dfs:
+            cutoffs = [x/100 for x in range(101)]
+            cutoff_n = [df["treat_prob"][df["treat_prob"] >= cutoff].count()/len(df) for cutoff in cutoffs]
+
+            plt.plot(cutoffs,cutoff_n,color[c],label=title_post[c])
+            if print_flag:
+                with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+                    print("\n",title_post[c], ":\n")
+                    print(pd.DataFrame({"cutoff":cutoffs[80:],"count":cutoff_n[80:]}))
+            c += 1
         plt.xlim([0, 1])
         plt.ylim([0, 1])
         plt.xlabel('Cutoff Prob')
         plt.ylabel('Rate of Postitive Predictions')
-        plt.title('Prediction Rates of ' + title_post)
+        plt.title('Prediction Rates of Treats Class')
+        plt.legend(loc="lower left")
         plt.show()
 
-        if print_flag:
-            with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-                print(pd.DataFrame({"cutoff":cutoffs[80:],"count":cutoff_n[80:]}))
+        
 
 
     def rand_rate(self, n, drug_csv, disease_csv):
@@ -384,29 +396,26 @@ class LogReg():
             rand_n=10000
             self.rand_rate(rand_n,"data/drugs.csv","data/diseases.csv")
 
-            # Plot random pairs cutoff rates
-            probas_ = fitModel.predict_proba(self.X2)
-            pred = fitModel.predict(self.X2)
+            # Get random pairs cutoff rates
+            probas_rand = fitModel.predict_proba(self.X2)
 
-            self.data["treat_prob"] = [pr[1] for pr in probas_]
+            self.data["treat_prob"] = [pr[1] for pr in probas_rand]
             #print(self.data.sort_values("treat_prob", ascending = False).reset_index(drop=True))
             
-            print("Random:")
-            self.plot_cutoff(pd.DataFrame({"treat_prob":[pr[1] for pr in probas_]}),"Random Pairs")
+
+            # Get true positive cutoff rates
+            probas_tp = fitModel.predict_proba(self.Xtp)   
+
+            # Get true negative cutoff rates
+            probas_tn = fitModel.predict_proba(self.Xtn)
             
-            # Plot true positive cutoff rates
-            probas_ = fitModel.predict_proba(self.Xtp)
-            pred = fitModel.predict(self.Xtp)       
-
-            print("True Positives:")
-            self.plot_cutoff(pd.DataFrame({"treat_prob":[pr[1] for pr in probas_]}),"True Positives")
-
-            # Plot true negative cutoff rates
-            probas_ = fitModel.predict_proba(self.Xtn)
-            pred = fitModel.predict(self.Xtn)        
-
-            print("True Negatives:")
-            self.plot_cutoff(pd.DataFrame({"treat_prob":[pr[1] for pr in probas_]}),"True Negatives",False)
+            # Plot the cutoff rates together
+            self.plot_cutoff([pd.DataFrame({"treat_prob":[pr[1] for pr in probas_rand]}),
+                pd.DataFrame({"treat_prob":[pr[1] for pr in probas_tp]}),
+                pd.DataFrame({"treat_prob":[pr[1] for pr in probas_tn]})],
+                ["Random Pairs",
+                "True Positives", 
+                "True Negatives"])
 
         if roc_flag:
             model = ensemble.RandomForestClassifier(class_weight='balanced', max_depth=max_depth, max_leaf_nodes=None, n_estimators=n_estimators, min_samples_leaf=1, min_samples_split=2, max_features=max_features, n_jobs=-1)
@@ -429,6 +438,8 @@ class LogReg():
             #test_f1_mean = np.mean(ms.cross_val_score(model, self.X[shuffled_idx], self.y[shuffled_idx], cv=10, n_jobs=-1, scoring='f1'))
             #print('using cross val score F1 = %0.4f' % (test_f1_mean))
 
+            prob_list = []
+
             # Calculates and plots the roc cureve for each set in 10-fold cross validation
             for train, test in cv.split(self.X, self.y):
                 model_i = model.fit(self.X[train], self.y[train])
@@ -437,6 +448,7 @@ class LogReg():
                 f1 = met.f1_score(self.y[test], pred, average='binary')
                 f1s.append(f1)
                 # Compute ROC curve and area the curve
+                #prob_list += [pd.DataFrame({"treat_prob":[pr[1] for pr in probas_]})]
                 fpr, tpr, thresholds = met.roc_curve(self.y[test], probas_[:, 1])
                 tprs.append(sci.interp(mean_fpr, fpr, tpr))
                 tprs[-1][0] = 0.0
@@ -477,6 +489,8 @@ class LogReg():
             plt.title('Receiver Operating Characteristic')
             plt.legend(loc="lower right")
             plt.show()
+
+            #self.plot_cutoff(prob_list,["CV " + str(num) for num in range(len(prob_list))])
         
 
     def test_f1(self):
