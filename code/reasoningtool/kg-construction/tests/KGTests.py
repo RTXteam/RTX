@@ -150,4 +150,93 @@ class KGTestCase(unittest.TestCase):
 
         conn.close()
 
+    def test_molecular_function_nodes(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_node("GO:0030898")
+
+        self.assertIsNotNone(nodes)
+        self.assertEqual(nodes['n']['rtx_name'], "GO:0030898")
+        self.assertEqual(nodes['n']['name'], "actin-dependent ATPase activity")
+        self.assertEqual(nodes['n']['description'], "Catalysis of the reaction: ATP + H2O = ADP + phosphate. This "
+                                                    "reaction requires the presence of an actin filament to accelerate"
+                                                    " release of ADP and phosphate.")
+        self.assertEqual(nodes['n']['category'], "molecular_function")
+        self.assertEqual(nodes['n']['UUID'], "d36f33e6-96e0-11e8-b6f4-0242ac110002")
+        self.assertEqual(nodes['n']['seed_node_uuid'], "14aa4450-96e0-11e8-b6f4-0242ac110002")
+
+        conn.close()
+
+    def test_pathway_nodes(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_node("REACT:R-HSA-69895")
+
+        self.assertIsNotNone(nodes)
+        self.assertEqual(nodes['n']['rtx_name'], "REACT:R-HSA-69895")
+        self.assertEqual(nodes['n']['name'], "Transcriptional  activation of  cell cycle inhibitor p21 ")
+        self.assertEqual(nodes['n']['description'], "Both p53-independent and p53-dependent mechanisms of induction of "
+                                                    "p21 mRNA have been demonstrated. p21 is transcriptionally "
+                                                    "activated by p53 after DNA damage (el-Deiry et al., 1993).")
+        self.assertEqual(nodes['n']['category'], "pathway")
+        self.assertEqual(nodes['n']['UUID'], "d80adfcc-96e0-11e8-b6f4-0242ac110002")
+        self.assertEqual(nodes['n']['seed_node_uuid'], "14aa4450-96e0-11e8-b6f4-0242ac110002")
+
+        conn.close()
+
+    def test_phenotypic_feature_nodes(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_node("HP:0010559")
+
+        self.assertIsNotNone(nodes)
+        self.assertEqual(nodes['n']['rtx_name'], "HP:0010559")
+        self.assertEqual(nodes['n']['name'], "Vertical clivus")
+        self.assertEqual(nodes['n']['description'], "An abnormal vertical orientation of the clivus (which normally "
+                                                    "forms a kind of slope from the sella turcica down to the region "
+                                                    "of the foramen magnum).")
+        self.assertEqual(nodes['n']['category'], "phenotypic_feature")
+        self.assertEqual(nodes['n']['UUID'], "825980a8-96f2-11e8-b6f4-0242ac110002")
+        self.assertEqual(nodes['n']['seed_node_uuid'], "14aa4450-96e0-11e8-b6f4-0242ac110002")
+
+        conn.close()
+
+    def test_protein_nodes(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        nodes = conn.get_node("Q8IWB1")
+
+        self.assertIsNotNone(nodes)
+        self.assertEqual(nodes['n']['rtx_name'], "Q8IWB1")
+        self.assertEqual(nodes['n']['name'], "inositol 1,4,5-trisphosphate receptor interacting protein")
+        self.assertEqual(nodes['n']['description'], "This gene encodes a membrane-associated protein that binds the "
+                                                    "inositol 1,4,5-trisphosphate receptor (ITPR). The encoded protein"
+                                                    " enhances the sensitivity of ITPR to intracellular calcium "
+                                                    "signaling. Alternative splicing results in multiple transcript "
+                                                    "variants. [provided by RefSeq, Dec 2012].")
+        self.assertEqual(nodes['n']['category'], "protein")
+        self.assertEqual(nodes['n']['id'], "UniProtKB:Q8IWB1")
+        self.assertEqual(nodes['n']['UUID'], "741373f8-96e0-11e8-b6f4-0242ac110002")
+        self.assertEqual(nodes['n']['seed_node_uuid'], "14aa4450-96e0-11e8-b6f4-0242ac110002")
+
+        conn.close()
+
     
+if __name__ == '__main__':
+    unittest.main()
