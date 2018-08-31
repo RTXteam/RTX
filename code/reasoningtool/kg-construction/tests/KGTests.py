@@ -237,6 +237,216 @@ class KGTestCase(unittest.TestCase):
 
         conn.close()
 
-    
+    def test_affects_relationships(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        result = conn.get_relationship("affects", "16364fa8-96e0-11e8-b6f4-0242ac110002",
+                                       "d2cc6c24-96e0-11e8-b6f4-0242ac110002")
+        self.assertIsNotNone(result)
+        self.assertEqual(result['r']['provided_by'], 'Monarch_SciGraph')
+        self.assertEqual(result['r']['relation'], 'disease_causes_disruption_of')
+
+        conn.close()
+
+    def test_capable_of_relationships(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        result = conn.get_relationship("capable_of", "7df5b95a-983c-11e8-b6f4-0242ac110002",
+                                       "d2607de8-96e0-11e8-b6f4-0242ac110002")
+        self.assertIsNotNone(result)
+        self.assertEqual(result['r']['provided_by'], 'Monarch_SciGraph')
+        self.assertEqual(result['r']['relation'], 'capable_of')
+
+        conn.close()
+
+    def test_contraindicated_for_relationships(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        result = conn.get_relationship("contraindicated_for", "d20e9fb4-96e0-11e8-b6f4-0242ac110002",
+                                       "b03d10fa-96e5-11e8-b6f4-0242ac110002")
+        self.assertIsNotNone(result)
+        self.assertEqual(result['r']['provided_by'], 'MyChem.info')
+        self.assertEqual(result['r']['relation'], 'contraindicated_for')
+
+        conn.close()
+
+    def test_expressed_in_relationships(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        result = conn.get_relationship("expressed_in", "80c58cd0-96e0-11e8-b6f4-0242ac110002",
+                                       "dce493ee-96e0-11e8-b6f4-0242ac110002")
+        self.assertIsNotNone(result)
+        self.assertEqual(result['r']['provided_by'], 'BioLink')
+        self.assertEqual(result['r']['relation'], 'expressed_in')
+
+        conn.close()
+
+    def test_gene_associated_with_condition_relationships(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        result = conn.get_relationship("gene_associated_with_condition", "cd838018-96e0-11e8-b6f4-0242ac110002",
+                                       "158d16e0-96e0-11e8-b6f4-0242ac110002")
+        self.assertIsNotNone(result)
+        self.assertEqual(result['r']['provided_by'], 'DisGeNet')
+        self.assertEqual(result['r']['relation'], 'gene_associated_with_condition')
+
+        conn.close()
+
+    def test_gene_mutations_contribute_to_relationships(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        result = conn.get_relationship("gene_mutations_contribute_to", "dbf31438-96e0-11e8-b6f4-0242ac110002",
+                                       "153e59f6-96e0-11e8-b6f4-0242ac110002")
+        self.assertIsNotNone(result)
+        self.assertEqual(result['r']['provided_by'], 'OMIM')
+        self.assertEqual(result['r']['relation'], 'gene_mutations_contribute_to')
+
+        conn.close()
+
+    def test_has_part_relationships(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        result = conn.get_relationship("has_part", "dce485fc-96e0-11e8-b6f4-0242ac110002",
+                                       "d293e5ca-96e0-11e8-b6f4-0242ac110002")
+        self.assertIsNotNone(result)
+        self.assertEqual(result['r']['provided_by'], 'Monarch_SciGraph')
+        self.assertEqual(result['r']['relation'], 'has_plasma_membrane_part')
+
+        conn.close()
+
+    def test_has_phenotype_relationships(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        result = conn.get_relationship("has_phenotype", "15866ade-96e0-11e8-b6f4-0242ac110002",
+                                       "825980a8-96f2-11e8-b6f4-0242ac110002")
+        self.assertIsNotNone(result)
+        self.assertEqual(result['r']['provided_by'], 'BioLink')
+        self.assertEqual(result['r']['relation'], 'has_phenotype')
+
+        conn.close()
+
+    def test_indicated_for_relationships(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        result = conn.get_relationship("indicated_for", "d2121c52-96e0-11e8-b6f4-0242ac110002",
+                                       "b03d1852-96e5-11e8-b6f4-0242ac110002")
+        self.assertIsNotNone(result)
+        self.assertEqual(result['r']['provided_by'], 'MyChem.info')
+        self.assertEqual(result['r']['relation'], 'indicated_for')
+
+        conn.close()
+
+    def test_involved_in_relationships(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        result = conn.get_relationship("involved_in", "a00eaf46-96e9-11e8-b6f4-0242ac110002",
+                                       "d43b3982-96e0-11e8-b6f4-0242ac110002")
+        self.assertIsNotNone(result)
+        self.assertEqual(result['r']['provided_by'], 'gene_ontology')
+        self.assertEqual(result['r']['relation'], 'involved_in')
+
+        conn.close()
+
+    def test_participates_in_relationships(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        result = conn.get_relationship("participates_in", "3de31040-96e0-11e8-b6f4-0242ac110002",
+                                       "d80c6e50-96e0-11e8-b6f4-0242ac110002")
+        self.assertIsNotNone(result)
+        self.assertEqual(result['r']['provided_by'], 'reactome')
+        self.assertEqual(result['r']['relation'], 'participates_in')
+
+        conn.close()
+
+    def test_physically_interacts_with_relationships(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        result = conn.get_relationship("physically_interacts_with", "9e84a81e-96e0-11e8-b6f4-0242ac110002",
+                                       "d70a77ae-96e0-11e8-b6f4-0242ac110002")
+        self.assertIsNotNone(result)
+        self.assertEqual(result['r']['provided_by'], 'KEGG;UniProtKB')
+        self.assertEqual(result['r']['relation'], 'physically_interacts_with')
+
+        conn.close()
+
+    def test_regulates_relationships(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        result = conn.get_relationship("regulates", "648092c6-987b-11e8-b6f4-0242ac110002",
+                                       "0c04b8fa-96e3-11e8-b6f4-0242ac110002")
+        self.assertIsNotNone(result)
+        self.assertEqual(result['r']['provided_by'], 'miRGate')
+        self.assertEqual(result['r']['relation'], 'regulates_expression_of')
+
+        conn.close()
+
+    def test_subclass_of_relationships(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        result = conn.get_relationship("subclass_of", "d47e7670-96e0-11e8-b6f4-0242ac110002",
+                                       "d47e8322-96e0-11e8-b6f4-0242ac110002")
+        self.assertIsNotNone(result)
+        self.assertEqual(result['r']['provided_by'], 'gene_ontology')
+        self.assertEqual(result['r']['relation'], 'subclass_of')
+
+        conn.close()
+
+
 if __name__ == '__main__':
     unittest.main()

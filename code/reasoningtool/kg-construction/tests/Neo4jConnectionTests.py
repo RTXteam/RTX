@@ -245,6 +245,23 @@ class Neo4jConnectionTestCase(unittest.TestCase):
 
         conn.close()
 
+    def test_get_relationship(self):
+        f = open('config.json', 'r')
+        config_data = f.read()
+        f.close()
+        config = json.loads(config_data)
+
+        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+
+        result = conn.get_relationship("affects", "16364fa8-96e0-11e8-b6f4-0242ac110002",
+                                       "d2cc6c24-96e0-11e8-b6f4-0242ac110002")
+        self.assertIsNotNone(result)
+        self.assertEqual(result['r']['provided_by'], 'Monarch_SciGraph')
+        self.assertEqual(result['r']['relation'], 'disease_causes_disruption_of')
+
+        conn.close()
+
+
 if __name__ == '__main__':
     unittest.main()
 

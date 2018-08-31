@@ -220,6 +220,10 @@ class Neo4jConnection:
         with self._driver.session() as session:
             return session.write_transaction(self.__count_duplicated_nodes)
 
+    def get_relationship(self, r_type, s_id, t_id):
+        with self._driver.session() as session:
+            return session.write_transaction(self._get_relationship, r_type, s_id, t_id)
+
     @staticmethod
     def _get_anatomy_nodes(tx):
         result = tx.run("MATCH (n:anatomical_entity) RETURN n.rtx_name")
@@ -649,3 +653,9 @@ class Neo4jConnection:
             """,
         )
         return result.single()['count(*)']
+
+    @staticmethod
+    def _get_relationship(tx, r_type, s_id, t_id):
+        result = tx.run("MATCH p=()-[r:%s]->() where r.source_node_uuid= '%s' and r.target_node_uuid='%s' RETURN r" %
+                        (r_type, s_id, t_id))
+        return result.single()
