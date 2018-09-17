@@ -9,7 +9,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("-u", "--user", type=str, help="The username used to connect to the neo4j instance", default='')
 parser.add_argument("-p", "--password", type=str, help="The password used to connect to the neo4j instance", default='')
-parser.add_argument("-a", "--address", type=str, help="The bolt url and port used to connect to the neo4j instance. (default:bolt://localhost:7687)", default="bolt://localhost:7687")
+parser.add_argument("-a", "--url", type=str, help="The bolt url and port used to connect to the neo4j instance. (default:bolt://localhost:7687)", default="bolt://localhost:7687")
 args = parser.parse_args()
 
 class UpdateIndex():
@@ -137,12 +137,6 @@ class UpdateIndex():
 
 
 if __name__ == '__main__':
-
-    if args.user == '' or args.password == '':
-        print('usage: DumpNeo4jToCSV.py [-h] [-a ADDRESS] [-u USERNAME] [-p PASSWORD]')
-        print('DumpNeo4jToCSV.py: error: invalid username or password')
-        exit(0)
-
     ui = UpdateIndex(args.user, args.password, args.address)
     ui.replace()
 

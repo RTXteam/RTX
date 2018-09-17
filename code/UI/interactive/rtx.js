@@ -3,6 +3,7 @@ var cytodata = [];
 var fb_explvls = [];
 var fb_ratings = [];
 var response_id = null;
+var summary_table_html = '';
 
 function sesame(head,content) {
     if (head == "openmax") {
@@ -10,7 +11,7 @@ function sesame(head,content) {
 	return;
     }
     else if (head) {
-	head.classList.toggle("active");
+	head.classList.toggle("openaccordion");
     }
 
     if (content.style.maxHeight) {
@@ -31,6 +32,8 @@ function pasteQuestion(question) {
 function sendQuestion(e) {
     add_status_divs();
     document.getElementById("result_container").innerHTML = "";
+    document.getElementById("summary_container").innerHTML = "";
+    summary_table_html = '';
     cyobj = [];
     cytodata = [];
 
@@ -83,6 +86,10 @@ function sendQuestion(e) {
 
 			response_id = jsonObj2.id.substr(jsonObj2.id.lastIndexOf('/') + 1);
 
+
+			if ( jsonObj2["table_column_names"] ) {
+			    add_to_summary(jsonObj2["table_column_names"],0);
+			}
 			if ( jsonObj2["result_list"] ) {
 			    add_result(jsonObj2["result_list"]);
 			    add_feedback();
@@ -91,17 +98,22 @@ function sendQuestion(e) {
 			else {
 			    document.getElementById("result_container").innerHTML += "<H2>No results...</H2>";
 			}
+
+			if ( jsonObj2["table_column_names"] ) {
+			    document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' title='click to expand / collapse summary' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br></div>";
+
+			}
+
 		    }
-			
-			else if ( jsonObj.message ) {
+		    else if ( jsonObj.message ) {
 			document.getElementById("statusdiv").innerHTML += "<BR><BR>An error was encountered:<BR><SPAN CLASS='error'>"+jsonObj.message+"</SPAN>";
 			sesame('openmax',statusdiv);
 		    }
-			else {
+		    else {
 			document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr2.status+")</SPAN>";
 			document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<BR>"+xhr2.responseText;
 			sesame('openmax',statusdiv);
-			}
+		    }
 
 		};
 	    }
@@ -128,13 +140,30 @@ function sendQuestion(e) {
 }
 
 
-
-
 function add_status_divs() {
     document.getElementById("status_container").innerHTML = "<div onclick='sesame(null,statusdiv);' title='click to expand / collapse status' class='statushead'>Status</div><div class='status' id='statusdiv'></div>";
 
     document.getElementById("dev_result_json_container").innerHTML = "<div onclick='sesame(null,devdiv);' title='click to expand / collapse dev info' class='statushead'>Dev Info <i style='float:right; font-weight:normal;'>( json responses )</i></div><div class='status' id='devdiv'></div>";
 }
+
+
+
+function add_to_summary(rowdata, num) {
+    var cell = 'td';
+    if (num == 0) {
+	cell = 'th';
+	summary_table_html += "<tr><th>&nbsp;</th>";
+    }
+    else {
+	summary_table_html += "<tr class='hoverable'><td>"+num+".</td>";
+    }
+
+    for (var i in rowdata) {
+	summary_table_html += '<'+cell+'>' + rowdata[i] + '</'+cell+'>';
+    }
+    summary_table_html += '</tr>';
+}
+
 
 
 function add_result(reslist) {
@@ -143,18 +172,33 @@ function add_result(reslist) {
     for (var i in reslist) {
 	var num = Number(i) + 1;
 
-	var prb = Number(reslist[i].confidence).toFixed(2);
+        var ess = '';
+        if (reslist[i].essence) {
+            ess = reslist[i].essence;
+        }
+	var prb = 0;
+	if (Number(reslist[i].confidence)) {
+	    prb = Number(reslist[i].confidence).toFixed(2);
+	}
 	var pcl = (prb>=0.9) ? "p9" : (prb>=0.7) ? "p7" : (prb>=0.5) ? "p5" : (prb>=0.3) ? "p3" : "p1";
 
 	if (reslist[i].result_type == "neighborhood graph") {
-		prb = "Neighborhood Graph";
-		pcl = "p0";
+	    prb = "Neighborhood Graph";
+	    pcl = "p0";
 	}
+
+	var rsrc = '';
+	if (reslist[i].reasoner_id) {
+	    rsrc = reslist[i].reasoner_id;
+	}
+	var rscl = (rsrc=="RTX") ? "srtx" : (rsrc=="Indigo") ? "sind" : (rsrc=="Robokop") ? "srob" : "p0";
+
 	var rid = reslist[i].id.substr(reslist[i].id.lastIndexOf('/') + 1);
 	var fid = "feedback_" + rid;
 	var fff = "feedback_form_" + rid;
 
-	document.getElementById("result_container").innerHTML += "<div onclick='sesame(this,a"+num+"_div);' id='h"+num+"_div' title='Click to expand / collapse result "+num+"' class='accordion'>Result "+num+"<span title='confidence="+prb+"' class='"+pcl+" qprob'>"+prb+"</span></div>";
+	document.getElementById("result_container").innerHTML += "<div onclick='sesame(this,a"+num+"_div);' id='h"+num+"_div' title='Click to expand / collapse result "+num+"' class='accordion'>Result "+num+" :: <b>"+ess+"</b><span class='r100'><span title='confidence="+prb+"' class='"+pcl+" qprob'>"+prb+"</span><span title='source="+rsrc+"' class='"+rscl+" qprob'>"+rsrc+"</span></span></div>";
+
 
 	if (reslist[i].result_graph == null) {
 	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><br>"+reslist[i].text+"<br><br><span id='"+fid+"'><i>User Feedback</i></span></div>";
@@ -162,6 +206,11 @@ function add_result(reslist) {
 	}
 	else {
 	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table class='t100'><tr><td class='textanswer'>"+reslist[i].text+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+i+"].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout("+i+",\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout("+i+",\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout("+i+",\"circle\");'>C</a><br><a title='random layout' onclick='cylayout("+i+",\"random\");'>R</a>	</td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td><span id='"+fid+"'><i>User Feedback</i><hr><span id='"+fff+"'><a href='javascript:add_fefo(\""+rid+"\",\"a"+num+"_div\");'>Add Feedback</a></span><hr></span></td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
+
+
+	    if ( reslist[i].row_data ) {
+		add_to_summary(reslist[i].row_data, num);
+	    }
 
 	    cytodata[i] = [];
 	    var gd = reslist[i].result_graph;
@@ -191,7 +240,7 @@ function add_result(reslist) {
 	}
     }
 
-//    sesame(h1_div,a1_div);
+    //    sesame(h1_div,a1_div);
     add_cyto();
 }
 
@@ -212,6 +261,7 @@ function add_cyto() {
 		.selector('node')
 		.css({
 		    'background-color': '#047',
+		    'shape': function(ele) { return mapNodeShape(ele); } ,
 		    'width': '20',
 		    'height': '20',
 		    'content': 'data(name)'
@@ -280,18 +330,38 @@ function add_cyto() {
 	});
 
     }
-	
+
 }
 
 function cylayout(index,layname) {
-	var layout = cyobj[index].layout({
-		name: layname,
-		animationDuration: 500,
-		animate: 'end'
-	});
-	
-	layout.run();
+    var layout = cyobj[index].layout({
+	idealEdgeLength: 100,
+        nodeOverlap: 20,
+	refresh: 20,
+        fit: true,
+        padding: 30,
+        componentSpacing: 100,
+        nodeRepulsion: 10000,
+        edgeElasticity: 100,
+        nestingFactor: 5,
+	name: layname,
+	animationDuration: 500,
+	animate: 'end'
+    });
+
+    layout.run();
 }
+
+function mapNodeShape (ele) {
+    var ntype = ele.data().type;
+    if (ntype == "protein") { return "octagon";}
+    if (ntype == "disease") { return "triangle";}
+    if (ntype == "chemical_substance" ) { return "diamond";}
+    if (ntype == "anatomical_entity") { return "ellipse";}
+    if (ntype == "phenotypic_feature") { return "star";}
+    return "rectangle";
+}
+
 
 function rem_fefo(res_id,res_div_id) {
     var fff = "feedback_form_" + res_id;
@@ -321,7 +391,7 @@ function add_fefo(res_id,res_div_id) {
 	opt.value = i;
 	opt.innerHTML = fb_explvls[i].tag+" :: "+fb_explvls[i].desc;
 	document.getElementById(fff+"_expertise").appendChild(opt);
-    }
+    } 
 
     sesame('openmax',document.getElementById(res_div_id));
 }
@@ -533,4 +603,3 @@ function togglecolor(obj,tid) {
     document.getElementById(tid).style.color = col;
 
 }
-

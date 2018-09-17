@@ -39,7 +39,7 @@ class QueryChEMBL:
             sys.exit(0)
         except BaseException as e:
             print(url, file=sys.stderr)
-            print('%s received in QueryCOHD for URL: %s' % (e, url), file=sys.stderr)
+            print('%s received in QueryChEMBL for URL: %s' % (e, url), file=sys.stderr)
             return None
         status_code = res.status_code
         if status_code != 200:
@@ -68,6 +68,7 @@ class QueryChEMBL:
 
     @staticmethod
     def get_target_uniprot_ids_for_chembl_id(chembl_id):
+        print(chembl_id, file=sys.stderr)
         if not isinstance(chembl_id, str):
             return dict()
 
@@ -114,9 +115,9 @@ class QueryChEMBL:
                     if components is not None:
                         for component in components:
                             xrefs = component.get("target_component_xrefs", None)
-                            for xref in xrefs:
-                                if xref is not None:
-                                    for xref in xrefs:
+                            if xrefs is not None:
+                                for xref in xrefs:
+                                    if xref is not None:
                                         xref_src_db = xref.get("xref_src_db", None)
                                         if xref_src_db is not None:
                                             if xref_src_db == "UniProt":
@@ -194,6 +195,7 @@ class QueryChEMBL:
 
 if __name__ == '__main__':
     print(QueryChEMBL.get_target_uniprot_ids_for_chembl_id('CHEMBL521'))
+    print(QueryChEMBL.get_target_uniprot_ids_for_chembl_id('CHEMBL2364648'))
 #    print(QueryChEMBL.get_mechanisms_for_chembl_id("CHEMBL521"))
 #    print(QueryChEMBL.map_chembl_target_to_uniprot_ids("CHEMBL2094253"))
 #    print(QueryChEMBL.get_mechanisms_for_chembl_id("CHEMBL521"))

@@ -5,7 +5,7 @@
 First, make sure that rtxdev.saramsey.org is running then ssh into it and run the following commands:
 
 ```
-sudo docker start semmeddb
+sudo docker start semmed
 sudo docker start umls
 sudo docker start semrep
 sudo docker exec -d semrep /semrep/public_mm/bin/skrmedpostctl start

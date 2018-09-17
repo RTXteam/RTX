@@ -76,7 +76,7 @@ def answerQ2(drug_name, disease_name, k, use_json=False, max_gd=1):
 	try:  # First look for COP's where the gene is associated to the disease
 		#g = RU.return_subgraph_through_node_labels(drug_name, 'chemical_substance', disease_name, 'disease',
 		#											['protein', 'anatomical_entity', 'phenotypic_feature'],
-		#											with_rel=['protein', 'associated_with_condition', 'disease'],
+		#											with_rel=['protein', 'gene_associated_with_condition', 'disease'],
 		#											directed=False)
 		g = RU.return_subgraph_through_node_labels(drug_name, 'chemical_substance', disease_name, 'disease',
 												   ['protein', 'anatomical_entity', 'phenotypic_feature'],

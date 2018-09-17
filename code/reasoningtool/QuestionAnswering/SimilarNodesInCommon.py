@@ -40,7 +40,7 @@ class SimilarNodesInCommon:
 		input_node_associated_nodes = RU.get_one_hop_target(input_node_label, input_node_ID, association_node_label,
 															input_association_relationship)
 
-		# Look more steps beyond if we didn't get any directly_interacts_with
+		# Look more steps beyond if we didn't get any physically_interacts_with
 		if input_node_associated_nodes == []:
 			for max_path_len in range(2, 5):
 				input_node_associated_nodes = RU.get_node_names_of_type_connected_to_target(input_node_label, input_node_ID,
@@ -82,7 +82,7 @@ class SimilarNodesInCommon:
 		if not other_node_IDs_to_intersection_counts:
 			error_code = "NoNodesFound"
 			error_message = "No %s were found with similarity crossing the threshold of %f." % (target_node_label, threshold)
-			parent = RU.get_one_hop_target(input_node_label, input_node_ID, input_node_label, "subset_of", direction="r")
+			parent = RU.get_one_hop_target(input_node_label, input_node_ID, input_node_label, "subclass_of", direction="r")
 			if parent:
 				parent = parent.pop()
 				error_message += "\n Note that %s is a parent of %s, so you might try that instead." % (
@@ -119,7 +119,7 @@ class SimilarNodesInCommon:
 		if not node_jaccard_tuples:
 			error_code = "NoNodesFound"
 			error_message = "No %s's were found with similarity crossing the threshold of %f." % (target_node_label, threshold)
-			parent = RU.get_one_hop_target(input_node_label, input_node_ID, input_node_label, "subset_of", direction="r")
+			parent = RU.get_one_hop_target(input_node_label, input_node_ID, input_node_label, "subclass_of", direction="r")
 			if parent:
 				parent = parent.pop()
 				error_message += "\n Note that %s is a parent of %s, so you might try that instead." % (RU.get_node_property(parent, 'description'), input_node_description)
@@ -157,7 +157,7 @@ class SimilarNodesInCommon:
 		if not rels:
 			error_code = "NoRelationship"
 			error_message = "Sorry, the %s %s is not connected to any %s." % (input_node_label, input_node_ID, association_node_label)
-			parent = RU.get_one_hop_target(input_node_label, input_node_ID, input_node_label, "subset_of", direction="r")
+			parent = RU.get_one_hop_target(input_node_label, input_node_ID, input_node_label, "subclass_of", direction="r")
 			if parent:
 				parent = parent.pop()
 				error_message += "\n Note that %s is a parent of %s, so you might try that instead." % (
@@ -173,8 +173,8 @@ class SimilarNodesInCommon:
 			return dict(), error_code, error_message
 		target_association_relationship = rels.pop()
 		# TODO: kludgy fix for microRNA's having multiple relationship types, only one of which shows up frequently
-		if target_association_relationship == "causes_or_contributes_to":
-			target_association_relationship = "associated_with_condition"
+		if target_association_relationship == "gene_mutations_contribute_to":
+			target_association_relationship = "gene_associated_with_condition"
 
 		# populate the arguments
 		arguments = dict(input_node_ID=input_node_ID,
@@ -222,8 +222,8 @@ def main():
 		input_node_ID = "DOID:8398"
 		input_node_label = "disease"
 		association_node_label = "protein"
-		input_association_relationship = "associated_with_condition"
-		target_association_relationship = "associated_with_condition"
+		input_association_relationship = "gene_associated_with_condition"
+		target_association_relationship = "gene_associated_with_condition"
 		target_node_label = "disease"
 		threshold = 0.05
 		res, error_code, error_message = Q.get_similar_nodes_in_common(input_node_ID, input_node_label, association_node_label,
@@ -235,8 +235,8 @@ def main():
 		input_node_ID = "DOID:8398"
 		input_node_label = "disease"
 		association_node_label = "protein"
-		input_association_relationship = "associated_with_condition"
-		target_association_relationship = "directly_interacts_with"
+		input_association_relationship = "gene_associated_with_condition"
+		target_association_relationship = "physically_interacts_with"
 		target_node_label = "chemical_substance"
 		threshold = 0.05
 		res, error_code, error_message = Q.get_similar_nodes_in_common(input_node_ID, input_node_label, association_node_label,

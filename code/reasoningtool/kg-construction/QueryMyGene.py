@@ -104,9 +104,13 @@ class QueryMyGene:
         return entrez_ids
 
     def convert_hgnc_gene_id_to_uniprot_id(self, hgnc_id):
-        res = self.mygene_obj.query(hgnc_id, species='human',
-                                    fields='uniprot', verbose=False)
         uniprot_ids = set()
+        try:
+            res = self.mygene_obj.query(hgnc_id, species='human',
+                                        fields='uniprot', verbose=False)
+        except requests.exceptions.HTTPError:
+            print("HTTP error in mygene_obj.query for query string: " + hgnc_id, file=sys.stderr)
+            return uniprot_ids
         if len(res) > 0:
             for hit in res['hits']:
                 uniprot_id_dict = hit.get('uniprot', None)
@@ -120,12 +124,13 @@ class QueryMyGene:
         return uniprot_ids
     
     def convert_gene_symbol_to_entrez_gene_ID(self, gene_symbol):
+        entrez_ids = set()
         try:
             res = self.mygene_obj.query('symbol:' + gene_symbol, species='human',
                                         fields='entrezgene', verbose=False)
         except requests.exceptions.HTTPError:
-            res = set()
-        entrez_ids = set()
+            print("HTTP error in mygene_obj.query for query string: " + gene_symbol, file=sys.stderr)
+            return entrez_ids
         if len(res) > 0:
             entrez_ids = set()
             for hit in res['hits']:
@@ -136,8 +141,12 @@ class QueryMyGene:
 
     def convert_entrez_gene_id_to_uniprot_id(self, entrez_gene_id):
         assert type(entrez_gene_id) == int
-        res = self.mygene_obj.query('entrezgene:' + str(entrez_gene_id), species='human', fields='uniprot', verbose=False)
         uniprot_id = set()
+        try:
+            res = self.mygene_obj.query('entrezgene:' + str(entrez_gene_id), species='human', fields='uniprot', verbose=False)
+        except requests.exceptions.HTTPError:
+            print("HTTP error in mygene_obj.query for query string: " + entrez_gene_id, file=sys.stderr)
+            return uniprot_id
         if len(res) > 0:
             res_hits = res.get("hits", None)
             if res_hits is not None and type(res_hits) == list:
@@ -156,8 +165,12 @@ class QueryMyGene:
     
     def convert_entrez_gene_ID_to_mirbase_ID(self, entrez_gene_id):
         assert type(entrez_gene_id) == int
-        res = self.mygene_obj.query('entrezgene:' + str(entrez_gene_id), species='human', fields='miRBase', verbose=False)
         mirbase_id = set()
+        try:
+            res = self.mygene_obj.query('entrezgene:' + str(entrez_gene_id), species='human', fields='miRBase', verbose=False)
+        except requests.exceptions.HTTPError:
+            print("HTTP error in mygene_obj.query for query string: " + entrez_gene_id, file=sys.stderr)
+            return mirbase_id
         if len(res) > 0:
             res_hits = res.get("hits", None)
             if res_hits is not None and type(res_hits) == list:
@@ -176,7 +189,7 @@ class QueryMyGene:
         try:
             q_res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human', fields='go', verbose=False)
         except requests.exceptions.HTTPError:
-            print("HTTP error in mygene_obj.query for GO fields for query string: " + uniprot_id, file=sys.stderr)
+            print("HTTP error in mygene_obj.query for query string: " + uniprot_id, file=sys.stderr)
             return res
         q_res_hits = q_res.get('hits', None)
         if q_res_hits is not None:
@@ -198,7 +211,7 @@ class QueryMyGene:
         try:
             q_res = self.mygene_obj.query('uniprot:' + uniprot_id, species='human', fields='go', verbose=False)
         except requests.exceptions.HTTPError:
-            print("HTTP error in mygene_obj.query for GO fields for query string: " + uniprot_id, file=sys.stderr)
+            print("HTTP error in mygene_obj.query for query string: " + uniprot_id, file=sys.stderr)
             return res
         q_res_hits = q_res.get('hits', None)
         if q_res_hits is not None:

@@ -1,4 +1,4 @@
-# This script will return X that are similar to Y based on high Jaccard index of common one-hop nodes Z (X<->Z<->Y)
+# solves the SME workflow #1: drug repurposing based on rare diseases
 
 import os
 import sys
@@ -62,9 +62,20 @@ class SMEDrugRepurposingFisher:
 		# Find symptoms of disease
 		# symptoms = RU.get_one_hop_target("disease", disease_id, "phenotypic_feature", "has_phenotype")
 		# symptoms_set = set(symptoms)
-		(symptoms_dict, symptoms) = RU.top_n_fisher_exact([disease_id], "disease", "phenotypic_feature",
-														  rel_type="has_phenotype", n=num_input_disease_symptoms)
+		(symptoms_dict, symptoms) = RU.top_n_fisher_exact([disease_id], "disease", "phenotypic_feature", rel_type="has_phenotype", n=num_input_disease_symptoms)
 		symptoms_set = set(symptoms)
+		# check for an error
+		if not symptoms_set:
+			error_message = "I found no phenotypic_features for %s." % disease_description
+			if not use_json:
+				print(error_message)
+				return
+			else:
+				error_code = "NoPathsFound"
+				response = FormatOutput.FormatResponse(3)
+				response.add_error_message(error_code, error_message)
+				response.print()
+				return
 
 		# Find diseases enriched for that phenotype
 		path_type = ["gene_mutations_contribute_to", "protein", "participates_in", "pathway", "participates_in",
@@ -75,6 +86,18 @@ class SMEDrugRepurposingFisher:
 																				   on_path=path_type,
 																				   exclude=disease_id)
 
+		if not genetic_diseases_selected:
+			error_message = "I found no diseases connected to phenotypes of %s." % disease_description
+			if not use_json:
+				print(error_message)
+				return
+			else:
+				error_code = "NoPathsFound"
+				response = FormatOutput.FormatResponse(3)
+				response.add_error_message(error_code, error_message)
+				response.print()
+				return
+
 		# find the most representative proteins in these diseases
 		path_type = ["participates_in", "pathway", "participates_in",
 					 "protein", "physically_interacts_with", "chemical_substance"]
@@ -84,11 +107,35 @@ class SMEDrugRepurposingFisher:
 																						 n=num_protein_keep,
 																						 on_path=path_type)
 
+		if not implicated_proteins_selected:
+			error_message = "I found no proteins connected to diseases connected to phenotypes of %s." % disease_description
+			if not use_json:
+				print(error_message)
+				return
+			else:
+				error_code = "NoPathsFound"
+				response = FormatOutput.FormatResponse(3)
+				response.add_error_message(error_code, error_message)
+				response.print()
+				return
+
 		# find enriched pathways from those proteins
 		path_type = ["participates_in", "protein", "physically_interacts_with", "chemical_substance"]
 		(pathways_selected_dict, pathways_selected) = RU.top_n_fisher_exact(implicated_proteins_selected, "protein",
 																			"pathway", rel_type="participates_in",
 																			n=num_pathways_keep, on_path=path_type)
+
+		if not pathways_selected:
+			error_message = "I found no pathways connected to proteins connected to diseases connected to phenotypes of %s." % disease_description
+			if not use_json:
+				print(error_message)
+				return
+			else:
+				error_code = "NoPathsFound"
+				response = FormatOutput.FormatResponse(3)
+				response.add_error_message(error_code, error_message)
+				response.print()
+				return
 
 		# find proteins enriched for those pathways
 		path_type = ["physically_interacts_with", "chemical_substance"]
@@ -98,11 +145,35 @@ class SMEDrugRepurposingFisher:
 																				   n=num_pathway_proteins_selected,
 																				   on_path=path_type)
 
+		if not pathway_proteins_selected:
+			error_message = "I found no proteins connected to pathways connected to proteins connected to diseases connected to phenotypes of %s." % disease_description
+			if not use_json:
+				print(error_message)
+				return
+			else:
+				error_code = "NoPathsFound"
+				response = FormatOutput.FormatResponse(3)
+				response.add_error_message(error_code, error_message)
+				response.print()
+				return
+
 		# find drugs enriched for targeting those proteins
 		(drugs_selected_dict, drugs_selected) = RU.top_n_fisher_exact(pathway_proteins_selected, "protein",
 																	  "chemical_substance",
 																	  rel_type="physically_interacts_with",
 																	  n=num_drugs_keep)
+
+		if not drugs_selected:
+			error_message = "I found no drugs connected toproteins connected to pathways connected to proteins connected to diseases connected to phenotypes of %s." % disease_description
+			if not use_json:
+				print(error_message)
+				return
+			else:
+				error_code = "NoPathsFound"
+				response = FormatOutput.FormatResponse(3)
+				response.add_error_message(error_code, error_message)
+				response.print()
+				return
 
 		# Next, find the most likely paths
 		# extract the relevant subgraph
