@@ -407,9 +407,9 @@ class QueryCOHDTestCases(TestCase):
         result = QueryCOHD.get_most_frequent_concepts(10, "Condition", "2")
         self.assertEqual(result, [])
 
-        #   num == 0
-        result = QueryCOHD.get_most_frequent_concepts(0, "Condition", 2)
-        self.assertEqual(result, [])
+        # #   num == 0
+        # result = QueryCOHD.get_most_frequent_concepts(0, "Condition", 2)
+        # self.assertEqual(result, [])
 
     def test_get_chi_square(self):
         #   default dataset_id
@@ -713,4 +713,130 @@ class QueryCOHDTestCases(TestCase):
         #   invalid dataset_id type
         result = QueryCOHD.get_patient_count('1')
         self.assertEqual(result, {})
+
+    def test_get_concept_ancestors(self):
+        result = QueryCOHD.get_concept_ancestors('19019073', 'RxNorm', 'Ingredient', 1)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], {'ancestor_concept_id': 1177480,
+                                     'concept_class_id': 'Ingredient',
+                                     'concept_code': '5640',
+                                     'concept_count': 174,
+                                     'concept_name': 'Ibuprofen',
+                                     'domain_id': 'Drug',
+                                     'max_levels_of_separation': 2,
+                                     'min_levels_of_separation': 2,
+                                     'standard_concept': 'S',
+                                     'vocabulary_id': 'RxNorm'})
+
+        # default dataset_id
+        result = QueryCOHD.get_concept_ancestors('19019073', 'RxNorm', 'Ingredient')
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], {'ancestor_concept_id': 1177480,
+                                     'concept_class_id': 'Ingredient',
+                                     'concept_code': '5640',
+                                     'concept_count': 233514,
+                                     'concept_name': 'Ibuprofen',
+                                     'domain_id': 'Drug',
+                                     'max_levels_of_separation': 2,
+                                     'min_levels_of_separation': 2,
+                                     'standard_concept': 'S',
+                                     'vocabulary_id': 'RxNorm'})
+
+        # default concept_class_id
+        result = QueryCOHD.get_concept_ancestors('19019073', 'RxNorm')
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 4)
+        self.assertEqual(result[0], {
+                                      "ancestor_concept_id": 19019073,
+                                      "concept_class_id": "Clinical Drug",
+                                      "concept_code": "197806",
+                                      "concept_count": 121104,
+                                      "concept_name": "Ibuprofen 600 MG Oral Tablet",
+                                      "domain_id": "Drug",
+                                      "max_levels_of_separation": 0,
+                                      "min_levels_of_separation": 0,
+                                      "standard_concept": "S",
+                                      "vocabulary_id": "RxNorm"})
+
+        # default vocabulary_id
+        result = QueryCOHD.get_concept_ancestors('19019073')
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 8)
+        self.assertEqual(result[0], {
+            "ancestor_concept_id": 19019073,
+            "concept_class_id": "Clinical Drug",
+            "concept_code": "197806",
+            "concept_count": 121104,
+            "concept_name": "Ibuprofen 600 MG Oral Tablet",
+            "domain_id": "Drug",
+            "max_levels_of_separation": 0,
+            "min_levels_of_separation": 0,
+            "standard_concept": "S",
+            "vocabulary_id": "RxNorm"})
+
+    def test_get_concept_descendants(self):
+        result = QueryCOHD.get_concept_descendants('19019073', 'RxNorm', 'Branded Drug', 1)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result[0], {
+                                      "concept_class_id": "Branded Drug",
+                                      "concept_code": "206913",
+                                      "concept_count": 14744,
+                                      "concept_name": "Ibuprofen 600 MG Oral Tablet [Ibu]",
+                                      "descendant_concept_id": 19033921,
+                                      "domain_id": "Drug",
+                                      "max_levels_of_separation": 0,
+                                      "min_levels_of_separation": 0,
+                                      "standard_concept": "S",
+                                      "vocabulary_id": "RxNorm"})
+
+        # default dataset_id
+        result = QueryCOHD.get_concept_descendants('19019073', 'RxNorm', 'Branded Drug')
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result[0], {
+                                      "concept_class_id": "Branded Drug",
+                                      "concept_code": "206913",
+                                      "concept_count": 14853,
+                                      "concept_name": "Ibuprofen 600 MG Oral Tablet [Ibu]",
+                                      "descendant_concept_id": 19033921,
+                                      "domain_id": "Drug",
+                                      "max_levels_of_separation": 0,
+                                      "min_levels_of_separation": 0,
+                                      "standard_concept": "S",
+                                      "vocabulary_id": "RxNorm"})
+
+        # default concept_class_id
+        result = QueryCOHD.get_concept_descendants('19019073', 'RxNorm')
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 4)
+        self.assertEqual(result[0], {
+                                      "concept_class_id": "Clinical Drug",
+                                      "concept_code": "197806",
+                                      "concept_count": 121104,
+                                      "concept_name": "Ibuprofen 600 MG Oral Tablet",
+                                      "descendant_concept_id": 19019073,
+                                      "domain_id": "Drug",
+                                      "max_levels_of_separation": 0,
+                                      "min_levels_of_separation": 0,
+                                      "standard_concept": "S",
+                                      "vocabulary_id": "RxNorm"})
+
+        # default vocabulary_id
+        result = QueryCOHD.get_concept_descendants('19019073')
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 4)
+        self.assertEqual(result[0], {
+                                      "concept_class_id": "Clinical Drug",
+                                      "concept_code": "197806",
+                                      "concept_count": 121104,
+                                      "concept_name": "Ibuprofen 600 MG Oral Tablet",
+                                      "descendant_concept_id": 19019073,
+                                      "domain_id": "Drug",
+                                      "max_levels_of_separation": 0,
+                                      "min_levels_of_separation": 0,
+                                      "standard_concept": "S",
+                                      "vocabulary_id": "RxNorm"})
 
