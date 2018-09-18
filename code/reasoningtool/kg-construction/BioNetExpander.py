@@ -151,6 +151,8 @@ class BioNetExpander:
                            "id": curie_id,
                            "accession": accession}
 
+            assert ":" in curie_id
+            
             if simple_node_type == "protein" or simple_node_type == "microRNA":
                 extra_props["symbol"] = desc
 
