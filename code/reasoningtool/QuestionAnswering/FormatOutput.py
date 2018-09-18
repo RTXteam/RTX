@@ -148,14 +148,15 @@ class FormatResponse:
 			edge.type = edge_types[(u, v)]
 			edge.source_id = node_iris_to_node_object[edge_source_iri[(u, v)]].id
 			edge.target_id = node_iris_to_node_object[edge_target_iri[(u, v)]].id
-			edge.origin_list = []
-			edge.origin_list.append(edge_source_db[(u, v)])  # TODO: check with eric if this really should be a list and if it should contain the source DB('s)
+			#edge.origin_list = []
+			#edge.origin_list.append(edge_source_db[(u, v)])  # TODO: check with eric if this really should be a list and if it should contain the source DB('s)
 			edge_objects.append(edge)
 			#edge.attribute_list
 			#edge.confidence
 			#edge.evidence_type
 			edge.is_defined_by = "RTX"
-			edge.provided_by = node_iris_to_node_object[edge_source_iri[(u, v)]].uri
+			#edge.provided_by = node_iris_to_node_object[edge_source_iri[(u, v)]].uri
+			edge.provided_by = edge_source_db[(u, v)]
 			#edge.publications
 			#edge.qualifiers
 			#edge.relation
@@ -261,8 +262,9 @@ class FormatResponse:
 			edge.type = edge_types[(u, v)]
 			edge.source_id = node_iris_to_node_object[edge_source_iri[(u, v)]].id
 			edge.target_id = node_iris_to_node_object[edge_target_iri[(u, v)]].id
-			edge.origin_list = []
-			edge.origin_list.append(edge_source_db[(u, v)])  # TODO: check with eric if this really should be a list and if it should contain the source DB('s)
+			#edge.origin_list = []
+			#edge.origin_list.append(edge_source_db[(u, v)])  # TODO: check with eric if this really should be a list and if it should contain the source DB('s)
+			edge.provided_by = edge_source_db[(u, v)]
 			edge_objects.append(edge)
 
 		# Create the result (potential answer)
