@@ -190,9 +190,11 @@ class KGNodeIndex:
           newName = re.sub(r' \([A-Z0-9]{1,8}\)',"",name,flags=re.IGNORECASE)
           names.append(newName)
 
-      #### If this is a UniProt identifier, also add the CURIE which isn't really a CURIE. FIXME
-      elif re.match("[A-Z][A-Z0-9]{5}",curie) or re.match("A[A-Z0-9]{9}",curie):
+      #### If this is a UniProt identifier, also add the CURIE and the naked identifier without the prefix
+      elif re.match("UniProtKB:[A-Z][A-Z0-9]{5}",curie) or re.match("UniProtKB:A[A-Z0-9]{9}",curie):
         names.append(curie)
+        tmp = re.sub("UniProtKb:","",curie)
+        names.append(tmp)
 
 
       #### Create duplicates for various DoctorName's diseases
