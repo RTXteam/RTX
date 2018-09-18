@@ -22,7 +22,7 @@ import sys
 import urllib.parse
 
 # configure requests package to use the "QueryCOHD.sqlite" cache
-requests_cache.install_cache('QueryCOHD')
+# requests_cache.install_cache('QueryCOHD')
 
 
 class QueryCOHD:
