@@ -47,7 +47,9 @@ class QueryCOHD:
         'get_datasets':                         'metadata/datasets',
         'get_domain_counts':                    'metadata/domainCounts',
         'get_domain_pair_counts':               'metadata/domainPairCounts',
-        'get_patient_count':                    'metadata/patientCount'
+        'get_patient_count':                    'metadata/patientCount',
+        'get_concept_ancestors':                '/omop/conceptAncestors',
+        'get_concept_descendants':              '/omop/conceptDescendants'
     }
 
     @staticmethod
@@ -537,9 +539,6 @@ class QueryCOHD:
             example:
             [
                 {
-                  "vocabulary_id": ""
-                },
-                {
                   "vocabulary_id": "ABMS"
                 },
                 {
@@ -623,20 +622,24 @@ class QueryCOHD:
             example:
             [
                 {
+                  "concept_class_id": "Clinical Finding",
                   "concept_count": 233790,
                   "concept_frequency": 0.1305774978203572,
                   "concept_id": 320128,
                   "concept_name": "Essential hypertension",
                   "dataset_id": 1,
-                  "domain_id": "Condition"
+                  "domain_id": "Condition",
+                  "vocabulary_id": "SNOMED"
                 },
                 {
+                  "concept_class_id": "Clinical Finding",
                   "concept_count": 152005,
                   "concept_frequency": 0.08489855235973907,
                   "concept_id": 77670,
                   "concept_name": "Chest pain",
                   "dataset_id": 1,
-                  "domain_id": "Condition"
+                  "domain_id": "Condition",
+                  "vocabulary_id": "SNOMED"
                 },
             ]
         """
@@ -832,16 +835,18 @@ class QueryCOHD:
 
             example:
                 [
-                    {
-                      "dataset_description": "Clinical data from 2013-2017",
-                      "dataset_id": 1,
-                      "dataset_name": "5 year"
-                    },
-                    {
-                      "dataset_description": "Clinical data from all years in the database",
-                      "dataset_id": 2,
-                      "dataset_name": "Lifetime"
-                    }
+                    {'dataset_description': "Clinical data from 2013-2017. Each concept's count reflects "
+                                                          "the use of that specific concept.",
+                     'dataset_id': 1,
+                     'dataset_name': "5-year non-hierarchical"},
+                    {'dataset_description': "Clinical data from all years in the database. Each concept's"
+                                                          " count reflects the use of that specific concept.",
+                     'dataset_id': 2,
+                     'dataset_name': "Lifetime non-hierarchical"},
+                    {"dataset_description": "Clinical data from 2013-2017. Each concept's count includes"
+                                                           " use of that concept and descendant concepts.",
+                     "dataset_id": 3,
+                     "dataset_name": "5-year hierarchical"}
                 ]
         """
         handler = QueryCOHD.HANDLER_MAP['get_datasets']
@@ -922,6 +927,141 @@ class QueryCOHD:
                 results_dict = results[0]
         return results_dict
 
+    @staticmethod
+    def get_concept_ancestors(concept_id, vocabulary_id='', concept_class_id='', dataset_id=3):
+        """Retrieves the given concept's hierarchical ancestors and their counts.
+
+            Args:
+                concept_id (str): An OMOP concept id, e.g., "19019073"
+
+                vocabulary_id (int): The vocabulary_id to restrict ancestors to. For conditions, SNOMED and MedDRA are
+                used. For drugs, RxNorm (only and ATC are used. For procedures, SNOMED, MedDRA, and ICD10PCS are used.
+                Default: unrestricted.
+
+                concept_class_id(str): The concept_class_id to restrict ancestors to. Only certain hierarchical concept_
+                class_ids are used in each vocabuarly: ATC {ATC 1st, ATC 2nd, ATC 3rd, ATC 4th, ATC 5th}; MedDRA {PT,
+                HLT, HLGT, SOC}; RxNorm {Ingredient, Clinical Drug Form, Clinical Drug Comp, Clinical Drug}.
+                Default: unrestricted.
+
+                dataset_id(int): The dataset_id to retrieve counts from. Default: 3 (5-year hierarchical data set)
+
+            Returns:
+                array:  a list of dictionaries which contains the number of patients
+
+                example:
+                [
+                    {
+                      "ancestor_concept_id": 19019073,
+                      "concept_class_id": "Clinical Drug",
+                      "concept_code": "197806",
+                      "concept_count": 121104,
+                      "concept_name": "Ibuprofen 600 MG Oral Tablet",
+                      "domain_id": "Drug",
+                      "max_levels_of_separation": 0,
+                      "min_levels_of_separation": 0,
+                      "standard_concept": "S",
+                      "vocabulary_id": "RxNorm"
+                    },
+                    {
+                      "ancestor_concept_id": 19081499,
+                      "concept_class_id": "Clinical Drug Comp",
+                      "concept_code": "316077",
+                      "concept_count": 121202,
+                      "concept_name": "Ibuprofen 600 MG",
+                      "domain_id": "Drug",
+                      "max_levels_of_separation": 1,
+                      "min_levels_of_separation": 1,
+                      "standard_concept": "S",
+                      "vocabulary_id": "RxNorm"
+                    },
+                    ...
+                ]
+        """
+        if not isinstance(concept_id, str) or not isinstance(vocabulary_id, str) \
+            or not isinstance(concept_class_id, str) or not isinstance(dataset_id, int) or dataset_id <= 0:
+            return []
+        handler = QueryCOHD.HANDLER_MAP['get_concept_ancestors']
+        url_suffix = 'concept_id=' + concept_id + '&dataset_id=' + str(dataset_id)
+        if vocabulary_id != '':
+            url_suffix += '&vocabulary_id=' + vocabulary_id
+        if concept_class_id != '':
+            url_suffix += '&concept_class_id=' + concept_class_id
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_list = []
+        if res_json is not None:
+            results = res_json.get('results', [])
+            if results is not None and type(results) == list and len(results) > 0:
+                results_list = results
+        return results_list
+
+    @staticmethod
+    def get_concept_descendants(concept_id, vocabulary_id='', concept_class_id='', dataset_id=3):
+        """Retrieves the given concept's hierarchical ancestors and their counts.
+
+            Args:
+                concept_id (str): An OMOP concept id, e.g., "19019073"
+
+                vocabulary_id (int): The vocabulary_id to restrict ancestors to. For conditions, SNOMED and MedDRA are
+                used. For drugs, RxNorm (only and ATC are used. For procedures, SNOMED, MedDRA, and ICD10PCS are used.
+                Default: unrestricted.
+
+                concept_class_id(str): The concept_class_id to restrict ancestors to. Only certain hierarchical concept_
+                class_ids are used in each vocabuarly: ATC {ATC 1st, ATC 2nd, ATC 3rd, ATC 4th, ATC 5th}; MedDRA {PT,
+                HLT, HLGT, SOC}; RxNorm {Ingredient, Clinical Drug Form, Clinical Drug Comp, Clinical Drug}.
+                Default: unrestricted.
+
+                dataset_id(int): The dataset_id to retrieve counts from. Default: 3 (5-year hierarchical data set)
+
+            Returns:
+                array:  a list of dictionaries which contains the number of patients
+
+                example:
+                [
+                    {
+                      "concept_class_id": "Clinical Drug",
+                      "concept_code": "197806",
+                      "concept_count": 121104,
+                      "concept_name": "Ibuprofen 600 MG Oral Tablet",
+                      "descendant_concept_id": 19019073,
+                      "domain_id": "Drug",
+                      "max_levels_of_separation": 0,
+                      "min_levels_of_separation": 0,
+                      "standard_concept": "S",
+                      "vocabulary_id": "RxNorm"
+                    },
+                    {
+                      "concept_class_id": "Branded Drug",
+                      "concept_code": "206913",
+                      "concept_count": 14853,
+                      "concept_name": "Ibuprofen 600 MG Oral Tablet [Ibu]",
+                      "descendant_concept_id": 19033921,
+                      "domain_id": "Drug",
+                      "max_levels_of_separation": 0,
+                      "min_levels_of_separation": 0,
+                      "standard_concept": "S",
+                      "vocabulary_id": "RxNorm"
+                    },
+                    ...
+                ]
+        """
+        if not isinstance(concept_id, str) or not isinstance(vocabulary_id, str) \
+            or not isinstance(concept_class_id, str) or not isinstance(dataset_id, int) or dataset_id <= 0:
+            return []
+        handler = QueryCOHD.HANDLER_MAP['get_concept_descendants']
+        url_suffix = 'concept_id=' + concept_id + '&dataset_id=' + str(dataset_id)
+        if vocabulary_id != '':
+            url_suffix += '&vocabulary_id=' + vocabulary_id
+        if concept_class_id != '':
+            url_suffix += '&concept_class_id=' + concept_class_id
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_list = []
+        if res_json is not None:
+            results = res_json.get('results', [])
+            if results is not None and type(results) == list and len(results) > 0:
+                results_list = results
+        return results_list
+
+
 # if __name__ == '__main__':
     # print(QueryCOHD.find_concept_ids("cancer", "Condition", 1))
     # print(QueryCOHD.find_concept_ids("cancer", "Condition"))
@@ -973,3 +1113,7 @@ class QueryCOHD:
     # print(QueryCOHD.get_domain_pair_counts(2))
     # print(QueryCOHD.get_patient_count())
     # print(QueryCOHD.get_patient_count(2))
+    # ancestors = QueryCOHD.get_concept_ancestors('19019073', 'RxNorm', 'Ingredient', 1)
+    # print(ancestors)
+    # descendants = QueryCOHD.get_concept_descendants('19019073') #   , 'RxNorm', 'Ingredient', 1
+    # print(len(descendants))
