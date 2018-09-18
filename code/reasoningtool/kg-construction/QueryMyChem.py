@@ -20,10 +20,6 @@ import sys
 import json
 
 
-# configure requests package to use the "QueryMyChem.sqlite" cache
-requests_cache.install_cache('QueryMyChem')
-
-
 class QueryMyChem:
     TIMEOUT_SEC = 120
     API_BASE_URL = 'http://mychem.info/v1'
@@ -51,7 +47,6 @@ class QueryMyChem:
             print(url, file=sys.stderr)
             print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
             return None
-
         return res.text
 
     @staticmethod
@@ -303,23 +298,24 @@ if __name__ == '__main__':
         json.dump(json_data, f)
         f.close()
 
-    save_to_test_file('tests/query_test_data.json', 'ChEMBL:1200766',
-                      QueryMyChem.get_chemical_substance_entity('ChEMBL:1200766'))
-    save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:154',
-                      QueryMyChem.get_chemical_substance_description('ChEMBL:154'))
-    save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:20883',
-                      QueryMyChem.get_chemical_substance_description('ChEMBL:20883'))   # no definition field
-    save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:110101020',
-                      QueryMyChem.get_chemical_substance_description('ChEMBL:110101020'))   # wrong id
+    # save_to_test_file('tests/query_test_data.json', 'ChEMBL:1200766',
+    #                   QueryMyChem.get_chemical_substance_entity('ChEMBL:1200766'))
+    # save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:154',
+    #                   QueryMyChem.get_chemical_substance_description('ChEMBL:154'))
+    # save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:20883',
+    #                   QueryMyChem.get_chemical_substance_description('ChEMBL:20883'))   # no definition field
+    # save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:110101020',
+    #                   QueryMyChem.get_chemical_substance_description('ChEMBL:110101020'))   # wrong id
 
     # umls_array = QueryMyChem.get_drug_side_effects("KWHRDNMACVLHCE-UHFFFAOYSA-N")
     # print(umls_array)
     # print(len(umls_array))
     #
-    # umls_array = QueryMyChem.get_drug_side_effects("CHEMBL:521")
-    # print(umls_array)
-    # print(len(umls_array))
-
-    drug_use = QueryMyChem.get_drug_use("CHEMBL20883")
-    print(str(len(drug_use['indications'])) + str(drug_use['indications']))
-    print(str(len(drug_use['contraindications'])) + str(drug_use['contraindications']))
+    #umls_array = QueryMyChem.get_drug_side_effects("CHEMBL:521")
+    #print(umls_array)
+    #print(len(umls_array))
+    #print(len(QueryMyChem.get_drug_side_effects("CHEMBL:1908841")))
+    #print(len(QueryMyChem.get_drug_side_effects("CHEMBL:655")))
+    #drug_use = QueryMyChem.get_drug_use("CHEMBL20883")
+    #print(str(len(drug_use['indications'])) + str(drug_use['indications']))
+    #print(str(len(drug_use['contraindications'])) + str(drug_use['contraindications']))
