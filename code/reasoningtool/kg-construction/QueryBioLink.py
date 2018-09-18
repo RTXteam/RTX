@@ -77,7 +77,7 @@ class QueryBioLink:
             return None
 
         return res.json()
-    
+
     @staticmethod
     def get_label_for_disease(disease_id):
         handler = QueryBioLink.HANDLER_MAP['get_label_for_disease'].format(disease_id=disease_id)
@@ -98,6 +98,8 @@ class QueryBioLink:
         if len(res_list) > 200:
             print('Number of phenotypes found for disease: ' + disease_id + ' is: ' + str(len(res_list)), file=sys.stderr)
         for phenotype_id_str in res_list:
+            if phenotype_id_str.startswith("AQTLTrait:"):
+                continue
             phenotype_label_str = QueryBioLink.get_label_for_phenotype(phenotype_id_str)
             ret_dict[phenotype_id_str] = phenotype_label_str
 
@@ -276,6 +278,7 @@ class QueryBioLink:
             if 'objects' in results.keys():
                 hp_array = results['objects']
         return hp_array
+
 
 if __name__ == '__main__':
     # print(QueryBioLink.get_genes_for_disease_desc('MONDO:0005359'))
