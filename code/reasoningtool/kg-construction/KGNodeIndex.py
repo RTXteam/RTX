@@ -16,7 +16,7 @@ from sqlalchemy.orm import sessionmaker
 Base = declarative_base()
 
 #### Testing and debugging flags
-DEBUG = True
+DEBUG = False
 TESTSUFFIX = ""
 #TESTSUFFIX = "_test2"
 
