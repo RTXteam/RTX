@@ -20,6 +20,7 @@ import argparse
 
 from Orangeboard import Orangeboard
 from BioNetExpander import BioNetExpander
+from QueryDGIdb import QueryDGIdb
 
 # configure requests package to use the "orangeboard.sqlite" cache
 requests_cache.install_cache('orangeboard')
@@ -73,9 +74,25 @@ def seed_nodes_from_master_tsv_file():
                                      dtype={'rtx_name': str})
     first_row = True
     for index, row in seed_node_data.iterrows():
-        bne.add_node_smart(row['type'], row['rtx_name'], seed_node_bool=first_row, desc=row['term'])
-        if first_row is True:
-            first_row = False
+        bne.add_node_smart(row['type'], row['rtx_name'], seed_node_bool=True, desc=row['term'])
+
+
+def add_dgidb_to_kg():
+    tuple_list = QueryDGIdb.read_interactions()
+    for tuple_dict in tuple_list:
+        drug_node = bne.add_node_smart('chemical_substance', tuple_dict['drug_chembl_id'],
+                                       seed_node_bool=True,
+                                       desc=tuple_dict['drug_name'])
+        prot_node = bne.add_node_smart('protein', tuple_dict['protein_uniprot_id'],
+                                       seed_node_bool=True,
+                                       desc=tuple_dict['protein_gene_symbol'])
+        pmids = tuple_dict['pmids']
+        ob.add_rel(tuple_dict['predicate'],
+                   ';'.join(['DGIdb', tuple_dict['sourcedb']]),
+                   drug_node,
+                   prot_node,
+                   extended_reltype=tuple_dict['predicate_extended'].replace(' ', '_'),
+                   publications=pmids)
 
 
 def make_master_kg_dili():
@@ -89,12 +106,19 @@ def make_master_kg_dili():
     print("count(Rel) = {}".format(ob.count_rels()))
 
 
+def test_dgidb():
+#    seed_nodes_from_master_tsv_file()
+    add_dgidb_to_kg()
+    ob.neo4j_push()
+
+
 def make_master_kg():
     seed_nodes_from_master_tsv_file()
     bne.expand_all_nodes()
     bne.expand_all_nodes()
     bne.expand_all_nodes()
     add_pc2_to_kg()
+    add_dgidb_to_kg()
     # ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
     print("count(Node) = {}".format(ob.count_nodes()))
