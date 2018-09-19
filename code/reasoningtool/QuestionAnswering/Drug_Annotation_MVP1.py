@@ -81,12 +81,6 @@ class DictQuery(dict):
         return val
 
 
-# not needed, used for testing
-json_doc_path = '/home/dkoslicki/Data/Temp/WF1Mod1-2_xray_DOID9352.json'
-with open(json_doc_path) as f:
-    data = json.load(f)
-
-
 def annotate_std_results(input_json):
     """
     Annotate results from reasoner's standard output
@@ -100,5 +94,9 @@ def annotate_std_results(input_json):
     return input_json
 
 
-annotate_std_results(data)
+# This is the main thing to run
+#json_doc_path = '/home/dkoslicki/Data/Temp/WF1Mod1-2_xray_DOID9352.json'
+#with open(json_doc_path) as f:
+#    data = json.load(f)
+#annotate_std_results(data)
 
