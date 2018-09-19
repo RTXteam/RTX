@@ -48,7 +48,7 @@ class CommonlyTreatsSolution:
 		response = FormatOutput.FormatResponse(6)
 
 		# get the description
-		drug_description = RU.get_node_property(drug_id, 'name')
+		drug_description = RU.get_node_property(drug_id, 'name', name_type='rtx_name')
 
 		# Get the conditions that COHD says it's used to treat
 		conditions_treated = COHDUtilities.get_conditions_treating(drug_description, conservative=conservative)
