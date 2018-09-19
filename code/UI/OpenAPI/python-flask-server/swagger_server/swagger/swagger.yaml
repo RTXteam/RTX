@@ -8,7 +8,7 @@ info:
     email: "edeutsch@systemsbiology.org"
   license:
     name: "Apache 2.0"
-    url: "http://www.apache.org/licenses/LICENSE-2.0.html"
+    url: "https://www.apache.org/licenses/LICENSE-2.0.html"
 host: "rtx.ncats.io"
 basePath: "/devED/api/rtx/v1"
 tags:
@@ -16,40 +16,40 @@ tags:
   description: "Translate natural language question into a standardized query"
   externalDocs:
     description: "Documentation for the RTX translate function"
-    url: "http://rtx.ncats.io/devED/overview.html#translate"
+    url: "https://rtx.ncats.io/devED/overview.html#translate"
 - name: "query"
   description: "Query RTX using a predefined question type"
   externalDocs:
     description: "Documentation for the RTX query function"
-    url: "http://rtx.ncats.io/devED/overview.html#query"
+    url: "https://rtx.ncats.io/devED/overview.html#query"
 - name: "PubmedMeshNgd"
   description: "Query to get the Normalized Google Distance between two MeSH terms\
     \ based on co-occurance in all PubMed article annotations"
   externalDocs:
     description: "Documentation for the RTX PubmedMeshNgd function"
-    url: "http://rtx.ncats.io/devED/overview.html#PubmedMeshNgd"
+    url: "https://rtx.ncats.io/devED/overview.html#PubmedMeshNgd"
 - name: "response"
   description: "Request stored responses and feedback for responses"
   externalDocs:
     description: "Documentation for the RTX response function"
-    url: "http://rtx.ncats.io/devED/overview.html#response"
+    url: "https://rtx.ncats.io/devED/overview.html#response"
 - name: "result"
   description: "Request stored results and feedback for results"
   externalDocs:
     description: "Documentation for the RTX result function"
-    url: "http://rtx.ncats.io/devED/overview.html#result"
+    url: "https://rtx.ncats.io/devED/overview.html#result"
 - name: "exampleQuestions"
   description: "Request a list of example questions that can be answered by the system"
   externalDocs:
     description: "Documentation for the RTX exampleQuestions function"
-    url: "http://rtx.ncats.io/devED/overview.html#exampleQuestions"
+    url: "https://rtx.ncats.io/devED/overview.html#exampleQuestions"
 - name: "feedback"
   description: "Request feedback data"
   externalDocs:
     description: "Documentation for the RTX feedback function"
-    url: "http://rtx.ncats.io/devED/overview.html#feedback"
+    url: "https://rtx.ncats.io/devED/overview.html#feedback"
 schemes:
-- "http"
+- "https"
 paths:
   /translate:
     post:
@@ -434,7 +434,7 @@ definitions:
     properties:
       context:
         type: "string"
-        example: "http://rtx.ncats.io/devED/ns/translator.jsonld"
+        example: "https://rtx.ncats.io/devED/ns/translator.jsonld"
         description: "JSON-LD context URI"
       type:
         type: "string"
@@ -442,7 +442,7 @@ definitions:
         description: "Entity type of this response"
       id:
         type: "string"
-        example: "http://rtx.ncats.io/devED/api/rtx/v1/response/1234"
+        example: "https://rtx.ncats.io/devED/api/rtx/v1/response/1234"
         description: "URI for this response"
       reasoner_id:
         type: "string"
@@ -529,7 +529,7 @@ definitions:
       - "chemical_substance.id"
       tool_version: "RTX 0.4.0"
       terms: "{ 'disease': 'malaria' }"
-      context: "http://rtx.ncats.io/devED/ns/translator.jsonld"
+      context: "https://rtx.ncats.io/devED/ns/translator.jsonld"
       known_query_type_id: "Q2"
       result_list:
       - result_type: "answer"
@@ -582,7 +582,7 @@ definitions:
             provided_by: "OMIM"
             qualifiers: "ECO:0000220"
             target_id: "https://www.uniprot.org/uniprot/P00738"
-            source_id: "http://omim.org/entry/603903"
+            source_id: "https://omim.org/entry/603903"
             type: "affects"
             relation: "affects"
             publications: "PubMed:12345562"
@@ -602,7 +602,7 @@ definitions:
             provided_by: "OMIM"
             qualifiers: "ECO:0000220"
             target_id: "https://www.uniprot.org/uniprot/P00738"
-            source_id: "http://omim.org/entry/603903"
+            source_id: "https://omim.org/entry/603903"
             type: "affects"
             relation: "affects"
             publications: "PubMed:12345562"
@@ -615,7 +615,7 @@ definitions:
         score: 163.233
         result_group: 1
         reasoner_id: "RTX"
-        id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345"
+        id: "https://rtx.ncats.io/devED/api/rtx/v1/result/2345"
         text: "DEPRECATED"
         row_data:
         - "ibuprofen"
@@ -672,7 +672,7 @@ definitions:
             provided_by: "OMIM"
             qualifiers: "ECO:0000220"
             target_id: "https://www.uniprot.org/uniprot/P00738"
-            source_id: "http://omim.org/entry/603903"
+            source_id: "https://omim.org/entry/603903"
             type: "affects"
             relation: "affects"
             publications: "PubMed:12345562"
@@ -692,7 +692,7 @@ definitions:
             provided_by: "OMIM"
             qualifiers: "ECO:0000220"
             target_id: "https://www.uniprot.org/uniprot/P00738"
-            source_id: "http://omim.org/entry/603903"
+            source_id: "https://omim.org/entry/603903"
             type: "affects"
             relation: "affects"
             publications: "PubMed:12345562"
@@ -705,7 +705,7 @@ definitions:
         score: 163.233
         result_group: 1
         reasoner_id: "RTX"
-        id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345"
+        id: "https://rtx.ncats.io/devED/api/rtx/v1/result/2345"
         text: "DEPRECATED"
         row_data:
         - "ibuprofen"
@@ -714,14 +714,14 @@ definitions:
         score_name: "Jaccard distance"
       reasoner_id: "RTX"
       result_code: "OK"
-      id: "http://rtx.ncats.io/devED/api/rtx/v1/response/1234"
+      id: "https://rtx.ncats.io/devED/api/rtx/v1/response/1234"
       restated_question_text: "Which proteins are affected by sickle cell anemia?"
   Result:
     type: "object"
     properties:
       id:
         type: "string"
-        example: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345"
+        example: "https://rtx.ncats.io/devED/api/rtx/v1/result/2345"
         description: "URI for this response"
       description:
         type: "string"
@@ -843,7 +843,7 @@ definitions:
           provided_by: "OMIM"
           qualifiers: "ECO:0000220"
           target_id: "https://www.uniprot.org/uniprot/P00738"
-          source_id: "http://omim.org/entry/603903"
+          source_id: "https://omim.org/entry/603903"
           type: "affects"
           relation: "affects"
           publications: "PubMed:12345562"
@@ -863,7 +863,7 @@ definitions:
           provided_by: "OMIM"
           qualifiers: "ECO:0000220"
           target_id: "https://www.uniprot.org/uniprot/P00738"
-          source_id: "http://omim.org/entry/603903"
+          source_id: "https://omim.org/entry/603903"
           type: "affects"
           relation: "affects"
           publications: "PubMed:12345562"
@@ -876,7 +876,7 @@ definitions:
       score: 163.233
       result_group: 1
       reasoner_id: "RTX"
-      id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345"
+      id: "https://rtx.ncats.io/devED/api/rtx/v1/result/2345"
       text: "DEPRECATED"
       row_data:
       - "ibuprofen"
@@ -946,7 +946,7 @@ definitions:
         provided_by: "OMIM"
         qualifiers: "ECO:0000220"
         target_id: "https://www.uniprot.org/uniprot/P00738"
-        source_id: "http://omim.org/entry/603903"
+        source_id: "https://omim.org/entry/603903"
         type: "affects"
         relation: "affects"
         publications: "PubMed:12345562"
@@ -966,7 +966,7 @@ definitions:
         provided_by: "OMIM"
         qualifiers: "ECO:0000220"
         target_id: "https://www.uniprot.org/uniprot/P00738"
-        source_id: "http://omim.org/entry/603903"
+        source_id: "https://omim.org/entry/603903"
         type: "affects"
         relation: "affects"
         publications: "PubMed:12345562"
@@ -1057,7 +1057,7 @@ definitions:
         description: "Lower-level relationship type of this edge"
       source_id:
         type: "string"
-        example: "http://omim.org/entry/603903"
+        example: "https://omim.org/entry/603903"
         description: "Corresponds to the @id of source node of this edge"
       target_id:
         type: "string"
@@ -1119,7 +1119,7 @@ definitions:
       provided_by: "OMIM"
       qualifiers: "ECO:0000220"
       target_id: "https://www.uniprot.org/uniprot/P00738"
-      source_id: "http://omim.org/entry/603903"
+      source_id: "https://omim.org/entry/603903"
       type: "affects"
       relation: "affects"
       publications: "PubMed:12345562"
@@ -1154,11 +1154,11 @@ definitions:
     properties:
       id:
         type: "string"
-        example: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345/feedback/4567"
+        example: "https://rtx.ncats.io/devED/api/rtx/v1/result/2345/feedback/4567"
         description: "URI for this feedback item"
       result_id:
         type: "string"
-        example: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345"
+        example: "https://rtx.ncats.io/devED/api/rtx/v1/result/2345"
         description: "URI for the result that this feedback corresponds to"
       expertise_level_id:
         type: "integer"
@@ -1189,10 +1189,10 @@ definitions:
       commenter_id: 1
       datetime: "2018-05-08 12:00"
       rating_id: 1
-      result_id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345"
+      result_id: "https://rtx.ncats.io/devED/api/rtx/v1/result/2345"
       expertise_level_id: 1
       comment: "This is a great result because..."
-      id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345/feedback/4567"
+      id: "https://rtx.ncats.io/devED/api/rtx/v1/result/2345/feedback/4567"
       commenter_full_name: "John Smith"
   ResultFeedback:
     type: "object"
@@ -1207,18 +1207,18 @@ definitions:
       - commenter_id: 1
         datetime: "2018-05-08 12:00"
         rating_id: 1
-        result_id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345"
+        result_id: "https://rtx.ncats.io/devED/api/rtx/v1/result/2345"
         expertise_level_id: 1
         comment: "This is a great result because..."
-        id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345/feedback/4567"
+        id: "https://rtx.ncats.io/devED/api/rtx/v1/result/2345/feedback/4567"
         commenter_full_name: "John Smith"
       - commenter_id: 1
         datetime: "2018-05-08 12:00"
         rating_id: 1
-        result_id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345"
+        result_id: "https://rtx.ncats.io/devED/api/rtx/v1/result/2345"
         expertise_level_id: 1
         comment: "This is a great result because..."
-        id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345/feedback/4567"
+        id: "https://rtx.ncats.io/devED/api/rtx/v1/result/2345/feedback/4567"
         commenter_full_name: "John Smith"
   ResponseFeedback:
     type: "object"
@@ -1233,18 +1233,18 @@ definitions:
       - commenter_id: 1
         datetime: "2018-05-08 12:00"
         rating_id: 1
-        result_id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345"
+        result_id: "https://rtx.ncats.io/devED/api/rtx/v1/result/2345"
         expertise_level_id: 1
         comment: "This is a great result because..."
-        id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345/feedback/4567"
+        id: "https://rtx.ncats.io/devED/api/rtx/v1/result/2345/feedback/4567"
         commenter_full_name: "John Smith"
       - commenter_id: 1
         datetime: "2018-05-08 12:00"
         rating_id: 1
-        result_id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345"
+        result_id: "https://rtx.ncats.io/devED/api/rtx/v1/result/2345"
         expertise_level_id: 1
         comment: "This is a great result because..."
-        id: "http://rtx.ncats.io/devED/api/rtx/v1/result/2345/feedback/4567"
+        id: "https://rtx.ncats.io/devED/api/rtx/v1/result/2345/feedback/4567"
         commenter_full_name: "John Smith"
   MeshNgdResponse:
     type: "object"
@@ -1294,4 +1294,4 @@ definitions:
       chemical_substance: "ibuprofen"
 externalDocs:
   description: "Documentation for the RTX web service"
-  url: "http://rtx.ncats.io/devED/overview.html"
+  url: "https://rtx.ncats.io/devED/overview.html"

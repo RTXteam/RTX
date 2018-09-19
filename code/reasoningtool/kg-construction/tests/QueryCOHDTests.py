@@ -10,15 +10,15 @@ from QueryCOHD import QueryCOHD
 
 class QueryCOHDTestCases(TestCase):
     def test_find_concept_ids(self):
-        result = QueryCOHD.find_concept_ids("cancer", "Condition", dataset_id=1, min_count=0)
-        self.assertIsNotNone(result)
-        self.assertEqual(len(result), 84)
-        self.assertEqual(result[0], {'concept_class_id': 'Clinical Finding',
-                                     'concept_code': '92546004',
-                                     'concept_count': 368.0,
-                                     'concept_id': 192855,
-                                     'concept_name': 'Cancer in situ of urinary bladder', 'domain_id': 'Condition',
-                                     'vocabulary_id': 'SNOMED'})
+        # result = QueryCOHD.find_concept_ids("cancer", "Condition", dataset_id=1, min_count=0)
+        # self.assertIsNotNone(result)
+        # self.assertEqual(len(result), 84)
+        # self.assertEqual(result[0], {'concept_class_id': 'Clinical Finding',
+        #                              'concept_code': '92546004',
+        #                              'concept_count': 368.0,
+        #                              'concept_id': 192855,
+        #                              'concept_name': 'Cancer in situ of urinary bladder', 'domain_id': 'Condition',
+        #                              'vocabulary_id': 'SNOMED'})
 
         #   default dataset_id and min_count
         result = QueryCOHD.find_concept_ids("cancer", "Condition")
@@ -299,8 +299,8 @@ class QueryCOHDTestCases(TestCase):
         result = QueryCOHD.get_vocabularies()
         self.assertIsNotNone(result)
         self.assertEqual(len(result), 73)
-        self.assertEqual(result[0]['vocabulary_id'], '')
-        self.assertEqual(result[1]['vocabulary_id'], 'ABMS')
+        self.assertEqual(result[0]['vocabulary_id'], 'ABMS')
+        self.assertEqual(result[1]['vocabulary_id'], 'AMT')
 
     def test_get_associated_concept_freq(self):
         result = QueryCOHD.get_associated_concept_freq("192855", 2)
@@ -331,7 +331,7 @@ class QueryCOHDTestCases(TestCase):
         self.assertEqual(result, [])
 
         #   invalid dataset_id value
-        result = QueryCOHD.get_associated_concept_freq("192855", 3)
+        result = QueryCOHD.get_associated_concept_freq("192855", 10)
         self.assertEqual(result, [])
 
         #   invalid concept format
@@ -347,34 +347,41 @@ class QueryCOHDTestCases(TestCase):
         result = QueryCOHD.get_most_frequent_concepts(10)
         self.assertIsNotNone(result)
         self.assertEqual(len(result), 10)
-        self.assertEqual(result[0], {'concept_count': 1189172,
+        self.assertEqual(result[0], {'concept_class_id': 'Undefined',
+                                     'concept_count': 1189172,
                                      'concept_frequency': 0.6641819762950932,
                                      'concept_id': 44814653,
                                      'concept_name': 'Unknown',
                                      'dataset_id': 1,
-                                     'domain_id': 'Observation'})
+                                     'domain_id': 'Observation',
+                                     'vocabulary_id': 'PCORNet'})
 
         #   default dataset_id
         result = QueryCOHD.get_most_frequent_concepts(10, "Condition")
         self.assertIsNotNone(result)
         self.assertEqual(len(result), 10)
-        self.assertEqual(result[0], {'concept_count': 233790,
+        self.assertEqual(result[0], {
+                                     'concept_class_id': 'Clinical Finding',
+                                     'concept_count': 233790,
                                      'concept_frequency': 0.1305774978203572,
                                      'concept_id': 320128,
                                      'concept_name': 'Essential hypertension',
                                      'dataset_id': 1,
-                                     'domain_id': 'Condition'})
+                                     'domain_id': 'Condition',
+                                     'vocabulary_id': 'SNOMED'})
 
         #   no default value
         result = QueryCOHD.get_most_frequent_concepts(10, "Condition", 2)
         self.assertIsNotNone(result)
         self.assertEqual(len(result), 10)
-        self.assertEqual(result[0], {'concept_count': 459776,
+        self.assertEqual(result[0], {'concept_class_id': 'Clinical Finding',
+                                     'concept_count': 459776,
                                      'concept_frequency': 0.08570265962394365,
                                      'concept_id': 320128,
                                      'concept_name': 'Essential hypertension',
                                      'dataset_id': 2,
-                                     'domain_id': 'Condition'})
+                                     'domain_id': 'Condition',
+                                     'vocabulary_id': 'SNOMED'})
 
         #   invalid num value
         result = QueryCOHD.get_most_frequent_concepts(-10)
@@ -393,16 +400,16 @@ class QueryCOHDTestCases(TestCase):
         self.assertEqual(result, [])
 
         #   invalid dataset_id value
-        result = QueryCOHD.get_most_frequent_concepts(10, "Condition", 3)
+        result = QueryCOHD.get_most_frequent_concepts(10, "Condition", 10)
         self.assertEqual(result, [])
 
         #   invalid dataset_id type
         result = QueryCOHD.get_most_frequent_concepts(10, "Condition", "2")
         self.assertEqual(result, [])
 
-        #   num == 0
-        result = QueryCOHD.get_most_frequent_concepts(0, "Condition", 2)
-        self.assertEqual(result, [])
+        # #   num == 0
+        # result = QueryCOHD.get_most_frequent_concepts(0, "Condition", 2)
+        # self.assertEqual(result, [])
 
     def test_get_chi_square(self):
         #   default dataset_id
@@ -464,7 +471,7 @@ class QueryCOHDTestCases(TestCase):
         self.assertEqual(result, [])
 
         #   invalid dataset_id value
-        result = QueryCOHD.get_chi_square("192855", "2008271", "condition", 3)
+        result = QueryCOHD.get_chi_square("192855", "2008271", "condition", 10)
         self.assertEqual(result, [])
 
     def test_get_obs_exp_ratio(self):
@@ -623,13 +630,21 @@ class QueryCOHDTestCases(TestCase):
     def test_get_datasets(self):
         result = QueryCOHD.get_datasets()
         self.assertIsNotNone(result)
-        self.assertEqual(len(result), 2)
-        self.assertEqual(result, [{'dataset_description': 'Clinical data from 2013-2017',
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result, [{'dataset_description': "Clinical data from 2013-2017. Each concept's count reflects "
+                                                          "the use of that specific concept.",
                                    'dataset_id': 1,
-                                   'dataset_name': '5 year'},
-                                  {'dataset_description': 'Clinical data from all years in the database',
+                                   'dataset_name': "5-year non-hierarchical"},
+                                  {'dataset_description': "Clinical data from all years in the database. Each concept's"
+                                                          " count reflects the use of that specific concept.",
                                    'dataset_id': 2,
-                                   'dataset_name': 'Lifetime'}])
+                                   'dataset_name': "Lifetime non-hierarchical"},
+                                  {
+                                    "dataset_description": "Clinical data from 2013-2017. Each concept's count includes"
+                                                           " use of that concept and descendant concepts.",
+                                    "dataset_id": 3,
+                                    "dataset_name": "5-year hierarchical"}
+                                  ])
 
     def test_get_domain_counts(self):
         result = QueryCOHD.get_domain_counts(1)
@@ -698,4 +713,130 @@ class QueryCOHDTestCases(TestCase):
         #   invalid dataset_id type
         result = QueryCOHD.get_patient_count('1')
         self.assertEqual(result, {})
+
+    def test_get_concept_ancestors(self):
+        result = QueryCOHD.get_concept_ancestors('19019073', 'RxNorm', 'Ingredient', 1)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], {'ancestor_concept_id': 1177480,
+                                     'concept_class_id': 'Ingredient',
+                                     'concept_code': '5640',
+                                     'concept_count': 174,
+                                     'concept_name': 'Ibuprofen',
+                                     'domain_id': 'Drug',
+                                     'max_levels_of_separation': 2,
+                                     'min_levels_of_separation': 2,
+                                     'standard_concept': 'S',
+                                     'vocabulary_id': 'RxNorm'})
+
+        # default dataset_id
+        result = QueryCOHD.get_concept_ancestors('19019073', 'RxNorm', 'Ingredient')
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], {'ancestor_concept_id': 1177480,
+                                     'concept_class_id': 'Ingredient',
+                                     'concept_code': '5640',
+                                     'concept_count': 233514,
+                                     'concept_name': 'Ibuprofen',
+                                     'domain_id': 'Drug',
+                                     'max_levels_of_separation': 2,
+                                     'min_levels_of_separation': 2,
+                                     'standard_concept': 'S',
+                                     'vocabulary_id': 'RxNorm'})
+
+        # default concept_class_id
+        result = QueryCOHD.get_concept_ancestors('19019073', 'RxNorm')
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 4)
+        self.assertEqual(result[0], {
+                                      "ancestor_concept_id": 19019073,
+                                      "concept_class_id": "Clinical Drug",
+                                      "concept_code": "197806",
+                                      "concept_count": 121104,
+                                      "concept_name": "Ibuprofen 600 MG Oral Tablet",
+                                      "domain_id": "Drug",
+                                      "max_levels_of_separation": 0,
+                                      "min_levels_of_separation": 0,
+                                      "standard_concept": "S",
+                                      "vocabulary_id": "RxNorm"})
+
+        # default vocabulary_id
+        result = QueryCOHD.get_concept_ancestors('19019073')
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 8)
+        self.assertEqual(result[0], {
+            "ancestor_concept_id": 19019073,
+            "concept_class_id": "Clinical Drug",
+            "concept_code": "197806",
+            "concept_count": 121104,
+            "concept_name": "Ibuprofen 600 MG Oral Tablet",
+            "domain_id": "Drug",
+            "max_levels_of_separation": 0,
+            "min_levels_of_separation": 0,
+            "standard_concept": "S",
+            "vocabulary_id": "RxNorm"})
+
+    def test_get_concept_descendants(self):
+        result = QueryCOHD.get_concept_descendants('19019073', 'RxNorm', 'Branded Drug', 1)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result[0], {
+                                      "concept_class_id": "Branded Drug",
+                                      "concept_code": "206913",
+                                      "concept_count": 14744,
+                                      "concept_name": "Ibuprofen 600 MG Oral Tablet [Ibu]",
+                                      "descendant_concept_id": 19033921,
+                                      "domain_id": "Drug",
+                                      "max_levels_of_separation": 0,
+                                      "min_levels_of_separation": 0,
+                                      "standard_concept": "S",
+                                      "vocabulary_id": "RxNorm"})
+
+        # default dataset_id
+        result = QueryCOHD.get_concept_descendants('19019073', 'RxNorm', 'Branded Drug')
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result[0], {
+                                      "concept_class_id": "Branded Drug",
+                                      "concept_code": "206913",
+                                      "concept_count": 14853,
+                                      "concept_name": "Ibuprofen 600 MG Oral Tablet [Ibu]",
+                                      "descendant_concept_id": 19033921,
+                                      "domain_id": "Drug",
+                                      "max_levels_of_separation": 0,
+                                      "min_levels_of_separation": 0,
+                                      "standard_concept": "S",
+                                      "vocabulary_id": "RxNorm"})
+
+        # default concept_class_id
+        result = QueryCOHD.get_concept_descendants('19019073', 'RxNorm')
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 4)
+        self.assertEqual(result[0], {
+                                      "concept_class_id": "Clinical Drug",
+                                      "concept_code": "197806",
+                                      "concept_count": 121104,
+                                      "concept_name": "Ibuprofen 600 MG Oral Tablet",
+                                      "descendant_concept_id": 19019073,
+                                      "domain_id": "Drug",
+                                      "max_levels_of_separation": 0,
+                                      "min_levels_of_separation": 0,
+                                      "standard_concept": "S",
+                                      "vocabulary_id": "RxNorm"})
+
+        # default vocabulary_id
+        result = QueryCOHD.get_concept_descendants('19019073')
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 4)
+        self.assertEqual(result[0], {
+                                      "concept_class_id": "Clinical Drug",
+                                      "concept_code": "197806",
+                                      "concept_count": 121104,
+                                      "concept_name": "Ibuprofen 600 MG Oral Tablet",
+                                      "descendant_concept_id": 19019073,
+                                      "domain_id": "Drug",
+                                      "max_levels_of_separation": 0,
+                                      "min_levels_of_separation": 0,
+                                      "standard_concept": "S",
+                                      "vocabulary_id": "RxNorm"})
 

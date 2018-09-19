@@ -168,6 +168,11 @@ class KGNodeIndex:
 
     lineCounter = 0
     fh = open( os.path.dirname(os.path.abspath(__file__)) + "/../../../data/KGmetadata/NodeNamesDescriptions.tsv", 'r', encoding="latin-1", errors="replace")
+
+    #### Have a dict for items already inserted so that we don't insert them twice
+    #### Prefill it with some abbreviations that are too common and we don't want
+    namesDict = { "IS": 1 }
+
     for line in fh.readlines():
       columns = line.strip("\n").split("\t")
       curie = columns[0]
@@ -190,9 +195,10 @@ class KGNodeIndex:
           newName = re.sub(r' \([A-Z0-9]{1,8}\)',"",name,flags=re.IGNORECASE)
           names.append(newName)
 
-      #### If this is a UniProt identifier, also add the CURIE which isn't really a CURIE. FIXME
-      elif re.match("[A-Z][A-Z0-9]{5}",curie) or re.match("A[A-Z0-9]{9}",curie):
-        names.append(curie)
+      #### If this is a UniProt identifier, also add the CURIE and the naked identifier without the prefix
+      elif re.match("UniProtKB:[A-Z][A-Z0-9]{5}",curie) or re.match("UniProtKB:A[A-Z0-9]{9}",curie):
+        tmp = re.sub("UniProtKB:","",curie)
+        names.append(tmp)
 
 
       #### Create duplicates for various DoctorName's diseases
@@ -215,19 +221,26 @@ class KGNodeIndex:
         names.append(newName)
         #print("  duplicated _"+name+"_ to _"+newName+"_")
 
-      #### Have a dict for items already inserted so that we don't insert them twice
-      #### Prefill it with some abbreviations that are too common and we don't want
-      namesDict = { "IS": 1 }
-
       #### Add all the possible names to the database
       for name in names:
         name = name.upper()
-        if name in namesDict: continue
+        if name in namesDict and namesDict[name] == curie: continue
+
+        #### Hard-coded list of short abbreviations to ignore because they're also English
+        if name == "IS": continue
+        if name == "AS": continue
 
         #print(type+" "+curie+"="+name)
         kgnode = KGNode(curie=curie,name=name,type=type)
         session.add(kgnode)
-        namesDict[name] = 1
+        namesDict[name] = curie
+
+      ##### Try also adding in the curie as a resolvable name
+      if curie not in namesDict:
+        kgnode = KGNode(curie=curie,name=curie,type=type)
+        session.add(kgnode)
+        namesDict[curie] = curie
+
 
       #### Commit every now and then
       if int(lineCounter/1000) == lineCounter/1000:
@@ -256,6 +269,11 @@ class KGNodeIndex:
     #### Ensure that we are connected
     self.connect()
     session = self.session
+
+    #### First check to see if this is a curie. And if so, just return it
+    #### oops, don't do this. it takes twice as long! Better to put them all in the index and do one query
+    #if self.is_curie_present(name):
+    #  return([name])
 
     #### Try to find the curie
     try:
@@ -315,8 +333,8 @@ def main():
 
   print("==== Testing for finding curies by name ====")
   tests = [ "APS2", "phenylketonuria","Gaucher's disease","Gauchers disease","Gaucher disease",
-    "Alzheimer Disease","Alzheimers disease","Alzheimer's Disease","kidney","Kidney","P06865","HEXA",
-    "rickets","fanconi anemia","retina","is" ]
+    "Alzheimer Disease","Alzheimers disease","Alzheimer's Disease","kidney","KIDney","P06865","HEXA",
+    "UniProtKB:P12004","rickets","fanconi anemia","retina","is" ]
 
   #### The first one takes a bit longer, so do one before starting the timer
   test = kgNodeIndex.get_curies("ibuprofen")
@@ -330,7 +348,7 @@ def main():
 
 
   print("==== Testing presence of CURIEs ============================")
-  tests = [ "R-HSA-2160456", "DOID:9281", "OMIM:261600", "DOID:1926xx", "HP:0002511", "UBERON:0002113", "P06865", "KEGG:C10399", "GO:0034187", "DOID:10652xx" ]
+  tests = [ "REACT:R-HSA-2160456", "DOID:9281", "OMIM:261600", "DOID:1926xx", "HP:0002511", "UBERON:0002113", "UniProtKB:P06865", "P06865", "KEGG:C10399", "GO:0034187", "DOID:10652xx" ]
 
   t0 = timeit.default_timer()
   for test in tests:
