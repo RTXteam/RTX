@@ -14,9 +14,6 @@ import sys
 import json
 import time
 
-# configure requests package to use the "orangeboard.sqlite" cache
-requests_cache.install_cache('orangeboard')
-
 class QueryEBIOLS:
     TIMEOUT_SEC = 120
     API_BASE_URL = "https://www.ebi.ac.uk/ols/api/ontologies"
