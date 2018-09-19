@@ -189,7 +189,7 @@ def fisher_exact(input_node_list, input_node_label, compare_node_label, rel_type
 	output = {}  # prep the answer
 
 	for node in dict_in_compare: # go find signifigance levels ex. GO term enrichments. table is: [[in pathway and sample, in pathway],[in sample not in pathway],[in proteome and not in pathway]]
-		contingency_table = [[dict_in_compare[node], size_of_adjacent[node]], [size_of_set-dict_in_compare[node], size_of_total-size_of_adjacent[node]]]
+		contingency_table = [[dict_in_compare[node], size_of_adjacent[node]], [max(0, size_of_set-dict_in_compare[node]), max(0, size_of_total-size_of_adjacent[node])]]
 		output[node] = stats.fisher_exact(contingency_table)
 
 	return output
