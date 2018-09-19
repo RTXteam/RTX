@@ -1,6 +1,9 @@
-
+import requests_cache
 from QueryDGIdb import QueryDGIdb
 from Neo4jConnection import Neo4jConnection
+
+requests_cache.install_cache('orangeboard')
+
 
 conn = Neo4jConnection('bolt://localhost:7687', 'neo4j', 'precisionmedicine')
 disease_nodes = conn.get_disease_nodes()
@@ -22,8 +25,14 @@ def get_seed_node_uuid(tx):
     return next(iter(tx.run("MATCH (n:protein) return n.seed_node_uuid limit 1")))["n.seed_node_uuid"]
 
 
+protein_dict = conn._driver.session().read_transaction(get_proteins)
+
+drug_dict = conn._driver.session().read_transaction(get_drugs)
+
+seed_node_uuid = conn._driver.session().read_transaction(get_seed_node_uuid)
+
+
 def patch_kg():
-    seed_node_uuid = get_seed_node_uuid
     tuple_list = QueryDGIdb.read_interactions()
     for tuple_dict in tuple_list:
         chembl_id = tuple_dict['drug_chembl_id']
@@ -31,16 +40,25 @@ def patch_kg():
         protein_curie_id = 'UniProtKB:' + uniprot_id
         chembl_curie_id = 'CHEMBL.COMPOUND:' + chembl_id
         if protein_curie_id in protein_dict and chembl_curie_id in drug_dict:
-            cypher_query = "MATCH (a:protein),(b:chemical_substance) WHERE a.id = \'" + protein_curie_id + "\' AND b.id=\'" + chembl_curie_id + "\' CREATE (a)-[r:" + tuple_dict['predicate'] + "{ is_defined_by: \'RTX\', predicate: \'" + tuple_dict['predicate'] + "\', provided_by: \'" + tuple_dict['sourcedb'] + "\', relation: \'" + tuple_dict['predicate_extended'] + "\', seed_node_uuid: \'" + seed_node_uuid + "\'} ]->(b) RETURN type(r)"
+            cypher_query = "MATCH (a:protein),(b:chemical_substance) WHERE a.id = \'" + \
+                protein_curie_id + \
+                "\' AND b.id=\'" + \
+                chembl_curie_id + \
+                "\' CREATE (a)-[r:" + \
+                tuple_dict['predicate'] + \
+                " { is_defined_by: \'RTX\', predicate: \'" + \
+                tuple_dict['predicate'] + \
+                "\', provided_by: \'" + \
+                tuple_dict['sourcedb'] + \
+                "\', relation: \'" + \
+                tuple_dict['predicate_extended'] + \
+                "\', seed_node_uuid: \'" + \
+                seed_node_uuid + \
+                "\', publications: \'" + \
+                tuple_dict['publications'] +\
+                "\' } ]->(b) RETURN type(r)"
             print(cypher_query)
             conn._driver.session().write_transaction(lambda tx: tx.run(cypher_query))
 
-
-protein_dict = conn._driver.session().read_transaction(get_proteins)
-
-drug_dict = conn._driver.session().read_transaction(get_drugs)
-
-
-seed_node_uuid = conn._driver.session().read_transaction(get_seed_node_uuid)
 
 patch_kg()
