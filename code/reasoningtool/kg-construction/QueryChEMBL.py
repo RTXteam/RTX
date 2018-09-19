@@ -17,9 +17,6 @@ import sys
 
 from QueryUniprot import QueryUniprot
 
-# configure requests package to use the "orangeboard.sqlite" cache
-requests_cache.install_cache('orangeboard')
-
 class QueryChEMBL:
     API_BASE_URL = 'https://www.ebi.ac.uk/chembl/api/data'
     TIMEOUT_SEC = 120
