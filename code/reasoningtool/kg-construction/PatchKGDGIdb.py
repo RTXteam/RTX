@@ -55,7 +55,7 @@ def patch_kg():
                 "\', seed_node_uuid: \'" + \
                 seed_node_uuid + \
                 "\', publications: \'" + \
-                tuple_dict['publications'] +\
+                tuple_dict['pmids'] +\
                 "\' } ]->(b) RETURN type(r)"
             print(cypher_query)
             conn._driver.session().write_transaction(lambda tx: tx.run(cypher_query))
