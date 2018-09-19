@@ -186,6 +186,28 @@ paths:
         200:
           description: "successful operation"
       x-swagger-router-controller: "swagger_server.controllers.feedback_controller"
+  /response/process:
+    post:
+      tags:
+      - "response"
+      summary: "Process a Response object from somewhere else, controlled by options"
+      description: ""
+      operationId: "post_response"
+      consumes:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "Envelope for a Response that should be processed"
+        required: false
+        schema:
+          $ref: "#/definitions/ResponseEnvelope"
+      responses:
+        200:
+          description: "successful operation"
+        400:
+          description: "Invalid status value"
+      x-swagger-router-controller: "swagger_server.controllers.response_controller"
   /response/{response_id}:
     get:
       tags:
@@ -400,6 +422,27 @@ definitions:
         description: "List of node types and edge types in a series that constitute a query plan. Experimental."
         items:
           type: "object"
+    additionalProperties: true
+  ResponseEnvelope:
+    type: "object"
+    properties:
+      responseURIs:
+        type: "array"
+        example: [ "https://rtx.ncats.io/api/rtx/v1/response/300" ]
+        description: "List of URIs for Response objects to fetch and process"
+        items:
+          type: "string"
+      responses:
+        type: "array"
+        description: "List of Response objects to process"
+        items:
+          $ref: "#/definitions/Response"
+      options:
+        type: "array"
+        example: [ "mod45filter", "redirect2RTX" ]
+        description: "List of options to guide what happens with the Response object(s)"
+        items:
+          type: "string"
     additionalProperties: true
   Response:
     type: "object"
