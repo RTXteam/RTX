@@ -137,9 +137,12 @@ class SMEDrugRepurposingFisher:
 
 		graph_weight_tuples = []
 		for disease in genetic_diseases_selected:
+			#decorated_paths, decorated_path_edges, path_lengths = RU.get_top_shortest_paths(g, disease_id, disease,
+			#																				num_paths,
+			#																				property='merged')
 			decorated_paths, decorated_path_edges, path_lengths = RU.get_top_shortest_paths(g, disease_id, disease,
 																							num_paths,
-																							property='merged')
+																							property='p_value')
 			for path_ind in range(num_paths):
 				g2 = nx.Graph()
 				path = decorated_paths[path_ind]
@@ -169,7 +172,7 @@ class SMEDrugRepurposingFisher:
 			for graph, weight, out_disease_id in graph_weight_tuples:
 				out_disease_description = RU.get_node_property(out_disease_id, "name", node_label="disease")
 				# Machine learning probability of "treats"
-				confidence = weight
+				confidence = 1 - weight  # for the p-values
 				# Google distance
 				gd = NormGoogleDistance.get_ngd_for_all([out_disease_id, disease_id], [out_disease_description, disease_description])
 				# populate the graph
