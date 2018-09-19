@@ -294,7 +294,7 @@ class Orangeboard:
             if self.debug:
                 node_count = self.count_nodes()
                 if node_count % Orangeboard.DEBUG_COUNT_REPORT_GRANULARITY == 0:
-                    print('Number of nodes: ' + str(node_count) + '; elapsed time: ' + format(timeit.default_timer() - self.start_time, '.2f') + ' s')
+                    print('Number of nodes: ' + str(node_count) + '; total elapsed time: ' + format(timeit.default_timer() - self.start_time, '.2f') + ' s')
         else:
             # node is already in the orangeboard
 
@@ -391,7 +391,7 @@ class Orangeboard:
             if self.debug:
                 rel_count = self.count_rels()
                 if rel_count % Orangeboard.DEBUG_COUNT_REPORT_GRANULARITY == 0:
-                    print('Number of rels: ' + str(rel_count) + '; elapsed time: ' + format(timeit.default_timer() - self.start_time, '.2f') + ' s')
+                    print('Number of rels: ' + str(rel_count) + '; total elapsed time: ' + format(timeit.default_timer() - self.start_time, '.2f') + ' s')
         return existing_rel
 
     @staticmethod
