@@ -53,7 +53,8 @@ class COHDUtilities:
 		# get all the associated conditions
 		associated_concepts = []
 		for drug_id in drug_ids:
-			associated_concepts += QueryCOHD.get_associated_concept_domain_freq(drug_id, "Condition")
+			associated_concepts += QueryCOHD.get_associated_concept_domain_freq(str(drug_id), "Condition")
+		print(len(associated_concepts))
 
 		# go through and sum them all up (no need for conservative flag since that will only be a single one)
 		# get all the unique condition ids
