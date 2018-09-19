@@ -40,23 +40,23 @@ def patch_kg():
         protein_curie_id = 'UniProtKB:' + uniprot_id
         chembl_curie_id = 'CHEMBL.COMPOUND:' + chembl_id
         if protein_curie_id in protein_dict and chembl_curie_id in drug_dict:
-            cypher_query = "MATCH (a:protein),(b:chemical_substance) WHERE a.id = \'" + \
+            cypher_query = "MATCH (b:chemical_substance),(a:protein) WHERE a.id = \'" + \
                 protein_curie_id + \
                 "\' AND b.id=\'" + \
                 chembl_curie_id + \
-                "\' CREATE (a)-[r:" + \
+                "\' CREATE (b)-[r:" + \
                 tuple_dict['predicate'] + \
                 " { is_defined_by: \'RTX\', predicate: \'" + \
                 tuple_dict['predicate'] + \
-                "\', provided_by: \'" + \
+                "\', provided_by: \'DGIdb;" + \
                 tuple_dict['sourcedb'] + \
                 "\', relation: \'" + \
                 tuple_dict['predicate_extended'] + \
                 "\', seed_node_uuid: \'" + \
                 seed_node_uuid + \
                 "\', publications: \'" + \
-                tuple_dict['pmids'] +\
-                "\' } ]->(b) RETURN type(r)"
+                tuple_dict['pmids'] + \
+                "\' } ]->(a) RETURN type(r)"
             print(cypher_query)
             conn._driver.session().write_transaction(lambda tx: tx.run(cypher_query))
 
