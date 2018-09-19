@@ -520,6 +520,15 @@ class RTXFeedback:
       return( { "status": 404, "title": "Result not found", "detail": "There is no result corresponding to result_id="+str(result_id), "type": "about:blank" }, 404)
 
 
+  #### Get a previously stored response for this query from the database
+  def processExternalResponseEnvelope(self,envelope):
+    debug = 1
+    if debug: eprint("DEBUG: Entering processExternalResponseEnvelope")
+    if responseURIs in envelope:
+      if debug: eprint("DEBUG: Got responseURIs")
+      
+    if debug: eprint("DEBUG: Exiting processExternalResponseEnvelope")
+    return()
 
 
 
