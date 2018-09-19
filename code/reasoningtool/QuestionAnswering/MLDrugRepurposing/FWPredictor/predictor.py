@@ -118,11 +118,14 @@ class predictor():
             X = np.array([list(self.graph.iloc[source_id,1:]) + list(self.graph.iloc[target_id,1:])])
             return self.predict(X)
         elif len(source_id) >0:
-            print(target_curie + ' was not in the largest connected component of graph.')
+            pass
+            #print(target_curie + ' was not in the largest connected component of graph.')
         elif len(target_id)>0:
-            print(source_curie + ' was not in the largest connected component of graph.')
+            pass
+            #print(source_curie + ' was not in the largest connected component of graph.')
         else:
-            print(source_curie + ' and ' + target_curie + ' were not in the largest connected component of graph.')
+            #print(source_curie + ' and ' + target_curie + ' were not in the largest connected component of graph.')
+            pass
         return None
 
     def prob_single(self, source_curie, target_curie):
@@ -142,11 +145,14 @@ class predictor():
             X = np.array([list(self.graph.iloc[source_id,1:]) + list(self.graph.iloc[target_id,1:])])
             return self.prob(X)[:,1]
         elif len(source_id) >0:
-            print(target_curie + ' was not in the largest connected component of graph.')
+            #print(target_curie + ' was not in the largest connected component of graph.')
+            pass
         elif len(target_id)>0:
-            print(source_curie + ' was not in the largest connected component of graph.')
+            #print(source_curie + ' was not in the largest connected component of graph.')
+            pass
         else:
-            print(source_curie + ' and ' + target_curie + ' were not in the largest connected component of graph.')
+            #print(source_curie + ' and ' + target_curie + ' were not in the largest connected component of graph.')
+            pass
         return None
 
     def test(self):
