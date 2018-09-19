@@ -681,7 +681,7 @@ def get_node_as_graph(node_name, debug=False, use_description=False):
     if use_description:
         query = "MATCH (n{name:'%s'}) return n" % node_name
     else:
-        query = "MATCH (n{id:'%s'}) return n" % node_name
+        query = "MATCH (n{rtx_name:'%s'}) return n" % node_name
     if debug:
         return query
 
