@@ -226,8 +226,9 @@ class KGNodeIndex:
         name = name.upper()
         if name in namesDict and namesDict[name] == curie: continue
 
-        #### Hard-coded list of things to ignore because they're a problem
+        #### Hard-coded list of short abbreviations to ignore because they're also English
         if name == "IS": continue
+        if name == "AS": continue
 
         #print(type+" "+curie+"="+name)
         kgnode = KGNode(curie=curie,name=name,type=type)

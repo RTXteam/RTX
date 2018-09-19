@@ -70,7 +70,7 @@ class CommonlyTreatsSolution:
 		# return the results
 		if not use_json:
 			if rev:
-				to_print = "The most common conditions  "
+				to_print = "The most common conditions "
 			else:
 				to_print = "The least common conditions "
 			to_print += "treated with %s, according to the Columbia Open Health Data, are:\n" % drug_description
