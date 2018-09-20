@@ -67,10 +67,13 @@ module2_xray_results_annot_json = requests.post(annot_url_str, json=to_post)
 to_post = {"options": ["AnnotateDrugs", "Store", "ReturnResponseId"], "responses": [module3_robocop_results_json]}
 module3_robocop_results_annot_json = requests.post(annot_url_str, json=to_post)
 
+to_post = {"options": ["AnnotateDrugs", "Store", "ReturnResponseId"], "responseURIs":[module2_xray_results_json['id']],"responses": [module3_robocop_results_json]}
+both = requests.post(annot_url_str, json=to_post)
+
 ################################################################
 # Visualization
 # The above API call creates a website (dynamically) where the results can be viewed
-print("Please visit the following website:https://rtx.ncats.io/devLM/list.html?r=%s" % module2_xray_results_annot_json.json()['response_id'])
+print("Please visit the following website:https://rtx.ncats.io/devLM/list.html?r=%s" % both.json()['response_id'])
 
 # will return something like the following:
-# https://rtx.ncats.io/devLM/list.html?r=470
+# https://rtx.ncats.io/devLM/list.html?r=473
