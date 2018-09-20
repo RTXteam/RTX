@@ -67,6 +67,7 @@ module2_xray_results_annot_json = requests.post(annot_url_str, json=to_post)
 to_post = {"options": ["AnnotateDrugs", "Store", "ReturnResponseId"], "responses": [module3_robocop_results_json]}
 module3_robocop_results_annot_json = requests.post(annot_url_str, json=to_post)
 
+# annotate both
 to_post = {"options": ["AnnotateDrugs", "Store", "ReturnResponseId"], "responseURIs":[module2_xray_results_json['id']],"responses": [module3_robocop_results_json]}
 both = requests.post(annot_url_str, json=to_post)
 
