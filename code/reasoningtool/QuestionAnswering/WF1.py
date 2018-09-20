@@ -40,9 +40,6 @@ status_code = response_content.status_code
 assert status_code == 200
 module2_xray_results_json = response_content.json()
 
-################################################################
-# Orange team module 3: agent-centric
-
 
 ################################################################
 # Gamma team module 3: agent-centric
@@ -58,7 +55,11 @@ status_code = response_content.status_code
 assert status_code == 200
 module3a_robocop_results_json = response_content.json()
 
+
 ################################################################
 # Orange team module 4+5: annotation and scoring
 
 
+
+################################################################
+# Visualization
