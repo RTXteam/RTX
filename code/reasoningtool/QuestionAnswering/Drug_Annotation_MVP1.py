@@ -6,13 +6,16 @@ import json
 # input std API response format
 # output std API response format
 
-def annotate_drug(chembl_id):
+def annotate_drug(drug_id, id_type):
     """
     Provide annotation for drug
 
     """
-    query_template = 'http://mychem.info/v1/query?q=drugcentral.xref.chembl_id:{{chembl_id}}&fields=drugcentral'
-    query_url = query_template.replace('{{chembl_id}}', chembl_id)
+    if id_type == 'chembl':
+        query_template = 'http://mychem.info/v1/query?q=drugcentral.xref.chembl_id:{{drug_id}}&fields=drugcentral'
+    elif id_type == 'chebi':
+        query_template = 'http://mychem.info/v1/query?q=drugcentral.xref.chebi:"{{drug_id}}"&fields=drugcentral'
+    query_url = query_template.replace('{{drug_id}}', drug_id)
     results = {'annotate': {'common_side_effects': None, 'approval': None, 'indication': None, 'EPC': None}}
     api_response = requests.get(query_url).json()
 
@@ -37,11 +40,14 @@ def annotate_drug(chembl_id):
         # get drug common side effects
     side_effects = DictQuery(api_response).get("hits/drugcentral/fda_adverse_event")
     if len(side_effects) > 0 and side_effects[0]:
-        # only keep side effects with likelihood higher than the threshold
-        results['annotate']['common_side_effects'] = [_doc['meddra_term'] for _doc in side_effects[0] if
-                                                      _doc['llr'] > _doc['llr_threshold']]
+        if isinstance(side_effects[0], list):
+            # only keep side effects with likelihood higher than the threshold
+            results['annotate']['common_side_effects'] = [_doc['meddra_term'] for _doc in side_effects[0] if
+                                                          _doc['llr'] > _doc['llr_threshold']]
+        elif isinstance(side_effects[0], dict) and 'meddra_term' in side_effects[0]:
+            results['annotate']['common_side_effects'] = side_effects[0]['meddra_term']
     return unlist(results)
-    
+
 
 """
 Helper functions
@@ -80,19 +86,18 @@ class DictQuery(dict):
 
         return val
 
-
-def annotate_std_results(input_json):
+def annotate_std_results(input_json_doc):
     """
     Annotate results from reasoner's standard output
     """
-    for _doc in input_json['result_list']:
+    for _doc in input_json_doc['result_list']:
         for _node in _doc['result_graph']['node_list']:
             if _node['id'].startswith('CHEMBL'):
                 _drug = _node['id'].split(':')[-1]
-                #print(_drug)
-                _node['node_attributes'] = annotate_drug(_drug)
-    return input_json
-
+                _node['node_attributes'] = annotate_drug(_drug, 'chembl')
+            elif _node['id'].startswith("CHEBI:"):
+                _node['node_attributes'] = annotate_drug(_node['id'], 'chebi')
+    return input_json_doc
 
 # This is the main thing to run
 #json_doc_path = '/home/dkoslicki/Data/Temp/WF1Mod1-2_xray_DOID9352.json'
