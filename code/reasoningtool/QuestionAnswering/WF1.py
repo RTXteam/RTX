@@ -7,7 +7,7 @@ import sys
 
 #### Set the input disease
 input_disease = "DOID:9352"
-num_robocop_results = 10
+num_robocop_results = 25
 
 #### Set the base URL for the reasoner and its endpoint
 XRAY_API_BASE_URL = 'https://rtx.ncats.io/api/rtx/v1'
@@ -60,6 +60,5 @@ module3a_robocop_results_json = response_content.json()
 
 ################################################################
 # Orange team module 4+5: annotation and scoring
-
 
 

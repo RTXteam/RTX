@@ -44,6 +44,8 @@ def annotate_drug(drug_id, id_type):
             # only keep side effects with likelihood higher than the threshold
             results['annotate']['common_side_effects'] = [_doc['meddra_term'] for _doc in side_effects[0] if
                                                           _doc['llr'] > _doc['llr_threshold']]
+            if len(results['annotate']['common_side_effects']) > 10:
+                results['annotate']['common_side_effects'] = results['annotate']['common_side_effects'][:10]
         elif isinstance(side_effects[0], dict) and 'meddra_term' in side_effects[0]:
             results['annotate']['common_side_effects'] = side_effects[0]['meddra_term']
     return unlist(results)
@@ -100,8 +102,8 @@ def annotate_std_results(input_json_doc):
     return input_json_doc
 
 # This is the main thing to run
-#json_doc_path = '/home/dkoslicki/Data/Temp/WF1Mod1-2_xray_DOID9352.json'
-#with open(json_doc_path) as f:
-#    data = json.load(f)
-#annotate_std_results(data)
+json_doc_path = '/home/dkoslicki/Dropbox/OtherOSU/WF1MOD1-MOD2_results_DOID9352.json'
+with open(json_doc_path) as f:
+    data = json.load(f)
+annotate_std_results(data)
 
