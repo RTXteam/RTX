@@ -84,6 +84,6 @@ both = requests.post(annot_url_str, json=to_post)
 print("Please visit the following website:https://rtx.ncats.io/devLM/list.html?r=%s" % both.json()['response_id'])
 
 # will return something like the following:
-# https://rtx.ncats.io/devLM/list.html?r=473
+# https://rtx.ncats.io/devLM/list.html?r=482
 
 
