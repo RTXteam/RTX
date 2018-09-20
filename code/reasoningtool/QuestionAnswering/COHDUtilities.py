@@ -3,6 +3,7 @@
 import os
 import sys
 import argparse
+import math
 
 # PyCharm doesn't play well with relative imports + python console + terminal
 try:
@@ -84,9 +85,60 @@ class COHDUtilities:
 
         return result_dict
 
+    @staticmethod
+    def get_obs_exp_ratio(drug_description, disease_description, conservative=False):
+        """
+        Get the natural logarithm of Observed count / Expected count on the drug and the disease
+        :param drug_description: string (eg. 'Naproxen')
+        :param disease_description: string (eg. 'Fetal or neonatal effect of maternal medical problem')
+        :param conservative: bool (True= use exact matching for mapping drug to COHD, False = use all synonyms returned by COHD)
+        :return: the natural logarithm of the ratio between the observed count and expected count on the drug and the disease
+        """
+        # Get the concept ID of the drug
+        drug_concepts = QueryCOHD.find_concept_ids(drug_description)
+        drug_ids = []
+        if conservative:
+            for concept in drug_concepts:
+                if concept['concept_name'].lower() == drug_description.lower():
+                    drug_ids.append(concept['concept_id'])
+        if not conservative:
+            for concept in drug_concepts:
+                drug_ids.append(concept['concept_id'])
+
+        # Get the concept ID of the disease
+        disease_concepts = QueryCOHD.find_concept_ids(disease_description)
+        disease_ids = []
+        for concept in disease_concepts:
+            if conservative:
+                if concept['concept_name'].lower() == disease_description.lower():
+                    disease_ids.append(concept['concept_id'])
+            else:
+                disease_ids.append(concept['concept_id'])
+
+        print(drug_ids)
+        print(disease_ids)
+
+        # sum the observed count and expected count
+        observed_count = 0
+        expected_count = 0
+        for drug_id in drug_ids:
+            for disease_id in disease_ids:
+                results = QueryCOHD.get_obs_exp_ratio(str(drug_id), str(disease_id), dataset_id=3)
+                for result in results:
+                    if 'expected_count' in result.keys():
+                        expected_count += result['expected_count']
+                    if 'observed_count' in result.keys():
+                        observed_count += result['observed_count']
+
+        if expected_count == 0:
+            return float('-inf')
+        return math.exp(observed_count / expected_count)
+
 
 if __name__ == "__main__":
     q = COHDUtilities()
     print(q.get_conditions_treating('Naproxen', conservative=True))
     print("\n")
     print(q.get_conditions_treating('Naproxen', conservative=False))
+    print("\n")
+    print(q.get_obs_exp_ratio("Naproxen", "Developmental speech disorder", conservative=False))
