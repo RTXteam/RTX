@@ -1,7 +1,5 @@
 #### Import some needed modules
 import requests
-import json
-import sys
 
 #### Workflow 1
 
@@ -16,6 +14,8 @@ xray_url_str = XRAY_API_BASE_URL + "/query"
 ROBOCOP_API_BASE_URL = 'http://robokop.renci.org/api/'
 robocop_mod3_url_str = ROBOCOP_API_BASE_URL + "wf1mod3/%s/?max_results=%d" % (input_disease, num_robocop_results)
 robocop_mod3a_url_str = ROBOCOP_API_BASE_URL + "wf1mod3a/%s/?max_results=%d" % (input_disease, num_robocop_results)
+
+annot_url_str = "https://rtx.ncats.io/devED/api/rtx/v1/response/process"
 
 
 ################################################################
@@ -59,7 +59,18 @@ module3a_robocop_results_json = response_content.json()
 ################################################################
 # Orange team module 4+5: annotation and scoring
 
+# annotate the x-ray results
+to_post = {"options": ["AnnotateDrugs", "Store", "ReturnResponseId"], "responses": [module2_xray_results_json]}
+module2_xray_results_annot_json = requests.post(annot_url_str, json=to_post)
 
+# annotate gamma
+to_post = {"options": ["AnnotateDrugs", "Store", "ReturnResponseId"], "responses": [module3_robocop_results_json]}
+module3_robocop_results_annot_json = requests.post(annot_url_str, json=to_post)
 
 ################################################################
 # Visualization
+# The above API call creates a website (dynamically) where the results can be viewed
+print("Please visit the following website:https://rtx.ncats.io/devLM/list.html?r=%s" % module2_xray_results_annot_json.json()['response_id'])
+
+# will return something like the following:
+# https://rtx.ncats.io/devLM/list.html?r=470
