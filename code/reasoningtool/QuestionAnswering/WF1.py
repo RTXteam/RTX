@@ -64,8 +64,8 @@ to_post = {"options": ["AnnotateDrugs", "Store", "ReturnResponseId"], "responses
 module2_xray_results_annot_json = requests.post(annot_url_str, json=to_post)
 
 # annotate gamma
-to_post = {"options": ["AnnotateDrugs", "Store", "ReturnResponseId"], "responses": [module3_robocop_results_json]}
-module3_robocop_results_annot_json = requests.post(annot_url_str, json=to_post)
+#to_post = {"options": ["AnnotateDrugs", "Store", "ReturnResponseId"], "responses": [module3_robocop_results_json]}
+#module3_robocop_results_annot_json = requests.post(annot_url_str, json=to_post)
 
 ################################################################
 # Visualization
