@@ -12,14 +12,16 @@ import sys
 input_disease = "DOID:9352"
 
 #### Set the base URL for the reasoner and its endpoint
-API_BASE_URL = 'https://rtx.ncats.io/api/rtx/v1'
-url_str = API_BASE_URL + "/query"
+XRAY_API_BASE_URL = 'https://rtx.ncats.io/api/rtx/v1'
+xray_url_str = XRAY_API_BASE_URL + "/query"
+
+
 
 #### Create a dict of the request, specifying the query type and its parameters
 request = {"query_type_id": "Q10001", "terms": {"disease": input_disease}}
 
 #### Send the request to RTX and check the status
-response_content = requests.post(url_str, json=request, headers={'accept': 'application/json'})
+response_content = requests.post(xray_url_str, json=request, headers={'accept': 'application/json'})
 status_code = response_content.status_code
 assert status_code == 200
 module1_results_json = response_content.json()
@@ -29,7 +31,7 @@ module1_results_json = response_content.json()
 request = {"query_type_id": "Q55", "terms": {"disease": input_disease}}
 
 #### Send the request to RTX and check the status
-response_content = requests.post(url_str, json=request, headers={'accept': 'application/json'})
+response_content = requests.post(xray_url_str, json=request, headers={'accept': 'application/json'})
 status_code = response_content.status_code
 assert status_code == 200
 module2_results_json = response_content.json()

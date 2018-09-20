@@ -177,7 +177,7 @@ class SMEDrugRepurposingFisher:
 				#gd = NormGoogleDistance.get_ngd_for_all([out_disease_id, disease_id], [out_disease_description, disease_description])
 				# populate the graph
 				res = response.add_subgraph(graph.nodes(data=True), graph.edges(data=True),
-											"The drug %s is predicted to treat %s." % (
+											"The monogenic condition %s is enriched for shared phenotypes with %s." % (
 												out_disease_description, disease_description), confidence,
 											return_result=True)
 				res.essence = "%s" % out_disease_description  # populate with essence of question result
