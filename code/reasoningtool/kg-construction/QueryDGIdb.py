@@ -55,10 +55,6 @@ class QueryDGIdb:
         res_list = []
         for index, row in int_data.iterrows():
             pmids = row['PMIDs']
-            if pmids != '':
-                pmids_list = str(pmids).split(",")
-            else:
-                pmids_list = []
             gene_name = row['gene_name']
             gene_claim_name = row['gene_claim_name']
             if gene_name != '':
@@ -112,7 +108,7 @@ class QueryDGIdb:
                         'protein_uniprot_id': uniprot_id,
                         'protein_gene_symbol': gene_symbol,
                         'sourcedb': interaction_claim_source_field,
-                        'pmids': ','.join(pmids_list)})
+                        'pmids': pmids})
 #                    print(drug_chembl_id + '\t' + predicate_str + '\t' + uniprot_id + '\t' + interaction_claim_source_field + '\t' + ','.join(pmids_list))
         return res_list
 

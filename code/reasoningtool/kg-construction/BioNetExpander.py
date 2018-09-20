@@ -86,7 +86,9 @@ class BioNetExpander:
                               "capable_of": True,
                               "indicated_for": True,
                               "contraindicated_for": True,
-                              "causes_or_contributes_to": True}
+                              "causes_or_contributes_to": True,
+                              'positively_regulates': True,
+                              'negatively_regulates': True}
 
     GO_ONTOLOGY_TO_PREDICATE = {"biological_process": "involved_in",
                                 "cellular_component": "expressed_in",
