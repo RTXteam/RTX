@@ -13,8 +13,9 @@ num_robocop_results = 10
 XRAY_API_BASE_URL = 'https://rtx.ncats.io/api/rtx/v1'
 xray_url_str = XRAY_API_BASE_URL + "/query"
 
-ROBOCOP_API_BASE_URL = '"http://robokop.renci.org/api/'
-robocop_url_str = "http://robokop.renci.org/api/wf1mod3/%s/?max_results=%d" % (input_disease, num_robocop_results)
+ROBOCOP_API_BASE_URL = 'http://robokop.renci.org/api/'
+robocop_mod3_url_str = ROBOCOP_API_BASE_URL + "wf1mod3/%s/?max_results=%d" % (input_disease, num_robocop_results)
+robocop_mod3a_url_str = ROBOCOP_API_BASE_URL + "wf1mod3a/%s/?max_results=%d" % (input_disease, num_robocop_results)
 
 
 ################################################################
@@ -45,10 +46,17 @@ module2_xray_results_json = response_content.json()
 
 ################################################################
 # Gamma team module 3: agent-centric
-response_content = requests.get(robocop_url_str, json={}, headers={'accept': 'application/json'})
+# Mod 3 un-lettered approach
+response_content = requests.get(robocop_mod3_url_str, json={}, headers={'accept': 'application/json'})
 status_code = response_content.status_code
 assert status_code == 200
 module3_robocop_results_json = response_content.json()
+
+# Mod3a approach
+response_content = requests.get(robocop_mod3a_url_str, json={}, headers={'accept': 'application/json'})
+status_code = response_content.status_code
+assert status_code == 200
+module3a_robocop_results_json = response_content.json()
 
 ################################################################
 # Orange team module 4+5: annotation and scoring
