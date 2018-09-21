@@ -90,12 +90,12 @@ class COHDUtilities:
         """
         Get the natural logarithm of Observed count / Expected count on the drug and the disease
         :param drug_description: string (eg. 'Naproxen')
-        :param disease_description: string (eg. 'Fetal or neonatal effect of maternal medical problem')
+        :param disease_description: string (eg. 'Neonatal disorder')
         :param conservative: bool (True= use exact matching for mapping drug to COHD, False = use all synonyms returned by COHD)
         :return: the natural logarithm of the ratio between the observed count and expected count on the drug and the disease
         """
         # Get the concept ID of the drug
-        drug_concepts = QueryCOHD.find_concept_ids(drug_description)
+        drug_concepts = QueryCOHD.find_concept_ids(drug_description, dataset_id=3)
         drug_ids = []
         if conservative:
             for concept in drug_concepts:
@@ -106,7 +106,7 @@ class COHDUtilities:
                 drug_ids.append(concept['concept_id'])
 
         # Get the concept ID of the disease
-        disease_concepts = QueryCOHD.find_concept_ids(disease_description)
+        disease_concepts = QueryCOHD.find_concept_ids(disease_description, dataset_id=3)
         disease_ids = []
         for concept in disease_concepts:
             if conservative:
@@ -115,8 +115,8 @@ class COHDUtilities:
             else:
                 disease_ids.append(concept['concept_id'])
 
-        print(drug_ids)
-        print(disease_ids)
+        # print("number of the drug ids: %d" % len(drug_ids))
+        # print("number of the disease ids: %d" % len(disease_ids))
 
         # sum the observed count and expected count
         observed_count = 0
@@ -132,6 +132,7 @@ class COHDUtilities:
 
         if expected_count == 0:
             return float('-inf')
+        # print("observed_count = %f, expected_count = %f" % (observed_count, expected_count))
         return math.exp(observed_count / expected_count)
 
 
@@ -141,4 +142,8 @@ if __name__ == "__main__":
     print("\n")
     print(q.get_conditions_treating('Naproxen', conservative=False))
     print("\n")
+    print(q.get_obs_exp_ratio("Naproxen", "Neonatal disorder", conservative=False))
+    print("\n")
     print(q.get_obs_exp_ratio("Naproxen", "Developmental speech disorder", conservative=False))
+    print("\n")
+    print(q.get_obs_exp_ratio("Naproxen", "Gestation abnormality", conservative=False))
