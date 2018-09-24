@@ -18,9 +18,6 @@ import re
 import requests_cache
 import json
 
-# configure requests package to use the "orangeboard.sqlite" cache
-requests_cache.install_cache('orangeboard')
-
 
 class QueryReactome:
 
