@@ -20,8 +20,6 @@ import CachedMethods
 import requests_cache
 import json
 
-requests_cache.install_cache('QueryPubChemCache')
-
 
 class QueryPubChem:
     API_BASE_URL = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug'
