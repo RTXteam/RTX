@@ -3,6 +3,7 @@
 import os
 import sys
 import argparse
+import math
 # PyCharm doesn't play well with relative imports + python console + terminal
 try:
 	from code.reasoningtool import ReasoningUtilities as RU
