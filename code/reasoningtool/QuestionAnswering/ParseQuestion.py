@@ -50,7 +50,7 @@ class ParseQuestion:
 		fulfilled = False
 		for ind in sorted_indicies[0:5]:  # only look at the top 5 similar questions
 			question = self._question_templates[ind]
-			print(question.restated_question_template.template)
+			#print(question.restated_question_template.template)
 			if wd_distances[ind] < 0.25:  # don't even bother with these low quality matches
 				break
 			try:
