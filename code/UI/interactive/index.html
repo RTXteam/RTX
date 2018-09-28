@@ -15,7 +15,7 @@
 <script src="/rtxcomplete/rtxcomplete.js"></script>
 
 </head>
-<body onload="get_example_questions();">
+<body onload="get_example_questions(); display_list('A'); display_list('B');">
 
 <div class="banner" banner-bg-text="RTX User Interface">
 <span class="menulinks">Documentation: 
@@ -43,7 +43,6 @@
 </select>
 </div>
 
-
 <form id="questionForm" name="questionForm" method="post" action="javascript:sendQuestion();">
 <span title="clear question" class="clq" onclick="javascript:pasteQuestion('');">&#215;</span>
 
@@ -58,6 +57,12 @@
   </span>
 Use cache</label>
 </form>
+
+<div onclick="sesame(null,listdivA);" title="click to view / hide list" class="statushead">List A (<span id="numlistitemsA">-</span>)</div>
+<div class="status" id="listdivA">Items in this list can be passed as input to queries that support list input, by specifying [A] as a parameter.</div>
+
+<div onclick="sesame(null,listdivB);" title="click to view / hide list" class="statushead">List B (<span id="numlistitemsB">-</span>)</div>
+<div class="status" id="listdivB">Items in this list can be passed as input to queries that support list input, by specifying [B] as a parameter.</div>
 
 
 <div id="status_container"></div>

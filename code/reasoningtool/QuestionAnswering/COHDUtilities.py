@@ -3,6 +3,7 @@
 import os
 import sys
 import argparse
+import math
 # PyCharm doesn't play well with relative imports + python console + terminal
 try:
 	from code.reasoningtool import ReasoningUtilities as RU
@@ -53,7 +54,8 @@ class COHDUtilities:
 		# get all the associated conditions
 		associated_concepts = []
 		for drug_id in drug_ids:
-			associated_concepts += QueryCOHD.get_associated_concept_domain_freq(drug_id, "Condition")
+			associated_concepts += QueryCOHD.get_associated_concept_domain_freq(str(drug_id), "Condition")
+		print(len(associated_concepts))
 
 		# go through and sum them all up (no need for conservative flag since that will only be a single one)
 		# get all the unique condition ids
@@ -85,6 +87,5 @@ if __name__ == "__main__":
 	print(q.get_conditions_treating('Naproxen', conservative=True))
 	print("\n")
 	print(q.get_conditions_treating('Naproxen', conservative=False))
-
 
 

@@ -7,50 +7,50 @@ info:
     email: "edeutsch@systemsbiology.org"
   license:
     name: "Apache 2.0"
-    url: "http://www.apache.org/licenses/LICENSE-2.0.html"
+    url: "https://www.apache.org/licenses/LICENSE-2.0.html"
 host: "rtx.ncats.io"
 basePath: "/api/rtx/v1"
 externalDocs:
   description: "Documentation for the RTX web service"
-  url: "http://rtx.ncats.io/overview.html"
+  url: "https://rtx.ncats.io/overview.html"
 tags:
 - name: "translate"
   description: "Translate natural language question into a standardized query"
   externalDocs:
     description: "Documentation for the RTX translate function"
-    url: "http://rtx.ncats.io/overview.html#translate"
+    url: "https://rtx.ncats.io/overview.html#translate"
 - name: "query"
   description: "Query RTX using a predefined question type"
   externalDocs:
     description: "Documentation for the RTX query function"
-    url: "http://rtx.ncats.io/overview.html#query"
+    url: "https://rtx.ncats.io/overview.html#query"
 - name: "PubmedMeshNgd"
   description: "Query to get the Normalized Google Distance between two MeSH terms based on co-occurance in all PubMed article annotations"
   externalDocs:
     description: "Documentation for the RTX PubmedMeshNgd function"
-    url: "http://rtx.ncats.io/overview.html#PubmedMeshNgd"
+    url: "https://rtx.ncats.io/overview.html#PubmedMeshNgd"
 - name: "response"
   description: "Request stored responses and feedback for responses"
   externalDocs:
     description: "Documentation for the RTX response function"
-    url: "http://rtx.ncats.io/overview.html#response"
+    url: "https://rtx.ncats.io/overview.html#response"
 - name: "result"
   description: "Request stored results and feedback for results"
   externalDocs:
     description: "Documentation for the RTX result function"
-    url: "http://rtx.ncats.io/overview.html#result"
+    url: "https://rtx.ncats.io/overview.html#result"
 - name: "exampleQuestions"
   description: "Request a list of example questions that can be answered by the system"
   externalDocs:
     description: "Documentation for the RTX exampleQuestions function"
-    url: "http://rtx.ncats.io/overview.html#exampleQuestions"
+    url: "https://rtx.ncats.io/overview.html#exampleQuestions"
 - name: "feedback"
   description: "Request feedback data"
   externalDocs:
     description: "Documentation for the RTX feedback function"
-    url: "http://rtx.ncats.io/overview.html#feedback"
+    url: "https://rtx.ncats.io/overview.html#feedback"
 schemes:
-- "http"
+- "https"
 paths:
   /translate:
     post:
@@ -186,6 +186,28 @@ paths:
         200:
           description: "successful operation"
       x-swagger-router-controller: "swagger_server.controllers.feedback_controller"
+  /response/process:
+    post:
+      tags:
+      - "response"
+      summary: "Process a Response object from somewhere else, controlled by options"
+      description: ""
+      operationId: "post_response"
+      consumes:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "Envelope for a Response that should be processed"
+        required: false
+        schema:
+          $ref: "#/definitions/ResponseEnvelope"
+      responses:
+        200:
+          description: "successful operation"
+        400:
+          description: "Invalid status value"
+      x-swagger-router-controller: "swagger_server.controllers.response_controller"
   /response/{response_id}:
     get:
       tags:
@@ -401,12 +423,33 @@ definitions:
         items:
           type: "object"
     additionalProperties: true
+  ResponseEnvelope:
+    type: "object"
+    properties:
+      responseURIs:
+        type: "array"
+        example: [ "https://rtx.ncats.io/api/rtx/v1/response/300" ]
+        description: "List of URIs for Response objects to fetch and process"
+        items:
+          type: "string"
+      responses:
+        type: "array"
+        description: "List of Response objects to process"
+        items:
+          $ref: "#/definitions/Response"
+      options:
+        type: "array"
+        example: [ "mod45filter", "redirect2RTX" ]
+        description: "List of options to guide what happens with the Response object(s)"
+        items:
+          type: "string"
+    additionalProperties: true
   Response:
     type: "object"
     properties:
       context:
         type: "string"
-        example: "http://rtx.ncats.io/ns/translator.jsonld"
+        example: "https://rtx.ncats.io/ns/translator.jsonld"
         description: "JSON-LD context URI"
       type:
         type: "string"
@@ -414,7 +457,7 @@ definitions:
         description: "Entity type of this response"
       id:
         type: "string"
-        example: "http://rtx.ncats.io/api/rtx/v1/response/1234"
+        example: "https://rtx.ncats.io/api/rtx/v1/response/1234"
         description: "URI for this response"
       reasoner_id:
         type: "string"
@@ -485,7 +528,7 @@ definitions:
     properties:
       id:
         type: "string"
-        example: "http://rtx.ncats.io/api/rtx/v1/result/2345"
+        example: "https://rtx.ncats.io/api/rtx/v1/result/2345"
         description: "URI for this response"
       description:
         type: "string"
@@ -627,7 +670,7 @@ definitions:
         description: "Lower-level relationship type of this edge"
       source_id:
         type: "string"
-        example: "http://omim.org/entry/603903"
+        example: "https://omim.org/entry/603903"
         description: "Corresponds to the @id of source node of this edge"
       target_id:
         type: "string"
@@ -695,11 +738,11 @@ definitions:
     properties:
       id:
         type: "string"
-        example: "http://rtx.ncats.io/api/rtx/v1/result/2345/feedback/4567"
+        example: "https://rtx.ncats.io/api/rtx/v1/result/2345/feedback/4567"
         description: "URI for this feedback item"
       result_id:
         type: "string"
-        example: "http://rtx.ncats.io/api/rtx/v1/result/2345"
+        example: "https://rtx.ncats.io/api/rtx/v1/result/2345"
         description: "URI for the result that this feedback corresponds to"
       expertise_level_id:
         type: "integer"

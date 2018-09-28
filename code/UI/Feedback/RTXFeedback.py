@@ -245,7 +245,7 @@ class RTXFeedback:
       terms=termsString,tool_version=rtxConfig.version,result_code=response.response_code,message=response.message,n_results=n_results,response_object=pickle.dumps(ast.literal_eval(repr(response))))
     session.add(storedResponse)
     session.flush()
-    response.id = "http://rtx.ncats.io/api/rtx/v1/response/"+str(storedResponse.response_id)
+    response.id = "https://rtx.ncats.io/api/rtx/v1/response/"+str(storedResponse.response_id)
 
     self.addNewResults(storedResponse.response_id,response)
 
@@ -280,7 +280,7 @@ class RTXFeedback:
         #### See if there is an existing result that matches this hash
         previousResult = session.query(Result).filter(Result.result_hash==result_hash).order_by(desc(Result.result_id)).first()
         if previousResult is not None:
-          result.id = "http://rtx.ncats.io/api/rtx/v1/result/"+str(previousResult.result_id)
+          result.id = "https://rtx.ncats.io/api/rtx/v1/result/"+str(previousResult.result_id)
           #eprint("Reused result_id " + str(result.id))
 
           #### Also update the linking table
@@ -298,7 +298,7 @@ class RTXFeedback:
           session.add(storedLink)
           session.flush()
 
-          result.id = "http://rtx.ncats.io/api/rtx/v1/result/"+str(storedResult.result_id)
+          result.id = "https://rtx.ncats.io/api/rtx/v1/result/"+str(storedResult.result_id)
           #eprint("Returned result_id is "+str(storedResult.result_id)+", n_nodes="+str(n_nodes)+", n_edges="+str(n_edges)+", hash="+result_hash)
           storedResult.result_object=pickle.dumps(ast.literal_eval(repr(result)))
 
@@ -419,7 +419,7 @@ class RTXFeedback:
       resultRatings = []
       for rating in storedRatings:
         resultRating = Feedback()
-        resultRating.result_id = "http://rtx.ncats.io/api/rtx/v1/result/"+str(rating.result_id)
+        resultRating.result_id = "https://rtx.ncats.io/api/rtx/v1/result/"+str(rating.result_id)
         resultRating.id = resultRating.result_id + "/feedback/" + str(rating.result_rating_id)
         resultRating.expertise_level_id = rating.expertise_level_id
         resultRating.rating_id = rating.rating_id
@@ -446,7 +446,7 @@ class RTXFeedback:
       resultRatings = []
       for rating in storedRatings:
         resultRating = Feedback()
-        resultRating.result_id = "http://rtx.ncats.io/api/rtx/v1/result/"+str(result_id)
+        resultRating.result_id = "https://rtx.ncats.io/api/rtx/v1/result/"+str(result_id)
         resultRating.id = resultRating.result_id + "/feedback/" + str(rating.result_rating_id)
         resultRating.expertise_level_id = rating.expertise_level_id
         resultRating.rating_id = rating.rating_id
@@ -520,6 +520,15 @@ class RTXFeedback:
       return( { "status": 404, "title": "Result not found", "detail": "There is no result corresponding to result_id="+str(result_id), "type": "about:blank" }, 404)
 
 
+  #### Get a previously stored response for this query from the database
+  def processExternalResponseEnvelope(self,envelope):
+    debug = 1
+    if debug: eprint("DEBUG: Entering processExternalResponseEnvelope")
+    if responseURIs in envelope:
+      if debug: eprint("DEBUG: Got responseURIs")
+      
+    if debug: eprint("DEBUG: Exiting processExternalResponseEnvelope")
+    return()
 
 
 

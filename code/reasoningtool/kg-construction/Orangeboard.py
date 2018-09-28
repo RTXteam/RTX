@@ -81,7 +81,7 @@ class Node:
 
 
 class Rel:
-    def __init__(self, reltype, sourcedb, source_node, target_node, seed_node, prob=None, extended_reltype=None):
+    def __init__(self, reltype, sourcedb, source_node, target_node, seed_node, prob=None, extended_reltype=None, publications=None):
         self.reltype = reltype
         self.sourcedb = sourcedb
         self.source_node = source_node
@@ -91,6 +91,10 @@ class Rel:
         if extended_reltype is None:
             extended_reltype = reltype
         self.extended_reltype = extended_reltype
+        if publications is not None:
+            self.publications = publications
+        else:
+            self.publications = ''
 
     def get_props(self, reverse=False):
         extended_reltype = self.extended_reltype
@@ -99,12 +103,13 @@ class Rel:
             quote_char = "`"
         else:
             quote_char = ""
-        
+
         prop_dict = {'reltype': self.reltype,
                      'sourcedb': self.sourcedb,
                      'seed_node_uuid': self.seed_node.uuid,
                      'prob': self.prob,
-                     'extended_reltype': quote_char + self.extended_reltype + quote_char}
+                     'extended_reltype': quote_char + self.extended_reltype + quote_char,
+                     'publications': quote_char + self.publications + quote_char}
         if not reverse:
             prop_dict['source_node_uuid'] = self.source_node.uuid
             prop_dict['target_node_uuid'] = self.target_node.uuid
@@ -294,7 +299,7 @@ class Orangeboard:
             if self.debug:
                 node_count = self.count_nodes()
                 if node_count % Orangeboard.DEBUG_COUNT_REPORT_GRANULARITY == 0:
-                    print('Number of nodes: ' + str(node_count) + '; elapsed time: ' + format(timeit.default_timer() - self.start_time, '.2f') + ' s')
+                    print('Number of nodes: ' + str(node_count) + '; total elapsed time: ' + format(timeit.default_timer() - self.start_time, '.2f') + ' s')
         else:
             # node is already in the orangeboard
 
@@ -356,7 +361,7 @@ class Orangeboard:
                 ret_rel = existing_rel
         return [ret_rel, rel_dict_key]
 
-    def add_rel(self, reltype, sourcedb, source_node, target_node, prob=None, extended_reltype=None):
+    def add_rel(self, reltype, sourcedb, source_node, target_node, prob=None, extended_reltype=None, publications=None):
         if source_node.uuid == target_node.uuid:
             print('Attempt to add a relationship between a node and itself, for node: ' + str(node), file=sys.stderr)
             assert False
@@ -377,7 +382,7 @@ class Orangeboard:
             if subdict is None:
                 self.dict_reltype_to_dict_relkey_to_rel[reltype] = dict()
                 subdict = self.dict_reltype_to_dict_relkey_to_rel.get(reltype, None)
-            new_rel = Rel(reltype, sourcedb, source_node, target_node, seed_node, prob, extended_reltype)
+            new_rel = Rel(reltype, sourcedb, source_node, target_node, seed_node, prob, extended_reltype, publications)
             existing_rel = new_rel
             rel_dict_key = existing_rel_list[1]
             if rel_dict_key is None:
@@ -391,7 +396,7 @@ class Orangeboard:
             if self.debug:
                 rel_count = self.count_rels()
                 if rel_count % Orangeboard.DEBUG_COUNT_REPORT_GRANULARITY == 0:
-                    print('Number of rels: ' + str(rel_count) + '; elapsed time: ' + format(timeit.default_timer() - self.start_time, '.2f') + ' s')
+                    print('Number of rels: ' + str(rel_count) + '; total elapsed time: ' + format(timeit.default_timer() - self.start_time, '.2f') + ' s')
         return existing_rel
 
     @staticmethod
@@ -549,6 +554,7 @@ class Orangeboard:
                                ' predicate: \'' + reltype + '\',' + \
                                ' seed_node_uuid: rel_data_map.seed_node_uuid,' + \
                                ' probability: rel_data_map.prob,' + \
+                               ' publications: rel_data_map.publications,' + \
                                ' relation: rel_data_map.extended_reltype' + \
                                ' }]->(n2)'
             res = self.neo4j_run_cypher_query(cypher_query_str, query_params)

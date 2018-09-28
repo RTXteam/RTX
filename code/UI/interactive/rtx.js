@@ -4,6 +4,7 @@ var fb_explvls = [];
 var fb_ratings = [];
 var response_id = null;
 var summary_table_html = '';
+var columnlist = [];
 
 function sesame(head,content) {
     if (head == "openmax") {
@@ -42,8 +43,14 @@ function sendQuestion(e) {
 	bypass_cache = "false";
     }
 
+
     // collect the form data while iterating over the inputs
-    var data = { 'text': document.getElementById("questionForm").elements["questionText"].value, 'language': 'English', 'bypass_cache' : bypass_cache };
+    var q = document.getElementById("questionForm").elements["questionText"].value;
+    var question = q.replace("[A]", get_list_as_string("A"));
+    question = question.replace("[B]", get_list_as_string("B"));
+    question = question.replace("[]", get_list_as_string("A"));
+    question = question.replace(/\$\w+_list/, get_list_as_string("A"));  // e.g. $protein_list
+    var data = { 'text': question, 'language': 'English', 'bypass_cache' : bypass_cache };
     document.getElementById("statusdiv").innerHTML = "Interpreting your question...";
     document.getElementById("devdiv").innerHTML = " (bypassing cache : " + bypass_cache + ")";
 
@@ -159,7 +166,16 @@ function add_to_summary(rowdata, num) {
     }
 
     for (var i in rowdata) {
-	summary_table_html += '<'+cell+'>' + rowdata[i] + '</'+cell+'>';
+	var listlink = '';
+	if (cell == 'th') {
+	columnlist[i] = [];
+	listlink += "&nbsp;<a href='javascript:add_items_to_list(\"A\",\"" +i+ "\");' title='Add column items to list A'>&nbsp;[+A]&nbsp;</a>";
+	listlink += "&nbsp;<a href='javascript:add_items_to_list(\"B\",\"" +i+ "\");' title='Add column items to list B'>&nbsp;[+B]&nbsp;</a>";
+	}
+	else {
+	columnlist[i][rowdata[i]] = 1;
+	}
+	summary_table_html += '<'+cell+'>' + rowdata[i] + listlink + '</'+cell+'>';
     }
     summary_table_html += '</tr>';
 }
@@ -231,7 +247,8 @@ function add_result(reslist) {
 				    id : gd.edge_list[g].source_id + '--' + gd.edge_list[g].target_id,
 				    source : gd.edge_list[g].source_id,
 				    target : gd.edge_list[g].target_id,
-				    type   : gd.edge_list[g].type
+				    type   : gd.edge_list[g].type,
+				    provided_by   : gd.edge_list[g].provided_by
 				}
 			      };
 
@@ -325,6 +342,8 @@ function add_cyto() {
 	    document.getElementById(dnum).innerHTML = this.data('source');
 	    document.getElementById(dnum).innerHTML+= " <b>" + this.data('type') + "</b> ";
 	    document.getElementById(dnum).innerHTML+= this.data('target') + "<br>";
+            document.getElementById(dnum).innerHTML+= "<b>Provenance:</b> <a target='_blank' href='" + this.data('provided_by') + "'>" + this.data('provided_by') + "</a><br>";
+
 
 	    sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
 	});
@@ -603,3 +622,86 @@ function togglecolor(obj,tid) {
     document.getElementById(tid).style.color = col;
 
 }
+
+// LIST FUNCTIONS
+var listItems = {};
+listItems['A'] = {};
+listItems['B'] = {};
+
+function display_list(listId) {
+    var listhtml = '';
+    var numitems = 0;
+
+    for (var li in listItems[listId]) {
+	if (listItems[listId].hasOwnProperty(li) && listItems[listId][li] == 1) {
+	    numitems++;
+	    listhtml += "<tr class='hoverable'><td>" + li + "</td><td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/> Remove </a></td></tr>";
+	}
+    }
+
+
+    if (numitems == 0) {
+	listhtml = "Items in this list can be passed as input to queries that support list input, by specifying <b>["+listId+"]</b> as a parameter.<br>";
+    }
+    else {
+	listhtml = "<table class='sumtab'><tr><th>Item</th><th>Action</th></tr>" + listhtml + "</table>";
+    }
+
+    document.getElementById("numlistitems"+listId).innerHTML = numitems;
+
+    listhtml += "<hr>Enter new list item or items (space and/or comma-separated):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>&nbsp;&nbsp;&nbsp;&nbsp;<a href='javascript:delete_list(\""+listId+"\");'/> Delete List </a><br><br>";
+
+
+    document.getElementById("listdiv"+listId).innerHTML = listhtml;
+    sesame('openmax',document.getElementById("listdiv"+listId));
+}
+
+
+function get_list_as_string(listId) {
+	var liststring = '[';
+	var comma = '';
+	for (var li in listItems[listId]) {
+	if (listItems[listId].hasOwnProperty(li) && listItems[listId][li] == 1) {
+	    liststring += comma + li;
+		comma = ',';
+	}
+	}
+	liststring += ']';
+	return liststring;
+}
+
+
+
+function add_items_to_list(listId,indx) {
+    for (var nitem in columnlist[indx]) {
+	if (columnlist[indx][nitem]) {
+	    listItems[listId][nitem] = 1;
+	}
+    }
+    display_list(listId);
+}
+
+
+function add_new_to_list(listId) {
+    var itemarr = document.getElementById("newlistitem"+listId).value.split(/[ ,]/);
+    document.getElementById("newlistitem"+listId).value = '';
+    for (var item in itemarr) {
+	if (itemarr[item]) {
+	    listItems[listId][itemarr[item]] = 1;
+	}
+    }
+    display_list(listId);
+}
+
+
+function remove_item(listId,item) {
+    delete listItems[listId][item];
+    display_list(listId);
+}
+
+
+function delete_list(listId) {
+    listItems[listId] = {};
+    display_list(listId);
+}
+
