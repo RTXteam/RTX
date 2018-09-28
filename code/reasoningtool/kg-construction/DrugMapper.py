@@ -48,8 +48,8 @@ class DrugMapper:
         if not isinstance(chembl_id, str):
             return hp_set
         umls_set = QueryMyChem.get_drug_side_effects(chembl_id)
-        meddra_set = QueryMyChem.get_fda_adverse_events(chembl_id)
-        if len(umls_set) == 0 or len(meddra_set) == 0:
+        meddra_set = QueryMyChem.get_meddra_codes(chembl_id)
+        if len(umls_set) == 0 and len(meddra_set) == 0:
             return hp_set
         sm = SynonymMapper()
 
@@ -172,7 +172,7 @@ if __name__ == '__main__':
     # print(len(hp_set))
 
     start_time = time.time()
-    hp_set = DrugMapper.map_drug_to_hp_with_side_effects("CHEMBL76")
+    hp_set = DrugMapper.map_drug_to_hp_with_side_effects("CHEMBL154")
     print(hp_set)
     print(len(hp_set))
     print("--- %s seconds ---" % (time.time() - start_time))

@@ -27,7 +27,7 @@ class QueryMyChem:
     HANDLER_MAP = {
         'get_chemical_substance':   'chem/{id}',
         'get_drug':                 'chem/{id}',
-        'get_pubchem_cid':          'query?q=pubchem.cid:{cid}'
+        'get_pubchem_info':          'query?q=pubchem.cid:{cid}'
     }
 
     @staticmethod
@@ -172,14 +172,21 @@ class QueryMyChem:
         return side_effects_set
 
     @staticmethod
-    def get_fda_adverse_events(chembl_id):
-        fda_adverse_events_set = set()
+    def get_meddra_codes(chembl_id):
+        """
+        Retrieving the MedDRA codes for a drug; Curated by DrugCentral. Queries MyChem.info to retrieve the codes.
+        :param chembl_id: The CHEMBL ID for a drug
+        :return: A set of strings containing MedDRA codes, or empty set if none were found
+        """
+        meddra_code_set = set()
         if not isinstance(chembl_id, str):
-            return fda_adverse_events_set
+            return meddra_code_set
         if chembl_id[:7].upper() == "CHEMBL:":
             chembl_id = "CHEMBL" + chembl_id[7:]
         pubchem_id = QueryPubChem.get_pubchem_id_for_chembl_id(chembl_id)
-        handler = QueryMyChem.HANDLER_MAP['get_pubchem_cid'].format(cid=pubchem_id)
+        if pubchem_id is None:
+            pubchem_id = QueryMyChem.get_pubchem_cid(chembl_id)
+        handler = QueryMyChem.HANDLER_MAP['get_pubchem_info'].format(cid=pubchem_id)
         results = QueryMyChem.__access_api(handler)
         meddra_code_set = set()
         if results is not None and pubchem_id is not None:
@@ -193,6 +200,26 @@ class QueryMyChem:
                             if 'meddra_code' in drug.keys():
                                 meddra_code_set.add("MEDDRA:" + str(drug['meddra_code']))
         return meddra_code_set
+
+    @staticmethod
+    def get_pubchem_cid(chembl_id):
+        """
+        Retrive pubchem cid given a CHEMBL ID from MyChem.info
+        :param chembl_id: The CHEMBL ID for a drug
+        :return: pubchem cid for the drug/compound
+        """
+        pubchem_cid = None
+        if not isinstance(chembl_id, str):
+            return None
+        if chembl_id[:7].upper() == "CHEMBL:":
+            chembl_id = "CHEMBL" + chembl_id[7:]
+        handler = QueryMyChem.HANDLER_MAP['get_drug'].format(id=chembl_id)
+        results = QueryMyChem.__access_api(handler)
+        if results is not None:
+            json_dict = json.loads(results)
+            if "chebi" in json_dict.keys():
+                pubchem_cid = json_dict["chebi"]["xref"]["pubchem"]["cid"]
+        return str(pubchem_cid)
 
     @staticmethod
     def get_drug_use(chembl_id):
@@ -346,3 +373,4 @@ if __name__ == '__main__':
     #drug_use = QueryMyChem.get_drug_use("CHEMBL20883")
     #print(str(len(drug_use['indications'])) + str(drug_use['indications']))
     #print(str(len(drug_use['contraindications'])) + str(drug_use['contraindications']))
+    # print(type(QueryMyChem.get_pubchem_cid("CHEMBL1082")))
