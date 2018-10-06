@@ -172,9 +172,10 @@ class QueryMyChem:
         return side_effects_set
 
     @staticmethod
-    def get_meddra_codes(chembl_id):
+    def get_meddra_codes_for_side_effects(chembl_id):
         """
         Retrieving the MedDRA codes for a drug; Curated by DrugCentral. Queries MyChem.info to retrieve the codes.
+        MedDRA codes are then used to get drug side effects. Use as an alternative to get_drug_side_effects(chembl_id).
         :param chembl_id: The CHEMBL ID for a drug
         :return: A set of strings containing MedDRA codes, or empty set if none were found
         """
@@ -183,9 +184,8 @@ class QueryMyChem:
             return meddra_code_set
         if chembl_id[:7].upper() == "CHEMBL:":
             chembl_id = "CHEMBL" + chembl_id[7:]
-        pubchem_id = QueryPubChem.get_pubchem_id_for_chembl_id(chembl_id)
-        if pubchem_id is None:
-            pubchem_id = QueryMyChem.get_pubchem_cid(chembl_id)
+        # pubchem_id = QueryPubChem.get_pubchem_id_for_chembl_id(chembl_id)
+        pubchem_id = QueryMyChem.get_pubchem_cid(chembl_id)
         handler = QueryMyChem.HANDLER_MAP['get_pubchem_info'].format(cid=pubchem_id)
         results = QueryMyChem.__access_api(handler)
         meddra_code_set = set()

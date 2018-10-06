@@ -34,6 +34,8 @@ class DrugMapper:
                     onto_set.add(onto_id)
         return onto_set
 
+
+
     @staticmethod
     def map_drug_to_hp_with_side_effects(chembl_id):
         """
@@ -48,7 +50,7 @@ class DrugMapper:
         if not isinstance(chembl_id, str):
             return hp_set
         umls_set = QueryMyChem.get_drug_side_effects(chembl_id)
-        meddra_set = QueryMyChem.get_meddra_codes(chembl_id)
+        meddra_set = QueryMyChem.get_meddra_codes_for_side_effects(chembl_id)
         if len(umls_set) == 0 and len(meddra_set) == 0:
             return hp_set
         sm = SynonymMapper()
@@ -171,11 +173,11 @@ if __name__ == '__main__':
     # print(hp_set)
     # print(len(hp_set))
 
-    start_time = time.time()
-    hp_set = DrugMapper.map_drug_to_hp_with_side_effects("CHEMBL154")
-    print(hp_set)
-    print(len(hp_set))
-    print("--- %s seconds ---" % (time.time() - start_time))
+    # start_time = time.time()
+    # hp_set = DrugMapper.map_drug_to_hp_with_side_effects("CHEMBL1082")
+    # print(hp_set)
+    # print(len(hp_set))
+    # print("--- %s seconds ---" % (time.time() - start_time))
 
     # umls_set = DrugMapper.map_drug_to_UMLS("CHEMBL1082")
     # print(umls_set)
