@@ -2,6 +2,7 @@ import connexion
 import six
 
 from swagger_server.models.response import Response  # noqa: E501
+from swagger_server.models.response_envelope import ResponseEnvelope  # noqa: E501
 from swagger_server.models.response_feedback import ResponseFeedback  # noqa: E501
 from swagger_server import util
 
@@ -37,4 +38,20 @@ def get_response_feedback(response_id):  # noqa: E501
     """
     rtxFeedback = RTXFeedback()
     return rtxFeedback.getResponseFeedback(response_id)
+
+
+def post_response(body=None):  # noqa: E501
+    """Process a Response object from somewhere else, controlled by options
+
+     # noqa: E501
+
+    :param body: Envelope for a Response that should be processed
+    :type body: dict | bytes
+
+    :rtype: None
+    """
+    if connexion.request.is_json:
+        body = ResponseEnvelope.from_dict(connexion.request.get_json())  # noqa: E501
+    rtxFeedback = RTXFeedback()
+    return rtxFeedback.processExternalResponseEnvelope(body)
 
