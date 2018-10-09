@@ -7,12 +7,16 @@ def eprint(*args, **kwargs):
 
 import os
 import sys
+import re
 import json
 import ast
 from datetime import datetime
 import pickle
 import hashlib
 import collections
+import requests
+import json
+from flask import Flask,redirect
 
 from sqlalchemy import Column, ForeignKey, Integer, Float, String, DateTime, Text, PickleType, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
@@ -25,9 +29,13 @@ from sqlalchemy import inspect
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 from RTXConfiguration import RTXConfiguration
 
-#sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
 from swagger_server.models.result_feedback import ResultFeedback
 from swagger_server.models.feedback import Feedback
+from swagger_server.models.response import Response as TxResponse
+from swagger_server.models.response_envelope import ResponseEnvelope
+
+#import Enricher
 
 Base = declarative_base()
 
@@ -223,14 +231,18 @@ class RTXFeedback:
     #### Add result metadata
     if response.result_list is not None:
       for result in response.result_list:
-        result.reasoner_id = "RTX"
+        if result.reasoner_id is None:
+          result.reasoner_id = "RTX"
 
     #### Update the response with current information
     rtxConfig = RTXConfiguration()
-    response.tool_version = rtxConfig.version
-    response.schema_version = "0.8.0"
-    response.reasoner_id = "RTX"
-    response.n_reasoner = n_results
+    if response.tool_version is None:
+      response.tool_version = rtxConfig.version
+    if response.schema_version is None:
+      response.schema_version = "0.8.0"
+    if response.reasoner_id is None:
+      response.reasoner_id = "RTX"
+    response.n_results = n_results
     response.type = "medical_translator_query_response"
     response.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
     response.datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -240,7 +252,11 @@ class RTXFeedback:
     if response.original_question_text is None:
       response.original_question_text = ""
 
-    termsString = stringifyDict(query["terms"])
+    termsString = "{}"
+    if query is not None:
+      if "terms" in query:
+        termsString = stringifyDict(query["terms"])
+
     storedResponse = Response(response_datetime=datetime.now(),restated_question=response.restated_question_text,query_type=query["query_type_id"],
       terms=termsString,tool_version=rtxConfig.version,result_code=response.response_code,message=response.message,n_results=n_results,response_object=pickle.dumps(ast.literal_eval(repr(response))))
     session.add(storedResponse)
@@ -281,7 +297,7 @@ class RTXFeedback:
         previousResult = session.query(Result).filter(Result.result_hash==result_hash).order_by(desc(Result.result_id)).first()
         if previousResult is not None:
           result.id = "https://rtx.ncats.io/api/rtx/v1/result/"+str(previousResult.result_id)
-          #eprint("Reused result_id " + str(result.id))
+          eprint("Reused result_id " + str(result.id))
 
           #### Also update the linking table
           storedLink = Response_result(response_id=response_id,result_id=previousResult.result_id)
@@ -299,7 +315,7 @@ class RTXFeedback:
           session.flush()
 
           result.id = "https://rtx.ncats.io/api/rtx/v1/result/"+str(storedResult.result_id)
-          #eprint("Returned result_id is "+str(storedResult.result_id)+", n_nodes="+str(n_nodes)+", n_edges="+str(n_edges)+", hash="+result_hash)
+          eprint("Stored new result. Returned result_id is "+str(storedResult.result_id)+", n_nodes="+str(n_nodes)+", n_edges="+str(n_edges)+", hash="+result_hash)
           storedResult.result_object=pickle.dumps(ast.literal_eval(repr(result)))
 
     session.commit()
@@ -324,6 +340,10 @@ class RTXFeedback:
     edges.sort()
 
     hashing_string = ",".join(nodes)+"_"+"-".join(edges)
+
+    #### Hackathon hack!!! FIXME
+    hashing_string = repr(result)
+
     result_hash = hashlib.md5(hashing_string.encode('utf-8'))
     result_hash_string = result_hash.hexdigest()
     #eprint(result_hash_string + " from " + hashing_string)
@@ -524,11 +544,156 @@ class RTXFeedback:
   def processExternalResponseEnvelope(self,envelope):
     debug = 1
     if debug: eprint("DEBUG: Entering processExternalResponseEnvelope")
-    if responseURIs in envelope:
+    responses = []
+    finalResponse = None
+    finalResponse_id = None
+    query = None
+
+    if envelope.response_ur_is is not None:
       if debug: eprint("DEBUG: Got responseURIs")
+      for uri in envelope.response_ur_is:
+        if debug: eprint("DEBUG:   responseURI="+uri)
+        matchResult = re.match( r'http[s]://rtx.ncats.io/.*api/rtx/.+/response/(\d+)',uri,re.M|re.I )
+        if matchResult:
+          response_id = matchResult.group(1)
+          if debug: eprint("DEBUG: Found local RTX identifier corresponding to respond_id "+response_id)
+          if debug: eprint("DEBUG: Loading response_id "+response_id)
+          response = self.getResponse(response_id)
+          eprint(type(response))
+          if not isinstance(response,tuple):
+            if debug: eprint("DEBUG: Original question was: "+response["original_question_text"])
+            responses.append(response)
+            finalResponse_id = response_id
+            query = { "query_type_id": response["query_type_id"], "restated_question": response["restated_question_text"], "terms": response["terms"] }
+          else:
+            eprint("ERROR: Unable to load response_id "+response_id)
+            return( { "status": 404, "title": "Response not found", "detail": "There is no local response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
+
+
+    if envelope.responses is not None:
+      if debug: eprint("DEBUG: Got responses")
+      for uploadedResponse in envelope.responses:
+        if debug: eprint("DEBUG: uploadedResponse is a "+str(uploadedResponse.__class__))
+        if str(uploadedResponse.__class__) == "<class 'swagger_server.models.response.Response'>":
+          if uploadedResponse.result_list:
+            response = ast.literal_eval(repr(uploadedResponse))
+            responses.append(response)
+
+            if response["terms"] is None:
+              response["terms"] = { "dummyTerm": "giraffe" }
+            if response["query_type_id"] is None:
+              response["query_type_id"] = "UnknownQ"
+            if response["restated_question_text"] is None:
+              response["restated_question_text"] = "What is life?"
+            if response["original_question_text"] is None:
+              response["original_question_text"] = "what is life"
+
+            query = { "query_type_id": response["query_type_id"], "restated_question": response["restated_question_text"], "original_question": response["original_question_text"], "terms": response["terms"] }
+          else:
+            eprint("Uploaded response does not contain a result_list. May be the wrong format")
+            return( { "status": 404, "title": "Bad uploaded Response", "detail": "There is no result_list in the uploaded Response object=", "type": "about:blank" }, 404)
+        else:
+          eprint("Uploaded response is not of type Response. It is of type"+str(uploadedResponse.__class__))
+          return( { "status": 404, "title": "Bad uploaded Response", "detail": "Uploaded response is not of type Response. It is of type"+str(uploadedResponse.__class__), "type": "about:blank" }, 404)
+
+    #### How many response objects do we have
+    n_responses = len(responses)
+    if n_responses == 0:
+      return( { "status": 499, "title": "No Responses", "detail": "Did not get any useful Response objects", "type": "about:blank" }, 499)
+    elif n_responses == 1:
+      finalResponse = responses[0]
+    else:
+      finalResponse = TxResponse.from_dict(responses[0])
+      counter = 1
+      while counter < n_responses:
+        responseToMerge = TxResponse.from_dict(responses[counter])
+        if responseToMerge.reasoner_id is None:
+          responseToMerge.reasoner_id = "Unknown"
+        if responseToMerge.reasoner_id != "RTX":
+          responseToMerge = self.fix_response(query,responseToMerge,responseToMerge.reasoner_id)
+
+        finalResponse = self.merge_response(finalResponse,responseToMerge)
+        counter += 1
+      finalResponse = ast.literal_eval(repr(finalResponse))
+      #return( { "status": 498, "title": "Multiple Responses", "detail": "I have multiple responses. Merging code awaits!", "type": "about:blank" }, 498)
+
+
+    optionsDict = {}
+    if envelope.options:
+      if debug: eprint("DEBUG: Got options")
+      for option in envelope.options:
+        if debug: eprint("DEBUG:   option="+option)
+        optionsDict[option] = 1
+
+    if "AnnotateDrugs" in optionsDict:
+      annotate_std_results(finalResponse)
+
+    if "Store" in optionsDict:
+      finalResponse_id = self.addNewResponse(TxResponse.from_dict(finalResponse),query)
+
+    if "RedirectToResponse" in optionsDict:
+      return( redirect("https://rtx.ncats.io/api/rtx/v1/response/"+str(finalResponse_id), code=302))
+    elif "ReturnResponseId" in optionsDict:
+      return( { "status": 200, "response_id": str(finalResponse_id) }, 200)
+    elif "ReturnResponse" in optionsDict:
+      return(finalResponse)
+    else:
+      return( { "status": 504, "title": "Response type not specified", "detail": "One of the options must be RedirectToResponse, ReturnResponseId, or ReturnResponse", "type": "about:blank" }, 504)
+
       
     if debug: eprint("DEBUG: Exiting processExternalResponseEnvelope")
     return()
+
+
+  def fix_response(self,query,response,reasoner_id):
+
+    if reasoner_id == "RTX":
+      base_url = "https://rtx.ncats.io/api/rtx/v1"
+    elif reasoner_id == "Robokop":
+      base_url = "http://robokop.renci.org:6011/api"
+    elif reasoner_id == "Indigo":
+      base_url = "https://indigo.ncats.io/reasoner/api/v0"
+    else:
+      base_url = "https://unknown.url.org/"
+      eprint("ERROR: Unrecognized reasoner_id '"+reasoner_id+"'")
+
+    if response.context is None:
+      response.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
+    if response.id is None or response.id == "":
+      response.id = base_url + "/response/1234"
+    response.original_question_text = query["original_question"]
+    response.restated_question_text = query["restated_question"]
+    response.reasoner_id = reasoner_id
+    if response.response_code is None or response.response_code == "":
+      response.response_code = "OK"
+    if response.n_results is None:
+      if response.result_list is not None:
+        response.n_results = len(response.result_list)
+      else:
+        response.n_results = 0
+    if response.message is None or response.message == "":
+      response.message = str(response.n_results) + " results returned"
+
+    if response.result_list is not None:
+      result_id = 2345
+      for result in response.result_list:
+        if result.id is None or result.id == "":
+          result.id = base_url + "/result/" + str(result_id)
+          result_id += 1
+        if result.reasoner_id is None or result.reasoner_id == "":
+          result.reasoner_id = reasoner_id
+        if result.confidence is None:
+          result.confidence = 0
+
+    return(response)
+
+
+  def merge_response(self,final_response,response_to_merge):
+    for result in response_to_merge.result_list:
+      final_response.result_list.append(result)
+    final_response.n_results = len(final_response.result_list)
+    final_response.message = str(final_response.n_results) + " merged reults"
+    return(final_response)
 
 
 
@@ -551,11 +716,142 @@ def stringifyDict(inputDict):
 
 
 
+# This is from Kevin Xin from team orange.
+# It performs MOD1 and MOD2 (annotation and scoring modules) of workflow 1
+# input std API response format
+# output std API response format
+
+def annotate_drug(drug_id, id_type):
+    """
+    Provide annotation for drug
+    """
+    if id_type == 'chembl':
+        query_template = 'http://mychem.info/v1/query?q=drugcentral.xref.chembl_id:{{drug_id}}&fields=drugcentral'
+    elif id_type == 'chebi':
+        query_template = 'http://mychem.info/v1/query?q=drugcentral.xref.chebi:"{{drug_id}}"&fields=drugcentral'
+    query_url = query_template.replace('{{drug_id}}', drug_id)
+    results = {'annotate': {'common_side_effects': None, 'approval': None, 'indication': None, 'EPC': None}}
+    api_response = requests.get(query_url).json()
+
+    # get drug approval information from mychem
+    approval = DictQuery(api_response).get("hits/drugcentral/approval")
+    if approval:
+        results['annotate']['approval'] = 'Yes'
+    # get drug approved indication information
+    indication = DictQuery(api_response).get("hits/drugcentral/drug_use/indication")
+    if len(indication) > 0 and indication[0] and not isinstance(indication[0], list):
+        results['annotate']['indication'] = [_doc['snomed_full_name'] for _doc in indication if
+                                             'snomed_full_name' in _doc]
+    elif len(indication) > 0 and indication[0]:
+        results['annotate']['indication'] = [_doc['snomed_full_name'] for _doc in indication[0] if
+                                             'snomed_full_name' in _doc]
+        # get drug established pharm class information
+    epc = DictQuery(api_response).get("hits/drugcentral/pharmacology_class/fda_epc")
+    if len(epc) > 0 and epc[0] and not isinstance(epc[0], list):
+        results['annotate']['EPC'] = [_doc['description'] for _doc in epc if 'description' in _doc]
+    elif len(epc) > 0 and epc[0]:
+        results['annotate']['EPC'] = [_doc['description'] for _doc in epc[0] if 'description' in _doc]
+        # get drug common side effects
+    side_effects = DictQuery(api_response).get("hits/drugcentral/fda_adverse_event")
+    if len(side_effects) > 0 and side_effects[0]:
+        if isinstance(side_effects[0], list):
+            # only keep side effects with likelihood higher than the threshold
+            results['annotate']['common_side_effects'] = [_doc['meddra_term'] for _doc in side_effects[0] if
+                                                          _doc['llr'] > _doc['llr_threshold']]
+            if len(results['annotate']['common_side_effects']) > 10:
+                results['annotate']['common_side_effects'] = results['annotate']['common_side_effects'][:10]
+        elif isinstance(side_effects[0], dict) and 'meddra_term' in side_effects[0]:
+          results['annotate']['common_side_effects'] = side_effects[0]['meddra_term']
+
+    #### EWD: Now transform this into the schema!
+    results = unlist(results)
+    node_attributes = []
+    for key,value in results["annotate"].items():
+      if isinstance(value,list):
+        counter = 0
+        for item in value:
+          node_attributes.append( { "name": key, "value": item } )
+          counter += 1
+          if counter > 11: break
+      else:
+        node_attributes.append( { "name": key, "value": value } )
+    return node_attributes
+
+    #return unlist(results)
+    
+
+"""
+Helper functions
+"""
+def unlist(d):
+    """
+    If the list contain only one element, unlist it
+    """
+    for key, val in d.items():
+            if isinstance(val, list):
+                if len(val) == 1:
+                    d[key] = val[0]
+            elif isinstance(val, dict):
+                unlist(val)
+    return d
+
+class DictQuery(dict):
+    """
+    Helper function to fetch value from a python dictionary
+    """
+    def get(self, path, default = None):
+        keys = path.split("/")
+        val = None
+
+        for key in keys:
+            if val:
+                if isinstance(val, list):
+                    val = [ v.get(key, default) if v else None for v in val]
+                else:
+                    val = val.get(key, default)
+            else:
+                val = dict.get(self, key, default)
+
+            if not val:
+                break;
+
+        return val
+
+
+def annotate_std_results(input_json_doc):
+    """
+    Annotate results from reasoner's standard output
+    """
+    for _doc in input_json_doc['result_list']:
+        for _node in _doc['result_graph']['node_list']:
+            if _node['id'].startswith('CHEMBL'):
+                _drug = _node['id'].split(':')[-1]
+                _node['node_attributes'] = annotate_drug(_drug, 'chembl')
+            elif _node['id'].startswith("CHEBI:"):
+                _node['node_attributes'] = annotate_drug(_node['id'], 'chebi')
+    return input_json_doc
+
+
+
+
+
+
 #### If this class is run from the command line, perform a short little test to see if it is working correctly
 def main():
 
   #### Create a new RTXFeedback object
   rtxFeedback = RTXFeedback()
+  envelope = ResponseEnvelope()
+  #envelope.options = [ "Store", "RedirectToResponse" ]
+  envelope.options = [ "AnnotateDrugs", "Store", "ReturnResponseId" ]
+  #envelope.options = [ "ReturnResponse" ]
+  #envelope.options = [ "AnnotateDrugs", "ReturnResponse" ]
+  envelope.response_ur_is = [ "https://rtx.ncats.io/api/rtx/v1/response/300" ]
+
+  result = rtxFeedback.processExternalResponseEnvelope(envelope)
+  print(result)
+
+
 
   #### Careful, don't destroy an important database!!!
   ##rtxFeedback.createDatabase()
