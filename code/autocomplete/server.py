@@ -36,7 +36,7 @@ class autoSearch(tornado.web.RequestHandler):
             self.write(result)
             
         except:
-            print sys.exc_info()[:]
+            print(sys.exc_info()[:])
             traceback.print_tb(sys.exc_info()[-1])
             #print sys.exc_info()[2]
             self.write("error")
@@ -62,7 +62,7 @@ class fuzzySearch(tornado.web.RequestHandler):
             #self.write(callback+"("+json.dumps([["NO SUGGESTIONS"]])+");")
             #self.write(json.dumps(rows))
         except:
-            print sys.exc_info()[:]
+            print(sys.exc_info()[:])
             traceback.print_tb(sys.exc_info()[-1])
             #print sys.exc_info()[:]
             self.write("error")
@@ -88,14 +88,14 @@ class autofuzzySearch(tornado.web.RequestHandler):
             #self.write(callback+"("+json.dumps([["NO SUGGESTIONS"]])+");")
             #self.write(json.dumps(rows))
         except:
-            print sys.exc_info()[:]
+            print(sys.exc_info()[:])
             traceback.print_tb(sys.exc_info()[-1])
             #print sys.exc_info()[:]
             self.write("error")
 
 class defineSearch(tornado.web.RequestHandler):
     def get(self, arg,word=None):
-        print "matched define search: not implemented"
+        print("matched define search: not implemented")
         self.write("")
             
 def make_https_app():
@@ -126,15 +126,22 @@ def make_redirect_app():
     ])
 
 if __name__ == "__main__":
-    print "root: " + root
-    redirect_app = make_redirect_app()
-    redirect_app.listen(80)
+    print("root: " + root)
 
-    https_app = make_https_app()
-    https_server = tornado.httpserver.HTTPServer(https_app, ssl_options={
-        "certfile": "/etc/letsencrypt/live/rtxcomplete.ixlab.org/fullchain.pem",
-        "keyfile" : "/etc/letsencrypt/live/rtxcomplete.ixlab.org/privkey.pem",
-        })
-    https_server.listen(443)
-    
+    if os.path.isfile("rtx.ncats.io"):
+        http_app = make_https_app()
+        http_server = tornado.httpserver.HTTPServer(http_app)
+        http_server.listen(4999)
+
+    else:
+        redirect_app = make_redirect_app()
+        redirect_app.listen(80)
+
+        https_app = make_https_app()
+        https_server = tornado.httpserver.HTTPServer(https_app, ssl_options={
+            "certfile": "/etc/letsencrypt/live/rtxcomplete.ixlab.org/fullchain.pem",
+            "keyfile" : "/etc/letsencrypt/live/rtxcomplete.ixlab.org/privkey.pem",
+            })
+        https_server.listen(443)
+
     tornado.ioloop.IOLoop.current().start()
