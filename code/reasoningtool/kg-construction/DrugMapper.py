@@ -6,6 +6,7 @@ import sys
 import time
 import networkx
 import obonet
+import requests_cache
 
 try:
     from QueryUMLSApi import QueryUMLSApi
@@ -14,9 +15,9 @@ except ImportError:
     sys.path.insert(0, insert_dir)
     from QueryUMLSApi import QueryUMLS
 
-graph = obonet.read_obo("https://raw.githubusercontent.com/obophenotype/human-phenotype-ontology/master/hp.obo")
 
 class DrugMapper:
+    graph = obonet.read_obo("https://raw.githubusercontent.com/obophenotype/human-phenotype-ontology/master/hp.obo")
 
     @staticmethod
     def __map_umls_to_onto_id(umls_array):
@@ -29,12 +30,10 @@ class DrugMapper:
         sm = SynonymMapper()
         for umls_id in umls_array:
             onto_ids = sm.get_all_from_oxo(umls_id, ['DOID', 'OMIM', 'HP'])
-            if onto_ids != None:
+            if onto_ids is not None:
                 for onto_id in onto_ids:
                     onto_set.add(onto_id)
         return onto_set
-
-
 
     @staticmethod
     def map_drug_to_hp_with_side_effects(chembl_id):
@@ -46,7 +45,7 @@ class DrugMapper:
         :return: A set of strings containing the found hp ids or empty set if none where found
         """
         hp_set = set()
-        global graph
+#        global graph
         if not isinstance(chembl_id, str):
             return hp_set
         umls_set = QueryMyChem.get_drug_side_effects(chembl_id)
@@ -56,14 +55,14 @@ class DrugMapper:
         sm = SynonymMapper()
 
         for meddra_code in meddra_set:
-            hp_ids = DrugMapper.map_meddra_to_hp(meddra_code, graph)
+            hp_ids = DrugMapper.map_meddra_to_hp(meddra_code, DrugMapper.graph)
             if len(hp_ids) > 0:
                 for hp_id in hp_ids:
                     hp_set.add(hp_id)
 
         for umls_id in umls_set:
             hp_ids = sm.get_all_from_oxo(umls_id, 'HP')
-            if hp_ids != None:
+            if hp_ids is not None:
                 for hp_id in hp_ids:
                     hp_set.add(hp_id)
 
@@ -82,11 +81,13 @@ class DrugMapper:
                         res_dict[xref_curie[:15]] = node_name
         return res_dict
 
+    meddra_to_hp_map = make_meddra_to_hp_map.__func__(graph)
+
     @staticmethod
     def map_meddra_to_hp(medra_curie, graph):
         ret_hp_set = set()
-        meddra_to_hp_map = DrugMapper.make_meddra_to_hp_map(graph)
-        hp_curie = meddra_to_hp_map.get(medra_curie, None)
+#        meddra_to_hp_map = DrugMapper.make_meddra_to_hp_map(graph)
+        hp_curie = DrugMapper.meddra_to_hp_map.get(medra_curie, None)
         if hp_curie is not None:
             ret_hp_set.add(hp_curie)
         return ret_hp_set
@@ -169,13 +170,20 @@ class DrugMapper:
 
 
 if __name__ == '__main__':
+    requests_cache.install_cache('DrugMapper')
     # hp_set = DrugMapper.map_drug_to_hp_with_side_effects("KWHRDNMACVLHCE-UHFFFAOYSA-N")
     # print(hp_set)
     # print(len(hp_set))
 
     # start_time = time.time()
-    # hp_set = DrugMapper.map_drug_to_hp_with_side_effects("CHEMBL1082")
-    # print(hp_set)
+    hp_set = DrugMapper.map_drug_to_hp_with_side_effects("CHEMBL1082")
+    print(hp_set)
+    hp_set = DrugMapper.map_drug_to_hp_with_side_effects("CHEMBL112") # acetaminophen
+    print(hp_set)
+    hp_set = DrugMapper.map_drug_to_hp_with_side_effects("CHEMBL521") # ibuprofen
+    print(hp_set)
+    hp_set = DrugMapper.map_drug_to_hp_with_side_effects("CHEMBL1431") # ibuprofen
+    print(hp_set)
     # print(len(hp_set))
     # print("--- %s seconds ---" % (time.time() - start_time))
 
