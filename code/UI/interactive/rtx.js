@@ -193,6 +193,8 @@ function retrieve_response() {
 function render_response(respObj) {
 	response_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
 
+	add_to_session(response_id,respObj.restated_question_text+"?");
+
 	history.pushState({ id: 'RTX_UI' }, 'RTX | response='+response_id, "//"+ window.location.hostname + window.location.pathname + '?r='+response_id);
 
 	if ( respObj["table_column_names"] ) {
@@ -400,6 +402,34 @@ function add_cyto() {
 
 	    if (this.data('description') !== 'UNKNOWN' && this.data('description') !== 'None') {
 		document.getElementById(dnum).innerHTML+= "<b>Description:</b> " + this.data('description') + "<br>";
+	    }
+
+	    var linebreak = "<hr>";
+            for (var na in this.data('node_attributes')) {
+		var snippet = linebreak;
+
+                if (this.data('node_attributes')[na].name != null) {
+                    snippet += "<b>" + this.data('node_attributes')[na].name + "</b>";
+		    if (this.data('node_attributes')[na].type != null) {
+	            	snippet += " (" + this.data('node_attributes')[na].type + ")";
+		    }
+                    snippet += " : ";
+		}
+                if (this.data('node_attributes')[na].url != null) {
+                    snippet += "<a target='rtxext' href='" + this.data('node_attributes')[na].url + "'>";
+                }
+                if (this.data('node_attributes')[na].value != null) {
+                    snippet += this.data('node_attributes')[na].value;
+                }
+		else if (this.data('node_attributes')[na].url != null) {
+                    snippet += "[ url ]";
+		}
+                if (this.data('node_attributes')[na].url != null) {
+                    snippet += "</a>";
+                }
+
+                document.getElementById(dnum).innerHTML+= snippet;
+		linebreak = "<br>";
 	    }
 
 	    sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
@@ -716,13 +746,19 @@ function getQueryVariable(variable) {
 var listItems = {};
 listItems['A'] = {};
 listItems['B'] = {};
+listItems['SESSION'] = {};
+var numquery = 0;
 
 function display_list(listId) {
+    if (listId == 'SESSION') {
+	display_session();
+	return;
+    }
     var listhtml = '';
     var numitems = 0;
 
     for (var li in listItems[listId]) {
-	if (listItems[listId].hasOwnProperty(li) && listItems[listId][li] == 1) {
+	if (listItems[listId].hasOwnProperty(li)) { // && listItems[listId][li] == 1) {
 	    numitems++;
 	    listhtml += "<tr class='hoverable'><td>" + li + "</td><td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/> Remove </a></td></tr>";
 	}
@@ -738,7 +774,10 @@ function display_list(listId) {
 
     document.getElementById("numlistitems"+listId).innerHTML = numitems;
 
-    listhtml += "<hr>Enter new list item or items (space and/or comma-separated):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
+    listhtml += "<hr>Enter new list item or items (space and/or comma-separated):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' onkeydown='enter_item(this, \""+listId+"\");' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
+
+
+//    listhtml += "<hr>Enter new list item or items (space and/or comma-separated):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
 
     if (numitems > 0) {
     	listhtml += "&nbsp;&nbsp;&nbsp;&nbsp;<a href='javascript:delete_list(\""+listId+"\");'/> Delete List </a>";
@@ -776,6 +815,11 @@ function add_items_to_list(listId,indx) {
     display_list(listId);
 }
 
+function enter_item(ele, listId) {
+    if (event.key === 'Enter') {
+	add_new_to_list(listId);
+    }
+}
 
 function add_new_to_list(listId) {
     var itemarr = document.getElementById("newlistitem"+listId).value.split(/[\t ,]/);
@@ -798,5 +842,39 @@ function remove_item(listId,item) {
 function delete_list(listId) {
     listItems[listId] = {};
     display_list(listId);
+}
+
+function add_to_session(resp_id,text) {
+    numquery++;
+    listItems['SESSION'][numquery] = resp_id;
+    listItems['SESSION']["qtext_"+numquery] = text;
+    display_session();
+}
+
+function display_session() {
+    var listId = 'SESSION';
+    var listhtml = '';
+    var numitems = 0;
+
+    for (var li in listItems[listId]) {
+        if (listItems[listId].hasOwnProperty(li) && !li.startsWith("qtext_")) {
+            numitems++;
+            listhtml += "<tr><td>"+li+".</td><td><a target='_new' title='view this response in a new window' href='//"+ window.location.hostname + window.location.pathname + "?r="+listItems[listId][li]+"'>" + listItems['SESSION']["qtext_"+li] + "</a></td><td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/> Remove </a></td></tr>";
+        }
+    }
+    if (numitems > 0) {
+        listhtml += "<tr><td></td><td></td><td><a href='javascript:delete_list(\""+listId+"\");'/> Delete Session History </a></td></tr>";
+    }
+
+
+    if (numitems == 0) {
+        listhtml = "<br>Your query history will be displayed here. It can be edited or re-set.<br><br>";
+    }
+    else {
+        listhtml = "<table class='sumtab'><tr><td></td><th>Query</th><th>Action</th></tr>" + listhtml + "</table>";
+    }
+
+    document.getElementById("numlistitems"+listId).innerHTML = numitems;
+    document.getElementById("listdiv"+listId).innerHTML = listhtml;
 }
 
