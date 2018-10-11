@@ -6,9 +6,32 @@ var response_id = null;
 var summary_table_html = '';
 var columnlist = [];
 
+function main() {
+	get_example_questions();
+	display_list('A');
+	display_list('B');
+
+	response_id = getQueryVariable("r") || null;
+	if (response_id) {
+	    for (var li in listItems) {
+        	sesame('collapse',document.getElementById("listdiv"+li));
+    	    }
+
+	    add_status_divs();
+	    document.getElementById("statusdiv").innerHTML = "You have requested RTX response id = " + response_id;
+	    document.getElementById("devdiv").innerHTML =  "requested RTX response id = " + response_id + "<br>";
+	    retrieve_response();
+	}
+
+}
+
 function sesame(head,content) {
     if (head == "openmax") {
 	content.style.maxHeight = content.scrollHeight + "px";
+	return;
+    }
+    else if (head == "collapse") {
+        content.style.maxHeight = null;
 	return;
     }
     else if (head) {
@@ -31,6 +54,10 @@ function pasteQuestion(question) {
 }
 
 function sendQuestion(e) {
+    for (var li in listItems) {
+    	sesame('collapse',document.getElementById("listdiv"+li));
+    }
+
     add_status_divs();
     document.getElementById("result_container").innerHTML = "";
     document.getElementById("summary_container").innerHTML = "";
@@ -91,25 +118,7 @@ function sendQuestion(e) {
 			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question_text"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["message"]+"</I>";
 			sesame('openmax',statusdiv);
 
-			response_id = jsonObj2.id.substr(jsonObj2.id.lastIndexOf('/') + 1);
-
-
-			if ( jsonObj2["table_column_names"] ) {
-			    add_to_summary(jsonObj2["table_column_names"],0);
-			}
-			if ( jsonObj2["result_list"] ) {
-			    add_result(jsonObj2["result_list"]);
-			    add_feedback();
-			    //sesame(h1_div,a1_div);
-			}
-			else {
-			    document.getElementById("result_container").innerHTML += "<H2>No results...</H2>";
-			}
-
-			if ( jsonObj2["table_column_names"] ) {
-			    document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' title='click to expand / collapse summary' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br></div>";
-
-			}
+			render_response(jsonObj2);
 
 		    }
 		    else if ( jsonObj.message ) {
@@ -145,6 +154,66 @@ function sendQuestion(e) {
     };
 
 }
+
+
+function retrieve_response() {
+        document.getElementById("statusdiv").innerHTML = "Retrieving RTX response id = " + response_id + "<hr>";
+
+	sesame('openmax',statusdiv);
+	var xhr = new XMLHttpRequest();
+	xhr.open("get", "api/rtx/v1/response/" + response_id, true);
+	xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+	xhr.send(null);
+	xhr.onloadend = function() {
+		if ( xhr.status == 200 ) {
+			var jsonObj2 = JSON.parse(xhr.responseText);
+			document.getElementById("devdiv").innerHTML += "================================================================= RESPONSE REQUEST::<PRE>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
+
+			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question_text"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["message"]+"</I>";
+			document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question_text"];
+
+			sesame('openmax',statusdiv);
+
+			render_response(jsonObj2);
+		}
+		else if ( xhr.status == 404 ) {
+			document.getElementById("statusdiv").innerHTML += "<BR>The following response id was not found:<SPAN CLASS='error'>"+response_id+"</SPAN>";
+			sesame('openmax',statusdiv);
+		}
+		else {
+			document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr2.status+")</SPAN>";
+			document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<BR>"+xhr2.responseText;
+			sesame('openmax',statusdiv);
+		}
+	};
+}
+
+
+
+function render_response(respObj) {
+	response_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
+
+	history.pushState({ id: 'RTX_UI' }, 'RTX | response='+response_id, "//"+ window.location.hostname + window.location.pathname + '?r='+response_id);
+
+	if ( respObj["table_column_names"] ) {
+		add_to_summary(respObj["table_column_names"],0);
+	}
+        if ( respObj["result_list"] ) {
+                add_result(respObj["result_list"]);
+                add_feedback();
+                //sesame(h1_div,a1_div);
+        }
+        else {
+                document.getElementById("result_container").innerHTML += "<H2>No results...</H2>";
+        }
+
+        if ( respObj["table_column_names"] ) {
+                document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' title='click to expand / collapse summary' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br></div>";
+	}
+
+}
+
+
 
 
 function add_status_divs() {
@@ -342,7 +411,13 @@ function add_cyto() {
 	    document.getElementById(dnum).innerHTML = this.data('source');
 	    document.getElementById(dnum).innerHTML+= " <b>" + this.data('type') + "</b> ";
 	    document.getElementById(dnum).innerHTML+= this.data('target') + "<br>";
-            document.getElementById(dnum).innerHTML+= "<b>Provenance:</b> <a target='_blank' href='" + this.data('provided_by') + "'>" + this.data('provided_by') + "</a><br>";
+
+	    if(this.data('provided_by').startsWith("http")) {
+            	document.getElementById(dnum).innerHTML+= "<b>Provenance:</b> <a target='_blank' href='" + this.data('provided_by') + "'>" + this.data('provided_by') + "</a><br>";
+	    }
+	    else {
+            	document.getElementById(dnum).innerHTML+= "<b>Provenance:</b> " + this.data('provided_by') + "<br>";
+	    }
 
 
 	    sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
@@ -623,6 +698,20 @@ function togglecolor(obj,tid) {
 
 }
 
+
+// taken from http://www.activsoftware.com/
+function getQueryVariable(variable) {
+  var query = window.location.search.substring(1);
+  var vars = query.split("&");
+  for (var i=0;i<vars.length;i++) {
+    var pair = vars[i].split("=");
+    if (decodeURIComponent(pair[0]) == variable) {
+      return decodeURIComponent(pair[1]);
+    }
+  } 
+  return false;
+}
+
 // LIST FUNCTIONS
 var listItems = {};
 listItems['A'] = {};
@@ -649,7 +738,13 @@ function display_list(listId) {
 
     document.getElementById("numlistitems"+listId).innerHTML = numitems;
 
-    listhtml += "<hr>Enter new list item or items (space and/or comma-separated):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>&nbsp;&nbsp;&nbsp;&nbsp;<a href='javascript:delete_list(\""+listId+"\");'/> Delete List </a><br><br>";
+    listhtml += "<hr>Enter new list item or items (space and/or comma-separated):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
+
+    if (numitems > 0) {
+    	listhtml += "&nbsp;&nbsp;&nbsp;&nbsp;<a href='javascript:delete_list(\""+listId+"\");'/> Delete List </a>";
+    }
+
+    listhtml += "<br><br>";
 
 
     document.getElementById("listdiv"+listId).innerHTML = listhtml;
@@ -683,7 +778,7 @@ function add_items_to_list(listId,indx) {
 
 
 function add_new_to_list(listId) {
-    var itemarr = document.getElementById("newlistitem"+listId).value.split(/[ ,]/);
+    var itemarr = document.getElementById("newlistitem"+listId).value.split(/[\t ,]/);
     document.getElementById("newlistitem"+listId).value = '';
     for (var item in itemarr) {
 	if (itemarr[item]) {
