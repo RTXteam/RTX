@@ -242,7 +242,6 @@ class BioNetExpander:
                 self.orangeboard.add_rel('contraindicated_for', 'MyChem.info', node, ont_node, extended_reltype='contraindicated_for')
 
         res_hp_set = DrugMapper.map_drug_to_hp_with_side_effects(node.name)
-
         for hp_term in res_hp_set:
             if hp_term.startswith('HP:'):
                 hp_name = QueryBioLink.get_label_for_phenotype(hp_term)
@@ -744,6 +743,18 @@ class BioNetExpander:
         ob.neo4j_set_url()
         ob.neo4j_set_auth()
         ob.neo4j_push()
+
+    def test_issue_269():
+        ob = Orangeboard(debug=False)
+        bne = BioNetExpander(ob)
+        chem_node = bne.add_node_smart('chemical_substance',
+                                       'CHEMBL521', seed_node_bool=True,
+                                       desc='Ibuprofen')
+        bne.expand_chemical_substance(chem_node)
+        ob.neo4j_set_url()
+        ob.neo4j_set_auth()
+        ob.neo4j_push()
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Builds the master knowledge graph')
