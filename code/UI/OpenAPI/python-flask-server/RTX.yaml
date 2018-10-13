@@ -125,7 +125,7 @@ paths:
         name: "search_string"
         description: "Some string to search by (name, abbreviation, CURIE, etc.)"
         required: true
-        type: "integer"
+        type: "string"
       responses:
         200:
           description: "successful operation"
