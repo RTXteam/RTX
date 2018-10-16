@@ -71,7 +71,7 @@ class QueryMyChem:
             #   remove all \n characters using json api and convert the string to one line
             json_dict = json.loads(results)
             if "chebi" in json_dict.keys():
-                if "definition" in json_dict['chebi']:
+                if "definition" in json_dict['chebi'].keys():
                     result_str = json_dict['chebi']['definition']
         return result_str
 
@@ -86,7 +86,7 @@ class QueryMyChem:
         if chemical_substance_id[:7].upper() == "CHEMBL:":
             chemical_substance_id = "CHEMBL" + chemical_substance_id[7:]
         return QueryMyChem.__get_description("get_chemical_substance", chemical_substance_id)
-    
+
     @staticmethod
     def get_mesh_id(chemical_substance_id):
         if chemical_substance_id[:7].upper() == "CHEMBL:":
@@ -111,10 +111,12 @@ class QueryMyChem:
             print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
             return None
         id_json = res.json()
+        res = None
         if 'drugcentral' in id_json.keys():
-            return id_json['drugcentral']['xref']['mesh_descriptor_ui']
-        else:
-            return None
+            if 'xref' in id_json['drugcentral'].keys():
+                if 'mesh_descriptor_ui' in id_json['drugcentral']['xref'].keys():
+                    res = id_json['drugcentral']['xref']['mesh_descriptor_ui']
+        return res
 
     @staticmethod
     def get_cui(chemical_substance_id):
@@ -142,10 +144,12 @@ class QueryMyChem:
             #print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
             return None
         id_json = res.json()
+        res = None
         if 'drugcentral' in id_json.keys():
-            return id_json['drugcentral']['xref']['umlscui']
-        else:
-            return None
+            if 'xref' in id_json['drugcentral'].keys():
+                if 'umlscui' in id_json['drugcentral']['xref'].keys():
+                    res = id_json['drugcentral']['xref']['umlscui']
+        return res
 
     @staticmethod
     def get_drug_side_effects(chembl_id):
@@ -161,13 +165,16 @@ class QueryMyChem:
         if chembl_id[:7].upper() == "CHEMBL:":
             chembl_id = "CHEMBL" + chembl_id[7:]
         handler = QueryMyChem.HANDLER_MAP['get_drug'].format(id=chembl_id) + "?fields=sider"
-        results = QueryMyChem.__access_api(handler)
+        with requests_cache.disabled():
+            results = QueryMyChem.__access_api(handler)
+            with open('uncached_urls.log', 'a+') as f:
+                print(QueryMyChem.API_BASE_URL + '/' + handler, file=f)
         if results is not None:
             json_dict = json.loads(results)
             if "sider" in json_dict.keys():
                 for se in json_dict['sider']:
                     if 'meddra' in se.keys():
-                        if 'umls_id' in se['meddra']:
+                        if 'umls_id' in se['meddra'].keys():
                             side_effects_set.add("UMLS:" + se['meddra']['umls_id'])
         return side_effects_set
 
@@ -186,9 +193,13 @@ class QueryMyChem:
             chembl_id = "CHEMBL" + chembl_id[7:]
         # pubchem_id = QueryPubChem.get_pubchem_id_for_chembl_id(chembl_id)
         pubchem_id = QueryMyChem.get_pubchem_cid(chembl_id)
+        if pubchem_id is None:
+            return meddra_code_set
         handler = QueryMyChem.HANDLER_MAP['get_pubchem_info'].format(cid=pubchem_id)
-        results = QueryMyChem.__access_api(handler)
-        meddra_code_set = set()
+        with requests_cache.disabled():
+            results = QueryMyChem.__access_api(handler)
+            with open('uncached_urls.log', 'a+') as f:
+                print(QueryMyChem.API_BASE_URL + '/' + handler, file=f)
         if results is not None and pubchem_id is not None:
             json_dict = json.loads(results)
             if 'hits' in json_dict.keys() and len(json_dict['hits']) > 0:
@@ -218,7 +229,10 @@ class QueryMyChem:
         if results is not None:
             json_dict = json.loads(results)
             if "chebi" in json_dict.keys():
-                pubchem_cid = json_dict["chebi"]["xref"]["pubchem"]["cid"]
+                if 'xref' in json_dict['chebi'].keys():
+                    if 'pubchem' in json_dict["chebi"]["xref"].keys():
+                        if 'cid' in json_dict["chebi"]["xref"]["pubchem"].keys():
+                            pubchem_cid = json_dict["chebi"]["xref"]["pubchem"]["cid"]
         return str(pubchem_cid)
 
     @staticmethod
