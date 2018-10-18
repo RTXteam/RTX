@@ -223,6 +223,7 @@ class RTXQuery:
             url = "http://robokop.renci.org:6011/api/query"
           elif reasoner_id == "Indigo":
             url = "https://indigo.ncats.io/reasoner/api/v0/query"
+            url = None
           else:
             eprint("ERROR: Unrecognized target '"+target+"'")
           if url is not None:
@@ -234,7 +235,7 @@ class RTXQuery:
             if reasoner_id == "RTX":
               final_response = response
             if reasoner_id == "Robokop" or reasoner_id == "Indigo":
-            #if reasoner_id == "Indigo":
+            #if reasoner_id == "Robokop":
               eprint("Merging in "+reasoner_id)
               response = self.fix_response(query,response,reasoner_id)
               if response.result_list is not None:
