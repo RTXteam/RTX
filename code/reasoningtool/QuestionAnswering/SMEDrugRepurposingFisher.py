@@ -272,6 +272,8 @@ class SMEDrugRepurposingFisher:
 			decorated_paths, decorated_path_edges, path_lengths = RU.get_top_shortest_paths(g, disease_id, drug,
 																							num_paths,
 																							property='merged')
+			# TODO: this can return paths that don't go through all the node types we want (since it's just the shortest paths).
+			# will need to return all the shortest paths, then pick the top k that go through the nodes we want
 			for path_ind in range(num_paths):
 				g2 = nx.Graph()
 				path = decorated_paths[path_ind]
