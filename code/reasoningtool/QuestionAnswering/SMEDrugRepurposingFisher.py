@@ -42,7 +42,7 @@ class SMEDrugRepurposingFisher:
 		None
 
 	@staticmethod
-	def answer(disease_id, use_json=False, num_show=20):
+	def answer(disease_id, use_json=False, num_show=25):
 
 		num_input_disease_symptoms = 15  # number of representative symptoms of the disease to keep
 		num_omim_keep = 25  # number of genetic conditions to keep
@@ -291,14 +291,22 @@ class SMEDrugRepurposingFisher:
 
 		# print out the results
 		if not use_json:
+			num_shown = 0
 			for graph, weight, drug_id in graph_weight_tuples:
+				num_shown += 1
+				if num_shown > num_show:
+					break
 				drug_description = RU.get_node_property(drug_id, "name", node_label="chemical_substance")
 				print("%s %f" % (drug_description, weight))
 		else:
 			response.response.table_column_names = ["disease name", "disease ID", "drug name", "drug ID", "path weight",
 													"drug disease google distance",
 													"ML probability drug treats disease"]
+			num_shown = 0
 			for graph, weight, drug_id in graph_weight_tuples:
+				num_shown += 1
+				if num_shown > num_show:
+					break
 				drug_description = RU.get_node_property(drug_id, "name", node_label="chemical_substance")
 				drug_id_old_curie = drug_id.replace("CHEMBL.COMPOUND:CHEMBL", "ChEMBL:")
 				# Machine learning probability of "treats"
