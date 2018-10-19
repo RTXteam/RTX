@@ -232,10 +232,11 @@ class QueryMyChem:
                 print(QueryMyChem.API_BASE_URL + '/' + handler, file=f)
         if results is not None:
             json_dict = json.loads(results)
-            if isinstance(json_dict['chebi'], dict) and 'xref' in json_dict['chebi'].keys():
-                if isinstance(json_dict["chebi"]["xref"], dict) and 'pubchem' in json_dict["chebi"]["xref"].keys():
-                    if isinstance(json_dict["chebi"]["xref"]["pubchem"], dict) and 'cid' in json_dict["chebi"]["xref"]["pubchem"].keys():
-                        pubchem_cid = json_dict["chebi"]["xref"]["pubchem"]["cid"]
+            if 'chebi' in json_dict.keys():
+                if isinstance(json_dict['chebi'], dict) and 'xref' in json_dict['chebi'].keys():
+                    if isinstance(json_dict["chebi"]["xref"], dict) and 'pubchem' in json_dict["chebi"]["xref"].keys():
+                        if isinstance(json_dict["chebi"]["xref"]["pubchem"], dict) and 'cid' in json_dict["chebi"]["xref"]["pubchem"].keys():
+                            pubchem_cid = json_dict["chebi"]["xref"]["pubchem"]["cid"]
         return str(pubchem_cid)
 
     @staticmethod
