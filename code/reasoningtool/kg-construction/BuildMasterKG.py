@@ -74,7 +74,9 @@ def seed_nodes_from_master_tsv_file():
                                      dtype={'rtx_name': str})
     first_row = True
     for index, row in seed_node_data.iterrows():
-        bne.add_node_smart(row['type'], row['rtx_name'], seed_node_bool=True, desc=row['term'])
+        bne.add_node_smart(row['type'], row['rtx_name'], seed_node_bool=first_row, desc=row['term'])
+        if first_row:
+            first_row = False
 
 
 def add_dgidb_to_kg():

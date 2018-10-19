@@ -44,12 +44,12 @@ class SMEDrugRepurposingFisher:
 	@staticmethod
 	def answer(disease_id, use_json=False, num_show=25):
 
-		num_input_disease_symptoms = 15  # number of representative symptoms of the disease to keep
+		num_input_disease_symptoms = 25  # number of representative symptoms of the disease to keep
 		num_omim_keep = 25  # number of genetic conditions to keep
 		num_protein_keep = 25  # number of implicated proteins to keep
 		num_pathways_keep = 25  # number of pathways to keep
 		num_pathway_proteins_selected = 25  # number of proteins enriched for the above pathways to select
-		num_drugs_keep = 25  # number of drugs that target those proteins to keep
+		num_drugs_keep = num_show  # number of drugs that target those proteins to keep
 		num_paths = 2  # number of paths to keep for each drug selected
 
 		# Initialize the response class
@@ -272,6 +272,8 @@ class SMEDrugRepurposingFisher:
 			decorated_paths, decorated_path_edges, path_lengths = RU.get_top_shortest_paths(g, disease_id, drug,
 																							num_paths,
 																							property='merged')
+			# TODO: this can return paths that don't go through all the node types we want (since it's just the shortest paths).
+			# will need to return all the shortest paths, then pick the top k that go through the nodes we want
 			for path_ind in range(num_paths):
 				g2 = nx.Graph()
 				path = decorated_paths[path_ind]
@@ -348,7 +350,7 @@ def main():
 	parser.add_argument('-d', '--disease', type=str, help="disease curie ID", default="OMIM:603903")
 	parser.add_argument('-j', '--json', action='store_true', help='Flag specifying that results should be printed in JSON format (to stdout)', default=False)
 	parser.add_argument('--describe', action='store_true', help='Print a description of the question to stdout and quit', default=False)
-	parser.add_argument('--num_show', type=int, help='Maximum number of results to return', default=20)
+	parser.add_argument('--num_show', type=int, help='Maximum number of results to return', default=25)
 
 	# Parse and check args
 	args = parser.parse_args()

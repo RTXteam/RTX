@@ -31,9 +31,6 @@ import sys
 import urllib.parse
 import xmltodict
 
-# configure requests package to use the "orangeboard.sqlite" cache
-requests_cache.install_cache('orangeboard')
-
 
 class QueryUniprot:
     API_BASE_URL = "http://www.uniprot.org/uploadlists/"

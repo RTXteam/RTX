@@ -22,6 +22,11 @@ tags:
   externalDocs:
     description: "Documentation for the RTX query function"
     url: "https://rtx.ncats.io/devED/overview.html#query"
+- name: "entity"
+  description: "Obtain the CURIE and type of some entity by name"
+  externalDocs:
+    description: "Documentation for the RTX entity endpoint"
+    url: "https://rtx.ncats.io/devED/overview.html#entity"
 - name: "PubmedMeshNgd"
   description: "Query to get the Normalized Google Distance between two MeSH terms\
     \ based on co-occurance in all PubMed article annotations"
@@ -105,6 +110,32 @@ paths:
         400:
           description: "Invalid status value"
       x-swagger-router-controller: "swagger_server.controllers.query_controller"
+  /entity/{search_string}:
+    get:
+      tags:
+      - "entity"
+      summary: "Obtain the CURIE and type of some entity by name"
+      description: ""
+      operationId: "get_entity_by_string"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "search_string"
+        in: "path"
+        description: "Some string to search by (name, abbreviation, CURIE, etc.)"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "successful operation"
+          schema:
+            type: "array"
+            items:
+              type: "object"
+              properties: {}
+        404:
+          description: "Entity not found"
+      x-swagger-router-controller: "swagger_server.controllers.entity_controller"
   /PubmedMeshNgd/{term1}/{term2}:
     get:
       tags:
@@ -190,6 +221,28 @@ paths:
         200:
           description: "successful operation"
       x-swagger-router-controller: "swagger_server.controllers.feedback_controller"
+  /response/process:
+    post:
+      tags:
+      - "response"
+      summary: "Process a Response object from somewhere else, controlled by options"
+      description: ""
+      operationId: "post_response"
+      consumes:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "Envelope for a Response that should be processed"
+        required: false
+        schema:
+          $ref: "#/definitions/ResponseEnvelope"
+      responses:
+        200:
+          description: "successful operation"
+        400:
+          description: "Invalid status value"
+      x-swagger-router-controller: "swagger_server.controllers.response_controller"
   /response/{response_id}:
     get:
       tags:
@@ -429,6 +482,436 @@ definitions:
       - node_type: "protein"
       max_results: 100
       page_size: 100
+  ResponseEnvelope:
+    type: "object"
+    properties:
+      responseURIs:
+        type: "array"
+        example:
+        - "https://rtx.ncats.io/devED/api/rtx/v1/response/300"
+        description: "List of URIs for Response objects to fetch and process"
+        items:
+          type: "string"
+      responses:
+        type: "array"
+        description: "List of Response objects to process"
+        items:
+          $ref: "#/definitions/Response"
+      options:
+        type: "array"
+        example:
+        - "mod45filter"
+        - "redirect2RTX"
+        description: "List of options to guide what happens with the Response object(s)"
+        items:
+          type: "string"
+    example:
+      responseURIs:
+      - "https://rtx.ncats.io/devED/api/rtx/v1/response/300"
+      options:
+      - "mod45filter"
+      - "redirect2RTX"
+      responses:
+      - response_code: "OK"
+        n_results: 42
+        type: "medical_translator_query_result"
+        original_question_text: "what proteins are affected by sickle cell anemia"
+        message: "1 answer found"
+        query_type_id: "Q2"
+        schema_version: "0.8.0"
+        datetime: "2018-01-09 12:34:45"
+        table_column_names:
+        - "chemical_substance.name"
+        - "chemical_substance.id"
+        tool_version: "RTX 0.4.0"
+        terms: "{ 'disease': 'malaria' }"
+        context: "https://rtx.ncats.io/devED/ns/translator.jsonld"
+        known_query_type_id: "DEPRECATED"
+        result_list:
+        - result_type: "answer"
+          result_graph:
+            node_list:
+            - symbol: "HP"
+              node_attributes:
+              - name: "Wikipedia article"
+                type: "article"
+                value: "7.23e-12"
+                url: "https://en.wikipedia.org/wiki/Malaria"
+              - name: "Wikipedia article"
+                type: "article"
+                value: "7.23e-12"
+                url: "https://en.wikipedia.org/wiki/Malaria"
+              name: "Haptoglobin"
+              description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
+              id: "OMIM:603903"
+              type: "protein"
+              uri: "https://www.uniprot.org/uniprot/P00738"
+            - symbol: "HP"
+              node_attributes:
+              - name: "Wikipedia article"
+                type: "article"
+                value: "7.23e-12"
+                url: "https://en.wikipedia.org/wiki/Malaria"
+              - name: "Wikipedia article"
+                type: "article"
+                value: "7.23e-12"
+                url: "https://en.wikipedia.org/wiki/Malaria"
+              name: "Haptoglobin"
+              description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
+              id: "OMIM:603903"
+              type: "protein"
+              uri: "https://www.uniprot.org/uniprot/P00738"
+            edge_list:
+            - is_defined_by: "RTX"
+              negated: true
+              evidence_type: "ECO:0000220"
+              attribute_list:
+              - name: "Cell type limitation"
+                type: "localization"
+                value: "MFC cells"
+                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+              - name: "Cell type limitation"
+                type: "localization"
+                value: "MFC cells"
+                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+              confidence: 0.99
+              provided_by: "OMIM"
+              qualifiers: "ECO:0000220"
+              target_id: "https://www.uniprot.org/uniprot/P00738"
+              source_id: "https://omim.org/entry/603903"
+              type: "affects"
+              relation: "affects"
+              publications: "PubMed:12345562"
+            - is_defined_by: "RTX"
+              negated: true
+              evidence_type: "ECO:0000220"
+              attribute_list:
+              - name: "Cell type limitation"
+                type: "localization"
+                value: "MFC cells"
+                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+              - name: "Cell type limitation"
+                type: "localization"
+                value: "MFC cells"
+                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+              confidence: 0.99
+              provided_by: "OMIM"
+              qualifiers: "ECO:0000220"
+              target_id: "https://www.uniprot.org/uniprot/P00738"
+              source_id: "https://omim.org/entry/603903"
+              type: "affects"
+              relation: "affects"
+              publications: "PubMed:12345562"
+          essence: "ibuprofen"
+          confidence: 0.9234
+          description: "The genetic condition sickle cell anemia may provide protection\
+            \ from cerebral malaria via genetic alterations of proteins HBB (P68871)\
+            \ and HMOX1 (P09601)."
+          score_direction: "Jaccard distance"
+          score: 163.233
+          result_group: 1
+          reasoner_id: "RTX"
+          id: "https://rtx.ncats.io/devED/api/rtx/v1/result/2345"
+          text: "DEPRECATED"
+          row_data:
+          - "ibuprofen"
+          - "CHEMBL:CHEMBL521"
+          result_group_similarity_score: 0.95
+          score_name: "Jaccard distance"
+        - result_type: "answer"
+          result_graph:
+            node_list:
+            - symbol: "HP"
+              node_attributes:
+              - name: "Wikipedia article"
+                type: "article"
+                value: "7.23e-12"
+                url: "https://en.wikipedia.org/wiki/Malaria"
+              - name: "Wikipedia article"
+                type: "article"
+                value: "7.23e-12"
+                url: "https://en.wikipedia.org/wiki/Malaria"
+              name: "Haptoglobin"
+              description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
+              id: "OMIM:603903"
+              type: "protein"
+              uri: "https://www.uniprot.org/uniprot/P00738"
+            - symbol: "HP"
+              node_attributes:
+              - name: "Wikipedia article"
+                type: "article"
+                value: "7.23e-12"
+                url: "https://en.wikipedia.org/wiki/Malaria"
+              - name: "Wikipedia article"
+                type: "article"
+                value: "7.23e-12"
+                url: "https://en.wikipedia.org/wiki/Malaria"
+              name: "Haptoglobin"
+              description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
+              id: "OMIM:603903"
+              type: "protein"
+              uri: "https://www.uniprot.org/uniprot/P00738"
+            edge_list:
+            - is_defined_by: "RTX"
+              negated: true
+              evidence_type: "ECO:0000220"
+              attribute_list:
+              - name: "Cell type limitation"
+                type: "localization"
+                value: "MFC cells"
+                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+              - name: "Cell type limitation"
+                type: "localization"
+                value: "MFC cells"
+                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+              confidence: 0.99
+              provided_by: "OMIM"
+              qualifiers: "ECO:0000220"
+              target_id: "https://www.uniprot.org/uniprot/P00738"
+              source_id: "https://omim.org/entry/603903"
+              type: "affects"
+              relation: "affects"
+              publications: "PubMed:12345562"
+            - is_defined_by: "RTX"
+              negated: true
+              evidence_type: "ECO:0000220"
+              attribute_list:
+              - name: "Cell type limitation"
+                type: "localization"
+                value: "MFC cells"
+                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+              - name: "Cell type limitation"
+                type: "localization"
+                value: "MFC cells"
+                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+              confidence: 0.99
+              provided_by: "OMIM"
+              qualifiers: "ECO:0000220"
+              target_id: "https://www.uniprot.org/uniprot/P00738"
+              source_id: "https://omim.org/entry/603903"
+              type: "affects"
+              relation: "affects"
+              publications: "PubMed:12345562"
+          essence: "ibuprofen"
+          confidence: 0.9234
+          description: "The genetic condition sickle cell anemia may provide protection\
+            \ from cerebral malaria via genetic alterations of proteins HBB (P68871)\
+            \ and HMOX1 (P09601)."
+          score_direction: "Jaccard distance"
+          score: 163.233
+          result_group: 1
+          reasoner_id: "RTX"
+          id: "https://rtx.ncats.io/devED/api/rtx/v1/result/2345"
+          text: "DEPRECATED"
+          row_data:
+          - "ibuprofen"
+          - "CHEMBL:CHEMBL521"
+          result_group_similarity_score: 0.95
+          score_name: "Jaccard distance"
+        reasoner_id: "RTX"
+        result_code: "OK"
+        id: "https://rtx.ncats.io/devED/api/rtx/v1/response/1234"
+        restated_question_text: "Which proteins are affected by sickle cell anemia?"
+      - response_code: "OK"
+        n_results: 42
+        type: "medical_translator_query_result"
+        original_question_text: "what proteins are affected by sickle cell anemia"
+        message: "1 answer found"
+        query_type_id: "Q2"
+        schema_version: "0.8.0"
+        datetime: "2018-01-09 12:34:45"
+        table_column_names:
+        - "chemical_substance.name"
+        - "chemical_substance.id"
+        tool_version: "RTX 0.4.0"
+        terms: "{ 'disease': 'malaria' }"
+        context: "https://rtx.ncats.io/devED/ns/translator.jsonld"
+        known_query_type_id: "DEPRECATED"
+        result_list:
+        - result_type: "answer"
+          result_graph:
+            node_list:
+            - symbol: "HP"
+              node_attributes:
+              - name: "Wikipedia article"
+                type: "article"
+                value: "7.23e-12"
+                url: "https://en.wikipedia.org/wiki/Malaria"
+              - name: "Wikipedia article"
+                type: "article"
+                value: "7.23e-12"
+                url: "https://en.wikipedia.org/wiki/Malaria"
+              name: "Haptoglobin"
+              description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
+              id: "OMIM:603903"
+              type: "protein"
+              uri: "https://www.uniprot.org/uniprot/P00738"
+            - symbol: "HP"
+              node_attributes:
+              - name: "Wikipedia article"
+                type: "article"
+                value: "7.23e-12"
+                url: "https://en.wikipedia.org/wiki/Malaria"
+              - name: "Wikipedia article"
+                type: "article"
+                value: "7.23e-12"
+                url: "https://en.wikipedia.org/wiki/Malaria"
+              name: "Haptoglobin"
+              description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
+              id: "OMIM:603903"
+              type: "protein"
+              uri: "https://www.uniprot.org/uniprot/P00738"
+            edge_list:
+            - is_defined_by: "RTX"
+              negated: true
+              evidence_type: "ECO:0000220"
+              attribute_list:
+              - name: "Cell type limitation"
+                type: "localization"
+                value: "MFC cells"
+                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+              - name: "Cell type limitation"
+                type: "localization"
+                value: "MFC cells"
+                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+              confidence: 0.99
+              provided_by: "OMIM"
+              qualifiers: "ECO:0000220"
+              target_id: "https://www.uniprot.org/uniprot/P00738"
+              source_id: "https://omim.org/entry/603903"
+              type: "affects"
+              relation: "affects"
+              publications: "PubMed:12345562"
+            - is_defined_by: "RTX"
+              negated: true
+              evidence_type: "ECO:0000220"
+              attribute_list:
+              - name: "Cell type limitation"
+                type: "localization"
+                value: "MFC cells"
+                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+              - name: "Cell type limitation"
+                type: "localization"
+                value: "MFC cells"
+                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+              confidence: 0.99
+              provided_by: "OMIM"
+              qualifiers: "ECO:0000220"
+              target_id: "https://www.uniprot.org/uniprot/P00738"
+              source_id: "https://omim.org/entry/603903"
+              type: "affects"
+              relation: "affects"
+              publications: "PubMed:12345562"
+          essence: "ibuprofen"
+          confidence: 0.9234
+          description: "The genetic condition sickle cell anemia may provide protection\
+            \ from cerebral malaria via genetic alterations of proteins HBB (P68871)\
+            \ and HMOX1 (P09601)."
+          score_direction: "Jaccard distance"
+          score: 163.233
+          result_group: 1
+          reasoner_id: "RTX"
+          id: "https://rtx.ncats.io/devED/api/rtx/v1/result/2345"
+          text: "DEPRECATED"
+          row_data:
+          - "ibuprofen"
+          - "CHEMBL:CHEMBL521"
+          result_group_similarity_score: 0.95
+          score_name: "Jaccard distance"
+        - result_type: "answer"
+          result_graph:
+            node_list:
+            - symbol: "HP"
+              node_attributes:
+              - name: "Wikipedia article"
+                type: "article"
+                value: "7.23e-12"
+                url: "https://en.wikipedia.org/wiki/Malaria"
+              - name: "Wikipedia article"
+                type: "article"
+                value: "7.23e-12"
+                url: "https://en.wikipedia.org/wiki/Malaria"
+              name: "Haptoglobin"
+              description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
+              id: "OMIM:603903"
+              type: "protein"
+              uri: "https://www.uniprot.org/uniprot/P00738"
+            - symbol: "HP"
+              node_attributes:
+              - name: "Wikipedia article"
+                type: "article"
+                value: "7.23e-12"
+                url: "https://en.wikipedia.org/wiki/Malaria"
+              - name: "Wikipedia article"
+                type: "article"
+                value: "7.23e-12"
+                url: "https://en.wikipedia.org/wiki/Malaria"
+              name: "Haptoglobin"
+              description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
+              id: "OMIM:603903"
+              type: "protein"
+              uri: "https://www.uniprot.org/uniprot/P00738"
+            edge_list:
+            - is_defined_by: "RTX"
+              negated: true
+              evidence_type: "ECO:0000220"
+              attribute_list:
+              - name: "Cell type limitation"
+                type: "localization"
+                value: "MFC cells"
+                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+              - name: "Cell type limitation"
+                type: "localization"
+                value: "MFC cells"
+                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+              confidence: 0.99
+              provided_by: "OMIM"
+              qualifiers: "ECO:0000220"
+              target_id: "https://www.uniprot.org/uniprot/P00738"
+              source_id: "https://omim.org/entry/603903"
+              type: "affects"
+              relation: "affects"
+              publications: "PubMed:12345562"
+            - is_defined_by: "RTX"
+              negated: true
+              evidence_type: "ECO:0000220"
+              attribute_list:
+              - name: "Cell type limitation"
+                type: "localization"
+                value: "MFC cells"
+                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+              - name: "Cell type limitation"
+                type: "localization"
+                value: "MFC cells"
+                url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
+              confidence: 0.99
+              provided_by: "OMIM"
+              qualifiers: "ECO:0000220"
+              target_id: "https://www.uniprot.org/uniprot/P00738"
+              source_id: "https://omim.org/entry/603903"
+              type: "affects"
+              relation: "affects"
+              publications: "PubMed:12345562"
+          essence: "ibuprofen"
+          confidence: 0.9234
+          description: "The genetic condition sickle cell anemia may provide protection\
+            \ from cerebral malaria via genetic alterations of proteins HBB (P68871)\
+            \ and HMOX1 (P09601)."
+          score_direction: "Jaccard distance"
+          score: 163.233
+          result_group: 1
+          reasoner_id: "RTX"
+          id: "https://rtx.ncats.io/devED/api/rtx/v1/result/2345"
+          text: "DEPRECATED"
+          row_data:
+          - "ibuprofen"
+          - "CHEMBL:CHEMBL521"
+          result_group_similarity_score: 0.95
+          score_name: "Jaccard distance"
+        reasoner_id: "RTX"
+        result_code: "OK"
+        id: "https://rtx.ncats.io/devED/api/rtx/v1/response/1234"
+        restated_question_text: "Which proteins are affected by sickle cell anemia?"
   Response:
     type: "object"
     properties:
@@ -474,6 +957,10 @@ definitions:
           \ the restated question matches the intent of their original question (it\
           \ might not)."
       known_query_type_id:
+        type: "string"
+        example: "DEPRECATED"
+        description: "DEPRECATED"
+      query_type_id:
         type: "string"
         example: "Q2"
         description: "The query type id if one is known for the query/response (as\
@@ -522,6 +1009,7 @@ definitions:
       type: "medical_translator_query_result"
       original_question_text: "what proteins are affected by sickle cell anemia"
       message: "1 answer found"
+      query_type_id: "Q2"
       schema_version: "0.8.0"
       datetime: "2018-01-09 12:34:45"
       table_column_names:
@@ -530,7 +1018,7 @@ definitions:
       tool_version: "RTX 0.4.0"
       terms: "{ 'disease': 'malaria' }"
       context: "https://rtx.ncats.io/devED/ns/translator.jsonld"
-      known_query_type_id: "Q2"
+      known_query_type_id: "DEPRECATED"
       result_list:
       - result_type: "answer"
         result_graph:

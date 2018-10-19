@@ -13,8 +13,6 @@ import requests_cache
 import pandas
 #import _mysql_exceptions
 
-requests_cache.install_cache('SynonymCache')
-
 
 class SynonymMapper():
 

@@ -1,4 +1,3 @@
-# ***NOTE: This document is incomplete***
 # Build, test, and deploy the Neo4j KG for RTX
 
 ## Starting EC2 instance

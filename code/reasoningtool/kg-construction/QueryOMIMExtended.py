@@ -18,10 +18,6 @@ import requests
 import requests_cache
 import json
 
-# configure requests package to use the "orangeboard.sqlite" cache
-requests_cache.install_cache('orangeboard')
-
-
 class QueryOMIMExtended:
     API_KEY = '1YCxuN7PRHyrpuZnO7F5gQ'
     API_BASE_URL = 'https://api.omim.org/api'

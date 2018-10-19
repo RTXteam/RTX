@@ -21,9 +21,6 @@ import requests
 import requests_cache
 import sys
 
-# configure requests package to use the "orangeboard.sqlite" cache
-requests_cache.install_cache('orangeboard')
-
 
 class QueryKEGG:
     TIMEOUT_SEC = 120
