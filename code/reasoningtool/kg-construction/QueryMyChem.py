@@ -21,13 +21,14 @@ import json
 
 from QueryPubChem import QueryPubChem
 
+
 class QueryMyChem:
     TIMEOUT_SEC = 120
     API_BASE_URL = 'http://mychem.info/v1'
     HANDLER_MAP = {
-        'get_chemical_substance':   'chem/{id}',
-        'get_drug':                 'chem/{id}',
-        'get_pubchem_info':          'query?q=pubchem.cid:{cid}'
+        'get_chemical_substance': 'chem/{id}',
+        'get_drug': 'chem/{id}',
+        'get_pubchem_info': 'query?q=pubchem.cid:{cid}'
     }
 
     @staticmethod
@@ -140,8 +141,8 @@ class QueryMyChem:
             return None
         status_code = res.status_code
         if status_code != 200:
-            #print(url, file=sys.stderr)
-            #print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
+            # print(url, file=sys.stderr)
+            # print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
             return None
         id_json = res.json()
         res = None
@@ -206,9 +207,9 @@ class QueryMyChem:
                 hits = json_dict['hits'][0]
                 if 'drugcentral' in hits.keys():
                     drugcentral = hits['drugcentral']
-                    if 'fda_adverse_event' in drugcentral.keys():
+                    if isinstance(drugcentral, dict) and 'fda_adverse_event' in drugcentral.keys():
                         for drug in drugcentral['fda_adverse_event']:
-                            if 'meddra_code' in drug.keys():
+                            if isinstance(drug, dict) and 'meddra_code' in drug.keys():
                                 meddra_code_set.add("MEDDRA:" + str(drug['meddra_code']))
         return meddra_code_set
 
@@ -224,18 +225,17 @@ class QueryMyChem:
             return None
         if chembl_id[:7].upper() == "CHEMBL:":
             chembl_id = "CHEMBL" + chembl_id[7:]
-        handler = QueryMyChem.HANDLER_MAP['get_drug'].format(id=chembl_id)
+        handler = QueryMyChem.HANDLER_MAP['get_drug'].format(id=chembl_id) + "?fields=chebi"
         with requests_cache.disabled():
             results = QueryMyChem.__access_api(handler)
             with open('uncached_urls.log', 'a+') as f:
                 print(QueryMyChem.API_BASE_URL + '/' + handler, file=f)
         if results is not None:
             json_dict = json.loads(results)
-            if "chebi" in json_dict.keys():
-                if 'xref' in json_dict['chebi'].keys():
-                    if 'pubchem' in json_dict["chebi"]["xref"].keys():
-                        if 'cid' in json_dict["chebi"]["xref"]["pubchem"].keys():
-                            pubchem_cid = json_dict["chebi"]["xref"]["pubchem"]["cid"]
+            if isinstance(json_dict['chebi'], dict) and 'xref' in json_dict['chebi'].keys():
+                if isinstance(json_dict["chebi"]["xref"], dict) and 'pubchem' in json_dict["chebi"]["xref"].keys():
+                    if isinstance(json_dict["chebi"]["xref"]["pubchem"], dict) and 'cid' in json_dict["chebi"]["xref"]["pubchem"].keys():
+                        pubchem_cid = json_dict["chebi"]["xref"]["pubchem"]["cid"]
         return str(pubchem_cid)
 
     @staticmethod
@@ -367,6 +367,7 @@ if __name__ == '__main__':
         json.dump(json_data, f)
         f.close()
 
+
     # save_to_test_file('tests/query_test_data.json', 'ChEMBL:1200766',
     #                   QueryMyChem.get_chemical_substance_entity('ChEMBL:1200766'))
     # save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:154',
@@ -385,9 +386,10 @@ if __name__ == '__main__':
     # umls_array = QueryMyChem.get_drug_side_effects("CHEMBL:699")
     # print(umls_array)
     # print(len(umls_array))
-    #print(len(QueryMyChem.get_drug_side_effects("CHEMBL:1908841")))
-    #print(len(QueryMyChem.get_drug_side_effects("CHEMBL:655")))
-    #drug_use = QueryMyChem.get_drug_use("CHEMBL20883")
-    #print(str(len(drug_use['indications'])) + str(drug_use['indications']))
-    #print(str(len(drug_use['contraindications'])) + str(drug_use['contraindications']))
+    # print(len(QueryMyChem.get_drug_side_effects("CHEMBL:1908841")))
+    # print(len(QueryMyChem.get_drug_side_effects("CHEMBL:655")))
+    # drug_use = QueryMyChem.get_drug_use("CHEMBL20883")
+    # print(str(len(drug_use['indications'])) + str(drug_use['indications']))
+    # print(str(len(drug_use['contraindications'])) + str(drug_use['contraindications']))
     # print(type(QueryMyChem.get_pubchem_cid("CHEMBL1082")))
+    print(QueryMyChem.get_meddra_codes_for_side_effects("CHEMBL1755"))
