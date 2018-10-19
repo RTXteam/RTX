@@ -237,7 +237,7 @@ class QueryMyChem:
                     if isinstance(json_dict["chebi"]["xref"], dict) and 'pubchem' in json_dict["chebi"]["xref"].keys():
                         if isinstance(json_dict["chebi"]["xref"]["pubchem"], dict) and 'cid' in json_dict["chebi"]["xref"]["pubchem"].keys():
                             pubchem_cid = json_dict["chebi"]["xref"]["pubchem"]["cid"]
-        return str(pubchem_cid)
+        return pubchem_cid
 
     @staticmethod
     def get_drug_use(chembl_id):
@@ -392,5 +392,5 @@ if __name__ == '__main__':
     # drug_use = QueryMyChem.get_drug_use("CHEMBL20883")
     # print(str(len(drug_use['indications'])) + str(drug_use['indications']))
     # print(str(len(drug_use['contraindications'])) + str(drug_use['contraindications']))
-    # print(type(QueryMyChem.get_pubchem_cid("CHEMBL1082")))
-    print(QueryMyChem.get_meddra_codes_for_side_effects("CHEMBL1755"))
+    print(QueryMyChem.get_pubchem_cid("CHEMBL452231"))
+    # print(QueryMyChem.get_meddra_codes_for_side_effects("CHEMBL1755"))
