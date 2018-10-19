@@ -67,7 +67,7 @@ def add_pc2_to_kg():
 
 
 def seed_nodes_from_master_tsv_file():
-    seed_node_data = pandas.read_csv('../../../data/seed_nodes_filtered.tsv',
+    seed_node_data = pandas.read_csv('../../../data/seed_nodes_filtered1.tsv',
                                      sep="\t",
                                      names=['type', 'rtx_name', 'term', 'purpose'],
                                      # header=1,
@@ -117,10 +117,10 @@ def test_dgidb():
 def make_master_kg():
     seed_nodes_from_master_tsv_file()
     bne.expand_all_nodes()
-    bne.expand_all_nodes()
-    bne.expand_all_nodes()
-    add_pc2_to_kg()
-    add_dgidb_to_kg()
+    # bne.expand_all_nodes()
+    # bne.expand_all_nodes()
+    # add_pc2_to_kg()
+    # add_dgidb_to_kg()
     # ob.neo4j_set_url('bolt://0.0.0.0:7687')
     ob.neo4j_push()
     print("count(Node) = {}".format(ob.count_nodes()))
