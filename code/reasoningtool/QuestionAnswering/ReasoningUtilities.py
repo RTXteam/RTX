@@ -1027,7 +1027,7 @@ def make_graph_simple(g, directed=False):
     return g_simple
 
 
-def get_top_shortest_paths(g, source_name, target_name, k, property='gd_weight', default_value=10):
+def get_top_shortest_paths(g, source_name, target_name, k, num_nodes=None, property='gd_weight', default_value=10, max_check=100):
     """
     Returns the top k shortest paths through the graph g (which has been weighted with Google distance using
     weight_graph_with_google_distance). This will weight the graph with google distance if it is not already.
@@ -1035,6 +1035,8 @@ def get_top_shortest_paths(g, source_name, target_name, k, property='gd_weight',
     :param source_name: name of the source node of interest
     :param target_name: name of the target node of interest
     :param k: number of top paths to return
+    :param num_nodes: if you want paths of a certain length
+    :param max_check: only try these many paths when looking for ones of a certain length
     :return: tuple (top k paths as a list of dictionaries, top k path edges as a list of dictionaries, path_lengths)
     """
     # Check if the graph has been weighted with google distance
@@ -1062,7 +1064,19 @@ def get_top_shortest_paths(g, source_name, target_name, k, property='gd_weight',
     names2nodes = dict()
     for node in nodes2names.keys():
         names2nodes[nodes2names[node]] = node
-    paths = list(islice(nx.shortest_simple_paths(g_simple, names2nodes[source_name], names2nodes[target_name], weight=property), k))
+    if num_nodes:
+        paths = []
+        num_tried = 0
+        num_found = 0
+        for path in nx.shortest_simple_paths(g_simple, names2nodes[source_name], names2nodes[target_name], weight=property):
+            if len(path) == num_nodes:
+                paths.append(path)
+                num_found += 1
+            num_tried += 1
+            if num_found == k or num_tried > max_check:
+                break
+    else:
+        paths = list(islice(nx.shortest_simple_paths(g_simple, names2nodes[source_name], names2nodes[target_name], weight=property), k))
     #g_simple_nodes = g_simple.nodes(data=True)
     g_simple_nodes = dict()
     for u,d in g_simple.nodes(data=True):
