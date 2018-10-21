@@ -166,10 +166,11 @@ class QueryMyChem:
         if chembl_id[:7].upper() == "CHEMBL:":
             chembl_id = "CHEMBL" + chembl_id[7:]
         handler = QueryMyChem.HANDLER_MAP['get_drug'].format(id=chembl_id) + "?fields=sider"
-        with requests_cache.disabled():
-            results = QueryMyChem.__access_api(handler)
-            with open('uncached_urls.log', 'a+') as f:
-                print(QueryMyChem.API_BASE_URL + '/' + handler, file=f)
+        results = QueryMyChem.__access_api(handler)
+        # with requests_cache.disabled():
+        #     results = QueryMyChem.__access_api(handler)
+        #     with open('uncached_urls.log', 'a+') as f:
+        #         print(QueryMyChem.API_BASE_URL + '/' + handler, file=f)
         if results is not None:
             json_dict = json.loads(results)
             if "sider" in json_dict.keys():
@@ -197,10 +198,11 @@ class QueryMyChem:
         if pubchem_id is None:
             return meddra_code_set
         handler = QueryMyChem.HANDLER_MAP['get_pubchem_info'].format(cid=pubchem_id)
-        with requests_cache.disabled():
-            results = QueryMyChem.__access_api(handler)
-            with open('uncached_urls.log', 'a+') as f:
-                print(QueryMyChem.API_BASE_URL + '/' + handler, file=f)
+        results = QueryMyChem.__access_api(handler)
+        # with requests_cache.disabled():
+        #     results = QueryMyChem.__access_api(handler)
+        #     with open('uncached_urls.log', 'a+') as f:
+        #         print(QueryMyChem.API_BASE_URL + '/' + handler, file=f)
         if results is not None and pubchem_id is not None:
             json_dict = json.loads(results)
             if 'hits' in json_dict.keys() and len(json_dict['hits']) > 0:
@@ -226,10 +228,11 @@ class QueryMyChem:
         if chembl_id[:7].upper() == "CHEMBL:":
             chembl_id = "CHEMBL" + chembl_id[7:]
         handler = QueryMyChem.HANDLER_MAP['get_drug'].format(id=chembl_id) + "?fields=chebi"
-        with requests_cache.disabled():
-            results = QueryMyChem.__access_api(handler)
-            with open('uncached_urls.log', 'a+') as f:
-                print(QueryMyChem.API_BASE_URL + '/' + handler, file=f)
+        results = QueryMyChem.__access_api(handler)
+        # with requests_cache.disabled():
+        #     results = QueryMyChem.__access_api(handler)
+        #     with open('uncached_urls.log', 'a+') as f:
+        #         print(QueryMyChem.API_BASE_URL + '/' + handler, file=f)
         if results is not None:
             json_dict = json.loads(results)
             if 'chebi' in json_dict.keys():
