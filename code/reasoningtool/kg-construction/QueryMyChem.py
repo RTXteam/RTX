@@ -71,7 +71,7 @@ class QueryMyChem:
             #   remove all \n characters using json api and convert the string to one line
             json_dict = json.loads(results)
             if "chebi" in json_dict.keys():
-                if "definition" in json_dict['chebi']:
+                if "definition" in json_dict['chebi'].keys():
                     result_str = json_dict['chebi']['definition']
         return result_str
 
@@ -111,10 +111,12 @@ class QueryMyChem:
             print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
             return None
         id_json = res.json()
+        res = None
         if 'drugcentral' in id_json.keys():
-            return id_json['drugcentral']['xref']['mesh_descriptor_ui']
-        else:
-            return None
+            if 'xref' in id_json['drugcentral'].keys():
+                if 'mesh_descriptor_ui' in id_json['drugcentral']['xref'].keys():
+                    res = id_json['drugcentral']['xref']['mesh_descriptor_ui']
+        return res
 
     @staticmethod
     def get_cui(chemical_substance_id):
@@ -142,10 +144,12 @@ class QueryMyChem:
             #print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
             return None
         id_json = res.json()
+        res = None
         if 'drugcentral' in id_json.keys():
-            return id_json['drugcentral']['xref']['umlscui']
-        else:
-            return None
+            if 'xref' in id_json['drugcentral'].keys():
+                if 'umlscui' in id_json['drugcentral']['xref'].keys():
+                    res = id_json['drugcentral']['xref']['umlscui']
+        return res
 
     @staticmethod
     def get_drug_side_effects(chembl_id):
@@ -167,7 +171,7 @@ class QueryMyChem:
             if "sider" in json_dict.keys():
                 for se in json_dict['sider']:
                     if 'meddra' in se.keys():
-                        if 'umls_id' in se['meddra']:
+                        if 'umls_id' in se['meddra'].keys():
                             side_effects_set.add("UMLS:" + se['meddra']['umls_id'])
         return side_effects_set
 
@@ -218,7 +222,10 @@ class QueryMyChem:
         if results is not None:
             json_dict = json.loads(results)
             if "chebi" in json_dict.keys():
-                pubchem_cid = json_dict["chebi"]["xref"]["pubchem"]["cid"]
+                if 'xref' in json_dict['chebi'].keys():
+                    if 'pubchem' in json_dict["chebi"]["xref"].keys():
+                        if 'cid' in json_dict["chebi"]["xref"]["pubchem"].keys():
+                            pubchem_cid = json_dict["chebi"]["xref"]["pubchem"]["cid"]
         return str(pubchem_cid)
 
     @staticmethod

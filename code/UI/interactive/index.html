@@ -15,7 +15,7 @@
 <script src="/rtxcomplete/rtxcomplete.js"></script>
 
 </head>
-<body onload="get_example_questions(); display_list('A'); display_list('B');">
+<body onload="main();">
 
 <div class="banner" banner-bg-text="RTX User Interface">
 <span class="menulinks">Documentation: 
@@ -26,6 +26,9 @@
 </div>
 
 <div class="page">
+
+<div onclick="sesame(null,listdivSESSION);" title="click to view / hide session history" class="statushead">Session History (<span id="numlistitemsSESSION">-</span>)</div>
+<div class="status" id="listdivSESSION"><br>Your query history will be displayed here. It can be edited or re-set.<br><br></div>
 
 
 <p>The RTX team presents its pilot Reasoning Tool for evaluation. This page provides a simple web interface on top of the OpenAPI web service interface to RTX. At present only a few question types are supported. Select from one of the example queries to test the tool. Different drugs, diseases, etc. may be substituted for the default ones, but note that not all drugs, diseases, etc. are yet present in our knowledge graph.</p>

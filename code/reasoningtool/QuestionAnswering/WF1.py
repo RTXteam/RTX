@@ -33,7 +33,7 @@ module1_xray_results_json = response_content.json()
 
 ################################################################
 # X-ray module 2: gene-centric approach
-request = {"query_type_id": "Q55", "terms": {"disease": input_disease}}
+request = {"query_type_id": "Q55", "terms": {"disease": input_disease}, "bypass_cache": "true"}
 
 #### Send the request to RTX and check the status
 response_content = requests.post(xray_url_str, json=request, headers={'accept': 'application/json'})

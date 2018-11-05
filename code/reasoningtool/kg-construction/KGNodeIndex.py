@@ -265,7 +265,7 @@ class KGNodeIndex:
     #engine.execute("CREATE INDEX idx_name ON kgnode"+TESTSUFFIX+"(name)")
 
 
-  def get_curies(self,name):
+  def get_curies_and_types(self,name):
     #### Ensure that we are connected
     self.connect()
     session = self.session
@@ -285,9 +285,22 @@ class KGNodeIndex:
     if matches is None: return None
 
     #### Return a list of curies
-    curies = []
+    curies_and_types = []
     for match in matches:
-      curies.append(match.curie)
+      curies_and_types.append( { "curie": match.curie, "type": match.type } )
+    return(curies_and_types)
+
+
+  def get_curies(self,name):
+
+    curies_and_types = self.get_curies_and_types(name)
+
+    if curies_and_types is None: return None
+
+    #### Return a list of curies
+    curies = []
+    for curies_and_type in curies_and_types:
+      curies.append(curies_and_type["curie"])
     return(curies)
 
 

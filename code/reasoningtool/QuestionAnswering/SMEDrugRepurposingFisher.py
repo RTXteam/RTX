@@ -271,8 +271,10 @@ class SMEDrugRepurposingFisher:
 		for drug in drugs_selected:
 			decorated_paths, decorated_path_edges, path_lengths = RU.get_top_shortest_paths(g, disease_id, drug,
 																							num_paths,
-																							property='merged')
-			for path_ind in range(num_paths):
+																							property='merged', num_nodes=7)  # we are looking for short paths with exactly 7 nodes in them: disease, symptom, disease, protein, pathway, protein, drug
+			# TODO: this can return paths that don't go through all the node types we want (since it's just the shortest paths).
+			# will need to return all the shortest paths, then pick the top k that go through the nodes we want
+			for path_ind in range(len(decorated_paths)):
 				g2 = nx.Graph()
 				path = decorated_paths[path_ind]
 				for node_prop in path:
@@ -291,14 +293,24 @@ class SMEDrugRepurposingFisher:
 
 		# print out the results
 		if not use_json:
+			num_shown = 0
 			for graph, weight, drug_id in graph_weight_tuples:
+				num_shown += 1
+				if num_shown > num_show:
+					break
 				drug_description = RU.get_node_property(drug_id, "name", node_label="chemical_substance")
 				print("%s %f" % (drug_description, weight))
 		else:
+			# add the neighborhood graph
+			response.add_neighborhood_graph(g.nodes(data=True), g.edges(data=True))
 			response.response.table_column_names = ["disease name", "disease ID", "drug name", "drug ID", "path weight",
 													"drug disease google distance",
 													"ML probability drug treats disease"]
+			num_shown = 0
 			for graph, weight, drug_id in graph_weight_tuples:
+				num_shown += 1
+				if num_shown > num_show:
+					break
 				drug_description = RU.get_node_property(drug_id, "name", node_label="chemical_substance")
 				drug_id_old_curie = drug_id.replace("CHEMBL.COMPOUND:CHEMBL", "ChEMBL:")
 				# Machine learning probability of "treats"

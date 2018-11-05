@@ -212,7 +212,10 @@ class FormatResponse:
 		node_uuids2curie = dict()
 		for u, data in nodes:
 			node_keys.append(u)
-			node_descriptions[u] = data['properties']['description']
+			if 'description' in data['properties']:
+				node_descriptions[u] = data['properties']['description']
+			else:
+				node_descriptions[u] = "None"
 			node_names[u] = data['properties']['name']
 			node_labels[u] = list(set(data['labels']).difference({'Base'}))[0]
 			node_uuids[u] = data['properties']['UUID']
@@ -238,7 +241,7 @@ class FormatResponse:
 			edge_source_db[(u, v)] = data['properties']['provided_by']
 			edge_source_iri[(u, v)] = node_uuids2iri[data['properties']['source_node_uuid']]
 			edge_target_iri[(u, v)] = node_uuids2iri[data['properties']['target_node_uuid']]
-			edge_source_curie[(u,v)] = node_uuids2curie[data['properties']['source_node_uuid']]
+			edge_source_curie[(u, v)] = node_uuids2curie[data['properties']['source_node_uuid']]
 			edge_target_curie[(u, v)] = node_uuids2curie[data['properties']['target_node_uuid']]
 
 		# For each node, populate the relevant information
@@ -265,6 +268,7 @@ class FormatResponse:
 			#edge.origin_list = []
 			#edge.origin_list.append(edge_source_db[(u, v)])  # TODO: check with eric if this really should be a list and if it should contain the source DB('s)
 			edge.provided_by = edge_source_db[(u, v)]
+			edge.is_defined_by = "RTX"
 			edge_objects.append(edge)
 
 		# Create the result (potential answer)

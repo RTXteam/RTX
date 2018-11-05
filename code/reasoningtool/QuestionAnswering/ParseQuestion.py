@@ -81,7 +81,12 @@ class ParseQuestion:
 		question = self._question_templates[ind]
 		parameters = question.get_parameters(input_question)
 		# Throw in the extra parameters from the parsed question
-		parameters = {**parameters, **question.other_parameters}
+		to_populate = parameters
+		for key,val in question.other_parameters.items():
+			if key not in to_populate:
+				to_populate[key] = val
+		#parameters = {**parameters, **question.other_parameters}
+		parameters = to_populate
 		return question, parameters, error_message, error_code
 
 	def get_execution_string(self, query_type_id, parameters):
@@ -99,7 +104,8 @@ class ParseQuestion:
 		for k, v in parameters.items():
 			all_parameters[k] = v
 		for k, v in q.other_parameters.items():
-			all_parameters[k] = v
+			if k not in parameters:
+				all_parameters[k] = v
 		execution_string = q.solution_script.safe_substitute(all_parameters)
 
 		if "$" in execution_string:
