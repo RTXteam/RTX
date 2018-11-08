@@ -1,6 +1,7 @@
 import requests
 import requests_cache
 import hashlib
+import time
 
 _DEFAULT_HEADERS = requests.utils.default_headers()
 
@@ -53,6 +54,8 @@ if __name__ == '__main__':
     res = requests.get(url)
     res = requests.get(url1)
 
+    t = time.time()
     print(get_timestamp(url))
     print(get_timestamp(url1))
     print(get_timestamp(url2))
+    print("Time used: ", time.time() - t)
