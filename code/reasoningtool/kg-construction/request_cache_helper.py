@@ -6,8 +6,13 @@ _DEFAULT_HEADERS = requests.utils.default_headers()
 
 requests_cache.install_cache("orangeboard")
 
-def get_timestamp(url):
 
+def get_timestamp(url):
+    """
+    get the timestamp of an HTTP get request
+    :param url: the URL of the request
+    :return the timestamp of the request, of None if the request is not in the cache
+    """
     def _to_bytes(s, encoding='utf-8'):
         return bytes(s, encoding)
 
@@ -24,8 +29,15 @@ def get_timestamp(url):
         session = requests.Session()
         return create_key(session.prepare_request(requests.Request('GET', url)))
 
+    #   get the cache from request_cache
     results = requests_cache.get_cache()
+    #   create the key according to the url
     key_url = url_to_key(url)
+    #   results.responses is a dictionary and follows the following format:
+    #   { 'key': (requests_cache.backends objects, timestamp), ..., }
+    #   for example: '4c28e3e4a61e325e520d9c02e0caee99e30c00951a223e67':
+    #                       (<requests_cache.backends.base._Store object at 0x12697e630>,
+    #                           datetime.datetime(2018, 10, 16, 0, 19, 8, 130204)),
     if key_url in results.responses:
         back_obj, timestamp = results.responses[key_url]
         return timestamp
