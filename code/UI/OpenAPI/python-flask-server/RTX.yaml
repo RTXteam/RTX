@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   description: "OpenAPI for RTX"
-  version: "1.3.0"
+  version: "1.4.0"
   title: "RTX"
   contact:
     email: "edeutsch@systemsbiology.org"
@@ -34,11 +34,11 @@ tags:
   externalDocs:
     description: "Documentation for the RTX PubmedMeshNgd function"
     url: "https://rtx.ncats.io/overview.html#PubmedMeshNgd"
-- name: "response"
-  description: "Request stored responses and feedback for responses"
+- name: "message"
+  description: "Request stored messages and feedback for messages"
   externalDocs:
-    description: "Documentation for the RTX response function"
-    url: "https://rtx.ncats.io/overview.html#response"
+    description: "Documentation for the RTX message function"
+    url: "https://rtx.ncats.io/overview.html#message"
 - name: "result"
   description: "Request stored results and feedback for results"
   externalDocs:
@@ -89,7 +89,7 @@ paths:
     post:
       tags:
       - "query"
-      summary: "Query RTX using a predefined question type"
+      summary: "Query RTX via one of several inputs"
       description: ""
       operationId: "query"
       consumes:
@@ -107,7 +107,7 @@ paths:
         200:
           description: "successful operation"
           schema:
-            $ref: "#/definitions/Response"
+            $ref: "#/definitions/Message"
         400:
           description: "Invalid status value"
       x-swagger-router-controller: "swagger_server.controllers.query_controller"
@@ -140,7 +140,7 @@ paths:
     get:
       tags:
       - "PubmedMeshNgd"
-      summary: "Query to get the Normalized Google Distance between two MeSH terms based on co-occurance in all PubMed article annotations"
+      summary: "Query to get the Normalized Google Distance between two MeSH terms based on co-occurrence in all PubMed article annotations"
       description: ""
       operationId: "PubmedMeshNgd"
       produces:
@@ -160,7 +160,7 @@ paths:
         200:
           description: "successful operation"
           schema:
-            $ref: "#/definitions/MeshNgdResponse"
+            $ref: "#/definitions/MeshNgdMessage"
         400:
           description: "Invalid terms"
       x-swagger-router-controller: "swagger_server.controllers.pubmed_mesh_ngd_controller"
@@ -216,74 +216,52 @@ paths:
         200:
           description: "successful operation"
       x-swagger-router-controller: "swagger_server.controllers.feedback_controller"
-  /response/process:
-    post:
-      tags:
-      - "response"
-      summary: "Process a Response object from somewhere else, controlled by options"
-      description: ""
-      operationId: "post_response"
-      consumes:
-      - "application/json"
-      parameters:
-      - in: "body"
-        name: "body"
-        description: "Envelope for a Response that should be processed"
-        required: false
-        schema:
-          $ref: "#/definitions/ResponseEnvelope"
-      responses:
-        200:
-          description: "successful operation"
-        400:
-          description: "Invalid status value"
-      x-swagger-router-controller: "swagger_server.controllers.response_controller"
-  /response/{response_id}:
+  /message/{message_id}:
     get:
       tags:
-      - "response"
-      summary: "Request stored responses and results from RTX"
+      - "message"
+      summary: "Request stored messages and results from RTX"
       description: ""
-      operationId: "get_response"
+      operationId: "get_message"
       produces:
       - "application/json"
       parameters:
       - in: "path"
-        name: "response_id"
-        description: "Integer identifier of the response to return"
+        name: "message_id"
+        description: "Integer identifier of the message to return"
         required: true
         type: "integer"
       responses:
         200:
           description: "successful operation"
           schema:
-            $ref: "#/definitions/Response"
+            $ref: "#/definitions/Message"
         404:
-          description: "Response_id not found"
-      x-swagger-router-controller: "swagger_server.controllers.response_controller"
-  /response/{response_id}/feedback:
+          description: "Message_id not found"
+      x-swagger-router-controller: "swagger_server.controllers.message_controller"
+  /message/{message_id}/feedback:
     get:
       tags:
-      - "response"
-      summary: "Request stored feedback for this response from RTX"
+      - "message"
+      summary: "Request stored feedback for this message from RTX"
       description: ""
-      operationId: "get_response_feedback"
+      operationId: "get_message_feedback"
       produces:
       - "application/json"
       parameters:
       - in: "path"
-        name: "response_id"
-        description: "Integer identifier of the response to return"
+        name: "message_id"
+        description: "Integer identifier of the message to return"
         required: true
         type: "integer"
       responses:
         200:
           description: "successful operation"
           schema:
-            $ref: "#/definitions/ResponseFeedback"
+            $ref: "#/definitions/MessageFeedback"
         404:
-          description: "Response_id not found"
-      x-swagger-router-controller: "swagger_server.controllers.response_controller"
+          description: "Message_id not found"
+      x-swagger-router-controller: "swagger_server.controllers.message_controller"
   /result/{result_id}:
     get:
       tags:
@@ -373,53 +351,149 @@ definitions:
         enum:
         - "English"
     additionalProperties: true
+  MeshNgdMessage:
+    type: "object"
+    properties:
+      result_code:
+        type: "string"
+        example: "TermNotFound"
+        description: "Set to OK for success, or some other short string to indicate and error (e.g., TermNotFound, etc.)"
+      message:
+        type: "string"
+        example: "Term 1 'malria' not found in MeSH"
+        description: "Extended message denoting the success or mode of failure for request"
+      value:
+        type: "number"
+        format: "float"
+        description: "Calculated Normalized Google Distance for the two supplied terms"
+        example: 0.714
   Query:
     type: "object"
     properties:
-      original_question:
-        type: "string"
-        example: "what genetic conditions offer protection against malaria"
-        description: "Original question as it was typed in by the user"
-      restated_question:
-        type: "string"
-        example: "Which genetic conditions may offer protection against malaria?"
-        description: "Restatement of the question as understood by the translator"
-      message:
-        type: "string"
-        example: "Your question was understood."
-        description: "Response from the translation engine to the user"
-      known_query_type_id:
-        type: "string"
-        example: "DEPRECATED"
-        description: "DEPRECATED in favor of query_type_id"
-      query_type_id:
-        type: "string"
-        example: "Q1"
-        description: "Identifier for the specific query type"
       bypass_cache:
         type: "string"
         example: "true"
-        description: "Set to true in order to bypass any possible cached response and try to answer the query over again"
+        description: "Set to true in order to bypass any possible cached message and try to answer the query over again"
       asynchronous:
         type: "string"
-        example: "False"
-        description: "Set to true in order to receive an incomplete response_id if the query will take a while. Client can then periodically request that response_id for a status update and eventual complete response"
-      options:
-        type: "string"
-        example: "coalesce=True,threshold=0.9"
-        description: "A string of options that can be sent with the query. Options are tool specific and not stipulated here"
+        example: "false"
+        description: "Set to true in order to receive an incomplete message_id if the query will take a while. Client can then periodically request that message_id for a status update and eventual complete message"
       max_results:
         type: "integer"
-        example: "100"
+        example: 100
         description: "Maximum number of individual results to return"
       page_size:
         type: "integer"
-        example: 100
+        example: 20
         description: "Split the results into pages with this number of results each"
       page_number:
         type: "integer"
         example: 1
         description: "Page number of results when the number of results exceeds the page_size"
+      reasoner_ids:
+        type: "array"
+        example: [ "RTX", "Robokop" ]
+        description: "List of reasoners to consult for the query"
+        items:
+          type: "string"
+      query_message:
+        type: "object"
+        description: "Message object that represents the query to be answered"
+        items:
+          $ref: "#/definitions/Message"
+      previous_message_processing_plan:
+        type: "object"
+        description: "Container for one or more Message objects or identifiers for one or more Messages along with a processing plan for how those messages should be processed and returned"
+        items:
+          $ref: "#/definitions/PreviousMessageProcessingPlan"
+    additionalProperties: true
+  PreviousMessageProcessingPlan:
+    type: "object"
+    properties:
+      previous_message_uris:
+        type: "array"
+        example: [ "https://rtx.ncats.io/api/rtx/v1/message/300" ]
+        description: "List of URIs for Message objects to fetch and process"
+        items:
+          type: "string"
+      previous_messages:
+        type: "array"
+        description: "List of Message objects to process"
+        items:
+          $ref: "#/definitions/Message"
+      processing_actions:
+        type: "array"
+        example: [ "mod45filter", "redirect2RTX" ]
+        description: "List of order-dependent actions to guide what happens with the Message object(s)"
+        items:
+          type: "string"
+      options:
+        type: "object"
+        example: [ "topNMostFrequent" ]
+        description: "Dict of options that apply during processing in an order independent fashion"
+        additionalProperties: true
+    additionalProperties: true
+  Message:
+    type: "object"
+    properties:
+      context:
+        type: "string"
+        example: "https://rtx.ncats.io/ns/translator.jsonld"
+        description: "JSON-LD context URI"
+      type:
+        type: "string"
+        example: "translator_reasoner_message"
+        description: "Entity type of this message"
+      id:
+        type: "string"
+        example: "https://rtx.ncats.io/api/rtx/v1/message/123"
+        description: "URI for this message"
+      reasoner_id:
+        type: "string"
+        example: "reasoner"
+        description: "Identifier string of the reasoner that provided this message (one of RTX, Robokop, Indigo, Integrator, etc.)"
+      tool_version:
+        type: "string"
+        example: "RTX 0.5.0"
+        description: "Version label of the tool that generated this message"
+      schema_version:
+        type: "string"
+        example: "0.9.0"
+        description: "Version label of this JSON-LD schema"
+      datetime:
+        type: "string"
+        example: "2018-01-09 12:34:45"
+        description: "Datetime string for the time that this message was generated"
+      n_results:
+        type: "integer"
+        example: 42
+        description: "Total number of results from the query (which may be less than what is returned if limits were placed on the number of results to return)"
+      message_code:
+        type: "string"
+        example: "OK"
+        description: "Set to OK for success, or some other short string to indicate and error (e.g., KGUnavailable, TermNotFound, etc.)"
+      code_description:
+        type: "string"
+        example: "9 results found"
+        description: "Extended description denoting the success or mode of failure in the generation of the message"
+      table_column_names:
+        type: "array"
+        example: [ "chemical_substance.name", "chemical_substance.id" ]
+        description: "List of column names that corresponds to the row_data for each result"
+        items:
+          type: "string"
+      original_question:
+        type: "string"
+        example: "what proteins are affected by sickle cell anemia"
+        description: "The original question text typed in by the user"
+      restated_question:
+        type: "string"
+        example: "Which proteins are affected by sickle cell anemia?"
+        description: "A precise restatement of the question, as understood by the Translator, for which the answer applies. The user should verify that the restated question matches the intent of their original question (it might not)."
+      query_type_id:
+        type: "string"
+        example: "Q2"
+        description: "The query type id if one is known for the query/message (as defined in https://docs.google.com/spreadsheets/d/18zW81wteUfOn3rFRVG0z8mW-ecNhdsfD_6s73ETJnUw/edit#gid=1742835901 )"
       terms:
         type: "object"
         description: "Dict of terms needed by the specific query type"
@@ -440,117 +514,30 @@ definitions:
             type: "string"
             example: "ibuprofen"
         additionalProperties: true
-      reasoner_ids:
-        type: "array"
-        example: [ "RTX", "Robokop", "Indigo" ]
-        description: "List of reasoners to consult for the query"
-        items:
-          type: "string"
-      query_plan:
-        type: "array"
-        example: [ { "node_type": "chemical_substance", "node_name": "ibuprofen" }, { "edge_type": "interacts_with" }, { "node_type": "protein" } ]
-        description: "List of node types and edge types in a series that constitute a query plan. Experimental."
-        items:
-          type: "object"
-    additionalProperties: true
-  ResponseEnvelope:
-    type: "object"
-    properties:
-      responseURIs:
-        type: "array"
-        example: [ "https://rtx.ncats.io/api/rtx/v1/response/300" ]
-        description: "List of URIs for Response objects to fetch and process"
-        items:
-          type: "string"
-      responses:
-        type: "array"
-        description: "List of Response objects to process"
-        items:
-          $ref: "#/definitions/Response"
-      options:
-        type: "array"
-        example: [ "mod45filter", "redirect2RTX" ]
-        description: "List of options to guide what happens with the Response object(s)"
-        items:
-          type: "string"
-    additionalProperties: true
-  Response:
-    type: "object"
-    properties:
-      context:
-        type: "string"
-        example: "https://rtx.ncats.io/ns/translator.jsonld"
-        description: "JSON-LD context URI"
-      type:
-        type: "string"
-        example: "medical_translator_query_result"
-        description: "Entity type of this response"
-      id:
-        type: "string"
-        example: "https://rtx.ncats.io/api/rtx/v1/response/1234"
-        description: "URI for this response"
-      reasoner_id:
-        type: "string"
-        example: "RTX"
-        description: "Identifier string of the reasoner that provided this response (e.g., RTX, Robokop, Indigo, Integrator)"
-      tool_version:
-        type: "string"
-        example: "RTX 0.4.0"
-        description: "Version label of the tool that generated this response"
-      schema_version:
-        type: "string"
-        example: "0.8.0"
-        description: "Version label of this JSON-LD schema"
-      datetime:
-        type: "string"
-        example: "2018-01-09 12:34:45"
-        description: "ISO standard datetime string for the time that this response was generated"
-      original_question_text:
-        type: "string"
-        example: "what proteins are affected by sickle cell anemia"
-        description: "The original question text typed in by the user"
-      restated_question_text:
-        type: "string"
-        example: "Which proteins are affected by sickle cell anemia?"
-        description: "A precise restatement of the question, as understood by the Translator, for which the answer applies. The user should verify that the restated question matches the intent of their original question (it might not)."
-      known_query_type_id:
-        type: "string"
-        example: "DEPRECATED"
-        description: "DEPRECATED"
-      query_type_id:
-        type: "string"
-        example: "Q2"
-        description: "The query type id if one is known for the query/response (as defined in https://docs.google.com/spreadsheets/d/18zW81wteUfOn3rFRVG0z8mW-ecNhdsfD_6s73ETJnUw/edit#gid=1742835901 )"
-      terms:
+      query_options:
         type: "object"
-        example: "{ 'disease': 'malaria' }"
-        description: "The is string of the query type id if one is known for the query/response"
-      n_results:
-        type: "integer"
-        example: 42
-        description: "Total number of results in the response (which may be less than what is returned if limits were placed on the results to return)"
-      response_code:
-        type: "string"
-        example: "OK"
-        description: "Set to OK for success, or some other short string to indicate and error (e.g., KGUnavailable, TermNotFound, etc.)"
-      result_code:
-        type: "string"
-        example: "OK"
-        description: "DEPRECATED"
-      message:
-        type: "string"
-        example: "1 answer found"
-        description: "Extended message denoting the success or mode of failure for the response"
-      table_column_names:
-        type: "array"
-        example: [ "chemical_substance.name", "chemical_substance.id" ]
-        description: "List of column names that corresponds to the row_data for each result"
-        items:
-          type: "string"
-      result_list:
+        example: "{coalesce=True,threshold=0.9}"
+        description: "Dict of options that can be sent with the query. Options are tool specific and not stipulated here"
+      results:
+        description: "List of all returned potential answers for the query posed"
         type: "array"
         items:
           $ref: "#/definitions/Result"
+      query_graph:
+        type: "object"
+        description: "QueryGraph object that contains a serialization of a query in the form of a graph"
+        items:
+          $ref: "#/definitions/QueryGraph"
+      knowledge_graph:
+        type: "object"
+        description: "KnowledgeGraph object that contains all the nodes and edges referenced in any of the possible answers to the query"
+        items:
+          $ref: "#/definitions/KnowledgeGraph"
+      remote_knowledge_graph:
+        type: "object"
+        description: "Connection information for a remote knowledge graph that is a substitute for local KnowledgeGraph contained in this Message"
+        items:
+          $ref: "#/definitions/RemoteKnowledgeGraph"
     additionalProperties: true
   Result:
     type: "object"
@@ -558,22 +545,22 @@ definitions:
     properties:
       id:
         type: "string"
-        example: "https://rtx.ncats.io/api/rtx/v1/result/2345"
-        description: "URI for this response"
+        example: "https://rtx.ncats.io/api/rtx/v1/result/234"
+        description: "URI for this message"
       description:
         type: "string"
         example: "The genetic condition sickle cell anemia may provide protection\
           \ from cerebral malaria via genetic alterations of proteins HBB (P68871)\
           \ and HMOX1 (P09601)."
         description: "A free text description of this result answer from the reasoner"
-      text:
-        type: "string"
-        example: "DEPRECATED"
-        description: "DEPRECATED"
       essence:
         type: "string"
         example: "ibuprofen"
         description: "A single string that is the terse essence of the result (useful for simple answers)"
+      essence_type:
+        type: "string"
+        example: "drug"
+        description: "A Translator bioentity type of the essence"
       row_data:
         type: "array"
         example: [ "ibuprofen", "CHEMBL:CHEMBL521" ]
@@ -584,23 +571,23 @@ definitions:
         type: "number"
         format: "float"
         example: 163.233
-        description: "Any type of score associated with this result (highest confidence)"
+        description: "Any type of score associated with this result"
       score_name:
         type: "string"
         example: "Jaccard distance"
         description: "Name for the score"
       score_direction:
         type: "string"
-        example: "Jaccard distance"
+        example: "lower_is_better"
         description: "Sorting indicator for the score: one of higher_is_better or lower_is_better"
       confidence:
         type: "number"
         format: "float"
         example: 0.9234
-        description: "Confidence metric for this result, a value 0.0 (no confidence) and 1.0 (highest confidence)"
+        description: "Confidence metric for this result, a value between (inclusive) 0.0 (no confidence) and 1.0 (highest confidence)"
       result_type:
         type: "string"
-        example: "answer"
+        example: "individual query answer"
         description: "One of several possible result types: 'individual query answer', 'neighborhood graph', 'type summary graph'"
       result_group:
         type: "integer"
@@ -616,20 +603,116 @@ definitions:
         example: "RTX"
         description: "Identifier string of the reasoner that provided this result (e.g., RTX, Robokop, Indigo, Integrator)"
       result_graph:
-        $ref: "#/definitions/Result_graph"
-    additionalProperties: true
-  Result_graph:
+        type: "object"
+        description: "A graph that describes the thought pattern of this result (i.e. answer to the query)"
+        $ref: "#/definitions/KnowledgeGraph"
+      knowledge_map:
+        type: "object"
+        description: "Lookup dict that maps QNode and QEdge identifiers in the QueryGraph to Node and Edge identifiers in the KnowledgeGraph"
+        additionalProperties: true
+  KnowledgeGraph:
     type: "object"
     description: "A thought graph associated with this result. This will commonly be a linear path subgraph from one concept to another, but related items aside of the path may be included."
     properties:
-      node_list:
+      nodes:
         type: "array"
+        description: "List of nodes in the KnowledgeGraph"
         items:
           $ref: "#/definitions/Node"
-      edge_list:
+      edges:
         type: "array"
+        description: "List of edges in the KnowledgeGraph"
         items:
           $ref: "#/definitions/Edge"
+    additionalProperties: true
+  RemoteKnowledgeGraph:
+    type: "object"
+    description: "A thought graph associated with this result that is not repeated here, but stored elsewhere in a way that can be remotely accessed by the reader of this Message"
+    properties:
+      url:
+        type: "string"
+        example: "http://robokop.renci.org/api/kg"
+        description: "URL that provides programmatic access to the remote knowledge graph"
+      credentials:
+        type: "object"
+        description: "Credentials needed for programmatic access to the remote knowledge graph"
+        items:
+          $ref: "#/definitions/Credentials"
+    additionalProperties: true
+  Credentials:
+    description: "Credentials needed for programmatic access to the remote knowledge graph"
+    type: "object"
+    required:
+      - username
+      - password
+    properties:
+      username:
+        description: "Username needed for programmatic access to the remote knowledge graph"
+        type: string
+      password:
+        type: string
+        description: "Password needed for programmatic access to the remote knowledge graph"
+    additionalProperties: true
+  QueryGraph:
+    type: "object"
+    description: "A graph intended to be the thought path to be followed by a reasoner to answer the question. This graph is a representation of a question."
+    properties:
+      nodes:
+        type: "array"
+        description: "List of nodes in the QueryGraph"
+        items:
+          $ref: "#/definitions/QNode"
+      edges:
+        type: "array"
+        description: "List of edges in the QueryGraph"
+        items:
+          $ref: "#/definitions/QEdge"
+    additionalProperties: true
+  QNode:
+    type: "object"
+    description: "A node in the QueryGraph"
+    properties:
+      node_id:
+        type: "string"
+        example: "n00"
+        description: "QueryGraph internal identifier for this QNode. Recommended form: n00, n01, n02, etc."
+      curie:
+        type: "string"
+        example: "OMIM:603903"
+        description: "CURIE identifier for this node"
+      type:
+        type: "string"
+        description: "Entity type of this node (e.g., protein, disease, etc.)"
+        example: "disease"
+    additionalProperties: true
+  QEdge:
+    type: "object"
+    description: "An edge in the QueryGraph"
+    properties:
+      edge_id:
+        type: "string"
+        example: "e00"
+        description: "QueryGraph internal identifier for this QEdge. Recommended form: e00, e01, e02, etc."
+      type:
+        type: "string"
+        example: "affects"
+        description: "Higher-level relationship type of this edge"
+      relation:
+        type: "string"
+        example: "upregulates"
+        description: "Lower-level relationship type of this edge"
+      source_id:
+        type: "string"
+        example: "https://omim.org/entry/603903"
+        description: "Corresponds to the @id of source node of this edge"
+      target_id:
+        type: "string"
+        example: "https://www.uniprot.org/uniprot/P00738"
+        description: "Corresponds to the @id of target node of this edge"
+      negated:
+        type: "boolean"
+        example: "true"
+        description: "Boolean that if set to true, indicates the edge statement is negated i.e. is not true"
     additionalProperties: true
   Node:
     type: "object"
@@ -648,9 +731,11 @@ definitions:
         example: "Haptoglobin"
         description: "Formal name of the entity"
       type:
-        type: "string"
-        example: "protein"
+        type: "array"
         description: "Entity type of this node (e.g., protein, disease, etc.)"
+        example: [ "protein" ]
+        items:
+          type: "string"
       description:
         type: "string"
         example: "Haptoglobin captures, and combines with free plasma hemoglobin..."
@@ -663,9 +748,9 @@ definitions:
         type: "array"
         description: "A list of arbitrary attributes for the node"
         items:
-          $ref: "#/definitions/Node_attribute"
+          $ref: "#/definitions/NodeAttribute"
     additionalProperties: true
-  Node_attribute:
+  NodeAttribute:
     type: "object"
     description: "A generic attribute for a node"
     properties:
@@ -690,13 +775,17 @@ definitions:
     type: "object"
     description: "An edge in the thought subgraph linking two nodes"
     properties:
+      id:
+        type: "string"
+        example: "553903"
+        description: "Local identifier for this node which is unique within this KnowledgeGraph, and perhaps within the source reasoner's knowledge graph"
       type:
         type: "string"
         example: "affects"
         description: "Higher-level relationship type of this edge"
       relation:
         type: "string"
-        example: "affects"
+        example: "upregulates"
         description: "Lower-level relationship type of this edge"
       source_id:
         type: "string"
@@ -708,8 +797,12 @@ definitions:
         description: "Corresponds to the @id of target node of this edge"
       is_defined_by:
         type: "string"
-        example: "RTX"
+        example: "reasoner"
         description: "A CURIE/URI for the translator group that made the KG"
+      defined_datetime:
+        type: "string"
+        example: "2018-11-03 15:34:23"
+        description: "Datetime at which the KG builder/updater pulled the information from the original source. Used as a freshness indicator."
       provided_by:
         type: "string"
         example: "OMIM"
@@ -718,11 +811,18 @@ definitions:
         type: "number"
         format: "float"
         example: 0.99
-        description: "Confidence metric for this edge, a value 0.0 (no confidence) and 1.0 (highest confidence)"
+        description: "Confidence metric for this edge, a value between (inclusive) 0.0 (no confidence) and 1.0 (highest confidence)"
+      weight:
+        type: "number"
+        format: "float"
+        example: 0.99
+        description: "Weight metric for this edge, with no upper bound. Perhaps useful when formal confidence metrics are not available"
       publications:
-        type: "string"
-        example: "PubMed:12345562"
-        description: "A CURIE/URI for publications associated with this edge"
+        type: "array"
+        description: "List of CURIEs for publications associated with this edge"
+        example: [ "PMID:12345562" ]
+        items:
+          type: "string"
       evidence_type:
         type: "string"
         example: "ECO:0000220"
@@ -735,13 +835,13 @@ definitions:
         type: "boolean"
         example: "true"
         description: "Boolean that if set to true, indicates the edge statement is negated i.e. is not true"
-      attribute_list:
+      edge_attributes:
         type: "array"
         description: "A list of additional attributes for this edge"
         items:
-          $ref: "#/definitions/Edge_attribute"
+          $ref: "#/definitions/EdgeAttribute"
     additionalProperties: true
-  Edge_attribute:
+  EdgeAttribute:
     type: "object"
     description: "A generic additional attribute for an edge"
     properties:
@@ -768,11 +868,11 @@ definitions:
     properties:
       id:
         type: "string"
-        example: "https://rtx.ncats.io/api/rtx/v1/result/2345/feedback/4567"
+        example: "https://rtx.ncats.io/api/rtx/v1/result/234/feedback/56"
         description: "URI for this feedback item"
       result_id:
         type: "string"
-        example: "https://rtx.ncats.io/api/rtx/v1/result/2345"
+        example: "https://rtx.ncats.io/api/rtx/v1/result/234"
         description: "URI for the result that this feedback corresponds to"
       expertise_level_id:
         type: "integer"
@@ -804,29 +904,15 @@ definitions:
     properties:
       feedback_list:
         type: "array"
+        description: "List of feedback posts for this result"
         items:
           $ref: "#/definitions/Feedback"
-  ResponseFeedback:
+  MessageFeedback:
     type: "object"
-    description: "Feedback for all the results corresponding to this response"
+    description: "Feedback for all the results corresponding to this message"
     properties:
       feedback_list:
         type: "array"
+        description: "List of feedback posts for this entire message"
         items:
           $ref: "#/definitions/Feedback"
-  MeshNgdResponse:
-    type: "object"
-    properties:
-      result_code:
-        type: "string"
-        example: "TermNotFound"
-        description: "Set to OK for success, or some other short string to indicate and error (e.g., TermNotFound, etc.)"
-      message:
-        type: "string"
-        example: "Term 1 'malria' not found in MeSH"
-        description: "Extended message denoting the success or mode of failure for request"
-      value:
-        type: "number"
-        format: "float"
-        description: "Calculated Normalized Google Distance for the two supplied terms"
-        example: 0.714
