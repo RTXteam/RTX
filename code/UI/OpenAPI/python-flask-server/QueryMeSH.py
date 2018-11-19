@@ -18,7 +18,7 @@ import requests_cache
 import time
 import datetime
 
-from swagger_server.models.response import Response
+from swagger_server.models.message import Message
 from swagger_server.models.result import Result
 from swagger_server.models.result_graph import ResultGraph
 from swagger_server.models.node import Node
@@ -29,15 +29,15 @@ from swagger_server.models.node_attribute import NodeAttribute
 def make_throttle_hook(timeout=1.0):
     """
     From: https://requests-cache.readthedocs.io/en/latest/user_guide.html#usage
-    Returns a response hook function which sleeps for `timeout` seconds if
-    response is not cached
+    Returns a message hook function which sleeps for `timeout` seconds if
+    message is not cached
     """
-    def hook(response, *args, **kwargs):
+    def hook(message, *args, **kwargs):
         #print("In hook")
-        if not getattr(response, 'from_cache', False):
+        if not getattr(message, 'from_cache', False):
             #print("sleeping "+str(timeout))
             time.sleep(timeout)
-        return response
+        return message
     return hook
 
 
@@ -54,7 +54,7 @@ class QueryMeSH:
         #print(url_str)
         #res = requests.get(url_str, headers={'accept': 'application/json'})
         cache = requests_cache.CachedSession()
-        cache.hooks = {'response': self.hooks}
+        cache.hooks = {'message': self.hooks}
         res = cache.get(url_str, headers={'accept': 'application/json'})
         status_code = res.status_code
         #print("status_code="+str(status_code))
@@ -99,18 +99,18 @@ class QueryMeSH:
         return attributes
 
 
-    def createResponse(self):
-        #### Create the response object and fill it with attributes about the response
-        response = Response()
-        response.response_code = "OK"
-        response.message = "1 result found"
-        return response
+    def createMessage(self):
+        #### Create the message object and fill it with attributes about the message
+        message = Message()
+        message.message_code = "OK"
+        message.description = "1 result found"
+        return message
 
 
     def queryTerm(self, term):
         method = "queryTerm"
         attributes = self.findTermAttributesAndTypeByName(term)
-        response = self.createResponse()
+        message = self.createMessage()
         if ( attributes["status"] == 'OK' ):
             node1 = Node()
             node1.id = "MESH:" + attributes["id"]
@@ -127,21 +127,21 @@ class QueryMeSH:
 
             #### Create a ResultGraph object and put the list of nodes and edges into it
             result_graph = ResultGraph()
-            result_graph.node_list = [ node1 ]
+            result_graph.nodes = [ node1 ]
 
             #### Put the ResultGraph into the first result (potential answer)
             result1.result_graph = result_graph
 
-            #### Put the first result (potential answer) into the response
-            result_list = [ result1 ]
-            response.result_list = result_list
+            #### Put the first result (potential answer) into the message
+            results = [ result1 ]
+            message.results = results
 
         else:
-            response.response_code = "TermNotFound"
-            response.message = "Unable to find term '" + term + "' in MeSH. No further information is available at this time."
-            response.id = None
+            message.message_code = "TermNotFound"
+            message.description = "Unable to find term '" + term + "' in MeSH. No further information is available at this time."
+            message.id = None
 
-        return response
+        return message
 
 
     def findTermAttributesById(self, termId):
