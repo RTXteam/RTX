@@ -102,6 +102,13 @@ function sendQuestion(e) {
 		jsonObj.bypass_cache = bypass_cache;
 		jsonObj.max_results = 100;
 
+		// Starting with version 0.9.0, query details must be in inside a query_message object
+		jsonObj.query_message = {};
+		jsonObj.query_message.query_type_id = jsonObj.query_type_id;
+		jsonObj.query_message.terms = jsonObj.terms;
+		jsonObj.query_message.original_question = jsonObj.original_question;
+		jsonObj.query_message.restated_question = jsonObj.restated_question;
+
 		sesame('openmax',statusdiv);
 		var xhr2 = new XMLHttpRequest();
 		xhr2.open("post", "api/rtx/v1/query", true);
