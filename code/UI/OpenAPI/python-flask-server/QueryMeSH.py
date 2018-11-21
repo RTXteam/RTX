@@ -23,6 +23,9 @@ from swagger_server.models.result import Result
 from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
+from swagger_server.models.query_graph import QueryGraph
+from swagger_server.models.q_node import QNode
+from swagger_server.models.q_edge import QEdge
 from swagger_server.models.edge_attribute import EdgeAttribute
 from swagger_server.models.node_attribute import NodeAttribute
 
@@ -159,6 +162,7 @@ class QueryMeSH:
 
             #### Create the corresponding knowledge_map
             knowledge_map = { "n00": "MESH:" + attributes["id"] }
+            result1.knowledge_map = knowledge_map
 
         else:
             message.message_code = "TermNotFound"
