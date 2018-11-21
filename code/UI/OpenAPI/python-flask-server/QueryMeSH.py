@@ -103,7 +103,7 @@ class QueryMeSH:
         #### Create the message object and fill it with attributes about the message
         message = Message()
         message.message_code = "OK"
-        message.code_description = "1 result found"
+        message.code_description = "??"
         return message
 
 
@@ -112,6 +112,10 @@ class QueryMeSH:
         attributes = self.findTermAttributesAndTypeByName(term)
         message = self.createMessage()
         if ( attributes["status"] == 'OK' ):
+            message.code_description = "1 result found"
+            message.table_column_names = [ "id", "type", "name", "description", "uri" ]
+
+            #### Create a Node object and fill it
             node1 = Node()
             node1.id = "MESH:" + attributes["id"]
             node1.uri = "http://purl.obolibrary.org/obo/MESH_" + attributes["id"]
@@ -126,6 +130,7 @@ class QueryMeSH:
             result1.confidence = 1.0
             result1.essence = attributes["name"]
             result1.essence_type = attributes["type"]
+            result1.row_data = [ node1.id, node1.type, node1.name, node1.description, node1.uri ]
 
             #### Create a KnowledgeGraph object and put the list of nodes and edges into it
             result_graph = KnowledgeGraph()
@@ -138,9 +143,26 @@ class QueryMeSH:
             results = [ result1 ]
             message.results = results
 
+            #### Also put the union of all result_graph components into the top Message KnowledgeGraph
+            #### Normally the knowledge_graph will be much more complex than this, but take a shortcut for this single-node result
+            message.knowledge_graph = result_graph
+
+            #### Also manufacture a query_graph post hoc
+            qnode1 = QNode()
+            qnode1.node_id = "n00"
+            qnode1.curie = "MESH:" + attributes["id"]
+            qnode1.type = None
+            query_graph = QueryGraph()
+            query_graph.nodes = [ qnode1 ]
+            query_graph.edges = []
+            message.query_graph = query_graph
+
+            #### Create the corresponding knowledge_map
+            knowledge_map = { "n00": "MESH:" + attributes["id"] }
+
         else:
             message.message_code = "TermNotFound"
-            message.code_description = "Unable to find term '" + term + "' in MeSH. No further information is available at this time."
+            message.code_description = "Unable to find this term in MeSH. No further information is available at this time."
             message.id = None
 
         return message
