@@ -242,7 +242,7 @@ class RTXFeedback:
     if message.reasoner_id is None:
       message.reasoner_id = "RTX"
     message.n_results = n_results
-    message.type = "NCATS_translator_message"
+    message.type = "translator_reasoner_message"
     message.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
     message.datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
