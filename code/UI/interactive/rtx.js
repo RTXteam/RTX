@@ -115,7 +115,7 @@ function sendQuestion(e) {
 			var jsonObj2 = JSON.parse(xhr2.responseText);
 			document.getElementById("devdiv").innerHTML += "================================================================= QUERY::<PRE>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
 
-			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question_text"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["message"]+"</I>";
+			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["code_description"]+"</I>";
 			sesame('openmax',statusdiv);
 
 			render_response(jsonObj2);
@@ -169,8 +169,8 @@ function retrieve_response() {
 			var jsonObj2 = JSON.parse(xhr.responseText);
 			document.getElementById("devdiv").innerHTML += "================================================================= RESPONSE REQUEST::<PRE>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
 
-			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question_text"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["message"]+"</I>";
-			document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question_text"];
+			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["code_description"]+"</I>";
+			document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question"];
 
 			sesame('openmax',statusdiv);
 
@@ -193,15 +193,15 @@ function retrieve_response() {
 function render_response(respObj) {
 	response_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
 
-	add_to_session(response_id,respObj.restated_question_text+"?");
+	add_to_session(response_id,respObj.restated_question+"?");
 
 	history.pushState({ id: 'RTX_UI' }, 'RTX | response='+response_id, "//"+ window.location.hostname + window.location.pathname + '?r='+response_id);
 
 	if ( respObj["table_column_names"] ) {
 		add_to_summary(respObj["table_column_names"],0);
 	}
-        if ( respObj["result_list"] ) {
-                add_result(respObj["result_list"]);
+        if ( respObj["results"] ) {
+                add_result(respObj["results"]);
                 add_feedback();
                 //sesame(h1_div,a1_div);
         }
@@ -288,11 +288,11 @@ function add_result(reslist) {
 
 
 	if (reslist[i].result_graph == null) {
-	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><br>"+reslist[i].text+"<br><br><span id='"+fid+"'><i>User Feedback</i></span></div>";
+	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><br>"+reslist[i].description+"<br><br><span id='"+fid+"'><i>User Feedback</i></span></div>";
 
 	}
 	else {
-	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table class='t100'><tr><td class='textanswer'>"+reslist[i].text+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+i+"].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout("+i+",\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout("+i+",\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout("+i+",\"circle\");'>C</a><br><a title='random layout' onclick='cylayout("+i+",\"random\");'>R</a>	</td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td><span id='"+fid+"'><i>User Feedback</i><hr><span id='"+fff+"'><a href='javascript:add_fefo(\""+rid+"\",\"a"+num+"_div\");'>Add Feedback</a></span><hr></span></td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
+	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table class='t100'><tr><td class='textanswer'>"+reslist[i].description+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+i+"].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout("+i+",\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout("+i+",\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout("+i+",\"circle\");'>C</a><br><a title='random layout' onclick='cylayout("+i+",\"random\");'>R</a>	</td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td><span id='"+fid+"'><i>User Feedback</i><hr><span id='"+fff+"'><a href='javascript:add_fefo(\""+rid+"\",\"a"+num+"_div\");'>Add Feedback</a></span><hr></span></td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
 
 
 	    if ( reslist[i].row_data ) {
@@ -302,24 +302,24 @@ function add_result(reslist) {
 	    cytodata[i] = [];
 	    var gd = reslist[i].result_graph;
 
-	    for (var g in gd.node_list) {
-		gd.node_list[g].parentdivnum = num; // helps link node to div when displaying node info on click
-		var tmpdata = { "data" : gd.node_list[g] }; // already contains id
+	    for (var g in gd.nodes) {
+		gd.nodes[g].parentdivnum = num; // helps link node to div when displaying node info on click
+		var tmpdata = { "data" : gd.nodes[g] }; // already contains id
 		cytodata[i].push(tmpdata);
 
 		// DEBUG
-		//document.getElementById("cy"+num).innerHTML += "NODE: name="+ gd.node_list[g].name + " -- accession=" + gd.node_list[g].accession + "<BR>";
+		//document.getElementById("cy"+num).innerHTML += "NODE: name="+ gd.nodes[g].name + " -- accession=" + gd.nodes[g].accession + "<BR>";
 	    }
 
-	    for (var g in gd.edge_list) {
+	    for (var g in gd.edges) {
 		var tmpdata = { "data" : 
 				{
 				    parentdivnum : num,
-				    id : gd.edge_list[g].source_id + '--' + gd.edge_list[g].target_id,
-				    source : gd.edge_list[g].source_id,
-				    target : gd.edge_list[g].target_id,
-				    type   : gd.edge_list[g].type,
-				    provided_by   : gd.edge_list[g].provided_by
+				    id : gd.edges[g].source_id + '--' + gd.edges[g].target_id,
+				    source : gd.edges[g].source_id,
+				    target : gd.edges[g].target_id,
+				    type   : gd.edges[g].type,
+				    provided_by   : gd.edges[g].provided_by
 				}
 			      };
 
