@@ -20,7 +20,7 @@ import datetime
 
 from swagger_server.models.message import Message
 from swagger_server.models.result import Result
-from swagger_server.models.result_graph import ResultGraph
+from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
 from swagger_server.models.edge_attribute import EdgeAttribute
@@ -54,7 +54,7 @@ class QueryMeSH:
         #print(url_str)
         #res = requests.get(url_str, headers={'accept': 'application/json'})
         cache = requests_cache.CachedSession()
-        cache.hooks = {'message': self.hooks}
+        cache.hooks = {'response': self.hooks}
         res = cache.get(url_str, headers={'accept': 'application/json'})
         status_code = res.status_code
         #print("status_code="+str(status_code))
@@ -103,7 +103,7 @@ class QueryMeSH:
         #### Create the message object and fill it with attributes about the message
         message = Message()
         message.message_code = "OK"
-        message.description = "1 result found"
+        message.code_description = "1 result found"
         return message
 
 
@@ -115,18 +115,20 @@ class QueryMeSH:
             node1 = Node()
             node1.id = "MESH:" + attributes["id"]
             node1.uri = "http://purl.obolibrary.org/obo/MESH_" + attributes["id"]
-            node1.type = attributes["type"]
+            node1.type = [ attributes["type"] ]
             node1.name = attributes["name"]
             node1.description = attributes["description"]
 
             #### Create the first result (potential answer)
             result1 = Result()
             result1.id = "http://rtx.ncats.io/api/v1/result/0000"
-            result1.text = "The term " + attributes["name"] + " refers to " + attributes["description"]
+            result1.description = "The term " + attributes["name"] + " refers to " + attributes["description"]
             result1.confidence = 1.0
+            result1.essence = attributes["name"]
+            result1.essence_type = attributes["type"]
 
-            #### Create a ResultGraph object and put the list of nodes and edges into it
-            result_graph = ResultGraph()
+            #### Create a KnowledgeGraph object and put the list of nodes and edges into it
+            result_graph = KnowledgeGraph()
             result_graph.nodes = [ node1 ]
 
             #### Put the ResultGraph into the first result (potential answer)
@@ -138,7 +140,7 @@ class QueryMeSH:
 
         else:
             message.message_code = "TermNotFound"
-            message.description = "Unable to find term '" + term + "' in MeSH. No further information is available at this time."
+            message.code_description = "Unable to find term '" + term + "' in MeSH. No further information is available at this time."
             message.id = None
 
         return message

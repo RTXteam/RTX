@@ -25,7 +25,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import desc
 from sqlalchemy import inspect
-
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 from RTXConfiguration import RTXConfiguration
 
@@ -58,7 +57,7 @@ class Message(Base):
 class Result(Base):
   __tablename__ = 'result09'
   result_id = Column(Integer, primary_key=True)
-  message_id = Column(Integer, ForeignKey('message.message_id'))   # for backward compat, this is retained as the *first* message_id
+  message_id = Column(Integer, ForeignKey('message09.message_id'))   # for backward compat, this is retained as the *first* message_id
   confidence = Column(Float, nullable=False)
   n_nodes = Column(Integer, nullable=False)
   n_edges = Column(Integer, nullable=False)
@@ -70,11 +69,11 @@ class Result(Base):
 class Message_result(Base):
   __tablename__ = 'message_result09'
   message_result_id = Column(Integer, primary_key=True)
-  result_id = Column(Integer, ForeignKey('result.result_id'))
-  message_id = Column(Integer, ForeignKey('message.message_id'))
+  result_id = Column(Integer, ForeignKey('result09.result_id'))
+  message_id = Column(Integer, ForeignKey('message09.message_id'))
 
 class Commenter(Base):
-  __tablename__ = 'commenter'
+  __tablename__ = 'commenter09'
   commenter_id = Column(Integer, primary_key=True)
   full_name = Column(String(255), nullable=False)
   email_address = Column(String(255), nullable=False)
@@ -82,7 +81,7 @@ class Commenter(Base):
 
 
 class Rating(Base):
-  __tablename__ = 'rating'
+  __tablename__ = 'rating09'
   rating_id = Column(Integer, primary_key=True)
   score = Column(Integer, nullable=False)
   tag = Column(String(50), nullable=False)
@@ -91,7 +90,7 @@ class Rating(Base):
 
 
 class Expertise_level(Base):
-  __tablename__ = 'expertise_level'
+  __tablename__ = 'expertise_level09'
   expertise_level_id = Column(Integer, primary_key=True)
   score = Column(Integer, nullable=False)
   tag = Column(String(50), nullable=False)
@@ -102,10 +101,10 @@ class Expertise_level(Base):
 class Result_rating(Base):
   __tablename__ = 'result_rating09'
   result_rating_id = Column(Integer, primary_key=True)
-  result_id = Column(Integer, ForeignKey('result.result_id'))
-  commenter_id = Column(Integer, ForeignKey('commenter.commenter_id'))
-  expertise_level_id = Column(Integer, ForeignKey('expertise_level.expertise_level_id'))
-  rating_id = Column(Integer, ForeignKey('rating.rating_id'))
+  result_id = Column(Integer, ForeignKey('result09.result_id'))
+  commenter_id = Column(Integer, ForeignKey('commenter09.commenter_id'))
+  expertise_level_id = Column(Integer, ForeignKey('expertise_level09.expertise_level_id'))
+  rating_id = Column(Integer, ForeignKey('rating09.rating_id'))
   comment_datetime = Column(DateTime, nullable=False)
   comment = Column(Text, nullable=True)
   result = relationship(Result)
@@ -239,26 +238,26 @@ class RTXFeedback:
     if message.tool_version is None:
       message.tool_version = rtxConfig.version
     if message.schema_version is None:
-      message.schema_version = "0.8.0"
+      message.schema_version = "0.9.0"
     if message.reasoner_id is None:
       message.reasoner_id = "RTX"
     message.n_results = n_results
-    message.type = "medical_translator_query_message"
+    message.type = "NCATS_translator_message"
     message.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
     message.datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    if message.restated_question_text is None:
-      message.restated_question_text = ""
-    if message.original_question_text is None:
-      message.original_question_text = ""
+    if message.restated_question is None:
+      message.restated_question = ""
+    if message.original_question is None:
+      message.original_question = ""
 
     termsString = "{}"
     if query is not None:
       if "terms" in query:
         termsString = stringifyDict(query["terms"])
 
-    storedMessage = Message(message_datetime=datetime.now(),restated_question=message.restated_question_text,query_type=query["query_type_id"],
-      terms=termsString,tool_version=rtxConfig.version,result_code=message.message_code,message=message.description,n_results=n_results,message_object=pickle.dumps(ast.literal_eval(repr(message))))
+    storedMessage = Message(message_datetime=datetime.now(),restated_question=message.restated_question,query_type=query["query_type_id"],
+      terms=termsString,tool_version=rtxConfig.version,result_code=message.message_code,message=message.code_description,n_results=n_results,message_object=pickle.dumps(ast.literal_eval(repr(message))))
     session.add(storedMessage)
     session.flush()
     message.id = "https://rtx.ncats.io/api/rtx/v1/message/"+str(storedMessage.message_id)
@@ -280,7 +279,7 @@ class RTXFeedback:
       for result in message.results:
         n_nodes = 0
         n_edges = 0
-        result_hash = result.text
+        result_hash = result.description
         if result.result_type is None:
           result.result_type = "individual query answer"
         if result.confidence is None:
@@ -305,7 +304,7 @@ class RTXFeedback:
           session.flush()
 
         else:
-          storedResult = Result(message_id=message_id,confidence=result.confidence,n_nodes=n_nodes,n_edges=n_edges,result_text=result.text,result_object=pickle.dumps(ast.literal_eval(repr(result))),result_hash=result_hash)
+          storedResult = Result(message_id=message_id,confidence=result.confidence,n_nodes=n_nodes,n_edges=n_edges,result_text=result.description,result_object=pickle.dumps(ast.literal_eval(repr(result))),result_hash=result_hash)
           session.add(storedResult)
           session.flush()
 
@@ -561,10 +560,10 @@ class RTXFeedback:
           message = self.getMessage(message_id)
           eprint(type(message))
           if not isinstance(message,tuple):
-            if debug: eprint("DEBUG: Original question was: "+message["original_question_text"])
+            if debug: eprint("DEBUG: Original question was: "+message["original_question"])
             messages.append(message)
             finalMessage_id = message_id
-            query = { "query_type_id": message["query_type_id"], "restated_question": message["restated_question_text"], "terms": message["terms"] }
+            query = { "query_type_id": message["query_type_id"], "restated_question": message["restated_question"], "terms": message["terms"] }
           else:
             eprint("ERROR: Unable to load message_id "+message_id)
             return( { "status": 404, "title": "Message not found", "detail": "There is no local message corresponding to message_id="+str(message_id), "type": "about:blank" }, 404)
@@ -583,12 +582,12 @@ class RTXFeedback:
               message["terms"] = { "dummyTerm": "giraffe" }
             if message["query_type_id"] is None:
               message["query_type_id"] = "UnknownQ"
-            if message["restated_question_text"] is None:
-              message["restated_question_text"] = "What is life?"
-            if message["original_question_text"] is None:
-              message["original_question_text"] = "what is life"
+            if message["restated_question"] is None:
+              message["restated_question"] = "What is life?"
+            if message["original_question"] is None:
+              message["original_question"] = "what is life"
 
-            query = { "query_type_id": message["query_type_id"], "restated_question": message["restated_question_text"], "original_question": message["original_question_text"], "terms": message["terms"] }
+            query = { "query_type_id": message["query_type_id"], "restated_question": message["restated_question"], "original_question": message["original_question"], "terms": message["terms"] }
           else:
             eprint("Uploaded message does not contain a results. May be the wrong format")
             return( { "status": 404, "title": "Bad uploaded Message", "detail": "There is no results in the uploaded Message object=", "type": "about:blank" }, 404)
@@ -661,8 +660,8 @@ class RTXFeedback:
       message.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
     if message.id is None or message.id == "":
       message.id = base_url + "/message/1234"
-    message.original_question_text = query["original_question"]
-    message.restated_question_text = query["restated_question"]
+    message.original_question = query["original_question"]
+    message.restated_question = query["restated_question"]
     message.reasoner_id = reasoner_id
     if message.message_code is None or message.message_code == "":
       message.message_code = "OK"
@@ -671,8 +670,8 @@ class RTXFeedback:
         message.n_results = len(message.results)
       else:
         message.n_results = 0
-    if message.message is None or message.message == "":
-      message.message = str(message.n_results) + " results returned"
+    if message.code_description is None or message.code_description == "":
+      message.code_description = str(message.n_results) + " results returned"
 
     if message.results is not None:
       result_id = 2345
@@ -692,7 +691,7 @@ class RTXFeedback:
     for result in message_to_merge.results:
       final_message.results.append(result)
     final_message.n_results = len(final_message.results)
-    final_message.message = str(final_message.n_results) + " merged reults"
+    final_message.code_description = str(final_message.n_results) + " merged reults"
     return(final_message)
 
 

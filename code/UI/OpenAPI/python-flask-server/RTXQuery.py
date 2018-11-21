@@ -41,14 +41,14 @@ class RTXQuery:
     if "query_type_id" not in query:
       message = Message()
       message.message_code = "No_query_type_id"
-      message.description = "There was no query_type_id specified in the query"
+      message.code_description = "There was no query_type_id specified in the query"
       return(message)
 
     #### If there is no terms, then return an error
     if "terms" not in query:
       message = Message()
       message.message_code = "No_terms"
-      message.description = "There was no terms element specified in the query"
+      message.code_description = "There was no terms element specified in the query"
       return(message)
 
     #### Extract the id and the terms from the incoming parameters
@@ -143,7 +143,7 @@ class RTXQuery:
       except:
           message = Message()
           message.message_code = "InternalError"
-          message.description = "Error parsing the message from the reasoner. This is an internal bug that needs to be fixed. Unable to respond to this question at this time. The unparsable message was: " + reformattedText
+          message.code_description = "Error parsing the message from the reasoner. This is an internal bug that needs to be fixed. Unable to respond to this question at this time. The unparsable message was: " + reformattedText
 
       #print(query)
       if 'original_question' in query:
@@ -165,7 +165,7 @@ class RTXQuery:
     #### If the query type id is not triggered above, then return an error
     message = Message()
     message.message_code = "UnsupportedQueryTypeID"
-    message.description = "The specified query id '" + id + "' is not supported at this time"
+    message.code_description = "The specified query id '" + id + "' is not supported at this time"
     rtxFeedback.disconnect()
     return(message)
 
@@ -199,7 +199,7 @@ class RTXQuery:
       if message.results is not None:
         if len(message.results) > query["max_results"]:
           del message.results[query["max_results"]:]
-          message.message += " (output is limited to "+str(query["max_results"]) + " results)"
+          message.code_description += " (output is limited to "+str(query["max_results"]) + " results)"
 
 
   def integrate(self,query):
@@ -271,8 +271,8 @@ class RTXQuery:
         message.n_results = len(message.results)
       else:
         message.n_results = 0
-    if message.message is None or message.message == "":
-      message.description = str(message.n_results) + " results returned"
+    if message.code_description is None or message.code_description == "":
+      message.code_description = str(message.n_results) + " results returned"
 
     if message.results is not None:
       result_id = 2345
@@ -292,7 +292,7 @@ class RTXQuery:
     for result in message_to_merge.results:
       final_message.results.append(result)
     final_message.n_results = len(final_message.results)
-    final_message.message = str(final_message.n_results) + " merged reults"
+    final_message.code_description = str(final_message.n_results) + " merged reults"
     return(final_message)
 
 
@@ -348,7 +348,7 @@ class RTXQuery:
 
     final_message.results = new_results
     final_message.n_results = len(final_message.results)
-    final_message.message = str(final_message.n_results) + " merged results"
+    final_message.code_description = str(final_message.n_results) + " merged results"
     return(final_message)
 
 

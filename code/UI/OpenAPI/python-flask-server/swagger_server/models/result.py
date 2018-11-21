@@ -6,7 +6,7 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from swagger_server.models.base_model_ import Model
-from swagger_server.models.result_graph import ResultGraph  # noqa: F401,E501
+from swagger_server.models.knowledge_graph import KnowledgeGraph  # noqa: F401,E501
 from swagger_server import util
 
 
@@ -16,17 +16,17 @@ class Result(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, id: str=None, description: str=None, text: str=None, essence: str=None, row_data: List[str]=None, score: float=None, score_name: str=None, score_direction: str=None, confidence: float=None, result_type: str=None, result_group: int=None, result_group_similarity_score: float=None, reasoner_id: str=None, result_graph: ResultGraph=None):  # noqa: E501
+    def __init__(self, id: str=None, description: str=None, essence: str=None, essence_type: str=None, row_data: List[str]=None, score: float=None, score_name: str=None, score_direction: str=None, confidence: float=None, result_type: str=None, result_group: int=None, result_group_similarity_score: float=None, reasoner_id: str=None, result_graph: KnowledgeGraph=None, knowledge_map: object=None):  # noqa: E501
         """Result - a model defined in Swagger
 
         :param id: The id of this Result.  # noqa: E501
         :type id: str
         :param description: The description of this Result.  # noqa: E501
         :type description: str
-        :param text: The text of this Result.  # noqa: E501
-        :type text: str
         :param essence: The essence of this Result.  # noqa: E501
         :type essence: str
+        :param essence_type: The essence_type of this Result.  # noqa: E501
+        :type essence_type: str
         :param row_data: The row_data of this Result.  # noqa: E501
         :type row_data: List[str]
         :param score: The score of this Result.  # noqa: E501
@@ -46,13 +46,15 @@ class Result(Model):
         :param reasoner_id: The reasoner_id of this Result.  # noqa: E501
         :type reasoner_id: str
         :param result_graph: The result_graph of this Result.  # noqa: E501
-        :type result_graph: ResultGraph
+        :type result_graph: KnowledgeGraph
+        :param knowledge_map: The knowledge_map of this Result.  # noqa: E501
+        :type knowledge_map: object
         """
         self.swagger_types = {
             'id': str,
             'description': str,
-            'text': str,
             'essence': str,
+            'essence_type': str,
             'row_data': List[str],
             'score': float,
             'score_name': str,
@@ -62,14 +64,15 @@ class Result(Model):
             'result_group': int,
             'result_group_similarity_score': float,
             'reasoner_id': str,
-            'result_graph': ResultGraph
+            'result_graph': KnowledgeGraph,
+            'knowledge_map': object
         }
 
         self.attribute_map = {
             'id': 'id',
             'description': 'description',
-            'text': 'text',
             'essence': 'essence',
+            'essence_type': 'essence_type',
             'row_data': 'row_data',
             'score': 'score',
             'score_name': 'score_name',
@@ -79,13 +82,14 @@ class Result(Model):
             'result_group': 'result_group',
             'result_group_similarity_score': 'result_group_similarity_score',
             'reasoner_id': 'reasoner_id',
-            'result_graph': 'result_graph'
+            'result_graph': 'result_graph',
+            'knowledge_map': 'knowledge_map'
         }
 
         self._id = id
         self._description = description
-        self._text = text
         self._essence = essence
+        self._essence_type = essence_type
         self._row_data = row_data
         self._score = score
         self._score_name = score_name
@@ -96,6 +100,7 @@ class Result(Model):
         self._result_group_similarity_score = result_group_similarity_score
         self._reasoner_id = reasoner_id
         self._result_graph = result_graph
+        self._knowledge_map = knowledge_map
 
     @classmethod
     def from_dict(cls, dikt) -> 'Result':
@@ -112,7 +117,7 @@ class Result(Model):
     def id(self) -> str:
         """Gets the id of this Result.
 
-        URI for this response  # noqa: E501
+        URI for this message  # noqa: E501
 
         :return: The id of this Result.
         :rtype: str
@@ -123,7 +128,7 @@ class Result(Model):
     def id(self, id: str):
         """Sets the id of this Result.
 
-        URI for this response  # noqa: E501
+        URI for this message  # noqa: E501
 
         :param id: The id of this Result.
         :type id: str
@@ -155,29 +160,6 @@ class Result(Model):
         self._description = description
 
     @property
-    def text(self) -> str:
-        """Gets the text of this Result.
-
-        DEPRECATED  # noqa: E501
-
-        :return: The text of this Result.
-        :rtype: str
-        """
-        return self._text
-
-    @text.setter
-    def text(self, text: str):
-        """Sets the text of this Result.
-
-        DEPRECATED  # noqa: E501
-
-        :param text: The text of this Result.
-        :type text: str
-        """
-
-        self._text = text
-
-    @property
     def essence(self) -> str:
         """Gets the essence of this Result.
 
@@ -199,6 +181,29 @@ class Result(Model):
         """
 
         self._essence = essence
+
+    @property
+    def essence_type(self) -> str:
+        """Gets the essence_type of this Result.
+
+        A Translator bioentity type of the essence  # noqa: E501
+
+        :return: The essence_type of this Result.
+        :rtype: str
+        """
+        return self._essence_type
+
+    @essence_type.setter
+    def essence_type(self, essence_type: str):
+        """Sets the essence_type of this Result.
+
+        A Translator bioentity type of the essence  # noqa: E501
+
+        :param essence_type: The essence_type of this Result.
+        :type essence_type: str
+        """
+
+        self._essence_type = essence_type
 
     @property
     def row_data(self) -> List[str]:
@@ -227,7 +232,7 @@ class Result(Model):
     def score(self) -> float:
         """Gets the score of this Result.
 
-        Any type of score associated with this result (highest confidence)  # noqa: E501
+        Any type of score associated with this result  # noqa: E501
 
         :return: The score of this Result.
         :rtype: float
@@ -238,7 +243,7 @@ class Result(Model):
     def score(self, score: float):
         """Sets the score of this Result.
 
-        Any type of score associated with this result (highest confidence)  # noqa: E501
+        Any type of score associated with this result  # noqa: E501
 
         :param score: The score of this Result.
         :type score: float
@@ -296,7 +301,7 @@ class Result(Model):
     def confidence(self) -> float:
         """Gets the confidence of this Result.
 
-        Confidence metric for this result, a value 0.0 (no confidence) and 1.0 (highest confidence)  # noqa: E501
+        Confidence metric for this result, a value between (inclusive) 0.0 (no confidence) and 1.0 (highest confidence)  # noqa: E501
 
         :return: The confidence of this Result.
         :rtype: float
@@ -307,7 +312,7 @@ class Result(Model):
     def confidence(self, confidence: float):
         """Sets the confidence of this Result.
 
-        Confidence metric for this result, a value 0.0 (no confidence) and 1.0 (highest confidence)  # noqa: E501
+        Confidence metric for this result, a value between (inclusive) 0.0 (no confidence) and 1.0 (highest confidence)  # noqa: E501
 
         :param confidence: The confidence of this Result.
         :type confidence: float
@@ -408,22 +413,47 @@ class Result(Model):
         self._reasoner_id = reasoner_id
 
     @property
-    def result_graph(self) -> ResultGraph:
+    def result_graph(self) -> KnowledgeGraph:
         """Gets the result_graph of this Result.
 
+        A graph that describes the thought pattern of this result (i.e. answer to the query)  # noqa: E501
 
         :return: The result_graph of this Result.
-        :rtype: ResultGraph
+        :rtype: KnowledgeGraph
         """
         return self._result_graph
 
     @result_graph.setter
-    def result_graph(self, result_graph: ResultGraph):
+    def result_graph(self, result_graph: KnowledgeGraph):
         """Sets the result_graph of this Result.
 
+        A graph that describes the thought pattern of this result (i.e. answer to the query)  # noqa: E501
 
         :param result_graph: The result_graph of this Result.
-        :type result_graph: ResultGraph
+        :type result_graph: KnowledgeGraph
         """
 
         self._result_graph = result_graph
+
+    @property
+    def knowledge_map(self) -> object:
+        """Gets the knowledge_map of this Result.
+
+        Lookup dict that maps QNode and QEdge identifiers in the QueryGraph to Node and Edge identifiers in the KnowledgeGraph  # noqa: E501
+
+        :return: The knowledge_map of this Result.
+        :rtype: object
+        """
+        return self._knowledge_map
+
+    @knowledge_map.setter
+    def knowledge_map(self, knowledge_map: object):
+        """Sets the knowledge_map of this Result.
+
+        Lookup dict that maps QNode and QEdge identifiers in the QueryGraph to Node and Edge identifiers in the KnowledgeGraph  # noqa: E501
+
+        :param knowledge_map: The knowledge_map of this Result.
+        :type knowledge_map: object
+        """
+
+        self._knowledge_map = knowledge_map
