@@ -35,41 +35,28 @@ class RTXQuery:
 
     #### Get our configuration information
     
+    #### Create a Message object as a response
+    response = Message()
 
+    #### Determine a plan for what to do based on the input
+    result = examineIncomingQuery(query)
+    if result["response_code"] is not "OK":
+      response.response_code = result["response_code"]
+      response.code_description = result["code_description"]
+      return response
 
-    #### If there is no query_type_id, then return an error
-    if "query_type_id" not in query:
-      message = Message()
-      message.message_code = "No_query_type_id"
-      message.code_description = "There was no query_type_id specified in the query"
-      return(message)
+    #### Check to see if the query_options indicates to query named resource and integrate the results
+    if result["have_query_type_id_and_terms"] and and "integrate" in query.query_message.query_options:
+      response = self.integrate(query)
+      #self.logQuery(query,response,'remote')
+      return response
 
-    #### If there is no terms, then return an error
-    if "terms" not in query:
-      message = Message()
-      message.message_code = "No_terms"
-      message.code_description = "There was no terms element specified in the query"
-      return(message)
 
     #### Extract the id and the terms from the incoming parameters
     id = query["query_type_id"]
     terms = query["terms"]
 
     eprint(query)
-    #### Check to see if the options indicate to query another resource
-    if "options" in query and re.search("integrate=",query["options"]):
-      message = self.integrate(query)
-      #self.logQuery(query,message,'remote')
-      return message
-
-
-
-    #### Temportary hack FIXME
-    if "chemical_substance" in terms:
-      if re.match("CHEMBL:",terms["chemical_substance"]):
-        terms["chemical_substance"] = re.sub("CHEMBL:","",terms["chemical_substance"])
-    query["known_query_type_id"] = query["query_type_id"]
-
 
 
     #### Create an RTX Feedback management object
@@ -192,6 +179,50 @@ class RTXQuery:
 
     with open(os.path.dirname(os.path.abspath(__file__))+"/RTXQueries.log","a") as logfile:
       logfile.write(datetimeString+"\t"+cacheStatus+"\t"+message_code+"\t"+id+"\t"+terms+"\t"+restated_question+"\n")
+  def examineIncomingQuery(self,query):
+    #### Examine the query object to see what we got and set some flags
+    response = { message_code = "OK", code_description = "Query examined" }
+
+    #### Check to see if there's a processing plan
+    if "previous_message_processing_plan" in query:
+      response["have_previous_message_processing_plan"] = 1
+    }
+
+    #### Check to see if there's a query message to process
+    if "query_message" in query:
+      response["have_query_message"] = 1
+
+      #### Check the query_type_id and terms to make sure there is information in both
+      if query.query_message.query_type_id is not None:
+        if query.query_message.terms is not None:
+          response["have_query_type_id_and_terms"] = 1
+        else:
+          response["message_code"] = "QueryTypeIdWithoutTerms"
+          response["code_description"] = "query_type_id was provided but terms is empty"
+          return response
+      elif query.query_message.terms is not None:
+        response["message_code"] = "TermsWithoutQueryTypeId"
+        response["code_description"] = "terms hash was provided without a query_type_id"
+        return response
+
+      #### Check if there is a query_graph
+      if query.query_message.query_graph is not None:
+        response["have_query_graph"] = 1
+
+      #### If there is both a query_type_id and a query_graph, then return an error
+      if "have_query_graph" in response and "have_query_type_id_and_terms" in response:
+        response["message_code"] = "BothQueryTypeIdAndQueryGraph"
+        response["code_description"] = "Message contains both a query_type_id and a query_graph, which is disallowed"
+        return response
+
+    #### Check to see if there is at least a query_message or a previous_message_processing_plan
+    if "have_query_message" not in response and "have_previous_message_processing_plan" not in response:
+      response["message_code"] = "NoQueryMessageOrPreviousMessageProcessingPlan"
+      response["code_description"] = "No query_message or previous_message_processing_plan present in Query"
+      return response
+
+    #### If we got this far, then everything seems to be good enough to proceed
+    return response
 
 
   def limitMessage(self,message,query):
