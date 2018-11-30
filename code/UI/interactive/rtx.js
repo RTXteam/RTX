@@ -799,7 +799,9 @@ function display_list(listId) {
 
     document.getElementById("listdiv"+listId).innerHTML = listhtml;
     sesame('openmax',document.getElementById("listdiv"+listId));
-    check_entities();
+    setTimeout(function() {check_entities();sesame('openmax',document.getElementById("listdiv"+listId));}, 500);
+//    sesame('openmax',document.getElementById("listdiv"+listId));
+
 }
 
 
@@ -877,12 +879,13 @@ function check_entities() {
 document.getElementById("devdiv").innerHTML += comma + xob[i].type;
 			comma = ", ";
                     }
+	            if (entstr != "") { entstr = "<span class='explevel p9'>&check;</span>&nbsp;" + entstr; }
                 }
                 else {
-		    entstr = "n/a";
+		    entstr = "<span class='explevel p0'>&quest;</span>&nbsp;n/a";
                 }
 
-	    	if (entstr == "") { entstr = "<span class='error'>unknown</span>"; }
+	    	if (entstr == "") { entstr = "<span class='explevel p1'>&cross;</span>&nbsp;<span class='error'>unknown</span>"; }
 
 	    	entities[entity] = entstr;
 
