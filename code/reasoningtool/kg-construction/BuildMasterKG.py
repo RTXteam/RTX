@@ -17,10 +17,15 @@ import sys
 import pandas
 import timeit
 import argparse
+import os
 
 from Orangeboard import Orangeboard
 from BioNetExpander import BioNetExpander
 from QueryDGIdb import QueryDGIdb
+
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+from RTXConfiguration import RTXConfiguration
 
 # configure requests package to use the "orangeboard.sqlite" cache
 requests_cache.install_cache('orangeboard')
@@ -129,27 +134,33 @@ def make_master_kg():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Builds the master knowledge graph')
-    parser.add_argument("-a", "--address", help="The bolt url and port used to connect to the neo4j instance. (default:"
-                                                "bolt://localhost:7687)",
-                        default="bolt://localhost:7687")
-    parser.add_argument("-u", "--username", help="The username used to connect to the neo4j instance. (default: )",
-                        default='')
-    parser.add_argument("-p", "--password", help="The password used to connect to the neo4j instance. (default: )",
-                        default='')
+    # parser.add_argument("-a", "--address", help="The bolt url and port used to connect to the neo4j instance. (default:"
+    #                                             "bolt://localhost:7687)",
+    #                     default="bolt://localhost:7687")
+    # parser.add_argument("-u", "--username", help="The username used to connect to the neo4j instance. (default: )",
+    #                     default='')
+    # parser.add_argument("-p", "--password", help="The password used to connect to the neo4j instance. (default: )",
+    #                     default='')
+    parser.add_argument('--live', help="The container name, which can be one of the following: Production, KG2, rtxdev, "
+                                       "staging. (default: Production)", default='Production')
     parser.add_argument('--runfunc', dest='runfunc')
     args = parser.parse_args()
 
-    if args.username == '' or args.password == '':
-        print('usage: BuildMasterKG.py [-h] [-a URL] [-u USERNAME] [-p PASSWORD] [--runfunc RUNFUNC]')
-        print('BuildMasterKG.py: error: invalid username or password')
-        exit(0)
+    # if args.username == '' or args.password == '':
+    #     print('usage: BuildMasterKG.py [-h] [-a URL] [-u USERNAME] [-p PASSWORD] [--runfunc RUNFUNC]')
+    #     print('BuildMasterKG.py: error: invalid username or password')
+    #     exit(0)
+
+    # create the RTXConfiguration object
+    rtxConfig = RTXConfiguration()
+    rtxConfig.live = args.live
 
     # create an Orangeboard object
     ob = Orangeboard(debug=True)
 
     # configure the Orangeboard for Neo4j connectivity
-    ob.neo4j_set_url(args.address)
-    ob.neo4j_set_auth(user=args.username, password=args.password)
+    ob.neo4j_set_url(RTXConfiguration.bolt)
+    ob.neo4j_set_auth(user=rtxConfig.username, password=rtxConfig.password)
     ob.neo4j_connect()
 
     bne = BioNetExpander(ob)

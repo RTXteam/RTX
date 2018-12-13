@@ -11,3 +11,5 @@
 # R history files
 **/.Rhistory
 
+# config.json
+**/config.json
