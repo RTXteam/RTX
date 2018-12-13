@@ -5,11 +5,17 @@ import neo4j.v1
 import sys
 import timeit
 import argparse
+import os
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+from RTXConfiguration import RTXConfiguration
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-u", "--user", type=str, help="The username used to connect to the neo4j instance", default='')
-parser.add_argument("-p", "--password", type=str, help="The password used to connect to the neo4j instance", default='')
-parser.add_argument("-a", "--address", type=str, help="The bolt url and port used to connect to the neo4j instance. (default:bolt://localhost:7687)", default="bolt://localhost:7687")
+# parser.add_argument("-u", "--user", type=str, help="The username used to connect to the neo4j instance", default='')
+# parser.add_argument("-p", "--password", type=str, help="The password used to connect to the neo4j instance", default='')
+# parser.add_argument("-a", "--url", type=str, help="The bolt url and port used to connect to the neo4j instance. (default:bolt://localhost:7687)", default="bolt://localhost:7687")
+parser.add_argument('--live', help="The container name, which can be one of the following: Production, KG2, rtxdev, "
+                                   "staging. (default: Production)", default='Production')
 args = parser.parse_args()
 
 class UpdateIndex():
@@ -135,8 +141,11 @@ class UpdateIndex():
             self.neo4j_run_cypher_query(command)
         
 
-
 if __name__ == '__main__':
-    ui = UpdateIndex(args.user, args.password, args.address)
+    # create the RTXConfiguration object
+    rtxConfig = RTXConfiguration()
+    rtxConfig.live = args.live
+
+    ui = UpdateIndex(rtxConfig.username, rtxConfig.password, rtxConfig.bolt)
     ui.replace()
 
