@@ -48,6 +48,7 @@ __status__ = 'Prototype'
 
 import argparse
 import sys
+import os
 
 from Neo4jConnection import Neo4jConnection
 from QueryEBIOLS import QueryEBIOLS
@@ -58,6 +59,8 @@ from QueryReactome import QueryReactome
 from QueryKEGG import QueryKEGG
 from QueryHMDB import QueryHMDB
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+from RTXConfiguration import RTXConfiguration
 
 class UpdateNodesInfo:
 
@@ -502,26 +505,29 @@ class UpdateNodesInfo:
 
 
 if __name__ == '__main__':
+
     parser = argparse.ArgumentParser(description='update the descriptions of nodes in th knowledge graph')
-    parser.add_argument("-a", "--address", help="The bolt url and port used to connect to the neo4j instance. (default:"
-                                                "bolt://localhost:7687)",
-                        default="bolt://localhost:7687")
-    parser.add_argument("-u", "--username", help="The username used to connect to the neo4j instance. (default: )",
-                        default='')
-    parser.add_argument("-p", "--password", help="The password used to connect to the neo4j instance. (default: )",
-                        default='')
+    # parser.add_argument("-a", "--address", help="The bolt url and port used to connect to the neo4j instance. (default:"
+    #                                             "bolt://localhost:7687)",
+    #                     default="bolt://localhost:7687")
+    # parser.add_argument("-u", "--username", help="The username used to connect to the neo4j instance. (default: )",
+    #                     default='')
+    # parser.add_argument("-p", "--password", help="The password used to connect to the neo4j instance. (default: )",
+    #                     default='')
+    parser.add_argument('--live', help="The container name, which can be one of the following: Production, KG2, rtxdev, "
+                             "staging. (default: Production)", default='Production')
+
     parser.add_argument('--runfunc', dest='runfunc')
     args = parser.parse_args()
 
-    if args.username == '' or args.password == '':
-        print('usage: BuildMasterKG.py [-h] [-a URL] [-u USERNAME] [-p PASSWORD] [--runfunc RUNFUNC]')
-        print('BuildMasterKG.py: error: invalid username or password')
-        exit(0)
+    # create the RTXConfiguration object
+    rtxConfig = RTXConfiguration()
+    rtxConfig.live = args.live
+
+    #   create UpdateNodesInfo object
+    ui = UpdateNodesInfo(rtxConfig.username, rtxConfig.password, rtxConfig.bolt)
 
     args_dict = vars(args)
-
-    ui = UpdateNodesInfo(args.username, args.password, args.address)
-
     if args_dict.get('runfunc', None) is not None:
         run_function_name = args_dict['runfunc']
     else:
@@ -531,5 +537,6 @@ if __name__ == '__main__':
         run_function = getattr(ui, run_function_name)
     except AttributeError:
         sys.exit('In module UpdateNodesInfo.py, unable to find function named: ' + run_function_name)
+
     run_function()
 
