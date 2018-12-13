@@ -130,8 +130,8 @@ class Rel:
 
 
 class Orangeboard:
-    NEO4J_USERNAME = 'neo4j'
-    NEO4J_PASSWORD = 'precisionmedicine'
+    # NEO4J_USERNAME = 'neo4j'
+    # NEO4J_PASSWORD = 'precisionmedicine'
     DEBUG_COUNT_REPORT_GRANULARITY = 1000
 
     def bytesize(self):
@@ -167,7 +167,8 @@ class Orangeboard:
     def neo4j_set_url(self, url='bolt://localhost:7687'):
         self.neo4j_url = url
 
-    def neo4j_set_auth(self, user=NEO4J_USERNAME, password=NEO4J_PASSWORD):
+    # def neo4j_set_auth(self, user=NEO4J_USERNAME, password=NEO4J_PASSWORD):
+    def neo4j_set_auth(self, user, password):
         self.neo4j_user = user
         self.neo4j_password = password
 
