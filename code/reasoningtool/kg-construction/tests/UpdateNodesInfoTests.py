@@ -13,6 +13,9 @@ from QueryReactome import QueryReactome
 from QueryMyChem import QueryMyChem
 # from QueryEBIOLS import QueryEBIOLS
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")  # code directory
+from RTXConfiguration import RTXConfiguration
+
 def random_int_list(start, stop, length):
     start, stop = (int(start), int(stop)) if start <= stop else (int(stop), int(start))
     length = int(abs(length)) if length else 0
@@ -24,17 +27,15 @@ def random_int_list(start, stop, length):
 
 class UpdateNodesInfoTestCase(unittest.TestCase):
 
-    def test_update_anatomy_entity(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
+    rtxConfig = RTXConfiguration()
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+    def test_update_anatomy_entity(self):
+
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         nodes = conn.get_anatomy_nodes()
 
         # generate random number array
-        random_indexes = random_int_list(0, len(nodes)-1, 100)
+        random_indexes = random_int_list(0, len(nodes)-1, 10)
 
         for i in random_indexes:
             # retrieve data from BioLink API
@@ -53,16 +54,12 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
         conn.close()
 
     def test_update_phenotype_entity(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         nodes = conn.get_phenotype_nodes()
 
         # generate random number array
-        random_indexes = random_int_list(0, len(nodes)-1, 100)
+        random_indexes = random_int_list(0, len(nodes)-1, 10)
 
         for i in random_indexes:
             # retrieve data from BioLink API
@@ -81,16 +78,12 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
         conn.close()
 
     def test_update_microRNA_entity(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         nodes = conn.get_microRNA_nodes()
 
         # generate random number array
-        random_indexes = random_int_list(0, len(nodes)-1, 100)
+        random_indexes = random_int_list(0, len(nodes)-1, 10)
 
         mg = QueryMyGene()
         for i in random_indexes:
@@ -110,16 +103,12 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
         conn.close()
 
     def test_update_pathway_entity(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         nodes = conn.get_pathway_nodes()
 
         # generate random number array
-        random_indexes = random_int_list(0, len(nodes)-1, 100)
+        random_indexes = random_int_list(0, len(nodes)-1, 10)
 
         for i in random_indexes:
             # retrieve data from Reactome API
@@ -138,16 +127,12 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
         conn.close()
 
     def test_update_protein_entity(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         nodes = conn.get_protein_nodes()
 
         # generate random number array
-        random_indexes = random_int_list(0, len(nodes)-1, 100)
+        random_indexes = random_int_list(0, len(nodes)-1, 10)
 
         mg = QueryMyGene()
         for i in random_indexes:
@@ -167,16 +152,12 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
         conn.close()
 
     def test_update_disease_entity(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         nodes = conn.get_disease_nodes()
 
         # generate random number array
-        random_indexes = random_int_list(0, len(nodes)-1, 100)
+        random_indexes = random_int_list(0, len(nodes)-1, 10)
 
         for i in random_indexes:
             # retrieve data from BioLink API
@@ -195,16 +176,12 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
         conn.close()
 
     def test_update_chemical_substance_entity(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         nodes = conn.get_chemical_substance_nodes()
 
         # generate random number array
-        random_indexes = random_int_list(0, len(nodes)-1, 100)
+        random_indexes = random_int_list(0, len(nodes)-1, 10)
 
         for i in random_indexes:
             # retrieve data from MyChem API
@@ -223,16 +200,12 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
         conn.close()
 
     def test_update_bio_process_entity(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         nodes = conn.get_bio_process_nodes()
 
         # generate random number array
-        random_indexes = random_int_list(0, len(nodes)-1, 100)
+        random_indexes = random_int_list(0, len(nodes)-1, 10)
 
         for i in random_indexes:
             # retrieve data from BioLink API
@@ -249,6 +222,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
                 self.assertEqual(json.loads(extended_info_json_from_api), json.loads(node['n']['extended_info_json']))
 
         conn.close()
+
 
 if __name__ == '__main__':
     unittest.main()
