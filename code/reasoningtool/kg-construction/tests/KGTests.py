@@ -7,15 +7,17 @@ sys.path.insert(0,parentdir)
 
 from Neo4jConnection import Neo4jConnection
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")  # code directory
+from RTXConfiguration import RTXConfiguration
+
+
 class KGTestCase(unittest.TestCase):
 
-    def test_anatomical_entity_nodes(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
+    rtxConfig = RTXConfiguration()
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+    def test_anatomical_entity_nodes(self):
+
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         nodes = conn.get_node("UBERON:0001753")
 
         self.assertIsNotNone(nodes)
@@ -31,12 +33,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_biological_process_nodes(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         nodes = conn.get_node("GO:0048817")
 
         self.assertIsNotNone(nodes)
@@ -51,12 +49,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_cellular_component_nodes(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         nodes = conn.get_node("GO:0071005")
 
         self.assertIsNotNone(nodes)
@@ -75,12 +69,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_chemical_substance_nodes(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         nodes = conn.get_node("CHEMBL1236962")
 
         self.assertIsNotNone(nodes)
@@ -94,12 +84,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_disease_nodes(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         nodes = conn.get_node("DOID:6016")
 
         self.assertIsNotNone(nodes)
@@ -113,12 +99,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_metabolite_nodes(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         nodes = conn.get_node("KEGG:C19630")
 
         self.assertIsNotNone(nodes)
@@ -132,12 +114,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_microRNA_nodes(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         nodes = conn.get_node("NCBIGene:100302124")
 
         self.assertIsNotNone(nodes)
@@ -151,12 +129,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_molecular_function_nodes(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         nodes = conn.get_node("GO:0030898")
 
         self.assertIsNotNone(nodes)
@@ -172,12 +146,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_pathway_nodes(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         nodes = conn.get_node("REACT:R-HSA-69895")
 
         self.assertIsNotNone(nodes)
@@ -193,12 +163,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_phenotypic_feature_nodes(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         nodes = conn.get_node("HP:0010559")
 
         self.assertIsNotNone(nodes)
@@ -214,12 +180,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_protein_nodes(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         nodes = conn.get_node("Q8IWB1")
 
         self.assertIsNotNone(nodes)
@@ -238,12 +200,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_affects_relationships(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         result = conn.get_relationship("affects", "16364fa8-96e0-11e8-b6f4-0242ac110002",
                                        "d2cc6c24-96e0-11e8-b6f4-0242ac110002")
         self.assertIsNotNone(result)
@@ -253,12 +211,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_capable_of_relationships(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         result = conn.get_relationship("capable_of", "7df5b95a-983c-11e8-b6f4-0242ac110002",
                                        "d2607de8-96e0-11e8-b6f4-0242ac110002")
         self.assertIsNotNone(result)
@@ -268,12 +222,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_contraindicated_for_relationships(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         result = conn.get_relationship("contraindicated_for", "d20e9fb4-96e0-11e8-b6f4-0242ac110002",
                                        "b03d10fa-96e5-11e8-b6f4-0242ac110002")
         self.assertIsNotNone(result)
@@ -283,12 +233,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_expressed_in_relationships(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         result = conn.get_relationship("expressed_in", "80c58cd0-96e0-11e8-b6f4-0242ac110002",
                                        "dce493ee-96e0-11e8-b6f4-0242ac110002")
         self.assertIsNotNone(result)
@@ -298,12 +244,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_gene_associated_with_condition_relationships(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         result = conn.get_relationship("gene_associated_with_condition", "cd838018-96e0-11e8-b6f4-0242ac110002",
                                        "158d16e0-96e0-11e8-b6f4-0242ac110002")
         self.assertIsNotNone(result)
@@ -313,12 +255,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_gene_mutations_contribute_to_relationships(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         result = conn.get_relationship("gene_mutations_contribute_to", "dbf31438-96e0-11e8-b6f4-0242ac110002",
                                        "153e59f6-96e0-11e8-b6f4-0242ac110002")
         self.assertIsNotNone(result)
@@ -328,12 +266,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_has_part_relationships(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         result = conn.get_relationship("has_part", "dce485fc-96e0-11e8-b6f4-0242ac110002",
                                        "d293e5ca-96e0-11e8-b6f4-0242ac110002")
         self.assertIsNotNone(result)
@@ -343,12 +277,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_has_phenotype_relationships(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         result = conn.get_relationship("has_phenotype", "15866ade-96e0-11e8-b6f4-0242ac110002",
                                        "825980a8-96f2-11e8-b6f4-0242ac110002")
         self.assertIsNotNone(result)
@@ -358,12 +288,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_indicated_for_relationships(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         result = conn.get_relationship("indicated_for", "d2121c52-96e0-11e8-b6f4-0242ac110002",
                                        "b03d1852-96e5-11e8-b6f4-0242ac110002")
         self.assertIsNotNone(result)
@@ -373,12 +299,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_involved_in_relationships(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         result = conn.get_relationship("involved_in", "a00eaf46-96e9-11e8-b6f4-0242ac110002",
                                        "d43b3982-96e0-11e8-b6f4-0242ac110002")
         self.assertIsNotNone(result)
@@ -388,12 +310,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_participates_in_relationships(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         result = conn.get_relationship("participates_in", "3de31040-96e0-11e8-b6f4-0242ac110002",
                                        "d80c6e50-96e0-11e8-b6f4-0242ac110002")
         self.assertIsNotNone(result)
@@ -403,12 +321,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_physically_interacts_with_relationships(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         result = conn.get_relationship("physically_interacts_with", "9e84a81e-96e0-11e8-b6f4-0242ac110002",
                                        "d70a77ae-96e0-11e8-b6f4-0242ac110002")
         self.assertIsNotNone(result)
@@ -418,12 +332,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_regulates_relationships(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         result = conn.get_relationship("regulates", "648092c6-987b-11e8-b6f4-0242ac110002",
                                        "0c04b8fa-96e3-11e8-b6f4-0242ac110002")
         self.assertIsNotNone(result)
@@ -433,12 +343,8 @@ class KGTestCase(unittest.TestCase):
         conn.close()
 
     def test_subclass_of_relationships(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         result = conn.get_relationship("subclass_of", "d47e7670-96e0-11e8-b6f4-0242ac110002",
                                        "d47e8322-96e0-11e8-b6f4-0242ac110002")
         self.assertIsNotNone(result)
