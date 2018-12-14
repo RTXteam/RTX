@@ -5,7 +5,7 @@ import os
 import sys
 import datetime
 import json
-
+import time
 
 class RTXConfiguration:
 
@@ -19,7 +19,21 @@ class RTXConfiguration:
         # self.live = "rtxdev"
         # self.live = "staging"
 
-        f = open(os.path.dirname(os.path.abspath(__file__)) + '/config.json', 'r')
+        date = time.strftime("%Y-%m-%d", time.localtime())
+        file_path = os.path.dirname(os.path.abspath(__file__)) + '/config.json'
+
+        if not os.path.exists(file_path):
+            # scp the file
+            os.system("scp qud@rtx.ncats.io:/mnt/data/temp/config.json " + file_path)
+        else:
+            now_time = datetime.datetime.now()
+            modified_time = time.localtime(os.stat(file_path).st_mtime)
+            modified_time = datetime.datetime(*modified_time[:6])
+            if (now_time - modified_time).days > 0:
+                # scp the file
+                os.system("scp qud@rtx.ncats.io:/mnt/data/temp/config.json " + file_path)
+
+        f = open(file_path, 'r')
         config_data = f.read()
         f.close()
         config = json.loads(config_data)
