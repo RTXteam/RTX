@@ -133,7 +133,8 @@ class QueryMeSH:
             result1.confidence = 1.0
             result1.essence = attributes["name"]
             result1.essence_type = attributes["type"]
-            result1.row_data = [ node1.id, node1.type, node1.name, node1.description, node1.uri ]
+            node_types = ",".join(node1.type)
+            result1.row_data = [ node1.id, node_types, node1.name, node1.description, node1.uri ]
 
             #### Create a KnowledgeGraph object and put the list of nodes and edges into it
             result_graph = KnowledgeGraph()
