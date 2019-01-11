@@ -252,11 +252,11 @@ class RTXFeedback:
       message.original_question = ""
 
     termsString = "{}"
-    if query is not None:
-      if "terms" in query:
-        termsString = stringifyDict(query["terms"])
+    if query is not None and "query_message" in query:
+      if "terms" in query["query_message"]:
+        termsString = stringifyDict(query["query_message"]["terms"])
 
-    storedMessage = Message(message_datetime=datetime.now(),restated_question=message.restated_question,query_type=query["query_type_id"],
+    storedMessage = Message(message_datetime=datetime.now(),restated_question=message.restated_question,query_type=query["query_message"]["query_type_id"],
       terms=termsString,tool_version=rtxConfig.version,result_code=message.message_code,message=message.code_description,n_results=n_results,message_object=pickle.dumps(ast.literal_eval(repr(message))))
     session.add(storedMessage)
     session.flush()
@@ -356,10 +356,10 @@ class RTXFeedback:
     session = self.session
     rtxConfig = RTXConfiguration()
     tool_version = rtxConfig.version
-    termsString = stringifyDict(query["terms"])
+    termsString = stringifyDict(query["query_message"]["terms"])
 
     #### Look for previous messages we could use
-    storedMessage = session.query(Message).filter(Message.query_type==query["query_type_id"]).filter(Message.tool_version==tool_version).filter(Message.terms==termsString).order_by(desc(Message.message_datetime)).first()
+    storedMessage = session.query(Message).filter(Message.query_type==query["query_message"]["query_type_id"]).filter(Message.tool_version==tool_version).filter(Message.terms==termsString).order_by(desc(Message.message_datetime)).first()
     if ( storedMessage is not None ):
       return pickle.loads(storedMessage.message_object)
     return
