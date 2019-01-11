@@ -39,14 +39,14 @@ class RTXQuery:
     response = Message()
 
     #### Determine a plan for what to do based on the input
-    result = examineIncomingQuery(query)
-    if result["response_code"] is not "OK":
-      response.response_code = result["response_code"]
+    result = self.examineIncomingQuery(query)
+    if result["message_code"] != "OK":
+      response.message_code = result["message_code"]
       response.code_description = result["code_description"]
       return response
 
     #### Check to see if the query_options indicates to query named resource and integrate the results
-    if result["have_query_type_id_and_terms"] and and "integrate" in query.query_message.query_options:
+    if result["have_query_type_id_and_terms"] and "query_message" in query and "query_options" in query["query_message"] and "integrate" in query["query_message"]["query_options"]:
       response = self.integrate(query)
       #self.logQuery(query,response,'remote')
       return response
@@ -179,34 +179,41 @@ class RTXQuery:
 
     with open(os.path.dirname(os.path.abspath(__file__))+"/RTXQueries.log","a") as logfile:
       logfile.write(datetimeString+"\t"+cacheStatus+"\t"+message_code+"\t"+id+"\t"+terms+"\t"+restated_question+"\n")
+    return
+
+
   def examineIncomingQuery(self,query):
+
     #### Examine the query object to see what we got and set some flags
-    response = { message_code = "OK", code_description = "Query examined" }
+    response = { "message_code": "OK", "code_description": "Query examined" }
 
     #### Check to see if there's a processing plan
     if "previous_message_processing_plan" in query:
       response["have_previous_message_processing_plan"] = 1
-    }
+
+    #### Temporary band-aid for old-style queries. Put the old-style top level content into query_message. This should be disallowed eventually. FIXME
+    if "query_type_id" in query:
+      query["query_message"] = query
 
     #### Check to see if there's a query message to process
     if "query_message" in query:
       response["have_query_message"] = 1
 
       #### Check the query_type_id and terms to make sure there is information in both
-      if query.query_message.query_type_id is not None:
-        if query.query_message.terms is not None:
+      if "query_type_id" in query["query_message"] and query["query_message"]["query_type_id"] is not None:
+        if "terms" in query["query_message"] is not None:
           response["have_query_type_id_and_terms"] = 1
         else:
           response["message_code"] = "QueryTypeIdWithoutTerms"
           response["code_description"] = "query_type_id was provided but terms is empty"
           return response
-      elif query.query_message.terms is not None:
+      elif "terms" in query["query_message"] and query["query_message"]["terms"] is not None:
         response["message_code"] = "TermsWithoutQueryTypeId"
         response["code_description"] = "terms hash was provided without a query_type_id"
         return response
 
       #### Check if there is a query_graph
-      if query.query_message.query_graph is not None:
+      if "query_graph" in query["query_message"] and query["query_message"]["query_graph"] is not None:
         response["have_query_graph"] = 1
 
       #### If there is both a query_type_id and a query_graph, then return an error
