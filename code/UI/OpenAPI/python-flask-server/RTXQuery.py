@@ -53,8 +53,8 @@ class RTXQuery:
 
 
     #### Extract the id and the terms from the incoming parameters
-    id = query["query_type_id"]
-    terms = query["terms"]
+    id = query["query_message"]["query_type_id"]
+    terms = query["query_message"]["terms"]
 
     eprint(query)
 
@@ -85,11 +85,11 @@ class RTXQuery:
       # call out to QueryMeSH here to satify the query "What is XXXXXX?"
       meshQuery = QueryMeSH()
       message = meshQuery.queryTerm(terms["term"])
-      if 'original_question' in query:
-        message.original_question = query["original_question"]
-        message.restated_question = query["restated_question"]
-      message.query_type_id = query["query_type_id"]
-      message.terms = query["terms"]
+      if 'original_question' in query["query_message"]:
+        message.original_question = query["query_message"]["original_question"]
+        message.restated_question = query["query_message"]["restated_question"]
+      message.query_type_id = query["query_message"]["query_type_id"]
+      message.terms = query["query_message"]["terms"]
       id = message.id
       codeString = message.message_code
       self.logQuery(query,message,'new')
@@ -133,11 +133,11 @@ class RTXQuery:
           message.code_description = "Error parsing the message from the reasoner. This is an internal bug that needs to be fixed. Unable to respond to this question at this time. The unparsable message was: " + reformattedText
 
       #print(query)
-      if 'original_question' in query:
-        message.original_question = query["original_question"]
-        message.restated_question = query["restated_question"]
-      message.query_type_id = query["query_type_id"]
-      message.terms = query["terms"]
+      if 'original_question' in query["query_message"]:
+        message.original_question = query["query_message"]["original_question"]
+        message.restated_question = query["query_message"]["restated_question"]
+      message.query_type_id = query["query_message"]["query_type_id"]
+      message.terms = query["query_message"]["terms"]
 
       #### Log the result and return the Message object
       self.logQuery(query,message,'new')
@@ -160,20 +160,20 @@ class RTXQuery:
   def logQuery(self,query,message,cacheStatus):
     datetimeString = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    if "query_type_id" not in query or query["query_type_id"] is None:
+    if "query_type_id" not in query["query_message"] or query["query_message"]["query_type_id"] is None:
       id = "?"
     else:
-      id = query['query_type_id']
+      id = query["query_message"]['query_type_id']
 
-    if "terms" not in query or query['terms'] is None:
+    if "terms" not in query["query_message"] or query["query_message"]['terms'] is None:
       terms = "{}"
     else:
-      terms = stringifyDict(query['terms'])
+      terms = stringifyDict(query["query_message"]['terms'])
 
-    if "restated_question" not in query or query["restated_question"] is None:
+    if "restated_question" not in query["query_message"] or query["query_message"]["restated_question"] is None:
       restated_question = ""
     else:
-      restated_question = query["restated_question"]
+      restated_question = query["query_message"]["restated_question"]
 
     message_code = message.message_code
 
