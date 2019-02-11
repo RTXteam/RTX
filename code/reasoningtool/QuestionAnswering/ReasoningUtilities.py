@@ -247,7 +247,7 @@ def get_node_properties(name, node_label="", name_type="id", session=session, de
             break
         return response
     else:
-        raise Exception("No result returned, property doesn't exist? node: %s" % name)
+        raise Exception("Node or properties not found using query: '%s'" % query)
 
 
 # Get node names in paths between two fixed endpoints
