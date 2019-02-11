@@ -240,11 +240,10 @@ def get_node_properties(name, node_label="", name_type="id", session=session, de
     if debug:
         return query
     result = session.run(query)
-    result = [i for i in result]
-    if result:
-        response = dict()
-        for key in result[0]:
-            response = key
+    record = result.single()
+    if record:
+        for key in record.keys():
+            response = record[key]
             break
         return response
     else:
