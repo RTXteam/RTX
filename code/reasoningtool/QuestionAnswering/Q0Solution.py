@@ -59,7 +59,7 @@ class Q0:
 				response.message.message_code = "TermNotFound"
 				response.message.code_description = "This concept is not in our knowledge graph"
 				response.message.id = None
-				return response
+				return response.message
 
 		# Get label/kind of node the source is
 		eprint("Getting properties for '%s'" % curies[0])
