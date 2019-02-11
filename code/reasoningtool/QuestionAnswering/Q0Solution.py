@@ -1,5 +1,10 @@
-import os
+#!/usr/bin/python3
+from __future__ import print_function
 import sys
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+import os
 import argparse
 # PyCharm doesn't play well with relative imports + python console + terminal
 try:
@@ -41,6 +46,7 @@ class Q0:
 		"""
 
 		#### See if this entity is in the KG via the index
+		eprint("Looking up '%s' in KgNodeIndex" % entity)
 		kgNodeIndex = KGNodeIndex()
 		curies = kgNodeIndex.get_curies(entity)
 
@@ -56,7 +62,10 @@ class Q0:
 				return response
 
 		# Get label/kind of node the source is
+		eprint("Getting properties for '%s'" % curies[0])
 		properties = RU.get_node_properties(curies[0])
+		eprint("Properties are:")
+		eprint(properties)
 
 		#### By default, return the results just as a plain simple list of data structures
 		if not use_json:
@@ -104,7 +113,7 @@ class Q0:
 			#### Also manufacture a query_graph post hoc
 			qnode1 = QNode()
 			qnode1.node_id = "n00"
-			qnode1.curie = properties["uri"]
+			qnode1.curie = properties["id"]
 			qnode1.type = None
 			query_graph = QueryGraph()
 			query_graph.nodes = [ qnode1 ]
@@ -112,10 +121,11 @@ class Q0:
 			response.message.query_graph = query_graph
 
 			#### Create the corresponding knowledge_map
-			knowledge_map = { "n00": properties["uri"] }
+			knowledge_map = { "n00": properties["id"] }
 			result1.knowledge_map = knowledge_map
 
-			return response
+			#eprint(response.message)
+			return response.message
 
 	def describe(self):
 		output = "Answers questions of the form: 'What is X?', where X is a node in the knowledge graph\n"
