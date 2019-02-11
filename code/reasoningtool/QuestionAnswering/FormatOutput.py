@@ -7,9 +7,9 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code di
 from RTXConfiguration import RTXConfiguration
 RTXConfiguration = RTXConfiguration()
 
-from swagger_server.models.response import Response
+from swagger_server.models.message import Message
 from swagger_server.models.result import Result
-from swagger_server.models.result_graph import ResultGraph
+from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
 import datetime
@@ -30,51 +30,46 @@ class FormatResponse:
 		"""
 		self._question_number = question_number
 		self._now = datetime.datetime.now()
-		self._result_list = []
-		self._num_results = 0
-		# Create the response object and fill it with attributes about the response
-		self.response = Response()
-		self.response.type = "medical_translator_query_result"
-		self.response.tool_version = RTXConfiguration.version
-		self.response.schema_version = "0.5"
-		self.response.response_code = "OK"
-		if self._num_results == 1:
-			self.response.message = "%s result found" % self._num_results
-		else:
-			self.response.message = "%s results found" % self._num_results
+		self._results = []
+		# Create the message object and fill it with attributes about the response
+		self.message = Message()
+		self.message.type = "translator_reasoner_message"
+		self.message.tool_version = RTXConfiguration.version
+		self.message.schema_version = "0.9.0"
+		self.message.response_code = "OK"
 
 
 	def __str__(self):
-		return repr(self.response)
+		return repr(self.message)
 
 	def print(self):
-		print(json.dumps(ast.literal_eval(repr(self.response)), sort_keys=True, indent=2))
+		print(json.dumps(ast.literal_eval(repr(self.message)), sort_keys=True, indent=2))
 
 	def add_error_message(self, code, message):
 		"""
-		Add an error message to the response
+		Add an error response to the message
 		:param code: error code
 		:param message: error message
-		:return: None (modifies response)
+		:return: None (modifies message)
 		"""
-		response = self.response
-		response.response_code = code
-		response.message = message
+		message = self.message
+		message.response_code = code
+		message.code_description = message
 
-	def add_text(self, plain_text, confidence=1):
+	def add_text(self, description, confidence=1):
 		result1 = Result()
-		result1.text = plain_text
+		result1.description = description
 		result1.confidence = confidence
-		self._result_list.append(result1)
-		self.response.result_list = self._result_list
+		self._results.append(result1)
+		self.message.results = self._results
 		# Increment the number of results
 		self._num_results += 1
 		if self._num_results == 1:
-			self.response.message = "%s result found" % self._num_results
+			self.message.code_description = "%s result found" % self._num_results
 		else:
-			self.response.message = "%s results found" % self._num_results
+			self.message.code_description = "%s results found" % self._num_results
 
-	def add_subgraph(self, nodes, edges, plain_text, confidence, return_result=False):
+	def add_subgraph(self, nodes, edges, description, confidence, return_result=False):
 		"""
 		Populate the object model using networkx neo4j subgraph
 		:param nodes: nodes in the subgraph (g.nodes(data=True))
@@ -133,7 +128,7 @@ class FormatResponse:
 		for node_key in node_keys:
 			node = Node()
 			node.id = node_curies[node_key]
-			node.type = node_labels[node_key]
+			node.type = [ node_labels[node_key] ]
 			node.name = node_names[node_key]
 			node.uri = node_iris[node_key]
 			node.accession = node_accessions[node_key]
@@ -166,26 +161,26 @@ class FormatResponse:
 
 		# Create the result (potential answer)
 		result1 = Result()
-		result1.text = plain_text
+		result1.description = description
 		result1.confidence = confidence
 
-		# Create a ResultGraph object and put the list of nodes and edges into it
-		result_graph = ResultGraph()
-		result_graph.node_list = node_objects
-		result_graph.edge_list = edge_objects
+		# Create a KnowledgeGraph object and put the list of nodes and edges into it
+		knowledge_graph = KnowledgeGraph()
+		knowledge_graph.nodes = node_objects
+		knowledge_graph.edges = edge_objects
 
-		# Put the ResultGraph into the first result (potential answer)
-		result1.result_graph = result_graph
+		# Put the KnowledgeGraph into the first result (potential answer)
+		result1.knowledge_graph = knowledge_graph
 
-		# Put the first result (potential answer) into the response
-		self._result_list.append(result1)
-		self.response.result_list = self._result_list
+		# Put the first result (potential answer) into the message
+		self._results.append(result1)
+		self.message.results = self._results
 		# Increment the number of results
 		self._num_results += 1
 		if self._num_results == 1:
-			self.response.message = "%s result found" % self._num_results
+			self.message.code_description = "%s result found" % self._num_results
 		else:
-			self.response.message = "%s results found" % self._num_results
+			self.message.code_description = "%s results found" % self._num_results
 		if return_result:
 			return result1
 		else:
@@ -250,7 +245,7 @@ class FormatResponse:
 		for node_key in node_keys:
 			node = Node()
 			node.id = node_curies[node_key]
-			node.type = node_labels[node_key]
+			node.type = [ node_labels[node_key] ]
 			node.name = node_names[node_key]
 			node.uri = node_iris[node_key]
 			node.accession = node_accessions[node_key]
@@ -273,30 +268,30 @@ class FormatResponse:
 
 		# Create the result (potential answer)
 		result1 = Result()
-		text = "This is a subgraph extracted from the full RTX knowledge graph, including nodes and edges relevant to the query." \
+		description = "This is a subgraph extracted from the full RTX knowledge graph, including nodes and edges relevant to the query." \
 			   " This is not an answer to the query per se, but rather an opportunity to examine a small region of the RTX knowledge graph for further study. " \
 			   "Formal answers to the query are below."
-		result1.text = text
+		result1.description = description
 		result1.confidence = confidence
 		result1.result_type = "neighborhood graph"
 
-		# Create a ResultGraph object and put the list of nodes and edges into it
-		result_graph = ResultGraph()
-		result_graph.node_list = node_objects
-		result_graph.edge_list = edge_objects
+		# Create a KnowledgeGraph object and put the list of nodes and edges into it
+		knowledge_graph = KnowledgeGraph()
+		knowledge_graph.nodes = node_objects
+		knowledge_graph.edges = edge_objects
 
-		# Put the ResultGraph into the first result (potential answer)
-		result1.result_graph = result_graph
+		# Put the KnowledgeGraph into the first result (potential answer)
+		result1.knowledge_graph = knowledge_graph
 
-		# Put the first result (potential answer) into the response
-		self._result_list.append(result1)
-		self.response.result_list = self._result_list
+		# Put the first result (potential answer) into the message
+		self._results.append(result1)
+		self.message.results = self._results
 		# Increment the number of results
 		#self._num_results += 1
 		#if self._num_results == 1:
-		#	self.response.message = "%s result found" % self._num_results
+		#	self.message.code_description = "%s result found" % self._num_results
 		#else:
-		#	self.response.message = "%s results found" % self._num_results
+		#	self.message.code_description = "%s results found" % self._num_results
 
 if __name__ == '__main__':
 	test = FormatResponse(2)
