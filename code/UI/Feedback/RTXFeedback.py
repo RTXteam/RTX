@@ -223,9 +223,15 @@ class RTXFeedback:
   #### Store a new Message into the database
   def addNewMessage(self,message,query):
     session = self.session
+
+    #### Update the n_results information
     n_results = 0
     if message.results is not None:
       n_results = len(message.results)
+    if message.code_description is None:
+      plural = "s"
+      if n_results == 1: plural = ""
+      message.code_description = "Query returned %i result%s" % (n_results,plural)
 
     #### Add result metadata
     if message.results is not None:
