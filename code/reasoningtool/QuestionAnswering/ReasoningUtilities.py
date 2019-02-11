@@ -223,6 +223,34 @@ def get_node_property(name, node_property, node_label="", name_type="id", sessio
             raise Exception("No result returned, property doesn't exist? node: %s" % name)
 
 
+def get_node_properties(name, node_label="", name_type="id", session=session, debug=False):
+    """
+    Get all properties of a node. Eric added this and wonders if it is redundant, but couldn't find equivalent. FIXME
+    :param name: name of the node
+    :param node_label: (optional) label (type) of node (makes the operation slightly faster)
+    :param name_type: (optional) which property to search by (default: id) (but "name" might be appropriate)
+    :param session: neo4j session
+    :param debug: just return the query
+    :return: a string (the description of the node)
+    """
+    if node_label == "":
+        query = "match (n{%s:'%s'}) return properties(n)" % (name_type, name)
+    else:
+        query = "match (n:%s{%s:'%s'}) return properties(n)" % (node_label, name_type, name)
+    if debug:
+        return query
+    result = session.run(query)
+    result = [i for i in result]
+    if result:
+        response = dict()
+        for key in result[0]:
+            response = key
+            break
+        return response
+    else:
+        raise Exception("No result returned, property doesn't exist? node: %s" % name)
+
+
 # Get node names in paths between two fixed endpoints
 def get_node_names_of_type_connected_to_target(source_label, source_name, target_label, max_path_len=4, debug=False, verbose=False, direction="u", session=session, is_omim=False):
     """
