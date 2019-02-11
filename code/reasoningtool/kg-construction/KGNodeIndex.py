@@ -41,6 +41,7 @@ class KGNodeIndex:
   #### Constructor
   def __init__(self):
     filepath = os.path.dirname(os.path.abspath(__file__))
+    self.databaseLocation = filepath
     is_rtx_production = False
     if re.match("/mnt/data/orangeboard",filepath):
       is_rtx_production = True
@@ -100,6 +101,15 @@ class KGNodeIndex:
     self._databaseName = databaseName
 
 
+  #### databaseLocation
+  @property
+  def databaseLocation(self) -> str:
+    return self._databaseLocation
+  @databaseLocation.setter
+  def databaseLocation(self, databaseLocation: str):
+    self._databaseLocation = databaseLocation
+
+
   #### Delete and create the SQLite database. Careful!
   def createDatabase(self):
     if self.engine_type == "sqlite":
@@ -120,13 +130,13 @@ class KGNodeIndex:
   def connect(self):
     if self.session is not None: return
     if self.engine_type == "sqlite":
-      if not os.path.isfile(self.databaseName):
+      if not os.path.isfile(self.databaseLocation + "/" + self.databaseName):
         self.createDatabase()
 
     #### Create an engine object
     if DEBUG is True: print("INFO: Connecting to database")
     if self.engine_type == "sqlite":
-      engine = create_engine("sqlite:///"+self.databaseName)
+      engine = create_engine("sqlite:///"+self.databaseLocation+"/"+self.databaseName)
     else:
       engine = create_engine("mysql+pymysql://rt:Steve1000Ramsey@localhost/"+self.databaseName)
 
