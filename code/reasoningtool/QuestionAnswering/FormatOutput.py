@@ -36,7 +36,8 @@ class FormatResponse:
 		self.message.type = "translator_reasoner_message"
 		self.message.tool_version = RTXConfiguration.version
 		self.message.schema_version = "0.9.0"
-		self.message.response_code = "OK"
+		self.message.message_code = "OK"
+		#self.message.code_description = "Placeholder for description"
 
 
 	def __str__(self):
