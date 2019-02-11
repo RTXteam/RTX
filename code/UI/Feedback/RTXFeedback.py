@@ -61,7 +61,7 @@ class Result(Base):
   confidence = Column(Float, nullable=False)
   n_nodes = Column(Integer, nullable=False)
   n_edges = Column(Integer, nullable=False)
-  result_text = Column(String(1024), nullable=False)
+  result_text = Column(Text, nullable=False)
   result_object = Column(LargeBinary(length=16777200), nullable=False)
   result_hash = Column(String(255), nullable=False)
   message = relationship(Message)
