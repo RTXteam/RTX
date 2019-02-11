@@ -113,13 +113,13 @@ class KGNodeIndex:
   #### Delete and create the SQLite database. Careful!
   def createDatabase(self):
     if self.engine_type == "sqlite":
-      if os.path.exists(self.databaseName):
-        if DEBUG is True: print("INFO: Removing previous database "+self.databaseName)
-        os.remove(self.databaseName)
+      if os.path.exists(self.databaseLocation + "/" + self.databaseName):
+        if DEBUG is True: print("INFO: Removing previous database "+self.databaseLocation + "/" + self.databaseName)
+        os.remove(self.databaseLocation + "/" + self.databaseName)
 
     if DEBUG is True: print("INFO: Creating database "+self.databaseName)
     if self.engine_type == "sqlite":
-      engine = create_engine("sqlite:///"+self.databaseName)
+      engine = create_engine("sqlite:///"+self.databaseLocation + "/" + self.databaseName)
     else:
       engine = create_engine("mysql+pymysql://rt:Steve1000Ramsey@localhost/"+self.databaseName)
 
