@@ -16,11 +16,12 @@ import requests
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")
 from RTXConfiguration import RTXConfiguration
 
-from QueryMeSH import QueryMeSH
 from swagger_server.models.message import Message
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/QuestionAnswering/")
 from ParseQuestion import ParseQuestion
+#from QueryMeSH import QueryMeSH
+from Q0Solution import Q0
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/kg-construction/")
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/SemMedDB/")
@@ -83,8 +84,10 @@ class RTXQuery:
     #### Still have special handling for Q0
     if id == 'Q0':
       # call out to QueryMeSH here to satify the query "What is XXXXXX?"
-      meshQuery = QueryMeSH()
-      message = meshQuery.queryTerm(terms["term"])
+      #meshQuery = QueryMeSH()
+      #message = meshQuery.queryTerm(terms["term"])
+      q0 = Q0()
+      message = q0.answer(terms["term"])
       if 'original_question' in query["query_message"]:
         message.original_question = query["query_message"]["original_question"]
         message.restated_question = query["query_message"]["restated_question"]
