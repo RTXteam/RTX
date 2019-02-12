@@ -22,39 +22,41 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-import requests
-import requests_cache
+# import requests
+# import requests_cache
 import sys
 import json
+from cache_control_helper import CacheControlHelper
 
 
 class QueryBioLink:
     TIMEOUT_SEC = 120
-    API_BASE_URL = 'https://api.monarchinitiative.org/api/bioentity'
+    API_BASE_URL = 'https://api.monarchinitiative.org/api'
     HANDLER_MAP = {
-        'get_phenotypes_for_disease':  'disease/{disease_id}/phenotypes',
-        'get_diseases_for_gene':       'gene/{gene_id}/diseases',
-        'get_genes_for_disease':       'disease/{disease_id}/genes',
-        'get_phenotypes_for_gene':     'gene/{gene_id}/phenotypes?exclude_automatic_assertions=true&unselect_evidence=true',
-        'get_genes_for_pathway':       'pathway/{pathway_id}/genes&unselect_evidence=true',
-        'get_label_for_disease':       'disease/{disease_id}',
-        'get_label_for_phenotype':     'phenotype/{phenotype_id}',
-        'get_anatomies_for_gene':      'gene/{gene_id}/expression/anatomy',
-        'get_genes_for_anatomy':       'anatomy/{anatomy_id}/genes',
-        'get_anatomies_for_phenotype': 'phenotype/{phenotype_id}/anatomy',
-        'get_synonyms_for_disease':    '{disease_id}/associations',
-        'get_anatomy':                  'anatomy/{id}',
-        'get_phenotype':                'phenotype/{id}',
-        'get_disease':                  'disease/{id}',
-        'get_bio_process':              '{id}',
-        'map_disease_to_phenotype':    'disease/{disease_id}/phenotypes'
+        'get_phenotypes_for_disease':  'bioentity/disease/{disease_id}/phenotypes',
+        'get_diseases_for_gene':       'bioentity/gene/{gene_id}/diseases',
+        'get_genes_for_disease':       'bioentity/disease/{disease_id}/genes',
+        'get_phenotypes_for_gene':     'bioentity/gene/{gene_id}/phenotypes?exclude_automatic_assertions=true&unselect_evidence=true',
+        'get_genes_for_pathway':       'bioentity/pathway/{pathway_id}/genes&unselect_evidence=true',
+        'get_label_for_disease':       'bioentity/disease/{disease_id}',
+        'get_label_for_phenotype':     'bioentity/phenotype/{phenotype_id}',
+        'get_anatomies_for_gene':      'bioentity/gene/{gene_id}/expression/anatomy',
+        'get_genes_for_anatomy':       'bioentity/anatomy/{anatomy_id}/genes',
+        'get_anatomies_for_phenotype': 'bioentityphenotype/{phenotype_id}/anatomy',
+        'get_synonyms_for_disease':    'bioentity/{disease_id}/associations',
+        'get_anatomy':                 'bioentity/anatomy/{id}',
+        'get_phenotype':               'bioentity/phenotype/{id}',
+        'get_disease':                 'bioentity/disease/{id}',
+        'get_bio_process':             'bioentity/{id}',
+        'map_disease_to_phenotype':    'bioentity/disease/{disease_id}/phenotypes'
     }
 
     @staticmethod
     def __access_api(handler):
-        
+
+        requests = CacheControlHelper()
         url = QueryBioLink.API_BASE_URL + '/' + handler
-        
+        # print(url)
         try:
             res = requests.get(url, timeout=QueryBioLink.TIMEOUT_SEC)
         except requests.exceptions.Timeout:

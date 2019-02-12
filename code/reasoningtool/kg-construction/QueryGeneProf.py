@@ -12,7 +12,8 @@ __maintainer__ = ""
 __email__ = ""
 __status__ = "Prototype"
 
-import requests
+# import requests
+from cache_control_helper import CacheControlHelper
 import sys
 
 class QueryGeneProf:
@@ -21,6 +22,8 @@ class QueryGeneProf:
 
     @staticmethod
     def send_query_get(handler, url_suffix):
+
+        requests = CacheControlHelper()
         url_str = QueryGeneProf.API_BASE_URL + "/" + handler + "/" + url_suffix
 #        print(url_str)
         try:

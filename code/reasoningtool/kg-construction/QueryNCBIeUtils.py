@@ -7,7 +7,7 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-import requests
+# import requests
 import urllib
 import math
 import sys
@@ -16,8 +16,10 @@ from io import StringIO
 import re
 import pandas
 import CachedMethods
-import requests_cache
-requests_cache.install_cache('QueryNCBIeUtilsCache')
+# import requests_cache
+from cache_control_helper import CacheControlHelper
+
+# requests_cache.install_cache('QueryNCBIeUtilsCache')
 import numpy
 
 # MeSH Terms for Q1 diseases: (see git/q1/README.md)
@@ -57,6 +59,8 @@ class QueryNCBIeUtils:
     @staticmethod
     @CachedMethods.register
     def send_query_get(handler, url_suffix, retmax=1000):
+
+        requests = CacheControlHelper()
         url_str = QueryNCBIeUtils.API_BASE_URL + '/' + handler + '?' + url_suffix + '&retmode=json&retmax=' + str(retmax)
 #        print(url_str)
         try:
@@ -78,12 +82,14 @@ class QueryNCBIeUtils:
     @staticmethod
     #@CachedMethods.register
     def send_query_post(handler, params, retmax = 1000):
+
+        requests = CacheControlHelper()
         url_str = QueryNCBIeUtils.API_BASE_URL + '/' + handler
         params['retmax'] = str(retmax)
         params['retmode'] = 'json'
 #        print(url_str)
         try:
-            res = requests.post(url_str, headers={'accept': 'application/json'}, data = params, timeout=QueryNCBIeUtils.TIMEOUT_SEC)
+            res = requests.post(url_str, data=params, timeout=QueryNCBIeUtils.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
             print('HTTP timeout in QueryNCBIeUtils.py; URL: ' + url_str, file=sys.stderr)
             time.sleep(1)  ## take a timeout because NCBI rate-limits connections

@@ -11,8 +11,10 @@ __maintainer__ = ""
 __email__ = ""
 __status__ = "Prototype"
 
-import requests
+# import requests
 import sys
+
+from cache_control_helper import CacheControlHelper
 
 class QueryDisont:
     TIMEOUT_SEC = 120
@@ -20,10 +22,12 @@ class QueryDisont:
 
     @staticmethod
     def send_query_get(handler, url_suffix):
+
+        requests = CacheControlHelper()
         url = QueryDisont.API_BASE_URL + "/" + handler + "/" + url_suffix
 #        print(url_str)
         try:
-            res = requests.get(url, headers={'accept': 'application/json'}, timeout=QueryDisont.TIMEOUT_SEC)
+            res = requests.get(url, timeout=QueryDisont.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
             print(url, file=sys.stderr)
             print('Timeout in QueryDisont for URL: ' + url, file=sys.stderr)

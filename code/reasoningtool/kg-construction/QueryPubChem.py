@@ -9,7 +9,7 @@ __status__ = 'Prototype'
 
 import urllib
 import pandas
-import requests
+# import requests
 import sys
 import time
 import math
@@ -17,8 +17,9 @@ from io import StringIO
 import re
 import os
 import CachedMethods
-import requests_cache
+# import requests_cache
 import json
+from cache_control_helper import CacheControlHelper
 
 
 class QueryPubChem:
@@ -31,6 +32,7 @@ class QueryPubChem:
 
     @staticmethod
     def __access_api(handler):
+        requests = CacheControlHelper()
         url = QueryPubChem.API_BASE_URL + '/' + handler
         # print(url)
         try:
@@ -54,11 +56,11 @@ class QueryPubChem:
 
     @staticmethod
     def send_query_get(handler, url_suffix):
+        requests = CacheControlHelper()
         url = QueryPubChem.API_BASE_URL + '/' + handler + '/' + url_suffix
         # print(url)
         try:
-            res = requests.get(url,
-                               timeout=QueryPubChem.TIMEOUT_SEC)
+            res = requests.get(url, timeout=QueryPubChem.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
             print(url, file=sys.stderr)
             print('Timeout in QueryPubChem for URL: ' + url, file=sys.stderr)
@@ -127,6 +129,7 @@ class QueryPubChem:
         if not isinstance(pubchem_id, str):
             return None
 
+        requests = CacheControlHelper()
         url = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/' + str(pubchem_id) + '/xrefs/PubMedID/JSON'
         try:
             r = requests.get(url, timeout=10)
@@ -207,13 +210,13 @@ class QueryPubChem:
         return res_url
 
 if __name__ == '__main__':
-    # print(QueryPubChem.get_chembl_ids_for_drug('gne-493'))
-    # print(QueryPubChem.get_pubchem_id_for_chembl_id('CHEMBL521'))
-    # print(QueryPubChem.get_pubchem_id_for_chembl_id('chembl521'))
-    # print(QueryPubChem.get_pubchem_id_for_chembl_id('3400'))
-    # print(QueryPubChem.get_pubmed_id_for_pubchem_id('3672'))
-    # print(QueryPubChem.get_pubmed_id_for_pubchem_id('3500'))
-    # print(QueryPubChem.get_pubmed_id_for_pubchem_id('3400'))
+    print(QueryPubChem.get_chembl_ids_for_drug('gne-493'))
+    print(QueryPubChem.get_pubchem_id_for_chembl_id('CHEMBL521'))
+    print(QueryPubChem.get_pubchem_id_for_chembl_id('chembl521'))
+    print(QueryPubChem.get_pubchem_id_for_chembl_id('3400'))
+    print(QueryPubChem.get_pubmed_id_for_pubchem_id('3672'))
+    print(QueryPubChem.get_pubmed_id_for_pubchem_id('3500'))
+    print(QueryPubChem.get_pubmed_id_for_pubchem_id('3400'))
     print(QueryPubChem.get_description_url('6921'))
     print(QueryPubChem.get_description_url('3500'))
     print(QueryPubChem.get_description_url('3400'))

@@ -12,7 +12,7 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-import requests_cache
+# import requests_cache
 import sys
 import pandas
 import timeit
@@ -23,7 +23,7 @@ from BioNetExpander import BioNetExpander
 from QueryDGIdb import QueryDGIdb
 
 # configure requests package to use the "orangeboard.sqlite" cache
-requests_cache.install_cache('orangeboard')
+# requests_cache.install_cache('orangeboard')
 
 
 def add_pc2_to_kg():
@@ -67,7 +67,7 @@ def add_pc2_to_kg():
 
 
 def seed_nodes_from_master_tsv_file():
-    seed_node_data = pandas.read_csv('../../../data/seed_nodes_filtered.tsv',
+    seed_node_data = pandas.read_csv('../../../data/seed_nodes_filtered_lite.tsv',
                                      sep="\t",
                                      names=['type', 'rtx_name', 'term', 'purpose'],
                                      # header=1,
@@ -117,8 +117,8 @@ def test_dgidb():
 def make_master_kg():
     seed_nodes_from_master_tsv_file()
     bne.expand_all_nodes()
-    bne.expand_all_nodes()
-    bne.expand_all_nodes()
+    # bne.expand_all_nodes()
+    # bne.expand_all_nodes()
     add_pc2_to_kg()
     add_dgidb_to_kg()
     # ob.neo4j_set_url('bolt://0.0.0.0:7687')

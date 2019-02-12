@@ -7,8 +7,11 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-import requests
-import requests_cache
+# import requests
+# import requests_cache
+
+from cache_control_helper import CacheControlHelper
+
 import urllib.parse
 import sys
 import json
@@ -28,10 +31,12 @@ class QueryEBIOLS:
 
     @staticmethod
     def send_query_get(handler, url_suffix):
+
+        requests = CacheControlHelper()
         url_str = QueryEBIOLS.API_BASE_URL + '/' + handler + "/" + url_suffix
 #        print(url_str)
         try:
-            res = requests.get(url_str, headers={'Accept': 'application/json'}, timeout=QueryEBIOLS.TIMEOUT_SEC)
+            res = requests.get(url_str, timeout=QueryEBIOLS.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
             print('HTTP timeout in QueryNCBIeUtils.py; URL: ' + url_str, file=sys.stderr)
             time.sleep(1)  # take a timeout because NCBI rate-limits connections
@@ -105,6 +110,7 @@ class QueryEBIOLS:
     @staticmethod
     def __access_api(handler):
 
+        requests = CacheControlHelper()
         url = QueryEBIOLS.API_BASE_URL + '/' + handler
         # print(url)
         try:
