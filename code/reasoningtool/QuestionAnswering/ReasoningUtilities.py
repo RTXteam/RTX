@@ -198,29 +198,25 @@ def get_node_property(name, node_property, node_label="", name_type="id", sessio
             query = "match (n{%s:'%s'}) return n.%s" % (name_type, name, node_property)
         else:
             query = "match (n:%s{%s:'%s'}) return n.%s" % (node_label, name_type, name, node_property)
-        if debug:
-            return query
-        res = session.run(query)
-        res = [i for i in res]  # consume the query
-        if res:
-            return res[0]['n.%s' % node_property]
+        if debug: return query
+        record = session.run(query).single()
+        if record:
+            return(record.value(key='n.%s' % node_property))
         else:
-            raise Exception("No result returned, property doesn't exist? node: %s" % name)
+            raise Exception("Node or property not found using query: '%s'" % query)
     else:
         if node_label == "":
             query = "match (n{%s:'%s'}) return labels(n)" % (name_type, name)
         else:
-            query = "match (n:%s{%s:'%s'}) return labels(n)" % (name_type, node_label, name)
-        if debug:
-            return query
-        res = session.run(query)
-        res = [i for i in res]  # consume the query
-        if res:
-            node_types = res[0]['labels(n)']
-            node_type = list(set(node_types).difference({"Base"}))
-            return node_type.pop()  # TODO: this assume only a single result is returned
+            query = "match (n:%s{%s:'%s'}) return labels(n)" % (node_label, name_type, name)
+        if debug: return query
+        record = session.run(query).single()
+        if record:
+            node_types = record.value(key='labels(n)')
+            non_base_node_types = list(set(node_types).difference({"Base"}))
+            return non_base_node_types.pop()  # TODO: this assumes only a single result is returned
         else:
-            raise Exception("No result returned, property doesn't exist? node: %s" % name)
+            raise Exception("Node or property not found using query: '%s'" % query)
 
 
 def get_node_properties(name, node_label="", name_type="id", session=session, debug=False):
@@ -239,13 +235,9 @@ def get_node_properties(name, node_label="", name_type="id", session=session, de
         query = "match (n:%s{%s:'%s'}) return properties(n)" % (node_label, name_type, name)
     if debug:
         return query
-    result = session.run(query)
-    record = result.single()
+    record = session.run(query).single()
     if record:
-        for key in record.keys():
-            response = record[key]
-            break
-        return response
+        return(record.value(key='properties(n)'))
     else:
         raise Exception("Node or properties not found using query: '%s'" % query)
 
