@@ -8,6 +8,12 @@ except ImportError:
 	sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 	import ReasoningUtilities as RU
 
+#### Import some Translator API classes
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+from swagger_server.models.query_graph import QueryGraph
+from swagger_server.models.q_node import QNode
+from swagger_server.models.q_edge import QEdge
+
 import FormatOutput
 import CustomExceptions
 
@@ -45,7 +51,7 @@ class Q3:
 				error_code = "NoPathsFound"
 				response = FormatOutput.FormatResponse(3)
 				response.add_error_message(error_code, error_message)
-				return response
+				return response.message
 
 		# extract the source_node_number
 		for node, data in g.nodes(data=True):
@@ -67,12 +73,11 @@ class Q3:
 				error_code = "AmbiguousPath"
 				response = FormatOutput.FormatResponse(3)
 				response.add_error_message(error_code, error_message)
-				return response
+				return response.message
 			else:
 				intermediate_node = neighbors.pop()
 
-
-		# Format the results.
+		#### If use_json not specified, then return results as a fairly plain list
 		if not use_json:
 			results_list = list()
 			for target_number in target_numbers:
@@ -83,10 +88,39 @@ class Q3:
 					 'desc': data['properties']['name'],
 					 'prob': 1})  # All these are known to be true
 			return results_list
-		else:  # You want the standardized API output format
+
+		#### Else if use_json requested, return the results in the Translator standard API JSON format
+		else:
 			response = FormatOutput.FormatResponse(3)  # it's a Q3 question
-			response.response.table_column_names = ["source name", "source ID", "target name", "target ID"]
+			response.message.table_column_names = ["source name", "source ID", "target name", "target ID"]
 			source_description = g.node[source_node_number]['properties']['name']
+
+			#### Create the QueryGraph for this type of question
+			query_graph = QueryGraph()
+			source_node = QNode()
+			source_node.node_id = "n00"
+			source_node.curie = g.node[source_node_number]['properties']['id']
+			source_node.type = g.node[source_node_number]['properties']['category']
+			target_node = QNode()
+			target_node.node_id = "n01"
+			target_node.type = target_label
+			query_graph.nodes = [ source_node,target_node ]
+			edge1 = QEdge()
+			edge1.edge_id = "e00"
+			edge1.source_id = "n00"
+			edge1.target_id = "n01"
+			edge1.type = relationship_type
+			query_graph.edges = [ edge1 ]
+			response.message.query_graph = query_graph
+
+			#### Create a mapping dict by type. This will fail if there is more than one node in the query_graph with the same type. Careful!!
+			#### This probably needs a better design eventually for more complex queries. Fine for Q3. FIXME
+			response._type_map = dict()
+			response._type_map[source_node.type] = source_node.node_id
+			response._type_map[target_node.type] = target_node.node_id
+			response._type_map[edge1.type] = edge1.edge_id
+
+			#### Loop over all the returned targets and put them into the response structure
 			for target_number in target_numbers:
 				target_description = g.node[target_number]['properties']['name']
 				if not has_intermediate_node:
@@ -97,13 +131,15 @@ class Q3:
 									"%s and %s are connected by the relationship %s" % (
 									source_description, target_description,	relationship_type), 1, return_result=True)
 				res.essence = "%s" % target_description  # populate with essence of question result
+				res.essence_type = g.node[target_number]['properties']['category']  # populate with the type of the essence of question result
 				row_data = []  # initialize the row data
 				row_data.append("%s" % source_description)
 				row_data.append("%s" % g.node[source_node_number]['properties']['id'])
 				row_data.append("%s" % target_description)
 				row_data.append("%s" % g.node[target_number]['properties']['id'])
 				res.row_data = row_data
-			return response
+			return response.message
+
 
 	def describe(self):
 		output = "Answers questions of the form: 'What proteins does tranilast target?' and 'What genes are affected by " \
@@ -150,7 +186,7 @@ def test_suite():
 def main():
 	parser = argparse.ArgumentParser(description="Answers questions of the type 'What proteins does X target?'.",
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-	parser.add_argument('-s', '--source_name', type=str, help="Source node name.", default="ChEMBL:3301668")
+	parser.add_argument('-s', '--source_name', type=str, help="Source node name.", default="CHEMBL.COMPOUND:CHEMBL521")
 	parser.add_argument('-t', '--target_label', type=str, help="Target node label", default="protein")
 	parser.add_argument('-r', '--rel_type', type=str, help="Relationship type.", default="physically_interacts_with")
 	parser.add_argument('-j', '--json', action='store_true', help='Flag specifying that results should be printed in JSON format (to stdout)', default=False)
@@ -174,10 +210,10 @@ def main():
 		print(res)
 	else:
 		res = Q.answer(source_name, target_label, relationship_type, use_json, directed=directed)
-		if use_json:
-			res.print()
-		else:
-			print(res)
+#		if use_json:
+#			res.print()
+#		else:
+		print(res)
 
 
 if __name__ == "__main__":
