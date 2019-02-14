@@ -51,7 +51,7 @@ class Q3:
 				error_code = "NoPathsFound"
 				response = FormatOutput.FormatResponse(3)
 				response.add_error_message(error_code, error_message)
-				return response.message
+				return response
 
 		# extract the source_node_number
 		for node, data in g.nodes(data=True):
@@ -73,7 +73,7 @@ class Q3:
 				error_code = "AmbiguousPath"
 				response = FormatOutput.FormatResponse(3)
 				response.add_error_message(error_code, error_message)
-				return response.message
+				return response
 			else:
 				intermediate_node = neighbors.pop()
 
@@ -138,7 +138,7 @@ class Q3:
 				row_data.append("%s" % target_description)
 				row_data.append("%s" % g.node[target_number]['properties']['id'])
 				res.row_data = row_data
-			return response.message
+			return response
 
 
 	def describe(self):
@@ -210,10 +210,10 @@ def main():
 		print(res)
 	else:
 		res = Q.answer(source_name, target_label, relationship_type, use_json, directed=directed)
-#		if use_json:
-#			res.print()
-#		else:
-		print(res)
+		if use_json:
+			res.print()
+		else:
+			print(res)
 
 
 if __name__ == "__main__":
