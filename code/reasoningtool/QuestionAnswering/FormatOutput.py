@@ -31,6 +31,7 @@ class FormatResponse:
 		self._question_number = question_number
 		self._now = datetime.datetime.now()
 		self._results = []
+		self._num_results = 0
 		# Create the message object and fill it with attributes about the response
 		self.message = Message()
 		self.message.type = "translator_reasoner_message"
@@ -38,6 +39,17 @@ class FormatResponse:
 		self.message.schema_version = "0.9.0"
 		self.message.message_code = "OK"
 		#self.message.code_description = "Placeholder for description"
+		self.message.code_description = "%s results found" % self._num_results
+
+		#### Create an empty master knowledge graph
+		self.message.knowledge_graph = KnowledgeGraph()
+		self.message.knowledge_graph.nodes = []
+		self.message.knowledge_graph.edges = []
+
+		#### Create an internal lookup dict of nodes and edges for maintaining the master knowledge graph
+		self._node_ids = dict()
+		self._edge_ids = dict()
+		self._edge_counter = 0
 
 
 	def __str__(self):
@@ -53,9 +65,8 @@ class FormatResponse:
 		:param message: error message
 		:return: None (modifies message)
 		"""
-		message = self.message
-		message.response_code = code
-		message.code_description = message
+		self.message.message_code = code
+		self.message.code_description = message
 
 	def add_text(self, description, confidence=1):
 		result1 = Result()
@@ -69,6 +80,7 @@ class FormatResponse:
 			self.message.code_description = "%s result found" % self._num_results
 		else:
 			self.message.code_description = "%s results found" % self._num_results
+
 
 	def add_subgraph(self, nodes, edges, description, confidence, return_result=False):
 		"""
@@ -114,6 +126,7 @@ class FormatResponse:
 		edge_target_iri = dict()
 		edge_source_curie = dict()
 		edge_target_curie = dict()
+		edge_ids = dict()
 		for u, v, data in edges:
 			edge_keys.append((u, v))
 			edge_types[(u, v)] = data['type']
@@ -122,6 +135,7 @@ class FormatResponse:
 			edge_target_iri[(u, v)] = node_uuids2iri[data['properties']['target_node_uuid']]
 			edge_source_curie[(u,v)] = node_uuids2curie[data['properties']['source_node_uuid']]
 			edge_target_curie[(u, v)] = node_uuids2curie[data['properties']['target_node_uuid']]
+			edge_ids[(u, v)] = data['properties']['provided_by'] # FIXME
 
 		# For each node, populate the relevant information
 		node_objects = []
@@ -137,21 +151,27 @@ class FormatResponse:
 			node_objects.append(node)
 			node_iris_to_node_object[node_iris[node_key]] = node
 
+			#### Add this node to the master knowledge graph
+			if node.id not in self._node_ids:
+				self.message.knowledge_graph.nodes.append(node)
+				self._node_ids[node.id] = node.type[0]			# Just take the first of potentially several FIXME
+
+		#### Create the knowledge_map construct
+		knowledge_map = dict()
+
 		# for each edge, create an edge between them
 		edge_objects = []
 		for u, v in edge_keys:
 			edge = Edge()
+			#edge.id is set below when building the knowlege map
 			edge.type = edge_types[(u, v)]
 			edge.source_id = node_iris_to_node_object[edge_source_iri[(u, v)]].id
 			edge.target_id = node_iris_to_node_object[edge_target_iri[(u, v)]].id
-			#edge.origin_list = []
-			#edge.origin_list.append(edge_source_db[(u, v)])  # TODO: check with eric if this really should be a list and if it should contain the source DB('s)
 			edge_objects.append(edge)
 			#edge.attribute_list
 			#edge.confidence
 			#edge.evidence_type
 			edge.is_defined_by = "RTX"
-			#edge.provided_by = node_iris_to_node_object[edge_source_iri[(u, v)]].uri
 			edge.provided_by = edge_source_db[(u, v)]
 			#edge.publications
 			#edge.qualifiers
@@ -160,32 +180,63 @@ class FormatResponse:
 			#edge.target_id
 			#edge.type
 
+			#### Add this edge to the master knowledge graph
+			edge_str = "%s -%s- %s" % (edge.source_id,edge.type,edge.target_id)
+			if edge_str not in self._edge_ids:
+				self.message.knowledge_graph.edges.append(edge)
+				edge.id = "%i" % self._edge_counter
+				self._edge_ids[edge_str] = edge.id
+				self._edge_counter += 1
+			else:
+				edge.id = self._edge_ids[edge_str]
+
+			#### Add this edge to the knowledge_map for this result
+			source_type = self._node_ids[edge.source_id]
+			target_type = self._node_ids[edge.target_id]
+			knowledge_map_key = self._type_map[source_type]
+			if not knowledge_map_key:
+				raise Exception("Expected to find '%s' in the response._type_map, but did not" % source_type)
+			knowledge_map[knowledge_map_key] = edge.source_id
+			knowledge_map_key = self._type_map[target_type]
+			if not knowledge_map_key:
+				raise Exception("Expected to find '%s' in the response._type_map, but did not" % target_type)
+			knowledge_map[knowledge_map_key] = edge.target_id
+			knowledge_map_key = self._type_map[edge.type]
+			if not knowledge_map_key:
+				raise Exception("Expected to find '%s' in the response._type_map, but did not" % edge.type)
+			knowledge_map[knowledge_map_key] = edge.id
+
 		# Create the result (potential answer)
 		result1 = Result()
+		result1.reasoner_id = "RTX"
 		result1.description = description
 		result1.confidence = confidence
+		result1.knowledge_map = knowledge_map
 
 		# Create a KnowledgeGraph object and put the list of nodes and edges into it
-		knowledge_graph = KnowledgeGraph()
-		knowledge_graph.nodes = node_objects
-		knowledge_graph.edges = edge_objects
-
-		# Put the KnowledgeGraph into the first result (potential answer)
-		result1.knowledge_graph = knowledge_graph
+		#### This is still legal, then is redundant with the knowledge map, so leave it out maybe
+		#knowledge_graph = KnowledgeGraph()
+		#knowledge_graph.nodes = node_objects
+		#knowledge_graph.edges = edge_objects
+		#result1.result_graph = knowledge_graph
 
 		# Put the first result (potential answer) into the message
 		self._results.append(result1)
 		self.message.results = self._results
+
 		# Increment the number of results
 		self._num_results += 1
 		if self._num_results == 1:
 			self.message.code_description = "%s result found" % self._num_results
 		else:
 			self.message.code_description = "%s results found" % self._num_results
+
+		#### Finish and return the result if requested
 		if return_result:
 			return result1
 		else:
 			pass
+
 
 	def add_neighborhood_graph(self, nodes, edges, confidence=None):
 		"""
