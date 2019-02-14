@@ -201,7 +201,9 @@ def get_node_property(name, node_property, node_label="", name_type="id", sessio
         if debug: return query
         record = session.run(query).single()
         if record:
-            return(record.value(key='n.%s' % node_property))
+            #return(record.value(key='n.%s' % node_property))
+            for key in record.keys():
+                if key == "n.%s" % node_property: return(record[key])
         else:
             raise Exception("Node or property not found using query: '%s'" % query)
     else:
@@ -212,7 +214,9 @@ def get_node_property(name, node_property, node_label="", name_type="id", sessio
         if debug: return query
         record = session.run(query).single()
         if record:
-            node_types = record.value(key='labels(n)')
+            #node_types = record.value(key='labels(n)')
+            for key in record.keys():
+                if key == "labels(n)": node_types = record[key]
             non_base_node_types = list(set(node_types).difference({"Base"}))
             return non_base_node_types.pop()  # TODO: this assumes only a single result is returned
         else:
@@ -237,7 +241,9 @@ def get_node_properties(name, node_label="", name_type="id", session=session, de
         return query
     record = session.run(query).single()
     if record:
-        return(record.value(key='properties(n)'))
+        #return(record.value(key='properties(n)'))
+        for key in record.keys():
+            if key == "properties(n)": return(record[key])
     else:
         raise Exception("Node or properties not found using query: '%s'" % query)
 
