@@ -55,10 +55,10 @@ class Q0:
 			if not use_json:
 				return None
 			else:
+				error_code = "TermNotFound"
+				error_message = "This concept is not in our knowledge graph"
 				response = FormatOutput.FormatResponse(0)
-				response.message.message_code = "TermNotFound"
-				response.message.code_description = "This concept is not in our knowledge graph"
-				response.message.id = None
+				response.add_error_message(error_code, error_message)
 				return response.message
 
 		# Get label/kind of node the source is
