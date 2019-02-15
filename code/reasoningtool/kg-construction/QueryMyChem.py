@@ -76,8 +76,10 @@ class QueryMyChem:
             #   remove all \n characters using json api and convert the string to one line
             json_dict = json.loads(results)
             if "chebi" in json_dict.keys():
-                if "definition" in json_dict['chebi'].keys():
+                if type(json_dict['chebi']) is dict and "definition" in json_dict['chebi'].keys():
                     result_str = json_dict['chebi']['definition']
+                if type(json_dict['chebi']) is list and "definition" in json_dict['chebi'][0].keys():
+                    result_str = json_dict['chebi'][0]['definition']
         return result_str
 
     @staticmethod
@@ -377,7 +379,6 @@ if __name__ == '__main__':
         json.dump(json_data, f)
         f.close()
 
-
     save_to_test_file('tests/query_test_data.json', 'ChEMBL:1200766',
                       QueryMyChem.get_chemical_substance_entity('ChEMBL:1200766'))
     save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:154',
@@ -386,6 +387,8 @@ if __name__ == '__main__':
                       QueryMyChem.get_chemical_substance_description('ChEMBL:20883'))   # no definition field
     save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:110101020',
                       QueryMyChem.get_chemical_substance_description('ChEMBL:110101020'))   # wrong id
+
+    print(QueryMyChem.get_chemical_substance_description('CHEMBL:58832'))
 
     # umls_array = QueryMyChem.get_drug_side_effects("CHEMBL521")
     # print(umls_array)
