@@ -12,9 +12,13 @@ __maintainer__ = ""
 __email__ = ""
 __status__ = "Prototype"
 
-# import requests
-from cache_control_helper import CacheControlHelper
+import requests
+import requests_cache
 import sys
+
+# configure requests package to use the "QueryCOHD.sqlite" cache
+requests_cache.install_cache('orangeboard')
+
 
 class QueryGeneProf:
     API_BASE_URL = 'http://www.geneprof.org/GeneProf/api'
@@ -22,8 +26,6 @@ class QueryGeneProf:
 
     @staticmethod
     def send_query_get(handler, url_suffix):
-
-        requests = CacheControlHelper()
         url_str = QueryGeneProf.API_BASE_URL + "/" + handler + "/" + url_suffix
 #        print(url_str)
         try:
