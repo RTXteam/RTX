@@ -33,6 +33,10 @@ class QueryGeneProf:
         except requests.exceptions.Timeout:
             print("Timeout in QueryGeneProf for URL: " + url_str, file=sys.stderr)
             return None
+        except BaseException as e:
+            print(url_str, file=sys.stderr)
+            print('%s received in QueryGeneProf for URL: %s' % (e, url_str), file=sys.stderr)
+            return None
         status_code = res.status_code
         if status_code != 200:
             print("HTTP response status code: " + str(status_code) + " for URL:\n" + url_str, file=sys.stderr)

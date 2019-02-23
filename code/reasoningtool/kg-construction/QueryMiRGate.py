@@ -36,6 +36,10 @@ class QueryMiRGate:
             print(url_str, file=sys.stderr)
             print("Timeout in QueryMiRGate for URL: " + url_str, file=sys.stderr)
             return None
+        except BaseException as e:
+            print(url_str, file=sys.stderr)
+            print('%s received in QueryMiRGate for URL: %s' % (e, url_str), file=sys.stderr)
+            return None
         status_code = res.status_code
         if status_code != 200:
             print(url_str, file=sys.stderr)

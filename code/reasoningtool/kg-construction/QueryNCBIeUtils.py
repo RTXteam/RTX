@@ -73,6 +73,10 @@ class QueryNCBIeUtils:
             print('HTTP connection error in QueryNCBIeUtils.py; URL: ' + url_str, file=sys.stderr)
             time.sleep(1)  ## take a timeout because NCBI rate-limits connections
             return None
+        except BaseException as e:
+            print(url_str, file=sys.stderr)
+            print('%s received in QueryMiRGate for URL: %s' % (e, url_str), file=sys.stderr)
+            return None
         status_code = res.status_code
         if status_code != 200:
             print('HTTP response status code: ' + str(status_code) + ' for URL:\n' + url_str, file=sys.stderr)

@@ -35,6 +35,10 @@ class QuerySciGraph:
             print(url, file=sys.stderr)
             print('Timeout in QuerySciGraph for URL: ' + url, file=sys.stderr)
             return None
+        except BaseException as e:
+            print(url, file=sys.stderr)
+            print('%s received in QuerySciGraph for URL: %s' % (e, url), file=sys.stderr)
+            return None
         status_code = res.status_code
         if status_code != 200:
             print(url, file=sys.stderr)
@@ -227,3 +231,5 @@ if __name__ == '__main__':
     print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015473'))
     print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term("HP:0000107"))  # Renal cyst
     print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015470'))
+    print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term('GO:0062026'))
+

@@ -72,6 +72,10 @@ class QueryDisGeNet:
             print(url_str, sys.stderr)
             print('Timeout in QueryDisGeNet for URL: ' + url_str, file=sys.stderr)
             return dict()
+        except BaseException as e:
+            print(url_str, file=sys.stderr)
+            print('%s received in QueryDisGeNet for URL: %s' % (e, url_str), file=sys.stderr)
+            return None
 
         status_code = res.status_code
 

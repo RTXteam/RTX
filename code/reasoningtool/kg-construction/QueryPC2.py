@@ -12,6 +12,7 @@ __email__ = ''
 __status__ = 'Prototype'
 
 # import requests
+import sys
 from cache_control_helper import CacheControlHelper
 
 
@@ -29,6 +30,10 @@ class QueryPC2:
         except requests.exceptions.Timeout:
             # print(url, file=sys.stderr)
             # print('Timeout in QueryPC2 for URL: ' + url, file=sys.stderr)
+            return None
+        except BaseException as e:
+            print(url_str, file=sys.stderr)
+            print('%s received in QueryMiRGate for URL: %s' % (e, url_str), file=sys.stderr)
             return None
         status_code = res.status_code
         if status_code != 200:
