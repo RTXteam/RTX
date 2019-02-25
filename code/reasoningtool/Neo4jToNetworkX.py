@@ -2,9 +2,14 @@ import networkx as nx
 import cypher
 from collections import namedtuple
 
+import sys, os
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # code directory
+from RTXConfiguration import RTXConfiguration
+rtxConfig = RTXConfiguration()
 
 # Connection information for the ipython-cypher package
-connection = "http://neo4j:precisionmedicine@rtx.ncats.io:7473/db/data"
+connection = "http://" + rtxConfig.username + ":" + rtxConfig.password + "@" + rtxConfig.database
 DEFAULT_CONFIGURABLE = {
 	"auto_limit": 0,
 	"style": 'DEFAULT',

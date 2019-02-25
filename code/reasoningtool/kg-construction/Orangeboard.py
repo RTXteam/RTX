@@ -21,9 +21,12 @@ import uuid
 import itertools
 import pprint
 import neo4j.v1
-import sys
+import sys, os
 import timeit
 import argparse
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+from RTXConfiguration import RTXConfiguration
 
 # NOTE to users:  neo4j password hard-coded (see NEO4J_PASSWORD below)
 # nodetype+name together uniquely define a node
@@ -130,8 +133,6 @@ class Rel:
 
 
 class Orangeboard:
-    # NEO4J_USERNAME = 'neo4j'
-    # NEO4J_PASSWORD = 'precisionmedicine'
     DEBUG_COUNT_REPORT_GRANULARITY = 1000
 
     def bytesize(self):
@@ -578,8 +579,9 @@ class Orangeboard:
         node2 = ob.add_node('bartype', 'x', seed_node_bool=False)
         ob.add_rel('interacts_with', 'PC2', node1, node2)
         ob.add_rel('interacts_with', 'PC2', node2, node1)
-        ob.neo4j_set_url()
-        ob.neo4j_set_auth()
+        rtxConfig = RTXConfiguration()
+        ob.neo4j_set_url(rtxConfig.bolt)
+        ob.neo4j_set_auth(rtxConfig.username, rtxConfig.password)
         ob.neo4j_push()
         print(ob)
 
@@ -590,8 +592,9 @@ class Orangeboard:
         node2 = ob.add_node('bartype', 'x', seed_node_bool=False)
         ob.add_rel('interacts_with', 'PC2', node1, node2)
         ob.add_rel('interacts_with', 'PC2', node2, node1)
-        ob.neo4j_set_url()
-        ob.neo4j_set_auth()
+        rtxConfig = RTXConfiguration()
+        ob.neo4j_set_url(rtxConfig.bolt)
+        ob.neo4j_set_auth(rtxConfig.username, rtxConfig.password)
         ob.neo4j_push()
         print(ob)
 
@@ -601,8 +604,9 @@ class Orangeboard:
         node1 = ob.add_node('drug', 'x', seed_node_bool=True)
         node2 = ob.add_node('uniprot_protein', 'w', seed_node_bool=False)
         ob.add_rel('targets', 'ChEMBL', node1, node2, prob=0.5)
-        ob.neo4j_set_url()
-        ob.neo4j_set_auth()
+        rtxConfig = RTXConfiguration()
+        ob.neo4j_set_url(rtxConfig.bolt)
+        ob.neo4j_set_auth(rtxConfig.username, rtxConfig.password)
         ob.neo4j_push()
         print(ob)        
 
@@ -613,8 +617,9 @@ class Orangeboard:
         node2 = ob.add_node('uniprot_protein', 'w', seed_node_bool=False)
         ob.add_rel('targets', 'ChEMBL', node1, node2, prob=0.5)
         ob.add_rel('targets2', 'ChEMBL2', node1, node2, prob=0.5, extended_reltype="test")
-        ob.neo4j_set_url()
-        ob.neo4j_set_auth()
+        rtxConfig = RTXConfiguration()
+        ob.neo4j_set_url(rtxConfig.bolt)
+        ob.neo4j_set_auth(rtxConfig.username, rtxConfig.password)
         ob.neo4j_push()
         print(ob)        
 
