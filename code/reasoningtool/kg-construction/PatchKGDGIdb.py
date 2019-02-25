@@ -1,11 +1,16 @@
 import requests_cache
+import sys, os
 from QueryDGIdb import QueryDGIdb
 from Neo4jConnection import Neo4jConnection
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+from RTXConfiguration import RTXConfiguration
+
 requests_cache.install_cache('orangeboard')
 
+rtxConfig = RTXConfiguration()
 
-conn = Neo4jConnection('bolt://localhost:7687', 'neo4j', 'precisionmedicine')
+conn = Neo4jConnection(rtxConfig.bolt, rtxConfig.username, rtxConfig.password)
 disease_nodes = conn.get_disease_nodes()
 drug_nodes = conn.get_chemical_substance_nodes()
 protein_nodes = conn.get_protein_nodes()
