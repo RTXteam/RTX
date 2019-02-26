@@ -76,6 +76,7 @@ class Q0:
 			#### Create a stub Message object
 			response = FormatOutput.FormatResponse(0)
 			response.message.table_column_names = [ "id", "type", "name", "description", "uri" ]
+			response.message.code_description = None
 
 			#### Create a Node object and fill it
 			node1 = Node()
