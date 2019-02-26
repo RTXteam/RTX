@@ -4,6 +4,8 @@ import six
 from openapi_server.models.query import Query  # noqa: E501
 from openapi_server import util
 
+from ParseQuestion import ParseQuestion
+
 
 def translate(request_body):  # noqa: E501
     """Translate natural language question into a standardized query
@@ -15,4 +17,10 @@ def translate(request_body):  # noqa: E501
 
     :rtype: List[Query]
     """
-    return 'do some magic!'
+    if connexion.request.is_json:
+        question = connexion.request.get_json()
+        questionParser = ParseQuestion()
+        query = questionParser.format_response(question)
+        return(query)
+    else:
+        return( { "status": 502, "title": "body content not JSON", "detail": "Required body content is not JSON", "type": "about:blank" }, 502 )

@@ -3,6 +3,8 @@ import six
 
 from openapi_server import util
 
+from KGNodeIndex import KGNodeIndex
+
 
 def get_entity_by_string(search_string):  # noqa: E501
     """Obtain the CURIE and type of some entity by name
@@ -14,4 +16,5 @@ def get_entity_by_string(search_string):  # noqa: E501
 
     :rtype: List[object]
     """
-    return 'do some magic!'
+    kGNodeIndex = KGNodeIndex()
+    return kGNodeIndex.get_curies_and_types(search_string)
