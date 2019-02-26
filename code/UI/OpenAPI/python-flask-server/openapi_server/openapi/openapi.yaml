@@ -18,8 +18,13 @@ tags:
 - description: Query reasoner using a predefined question type
   externalDocs:
     description: Documentation for the reasoner query function
-    url: http://rtx.ncats.io/devED/overview.html#query
+    url: https://rtx.ncats.io/devED/overview.html#query
   name: query
+- description: Obtain or send feedback information
+  externalDocs:
+    description: Documentation for the reasoner feedback function
+    url: https://rtx.ncats.io/devED/overview.html#feedback
+  name: feedback
 - description: Request stored messages and feedback for messages
   externalDocs:
     description: Documentation for the reasoner message function
@@ -28,24 +33,63 @@ tags:
 - description: Request stored results and feedback for results
   externalDocs:
     description: Documentation for the reasoner result function
-    url: http://rtx.ncats.io/devED/overview.html#result
+    url: https://rtx.ncats.io/devED/overview.html#result
   name: result
 - description: Translate natural language question into a standardized query
   externalDocs:
     description: Documentation for the reasoner translate function
-    url: http://rtx.ncats.io/devED/overview.html#translate
+    url: https://rtx.ncats.io/devED/overview.html#translate
   name: translate
 - description: Return identifier and type of some entity in the knowledge graph
   externalDocs:
     description: Documentation for the reasoner entity function
-    url: http://rtx.ncats.io/devED/overview.html#entity
+    url: https://rtx.ncats.io/devED/overview.html#entity
   name: entity
 - description: Return a list of example questions that the reasoner can answer
   externalDocs:
     description: Documentation for the reasoner exampleQuestions function
-    url: http://rtx.ncats.io/devED/overview.html#exampleQuestions
+    url: https://rtx.ncats.io/devED/overview.html#exampleQuestions
   name: exampleQuestions
+- description: Query to get the Normalized Google Distance between two MeSH terms based on co-occurance in all PubMed article annotations
+  externalDocs:
+    description: Documentation for the reasoner PubmedMeshNgd function
+    url: https://rtx.ncats.io/devED/overview.html#PubmedMeshNgd
+  name: PubmedMeshNgd
 paths:
+  /PubmedMeshNgd/{term1}/{term2}:
+    get:
+      operationId: pubmed_mesh_ngd
+      parameters:
+      - description: First of two terms. Order not important.
+        explode: false
+        in: path
+        name: term1
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: Second of two terms. Order not important.
+        explode: false
+        in: path
+        name: term2
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeshNgdResponse'
+          description: successful operation
+        400:
+          description: Invalid terms
+      summary: Query to get the Normalized Google Distance between two MeSH terms based on co-occurrence in all PubMed article annotations
+      tags:
+      - PubmedMeshNgd
+      x-swagger-router-controller: openapi_server.controllers.pubmed_mesh_ngd_controller
+      x-openapi-router-controller: openapi_server.controllers.pubmed_mesh_ngd_controller
   /entity/{search_string}:
     get:
       operationId: get_entity_by_string
@@ -5363,6 +5407,26 @@ components:
           - English
           example: English
           type: string
+      type: object
+    MeshNgdResponse:
+      example:
+        result_code: TermNotFound
+        message: Term 1 'malria' not found in MeSH
+        value: 0.714
+      properties:
+        result_code:
+          description: Set to OK for success, or some other short string to indicate and error (e.g., TermNotFound, etc.)
+          example: TermNotFound
+          type: string
+        message:
+          description: Extended message denoting the success or mode of failure for request
+          example: Term 1 'malria' not found in MeSH
+          type: string
+        value:
+          description: Calculated Normalized Google Distance for the two supplied terms
+          example: 0.714
+          format: float
+          type: number
       type: object
     Message_terms:
       description: Dict of terms needed by the specific query type
