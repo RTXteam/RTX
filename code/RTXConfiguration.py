@@ -14,11 +14,11 @@ class RTXConfiguration:
         self.version = "RTX 0.5.4"
 
         # This is the flag/property to switch between the two containers
-        # self.live = "Production"
+        self.live = "Production"
         # self.live = "KG2"
         # self.live = "rtxdev"
         # self.live = "staging"
-        self.live = "local"
+        # self.live = "local"
 
         file_path = os.path.dirname(os.path.abspath(__file__)) + '/config.json'
 
