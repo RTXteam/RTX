@@ -19,7 +19,12 @@ tags:
     description: Query reasoner using a predefined question type
     externalDocs:
       description: Documentation for the reasoner query function
-      url: 'http://rtx.ncats.io/overview.html#query'
+      url: 'https://rtx.ncats.io/overview.html#query'
+  - name: feedback
+    description: Obtain or send feedback information
+    externalDocs:
+      description: Documentation for the reasoner feedback function
+      url: 'https://rtx.ncats.io/overview.html#feedback'
   - name: message
     description: Request stored messages and feedback for messages
     externalDocs:
@@ -29,22 +34,27 @@ tags:
     description: Request stored results and feedback for results
     externalDocs:
       description: Documentation for the reasoner result function
-      url: 'http://rtx.ncats.io/overview.html#result'
+      url: 'https://rtx.ncats.io/overview.html#result'
   - name: translate
     description: Translate natural language question into a standardized query
     externalDocs:
       description: Documentation for the reasoner translate function
-      url: 'http://rtx.ncats.io/overview.html#translate'
+      url: 'https://rtx.ncats.io/overview.html#translate'
   - name: entity
     description: Return identifier and type of some entity in the knowledge graph
     externalDocs:
       description: Documentation for the reasoner entity function
-      url: 'http://rtx.ncats.io/overview.html#entity'
+      url: 'https://rtx.ncats.io/overview.html#entity'
   - name: exampleQuestions
     description: Return a list of example questions that the reasoner can answer
     externalDocs:
       description: Documentation for the reasoner exampleQuestions function
-      url: 'http://rtx.ncats.io/overview.html#exampleQuestions'
+      url: 'https://rtx.ncats.io/overview.html#exampleQuestions'
+  - name: PubmedMeshNgd
+    description: Query to get the Normalized Google Distance between two MeSH terms based on co-occurance in all PubMed article annotations
+    externalDocs:
+      description: Documentation for the reasoner PubmedMeshNgd function
+      url: 'https://rtx.ncats.io/overview.html#PubmedMeshNgd'
 paths:
   /query:
     post:
@@ -312,6 +322,36 @@ paths:
                 items:
                   type: object
       x-swagger-router-controller: "openapi_server.controllers.example_questions_controller"
+  '/PubmedMeshNgd/{term1}/{term2}':
+    get:
+      tags:
+      - PubmedMeshNgd
+      summary: Query to get the Normalized Google Distance between two MeSH terms based on co-occurrence in all PubMed article annotations
+      description: ''
+      operationId: PubmedMeshNgd
+      parameters:
+        - in: path
+          name: term1
+          description: First of two terms. Order not important.
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: term2
+          description: Second of two terms. Order not important.
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeshNgdResponse'
+        '400':
+          description: "Invalid terms"
+      x-swagger-router-controller: "openapi_server.controllers.pubmed_mesh_ngd_controller"
 components:
   schemas:
     FeedbackResponse:
@@ -1039,3 +1079,19 @@ components:
           enum:
           - English
       additionalProperties: true
+    MeshNgdResponse:
+      type: object
+      properties:
+        result_code:
+          type: string
+          example: TermNotFound
+          description: Set to OK for success, or some other short string to indicate and error (e.g., TermNotFound, etc.)
+        message:
+          type: string
+          example: Term 1 'malria' not found in MeSH
+          description: Extended message denoting the success or mode of failure for request
+        value:
+          type: number
+          format: float
+          description: Calculated Normalized Google Distance for the two supplied terms
+          example: 0.714
