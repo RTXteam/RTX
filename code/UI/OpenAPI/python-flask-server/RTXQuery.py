@@ -46,6 +46,16 @@ class RTXQuery:
       response.code_description = result["code_description"]
       return response
 
+    #### If we are have a previous message processing plan, handle that
+    if "have_previous_message_processing_plan" in result:
+      rtxFeedback = RTXFeedback()       # FIXME. This should be a separate class I think, not the Feedback class. TODO: Separate them
+      rtxFeedback.connect()
+      rtxFeedback.processExternalPreviousMessageProcessingPlan(query)
+      rtxFeedback.addNewMessage(message,query)
+      rtxFeedback.disconnect()
+      self.limitMessage(message,query)
+      return(message)
+
     #### Check to see if the query_options indicates to query named resource and integrate the results
     if result["have_query_type_id_and_terms"] and "query_message" in query and "query_options" in query["query_message"] and "integrate" in query["query_message"]["query_options"]:
       response = self.integrate(query)
@@ -57,7 +67,7 @@ class RTXQuery:
     id = query["query_message"]["query_type_id"]
     terms = query["query_message"]["terms"]
 
-    eprint(query)
+    #eprint(query)
 
 
     #### Create an RTX Feedback management object

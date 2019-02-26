@@ -546,7 +546,7 @@ class RTXFeedback:
 
 
   #### Get a previously stored message for this query from the database
-  def processExternalPreviousMessageProcessingPlan(self,envelope):
+  def processExternalPreviousMessageProcessingPlan(self,inputEnvelope):
     debug = 1
     if debug: eprint("DEBUG: Entering processExternalPreviousMessageProcessingPlan")
     messages = []
@@ -554,9 +554,13 @@ class RTXFeedback:
     finalMessage_id = None
     query = None
 
-    if envelope.message_ur_is is not None:
-      if debug: eprint("DEBUG: Got messageURIs")
-      for uri in envelope.message_ur_is:
+    #### Pull out the main processing plan envelope
+    envelope = inputEnvelope.previous_message_processing_plan
+
+    #### If there are URIs provided, try to load them
+    if envelope.previous_message_uris is not None:
+      if debug: eprint("DEBUG: Got previous_message_uris")
+      for uri in envelope.previous_message_uris:
         if debug: eprint("DEBUG:   messageURI="+uri)
         matchResult = re.match( r'http[s]://rtx.ncats.io/.*api/rtx/.+/message/(\d+)',uri,re.M|re.I )
         if matchResult:
@@ -574,10 +578,10 @@ class RTXFeedback:
             eprint("ERROR: Unable to load message_id "+message_id)
             return( { "status": 404, "title": "Message not found", "detail": "There is no local message corresponding to message_id="+str(message_id), "type": "about:blank" }, 404)
 
-
-    if envelope.messages is not None:
-      if debug: eprint("DEBUG: Got messages")
-      for uploadedMessage in envelope.messages:
+    #### If there are one or more previous_messages embedded in the POST, process them
+    if envelope.previous_messages is not None:
+      if debug: eprint("DEBUG: Got previous_messages")
+      for uploadedMessage in envelope.previous_messages:
         if debug: eprint("DEBUG: uploadedMessage is a "+str(uploadedMessage.__class__))
         if str(uploadedMessage.__class__) == "<class 'swagger_server.models.message.Message'>":
           if uploadedMessage.results:
@@ -601,7 +605,7 @@ class RTXFeedback:
           eprint("Uploaded message is not of type Message. It is of type"+str(uploadedMessage.__class__))
           return( { "status": 404, "title": "Bad uploaded Message", "detail": "Uploaded message is not of type Message. It is of type"+str(uploadedMessage.__class__), "type": "about:blank" }, 404)
 
-    #### How many message objects do we have
+    #### Take different actions based on the number of messages we now have in hand
     n_messages = len(messages)
     if n_messages == 0:
       return( { "status": 499, "title": "No Messages", "detail": "Did not get any useful Message objects", "type": "about:blank" }, 499)
@@ -622,7 +626,7 @@ class RTXFeedback:
       finalMessage = ast.literal_eval(repr(finalMessage))
       #return( { "status": 498, "title": "Multiple Messages", "detail": "I have multiple messages. Merging code awaits!", "type": "about:blank" }, 498)
 
-
+    #### Examine the options that were provided and act accordingly
     optionsDict = {}
     if envelope.options:
       if debug: eprint("DEBUG: Got options")
@@ -645,7 +649,6 @@ class RTXFeedback:
     else:
       return( { "status": 504, "title": "Message type not specified", "detail": "One of the options must be RedirectToMessage, ReturnMessageId, or ReturnMessage", "type": "about:blank" }, 504)
 
-      
     if debug: eprint("DEBUG: Exiting processExternalPreviousMessageProcessingPlan")
     return()
 
