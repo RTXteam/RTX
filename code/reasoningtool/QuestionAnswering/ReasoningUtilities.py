@@ -358,6 +358,14 @@ def get_relationship_types_between(source_name, source_label, target_name, targe
             res = session.run(query)
             res = [i["type(r)"] for i in res]
             return res
+    elif max_path_len == 1 and not source_name and not target_name and not target_label:
+        query = "match (s:%s)-[r]-(t) return distinct type(r)" % (source_label)
+        if debug:
+            return query
+        else:
+            res = session.run(query)
+            res = [i["type(r)"] for i in res]
+            return res
     elif max_path_len == 1 and not source_name and not target_name:
         query = "match (s:%s)-[r]-(t:%s) return distinct type(r)" % (source_label, target_label)
         if debug:
