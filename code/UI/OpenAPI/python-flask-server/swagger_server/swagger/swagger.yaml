@@ -53,6 +53,11 @@ tags:
   externalDocs:
     description: "Documentation for the RTX feedback function"
     url: "https://rtx.ncats.io/devED/overview.html#feedback"
+- name: "types"
+  description: "Return data types in the knowledge graph"
+  externalDocs:
+    description: "Documentation for the reasoner types function"
+    url: "https://rtx.ncats.io/devED/overview.html#types"
 schemes:
 - "https"
 paths:
@@ -341,6 +346,85 @@ paths:
         400:
           description: "Invalid status value"
       x-swagger-router-controller: "swagger_server.controllers.result_controller"
+  /types/nodes:
+    get:
+      tags:
+      - "types"
+      summary: "Obtain all possible types of nodes"
+      description: ""
+      operationId: "get_node_types"
+      produces:
+      - "application/json"
+      parameters: []
+      responses:
+        200:
+          description: "successful operation"
+        404:
+          description: "No types found"
+      x-swagger-router-controller: "swagger_server.controllers.types_controller"
+  /types/edges:
+    get:
+      tags:
+      - "types"
+      summary: "Obtain all possible types of edges"
+      description: ""
+      operationId: "get_all_edge_types"
+      produces:
+      - "application/json"
+      parameters: []
+      responses:
+        200:
+          description: "successful operation"
+        404:
+          description: "No types found"
+      x-swagger-router-controller: "swagger_server.controllers.types_controller"
+  /types/edges/{node_type}:
+    get:
+      tags:
+      - "types"
+      summary: "Obtain all possible types of edges linked to a node_type"
+      description: ""
+      operationId: "get_node_edge_types"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "node_type"
+        in: "path"
+        description: "Node type to filter possible edges by"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "successful operation"
+        404:
+          description: "No types found"
+      x-swagger-router-controller: "swagger_server.controllers.types_controller"
+  /types/edges/{node_type1}/{node_type2}:
+    get:
+      tags:
+      - "types"
+      summary: "Obtain all possible types of edges linking node_type1 and node_type2"
+      description: ""
+      operationId: "get_node_to_node_edge_types"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "node_type1"
+        in: "path"
+        description: "Node type 1 to filter possible edges by"
+        required: true
+        type: "string"
+      - name: "node_type2"
+        in: "path"
+        description: "Node type 2 to filter possible edges by"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "successful operation"
+        404:
+          description: "No types found"
+      x-swagger-router-controller: "swagger_server.controllers.types_controller"
 definitions:
   Question:
     type: "object"
@@ -472,7 +556,7 @@ definitions:
     properties:
       context:
         type: "string"
-        example: "https://rtx.ncats.io/devED/ns/translator.jsonld"
+        example: "https://rtx.ncats.io/ns/translator.jsonld"
         description: "JSON-LD context URI"
       type:
         type: "string"
@@ -592,7 +676,7 @@ definitions:
         metabolite: "ibuprofen"
         protein: "P12345"
         chemical_substance: "ibuprofen"
-      context: "https://rtx.ncats.io/devED/ns/translator.jsonld"
+      context: "https://rtx.ncats.io/ns/translator.jsonld"
       reasoner_id: "reasoner"
       id: "https://rtx.ncats.io/devED/api/rtx/v1/message/123"
       results:
@@ -1087,7 +1171,7 @@ definitions:
     properties:
       url:
         type: "string"
-        example: "http://robokop.renci.org/api/kg"
+        example: "http://robokop.renci.org/devED/api/kg"
         description: "URL that provides programmatic access to the remote knowledge\
           \ graph"
       credentials:
