@@ -46,13 +46,24 @@ class RTXQuery:
       response.code_description = result["code_description"]
       return response
 
-    #### If we are have a previous message processing plan, handle that
+    #### If we have a previous message processing plan, handle that
     if "have_previous_message_processing_plan" in result:
       rtxFeedback = RTXFeedback()       # FIXME. This should be a separate class I think, not the Feedback class. TODO: Separate them
       rtxFeedback.connect()
       message = rtxFeedback.processExternalPreviousMessageProcessingPlan(query)
       rtxFeedback.disconnect()
       return(message)
+
+    #### If we have a query_graph, handle that
+    if "have_query_graph" in result:
+      qgResult = self.interpretQueryGraph(query)
+	    if qgResult["message_code"] != "OK":
+	      response.message_code = result["message_code"]
+        response.code_description = result["code_description"]
+        return(response)
+	    else:
+       id = qgResult["id"]
+       terms = qgResult["terms"]
 
     #### Check to see if the query_options indicates to query named resource and integrate the results
     if result["have_query_type_id_and_terms"] and "query_message" in query and "query_options" in query["query_message"] and "integrate" in query["query_message"]["query_options"]:
@@ -246,6 +257,17 @@ class RTXQuery:
 
     #### If we got this far, then everything seems to be good enough to proceed
     return response
+
+
+  def interpretQueryGraph(self,query):
+    """Try to interpret a QueryGraph and convert it into something RTX can process
+    """
+
+    #### Create a default response dict
+    response = { "message_code": "ERROR", "code_description": "interpretQueryGraph not yet implemented" }
+
+    return(response)
+
 
 
   def limitMessage(self,message,query):
