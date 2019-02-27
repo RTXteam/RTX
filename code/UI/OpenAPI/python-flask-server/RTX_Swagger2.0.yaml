@@ -54,6 +54,11 @@ tags:
   externalDocs:
     description: "Documentation for the RTX feedback function"
     url: "https://rtx.ncats.io/overview.html#feedback"
+- name: types
+  description: Return data types in the knowledge graph
+  externalDocs:
+    description: Documentation for the reasoner types function
+    url: 'https://rtx.ncats.io/overview.html#types'
 schemes:
 - "https"
 paths:
@@ -336,6 +341,79 @@ paths:
         400:
           description: "Invalid status value"
       x-swagger-router-controller: "swagger_server.controllers.result_controller"
+  /types/nodes:
+    get:
+      tags:
+      - types
+      summary: Obtain all possible types of nodes
+      description: ''
+      operationId: get_node_types
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "successful operation"
+        404:
+          description: "No types found"
+  /types/edges:
+    get:
+      tags:
+      - types
+      summary: Obtain all possible types of edges
+      description: ''
+      operationId: get_all_edge_types
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "successful operation"
+        404:
+          description: "No types found"
+  /types/edges/{node_type}:
+    get:
+      tags:
+      - types
+      summary: Obtain all possible types of edges linked to a node_type
+      description: ''
+      operationId: get_node_edge_types
+      parameters:
+      - in: path
+        name: node_type
+        description: Node type to filter possible edges by
+        required: true
+        type: string
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "successful operation"
+        404:
+          description: "No types found"
+  /types/edges/{node_type1}/{node_type2}:
+    get:
+      tags:
+      - types
+      summary: Obtain all possible types of edges linking node_type1 and node_type2
+      description: ''
+      operationId: get_node_to_node_edge_types
+      parameters:
+      - in: path
+        name: node_type1
+        description: Node type 1 to filter possible edges by
+        required: true
+        type: string
+      - in: path
+        name: node_type2
+        description: Node type 2 to filter possible edges by
+        required: true
+        type: string
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "successful operation"
+        404:
+          description: "No types found"
 definitions:
   Question:
     type: "object"
