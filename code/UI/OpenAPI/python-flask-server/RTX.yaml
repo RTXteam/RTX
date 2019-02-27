@@ -45,6 +45,11 @@ tags:
     externalDocs:
       description: Documentation for the reasoner entity function
       url: 'https://rtx.ncats.io/overview.html#entity'
+  - name: types
+    description: Return data types in the knowledge graph
+    externalDocs:
+      description: Documentation for the reasoner types function
+      url: 'https://rtx.ncats.io/overview.html#types'
   - name: exampleQuestions
     description: Return a list of example questions that the reasoner can answer
     externalDocs:
@@ -305,6 +310,98 @@ paths:
         '404':
           description: "Entity not found"
       x-swagger-router-controller: "openapi_server.controllers.entity_controller"
+  /types/nodes:
+    get:
+      tags:
+      - types
+      summary: Obtain all possible types of nodes
+      description: ''
+      operationId: get_node_types
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '404':
+          description: "No types found"
+  /types/edges:
+    get:
+      tags:
+      - types
+      summary: Obtain all possible types of edges
+      description: ''
+      operationId: get_all_edge_types
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '404':
+          description: "No types found"
+  /types/edges/{node_type}:
+    get:
+      tags:
+      - types
+      summary: Obtain all possible types of edges linked to a node_type
+      description: ''
+      operationId: get_node_edge_types
+      parameters:
+        - in: path
+          name: node_type
+          description: Node type to filter possible edges by
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '404':
+          description: "No types found"
+  /types/edges/{node_type1}/{node_type2}:
+    get:
+      tags:
+      - types
+      summary: Obtain all possible types of edges linking node_type1 and node_type2
+      description: ''
+      operationId: get_node_to_node_edge_types
+      parameters:
+        - in: path
+          name: node_type1
+          description: Node type 1 to filter possible edges by
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: node_type2
+          description: Node type 2 to filter possible edges by
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '404':
+          description: "No types found"
   /exampleQuestions:
     get:
       tags:
