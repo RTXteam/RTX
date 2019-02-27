@@ -50,10 +50,8 @@ class RTXQuery:
     if "have_previous_message_processing_plan" in result:
       rtxFeedback = RTXFeedback()       # FIXME. This should be a separate class I think, not the Feedback class. TODO: Separate them
       rtxFeedback.connect()
-      rtxFeedback.processExternalPreviousMessageProcessingPlan(query)
-      rtxFeedback.addNewMessage(message,query)
+      message = rtxFeedback.processExternalPreviousMessageProcessingPlan(query)
       rtxFeedback.disconnect()
-      self.limitMessage(message,query)
       return(message)
 
     #### Check to see if the query_options indicates to query named resource and integrate the results
