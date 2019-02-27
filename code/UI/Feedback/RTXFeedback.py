@@ -258,11 +258,17 @@ class RTXFeedback:
       message.original_question = ""
 
     termsString = "{}"
+    query_type_id = 0
+    if query is not None and "query_type_id" in query:
+      query_type_id = query["query_type_id"]
+    if query_type_id == 0 and query is not None and "query_message" in query and "query_type_id" in query["query_message"]:
+      query_type_id = query["query_message"]["query_type_id"]
+
     if query is not None and "query_message" in query:
       if "terms" in query["query_message"]:
         termsString = stringifyDict(query["query_message"]["terms"])
 
-    storedMessage = Message(message_datetime=datetime.now(),restated_question=message.restated_question,query_type=query["query_message"]["query_type_id"],
+    storedMessage = Message(message_datetime=datetime.now(),restated_question=message.restated_question,query_type=query_type_id,
       terms=termsString,tool_version=rtxConfig.version,result_code=message.message_code,message=message.code_description,n_results=n_results,message_object=pickle.dumps(ast.literal_eval(repr(message))))
     session.add(storedMessage)
     session.flush()
@@ -555,7 +561,7 @@ class RTXFeedback:
     query = None
 
     #### Pull out the main processing plan envelope
-    envelope = inputEnvelope.previous_message_processing_plan
+    envelope = PreviousMessageProcessingPlan.from_dict(inputEnvelope["previous_message_processing_plan"])
 
     #### If there are URIs provided, try to load them
     if envelope.previous_message_uris is not None:
@@ -635,17 +641,28 @@ class RTXFeedback:
         optionsDict[option] = 1
 
     if "AnnotateDrugs" in optionsDict:
+      if debug: eprint("DEBUG: Annotating drugs")
       annotate_std_results(finalMessage)
 
     if "Store" in optionsDict:
+      if debug: eprint("DEBUG: Storing result")
       finalMessage_id = self.addNewMessage(TxMessage.from_dict(finalMessage),query)
 
+    #### If requesting a full redirect to the resulting message display. This doesn't really work I don't think
     if "RedirectToMessage" in optionsDict:
-      return( redirect("https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id), code=302))
+      #redirect("https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id), code=302)
+      #return( { "status": 302, "redirect": "https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id) }, 302)
+      return( "Location: https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id), 302)
+
+    #### Else if requesting the Id of the result
     elif "ReturnMessageId" in optionsDict:
-      return( { "status": 200, "message_id": str(finalMessage_id) }, 200)
+      return( { "status": 200, "message_id": str(finalMessage_id), "url": "https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
+
+    #### Else if asking for the full message back
     elif "ReturnMessage" in optionsDict:
       return(finalMessage)
+
+    #### Or otherwise we don't know how to respond
     else:
       return( { "status": 504, "title": "Message type not specified", "detail": "One of the options must be RedirectToMessage, ReturnMessageId, or ReturnMessage", "type": "about:blank" }, 504)
 
