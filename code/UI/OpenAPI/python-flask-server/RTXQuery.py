@@ -22,6 +22,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningt
 from ParseQuestion import ParseQuestion
 #from QueryMeSH import QueryMeSH
 from Q0Solution import Q0
+import ReasoningUtilities
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/kg-construction/")
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/SemMedDB/")
@@ -57,11 +58,11 @@ class RTXQuery:
     #### If we have a query_graph, handle that
     if "have_query_graph" in result:
       qgResult = self.interpretQueryGraph(query)
-	    if qgResult["message_code"] != "OK":
-	      response.message_code = result["message_code"]
+      if qgResult["message_code"] != "OK":
+        response.message_code = result["message_code"]
         response.code_description = result["code_description"]
         return(response)
-	    else:
+      else:
        id = qgResult["id"]
        terms = qgResult["terms"]
 
@@ -426,6 +427,22 @@ class RTXQuery:
     final_message.n_results = len(final_message.results)
     final_message.code_description = str(final_message.n_results) + " merged results"
     return(final_message)
+
+
+  def get_node_types(self):
+    return(ReasoningUtilities.get_node_labels())
+
+
+  def get_all_edge_types(self):
+    return(ReasoningUtilities.get_relationship_types())
+
+
+  def get_node_to_node_edge_types(self,node_type1,node_type2):
+    return(ReasoningUtilities.get_relationship_types_between(None,node_type1,None,node_type2,1))
+
+
+  def get_node_edge_types(self,node_type):
+    return(ReasoningUtilities.get_relationship_types_between(None,node_type,None,None,1))
 
 
   def __init__(self):
