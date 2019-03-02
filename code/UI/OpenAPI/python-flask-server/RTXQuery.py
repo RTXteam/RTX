@@ -55,7 +55,7 @@ class RTXQuery:
       rtxFeedback.disconnect()
       return(message)
 
-    #### If we have a query_graph, handle that
+    #### If we have a query_graph, for now just convert that into id and terms
     if "have_query_graph" in result:
       qgResult = self.interpretQueryGraph(query)
       if qgResult["message_code"] != "OK":
@@ -63,22 +63,21 @@ class RTXQuery:
         response.code_description = result["code_description"]
         return(response)
       else:
-       id = qgResult["id"]
-       terms = qgResult["terms"]
+        id = qgResult["id"]
+        terms = qgResult["terms"]
+        query["query_message"]["original_question"] = qgResult["original_question"]
+        query["query_message"]["restated_question"] = qgResult["restated_question"]
+
+    #### Otherwise extract the id and the terms from the incoming parameters
+    else:
+      id = query["query_message"]["query_type_id"]
+      terms = query["query_message"]["terms"]
 
     #### Check to see if the query_options indicates to query named resource and integrate the results
     if result["have_query_type_id_and_terms"] and "query_message" in query and "query_options" in query["query_message"] and "integrate" in query["query_message"]["query_options"]:
       response = self.integrate(query)
       #self.logQuery(query,response,'remote')
       return response
-
-
-    #### Extract the id and the terms from the incoming parameters
-    id = query["query_message"]["query_type_id"]
-    terms = query["query_message"]["terms"]
-
-    #eprint(query)
-
 
     #### Create an RTX Feedback management object
     #eprint(query)
@@ -265,7 +264,39 @@ class RTXQuery:
     """
 
     #### Create a default response dict
-    response = { "message_code": "ERROR", "code_description": "interpretQueryGraph not yet implemented" }
+    response = { "message_code": "InternalError", "code_description": "interpretQueryGraph exited abnormally" }
+
+    query_graph = query["query_message"]["query_graph"]
+    nodes = query_graph["nodes"]
+    edges = query_graph["edges"]
+    n_nodes = length(nodes)
+    n_edges = length(edges)
+    eprint("DEBUG: n_nodes = %d, n_edges = %d" % (n_nodes,n_edges))
+
+    #### Handle impossible cases
+    if n_nodes == 0:
+      response = { "message_code": "QueryGraphZeroNodes", "code_description": "Submitted QueryGraph has 0 nodes. At least 1 node is required" }
+      return(response)
+    if n_nodes == 1 and n_edges > 0:
+      response = { "message_code": "QueryGraphTooManyEdges", "code_description": "Submitted QueryGraph may not have edges if there is only one node" }
+      return(response)
+    if n_nodes == 2 and n_edges > 1:
+      response = { "message_code": "QueryGraphTooManyEdges", "code_description": "Submitted QueryGraph may not have more than 1 edge if there is only 2 nodes" }
+      return(response)
+    if n_nodes > 1:
+      response = { "message_code": "UnsupportedQueryGraph", "code_description": "Submitted QueryGraph may currently only have 1 node. Support for 2 or more nodes coming soon." }
+      return(response)
+
+    #### Handle the single node case
+    if n_nodes == 1:
+      response = { "message_code": "OK", "code_description": "Interpreted QueryGraph as single node Q0" }
+      response["id"] = "Q0"
+      entity = nodes[0]["curie"]
+      eprint("DEBUG: Q0 - entity = %s" % entity)
+      response["terms"] = { "term": entity }
+      response["original_question"] = "Submitted QueryGraph"
+      response["restated_question"] = "What is %s?" % entity
+      return(response)
 
     return(response)
 
