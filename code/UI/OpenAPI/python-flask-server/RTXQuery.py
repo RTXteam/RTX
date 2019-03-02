@@ -65,6 +65,8 @@ class RTXQuery:
       else:
         id = qgResult["id"]
         terms = qgResult["terms"]
+        query["query_message"]["query_type_id"] = id
+        query["query_message"]["terms"] = terms
         query["query_message"]["original_question"] = qgResult["original_question"]
         query["query_message"]["restated_question"] = qgResult["restated_question"]
 
@@ -74,7 +76,7 @@ class RTXQuery:
       terms = query["query_message"]["terms"]
 
     #### Check to see if the query_options indicates to query named resource and integrate the results
-    if result["have_query_type_id_and_terms"] and "query_message" in query and "query_options" in query["query_message"] and "integrate" in query["query_message"]["query_options"]:
+    if "have_query_type_id_and_terms" in result and "query_message" in query and "query_options" in query["query_message"] and "integrate" in query["query_message"]["query_options"]:
       response = self.integrate(query)
       #self.logQuery(query,response,'remote')
       return response
@@ -269,8 +271,8 @@ class RTXQuery:
     query_graph = query["query_message"]["query_graph"]
     nodes = query_graph["nodes"]
     edges = query_graph["edges"]
-    n_nodes = length(nodes)
-    n_edges = length(edges)
+    n_nodes = len(nodes)
+    n_edges = len(edges)
     eprint("DEBUG: n_nodes = %d, n_edges = %d" % (n_nodes,n_edges))
 
     #### Handle impossible cases
