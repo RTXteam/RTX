@@ -215,10 +215,10 @@ class FormatResponse:
 
 		# Create a KnowledgeGraph object and put the list of nodes and edges into it
 		#### This is still legal, then is redundant with the knowledge map, so leave it out maybe
-		knowledge_graph = KnowledgeGraph()
-		knowledge_graph.nodes = node_objects
-		knowledge_graph.edges = edge_objects
-		result1.result_graph = knowledge_graph
+		#knowledge_graph = KnowledgeGraph()
+		#knowledge_graph.nodes = node_objects
+		#knowledge_graph.edges = edge_objects
+		#result1.result_graph = knowledge_graph
 
 		# Put the first result (potential answer) into the message
 		self._results.append(result1)
