@@ -116,7 +116,7 @@ class Q3:
 			#### Create a mapping dict by type. This will fail if there is more than one node in the query_graph with the same type. Careful!!
 			#### This probably needs a better design eventually for more complex queries. Fine for Q3. FIXME
 			response._type_map = dict()
-			response._type_map[source_node.type] = source_node.node_id
+			response._type_map[source_node.curie] = source_node.node_id
 			response._type_map[target_node.type] = target_node.node_id
 			response._type_map[edge1.type] = edge1.edge_id
 
