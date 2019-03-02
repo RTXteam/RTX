@@ -190,16 +190,26 @@ class FormatResponse:
 			else:
 				edge.id = self._edge_ids[edge_str]
 
-			#### Add this edge to the knowledge_map for this result
+			#### Try to figure out how the source fits into the query_graph for the knowledge map
 			source_type = self._node_ids[edge.source_id]
-			target_type = self._node_ids[edge.target_id]
-			knowledge_map_key = self._type_map[source_type]
+			if edge.source_id in self._type_map:
+				knowledge_map_key = self._type_map[edge.source_id]
+			else:
+				knowledge_map_key = self._type_map[source_type]
 			if not knowledge_map_key:
 				raise Exception("Expected to find '%s' in the response._type_map, but did not" % source_type)
 			knowledge_map[knowledge_map_key] = edge.source_id
-			knowledge_map_key = self._type_map[target_type]
+
+			#### Try to figure out how the target fits into the query_graph for the knowledge map
+			target_type = self._node_ids[edge.target_id]
+			if edge.target_id in self._type_map:
+				knowledge_map_key = self._type_map[edge.target_id]
+			else:
+				knowledge_map_key = self._type_map[target_type]
 			if not knowledge_map_key:
 				raise Exception("Expected to find '%s' in the response._type_map, but did not" % target_type)
+
+			#### Try to figure out how the edge fits into the query_graph for the knowledge map
 			knowledge_map[knowledge_map_key] = edge.target_id
 			knowledge_map_key = self._type_map[edge.type]
 			if not knowledge_map_key:
