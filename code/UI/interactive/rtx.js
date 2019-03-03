@@ -2,27 +2,28 @@ var cyobj = [];
 var cytodata = [];
 var fb_explvls = [];
 var fb_ratings = [];
-var response_id = null;
+var message_id = null;
 var summary_table_html = '';
 var columnlist = [];
 
+var baseAPI = "/devED/";
+
 function main() {
-	get_example_questions();
-	display_list('A');
-	display_list('B');
+    get_example_questions();
+    display_list('A');
+    display_list('B');
 
-	response_id = getQueryVariable("r") || null;
-	if (response_id) {
-	    for (var li in listItems) {
-        	sesame('collapse',document.getElementById("listdiv"+li));
-    	    }
-
-	    add_status_divs();
-	    document.getElementById("statusdiv").innerHTML = "You have requested RTX response id = " + response_id;
-	    document.getElementById("devdiv").innerHTML =  "requested RTX response id = " + response_id + "<br>";
-	    retrieve_response();
-	}
-
+    message_id = getQueryVariable("m") || null;
+    if (message_id) {
+	add_status_divs();
+	document.getElementById("statusdiv").innerHTML = "You have requested RTX message id = " + message_id;
+	document.getElementById("devdiv").innerHTML =  "requested RTX message id = " + message_id + "<br>";
+	retrieve_message();
+	openSection(null,'queryDiv');
+    }
+    else {
+	openSection(null,'queryDiv');
+   }
 }
 
 function sesame(head,content) {
@@ -47,6 +48,26 @@ function sesame(head,content) {
 }
 
 
+function openSection(obj, sect) {
+    if (obj != null) {
+	var e = document.getElementsByClassName("menucurrent");
+	e[0].className = "menuleftitem";
+	obj.className = "menucurrent";
+    }
+    e = document.getElementsByClassName("pagesection");
+    for (var i = 0; i < e.length; i++) {
+        e[i].style.maxHeight = null;
+        e[i].style.visibility = 'hidden';
+	//e[i].style.display = "none";
+    }
+    document.getElementById(sect).style.maxHeight = "100%";
+    document.getElementById(sect).style.visibility = 'visible';
+    window.scrollTo(0,0);
+    //document.getElementById(sect).style.display = "block";
+}
+
+
+
 function pasteQuestion(question) {
     document.getElementById("questionForm").elements["questionText"].value = question;
     document.getElementById("qqq").value = '';
@@ -54,13 +75,11 @@ function pasteQuestion(question) {
 }
 
 function sendQuestion(e) {
-    for (var li in listItems) {
-    	sesame('collapse',document.getElementById("listdiv"+li));
-    }
-
     add_status_divs();
     document.getElementById("result_container").innerHTML = "";
+    document.getElementById("kg_container").innerHTML = "";
     document.getElementById("summary_container").innerHTML = "";
+    document.getElementById("menunumresults").innerHTML = "-";
     summary_table_html = '';
     cyobj = [];
     cytodata = [];
@@ -85,7 +104,7 @@ function sendQuestion(e) {
 
     // construct an HTTP request
     var xhr = new XMLHttpRequest();
-    xhr.open("post", "api/rtx/v1/translate", true);
+    xhr.open("post", baseAPI + "api/rtx/v1/translate", true);
     xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
     // send the collected data as JSON
@@ -99,23 +118,20 @@ function sendQuestion(e) {
 	    if ( jsonObj.query_type_id && jsonObj.terms ) {
 		document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR>Looking for answer...";
 
-		jsonObj.bypass_cache = bypass_cache;
-		jsonObj.max_results = 100;
-
-		// Starting with version 0.9.0, query details must be in inside a query_message object
-		jsonObj.query_message = {};
-		jsonObj.query_message.query_type_id = jsonObj.query_type_id;
-		jsonObj.query_message.terms = jsonObj.terms;
-		jsonObj.query_message.original_question = jsonObj.original_question;
-		jsonObj.query_message.restated_question = jsonObj.restated_question;
-
 		sesame('openmax',statusdiv);
 		var xhr2 = new XMLHttpRequest();
-		xhr2.open("post", "api/rtx/v1/query", true);
+		xhr2.open("post",  baseAPI + "api/rtx/v1/query", true);
 		xhr2.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
+                var queryObj = { "query_message" : jsonObj };
+                queryObj.bypass_cache = bypass_cache;
+                queryObj.max_results = 100;
+
+                document.getElementById("devdiv").innerHTML += "<PRE>\nposted to QUERY:\n" + JSON.stringify(queryObj,null,2) + "</PRE>";
+
+
 		// send the collected data as JSON
-		xhr2.send(JSON.stringify(jsonObj));
+		xhr2.send(JSON.stringify(queryObj));
 
 		xhr2.onloadend = function() {
 		    if ( xhr2.status == 200 ) {
@@ -125,10 +141,10 @@ function sendQuestion(e) {
 			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["code_description"]+"</I>";
 			sesame('openmax',statusdiv);
 
-			render_response(jsonObj2);
+			render_message(jsonObj2);
 
 		    }
-		    else if ( jsonObj.message ) {
+		    else if ( jsonObj.message ) { // STILL APPLIES TO 0.9??  TODO
 			document.getElementById("statusdiv").innerHTML += "<BR><BR>An error was encountered:<BR><SPAN CLASS='error'>"+jsonObj.message+"</SPAN>";
 			sesame('openmax',statusdiv);
 		    }
@@ -163,62 +179,71 @@ function sendQuestion(e) {
 }
 
 
-function retrieve_response() {
-        document.getElementById("statusdiv").innerHTML = "Retrieving RTX response id = " + response_id + "<hr>";
+function retrieve_message() {
+    document.getElementById("statusdiv").innerHTML = "Retrieving RTX message id = " + message_id + "<hr>";
 
-	sesame('openmax',statusdiv);
-	var xhr = new XMLHttpRequest();
-	xhr.open("get", "api/rtx/v1/response/" + response_id, true);
-	xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-	xhr.send(null);
-	xhr.onloadend = function() {
-		if ( xhr.status == 200 ) {
-			var jsonObj2 = JSON.parse(xhr.responseText);
-			document.getElementById("devdiv").innerHTML += "================================================================= RESPONSE REQUEST::<PRE>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
+    sesame('openmax',statusdiv);
+    var xhr = new XMLHttpRequest();
+    xhr.open("get",  baseAPI + "api/rtx/v1/message/" + message_id, true);
+    xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+    xhr.send(null);
+    xhr.onloadend = function() {
+	if ( xhr.status == 200 ) {
+	    var jsonObj2 = JSON.parse(xhr.responseText);
+	    document.getElementById("devdiv").innerHTML += "================================================================= RESPONSE REQUEST::<PRE>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
 
-			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["code_description"]+"</I>";
-			document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question"];
+	    document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["code_description"]+"</I>";
+	    document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question"];
 
-			sesame('openmax',statusdiv);
+	    sesame('openmax',statusdiv);
 
-			render_response(jsonObj2);
-		}
-		else if ( xhr.status == 404 ) {
-			document.getElementById("statusdiv").innerHTML += "<BR>The following response id was not found:<SPAN CLASS='error'>"+response_id+"</SPAN>";
-			sesame('openmax',statusdiv);
-		}
-		else {
-			document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr2.status+")</SPAN>";
-			document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<BR>"+xhr2.responseText;
-			sesame('openmax',statusdiv);
-		}
-	};
+	    render_message(jsonObj2);
+	}
+	else if ( xhr.status == 404 ) {
+	    document.getElementById("statusdiv").innerHTML += "<BR>The following message id was not found:<SPAN CLASS='error'>"+message_id+"</SPAN>";
+	    sesame('openmax',statusdiv);
+	}
+	else {
+	    document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr2.status+")</SPAN>";
+	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<BR>"+xhr2.responseText;
+	    sesame('openmax',statusdiv);
+	}
+    };
 }
 
 
 
-function render_response(respObj) {
-	response_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
+function render_message(respObj) {
+    message_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
 
-	add_to_session(response_id,respObj.restated_question+"?");
+    add_to_session(message_id,respObj.restated_question+"?");
 
-	history.pushState({ id: 'RTX_UI' }, 'RTX | response='+response_id, "//"+ window.location.hostname + window.location.pathname + '?r='+response_id);
+    history.pushState({ id: 'RTX_UI' }, 'RTX | message='+message_id, "//"+ window.location.hostname + window.location.pathname + '?m='+message_id);
 
-	if ( respObj["table_column_names"] ) {
-		add_to_summary(respObj["table_column_names"],0);
+    if ( respObj["table_column_names"] ) {
+	add_to_summary(respObj["table_column_names"],0);
+    }
+    if ( respObj["results"] ) {
+        document.getElementById("result_container").innerHTML += "<H2>" + respObj["n_results"] + " results</H2>";
+        document.getElementById("menunumresults").innerHTML = respObj["n_results"];
+	if ( respObj["knowledge_graph"] ) {
+	    process_kg(respObj["knowledge_graph"]);
+	    process_results(respObj["results"],respObj["knowledge_graph"]);
+	    add_cyto();
 	}
-        if ( respObj["results"] ) {
-                add_result(respObj["results"]);
-                add_feedback();
-                //sesame(h1_div,a1_div);
-        }
-        else {
-                document.getElementById("result_container").innerHTML += "<H2>No results...</H2>";
-        }
-
-        if ( respObj["table_column_names"] ) {
-                document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' title='click to expand / collapse summary' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br></div>";
+	else {  // fallback to old style
+            add_result(respObj["results"]);
 	}
+        add_feedback();
+        //sesame(h1_div,a1_div);
+    }
+    else {
+        document.getElementById("result_container").innerHTML += "<H2>No results...</H2>";
+    }
+
+    if ( respObj["table_column_names"] ) {
+        document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br></div>";
+    }
 
 }
 
@@ -226,9 +251,9 @@ function render_response(respObj) {
 
 
 function add_status_divs() {
-    document.getElementById("status_container").innerHTML = "<div onclick='sesame(null,statusdiv);' title='click to expand / collapse status' class='statushead'>Status</div><div class='status' id='statusdiv'></div>";
+    document.getElementById("status_container").innerHTML = "<div class='statushead'>Status</div><div class='status' id='statusdiv'></div>";
 
-    document.getElementById("dev_result_json_container").innerHTML = "<div onclick='sesame(null,devdiv);' title='click to expand / collapse dev info' class='statushead'>Dev Info <i style='float:right; font-weight:normal;'>( json responses )</i></div><div class='status' id='devdiv'></div>";
+    document.getElementById("dev_result_json_container").innerHTML = "<div class='statushead'>Dev Info <i style='float:right; font-weight:normal;'>( json responses )</i></div><div class='status' id='devdiv'></div>";
 }
 
 
@@ -257,6 +282,86 @@ function add_to_summary(rowdata, num) {
     }
     summary_table_html += '</tr>';
 }
+
+function process_kg(kg) {
+    // knowledge graph will be stored in position zero of cytodata
+    cytodata[0] = [];
+    for (var kgnode in kg.nodes) {
+	kg.nodes[kgnode].parentdivnum = 0; // helps link node to div when displaying node info on click
+        var tmpdata = { "data" : kg.nodes[kgnode] }; // already contains id
+        cytodata[0].push(tmpdata);
+    }
+
+    for (var kgedge in kg.edges) {
+	kg.edges[kgedge].parentdivnum = 0;
+        kg.edges[kgedge].source = kg.edges[kgedge].source_id;
+        kg.edges[kgedge].target = kg.edges[kgedge].target_id;
+
+        var tmpdata = { "data" : kg.edges[kgedge] }; // already contains id
+        cytodata[0].push(tmpdata);
+    }
+
+    document.getElementById("kg_container").innerHTML += "<div onclick='sesame(this,a0_div);' id='h0_div' title='Click to expand / collapse Knowledge Graph' class='accordion'>KNOWLEDGE GRAPH<span class='r100'><span title='Knowledge Graph' class='qprob'>KG</span></span></div>";
+
+    document.getElementById("kg_container").innerHTML += "<div id='a0_div' class='panel'><table class='t100'><tr><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj[0].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout(0,\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout(0,\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout(0,\"circle\");'>C</a><br><a title='random layout' onclick='cylayout(0,\"random\");'>R</a>  </td><td class='cytograph_kg' style='width:100%;'><div style='height: 100%; width: 100%' id='cy0'></div></td></tr><tr><td></td><td><div id='d0_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
+
+//    document.getElementById("result_container").innerHTML += "<div id='a0_div' class='panel'><table class='t100'><tr><td class='textanswer'>Explain that this is the Knowledge Graph</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj[0].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout(0,\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout(0,\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout(0,\"circle\");'>C</a><br><a title='random layout' onclick='cylayout(0,\"random\");'>R</a>  </td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy0'></div></td></tr><tr><td><hr></td><td></td><td><div id='d0_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
+}
+
+
+function process_results(reslist,kg) {
+    for (var i in reslist) {
+	var num = Number(i) + 1;
+
+        if ( reslist[i].row_data ) {
+            add_to_summary(reslist[i].row_data, num);
+	}
+
+	var ess = '';
+	if (reslist[i].essence) {
+	    ess = reslist[i].essence;
+	}
+	var cnf = 0;
+	if (Number(reslist[i].confidence)) {
+	    cnf = Number(reslist[i].confidence).toFixed(2);
+	}
+	var pcl = (cnf>=0.9) ? "p9" : (cnf>=0.7) ? "p7" : (cnf>=0.5) ? "p5" : (cnf>=0.3) ? "p3" : "p1";
+
+	var rsrc = '';
+	if (reslist[i].reasoner_id) {
+	    rsrc = reslist[i].reasoner_id;
+	}
+	var rscl = (rsrc=="RTX") ? "srtx" : (rsrc=="Indigo") ? "sind" : (rsrc=="Robokop") ? "srob" : "p0";
+
+	var rid = reslist[i].id.substr(reslist[i].id.lastIndexOf('/') + 1);
+	var fid = "feedback_" + rid;
+	var fff = "feedback_form_" + rid;
+	
+        document.getElementById("result_container").innerHTML += "<div onclick='sesame(this,a"+num+"_div);' id='h"+num+"_div' title='Click to expand / collapse result "+num+"' class='accordion'>Result "+num+" :: <b>"+ess+"</b><span class='r100'><span title='confidence="+cnf+"' class='"+pcl+" qprob'>"+cnf+"</span><span title='source="+rsrc+"' class='"+rscl+" qprob'>"+rsrc+"</span></span></div>";
+
+	document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table class='t100'><tr><td class='textanswer'>"+reslist[i].description+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+num+"].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout("+num+",\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout("+num+",\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout("+num+",\"circle\");'>C</a><br><a title='random layout' onclick='cylayout("+num+",\"random\");'>R</a>	</td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td><span id='"+fid+"'><i>User Feedback</i><hr><span id='"+fff+"'><a href='javascript:add_fefo(\""+rid+"\",\"a"+num+"_div\");'>Add Feedback</a></span><hr></span></td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
+
+        cytodata[num] = [];
+	for (var ne in reslist[i].knowledge_map) {
+	    if (reslist[i].knowledge_map.hasOwnProperty(ne)) {
+		var kmne;
+		if (ne.startsWith("n")) {
+		    kmne = Object.create(kg.nodes.find(item => item.id === reslist[i].knowledge_map[ne]));
+		}
+		else if (ne.startsWith("e")) {
+		    kmne = Object.create(kg.edges.find(item => item.id === reslist[i].knowledge_map[ne]));
+		}
+		
+		kmne.parentdivnum = num;
+		var tmpdata = { "data" : kmne };
+		cytodata[num].push(tmpdata);
+	    }
+	}
+
+    }
+}
+
+
 
 
 
@@ -348,7 +453,7 @@ function add_cyto() {
 	    continue;
 	}
 
-	var num = Number(i) + 1;
+	var num = Number(i);// + 1;
 
 	cyobj[i] = cytoscape({
 	    container: document.getElementById('cy'+num),
@@ -550,20 +655,20 @@ function submitFeedback(res_id,res_div_id) {
 
 
     var xhr6 = new XMLHttpRequest();
-    xhr6.open("post", "api/rtx/v1/result/" + res_id + "/feedback", true);
+    xhr6.open("post",  baseAPI + "api/rtx/v1/result/" + res_id + "/feedback", true);
     xhr6.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
     xhr6.send(JSON.stringify(feedback));
 
     xhr6.onloadend = function() {
 	var jsonObj6 = JSON.parse(xhr6.responseText);
-	document.getElementById("devdiv").innerHTML += "================================================================= FEEDBACK-POST::<PRE>\nPOST to api/rtx/v1/result/" + res_id + "/feedback ::<br>" + JSON.stringify(feedback,null,2) + "<br>------<br>" + JSON.stringify(jsonObj6,null,2) + "</PRE>";
+	document.getElementById("devdiv").innerHTML += "================================================================= FEEDBACK-POST::<PRE>\nPOST to " +  baseAPI + "api/rtx/v1/result/" + res_id + "/feedback ::<br>" + JSON.stringify(feedback,null,2) + "<br>------<br>" + JSON.stringify(jsonObj6,null,2) + "</PRE>";
 
 	if ( xhr6.status == 200 ) {
 	    document.getElementById(fff+"_msgs").innerHTML = "Your feedback has been recorded...";
 	    setRTXUserCookie(nom);
 
 	    var xhr7 = new XMLHttpRequest();
-	    xhr7.open("get", "api/rtx/v1/result/" + res_id + "/feedback", true);
+	    xhr7.open("get",  baseAPI + "api/rtx/v1/result/" + res_id + "/feedback", true);
 	    xhr7.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 	    xhr7.send(null);
 
@@ -599,7 +704,7 @@ function add_feedback() {
     }
 
     var xhr3 = new XMLHttpRequest();
-    xhr3.open("get", "api/rtx/v1/response/" + response_id + "/feedback", true);
+    xhr3.open("get",  baseAPI + "api/rtx/v1/message/" + message_id + "/feedback", true);
     xhr3.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
     xhr3.send(null);
 
@@ -621,6 +726,7 @@ function add_feedback() {
 
 	}
 	sesame(h1_div,a1_div);
+	sesame(h0_div,a0_div);
     };
 
 
@@ -640,7 +746,7 @@ function insert_feedback_item(el_id, feed_obj) {
 
 function get_feedback_fields() {
     var xhr4 = new XMLHttpRequest();
-    xhr4.open("get", "api/rtx/v1/feedback/expertise_levels", true);
+    xhr4.open("get",  baseAPI + "api/rtx/v1/feedback/expertise_levels", true);
     xhr4.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
     xhr4.send(null);
 
@@ -660,7 +766,7 @@ function get_feedback_fields() {
 
 
     var xhr5 = new XMLHttpRequest();
-    xhr5.open("get", "api/rtx/v1/feedback/ratings", true);
+    xhr5.open("get",  baseAPI + "api/rtx/v1/feedback/ratings", true);
     xhr5.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
     xhr5.send(null);
 
@@ -683,7 +789,7 @@ function get_feedback_fields() {
 
 function get_example_questions() {
     var xhr8 = new XMLHttpRequest();
-    xhr8.open("get", "api/rtx/v1/exampleQuestions", true);
+    xhr8.open("get",  baseAPI + "api/rtx/v1/exampleQuestions", true);
     xhr8.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
     xhr8.send(null);
 
@@ -738,15 +844,15 @@ function togglecolor(obj,tid) {
 
 // taken from http://www.activsoftware.com/
 function getQueryVariable(variable) {
-  var query = window.location.search.substring(1);
-  var vars = query.split("&");
-  for (var i=0;i<vars.length;i++) {
-    var pair = vars[i].split("=");
-    if (decodeURIComponent(pair[0]) == variable) {
-      return decodeURIComponent(pair[1]);
-    }
-  } 
-  return false;
+    var query = window.location.search.substring(1);
+    var vars = query.split("&");
+    for (var i=0;i<vars.length;i++) {
+	var pair = vars[i].split("=");
+	if (decodeURIComponent(pair[0]) == variable) {
+	    return decodeURIComponent(pair[1]);
+	}
+    } 
+    return false;
 }
 
 // LIST FUNCTIONS
@@ -783,17 +889,14 @@ function display_list(listId) {
     }
 
 
-    if (numitems == 0) {
-	listhtml = "Items in this list can be passed as input to queries that support list input, by specifying <b>["+listId+"]</b> as a parameter.<br>";
-    }
-    else {
+    if (numitems > 0) {
 	listhtml = "<table class='sumtab'><tr><th>Item</th><th>Entity Type(s)</th><th>Action</th></tr>" + listhtml + "</table>";
     }
 
     document.getElementById("numlistitems"+listId).innerHTML = numitems;
+    document.getElementById("menunumlistitems"+listId).innerHTML = numitems;
 
-    listhtml += "<hr>Enter new list item or items (space and/or comma-separated):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' onkeydown='enter_item(this, \""+listId+"\");' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
-
+    listhtml = "Items in this list can be passed as input to queries that support list input, by specifying <b>["+listId+"]</b> as a query parameter.<br><br>" + listhtml + "<hr>Enter new list item or items (space and/or comma-separated):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' onkeydown='enter_item(this, \""+listId+"\");' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
 
 //    listhtml += "<hr>Enter new list item or items (space and/or comma-separated):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
 
@@ -803,24 +906,23 @@ function display_list(listId) {
 
     listhtml += "<br><br>";
 
-
     document.getElementById("listdiv"+listId).innerHTML = listhtml;
-    sesame('openmax',document.getElementById("listdiv"+listId));
+//    setTimeout(function() {check_entities();sesame('openmax',document.getElementById("listdiv"+listId));}, 500);
     check_entities();
 }
 
 
 function get_list_as_string(listId) {
-	var liststring = '[';
-	var comma = '';
-	for (var li in listItems[listId]) {
+    var liststring = '[';
+    var comma = '';
+    for (var li in listItems[listId]) {
 	if (listItems[listId].hasOwnProperty(li) && listItems[listId][li] == 1) {
 	    liststring += comma + li;
-		comma = ',';
+	    comma = ',';
 	}
-	}
-	liststring += ']';
-	return liststring;
+    }
+    liststring += ']';
+    return liststring;
 }
 
 
@@ -868,7 +970,7 @@ function check_entities() {
 	if (entities[entity] == '--') {
 
             var xhr = new XMLHttpRequest();
-            xhr.open("get", "api/rtx/v1/entity/" + entity, false);
+            xhr.open("get",  baseAPI + "api/rtx/v1/entity/" + entity, false);
             xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
             xhr.onloadend = function() {
                 var xob = JSON.parse(xhr.responseText);
@@ -884,12 +986,13 @@ function check_entities() {
 document.getElementById("devdiv").innerHTML += comma + xob[i].type;
 			comma = ", ";
                     }
+	            if (entstr != "") { entstr = "<span class='explevel p9'>&check;</span>&nbsp;" + entstr; }
                 }
                 else {
-		    entstr = "n/a";
+		    entstr = "<span class='explevel p0'>&quest;</span>&nbsp;n/a";
                 }
 
-	    	if (entstr == "") { entstr = "<span class='error'>unknown</span>"; }
+	    	if (entstr == "") { entstr = "<span class='explevel p1'>&cross;</span>&nbsp;<span class='error'>unknown</span>"; }
 
 	    	entities[entity] = entstr;
 
@@ -921,7 +1024,7 @@ function display_session() {
     for (var li in listItems[listId]) {
         if (listItems[listId].hasOwnProperty(li) && !li.startsWith("qtext_")) {
             numitems++;
-            listhtml += "<tr><td>"+li+".</td><td><a target='_new' title='view this response in a new window' href='//"+ window.location.hostname + window.location.pathname + "?r="+listItems[listId][li]+"'>" + listItems['SESSION']["qtext_"+li] + "</a></td><td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/> Remove </a></td></tr>";
+            listhtml += "<tr><td>"+li+".</td><td><a target='_new' title='view this message in a new window' href='//"+ window.location.hostname + window.location.pathname + "?m="+listItems[listId][li]+"'>" + listItems['SESSION']["qtext_"+li] + "</a></td><td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/> Remove </a></td></tr>";
         }
     }
     if (numitems > 0) {
@@ -937,6 +1040,8 @@ function display_session() {
     }
 
     document.getElementById("numlistitems"+listId).innerHTML = numitems;
+    document.getElementById("menunumlistitems"+listId).innerHTML = numitems;
     document.getElementById("listdiv"+listId).innerHTML = listhtml;
 }
+
 

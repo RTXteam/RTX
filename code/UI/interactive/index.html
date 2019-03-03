@@ -17,7 +17,25 @@
 </head>
 <body onload="main();">
 
-<div class="banner" banner-bg-text="RTX User Interface">
+<div class="menuleft">
+<br><br><br><br><br>
+&nbsp;Input<br>
+<div onclick="openSection(this,'queryDiv');" class="menucurrent">Query</div>
+<div onclick="openSection(this,'listaDiv');" class="menuleftitem" title="view list A">List A <span class="menunum" id="menunumlistitemsA">-</span></div>
+<div onclick="openSection(this,'listbDiv');" class="menuleftitem" title="view list B">List B <span class="menunum" id="menunumlistitemsB">-</span></div>
+<br>
+<div onclick="openSection(this,'historyDiv');" class="menuleftitem" title="view session history">History <span class="menunum" id="menunumlistitemsSESSION">-</span></div>
+<!-- div onclick="openSection(this,'statusDiv');" class="menuleftitem">Status</div -->
+<br>
+&nbsp;Output<br>
+<div onclick="openSection(this,'summaryDiv');" class="menuleftitem">Summary</div>
+<div onclick="openSection(this,'kgDiv');" class="menuleftitem">Knowledge<br>Graph</div>
+<div onclick="openSection(this,'resultsDiv');" class="menuleftitem">Results <span class="menunum" id="menunumresults">-</span></div>
+<br><br>
+<div onclick="openSection(this,'devDiv');" class="menuleftitem">Dev Info</div>
+</div>
+
+<div class="banner" banner-bg-text="RTX User Interface :: API 0.9.0">
 <span class="menulinks">Documentation: 
 <a href="overview.html">Overview</a>
 <a href="api/rtx/v1/ui/">API</a>
@@ -25,15 +43,19 @@
 </span>
 </div>
 
+
 <div class="page">
+<br>
 
-<div onclick="sesame(null,listdivSESSION);" title="click to view / hide session history" class="statushead">Session History (<span id="numlistitemsSESSION">-</span>)</div>
+
+<div class="pagesection" id="historyDiv">
+<div class="statushead">Session History (<span id="numlistitemsSESSION">-</span>)</div>
 <div class="status" id="listdivSESSION"><br>Your query history will be displayed here. It can be edited or re-set.<br><br></div>
+</div>
 
 
-<p>The RTX team presents its pilot Reasoning Tool for evaluation. This page provides a simple web interface on top of the OpenAPI web service interface to RTX. At present only a few question types are supported. Select from one of the example queries to test the tool. Different drugs, diseases, etc. may be substituted for the default ones, but note that not all drugs, diseases, etc. are yet present in our knowledge graph.</p>
 
-
+<div class="pagesection" id="queryDiv">
 <h2 style="display:inline;">Enter question:</h2>
 <div class="sampleqs">
 <select id="qqq" onchange="javascript:pasteQuestion(this.value);">
@@ -60,22 +82,57 @@
   </span>
 Use cache</label>
 </form>
-
-<div onclick="sesame(null,listdivA);" title="click to view / hide list" class="statushead">List A (<span id="numlistitemsA">-</span>)</div>
-<div class="status" id="listdivA">Items in this list can be passed as input to queries that support list input, by specifying [A] as a parameter.</div>
-
-<div onclick="sesame(null,listdivB);" title="click to view / hide list" class="statushead">List B (<span id="numlistitemsB">-</span>)</div>
-<div class="status" id="listdivB">Items in this list can be passed as input to queries that support list input, by specifying [B] as a parameter.</div>
-
-
+<br><br>
 <div id="status_container"></div>
+</div>
 
+
+
+<div class="pagesection" id="listaDiv">
+<div class="statushead">List A (<span id="numlistitemsA">-</span>)</div>
+<div class="status" id="listdivA">Items in this list can be passed as input to queries that support list input, by specifying [A] as a parameter.</div>
+</div>
+
+
+
+<div class="pagesection" id="listbDiv">
+<div class="statushead">List B (<span id="numlistitemsB">-</span>)</div>
+<div class="status" id="listdivB">Items in this list can be passed as input to queries that support list input, by specifying [B] as a parameter.</div>
+</div>
+
+
+
+<div class="pagesection" id="statusDiv">
+</div>
+
+
+
+<div class="pagesection" id="summaryDiv">
 <div id="summary_container"></div>
+</div>
 
+
+
+<div class="pagesection" id="kgDiv">
+<div id="kg_container"></div>
+</div>
+
+
+
+<div class="pagesection" id="resultsDiv">
 <div id="result_container"></div>
+</div>
 
+
+
+<div class="pagesection" id="devDiv">
 <div id="dev_result_json_container"></div>
+</div>
+
+
 
 </div>
+<br>
 </body>
 </html>
+

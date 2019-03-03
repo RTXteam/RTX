@@ -2,29 +2,29 @@ body {
     padding: 0px;
     margin:  0px;
     box-sizing:border-box;
-    background-color:#eef;
+    background-color:#eee;
     font-size: 12pt;
     font-family: Arial, sans-serif;
 }
 
 .banner {
+    position: relative;
     width: 100%;
     min-height: 80px;
-    z-index: 999;
+    z-index: 9;
     box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
     font-size: 20px;
-    color: #fff;
-    background-color: #047;
-    background-image: url(banner.png);
+    color: #c40;
+    background-color: #ddd;
 }
 .banner::before {
     font-size: 60px;
     left: 30px;
     top: 0px;
     position: absolute;
-    color: rgba(255,255,255,0.8);
+    color: rgba(0,63,114,0.8);
     font-weight: bold;
-    letter-spacing: 15px;
+    letter-spacing: -3px;
     content: attr(banner-bg-text);
     pointer-events: none;
 }
@@ -39,12 +39,12 @@ body {
     text-decoration: none;
     color: #eef;
     font-weight:bold;
-    padding: 55px 15px 25px 15px;
+    padding: 55px 15px 15px 15px;
 }
 .banner a:hover, .banner a:active{
     text-decoration: none;
     color: #c40;
-    background-color: #eef;
+    background-color: #eee;
 }
 .currentpage {
     color: #c40;
@@ -53,8 +53,51 @@ body {
     padding: 55px 15px 25px 15px;
 }
 
+.menuleft {
+	z-index: 8;
+	position: fixed;
+	width: 200px;
+	height: 100%;
+//	margin-top: 80px;
+	font-size: 30px;
+	color: #000;
+	border-right: 2px solid black;
+	background-color: #ddd;
+}
+.menuleftitem  {
+	color: #666;
+	padding: 10px;
+	text-align:right;
+	display:block;
+	text-decoration: none;
+	cursor: pointer;
+}
+.menuleftitem:hover {
+	color: #000;
+	background-color: #9bc;
+}
+.menucurrent {
+	padding: 10px;
+	text-align:right;
+	display:block;
+	text-decoration: none;
+	color: #000;
+	background-color: #eee;
+	border-bottom: 2px solid black;
+	border-top: 2px solid black;
+	border-left: 2px solid black;
+	margin-right: -2px;
+}
+
+
 .page {
-    margin: 20px;
+    margin-left: 220px;
+    margin-right: 20px;
+}
+.pagesection {
+    visibility: hidden;
+    max-height: 0;
+    overflow: hidden;
 }
 
 .sampleqs {
@@ -119,7 +162,7 @@ body {
 .statushead {
     background-color: #ccc;
     color: #000;
-    cursor: pointer;
+//    cursor: pointer;
     margin-top: 15px;
     padding: 4px 10px;
     max-width: 100%;
@@ -128,7 +171,7 @@ body {
     border-right: 1px solid #444;
     text-align: left;
     outline: none;
-    font-size: 15px;
+    font-size: 20px;
     font-weight:bold;
     transition: 0.1s;
 }
@@ -140,9 +183,6 @@ body {
     padding: 0 25px;
     background-color: #fff;
     max-width: 100%;
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.4s ease-out;
 }
 
 .accordion {
@@ -212,7 +252,14 @@ body {
     padding: 1px 5px;
     box-shadow: 0 1px 2px 0 rgba(0,0,0,0.2), 0 1px 2px 0 rgba(0,0,0,0.19);
 }
-
+.menunum {
+    font-size: 10px;
+    vertical-align: super;
+    border-radius: 12px;
+    border: 1px solid #fff;
+    padding: 1px 3px;
+    box-shadow: 0 1px 2px 0 rgba(0,0,0,0.2), 0 1px 2px 0 rgba(0,0,0,0.19);
+}
 
 .p9 { background-color: #291; }
 .p7 { background-color: #7b4; }
@@ -220,6 +267,10 @@ body {
 .p3 { background-color: #f80; }
 .p1 { background-color: #821; }
 .p0 { background-color: #444; }
+
+.srtx { background-color: #cb5; }
+.sind { background-color: #3bc; }
+.srob { background-color: #000; }
 
 h1 {
     margin-top: 40px;
@@ -299,6 +350,13 @@ td {
     border: 1px solid #444;
     height: 300px;
     width: 50%;
+    background-color: #bcd;
+    box-shadow: inset 0 4px 8px 0 rgba(0,0,0,0.2), inset 0 6px 20px 0 rgba(0,0,0,0.19);
+}
+.cytograph_kg {
+    border: 1px solid #444;
+    height: 700px;
+    width: 99%;
     background-color: #bcd;
     box-shadow: inset 0 4px 8px 0 rgba(0,0,0,0.2), inset 0 6px 20px 0 rgba(0,0,0,0.19);
 }
