@@ -56,6 +56,7 @@ class RTXQuery:
       return(message)
 
     #### If we have a query_graph, for now just convert that into id and terms
+    execution_string = None
     if "have_query_graph" in result:
       qgResult = self.interpretQueryGraph(query)
       if qgResult["message_code"] != "OK":
@@ -69,6 +70,8 @@ class RTXQuery:
         query["query_message"]["terms"] = terms
         query["query_message"]["original_question"] = qgResult["original_question"]
         query["query_message"]["restated_question"] = qgResult["restated_question"]
+        if "execution_string" in qgResult:
+          execution_string = qgResult["execution_string"]
 
     #### Otherwise extract the id and the terms from the incoming parameters
     else:
@@ -130,8 +133,14 @@ class RTXQuery:
     #### Call out to OrangeBoard to answer the other types of queries
     else:
 
-      txltr = ParseQuestion()
-      command = "python3 " + txltr.get_execution_string(id,terms)
+      #### If some previous processing has determined what the solution script to use is, then use that
+      if execution_string is not None:
+        command = "python3 " + execution_string
+
+      #### Else use the ParseQuestion system to determine what the execution_string should be
+      else:
+        txltr = ParseQuestion()
+        command = "python3 " + txltr.get_execution_string(id,terms)
 
       #### Set CWD to the QuestioningAnswering area and then invoke from the shell the Q1Solution code
       cwd = os.getcwd()
@@ -283,9 +292,9 @@ class RTXQuery:
       response = { "message_code": "QueryGraphTooManyEdges", "code_description": "Submitted QueryGraph may not have edges if there is only one node" }
       return(response)
     if n_nodes == 2 and n_edges > 1:
-      response = { "message_code": "QueryGraphTooManyEdges", "code_description": "Submitted QueryGraph may not have more than 1 edge if there is only 2 nodes" }
+      response = { "message_code": "QueryGraphTooManyEdges", "code_description": "Submitted QueryGraph may not have more than 1 edge if there are only 2 nodes" }
       return(response)
-    if n_nodes > 1:
+    if n_nodes > 2:
       response = { "message_code": "UnsupportedQueryGraph", "code_description": "Submitted QueryGraph may currently only have 1 node. Support for 2 or more nodes coming soon." }
       return(response)
 
@@ -298,6 +307,65 @@ class RTXQuery:
       response["terms"] = { "term": entity }
       response["original_question"] = "Submitted QueryGraph"
       response["restated_question"] = "What is %s?" % entity
+      return(response)
+
+    #### Handle the 2 node case
+    if n_nodes == 2:
+      source_type = None
+      source_name = None
+      target_type = None
+      edge_type = None
+
+      #### Loop through nodes trying to figure out which is the source and target
+      for node in nodes:
+        if node.curie is None:
+          if node.type is None:
+            response = { "message_code": "UnderspecifiedNode", "code_description": "At least one of the nodes in the QueryGraph has neither a CURIE nor a type. It must have one of those." }
+            return(response)
+          else:
+            if re.match(r"'",node.type):
+              response = { "message_code": "IllegalCharacters", "code_description": "Node type contains one or more illegal characters." }
+              return(response)
+            if target_type is None:
+              target_type = node.type
+            else:
+              response = { "message_code": "TooManyTargets", "code_description": "Both nodes have only types and are interpreted as targets. At least one node must have an exact identity." }
+              return(response)
+        else:
+          if re.match(r"'",node.curie):
+            response = { "message_code": "IllegalCharacters", "code_description": "Node type contains one or more illegal characters." }
+            return(response)
+          if source_name is None:
+            if node.type is None:
+              response = { "message_code": "UnderspecifiedSourceNode", "code_description": "The source node must have a type in addition to a curie." }
+              return(response)
+            else:
+              source_name = node.curie
+              source_type = node.type
+          else:
+            response = { "message_code": "OverspecifiedQueryGraph", "code_description": "All nodes in the QueryGraph have exact identities, so there is really nothing left to query." }
+            return(response)
+
+      #### Loop over the edges (should be just 1), ensuring that it has a type and recording it
+      for edge in edges:
+        if edge.type is None:
+          response = { "message_code": "EdgeWithNoType", "code_description": "At least one edge has no type. All edges must have a type." }
+          return(response)
+        else:
+          edge_type = edge.type
+
+      #### Perform a crude sanitation of the input parameters to make sure the shell command won't fail or cause harm
+      if re.match(r"'",edge_type) or re.match(r"'",target_type) or re.match(r"'",source_name):
+        response = { "message_code": "IllegalCharacters", "code_description": "The input query_graph entities contain one or more illegal characters." }
+        return(response)
+
+      #### Create the necessary components to hand off the queries to Q3Solution.py
+      response = { "message_code": "OK", "code_description": "Interpreted QueryGraph as a single hop question" }
+      response["id"] = "1hop"
+      response["terms"] = { source_type: source_name, "target_label": target_type, "rel_type": edge_type }
+      response["original_question"] = "Submitted QueryGraph"
+      response["restated_question"] = "Which %s(s) are connected to the %s %s via edge type %s?" % (target_type,source_type,source_name,edge_type)
+      response["execution_string"] = "Q3Solution.py -s '%s' -t '%s' -r '%s' -j" % (source_name,target_type,edge_type)
       return(response)
 
     return(response)
