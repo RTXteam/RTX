@@ -45,7 +45,7 @@ class SimilarityQuestionSolution:
 		# Initialize the response class
 		response = FormatOutput.FormatResponse(5)
 		# add the column names for the row data
-		response.response.table_column_names = ["source name", "source ID", "target name", "target ID", "Jaccard index"]
+		response.message.table_column_names = ["source name", "source ID", "target name", "target ID", "Jaccard index"]
 
 		# Initialize the similar nodes class
 		similar_nodes_in_common = SimilarNodesInCommon.SimilarNodesInCommon()
@@ -90,8 +90,8 @@ class SimilarityQuestionSolution:
 			query_graph = QueryGraph()
 			source_node = QNode()
 			source_node.node_id = "n00"
-			source_node.curie = g.node[source_node_number]['properties']['id']
-			source_node.type = g.node[source_node_number]['properties']['category']
+			source_node.curie = source_node_ID
+			source_node.type = source_node_label
 			association_node = QNode()
 			association_node.node_id = "n01"
 			association_node.type = association_node_type
@@ -100,12 +100,14 @@ class SimilarityQuestionSolution:
 			target_node.type = target_node_type
 			query_graph.nodes = [ source_node,association_node,target_node ]
 
+			source_association_relationship_type = "foo1"
 			edge1 = QEdge()
 			edge1.edge_id = "e00"
 			edge1.source_id = "n00"
 			edge1.target_id = "n01"
 			edge1.type = source_association_relationship_type
 
+			association_target_relationship_type = "foo2"
 			edge2 = QEdge()
 			edge2.edge_id = "e01"
 			edge2.source_id = "n01"
