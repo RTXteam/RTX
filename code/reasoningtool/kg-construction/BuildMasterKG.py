@@ -70,7 +70,7 @@ def seed_nodes_from_master_tsv_file():
     seed_node_data = pandas.read_csv('../../../data/seed_nodes_filtered.tsv',
                                      sep="\t",
                                      names=['type', 'rtx_name', 'term', 'purpose'],
-                                     header=0,
+                                     # header=1,
                                      dtype={'rtx_name': str})
     first_row = True
     for index, row in seed_node_data.iterrows():

@@ -478,10 +478,10 @@ function cylayout(index,layname) {
 
 function mapNodeShape (ele) {
     var ntype = ele.data().type;
-    if (ntype == "protein") { return "octagon";}
-    if (ntype == "disease") { return "triangle";}
-    if (ntype == "chemical_substance" ) { return "diamond";}
-    if (ntype == "anatomical_entity") { return "ellipse";}
+    if (ntype == "protein")            { return "octagon";}
+    if (ntype == "disease")            { return "triangle";}
+    if (ntype == "chemical_substance") { return "diamond";}
+    if (ntype == "anatomical_entity")  { return "ellipse";}
     if (ntype == "phenotypic_feature") { return "star";}
     return "rectangle";
 }
@@ -743,6 +743,7 @@ function getQueryVariable(variable) {
 }
 
 // LIST FUNCTIONS
+var entities  = {};
 var listItems = {};
 listItems['A'] = {};
 listItems['B'] = {};
@@ -760,7 +761,17 @@ function display_list(listId) {
     for (var li in listItems[listId]) {
 	if (listItems[listId].hasOwnProperty(li)) { // && listItems[listId][li] == 1) {
 	    numitems++;
-	    listhtml += "<tr class='hoverable'><td>" + li + "</td><td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/> Remove </a></td></tr>";
+	    listhtml += "<tr class='hoverable'><td>" + li + "</td><td id='list"+listId+"_entity_"+li+"'>";
+
+	    if (entities.hasOwnProperty(li)) {
+		listhtml += entities[li];
+	    }
+	    else {
+		listhtml += "looking up...";
+		entities[li] = '--';
+	    }
+
+	    listhtml += "</td><td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/> Remove </a></td></tr>";
 	}
     }
 
@@ -769,7 +780,7 @@ function display_list(listId) {
 	listhtml = "Items in this list can be passed as input to queries that support list input, by specifying <b>["+listId+"]</b> as a parameter.<br>";
     }
     else {
-	listhtml = "<table class='sumtab'><tr><th>Item</th><th>Action</th></tr>" + listhtml + "</table>";
+	listhtml = "<table class='sumtab'><tr><th>Item</th><th>Entity Type(s)</th><th>Action</th></tr>" + listhtml + "</table>";
     }
 
     document.getElementById("numlistitems"+listId).innerHTML = numitems;
@@ -788,6 +799,9 @@ function display_list(listId) {
 
     document.getElementById("listdiv"+listId).innerHTML = listhtml;
     sesame('openmax',document.getElementById("listdiv"+listId));
+    setTimeout(function() {check_entities();sesame('openmax',document.getElementById("listdiv"+listId));}, 500);
+//    sesame('openmax',document.getElementById("listdiv"+listId));
+
 }
 
 
@@ -843,6 +857,50 @@ function delete_list(listId) {
     listItems[listId] = {};
     display_list(listId);
 }
+
+function check_entities() {
+    for (var entity in entities) {
+	if (entities[entity] == '--') {
+
+            var xhr = new XMLHttpRequest();
+            xhr.open("get", "api/rtx/v1/entity/" + entity, false);
+            xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+            xhr.onloadend = function() {
+                var xob = JSON.parse(xhr.responseText);
+	    	var entstr = "";
+
+        	document.getElementById("devdiv").innerHTML += "================================================================= ENTITIES::"+entity+"<PRE>" + JSON.stringify(xob,null,2) + "</PRE>";
+
+
+                if ( xhr.status == 200 ) {
+		    var comma = "";
+                    for (var i in xob) {
+                        entstr += comma + xob[i].type;
+document.getElementById("devdiv").innerHTML += comma + xob[i].type;
+			comma = ", ";
+                    }
+	            if (entstr != "") { entstr = "<span class='explevel p9'>&check;</span>&nbsp;" + entstr; }
+                }
+                else {
+		    entstr = "<span class='explevel p0'>&quest;</span>&nbsp;n/a";
+                }
+
+	    	if (entstr == "") { entstr = "<span class='explevel p1'>&cross;</span>&nbsp;<span class='error'>unknown</span>"; }
+
+	    	entities[entity] = entstr;
+
+	    	var e = document.querySelectorAll("[id$='_entity_"+entity+"']");
+	    	var i = 0;
+	    	for (i = 0; i < e.length; i++) {
+		    e[i].innerHTML = entities[entity];
+	    	}
+            };
+
+            xhr.send(null);
+	}
+    }
+}
+
 
 function add_to_session(resp_id,text) {
     numquery++;
