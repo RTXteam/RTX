@@ -751,9 +751,9 @@ def annotate_drug(drug_id, id_type):
     Provide annotation for drug
     """
     if id_type == 'chembl':
-        query_template = 'http://mychem.info/v1/query?q=drugcentral.xref.chembl_id:{{drug_id}}&fields=drugcentral'
+        query_template = 'http://mychem.info/v1/query?q=drugcentral.xrefs.chembl_id:{{drug_id}}&fields=drugcentral'
     elif id_type == 'chebi':
-        query_template = 'http://mychem.info/v1/query?q=drugcentral.xref.chebi:"{{drug_id}}"&fields=drugcentral'
+        query_template = 'http://mychem.info/v1/query?q=drugcentral.xrefs.chebi:"{{drug_id}}"&fields=drugcentral'
     query_url = query_template.replace('{{drug_id}}', drug_id)
     results = {'annotate': {'common_side_effects': None, 'approval': None, 'indication': None, 'EPC': None}}
     api_message = requests.get(query_url).json()
@@ -848,7 +848,17 @@ def annotate_std_results(input_json_doc):
     Annotate results from reasoner's standard output
     """
     for _doc in input_json_doc['results']:
-        for _node in _doc['result_graph']['nodes']:
+        if 'result_graph' in _doc and _doc['result_graph'] is not None:
+            eprint("Found result_graph and it is")
+            eprint(_doc['result_graph'])
+            for _node in _doc['result_graph']['nodes']:
+                if _node['id'].startswith('CHEMBL'):
+                    _drug = _node['id'].split(':')[-1]
+                    _node['node_attributes'] = annotate_drug(_drug, 'chembl')
+                elif _node['id'].startswith("CHEBI:"):
+                    _node['node_attributes'] = annotate_drug(_node['id'], 'chebi')
+    if 'knowledge_graph' in input_json_doc:
+        for _node in input_json_doc['knowledge_graph']['nodes']:
             if _node['id'].startswith('CHEMBL'):
                 _drug = _node['id'].split(':')[-1]
                 _node['node_attributes'] = annotate_drug(_drug, 'chembl')
