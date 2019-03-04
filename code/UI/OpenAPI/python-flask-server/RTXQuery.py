@@ -17,6 +17,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")
 from RTXConfiguration import RTXConfiguration
 
 from swagger_server.models.message import Message
+from swagger_server.models.q_node import QNode
+from swagger_server.models.q_edge import QEdge
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/QuestionAnswering/")
 from ParseQuestion import ParseQuestion
@@ -317,7 +319,8 @@ class RTXQuery:
       edge_type = None
 
       #### Loop through nodes trying to figure out which is the source and target
-      for node in nodes:
+      for qnode in nodes:
+        node = QNode.from_dict(qnode)
         if node.curie is None:
           if node.type is None:
             response = { "message_code": "UnderspecifiedNode", "code_description": "At least one of the nodes in the QueryGraph has neither a CURIE nor a type. It must have one of those." }
@@ -347,7 +350,8 @@ class RTXQuery:
             return(response)
 
       #### Loop over the edges (should be just 1), ensuring that it has a type and recording it
-      for edge in edges:
+      for qedge in edges:
+        edge = QEdge.from_dict(qedge)
         if edge.type is None:
           response = { "message_code": "EdgeWithNoType", "code_description": "At least one edge has no type. All edges must have a type." }
           return(response)
