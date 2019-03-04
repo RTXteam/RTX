@@ -1830,6 +1830,36 @@ def refine_omims_Markov_chain(omim_list, doid, max_path_len=3, verbose=False):
     if verbose:
         print("Found %d omims (according to the Markov chain model)" % len(selected_omims))
     return selected_omims, paths_dict_selected, selected_probs
+
+
+def one_hope_neighbors_of_type(g, source_node, node_type, arrow_dir):
+    """
+    Given a networx graph g, start at the source_node and return the neighbors of type node_type
+    :param g: networkx graph
+    :param source_node_id: neo4j node id
+    :param node_type: neo4j node type
+    :param arrow_dir: 'L' or 'R' depicting arrow direction
+    :return: networkx neo4j node id
+    """
+    netnodes2id = nx.get_node_attributes(g, 'names')
+    netnode2type = nx.get_node_attributes(g, 'labels')
+    for key in netnode2type.keys():
+        val = set(netnode2type[key]).difference({'Base'}).pop()
+        netnode2type[key] = val
+    id2netnode = dict()
+    for key, val in netnodes2id.items():
+        id2netnode[val] = key
+    if arrow_dir == 'R':
+        neighbor_ids = g.neighbors(id2netnode[source_node])
+    elif arrow_dir == 'L':
+        neighbor_ids = g.predecessors(id2netnode[source_node])
+    else:
+        raise Exception("arrow_dir must be one of 'L' or 'R'")
+    ret_neighbors = []
+    for node in neighbor_ids:
+        if netnode2type[node] == node_type:
+            ret_neighbors.append(netnodes2id[node])
+    return ret_neighbors
 ###################################################################
 # Tests
 

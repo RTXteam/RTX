@@ -49,7 +49,7 @@ class SMEDrugRepurposingFisher:
 		num_protein_keep = 25  # number of implicated proteins to keep
 		num_pathways_keep = 25  # number of pathways to keep
 		num_pathway_proteins_selected = 25  # number of proteins enriched for the above pathways to select
-		num_drugs_keep = num_show  # number of drugs that target those proteins to keep
+		num_drugs_keep = 2*num_show  # number of drugs that target those proteins to keep
 		num_paths = 2  # number of paths to keep for each drug selected
 
 		# Initialize the response class
@@ -175,121 +175,51 @@ class SMEDrugRepurposingFisher:
 				response.print()
 				return
 
-		# Next, find the most likely paths
-		# extract the relevant subgraph
 		path_type = ["disease", "has_phenotype", "phenotypic_feature", "has_phenotype", "disease",
 					 "gene_mutations_contribute_to", "protein", "participates_in", "pathway", "participates_in",
 					 "protein", "physically_interacts_with", "chemical_substance"]
 		g = RU.get_subgraph_through_node_sets_known_relationships(path_type,
 																  [[disease_id], symptoms, genetic_diseases_selected,
 																   implicated_proteins_selected, pathways_selected,
-																   pathway_proteins_selected, drugs_selected])
+																   pathway_proteins_selected, drugs_selected],
+																  directed=True)
 
-		# decorate graph with fisher p-values
-		# get dict of id to nx nodes
-		nx_node_to_id = nx.get_node_attributes(g, "names")
-		nx_id_to_node = dict()
-		# reverse the dictionary
-		for node in nx_node_to_id.keys():
-			id = nx_node_to_id[node]
-			nx_id_to_node[id] = node
-
-		i = 0
-		for u, v, d in g.edges(data=True):
-			u_id = nx_node_to_id[u]
-			v_id = nx_node_to_id[v]
-			# decorate correct nodes
-			# input disease to symptoms, decorated by symptom p-value
-			if (u_id in symptoms_set and v_id == disease_id) or (v_id in symptoms_set and u_id == disease_id):
-				try:
-					d["p_value"] = symptoms_dict[v_id]
-				except:
-					d["p_value"] = symptoms_dict[u_id]
-				continue
-			# symptom to disease, decorated by disease p-value
-			if (u_id in symptoms_set and v_id in genetic_diseases_dict) or (
-					v_id in symptoms_set and u_id in genetic_diseases_dict):
-				try:
-					d["p_value"] = genetic_diseases_dict[v_id]
-				except:
-					d["p_value"] = genetic_diseases_dict[u_id]
-				continue
-			# disease to protein
-			if (u_id in genetic_diseases_dict and v_id in implicated_proteins_dict) or (
-					v_id in genetic_diseases_dict and u_id in implicated_proteins_dict):
-				try:
-					d["p_value"] = implicated_proteins_dict[v_id]
-				except:
-					d["p_value"] = implicated_proteins_dict[u_id]
-				continue
-			# protein to pathway
-			if (u_id in implicated_proteins_dict and v_id in pathways_selected_dict) or (
-					v_id in implicated_proteins_dict and u_id in pathways_selected_dict):
-				try:
-					d["p_value"] = pathways_selected_dict[v_id]
-				except:
-					d["p_value"] = pathways_selected_dict[u_id]
-				continue
-			# pathway to protein
-			if (u_id in pathways_selected_dict and v_id in pathway_proteins_dict) or (
-					v_id in pathways_selected_dict and u_id in pathway_proteins_dict):
-				try:
-					d["p_value"] = pathway_proteins_dict[v_id]
-				except:
-					d["p_value"] = pathway_proteins_dict[u_id]
-				continue
-			# protein to drug
-			if (u_id in pathway_proteins_dict and v_id in drugs_selected_dict) or (
-					v_id in pathway_proteins_dict and u_id in drugs_selected_dict):
-				try:
-					d["p_value"] = drugs_selected_dict[v_id]
-				except:
-					d["p_value"] = drugs_selected_dict[u_id]
-				continue
-			# otherwise, stick a p_value of 1
-			d["p_value"] = 1
-
-		# decorate with COHD data
-		RU.weight_disease_phenotype_by_cohd(g, max_phenotype_oxo_dist=2,
-											default_value=1)  # automatically pulls it out to top-level property
-
-		# decorate with drug->target binding probability
-		RU.weight_graph_with_property(g, "probability", default_value=1,
-									  transformation=lambda x: x)  # pulls it out to top level property
-
-		# transform the graph properties so they all point the same direction
-		# will be finding shortest paths, so make 0=bad, 1=good transform to 0=good, 1=bad
-		RU.transform_graph_weight(g, "cohd_freq", default_value=0,
-								  transformation=lambda x: 1 / float(x + .001) - 1 / (1 + .001))
-		RU.transform_graph_weight(g, "probability", default_value=0,
-								  transformation=lambda x: 1 / float(x + .001) - 1 / (1 + .001))
-
-		# merge the graph properties (additively)
-		RU.merge_graph_properties(g, ["p_value", "cohd_freq", "probability"], "merged", operation=lambda x, y: x + y)
 
 		graph_weight_tuples = []
 		for drug in drugs_selected:
-			decorated_paths, decorated_path_edges, path_lengths = RU.get_top_shortest_paths(g, disease_id, drug,
-																							num_paths,
-																							property='merged', num_nodes=7)  # we are looking for short paths with exactly 7 nodes in them: disease, symptom, disease, protein, pathway, protein, drug
-			# TODO: this can return paths that don't go through all the node types we want (since it's just the shortest paths).
-			# will need to return all the shortest paths, then pick the top k that go through the nodes we want
-			for path_ind in range(len(decorated_paths)):
-				g2 = nx.Graph()
-				path = decorated_paths[path_ind]
-				for node_prop in path:
-					node_uuid = node_prop['properties']['UUID']
-					g2.add_node(node_uuid, **node_prop)
-
-				path = decorated_path_edges[path_ind]
-				for edge_prop in path:
-					source_uuid = edge_prop['properties']['source_node_uuid']
-					target_uuid = edge_prop['properties']['target_node_uuid']
-					g2.add_edge(source_uuid, target_uuid, **edge_prop)
-				graph_weight_tuples.append((g2, path_lengths[path_ind], drug))
+			# get the relevant subgraph from this drug back to the input disease
+			node_types = ["disease", "phenotypic_feature", "disease", "protein", "pathway", "protein",
+						  "chemical_substance"]
+			drug_pathway_protein_neighbors = RU.one_hope_neighbors_of_type(g, drug, 'protein', 'R')
+			drug_pathway_neighbors = set()
+			for protein in drug_pathway_protein_neighbors:
+				drug_pathway_neighbors.update(RU.one_hope_neighbors_of_type(g, protein, 'pathway', 'R'))
+			drug_protein_neighbors = set()
+			for pathway in drug_pathway_neighbors:
+				drug_protein_neighbors.update(RU.one_hope_neighbors_of_type(g, pathway, 'protein', 'L'))
+			drug_disease_neighbors = set()
+			for protein in drug_protein_neighbors:
+				drug_disease_neighbors.update(RU.one_hope_neighbors_of_type(g, protein, 'disease', 'R'))
+			drug_phenotype = set()
+			for disease in drug_disease_neighbors:
+				drug_phenotype.update(RU.one_hope_neighbors_of_type(g, disease, 'phenotypic_feature', 'R'))
+			g2 = RU.get_subgraph_through_node_sets_known_relationships(path_type,
+																	   [[disease_id], drug_phenotype,
+																		drug_disease_neighbors,
+																		drug_protein_neighbors, drug_pathway_neighbors,
+																		drug_pathway_protein_neighbors, [drug]],
+																	   directed=False)
+			drug_id_old_curie = drug.replace("CHEMBL.COMPOUND:CHEMBL", "ChEMBL:")
+			# Machine learning probability of "treats"
+			prob = p.prob_single(drug_id_old_curie, disease_id)
+			if not prob:
+				prob = -1
+			else:
+				prob = prob[0]
+			graph_weight_tuples.append((g, prob, drug))
 
 		# sort by the path weight
-		graph_weight_tuples.sort(key=lambda x: x[1])
+		graph_weight_tuples.sort(key=lambda x: x[1], reverse=True)
 
 		# print out the results
 		if not use_json:
@@ -299,7 +229,14 @@ class SMEDrugRepurposingFisher:
 				if num_shown > num_show:
 					break
 				drug_description = RU.get_node_property(drug_id, "name", node_label="chemical_substance")
-				print("%s %f" % (drug_description, weight))
+				drug_id_old_curie = drug_id.replace("CHEMBL.COMPOUND:CHEMBL", "ChEMBL:")
+				# Machine learning probability of "treats"
+				prob = p.prob_single(drug_id_old_curie, disease_id)
+				if not prob:
+					prob = -1
+				else:
+					prob = prob[0]
+				print("%s %f %f" % (drug_description, weight, prob))
 		else:
 			# add the neighborhood graph
 			response.add_neighborhood_graph(g.nodes(data=True), g.edges(data=True))
