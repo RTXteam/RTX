@@ -1,58 +1,58 @@
 #query_type_id	is_ready	example_question
-Q0	true	What is lovastatin?
-Q0	true	What is hemoglobin?
-Q1	true	Which genetic conditions might offer protection against malaria?
-Q1	true	Which genetic conditions might offer protection against cholera?
-Q2	true	What is the clinical outcome pathway of physostigmine for treatment of glaucoma?
-Q3	true	What proteins does acetaminophen target?
-Q4	true	What proteins are in mRNA editing?
-Q4	true	What proteins are in the phenylketonuria pathway?
-Q5	true	What are the phenotypes of Fanconi anemia?
-Q6	false	What micrornas control the expression of G6PD?
-Q7	true	What genes are associated with Fanconi anemia?
-Q8	false	What genes are expressed in retina?
-Q9	true	What are the drugs that target PTGS1?
-Q10	true	What proteins are associated with anemia?
-Q11	false	What microRNAs are expressed in the retina?
-Q12	true	What proteins interact with PTGS1?
-Q13	true	What diseases are similar to malaria?
-Q14	true	What diseases involve similar genes to Fanconi anemia?
-Q14	false	What diseases involve similar genes to sickle cell anemia?
-Q15	false	What diseases involve similar microRNAs to sickle cell anemia?
-Q16	true	What drugs have similar protein targets to naproxen?
-Q17	false	What proteins are members of similar pathways to DHODH?
-Q18	true	What proteins are expressed in similar anatomy to RPE65?
-Q19	true	What proteins are associated with similar phenotypes to USH2A?
-Q20	true	What pathways involve similar genes to the phenylketonuria pathway
-Q21	false	What genetic conditions involve similar genes to retinitis pigmentosa?
-Q22	false	What genetic conditions involve similar microRNAs to sickle cell anemia?
-Q23	false	What drugs target proteins associated with phenylketonuria?
-Q24	false	What drugs target proteins expressed in the retina?
-Q25	true	What drugs target proteins associated with fatigue?
-Q26	true	What drugs target proteins in the phenylketonuria pathway?
-#Q27	false	This was a duplicate. Reuse my number
-Q28	true	What anatomy are associated with nitric oxide?
-Q29	true	What phenotypes are associated with phenylalanine?
-Q30	true	What diseases are associated with phenylalanine?
-Q31	true	What kinds of questions can RTX answer?
-Q32	false	What drugs target proteins associated with synaptic function?
-Q33	true	What biological processes involve proteins targeted by naproxen?
-Q34	true	What are the most common phenotypes of rickets?
-Q35	false	What are the least common phenotypes of rickets?
-Q36	true	What proteins involve similar biological processes as RUNX3?
-Q37	true	What drugs target proteins that interact with the protein RUNX1?
-Q39	true	What conditions are commonly treated by Naproxen, in any form?
-Q39	true	What conditions are commonly treated by raltegravir, in any form?
-Q39	true	What conditions are commonly treated by norepinephrine in any form?
-Q42	true	What drugs target proteins that interact with Glutathione?
-Q43	true	What proteins interact with Formate?
-Q44	true	What metabolites interact with PTGS1?
-Q45	true	What metabolites interact with similar proteins as ROH?
-Q46	true	Which proteins have expression levels that correlate with [PCNA,WRN,RMI1,RMI2] in connective tissue?
-Q55	true	What are some potential treatments for type 2 diabetes mellitus based on knowledge of related rare conditions
-Q56	true	Which molecular function is apolipoprotein A1 capable of?
-Q57	true	Which cellular component is cortactin expressed in?
-Q58	true	Which proteins are capable of chaperone binding?
-Q59	true	Which proteins are expressed in cytoplasm?
-Q63	true	Which pathways does gastrin participate in?
-Q103	true	Which pathways are most enriched by [PCNA,WRN,RMI1,RMI2]?
+Q0	TRUE	What is lovastatin?
+Q0	TRUE	What is hemoglobin?
+Q1	0.8	Which genetic conditions might offer protection against malaria?
+Q1	0.8	Which genetic conditions might offer protection against cholera?
+Q2	0.8	What is the clinical outcome pathway of physostigmine for treatment of glaucoma?
+Q3	TRUE	What proteins does acetaminophen target?
+Q4	TRUE	What proteins are in mRNA editing?
+Q4	TRUE	What proteins are in the phenylketonuria pathway?
+Q5	TRUE	What are the phenotypes of Fanconi anemia?
+Q6	FALSE	What micrornas control the expression of G6PD?
+Q7	TRUE	What genes are associated with Fanconi anemia?
+Q8	FALSE	What genes are expressed in retina?
+Q9	TRUE	What are the drugs that target PTGS1?
+Q10	TRUE	What proteins are associated with anemia?
+Q11	FALSE	What microRNAs are expressed in the retina?
+Q12	TRUE	What proteins interact with PTGS1?
+Q13	TRUE	What diseases are similar to malaria?
+Q14	TRUE	What diseases involve similar genes to Fanconi anemia?
+Q14	FALSE	What diseases involve similar genes to sickle cell anemia?
+Q15	FALSE	What diseases involve similar microRNAs to sickle cell anemia?
+Q16	TRUE	What drugs have similar protein targets to naproxen?
+Q17	FALSE	What proteins are members of similar pathways to DHODH?
+Q18	TRUE	What proteins are expressed in similar anatomy to RPE65?
+Q19	TRUE	What proteins are associated with similar phenotypes to USH2A?
+Q20	TRUE	What pathways involve similar genes to the phenylketonuria pathway
+Q21	FALSE	What genetic conditions involve similar genes to retinitis pigmentosa?
+Q22	FALSE	What genetic conditions involve similar microRNAs to sickle cell anemia?
+Q23	FALSE	What drugs target proteins associated with phenylketonuria?
+Q24	FALSE	What drugs target proteins expressed in the retina?
+Q25	TRUE	What drugs target proteins associated with fatigue?
+Q26	TRUE	What drugs target proteins in the phenylketonuria pathway?
+#Q27	FALSE	This was a duplicate. Reuse my number
+Q28	TRUE	What anatomy are associated with nitric oxide?
+Q29	TRUE	What phenotypes are associated with phenylalanine?
+Q30	TRUE	What diseases are associated with phenylalanine?
+Q31	0.8	What kinds of questions can RTX answer?
+Q32	FALSE	What drugs target proteins associated with synaptic function?
+Q33	TRUE	What biological processes involve proteins targeted by naproxen?
+Q34	0.8	What are the most common phenotypes of rickets?
+Q35	FALSE	What are the least common phenotypes of rickets?
+Q36	TRUE	What proteins involve similar biological processes as RUNX3?
+Q37	TRUE	What drugs target proteins that interact with the protein RUNX1?
+Q39	0.8	"What conditions are commonly treated by Naproxen, in any form?"
+Q39	0.8	"What conditions are commonly treated by raltegravir, in any form?"
+Q39	0.8	What conditions are commonly treated by norepinephrine in any form?
+Q42	TRUE	What drugs target proteins that interact with Glutathione?
+Q43	TRUE	What proteins interact with Formate?
+Q44	TRUE	What metabolites interact with PTGS1?
+Q45	TRUE	What metabolites interact with similar proteins as ROH?
+Q46	0.8	"Which proteins have expression levels that correlate with [PCNA,WRN,RMI1,RMI2] in connective tissue?"
+Q55	0.8	What are some potential treatments for type 2 diabetes mellitus based on knowledge of related rare conditions
+Q56	TRUE	Which molecular function is apolipoprotein A1 capable of?
+Q57	TRUE	Which cellular component is cortactin expressed in?
+Q58	TRUE	Which proteins are capable of chaperone binding?
+Q59	TRUE	Which proteins are expressed in cytoplasm?
+Q63	TRUE	Which pathways does gastrin participate in?
+Q103	0.8	"Which pathways are most enriched by [PCNA,WRN,RMI1,RMI2]?"
