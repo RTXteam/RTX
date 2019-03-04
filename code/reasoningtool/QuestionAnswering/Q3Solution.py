@@ -113,8 +113,8 @@ class Q3:
 			query_graph.edges = [ edge1 ]
 			response.message.query_graph = query_graph
 
-			#### Create a mapping dict by type. This will fail if there is more than one node in the query_graph with the same type. Careful!!
-			#### This probably needs a better design eventually for more complex queries. Fine for Q3. FIXME
+			#### Create a mapping dict with the source curie and the target type. This dict is used for reverse lookups by type
+			#### for mapping to the QueryGraph.
 			response._type_map = dict()
 			response._type_map[source_node.curie] = source_node.node_id
 			response._type_map[target_node.type] = target_node.node_id
