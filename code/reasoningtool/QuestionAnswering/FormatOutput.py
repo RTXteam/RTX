@@ -1,4 +1,8 @@
 # This script will populate Eric's standardized output object model with a given networkx neo4j instance of nodes/edges
+from __future__ import print_function
+import sys
+def eprint(*args, **kwargs):
+	print(*args, file=sys.stderr, **kwargs)
 
 import os
 import sys
