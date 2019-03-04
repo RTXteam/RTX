@@ -10,6 +10,12 @@ except ImportError:
 	sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 	import ReasoningUtilities as RU
 
+#### Import some Translator API classes
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+from swagger_server.models.query_graph import QueryGraph
+from swagger_server.models.q_node import QNode
+from swagger_server.models.q_edge import QEdge
+
 import FormatOutput
 
 import SimilarNodesInCommon
@@ -70,13 +76,55 @@ class SimilarityQuestionSolution:
 				response.print()
 				return
 
-		# Otherwise return the results
+		#### If use_json not specified, then return results as a fairly plain list
 		if not use_json:
 			to_print = "The %s's involving similar %ss as %s are: \n" % (target_node_type, association_node_type, source_node_description)
 			for other_disease_ID, jaccard in node_jaccard_tuples_sorted:
 				to_print += "%s\t%s\tJaccard %f\n" % (other_disease_ID, RU.get_node_property(other_disease_ID, 'name'), jaccard)
 			print(to_print)
+
+		#### Else if use_json requested, return the results in the Translator standard API JSON format
 		else:
+
+			#### Create the QueryGraph for this type of question
+			query_graph = QueryGraph()
+			source_node = QNode()
+			source_node.node_id = "n00"
+			source_node.curie = g.node[source_node_number]['properties']['id']
+			source_node.type = g.node[source_node_number]['properties']['category']
+			association_node = QNode()
+			association_node.node_id = "n01"
+			association_node.type = association_node_type
+			target_node = QNode()
+			target_node.node_id = "n02"
+			target_node.type = target_node_type
+			query_graph.nodes = [ source_node,association_node,target_node ]
+
+			edge1 = QEdge()
+			edge1.edge_id = "e00"
+			edge1.source_id = "n00"
+			edge1.target_id = "n01"
+			edge1.type = source_association_relationship_type
+
+			edge2 = QEdge()
+			edge2.edge_id = "e01"
+			edge2.source_id = "n01"
+			edge2.target_id = "n02"
+			edge2.type = association_target_relationship_type
+
+			query_graph.edges = [ edge1,edge2 ]
+			response.message.query_graph = query_graph
+
+			#### Create a mapping dict with the source curie and node types and edge types. This dict is used for reverse lookups by type
+			#### for mapping to the QueryGraph. There is a potential point of failure here if there are duplicate node or edge types. FIXME
+			response._type_map = dict()
+			response._type_map[source_node.curie] = source_node.node_id
+			response._type_map[association_node.type] = association_node.node_id
+			response._type_map[target_node.type] = target_node.node_id
+			response._type_map[edge1.type] = edge1.edge_id
+			response._type_map[edge2.type] = edge2.edge_id
+
+      #### Extract the sorted IDs from the list of tuples
 			node_jaccard_ID_sorted = [id for id, jac in node_jaccard_tuples_sorted]
 
 			# print(RU.return_subgraph_through_node_labels(source_node_ID, source_node_label, node_jaccard_ID_sorted, target_node_type,
@@ -124,6 +172,7 @@ class SimilarityQuestionSolution:
 						# add it to the response
 						res = response.add_subgraph(sub_g.nodes(data=True), sub_g.edges(data=True), to_print, jaccard, return_result=True)
 						res.essence = "%s" % target_name  # populate with essence of question result
+						res.essence_type = target_type
 						row_data = []  # initialize the row data
 						row_data.append("%s" % source_node_description)
 						row_data.append("%s" % source_node_ID)
