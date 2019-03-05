@@ -162,6 +162,7 @@ class FormatResponse:
 
 		#### Create the knowledge_map construct
 		knowledge_map = dict()
+		knowledge_map_dict = dict()
 
 		# for each edge, create an edge between them
 		edge_objects = []
@@ -205,7 +206,10 @@ class FormatResponse:
 				raise Exception("Expected to find '%s' in the response._type_map, but did not" % source_type)
 			if source_knowledge_map_key not in knowledge_map:
 				knowledge_map[source_knowledge_map_key] = list()
-			knowledge_map[source_knowledge_map_key].append(edge.source_id)
+				knowledge_map_dict[source_knowledge_map_key] = dict()
+			if edge.source_id not in knowledge_map_dict[source_knowledge_map_key]:
+				knowledge_map[source_knowledge_map_key].append(edge.source_id)
+				knowledge_map_dict[source_knowledge_map_key][edge.source_id] = 1
 
 			#### Try to figure out how the target fits into the query_graph for the knowledge map
 			target_type = self._node_ids[edge.target_id]
@@ -218,11 +222,14 @@ class FormatResponse:
 				raise Exception("Expected to find '%s' in the response._type_map, but did not" % target_type)
 			if target_knowledge_map_key not in knowledge_map:
 				knowledge_map[target_knowledge_map_key] = list()
-			knowledge_map[target_knowledge_map_key].append(edge.target_id)
+				knowledge_map_dict[target_knowledge_map_key] = dict()
+			if edge.target_id not in knowledge_map_dict[target_knowledge_map_key]:
+				knowledge_map[target_knowledge_map_key].append(edge.target_id)
+				knowledge_map_dict[target_knowledge_map_key][edge.target_id] = 1
 
 			#### Try to figure out how the edge fits into the query_graph for the knowledge map
-			source_target_key = source_knowledge_map_key+"-"+target_knowledge_map_key
-			target_source_key = target_knowledge_map_key+"-"+source_knowledge_map_key
+			source_target_key = "e"+source_knowledge_map_key+"-"+target_knowledge_map_key
+			target_source_key = "e"+target_knowledge_map_key+"-"+source_knowledge_map_key
 			if edge.type in self._type_map:
 				knowledge_map_key = self._type_map[edge.type]
 			elif source_target_key in self._type_map:
@@ -230,11 +237,14 @@ class FormatResponse:
 			elif target_source_key in self._type_map:
 				knowledge_map_key = target_source_key
 			else:
-				eprint("ERROR: Expected to find '%s' in the response._type_map, but did not" % edge.type)
+				eprint("ERROR: Expected to find '%s' or '%s' or '%s' in the response._type_map, but did not" % (edge.type,source_target_key,target_source_key))
 				knowledge_map_key = "ERROR"
 			if knowledge_map_key not in knowledge_map:
 				knowledge_map[knowledge_map_key] = list()
-			knowledge_map[knowledge_map_key].append(edge.id)
+				knowledge_map_dict[knowledge_map_key] = dict()
+			if edge.id not in knowledge_map_dict[target_knowledge_map_key]:
+				knowledge_map[knowledge_map_key].append(edge.id)
+				knowledge_map_dict[knowledge_map_key][edge.id] = 1
 
 		# Create the result (potential answer)
 		result1 = Result()
