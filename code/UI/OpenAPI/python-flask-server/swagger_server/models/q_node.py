@@ -15,7 +15,7 @@ class QNode(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, node_id: str=None, curie: str=None, type: str=None):  # noqa: E501
+    def __init__(self, node_id: str=None, curie: str=None, type: str=None, is_set: bool=None):  # noqa: E501
         """QNode - a model defined in Swagger
 
         :param node_id: The node_id of this QNode.  # noqa: E501
@@ -24,22 +24,27 @@ class QNode(Model):
         :type curie: str
         :param type: The type of this QNode.  # noqa: E501
         :type type: str
+        :param is_set: The is_set of this QNode.  # noqa: E501
+        :type is_set: bool
         """
         self.swagger_types = {
             'node_id': str,
             'curie': str,
-            'type': str
+            'type': str,
+            'is_set': bool
         }
 
         self.attribute_map = {
             'node_id': 'node_id',
             'curie': 'curie',
-            'type': 'type'
+            'type': 'type',
+            'is_set': 'is_set'
         }
 
         self._node_id = node_id
         self._curie = curie
         self._type = type
+        self._is_set = is_set
 
     @classmethod
     def from_dict(cls, dikt) -> 'QNode':
@@ -120,3 +125,26 @@ class QNode(Model):
         """
 
         self._type = type
+
+    @property
+    def is_set(self) -> bool:
+        """Gets the is_set of this QNode.
+
+        If set, this node represents a set of nodes  # noqa: E501
+
+        :return: The is_set of this QNode.
+        :rtype: bool
+        """
+        return self._is_set
+
+    @is_set.setter
+    def is_set(self, is_set: bool):
+        """Sets the is_set of this QNode.
+
+        If set, this node represents a set of nodes  # noqa: E501
+
+        :param is_set: The is_set of this QNode.
+        :type is_set: bool
+        """
+
+        self._is_set = is_set
