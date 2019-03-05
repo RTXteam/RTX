@@ -86,7 +86,7 @@ class FormatResponse:
 			self.message.code_description = "%s results found" % self._num_results
 
 
-	def add_subgraph(self, nodes, edges, description, confidence, return_result=False):
+	def add_subgraph(self, nodes, edges, description, confidence, return_result=False, suppress_knowledge_map=False):
 		"""
 		Populate the object model using networkx neo4j subgraph
 		:param nodes: nodes in the subgraph (g.nodes(data=True))
@@ -188,7 +188,7 @@ class FormatResponse:
 			edge_str = "%s -%s- %s" % (edge.source_id,edge.type,edge.target_id)
 			if edge_str not in self._edge_ids:
 				self.message.knowledge_graph.edges.append(edge)
-				edge.id = "%i" % self._edge_counter
+				edge.id = "%d" % self._edge_counter
 				self._edge_ids[edge_str] = edge.id
 				self._edge_counter += 1
 			else:
@@ -197,27 +197,37 @@ class FormatResponse:
 			#### Try to figure out how the source fits into the query_graph for the knowledge map
 			source_type = self._node_ids[edge.source_id]
 			if edge.source_id in self._type_map:
-				knowledge_map_key = self._type_map[edge.source_id]
+				source_knowledge_map_key = self._type_map[edge.source_id]
 			else:
-				knowledge_map_key = self._type_map[source_type]
-			if not knowledge_map_key:
+				source_knowledge_map_key = self._type_map[source_type]
+			if not source_knowledge_map_key:
+				eprint("Expected to find '%s' in the response._type_map, but did not" % source_type)
 				raise Exception("Expected to find '%s' in the response._type_map, but did not" % source_type)
-			knowledge_map[knowledge_map_key] = edge.source_id
+			knowledge_map[source_knowledge_map_key] = edge.source_id
 
 			#### Try to figure out how the target fits into the query_graph for the knowledge map
 			target_type = self._node_ids[edge.target_id]
 			if edge.target_id in self._type_map:
-				knowledge_map_key = self._type_map[edge.target_id]
+				target_knowledge_map_key = self._type_map[edge.target_id]
 			else:
-				knowledge_map_key = self._type_map[target_type]
-			if not knowledge_map_key:
+				target_knowledge_map_key = self._type_map[target_type]
+			if not target_knowledge_map_key:
+				eprint("ERROR: Expected to find '%s' in the response._type_map, but did not" % target_type)
 				raise Exception("Expected to find '%s' in the response._type_map, but did not" % target_type)
+			knowledge_map[target_knowledge_map_key] = edge.target_id
 
 			#### Try to figure out how the edge fits into the query_graph for the knowledge map
-			knowledge_map[knowledge_map_key] = edge.target_id
-			knowledge_map_key = self._type_map[edge.type]
-			if not knowledge_map_key:
-				raise Exception("Expected to find '%s' in the response._type_map, but did not" % edge.type)
+			source_target_key = source_knowledge_map_key+"-"+target_knowledge_map_key
+			target_source_key = target_knowledge_map_key+"-"+source_knowledge_map_key
+			if edge.type in self._type_map:
+				knowledge_map_key = self._type_map[edge.type]
+			elif source_target_key in self._type_map:
+				knowledge_map_key = source_target_key
+			elif target_source_key in self._type_map:
+				knowledge_map_key = target_source_key
+			else:
+				eprint("ERROR: Expected to find '%s' in the response._type_map, but did not" % edge.type)
+				knowledge_map_key = "ERROR"
 			knowledge_map[knowledge_map_key] = edge.id
 
 		# Create the result (potential answer)
@@ -225,14 +235,16 @@ class FormatResponse:
 		result1.reasoner_id = "RTX"
 		result1.description = description
 		result1.confidence = confidence
-		result1.knowledge_map = knowledge_map
+		if suppress_knowledge_map is False:
+			result1.knowledge_map = knowledge_map
 
 		# Create a KnowledgeGraph object and put the list of nodes and edges into it
 		#### This is still legal, then is redundant with the knowledge map, so leave it out maybe
-		#knowledge_graph = KnowledgeGraph()
-		#knowledge_graph.nodes = node_objects
-		#knowledge_graph.edges = edge_objects
-		#result1.result_graph = knowledge_graph
+		knowledge_graph = KnowledgeGraph()
+		knowledge_graph.nodes = node_objects
+		knowledge_graph.edges = edge_objects
+		if suppress_knowledge_map is True:
+			result1.result_graph = knowledge_graph
 
 		# Put the first result (potential answer) into the message
 		self._results.append(result1)
