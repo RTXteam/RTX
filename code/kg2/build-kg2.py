@@ -2,14 +2,17 @@ import collections
 import copy
 import functools
 import json
+import networkx
 import ontobio
 import os.path
 import pathlib
 import pprint
 import prefixcommons
 import re
+import shutil
 import ssl
 import sys
+import tempfile
 import time
 import urllib.parse
 import urllib.request
@@ -71,8 +74,10 @@ def download_file_if_not_exist_locally(url: str, local_file_name: str):
             # URLs resolve to HTTPS URLs (would prefer to just use
             # urllib.request.urlretrieve, but it doesn't seem to support
             # specifying an SSL "context" which we need in order to ignore the cert):
-            with urllib.request.urlopen(url, context=ctx) as u, open(local_file_name, 'wb') as f:
+            temp_file_name = tempfile.mkstemp(prefix='kg2')[1]
+            with urllib.request.urlopen(url, context=ctx) as u, open(temp_file_name, 'wb') as f:
                 f.write(u.read())
+            shutil.move(temp_file_name, local_file_name)
     return local_file_name
 
 
@@ -109,6 +114,8 @@ def shorten_iri_to_curie(iri: str):
             curie_id = iri.replace('http://snomed.info/sct/', 'SNOMEDCT_US:')
         elif iri.startswith('http://identifiers.org/hgnc/'):
             curie_id = iri.replace('http://identifiers.org/hgnc/', 'HGNC:')
+        elif iri.startswith('http://www.ebi.ac.uk/efo/EFO_'):
+            curie_id = iri.replace('http://www.ebi.ac.uk/efo/EFO_', 'EFO:')
         else:
             print("warning: iri does not map to a curie ID via prefixcommons: " + iri, file=sys.stderr)
             curie_id = None
@@ -121,6 +128,8 @@ def get_biolink_category_for_node(ontology_node_id: str, ontology, map_curie_to_
     else:
         node_curie_id = shorten_iri_to_curie(ontology_node_id)
     ret_category = None
+    if node_curie_id is None:
+        node_curie_id = ontology_node_id
     if node_curie_id.startswith('HGNC:'):
         ret_category = 'gene'
     elif node_curie_id.startswith('UniProtKB:'):
@@ -144,6 +153,7 @@ def get_nodes_dict_from_ontology_dict(ont_dict: dict,
     ontology = ont_dict['ontology']
     assert type(ontology) == ontobio.ontol.Ontology
     ontology_iri = ont_dict['id']
+    assert ontology_iri.startswith('http:')
     ontology_curie_id = shorten_iri_to_curie(ontology_iri)
 
     ret_dict = {ontology_curie_id: {
@@ -329,8 +339,14 @@ def get_rels_dict(nodes: dict, ontology: ontobio.ontol.Ontology,
     for (subject_id, object_id, predicate_dict) in ontology.get_graph().edges_iter(data=True):
         # subject_id and object_id are IDs from the original ontology objects; these may not
         # always be the node curie IDs (e.g., for SNOMED terms). Need to map them
-        subject_curie_id = map_of_node_ontology_ids_to_curie_ids[subject_id]
-        object_curie_id = map_of_node_ontology_ids_to_curie_ids[object_id]
+        subject_curie_id = map_of_node_ontology_ids_to_curie_ids.get(subject_id, None)
+        if subject_curie_id is None:
+            print("ontology ID has no curie ID in the map: " + subject_id, file=sys.stderr)
+            continue
+        object_curie_id = map_of_node_ontology_ids_to_curie_ids.get(object_id, None)
+        if object_curie_id is None:
+            print("ontology ID has no curie ID in the map: " + object_id, file=sys.stderr)
+            continue
         predicate_label = predicate_dict['pred']
         if not predicate_label.startswith('http:'):
             if ':' not in predicate_label:
@@ -379,7 +395,22 @@ def get_rels_dict(nodes: dict, ontology: ontobio.ontol.Ontology,
 # --------------- define constants -------------------
 
 # note: this could be loaded from a config file
-ONTOLOGY_URLS_AND_FILES = ({'url':  'http://purl.obolibrary.org/obo/bfo.owl',
+ONTOLOGY_URLS_AND_FILES = ({'url':  'http://purl.obolibrary.org/obo/foodon.owl',
+                            'file': 'foodon.owl',
+                            'title': 'FOODON (Food Ontology)'},
+                           {'url':  'http://www.ebi.ac.uk/efo/efo.owl',
+                            'file': 'efo.owl',
+                            'title': 'Experimental Factor Ontology'},
+                           {'url':  'http://www.orphadata.org/data/ORDO/ORDO_en_2.7.owl',
+                            'file': 'ordo.owl',
+                            'title': 'ORPHANET Rare Disease Ontology'},
+                           {'url':  'http://purl.obolibrary.org/obo/ddanat/releases/2018-11-25/ddanat.owl',
+                            'file': 'ddanat.owl',
+                            'title': 'Dictyostelium discoideum anatomy'},
+                           {'url':  'http://purl.obolibrary.org/obo/ncit.owl',
+                            'file': 'ncit.owl',
+                            'title': 'NCI Thesaurus'},
+                           {'url':  'http://purl.obolibrary.org/obo/bfo.owl',
                             'file': 'bfo.owl',
                             'title': 'Basic Formal Ontology'},
                            {'url':  'http://purl.obolibrary.org/obo/ro.owl',
@@ -435,6 +466,15 @@ FIRST_CAP_RE = re.compile('(.)([A-Z][a-z]+)')
 ALL_CAP_RE = re.compile('([a-z0-9])([A-Z])')
 
 
+for ont_dict in ONTOLOGY_URLS_AND_FILES:
+    ont = make_ontology_dict_from_local_file(download_file_if_not_exist_locally(ont_dict['url'],
+                                                                                ont_dict['file']))['ontology']
+    roots = ont.get_roots(relations='subClassOf')
+    for node_id in roots:
+        pprint.pprint(ont.node(node_id))
+
+exit()
+
 # --------------- main starts here -------------------
 
 # download all the ontology OWL files and load them; fold in the original data from ONTOLOGY_URLS_AND_FILES
@@ -455,23 +495,28 @@ ontology_node_dicts = [get_nodes_dict_from_ontology_dict(ont_dict,
                        for ont_dict in ontology_data]
 
 
-kg2_dict = dict()
+nodes_dict = functools.reduce(lambda x, y: compose_two_multinode_dicts(x, y),
+                              ontology_node_dicts)
 
-kg2_dict['nodes'] = functools.reduce(lambda x, y: compose_two_multinode_dicts(x, y),
-                                     ontology_node_dicts)
-
-map_of_node_ontology_ids_to_curie_ids = get_map_of_node_ontology_ids_to_curie_ids(kg2_dict['nodes'])
+map_of_node_ontology_ids_to_curie_ids = get_map_of_node_ontology_ids_to_curie_ids(nodes_dict)
 
 master_ontology = copy.deepcopy(ontology_data[0]['ontology'])
 master_ontology.merge([ont_dict['ontology'] for ont_dict in ontology_data])
 
+kg2_dict = dict()
+
 # get a dictionary of all relationships including xrefs as relationships
-kg2_dict['rels'] = get_rels_dict(kg2_dict['nodes'], master_ontology,
-                                 map_of_node_ontology_ids_to_curie_ids)
+kg2_dict['edges'] = list(get_rels_dict(nodes_dict, master_ontology,
+                                       map_of_node_ontology_ids_to_curie_ids).values())
+
+kg2_dict['nodes'] = list(nodes_dict.values())
+
+del nodes_dict
 
 # delete xrefs from all_nodes_dict
-for node_dict in kg2_dict['nodes'].values():
+for node_dict in kg2_dict['nodes']:
     del node_dict['xrefs']
+
 
 with open('kg2.json', 'w') as outfile:
     json.dump(kg2_dict, outfile)
