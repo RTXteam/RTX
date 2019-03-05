@@ -103,21 +103,22 @@ class SimilarityQuestionSolution:
 
 			source_association_relationship_type = "unknown1"
 			edge1 = QEdge()
-			edge1.edge_id = "n00-n01"
+			edge1.edge_id = "en00-n01"
 			edge1.source_id = "n00"
 			edge1.target_id = "n01"
 			edge1.type = source_association_relationship_type
 
 			association_target_relationship_type = "unknown2"
 			edge2 = QEdge()
-			edge2.edge_id = "n01-n02"
+			edge2.edge_id = "en01-n02"
 			edge2.source_id = "n01"
 			edge2.target_id = "n02"
 			edge2.type = association_target_relationship_type
 
 			query_graph.edges = [ edge1,edge2 ]
-			#### Suppress the query_graph because these similarity queries don't work with knowledge_map
-			#response.message.query_graph = query_graph
+
+			#### DONT Suppress the query_graph because we can now do the knowledge_map with v0.9.1
+			response.message.query_graph = query_graph
 
 			#### Create a mapping dict with the source curie and node types and edge types. This dict is used for reverse lookups by type
 			#### for mapping to the QueryGraph. There is a potential point of failure here if there are duplicate node or edge types. FIXME
@@ -125,8 +126,8 @@ class SimilarityQuestionSolution:
 			response._type_map[source_node.curie] = source_node.node_id
 			response._type_map[association_node.type] = association_node.node_id
 			response._type_map[target_node.type] = target_node.node_id
-			response._type_map[edge1.source_id+"-"+edge1.target_id] = edge1.edge_id
-			response._type_map[edge2.source_id+"-"+edge2.target_id] = edge2.edge_id
+			response._type_map["e"+edge1.source_id+"-"+edge1.target_id] = edge1.edge_id
+			response._type_map["e"+edge2.source_id+"-"+edge2.target_id] = edge2.edge_id
 
 			#### Extract the sorted IDs from the list of tuples
 			node_jaccard_ID_sorted = [id for id, jac in node_jaccard_tuples_sorted]
