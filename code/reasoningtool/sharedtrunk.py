@@ -50,7 +50,6 @@ input_json = req_res.json()
 
 res_list = input_json['result_list']
 res_iter = iter(res_list)
-print("number of results: " + str(len(res_list)))
 master_graph = next(res_iter)['result_graph']
 master_nodes_list = master_graph['node_list']
 master_edges_list = master_graph['edge_list']
@@ -76,7 +75,6 @@ for edge in master_edges_list:
     master_edges_dict[key] = edge
     
 for result in res_iter:
-    print("analyzing subgraph")
     res_graph = result['result_graph']
     for node in res_graph['node_list']:
         curie = node['id']
