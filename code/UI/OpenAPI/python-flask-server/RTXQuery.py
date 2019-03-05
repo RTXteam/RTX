@@ -369,7 +369,7 @@ class RTXQuery:
       response["terms"] = { source_type: source_name, "target_label": target_type, "rel_type": edge_type }
       response["original_question"] = "Submitted QueryGraph"
       response["restated_question"] = "Which %s(s) are connected to the %s %s via edge type %s?" % (target_type,source_type,source_name,edge_type)
-      response["execution_string"] = "Q3Solution.py -s '%s' -t '%s' -r '%s' -j" % (source_name,target_type,edge_type)
+      response["execution_string"] = "Q3Solution.py -s '%s' -t '%s' -r '%s' -j --directed" % (source_name,target_type,edge_type)
       return(response)
 
     return(response)
