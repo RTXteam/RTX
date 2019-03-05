@@ -306,6 +306,8 @@ class RTXFeedback:
 
         #### See if there is an existing result that matches this hash
         previousResult = session.query(Result).filter(Result.result_hash==result_hash).order_by(desc(Result.result_id)).first()
+        #eprint("WARNING: Forcing chache miss for result at line 309")
+        #previousResult = None
         if previousResult is not None:
           result.id = "https://rtx.ncats.io/api/rtx/v1/result/"+str(previousResult.result_id)
           eprint("Reused result_id " + str(result.id))
