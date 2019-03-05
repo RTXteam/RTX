@@ -101,19 +101,19 @@ class SimilarityQuestionSolution:
 			target_node.type = target_node_type
 			query_graph.nodes = [ source_node,association_node,target_node ]
 
-			source_association_relationship_type = "unknown1"
+			#source_association_relationship_type = "unknown1"
 			edge1 = QEdge()
 			edge1.edge_id = "en00-n01"
 			edge1.source_id = "n00"
 			edge1.target_id = "n01"
-			edge1.type = source_association_relationship_type
+			#edge1.type = source_association_relationship_type
 
-			association_target_relationship_type = "unknown2"
+			#association_target_relationship_type = "unknown2"
 			edge2 = QEdge()
 			edge2.edge_id = "en01-n02"
 			edge2.source_id = "n01"
 			edge2.target_id = "n02"
-			edge2.type = association_target_relationship_type
+			#edge2.type = association_target_relationship_type
 
 			query_graph.edges = [ edge1,edge2 ]
 
