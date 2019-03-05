@@ -40,7 +40,7 @@ class FormatResponse:
 		self.message = Message()
 		self.message.type = "translator_reasoner_message"
 		self.message.tool_version = RTXConfiguration.version
-		self.message.schema_version = "0.9.0"
+		self.message.schema_version = "0.9.1"
 		self.message.message_code = "OK"
 		#self.message.code_description = "Placeholder for description"
 		self.message.code_description = "%s results found" % self._num_results
@@ -203,7 +203,9 @@ class FormatResponse:
 			if not source_knowledge_map_key:
 				eprint("Expected to find '%s' in the response._type_map, but did not" % source_type)
 				raise Exception("Expected to find '%s' in the response._type_map, but did not" % source_type)
-			knowledge_map[source_knowledge_map_key] = edge.source_id
+			if source_knowledge_map_key not in knowledge_map:
+				knowledge_map[source_knowledge_map_key] = list()
+			knowledge_map[source_knowledge_map_key].append(edge.source_id)
 
 			#### Try to figure out how the target fits into the query_graph for the knowledge map
 			target_type = self._node_ids[edge.target_id]
@@ -214,7 +216,9 @@ class FormatResponse:
 			if not target_knowledge_map_key:
 				eprint("ERROR: Expected to find '%s' in the response._type_map, but did not" % target_type)
 				raise Exception("Expected to find '%s' in the response._type_map, but did not" % target_type)
-			knowledge_map[target_knowledge_map_key] = edge.target_id
+			if target_knowledge_map_key not in knowledge_map:
+				knowledge_map[target_knowledge_map_key] = list()
+			knowledge_map[target_knowledge_map_key].append(edge.target_id)
 
 			#### Try to figure out how the edge fits into the query_graph for the knowledge map
 			source_target_key = source_knowledge_map_key+"-"+target_knowledge_map_key
@@ -228,7 +232,9 @@ class FormatResponse:
 			else:
 				eprint("ERROR: Expected to find '%s' in the response._type_map, but did not" % edge.type)
 				knowledge_map_key = "ERROR"
-			knowledge_map[knowledge_map_key] = edge.id
+			if knowledge_map_key not in knowledge_map:
+				knowledge_map[knowledge_map_key] = list()
+			knowledge_map[knowledge_map_key].append(edge.id)
 
 		# Create the result (potential answer)
 		result1 = Result()

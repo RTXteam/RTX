@@ -95,6 +95,7 @@ class SimilarityQuestionSolution:
 			association_node = QNode()
 			association_node.node_id = "n01"
 			association_node.type = association_node_type
+			association_node.is_set = True
 			target_node = QNode()
 			target_node.node_id = "n02"
 			target_node.type = target_node_type
@@ -174,7 +175,7 @@ class SimilarityQuestionSolution:
 						sub_g = nx.subgraph(g, rel_nodes)
 
 						# add it to the response
-						res = response.add_subgraph(sub_g.nodes(data=True), sub_g.edges(data=True), to_print, jaccard, return_result=True, suppress_knowledge_map=True)
+						res = response.add_subgraph(sub_g.nodes(data=True), sub_g.edges(data=True), to_print, jaccard, return_result=True)
 						res.essence = "%s" % target_name  # populate with essence of question result
 						res.essence_type = target_node_type
 						row_data = []  # initialize the row data
