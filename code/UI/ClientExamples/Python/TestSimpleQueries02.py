@@ -12,7 +12,7 @@ url_str = API_BASE_URL + "/query"
 #### Create a dict of the request, specifying the query type and its parameters
 request = {
   "previous_message_processing_plan": {
-    "previous_message_uris": [ "https://rtx.ncats.io/api/rtx/v1/message/43" ],
+    "previous_message_uris": [ "https://rtx.ncats.io/devED/api/rtx/v1/message/81" ],
     "options": { "AnnotateDrugs": 1, "Store": 1, "ReturnMessageId": 1 }
   }
 }
