@@ -100,22 +100,23 @@ class SimilarityQuestionSolution:
 			target_node.type = target_node_type
 			query_graph.nodes = [ source_node,association_node,target_node ]
 
-			source_association_relationship_type = "foo1"
+			source_association_relationship_type = "unknown1"
 			edge1 = QEdge()
-			edge1.edge_id = "e00"
+			edge1.edge_id = "n00-n01"
 			edge1.source_id = "n00"
 			edge1.target_id = "n01"
 			edge1.type = source_association_relationship_type
 
-			association_target_relationship_type = "foo2"
+			association_target_relationship_type = "unknown2"
 			edge2 = QEdge()
-			edge2.edge_id = "e01"
+			edge2.edge_id = "n01-n02"
 			edge2.source_id = "n01"
 			edge2.target_id = "n02"
 			edge2.type = association_target_relationship_type
 
 			query_graph.edges = [ edge1,edge2 ]
-			response.message.query_graph = query_graph
+			#### Suppress the query_graph because these similarity queries don't work with knowledge_map
+			#response.message.query_graph = query_graph
 
 			#### Create a mapping dict with the source curie and node types and edge types. This dict is used for reverse lookups by type
 			#### for mapping to the QueryGraph. There is a potential point of failure here if there are duplicate node or edge types. FIXME
@@ -123,10 +124,10 @@ class SimilarityQuestionSolution:
 			response._type_map[source_node.curie] = source_node.node_id
 			response._type_map[association_node.type] = association_node.node_id
 			response._type_map[target_node.type] = target_node.node_id
-			response._type_map[edge1.type] = edge1.edge_id
-			response._type_map[edge2.type] = edge2.edge_id
+			response._type_map[edge1.source_id+"-"+edge1.target_id] = edge1.edge_id
+			response._type_map[edge2.source_id+"-"+edge2.target_id] = edge2.edge_id
 
-      #### Extract the sorted IDs from the list of tuples
+			#### Extract the sorted IDs from the list of tuples
 			node_jaccard_ID_sorted = [id for id, jac in node_jaccard_tuples_sorted]
 
 			# print(RU.return_subgraph_through_node_labels(source_node_ID, source_node_label, node_jaccard_ID_sorted, target_node_type,
@@ -161,7 +162,8 @@ class SimilarityQuestionSolution:
 				all_paths = nx.all_shortest_paths(g, source_node_number, target_id2numbers[other_disease_ID])
 
 				# get all the nodes on these paths
-				try:
+				#try:
+				if 1 == 1:
 					rel_nodes = set()
 					for path in all_paths:
 						for node in path:
@@ -172,9 +174,9 @@ class SimilarityQuestionSolution:
 						sub_g = nx.subgraph(g, rel_nodes)
 
 						# add it to the response
-						res = response.add_subgraph(sub_g.nodes(data=True), sub_g.edges(data=True), to_print, jaccard, return_result=True)
+						res = response.add_subgraph(sub_g.nodes(data=True), sub_g.edges(data=True), to_print, jaccard, return_result=True, suppress_knowledge_map=True)
 						res.essence = "%s" % target_name  # populate with essence of question result
-						res.essence_type = target_type
+						res.essence_type = target_node_type
 						row_data = []  # initialize the row data
 						row_data.append("%s" % source_node_description)
 						row_data.append("%s" % source_node_ID)
@@ -182,8 +184,8 @@ class SimilarityQuestionSolution:
 						row_data.append("%s" % other_disease_ID)
 						row_data.append("%f" % jaccard)
 						res.row_data = row_data
-				except:
-					pass
+#				except:
+#					pass
 			response.print()
 
 	@staticmethod
