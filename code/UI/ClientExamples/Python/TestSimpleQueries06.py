@@ -10,7 +10,7 @@ API_BASE_URL = 'https://rtx.ncats.io/devED/api/rtx/v1'
 url_str = API_BASE_URL + "/query"
 
 #### Create a dict of the request, specifying the query type and its parameters
-request = { "query_message": {
+request = { "bypass_cache": "true", "query_message": {
   "query_graph": {
     "edges": [
       {
