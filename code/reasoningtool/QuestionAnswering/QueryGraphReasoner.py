@@ -133,8 +133,9 @@ class QueryGraphReasoner:
 			qnode1.type = None
 
 			#### Create the corresponding knowledge_map for this result
-			knowledge_map = { "n00": [ properties["id"] ] }
-			result1.knowledge_map = knowledge_map
+			node_bindings = { "n00": [ properties["id"] ] }
+			result1.node_bindings = node_bindings
+			result1.edge_bindings = []
 
 			return(response.message)
 
