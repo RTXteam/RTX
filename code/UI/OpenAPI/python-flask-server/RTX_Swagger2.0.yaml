@@ -684,9 +684,13 @@ definitions:
         type: "object"
         description: "A graph that describes the thought pattern of this result (i.e. answer to the query)"
         $ref: "#/definitions/KnowledgeGraph"
-      knowledge_map:
+      node_bindings:
         type: "object"
-        description: "Lookup dict that maps QNode and QEdge identifiers in the QueryGraph to Node and Edge identifiers in the KnowledgeGraph"
+        description: "Lookup dict that maps QNode identifiers in the QueryGraph to Node identifiers in the KnowledgeGraph"
+        additionalProperties: true
+      edge_bindings:
+        type: "object"
+        description: "Lookup dict that maps QEdge identifiers in the QueryGraph to Edge identifiers in the KnowledgeGraph"
         additionalProperties: true
   KnowledgeGraph:
     type: "object"
