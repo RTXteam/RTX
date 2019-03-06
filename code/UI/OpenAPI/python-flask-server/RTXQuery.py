@@ -62,8 +62,8 @@ class RTXQuery:
     if "have_query_graph" in result:
       qgResult = self.interpretQueryGraph(query)
       if qgResult["message_code"] != "OK":
-        response.message_code = result["message_code"]
-        response.code_description = result["code_description"]
+        response.message_code = qgResult["message_code"]
+        response.code_description = qgResult["code_description"]
         return(response)
       else:
         id = qgResult["id"]
@@ -313,6 +313,7 @@ class RTXQuery:
 
     #### Handle the 2 node case
     if n_nodes == 2:
+      eprint("DEBUG: Handling the 2-node case")
       source_type = None
       source_name = None
       target_type = None
@@ -321,14 +322,19 @@ class RTXQuery:
       #### Loop through nodes trying to figure out which is the source and target
       for qnode in nodes:
         node = QNode.from_dict(qnode)
+
+        if node.type == "gene":
+          if node.curie is None:
+            node.type = "protein"
+          else:
+            response = { "message_code": "UnsupportedNodeType", "code_description": "At least one of the nodes in the QueryGraph is a specific gene, which cannot be handled at the moment, a generic gene type with no curie is translated into a protein by RTX." }
+            return(response)
+
         if node.curie is None:
           if node.type is None:
             response = { "message_code": "UnderspecifiedNode", "code_description": "At least one of the nodes in the QueryGraph has neither a CURIE nor a type. It must have one of those." }
             return(response)
           else:
-            if re.match(r"'",node.type):
-              response = { "message_code": "IllegalCharacters", "code_description": "Node type contains one or more illegal characters." }
-              return(response)
             if target_type is None:
               target_type = node.type
             else:
@@ -369,7 +375,8 @@ class RTXQuery:
       response["terms"] = { source_type: source_name, "target_label": target_type, "rel_type": edge_type }
       response["original_question"] = "Submitted QueryGraph"
       response["restated_question"] = "Which %s(s) are connected to the %s %s via edge type %s?" % (target_type,source_type,source_name,edge_type)
-      response["execution_string"] = "Q3Solution.py -s '%s' -t '%s' -r '%s' -j --directed" % (source_name,target_type,edge_type)
+      #response["execution_string"] = "Q3Solution.py -s '%s' -t '%s' -r '%s' -j --directed" % (source_name,target_type,edge_type)
+      response["execution_string"] = "Q3Solution.py -s '%s' -t '%s' -r '%s' -j" % (source_name,target_type,edge_type)
       return(response)
 
     return(response)
