@@ -83,11 +83,12 @@
 Use cache</label>
 </form>
 <br>
-<h3 style="display:inline;">Or Query via Graph:</h3>
+<h3 style="display:inline;">Query Graph:</h3>
 <div class="cytograph_q">
   <div style="height: 100%; width: 100%" id="cy999"></div>
 </div>
-Enter new query node:<input type="text" class="questionBox" id="newquerynode" onkeydown="enter_item(this, 'FIXME');" value="" size="60"><input type="button" class="questionBox button" name="action" value="Add" onClick="javascript:add_node_to_query();">
+<div id="qg_list"></div>
+
 
 <br><br>
 
@@ -137,7 +138,8 @@ Enter new query node:<input type="text" class="questionBox" id="newquerynode" on
 
 
 <div class="pagesection" id="devDiv">
-<div id="dev_result_json_container"></div>
+  <input type="button" class="json_copy button" name="action" value="Copy Response JSON to clipboard" onClick="javascript:copyJSON();"/>
+  <div id="dev_result_json_container"></div>
 </div>
 
 
