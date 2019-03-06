@@ -77,7 +77,9 @@ function pasteQuestion(question) {
 function sendQuestion(e) {
     add_status_divs();
     document.getElementById("result_container").innerHTML = "";
-    document.getElementById("kg_container").innerHTML = "";
+    //    document.getElementById("kg_container").innerHTML = "";
+    if (cyobj[0]) {cyobj[0].elements().remove();}
+    if (cyobj[999]) {cyobj[999].elements().remove();}
     document.getElementById("summary_container").innerHTML = "";
     document.getElementById("menunumresults").innerHTML = "--";
     document.getElementById("menunumresults").classList.remove("numnew");
@@ -220,6 +222,7 @@ function render_message(respObj) {
 
     add_to_session(message_id,respObj.restated_question+"?");
 
+    document.title = "RTX-UI ["+message_id+"]: "+respObj.restated_question+"?";
     history.pushState({ id: 'RTX_UI' }, 'RTX | message='+message_id, "//"+ window.location.hostname + window.location.pathname + '?m='+message_id);
 
     if ( respObj["table_column_names"] ) {
@@ -234,7 +237,7 @@ function render_message(respObj) {
 	if ( respObj["knowledge_graph"] ) {
 //	    process_kg(respObj["knowledge_graph"]);
 
-	    add_kg_html();
+//	    add_kg_html();
 	    process_graph(respObj["knowledge_graph"],0);
 	    if (respObj["query_graph"]) {
 		process_graph(respObj["query_graph"],999);
@@ -370,7 +373,7 @@ function process_results(reslist,kg) {
 	for (var ne in reslist[i].knowledge_map) {
 	    if (reslist[i].knowledge_map.hasOwnProperty(ne)) {
 		var kmne;
-		console.log("=================== i:"+i+"  ne:"+ne);
+//		console.log("=================== i:"+i+"  ne:"+ne);
 		if (ne.startsWith("n")) { // stop relying on this FIXME
 		    for (var ni = 0; ni < reslist[i].knowledge_map[ne].length; ni++) { // also parse if string FIXME
                         kmne = Object.create(kg.nodes.find(item => item.id === reslist[i].knowledge_map[ne][ni]));
