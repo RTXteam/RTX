@@ -152,7 +152,7 @@ class QueryGraphReasoner:
 				query_graph.nodes.append(qnode)
 		if "edges" in query_graph_dict:
 			for edge in query_graph_dict["edges"]:
-				qedge = QNode().from_dict(edge)
+				qedge = QEdge().from_dict(edge)
 				query_graph.edges.append(qedge)
 		return query_graph
 
