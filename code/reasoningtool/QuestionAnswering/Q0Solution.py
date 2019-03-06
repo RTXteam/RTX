@@ -123,8 +123,9 @@ class Q0:
 			response.message.query_graph = query_graph
 
 			#### Create the corresponding knowledge_map
-			knowledge_map = { "n00": [ properties["id"] ] }
-			result1.knowledge_map = knowledge_map
+			node_bindings = { "n00": [ properties["id"] ] }
+			result1.node_bindings = node_bindings
+			result1.edge_bindings = edge_bindings
 
 			#eprint(response.message)
 			return response.message
