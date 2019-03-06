@@ -99,6 +99,7 @@ class Q0:
 			#### Create a KnowledgeGraph object and put the list of nodes and edges into it
 			result_graph = KnowledgeGraph()
 			result_graph.nodes = [ node1 ]
+			result_graph.edges = []
 
 			#### Put the ResultGraph into the first result (potential answer)
 			result1.result_graph = result_graph
@@ -122,7 +123,7 @@ class Q0:
 			response.message.query_graph = query_graph
 
 			#### Create the corresponding knowledge_map
-			knowledge_map = { "n00": properties["id"] }
+			knowledge_map = { "n00": [ properties["id"] ] }
 			result1.knowledge_map = knowledge_map
 
 			#eprint(response.message)
