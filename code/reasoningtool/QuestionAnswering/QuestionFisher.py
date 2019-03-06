@@ -43,7 +43,7 @@ class QuestionFisher:
         None
 
     @staticmethod
-    def answer(source_list, source_type, target_type, use_json=False, num_show=20):
+    def answer(source_list, source_type, target_type, use_json=False, num_show=20, rel_type=None):
         """
         Answers the question 'what pathways are most enriched by $protein_list?'
         :param source_list: A list of source node ids
@@ -64,10 +64,10 @@ class QuestionFisher:
                 response.add_error_message(error_code, error_message)
                 response.print()
                 return
-        (target_dict, target_list) = RU.top_n_fisher_exact(source_list, source_type, target_type, n=num_show)
+        (target_dict, target_list) = RU.top_n_fisher_exact(source_list, source_type, target_type, n=num_show, rel_type=rel_type)
         target_list.reverse()
         return (target_dict, target_list)
-        
+
     @staticmethod
     def describe():
         output = "Answers questions of the form: 'what pathways are most enriched by $protein_list?'" + "\n"
@@ -82,6 +82,7 @@ def main():
     parser.add_argument('-t', '--target', type=str, help="target node type", default="pathway")
     parser.add_argument('-y', '--type', type=str, help="source node type", default="protein")
     parser.add_argument('-j', '--json', action='store_true', help='Flag specifying that results should be printed in JSON format (to stdout)', default=False)
+    parser.add_argument('-r', '--rel_type', type=str, help='Only do the Fisher exact test along edges of this type', default=None)
     parser.add_argument('--describe', action='store_true', help='Print a description of the question to stdout and quit', default=False)
     parser.add_argument('--num_show', type=int, help='Maximum number of results to return', default=20)
 
@@ -93,6 +94,7 @@ def main():
     use_json = args.json
     describe_flag = args.describe
     num_show = args.num_show
+    rel_type = args.rel_type
 
     if source_arg[0] == "[":
         if "','" not in source_arg:
@@ -117,9 +119,9 @@ def main():
         response = FormatOutput.FormatResponse(6)
         response.response.table_column_names = ["target name", "target ID", "P value"]
         graph_weight_tuples = []
-        
-        p_dict, target_list = Q.answer(source_list, source_type, target_type, use_json=use_json, num_show=num_show)
-        
+
+        p_dict, target_list = Q.answer(source_list, source_type, target_type, use_json=use_json, num_show=num_show, rel_type=rel_type)
+
         # print out the results
         if not use_json:
             for target_name in target_list:
