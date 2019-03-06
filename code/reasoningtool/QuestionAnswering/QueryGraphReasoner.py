@@ -133,8 +133,9 @@ class QueryGraphReasoner:
 			qnode1.type = None
 
 			#### Create the corresponding knowledge_map for this result
-			knowledge_map = { "n00": [ properties["id"] ] }
-			result1.knowledge_map = knowledge_map
+			node_bindings = { "n00": [ properties["id"] ] }
+			result1.node_bindings = node_bindings
+			result1.edge_bindings = []
 
 			return(response.message)
 
@@ -151,7 +152,7 @@ class QueryGraphReasoner:
 				query_graph.nodes.append(qnode)
 		if "edges" in query_graph_dict:
 			for edge in query_graph_dict["edges"]:
-				qedge = QNode().from_dict(edge)
+				qedge = QEdge().from_dict(edge)
 				query_graph.edges.append(qedge)
 		return query_graph
 
