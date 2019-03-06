@@ -125,7 +125,7 @@ class Q0:
 			#### Create the corresponding knowledge_map
 			node_bindings = { "n00": [ properties["id"] ] }
 			result1.node_bindings = node_bindings
-			result1.edge_bindings = edge_bindings
+			result1.edge_bindings = []
 
 			#eprint(response.message)
 			return response.message

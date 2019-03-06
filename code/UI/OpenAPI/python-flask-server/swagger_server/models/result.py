@@ -16,7 +16,7 @@ class Result(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, id: str=None, description: str=None, essence: str=None, essence_type: str=None, row_data: List[str]=None, score: float=None, score_name: str=None, score_direction: str=None, confidence: float=None, result_type: str=None, result_group: int=None, result_group_similarity_score: float=None, reasoner_id: str=None, result_graph: KnowledgeGraph=None, knowledge_map: object=None):  # noqa: E501
+    def __init__(self, id: str=None, description: str=None, essence: str=None, essence_type: str=None, row_data: List[str]=None, score: float=None, score_name: str=None, score_direction: str=None, confidence: float=None, result_type: str=None, result_group: int=None, result_group_similarity_score: float=None, reasoner_id: str=None, result_graph: KnowledgeGraph=None, node_bindings: object=None, edge_bindings: object=None):  # noqa: E501
         """Result - a model defined in Swagger
 
         :param id: The id of this Result.  # noqa: E501
@@ -47,8 +47,10 @@ class Result(Model):
         :type reasoner_id: str
         :param result_graph: The result_graph of this Result.  # noqa: E501
         :type result_graph: KnowledgeGraph
-        :param knowledge_map: The knowledge_map of this Result.  # noqa: E501
-        :type knowledge_map: object
+        :param node_bindings: The node_bindings of this Result.  # noqa: E501
+        :type node_bindings: object
+        :param edge_bindings: The edge_bindings of this Result.  # noqa: E501
+        :type edge_bindings: object
         """
         self.swagger_types = {
             'id': str,
@@ -65,7 +67,8 @@ class Result(Model):
             'result_group_similarity_score': float,
             'reasoner_id': str,
             'result_graph': KnowledgeGraph,
-            'knowledge_map': object
+            'node_bindings': object,
+            'edge_bindings': object
         }
 
         self.attribute_map = {
@@ -83,7 +86,8 @@ class Result(Model):
             'result_group_similarity_score': 'result_group_similarity_score',
             'reasoner_id': 'reasoner_id',
             'result_graph': 'result_graph',
-            'knowledge_map': 'knowledge_map'
+            'node_bindings': 'node_bindings',
+            'edge_bindings': 'edge_bindings'
         }
 
         self._id = id
@@ -100,7 +104,8 @@ class Result(Model):
         self._result_group_similarity_score = result_group_similarity_score
         self._reasoner_id = reasoner_id
         self._result_graph = result_graph
-        self._knowledge_map = knowledge_map
+        self._node_bindings = node_bindings
+        self._edge_bindings = edge_bindings
 
     @classmethod
     def from_dict(cls, dikt) -> 'Result':
@@ -436,24 +441,47 @@ class Result(Model):
         self._result_graph = result_graph
 
     @property
-    def knowledge_map(self) -> object:
-        """Gets the knowledge_map of this Result.
+    def node_bindings(self) -> object:
+        """Gets the node_bindings of this Result.
 
-        Lookup dict that maps QNode and QEdge identifiers in the QueryGraph to Node and Edge identifiers in the KnowledgeGraph  # noqa: E501
+        Lookup dict that maps QNode identifiers in the QueryGraph to Node identifiers in the KnowledgeGraph  # noqa: E501
 
-        :return: The knowledge_map of this Result.
+        :return: The node_bindings of this Result.
         :rtype: object
         """
-        return self._knowledge_map
+        return self._node_bindings
 
-    @knowledge_map.setter
-    def knowledge_map(self, knowledge_map: object):
-        """Sets the knowledge_map of this Result.
+    @node_bindings.setter
+    def node_bindings(self, node_bindings: object):
+        """Sets the node_bindings of this Result.
 
-        Lookup dict that maps QNode and QEdge identifiers in the QueryGraph to Node and Edge identifiers in the KnowledgeGraph  # noqa: E501
+        Lookup dict that maps QNode identifiers in the QueryGraph to Node identifiers in the KnowledgeGraph  # noqa: E501
 
-        :param knowledge_map: The knowledge_map of this Result.
-        :type knowledge_map: object
+        :param node_bindings: The node_bindings of this Result.
+        :type node_bindings: object
         """
 
-        self._knowledge_map = knowledge_map
+        self._node_bindings = node_bindings
+
+    @property
+    def edge_bindings(self) -> object:
+        """Gets the edge_bindings of this Result.
+
+        Lookup dict that maps QEdge identifiers in the QueryGraph to Edge identifiers in the KnowledgeGraph  # noqa: E501
+
+        :return: The edge_bindings of this Result.
+        :rtype: object
+        """
+        return self._edge_bindings
+
+    @edge_bindings.setter
+    def edge_bindings(self, edge_bindings: object):
+        """Sets the edge_bindings of this Result.
+
+        Lookup dict that maps QEdge identifiers in the QueryGraph to Edge identifiers in the KnowledgeGraph  # noqa: E501
+
+        :param edge_bindings: The edge_bindings of this Result.
+        :type edge_bindings: object
+        """
+
+        self._edge_bindings = edge_bindings

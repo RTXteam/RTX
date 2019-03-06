@@ -772,9 +772,10 @@ definitions:
         essence_type: "drug"
         score_direction: "lower_is_better"
         score: 163.233
-        knowledge_map: "{}"
+        edge_bindings: "{}"
         result_group: 1
         reasoner_id: "RTX"
+        node_bindings: "{}"
         id: "https://rtx.ncats.io/devED/api/rtx/v1/result/234"
         row_data:
         - "ibuprofen"
@@ -873,9 +874,10 @@ definitions:
         essence_type: "drug"
         score_direction: "lower_is_better"
         score: 163.233
-        knowledge_map: "{}"
+        edge_bindings: "{}"
         result_group: 1
         reasoner_id: "RTX"
+        node_bindings: "{}"
         id: "https://rtx.ncats.io/devED/api/rtx/v1/result/234"
         row_data:
         - "ibuprofen"
@@ -959,10 +961,15 @@ definitions:
         description: "A graph that describes the thought pattern of this result (i.e.\
           \ answer to the query)"
         $ref: "#/definitions/KnowledgeGraph"
-      knowledge_map:
+      node_bindings:
         type: "object"
-        description: "Lookup dict that maps QNode and QEdge identifiers in the QueryGraph\
-          \ to Node and Edge identifiers in the KnowledgeGraph"
+        description: "Lookup dict that maps QNode identifiers in the QueryGraph to\
+          \ Node identifiers in the KnowledgeGraph"
+        properties: {}
+      edge_bindings:
+        type: "object"
+        description: "Lookup dict that maps QEdge identifiers in the QueryGraph to\
+          \ Edge identifiers in the KnowledgeGraph"
         properties: {}
     description: "One of potentially several results or answers for a query"
     example:
@@ -1058,9 +1065,10 @@ definitions:
       essence_type: "drug"
       score_direction: "lower_is_better"
       score: 163.233
-      knowledge_map: "{}"
+      edge_bindings: "{}"
       result_group: 1
       reasoner_id: "RTX"
+      node_bindings: "{}"
       id: "https://rtx.ncats.io/devED/api/rtx/v1/result/234"
       row_data:
       - "ibuprofen"

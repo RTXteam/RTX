@@ -244,7 +244,7 @@ class FormatResponse:
 			if knowledge_map_key not in edge_bindings:
 				edge_bindings[knowledge_map_key] = list()
 				edge_bindings_dict[knowledge_map_key] = dict()
-			if edge.id not in edge_bindings_dict[target_knowledge_map_key]:
+			if edge.id not in edge_bindings_dict[knowledge_map_key]:
 				edge_bindings[knowledge_map_key].append(edge.id)
 				edge_bindings_dict[knowledge_map_key][edge.id] = 1
 
