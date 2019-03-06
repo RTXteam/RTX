@@ -56,10 +56,10 @@ body {
 .menuleft {
 	z-index: 8;
 	position: fixed;
-	width: 200px;
+	width: 150px;
 	height: 100%;
 //	margin-top: 80px;
-	font-size: 30px;
+	font-size: 20px;
 	color: #000;
 	border-right: 2px solid black;
 	background-color: #ddd;
@@ -85,14 +85,14 @@ body {
 	background-color: #eee;
 	border-bottom: 2px solid black;
 	border-top: 2px solid black;
-	border-left: 2px solid black;
+	border-left: 25px solid #444;
 	margin-right: -2px;
 }
 
 
 .page {
-    margin-left: 220px;
-    margin-right: 20px;
+    margin-left: 170px;
+    margin-right: 10px;
 }
 .pagesection {
     visibility: hidden;
@@ -253,12 +253,19 @@ body {
     box-shadow: 0 1px 2px 0 rgba(0,0,0,0.2), 0 1px 2px 0 rgba(0,0,0,0.19);
 }
 .menunum {
-    font-size: 10px;
+    font-size: 12px;
     vertical-align: super;
-    border-radius: 12px;
-    border: 1px solid #fff;
-    padding: 1px 3px;
-    box-shadow: 0 1px 2px 0 rgba(0,0,0,0.2), 0 1px 2px 0 rgba(0,0,0,0.19);
+    border: 1px solid;
+    padding: 2px 4px;
+}
+.numold {
+    background-color: #ddd;
+    color: #444;
+}
+.numnew {
+    background-color: #b00;
+    color: #fff;
+    border-color: #b00;
 }
 
 .p9 { background-color: #291; }
@@ -358,6 +365,13 @@ td {
     height: 700px;
     width: 99%;
     background-color: #bcd;
+    box-shadow: inset 0 4px 8px 0 rgba(0,0,0,0.2), inset 0 6px 20px 0 rgba(0,0,0,0.19);
+}
+.cytograph_q {
+    border: 1px solid #444;
+    height: 200px;
+    width: 80%;
+    background-color: #def;
     box-shadow: inset 0 4px 8px 0 rgba(0,0,0,0.2), inset 0 6px 20px 0 rgba(0,0,0,0.19);
 }
 

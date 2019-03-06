@@ -18,7 +18,7 @@
 <body onload="main();">
 
 <div class="menuleft">
-<br><br><br><br><br>
+<br><br><br><br>
 &nbsp;Input<br>
 <div onclick="openSection(this,'queryDiv');" class="menucurrent">Query</div>
 <div onclick="openSection(this,'listaDiv');" class="menuleftitem" title="view list A">List A <span class="menunum" id="menunumlistitemsA">-</span></div>
@@ -28,9 +28,9 @@
 <!-- div onclick="openSection(this,'statusDiv');" class="menuleftitem">Status</div -->
 <br>
 &nbsp;Output<br>
-<div onclick="openSection(this,'summaryDiv');" class="menuleftitem">Summary</div>
-<div onclick="openSection(this,'kgDiv');" class="menuleftitem">Knowledge<br>Graph</div>
-<div onclick="openSection(this,'resultsDiv');" class="menuleftitem">Results <span class="menunum" id="menunumresults">-</span></div>
+<div onclick="openSection(this,'summaryDiv');" class="menuleftitem" title="Tabular summary of all results to query">Summary</div>
+<div onclick="openSection(this,'kgDiv');" class="menuleftitem" title="Integrated and interactive graphical view of all results">Knowledge<br>Graph</div>
+<div onclick="openSection(this,'resultsDiv');" class="menuleftitem">Results <span class="menunum" title="Individual interactive view of results" id="menunumresults">-</span></div>
 <br><br>
 <div onclick="openSection(this,'devDiv');" class="menuleftitem">Dev Info</div>
 </div>
@@ -56,7 +56,7 @@
 
 
 <div class="pagesection" id="queryDiv">
-<h2 style="display:inline;">Enter question:</h2>
+<h3 style="display:inline;">Enter question:</h3>
 <div class="sampleqs">
 <select id="qqq" onchange="javascript:pasteQuestion(this.value);">
 <option style="border-bottom:1px solid black;" value="">Example Questions&nbsp;&nbsp;&nbsp;&#8675;</option>
@@ -82,7 +82,14 @@
   </span>
 Use cache</label>
 </form>
+<br>
+<h3 style="display:inline;">Or Query via Graph:</h3>
+<div class="cytograph_q">
+  <div style="height: 100%; width: 100%" id="cy999"></div>
+</div>
+
 <br><br>
+
 <div id="status_container"></div>
 </div>
 
@@ -114,7 +121,10 @@ Use cache</label>
 
 
 <div class="pagesection" id="kgDiv">
-<div id="kg_container"></div>
+  <div id="kg_container">
+    <div class="statushead">KNOWLEDGE GRAPH</div>
+    <div id="a0_div" class="status"><table class="t100"><tr><td class="cytograph_controls"><a title="reset zoom and center" onclick="cyobj[0].reset();">&#8635;</a><br><a title="breadthfirst layout" onclick="cylayout(0,'breadthfirst');">B</a><br><a title="force-directed layout" onclick="cylayout(0,'cose');">F</a><br><a title="circle layout" onclick="cylayout(0,'circle');">C</a><br><a title="random layout" onclick="cylayout(0,'random');">R</a>  </td><td class="cytograph_kg"style="width:100%;"><div style="height: 100%; width: 100%"id="cy0"></div></td></tr><tr><td></td><td><div id="d0_div"><i>Click on a node or edge to get details</i></div></td></tr></table></div>
+  </div>
 </div>
 
 

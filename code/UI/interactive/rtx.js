@@ -79,7 +79,9 @@ function sendQuestion(e) {
     document.getElementById("result_container").innerHTML = "";
     document.getElementById("kg_container").innerHTML = "";
     document.getElementById("summary_container").innerHTML = "";
-    document.getElementById("menunumresults").innerHTML = "-";
+    document.getElementById("menunumresults").innerHTML = "--";
+    document.getElementById("menunumresults").classList.remove("numnew");
+    document.getElementById("menunumresults").classList.add("numold");
     summary_table_html = '';
     cyobj = [];
     cytodata = [];
@@ -136,7 +138,7 @@ function sendQuestion(e) {
 		xhr2.onloadend = function() {
 		    if ( xhr2.status == 200 ) {
 			var jsonObj2 = JSON.parse(xhr2.responseText);
-			document.getElementById("devdiv").innerHTML += "================================================================= QUERY::<PRE>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
+			document.getElementById("devdiv").innerHTML += "<br>================================================================= QUERY::<PRE>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
 
 			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["code_description"]+"</I>";
 			sesame('openmax',statusdiv);
@@ -190,7 +192,7 @@ function retrieve_message() {
     xhr.onloadend = function() {
 	if ( xhr.status == 200 ) {
 	    var jsonObj2 = JSON.parse(xhr.responseText);
-	    document.getElementById("devdiv").innerHTML += "================================================================= RESPONSE REQUEST::<PRE>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
+	    document.getElementById("devdiv").innerHTML += "<br>================================================================= RESPONSE REQUEST::<PRE>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
 
 	    document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["code_description"]+"</I>";
 	    document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question"];
@@ -226,8 +228,17 @@ function render_message(respObj) {
     if ( respObj["results"] ) {
         document.getElementById("result_container").innerHTML += "<H2>" + respObj["n_results"] + " results</H2>";
         document.getElementById("menunumresults").innerHTML = respObj["n_results"];
+        document.getElementById("menunumresults").classList.add("numnew");
+	document.getElementById("menunumresults").classList.remove("numold");
+
 	if ( respObj["knowledge_graph"] ) {
-	    process_kg(respObj["knowledge_graph"]);
+//	    process_kg(respObj["knowledge_graph"]);
+
+	    add_kg_html();
+	    process_graph(respObj["knowledge_graph"],0);
+	    if (respObj["query_graph"]) {
+		process_graph(respObj["query_graph"],999);
+	    }
 	    process_results(respObj["results"],respObj["knowledge_graph"]);
 	    add_cyto();
 	}
@@ -283,34 +294,47 @@ function add_to_summary(rowdata, num) {
     summary_table_html += '</tr>';
 }
 
-function process_kg(kg) {
-    // knowledge graph will be stored in position zero of cytodata
-    cytodata[0] = [];
-    for (var kgnode in kg.nodes) {
-	kg.nodes[kgnode].parentdivnum = 0; // helps link node to div when displaying node info on click
-        var tmpdata = { "data" : kg.nodes[kgnode] }; // already contains id
-        cytodata[0].push(tmpdata);
-    }
 
-    for (var kgedge in kg.edges) {
-	kg.edges[kgedge].parentdivnum = 0;
-        kg.edges[kgedge].source = kg.edges[kgedge].source_id;
-        kg.edges[kgedge].target = kg.edges[kgedge].target_id;
-
-        var tmpdata = { "data" : kg.edges[kgedge] }; // already contains id
-        cytodata[0].push(tmpdata);
-    }
-
+function add_kg_html() {  // was: process_kg(kg) {
+    // knowledge graph is stored in position zero of cytodata
     document.getElementById("kg_container").innerHTML += "<div onclick='sesame(this,a0_div);' id='h0_div' title='Click to expand / collapse Knowledge Graph' class='accordion'>KNOWLEDGE GRAPH<span class='r100'><span title='Knowledge Graph' class='qprob'>KG</span></span></div>";
 
     document.getElementById("kg_container").innerHTML += "<div id='a0_div' class='panel'><table class='t100'><tr><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj[0].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout(0,\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout(0,\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout(0,\"circle\");'>C</a><br><a title='random layout' onclick='cylayout(0,\"random\");'>R</a>  </td><td class='cytograph_kg' style='width:100%;'><div style='height: 100%; width: 100%' id='cy0'></div></td></tr><tr><td></td><td><div id='d0_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
 
-//    document.getElementById("result_container").innerHTML += "<div id='a0_div' class='panel'><table class='t100'><tr><td class='textanswer'>Explain that this is the Knowledge Graph</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj[0].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout(0,\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout(0,\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout(0,\"circle\");'>C</a><br><a title='random layout' onclick='cylayout(0,\"random\");'>R</a>  </td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy0'></div></td></tr><tr><td><hr></td><td></td><td><div id='d0_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
+}
+
+
+
+function process_graph(gne,gid) {
+    cytodata[gid] = [];
+    for (var gnode in gne.nodes) {
+	gne.nodes[gnode].parentdivnum = gid; // helps link node to div when displaying node info on click
+	if (gne.nodes[gnode].node_id) { // deal with QueryGraphNode (QNode)
+	    gne.nodes[gnode].id = gne.nodes[gnode].node_id;
+	    if (gne.nodes[gnode].curie) {
+		gne.nodes[gnode].name = gne.nodes[gnode].curie;
+	    }
+	    else {
+                gne.nodes[gnode].name = gne.nodes[gnode].type + "s?";
+	    }
+	}
+        var tmpdata = { "data" : gne.nodes[gnode] }; // already contains id
+        cytodata[gid].push(tmpdata);
+    }
+
+    for (var gedge in gne.edges) {
+	gne.edges[gedge].parentdivnum = 0;
+        gne.edges[gedge].source = gne.edges[gedge].source_id;
+        gne.edges[gedge].target = gne.edges[gedge].target_id;
+
+        var tmpdata = { "data" : gne.edges[gedge] }; // already contains id
+        cytodata[gid].push(tmpdata);
+    }
 }
 
 
 function process_results(reslist,kg) {
-    for (var i in reslist) {
+    for (var i = 0; i < reslist.length; i++) {
 	var num = Number(i) + 1;
 
         if ( reslist[i].row_data ) {
@@ -342,22 +366,31 @@ function process_results(reslist,kg) {
 	document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table class='t100'><tr><td class='textanswer'>"+reslist[i].description+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+num+"].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout("+num+",\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout("+num+",\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout("+num+",\"circle\");'>C</a><br><a title='random layout' onclick='cylayout("+num+",\"random\");'>R</a>	</td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td><span id='"+fid+"'><i>User Feedback</i><hr><span id='"+fff+"'><a href='javascript:add_fefo(\""+rid+"\",\"a"+num+"_div\");'>Add Feedback</a></span><hr></span></td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
 
         cytodata[num] = [];
+//	for (var ne = 0; ne < reslist[i].knowledge_map.length; ne++) {
 	for (var ne in reslist[i].knowledge_map) {
 	    if (reslist[i].knowledge_map.hasOwnProperty(ne)) {
 		var kmne;
-		if (ne.startsWith("n")) {
-		    kmne = Object.create(kg.nodes.find(item => item.id === reslist[i].knowledge_map[ne]));
+		console.log("=================== i:"+i+"  ne:"+ne);
+		if (ne.startsWith("n")) { // stop relying on this FIXME
+		    for (var ni = 0; ni < reslist[i].knowledge_map[ne].length; ni++) { // also parse if string FIXME
+                        kmne = Object.create(kg.nodes.find(item => item.id === reslist[i].knowledge_map[ne][ni]));
+			kmne.parentdivnum = num;
+			var tmpdata = { "data" : kmne };
+			cytodata[num].push(tmpdata);
+		    }
 		}
-		else if (ne.startsWith("e")) {
-		    kmne = Object.create(kg.edges.find(item => item.id === reslist[i].knowledge_map[ne]));
+		else if (ne.startsWith("e")) { // stop relying on this FIXME
+		    for (var ei = 0; ei < reslist[i].knowledge_map[ne].length; ei++) { // also parse if string FIXME
+			kmne = Object.create(kg.edges.find(item => item.id === reslist[i].knowledge_map[ne][ei]));
+			kmne.parentdivnum = num;
+			var tmpdata = { "data" : kmne };
+			cytodata[num].push(tmpdata);
+		    }
 		}
-		
-		kmne.parentdivnum = num;
-		var tmpdata = { "data" : kmne };
-		cytodata[num].push(tmpdata);
+
 	    }
 	}
-
+	
     }
 }
 
@@ -455,6 +488,7 @@ function add_cyto() {
 
 	var num = Number(i);// + 1;
 
+//	console.log("---------------cyto i="+i);
 	cyobj[i] = cytoscape({
 	    container: document.getElementById('cy'+num),
 	    style: cytoscape.stylesheet()
@@ -472,8 +506,10 @@ function add_cyto() {
 		    'line-color': '#fff',
 		    'target-arrow-color': '#fff',
 		    'width': 2,
+                    'content': 'data(name)',
 		    'target-arrow-shape': 'triangle',
-		    'opacity': 0.8
+		    'opacity': 0.8,
+		    'content': function(ele) { if ((i > 900) && ele.data().type) { return ele.data().type; } return '';}
 		})
 		.selector(':selected')
 		.css({
@@ -503,6 +539,7 @@ function add_cyto() {
 	    }
 	});
 
+	if (i > 900) { return; }  // skip non-result graphs (for now...?)
 
 	cyobj[i].on('tap','node', function() {
 	    var dnum = 'd'+this.data('parentdivnum')+'_div';
@@ -661,7 +698,7 @@ function submitFeedback(res_id,res_div_id) {
 
     xhr6.onloadend = function() {
 	var jsonObj6 = JSON.parse(xhr6.responseText);
-	document.getElementById("devdiv").innerHTML += "================================================================= FEEDBACK-POST::<PRE>\nPOST to " +  baseAPI + "api/rtx/v1/result/" + res_id + "/feedback ::<br>" + JSON.stringify(feedback,null,2) + "<br>------<br>" + JSON.stringify(jsonObj6,null,2) + "</PRE>";
+	document.getElementById("devdiv").innerHTML += "<br>================================================================= FEEDBACK-POST::<PRE>\nPOST to " +  baseAPI + "api/rtx/v1/result/" + res_id + "/feedback ::<br>" + JSON.stringify(feedback,null,2) + "<br>------<br>" + JSON.stringify(jsonObj6,null,2) + "</PRE>";
 
 	if ( xhr6.status == 200 ) {
 	    document.getElementById(fff+"_msgs").innerHTML = "Your feedback has been recorded...";
@@ -711,7 +748,7 @@ function add_feedback() {
     xhr3.onloadend = function() {
 	if ( xhr3.status == 200 ) {
 	    var jsonObj3 = JSON.parse(xhr3.responseText);
-	    document.getElementById("devdiv").innerHTML += "================================================================= FEEDBACK::<PRE>\n" + JSON.stringify(jsonObj3,null,2) + "</PRE>";
+	    document.getElementById("devdiv").innerHTML += "<br>================================================================= FEEDBACK::<PRE>\n" + JSON.stringify(jsonObj3,null,2) + "</PRE>";
 
 	    for (var i in jsonObj3) {
 		var fid = "feedback_" + jsonObj3[i].result_id.substr(jsonObj3[i].result_id.lastIndexOf('/') + 1);
@@ -726,7 +763,7 @@ function add_feedback() {
 
 	}
 	sesame(h1_div,a1_div);
-	sesame(h0_div,a0_div);
+//	sesame(h0_div,a0_div);
     };
 
 
@@ -753,7 +790,7 @@ function get_feedback_fields() {
     xhr4.onloadend = function() {
 	if ( xhr4.status == 200 ) {
 	    var jsonObj4 = JSON.parse(xhr4.responseText);
-	    document.getElementById("devdiv").innerHTML += "================================================================= FEEDBACK FIELDS::<PRE>\n" + JSON.stringify(jsonObj4,null,2) + "</PRE>";
+	    document.getElementById("devdiv").innerHTML += "<br>================================================================= FEEDBACK FIELDS::<PRE>\n" + JSON.stringify(jsonObj4,null,2) + "</PRE>";
 
 	    for (var i in jsonObj4.expertise_levels) {
 		fb_explvls[jsonObj4.expertise_levels[i].expertise_level_id] = {};
@@ -889,12 +926,18 @@ function display_list(listId) {
     }
 
 
-    if (numitems > 0) {
-	listhtml = "<table class='sumtab'><tr><th>Item</th><th>Entity Type(s)</th><th>Action</th></tr>" + listhtml + "</table>";
-    }
-
     document.getElementById("numlistitems"+listId).innerHTML = numitems;
     document.getElementById("menunumlistitems"+listId).innerHTML = numitems;
+
+    if (numitems > 0) {
+	listhtml = "<table class='sumtab'><tr><th>Item</th><th>Entity Type(s)</th><th>Action</th></tr>" + listhtml + "</table>";
+	document.getElementById("menunumlistitems"+listId).classList.add("numnew");
+	document.getElementById("menunumlistitems"+listId).classList.remove("numold");
+    }
+    else {
+	document.getElementById("menunumlistitems"+listId).classList.remove("numnew");
+	document.getElementById("menunumlistitems"+listId).classList.add("numold");
+    }
 
     listhtml = "Items in this list can be passed as input to queries that support list input, by specifying <b>["+listId+"]</b> as a query parameter.<br><br>" + listhtml + "<hr>Enter new list item or items (space and/or comma-separated):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' onkeydown='enter_item(this, \""+listId+"\");' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
 
@@ -976,7 +1019,7 @@ function check_entities() {
                 var xob = JSON.parse(xhr.responseText);
 	    	var entstr = "";
 
-        	document.getElementById("devdiv").innerHTML += "================================================================= ENTITIES::"+entity+"<PRE>" + JSON.stringify(xob,null,2) + "</PRE>";
+        	document.getElementById("devdiv").innerHTML += "<br>================================================================= ENTITIES::"+entity+"<PRE>" + JSON.stringify(xob,null,2) + "</PRE>";
 
 
                 if ( xhr.status == 200 ) {
