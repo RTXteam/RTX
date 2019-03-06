@@ -140,7 +140,7 @@ function sendQuestion(e) {
 		xhr2.onloadend = function() {
 		    if ( xhr2.status == 200 ) {
 			var jsonObj2 = JSON.parse(xhr2.responseText);
-			document.getElementById("devdiv").innerHTML += "<br>================================================================= QUERY::<PRE>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
+			document.getElementById("devdiv").innerHTML += "<br>================================================================= QUERY::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
 
 			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["code_description"]+"</I>";
 			sesame('openmax',statusdiv);
@@ -194,7 +194,7 @@ function retrieve_message() {
     xhr.onloadend = function() {
 	if ( xhr.status == 200 ) {
 	    var jsonObj2 = JSON.parse(xhr.responseText);
-	    document.getElementById("devdiv").innerHTML += "<br>================================================================= RESPONSE REQUEST::<PRE>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
+	    document.getElementById("devdiv").innerHTML += "<br>================================================================= RESPONSE REQUEST::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
 
 	    document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["code_description"]+"</I>";
 	    document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question"];
@@ -326,7 +326,7 @@ function process_graph(gne,gid) {
     }
 
     for (var gedge in gne.edges) {
-	gne.edges[gedge].parentdivnum = 0;
+	gne.edges[gedge].parentdivnum = gid;
         gne.edges[gedge].source = gne.edges[gedge].source_id;
         gne.edges[gedge].target = gne.edges[gedge].target_id;
 
@@ -369,35 +369,28 @@ function process_results(reslist,kg) {
 	document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table class='t100'><tr><td class='textanswer'>"+reslist[i].description+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+num+"].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout("+num+",\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout("+num+",\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout("+num+",\"circle\");'>C</a><br><a title='random layout' onclick='cylayout("+num+",\"random\");'>R</a>	</td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td><span id='"+fid+"'><i>User Feedback</i><hr><span id='"+fff+"'><a href='javascript:add_fefo(\""+rid+"\",\"a"+num+"_div\");'>Add Feedback</a></span><hr></span></td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
 
         cytodata[num] = [];
-//	for (var ne = 0; ne < reslist[i].knowledge_map.length; ne++) {
-	for (var ne in reslist[i].knowledge_map) {
-	    if (reslist[i].knowledge_map.hasOwnProperty(ne)) {
-		var kmne;
-//		console.log("=================== i:"+i+"  ne:"+ne);
-		if (ne.startsWith("n")) { // stop relying on this FIXME
-		    for (var ni = 0; ni < reslist[i].knowledge_map[ne].length; ni++) { // also parse if string FIXME
-                        kmne = Object.create(kg.nodes.find(item => item.id === reslist[i].knowledge_map[ne][ni]));
-			kmne.parentdivnum = num;
-			var tmpdata = { "data" : kmne };
-			cytodata[num].push(tmpdata);
-		    }
-		}
-		else if (ne.startsWith("e")) { // stop relying on this FIXME
-		    for (var ei = 0; ei < reslist[i].knowledge_map[ne].length; ei++) { // also parse if string FIXME
-			kmne = Object.create(kg.edges.find(item => item.id === reslist[i].knowledge_map[ne][ei]));
-			kmne.parentdivnum = num;
-			var tmpdata = { "data" : kmne };
-			cytodata[num].push(tmpdata);
-		    }
-		}
 
-	    }
+	//console.log("=================== CYTO i:"+i+"  #nb:"+reslist[i].node_bindings[0]);
+
+        for (var nb in reslist[i].node_bindings) {
+	    //console.log("=================== i:"+i+"  nb:"+nb+" item:"+reslist[i].node_bindings[nb]);
+            var kmne = Object.create(kg.nodes.find(item => item.id == reslist[i].node_bindings[nb]));
+	    kmne.parentdivnum = num;
+            //console.log("=================== kmne:"+kmne.id);
+	    var tmpdata = { "data" : kmne };
+	    cytodata[num].push(tmpdata);
 	}
-	
+
+        for (var eb in reslist[i].edge_bindings) {
+	    //console.log("=================== i:"+i+"  eb:"+eb);
+	    var kmne = Object.create(kg.edges.find(item => item.id == reslist[i].edge_bindings[eb]));
+	    kmne.parentdivnum = num;
+	    //console.log("=================== kmne:"+kmne.id);
+	    var tmpdata = { "data" : kmne };
+	    cytodata[num].push(tmpdata);
+	}
     }
 }
-
-
 
 
 
@@ -512,7 +505,7 @@ function add_cyto() {
                     'content': 'data(name)',
 		    'target-arrow-shape': 'triangle',
 		    'opacity': 0.8,
-		    'content': function(ele) { if ((i > 900) && ele.data().type) { return ele.data().type; } return '';}
+		    'content': function(ele) { if ((ele.data().parentdivnum > 900) && ele.data().type) { return ele.data().type; } return '';}
 		})
 		.selector(':selected')
 		.css({
@@ -637,6 +630,28 @@ function mapNodeShape (ele) {
     if (ntype == "phenotypic_feature") { return "star";}
     return "rectangle";
 }
+
+
+function add_node_to_query_graph() {
+    var thing = document.getElementById("newquerynode").value;
+    document.getElementById("newquerynode").value = '';
+
+    /*
+    for (var item in itemarr) {
+	if (itemarr[item]) {
+	    listItems[listId][itemarr[item]] = 1;
+	}
+    }
+    display_list(listId);
+*/    
+
+    document.getElementById("qg_list").innerHTML += thing + "<br>";
+
+}
+
+
+
+
 
 
 function rem_fefo(res_id,res_div_id) {
@@ -1091,3 +1106,21 @@ function display_session() {
 }
 
 
+function copyJSON() {
+    var containerid = "responseJSON";
+
+    if (document.selection) {
+	var range = document.body.createTextRange();
+	range.moveToElementText(document.getElementById(containerid));
+	range.select().createTextRange();
+	document.execCommand("copy");
+
+    } else if (window.getSelection) {
+	var range = document.createRange();
+	range.selectNode(document.getElementById(containerid));
+        window.getSelection().removeAllRanges();
+	window.getSelection().addRange(range);
+	document.execCommand("copy");
+	//alert("text copied")
+    }
+}
