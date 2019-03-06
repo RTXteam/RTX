@@ -86,7 +86,7 @@ class FormatResponse:
 			self.message.code_description = "%s results found" % self._num_results
 
 
-	def add_subgraph(self, nodes, edges, description, confidence, return_result=False, suppress_knowledge_map=False):
+	def add_subgraph(self, nodes, edges, description, confidence, return_result=False, suppress_bindings=False):
 		"""
 		Populate the object model using networkx neo4j subgraph
 		:param nodes: nodes in the subgraph (g.nodes(data=True))
@@ -160,15 +160,17 @@ class FormatResponse:
 				self.message.knowledge_graph.nodes.append(node)
 				self._node_ids[node.id] = node.type[0]			# Just take the first of potentially several FIXME
 
-		#### Create the knowledge_map construct
-		knowledge_map = dict()
-		knowledge_map_dict = dict()
+		#### Create the bindings construct
+		node_bindings = dict()
+		node_bindings_dict = dict()
+		edge_bindings = dict()
+		edge_bindings_dict = dict()
 
 		# for each edge, create an edge between them
 		edge_objects = []
 		for u, v in edge_keys:
 			edge = Edge()
-			#edge.id is set below when building the knowlege map
+			#edge.id is set below when building the bindings
 			edge.type = edge_types[(u, v)]
 			edge.source_id = node_iris_to_node_object[edge_source_iri[(u, v)]].id
 			edge.target_id = node_iris_to_node_object[edge_target_iri[(u, v)]].id
@@ -195,7 +197,7 @@ class FormatResponse:
 			else:
 				edge.id = self._edge_ids[edge_str]
 
-			#### Try to figure out how the source fits into the query_graph for the knowledge map
+			#### Try to figure out how the source fits into the query_graph for the bindings
 			source_type = self._node_ids[edge.source_id]
 			if edge.source_id in self._type_map:
 				source_knowledge_map_key = self._type_map[edge.source_id]
@@ -204,12 +206,12 @@ class FormatResponse:
 			if not source_knowledge_map_key:
 				eprint("Expected to find '%s' in the response._type_map, but did not" % source_type)
 				raise Exception("Expected to find '%s' in the response._type_map, but did not" % source_type)
-			if source_knowledge_map_key not in knowledge_map:
-				knowledge_map[source_knowledge_map_key] = list()
-				knowledge_map_dict[source_knowledge_map_key] = dict()
-			if edge.source_id not in knowledge_map_dict[source_knowledge_map_key]:
-				knowledge_map[source_knowledge_map_key].append(edge.source_id)
-				knowledge_map_dict[source_knowledge_map_key][edge.source_id] = 1
+			if source_knowledge_map_key not in node_bindings:
+				node_bindings[source_knowledge_map_key] = list()
+				node_bindings_dict[source_knowledge_map_key] = dict()
+			if edge.source_id not in node_bindings_dict[source_knowledge_map_key]:
+				node_bindings[source_knowledge_map_key].append(edge.source_id)
+				node_bindings_dict[source_knowledge_map_key][edge.source_id] = 1
 
 			#### Try to figure out how the target fits into the query_graph for the knowledge map
 			target_type = self._node_ids[edge.target_id]
@@ -220,12 +222,12 @@ class FormatResponse:
 			if not target_knowledge_map_key:
 				eprint("ERROR: Expected to find '%s' in the response._type_map, but did not" % target_type)
 				raise Exception("Expected to find '%s' in the response._type_map, but did not" % target_type)
-			if target_knowledge_map_key not in knowledge_map:
-				knowledge_map[target_knowledge_map_key] = list()
-				knowledge_map_dict[target_knowledge_map_key] = dict()
-			if edge.target_id not in knowledge_map_dict[target_knowledge_map_key]:
-				knowledge_map[target_knowledge_map_key].append(edge.target_id)
-				knowledge_map_dict[target_knowledge_map_key][edge.target_id] = 1
+			if target_knowledge_map_key not in node_bindings:
+				node_bindings[target_knowledge_map_key] = list()
+				node_bindings_dict[target_knowledge_map_key] = dict()
+			if edge.target_id not in node_bindings_dict[target_knowledge_map_key]:
+				node_bindings[target_knowledge_map_key].append(edge.target_id)
+				node_bindings_dict[target_knowledge_map_key][edge.target_id] = 1
 
 			#### Try to figure out how the edge fits into the query_graph for the knowledge map
 			source_target_key = "e"+source_knowledge_map_key+"-"+target_knowledge_map_key
@@ -239,27 +241,28 @@ class FormatResponse:
 			else:
 				eprint("ERROR: Expected to find '%s' or '%s' or '%s' in the response._type_map, but did not" % (edge.type,source_target_key,target_source_key))
 				knowledge_map_key = "ERROR"
-			if knowledge_map_key not in knowledge_map:
-				knowledge_map[knowledge_map_key] = list()
-				knowledge_map_dict[knowledge_map_key] = dict()
-			if edge.id not in knowledge_map_dict[target_knowledge_map_key]:
-				knowledge_map[knowledge_map_key].append(edge.id)
-				knowledge_map_dict[knowledge_map_key][edge.id] = 1
+			if knowledge_map_key not in edge_bindings:
+				edge_bindings[knowledge_map_key] = list()
+				edge_bindings_dict[knowledge_map_key] = dict()
+			if edge.id not in edge_bindings_dict[target_knowledge_map_key]:
+				edge_bindings[knowledge_map_key].append(edge.id)
+				edge_bindings_dict[knowledge_map_key][edge.id] = 1
 
 		# Create the result (potential answer)
 		result1 = Result()
 		result1.reasoner_id = "RTX"
 		result1.description = description
 		result1.confidence = confidence
-		if suppress_knowledge_map is False:
-			result1.knowledge_map = knowledge_map
+		if suppress_bindings is False:
+			result1.node_bindings = node_bindings
+			result1.edge_bindings = edge_bindings
 
 		# Create a KnowledgeGraph object and put the list of nodes and edges into it
 		#### This is still legal, then is redundant with the knowledge map, so leave it out maybe
 		knowledge_graph = KnowledgeGraph()
 		knowledge_graph.nodes = node_objects
 		knowledge_graph.edges = edge_objects
-		if suppress_knowledge_map is True:
+		if suppress_bindings is True:
 			result1.result_graph = knowledge_graph
 
 		# Put the first result (potential answer) into the message
