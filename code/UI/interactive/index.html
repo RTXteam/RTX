@@ -87,6 +87,7 @@ Use cache</label>
 <div class="cytograph_q">
   <div style="height: 100%; width: 100%" id="cy999"></div>
 </div>
+Enter new query node:<input type="text" class="questionBox" id="newquerynode" onkeydown="enter_item(this, 'FIXME');" value="" size="60"><input type="button" class="questionBox button" name="action" value="Add" onClick="javascript:add_node_to_query();">
 
 <br><br>
 
@@ -123,7 +124,7 @@ Use cache</label>
 <div class="pagesection" id="kgDiv">
   <div id="kg_container">
     <div class="statushead">KNOWLEDGE GRAPH</div>
-    <div id="a0_div" class="status"><table class="t100"><tr><td class="cytograph_controls"><a title="reset zoom and center" onclick="cyobj[0].reset();">&#8635;</a><br><a title="breadthfirst layout" onclick="cylayout(0,'breadthfirst');">B</a><br><a title="force-directed layout" onclick="cylayout(0,'cose');">F</a><br><a title="circle layout" onclick="cylayout(0,'circle');">C</a><br><a title="random layout" onclick="cylayout(0,'random');">R</a>  </td><td class="cytograph_kg"style="width:100%;"><div style="height: 100%; width: 100%"id="cy0"></div></td></tr><tr><td></td><td><div id="d0_div"><i>Click on a node or edge to get details</i></div></td></tr></table></div>
+    <div id="a0_div" class="status"><table class="t100"><tr><td class="cytograph_controls"><a title="reset zoom and center" onclick="cyobj[0].reset();">&#8635;</a><br><a title="breadthfirst layout" onclick="cylayout(0,'breadthfirst');">B</a><br><a title="force-directed layout" onclick="cylayout(0,'cose');">F</a><br><a title="circle layout" onclick="cylayout(0,'circle');">C</a><br><a title="random layout" onclick="cylayout(0,'random');">R</a>  </td><td class="cytograph_kg"style="width:100%;"><div style="height: 100%; width: 100%" id="cy0"></div></td></tr><tr><td></td><td><div id="d0_div"><i>Click on a node or edge to get details</i></div></td></tr></table></div>
   </div>
 </div>
 
