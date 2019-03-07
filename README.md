@@ -1,4 +1,4 @@
-# RTX Reasoning Tool proof-of-concept (POC) software
+# RTX Reasoning Tool proof-of-concept (POC) software 
 
 The RTX Reasoning Tool POC software is being collaboratively developed by a 
 [team of investigators](https://github.com/dkoslicki/NCATS#rtx-leadership-team) 
