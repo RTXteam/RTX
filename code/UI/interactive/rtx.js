@@ -374,20 +374,24 @@ function process_results(reslist,kg) {
 
         for (var nb in reslist[i].node_bindings) {
 	    //console.log("=================== i:"+i+"  nb:"+nb+" item:"+reslist[i].node_bindings[nb]);
-            var kmne = Object.create(kg.nodes.find(item => item.id == reslist[i].node_bindings[nb]));
-	    kmne.parentdivnum = num;
-            //console.log("=================== kmne:"+kmne.id);
-	    var tmpdata = { "data" : kmne };
-	    cytodata[num].push(tmpdata);
+	    for (var k = 0; k < reslist[i].node_bindings[nb].length; k++) {
+		var kmne = Object.create(kg.nodes.find(item => item.id == reslist[i].node_bindings[nb][k]));
+		kmne.parentdivnum = num;
+		//console.log("=================== kmne:"+kmne.id);
+		var tmpdata = { "data" : kmne };
+		cytodata[num].push(tmpdata);
+	    }
 	}
 
         for (var eb in reslist[i].edge_bindings) {
 	    //console.log("=================== i:"+i+"  eb:"+eb);
-	    var kmne = Object.create(kg.edges.find(item => item.id == reslist[i].edge_bindings[eb]));
-	    kmne.parentdivnum = num;
-	    //console.log("=================== kmne:"+kmne.id);
-	    var tmpdata = { "data" : kmne };
-	    cytodata[num].push(tmpdata);
+	    for (var k = 0; k < reslist[i].edge_bindings[eb].length; k++) {
+		var kmne = Object.create(kg.edges.find(item => item.id == reslist[i].edge_bindings[eb][k]));
+		kmne.parentdivnum = num;
+		//console.log("=================== kmne:"+kmne.id);
+		var tmpdata = { "data" : kmne };
+		cytodata[num].push(tmpdata);
+	    }
 	}
     }
 }
