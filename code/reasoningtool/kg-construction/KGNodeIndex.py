@@ -301,6 +301,59 @@ class KGNodeIndex:
     return(curies_and_types)
 
 
+  def get_curies_and_types_and_names(self,name):
+    #### Ensure that we are connected
+    self.connect()
+    session = self.session
+
+    #### First check to see if this is a curie. And if so, just return it
+    #### oops, don't do this. it takes twice as long! Better to put them all in the index and do one query
+    #if self.is_curie_present(name):
+    #  return([name])
+
+    #### Try to find the curie
+    try:
+      matches = session.query(KGNode).filter(KGNode.name==name.upper()).all()
+    except:
+      session.rollback()
+      raise
+
+    if matches is None: return None
+
+    #### Return a list of curies
+    curies_and_types_and_names = []
+    for match in matches:
+      names = self.get_names(match.curie)
+      best_name = "?"
+      if names is not None:
+        best_name = names[0]
+      curies_and_types_and_names.append( { "curie": match.curie, "type": match.type, "name": best_name } )
+    return(curies_and_types_and_names)
+
+
+  def get_names(self,curie):
+    #### Ensure that we are connected
+    self.connect()
+    session = self.session
+
+    #### Try to find the name using the curie
+    try:
+      matches = session.query(KGNode).filter(KGNode.curie==curie).all()
+    except:
+      session.rollback()
+      raise
+
+    if matches is None: return None
+
+    #### Return a list of curies
+    names = []
+    for match in matches:
+      if match.name == curie:
+        continue
+      names.append(match.name)
+    return(names)
+
+
   def get_curies(self,name):
 
     curies_and_types = self.get_curies_and_types(name)
@@ -380,6 +433,15 @@ def main():
   t1 = timeit.default_timer()
   print("Elapsed time: "+str(t1-t0))
 
+  print("==== Testing presence of CURIEs ============================")
+  tests = [ "REACT:R-HSA-2160456", "DOID:9281", "OMIM:261600", "DOID:1926xx", "P06865" ]
+
+  t0 = timeit.default_timer()
+  for test in tests:
+    node_properties = kgNodeIndex.get_curies_and_types_and_names(test)
+    print(test+" = "+str(node_properties))
+  t1 = timeit.default_timer()
+  print("Elapsed time: "+str(t1-t0))
 
 ####################################################################################################
 if __name__ == "__main__":
