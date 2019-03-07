@@ -120,7 +120,12 @@ def main():
         response.response.table_column_names = ["target name", "target ID", "P value"]
         graph_weight_tuples = []
 
-        p_dict, target_list = Q.answer(source_list, source_type, target_type, use_json=use_json, num_show=num_show, rel_type=rel_type)
+        q_answer = Q.answer(source_list, source_type, target_type, use_json=use_json, num_show=num_show, rel_type=rel_type)
+        
+        if not q_answer:  # if q_answer == None
+            return None  # All messages printed out; safe to quit
+        
+        p_dict, target_list = q_answer
 
         # print out the results
         if not use_json:

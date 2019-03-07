@@ -113,7 +113,7 @@ function sendQuestion(e) {
 		xhr2.onloadend = function() {
 		    if ( xhr2.status == 200 ) {
 			var jsonObj2 = JSON.parse(xhr2.responseText);
-			document.getElementById("devdiv").innerHTML += "================================================================= QUERY::<PRE>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
+			document.getElementById("devdiv").innerHTML += "================================================================= QUERY::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
 
 			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question_text"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["message"]+"</I>";
 			sesame('openmax',statusdiv);
@@ -167,7 +167,7 @@ function retrieve_response() {
 	xhr.onloadend = function() {
 		if ( xhr.status == 200 ) {
 			var jsonObj2 = JSON.parse(xhr.responseText);
-			document.getElementById("devdiv").innerHTML += "================================================================= RESPONSE REQUEST::<PRE>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
+			document.getElementById("devdiv").innerHTML += "================================================================= RESPONSE REQUEST::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
 
 			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question_text"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["message"]+"</I>";
 			document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question_text"];
@@ -221,7 +221,7 @@ function render_response(respObj) {
 function add_status_divs() {
     document.getElementById("status_container").innerHTML = "<div onclick='sesame(null,statusdiv);' title='click to expand / collapse status' class='statushead'>Status</div><div class='status' id='statusdiv'></div>";
 
-    document.getElementById("dev_result_json_container").innerHTML = "<div onclick='sesame(null,devdiv);' title='click to expand / collapse dev info' class='statushead'>Dev Info <i style='float:right; font-weight:normal;'>( json responses )</i></div><div class='status' id='devdiv'></div>";
+    document.getElementById("dev_result_json_container").innerHTML = "<br><input type='button' class='button' name='action' value='Copy Response JSON to clipboard' onClick='javascript:copyJSON();'/><div onclick='sesame(null,devdiv);' title='click to expand / collapse dev info' class='statushead'>Dev Info <i style='float:right; font-weight:normal;'>( json responses )</i></div><div class='status' id='devdiv'></div>";
 }
 
 
@@ -936,3 +936,22 @@ function display_session() {
     document.getElementById("listdiv"+listId).innerHTML = listhtml;
 }
 
+
+function copyJSON() {
+    var containerid = "responseJSON";
+
+    if (document.selection) {
+	var range = document.body.createTextRange();
+	range.moveToElementText(document.getElementById(containerid));
+	range.select().createTextRange();
+	document.execCommand("copy");
+
+    } else if (window.getSelection) {
+	var range = document.createRange();
+	range.selectNode(document.getElementById(containerid));
+	window.getSelection().removeAllRanges();
+	window.getSelection().addRange(range);
+	document.execCommand("copy");
+	//alert("text copied")
+    }
+}
