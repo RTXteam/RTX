@@ -297,7 +297,7 @@ class RTXQuery:
       response = { "message_code": "QueryGraphTooManyEdges", "code_description": "Submitted QueryGraph may not have more than 1 edge if there are only 2 nodes" }
       return(response)
     if n_nodes > 2:
-      response = { "message_code": "UnsupportedQueryGraph", "code_description": "Submitted QueryGraph may currently only have 1 node. Support for 2 or more nodes coming soon." }
+      response = { "message_code": "UnsupportedQueryGraph", "code_description": "Submitted QueryGraph may currently only have 1 or 2 node. Support for 3 or more nodes coming soon." }
       return(response)
 
     #### Handle the single node case
