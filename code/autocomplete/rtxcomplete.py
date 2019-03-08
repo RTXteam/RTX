@@ -9,7 +9,10 @@ def load():
     global cursor
     conn = sqlite3.connect('dict.db')
     conn.enable_load_extension(True)
+
+    #### Comment out on Windows because I don't have it installed
     conn.load_extension("./spellfix")
+
     cursor = conn.cursor()
     return True
 
@@ -135,26 +138,38 @@ def fuzzy(word,limit):
     rows = cursor.fetchall()
     return rows
 
-def fuzzy2(word,limit):
-    cursor.execute("SELECT str FROM disease WHERE str LIKE \"%s%%\" LIMIT %s" % (word,limit))
+def get_nodes_like(word,limit):
+    cursor.execute("SELECT curie,name,type FROM node WHERE name LIKE \"%s%%\" LIMIT %s" % (word,limit))
     rows = cursor.fetchall()
     values = list()
     values_dict = dict()
     for row in rows:
-       if row[0] not in values_dict:
-           values.append(row[0])
-           values_dict[row[0]] = 1
-           print(row[0])
+        curie,name,type = row
+        if name not in values_dict:
+            properties = { "curie": curie, "name": name, "type": type }
+            values.append(properties)
+            values_dict[name] = 1
     n_values = len(values)
 
     if n_values < limit:
-        cursor.execute("SELECT str FROM disease WHERE str LIKE \"%%%s%%\" LIMIT %s" % (word,limit-n_values))
+        cursor.execute("SELECT curie,name,type FROM node WHERE name LIKE \"%%%s%%\" LIMIT %s" % (word,limit-n_values))
         rows = cursor.fetchall()
         for row in rows:
-            if row[0] not in values_dict:
-                values.append(row[0])
-                values_dict[row[0]] = 1
-                print(row[0])
+            curie,name,type = row
+            if name not in values_dict:
+                properties = { "curie": curie, "name": name, "type": type }
+                values.append(properties)
+                values_dict[name] = 1
+
+    if n_values < limit:
+        cursor.execute("SELECT curie,name,type FROM node WHERE curie LIKE \"%%%s%%\" LIMIT %s" % (word,limit-n_values))
+        rows = cursor.fetchall()
+        for row in rows:
+            curie,name,type = row
+            if name not in values_dict:
+                properties = { "curie": curie, "name": name, "type": type }
+                values.append(properties)
+                values_dict[name] = 1
 
     return(values)
 
