@@ -7,6 +7,7 @@ import rtxcomplete
 rtxcomplete.load()
 limit = 10
 word = "mala"
-result = rtxcomplete.fuzzy2(word,limit)
+#word = "P0123"
+result = rtxcomplete.get_nodes_like(word,limit)
 print(result)
 
