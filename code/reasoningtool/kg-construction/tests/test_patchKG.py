@@ -10,6 +10,9 @@ sys.path.insert(0,parentdir)
 from Neo4jConnection import Neo4jConnection
 from QueryBioLink import QueryBioLink
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")  # code directory
+from RTXConfiguration import RTXConfiguration
+
 
 def random_int_list(start, stop, length):
     start, stop = (int(start), int(stop)) if start <= stop else (int(stop), int(start))
@@ -21,14 +24,12 @@ def random_int_list(start, stop, length):
 
 
 class TestPatchKG(TestCase):
+
+    rtxConfig = RTXConfiguration()
+
     def test_add_disease_has_phenotype_relations(self):
 
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
-
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
         disease_nodes = conn.get_disease_nodes()
 
         # generate random number array

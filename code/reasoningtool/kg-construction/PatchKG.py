@@ -28,18 +28,19 @@ from QueryBioLink import QueryBioLink
 from Neo4jConnection import Neo4jConnection
 import json
 import sys, getopt
+import os
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+from RTXConfiguration import RTXConfiguration
 
 class PatchKG:
     @staticmethod
     def add_disease_has_phenotype_relations():
 
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
+        # create the RTXConfiguration object
+        rtxConfig = RTXConfiguration()
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(rtxConfig.bolg, rtxConfig.username, rtxConfig.password)
         disease_nodes = conn.get_disease_nodes()
         print("disease nodes count: " + str(len(disease_nodes)))
 
@@ -76,12 +77,11 @@ class PatchKG:
 
     @staticmethod
     def delete_duplicated_react_nodes():
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        # create the RTXConfiguration object
+        rtxConfig = RTXConfiguration()
+
+        conn = Neo4jConnection(rtxConfig.bolg, rtxConfig.username, rtxConfig.password)
 
         if conn.count_duplicated_nodes() != 0:
             conn.remove_duplicated_react_nodes()

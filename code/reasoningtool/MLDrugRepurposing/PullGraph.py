@@ -1,13 +1,17 @@
 import neo4j.v1
-import sys
+import sys, os
 import pandas as pd
 import argparse as ap
 
-parser = ap.ArgumentParser(description='This will take a csv containing SemMedDB predicate tuples and break them up')
-parser.add_argument('--user', type=str, nargs=1, help = 'Input the username for the neo4j instance')
-parser.add_argument('--password', type=str, nargs=1, help = 'Input the password for the neo4j instance')
-parser.add_argument('--url', type=str, nargs=1, help = 'Input the bolt url for the neo4j instance')
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+from RTXConfiguration import RTXConfiguration
 
+parser = ap.ArgumentParser(description='This will take a csv containing SemMedDB predicate tuples and break them up')
+# parser.add_argument('--user', type=str, nargs=1, help = 'Input the username for the neo4j instance')
+# parser.add_argument('--password', type=str, nargs=1, help = 'Input the password for the neo4j instance')
+# parser.add_argument('--url', type=str, nargs=1, help = 'Input the bolt url for the neo4j instance')
+parser.add_argument('--live', help="The container name, which can be one of the following: Production, KG2, rtxdev, "
+                                   "staging. (default: Production)", default='Production')
 args = parser.parse_args()
 
 class PullGraph():
@@ -90,8 +94,14 @@ class PullGraph():
         df = pd.DataFrame(res.data())
         return df
 
+
 if __name__ == '__main__':
-    pg = PullGraph(args.user[0], args.password[0], args.url[0])
+
+    # create the RTXConfiguration object
+    rtxConfig = RTXConfiguration()
+    rtxConfig.live = args.live
+
+    pg = PullGraph(rtxConfig.username, rtxConfig.password, rtxConfig.bolt)
     df = pg.pull_graph()
     df.to_csv('data/graph.csv',index=False)
     df = pg.pull_drugs()
