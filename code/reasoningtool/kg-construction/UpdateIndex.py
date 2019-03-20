@@ -9,7 +9,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("-u", "--user", type=str, help="The username used to connect to the neo4j instance", default='')
 parser.add_argument("-p", "--password", type=str, help="The password used to connect to the neo4j instance", default='')
-parser.add_argument("-a", "--url", type=str, help="The bolt url and port used to connect to the neo4j instance. (default:bolt://localhost:7687)", default="bolt://localhost:7687")
+parser.add_argument("-a", "--address", type=str, help="The bolt url and port used to connect to the neo4j instance. (default:bolt://localhost:7687)", default="bolt://localhost:7687")
 args = parser.parse_args()
 
 class UpdateIndex():

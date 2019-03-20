@@ -13,9 +13,12 @@ __email__ = ''
 __status__ = 'Prototype'
 
 
-import requests
+# import requests
+from cache_control_helper import CacheControlHelper
+
 import lxml.etree
 import sys
+
 
 class QueryMiRGate:
     API_BASE_URL = 'http://mirgate.bioinfo.cnio.es/ResT/API/human'
@@ -23,14 +26,19 @@ class QueryMiRGate:
 
     @staticmethod
     def send_query_get(handler, url_suffix):
+
+        requests = CacheControlHelper()
         url_str = QueryMiRGate.API_BASE_URL + "/" + handler + "/" + url_suffix
 #        print(url_str)
         try:
-            res = requests.get(url_str, headers={'accept': 'application/json'},
-                               timeout=QueryMiRGate.TIMEOUT_SEC)
+            res = requests.get(url_str, timeout=QueryMiRGate.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
             print(url_str, file=sys.stderr)
             print("Timeout in QueryMiRGate for URL: " + url_str, file=sys.stderr)
+            return None
+        except BaseException as e:
+            print(url_str, file=sys.stderr)
+            print('%s received in QueryMiRGate for URL: %s' % (e, url_str), file=sys.stderr)
             return None
         status_code = res.status_code
         if status_code != 200:

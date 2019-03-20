@@ -13,10 +13,11 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-import requests
-import requests_cache
+# import requests
+# import requests_cache
 import sys
 import json
+from cache_control_helper import CacheControlHelper
 
 
 class QueryReactomeExtended:
@@ -30,6 +31,7 @@ class QueryReactomeExtended:
     @staticmethod
     def __access_api(handler):
 
+        requests = CacheControlHelper()
         url = QueryReactomeExtended.API_BASE_URL + '/' + handler
 
         try:

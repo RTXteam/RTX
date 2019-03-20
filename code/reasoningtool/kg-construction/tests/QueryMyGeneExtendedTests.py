@@ -24,12 +24,12 @@ class QueryMyGeneExtendedTestCase(unittest.TestCase):
 
     def test_get_protein_entity(self):
 
-        extended_info_json = QueryMyGeneExtended.get_protein_entity("UniProt:O60884")
+        extended_info_json = QueryMyGeneExtended.get_protein_entity("UniProtKB:O60884")
         self.maxDiff = None
         self.assertIsNotNone(extended_info_json)
         if extended_info_json != "UNKNOWN":
             self.assertEqual(len(json.loads(extended_info_json)),
-                             len(json.loads(get_from_test_file('query_test_data.json', 'UniProt:O60884'))))
+                             len(json.loads(get_from_test_file('query_test_data.json', 'UniProtKB:O60884'))))
 
     def test_get_microRNA_entity(self):
 
@@ -42,11 +42,11 @@ class QueryMyGeneExtendedTestCase(unittest.TestCase):
 
     def test_get_protein_desc(self):
 
-        desc = QueryMyGeneExtended.get_protein_desc("UniProt:O60884")
+        desc = QueryMyGeneExtended.get_protein_desc("UniProtKB:O60884")
         self.assertIsNotNone(desc)
-        self.assertEqual(desc, get_from_test_file('query_desc_test_data.json','UniProt:O60884'))
+        self.assertEqual(desc, get_from_test_file('query_desc_test_data.json','UniProtKB:O60884'))
 
-        desc = QueryMyGeneExtended.get_protein_desc("UniProt:O608840")
+        desc = QueryMyGeneExtended.get_protein_desc("UniProtKB:O608840")
         self.assertEqual(desc, 'None')
 
     def test_get_microRNA_desc(self):

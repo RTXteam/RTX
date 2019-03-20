@@ -16,10 +16,12 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-import requests
-import requests_cache
+# import requests
+# import requests_cache
 import sys
 import urllib.parse
+
+from cache_control_helper import CacheControlHelper
 
 # configure requests package to use the "QueryCOHD.sqlite" cache
 # requests_cache.install_cache('QueryCOHD')
@@ -55,6 +57,7 @@ class QueryCOHD:
     @staticmethod
     def __access_api(handler, url_suffix):
         
+        requests = CacheControlHelper()
         url = QueryCOHD.API_BASE_URL + '/' + handler + '?' + url_suffix
         
         try:

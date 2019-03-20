@@ -18,7 +18,8 @@ __status__ = 'Prototype'
 import pandas
 import io
 import math
-import requests
+# import requests
+from cache_control_helper import CacheControlHelper
 import sys
 import functools
 import CachedMethods
@@ -63,6 +64,7 @@ class QueryDisGeNet:
 
         binary_data = seq.encode('utf-8')
         url_str = QueryDisGeNet.SPARQL_ENDPOINT_URL
+        requests = CacheControlHelper()
 
         try:
             res = requests.post(url_str, data=binary_data, timeout=QueryDisGeNet.TIMEOUT_SEC)
@@ -70,6 +72,10 @@ class QueryDisGeNet:
             print(url_str, sys.stderr)
             print('Timeout in QueryDisGeNet for URL: ' + url_str, file=sys.stderr)
             return dict()
+        except BaseException as e:
+            print(url_str, file=sys.stderr)
+            print('%s received in QueryDisGeNet for URL: %s' % (e, url_str), file=sys.stderr)
+            return None
 
         status_code = res.status_code
 

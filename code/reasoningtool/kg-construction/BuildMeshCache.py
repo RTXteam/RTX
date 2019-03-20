@@ -1,5 +1,5 @@
-import requests_cache
-import CachedMethods
+# import requests_cache
+# import CachedMethods
 from NormGoogleDistance import NormGoogleDistance
 import time
 import pandas

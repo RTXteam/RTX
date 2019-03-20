@@ -15,10 +15,11 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-import requests
-import requests_cache
+# import requests
+# import requests_cache
 import sys
 import json
+from cache_control_helper import CacheControlHelper
 
 
 class QueryBioLinkExtended:
@@ -34,6 +35,7 @@ class QueryBioLinkExtended:
     @staticmethod
     def __access_api(handler):
 
+        requests = CacheControlHelper()
         url = QueryBioLinkExtended.API_BASE_URL + '/' + handler
 
         try:

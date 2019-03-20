@@ -6,7 +6,7 @@ import sys
 import time
 import networkx
 import obonet
-import requests_cache
+# import requests_cache
 
 try:
     from QueryUMLSApi import QueryUMLSApi
@@ -170,7 +170,7 @@ class DrugMapper:
 
 
 if __name__ == '__main__':
-    requests_cache.install_cache('DrugMapper')
+    # requests_cache.install_cache('DrugMapper')
     # hp_set = DrugMapper.map_drug_to_hp_with_side_effects("KWHRDNMACVLHCE-UHFFFAOYSA-N")
     # print(hp_set)
     # print(len(hp_set))

@@ -11,3 +11,5 @@
 # R history files
 **/.Rhistory
 
+# cache files
+**/.web_cache

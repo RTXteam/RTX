@@ -12,11 +12,12 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-import requests
+# import requests
 import sys
 import re
-import requests_cache
+# import requests_cache
 import json
+from cache_control_helper import CacheControlHelper
 
 
 class QueryReactome:
@@ -70,11 +71,11 @@ class QueryReactome:
     
     @staticmethod
     def send_query_get(handler, url_suffix):
+        requests = CacheControlHelper()
         url_str = QueryReactome.API_BASE_URL + '/' + handler + '/' + url_suffix
 #        print(url_str)
         try:
-            res = requests.get(url_str, headers={'accept': 'application/json'},
-                               timeout=QueryReactome.TIMEOUT_SEC)
+            res = requests.get(url_str, timeout=QueryReactome.TIMEOUT_SEC)
         except KeyboardInterrupt:
             sys.exit(0)
         except BaseException as e:
@@ -220,6 +221,7 @@ class QueryReactome:
     @staticmethod
     def __access_api(handler):
 
+        requests = CacheControlHelper()
         url = QueryReactome.API_BASE_URL + '/' + handler
 
         try:

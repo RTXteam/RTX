@@ -25,8 +25,9 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-import requests
-import requests_cache
+# import requests
+# import requests_cache
+from cache_control_helper import CacheControlHelper
 import sys
 import xmltodict
 
@@ -41,8 +42,9 @@ class QueryUniprotExtended:
     @staticmethod
     def __access_api(handler):
 
+        requests = CacheControlHelper()
         url = QueryUniprotExtended.API_BASE_URL + '/' + handler
-        print(url)
+        # print(url)
         try:
             res = requests.get(url, timeout=QueryUniprotExtended.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
@@ -94,7 +96,7 @@ class QueryUniprotExtended:
     @staticmethod
     def __get_name(entity_type, entity_id):
         entity_obj = QueryUniprotExtended.__get_entity(entity_type, entity_id)
-        name = "None"
+        name = "UNKNOWN"
         if entity_obj is not None:
             if 'protein' in entity_obj.keys():
                 if 'recommendedName' in entity_obj['protein'].keys():
