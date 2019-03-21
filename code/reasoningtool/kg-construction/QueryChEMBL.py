@@ -11,11 +11,13 @@ __email__ = ''
 __status__ = 'Prototype'
 
 import urllib
-import requests
-import requests_cache
+# import requests
+# import requests_cache
 import sys
+from cache_control_helper import CacheControlHelper
 
 from QueryUniprot import QueryUniprot
+
 
 class QueryChEMBL:
     API_BASE_URL = 'https://www.ebi.ac.uk/chembl/api/data'
@@ -23,6 +25,8 @@ class QueryChEMBL:
 
     @staticmethod
     def send_query_get(handler, url_suffix):
+
+        requests = CacheControlHelper()
         url = QueryChEMBL.API_BASE_URL + '/' + handler + '?' + url_suffix
 #        print(url)
         try:

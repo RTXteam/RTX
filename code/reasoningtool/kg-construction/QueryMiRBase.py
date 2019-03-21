@@ -12,20 +12,38 @@ __maintainer__ = ""
 __email__ = ""
 __status__ = "Prototype"
 
-import requests
+# import requests
+from cache_control_helper import CacheControlHelper
+
 import lxml.html
 import functools
 import CachedMethods
 
+import sys
 
 class QueryMiRBase:
     API_BASE_URL = 'http://www.mirbase.org/cgi-bin'
 
     @staticmethod
     def send_query_get(handler, url_suffix):
+
+        requests = CacheControlHelper()
         url_str = QueryMiRBase.API_BASE_URL + "/" + handler + "?" + url_suffix
 #        print(url_str)
-        res = requests.get(url_str, headers={'accept': 'application/json'})
+
+        try:
+            res = requests.get(url_str)
+        except requests.exceptions.Timeout:
+            print(url_str, file=sys.stderr)
+            print('Timeout in QueryMiRBase for URL: ' + url_str, file=sys.stderr)
+            return None
+        except KeyboardInterrupt:
+            sys.exit(0)
+        except BaseException as e:
+            print(url_str, file=sys.stderr)
+            print('%s received in QueryMiRBase for URL: %s' % (e, url), file=sys.stderr)
+            return None
+
         status_code = res.status_code
         assert status_code == 200
         return res

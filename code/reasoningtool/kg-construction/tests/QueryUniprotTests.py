@@ -23,7 +23,7 @@ class QueryUniprotTestCase(TestCase):
         # long results
         ids = QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:1.2.1.22")
         self.assertIsNotNone(ids)
-        self.assertEqual(len(ids), 882)
+        self.assertEqual(len(ids), 1172)
         self.assertTrue('A0A1R4INE8' in ids)
 
         # fake id
@@ -53,11 +53,11 @@ class QueryUniprotTestCase(TestCase):
         #   empty result
         name = QueryUniprot.get_protein_name('UniProtKB:Q9Y47')
         self.assertIsNotNone(name)
-        self.assertEqual(name, 'None')
+        self.assertEqual(name, 'UNKNOWN')
 
         #   invalid parameter
         name = QueryUniprot.get_protein_name(12345)
-        self.assertEqual(name, "None")
+        self.assertEqual(name, "UNKNOWN")
 
     def test_get_protein_gene_symbol(self):
         symbol = QueryUniprot.get_protein_gene_symbol('UniProtKB:P20848')

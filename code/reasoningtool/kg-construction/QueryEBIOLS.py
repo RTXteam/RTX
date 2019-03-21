@@ -7,8 +7,11 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-import requests
-import requests_cache
+# import requests
+# import requests_cache
+
+from cache_control_helper import CacheControlHelper
+
 import urllib.parse
 import sys
 import json
@@ -28,10 +31,12 @@ class QueryEBIOLS:
 
     @staticmethod
     def send_query_get(handler, url_suffix):
+
+        requests = CacheControlHelper()
         url_str = QueryEBIOLS.API_BASE_URL + '/' + handler + "/" + url_suffix
 #        print(url_str)
         try:
-            res = requests.get(url_str, headers={'Accept': 'application/json'}, timeout=QueryEBIOLS.TIMEOUT_SEC)
+            res = requests.get(url_str, timeout=QueryEBIOLS.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
             print('HTTP timeout in QueryNCBIeUtils.py; URL: ' + url_str, file=sys.stderr)
             time.sleep(1)  # take a timeout because NCBI rate-limits connections
@@ -40,6 +45,11 @@ class QueryEBIOLS:
             print('HTTP connection error in QueryNCBIeUtils.py; URL: ' + url_str, file=sys.stderr)
             time.sleep(1)  # take a timeout because NCBI rate-limits connections
             return None
+        except BaseException as e:
+            print(url_str, file=sys.stderr)
+            print('%s received in QueryEBIOLS for URL: %s' % (e, url_str), file=sys.stderr)
+            return None
+
         status_code = res.status_code
         if status_code != 200:
             print('HTTP response status code: ' + str(status_code) + ' for URL:\n' + url_str, file=sys.stderr)
@@ -105,6 +115,7 @@ class QueryEBIOLS:
     @staticmethod
     def __access_api(handler):
 
+        requests = CacheControlHelper()
         url = QueryEBIOLS.API_BASE_URL + '/' + handler
         # print(url)
         try:

@@ -12,7 +12,7 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-import requests_cache
+# import requests_cache
 import sys
 import pandas
 import timeit
@@ -23,7 +23,7 @@ from BioNetExpander import BioNetExpander
 from QueryDGIdb import QueryDGIdb
 
 # configure requests package to use the "orangeboard.sqlite" cache
-requests_cache.install_cache('orangeboard')
+# requests_cache.install_cache('orangeboard')
 
 
 def add_pc2_to_kg():

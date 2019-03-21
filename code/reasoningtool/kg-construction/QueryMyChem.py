@@ -14,8 +14,10 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-import requests
-import requests_cache
+# import requests
+# import requests_cache
+from cache_control_helper import CacheControlHelper
+
 import sys
 import json
 
@@ -34,7 +36,9 @@ class QueryMyChem:
     @staticmethod
     def __access_api(handler):
 
+        requests = CacheControlHelper()
         url = QueryMyChem.API_BASE_URL + '/' + handler
+
         try:
             res = requests.get(url, timeout=QueryMyChem.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
@@ -72,8 +76,10 @@ class QueryMyChem:
             #   remove all \n characters using json api and convert the string to one line
             json_dict = json.loads(results)
             if "chebi" in json_dict.keys():
-                if "definition" in json_dict['chebi'].keys():
+                if type(json_dict['chebi']) is dict and "definition" in json_dict['chebi'].keys():
                     result_str = json_dict['chebi']['definition']
+                if type(json_dict['chebi']) is list and "definition" in json_dict['chebi'][0].keys():
+                    result_str = json_dict['chebi'][0]['definition']
         return result_str
 
     @staticmethod
@@ -94,6 +100,7 @@ class QueryMyChem:
             chemical_substance_id = "CHEMBL" + chemical_substance_id[7:]
         handler = 'chem/' + chemical_substance_id + '?fields=drugcentral.xref.mesh_descriptor_ui'
 
+        requests = CacheControlHelper()
         url = QueryMyChem.API_BASE_URL + '/' + handler
 
         try:
@@ -125,6 +132,7 @@ class QueryMyChem:
             chemical_substance_id = "CHEMBL" + chemical_substance_id[7:]
         handler = 'chem/' + chemical_substance_id + '?fields=drugcentral.xref.umlscui'
 
+        requests = CacheControlHelper()
         url = QueryMyChem.API_BASE_URL + '/' + handler
 
         try:
@@ -371,15 +379,16 @@ if __name__ == '__main__':
         json.dump(json_data, f)
         f.close()
 
+    save_to_test_file('tests/query_test_data.json', 'ChEMBL:1200766',
+                      QueryMyChem.get_chemical_substance_entity('ChEMBL:1200766'))
+    save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:154',
+                      QueryMyChem.get_chemical_substance_description('ChEMBL:154'))
+    save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:20883',
+                      QueryMyChem.get_chemical_substance_description('ChEMBL:20883'))   # no definition field
+    save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:110101020',
+                      QueryMyChem.get_chemical_substance_description('ChEMBL:110101020'))   # wrong id
 
-    # save_to_test_file('tests/query_test_data.json', 'ChEMBL:1200766',
-    #                   QueryMyChem.get_chemical_substance_entity('ChEMBL:1200766'))
-    # save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:154',
-    #                   QueryMyChem.get_chemical_substance_description('ChEMBL:154'))
-    # save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:20883',
-    #                   QueryMyChem.get_chemical_substance_description('ChEMBL:20883'))   # no definition field
-    # save_to_test_file('tests/query_desc_test_data.json', 'ChEMBL:110101020',
-    #                   QueryMyChem.get_chemical_substance_description('ChEMBL:110101020'))   # wrong id
+    print(QueryMyChem.get_chemical_substance_description('CHEMBL:58832'))
 
     # umls_array = QueryMyChem.get_drug_side_effects("CHEMBL521")
     # print(umls_array)
@@ -387,13 +396,13 @@ if __name__ == '__main__':
     # #
 
     # print(QueryMyChem.get_fda_adverse_events('CHEMBL:699'))
-    # umls_array = QueryMyChem.get_drug_side_effects("CHEMBL:699")
-    # print(umls_array)
-    # print(len(umls_array))
-    # print(len(QueryMyChem.get_drug_side_effects("CHEMBL:1908841")))
-    # print(len(QueryMyChem.get_drug_side_effects("CHEMBL:655")))
-    # drug_use = QueryMyChem.get_drug_use("CHEMBL20883")
-    # print(str(len(drug_use['indications'])) + str(drug_use['indications']))
-    # print(str(len(drug_use['contraindications'])) + str(drug_use['contraindications']))
+    umls_array = QueryMyChem.get_drug_side_effects("CHEMBL:699")
+    print(umls_array)
+    print(len(umls_array))
+    print(len(QueryMyChem.get_drug_side_effects("CHEMBL:1908841")))
+    print(len(QueryMyChem.get_drug_side_effects("CHEMBL:655")))
+    drug_use = QueryMyChem.get_drug_use("CHEMBL20883")
+    print(str(len(drug_use['indications'])) + str(drug_use['indications']))
+    print(str(len(drug_use['contraindications'])) + str(drug_use['contraindications']))
     print(QueryMyChem.get_pubchem_cid("CHEMBL452231"))
-    # print(QueryMyChem.get_meddra_codes_for_side_effects("CHEMBL1755"))
+    print(QueryMyChem.get_meddra_codes_for_side_effects("CHEMBL1755"))

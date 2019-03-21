@@ -17,8 +17,10 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-import requests
-import requests_cache
+# import requests
+# import requests_cache
+from cache_control_helper import CacheControlHelper
+
 import sys
 
 
@@ -35,6 +37,7 @@ class QueryKEGG:
     @staticmethod
     def __access_api(handler, base_url=API_BASE_URL):
 
+        requests = CacheControlHelper()
         url = base_url + '/' + handler
 
         try:
