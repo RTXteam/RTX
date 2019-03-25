@@ -48,3 +48,9 @@ or equivalently:
 `UpdateIndex.py` is the script that set all needed index
 
     python3 UpdateIndex.py -u xxxx -p xxxx
+
+
+# Backuping KG
+`neo4j-backup` is the script to dump the Neo4j database and transfer the backup file to http://rtxkgdump.saramsey.org/
+
+    sh neo4j-backup.sh
