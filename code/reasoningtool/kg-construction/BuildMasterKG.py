@@ -142,7 +142,7 @@ if __name__ == '__main__':
     # parser.add_argument("-p", "--password", help="The password used to connect to the neo4j instance. (default: )",
     #                     default='')
     parser.add_argument('--live', help="The container name, which can be one of the following: Production, KG2, rtxdev, "
-                                       "staging. (default: Production)", default='Production')
+                                       "staging. (default: local)", default='local')
     parser.add_argument('--runfunc', dest='runfunc')
     args = parser.parse_args()
 
