@@ -1,5 +1,6 @@
 import connexion
 import six
+import ast
 
 from openapi_server.models.message import Message  # noqa: E501
 from openapi_server import util
@@ -21,6 +22,6 @@ def query(request_body):  # noqa: E501
         query = connexion.request.get_json()
         rtxq = RTXQuery()
         message = rtxq.query(query)
-        return(message)
+        return(ast.literal_eval(repr(message)))
     else:
         return( { "status": 502, "title": "body content not JSON", "detail": "Required body content is not JSON", "type": "about:blank" }, 502 )
