@@ -15,8 +15,10 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-import requests
-import requests_cache
+# import requests
+# import requests_cache
+from cache_control_helper import CacheControlHelper
+
 import urllib.parse
 import sys
 import json
@@ -37,6 +39,7 @@ class QueryEBIOLSExtended:
     @staticmethod
     def __access_api(handler):
 
+        requests = CacheControlHelper()
         url = QueryEBIOLSExtended.API_BASE_URL + '/' + handler
         # print(url)
         try:

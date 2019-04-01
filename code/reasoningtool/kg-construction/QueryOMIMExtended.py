@@ -13,10 +13,12 @@ __email__ = ""
 __status__ = "Prototype"
 
 import sys
-import requests
+# import requests
 # import CachedMethods
-import requests_cache
+# import requests_cache
 import json
+from cache_control_helper import CacheControlHelper
+
 
 class QueryOMIMExtended:
     API_KEY = '1YCxuN7PRHyrpuZnO7F5gQ'
@@ -24,6 +26,7 @@ class QueryOMIMExtended:
     TIMEOUT_SEC = 120
  
     def __init__(self):
+        requests = CacheControlHelper()
         url = QueryOMIMExtended.API_BASE_URL + "/apiKey"
         session_data = {'apiKey': QueryOMIMExtended.API_KEY,
                         'format': 'json'}
@@ -32,6 +35,7 @@ class QueryOMIMExtended:
         self.cookie = r.cookies
 
     def send_query_get(self, omim_handler, url_suffix):
+        requests = CacheControlHelper()
         url = "{api_base_url}/{omim_handler}?{url_suffix}&format=json".format(api_base_url=QueryOMIMExtended.API_BASE_URL,
                                                                               omim_handler=omim_handler,
                                                                               url_suffix=url_suffix)

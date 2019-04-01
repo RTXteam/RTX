@@ -12,8 +12,10 @@ __maintainer__ = ""
 __email__ = ""
 __status__ = "Prototype"
 
-import requests
+# import requests
+from cache_control_helper import CacheControlHelper
 import CachedMethods
+import sys
 
 
 class QueryPharos:
@@ -22,9 +24,23 @@ class QueryPharos:
 
     @staticmethod
     def send_query_get(entity, url_suffix):
+        requests = CacheControlHelper()
         url_str = QueryPharos.API_BASE_URL + "/" + entity + url_suffix
         #print(url_str)
-        res = requests.get(url_str, headers={'accept': 'application/json'})
+
+        try:
+            res = requests.get(url_str)
+        except requests.exceptions.Timeout:
+            print(url_str, file=sys.stderr)
+            print('Timeout in QueryMiRBase for URL: ' + url_str, file=sys.stderr)
+            return None
+        except KeyboardInterrupt:
+            sys.exit(0)
+        except BaseException as e:
+            print(url_str, file=sys.stderr)
+            print('%s received in QueryMiRBase for URL: %s' % (e, url), file=sys.stderr)
+            return None
+
         status_code = res.status_code
         #print("Status code="+str(status_code))
         assert status_code in [200, 404]

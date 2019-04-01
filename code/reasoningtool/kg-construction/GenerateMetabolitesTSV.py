@@ -19,8 +19,9 @@ __email__ = ''
 __status__ = 'Prototype'
 
 
-import requests
+# import requests
 import sys
+from cache_control_helper import CacheControlHelper
 
 
 class GenerateMetabolitesTSV:
@@ -32,6 +33,7 @@ class GenerateMetabolitesTSV:
     def __retrieve_entries_from_url():
 
         #   network request
+        requests = CacheControlHelper()
         try:
             res = requests.get(GenerateMetabolitesTSV.URL)
         except requests.exceptions.Timeout:

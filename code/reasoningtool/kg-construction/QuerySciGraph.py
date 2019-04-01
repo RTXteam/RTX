@@ -12,8 +12,10 @@ __maintainer__ = ""
 __email__ = ""
 __status__ = "Prototype"
 
-import requests
+# import requests
 import sys
+from cache_control_helper import CacheControlHelper
+
 
 class QuerySciGraph:
     TIMEOUT_SEC=120
@@ -26,11 +28,16 @@ class QuerySciGraph:
     @staticmethod
     def __access_api(url, params=None, headers=None):
 #        print(url)
+        requests = CacheControlHelper()
         try:
-            res = requests.get(url, params, timeout=QuerySciGraph.TIMEOUT_SEC)
+            res = requests.get(url, params=params, timeout=QuerySciGraph.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
             print(url, file=sys.stderr)
             print('Timeout in QuerySciGraph for URL: ' + url, file=sys.stderr)
+            return None
+        except BaseException as e:
+            print(url, file=sys.stderr)
+            print('%s received in QuerySciGraph for URL: %s' % (e, url), file=sys.stderr)
             return None
         status_code = res.status_code
         if status_code != 200:
@@ -114,7 +121,7 @@ class QuerySciGraph:
         if results is not None:
             res_nodes = results.get('nodes', None)
             if res_nodes is not None:
-                assert type(res_nodes) == listq
+                # assert type(res_nodes) == listq
                 for res_node in res_nodes:
                     id = res_node.get('id', None)
                     if id is not None:
@@ -172,7 +179,7 @@ class QuerySciGraph:
         Return a dict of `<id, label>`, where `id`s are all sub-phenotype of parameter `ontology_term_id`.
 
         E.g. input "HP:0000107" (Renal cyst),
-        >>> QuerySciGraph.query_sub_phenotypes_for_phenotype("HP:0000107")
+        '>>> QuerySciGraph.query_sub_phenotypes_for_phenotype("HP:0000107")
         {'HP:0100877': 'Renal diverticulum', 'HP:0000108': 'Renal corticomedullary cysts',
          'HP:0000803': 'Renal cortical cysts', 'HP:0000003': 'Multicystic kidney dysplasia',
          'HP:0008659': 'Multiple small medullary renal cysts', 'HP:0005562': 'Multiple renal cysts',
@@ -211,16 +218,18 @@ class QuerySciGraph:
 
 if __name__ == '__main__':
     print(QuerySciGraph.query_get_ontology_node_category_and_term("GO:0005777"))
-    # print(QuerySciGraph.get_gene_ontology_curie_ids_for_uberon_curie_id("UBERON:0000171"))
-    # print(QuerySciGraph.query_get_ontology_node_category_and_term("GO:XXXXXXX"))
-    # print(QuerySciGraph.get_gene_ontology_curie_ids_for_disease_curie_id("MONDO:0019053"))
-    # print(QuerySciGraph.get_gene_ontology_curie_ids_for_disease_curie_id("DOID:906"))
-    # print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term("GO:0005777"))
-    # print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D005199'))
-    # print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D006937'))
-    # print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D000856'))
-    # print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term('HP:12072'))
-    # print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term('GO:1904685'))
-    # print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015473'))
-    # print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term("HP:0000107"))  # Renal cyst
-    # print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015470'))
+    print(QuerySciGraph.get_gene_ontology_curie_ids_for_uberon_curie_id("UBERON:0000171"))
+    print(QuerySciGraph.query_get_ontology_node_category_and_term("GO:XXXXXXX"))
+    print(QuerySciGraph.get_gene_ontology_curie_ids_for_disease_curie_id("MONDO:0019053"))
+    print(QuerySciGraph.get_gene_ontology_curie_ids_for_disease_curie_id("DOID:906"))
+    print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term("GO:0005777"))
+    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D005199'))
+    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D006937'))
+    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D000856'))
+    print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term('HP:12072'))
+    print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term('GO:1904685'))
+    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015473'))
+    print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term("HP:0000107"))  # Renal cyst
+    print(QuerySciGraph.get_disont_ids_for_mesh_id('MESH:D015470'))
+    print(QuerySciGraph.query_sub_ontology_terms_for_ontology_term('GO:0062026'))
+

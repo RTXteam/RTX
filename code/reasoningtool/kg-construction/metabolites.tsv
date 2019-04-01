@@ -1105,7 +1105,7 @@ metabolite	KEGG:C01252	4-(2-Aminophenyl)-2,4-dioxobutanoate	generic
 metabolite	KEGG:C01253	ADP-D-ribosyl-[dinitrogen reductase]	generic
 metabolite	KEGG:C01255	N-(6-Aminohexanoyl)-6-aminohexanoate	generic
 metabolite	KEGG:C01256	[Pyruvate dehydrogenase (acetyl-transferring)]	generic
-metabolite	KEGG:C01259	3-Hydroxy-N6,N6,N6-trimethyl-L-lysine	generic
+metabolite	KEGG:C01259	(3S)-3-Hydroxy-N6,N6,N6-trimethyl-L-lysine	generic
 metabolite	KEGG:C01260	P1,P4-Bis(5'-adenosyl)tetraphosphate	generic
 metabolite	KEGG:C01261	P1,P4-Bis(5'-guanosyl) tetraphosphate	generic
 metabolite	KEGG:C01262	beta-Alanyl-N(pi)-methyl-L-histidine	generic
@@ -1683,7 +1683,7 @@ metabolite	KEGG:C02033	Gentamicin C2	generic
 metabolite	KEGG:C02034	Gibberellin A19	generic
 metabolite	KEGG:C02035	Gibberellin A20	generic
 metabolite	KEGG:C02037	Glycylglycine	generic
-metabolite	KEGG:C02038	Glycylpeptide	generic
+metabolite	KEGG:C02038	N-Terminal-glycyl-[protein]	generic
 metabolite	KEGG:C02040	Hydroxyindole	generic
 metabolite	KEGG:C02041	Eicosanoyl-CoA	generic
 metabolite	KEGG:C02043	Indolelactate	generic
@@ -1893,7 +1893,7 @@ metabolite	KEGG:C02315	Protein dithiol	generic
 metabolite	KEGG:C02318	R'C(R)S-S(R)CR'	generic
 metabolite	KEGG:C02319	R-CHOH-CO-CH2OH	generic
 metabolite	KEGG:C02320	R-S-Glutathione	generic
-metabolite	KEGG:C02321	Rubber particle	generic
+metabolite	KEGG:C02321	cis-1,4-Polyisoprene	generic
 metabolite	KEGG:C02323	Salicyl alcohol	generic
 metabolite	KEGG:C02324	Secondary amine	generic
 metabolite	KEGG:C02325	Sinapyl alcohol	generic
@@ -2450,7 +2450,6 @@ metabolite	KEGG:C03093	7,8-Dihydroxycoumarin	generic
 metabolite	KEGG:C03095	N-Aminoacyl-L-histidine	generic
 metabolite	KEGG:C03097	Aryl beta-D-glucoside	generic
 metabolite	KEGG:C03098	Benzyl isothiocyanate	generic
-metabolite	KEGG:C03101	Coagulation Factor IX	generic
 metabolite	KEGG:C03103	Cyclobutadipyrimidine	generic
 metabolite	KEGG:C03104	Cytidine 2'-phosphate	generic
 metabolite	KEGG:C03105	Cytochrome c L-lysine	generic
@@ -2559,7 +2558,7 @@ metabolite	KEGG:C03238	5alpha-Cholestan-3-one	generic
 metabolite	KEGG:C03239	6-Amino-2-oxohexanoate	generic
 metabolite	KEGG:C03240	6-Deoxyerythronolide B	generic
 metabolite	KEGG:C03241	6-Hydroxyhexan-6-olide	generic
-metabolite	KEGG:C03242	(8Z,11Z,14Z)-Icosatrienoic acid	generic
+metabolite	KEGG:C03242	Dihomo-gamma-linolenate	generic
 metabolite	KEGG:C03243	9,10-Phenanthroquinone	generic
 metabolite	KEGG:C03245	ADP-D-ribosyl-acceptor	generic
 metabolite	KEGG:C03246	ADPribose 2'-phosphate	generic
@@ -2567,8 +2566,6 @@ metabolite	KEGG:C03248	Acetylenedicarboxylate	generic
 metabolite	KEGG:C03251	Aldohexose 6-phosphate	generic
 metabolite	KEGG:C03254	Aryl dialkyl phosphate	generic
 metabolite	KEGG:C03256	Cetraxate benzyl ester	generic
-metabolite	KEGG:C03259	Coagulation Factor IXa	generic
-metabolite	KEGG:C03260	Coagulation Factor VII	generic
 metabolite	KEGG:C03263	Coproporphyrinogen III	generic
 metabolite	KEGG:C03264	(R)-2-Hydroxyisocaproate	generic
 metabolite	KEGG:C03267	beta-D-Fructose 2-phosphate	generic
@@ -2642,7 +2639,6 @@ metabolite	KEGG:C03372	Acylglycerone phosphate	generic
 metabolite	KEGG:C03373	Aminoimidazole ribotide	generic
 metabolite	KEGG:C03374	Bilirubin-glucuronoside	generic
 metabolite	KEGG:C03375	Norspermidine	generic
-metabolite	KEGG:C03378	Coagulation Factor VIIa	generic
 metabolite	KEGG:C03383	D-Galactono-1,4-lactone	generic
 metabolite	KEGG:C03384	D-Galactose 1-phosphate	generic
 metabolite	KEGG:C03387	D-Glucurono-6,2-lactone	generic
@@ -2982,7 +2978,7 @@ metabolite	KEGG:C03875	Myosin light chain phosphate	generic
 metabolite	KEGG:C03878	N-Acetyl-beta-D-glucosamine	generic
 metabolite	KEGG:C03879	N-Acetyl-beta-D-hexosaminide	generic
 metabolite	KEGG:C03880	N-Substituted aminoacyl-tRNA	generic
-metabolite	KEGG:C03881	N-Tetradecanoylglycylpeptide	generic
+metabolite	KEGG:C03881	N-Terminal-N-tetradecanoylglycyl-[protein]	generic
 metabolite	KEGG:C03882	Piperine	generic
 metabolite	KEGG:C03884	N(omega)-Methyl-L-arginine	generic
 metabolite	KEGG:C03885	3-Nonaprenyl-4-hydroxybenzoate	generic
@@ -3063,7 +3059,6 @@ metabolite	KEGG:C03997	5-Hydroxymethyldeoxycytidylate	generic
 metabolite	KEGG:C03998	7-Methylguanosine 5'-phosphate	generic
 metabolite	KEGG:C03999	Alanyl-poly(glycerolphosphate)	generic
 metabolite	KEGG:C04000	Benzyl 2-methyl-3-oxobutanoate	generic
-metabolite	KEGG:C04001	Blood coagulation Factor VIIIa	generic
 metabolite	KEGG:C04002	(Z)-But-1-ene-1,2,4-tricarboxylate	generic
 metabolite	KEGG:C04006	1D-myo-Inositol 3-phosphate	generic
 metabolite	KEGG:C04007	Flavanone 7-O-beta-D-glucoside	generic
@@ -3099,7 +3094,7 @@ metabolite	KEGG:C04051	5-Amino-4-imidazolecarboxyamide	generic
 metabolite	KEGG:C04052	5-Carboxy-2-oxohept-3-enedioate	generic
 metabolite	KEGG:C04053	5-Dehydro-4-deoxy-D-glucuronate	generic
 metabolite	KEGG:C04054	5-Hydroxybenzimidazolylcob(I)amide	generic
-metabolite	KEGG:C04056	9-cis,11-trans-Octadecadienoate	generic
+metabolite	KEGG:C04056	Rumenic acid	generic
 metabolite	KEGG:C04058	Bis(5'-adenosyl) pentaphosphate	generic
 metabolite	KEGG:C04061	Cytochrome c N6-methyl-L-lysine	generic
 metabolite	KEGG:C04062	D-myo-Inositol 1,3-bisphosphate	generic
@@ -3259,7 +3254,7 @@ metabolite	KEGG:C04271	3,9-Dihydroxypterocarpan	generic
 metabolite	KEGG:C04272	(R)-2,3-Dihydroxy-3-methylbutanoate	generic
 metabolite	KEGG:C04273	(S)-Mandelonitrile beta-D-glucoside	generic
 metabolite	KEGG:C04274	1,2-Epoxy-3-(p-Nitrophenoxy)propane	generic
-metabolite	KEGG:C04275	1,2-Bis-O-sinapoyl-beta-D-glucoside	generic
+metabolite	KEGG:C04275	1,2-Bis-O-sinapoyl-beta-D-glucose	generic
 metabolite	KEGG:C04276	1,6-alpha-D-Mannosyloligosaccharide	generic
 metabolite	KEGG:C04277	1,8-Diazacyclotetradecane-2,9-dione	generic
 metabolite	KEGG:C04280	1-Guanidino-1-deoxy-scyllo-inositol	generic
@@ -4006,8 +4001,8 @@ metabolite	KEGG:C05443	Vitamin D3	generic
 metabolite	KEGG:C05444	3alpha,7alpha,26-Trihydroxy-5beta-cholestane	generic
 metabolite	KEGG:C05445	3alpha,7alpha-Dihydroxy-5beta-cholestan-26-al	generic
 metabolite	KEGG:C05446	3alpha,7alpha,12alpha,26-Tetrahydroxy-5beta-cholestane	generic
-metabolite	KEGG:C05447	3alpha,7alpha-Dihydroxy-5beta-cholest-24-enoyl-CoA	generic
-metabolite	KEGG:C05448	3alpha,7alpha,24-Trihydroxy-5beta-cholestanoyl-CoA	generic
+metabolite	KEGG:C05447	(24E)-3alpha,7alpha-Dihydroxy-5beta-cholest-24-enoyl-CoA	generic
+metabolite	KEGG:C05448	(24R,25R)-3alpha,7alpha,24-Trihydroxy-5beta-cholestanoyl-CoA	generic
 metabolite	KEGG:C05449	3alpha,7alpha-Dihydroxy-5beta-24-oxocholestanoyl-CoA	generic
 metabolite	KEGG:C05450	3alpha,7alpha,12alpha,24-Tetrahydroxy-5beta-cholestanoyl-CoA	generic
 metabolite	KEGG:C05451	7alpha-Hydroxy-5beta-cholestan-3-one	generic
@@ -4016,7 +4011,7 @@ metabolite	KEGG:C05453	7alpha,12alpha-Dihydroxy-5beta-cholestan-3-one	generic
 metabolite	KEGG:C05454	3alpha,7alpha,12alpha-Trihydroxy-5beta-cholestane	generic
 metabolite	KEGG:C05455	7alpha-Hydroxycholest-4-en-3-one	generic
 metabolite	KEGG:C05458	7alpha,12alpha-Dihydroxy-5alpha-cholestan-3-one	generic
-metabolite	KEGG:C05460	3alpha,7alpha,12alpha-Trihydroxy-5beta-cholest-24-enoyl-CoA	generic
+metabolite	KEGG:C05460	(24E)-3alpha,7alpha,12alpha-Trihydroxy-5beta-cholest-24-enoyl-CoA	generic
 metabolite	KEGG:C05463	Taurodeoxycholate	generic
 metabolite	KEGG:C05464	Glycodeoxycholate	generic
 metabolite	KEGG:C05465	Taurochenodeoxycholate	generic
@@ -4321,7 +4316,7 @@ metabolite	KEGG:C05892	UDP-N-acetylmuramoyl-L-alanyl-gamma-D-glutamyl-L-lysine	g
 metabolite	KEGG:C05893	Undecaprenyl-diphospho-N-acetylmuramoyl-(N-acetylglucosamine)-L-alanyl-gamma-D-glutamyl-L-lysyl-D-alanyl-D-alanine	generic
 metabolite	KEGG:C05894	Undecaprenyl-diphospho-N-acetylmuramoyl-(N-acetylglucosamine)-L-alanyl-D-isoglutaminyl-L-lysyl-D-alanyl-D-alanine	generic
 metabolite	KEGG:C05895	Undecaprenyl-diphospho-N-acetylmuramoyl-(N-acetylglucosamine)-L-alanyl-D-isoglutaminyl-L-lysyl-(glycyl)5-D-alanyl-D-alanine	generic
-metabolite	KEGG:C05896	Crosslinked peptideglycan	generic
+metabolite	KEGG:C05896	Crosslinked peptidoglycan	generic
 metabolite	KEGG:C05897	Undecaprenyl-diphospho-N-acetylmuramoyl-L-alanyl-D-glutamyl-meso-2,6-diaminopimeloyl-D-alanyl-D-alanine	generic
 metabolite	KEGG:C05898	Undecaprenyl-diphospho-N-acetylmuramoyl-(N-acetylglucosamine)-L-alanyl-D-glutamyl-meso-2,6-diaminopimeloyl-D-alanyl-D-alanine	generic
 metabolite	KEGG:C05901	Piceatannol	generic
@@ -4418,8 +4413,8 @@ metabolite	KEGG:C06021	Co(I) corrinoid protein	generic
 metabolite	KEGG:C06022	UDP-3-O-(3-hydroxytetradecanoyl)-D-glucosamine	generic
 metabolite	KEGG:C06023	D-Glucosaminide	generic
 metabolite	KEGG:C06024	3-Deoxy-D-manno-octulosonyl-lipid IV(A)	generic
-metabolite	KEGG:C06025	Di[3-deoxy-D-manno-octulosonyl]-lipid IV(A)	generic
-metabolite	KEGG:C06026	Di[3-deoxy-D-manno-octulosonyl]-lipid A	generic
+metabolite	KEGG:C06025	KDO2-lipid IVA	generic
+metabolite	KEGG:C06026	KDO2-lipid A	generic
 metabolite	KEGG:C06027	L-erythro-3-Methylmalyl-CoA	generic
 metabolite	KEGG:C06028	2-Methylfumaryl-CoA	generic
 metabolite	KEGG:C06029	L-threo-3-Methylmalate	generic
@@ -5161,7 +5156,6 @@ metabolite	KEGG:C06922	Clotrimazole	generic
 metabolite	KEGG:C06923	Cloxacillin	generic
 metabolite	KEGG:C06924	Clozapine	generic
 metabolite	KEGG:C06925	Colestipol	generic
-metabolite	KEGG:C06926	Cosyntropin	generic
 metabolite	KEGG:C06928	Cromolyn	generic
 metabolite	KEGG:C06930	Cyclizine	generic
 metabolite	KEGG:C06931	Cyclobenzaprine	generic
@@ -5318,6 +5312,7 @@ metabolite	KEGG:C07129	Terbutaline	generic
 metabolite	KEGG:C07130	Theophylline	generic
 metabolite	KEGG:C07131	Thiabendazole	generic
 metabolite	KEGG:C07132	Thiethylperazine	generic
+metabolite	KEGG:C07138	5-Aminosalicylate	generic
 metabolite	KEGG:C07139	Ticarcillin	generic
 metabolite	KEGG:C07140	Ticlopidine	generic
 metabolite	KEGG:C07141	Timolol	generic
@@ -6072,7 +6067,6 @@ metabolite	KEGG:C08184	Triamcinolone diacetate	generic
 metabolite	KEGG:C08185	Triamcinolone hexacetonide	generic
 metabolite	KEGG:C08186	Fludrocortisone acetate	generic
 metabolite	KEGG:C08187	Cabergoline	generic
-metabolite	KEGG:C08192	Sermorelin	generic
 metabolite	KEGG:C08193	Aurothioglucose	generic
 metabolite	KEGG:C08195	Meclofenoxate	generic
 metabolite	KEGG:C08197	Neostigmine bromide	generic
@@ -9835,7 +9829,7 @@ metabolite	KEGG:C12079	alpha-Arbutin	generic
 metabolite	KEGG:C12080	Resistomycin	generic
 metabolite	KEGG:C12081	Soyasaponin II	generic
 metabolite	KEGG:C12082	alpha-L-Rhamnopyranosyl-(1->2)-beta-D-galactopyranosyl-(1->2)-beta-D-glucuronopyranoside	generic
-metabolite	KEGG:C12083	(5Z,7E,9E,14Z,17Z)-Eicosapentaenoic acid	generic
+metabolite	KEGG:C12083	(5Z,7E,9E,14Z,17Z)-Icosapentaenoate	generic
 metabolite	KEGG:C12085	Bis-noryangonin	generic
 metabolite	KEGG:C12087	p-Coumaroyltriacetic acid lactone	generic
 metabolite	KEGG:C12088	4-Hydroxycinnamoylmethane	generic
@@ -12338,7 +12332,7 @@ metabolite	KEGG:C15609	3',5'-Dihydroxyflavanone	generic
 metabolite	KEGG:C15610	Cholest-5-ene-3beta,26-diol	generic
 metabolite	KEGG:C15612	Senecionine N-oxide	generic
 metabolite	KEGG:C15613	(25R)-3alpha,7alpha,12alpha-Trihydroxy-5beta-cholestan-26-oyl-CoA	generic
-metabolite	KEGG:C15614	(24R,25R)-3alpha,7alpha,12alpha,24-Tetrahydroxy-5beta-cholestan-26-oyl-CoA	generic
+metabolite	KEGG:C15614	(24R,25R)-3alpha,7alpha,12alpha,24-Tetrahydroxy-5beta-cholestanoyl-CoA	generic
 metabolite	KEGG:C15615	7-Hydroxyisoflavone	generic
 metabolite	KEGG:C15616	7-Methoxyisoflavone	generic
 metabolite	KEGG:C15617	Pirinixic acid	generic
@@ -13043,7 +13037,7 @@ metabolite	KEGG:C16340	beta-Isorenieratene	generic
 metabolite	KEGG:C16341	2(R)-HPOT	generic
 metabolite	KEGG:C16342	2(R)-HOT	generic
 metabolite	KEGG:C16343	Heptadecatrienal	generic
-metabolite	KEGG:C16344	Heptadecatrienoic acid	generic
+metabolite	KEGG:C16344	Norlinolenic acid	generic
 metabolite	KEGG:C16345	Volicitin	generic
 metabolite	KEGG:C16346	17-Hydroxylinolenic acid	generic
 metabolite	KEGG:C16347	Deinoxanthin	generic
@@ -13073,13 +13067,13 @@ metabolite	KEGG:C16370	Delphinidin 3-(6-p-coumaroyl)glucoside	generic
 metabolite	KEGG:C16371	Pelargonidin 3-glucoside 5-caffeoylglucoside	generic
 metabolite	KEGG:C16372	Cyanidin 3-glucoside 5-caffeoylglucoside	generic
 metabolite	KEGG:C16373	Cyanidin-3-O-(6''-O-malonyl-2''-O-glucuronyl)glucoside	generic
-metabolite	KEGG:C16374	(2E,6Z,9Z,12Z,15Z,18Z,21Z)-Tetracosahepta-2,6,9,12,15,18,21-enoyl-CoA	generic
-metabolite	KEGG:C16375	(6Z,9Z,12Z,15Z,18Z,21Z)-3-Hydroxytetracosahexa-6,9,12,15,18,21-enoyl-CoA	generic
-metabolite	KEGG:C16376	(6Z,9Z,12Z,15Z,18Z,21Z)-3-Oxotetracosahexa-6,9,12,15,18,21-enoyl-CoA	generic
+metabolite	KEGG:C16374	(2E,6Z,9Z,12Z,15Z,18Z,21Z)-Tetracosaheptaenoyl-CoA	generic
+metabolite	KEGG:C16375	(3R,6Z,9Z,12Z,15Z,18Z,21Z)-3-Hydroxytetracosahexaenoyl-CoA	generic
+metabolite	KEGG:C16376	(6Z,9Z,12Z,15Z,18Z,21Z)-3-Oxotetracosahexaenoyl-CoA	generic
 metabolite	KEGG:C16386	(R)-Nicotine	generic
-metabolite	KEGG:C16387	(2E,6Z,9Z,12Z,15Z,18Z)-Tetracosahexa-2,6,9,12,15,18-enoyl-CoA	generic
-metabolite	KEGG:C16388	(6Z,9Z,12Z,15Z,18Z)-3-Hydroxytetracosapenta-6,9,12,15,18-enoyl-CoA	generic
-metabolite	KEGG:C16389	(6Z,9Z,12Z,15Z,18Z)-3-Oxotetracosapenta-6,9,12,15,18-enoyl-CoA	generic
+metabolite	KEGG:C16387	(2E,6Z,9Z,12Z,15Z,18Z)-Tetracosahexaenoyl-CoA	generic
+metabolite	KEGG:C16388	(3R,6Z,9Z,12Z,15Z,18Z)-3-Hydroxytetracosapentaenoyl-CoA	generic
+metabolite	KEGG:C16389	(6Z,9Z,12Z,15Z,18Z)-3-Oxotetracosapentaenoyl-CoA	generic
 metabolite	KEGG:C16390	(S)-2-(Hydroxymethyl)glutarate	generic
 metabolite	KEGG:C16391	Trinitrotoluene	generic
 metabolite	KEGG:C16392	4-Hydroxylamino-2,6-dinitrotoluene	generic
@@ -13201,7 +13195,7 @@ metabolite	KEGG:C16509	14alpha-Hydroxy-5beta-cholest-7-ene-3,6-dione	generic
 metabolite	KEGG:C16510	C5a anaphylatoxin	generic
 metabolite	KEGG:C16511	L-Homocysteic acid	generic
 metabolite	KEGG:C16512	Palmitoylethanolamide	generic
-metabolite	KEGG:C16513	(7Z,10Z,13Z,16Z,19Z)-Docosa-7,10,13,16,19-pentaenoic acid	generic
+metabolite	KEGG:C16513	(7Z,10Z,13Z,16Z,19Z)-Docosapentaenoic acid	generic
 metabolite	KEGG:C16514	Beta-amyloid protein 40	generic
 metabolite	KEGG:C16515	Beta-amyloid protein 42	generic
 metabolite	KEGG:C16516	Indolylmethylthiohydroximate	generic
@@ -13215,13 +13209,13 @@ metabolite	KEGG:C16523	3'-N-Debenzoyl-2'-deoxytaxol	generic
 metabolite	KEGG:C16524	3'-N-Debenzoyltaxol	generic
 metabolite	KEGG:C16525	Icosadienoic acid	generic
 metabolite	KEGG:C16526	Icosenoic acid	generic
-metabolite	KEGG:C16527	7,10,13,16-Docosatetraenoic acid	generic
+metabolite	KEGG:C16527	Adrenic acid	generic
 metabolite	KEGG:C16528	Docosanoyl-CoA	generic
 metabolite	KEGG:C16529	Tetracosanoyl-CoA	generic
 metabolite	KEGG:C16530	Icosenoyl-CoA	generic
 metabolite	KEGG:C16531	Docosenoyl-CoA	generic
 metabolite	KEGG:C16532	Tetracosenoyl-CoA	generic
-metabolite	KEGG:C16533	13,16-Docosadienoic acid	generic
+metabolite	KEGG:C16533	(13Z,16Z)-Docosadienoic acid	generic
 metabolite	KEGG:C16534	13,16,19-Docosatrienoic acid	generic
 metabolite	KEGG:C16535	Nonadecanoic acid	generic
 metabolite	KEGG:C16536	9E-Heptadecenoic acid	generic
@@ -13328,7 +13322,7 @@ metabolite	KEGG:C16640	CAI-1	generic
 metabolite	KEGG:C16641	Irinotecan	generic
 metabolite	KEGG:C16643	Morphine-3-glucuronide	generic
 metabolite	KEGG:C16644	1-(3,4-Dimethoxyphenyl)ethane-1,2-diol	generic
-metabolite	KEGG:C16645	(13Z,16Z)-Docosadi-13,16-enoyl-CoA	generic
+metabolite	KEGG:C16645	(13Z,16Z)-Docosadienoyl-CoA	generic
 metabolite	KEGG:C16647	N,N-Diethylglycine	generic
 metabolite	KEGG:C16648	2-n-Propyl-4-pentenoic acid	generic
 metabolite	KEGG:C16649	4-Hydroxyvalproic acid	generic
@@ -13454,7 +13448,7 @@ metabolite	KEGG:C16771	Oscillatoxin A	generic
 metabolite	KEGG:C16772	alpha-Terpineol	generic
 metabolite	KEGG:C16773	Bisabolol oxide A	generic
 metabolite	KEGG:C16774	Bisabolol oxide B	generic
-metabolite	KEGG:C16775	beta-Bisabolene	generic
+metabolite	KEGG:C16775	(S)-beta-Bisabolene	generic
 metabolite	KEGG:C16776	beta-Sesquiphellandrene	generic
 metabolite	KEGG:C16777	Sabinene	generic
 metabolite	KEGG:C16778	Cantharidin	generic
@@ -13875,6 +13869,8 @@ metabolite	KEGG:C17274	Glucobarbarin	generic
 metabolite	KEGG:C17275	Glucosisymbrin	generic
 metabolite	KEGG:C17276	Retinol-(cellular-retinol-binding-protein)	generic
 metabolite	KEGG:C17277	(+)-Valencene	generic
+metabolite	KEGG:C17278	Ximenic acid	generic
+metabolite	KEGG:C17279	Ximenoyl-CoA	generic
 metabolite	KEGG:C17302	AL-294	generic
 metabolite	KEGG:C17303	AL-321	generic
 metabolite	KEGG:C17309	Cilazaprilat	generic
@@ -14728,7 +14724,6 @@ metabolite	KEGG:C18195	(3R)-11-cis-3-Hydroxyretinal	generic
 metabolite	KEGG:C18196	(3R)-all-trans-3-Hydroxyretinal	generic
 metabolite	KEGG:C18197	Oxyntomodulin	generic
 metabolite	KEGG:C18198	Proadrenomedullin N-terminal 20 peptide	generic
-metabolite	KEGG:C18199	Cathelicidin	generic
 metabolite	KEGG:C18200	Erythropoietin	generic
 metabolite	KEGG:C18201	Prolactin	generic
 metabolite	KEGG:C18202	8-Methyl-6-nonenoic acid	generic
@@ -14815,11 +14810,6 @@ metabolite	KEGG:C18284	Benzo[a]pyrene-cis-11,12-dihydrodiol	generic
 metabolite	KEGG:C18285	Benzo[a]pyrene-trans-11,12-dihydrodiol	generic
 metabolite	KEGG:C18286	Benzo[a]pyrene-11,12-epoxide	generic
 metabolite	KEGG:C18287	Monocyte locomotion inhibitory factor	generic
-metabolite	KEGG:C18288	Core protein	generic
-metabolite	KEGG:C18289	Envelope glycoprotein E2	generic
-metabolite	KEGG:C18290	Serine protease NS3	generic
-metabolite	KEGG:C18291	Non-structural protein 4A	generic
-metabolite	KEGG:C18292	Non-structural protein 5A	generic
 metabolite	KEGG:C18293	Nonaketamide monocyclic intermediate	generic
 metabolite	KEGG:C18294	Nonaketamide tricyclic intermediate	generic
 metabolite	KEGG:C18295	Pretetramid	generic
@@ -14848,7 +14838,7 @@ metabolite	KEGG:C18317	2,4,5-Trihydroxytoluene	generic
 metabolite	KEGG:C18318	cis,cis-2,4-Dihydroxy-5-methyl-6-oxo-2,4-hexadienoate	generic
 metabolite	KEGG:C18319	2-Methylbutyrate	generic
 metabolite	KEGG:C18320	4-Amino-2-nitrotoluene	generic
-metabolite	KEGG:C18321	(2Z,6Z,10Z,14Z,18Z,22Z,26Z,30Z,34E)-Decaprenyl diphosphate	generic
+metabolite	KEGG:C18321	trans,octacis-Decaprenyl diphosphate	generic
 metabolite	KEGG:C18323	3-Methylfumaryl-CoA	generic
 metabolite	KEGG:C18324	(2S)-Methylsuccinyl-CoA	generic
 metabolite	KEGG:C18325	Feruloylagmatine	generic
@@ -15515,14 +15505,8 @@ metabolite	KEGG:C18986	Fenchlorphos	generic
 metabolite	KEGG:C18987	Fonofos	generic
 metabolite	KEGG:C18988	Formothion	generic
 metabolite	KEGG:C18989	Fosmethilan	generic
-metabolite	KEGG:C18991	Protein P	generic
 metabolite	KEGG:C18992	Vinylidene chloride-vinyl chloride copolymer	generic
 metabolite	KEGG:C18993	2,5-Xylidine	generic
-metabolite	KEGG:C18994	Accessory protein p12I	generic
-metabolite	KEGG:C18995	P13 protein	generic
-metabolite	KEGG:C18996	Accessory protein p30II	generic
-metabolite	KEGG:C18997	Protein C	generic
-metabolite	KEGG:C18998	Non-structural protein V	generic
 metabolite	KEGG:C18999	Fosthietan	generic
 metabolite	KEGG:C19000	IPSP	generic
 metabolite	KEGG:C19001	Isazofos	generic
@@ -15837,7 +15821,6 @@ metabolite	KEGG:C19309	Vinyl acetate	generic
 metabolite	KEGG:C19310	4-Vinylcyclohexene	generic
 metabolite	KEGG:C19311	4-Vinylcyclohexene diepoxide	generic
 metabolite	KEGG:C19312	Acenaphthene	generic
-metabolite	KEGG:C19313	HTLV-1 basic zipper factor	generic
 metabolite	KEGG:C19314	Acepyrene	generic
 metabolite	KEGG:C19315	Acridine orange	generic
 metabolite	KEGG:C19316	Allyl chloride	generic
@@ -16268,7 +16251,6 @@ metabolite	KEGG:C19747	Germacrene C	generic
 metabolite	KEGG:C19748	(E)-gamma-Bisabolene	generic
 metabolite	KEGG:C19749	(E)-alpha-Bisabolene	generic
 metabolite	KEGG:C19750	3,5-Dihydroxybiphenyl	generic
-metabolite	KEGG:C19751	(S)-beta-Bisabolene	generic
 metabolite	KEGG:C19752	(S)-beta-Macrocarpene	generic
 metabolite	KEGG:C19753	cis-Muurola-3,5-diene	generic
 metabolite	KEGG:C19754	cis-Muurola-4(14),5-diene	generic
@@ -16366,7 +16348,6 @@ metabolite	KEGG:C19845	Pimeloyl-[acyl-carrier protein]	generic
 metabolite	KEGG:C19846	Pimeloyl-[acyl-carrier protein] methyl ester	generic
 metabolite	KEGG:C19847	Demethylmenaquinol	generic
 metabolite	KEGG:C19848	Adenylated molybdopterin	generic
-metabolite	KEGG:C19849	HIV1 protease	generic
 metabolite	KEGG:C19850	4-O-Phosphohygromycin B	generic
 metabolite	KEGG:C19851	ADP-ribose 1'',2''-phosphate	generic
 metabolite	KEGG:C19852	tritrans,heptacis-Undecaprenyl diphosphate	generic
@@ -16702,9 +16683,9 @@ metabolite	KEGG:C20187	Achilleol B	generic
 metabolite	KEGG:C20188	Glutinol	generic
 metabolite	KEGG:C20189	Baccharis oxide	generic
 metabolite	KEGG:C20190	P1,P6-Bis(5'-adenosyl)hexaphosphate	generic
-metabolite	KEGG:C20191	alpha-Seco-amyrin	generic
+metabolite	KEGG:C20191	alpha-seco-Amyrin	generic
 metabolite	KEGG:C20192	Marneral	generic
-metabolite	KEGG:C20193	beta-Seco-amyrin	generic
+metabolite	KEGG:C20193	beta-seco-Amyrin	generic
 metabolite	KEGG:C20194	delta-Amyrin	generic
 metabolite	KEGG:C20195	Tirucalla-7,24-dien-3beta-ol	generic
 metabolite	KEGG:C20196	Salvinorin A	generic
@@ -17145,6 +17126,7 @@ metabolite	KEGG:C20652	7-[(3S)-3-Amino-3-carboxypropyl]-4-demethylwyosine in tRN
 metabolite	KEGG:C20653	2-Benzylmalic acid	generic
 metabolite	KEGG:C20654	3-Benzylmalic acid	generic
 metabolite	KEGG:C20655	Aldopyranose	generic
+metabolite	KEGG:C20656	(L-Prolyl)adenylate	generic
 metabolite	KEGG:C20657	meso-2,3-Butanediol	generic
 metabolite	KEGG:C20658	O-Acetyl-ADP-ribose	generic
 metabolite	KEGG:C20659	7-[(3S)-3-Amino-3-(methoxycarbonyl)propyl]wyosine in tRNA(Phe)	generic
@@ -17224,7 +17206,7 @@ metabolite	KEGG:C20736	Gypenoside XVII	generic
 metabolite	KEGG:C20737	6-Geranylgeranyl-2-methylbenzene-1,4-diol	generic
 metabolite	KEGG:C20738	6-Geranylgeranyl-2,3-dimethylbenzene-1,4-diol	generic
 metabolite	KEGG:C20739	Neopikromycin	generic
-metabolite	KEGG:C20740	Novapikromyin	generic
+metabolite	KEGG:C20740	Novapikromycin	generic
 metabolite	KEGG:C20741	Novamethymycin	generic
 metabolite	KEGG:C20742	2'-Phospho-cyclic ADP-ribose	generic
 metabolite	KEGG:C20743	Protein N6-acetyl-L-lysine	generic
@@ -18244,8 +18226,8 @@ metabolite	KEGG:C21776	2-({[(4-Methoxyphenyl)methyl](methyl)amino}methyl)-2-meth
 metabolite	KEGG:C21777	4-Hydroxy-L-tryptophan	generic
 metabolite	KEGG:C21778	Norbaeocystin	generic
 metabolite	KEGG:C21779	Baeocystin	generic
-metabolite	KEGG:C21780	alpha-D-Mannosyl-(1-3)-N-acetyl-alpha-D-glucosaminyl-diphospho-ditrans,octacis-undecaprenol	generic
-metabolite	KEGG:C21781	alpha-D-Mannosyl-(1-3)-alpha-D-mannosyl-(1-3)-alpha-D-mannosyl-(1-3)-N-acetyl-alpha-D-glucosaminyl-diphospho-ditrans,octacis-undecaprenol	generic
+metabolite	KEGG:C21780	alpha-D-Mannosyl-(1->3)-N-acetyl-alpha-D-glucosaminyl-diphospho-ditrans,octacis-undecaprenol	generic
+metabolite	KEGG:C21781	alpha-D-Mannosyl-(1->3)-alpha-D-mannosyl-(1->3)-alpha-D-mannosyl-(1->3)-N-acetyl-alpha-D-glucosaminyl-diphospho-ditrans,octacis-undecaprenol	generic
 metabolite	KEGG:C21782	Mogrol	generic
 metabolite	KEGG:C21783	Mogroside IE	generic
 metabolite	KEGG:C21784	Nerylneryl diphosphate	generic
@@ -18292,9 +18274,209 @@ metabolite	KEGG:C21829	ent-Cassa-12,15-diene-2beta,3beta-diol	generic
 metabolite	KEGG:C21830	11,20-Dihydroxyferruginol	generic
 metabolite	KEGG:C21831	ent-2alpha,3alpha-Dihydroxyisokaurene	generic
 metabolite	KEGG:C21832	(4S)- 2,3-Dehydroflavan-3,4-diol	generic
+metabolite	KEGG:C21833	Kaempferol-3-O-rutinoside	generic
+metabolite	KEGG:C21834	(4Z,8Z)-4,8-Dimethyl-12-oxotrideca-4,8-dienal	generic
 metabolite	KEGG:C21835	12,18-Didecarboxysiroheme	generic
 metabolite	KEGG:C21836	meso-Zeaxanthin	generic
 metabolite	KEGG:C21837	3-Geranyl-3-[(Z)-2-isocyanoethenyl]-1H-indole	generic
 metabolite	KEGG:C21838	Hapalindole H	generic
 metabolite	KEGG:C21839	12-epi-Hapalindole U	generic
 metabolite	KEGG:C21840	12-epi-Fischerindole U	generic
+metabolite	KEGG:C21841	11-Oxocucurbitadienol	generic
+metabolite	KEGG:C21842	11-Hydroxycucurbitadienol	generic
+metabolite	KEGG:C21843	Drimendiol	generic
+metabolite	KEGG:C21844	Adenine in mRNA	generic
+metabolite	KEGG:C21845	N6-Methyladenine in mRNA	generic
+metabolite	KEGG:C21846	Sordaricin	generic
+metabolite	KEGG:C21847	4'-O-Demethylsordarin	generic
+metabolite	KEGG:C21848	GDP-6-deoxy-alpha-D-altrose	generic
+metabolite	KEGG:C21849	4-O-(2-N-Acetyl-beta-D-glucosaminyl-D-ribitylphospho)n-di[(2R)-1-glycerophospho]-N-acetyl-beta-D-mannosaminyl-(1->4)-N-acetyl-alpha-D-glucosaminyl-diphospho-ditrans,octacis-undecaprenol	generic
+metabolite	KEGG:C21850	3-Bromo-4-hydroxybenzoate	generic
+metabolite	KEGG:C21851	Pyridinium-3,5-biscarboxylic acid mononucleotide	generic
+metabolite	KEGG:C21852	3,5-Dibromobenzene-1,2-diol	generic
+metabolite	KEGG:C21853	3-Bromo-4,5-dihydroxybenzoate	generic
+metabolite	KEGG:C21854	Kaempferol 3-O-rhamnoside-7-O-glucoside	generic
+metabolite	KEGG:C21855	5-Chloro-1H-pyrrole-2-carbonyl-[peptidyl-carrier protein]	generic
+metabolite	KEGG:C21856	4,5-Dichloro-1H-pyrrole-2-carbonyl-[peptidyl-carrier protein]	generic
+metabolite	KEGG:C21858	N-(4-Oxoglutaryl)-L-cysteinylglycine	generic
+metabolite	KEGG:C21859	cis-3-[2,2-Dichloro-1-(4-chlorophenyl)vinyl]-6-chlorocyclohexa-3,5-diene-1,2-diol	generic
+metabolite	KEGG:C21860	3-Demethylubiquinol	generic
+metabolite	KEGG:C21861	[Protein]-dehydroalanine	generic
+metabolite	KEGG:C21862	5-Bromo-1H-pyrrole-2-carbonyl-[peptidyl-carrier protein]	generic
+metabolite	KEGG:C21863	4,5-Dibromo-1H-pyrrole-2-carbonyl-[peptidyl-carrier protein]	generic
+metabolite	KEGG:C21864	3,4,5-Tribromo-1H-pyrrole-2-carbonyl-[peptidyl-carrier protein]	generic
+metabolite	KEGG:C21865	5-Chloro-L-tryptophan	generic
+metabolite	KEGG:C21866	6-Chloro-L-tryptophan	generic
+metabolite	KEGG:C21867	6-Chloro-D-tryptophan	generic
+metabolite	KEGG:C21868	6,7-Dichloro-L-tryptophan	generic
+metabolite	KEGG:C21869	4-O-[(2-beta-D-Glucosyl-1-D-ribitylphospho)n-(1-D-ribitylphospho)-(2R)-1-glycerophospho]-N-acetyl-beta-D-mannosaminyl-(1->4)-N-acetyl-alpha-D-glucosaminyl-diphospho-ditrans,octacis-undecaprenol	generic
+metabolite	KEGG:C21870	4-O-(2-N-Acetyl-alpha-D-glucosaminyl-D-ribitylphospho)n-di[(2R)-1-glycerophospho]-N-acetyl-beta-D-mannosaminyl-(1->4)-N-acetyl-alpha-D-glucosaminyl-diphospho-ditrans,octacis-undecaprenol	generic
+metabolite	KEGG:C21871	(E)-omega-(Methylthio)alkyl-thiohydroximate	generic
+metabolite	KEGG:C21872	Aliphatic desulfoglucosinolate	generic
+metabolite	KEGG:C21873	2-Methylquinolin-4-ol	generic
+metabolite	KEGG:C21874	Aurachin B epoxide	generic
+metabolite	KEGG:C21875	Aurachin A	generic
+metabolite	KEGG:C21876	Fenbendazole	generic
+metabolite	KEGG:C21877	5-Carboxy-1-(5-O-phospho-beta-D-ribofuranosyl)pyridin-1-ium-3-carbonyl adenylate	generic
+metabolite	KEGG:C21878	Pyridinium-3-carboxy-5-thiocarboxylic acid mononucleotide	generic
+metabolite	KEGG:C21879	1-(5-O-Phospho-beta-D-ribofuranosyl)-5-(sulfanylcarbonyl)pyridin-1-ium-3-carbonyl adenylate	generic
+metabolite	KEGG:C21880	[Protein]-S-[5-carboxy-1-(5-O-phosphono-beta-D-ribofuranosyl)pyridin-1-ium-3-carbonyl]-L-cysteine	generic
+metabolite	KEGG:C21881	[Protein]-S-[1-(5-O-phosphono-beta-D-ribofuranosyl)-5-(sulfanylcarbonyl)pyridin-1-ium-3-carbonyl]-L-cysteine	generic
+metabolite	KEGG:C21882	Fenbendazole S-oxide	generic
+metabolite	KEGG:C21883	Hydroxyalbendazole	generic
+metabolite	KEGG:C21884	4'-Hydroxyfenbendazole	generic
+metabolite	KEGG:C21885	omega-Hydroxy-beta-dihydromenaquinone-9	generic
+metabolite	KEGG:C21886	omega-Hydroxy-long-chain fatty acid	generic
+metabolite	KEGG:C21887	Rhizobitoxine	generic
+metabolite	KEGG:C21888	Dihydrorhizobitoxine	generic
+metabolite	KEGG:C21889	(2S)-3-(4-Hydroxyphenyl)-2-isocyanopropanoate	generic
+metabolite	KEGG:C21890	4-[(E)-2-Isocyanoethenyl]phenol	generic
+metabolite	KEGG:C21891	(2E)-3-(4-Hydroxyphenyl)-2-isocyanoprop-2-enoate	generic
+metabolite	KEGG:C21892	(2S)-3-(1H-Indol-3-yl)-2-isocyanopropanoate	generic
+metabolite	KEGG:C21893	3-[(Z)-2-Isocyanoethenyl]-1H-indole	generic
+metabolite	KEGG:C21894	3-[(E)-2-Isocyanoethenyl]-1H-indole	generic
+metabolite	KEGG:C21895	2-Acetylphloroglucinol	generic
+metabolite	KEGG:C21896	2,4-Diacetylphloroglucinol	generic
+metabolite	KEGG:C21897	Dihydrochanoclavine-I aldehyde	generic
+metabolite	KEGG:C21898	[SoxY protein]-S-sulfanyl-L-cysteine	generic
+metabolite	KEGG:C21899	[SoxY protein]-S-(2-sulfodisulfanyl)-L-cysteine	generic
+metabolite	KEGG:C21900	[SAMP]-Gly-Gly	generic
+metabolite	KEGG:C21901	[SAMP]-Gly-Gly-AMP	generic
+metabolite	KEGG:C21902	Dolichyl beta-D-glucuronosyl-(1->3)-beta-D-glucosyl phosphate	generic
+metabolite	KEGG:C21903	Delta9-Tetrahydrocannabinolate	generic
+metabolite	KEGG:C21904	Trehalose monomycolate	generic
+metabolite	KEGG:C21905	3-Oxocholan-24-oyl-CoA	generic
+metabolite	KEGG:C21906	3-Oxochol-4-en-24-oyl-CoA	generic
+metabolite	KEGG:C21907	12alpha-Hydroxy-3-oxocholan-24-oyl-CoA	generic
+metabolite	KEGG:C21908	12alpha-Hydroxy-3-oxochol-4-en-24-oyl-CoA	generic
+metabolite	KEGG:C21909	7alpha-Hydroxy-3-oxochol-24-oyl-CoA	generic
+metabolite	KEGG:C21910	7alpha,12alpha-Dihydroxy-3-oxochol-24-oyl-CoA	generic
+metabolite	KEGG:C21911	7beta-Hydroxy-3-oxochol-24-oyl-CoA	generic
+metabolite	KEGG:C21912	7beta-Hydroxy-3-oxochol-4-en-24-oyl-CoA	generic
+metabolite	KEGG:C21913	Dihydro-4-coumaroyl-CoA	generic
+metabolite	KEGG:C21914	Dihydroferuloyl-CoA	generic
+metabolite	KEGG:C21915	Carotenoid beta-end group	generic
+metabolite	KEGG:C21916	Carotenoid phi-end group	generic
+metabolite	KEGG:C21917	Carotenoid chi-end group	generic
+metabolite	KEGG:C21918	14alpha-Methylsteroid	generic
+metabolite	KEGG:C21919	Delta14-Steroid	generic
+metabolite	KEGG:C21920	14alpha-Hydroxymethylsteroid	generic
+metabolite	KEGG:C21921	14alpha-Formylsteroid	generic
+metabolite	KEGG:C21922	6alpha-Hydroxygermacra-1(10),4,11(13)-trien-12-oate	generic
+metabolite	KEGG:C21923	9-Hydroxy-12-oxo-10(E),15(Z)-octadecadienoic acid	generic
+metabolite	KEGG:C21924	9-Hydroxy-12-oxo-15(Z)-octadecenoic acid	generic
+metabolite	KEGG:C21925	Medium-chain fatty acid	generic
+metabolite	KEGG:C21926	Medium-chain acyl-CoA	generic
+metabolite	KEGG:C21927	Medium-chain acyl-[acyl-carrier protein]	generic
+metabolite	KEGG:C21928	(2Z,4E)-4-Amino-6-oxohepta-2,4-dienedioate	generic
+metabolite	KEGG:C21929	(-)-Bornane-2,5-dione	generic
+metabolite	KEGG:C21930	(-)-5-Oxo-1,2-campholide	generic
+metabolite	KEGG:C21931	Cerotic acid	generic
+metabolite	KEGG:C21932	Cerotoyl-CoA	generic
+metabolite	KEGG:C21933	Montanic acid	generic
+metabolite	KEGG:C21934	Montanoyl-CoA	generic
+metabolite	KEGG:C21935	(6Z,9Z)-Octadecadienoyl-CoA	generic
+metabolite	KEGG:C21936	(8Z,11Z)-Icosadienoic acid	generic
+metabolite	KEGG:C21937	(8Z,11Z)-Icosadienoyl-CoA	generic
+metabolite	KEGG:C21938	Mead acid	generic
+metabolite	KEGG:C21939	(5Z,8Z,11Z)-Icosatrienoyl-CoA	generic
+metabolite	KEGG:C21940	(7Z,10Z,13Z)-Docosatrienoic acid	generic
+metabolite	KEGG:C21941	(7Z,10Z,13Z)-Docosatrienoyl-CoA	generic
+metabolite	KEGG:C21942	Sapienic acid	generic
+metabolite	KEGG:C21943	Sapienoyl-CoA	generic
+metabolite	KEGG:C21944	cis-Vaccenic acid	generic
+metabolite	KEGG:C21945	cis-Vaccenoyl-CoA	generic
+metabolite	KEGG:C21946	Paullinic acid	generic
+metabolite	KEGG:C21947	Paullinoyl-CoA	generic
+metabolite	KEGG:C21948	Shibic acid	generic
+metabolite	KEGG:C21949	(11Z,14Z,17Z,20Z,23Z)-Hexacosapentaenoyl-CoA	generic
+metabolite	KEGG:C21950	(13Z,16Z,19Z,22Z,25Z)-Octacosapentaenoic acid	generic
+metabolite	KEGG:C21951	(13Z,16Z,19Z,22Z,25Z)-Octacosapentaenoyl-CoA	generic
+metabolite	KEGG:C21952	(8Z,11Z,14Z,17Z,20Z,23Z)-Hexacosahexaenoic acid	generic
+metabolite	KEGG:C21953	(8Z,11Z,14Z,17Z,20Z,23Z)-Hexacosahexaenoyl-CoA	generic
+metabolite	KEGG:C21954	(+)-Piperitol	generic
+metabolite	KEGG:C21955	L-Galactono-1,5-lactone	generic
+metabolite	KEGG:C21956	1,6-Didemethyltoxoflavin	generic
+metabolite	KEGG:C21957	Reumycin	generic
+metabolite	KEGG:C21958	(10Z,13Z,16Z,19Z,22Z,25Z)-Octacosahexaenoic acid	generic
+metabolite	KEGG:C21959	(10Z,13Z,16Z,19Z,22Z,25Z)-Octacosahexaenoyl-CoA	generic
+metabolite	KEGG:C21960	(11Z,14Z,17Z,20Z)-Hexacosatetraenoic acid	generic
+metabolite	KEGG:C21961	(11Z,14Z,17Z,20Z)-Hexacosatetraenoyl-CoA	generic
+metabolite	KEGG:C21962	(13Z,16Z,19Z,22Z)-Octacosatetraenoic acid	generic
+metabolite	KEGG:C21963	(13Z,16Z,19Z,22Z)-Octacosatetraenoyl-CoA	generic
+metabolite	KEGG:C21964	(8Z,11Z,14Z,17Z,20Z)-Hexacosapentaenoic acid	generic
+metabolite	KEGG:C21965	(8Z,11Z,14Z,17Z,20Z)-Hexacosapentaenoyl-CoA	generic
+metabolite	KEGG:C21966	(10Z,13Z,16Z,19Z,22Z)-Octacosapentaenoic acid	generic
+metabolite	KEGG:C21967	(10Z,13Z,16Z,19Z,22Z)-Octacosapentaenoyl-CoA	generic
+metabolite	KEGG:C21968	2-O-[alpha-D-Glucopyranosyl-(1->6)-alpha-D-glucopyranosyl]-D-glycerate	generic
+metabolite	KEGG:C21969	2-O-[6-O-Octanoyl-alpha-D-glucopyranosyl-(1->6)-alpha-D-glucopyranosyl]-D-glycerate	generic
+metabolite	KEGG:C21970	2-Acylphloroglucinol 1-O-beta-D-glucoside	generic
+metabolite	KEGG:C21971	5-Amino-5-(4-hydroxybenzyl)-6-(D-ribitylimino)-5,6-dihydrouracil	generic
+metabolite	KEGG:C21972	[SoxY protein]-L-cysteine	generic
+metabolite	KEGG:C21973	Hapalindole U	generic
+metabolite	KEGG:C21974	Hapalindole G	generic
+metabolite	KEGG:C21975	12-epi-Fischerindole G	generic
+metabolite	KEGG:C21976	L-Threonyl-[L-threonyl-carrier protein]	generic
+metabolite	KEGG:C21977	4-Chloro-L-threonyl-[L-threonyl-carrier protein]	generic
+metabolite	KEGG:C21978	Cyclooctat-9-ene-5,7-diol	generic
+metabolite	KEGG:C21979	Cyclooctatin	generic
+metabolite	KEGG:C21980	(6Z,9Z)-Hexadecadienoic acid	generic
+metabolite	KEGG:C21981	(6Z,9Z)-Hexadecadienoyl-CoA	generic
+metabolite	KEGG:C21982	Lipid IVB	generic
+metabolite	KEGG:C21983	Deacyl-lipid IVB	generic
+metabolite	KEGG:C21984	Deacyl-lipid IVA	generic
+metabolite	KEGG:C21985	Penta-acylated lipid A	generic
+metabolite	KEGG:C21986	Penta-acylated KDO-lipid A	generic
+metabolite	KEGG:C21987	Penta-acylated KDO2-lipid A	generic
+metabolite	KEGG:C21988	Hexa-acylated KDO2-lipid A	generic
+metabolite	KEGG:C21991	Palmitoleoyl-myristoyl-KDO2-lipid A	generic
+metabolite	KEGG:C21992	3'-O-Deacylated KDO2-lipid A	generic
+metabolite	KEGG:C21993	C16-KDO2-lipid A	generic
+metabolite	KEGG:C21994	1-Dephospho-KDO2-lipid A	generic
+metabolite	KEGG:C21995	1-PEtN-KDO2-lipid A	generic
+metabolite	KEGG:C21996	1-PEtN-KDO-lipid A	generic
+metabolite	KEGG:C21997	4'-Dephosphorylated 1-PEtN-KDO-lipid A	generic
+metabolite	KEGG:C21998	H. pylori KDO-lipid A	generic
+metabolite	KEGG:C21999	Acyl-KDO2-lipid IVA	generic
+metabolite	KEGG:C22000	(R)-3-(Tetradecanoyloxy)tetradecanoic acid	generic
+metabolite	KEGG:C22001	(R)-3-Hydroxymyristic acid	generic
+metabolite	KEGG:C22002	Lipid IIB	generic
+metabolite	KEGG:C22003	(S)-2-Hydroxymyristate-modified lipid A	generic
+metabolite	KEGG:C22005	2-Hydroxyflavanone	generic
+metabolite	KEGG:C22006	(R)-(Indol-3-yl)lactate	generic
+metabolite	KEGG:C22007	Sideretin	generic
+metabolite	KEGG:C22008	Dolabradiene	generic
+metabolite	KEGG:C22009	15,16-Epoxydolabrene	generic
+metabolite	KEGG:C22010	3beta-Hydroxy-15,16-epoxydolabrene	generic
+metabolite	KEGG:C22011	Zealexin A1	generic
+metabolite	KEGG:C22012	[(4S)-4-(5,5-Dimethylcyclohex-1-en-1-yl)-cyclohex-1-en-1-yl]methanol	generic
+metabolite	KEGG:C22013	(4S)-4-(5,5-Dimethylcyclohex-1-en-1-yl)cyclohex-1-ene-1-carbaldehyde	generic
+metabolite	KEGG:C22014	7-Deoxyloganetic alcohol	generic
+metabolite	KEGG:C22015	Indole-3-carbonyl nitrile	generic
+metabolite	KEGG:C22016	4-Hydroxyindole-3-carbonyl nitrile	generic
+metabolite	KEGG:C22017	1-Hexacosanoyl-2-acyl-[phosphoglycerolipid]	generic
+metabolite	KEGG:C22018	1-[(17Z)-Hexacos-17-enoyl]-2-acyl-[phosphoglycerolipid]	generic
+metabolite	KEGG:C22019	1-Tetracosanoyl-2-acyl-[phosphoglycerolipid]	generic
+metabolite	KEGG:C22020	1-[(15Z)-Tetracos-15-enoyl]-2-acyl-[phosphoglycerolipid]	generic
+metabolite	KEGG:C22021	L-Tyrosinal	generic
+metabolite	KEGG:C22022	trans-Delta2-Meromycolyl-[acyl-carrier protein]	generic
+metabolite	KEGG:C22023	Meromycolyl-[acyl-carrier protein]	generic
+metabolite	KEGG:C22024	Staphylopine	generic
+metabolite	KEGG:C22025	(2S)-2-Amino-4-{[(1R)-1-carboxy-2-(1H-imidazol-4-yl)ethyl]amino}butanoate	generic
+metabolite	KEGG:C22026	(R)-3-(Tetradecanoyloxy)hexadecanoic acid	generic
+metabolite	KEGG:C22027	8-Methylmenaquinone	generic
+metabolite	KEGG:C22028	2-Demethyl-8-methylmenaquinone	generic
+metabolite	KEGG:C22029	alpha-D-Galactosamine 1-phosphate	generic
+metabolite	KEGG:C22030	5-Amino-1-(beta-D-ribosyl)imidazole	generic
+metabolite	KEGG:C22031	Cytidine 5'-diphosphoramidate	generic
+metabolite	KEGG:C22032	Cytidine 3'-phospho-5'-diphosphoramidate	generic
+metabolite	KEGG:C22033	N5-(Cytidine 5'-diphosphoramidyl)-L-glutamine	generic
+metabolite	KEGG:C22034	D-Xylono-1,4-lactone 5-phosphate	generic
+metabolite	KEGG:C22035	5-Phospho-D-xylonate	generic
+metabolite	KEGG:C22036	L-Arabino-1,4-lactone 5-phosphate	generic
+metabolite	KEGG:C22037	5-Phospho-L-arabinate	generic
+metabolite	KEGG:C22038	(R)-3-(3,4-Dihydroxyphenyl)lactate	generic
+metabolite	KEGG:C22039	2-Carboxy-1,4-naphthoquinone	generic
+metabolite	KEGG:C22040	S-Methyl-L-cysteine	generic
+metabolite	KEGG:C22041	Acifluorfen	generic
+metabolite	KEGG:C22042	Pyribencarb	generic
