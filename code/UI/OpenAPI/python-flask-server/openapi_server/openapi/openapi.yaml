@@ -45,6 +45,11 @@ tags:
     description: Documentation for the reasoner entity function
     url: https://rtx.ncats.io/devED/overview.html#entity
   name: entity
+- description: Return data types in the knowledge graph
+  externalDocs:
+    description: Documentation for the reasoner types function
+    url: https://rtx.ncats.io/devED/overview.html#types
+  name: types
 - description: Return a list of example questions that the reasoner can answer
   externalDocs:
     description: Documentation for the reasoner exampleQuestions function
@@ -192,7 +197,6 @@ paths:
         name: message_id
         required: true
         schema:
-          format: int32
           type: integer
         style: simple
       responses:
@@ -219,7 +223,6 @@ paths:
         name: message_id
         required: true
         schema:
-          format: int32
           type: integer
         style: simple
       responses:
@@ -270,7 +273,6 @@ paths:
         name: result_id
         required: true
         schema:
-          format: int32
           type: integer
         style: simple
       responses:
@@ -297,7 +299,6 @@ paths:
         name: result_id
         required: true
         schema:
-          format: int32
           type: integer
         style: simple
       responses:
@@ -323,7 +324,6 @@ paths:
         name: result_id
         required: true
         schema:
-          format: int32
           type: integer
         style: simple
       requestBody:
@@ -373,6 +373,104 @@ paths:
       - translate
       x-swagger-router-controller: openapi_server.controllers.translate_controller
       x-openapi-router-controller: openapi_server.controllers.translate_controller
+  /types/edges:
+    get:
+      operationId: get_all_edge_types
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  type: string
+                type: array
+          description: successful operation
+        404:
+          description: No types found
+      summary: Obtain all possible types of edges
+      tags:
+      - types
+      x-openapi-router-controller: openapi_server.controllers.types_controller
+  /types/edges/{node_type1}/{node_type2}:
+    get:
+      operationId: get_node_to_node_edge_types
+      parameters:
+      - description: Node type 1 to filter possible edges by
+        explode: false
+        in: path
+        name: node_type1
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: Node type 2 to filter possible edges by
+        explode: false
+        in: path
+        name: node_type2
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  type: string
+                type: array
+          description: successful operation
+        404:
+          description: No types found
+      summary: Obtain all possible types of edges linking node_type1 and node_type2
+      tags:
+      - types
+      x-openapi-router-controller: openapi_server.controllers.types_controller
+  /types/edges/{node_type}:
+    get:
+      operationId: get_node_edge_types
+      parameters:
+      - description: Node type to filter possible edges by
+        explode: false
+        in: path
+        name: node_type
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  type: string
+                type: array
+          description: successful operation
+        404:
+          description: No types found
+      summary: Obtain all possible types of edges linked to a node_type
+      tags:
+      - types
+      x-openapi-router-controller: openapi_server.controllers.types_controller
+  /types/nodes:
+    get:
+      operationId: get_node_types
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                items:
+                  type: string
+                type: array
+          description: successful operation
+        404:
+          description: No types found
+      summary: Obtain all possible types of nodes
+      tags:
+      - types
+      x-openapi-router-controller: openapi_server.controllers.types_controller
 components:
   schemas:
     FeedbackResponse:
@@ -385,7 +483,6 @@ components:
         detail:
           type: string
         status:
-          format: int32
           type: integer
         title:
           type: string
@@ -412,7 +509,6 @@ components:
             $ref: '#/components/schemas/Rating'
           type: array
         n_ratings:
-          format: int32
           type: integer
       type: object
     Rating:
@@ -426,7 +522,6 @@ components:
         description:
           type: string
         rating_id:
-          format: int32
           type: integer
         name:
           type: string
@@ -455,7 +550,6 @@ components:
             $ref: '#/components/schemas/ExpertiseLevel'
           type: array
         n_expertise_levels:
-          format: int32
           type: integer
       type: object
     ExpertiseLevel:
@@ -469,7 +563,6 @@ components:
         description:
           type: string
         expertise_level_id:
-          format: int32
           type: integer
         name:
           type: string
@@ -3189,17 +3282,14 @@ components:
         max_results:
           description: Maximum number of individual results to return
           example: 100
-          format: int32
           type: integer
         page_size:
           description: Split the results into pages with this number of results each
           example: 20
-          format: int32
           type: integer
         page_number:
           description: Page number of results when the number of results exceeds the page_size
           example: 1
-          format: int32
           type: integer
         reasoner_ids:
           description: List of reasoners to consult for the query
@@ -3220,6 +3310,7 @@ components:
             $ref: '#/components/schemas/PreviousMessageProcessingPlan'
           type: object
       type: object
+      x-body-name: request_body
     PreviousMessageProcessingPlan:
       additionalProperties: true
       example:
@@ -4629,7 +4720,6 @@ components:
         n_results:
           description: Total number of results from the query (which may be less than what is returned if limits were placed on the number of results to return)
           example: 42
-          format: int32
           type: integer
         message_code:
           description: Set to OK for success, or some other short string to indicate and error (e.g., KGUnavailable, TermNotFound, etc.)
@@ -4843,7 +4933,6 @@ components:
         result_group:
           description: An integer group number for results for use in cases where several results should be grouped together. Also useful to control sorting ascending.
           example: 1
-          format: int32
           type: integer
         result_group_similarity_score:
           description: A score that denotes the similarity of this result to other members of the result_group
@@ -5089,6 +5178,7 @@ components:
           type: string
         negated:
           description: Boolean that if set to true, indicates the edge statement is negated i.e. is not true
+          example: true
           type: boolean
       type: object
     Node:
@@ -5259,6 +5349,7 @@ components:
           type: string
         negated:
           description: Boolean that if set to true, indicates the edge statement is negated i.e. is not true
+          example: true
           type: boolean
         edge_attributes:
           description: A list of additional attributes for this edge
@@ -5315,17 +5406,14 @@ components:
         expertise_level_id:
           description: Integer identifier of the claimed expertise level
           example: 1
-          format: int32
           type: integer
         rating_id:
           description: Integer identifier of the applied rating
           example: 1
-          format: int32
           type: integer
         commenter_id:
           description: Integer identifier of the commenter
           example: 1
-          format: int32
           type: integer
         commenter_full_name:
           description: Full name of the commenter
@@ -5340,6 +5428,7 @@ components:
           example: This is a great result because...
           type: string
       type: object
+      x-body-name: feedback
     ResultFeedback:
       description: Feedback for one result
       example:
@@ -5408,6 +5497,7 @@ components:
           example: English
           type: string
       type: object
+      x-body-name: request_body
     MeshNgdResponse:
       example:
         result_code: TermNotFound
