@@ -114,11 +114,6 @@ class RTXQuery:
       #message = meshQuery.queryTerm(terms["term"])
       q0 = Q0()
       message = q0.answer(terms["term"],use_json=True)
-      eprint("Query")
-      eprint(query)
-      eprint("Message")
-      eprint(message)
-      eprint("====")
       if 'original_question' in query["query_message"]:
         message.original_question = query["query_message"]["original_question"]
         message.restated_question = query["query_message"]["restated_question"]
