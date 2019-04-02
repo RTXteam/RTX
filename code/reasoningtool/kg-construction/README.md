@@ -50,7 +50,7 @@ or equivalently:
     python3 UpdateIndex.py -u xxxx -p xxxx
 
 
-# Backuping KG
+# Backing up KG
 `neo4j-backup` is the script to dump the Neo4j database and transfer the backup file to http://rtxkgdump.saramsey.org/
 
     sh neo4j-backup.sh
