@@ -197,6 +197,8 @@ class NormGoogleDistance:
                 terms[a] = [terms[a]]
             if len(terms[a]) == 0:
                 terms[a] = [description_list[a]]
+            if len(terms[a]) > 30:
+                terms[a] = terms[a][:30]
         terms_combined = [''] * len(terms)
         mesh_flags = [True] * len(terms)
         for a in range(len(terms)):
