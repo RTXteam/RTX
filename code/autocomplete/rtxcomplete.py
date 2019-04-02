@@ -150,6 +150,7 @@ def get_nodes_like(word,limit):
             values.append(properties)
             values_dict[name] = 1
     n_values = len(values)
+    limit = int(limit)
 
     if n_values < limit:
         cursor.execute("SELECT curie,name,type FROM node WHERE name LIKE \"%%%s%%\" LIMIT %s" % (word,limit-n_values))
