@@ -150,7 +150,7 @@ def test_suite():
 def main():
 	parser = argparse.ArgumentParser(description="Answers questions of the type 'What proteins does X target?'.",
 									formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-	parser.add_argument('-s', '--source_name', type=str, help="Source node name.", default="ChEMBL:3301668")
+	parser.add_argument('-s', '--source_name', type=str, help="Source node name.", default="CHEMBL.COMPOUND:CHEMBL3301668")
 	parser.add_argument('-t', '--target_label', type=str, help="Target node label", default="protein")
 	parser.add_argument('-r', '--rel_type', type=str, help="Relationship type.", default="physically_interacts_with")
 	parser.add_argument('-j', '--json', action='store_true', help='Flag specifying that results should be printed in JSON format (to stdout)', default=False)
