@@ -18,7 +18,7 @@ import pandas
 import CachedMethods
 # import requests_cache
 from cache_control_helper import CacheControlHelper
-import requests
+# import requests
 
 # requests_cache.install_cache('QueryNCBIeUtilsCache')
 import numpy
@@ -65,7 +65,7 @@ class QueryNCBIeUtils:
         url_str = QueryNCBIeUtils.API_BASE_URL + '/' + handler + '?' + url_suffix + '&retmode=json&retmax=' + str(retmax)
 #        print(url_str)
         try:
-            res = requests.get(url_str, headers={'accept': 'application/json'}, timeout=QueryNCBIeUtils.TIMEOUT_SEC)
+            res = requests.get(url_str, headers={'accept': 'application/json', 'User-Agent': 'Mozilla/5.0'}, timeout=QueryNCBIeUtils.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
             print('HTTP timeout in QueryNCBIeUtils.py; URL: ' + url_str, file=sys.stderr)
             time.sleep(1)  ## take a timeout because NCBI rate-limits connections
@@ -549,6 +549,7 @@ class QueryNCBIeUtils:
         if "UniProtKB:" in id:
             id = ":".join(id.split(":")[1:])
         url = 'https://www.uniprot.org/uniprot/?query=id:' + id + '&sort=score&columns=entry name,protein names,genes&format=tab' # hardcoded url for uniprot data
+        requests = CacheControlHelper()
         r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})  # send get request
         if r.status_code != 200:  # checks for error
             print('HTTP response status code: ' + str(r.status_code) + ' for URL:\n' + url, file=sys.stderr)
@@ -594,6 +595,7 @@ class QueryNCBIeUtils:
         if "REACT:" in id:
             id = ":".join(id.split(":")[1:])
         url = 'https://reactome.org/ContentService/data/query/'+id+'/name'  # hardcoded url for reactiome names
+        requests = CacheControlHelper()
         r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})  # sends get request that returns a string
         if r.status_code != 200:
             print('HTTP response status code: ' + str(r.status_code) + ' for URL:\n' + url, file=sys.stderr)
@@ -810,4 +812,4 @@ if __name__ == '__main__':
     # print(QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(68003550))
     # print(QueryNCBIeUtils.get_medgen_uid_for_omim_id(219550))
     # print(QueryNCBIeUtils.get_mesh_uid_for_medgen_uid(41393))
-    
+
