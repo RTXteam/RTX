@@ -18,6 +18,7 @@ import pandas
 import CachedMethods
 # import requests_cache
 from cache_control_helper import CacheControlHelper
+import requests
 
 # requests_cache.install_cache('QueryNCBIeUtilsCache')
 import numpy
