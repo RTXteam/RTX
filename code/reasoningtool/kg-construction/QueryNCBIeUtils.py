@@ -58,7 +58,7 @@ class QueryNCBIeUtils:
     '''
     @staticmethod
     @CachedMethods.register
-    def send_query_get(handler, url_suffix, retmax=1000):
+    def send_query_get(handler, url_suffix, retmax=1000, retry_flag = True):
 
         requests = CacheControlHelper()
         url_str = QueryNCBIeUtils.API_BASE_URL + '/' + handler + '?' + url_suffix + '&retmode=json&retmax=' + str(retmax)
@@ -79,8 +79,12 @@ class QueryNCBIeUtils:
             return None
         status_code = res.status_code
         if status_code != 200:
-            print('HTTP response status code: ' + str(status_code) + ' for URL:\n' + url_str, file=sys.stderr)
-            res = None
+            if status_code == 429 and retry_flag:
+                time.sleep(1)
+                res = QueryNCBIeUtils.send_query_get(handler, url_suffix, retmax, False)
+            else:
+                print('HTTP response status code: ' + str(status_code) + ' for URL:\n' + url_str, file=sys.stderr)
+                res = None
         return res
 
     @staticmethod
