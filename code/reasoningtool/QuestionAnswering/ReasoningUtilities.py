@@ -2296,6 +2296,97 @@ def test_get_top_shortest_paths():
     for path_length in lengths:
         assert np.isfinite(path_length)
 
+def test_cypher_gen_one_hop():
+    test_graph = {'question_graph':{"edges":[{"edge_id":"e00","source_id":"n00","target_id":"n01","type":"physically_interacts_with"}],"nodes":[{"curie":"CHEMBL.COMPOUND:CHEMBL112","node_id":"n00","type":"chemical_substance"},{"node_id":"n01","type":"protein"}]}}
+    query_gen = get_cypher_from_question_graph(test_graph)
+    print("answer_map")
+    print("==========")
+    cypher_query = query_gen.cypher_query_answer_map()
+    t0 = time.time()
+    res = cypher.run(cypher_query, conn=connection, config=defaults)
+    print("time: ",time.time()-t0)
+    print("results: ", len(res))
+    print("knowledge_graph:")
+    print("===============")
+    cypher_query = query_gen.cypher_query_knowledge_graph()
+    t0 = time.time()
+    res = cypher.run(cypher_query, conn=connection, config=defaults)
+    print("time: ",time.time()-t0)
+    print("results: ", len(res))
+
+def test_cypher_gen_two_hop():
+    test_graph = {'knowledge_graph': {'edges': [], 'nodes': [{'id': 'DOID:12365', 'name': 'Ebola hemorrhagic fever', 'type': 'disease'}]}, 'question_graph': {'edges': [{'id': 'e00', 'source_id': 'n00', 'target_id': 'n01'}, {'id': 'e01', 'source_id': 'n01', 'target_id': 'n02'}], 'nodes': [{'curie': 'DOID:12365', 'id': 'n00', 'type': 'disease'}, {'id': 'n01', 'type': 'protein'}, {'id': 'n02', 'type': 'pathway'}]}}
+    query_gen = get_cypher_from_question_graph(test_graph)
+    print("answer_map")
+    print("==========")
+    cypher_query = query_gen.cypher_query_answer_map()
+    t0 = time.time()
+    res = cypher.run(cypher_query, conn=connection, config=defaults)
+    print("time: ",time.time()-t0)
+    print("results: ", len(res))
+    print("knowledge_graph:")
+    print("===============")
+    cypher_query = query_gen.cypher_query_knowledge_graph()
+    t0 = time.time()
+    res = cypher.run(cypher_query, conn=connection, config=defaults)
+    print("time: ",time.time()-t0)
+    print("results: ", len(res))
+
+def test_cypher_gen_three_hop():
+    test_graph = {'knowledge_graph': {'edges': [], 'nodes': [{'id': 'DOID:12365', 'name': 'Ebola hemorrhagic fever', 'type': 'disease'}]}, 'question_graph': {'edges': [{'id': 'e00', 'source_id': 'n00', 'target_id': 'n01'}, {'id': 'e01', 'source_id': 'n01', 'target_id': 'n02'}, {'id': 'e02',  'source_id': 'n02', 'target_id': 'n03'}], 'nodes': [{'curie': 'DOID:12365', 'id': 'n00', 'type': 'disease'}, {'id': 'n01', 'type': 'protein'}, {'id': 'n02', 'type': 'pathway'}, {'id': 'n03', 'type': 'protien'}]}}
+    query_gen = get_cypher_from_question_graph(test_graph)
+    print("answer_map")
+    print("==========")
+    cypher_query = query_gen.cypher_query_answer_map()
+    t0 = time.time()
+    res = cypher.run(cypher_query, conn=connection, config=defaults)
+    print("time: ",time.time()-t0)
+    print("results: ", len(res))
+    print("knowledge_graph:")
+    print("===============")
+    cypher_query = query_gen.cypher_query_knowledge_graph()
+    t0 = time.time()
+    res = cypher.run(cypher_query, conn=connection, config=defaults)
+    print("time: ",time.time()-t0)
+    print("results: ", len(res))
+
+def test_cypher_gen_no_results():
+    test_graph = {'knowledge_graph': {'edges': [], 'nodes': [{'id': 'DOID:12365', 'name': 'Ebola hemorrhagic fever', 'type': 'disease'}]}, 'question_graph': {'edges': [{'id': 'e00', 'source_id': 'n00', 'target_id': 'n01'}, {'id': 'e01', 'source_id': 'n01', 'target_id': 'n02'}, {'id': 'e02',  'source_id': 'n02', 'target_id': 'n03'}], 'nodes': [{'curie': 'DOID:12365', 'id': 'n00', 'type': 'disease'}, {'id': 'n01', 'type': 'protein'}, {'id': 'n02', 'type': 'pathway'}, {'id': 'n03', 'type': 'chemical_substance'}]}}
+    query_gen = get_cypher_from_question_graph(test_graph)
+    print("answer_map")
+    print("==========")
+    cypher_query = query_gen.cypher_query_answer_map()
+    t0 = time.time()
+    res = cypher.run(cypher_query, conn=connection, config=defaults)
+    print("time: ",time.time()-t0)
+    print("results: ", len(res))
+    print("knowledge_graph:")
+    print("===============")
+    cypher_query = query_gen.cypher_query_knowledge_graph()
+    t0 = time.time()
+    res = cypher.run(cypher_query, conn=connection, config=defaults)
+    print("time: ",time.time()-t0)
+    print("results: ", len(res))
+
+
+
+def test_cypher_gen_suite():
+    print("###########")
+    print("# One Hop #")
+    print("###########")
+    test_cypher_gen_one_hop()
+    print("###########")
+    print("# Two Hop #")
+    print("###########")
+    test_cypher_gen_two_hop()
+    print("#############")
+    print("# Three Hop #")
+    print("#############")
+    test_cypher_gen_two_hop()
+    print("##############")
+    print("# No Results #")
+    print("##############")
+    test_cypher_gen_no_results()
 
 def test_suite():
     test_get_node_names_of_type_connected_to_target()
