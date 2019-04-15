@@ -7,7 +7,7 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-import requests
+# import requests
 import urllib
 import math
 import sys
@@ -17,7 +17,8 @@ import re
 import pandas
 import pprint
 import CachedMethods
-import requests_cache
+from cache_control_helper import CacheControlHelper
+# import requests_cache
 import numpy
 from QueryNCBIeUtils import QueryNCBIeUtils
 from QueryDisont import QueryDisont  # DOID -> MeSH
@@ -25,7 +26,7 @@ from QueryEBIOLS import QueryEBIOLS  # UBERON -> MeSH
 from QueryPubChem import QueryPubChem  # ChEMBL -> PubMed id
 from QueryMyChem import QueryMyChem
 
-requests_cache.install_cache('NGDCache')
+# requests_cache.install_cache('NGDCache')
 
 
 class NormGoogleDistance:
@@ -36,7 +37,9 @@ class NormGoogleDistance:
         """
         This takes a curie id and send that id to EMBL-EBI OXO to convert to cui
         """
-        url_str =  'https://www.ebi.ac.uk/spot/oxo/api/mappings?fromId=' + str(uid)
+        url_str = 'https://www.ebi.ac.uk/spot/oxo/api/mappings?fromId=' + str(uid)
+        requests = CacheControlHelper()
+
         try:
             res = requests.get(url_str, headers={'accept': 'application/json'}, timeout=120)
         except requests.exceptions.Timeout:
@@ -194,6 +197,8 @@ class NormGoogleDistance:
                 terms[a] = [terms[a]]
             if len(terms[a]) == 0:
                 terms[a] = [description_list[a]]
+            if len(terms[a]) > 30:
+                terms[a] = terms[a][:30]
         terms_combined = [''] * len(terms)
         mesh_flags = [True] * len(terms)
         for a in range(len(terms)):
@@ -236,7 +241,6 @@ class NormGoogleDistance:
                 response['response_code'] = "OK"
                 response['value'] = value
         return response
-
 
 
 if __name__ == '__main__':

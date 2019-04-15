@@ -7,7 +7,7 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-import requests
+# import requests
 import urllib
 import math
 import sys
@@ -16,8 +16,10 @@ from io import StringIO
 import re
 import pandas
 import CachedMethods
-import requests_cache
-requests_cache.install_cache('QueryNCBIeUtilsCache')
+# import requests_cache
+from cache_control_helper import CacheControlHelper
+
+# requests_cache.install_cache('QueryNCBIeUtilsCache')
 import numpy
 
 # MeSH Terms for Q1 diseases: (see git/q1/README.md)
@@ -56,7 +58,9 @@ class QueryNCBIeUtils:
     '''
     @staticmethod
     @CachedMethods.register
-    def send_query_get(handler, url_suffix, retmax=1000):
+    def send_query_get(handler, url_suffix, retmax=1000, retry_flag = True):
+
+        requests = CacheControlHelper()
         url_str = QueryNCBIeUtils.API_BASE_URL + '/' + handler + '?' + url_suffix + '&retmode=json&retmax=' + str(retmax)
 #        print(url_str)
         try:
@@ -69,21 +73,31 @@ class QueryNCBIeUtils:
             print('HTTP connection error in QueryNCBIeUtils.py; URL: ' + url_str, file=sys.stderr)
             time.sleep(1)  ## take a timeout because NCBI rate-limits connections
             return None
+        except BaseException as e:
+            print(url_str, file=sys.stderr)
+            print('%s received in QueryMiRGate for URL: %s' % (e, url_str), file=sys.stderr)
+            return None
         status_code = res.status_code
         if status_code != 200:
-            print('HTTP response status code: ' + str(status_code) + ' for URL:\n' + url_str, file=sys.stderr)
-            res = None
+            if status_code == 429 and retry_flag:
+                time.sleep(1)
+                res = QueryNCBIeUtils.send_query_get(handler, url_suffix, retmax, False)
+            else:
+                print('HTTP response status code: ' + str(status_code) + ' for URL:\n' + url_str, file=sys.stderr)
+                res = None
         return res
 
     @staticmethod
     #@CachedMethods.register
     def send_query_post(handler, params, retmax = 1000):
+
+        requests = CacheControlHelper()
         url_str = QueryNCBIeUtils.API_BASE_URL + '/' + handler
         params['retmax'] = str(retmax)
         params['retmode'] = 'json'
 #        print(url_str)
         try:
-            res = requests.post(url_str, headers={'accept': 'application/json'}, data = params, timeout=QueryNCBIeUtils.TIMEOUT_SEC)
+            res = requests.post(url_str, data=params, timeout=QueryNCBIeUtils.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
             print('HTTP timeout in QueryNCBIeUtils.py; URL: ' + url_str, file=sys.stderr)
             time.sleep(1)  ## take a timeout because NCBI rate-limits connections

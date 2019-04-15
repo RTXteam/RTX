@@ -140,8 +140,7 @@ function sendQuestion(e) {
 		xhr2.onloadend = function() {
 		    if ( xhr2.status == 200 ) {
 			var jsonObj2 = JSON.parse(xhr2.responseText);
-			document.getElementById("devdiv").innerHTML += "<br>================================================================= QUERY::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
-
+			document.getElementById("devdiv").innerHTML += "================================================================= QUERY::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
 			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["code_description"]+"</I>";
 			sesame('openmax',statusdiv);
 
@@ -185,7 +184,6 @@ function sendQuestion(e) {
 
 function retrieve_message() {
     document.getElementById("statusdiv").innerHTML = "Retrieving RTX message id = " + message_id + "<hr>";
-
     sesame('openmax',statusdiv);
     var xhr = new XMLHttpRequest();
     xhr.open("get",  baseAPI + "api/rtx/v1/message/" + message_id, true);
@@ -195,7 +193,6 @@ function retrieve_message() {
 	if ( xhr.status == 200 ) {
 	    var jsonObj2 = JSON.parse(xhr.responseText);
 	    document.getElementById("devdiv").innerHTML += "<br>================================================================= RESPONSE REQUEST::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
-
 	    document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["code_description"]+"</I>";
 	    document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question"];
 
@@ -266,8 +263,7 @@ function render_message(respObj) {
 
 function add_status_divs() {
     document.getElementById("status_container").innerHTML = "<div class='statushead'>Status</div><div class='status' id='statusdiv'></div>";
-
-    document.getElementById("dev_result_json_container").innerHTML = "<div class='statushead'>Dev Info <i style='float:right; font-weight:normal;'>( json responses )</i></div><div class='status' id='devdiv'></div>";
+    document.getElementById("dev_result_json_container").innerHTML = "<br><input type='button' class='button' name='action' value='Copy Response JSON to clipboard' onClick='javascript:copyJSON();'/><div onclick='sesame(null,devdiv);' title='click to expand / collapse dev info' class='statushead'>Dev Info <i style='float:right; font-weight:normal;'>( json responses )</i></div><div class='status' id='devdiv'></div>";
 }
 
 

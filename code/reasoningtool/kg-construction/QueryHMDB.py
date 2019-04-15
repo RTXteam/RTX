@@ -16,8 +16,10 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-import requests
-import requests_cache
+# import requests
+# import requests_cache
+from cache_control_helper import CacheControlHelper
+
 import sys
 import xmltodict
 
@@ -28,6 +30,7 @@ class QueryHMDB:
     @staticmethod
     def __access_api(url):
 
+        requests = CacheControlHelper()
         url = url + '.xml'
 
         try:
@@ -71,8 +74,8 @@ class QueryHMDB:
         return res_desc
 
 if __name__ == '__main__':
-    # print(QueryHMDB.get_compound_desc('http://www.hmdb.ca/metabolites/HMDB0060288'))
-    # print(QueryHMDB.get_compound_desc('http://www.hmdb.ca/metabolites/HMDB00021820'))
-    # print(QueryHMDB.get_compound_desc('http://www.hmdb.ca/metabolites/HMDB0012194'))
-    # print(QueryHMDB.get_compound_desc(820))
+    print(QueryHMDB.get_compound_desc('http://www.hmdb.ca/metabolites/HMDB0060288'))
+    print(QueryHMDB.get_compound_desc('http://www.hmdb.ca/metabolites/HMDB00021820'))
+    print(QueryHMDB.get_compound_desc('http://www.hmdb.ca/metabolites/HMDB0012194'))
+    print(QueryHMDB.get_compound_desc(820))
     print(QueryHMDB.get_compound_desc('http://www.hmdb.ca/metabolites/HMDB05049'))

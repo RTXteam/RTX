@@ -24,8 +24,9 @@ __maintainer__ = ""
 __email__ = ""
 __status__ = "Prototype"
 
-import requests
-import requests_cache
+# import requests
+# import requests_cache
+from cache_control_helper import CacheControlHelper
 import CachedMethods
 import sys
 import urllib.parse
@@ -55,6 +56,9 @@ class QueryUniprot:
                     'query':  uniprot_id }
         contact = "stephen.ramsey@oregonstate.edu"
         header = {'User-Agent': 'Python %s' % contact}
+
+        requests = CacheControlHelper()
+
         try:
             url =QueryUniprot.API_BASE_URL
             res = requests.post(QueryUniprot.API_BASE_URL, data=payload, headers=header)
@@ -89,6 +93,8 @@ class QueryUniprot:
         #print(url)
         contact = "stephen.ramsey@oregonstate.edu"
         header = {'User-Agent': 'Python %s' % contact}
+
+        requests = CacheControlHelper()
         try:
             res = requests.get(url, timeout=QueryUniprot.TIMEOUT_SEC, headers=header)
         except requests.exceptions.Timeout:
@@ -159,7 +165,7 @@ class QueryUniprot:
     @staticmethod
     def __get_name(entity_type, entity_id):
         entity_obj = QueryUniprot.__get_entity(entity_type, entity_id)
-        name = "None"
+        name = "UNKNOWN"
         if entity_obj is not None:
             if 'protein' in entity_obj.keys():
                 if 'recommendedName' in entity_obj['protein'].keys():
@@ -172,7 +178,7 @@ class QueryUniprot:
     @staticmethod
     def get_protein_name(protein_id):
         if not isinstance(protein_id, str):
-            return "None"
+            return "UNKNOWN"
         return QueryUniprot.__get_name("get_protein", protein_id)
 
     @staticmethod
@@ -193,20 +199,20 @@ if __name__ == '__main__':
     # print(QueryUniprot.uniprot_id_to_reactome_pathways("P68871"))
     # print(QueryUniprot.uniprot_id_to_reactome_pathways("Q16621"))
     # print(QueryUniprot.uniprot_id_to_reactome_pathways("P09601"))
-    # print(CachedMethods.cache_info())
-    # print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:1.4.1.17"))  # small results
-    # print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:1.3.1.110")) # empty result
-    # print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:1.2.1.22"))  # large results
-    # print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:4.4.1.xx"))  # fake id
-    # print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("R-HSA-1912422"))   # wrong id
-    # print(QueryUniprot.get_protein_gene_symbol('UniProtKB:P20848'))
-    # print(QueryUniprot.get_protein_gene_symbol("UniProtKB:P01358"))
-    # print(QueryUniprot.get_protein_gene_symbol("UniProtKB:Q96P88"))
-    # print(QueryUniprot.get_protein_name('UniProtKB:P01358'))
-    # print(QueryUniprot.get_protein_name('UniProtKB:P20848'))
-    # print(QueryUniprot.get_protein_name('UniProtKB:Q9Y471'))
-    # print(QueryUniprot.get_protein_name('UniProtKB:O60397'))
-    # print(QueryUniprot.get_protein_name('UniProtKB:Q8IZJ3'))
-    # print(QueryUniprot.get_protein_name('UniProtKB:Q7Z2Y8'))
-    # print(QueryUniprot.get_protein_name('UniProtKB:Q8IWN7'))
-    # print(QueryUniprot.get_protein_name('UniProtKB:Q156A1'))
+    print(CachedMethods.cache_info())
+    print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:1.4.1.17"))  # small results
+    print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:1.3.1.110")) # empty result
+    print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:1.2.1.22"))  # large results
+    print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("ec:4.4.1.xx"))  # fake id
+    print(QueryUniprot.map_enzyme_commission_id_to_uniprot_ids("R-HSA-1912422"))   # wrong id
+    print(QueryUniprot.get_protein_gene_symbol('UniProtKB:P20848'))
+    print(QueryUniprot.get_protein_gene_symbol("UniProtKB:P01358"))
+    print(QueryUniprot.get_protein_gene_symbol("UniProtKB:Q96P88"))
+    print(QueryUniprot.get_protein_name('UniProtKB:P01358'))
+    print(QueryUniprot.get_protein_name('UniProtKB:P20848'))
+    print(QueryUniprot.get_protein_name('UniProtKB:Q9Y471'))
+    print(QueryUniprot.get_protein_name('UniProtKB:O60397'))
+    print(QueryUniprot.get_protein_name('UniProtKB:Q8IZJ3'))
+    print(QueryUniprot.get_protein_name('UniProtKB:Q7Z2Y8'))
+    print(QueryUniprot.get_protein_name('UniProtKB:Q8IWN7'))
+    print(QueryUniprot.get_protein_name('UniProtKB:Q156A1'))

@@ -13,7 +13,12 @@ __email__ = ""
 __status__ = "Prototype"
 
 import requests
+import requests_cache
 import sys
+
+# configure requests package to use the "QueryCOHD.sqlite" cache
+requests_cache.install_cache('orangeboard')
+
 
 class QueryGeneProf:
     API_BASE_URL = 'http://www.geneprof.org/GeneProf/api'
@@ -27,6 +32,10 @@ class QueryGeneProf:
             res = requests.get(url_str, timeout=QueryGeneProf.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
             print("Timeout in QueryGeneProf for URL: " + url_str, file=sys.stderr)
+            return None
+        except BaseException as e:
+            print(url_str, file=sys.stderr)
+            print('%s received in QueryGeneProf for URL: %s' % (e, url_str), file=sys.stderr)
             return None
         status_code = res.status_code
         if status_code != 200:

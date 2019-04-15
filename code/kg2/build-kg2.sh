@@ -1,3 +1,43 @@
 #!/bin/bash
-export PATH=$PATH:.
-cd ~/kg2-build && ~/kg2-venv/bin/python3 -u ~/kg2-code/build-kg2.py 2>stderr.log 1>stdout.log
+set -euxo pipefail
+
+## load the master config file
+CONFIG_DIR=`dirname "$0"`
+source ${CONFIG_DIR}/master-config.shinc
+
+## set the path to include ${BUILD_DIR}
+export PATH=$PATH:${BUILD_DIR}
+
+OUTPUT_FILE_BASE=kg2.json
+OUTPUT_FILE_FULL=${BUILD_DIR}/${OUTPUT_FILE_BASE}
+STDOUT_LOG_FILE=build-kg2-stdout.log
+STDERR_LOG_FILE=build-kg2-stderr.log
+OWL_LOAD_INVENTORY_FILE=owl-load-inventory.yaml
+
+cd ${BUILD_DIR}
+
+MEM_GB=`${CODE_DIR}/get-system-memory-gb.sh`
+
+export OWLTOOLS_MEMORY=${MEM_GB}G
+export DEBUG=1  ## for owltools
+
+## run the build-kg2.py script
+${VENV_DIR}/bin/python3 -u ${CODE_DIR}/build-kg2.py \
+           curies-to-categories.yaml \
+           curies-to-urls-lookaside-list.yaml \
+           ${OWL_LOAD_INVENTORY_FILE} \
+           ${OUTPUT_FILE_FULL} \
+           2>${BUILD_DIR}/${STDERR_LOG_FILE} \
+           1>${BUILD_DIR}/${STDOUT_LOG_FILE}
+
+## copy the KG to the public S3 bucket
+aws s3 cp --no-progress --region ${S3_REGION} ${OUTPUT_FILE_FULL} s3://${S3_BUCKET_PUBLIC}/
+
+## copy the log files to the public S3 bucket
+aws s3 cp --no-progress --region ${S3_REGION} ${BUILD_DIR}/build-kg2-stderr.log s3://${S3_BUCKET_PUBLIC}/
+aws s3 cp --no-progress --region ${S3_REGION} ${BUILD_DIR}/${STDOUT_LOG_FILE} s3://${S3_BUCKET_PUBLIC}/
+
+## copy the config files to the public S3 bucket
+aws s3 cp --no-progress --region ${S3_REGION} ${BUILD_DIR}/${OWL_LOAD_INVENTORY_FILE} s3://${S3_BUCKET_PUBLIC}/
+
+echo "================= script finished ================="

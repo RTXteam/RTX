@@ -7,18 +7,26 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-import requests
+# import requests
 import urllib
 import math
 import sys
 import time
+import os
 from io import StringIO
 import re
 import pandas
 # import CachedMethods
-import requests_cache
+# import requests_cache
 import lxml.html as lh
 from lxml.html import fromstring
+
+try:
+    from cache_control_helper import CacheControlHelper
+except ImportError:
+    insert_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)) + "/../kg-construction/")
+    sys.path.insert(0, insert_dir)
+    from cache_control_helper import CacheControlHelper
 
 
 class QueryUMLS:
@@ -33,6 +41,7 @@ class QueryUMLS:
         # params = {'username': self.username,'password': self.password}
         params = {'apikey': QueryUMLS.api_key}
         h = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain", "User-Agent": "python"}
+        requests = CacheControlHelper()
         r = requests.post(QueryUMLS.Ticket_URL + QueryUMLS.auth_endpoint, data=params, headers=h)
         response = fromstring(r.text)
         ## extract the entire URL needed from the HTML form (action attribute) returned - looks similar to https://utslogin.nlm.nih.gov/cas/v1/tickets/TGT-36471-aYqNLN2rFIJPXKzxwdTNC5ZT7z3B3cTAKfSc5ndHQcUxeaDOLN-cas
@@ -44,6 +53,7 @@ class QueryUMLS:
     def get_single_ticket(tgt):
         params = {'service': "http://umlsks.nlm.nih.gov"}
         h = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain", "User-Agent": "python"}
+        requests = CacheControlHelper()
         r = requests.post(tgt, data=params, headers=h)
         st = r.text
         return st
@@ -51,6 +61,7 @@ class QueryUMLS:
     @staticmethod
     def send_query_get(handler, st):
         url_str = QueryUMLS.API_BASE_URL + '/' + handler + '&ticket=' + st
+        requests = CacheControlHelper()
         try:
             res = requests.get(url_str, headers={'accept': 'application/json'}, timeout=QueryUMLS.TIMEOUT_SEC)
         except requests.exceptions.Timeout:
@@ -135,9 +146,9 @@ class QueryUMLS:
         return cui
 
 if __name__ == '__main__':
-    pass
-    #tgt = QueryUMLS.get_ticket_gen()
-    #print(QueryUMLS.get_cuis_from_string('log15', tgt))
-    # print(QueryUMLS.get_cuis_from_string('pain', tgt))
-    # print(QueryUMLS.get_cui_from_string_precision('pain', tgt))
-    #print(QueryUMLS.get_cui_from_string_precision('Influenza-like symptoms', tgt))
+    # pass
+    tgt = QueryUMLS.get_ticket_gen()
+    print(QueryUMLS.get_cuis_from_string('log15', tgt))
+    print(QueryUMLS.get_cuis_from_string('pain', tgt))
+    print(QueryUMLS.get_cui_from_string_precision('pain', tgt))
+    print(QueryUMLS.get_cui_from_string_precision('Influenza-like symptoms', tgt))
