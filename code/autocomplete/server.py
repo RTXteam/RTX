@@ -96,17 +96,18 @@ class autofuzzySearch(tornado.web.RequestHandler):
 
 class nodesLikeSearch(tornado.web.RequestHandler):
     def get(self, arg,word=None):
-        try:
+        #try:
+        if 1 == 1:
             limit = self.get_argument("limit")
             word = self.get_argument("word")
             callback = self.get_argument("callback")
             result = rtxcomplete.get_nodes_like(word,limit);
             result = callback+"("+json.dumps(result)+");"
             self.write(result)
-        except:
-            print(sys.exc_info()[:])
-            traceback.print_tb(sys.exc_info()[-1])
-            self.write("error")
+        #except:
+        #    print(sys.exc_info()[:])
+        #    traceback.print_tb(sys.exc_info()[-1])
+        #    self.write("error")
 
 
 class defineSearch(tornado.web.RequestHandler):
