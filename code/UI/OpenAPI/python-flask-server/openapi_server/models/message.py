@@ -87,9 +87,9 @@ class Message(Model):
             'terms': MessageTerms,
             'query_options': object,
             'results': List[Result],
-            'query_graph': List[QueryGraph],
-            'knowledge_graph': List[KnowledgeGraph],
-            'remote_knowledge_graph': List[RemoteKnowledgeGraph]
+            'query_graph': object,
+            'knowledge_graph': object,
+            'remote_knowledge_graph': object
         }
 
         self.attribute_map = {
