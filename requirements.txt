@@ -6,7 +6,6 @@ numpy
 ipython-cypher
 networkx
 pronto
-mysqlclient
 lxml
 mygene
 beautifulsoup4
@@ -19,4 +18,8 @@ nltk
 sqlalchemy
 scipy
 scikit-learn
+connexion
+'connexion[swagger-ui]'
+cachecontrol
+pymysql
 
