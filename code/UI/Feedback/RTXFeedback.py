@@ -48,7 +48,7 @@ class Message(Base):
   terms = Column(String(1024), nullable=False)
   tool_version = Column(String(50), nullable=False)
   result_code = Column(String(50), nullable=False)
-  message = Column(String(255), nullable=False)
+  message = Column(Text, nullable=False)
   n_results = Column(Integer, nullable=False)
   # PickleType uses BLOB on MySQL, which is only 65k. Could not seem to work around it. Resort to LargeBinary with explicit length and my own pickling.
   #message_object = Column(PickleType, nullable=False)
@@ -306,8 +306,8 @@ class RTXFeedback:
 
         #### See if there is an existing result that matches this hash
         previousResult = session.query(Result).filter(Result.result_hash==result_hash).order_by(desc(Result.result_id)).first()
-        #eprint("WARNING: Forcing chache miss for result at line 309")
-        #previousResult = None
+        eprint("WARNING: Forcing chache miss for result at line 309")
+        previousResult = None
         if previousResult is not None:
           result.id = "https://rtx.ncats.io/api/rtx/v1/result/"+str(previousResult.result_id)
           eprint("Reused result_id " + str(result.id))
