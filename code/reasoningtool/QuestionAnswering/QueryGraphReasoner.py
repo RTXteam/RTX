@@ -62,6 +62,8 @@ class QueryGraphReasoner:
         res = RU.session.run(knowledge_graph_cypher)
         knowledge_graph_dict = res.data()[0]
 
+        return {'answer_subgraphs': answer_graph_list, 'knowledge_graph':knowledge_graph_dict}
+
         # Need to convert the answer graphs and knowledge graph 
         # into formatted responses 
 
@@ -218,8 +220,8 @@ def test1_2nodes():
     }'''
 
     query_graph_dict = json.loads(query_graph_json_stream)
-    query_graph = QueryGraphReasoner().from_dict(query_graph_dict)
-    result = q.answer(query_graph, use_json=True)
+    #query_graph = QueryGraphReasoner().from_dict(query_graph_dict)
+    result = q.answer(query_graph_dict, use_json=True)
     return(result)
 
 
