@@ -248,7 +248,8 @@ def main():
 
     if args.test:
         result = tests()
-        print(result)
+        #print(result)
+        print(json.dumps(result,sort_keys=True,indent=2))
 
     else:
         with open(input_file, 'r') as infile:
