@@ -2050,7 +2050,8 @@ class get_cypher_from_question_graph:
         # Added this to remove values 
         if 'edges' in self.question_graph:
             for edge in self.question_graph['edges']:
-                for edge_key in edge.keys():
+                key_list = list(edge.keys())
+                for edge_key in key_list:
                     if edge[edge_key] is None:
                         edge.pop(edge_key)
                     elif edge_key == 'edge_id':
@@ -2064,7 +2065,8 @@ class get_cypher_from_question_graph:
         # Added this to remove values 
         if 'nodes' in self.question_graph:
             for node in self.question_graph['nodes']:
-                for node_key in node.keys():
+                key_list = list(node.keys())
+                for node_key in key_list:
                     if node[node_key] is None:
                         node.pop(node_key)
                     elif node_key == 'node_id':

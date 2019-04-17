@@ -52,6 +52,18 @@ class QueryGraphReasoner:
         """
 
         #### Interpret the query_graph object to create a cypher query and encode the result in a response
+        query_gen = RU.get_cypher_from_question_graph({'question_graph':query_graph})
+        answer_graph_cypher = query_gen.cypher_query_answer_map()
+        knowledge_graph_cypher = query_gen.cypher_query_knowledge_graph()
+        
+        res = RU.session.run(answer_graph_cypher)
+        answer_graph_list = res.data()
+        
+        res = RU.session.run(knowledge_graph_cypher)
+        knowledge_graph_dict = res.data()[0]
+
+        # Need to convert the answer graphs and knowledge graph 
+        # into formatted responses 
 
 
 
@@ -60,7 +72,12 @@ class QueryGraphReasoner:
         # See Q3Solution.py and SimilarityQuestionSolution.py for more insight into generating 0.9.0
 
 
+        #####################################################
+        # This is the old code but I didn't want to delete it
+
     #### Pull out the first node and look it up in the KGNodeIndex
+        
+        """
         entity = query_graph.nodes[0].curie
         eprint("Looking up '%s' in KgNodeIndex" % entity)
         kgNodeIndex = KGNodeIndex()
@@ -143,7 +160,7 @@ class QueryGraphReasoner:
             result1.edge_bindings = []
 
             return(response.message)
-
+        """
 
 
 
