@@ -131,15 +131,18 @@ def get_alt_table_suggs(table,word,limit):
     if len(rows) > 0:
         rows = [ "%s" % x for x in rows]
     return rows
-            
+
+
 def fuzzy(word,limit):
     cursor.execute("SELECT word FROM spell WHERE word MATCH \"%s\" LIMIT %s" % (word,limit))
     #cursor.execute("SELECT word FROM spell WHERE word MATCH \"%s*\" AND TOP=%s" % (word,limit))
     rows = cursor.fetchall()
     return rows
 
+
 def get_nodes_like(word,limit):
-    cursor.execute("SELECT curie,name,type FROM node WHERE name LIKE \"%s%%\" LIMIT %s" % (word,limit))
+    #### Get a list of matching node names that begin with these letters
+    cursor.execute("SELECT curie,name,type FROM node WHERE name LIKE \"%s%%\" ORDER BY length(name),name LIMIT %s" % (word,limit))
     rows = cursor.fetchall()
     values = list()
     values_dict = dict()
@@ -152,8 +155,9 @@ def get_nodes_like(word,limit):
     n_values = len(values)
     limit = int(limit)
 
+    #### If we haven't reached the limit yet, add a list of matching node names that contain this string
     if n_values < limit:
-        cursor.execute("SELECT curie,name,type FROM node WHERE name LIKE \"%%%s%%\" LIMIT %s" % (word,limit-n_values))
+        cursor.execute("SELECT curie,name,type FROM node WHERE name LIKE \"%%%s%%\" ORDER BY length(name),name LIMIT %s" % (word,limit-n_values))
         rows = cursor.fetchall()
         for row in rows:
             curie,name,type = row
@@ -162,8 +166,9 @@ def get_nodes_like(word,limit):
                 values.append(properties)
                 values_dict[name] = 1
 
+    #### If we haven't reached the limit yet, add a list of matching node curies that contain this string
     if n_values < limit:
-        cursor.execute("SELECT curie,name,type FROM node WHERE curie LIKE \"%%%s%%\" LIMIT %s" % (word,limit-n_values))
+        cursor.execute("SELECT curie,name,type FROM node WHERE curie LIKE \"%%%s%%\" ORDER BY length(name),name LIMIT %s" % (word,limit-n_values))
         rows = cursor.fetchall()
         for row in rows:
             curie,name,type = row
@@ -179,6 +184,7 @@ def get_tables():
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
     rows = cursor.fetchall()
     return rows
+
 
 def autofuzzy(word,limit):
     cursor.execute("SELECT word FROM spell WHERE word MATCH \"%s*\" LIMIT %s" % (word,limit))                                                             
