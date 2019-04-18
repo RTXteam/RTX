@@ -52,16 +52,32 @@ class QueryGraphReasoner:
         :return: Result of the query in native or API format
         """
 
+        #### Create a stub Message object
+        response = FormatOutput.FormatResponse(0)
+
+        #### Include the original query_graph in the envelope
+        response.message.query_graph = query_graph
+        response.message.original_question = "Input via Query Graph"
+        response.message.restated_question = "No restatement for QueryGraph yet"
+
         #### Interpret the query_graph object to create a cypher query and encode the result in a response
         query_gen = RU.get_cypher_from_question_graph({'question_graph':query_graph})
         answer_graph_cypher = query_gen.cypher_query_answer_map()
         knowledge_graph_cypher = query_gen.cypher_query_knowledge_graph()
-        
+
+        #### The Robokop code renames stuff in the query_graph for strange reasons. Rename them back.
+        #### It would be better to not make the changes in the first place. FIXME
+        for node in response.message.query_graph["nodes"]:
+            node["node_id"] = node["id"]
+            node.pop("id", None)
+        for edge in response.message.query_graph["edges"]:
+            edge["edge_id"] = edge["id"]
+            edge.pop("id", None)
+ 
         #### Execute the cypher to obtain results[]. Return an error if there are no results, or otherwise extract the list
         result = RU.session.run(answer_graph_cypher)
         answer_graph_list = result.data()
         if len(answer_graph_list) == 0:
-            response = FormatOutput.FormatResponse(3)
             response.add_error_message("NoPathsFound", "No paths satisfying this query graph were found")
             return(response.message)
 
@@ -69,7 +85,6 @@ class QueryGraphReasoner:
         result = RU.session.run(knowledge_graph_cypher)
         result_data = result.data()
         if len(result_data) == 0:
-            response = FormatOutput.FormatResponse(3)
             response.add_error_message("NoPathsFound", "No paths satisfying this query graph were found")
             return(response.message)
         knowledge_graph_dict = result_data[0]
@@ -78,16 +93,10 @@ class QueryGraphReasoner:
         if not TxltrApiFormat:
             return {'answer_subgraphs': answer_graph_list, 'knowledge_graph':knowledge_graph_dict}
 
-        #### Create a stub Message object
-        response = FormatOutput.FormatResponse(0)
-        #response.message.table_column_names = [ "id", "type", "name", "description", "uri" ]
-        response.message.code_description = None
-
-        #### Include the original query_graph in the envelope
-        response.message.query_graph = query_graph
-
         #### Add the knowledge_graph and bindings to the Message
         response.add_split_results(knowledge_graph_dict, answer_graph_list)
+        #response.message.table_column_names = [ "id", "type", "name", "description", "uri" ]
+        #response.message.code_description = None
 
         #### Return the final result message
         return(response.message)
