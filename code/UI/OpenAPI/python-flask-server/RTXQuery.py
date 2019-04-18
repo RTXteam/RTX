@@ -62,9 +62,6 @@ class RTXQuery:
     if "have_query_graph" in result:
       qgr = QueryGraphReasoner()
       message = qgr.answer(query["query_message"]["query_graph"], TxltrApiFormat=True)
-      message.message_code = "OK"
-      message.original_question = "via QueryGraph"
-      message.restated_question = "via QueryGraph"
       #self.logQuery(query,message,'new')
       rtxFeedback = RTXFeedback()
       rtxFeedback.connect()
@@ -73,22 +70,6 @@ class RTXQuery:
       self.limitMessage(message,query)
       return(message)
 
-      """
-      qgResult = self.interpretQueryGraph(query)
-      if qgResult["message_code"] != "OK":
-        response.message_code = qgResult["message_code"]
-        response.code_description = qgResult["code_description"]
-        return(response)
-      else:
-        id = qgResult["id"]
-        terms = qgResult["terms"]
-        query["query_message"]["query_type_id"] = id
-        query["query_message"]["terms"] = terms
-        query["query_message"]["original_question"] = qgResult["original_question"]
-        query["query_message"]["restated_question"] = qgResult["restated_question"]
-        if "execution_string" in qgResult:
-          execution_string = qgResult["execution_string"]
-      """
 
     #### Otherwise extract the id and the terms from the incoming parameters
     else:
