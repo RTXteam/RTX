@@ -25,6 +25,7 @@ from ParseQuestion import ParseQuestion
 #from QueryMeSH import QueryMeSH
 from Q0Solution import Q0
 import ReasoningUtilities
+import QueryGraphReasoner
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/kg-construction/")
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/SemMedDB/")
@@ -57,9 +58,17 @@ class RTXQuery:
       rtxFeedback.disconnect()
       return(message)
 
-    #### If we have a query_graph, for now just convert that into id and terms
-    execution_string = None
+    #### If we have a query_graph, pass this on to the QueryGraphReasoner
     if "have_query_graph" in result:
+      qgr = QueryGraphReasoner()
+      result = qgr.answer(query["query_message"]["query_graph"], TxltrApiFormat=True)
+      #self.logQuery(query,message,'new')
+      #rtxFeedback.addNewMessage(message,query)
+      #rtxFeedback.disconnect()
+      #self.limitMessage(message,query)
+      return(result.message)
+
+      """
       qgResult = self.interpretQueryGraph(query)
       if qgResult["message_code"] != "OK":
         response.message_code = qgResult["message_code"]
@@ -74,6 +83,7 @@ class RTXQuery:
         query["query_message"]["restated_question"] = qgResult["restated_question"]
         if "execution_string" in qgResult:
           execution_string = qgResult["execution_string"]
+      """
 
     #### Otherwise extract the id and the terms from the incoming parameters
     else:
