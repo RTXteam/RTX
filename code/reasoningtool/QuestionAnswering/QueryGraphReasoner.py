@@ -57,11 +57,22 @@ class QueryGraphReasoner:
         answer_graph_cypher = query_gen.cypher_query_answer_map()
         knowledge_graph_cypher = query_gen.cypher_query_knowledge_graph()
         
-        res = RU.session.run(answer_graph_cypher)
-        answer_graph_list = res.data()
-        
-        res = RU.session.run(knowledge_graph_cypher)
-        knowledge_graph_dict = res.data()[0]
+        #### Execute the cypher to obtain results[]. Return an error if there are no results, or otherwise extract the list
+        result = RU.session.run(answer_graph_cypher)
+        answer_graph_list = result.data()
+        if len(answer_graph_list) == 0:
+            response = FormatOutput.FormatResponse(3)
+            response.add_error_message("NoPathsFound", "No paths satisfying this query graph were found")
+            return(response.message)
+
+        #### Execute the knowledge_graph cypher. Return an error if there are no results, or otherwise extract the dict
+        result = RU.session.run(knowledge_graph_cypher)
+        result_data = result.data()
+        if len(result_data) == 0:
+            response = FormatOutput.FormatResponse(3)
+            response.add_error_message("NoPathsFound", "No paths satisfying this query graph were found")
+            return(response.message)
+        knowledge_graph_dict = result_data[0]
 
         #### If TxltrApiFormat was not specified, just return a single data structure with the results
         if not TxltrApiFormat:
@@ -69,7 +80,7 @@ class QueryGraphReasoner:
 
         #### Create a stub Message object
         response = FormatOutput.FormatResponse(0)
-        response.message.table_column_names = [ "id", "type", "name", "description", "uri" ]
+        #response.message.table_column_names = [ "id", "type", "name", "description", "uri" ]
         response.message.code_description = None
 
         #### Include the original query_graph in the envelope
