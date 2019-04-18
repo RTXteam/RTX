@@ -267,6 +267,8 @@ class RTXFeedback:
     if query is not None and "query_message" in query:
       if "terms" in query["query_message"]:
         termsString = stringifyDict(query["query_message"]["terms"])
+      elif "query_graph" in query["query_message"]:
+        termsString = stringifyDict(query["query_message"]["query_graph"])
 
     storedMessage = Message(message_datetime=datetime.now(),restated_question=message.restated_question,query_type=query_type_id,
       terms=termsString,tool_version=rtxConfig.version,result_code=message.message_code,message=message.code_description,n_results=n_results,message_object=pickle.dumps(ast.literal_eval(repr(message))))
