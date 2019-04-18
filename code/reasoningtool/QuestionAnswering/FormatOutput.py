@@ -283,6 +283,63 @@ class FormatResponse:
 			pass
 
 
+	def add_split_results(self, knowledge_graph, result_bindings):
+		"""
+		Populate the object model with the resulting raw knowledge_graph and result_bindings (initially from QueryGraphReasoner)
+		:param nodes: knowledge_graph in native RTX KG dump
+		:param edges: result_bindings in a native format from QueryGraphReasoner
+		:return: none
+		"""
+
+		#### Add the knowledge_graph nodes
+		regular_node_attributes = [ "id", "uri", "name", "description", "symbol" ] 
+		for input_node in knowledge_graph["nodes"]:
+			node = Node()
+			for attribute in regular_node_attributes:
+				if attribute in input_node:
+					setattr(node,attribute,input_node[attribute])
+			node.type = [ input_node["category"] ]
+			#node.node_attributes = FIXME
+			self.message.knowledge_graph.nodes.append(node)
+
+		#### Add the knowledge_graph edges
+		regular_edge_attributes = [ "id", "type", "relation", "source_id", "target_id",
+			"is_defined_by", "defined_datetime", "provided_by", "weight", "evidence_type", "qualifiers", "negated", "", "" ] 
+		for input_edge in knowledge_graph["edges"]:
+			edge = Edge()
+			for attribute in regular_edge_attributes:
+				if attribute in input_edge:
+					setattr(edge,attribute,input_edge[attribute])
+			if "probability" in input_edge: edge.confidence = input_edge["probability"]
+			# missing edge properties: defined_datetime, weight, publications, evidence_type, qualifiers, negated
+			# extra edge properties: predicate, 
+			#edge.edge_attributes = FIXME
+			#edge.publications = FIXME
+			self.message.knowledge_graph.edges.append(edge)
+
+		#### Add each result
+		self.message.results = []
+		for input_result in result_bindings:
+			result = Result()
+			result.description = "No description available"
+			result.essence = "?"
+			#result.essence_type = "?"
+			#result.row_data = "?"
+			#result.score = 0
+			#result.score_name = "?"
+			#result.score_direction = "?"
+			result.confidence = 1.0
+			result.result_type = "individual query answer"
+			result.reasoner_id = "RTX"
+			result.result_graph = None
+			result.node_bindings = input_result["nodes"]
+			result.edge_bindings = input_result["edges"]
+			self.message.results.append(result)
+
+		#### Complete normally
+		return()
+
+
 	def add_neighborhood_graph(self, nodes, edges, confidence=None):
 		"""
 		Populate the object model using networkx neo4j subgraph
