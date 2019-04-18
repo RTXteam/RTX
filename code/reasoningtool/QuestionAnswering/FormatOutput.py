@@ -333,8 +333,17 @@ class FormatResponse:
 			result.reasoner_id = "RTX"
 			result.result_graph = None
 			result.node_bindings = input_result["nodes"]
+			#### Convert each binding value to a list because the viewer requires it
+			for binding in result.node_bindings:
+				result.node_bindings[binding] = [ result.node_bindings[binding] ]
 			result.edge_bindings = input_result["edges"]
 			self.message.results.append(result)
+
+		#### Set the code_description
+		n_results = len(result_bindings)
+		plural = "s"
+		if n_results == 1: plural = ""
+		self.message.code_description = f"{n_results} result{plural} found"
 
 		#### Complete normally
 		return()
