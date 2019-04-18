@@ -25,7 +25,7 @@ from ParseQuestion import ParseQuestion
 #from QueryMeSH import QueryMeSH
 from Q0Solution import Q0
 import ReasoningUtilities
-import QueryGraphReasoner
+from QueryGraphReasoner import QueryGraphReasoner
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/kg-construction/")
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/SemMedDB/")
@@ -61,12 +61,17 @@ class RTXQuery:
     #### If we have a query_graph, pass this on to the QueryGraphReasoner
     if "have_query_graph" in result:
       qgr = QueryGraphReasoner()
-      result = qgr.answer(query["query_message"]["query_graph"], TxltrApiFormat=True)
+      message = qgr.answer(query["query_message"]["query_graph"], TxltrApiFormat=True)
+      message.message_code = "OK"
+      message.original_question = "via QueryGraph"
+      message.restated_question = "via QueryGraph"
       #self.logQuery(query,message,'new')
-      #rtxFeedback.addNewMessage(message,query)
-      #rtxFeedback.disconnect()
-      #self.limitMessage(message,query)
-      return(result.message)
+      rtxFeedback = RTXFeedback()
+      rtxFeedback.connect()
+      rtxFeedback.addNewMessage(message,query)
+      rtxFeedback.disconnect()
+      self.limitMessage(message,query)
+      return(message)
 
       """
       qgResult = self.interpretQueryGraph(query)
