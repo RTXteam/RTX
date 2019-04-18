@@ -10,6 +10,7 @@ import json
 import sys
 import time
 import warnings
+import ast
 import networkx as nx
 
 # PyCharm doesn't play well with relative imports + python console + terminal
@@ -43,12 +44,12 @@ class QueryGraphReasoner:
         None
 
 
-    def answer(self, query_graph, use_json=False):
+    def answer(self, query_graph, TxltrApiFormat=False):
         """
         Answer a question based on the input query_graph:
         :param query_graph: QueryGraph object
-        :param use_json: If the answer should be in Translator standardized API output format
-        :return: Result of the query in simplified or API format
+        :param TxltrApiFormat: Set to true if the answer should be in Translator standardized API output format
+        :return: Result of the query in native or API format
         """
 
         #### Interpret the query_graph object to create a cypher query and encode the result in a response
@@ -62,11 +63,28 @@ class QueryGraphReasoner:
         res = RU.session.run(knowledge_graph_cypher)
         knowledge_graph_dict = res.data()[0]
 
-        return {'answer_subgraphs': answer_graph_list, 'knowledge_graph':knowledge_graph_dict}
+        #### If TxltrApiFormat was not specified, just return a single data structure with the results
+        if not TxltrApiFormat:
+            return {'answer_subgraphs': answer_graph_list, 'knowledge_graph':knowledge_graph_dict}
 
-        # Need to convert the answer graphs and knowledge graph 
-        # into formatted responses 
+        #### Create a stub Message object
+        response = FormatOutput.FormatResponse(0)
+        response.message.table_column_names = [ "id", "type", "name", "description", "uri" ]
+        response.message.code_description = None
 
+        #### Include the original query_graph in the envelope
+        response.message.query_graph = query_graph
+
+        #### Add the knowledge_graph and bindings to the Message
+        response.add_split_results(knowledge_graph_dict, answer_graph_list)
+
+        #### Return the final result message
+        return(response.message)
+
+
+
+
+        """
 
 
 
@@ -79,15 +97,14 @@ class QueryGraphReasoner:
 
     #### Pull out the first node and look it up in the KGNodeIndex
         
-        """
-        entity = query_graph.nodes[0].curie
+        entity = query_graph["nodes"][0]["curie"]
         eprint("Looking up '%s' in KgNodeIndex" % entity)
         kgNodeIndex = KGNodeIndex()
         curies = kgNodeIndex.get_curies(entity)
 
         #### If not in the KG, then return no information
         if not curies:
-            if not use_json:
+            if not TxltrApiFormat:
                 return None
             else:
                 error_code = "TermNotFound"
@@ -103,7 +120,7 @@ class QueryGraphReasoner:
         eprint(properties)
 
         #### By default, return the results just as a plain simple list of data structures
-        if not use_json:
+        if not TxltrApiFormat:
             return properties
 
         #### Or, if requested, format the output as the standardized API output format
@@ -186,14 +203,17 @@ class QueryGraphReasoner:
         return output
 
 
+################################################################################
 # Tests
-def tests():
-    result = test1_2nodes()
-    return(result)
-
+def tests(TxltrApiFormat=False):
+    result = test1_2nodes(TxltrApiFormat=TxltrApiFormat)
+    if TxltrApiFormat:
+        print(json.dumps(ast.literal_eval(repr(result)),sort_keys=True,indent=2))
+    else:
+        print(json.dumps(result,sort_keys=True,indent=2))
 
 # Test 1
-def test1_2nodes():
+def test1_2nodes(TxltrApiFormat=False):
     q = QueryGraphReasoner()
     query_graph_json_stream = '''{
     "edges": [
@@ -221,7 +241,7 @@ def test1_2nodes():
 
     query_graph_dict = json.loads(query_graph_json_stream)
     #query_graph = QueryGraphReasoner().from_dict(query_graph_dict)
-    result = q.answer(query_graph_dict, use_json=True)
+    result = q.answer(query_graph_dict, TxltrApiFormat=TxltrApiFormat)
     return(result)
 
 
@@ -236,7 +256,7 @@ def main():
     # Parse and check args
     args = parser.parse_args()
     input_file = args.input_file
-    use_json = args.json
+    TxltrApiFormat = args.json
 
     # Initialize the question class
     q = QueryGraphReasoner()
@@ -247,17 +267,16 @@ def main():
         return()
 
     if args.test:
-        result = tests()
-        #print(result)
-        print(json.dumps(result,sort_keys=True,indent=2))
+        tests(TxltrApiFormat=TxltrApiFormat)
+        return()
 
     else:
         with open(input_file, 'r') as infile:
           query_graph_json_stream = infile.read()
         query_graph_dict = json.loads(query_graph_json_stream)
         query_graph = QueryGraphReasoner().from_dict(query_graph_dict)
-        result = q.answer(query_graph, use_json=use_json)
-        if use_json:
+        result = q.answer(query_graph, TxltrApiFormat=TxltrApiFormat)
+        if TxltrApiFormat:
             result.print()
         else:
             print(result)
