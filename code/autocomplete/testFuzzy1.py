@@ -5,9 +5,20 @@ import sys
 import rtxcomplete
 
 rtxcomplete.load()
-limit = 10
+limit = 50
 word = "mala"
+#word = " insulin"
+word = "aceta"
+word = "acetam"
+word = "acetami"
+word = "profe"
 #word = "P0123"
+
 result = rtxcomplete.get_nodes_like(word,limit)
-print(result)
+
+if 1:
+  for word in result:
+    print(word["name"])
+else:
+  print(result)
 
