@@ -349,6 +349,66 @@ class FormatResponse:
 		return()
 
 
+	def infer_result_information(self):
+		"""
+		Populate the individual results with some inferences based on a query_graph and bindings
+		:return: none
+		"""
+
+		#### Get the number of nodes that we have
+		if self.message.query_graph is None: return()
+		if self.message.query_graph["nodes"] is None: return()
+		n_nodes = len(self.message.query_graph["nodes"])
+		if n_nodes == 0: return()
+
+		#### Loop over the query_graph nodes trying to learn about the query
+		essence_node = None
+		for node in self.message.query_graph["nodes"]:
+			if "curie" in node and node["curie"] is not None:
+			  if essence_node is None: essence_node = node["node_id"]
+			else:
+			  essence_node = node["node_id"]
+
+		#print(f"n_nodes={n_nodes}")
+		#print(f"essence_node={essence_node}")
+
+		#### Loop over the results, updating with some useful information
+		if self.message.results is None: return()
+		n_results = len(self.message.results)
+		if n_results == 0: return()
+		for result in self.message.results:
+			essence_node_curie = None
+			essence_node_name = "?"
+			essence_node_type = "?"
+
+			#### Look for the essence_node in the result
+			if result.node_bindings is not None:
+				if essence_node in result.node_bindings:
+					essence_node_curie = result.node_bindings[essence_node]
+					if isinstance(essence_node_curie,list):
+						essence_node_curie = essence_node_curie[0]                  ## FIXME. Just taking element 0 isn't very good
+					#print(f"looking for {essence_node_curie}")
+					for node in self.message.knowledge_graph.nodes:
+						#print(f" --> {node.id}")
+						if node.id == essence_node_curie:
+							essence_node_name = node.name
+							essence_node_type = node.type
+							if isinstance(essence_node_type,list):
+								essence_node_type = essence_node_type[0]                  ## FIXME. Just taking element 0 isn't very good
+							result.essence = essence_node_name
+							result.essence_type = essence_node_type
+
+					#print(f"**essence_node_curie={essence_node_curie}")
+					#print(f"  essence_node_name={essence_node_name}")
+					#print(f"  essence_node_type={essence_node_type}")
+
+		#print(f"n_results={n_results}")
+
+
+
+		return()
+
+
 	def add_neighborhood_graph(self, nodes, edges, confidence=None):
 		"""
 		Populate the object model using networkx neo4j subgraph
@@ -455,6 +515,7 @@ class FormatResponse:
 		#	self.message.code_description = "%s result found" % self._num_results
 		#else:
 		#	self.message.code_description = "%s results found" % self._num_results
+
 
 if __name__ == '__main__':
 	test = FormatResponse(2)

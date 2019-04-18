@@ -98,6 +98,9 @@ class QueryGraphReasoner:
         #response.message.table_column_names = [ "id", "type", "name", "description", "uri" ]
         #response.message.code_description = None
 
+        #### Enrich the Message Results with some inferred information
+        response.infer_result_information()
+
         #### Return the final result message
         return(response.message)
 
@@ -226,14 +229,14 @@ class QueryGraphReasoner:
 ################################################################################
 # Tests
 def tests(TxltrApiFormat=False):
-    result = test1_2nodes(TxltrApiFormat=TxltrApiFormat)
+    result = test1_2nodes_2(TxltrApiFormat=TxltrApiFormat)
     if TxltrApiFormat:
         print(json.dumps(ast.literal_eval(repr(result)),sort_keys=True,indent=2))
     else:
         print(json.dumps(result,sort_keys=True,indent=2))
 
 # Test 1
-def test1_2nodes(TxltrApiFormat=False):
+def test1_2nodes_1(TxltrApiFormat=False):
     q = QueryGraphReasoner()
     query_graph_json_stream = '''{
     "edges": [
@@ -257,6 +260,37 @@ def test1_2nodes(TxltrApiFormat=False):
         "type": "protein"
       }
     ]
+    }'''
+
+    query_graph_dict = json.loads(query_graph_json_stream)
+    #query_graph = QueryGraphReasoner().from_dict(query_graph_dict)
+    result = q.answer(query_graph_dict, TxltrApiFormat=TxltrApiFormat)
+    return(result)
+
+
+def test1_2nodes_2(TxltrApiFormat=False):
+    q = QueryGraphReasoner()
+    query_graph_json_stream = '''{
+      "edges": [
+        {
+          "edge_id": "e3",
+          "source_id": "n1",
+          "target_id": "n2",
+          "type": "indicated_for"
+        }
+      ],
+      "nodes": [
+        {
+          "node_id": "n1",
+          "name": "ibuprofen",
+          "curie": "CHEMBL.COMPOUND:CHEMBL521",
+          "type": "chemical_substance"
+        },
+        {
+          "node_id": "n2",
+          "type": "disease"
+        }
+      ]
     }'''
 
     query_graph_dict = json.loads(query_graph_json_stream)
