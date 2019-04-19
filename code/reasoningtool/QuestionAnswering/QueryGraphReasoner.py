@@ -136,11 +136,11 @@ class QueryGraphReasoner:
           if "edge_id" not in edge or edge["edge_id"] is None:
             return( { "message_code": "QueryGraphMissingEdgeId", "code_description": "Submitted QueryGraph has an edge with a missing edge_id" } )
           if "source_id" in edge and edge["source_id"] is not None:
-            referenced_nodes[source_id] = 1
+            referenced_nodes[edge["source_id"]] = 1
           else:
             return( { "message_code": "QueryGraphMissingSourceId", "code_description": "Submitted QueryGraph has an edge with a missing source_id" } )
           if "target_id" in edge and edge["target_id"] is not None:
-            referenced_nodes[target_id] = 1
+            referenced_nodes[edge["target_id"]] = 1
           else:
             return( { "message_code": "QueryGraphMissingSourceId", "code_description": "Submitted QueryGraph has an edge with a missing target_id" } )
 
