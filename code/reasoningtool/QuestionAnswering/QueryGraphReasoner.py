@@ -55,6 +55,12 @@ class QueryGraphReasoner:
         #### Create a stub Message object
         response = FormatOutput.FormatResponse(0)
 
+        #### Perform some basic validation of the query graph before sending to the server
+        result = self.validate_query_graph(query_graph)
+        if result["message_code"] != "OK":
+          response.add_error_message(result["message_code"], result["code_description"])
+          return(response.message)
+
         #### Include the original query_graph in the envelope
         response.message.query_graph = query_graph
         response.message.original_question = "Input via Query Graph"
@@ -103,6 +109,48 @@ class QueryGraphReasoner:
 
         #### Return the final result message
         return(response.message)
+
+
+    def validate_query_graph(self, query_graph):
+        """
+        Check to make sure that the query_graph has no known flaws:
+        :param query_graph: QueryGraph object        :param TxltrApiFormat: Set to true if the answer should be in Translator standardized API output format
+        :return: { "message_code": "OK|someErrorCode", "code_description": "description of the problem" }
+        """
+
+        nodes = query_graph["nodes"]
+        edges = query_graph["edges"]
+        n_nodes = len(nodes)
+        n_edges = len(edges)
+        eprint("DEBUG: n_nodes = %d, n_edges = %d" % (n_nodes,n_edges))
+
+        #### Handle 0 nodes case
+        if n_nodes == 0:
+          return( { "message_code": "QueryGraphZeroNodes", "code_description": "Submitted QueryGraph has 0 nodes. At least 1 node is required" } )
+
+        #### Get a list of nodes referenced in edges
+        referenced_nodes = {}
+        for edge in query_graph["edges"]:
+          if "edge_id" not in edge:
+            return( { "message_code": "QueryGraphMissingEdgeId", "code_description": "Submitted QueryGraph has an edge with a missing edge_id" } )
+          if "source_id" in edge:
+            referenced_nodes[source_id] = 1
+          else:
+            return( { "message_code": "QueryGraphMissingSourceId", "code_description": "Submitted QueryGraph has an edge with a missing source_id" } )
+          if "target_id" in edge:
+            referenced_nodes[target_id] = 1
+          else:
+            return( { "message_code": "QueryGraphMissingSourceId", "code_description": "Submitted QueryGraph has an edge with a missing target_id" } )
+
+        #### Make sure any unbound nodes have an edge
+        for node in query_graph["nodes"]:
+          if "node_id" not in node:
+            return( { "message_code": "QueryGraphMissingNodeId", "code_description": "Submitted QueryGraph has an node with a missing node_id" } )
+          if node["node_id"] not in referenced_nodes and "curie" not in node:
+            return( { "message_code": "QueryGraphUnboundEdglessNode", "code_description": "You smell the odor of burning silicon and a muffled boom. Please adjust your Query Graph so that any edgeless nodes have a specific identifier, otherwise thousands of nodes are involved." } )
+
+        return( {"message_code": "OK", "code_description": "QueryGraph passes basic checks" } )
+
 
 
 
@@ -229,7 +277,7 @@ class QueryGraphReasoner:
 ################################################################################
 # Tests
 def tests(TxltrApiFormat=False):
-    result = test1_2nodes_2(TxltrApiFormat=TxltrApiFormat)
+    result = test1_2nodes_3(TxltrApiFormat=TxltrApiFormat)
     if TxltrApiFormat:
         print(json.dumps(ast.literal_eval(repr(result)),sort_keys=True,indent=2))
     else:
@@ -289,6 +337,24 @@ def test1_2nodes_2(TxltrApiFormat=False):
         {
           "node_id": "n2",
           "type": "disease"
+        }
+      ]
+    }'''
+
+    query_graph_dict = json.loads(query_graph_json_stream)
+    #query_graph = QueryGraphReasoner().from_dict(query_graph_dict)
+    result = q.answer(query_graph_dict, TxltrApiFormat=TxltrApiFormat)
+    return(result)
+
+
+def test1_2nodes_3(TxltrApiFormat=False):
+    q = QueryGraphReasoner()
+    query_graph_json_stream = '''{
+      "edges": [      ],
+      "nodes": [
+        {
+          "node_id": "n1",
+          "type": "metabolite"
         }
       ]
     }'''
