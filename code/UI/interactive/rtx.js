@@ -1,3 +1,5 @@
+var input_qg = { "edges": [], "nodes": [] };
+var qgid = 0;
 var cyobj = [];
 var cytodata = [];
 var fb_explvls = [];
@@ -5,17 +7,21 @@ var fb_ratings = [];
 var message_id = null;
 var summary_table_html = '';
 var columnlist = [];
+var UIstate = {};
 
 var baseAPI = "/devED/";
 
 function main() {
     get_example_questions();
+    get_node_types();
     display_list('A');
     display_list('B');
+    add_status_divs();
+    cytodata[999] = 'dummy';
+    UIstate.nodedd = 1;
 
     message_id = getQueryVariable("m") || null;
     if (message_id) {
-	add_status_divs();
 	document.getElementById("statusdiv").innerHTML = "You have requested RTX message id = " + message_id;
 	document.getElementById("devdiv").innerHTML =  "requested RTX message id = " + message_id + "<br>";
 	retrieve_message();
@@ -23,6 +29,7 @@ function main() {
     }
     else {
 	openSection(null,'queryDiv');
+	add_cyto();
    }
 }
 
@@ -74,12 +81,11 @@ function pasteQuestion(question) {
     document.getElementById("qqq").blur();
 }
 
-function sendQuestion(e) {
+function reset_vars() {
     add_status_divs();
     document.getElementById("result_container").innerHTML = "";
     //    document.getElementById("kg_container").innerHTML = "";
     if (cyobj[0]) {cyobj[0].elements().remove();}
-    if (cyobj[999]) {cyobj[999].elements().remove();}
     document.getElementById("summary_container").innerHTML = "";
     document.getElementById("menunumresults").innerHTML = "--";
     document.getElementById("menunumresults").classList.remove("numnew");
@@ -87,12 +93,66 @@ function sendQuestion(e) {
     summary_table_html = '';
     cyobj = [];
     cytodata = [];
+    UIstate.nodedd = 1;
+}
+
+function sendGraph(e) {
+    reset_vars();
+    document.getElementById("questionForm").elements["questionText"].value = '-- posted query via graph --';
+
+    document.getElementById("statusdiv").innerHTML = "Posting graph.  Looking for answer...";
+
+    sesame('openmax',statusdiv);
+    var xhr = new XMLHttpRequest();
+    xhr.open("post",  baseAPI + "api/rtx/v1/query", true);
+    xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+
+    var queryObj = { "query_message" : { "query_graph" :input_qg } };
+    //queryObj.bypass_cache = bypass_cache;
+    queryObj.max_results = 100;
+
+    document.getElementById("devdiv").innerHTML += "<PRE>\nposted to QUERY:\n" + JSON.stringify(queryObj,null,2) + "</PRE>";
+
+    clear_qg();
+
+    // send the collected data as JSON
+    xhr.send(JSON.stringify(queryObj));
+
+    xhr.onloadend = function() {
+        if ( xhr.status == 200 ) {
+	    var jsonObj = JSON.parse(xhr.responseText);
+	    document.getElementById("devdiv").innerHTML += "<br>================================================================= REPONSE MESSAGE::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj,null,2) + "</PRE>";
+
+	    document.getElementById("statusdiv").innerHTML += "<br><br><I>"+jsonObj["code_description"]+"</I>";
+	    sesame('openmax',statusdiv);
+
+	    if (jsonObj["message_code"] == "QueryGraphZeroNodes") {
+		clear_qg();
+	    }
+	    else {
+		render_message(jsonObj);
+		input_qg = { "edges": [], "nodes": [] };
+	    }
+	}
+	else {
+	    document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr.status+")</SPAN>";
+	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<BR>"+xhr.responseText;
+	    sesame('openmax',statusdiv);
+	}
+	
+    };
+
+}
+
+function sendQuestion(e) {
+    reset_vars();
+    if (cyobj[999]) {cyobj[999].elements().remove();}
+    input_qg = { "edges": [], "nodes": [] };
 
     var bypass_cache = "true";
     if (document.getElementById("useCache").checked) {
 	bypass_cache = "false";
     }
-
 
     // collect the form data while iterating over the inputs
     var q = document.getElementById("questionForm").elements["questionText"].value;
@@ -141,6 +201,7 @@ function sendQuestion(e) {
 		    if ( xhr2.status == 200 ) {
 			var jsonObj2 = JSON.parse(xhr2.responseText);
 			document.getElementById("devdiv").innerHTML += "<br>================================================================= QUERY::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
+
 			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["code_description"]+"</I>";
 			sesame('openmax',statusdiv);
 
@@ -184,6 +245,7 @@ function sendQuestion(e) {
 
 function retrieve_message() {
     document.getElementById("statusdiv").innerHTML = "Retrieving RTX message id = " + message_id + "<hr>";
+
     sesame('openmax',statusdiv);
     var xhr = new XMLHttpRequest();
     xhr.open("get",  baseAPI + "api/rtx/v1/message/" + message_id, true);
@@ -193,6 +255,7 @@ function retrieve_message() {
 	if ( xhr.status == 200 ) {
 	    var jsonObj2 = JSON.parse(xhr.responseText);
 	    document.getElementById("devdiv").innerHTML += "<br>================================================================= RESPONSE REQUEST::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
+
 	    document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["code_description"]+"</I>";
 	    document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question"];
 
@@ -233,14 +296,9 @@ function render_message(respObj) {
 
 	if ( respObj["knowledge_graph"] ) {
 //	    process_kg(respObj["knowledge_graph"]);
-
 //	    add_kg_html();
 	    process_graph(respObj["knowledge_graph"],0);
-	    if (respObj["query_graph"]) {
-		process_graph(respObj["query_graph"],999);
-	    }
 	    process_results(respObj["results"],respObj["knowledge_graph"]);
-	    add_cyto();
 	}
 	else {  // fallback to old style
             add_result(respObj["results"]);
@@ -250,12 +308,21 @@ function render_message(respObj) {
     }
     else {
         document.getElementById("result_container").innerHTML += "<H2>No results...</H2>";
+        document.getElementById("summary_container").innerHTML += "<H2>No results...</H2>";
+    }
+
+    if (respObj["query_graph"]) {
+	process_graph(respObj["query_graph"],999);
+    }
+    else {
+	cytodata[999] = 'dummy'; // this enables query graph editing
     }
 
     if ( respObj["table_column_names"] ) {
         document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br></div>";
     }
 
+    add_cyto();
 }
 
 
@@ -263,6 +330,7 @@ function render_message(respObj) {
 
 function add_status_divs() {
     document.getElementById("status_container").innerHTML = "<div class='statushead'>Status</div><div class='status' id='statusdiv'></div>";
+
     document.getElementById("dev_result_json_container").innerHTML = "<div class='statushead'>Dev Info <i style='float:right; font-weight:normal;'>( json responses )</i></div><div class='status' id='devdiv'></div>";
 }
 
@@ -310,14 +378,20 @@ function process_graph(gne,gid) {
 	gne.nodes[gnode].parentdivnum = gid; // helps link node to div when displaying node info on click
 	if (gne.nodes[gnode].node_id) { // deal with QueryGraphNode (QNode)
 	    gne.nodes[gnode].id = gne.nodes[gnode].node_id;
-	    if (gne.nodes[gnode].curie) {
-		gne.nodes[gnode].name = gne.nodes[gnode].curie;
+	}	
+	if (gne.nodes[gnode].curie) {
+	    if (gne.nodes[gnode].name) {
+		gne.nodes[gnode].name += " ("+gne.nodes[gnode].curie+")";
 	    }
 	    else {
-                gne.nodes[gnode].name = gne.nodes[gnode].type + "s?";
+		gne.nodes[gnode].name = gne.nodes[gnode].curie;
 	    }
 	}
-        var tmpdata = { "data" : gne.nodes[gnode] }; // already contains id
+	if (! gne.nodes[gnode].name) {
+            gne.nodes[gnode].name = gne.nodes[gnode].type + "s?";
+	}
+
+        var tmpdata = { "data" : gne.nodes[gnode] };
         cytodata[gid].push(tmpdata);
     }
 
@@ -326,7 +400,7 @@ function process_graph(gne,gid) {
         gne.edges[gedge].source = gne.edges[gedge].source_id;
         gne.edges[gedge].target = gne.edges[gedge].target_id;
 
-        var tmpdata = { "data" : gne.edges[gedge] }; // already contains id
+        var tmpdata = { "data" : gne.edges[gedge] }; // already contains id(?)
         cytodata[gid].push(tmpdata);
     }
 }
@@ -469,8 +543,8 @@ function add_result(reslist) {
 	}
     }
 
-    //    sesame(h1_div,a1_div);
-    add_cyto();
+    // sesame(h1_div,a1_div);
+    // add_cyto();
 }
 
 
@@ -535,7 +609,15 @@ function add_cyto() {
 	    }
 	});
 
-	if (i > 900) { return; }  // skip non-result graphs (for now...?)
+	if (i > 900) {
+	    cyobj[i].on('tap','node', function() {
+		document.getElementById('qg_edge_n'+UIstate.nodedd).value = "n"+this.data('id');
+		UIstate.nodedd = 3 - UIstate.nodedd;
+		get_possible_edges();
+	    });
+
+	    return;
+	}
 
 	cyobj[i].on('tap','node', function() {
 	    var dnum = 'd'+this.data('parentdivnum')+'_div';
@@ -623,35 +705,273 @@ function cylayout(index,layname) {
 
 function mapNodeShape (ele) {
     var ntype = ele.data().type;
+    if (ntype == "microRNA")           { return "hexagon";}
+    if (ntype == "metabolite")         { return "heptagon";}
     if (ntype == "protein")            { return "octagon";}
+    if (ntype == "pathway")            { return "vee";}
     if (ntype == "disease")            { return "triangle";}
+    if (ntype == "molecular_function") { return "rectangle";}
+    if (ntype == "cellular_component") { return "ellipse";}
+    if (ntype == "biological_process") { return "tag";}
     if (ntype == "chemical_substance") { return "diamond";}
-    if (ntype == "anatomical_entity")  { return "ellipse";}
+    if (ntype == "anatomical_entity")  { return "rhomboid";}
     if (ntype == "phenotypic_feature") { return "star";}
     return "rectangle";
 }
 
+function display_query_graph_items() {
+    var kghtml = '';
+    var nitems = 0;
+
+    input_qg.nodes.forEach(function(result, index) {
+	nitems++;
+        kghtml += "<tr class='hoverable'><td>"+result.node_id+"</td><td>"+(result.name==null?"-":result.name)+"</td><td>"+(result.curie==null?"<i>(any)</i>":result.curie)+"</td><td>"+result.type+"</td><td><a href='javascript:remove_node_from_query_graph(\"" + result.node_id.substr(1) +"\");'/> Remove </a></td></tr>";
+    });
+
+    input_qg.edges.forEach(function(result, index) {
+        kghtml += "<tr class='hoverable'><td>"+result.edge_id+"</td><td>-</td><td>"+result.source_id+"--"+result.target_id+"</td><td>"+(result.type==null?"<i>(any)</i>":result.type)+"</td><td><a href='javascript:remove_edge_from_query_graph(\"" + result.edge_id.substr(1) +"\");'/> Remove </a></td></tr>";
+    });
+
+
+    if (nitems > 0) {
+	kghtml = "<table class='sumtab'><tr><th>Id</th><th>Name</th><th>Item</th><th>Type</th><th>Action</th></tr>" + kghtml + "</table>";
+    }
+
+    document.getElementById("qg_items").innerHTML = kghtml;
+}
+
+
+function add_edge_to_query_graph() {
+    var n1 = document.getElementById("qg_edge_n1").value;
+    var n2 = document.getElementById("qg_edge_n2").value;
+    var et = document.getElementById("qg_edge_type").value;
+
+    if (n1=='' || n2=='' || et=='') {
+	document.getElementById("statusdiv").innerHTML = "<p class='error'>Please select two nodes and a valid edge type</p>";
+	return;
+    }
+
+    document.getElementById("statusdiv").innerHTML = "<p>Added an edge of type <i>"+et+"</i></p>";
+    qgid++;
+
+    if (et=='NONSPECIFIC') { et = null; }
+
+    cyobj[999].add( {
+	"data" : { "id" : qgid, "source" : n1.substr(1), "target" : n2.substr(1), "type" : et, "parentdivnum" : 999 }
+    } );
+    cyobj[999].reset();
+
+    var tmpdata = { "edge_id": "e"+qgid,
+		    "negated": null,
+		    "relation": null,
+		    "source_id": n1,
+		    "target_id": n2,
+		    "type": et
+		  };
+
+    input_qg.edges.push(tmpdata);    
+    display_query_graph_items();
+}
+
+
+function update_kg_edge_input() {
+
+    document.getElementById("qg_edge_n1").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Source Node ("+input_qg.nodes.length+")&nbsp;&nbsp;&nbsp;&#8675;</option>";
+    document.getElementById("qg_edge_n2").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Target Node ("+input_qg.nodes.length+")&nbsp;&nbsp;&nbsp;&#8675;</option>";
+
+    if (input_qg.nodes.length < 2) {
+	document.getElementById("qg_edge_n1").innerHTML += "<option value=''>Must have 2 nodes minimum</option>";
+	document.getElementById("qg_edge_n2").innerHTML += "<option value=''>Must have 2 nodes minimum</option>";
+	return;
+    }
+
+    input_qg.nodes.forEach(function(qgnode) {
+	for (var x = 1; x <=2; x++) {
+            var opt = document.createElement('option');
+	    opt.value = qgnode["node_id"];
+	    opt.innerHTML = qgnode["curie"] ? qgnode["curie"] : qgnode["type"];
+	    document.getElementById("qg_edge_n"+x).appendChild(opt);
+	}
+    });
+    
+}
+
+function get_possible_edges() {
+    document.getElementById("qg_edge_type").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Edge Type&nbsp;&nbsp;&nbsp;&#8675;</option>";
+
+    var edge1 = document.getElementById("qg_edge_n1").value;
+    var edge2 = document.getElementById("qg_edge_n2").value;
+
+    if (!(edge1 && edge2) || (edge1 == edge2)) {
+        document.getElementById("qg_edge_type").innerHTML += "<option value=''>Please select 2 different nodes</option>";
+	return;
+    }
+
+
+    var nt1 = input_qg.nodes.filter(function(node){
+	return node["node_id"] === edge1;
+    });
+    var nt2 = input_qg.nodes.filter(function(node){
+	return node["node_id"] === edge2;
+    });
+
+    document.getElementById("qg_edge_type").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Loading edges...</option>";
+
+    var xhr13 = new XMLHttpRequest();
+    xhr13.open("get",  baseAPI + "api/rtx/v1/types/edges/"+nt1[0].type+"/"+nt2[0].type, true);
+    xhr13.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+    xhr13.send(null);
+
+    xhr13.onloadend = function() {
+	if ( xhr13.status == 200 ) {
+	    var ed_ts = JSON.parse(xhr13.responseText);
+
+            document.getElementById("devdiv").innerHTML += "<br>================================================================= EDGE TYPES::"+nt1[0].type+"/"+nt2[0].type+"<PRE>" + JSON.stringify(ed_ts,null,2) + "</PRE>";
+
+	    document.getElementById("qg_edge_type").innerHTML  = "<option style='border-bottom:1px solid black;' value=''>Edge Type ("+ed_ts.length+")&nbsp;&nbsp;&nbsp;&#8675;</option>";
+	    document.getElementById("qg_edge_type").innerHTML += "<option value='NONSPECIFIC'>Unspecified/Non-specific</option>";
+	    for (var i in ed_ts) {
+		var opt = document.createElement('option');
+		opt.value = ed_ts[i];
+		opt.innerHTML = ed_ts[i];
+		document.getElementById("qg_edge_type").appendChild(opt);
+	    }
+	}
+    };
+}
+
+
+function add_nodetype_to_query_graph(nodetype) {
+    document.getElementById("allnodetypes").value = '';
+    document.getElementById("allnodetypes").blur();
+
+    document.getElementById("statusdiv").innerHTML = "<p>Added a node of type <i>"+nodetype+"</i></p>";
+    qgid++;
+
+    cyobj[999].add( {
+        "data" : { "id" : qgid, "name" : nodetype+"s", "type" : nodetype, "parentdivnum" : 999 },
+        "position" : {x:100*qgid, y:50}
+    } );
+    cyobj[999].reset();
+
+    var tmpdata = { "node_id": "n"+qgid,
+		    "is_set": null,
+		    "name" : null,
+		    "curie": null,
+		    "type": nodetype
+		  };
+
+    input_qg.nodes.push(tmpdata);
+    update_kg_edge_input();
+    display_query_graph_items();
+}
+
+function enter_node(ele) {
+    if (event.key === 'Enter') {
+	add_node_to_query_graph();
+    }
+}
 
 function add_node_to_query_graph() {
     var thing = document.getElementById("newquerynode").value;
     document.getElementById("newquerynode").value = '';
 
-    /*
-    for (var item in itemarr) {
-	if (itemarr[item]) {
-	    listItems[listId][itemarr[item]] = 1;
-	}
+    if (thing == '') {
+        document.getElementById("statusdiv").innerHTML = "<p class='error'>Please enter a node value</p>";
+	return;
     }
-    display_list(listId);
-*/    
 
-    document.getElementById("qg_list").innerHTML += thing + "<br>";
+    var things = check_entity(thing);
+    document.getElementById("devdiv").innerHTML +=  "-- found " + things.num + " nodes in graph<br>";
+
+    if (things.num > 0) {
+	if (things.num == 1) {
+            document.getElementById("statusdiv").innerHTML = "<p>Found <b>" + things.num + "</b> node that matches <i>"+thing+"</i> in our knowledge graph.</p>";
+	}
+	else {
+            document.getElementById("statusdiv").innerHTML = "<p>Found <b>" + things.num + "</b> nodes that match <i>"+thing+"</i> in our knowledge graph.</p><span class='error'>Please choose node(s) of interest by removing unwanted ones from the query graph.</span>";
+	}
+	sesame('openmax',statusdiv);
+	for (var nn = 0; nn < things.num; nn++) {
+	    qgid++;
+
+	    cyobj[999].add( {
+		"data" : { "id" : qgid, "name" : thing, "type" : things[nn].type, "parentdivnum" : 999 },
+		"position" : {x:100*(qgid-nn), y:50+nn*50}
+	    } );
+	    cyobj[999].reset();
+
+	    var tmpdata = { "node_id": "n"+qgid,
+			    "is_set": null,
+			    "name" : thing,
+			    "curie": things[nn].curie,
+			    "type": things[nn].type
+			  };
+
+	    document.getElementById("devdiv").innerHTML +=  "-- found a curie = " + things[nn].curie + "<br>";
+
+	    input_qg.nodes.push(tmpdata);
+	}
+	update_kg_edge_input();
+	display_query_graph_items();
+    }
+    else {
+        document.getElementById("statusdiv").innerHTML = "<p><span class='error'>" + thing + "</span> is not in our knowledge graph.</p>";
+	sesame('openmax',statusdiv);
+    }
 
 }
 
 
+function remove_edge_from_query_graph(edgeid) {
+    cyobj[999].remove("#"+edgeid);
 
+    input_qg.edges.forEach(function(result, index) {
+	if (result["edge_id"] === "e"+edgeid) {
+	    //Remove from array
+	    input_qg.edges.splice(index, 1);
+	}
+    });
+    display_query_graph_items();
+}
 
+function remove_node_from_query_graph(nodeid) {
+    cyobj[999].remove("#"+nodeid);
+
+    input_qg.nodes.forEach(function(result, index) {
+	if (result["node_id"] === "n"+nodeid) {
+	    //Remove from array
+	    input_qg.nodes.splice(index, 1);
+	}
+    });
+
+    // FIX this...?
+    input_qg.edges.forEach(function(result, index) {
+	if (result["source_id"] === "n"+nodeid) {
+	    //Remove from array
+	    input_qg.edges.splice(index, 1);
+	}
+	else if (result["target_id"] === "n"+nodeid) {
+	    //Remove from array
+	    input_qg.edges.splice(index, 1);
+	}
+    });
+
+    update_kg_edge_input();
+    display_query_graph_items();
+}
+
+function clear_qg(m) {
+    if (cyobj[999]) { cyobj[999].elements().remove(); }
+    input_qg = { "edges": [], "nodes": [] };
+    update_kg_edge_input();
+    get_possible_edges();
+    display_query_graph_items();
+    qgid = 0;
+    if (m==1){
+	document.getElementById("statusdiv").innerHTML = "<p>Query Graph has been cleared.</p>";
+    }
+}
 
 
 function rem_fefo(res_id,res_div_id) {
@@ -860,9 +1180,32 @@ function get_example_questions() {
 		opt.innerHTML = ex_qs[i].query_type_id+": "+ex_qs[i].question_text;
 		document.getElementById("qqq").appendChild(opt);
 	    }
-
 	}
+    };
 
+}
+
+
+function get_node_types() {
+    var xhr11 = new XMLHttpRequest();
+    xhr11.open("get",  baseAPI + "api/rtx/v1/types/nodes", true);
+    xhr11.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+    xhr11.send(null);
+
+    xhr11.onloadend = function() {
+	if ( xhr11.status == 200 ) {
+	    var nd_ts = JSON.parse(xhr11.responseText);
+
+	    document.getElementById("allnodetypes").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Add Node by Type&nbsp;&nbsp;&nbsp;&#86\
+75;</option>";
+
+	    for (var i in nd_ts) {
+		var opt = document.createElement('option');
+		opt.value = nd_ts[i];
+		opt.innerHTML = nd_ts[i];
+		document.getElementById("allnodetypes").appendChild(opt);
+	    }
+	}
     };
 
 }
@@ -1044,7 +1387,7 @@ function check_entities() {
 		    var comma = "";
                     for (var i in xob) {
                         entstr += comma + xob[i].type;
-document.getElementById("devdiv").innerHTML += comma + xob[i].type;
+			document.getElementById("devdiv").innerHTML += comma + xob[i].type;
 			comma = ", ";
                     }
 	            if (entstr != "") { entstr = "<span class='explevel p9'>&check;</span>&nbsp;" + entstr; }
@@ -1067,6 +1410,34 @@ document.getElementById("devdiv").innerHTML += comma + xob[i].type;
             xhr.send(null);
 	}
     }
+}
+
+function check_entity(term) {
+    var ent = [];
+    ent.num = 0;
+    if (entities[term]) { ent.num = -1; return ent; }
+
+    var xhr = new XMLHttpRequest();
+    xhr.open("get",  baseAPI + "api/rtx/v1/entity/" + term, false);
+    xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+    xhr.onloadend = function() {
+        var xob = JSON.parse(xhr.responseText);
+
+        document.getElementById("devdiv").innerHTML += "<br>================================================================= ENTITY::"+term+"<PRE>" + JSON.stringify(xob,null,2) + "</PRE>";
+
+        if ( xhr.status == 200 ) {
+            for (var i in xob) {
+		ent.num++;
+		ent[i] = [];
+		ent[i].curie = xob[i].curie;
+		ent[i].type  = xob[i].type;
+                entities[xob[i].curie] = xob[i].name + "::" + xob[i].type;
+	    }
+	}
+    };
+
+    xhr.send(null);
+    return ent;
 }
 
 

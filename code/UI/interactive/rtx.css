@@ -85,7 +85,7 @@ body {
 	background-color: #eee;
 	border-bottom: 2px solid black;
 	border-top: 2px solid black;
-	border-left: 25px solid #444;
+	border-left: 15px solid #444;
 	margin-right: -2px;
 }
 
@@ -140,10 +140,23 @@ body {
     overflow: hidden;
     background-color: #eee;
 }
-.ratings:hover {
+.ratings:hover, .qgselect:hover {
     background-color: #fff;
 }
-.sampleqs select, .ratings select {
+
+.qgselect {
+    display: inline-flex;
+    padding: 0;
+    margin: 0;
+    border: 1px solid #aaa;
+    color: #ccc;
+    width: 180px;
+    border-radius: 3px;
+    overflow: hidden;
+    background-color: #ddd;
+}
+
+.sampleqs select, .ratings select, .qgselect select {
     padding: 5px 8px;
     width: 130%;
     border: none;
@@ -154,7 +167,7 @@ body {
     -moz-appearance: none;
     appearance: none;
 }
-.sampleqs select:focus, .ratings select:focus {
+.sampleqs select:focus, .ratings select:focus, .qgselect select:focus {
     outline: none;
     background-color: #eee;
 }
@@ -257,6 +270,7 @@ body {
     vertical-align: super;
     border: 1px solid;
     padding: 2px 4px;
+    transition-duration: 2s;
 }
 .numold {
     background-color: #ddd;

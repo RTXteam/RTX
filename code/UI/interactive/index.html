@@ -13,6 +13,7 @@
 <script src="/rtxcomplete/bootstrap.js"></script>
 <script src="/rtxcomplete/bootstrap3-typeahead.js"></script>
 <script src="/rtxcomplete/rtxcomplete.js"></script>
+<script src="/rtxcomplete/rtxcompletenode.js"></script>
 
 </head>
 <body onload="main();">
@@ -35,7 +36,7 @@
 <div onclick="openSection(this,'devDiv');" class="menuleftitem">Dev Info</div>
 </div>
 
-<div class="banner" banner-bg-text="RTX User Interface :: API 0.9.0">
+<div class="banner" banner-bg-text="RTX User Interface :: API 0.9.1">
 <span class="menulinks">Documentation: 
 <a href="overview.html">Overview</a>
 <a href="api/rtx/v1/ui/">API</a>
@@ -84,11 +85,49 @@ Use cache</label>
 </form>
 <br>
 <h3 style="display:inline;">Query Graph:</h3>
+<a style="position:relative; left:150px;" href="#" title="remove all elements from query graph" onclick="clear_qg(1);">[ clear ]</a>
 <div class="cytograph_q">
   <div style="height: 100%; width: 100%" id="cy999"></div>
 </div>
-<div id="qg_list"></div>
 
+<div id="qg_items"></div>
+
+
+Enter new query node:
+<input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="newquerynode" name="newquerynode" onkeydown="enter_node(this);" size="30" maxlength="200"/><input type="button" class="questionBox button" name="action" value="Add" onClick="javascript:add_node_to_query_graph();">
+
+<!-- input type="text" class="questionBox" id="newquerynode" onkeydown="enter_node(this);" value="" size="30" -->
+
+<b>&nbsp;&nbsp;&nbsp;or&nbsp;&nbsp;&nbsp;</b>
+<span class="qgselect">
+  <select id="allnodetypes" onchange="javascript:add_nodetype_to_query_graph(this.value);">
+    <option style="border-bottom:1px solid black;" value="">Add a Node by Type&nbsp;&nbsp;&nbsp;&#8675;</option>
+    <option>...loading</option>
+  </select>
+</span>
+<br>
+Enter new relationship:
+<span class="qgselect">
+  <select id="qg_edge_n1" onchange="javascript:get_possible_edges();">
+    <option style="border-bottom:1px solid black;" value="">Source Node&nbsp;&nbsp;&nbsp;&#8675;</option>
+    <option>Must have a minimum of 2 nodes</option>
+  </select>
+</span>
+<span class="qgselect">
+  <select id="qg_edge_n2" onchange="javascript:get_possible_edges();">
+    <option style="border-bottom:1px solid black;" value="">Target Node&nbsp;&nbsp;&nbsp;&#8675;</option>
+    <option>Must have a minimum of 2 nodes</option>
+  </select>
+</span>
+<span class="qgselect">
+  <select id="qg_edge_type">
+    <option style="border-bottom:1px solid black;" value="">Edge Type&nbsp;&nbsp;&nbsp;&#8675;</option>
+    <option>Must have a minimum of 2 nodes</option>
+  </select>
+</span>
+<input type="button" class="questionBox button" name="action" value="Add" onClick="javascript:add_edge_to_query_graph();">  
+
+<input style="position:relative; left:150px;" type="button" class="questionBox button" name="action" value="QUERY" onClick="javascript:sendGraph();"/>
 
 <br><br>
 

@@ -23,6 +23,10 @@ $( document ).ready( function(){
 	    }
 	    return html;
 	},
+	sorter: function (items) {
+	    // already sorted by query
+	    return items;
+	},
 	updater: function (item) {
 	    //console.log("updater: ");
 	    //console.log($('.nodeInput').val());
