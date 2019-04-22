@@ -1903,6 +1903,8 @@ def cypher_prop_string(value):
         return str(value).lower()
     elif isinstance(value, str):
         return f"'{value}'"
+    elif isinstance(value, int):
+        return f"{value}"
     else:
         raise ValueError(f'Unsupported property type: {type(value).__name__}.')
 
