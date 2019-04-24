@@ -83,14 +83,16 @@ class QueryGraphReasoner:
             edge.pop("id", None)
  
         #### Execute the cypher to obtain results[]. Return an error if there are no results, or otherwise extract the list
-        result = RU.session.run(answer_graph_cypher)
+        with RU.driver.session() as session:
+            result = session.run(answer_graph_cypher)
         answer_graph_list = result.data()
         if len(answer_graph_list) == 0:
             response.add_error_message("NoPathsFound", "No paths satisfying this query graph were found")
             return(response.message)
 
         #### Execute the knowledge_graph cypher. Return an error if there are no results, or otherwise extract the dict
-        result = RU.session.run(knowledge_graph_cypher)
+        with RU.driver.session() as session:
+            result = session.run(knowledge_graph_cypher)
         result_data = result.data()
         if len(result_data) == 0:
             response.add_error_message("NoPathsFound", "No paths satisfying this query graph were found")
