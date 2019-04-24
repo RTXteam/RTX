@@ -153,9 +153,22 @@ class QueryGraphReasoner:
           if node["node_id"] not in referenced_nodes and ( "curie" not in node or node["curie"] is None ):
             return( { "message_code": "QueryGraphUnboundEdglessNode", "code_description": "You smell the odor of burning silicon and a muffled boom. Please adjust your Query Graph so that any edgeless nodes have a specific identifier, otherwise thousands of nodes are involved." } )
 
+        #### Remove any unapproved keys in the query_graph
+        approved_node_keys = { "curie": 1, "is_set": 1, "node_id": 1, "type": 1, "name": 1 }
+        approved_edge_keys = { "edge_id": 1, "source_id": 1, "target_id": 1, "type": 1, "negated": 1, "relation": 1 }
+        for node in query_graph["nodes"]:
+          #### Iterate on a copy of the node dict because python doesn't allow changing while iterating
+          for key in node.copy():
+            if key not in approved_node_keys:
+              node.pop(key, None)
+        for edge in query_graph["edges"]:
+          #### Iterate on a copy of the edge dict because python doesn't allow changing while iterating
+          for key in edge.copy():
+            if key not in approved_edge_keys:
+              edge.pop(key, None)
+
+
         return( {"message_code": "OK", "code_description": "QueryGraph passes basic checks" } )
-
-
 
 
 
@@ -281,7 +294,7 @@ class QueryGraphReasoner:
 ################################################################################
 # Tests
 def tests(TxltrApiFormat=False):
-    result = test1_2nodes_3(TxltrApiFormat=TxltrApiFormat)
+    result = test1_2nodes_1(TxltrApiFormat=TxltrApiFormat)
     if TxltrApiFormat:
         print(json.dumps(ast.literal_eval(repr(result)),sort_keys=True,indent=2))
     else:
@@ -296,7 +309,8 @@ def test1_2nodes_1(TxltrApiFormat=False):
         "edge_id": "e00",
         "source_id": "n00",
         "target_id": "n01",
-        "type": "physically_interacts_with"
+        "type": "physically_interacts_with",
+        "bannanas": "are_ripe"
       }
     ],
     "nodes": [
@@ -309,7 +323,8 @@ def test1_2nodes_1(TxltrApiFormat=False):
         "curie": null,
         "is_set": null,
         "node_id": "n01",
-        "type": "protein"
+        "type": "metabolite",
+        "apples": "are_red"
       }
     ]
     }'''
