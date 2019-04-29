@@ -2,18 +2,20 @@
 prefix-mappings:
     BSPO: relationship type
     CL: anatomical entity
+    GOREL: relationship type
     HGNC: gene
-    NCBIGene: gene
-    UniProtKB: protein
-    NCBITaxon: organism taxon
-    Orphanet: disease
-    RO: relationship type
     IAO: information entity type
-    UBERON: anatomical entity
-    OMIM: phenotypic feature
-    RGD: gene
-    SGD: gene
     MGI: gene
+    NCBIGene: gene
+    NCBITaxon: organism taxon
+    OMIM: phenotypic feature
+    Orphanet: disease
+    RGD: gene
+    RO: relationship type
+    SGD: gene
+    STY: semantic type
+    UBERON: anatomical entity
+    UniProtKB: protein
 term-mappings:
     rdfs:isDefinedBy: relationship type
     OIO:inSubset: relationship type
@@ -34,6 +36,8 @@ term-mappings:
     BFO:0000051: relationship type
     BFO:0000054: relationship type
     BFO:0000055: relationship type
+    BFO:0000056: relationship type
+    BFO:0000057: relationship type
     BFO:0000060: relationship type
     BFO:0000061: relationship type
     BFO:0000062: relationship type
@@ -46,17 +50,21 @@ term-mappings:
     CARO:0000003: anatomical entity
     CHEBI:23888: drug
     CHEBI:24431: chemical substance
+    CHEBI:24432: biological role
     CHEBI:25212: metabolite
+    CHEBI:33232: application
     CHEBI:33697: RNA product
     CHEBI:36342: subatomic particle
+    CHEBI:51086: chemical role
     CHEBI:78295: biological food component
-    CHEBI:50906: biological process or activity
+    CHEBI:50906: biological process
     CL:0000000: anatomical entity
     DDANAT:0000002: organism taxon
     DOID:4: disease
     GO:0005575: cellular component
     GO:0008150: biological process
     GO:0003674: molecular function
+    GOCHEREL:0000001: relationship type
     EFO:0000324: cell type
     EFO:0005066: material
     EFO:0001434: material
@@ -108,8 +116,40 @@ term-mappings:
     NCIT:C48187: material
     NCIT:C20181: conceptual entity
     OBI:0000427: protein
+    owl:Thing: named thing
     PATO:0000001: phenotypic quality
     PR:000000001: protein
+    skos:altLabel: attribute
+    skos:exactMatch: relationship type
+    skos:hiddenLabel: attribute
+    skos:note: attribute
+    skos:broaderTransitive: relationship type
+    skos:related: relationship type
+    skos:mappingRelation: relationship type
+    skos:broader: relationship type
+    skos:narrowMatch: relationship type
+    skos:Collection: information entity type
+    skos:Concept: conceptual entity
+    skos:ConceptScheme: conceptual entity
+    skos:hasTopConcept: relationship type
+    skos:inScheme: relationship type
+    skos:memberList: relationship type
+    skos:definition: attribute
+    skos:scopeNote: attribute
+    skos:historyNote: attribute
+    skos:narrowerTransitive: relationship type
+    skos:narrower: relationship type
+    skos:broadMatch: relationship type
+    skos:notation: attribute
+    skos:editorialNote: attribute
+    skos:topConceptOf: relationship type
+    skos:member: relationship type
+    skos:changeNote: attribute
+    skos:closeMatch: relationship type
+    skos:example: attribute
+    skos:semanticRelation: relationship type
+    skos:relatedMatch: relationship type
+    skos:prefLabel: attribute
     SNOMEDCT_US:48176007: social context
     SNOMEDCT_US:64572001: disease
     SNOMEDCT_US:71388002: procedure
@@ -133,11 +173,45 @@ term-mappings:
     SNOMEDCT_US:404684003: finding
     SNOMEDCT_US:410607006: organism taxon
     SNOMEDCT_US:410942007: drug
-    SNOMEDCT_US:419891008: record artifact
+    SNOMEDCT_US:419891008: information entity
     SNOMEDCT_US:900000000000441003: information entity
     SO:0000704: gene
+    TUI:T017: anatomical entity
+    TUI:T001: organism taxon
+    TUI:T032: attribute
+    TUI:T033: finding
+    TUI:T038: biological process
+    TUI:T047: disease
+    TUI:T051: event
+    TUI:T052: activity
+    TUI:T053: behavior
+    TUI:T067: phenomenon or process
+    TUI:T071: entity
+    TUI:T072: physical object
+    TUI:T073: product
+    TUI:T074: device
+    TUI:T075: device
+    TUI:T077: conceptual entity
+    TUI:T078: concept
+    TUI:T090: occupation
+    TUI:T092: organization
+    TUI:T096: group of people
+    TUI:T102: attribute
+    TUI:T103: chemical substance
+    TUI:T123: biological substance
+    TUI:T125: protein
+    TUI:T126: protein
+    TUI:T126: biological food component
+    TUI:T129: protein
+    TUI:T131: chemical substance
+    TUI:T167: substance
+    TUI:T170: product
+    TUI:T171: language
+    TUI:T184: phenotypic feature
+    TUI:T200: drug
     UBERON:0001062: anatomical entity
     UBERON:0000105: life stage
+    UMLS:hasSTY: relationship type
     UPHENO:0001001: phenotypic feature
     WD:Q28845870: biological entity
     WD:Q12136: disease

@@ -14,7 +14,7 @@ MMSYS_DIR=${UMLS_DIR}/${UMLS_FILE_BASE}
 UMLS_RRDIST_DIR=${UMLS_DIR}
 UMLS_DEST_DIR=${UMLS_RRDIST_DIR}/META
 MYSQL_CONF=${UMLS_DIR}/mysql-config.conf
-UMLS2RDF_RELEASE=rtx-1.0
+UMLS2RDF_RELEASE=rtx-1.5
 UMLS2RDF_PKGNAME=umls2rdf-${UMLS2RDF_RELEASE}
 UMLS2RDF_DIR=${UMLS_DIR}/${UMLS2RDF_PKGNAME}
 
@@ -34,8 +34,9 @@ mkdir -p ${UMLS_DEST_DIR}
 
 ## copy UMLS distribution files and MetamorphoSys config files from S3 to local dir
 aws s3 cp --no-progress --region ${S3_REGION} s3://${S3_BUCKET}/umls-${UMLS_FILE_BASE}.zip ${UMLS_DIR}/
-aws s3 cp --no-progress --region ${S3_REGION} s3://${S3_BUCKET}/umls-config.prop ${UMLS_DIR}/config.prop
-aws s3 cp --no-progress --region ${S3_REGION} s3://${S3_BUCKET}/umls-user.b.prop ${UMLS_DIR}/user.b.prop
+cp ${CODE_DIR}/umls-config.prop ${UMLS_DIR}/config.prop
+#aws s3 cp --no-progress --region ${S3_REGION} s3://${S3_BUCKET}/umls-config.prop ${UMLS_DIR}/config.prop
+#aws s3 cp --no-progress --region ${S3_REGION} s3://${S3_BUCKET}/umls-user.b.prop ${UMLS_DIR}/user.b.prop
 
 ## unpack UMLS and MetamorphoSys zip archives
 unzip ${UMLS_DIR}/umls-${UMLS_FILE_BASE}.zip -d ${UMLS_DIR}/
@@ -104,6 +105,7 @@ cat ${UMLS2RDF_DIR}/conf_sample.py | sed 's/your-host/localhost/g' | \
     sed "s/umls2015ab/${MYSQL_DBNAME}/g" | \
     sed "s/your db user/${MYSQL_USER}/g" | \
     sed "s/your db pass/${MYSQL_PASSWORD}/g" | \
+    sed "s|http://purl.bioontology.org/ontology|https://identifiers.org/umls|g" |
     sed "s/2015ab/${UMLS_VER}/g" > ${UMLS2RDF_DIR}/conf.py
 
 ## umls2rdf is legacy software written to run in python2.7; set up the virtualenv

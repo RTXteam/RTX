@@ -1,5 +1,5 @@
 -
-  AIR: http://purl.bioontology.org/ontology/AIR/
+  AIR: https://identifiers.org/umls/AIR/
 -
   CST: http://purl.bioontology.org/ontology/CST/
 -
@@ -12,6 +12,8 @@
   HGNC: http://identifiers.org/hgnc/
 -
   EFO: http://www.ebi.ac.uk/efo/EFO_
+-
+  GOREL: http://purl.obolibrary.org/obo/GOREL_
 -
   NCIT: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#
 -
@@ -32,4 +34,14 @@
   AraPort: https://www.araport.org/locus/
 -
   ENSEMBL: http://www.ensembl.org/id/
+-
+  CUI: https://identifiers.org/umls/cui/
+-
+  TUI: https://identifiers.org/umls/STY/
+-
+  skos: http://www.w3.org/2004/02/skos/core#
+-
+  skos: http://www.w3.org/2008/05/skos#
+-
+  UMLS: https://identifiers.org/umls/
 
