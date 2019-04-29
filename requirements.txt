@@ -19,7 +19,7 @@ sqlalchemy
 scipy
 scikit-learn
 connexion
-'connexion[swagger-ui]'
+#'connexion[swagger-ui]'
 cachecontrol
 pymysql
 
