@@ -12,6 +12,7 @@ word = "aceta"
 word = "acetam"
 word = "acetami"
 word = "profe"
+word = "malat"
 #word = "P0123"
 
 result = rtxcomplete.get_nodes_like(word,limit)
