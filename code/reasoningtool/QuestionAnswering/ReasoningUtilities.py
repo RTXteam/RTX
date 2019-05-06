@@ -156,6 +156,29 @@ def get_node_labels():
 	return labels
 
 
+def get_full_meta_graph():
+	"""
+	Get all the node types and the edge types that can connect them in the neo4j database
+	:return: dict with all node types and how they can connect
+	"""
+	query = "call apoc.meta.graph"
+	with driver.session() as session:
+		result = session.run(query)
+	metagraph = {}
+	for record in result:
+		for relationship in record["relationships"]:
+			start_name = relationship.start_node.get("name")
+			end_name = relationship.end_node.get("name")
+			if start_name == "Base" or end_name == "Base":
+			  continue
+			if start_name not in metagraph:
+				metagraph[start_name] = {}
+			if end_name not in metagraph[start_name]:
+				metagraph[start_name][end_name] = []
+			metagraph[start_name][end_name].append(relationship.type)
+	return(metagraph)
+
+
 def get_id_from_property(property_value, property_name, label=None, debug=False):
 	"""
 	Get a node with property having value property_value
