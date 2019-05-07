@@ -28,7 +28,7 @@ class UpdateNodesNameTestCase(TestCase):
     rtxConfig = RTXConfiguration()
 
     def test_update_protein_names_old(self):
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         protein_nodes_ids = ['UniProtKB:P01358', 'UniProtKB:P20848', 'UniProtKB:Q9Y471', 'UniProtKB:O60397',
                              'UniProtKB:Q8IZJ3', 'UniProtKB:Q7Z2Y8', 'UniProtKB:Q8IWN7', 'UniProtKB:Q156A1']
@@ -42,7 +42,7 @@ class UpdateNodesNameTestCase(TestCase):
             self.assertEqual(name, node['n']['name'])
 
     def test_update_protein_names(self):
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_protein_nodes()
 
         # generate random number array

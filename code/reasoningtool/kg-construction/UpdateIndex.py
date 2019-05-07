@@ -146,6 +146,6 @@ if __name__ == '__main__':
     rtxConfig = RTXConfiguration()
     rtxConfig.live = args.live
 
-    ui = UpdateIndex(rtxConfig.username, rtxConfig.password, rtxConfig.bolt)
+    ui = UpdateIndex(rtxConfig.neo4j_username, rtxConfig.neo4j_password, rtxConfig.neo4j_bolt)
     ui.replace()
 

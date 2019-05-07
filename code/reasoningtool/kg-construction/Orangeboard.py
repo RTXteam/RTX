@@ -580,8 +580,8 @@ class Orangeboard:
         ob.add_rel('interacts_with', 'PC2', node1, node2)
         ob.add_rel('interacts_with', 'PC2', node2, node1)
         rtxConfig = RTXConfiguration()
-        ob.neo4j_set_url(rtxConfig.bolt)
-        ob.neo4j_set_auth(rtxConfig.username, rtxConfig.password)
+        ob.neo4j_set_url(rtxConfig.neo4j_bolt)
+        ob.neo4j_set_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password)
         ob.neo4j_push()
         print(ob)
 
@@ -593,8 +593,8 @@ class Orangeboard:
         ob.add_rel('interacts_with', 'PC2', node1, node2)
         ob.add_rel('interacts_with', 'PC2', node2, node1)
         rtxConfig = RTXConfiguration()
-        ob.neo4j_set_url(rtxConfig.bolt)
-        ob.neo4j_set_auth(rtxConfig.username, rtxConfig.password)
+        ob.neo4j_set_url(rtxConfig.neo4j_bolt)
+        ob.neo4j_set_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password)
         ob.neo4j_push()
         print(ob)
 
@@ -605,8 +605,8 @@ class Orangeboard:
         node2 = ob.add_node('uniprot_protein', 'w', seed_node_bool=False)
         ob.add_rel('targets', 'ChEMBL', node1, node2, prob=0.5)
         rtxConfig = RTXConfiguration()
-        ob.neo4j_set_url(rtxConfig.bolt)
-        ob.neo4j_set_auth(rtxConfig.username, rtxConfig.password)
+        ob.neo4j_set_url(rtxConfig.neo4j_bolt)
+        ob.neo4j_set_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password)
         ob.neo4j_push()
         print(ob)        
 
@@ -618,8 +618,8 @@ class Orangeboard:
         ob.add_rel('targets', 'ChEMBL', node1, node2, prob=0.5)
         ob.add_rel('targets2', 'ChEMBL2', node1, node2, prob=0.5, extended_reltype="test")
         rtxConfig = RTXConfiguration()
-        ob.neo4j_set_url(rtxConfig.bolt)
-        ob.neo4j_set_auth(rtxConfig.username, rtxConfig.password)
+        ob.neo4j_set_url(rtxConfig.neo4j_bolt)
+        ob.neo4j_set_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password)
         ob.neo4j_push()
         print(ob)        
 

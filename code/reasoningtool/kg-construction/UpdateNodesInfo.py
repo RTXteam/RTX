@@ -525,7 +525,7 @@ if __name__ == '__main__':
     rtxConfig.live = args.live
 
     #   create UpdateNodesInfo object
-    ui = UpdateNodesInfo(rtxConfig.username, rtxConfig.password, rtxConfig.bolt)
+    ui = UpdateNodesInfo(rtxConfig.neo4j_username, rtxConfig.neo4j_password, rtxConfig.neo4j_bolt)
 
     args_dict = vars(args)
     if args_dict.get('runfunc', None) is not None:

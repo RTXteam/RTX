@@ -61,7 +61,7 @@ if __name__ == '__main__':
     # create the RTXConfiguration object
     rtxConfig = RTXConfiguration()
 
-    obj = TestBackup(rtxConfig.bolt, rtxConfig.username, rtxConfig.password)
+    obj = TestBackup(rtxConfig.neo4j_bolt, rtxConfig.neo4j_username, rtxConfig.neo4j_password)
     obj.print_node_count()
     obj.print_relation_count()
     obj.close()

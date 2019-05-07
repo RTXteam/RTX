@@ -159,8 +159,8 @@ if __name__ == '__main__':
     ob = Orangeboard(debug=True)
 
     # configure the Orangeboard for Neo4j connectivity
-    ob.neo4j_set_url(rtxConfig.bolt)
-    ob.neo4j_set_auth(user=rtxConfig.username, password=rtxConfig.password)
+    ob.neo4j_set_url(rtxConfig.neo4j_bolt)
+    ob.neo4j_set_auth(user=rtxConfig.neo4j_username, password=rtxConfig.neo4j_password)
     ob.neo4j_connect()
 
     bne = BioNetExpander(ob)

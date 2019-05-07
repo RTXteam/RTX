@@ -10,7 +10,7 @@ requests_cache.install_cache('orangeboard')
 
 rtxConfig = RTXConfiguration()
 
-conn = Neo4jConnection(rtxConfig.bolt, rtxConfig.username, rtxConfig.password)
+conn = Neo4jConnection(rtxConfig.neo4j_bolt, rtxConfig.neo4j_username, rtxConfig.neo4j_password)
 disease_nodes = conn.get_disease_nodes()
 drug_nodes = conn.get_chemical_substance_nodes()
 protein_nodes = conn.get_protein_nodes()

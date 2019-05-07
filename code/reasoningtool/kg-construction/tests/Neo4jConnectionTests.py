@@ -16,7 +16,7 @@ class Neo4jConnectionTestCase(unittest.TestCase):
 
     def test_get_pathway_node(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_pathway_node("REACT:R-HSA-8866654")
 
         self.assertIsNotNone(nodes)
@@ -26,7 +26,7 @@ class Neo4jConnectionTestCase(unittest.TestCase):
 
     def test_get_pathway_nodes(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_pathway_nodes()
 
         self.assertIsNotNone(nodes)
@@ -36,7 +36,7 @@ class Neo4jConnectionTestCase(unittest.TestCase):
 
     def test_get_protein_node(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_protein_node("UniProtKB:P53814")
 
         self.assertIsNotNone(nodes)
@@ -46,7 +46,7 @@ class Neo4jConnectionTestCase(unittest.TestCase):
 
     def test_get_protein_nodes(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_protein_nodes()
 
         self.assertIsNotNone(nodes)
@@ -56,7 +56,7 @@ class Neo4jConnectionTestCase(unittest.TestCase):
 
     def test_get_microRNA_node(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_microRNA_node("NCBIGene:100616151")
 
         self.assertIsNotNone(nodes)
@@ -66,7 +66,7 @@ class Neo4jConnectionTestCase(unittest.TestCase):
 
     def test_get_microRNA_nodes(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_microRNA_nodes()
 
         self.assertIsNotNone(nodes)
@@ -76,7 +76,7 @@ class Neo4jConnectionTestCase(unittest.TestCase):
 
     def test_get_chemical_substance_node(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_chemical_substance_node("CHEMBL1350")
 
         self.assertIsNotNone(nodes)
@@ -86,7 +86,7 @@ class Neo4jConnectionTestCase(unittest.TestCase):
 
     def test_get_chemical_substance_nodes(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_chemical_substance_nodes()
 
         self.assertIsNotNone(nodes)
@@ -95,7 +95,7 @@ class Neo4jConnectionTestCase(unittest.TestCase):
 
     def test_get_bio_process_node(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_bio_process_node("GO:0097289")
 
         self.assertIsNotNone(nodes)
@@ -105,7 +105,7 @@ class Neo4jConnectionTestCase(unittest.TestCase):
 
     def test_get_bio_process_nodes(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_bio_process_nodes()
 
         self.assertIsNotNone(nodes)
@@ -115,7 +115,7 @@ class Neo4jConnectionTestCase(unittest.TestCase):
 
     def test_get_node_names(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         names = conn.get_node_names('disease')
         self.assertIsNotNone(names)
@@ -129,7 +129,7 @@ class Neo4jConnectionTestCase(unittest.TestCase):
 
     def test_get_cellular_component_nodes(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_cellular_component_nodes()
         print(len(nodes))
         self.assertIsNotNone(nodes)
@@ -139,7 +139,7 @@ class Neo4jConnectionTestCase(unittest.TestCase):
 
     def test_get_molecular_function_nodes(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_molecular_function_nodes()
         print(len(nodes))
         self.assertIsNotNone(nodes)
@@ -149,7 +149,7 @@ class Neo4jConnectionTestCase(unittest.TestCase):
 
     def test_get_metabolite_nodes(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_metabolite_nodes()
         print(len(nodes))
         self.assertIsNotNone(nodes)
@@ -178,7 +178,7 @@ class Neo4jConnectionTestCase(unittest.TestCase):
 
     def test_count_has_phenotype_relation(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         result = conn.count_has_phenotype_relation({"d_id": "DOID:3218", "p_id": "HP:0002245"})
         self.assertIsNotNone(result)
@@ -192,7 +192,7 @@ class Neo4jConnectionTestCase(unittest.TestCase):
 
     def test_get_relationship(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         result = conn.get_relationship("affects", "16364fa8-96e0-11e8-b6f4-0242ac110002",
                                        "d2cc6c24-96e0-11e8-b6f4-0242ac110002")

@@ -40,7 +40,7 @@ class PatchKG:
         # create the RTXConfiguration object
         rtxConfig = RTXConfiguration()
 
-        conn = Neo4jConnection(rtxConfig.bolg, rtxConfig.username, rtxConfig.password)
+        conn = Neo4jConnection(rtxConfig.neo4j_bolt, rtxConfig.neo4j_username, rtxConfig.neo4j_password)
         disease_nodes = conn.get_disease_nodes()
         print("disease nodes count: " + str(len(disease_nodes)))
 
@@ -81,7 +81,7 @@ class PatchKG:
         # create the RTXConfiguration object
         rtxConfig = RTXConfiguration()
 
-        conn = Neo4jConnection(rtxConfig.bolg, rtxConfig.username, rtxConfig.password)
+        conn = Neo4jConnection(rtxConfig.neo4j_bolt, rtxConfig.neo4j_username, rtxConfig.neo4j_password)
 
         if conn.count_duplicated_nodes() != 0:
             conn.remove_duplicated_react_nodes()

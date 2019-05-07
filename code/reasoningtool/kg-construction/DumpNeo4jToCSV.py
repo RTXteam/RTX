@@ -86,6 +86,6 @@ if __name__ == '__main__':
     rtxConfig = RTXConfiguration()
     rtxConfig.live = args.live
 
-    driver = neo4j.v1.GraphDatabase.driver(rtxConfig.bolt, auth=(rtxConfig.username, rtxConfig.password))
+    driver = neo4j.v1.GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
     make_nodes_file()
     make_rels_file()

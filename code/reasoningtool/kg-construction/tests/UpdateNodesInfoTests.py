@@ -31,7 +31,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
 
     def test_update_anatomy_entity(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_anatomy_nodes()
 
         # generate random number array
@@ -55,7 +55,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
 
     def test_update_phenotype_entity(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_phenotype_nodes()
 
         # generate random number array
@@ -79,7 +79,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
 
     def test_update_microRNA_entity(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_microRNA_nodes()
 
         # generate random number array
@@ -104,7 +104,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
 
     def test_update_pathway_entity(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_pathway_nodes()
 
         # generate random number array
@@ -128,7 +128,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
 
     def test_update_protein_entity(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_protein_nodes()
 
         # generate random number array
@@ -153,7 +153,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
 
     def test_update_disease_entity(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_disease_nodes()
 
         # generate random number array
@@ -177,7 +177,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
 
     def test_update_chemical_substance_entity(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_chemical_substance_nodes()
 
         # generate random number array
@@ -201,7 +201,7 @@ class UpdateNodesInfoTestCase(unittest.TestCase):
 
     def test_update_bio_process_entity(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_bio_process_nodes()
 
         # generate random number array

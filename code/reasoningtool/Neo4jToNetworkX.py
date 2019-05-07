@@ -9,7 +9,7 @@ from RTXConfiguration import RTXConfiguration
 rtxConfig = RTXConfiguration()
 
 # Connection information for the ipython-cypher package
-connection = "http://" + rtxConfig.username + ":" + rtxConfig.password + "@" + rtxConfig.database
+connection = "http://" + rtxConfig.neo4j_username + ":" + rtxConfig.neo4j_password + "@" + rtxConfig.neo4j_database
 DEFAULT_CONFIGURABLE = {
 	"auto_limit": 0,
 	"style": 'DEFAULT',

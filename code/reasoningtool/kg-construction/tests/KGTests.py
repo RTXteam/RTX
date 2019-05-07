@@ -18,7 +18,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_anatomical_entity_nodes(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_node("UBERON:0001753")
 
         self.assertIsNotNone(nodes)
@@ -33,7 +33,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_biological_process_nodes(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_node("GO:0048817")
 
         self.assertIsNotNone(nodes)
@@ -47,7 +47,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_cellular_component_nodes(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_node("GO:0071005")
 
         self.assertIsNotNone(nodes)
@@ -65,7 +65,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_chemical_substance_nodes(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_node("CHEMBL1236962")
 
         self.assertIsNotNone(nodes)
@@ -78,7 +78,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_disease_nodes(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_node("DOID:6016")
 
         self.assertIsNotNone(nodes)
@@ -91,7 +91,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_metabolite_nodes(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_node("KEGG:C19630")
 
         self.assertIsNotNone(nodes)
@@ -104,7 +104,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_microRNA_nodes(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_node("NCBIGene:100302124")
 
         self.assertIsNotNone(nodes)
@@ -117,7 +117,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_molecular_function_nodes(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_node("GO:0030898")
 
         self.assertIsNotNone(nodes)
@@ -132,7 +132,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_pathway_nodes(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_node("REACT:R-HSA-69895")
 
         self.assertIsNotNone(nodes)
@@ -147,7 +147,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_phenotypic_feature_nodes(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_node("HP:0010559")
 
         self.assertIsNotNone(nodes)
@@ -162,7 +162,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_protein_nodes(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_node("Q8IWB1")
 
         self.assertIsNotNone(nodes)
@@ -180,7 +180,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_affects_relationships(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         # get the source node
         nodes = conn.get_node("DOID:653")
@@ -200,7 +200,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_capable_of_relationships(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         # get the source node
         nodes = conn.get_node("UBERON:0001004")
@@ -220,7 +220,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_causes_or_contributes_to_relationships(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         # get the source node
         nodes = conn.get_node("CHEMBL601719")
@@ -240,7 +240,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_contraindicated_for_relationships(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         # get the source node
         nodes = conn.get_node("CHEMBL945")
@@ -260,7 +260,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_expressed_in_relationships(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         # get the source node
         nodes = conn.get_node("Q6VY07")
@@ -280,7 +280,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_gene_associated_with_condition_relationships(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         # get the source node
         nodes = conn.get_node("P21397")
@@ -300,7 +300,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_gene_mutations_contribute_to_relationships(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         # get the source node
         nodes = conn.get_node("Q7Z6L0")
@@ -320,7 +320,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_has_part_relationships(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         # get the source node
         nodes = conn.get_node("UBERON:0001037")
@@ -340,7 +340,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_has_phenotype_relationships(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         # get the source node
         nodes = conn.get_node("DOID:0050177")
@@ -360,7 +360,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_indicated_for_relationships(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         # get the source node
         nodes = conn.get_node("CHEMBL1200979")
@@ -380,7 +380,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_involved_in_relationships(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         # get the source node
         nodes = conn.get_node("Q9UQ53")
@@ -400,7 +400,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_negatively_regulates_relationships(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         # get the source node
         nodes = conn.get_node("CHEMBL449158")
@@ -420,7 +420,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_participates_in_relationships(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         # get the source node
         nodes = conn.get_node("Q9UJX3")
@@ -440,7 +440,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_physically_interacts_with_relationships(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         # get the source node
         nodes = conn.get_node("P41235")
@@ -460,7 +460,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_positively_regulates_with_relationships(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         # get the source node
         nodes = conn.get_node("CHEMBL1451")
@@ -480,7 +480,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_regulates_relationships(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         # get the source node
         nodes = conn.get_node("Q03052")
@@ -500,7 +500,7 @@ class KGTestCase(unittest.TestCase):
 
     def test_subclass_of_relationships(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         # get the source node
         nodes = conn.get_node("GO:1901515")

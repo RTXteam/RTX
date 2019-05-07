@@ -29,7 +29,7 @@ class TestPatchKG(TestCase):
 
     def test_add_disease_has_phenotype_relations(self):
 
-        conn = Neo4jConnection(self.rtxConfig.bolt, self.rtxConfig.username, self.rtxConfig.password)
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         disease_nodes = conn.get_disease_nodes()
 
         # generate random number array

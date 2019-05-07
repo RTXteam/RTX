@@ -39,7 +39,7 @@ class GenerateQuestionTerms:
         # create the RTXConfiguration object
         rtxConfig = RTXConfiguration()
 
-        conn = Neo4jConnection(rtxConfig.bolt, rtxConfig.username, rtxConfig.password)
+        conn = Neo4jConnection(rtxConfig.neo4j_bolt, rtxConfig.neo4j_username, rtxConfig.neo4j_password)
         names = conn.get_node_names(type)
         conn.close()
 

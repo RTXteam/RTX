@@ -101,7 +101,7 @@ if __name__ == '__main__':
     rtxConfig = RTXConfiguration()
     rtxConfig.live = args.live
 
-    pg = PullGraph(rtxConfig.username, rtxConfig.password, rtxConfig.bolt)
+    pg = PullGraph(rtxConfig.neo4j_username, rtxConfig.neo4j_password, rtxConfig.neo4j_bolt)
     df = pg.pull_graph()
     df.to_csv('data/graph.csv',index=False)
     df = pg.pull_drugs()
