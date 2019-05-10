@@ -60,19 +60,36 @@ class RTXConfiguration:
             self.neo4j_database = None
             self.neo4j_username = None
             self.neo4j_password = None
-            self.mysql_host = None
-            self.mysql_port = None
-            self.mysql_username = None
-            self.mysql_password = None
+            self.mysql_feedback_host = None
+            self.mysql_feedback_port = None
+            self.mysql_feedback_username = None
+            self.mysql_feedback_password = None
+            self.mysql_semmeddb_host = None
+            self.mysql_semmeddb_port = None
+            self.mysql_semmeddb_username = None
+            self.mysql_semmeddb_password = None
+            self.mysql_umls_host = None
+            self.mysql_umls_port = None
+            self.mysql_umls_username = None
+            self.mysql_umls_password = None
+
         else:
             self.neo4j_bolt = self.config[self.live]["neo4j"]["bolt"]
             self.neo4j_database = self.config[self.live]["neo4j"]["database"]
             self.neo4j_username = self.config[self.live]["neo4j"]["username"]
             self.neo4j_password = self.config[self.live]["neo4j"]["password"]
-            self.mysql_host = self.config[self.live]["mysql"]["host"]
-            self.mysql_port = self.config[self.live]["mysql"]["port"]
-            self.mysql_username = self.config[self.live]["mysql"]["username"]
-            self.mysql_password = self.config[self.live]["mysql"]["password"]
+            self.mysql_feedback_host = self.config[self.live]["mysql_feedback"]["host"]
+            self.mysql_feedback_port = self.config[self.live]["mysql_feedback"]["port"]
+            self.mysql_feedback_username = self.config[self.live]["mysql_feedback"]["username"]
+            self.mysql_feedback_password = self.config[self.live]["mysql_feedback"]["password"]
+            self.mysql_semmeddb_host = self.config[self.live]["mysql_semmeddb"]["host"]
+            self.mysql_semmeddb_port = self.config[self.live]["mysql_semmeddb"]["port"]
+            self.mysql_semmeddb_username = self.config[self.live]["mysql_semmeddb"]["username"]
+            self.mysql_semmeddb_password = self.config[self.live]["mysql_semmeddb"]["password"]
+            self.mysql_umls_host = self.config[self.live]["mysql_umls"]["host"]
+            self.mysql_umls_port = self.config[self.live]["mysql_umls"]["port"]
+            self.mysql_umls_username = self.config[self.live]["mysql_umls"]["username"]
+            self.mysql_umls_password = self.config[self.live]["mysql_umls"]["password"]
 
         # if self.live == "Production":
         #     self.bolt = "bolt://rtx.ncats.io:7687"
@@ -131,36 +148,100 @@ class RTXConfiguration:
         self._neo4j_password = password
 
     @property
-    def mysql_host(self) -> str:
-        return self._mysql_host
+    def mysql_feedback_host(self) -> str:
+        return self._mysql_feedback_host
 
-    @mysql_host.setter
-    def mysql_host(self, host: str):
-        self._mysql_host = host
-
-    @property
-    def mysql_port(self) -> str:
-        return self._mysql_port
-
-    @mysql_port.setter
-    def mysql_port(self, port: str):
-        self._mysql_port = port
+    @mysql_feedback_host.setter
+    def mysql_feedback_host(self, host: str):
+        self._mysql_feedback_host = host
 
     @property
-    def mysql_username(self) -> str:
-        return self._mysql_username
+    def mysql_feedback_port(self) -> str:
+        return self._mysql_feedback_port
 
-    @mysql_username.setter
-    def mysql_username(self, username: str):
-        self._mysql_username = username
+    @mysql_feedback_port.setter
+    def mysql_feedback_port(self, port: str):
+        self._mysql_feedback_port = port
 
     @property
-    def mysql_password(self) -> str:
-        return self._mysql_password
+    def mysql_feedback_username(self) -> str:
+        return self._mysql_feedback_username
 
-    @mysql_password.setter
-    def mysql_password(self, password: str):
-        self._mysql_password = password
+    @mysql_feedback_username.setter
+    def mysql_feedback_username(self, username: str):
+        self._mysql_feedback_username = username
+
+    @property
+    def mysql_feedback_password(self) -> str:
+        return self._mysql_feedback_password
+
+    @mysql_feedback_password.setter
+    def mysql_feedback_password(self, password: str):
+        self._mysql_feedback_password = password
+
+    @property
+    def mysql_semmeddb_host(self) -> str:
+        return self._mysql_semmeddb_host
+
+    @mysql_semmeddb_host.setter
+    def mysql_semmeddb_host(self, host: str):
+        self._mysql_semmeddb_host = host
+
+    @property
+    def mysql_semmeddb_port(self) -> str:
+        return self._mysql_semmeddb_port
+
+    @mysql_semmeddb_port.setter
+    def mysql_semmeddb_port(self, port: str):
+        self._mysql_semmeddb_port = port
+
+    @property
+    def mysql_semmeddb_username(self) -> str:
+        return self._mysql_semmeddb_username
+
+    @mysql_semmeddb_username.setter
+    def mysql_semmeddb_username(self, username: str):
+        self._mysql_semmeddb_username = username
+
+    @property
+    def mysql_semmeddb_password(self) -> str:
+        return self._mysql_semmeddb_password
+
+    @mysql_semmeddb_password.setter
+    def mysql_semmeddb_password(self, password: str):
+        self._mysql_semmeddb_password = password
+
+    @property
+    def mysql_umls_host(self) -> str:
+        return self._mysql_umls_host
+
+    @mysql_umls_host.setter
+    def mysql_umls_host(self, host: str):
+        self._mysql_umls_host = host
+
+    @property
+    def mysql_umls_port(self) -> str:
+        return self._mysql_umls_port
+
+    @mysql_umls_port.setter
+    def mysql_umls_port(self, port: str):
+        self._mysql_umls_port = port
+
+    @property
+    def mysql_umls_username(self) -> str:
+        return self._mysql_umls_username
+
+    @mysql_umls_username.setter
+    def mysql_umls_username(self, username: str):
+        self._mysql_umls_username = username
+
+    @property
+    def mysql_umls_password(self) -> str:
+        return self._mysql_umls_password
+
+    @mysql_umls_password.setter
+    def mysql_umls_password(self, password: str):
+        self._mysql_umls_password = password
 
 
 def main():
@@ -172,10 +253,18 @@ def main():
     print("neo4j databse: %s" % rtxConfig.neo4j_database)
     print("neo4j username: %s" % rtxConfig.neo4j_username)
     print("neo4j password: %s" % rtxConfig.neo4j_password)
-    print("mysql host: %s" % rtxConfig.mysql_host)
-    print("mysql port: %s" % rtxConfig.mysql_port)
-    print("mysql username: %s" % rtxConfig.mysql_username)
-    print("mysql password: %s" % rtxConfig.mysql_password)
+    print("mysql feedback host: %s" % rtxConfig.mysql_feedback_host)
+    print("mysql feedback port: %s" % rtxConfig.mysql_feedback_port)
+    print("mysql feedback username: %s" % rtxConfig.mysql_feedback_username)
+    print("mysql feedback password: %s" % rtxConfig.mysql_feedback_password)
+    print("mysql semmeddb host: %s" % rtxConfig.mysql_semmeddb_host)
+    print("mysql semmeddb port: %s" % rtxConfig.mysql_semmeddb_port)
+    print("mysql semmeddb username: %s" % rtxConfig.mysql_semmeddb_username)
+    print("mysql semmeddb password: %s" % rtxConfig.mysql_semmeddb_password)
+    print("mysql umls host: %s" % rtxConfig.mysql_umls_host)
+    print("mysql umls port: %s" % rtxConfig.mysql_umls_port)
+    print("mysql umls username: %s" % rtxConfig.mysql_umls_username)
+    print("mysql umls password: %s" % rtxConfig.mysql_umls_password)
 
 
     # print("bolt protocol: %s" % rtxConfig.bolt)
