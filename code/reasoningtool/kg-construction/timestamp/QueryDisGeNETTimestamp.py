@@ -13,24 +13,20 @@ __status__ = "Prototype"
 
 from ScrapingHelper import retrieve
 
-class QueryKEGGTimestamp:
+class QueryDisGeNETTimestamp:
 
     @staticmethod
     def get_timestamp():
-        url = "https://www.genome.jp/kegg/docs/relnote.html"
+        url = "http://www.disgenet.org/dbinfo"
         soup = retrieve(url)
-        main_tags = soup.find_all(id="main")
-        if len(main_tags) > 0:
-            main_tag = main_tags[0].text
-            index = main_tag.find("Current release") + len("Current release")
-            r = main_tag[index:].split()
-            return r[2] + "," + r[3] + r[4]
+        version_his_tag = soup.find_all(id="versionHistory")
+        if len(version_his_tag) > 0:
+            return version_his_tag[0].text
         else:
             return None
 
-
 if __name__ == '__main__':
-    print(QueryKEGGTimestamp.get_timestamp())
+    print(QueryDisGeNETTimestamp.get_timestamp())
 
 
 
