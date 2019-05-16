@@ -13,17 +13,24 @@ __status__ = "Prototype"
 
 from ScrapingHelper import retrieve
 
+
 class QueryDisGeNETTimestamp:
 
     @staticmethod
     def get_timestamp():
         url = "http://www.disgenet.org/dbinfo"
         soup = retrieve(url)
-        version_his_tag = soup.find_all(id="versionHistory")
-        if len(version_his_tag) > 0:
-            return version_his_tag[0].text
+        version_his_tag = soup.find(id="versionHistory")
+        if version_his_tag:
+            date = version_his_tag.find_next_sibling("p").text
+            r = date.split()
+            if len(r) == 3:
+                return r[0] + "," + r[1] + r[2]
+            else:
+                return None
         else:
             return None
+
 
 if __name__ == '__main__':
     print(QueryDisGeNETTimestamp.get_timestamp())

@@ -20,8 +20,22 @@ class QueryChEMBLTimestamp:
     def get_timestamp():
         url = "https://chembl.gitbook.io/chembl-interface-documentation/downloads"
         soup = retrieve(url)
-        # for version_tag in soup.find_all("div", attrs={"class":"card-header"}):
-        #     print(version_tag)
+        tbody_tag = soup.find('tbody')
+        #   release date in row 1 col 2
+        i = 0
+        for tr in tbody_tag.children:
+            if i == 1:
+                j = 0
+                for td in tr.children:
+                    if j == 2:
+                        date = td.text
+                        d = date.split()
+                        if len(d) == 2:
+                            return d[0] + ",1," + d[1]
+                        else:
+                            return None
+                    j += 1
+            i += 1
         return None
 
 
