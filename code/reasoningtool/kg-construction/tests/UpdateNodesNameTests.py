@@ -10,6 +10,9 @@ from Neo4jConnection import Neo4jConnection
 from QueryUniprot import QueryUniprot
 from QueryMyGene import QueryMyGene
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")  # code directory
+from RTXConfiguration import RTXConfiguration
+
 
 def random_int_list(start, stop, length):
     start, stop = (int(start), int(stop)) if start <= stop else (int(stop), int(start))
@@ -19,13 +22,13 @@ def random_int_list(start, stop, length):
         random_list.append(random.randint(start, stop))
     return random_list
 
+
 class UpdateNodesNameTestCase(TestCase):
+
+    rtxConfig = RTXConfiguration()
+
     def test_update_protein_names_old(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
 
         protein_nodes_ids = ['UniProtKB:P01358', 'UniProtKB:P20848', 'UniProtKB:Q9Y471', 'UniProtKB:O60397',
                              'UniProtKB:Q8IZJ3', 'UniProtKB:Q7Z2Y8', 'UniProtKB:Q8IWN7', 'UniProtKB:Q156A1']
@@ -39,15 +42,11 @@ class UpdateNodesNameTestCase(TestCase):
             self.assertEqual(name, node['n']['name'])
 
     def test_update_protein_names(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_protein_nodes()
 
         # generate random number array
-        random_indexes = random_int_list(0, len(nodes) - 1, 100)
+        random_indexes = random_int_list(0, len(nodes) - 1, 10)
 
         mg = QueryMyGene()
 

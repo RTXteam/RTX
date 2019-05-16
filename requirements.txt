@@ -20,6 +20,8 @@ scipy
 scikit-learn
 connexion
 #'connexion[swagger-ui]'
-cachecontrol
 pymysql
+requests
+CacheControl
+lockfile
 

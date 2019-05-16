@@ -13,3 +13,6 @@
 
 # cache files
 **/.web_cache
+
+# config.json
+**/config.json

@@ -13,6 +13,9 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
+from RTXConfiguration import RTXConfiguration
+
 Base = declarative_base()
 
 #### Testing and debugging flags
@@ -121,7 +124,8 @@ class KGNodeIndex:
     if self.engine_type == "sqlite":
       engine = create_engine("sqlite:///"+self.databaseLocation + "/" + self.databaseName)
     else:
-      engine = create_engine("mysql+pymysql://rt:Steve1000Ramsey@localhost/"+self.databaseName)
+      rtxConfig = RTXConfiguration()
+      engine = create_engine("mysql+pymysql://" + rtxConfig.mysql_feedback_username + ":" + rtxConfig.mysql_feedback_password + "@" + rtxConfig.mysql_feedback_host + "/" + self.databaseName)
 
     Base.metadata.create_all(engine)
 
@@ -138,7 +142,8 @@ class KGNodeIndex:
     if self.engine_type == "sqlite":
       engine = create_engine("sqlite:///"+self.databaseLocation+"/"+self.databaseName)
     else:
-      engine = create_engine("mysql+pymysql://rt:Steve1000Ramsey@localhost/"+self.databaseName)
+      rtxConfig = RTXConfiguration()
+      engine = create_engine("mysql+pymysql://" + rtxConfig.mysql_feedback_username + ":" + rtxConfig.mysql_feedback_password + "@" + rtxConfig.mysql_feedback_host + "/" + self.databaseName)
 
     #### Create the session. This is weird syntax
     DBSession = sessionmaker(bind=engine)
@@ -446,4 +451,3 @@ def main():
 ####################################################################################################
 if __name__ == "__main__":
   main()
-
