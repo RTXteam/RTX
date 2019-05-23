@@ -11,6 +11,7 @@ import sys
 import time
 import warnings
 import ast
+import math
 import networkx as nx
 
 # PyCharm doesn't play well with relative imports + python console + terminal
@@ -67,6 +68,9 @@ class QueryGraphReasoner:
         #### Insert some dummy question stuff
         response.message.original_question = "Input via Query Graph"
         response.message.restated_question = "No restatement for QueryGraph yet"
+
+        #### Preprocess query_graph object
+        query_graph, sort_flags, res_limit = self.preprocess_query_graph(query_graph)
 
         #### Interpret the query_graph object to create a cypher query and encode the result in a response
         query_gen = RU.get_cypher_from_question_graph({'question_graph':query_graph})
@@ -170,7 +174,78 @@ class QueryGraphReasoner:
 
         return( {"message_code": "OK", "code_description": "QueryGraph passes basic checks" } )
 
+    def preprocess_query_graph(self, query_graph):
+        """
+        This processes options for the query_graph and gets it ready to be converted into a cypher query
+        
+        :param query_graph: QueryGraph object
+        :return: (query_graph, sort_flag, res_limit)
+        """
+        sort_flags = {} 
+        res_limit = 0
+        if 'nodes' in query_graph:
+            #### Break up list nodes when require_all is True
+            split_nodes=[]
+            for node_idx in range(len(query_graph['nodes'])):
+                if 'require_all' in query_graph['nodes'][node_idx]:
+                    if 'curie' in query_graph['nodes'][node_idx]:
+                        if isinstance(query_graph['nodes'][node_idx]['curie'],list) and query_graph['nodes'][node_idx]['require_all'] == True:
+                            split_nodes.append(node_idx)
+                    del query_graph['nodes'][node_idx]['require_all']
+            for node_idx in sorted(split_nodes, reverse=True):
+                split_edges = []
+                node_id = query_graph['nodes'][node_idx]['node_id']
+                print(node_id)
+                if 'edges' in query_graph:
+                    for edge_idx in range(len(query_graph['edges'])):
+                        source_id = query_graph['edges'][edge_idx]['source_id']
+                        target_id = query_graph['edges'][edge_idx]['target_id']
+                        if source_id == node_id or target_id == node_id:
+                            split_edges.append(edge_idx)
+                added_nodes = 0
+                added_edges = 0
+                print(split_edges)
+                for curie in query_graph['nodes'][node_idx]['curie']:
+                    query_graph['nodes'].append(query_graph['nodes'][node_idx].copy())
+                    query_graph['nodes'][-1]['curie'] = curie
+                    query_graph['nodes'][-1]['node_id'] = node_id + '_spl' + str(added_nodes)
+                    for edge_idx in split_edges:
+                        query_graph['edges'].append(query_graph['edges'][edge_idx].copy())
+                        query_graph['edges'][-1]['edge_id'] = query_graph['edges'][edge_idx]['edge_id'] + '_spl' + str(added_edges)
+                        if query_graph['edges'][-1]['source_id'] == node_id:
+                            query_graph['edges'][-1]['source_id'] = node_id + '_spl' + str(added_nodes)
+                        if query_graph['edges'][-1]['target_id'] == node_id:
+                            query_graph['edges'][-1]['target_id'] = node_id + '_spl' + str(added_nodes)
+                    added_nodes += 1
+                for edge_idx in sorted(split_edges, reverse=True):
+                    del query_graph['edges'][edge_idx]
+                del query_graph['nodes'][node_idx]
+            #### todo: This will parse the query graph keys and set flags for sorting
+            for node in query_graph['nodes']:
+                node_id = node['node_id']
+                set_flag = False
+                if 'is_set' in node:
+                    set_flag=True
+                    del node['is_set']
+                if 'sort_type' in node:
+                    if set_flag:
+                        if node['sort_type'] == "jaccard":
+                            sort_flags[node_id]="jaccard"
+                        elif node['sort_type'] == "fisher":
+                            sort_flags[node_id]="fisher"
+                        elif node['sort_type'] == "top":
+                            sort_flags[node_id]="top"
+                    del node['sort_type']
+                if 'limit_set' in node:
+                    if set_flag and node_id in sort_flags:
+                        res_limit = max(node['limit_set'],res_limit)
+                    del node['limit_set']
 
+        return (query_graph, sort_flags, res_limit)
+
+    def postprocess_results(self, results, sort_flags, res_limit):
+        #### todo: write this function
+        return results
 
         """
 
@@ -380,6 +455,22 @@ def test1_2nodes_3(TxltrApiFormat=False):
 
     query_graph_dict = json.loads(query_graph_json_stream)
     #query_graph = QueryGraphReasoner().from_dict(query_graph_dict)
+    result = q.answer(query_graph_dict, TxltrApiFormat=TxltrApiFormat)
+    return(result)
+
+def test_2sets(TxltrApiFormat=False):
+    q = QueryGraphReasoner()
+    query_graph_dict = {
+        'edges': [
+            {'edge_id': 'e00', 'source_id': 'n00', 'target_id': 'n01'}, 
+            {'edge_id': 'e01', 'source_id': 'n01', 'target_id': 'n02'}, 
+            {'edge_id': 'e02',  'source_id': 'n02', 'target_id': 'n03'}], 
+        'nodes': [
+            {'curie': ['DOID:12365','DOID:8398'], 'node_id': 'n00', 'type': 'disease'}, 
+            {'node_id': 'n01', 'type': 'protein'}, 
+            {'node_id': 'n02', 'type': 'pathway'}, 
+            {'curie': ['UniProtKB:Q06278','UniProtKB:Q12756'], 'node_id': 'n03', 'type': 'protein'}
+        ]}
     result = q.answer(query_graph_dict, TxltrApiFormat=TxltrApiFormat)
     return(result)
 
