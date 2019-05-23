@@ -70,7 +70,7 @@ class QueryGraphReasoner:
         response.message.restated_question = "No restatement for QueryGraph yet"
 
         #### Preprocess query_graph object
-        query_graph, sort_flags, res_limit = self.preprocess_query_graph(query_graph)
+        query_graph, sort_flags, res_limit, ascending_flag = self.preprocess_query_graph(query_graph)
 
         #### Interpret the query_graph object to create a cypher query and encode the result in a response
         query_gen = RU.get_cypher_from_question_graph({'question_graph':query_graph})
@@ -158,7 +158,7 @@ class QueryGraphReasoner:
             return( { "message_code": "QueryGraphUnboundEdglessNode", "code_description": "You smell the odor of burning silicon and a muffled boom. Please adjust your Query Graph so that any edgeless nodes have a specific identifier, otherwise thousands of nodes are involved." } )
 
         #### Remove any unapproved keys in the query_graph
-        approved_node_keys = { "curie": 1, "is_set": 1, "node_id": 1, "type": 1, "name": 1 }
+        approved_node_keys = { "curie": 1, "is_set": 1, "node_id": 1, "type": 1, "name": 1 , "require_all" : 1}
         approved_edge_keys = { "edge_id": 1, "source_id": 1, "target_id": 1, "type": 1, "negated": 1, "relation": 1 }
         for node in query_graph["nodes"]:
           #### Iterate on a copy of the node dict because python doesn't allow changing while iterating
@@ -183,6 +183,7 @@ class QueryGraphReasoner:
         """
         sort_flags = {} 
         res_limit = 0
+        ascending_flag = False
         if 'nodes' in query_graph:
             #### Break up list nodes when require_all is True
             split_nodes=[]
@@ -241,9 +242,9 @@ class QueryGraphReasoner:
                         res_limit = max(node['limit_set'],res_limit)
                     del node['limit_set']
 
-        return (query_graph, sort_flags, res_limit)
+        return (query_graph, sort_flags, res_limit, ascending_flag)
 
-    def postprocess_results(self, results, sort_flags, res_limit):
+    def postprocess_results(self, results, sort_flags, res_limit, ascending_flag):
         #### todo: write this function
         return results
 
