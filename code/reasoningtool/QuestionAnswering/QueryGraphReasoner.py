@@ -196,7 +196,6 @@ class QueryGraphReasoner:
             for node_idx in sorted(split_nodes, reverse=True):
                 split_edges = []
                 node_id = query_graph['nodes'][node_idx]['node_id']
-                print(node_id)
                 if 'edges' in query_graph:
                     for edge_idx in range(len(query_graph['edges'])):
                         source_id = query_graph['edges'][edge_idx]['source_id']
@@ -205,7 +204,6 @@ class QueryGraphReasoner:
                             split_edges.append(edge_idx)
                 added_nodes = 0
                 added_edges = 0
-                print(split_edges)
                 for curie in query_graph['nodes'][node_idx]['curie']:
                     query_graph['nodes'].append(query_graph['nodes'][node_idx].copy())
                     query_graph['nodes'][-1]['curie'] = curie
@@ -213,6 +211,7 @@ class QueryGraphReasoner:
                     for edge_idx in split_edges:
                         query_graph['edges'].append(query_graph['edges'][edge_idx].copy())
                         query_graph['edges'][-1]['edge_id'] = query_graph['edges'][edge_idx]['edge_id'] + '_spl' + str(added_edges)
+                        added_edges += 1
                         if query_graph['edges'][-1]['source_id'] == node_id:
                             query_graph['edges'][-1]['source_id'] = node_id + '_spl' + str(added_nodes)
                         if query_graph['edges'][-1]['target_id'] == node_id:
@@ -471,6 +470,22 @@ def test_2sets(TxltrApiFormat=False):
             {'node_id': 'n01', 'type': 'protein'}, 
             {'node_id': 'n02', 'type': 'pathway'}, 
             {'curie': ['UniProtKB:Q06278','UniProtKB:Q12756'], 'node_id': 'n03', 'type': 'protein'}
+        ]}
+    result = q.answer(query_graph_dict, TxltrApiFormat=TxltrApiFormat)
+    return(result)
+
+def test_2sets_require(TxltrApiFormat=False):
+    q = QueryGraphReasoner()
+    query_graph_dict = {
+        'edges': [
+            {'edge_id': 'e00', 'source_id': 'n00', 'target_id': 'n01'}, 
+            {'edge_id': 'e01', 'source_id': 'n01', 'target_id': 'n02'}, 
+            {'edge_id': 'e02',  'source_id': 'n02', 'target_id': 'n03'}], 
+        'nodes': [
+            {'curie': ['DOID:12365','DOID:8398'], 'node_id': 'n00', 'type': 'disease'}, 
+            {'node_id': 'n01', 'type': 'protein'}, 
+            {'node_id': 'n02', 'type': 'pathway'}, 
+            {'curie': ['UniProtKB:Q06278','UniProtKB:Q12756'], 'node_id': 'n03', 'type': 'protein', 'require_all': True}
         ]}
     result = q.answer(query_graph_dict, TxltrApiFormat=TxltrApiFormat)
     return(result)
