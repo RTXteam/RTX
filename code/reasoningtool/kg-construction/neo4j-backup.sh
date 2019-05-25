@@ -60,7 +60,7 @@ rm $file.dump
 
 echo 'start transfering the backup file ...'
 chown rt:rt $file.tar.gz
-su - rt -c "scp /mnt/data/backup/$file.tar.gz ubuntu@52.42.109.175:/var/www/html"
+su - rt -c "scp /mnt/data/backup/$file.tar.gz ubuntu@steveneo4j.rtx.ai:/var/www/html"
 
 echo 'file transfer complete ...'
 
