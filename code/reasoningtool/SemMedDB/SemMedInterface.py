@@ -29,12 +29,17 @@ numpy.random.seed(int(time.time()))
 
 requests_cache.install_cache('SemMedCache')
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+from RTXConfiguration import RTXConfiguration
 
 class SemMedInterface():
 
     def __init__(self, mapfile = 'node_cui_map.csv', mysql_timeout = 30):
-        self.smdb = QuerySemMedDB("rtxdev.saramsey.org",3306,"rtx_read","rtxd3vT3amXray","semmeddb", mysql_timeout)
-        self.umls = QueryUMLSSQL("rtxdev.saramsey.org",3406, "rtx_read","rtxd3vT3amXray","umls")
+        # self.smdb = QuerySemMedDB("rtxdev.saramsey.org",3306,"rtx_read","rtxd3vT3amXray","semmeddb", mysql_timeout)
+        # self.umls = QueryUMLSSQL("rtxdev.saramsey.org",3406, "rtx_read","rtxd3vT3amXray","umls")
+        rtxConfig = RTXConfiguration()
+        self.smdb = QuerySemMedDB(rtxConfig.mysql_semmeddb_host, rtxConfig.mysql_semmeddb_port, rtxConfig.mysql_semmeddb_username, rtxConfig.mysql_semmeddb_password, "semmeddb", mysql_timeout)
+        self.umls = QueryUMLSSQL(rtxConfig.mysql_umls_host, rtxConfig.mysql_umls_port, rtxConfig.mysql_umls_username, rtxConfig.mysql_umls_password, "umls")
         self.semrep_url = "http://rtxdev.saramsey.org:5000/semrep/convert?string="
         self.timeout_sec = 120
         self.mg = QueryMyGene()

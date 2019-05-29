@@ -1,5 +1,10 @@
 from neo4j.v1 import GraphDatabase
 import json
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+from RTXConfiguration import RTXConfiguration
 
 ### BEGIN HOW TO RUN
 #   Function: The script is used to test the consistency of the dumped database file
@@ -50,14 +55,13 @@ class TestBackup(object):
         result = tx.run("START r=relationship(*) RETURN count(r)")
         return result.single()[0]
 
+
 if __name__ == '__main__':
 
-    f = open('user_pass.json', 'r')
-    userData = f.read()
-    f.close()
-    user = json.loads(userData)
+    # create the RTXConfiguration object
+    rtxConfig = RTXConfiguration()
 
-    obj = TestBackup("bolt://localhost:7687", user['username'], user['password'])
+    obj = TestBackup(rtxConfig.neo4j_bolt, rtxConfig.neo4j_username, rtxConfig.neo4j_password)
     obj.print_node_count()
     obj.print_relation_count()
     obj.close()

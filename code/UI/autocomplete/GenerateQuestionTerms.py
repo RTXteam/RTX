@@ -1,72 +1,80 @@
 import sys, os
 import json
+
 question_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-							 'reasoningtool/QuestionAnswering')
+                            'reasoningtool/QuestionAnswering')
 sys.path.append(question_dir)
 from Question import Question
 
 neo4j_helper_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-							 'reasoningtool/kg-construction')
+                                'reasoningtool/kg-construction')
 sys.path.append(neo4j_helper_dir)
 from Neo4jConnection import Neo4jConnection
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")  # code directory
+from RTXConfiguration import RTXConfiguration
+
 
 class GenerateQuestionTerms:
-	@staticmethod
-	def __get_question_templates():
-		question_templates = []
-		with open(os.path.join(question_dir, 'Questions.tsv'), 'r') as fid:
-			for line in fid.readlines():
-				if line[0] == "#":
-					pass
-				else:
-					question = Question(line)
-					question_templates.append(question)
-		return question_templates
+    @staticmethod
+    def __get_question_templates():
+        question_templates = []
+        with open(os.path.join(question_dir, 'Questions.tsv'), 'r') as fid:
+            for line in fid.readlines():
+                if line[0] == "#":
+                    pass
+                else:
+                    question = Question(line)
+                    question_templates.append(question)
+        return question_templates
 
-	@staticmethod
-	def __get_node_names(type):
-		# connect to Neo4j
-		f = open(os.path.join(neo4j_helper_dir, 'config.json'), 'r')
-		config_data = f.read()
-		f.close()
-		config = json.loads(config_data)
+    @staticmethod
+    def __get_node_names(type):
+        # # connect to Neo4j
+        # f = open(os.path.join(neo4j_helper_dir, 'config.json'), 'r')
+        # config_data = f.read()
+        # f.close()
+        # config = json.loads(config_data)
 
-		conn = Neo4jConnection(config['url'], config['username'], config['password'])
-		names = conn.get_node_names(type)
-		conn.close()
+        # create the RTXConfiguration object
+        rtxConfig = RTXConfiguration()
 
-		return names
+        conn = Neo4jConnection(rtxConfig.neo4j_bolt, rtxConfig.neo4j_username, rtxConfig.neo4j_password)
+        names = conn.get_node_names(type)
+        conn.close()
 
-	@staticmethod
-	def generateQuetionsToTXT():
-		question_templates = GenerateQuestionTerms.__get_question_templates()
+        return names
 
-		have_writen = False
-		for i, question in enumerate(question_templates):
+    @staticmethod
+    def generateQuetionsToTXT():
+        question_templates = GenerateQuestionTerms.__get_question_templates()
 
-			# retrieve the type and template from question_template
-			if len(question.parameter_names) == 0:
-				continue
-			type = (question.parameter_names)[0]
-			question_template = question.restated_question_template
+        have_writen = False
+        for i, question in enumerate(question_templates):
 
-			names = GenerateQuestionTerms.__get_node_names(type)
+            # retrieve the type and template from question_template
+            if len(question.parameter_names) == 0:
+                continue
+            type = (question.parameter_names)[0]
+            question_template = question.restated_question_template
 
-			if len(names) != 0:
-				question_content = ''
-				for name in names:
-					question_phase = question_template.safe_substitute({type: name})
-					question_content = question_content + question_phase + '\n'
+            names = GenerateQuestionTerms.__get_node_names(type)
 
-				# write content to file
-				if have_writen:
-					with open('question_terms.txt', 'a') as w_f:
-						w_f.write(question_content)
-				else:
-					with open('question_terms.txt', 'w') as w_f:
-						w_f.write(question_content)
-						have_writen = True
+            if len(names) != 0:
+                question_content = ''
+                for name in names:
+                    question_phase = question_template.safe_substitute({type: name})
+                    question_content = question_content + question_phase + '\n'
+
+                # write content to file
+                if have_writen:
+                    with open('question_terms.txt', 'a') as w_f:
+                        w_f.write(question_content)
+                else:
+                    with open('question_terms.txt', 'w') as w_f:
+                        w_f.write(question_content)
+                        have_writen = True
+
 
 if __name__ == '__main__':
-	GenerateQuestionTerms.generateQuetionsToTXT()
+    GenerateQuestionTerms.generateQuetionsToTXT()
