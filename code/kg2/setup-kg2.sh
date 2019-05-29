@@ -4,6 +4,9 @@ set -euxo pipefail
 ## setup the shell variables for various directories
 CONFIG_DIR=`dirname "$0"`
 
+MYSQL_USER=ubuntu
+MYSQL_PASSWORD=1337
+
 source ${CONFIG_DIR}/master-config.shinc
 
 ## sym-link into RTX/code/kg2
@@ -15,6 +18,7 @@ fi
 sudo apt-get update
 sudo apt-get install -y python3-minimal \
      python3-pip \
+     python-dev \
      default-jre \
      awscli \
      zip \
@@ -25,7 +29,14 @@ sudo apt-get install -y python3-minimal \
      libxml2-dev \
      gtk-doc-tools \
      libtool \
-     automake
+     automake \
+     git
+
+sudo debconf-set-selections <<< "mysql-server mysql-server/root_password password ${MYSQL_PASSWORD}"
+sudo debconf-set-selections <<< "mysql-server mysql-server/root_password_again password ${MYSQL_PASSWORD}"
+sudo apt-get install -y mysql-server \
+     mysql-client \
+     libmysqlclient-dev
 
 ## this is for convenience when I am remote working
 sudo apt-get install -y emacs
@@ -39,14 +50,9 @@ virtualenv ${VENV_DIR}
 ## Install python3 packages that we will need (Note: we are not using pymongo
 ## directly, but installing it silences a runtime warning from ontobio):
 ## (maybe we should eventually move this to a requirements.txt file?)
-${VENV_DIR}/bin/pip3 install ontobio pymongo
+${VENV_DIR}/bin/pip3 install -r ${CODE_DIR}/requirements.txt
 
 mkdir -p ${BUILD_DIR}
-
-## make local copies of the config files in the build dir
-cp ${CODE_DIR}/curies-to-categories.yaml ${BUILD_DIR}
-cp ${CODE_DIR}/curies-to-urls-lookaside-list.yaml ${BUILD_DIR}
-cp ${CODE_DIR}/owl-load-inventory.yaml ${BUILD_DIR}
 
 ## install ROBOT (software: ROBOT is an OBO Tool) by downloading the jar file
 ## distribution and cURLing the startup script (note github uses URL redirection
@@ -67,7 +73,7 @@ else
     rm /tmp/test
 fi
 
-# setup raptor
+# setup raptor (used by the "checkOutputSyntax.sh" script in the umls2rdf package)
 wget -nv -P ${BUILD_DIR} http://download.librdf.org/source/raptor2-2.0.15.tar.gz
 rm -r -f ${BUILD_DIR}/raptor2-2.0.15
 tar xzf ${BUILD_DIR}/raptor2-2.0.15.tar.gz -C ${BUILD_DIR} 
@@ -77,5 +83,19 @@ make
 make check
 sudo make install
 sudo ldconfig
+
+MYSQL_PWD=${MYSQL_PASSWORD} mysql -u root -e "CREATE USER '${MYSQL_USER}'@'localhost' IDENTIFIED BY '${MYSQL_PASSWORD}'"
+MYSQL_PWD=${MYSQL_PASSWORD} mysql -u root -e "GRANT ALL PRIVILEGES ON *.* to '${MYSQL_USER}'@'localhost'"
+cat >${MYSQL_CONF} <<EOF
+[client]
+user = ${MYSQL_USER}
+password = ${MYSQL_PASSWORD}
+host = localhost
+EOF
+
+## set mysql server variable to allow loading data from a local file
+mysql --defaults-extra-file=${MYSQL_CONF} \
+      -e "set global local_infile=1"
+
 
 echo "================= script finished ================="

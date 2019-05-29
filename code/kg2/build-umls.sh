@@ -7,26 +7,16 @@ source ${CONFIG_DIR}/master-config.shinc
 UMLS_VER=2018AB
 UMLS_FILE_BASE=${UMLS_VER}-full
 UMLS_DIR=${BUILD_DIR}/umls
-MYSQL_USER=ubuntu
-MYSQL_PASSWORD=1337
-MYSQL_DBNAME=umls
 MMSYS_DIR=${UMLS_DIR}/${UMLS_FILE_BASE}
 UMLS_RRDIST_DIR=${UMLS_DIR}
 UMLS_DEST_DIR=${UMLS_RRDIST_DIR}/META
-MYSQL_CONF=${UMLS_DIR}/mysql-config.conf
-UMLS2RDF_RELEASE=rtx-1.5
+UMLS2RDF_RELEASE=rtx-1.6
 UMLS2RDF_PKGNAME=umls2rdf-${UMLS2RDF_RELEASE}
 UMLS2RDF_DIR=${UMLS_DIR}/${UMLS2RDF_PKGNAME}
 CONFIG_FILE=${UMLS_DIR}/config.prop
+MYSQL_DBNAME=umls
 
 sudo apt-get update -y
-sudo debconf-set-selections <<< "mysql-server mysql-server/root_password password ${MYSQL_PASSWORD}"
-sudo debconf-set-selections <<< "mysql-server mysql-server/root_password_again password ${MYSQL_PASSWORD}"
-sudo apt-get install -y mysql-server \
-     mysql-client \
-     git \
-     libmysqlclient-dev \
-     python-dev 
 
 ## make directories that we need
 mkdir -p ${UMLS_DIR}
@@ -65,22 +55,9 @@ ${JAVA_HOME}/bin/java -Djava.awt.headless=true \
                       -Dmmsys.config.uri=${CONFIG_FILE} \
                       -Xms300M -Xmx${MEM_GB}G org.java.plugin.boot.Boot
 
-MYSQL_PWD=${MYSQL_PASSWORD} mysql -u root -e "CREATE USER '${MYSQL_USER}'@'localhost' IDENTIFIED BY '${MYSQL_PASSWORD}'"
-MYSQL_PWD=${MYSQL_PASSWORD} mysql -u root -e "GRANT ALL PRIVILEGES ON *.* to '${MYSQL_USER}'@'localhost'"
-cat >${MYSQL_CONF} <<EOF
-[client]
-user = ${MYSQL_USER}
-password = ${MYSQL_PASSWORD}
-host = localhost
-EOF
-
 ## create the "umls" database
 mysql --defaults-extra-file=${MYSQL_CONF} \
       -e "CREATE DATABASE IF NOT EXISTS ${MYSQL_DBNAME} CHARACTER SET utf8 COLLATE utf8_unicode_ci"
-
-## set mysql server variable to allow loading data from a local file
-mysql --defaults-extra-file=${MYSQL_CONF} \
-      -e "set global local_infile=1"
 
 ## fill in the authentication and database variables in the shell script for populating the mysql database
 cat ${UMLS_DEST_DIR}/populate_mysql_db.sh | \
@@ -106,6 +83,7 @@ cat ${UMLS2RDF_DIR}/conf_sample.py | sed 's/your-host/localhost/g' | \
     sed "s/your db user/${MYSQL_USER}/g" | \
     sed "s/your db pass/${MYSQL_PASSWORD}/g" | \
     sed "s|http://purl.bioontology.org/ontology|https://identifiers.org/umls|g" |
+    sed "s|output|${BUILD_DIR}|g" \
     sed "s/2015ab/${UMLS_VER}/g" > ${UMLS2RDF_DIR}/conf.py
 
 ## umls2rdf is legacy software written to run in python2.7; set up the virtualenv
@@ -116,22 +94,19 @@ ${UMLS_VENV_DIR}/bin/pip install mysqlclient
 ## run umls2rdf
 cd ${UMLS2RDF_DIR}
 ${UMLS_VENV_DIR}/bin/python2.7 umls2rdf.py
-./checkOutputSyntax.sh
+./checkOutputSyntax.sh  # users "rapper" command from the "raptor" package
 
-## convert files from Turtle format to OWL/RDF format
-for ttl_file_name in `ls ${UMLS2RDF_DIR}/output/*.ttl`
-do
-    file_path_no_ext=${ttl_file_name%.*}
-    file_name_no_ext=`basename ${file_path_no_ext}`
-    ${BUILD_DIR}/robot convert --input ${ttl_file_name} --output /tmp/${file_name_no_ext}.owl
-    mv /tmp/${file_name_no_ext}.owl ${file_path_no_ext}.owl
-done
+# ## convert files from Turtle format to OWL/RDF format
+# for ttl_file_name in `ls ${UMLS2RDF_DIR}/output/*.ttl`
+# do
+#     file_path_no_ext=${ttl_file_name%.*}
+#     file_name_no_ext=`basename ${file_path_no_ext}`
+#     ${BUILD_DIR}/robot convert --input ${ttl_file_name} --output /tmp/${file_name_no_ext}.owl
+#     mv /tmp/${file_name_no_ext}.owl ${BUILD_DIR}/${file_name_no_ext}.owl
+# done
 
 #export ROBOT_JAVA_ARGS="-Xmx${MEM_GB}G"
 #${BUILD_DIR}/robot merge --inputs "${UMLS2RDF_DIR}/output/*.owl" --output ${BUILD_DIR}/umls.owl
 
-#### merge the UMLS OWL files into a single umls.owl file
-##OWLTOOLS_MEMORY=${MEM_GB}G ${BUILD_DIR}/owltools $(ls ${UMLS2RDF_DIR}/output/*.owl) \
-##               --merge-support-ontologies -o ${BUILD_DIR}/umls.owl
 
 echo "================= script finished ================="

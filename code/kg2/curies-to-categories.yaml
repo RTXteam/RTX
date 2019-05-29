@@ -2,6 +2,7 @@
 prefix-mappings:
     BSPO: relationship type
     CL: anatomical entity
+    DOID: disease
     GOREL: relationship type
     HGNC: gene
     IAO: information entity type
@@ -10,11 +11,15 @@ prefix-mappings:
     NCBITaxon: organism taxon
     OMIM: phenotypic feature
     Orphanet: disease
+    PR: protein
     RGD: gene
     RO: relationship type
     SGD: gene
+    SIO: relationship type
     STY: semantic type
+    SYMP: phenotypic feature
     UBERON: anatomical entity
+    UBPROP: attribute
     UniProtKB: protein
 term-mappings:
     rdfs:isDefinedBy: relationship type
@@ -60,7 +65,6 @@ term-mappings:
     CHEBI:50906: biological process
     CL:0000000: anatomical entity
     DDANAT:0000002: organism taxon
-    DOID:4: disease
     GO:0005575: cellular component
     GO:0008150: biological process
     GO:0003674: molecular function
@@ -176,8 +180,10 @@ term-mappings:
     SNOMEDCT_US:419891008: information entity
     SNOMEDCT_US:900000000000441003: information entity
     SO:0000704: gene
+    TRANS:0000000: transmission type
     TUI:T017: anatomical entity
     TUI:T001: organism taxon
+    TUI:T028: gene
     TUI:T032: attribute
     TUI:T033: finding
     TUI:T038: biological process
