@@ -24,4 +24,3 @@ pymysql
 requests
 CacheControl
 lockfile
-

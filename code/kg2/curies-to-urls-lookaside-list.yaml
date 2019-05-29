@@ -11,6 +11,10 @@
 -
   HGNC: http://identifiers.org/hgnc/
 -
+  HGNC: http://www.genenames.org/cgi-bin/gene_symbol_report?hgnc_id=
+-
+  HGNC: https://identifiers.org/umls/HGNC/HGNC%3A
+-
   EFO: http://www.ebi.ac.uk/efo/EFO_
 -
   GOREL: http://purl.obolibrary.org/obo/GOREL_
@@ -44,4 +48,17 @@
   skos: http://www.w3.org/2008/05/skos#
 -
   UMLS: https://identifiers.org/umls/
-
+-
+  BFO: http://www.ifomis.org/bfo/1.1/snap#
+-
+  BFO: http://www.ifomis.org/bfo/1.1/span#
+-
+  NCBIGene: http://www.ncbi.nlm.nih.gov/gene/
+-
+  OBO: http://purl.obolibrary.org/obo#
+-
+  RO: http://www.obofoundry.org/ro/ro.owl#
+-
+  OBO: http://purl.org/obo/owl/OBO_REL#
+-
+  EFO: http://www.ebi.ac.uk/efo/

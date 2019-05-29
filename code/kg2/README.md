@@ -34,57 +34,77 @@ specifications:
 
 - 128 GB of system RAM
 - 500 GB of disk space in the root file system 
-- high-speed network access
+- high-speed networking
 - ideally, AWS zone `us-west-2` since that is where the S3 buckets are located
 
-Your host OS should *not* have MySQL installed; if MySQL is installed, you will
-need to delete it as follows (WARNING: don't run these steps without first
-making a backup AMI of your system):
+## We assume there is no MySQL cruft
 
-    sudo apt-get remove --purge -y mysql*
-    sudo apt-get autoremove -y
-    sudo apt-get autoclean
-    sudo apt-get remove dbconfig-mysql
-    sudo rm -r -f /etc/mysql
+The target Ubuntu system in which you will run the KG2 build should *not* have MySQL
+installed; if MySQL is installed, you will need to delete it using the following
+`bash` command, which requires `curl`: (WARNING! Please don't run this command
+without first making a backup image of your system, such as an AMI):
+
+    source <(curl -s https://raw.githubusercontent.com/RTXteam/RTX/master/code/kg2/delete-mysql-ubuntu.sh)
 
 The KG2 build system has been tested *only* under Ubuntu 18.04. If you want to
 build KG2 but don't have a native installation of Ubuntu 18.04 available, your
 best bet would be to use Docker (see Option 3 below). 
 
+## AWS authentication key and AWS buckets
+
 Aside from your host OS, you'll need to have an Amazon Web Services (AWS)
 authentication key that is configured to be able to read from the `s3://rtx-kg2`
 Amazon Simple Cloud Storage Service (S3) bucket (ask Stephen Ramsey to set this
-up) and to write to the S3 bucket `s3://rtx-kg2-public` (both in the `us-west-2`
-zone). The KG2 build script downloads the UMLS and SNOMED CT distributions from
-the private S3 bucket `rtx-kg2` (these distributions are encumbered by licenses so
-they cannot be put on a public server for download) and it uploads the
-final output `kg2.json` file to the public S3 bucket `rtx-kg2-public`.
-
+up), so that the build script can download a copy of the full Unified Medical
+Language System (UMLS) distribution.  You will be asked (by the AWS CLI) to
+provide this authentication key when you run the KG2 build script. Your
+configured AWS CLI will also need to be able to programmatically write to the
+(publicly readable) S3 bucket `s3://rtx-kg2-public` (both buckets are in the
+`us-west-2` AWS zone). The KG2 build script downloads the UMLS distribution
+(including SNOMED CT) from the private S3 bucket `rtx-kg2` (IANAL, but it
+appears that UMLS is encumbered by a license preventing redistribution so I have
+not it them on a public server for download; but you can get it for free at the
+[UMLS website](https://www.nlm.nih.gov/research/umls/) if you agree to the UMLS
+licenses) and it uploads the final output `kg2.json` file to the public S3
+bucket `rtx-kg2-public`. Alternatively, you can set up your own S3 bucket to
+which to copy the KG2 JSON file, or you can comment the line out of
+`build-kg2.sh` that copies the final JSON file to S3.
 
 ## My normal EC2 instance
 
+The KG2 build software has been tested with the following instance type:
+
 - AMI: Ubuntu Server 18.04 LTS (HVM), SSD Volume Type - `ami-005bdb005fb00e791` (64-bit x86)
-- Instance type: `r5.4xlarge` 
-- Storage: 500 GiB General Purpose SSD
-- Security Group: `http+ssh`
+- Instance type: `r5.12xlarge` (384 GiB of memory)
+- Storage: 750 GiB General Purpose SSD
+- Security Group: ingress TCP packets on port 22 (ssh) permitted
 
 ## Build instructions
 
-### Option 1: build KG2 directly on an Ubuntu system, not via ssh:
+Note: to follow the instructions for Option 2 and Option 3 below, you will need
+to be using the `bash` shell on your local computer.
 
-Run these commands in the `bash` shell, in order:
+### Option 1: build KG2 directly on an Ubuntu system:
 
-    cd
+These instructions assume that you are logged into the target Ubuntu system:
+
+(1) Install `git` by running this command in the `bash` shell:
+
+    sudo apt-get update -y && sudo apt-get install -y screen git
+
+(2) change to the user's home directory:
+
+    cd 
     
-    sudo apt-get update -y
-    
-    sudo apt-get install -y screen git
-    
+(3) Clone the RTX software from GitHub:
+
     git clone https://github.com/RTXteam/RTX.git
-    
+
+(4) Initiate a `screen` session to provide a stable pseudo-tty:
+
     screen
 
-Within the `screen` session, run:
+(5) Setup the KG2 build system: Within the `screen` session, run:
 
     RTX/code/kg2/setup-kg2.sh > setup-kg2.log 2>&1
     
@@ -93,20 +113,8 @@ using the command:
 
     tail -f setup-kg2.log
 
-Next, build `snomed.owl` (an OWL representation of the SNOMED CT US English
-distribution), as follows: rejoin the `screen` session using `screen -r`.
-In the `screen` session, do this:
-
-    ~/kg2-code/build-snomed.sh > ~/kg2-build/build-snomed.log 2>&1
-    
-Then exit screen (`ctrl-a d`). You can watch the progress via:
-
-    tail -f ~/kg2-build/build-snomed.log
-
-The build process for `snomed.owl` takes about 10 minutes.  Next, build
-`umls.owl` (an OWL representation of the UMLS Level 0 ontologies plus SNOMED
-CT), as follows: rejoin the `screen` session using `screen -r`.  In the `screen`
-session, do this:
+(6) Build all of the UMLS OWL files, as follows: rejoin the `screen`
+session using `screen -r`.  In the `screen` session, do this:
 
     ~/kg2-code/build-umls.sh > ~/kg2-build/build-umls.log 2>&1
     
@@ -114,8 +122,10 @@ You can watch the progress via:
 
     tail -f ~/kg2-build/build-umls.log
 
-The build process for `umls.owl` takes about 5.5 hours. Next, rejoin the screen
-session using `screen -r`.  Within the `screen` session, run:
+Extracting UMLS and building all the UMLS OWL files takes about 5.5 hours. 
+
+(7) Build KG2: Rejoin the screen session using `screen -r`.  Within
+the `screen` session, run:
 
     ~/kg2-code/build-kg2.sh
 
@@ -124,30 +134,41 @@ two commands (run them in separate bash shell terminals):
 
     tail -f /home/ubuntu/kg2-build/build-kg2-stdout.log
     tail -f /home/ubuntu/kg2-build/build-kg2-stderr.log
-    
+
+
 ### Option 2: remotely build KG2 in an EC2 instance via ssh, orchestrated from your local computer
 
-Run these commands in the `bash` shell, in order:
+This option requires that you have `curl` installed on your local computer. In a
+`bash` terminal session, set up the remote EC2 instance by running this command
+(requires `ssh` installed and in your path):
 
-    git clone https://github.com/RTXteam/RTX.git
+    source <(curl -s https://raw.githubusercontent.com/RTXteam/RTX/master/code/kg2/ec2-setup-remote-instance.sh)
     
-    RTX/code/kg2/ec2-setup-remote-instance.sh
-
-This should initiate a `bash` session on the remote instance. Within that `bash`
-session, continue to follow the instructions for Option 1 (from the beginning).
+You will be prompted to enter the path to your AWS PEM file and the hostname of
+your AWS instance.  The script should then initiate a `bash` session on the
+remote instance. Within that `bash` session, continue to follow the instructions
+for Option 1 (starting at step (4)).
 
 ### Option 3: in an Ubuntu container in Docker (UNTESTED, IN DEVELOPMENT)
 
-If you are on Ubuntu and you need to install Docker, you can run this script:
+(1) If you are on Ubuntu and you need to install Docker, you can run this command in `bash` on the host OS:
    
-    RTX/code/kg2/install-docker.sh
+    source <(curl -s https://raw.githubusercontent.com/RTXteam/RTX/master/code/kg2/install-docker.sh)
     
 (otherwise, the subsequent commands in this section assume that Docker is installed
-on whatever host OS you are running). Then run these commands in the `bash` shell:
+on whatever host OS you are running). 
 
-    cd
+(2) Clone the RTX software into your home directory:
+
+    cd 
+    
+    git clone https://github.com/RTXteam/RTX.git
+
+(3) Build a Docker image for KG2:
     
     sudo docker build -t kg2 RTX/code/kg2/
+    
+(4) In a screen session (to provide a persistent pseudo-tty), setup a container and setup KG2 in it:
 
     screen
     
@@ -157,7 +178,15 @@ Then exit screen (`ctrl-a d`). You can watch the progress of your KG2 setup usin
 
     sudo docker exec kg2 "tail -f setup-kg2.log"
 
-Then again inside screen, run:
+(5) Inside the screen session, build UMLS:
+
+    sudo docker exec kg2 "kg2-code/build-umls.sh > ~/kg2-build/build-umls.log 2>&1"
+
+Then exit screen (`ctrl-a d`). You can watch the progress of your UMLS build using the command:
+
+    sudo docker exec kg2 "tail -f kg2-build/build-umls.log"
+
+(6) Build KG2: inside screen, run:
 
     sudo docker exec kg2 "kg2-code/build-kg2.sh"
 
