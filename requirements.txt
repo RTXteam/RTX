@@ -19,5 +19,6 @@ nltk
 sqlalchemy
 scipy
 scikit-learn
-cachecontrol
-
+requests
+CacheControl
+lockfile

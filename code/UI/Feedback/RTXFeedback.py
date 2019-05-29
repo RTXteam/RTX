@@ -163,14 +163,16 @@ class RTXFeedback:
     #if os.path.exists(self.databaseName):
     #  os.remove(self.databaseName)
     #engine = create_engine("sqlite:///"+self.databaseName)
-    engine = create_engine("mysql+pymysql://rt:Steve1000Ramsey@localhost/"+self.databaseName)
+    rtxConfig = RTXConfiguration()
+    engine = create_engine("mysql+pymysql://" + rtxConfig.mysql_feedback_username + ":" + rtxConfig.mysql_feedback_password + "@" + rtxConfig.mysql_feedback_host + "/" + self.databaseName)
     Base.metadata.create_all(engine)
     self.connect()
 
   #### Create and store a database connection
   def connect(self):
     #engine = create_engine("sqlite:///"+self.databaseName)
-    engine = create_engine("mysql+pymysql://rt:Steve1000Ramsey@localhost/"+self.databaseName)
+    rtxConfig = RTXConfiguration()
+    engine = create_engine("mysql+pymysql://" + rtxConfig.mysql_feedback_username + ":" + rtxConfig.mysql_feedback_password + "@" + rtxConfig.mysql_feedback_host + "/" + self.databaseName)
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
     self.session = session

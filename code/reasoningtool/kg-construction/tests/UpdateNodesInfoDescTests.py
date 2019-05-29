@@ -16,6 +16,10 @@ from QueryKEGG import QueryKEGG
 from QueryPubChem import QueryPubChem
 from QueryHMDB import QueryHMDB
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")  # code directory
+from RTXConfiguration import RTXConfiguration
+
+
 def random_int_list(start, stop, length):
     start, stop = (int(start), int(stop)) if start <= stop else (int(stop), int(start))
     length = int(abs(length)) if length else 0
@@ -27,13 +31,11 @@ def random_int_list(start, stop, length):
 
 class UpdateNodesInfoDescTestCase(unittest.TestCase):
 
-    def test_update_anatomy_nodes_desc(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
+    rtxConfig = RTXConfiguration()
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+    def test_update_anatomy_nodes_desc(self):
+
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_anatomy_nodes()
 
         # generate random number array
@@ -56,12 +58,8 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
         conn.close()
 
     def test_update_phenotype_nodes_desc(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_phenotype_nodes()
 
         # generate random number array
@@ -84,12 +82,8 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
         conn.close()
 
     def test_update_microRNA_nodes_desc(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_microRNA_nodes()
 
         # generate random number array
@@ -113,12 +107,8 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
         conn.close()
 
     def test_update_pathway_nodes_desc(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_pathway_nodes()
 
         # generate random number array
@@ -141,12 +131,8 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
         conn.close()
 
     def test_update_protein_nodes_desc(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_protein_nodes()
 
         # generate random number array
@@ -170,12 +156,8 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
         conn.close()
 
     def test_update_disease_nodes_desc(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_disease_nodes()
 
         # generate random number array
@@ -202,12 +184,8 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
         conn.close()
 
     def test_update_chemical_substance_entity(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_chemical_substance_nodes()
 
         # generate random number array
@@ -221,21 +199,17 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
             # retrieve data from Neo4j
             node = conn.get_chemical_substance_node(node_id)
             self.assertIsNotNone(node)
-            self.assertIsNotNone(node['n']['id'])
+            self.assertIsNotNone(node['n']['rtx_name'])
             self.assertIsNotNone(node['n']['description'])
-            self.assertEqual(node_id, node['n']['id'])
+            self.assertEqual(node_id, node['n']['rtx_name'])
             if node['n']['description'] != "None":
                 self.assertEqual(desc, node['n']['description'])
 
         conn.close()
 
     def test_update_bio_process_entity(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_bio_process_nodes()
 
         # generate random number array
@@ -258,12 +232,8 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
         conn.close()
 
     def test_update_cellular_component_desc(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_cellular_component_nodes()
 
         # generate random number array
@@ -286,12 +256,8 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
         conn.close()
 
     def test_update_molecular_function_desc(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_molecular_function_nodes()
 
         # generate random number array
@@ -314,12 +280,8 @@ class UpdateNodesInfoDescTestCase(unittest.TestCase):
         conn.close()
 
     def test_update_metabolite_desc(self):
-        f = open('config.json', 'r')
-        config_data = f.read()
-        f.close()
-        config = json.loads(config_data)
 
-        conn = Neo4jConnection(config['url'], config['username'], config['password'])
+        conn = Neo4jConnection(self.rtxConfig.neo4j_bolt, self.rtxConfig.neo4j_username, self.rtxConfig.neo4j_password)
         nodes = conn.get_metabolite_nodes()
 
         # generate random number array
