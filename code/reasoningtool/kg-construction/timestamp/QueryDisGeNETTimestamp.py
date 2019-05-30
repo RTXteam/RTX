@@ -1,5 +1,5 @@
-""" This module defines the class QueryKEGGTimestamp.
-It is written to get the release date of KEGG.
+""" This module defines the class QueryDisGeNETTimestamp.
+It is written to get the release date of DisGeNET.
 """
 
 __author__ = ""
@@ -25,6 +25,8 @@ class QueryDisGeNETTimestamp:
             date = version_his_tag.find_next_sibling("p").text
             r = date.split()
             if len(r) == 3:
+                if len(r[1]) == 2:
+                    r[1] = '0' + r[1]
                 return r[0] + "," + r[1] + r[2]
             else:
                 return None
