@@ -2,7 +2,7 @@ import requests
 from time import sleep
 from bs4 import BeautifulSoup
 import random
-
+import sys
 
 #   retrieve data from URL
 def retrieve(url: str):
@@ -19,6 +19,13 @@ def retrieve(url: str):
            )
     ua = UAS[random.randrange(len(UAS))]
     headers = {'user-agent': ua, 'Cache-Control': 'no-cache'}
-    r = requests.get(url, headers=headers, verify=False)  # get the HTML; ignore SSL errors (present on this particular site)
+    try:
+        r = requests.get(url, headers=headers, verify=False)  # get the HTML; ignore SSL errors (present on this particular site)
+    except BaseException as e:
+        print(url, file=sys.stderr)
+        print('%s received for URL: %s' % (e, url), file=sys.stderr)
+        return None
     soup = BeautifulSoup(r.text, "lxml")  # parse the HTML
     return soup
+
+

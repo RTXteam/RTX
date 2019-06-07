@@ -31,7 +31,7 @@ class QueryChEMBLTimestamp:
                         date = td.text
                         d = date.split()
                         if len(d) == 2:
-                            return d[0] + ",1," + d[1]
+                            return d[0] + ",01," + d[1]
                         else:
                             return None
                     j += 1

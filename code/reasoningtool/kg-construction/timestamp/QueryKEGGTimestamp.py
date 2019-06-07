@@ -24,6 +24,8 @@ class QueryKEGGTimestamp:
             main_tag = main_tags[0].text
             index = main_tag.find("Current release") + len("Current release")
             r = main_tag[index:].split()
+            if len(r[3]) == 2:
+                r[3] = '0' + r[3]
             return r[2] + "," + r[3] + r[4]
         else:
             return None
