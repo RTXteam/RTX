@@ -100,6 +100,7 @@ paths:
       summary: Get all supported relationships in the knowledge graph, organized by source and target
       tags:
       - "predicates"
+      operationId: "predicates"
       responses:
         200:
           description: Predicates by source and target
