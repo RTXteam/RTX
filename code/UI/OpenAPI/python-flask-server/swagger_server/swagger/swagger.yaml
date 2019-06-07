@@ -17,6 +17,12 @@ tags:
   externalDocs:
     description: "Documentation for the RTX translate function"
     url: "https://rtx.ncats.io/devED/overview.html#translate"
+- name: "predicates"
+  description: "Get all supported relationships in the knowledge graph, organized\
+    \ by source and target"
+  externalDocs:
+    description: "Documentation for the RTX predicates function"
+    url: "https://rtx.ncats.io/devED/overview.html#predicates"
 - name: "query"
   description: "Query RTX using a predefined question type"
   externalDocs:
@@ -89,6 +95,34 @@ paths:
         400:
           description: "Invalid status value"
       x-swagger-router-controller: "swagger_server.controllers.translate_controller"
+  /predicates:
+    get:
+      tags:
+      - "predicates"
+      summary: "Get all supported relationships in the knowledge graph, organized\
+        \ by source and target"
+      operationId: "predicates"
+      parameters: []
+      responses:
+        200:
+          description: "Predicates by source and target"
+          schema:
+            type: "object"
+            example:
+              chemical_substance:
+                gene:
+                - "directly_interacts_with"
+                - "decreases_activity_of"
+            description: "Source map"
+            additionalProperties:
+              type: "object"
+              description: "Target map"
+              additionalProperties:
+                type: "array"
+                description: "Array of predicates"
+                items:
+                  type: "string"
+      x-swagger-router-controller: "swagger_server.controllers.predicates_controller"
   /query:
     post:
       tags:
