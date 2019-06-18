@@ -2,7 +2,7 @@
 
 '''Extracts the nodes from a knowledge graph that is in JSON format; saves the nodes in JSON format.
 
-   Usage: get_nodes_json_from_graph_json.py <inputFile.json> <outputFile.json>
+   Usage: get_nodes_json_from_graph_json.py --inputFile <inputFile.json> --outputFile <outputFile.json>
    Either the input file or the output file can optionally have a ".gz" extension.
 '''
 
@@ -15,17 +15,17 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
+import argparse
 import gzip
 import json
+import kg2_util
 import tempfile
-import argparse
-import shutil
 
 
 def make_arg_parser():
     arg_parser = argparse.ArgumentParser(description='build-kg2: builds the KG2 knowledge graph for the RTX system')
-    arg_parser.add_argument('inputFile', type=str, nargs=1)
-    arg_parser.add_argument('outputFile', type=str, nargs=1)
+    arg_parser.add_argument('--inputFile', type=str, nargs=1)
+    arg_parser.add_argument('--outputFile', type=str, nargs=1)
     return arg_parser
 
 
@@ -39,12 +39,6 @@ if __name__ == "__main__":
     else:
         input_file = gzip.GzipFile(input_file_name, 'r')
         graph = json.loads(input_file.read().decode('utf-8'))
+    del graph['edges']
     output_file_name = args.outputFile[0]
-    if not output_file_name.endswith('.gz'):
-        temp_file = open(temp_file_name, 'w')
-        json.dump(graph['nodes'], temp_file, indent=4, sort_keys=True)
-    else:
-        temp_file = gzip.GzipFile(temp_file_name, 'w')
-        temp_file.write(json.dumps(graph['nodes'], indent=4, sort_keys=True).encode('utf-8'))
-    shutil.move(temp_file_name, output_file_name)
-
+    kg2_util.save_json(graph, output_file_name)

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 '''Builds the RTX "KG2" second-generation knowledge graph, from various OWL input files.
 
-   Usage: multi_owl_to_json_kg.py <categoriesFile.yaml> <curiesToURILALFile> <owlLoadInventoryFile.yaml> <outputFile>
+   Usage: multi_owl_to_json_kg.py --categoriesFile <categoriesFile.yaml> --curiesToURILALFile <curiesToURILALFile> 
+                                  --owlLoadInventoryFile <owlLoadInventoryFile.yaml> --outputFile <outputFile>
    (note: outputFile can end in .json or in .gz; if the latter, it will be written as a gzipped file;
    but using the gzip options for input or output seems to significantly increase transient memory
    usage)
@@ -20,9 +21,7 @@ __status__ = 'Prototype'
 import argparse
 import errno
 import functools
-import gzip
 import hashlib
-import json
 import kg2_util
 import ontobio
 import os.path
@@ -36,7 +35,6 @@ import ssl
 import subprocess
 import sys
 import tempfile
-import timeit
 import urllib.parse
 import urllib.request
 # import ipdb # need this for interactive debugging
@@ -44,7 +42,7 @@ import urllib.request
 
 # -------------- define globals here ---------------
 
-BIOLINK_CATEGORY_BASE_IRI = 'http://w3id.org/biolink'
+BIOLINK_CATEGORY_BASE_IRI = 'http://w3id.org/biolink/vocab/'
 FIRST_CAP_RE = re.compile('(.)([A-Z][a-z]+)')
 ALL_CAP_RE = re.compile('([a-z0-9])([A-Z])')
 TEMP_FILE_PREFIX = 'kg2'
@@ -196,7 +194,8 @@ def make_kg2(curies_to_categories: dict,
              uri_to_curie_shortener: callable,
              map_category_label_to_iri: callable,
              owl_urls_and_files: tuple,
-             output_file_name: str):
+             output_file_name: str,
+             test_mode: bool = False):
 
     owl_file_information_dict_list = []
 
@@ -247,20 +246,8 @@ def make_kg2(curies_to_categories: dict,
         del node_dict['xrefs']
         del node_dict['ontology node ids']
 
-#    timestamp_str = datetime.datetime.utcnow().replace(microsecond=0).isoformat()
-    temp_output_file_name = tempfile.mkstemp(prefix='kg2-')[1]
-
     kg2_util.log_message('Saving JSON file')
-
-    if not output_file_name.endswith('.gz'):
-        temp_output_file = open(temp_output_file_name, 'w')
-        json.dump(kg2_dict, temp_output_file, indent=4, sort_keys=True)
-    else:
-        temp_output_file = gzip.GzipFile(temp_output_file_name, 'w')
-        temp_output_file.write(json.dumps(kg2_dict, indent=4, sort_keys=True).encode('utf-8'))
-    shutil.move(temp_output_file_name, output_file_name)
-
-#    pickle.dump(kg2_dict, open(os.path.join(output_dir, 'kg2-' + timestamp_str + '.pickle'), 'wb'))
+    kg2_util.save_json(kg2_dict, output_file_name, test_mode)
 
 
 def get_biolink_category_for_node(ontology_node_id: str,
@@ -397,7 +384,7 @@ def make_nodes_dict_from_ontologies_list(ontology_info_list: list,
             'full name': ontology_info_dict['title'],
             'name': ontology_info_dict['title'],
             'category': category_label_to_iri_mapper('data source'),
-            'category label': 'data source',
+            'category label': 'data_source',
             'description': ontology_info_dict['description'],
             'synonym': [],
             'xrefs': [],
@@ -574,7 +561,7 @@ def make_nodes_dict_from_ontologies_list(ontology_info_list: list,
             node_dict['name'] = node_name
             node_dict['full name'] = node_full_name
             node_dict['category'] = node_category_iri
-            node_dict['category label'] = node_category_label
+            node_dict['category label'] = node_category_label.replace(' ', '_')
             node_dict['description'] = node_description
             node_dict['creation date'] = node_creation_date   # slot name is not biolink standard
             node_dict['deprecated'] = node_deprecated         # slot name is not biolink standard
@@ -603,7 +590,7 @@ def make_nodes_dict_from_ontologies_list(ontology_info_list: list,
                         cui_node_dict['id'] = cui_curie
                         cui_node_dict['iri'] = cui_uri
                         cui_node_dict['category'] = node_tui_category_iri
-                        cui_node_dict['category label'] = node_tui_category_label
+                        cui_node_dict['category label'] = node_tui_category_label.replace(' ', '_')
                         cui_node_dict['ontology node ids'] = []
                         cui_node_dict['provided by'] = CUI_BASE_IRI
                         cui_node_dict_existing = ret_dict.get(cui_curie, None)
@@ -662,29 +649,36 @@ def get_rels_dict(nodes: dict,
                                      node_curie_id=object_id,
                                      output_stream=sys.stderr)
                 continue
-            predicate_label = predicate_dict['pred']
-            if not predicate_label.startswith('http:') and not predicate_label.startswith('https'):
-                if ':' not in predicate_label:
-                    if predicate_label != 'subClassOf':
-                        predicate_curie = 'owl:' + predicate_label
+
+            predicate_label = None
+            edge_pred_string = predicate_dict['pred']
+            if not edge_pred_string.startswith('http:') and not edge_pred_string.startswith('https'):
+                # edge_pred_string is not a URI; this is the most common case
+                if ':' not in edge_pred_string:
+                    # edge_pred_string is not a CURIE; this is the most common subcase
+                    if edge_pred_string != 'subClassOf':
+                        predicate_curie = 'owl:' + edge_pred_string
                     else:
                         predicate_curie = 'rdfs:subClassOf'
-                        predicate_label = convert_owl_camel_case_to_biolink_spaces(predicate_label)
-
+                    predicate_label = convert_camel_case_to_snake_case(edge_pred_string)
                 else:
-                    predicate_curie = predicate_label
+                    # edge_pred_string is a CURIE
+                    predicate_curie = edge_pred_string
                     predicate_node = nodes.get(predicate_curie, None)
                     if predicate_node is not None:
-                        predicate_label = predicate_node['name'].replace('_', ' ')
-#                        if predicate_label[0].isupper():
-#                            predicate_label = predicate_label[0].lower() + predicate_label[1:]
-
+                        predicate_label = predicate_node['name']
+                    else:
+                        # predicate has no node object defined; just pull the label out of the CURIE
+                        if edge_pred_string.startswith('OBO:'):
+                            predicate_label = edge_pred_string.split(':')[1].split('#')[-1]
+                        else:
+                            predicate_label = edge_pred_string
                 predicate_iri = prefixcommons.expand_uri(predicate_curie)
                 predicate_curie_new = uri_to_curie_shortener(predicate_iri)
                 if predicate_curie_new is not None:
                     predicate_curie = predicate_curie_new
             else:
-                predicate_iri = predicate_label
+                predicate_iri = edge_pred_string
                 predicate_curie = uri_to_curie_shortener(predicate_iri)
             if predicate_curie is None:
                 kg2_util.log_message(message="predicate IRI has no CURIE: " + predicate_iri,
@@ -701,17 +695,20 @@ def get_rels_dict(nodes: dict,
             if ontology_node is not None:
                 ontology_update_date = ontology_node['update date']
 
-            if ':' in predicate_curie:
+            if predicate_label is None and ':' in predicate_curie:
                 pred_node = nodes.get(predicate_curie, None)
                 if pred_node is not None:
-                    predicate_label = pred_node['name'].replace('_', ' ')
+                    predicate_label = pred_node['name']
                     if predicate_label[0].isupper():
                         predicate_label = predicate_label[0].lower() + predicate_label[1:]
+
+            assert predicate_label is not None
+            predicate_label = predicate_label.replace(' ', '_')
 
             if rels_dict.get(rel_key, None) is None:
                 rels_dict[rel_key] = {'subject': subject_curie_id,
                                       'object': object_curie_id,
-                                      'type': predicate_label,
+                                      'edge label': predicate_label,
                                       'relation': predicate_iri,
                                       'relation curie': predicate_curie,  # slot is not biolink standard
                                       'negated': False,
@@ -729,7 +726,7 @@ def get_rels_dict(nodes: dict,
                         if rels_dict.get(key, None) is None:
                             rels_dict[key] = {'subject': node_id,
                                               'object': xref_node_id,
-                                              'type': 'xref',
+                                              'edge label': 'xref',
                                               'relation': IRI_OBO_XREF,
                                               'relation curie': CURIE_OBO_XREF,
                                               'negated': False,
@@ -749,11 +746,7 @@ def get_node_curie_id_from_ontology_node_id(ontology_node_id: str,
         if not ontology_node_id.startswith('OBO:'):
             node_curie_id = ontology_node_id
         else:
-            onid_noobo = ontology_node_id.replace('OBO:', '')
-            if '_' not in onid_noobo:
-                node_curie_id = ontology_node_id
-            else:
-                node_curie_id = onid_noobo.replace('_', ':')
+            node_curie_id = uri_to_curie_shortener(prefixcommons.expand_uri(ontology_node_id))
     else:
         node_curie_id = uri_to_curie_shortener(ontology_node_id)
         if node_curie_id is None:
@@ -782,6 +775,7 @@ def shorten_iri_to_curie(iri: str, curie_to_iri_map: list = []):
         umls_match = REGEX_UMLS_CURIE.match(curie_id)
         if umls_match is not None:
             curie_id = umls_match[1] + ':' + umls_match[2]
+
     return curie_id
 
 
@@ -796,13 +790,22 @@ def make_uri_to_curie_shortener(curie_to_iri_map: list = []):
     return lambda iri: shorten_iri_to_curie(iri, curie_to_iri_map)
 
 
-def convert_owl_camel_case_to_biolink_spaces(name: str):
-    s1 = FIRST_CAP_RE.sub(r'\1 \2', name)
-    converted = ALL_CAP_RE.sub(r'\1 \2', s1).lower()
-    converted = converted.replace('sub class', 'subclass')
+# def convert_owl_camel_case_to_biolink_spaces(name: str):
+#     s1 = FIRST_CAP_RE.sub(r'\1 \2', name)
+#     converted = ALL_CAP_RE.sub(r'\1 \2', s1).lower()
+#     converted = converted.replace('sub class', 'subclass')
+#     if converted[0].istitle():
+#         converted[0] = converted[0].lower()
+#     return converted
+
+
+def convert_camel_case_to_snake_case(name: str):
+    s1 = FIRST_CAP_RE.sub(r'\1_\2', name)
+    converted = ALL_CAP_RE.sub(r'\1_\2', s1).lower()
+    converted = converted.replace('sub_class', 'subclass')
     if converted[0].istitle():
         converted[0] = converted[0].lower()
-    return converted
+    return converted.replace(' ', '_')
 
 
 def convert_biolink_category_to_iri(biolink_category_base_iri, biolink_category_label: str):
@@ -837,10 +840,11 @@ def xref_as_a_publication(xref: str):
 
 def make_arg_parser():
     arg_parser = argparse.ArgumentParser(description='multi_owl_to_json_kg.py: builds the KG2 knowledge graph for the RTX system')
-    arg_parser.add_argument('categoriesFile', type=str, nargs=1)
-    arg_parser.add_argument('curiesToURILALFile', type=str, nargs=1)
-    arg_parser.add_argument('owlLoadInventoryFile', type=str, nargs=1)
-    arg_parser.add_argument('outputFile', type=str, nargs=1)
+    arg_parser.add_argument('--test', dest='test', action="store_true", default=False)
+    arg_parser.add_argument('--categoriesFile', type=str, nargs=1)
+    arg_parser.add_argument('--curiesToURILALFile', type=str, nargs=1)
+    arg_parser.add_argument('--owlLoadInventoryFile', type=str, nargs=1)
+    arg_parser.add_argument('--outputFile', type=str, nargs=1)
     return arg_parser
 
 
@@ -853,7 +857,7 @@ if __name__ == '__main__':
     curies_to_uri_lal_file_name = args.curiesToURILALFile[0]
     owl_load_inventory_file = args.owlLoadInventoryFile[0]
     output_file = args.outputFile[0]
-
+    test_mode = args.test
     curies_to_categories = kg2_util.safe_load_yaml_from_string(kg2_util.read_file_to_string(curies_to_categories_file_name))
     curies_to_uri_lal = kg2_util.safe_load_yaml_from_string(kg2_util.read_file_to_string(curies_to_uri_lal_file_name))
     curies_to_uri_map = curies_to_uri_lal + prefixcommons.curie_util.default_curie_maps
@@ -862,13 +866,9 @@ if __name__ == '__main__':
 
     owl_urls_and_files = tuple(kg2_util.safe_load_yaml_from_string(kg2_util.read_file_to_string(owl_load_inventory_file)))
 
-    running_time = timeit.timeit(lambda: make_kg2(curies_to_categories,
-                                                  uri_to_curie_shortener,
-                                                  map_category_label_to_iri,
-                                                  owl_urls_and_files,
-                                                  output_file), number=1)
-    print('running time for multi_owl_to_json_kg.py: ' + str(running_time))
-
-# # ---------------- Notes -----------------
-# # - use NCBI Entrez Gene IDs for gene identifiers
-# # - use UniProt IDs for protein identifiers
+    make_kg2(curies_to_categories,
+             uri_to_curie_shortener,
+             map_category_label_to_iri,
+             owl_urls_and_files,
+             output_file,
+             test_mode)

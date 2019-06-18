@@ -1,7 +1,15 @@
-#!/bin/bash
-set -euxo pipefail
+#!/usr/bin/env bash
+# build-kg2.sh:  main build script for the KG2 knowledge graph for the RTX biomedical reasoning system
+# Copyright 2019 Stephen A. Ramsey <stephen.ramsey@oregonstate.edu>
+
+set -o nounset -o pipefail -o errexit
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    echo Usage: "$0 [all|test]"
+    exit 2
+fi
+
 # Usage: build-kg2.sh [all|test]
-#
 # * If no argument, then by default only the OWL-based KG2 is generated from scratch. It is then merged
 #   with the pre-existing SemMedDB JSON file. 
 # 
@@ -14,7 +22,6 @@ set -euxo pipefail
 CONFIG_DIR=`dirname "$0"`
 source ${CONFIG_DIR}/master-config.shinc
 
-## supply a default value for the BUILD_FLAG string
 BUILD_FLAG=${1:-""}
 echo "${BUILD_FLAG}"
 
@@ -25,14 +32,28 @@ if [ "${BUILD_FLAG}" == 'test' ]
 then
     echo "********** TEST MODE **********"
     TEST_SUFFIX='-test'
+    TEST_ARG='--test'
 else
     TEST_SUFFIX=''
+    TEST_ARG=''
 fi
 
+BUILD_KG2_LOG_FILE=${BUILD_DIR}/build-kg2${TEST_SUFFIX}.log
+
+{
+
+echo "================= starting build-kg2.sh ================="
+date
+    
+## supply a default value for the BUILD_FLAG string
+
+SEMMED_TUPLELIST_FILE=${BUILD_DIR}/kg2-semmeddb${TEST_SUFFIX}-tuplelist.json
 SEMMED_OUTPUT_FILE=${BUILD_DIR}/kg2-semmeddb${TEST_SUFFIX}-edges.json
 
 OUTPUT_FILE_BASE=kg2-owl${TEST_SUFFIX}.json
 OUTPUT_FILE_FULL=${BUILD_DIR}/${OUTPUT_FILE_BASE}
+
+OUTPUT_FILE_ORPHAN_EDGES=${BUILD_DIR}/kg2-orphans${TEST_SUFFIX}-edges.json
 
 FINAL_OUTPUT_FILE_BASE=kg2${TEST_SUFFIX}.json
 FINAL_OUTPUT_FILE_FULL=${BUILD_DIR}/${FINAL_OUTPUT_FILE_BASE}
@@ -52,37 +73,49 @@ MEM_GB=`${CODE_DIR}/get-system-memory-gb.sh`
 if [ "${BUILD_FLAG}" == 'all' ]
 then
 ## Build UMLS knowledge sources at TTL files:
-   ${CODE_DIR}/build-umls.sh ${BUILD_DIR}
+   bash -x ${CODE_DIR}/build-umls.sh ${BUILD_DIR}
 fi
 
-if [ "${BUILD_FLAG}" == 'all' ]
-then
-## Build SemMedDB predicates file as JSON:
-    ${CODE_DIR}/build-semmeddb.sh ${SEMMED_OUTPUT_FILE}
-fi
+## Build SemMedDB tuplelist file as JSON:
+bash -x ${CODE_DIR}/build-semmeddb.sh ${SEMMED_TUPLELIST_FILE} ${BUILD_FLAG}
+
+## Build SemMedDB KG2 edges file as JSON:
+${VENV_DIR}/bin/python3 ${CODE_DIR}/semmeddb_tuple_list_json_to_edges_json.py \
+           ${TEST_ARG} \
+           --inputFile ${SEMMED_TUPLELIST_FILE} \
+           --outputFile ${SEMMED_OUTPUT_FILE}
 
 ## Combine all the TTL files and OBO Foundry OWL files into KG and save as JSON:
-${CODE_DIR}/build-multi-owl-kg.sh ${OUTPUT_FILE_FULL} ${BUILD_FLAG}
+bash -x ${CODE_DIR}/build-multi-owl-kg.sh \
+     ${OUTPUT_FILE_FULL} ${BUILD_FLAG}
 
-${VENV_DIR}/bin/python3 ${CODE_DIR}/add_edges_to_kg_json.py ${OUTPUT_FILE_FULL} \
-           ${SEMMED_OUTPUT_FILE} ${FINAL_OUTPUT_FILE_FULL}
+${VENV_DIR}/bin/python3 ${CODE_DIR}/add_edges_to_kg_json.py \
+           ${TEST_ARG} \
+           --kgFile ${OUTPUT_FILE_FULL} \
+           --kgFileNewEdges ${SEMMED_OUTPUT_FILE} \
+           --outputFile ${FINAL_OUTPUT_FILE_FULL} \
+           --kgFileOrphanEdges ${OUTPUT_FILE_ORPHAN_EDGES}
 
 ${VENV_DIR}/bin/python3 ${CODE_DIR}/get_nodes_json_from_kg_json.py \
-           ${FINAL_OUTPUT_FILE_FULL} ${OUTPUT_NODES_FILE_FULL}
+           --inputFile ${FINAL_OUTPUT_FILE_FULL} \
+           --outputFile ${OUTPUT_NODES_FILE_FULL}
 
 ${VENV_DIR}/bin/python3 ${CODE_DIR}/report_stats_on_kg.py \
-           ${FINAL_OUTPUT_FILE_FULL} ${REPORT_FILE_FULL}
+           --inputFile ${FINAL_OUTPUT_FILE_FULL} \
+           --outputFile ${REPORT_FILE_FULL}
 
 gzip -f ${FINAL_OUTPUT_FILE_FULL}
 gzip -f ${OUTPUT_NODES_FILE_FULL}
+gzip -f ${OUTPUT_FILE_ORPHAN_EDGES}
 
 ## copy the KG to the public S3 bucket
 aws s3 cp --no-progress --region ${S3_REGION} ${FINAL_OUTPUT_FILE_FULL}.gz s3://${S3_BUCKET_PUBLIC}/
 aws s3 cp --no-progress --region ${S3_REGION} ${OUTPUT_NODES_FILE_FULL}.gz s3://${S3_BUCKET_PUBLIC}/
 aws s3 cp --no-progress --region ${S3_REGION} ${REPORT_FILE_FULL} s3://${S3_BUCKET_PUBLIC}/
+aws s3 cp --no-progress --region ${S3_REGION} ${OUTPUT_FILE_ORPHAN_EDGES}.gz s3://${S3_BUCKET_PUBLIC}/
 
 ## copy the log files to the public S3 bucket
-BUILD_MULTI_OWL_STDERR_FILE="${FINAL_OUTPUT_FILE_FULL%.*}"-stderr.log
+BUILD_MULTI_OWL_STDERR_FILE="${BUILD_DIR}/build-${OUTPUT_FILE_BASE%.*}"-stderr.log
 
 aws s3 cp --no-progress --region ${S3_REGION} ${BUILD_MULTI_OWL_STDERR_FILE} s3://${S3_BUCKET_PUBLIC}/
 
@@ -90,6 +123,11 @@ aws s3 cp --no-progress --region ${S3_REGION} ${BUILD_MULTI_OWL_STDERR_FILE} s3:
 aws s3 cp --no-progress --region ${S3_REGION} ${OWL_LOAD_INVENTORY_FILE} s3://${S3_BUCKET_PUBLIC}/
 
 # copy the index.html file to the public S3 bucket
-aws s3 cp --no-progress --region ${S3_REGION} ${CODE_DIR}/s3/index.html s3://${S3_BUCKET_PUBLIC}/
+aws s3 cp --no-progress --region ${S3_REGION} ${CODE_DIR}/s3-index.html s3://${S3_BUCKET_PUBLIC}/index.html
+
+date
+} >${BUILD_KG2_LOG_FILE} 2>&1
+
+aws s3 cp --no-progress --region ${S3_REGION} ${BUILD_KG2_LOG_FILE} s3://${S3_BUCKET_PUBLIC}/
 
 echo "================= script finished ================="

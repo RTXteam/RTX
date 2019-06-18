@@ -1,11 +1,23 @@
-#!/bin/bash
-set -euxo pipefail
-# Usage: build-semmeddb.sh <output_file.json> [test|extractonly]
+#!/usr/bin/env bash
+# build-semmeddb.sh: download the SemMedDB release and convert it to a tuple-list JSON file
+# Copyright 2019 Stephen A. Ramsey <stephen.ramsey@oregonstate.edu>
+
+set -o nounset -o pipefail -o errexit
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    echo Usage: "$0 [all|test]"
+    exit 2
+fi
+
+# Usage: build-semmeddb.sh <output_file.json> [test|all]
+
+echo "================= starting build-semmeddb.sh ================="
+date
 
 CONFIG_DIR=`dirname "$0"`
 source ${CONFIG_DIR}/master-config.shinc
 
-SEMMED_OUTPUT_FILE=${1:-"${BUILD_DIR}/kg2-semmeddb.json"}
+SEMMED_OUTPUT_FILE=${1:-"${BUILD_DIR}/kg2-semmeddb-tuplelist.json"}
 
 ## supply a default value for the BUILD_FLAG string
 BUILD_FLAG=${2:-""}
@@ -16,9 +28,8 @@ SEMMED_DIR=${BUILD_DIR}/semmeddb
 SEMMED_SQL_FILE=semmed${SEMMED_VER}_R_WHOLEDB_${SEMMED_DATE}.sql
 MYSQL_DBNAME=semmeddb
 
-if [[ "${BUILD_FLAG}" != "test" && "${BUILD_FLAG}" != "extractonly" ]]
+if [[ "${BUILD_FLAG}" == "all" ]]
 then
-    
     mkdir -p ${SEMMED_DIR}
 
 ## estimate amount of system ram, in GB
@@ -41,11 +52,13 @@ else
     TEST_ARG=''
 fi
 
-${VENV_DIR}/bin/python3 ${CODE_DIR}/semmeddb_mysql_to_json.py \
+${VENV_DIR}/bin/python3 ${CODE_DIR}/semmeddb_mysql_to_tuple_list_json.py \
            ${TEST_ARG} \
-	   ${MYSQL_CONF} \
-	   ${MYSQL_DBNAME} \
-	   ${SEMMED_OUTPUT_FILE} > ${BUILD_DIR}/build-semmeddb.log 2>&1
+	   --mysqlConfigFile ${MYSQL_CONF} \
+	   --mysqlDBName ${MYSQL_DBNAME} \
+	   --outputFile ${SEMMED_OUTPUT_FILE} > ${BUILD_DIR}/build-semmeddb.log 2>&1
 
+date
+echo "================= script finished ================="
 
 
