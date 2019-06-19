@@ -42,6 +42,7 @@ class RTXQuery:
     
     #### Create a Message object as a response
     response = Message()
+    execution_string = None
 
     #### Determine a plan for what to do based on the input
     result = self.examineIncomingQuery(query)
