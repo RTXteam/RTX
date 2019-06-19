@@ -9,7 +9,7 @@ var summary_table_html = '';
 var columnlist = [];
 var UIstate = {};
 
-var baseAPI = "/devED/";
+var baseAPI = "";
 
 function main() {
     get_example_questions();
