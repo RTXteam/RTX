@@ -53,7 +53,7 @@ for more information.
 
 Our team makes extensive use of the GitHub Issues system for project
 management. Browsing the open and (~100) closed
-[RTX issues](https://github.com/RTXTEam/RTX/issues) will provide a sense of
+[RTX issues](https://github.com/RTXTeam/RTX/issues) will provide a sense of
 our team's workflow and organizational style, at least for a one-month POC
 project.
 
