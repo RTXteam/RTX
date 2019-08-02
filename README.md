@@ -3,7 +3,7 @@
 The RTX Reasoning Tool POC software is being collaboratively developed by
 Team X-ray, a
 [team of investigators](#rtx-leadership-team) 
-at Oregon State University and the Institute for Systems Biology.
+at Oregon State University, Penn State University, and the Institute for Systems Biology.
 
 ## Organization of this repository
 
@@ -60,14 +60,15 @@ project.
 ## RTX team's institutional affiliations
 
 - Oregon State University (Lead Proposing Institution)
-- Institute for Systems Biology (Subaward #1)
+- Penn State University
+- Institute for Systems Biology
 
 ## RTX leadership team
 
 | Name           | Role                                        | Email                             | GitHub username                               | Areas of relevant expertise      |
 | -------------- | ------------------------------------------- | --------------------------------- | --------------------------------------------- | -------------------------------- |
 | Stephen Ramsey | Project PI, Oregon State University         | `stephen.ramsey@oregonstate.edu`  | [saramsey](https://github.com/saramsey)       | compbio, systems biology         |
-| David Koslicki | Project Co-PI, Oregon State University      | `dkoslicki@math.oregonstate.edu`  | [dkoslicki](https://github.com/dkoslicki)     | compbio, graph algorithms        |
+| David Koslicki | Project Co-PI, Penn State University        | `dkoslicki@math.oregonstate.edu`  | [dkoslicki](https://github.com/dkoslicki)     | compbio, graph algorithms        |
 | Eric Deutsch   | PI, subaward, Institute for Systems Biology | `eric.deutsch@systemsbiology.org` | [edeutsch](https://github.com/edeutsch)       | bioinformatics, data management  | 
 
 ## RTX other key personnel
