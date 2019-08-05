@@ -98,10 +98,12 @@ def nodes(graph, output_file_location):
         single_loop += 1
         if single_loop == 1:
             nodekeys_official = list(sorted(node.keys()))
+            nodekeys_official.append("category label")
 
     for node in nodes:
         loop += 1
         nodekeys = list(sorted(node.keys()))
+        nodekeys.append("category label")
         vallist = []
         key_count = 0
         for key in nodekeys:
@@ -118,6 +120,7 @@ def nodes(graph, output_file_location):
             nodekeys = no_space('creation date', nodekeys, 'creation_date')
             nodekeys = no_space('full name', nodekeys, 'full_name')
             nodekeys = no_space('update date', nodekeys, 'update_date')
+            nodekeys = no_space('category label', nodekeys, ':LABEL')
             nodekeys = no_space('category label', nodekeys, 'category_label')
             nodekeys = no_space('id', nodekeys, 'id:ID')
             tsvwrite_h.writerow(nodekeys)

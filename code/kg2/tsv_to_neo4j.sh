@@ -19,8 +19,10 @@ date
 
 TSV_DIR=${1:-"/var/lib/neo4j/import"}
 DATABASE=${3:-"graph.db"}
-DATABASE_PATH=${4:-"/var/lib/neo4j/data"}
+DATABASE_PATH=${6:-"/var/lib/neo4j/data"}
 CONFIG_CHANGE=${2:-"NO"}
+USER=${4:-"neo4j"}
+PASSWORD=${5:-}
 
 if [ "${CONFIG_CHANGE}" == "YES" ]
 then
@@ -31,6 +33,11 @@ then
     # restart neo4j 
     sudo service neo4j restart
 fi
+
+# delete the old log file and create a new one
+rm -rf ${TSV_DIR}/import.report
+touch ${TSV_DIR}/import.report
+sudo chown neo4j:adm ${TSV_DIR}/import.report
 
 # stop Neo4j database before deleting the database
 sudo service neo4j stop
@@ -44,6 +51,16 @@ sudo -u neo4j neo4j-admin import --nodes "${TSV_DIR}/nodes_header.tsv,${TSV_DIR}
 
 # start Neo4j database up for use
 sudo service neo4j start
+
+# add indexes and constraints to the graph database
+sudo sed -i '/dbms.read_only/c\dbms.read_only=false' /etc/neo4j/neo4j.conf
+source ~/kg2-venv/bin/activate
+python3 RTX/code/kg2/create_indexes_constraints.py --user ${USER} --password ${PASSWORD}
+
+# change the database to read only
+sudo sed -i '/dbms.read_only/c\dbms.read_only=true' /etc/neo4j/neo4j.conf
+
+sudo service neo4j restart
 
 date
 echo "================ script finished ============================"
