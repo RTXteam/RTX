@@ -48,15 +48,6 @@ pre-built cache file is stored in Amazon S3
 - Neo4j and Python modules: please see [the README file in the code subdirectory](https://github.com/RTXteam/RTX/tree/master/code/README.md)
 for more information.
 
-
-### Issue tracking
-
-Our team makes extensive use of the GitHub Issues system for project
-management. Browsing the open and (~100) closed
-[RTX issues](https://github.com/RTXTeam/RTX/issues) will provide a sense of
-our team's workflow and organizational style, at least for a one-month POC
-project.
-
 ## RTX team's institutional affiliations
 
 - Oregon State University (Lead Proposing Institution)
@@ -76,9 +67,17 @@ project.
 | Name             | Affiliation                   | Email                                 | GitHub username                                     | Areas of relevant expertise |
 | ---------------- | ----------------------------- | ------------------------------------- | --------------------------------------------------- | --------------------------- |
 | Jared Roach      | Institute for Systems Biology | `jared.roach@systemsbiology.org`      |                                                     | genomics, genetics, medicine, systems biology | 
+| Luis Mendoza     | Institute for Systems Biology | `luis.mendoza@systemsbiology.org`     | [isbluis](https://github.com/isbluis)               | software engineering, proteomics, systems biology |
 | Andrew Hoffman   | Radboud University, NL        | `A.Hoffman@ftr.ru.nl`                 |                                                     | ethnographer of data science and cyberinfrastructure  |
 
+# Try RTX
 
+## Via web browser
 
- 
+Here is the link to access the web browser interface to RTX:  [rtx.ncats.io](http://rtx.ncats.io)
+
+## Via web API
+
+Here is the link to documentation on the web API interface to RTX:  [rtx.ncats.io](http://rtx.ncats.io)
+
 
