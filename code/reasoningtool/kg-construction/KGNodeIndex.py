@@ -378,11 +378,20 @@ class KGNodeIndex:
     session = self.session
 
     #### Try to find the curie
+    failed = False
     try:
       match = session.query(KGNode).filter(KGNode.curie==curie).first()
     except:
       session.rollback()
-      raise
+      failed = True
+
+    #### If the query failed, try it again because it is sometimes a temporary glitch because the MySQL drops after disuse
+    if failed is True:
+      try:
+        match = session.query(KGNode).filter(KGNode.curie==curie).first()
+      except:
+        session.rollback()
+        raise
 
     if match is None: return(False)
     return(True)
