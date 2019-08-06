@@ -23,8 +23,7 @@ UMLS_VER=2018AB
 UMLS_FILE_BASE=${UMLS_VER}-full
 UMLS_DIR=${BUILD_DIR}/umls
 MMSYS_DIR=${UMLS_DIR}/${UMLS_FILE_BASE}
-UMLS_RRDIST_DIR=${UMLS_DIR}
-UMLS_DEST_DIR=${UMLS_RRDIST_DIR}/META
+UMLS_DEST_DIR=${UMLS_DIR}/META
 UMLS2RDF_RELEASE=rtx-1.6
 UMLS2RDF_PKGNAME=umls2rdf-${UMLS2RDF_RELEASE}
 UMLS2RDF_DIR=${UMLS_DIR}/${UMLS2RDF_PKGNAME}
@@ -34,8 +33,8 @@ MYSQL_DBNAME=umls
 sudo apt-get update -y
 
 ## make directories that we need
+rm -r -f ${UMLS_DIR}
 mkdir -p ${UMLS_DIR}
-mkdir -p ${UMLS_RRDIST_DIR}
 mkdir -p ${UMLS_DEST_DIR}
 
 ## copy UMLS distribution files and MetamorphoSys config files from S3 to local dir
@@ -47,7 +46,7 @@ unzip ${UMLS_DIR}/umls-${UMLS_FILE_BASE}.zip -d ${UMLS_DIR}/
 unzip ${UMLS_DIR}/${UMLS_FILE_BASE}/mmsys.zip -d ${UMLS_DIR}/${UMLS_FILE_BASE}
 
 ## setup environment for running MetamorphoSys
-export METADIR=${UMLS_RRDIST_DIR}
+export METADIR=${UMLS_DIR}
 export DESTDIR=${UMLS_DEST_DIR}
 export MMSYS_HOME=${UMLS_DIR}/${UMLS_FILE_BASE}
 export CLASSPATH=${MMSYS_DIR}:${MMSYS_DIR}/lib/jpf-boot.jar
@@ -68,6 +67,13 @@ ${JAVA_HOME}/bin/java -Djava.awt.headless=true \
                       -Dmmsys.config.uri=${CONFIG_FILE} \
                       -Xms300M -Xmx${MEM_GB}G org.java.plugin.boot.Boot
 
+MYSQL_USER=`grep 'user = ' ${MYSQL_CONF} | sed 's/user = //g'`
+MYSQL_PASSWORD=`grep 'password = ' ${MYSQL_CONF} | sed 's/password = //g'`
+
+## if a "umls" database already exists, delete it
+mysql --defaults-extra-file=${MYSQL_CONF} \
+      -e "DROP DATABASE IF EXISTS ${MYSQL_DBNAME}"
+
 ## create the "umls" database
 mysql --defaults-extra-file=${MYSQL_CONF} \
       -e "CREATE DATABASE IF NOT EXISTS ${MYSQL_DBNAME} CHARACTER SET utf8 COLLATE utf8_unicode_ci"
@@ -87,7 +93,7 @@ cat ${UMLS_DEST_DIR}/mysql_tables.sql-original | sed 's/\\r\\n/\\n/g' > ${UMLS_D
 cd ${UMLS_DEST_DIR} && ./populate_mysql_db_configured.sh
 
 ## download and unpack the umls2rdf software
-curl -s -L https://github.com/RTXteam/umls2rdf/archive/${UMLS2RDF_RELEASE}.tar.gz > ${UMLS2RDF_PKGNAME}.tar.gz
+${CURL_GET} https://github.com/RTXteam/umls2rdf/archive/${UMLS2RDF_RELEASE}.tar.gz > ${UMLS2RDF_PKGNAME}.tar.gz
 tar xzf ${UMLS2RDF_PKGNAME}.tar.gz -C ${UMLS_DIR}
 
 ## make the umls2rdf config file
@@ -95,9 +101,11 @@ cat ${UMLS2RDF_DIR}/conf_sample.py | sed 's/your-host/localhost/g' | \
     sed "s/umls2015ab/${MYSQL_DBNAME}/g" | \
     sed "s/your db user/${MYSQL_USER}/g" | \
     sed "s/your db pass/${MYSQL_PASSWORD}/g" | \
-    sed "s|http://purl.bioontology.org/ontology|https://identifiers.org/umls|g" |
-    sed "s|output|${OUTPUT_DIR}|g" \
+    sed "s|http://purl.bioontology.org/ontology|https://identifiers.org/umls|g" | \
+    sed "s|output|${OUTPUT_DIR}|g" | \
     sed "s/2015ab/${UMLS_VER}/g" > ${UMLS2RDF_DIR}/conf.py
+
+cp ${CODE_DIR}/umls2rdf-umls.conf ${UMLS2RDF_DIR}/umls.conf
 
 ## umls2rdf is legacy software written to run in python2.7; set up the virtualenv
 UMLS_VENV_DIR=${UMLS_DIR}/venv27
@@ -111,7 +119,7 @@ cd ${UMLS2RDF_DIR}
 ${UMLS_VENV_DIR}/bin/python2.7 umls2rdf.py
 
 ## verify the output files
-./checkOutputSyntax.sh  # users "rapper" command from the "raptor" package
+./checkOutputSyntax.sh  # uses "rapper" command from the "raptor" package
 
 date
 echo "================= script finished ================="

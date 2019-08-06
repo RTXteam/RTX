@@ -1,4 +1,22 @@
-# Where to download RTX KG2
+# Contact
+
+## Maintenance and technical questions
+
+stephen.ramsey@oregonstate.edu
+
+## Bug reports
+
+Please use the GitHub issues page for this project, and add the label `kg2`.
+
+# How to access RTX KG2
+
+## Neo4j read-only endpoint for RTX KG2 as a graph database
+
+http://kg2endpoint.rtx.ai:7474
+
+(contact the authors for the username and password)
+
+## Where to download the RTX KG2 knowledge graph in JSON format
 
 http://rtx-kg2-public.s3-website-us-west-2.amazonaws.com/
 
@@ -35,12 +53,12 @@ The computing environment where you will be running the KG2 build should be
 running Ubuntu 18.04.  Your build environment should have the following *minimum*
 specifications:
 
-- 488 GiB of system memory
+- 256 GiB of system memory
 - 1,023 GiB of disk space in the root file system 
 - high-speed networking (20 Gb/s networking) and storage
 - ideally, AWS zone `us-west-2` since that is where the RTX KG2 S3 buckets are located
 
-## We assume there is no MySQL cruft
+## The KG2 build system assumes there is no MySQL database already present
 
 The target Ubuntu system in which you will run the KG2 build should *not* have MySQL
 installed; if MySQL is installed, you will need to delete it using the following
@@ -65,29 +83,46 @@ script. Your configured AWS CLI will also need to be able to programmatically
 write to the (publicly readable) S3 bucket `s3://rtx-kg2-public` (both buckets
 are in the `us-west-2` AWS zone). The KG2 build script downloads the UMLS
 distribution (including SNOMED CT) from the private S3 bucket `rtx-kg2` (IANAL,
-but it appears that UMLS is encumbered by a license preventing redistribution so
-I have not hosted them on a public server for download; but you can get it for
-free at the [UMLS website](https://www.nlm.nih.gov/research/umls/) if you agree
-to the UMLS licenses) and it uploads the final output `kg2.json.gz` file to the
-public S3 bucket `rtx-kg2-public`. Alternatively, you can set up your own S3
-bucket to which to copy the gzipped KG2 JSON file, or you can comment the line
-out of `build-kg2.sh` that copies the final gzipped JSON file to S3.
+but it appears that the UMLS is encumbered by a license preventing
+redistribution so I have not hosted them on a public server for download; but
+you can get it for free at the
+[UMLS website](https://www.nlm.nih.gov/research/umls/) if you agree to the UMLS
+license terms) and it uploads the final output file `kg2.json.gz` to the public
+S3 bucket `rtx-kg2-public`. Alternatively, you can set up your own S3 bucket to
+which to copy the gzipped KG2 JSON file (which you would specify in the
+configuration file `master-config.shinc`), or in the file `build-kg2.sh`, you
+can comment out the line that copies the final gzipped JSON file to the S3
+bucket. You will also need to place a file `RTXConfiguration-config.json` in the
+S3 bucket `s3://rtx-kg2/`, that provides credentials (username, password, and
+HTTP URI for Neo4j REST API server) for accessing a RTX KG1 Neo4j endpoint; the
+KG2 build system will dump the KG1 graph from that endpoint and will merge that
+graph into KG2. As a minimal example of the data format for
+`RTXConfiguration-config.json`, see the file
+`RTXConfiguration-config-EXAMPLE.json` in this repository code directory (note:
+that config file can contain authentication information for additional server
+types in the RTX system; those are not shown in the example file in this code
+directory). The KG1 Neo4j endpoint need not (and in general, won't be) hosted in
+the same EC2 instance that hosts the KG2 build system. Currently, the KG1 Neo4j
+endpoint is hosted in the instance `kg1endpoint.rtx.ai`; the URI of its Neo4j
+REST HTTP interface is: `http://kg1endpoint.rtx.ai:7474`.
 
 ## My normal EC2 instance
 
 The KG2 build software has been tested with the following instance type:
 
 - AMI: Ubuntu Server 18.04 LTS (HVM), SSD Volume Type - `ami-005bdb005fb00e791` (64-bit x86)
-- Instance type: `r4.16xlarge` (488 GiB of memory)
-- Storage: 1,023 GiB General Purpose SSD
+- Instance type: `r5a.8xlarge` (256 GiB of memory)
+- Storage: 1,023 GiB, Elastic Block Storage
 - Security Group: ingress TCP packets on port 22 (ssh) permitted
 
-As of June 10, 2019, an on-demand `r4.16xlarge` instance in the `us-west-2` AWS
-zone costs $4.26 per hour, so the cost to build KG2 (estimated to take 48 hours)
-would be approximately $200 (this is currently just a rough estimate, plus or
+As of June 10, 2019, an on-demand `r5a.8xlarge` instance in the `us-west-2` AWS
+zone costs $1.81 per hour, so the cost to build KG2 (estimated to take 67 hours)
+would be approximately $121 (this is currently just a rough estimate, plus or
 minus 20%). [Unfortunately, AWS doesn't seem to allow the provisioning of spot
 instances while specifying minimum memory greater than 240 GiB; but perhaps soon
-that will happen, and if so, it could save significantly on the cost of building KG2.]
+that will happen, and if so, it could save significantly on the cost of updating the RTX KG2.]
+There is also an experimental Snakemake build system which takes advantage of
+symmetric multiprocessing to bring the build time down to 54 hours.
 
 ## Build instructions
 
@@ -96,7 +131,11 @@ to be using the `bash` shell on your local computer.
 
 ### Option 1: build KG2 directly on an Ubuntu system:
 
-These instructions assume that you are logged into the target Ubuntu system:
+These instructions assume that you are logged into the target Ubuntu system, and
+that the Ubuntu system has *not* previously had `setup-kg2.sh` run (if it has
+previously had `setup-kg2.sh` run, you may wish to clear out the instance by running
+`clear-instance.sh` before proceeding, in order to ensure that you are getting the
+exact python packages needed in the latest `requirements.txt` file in the KG2 codebase):
 
 (1) Install `git` by running this command in the `bash` shell:
 
@@ -114,13 +153,24 @@ These instructions assume that you are logged into the target Ubuntu system:
 
     RTX/code/kg2/setup-kg2.sh
 
-(If anything goes wrong, look in the log file `setup-kg2.sh` for an error message).
+Note that there is no need to redirect `stdout` or `stderr` to a log file, when
+executing `setup-kg2.sh`; this is because the script saves its own `stdout` and
+`stderr` to a log file `/home/ubuntu/setup-kg2.log`. This script takes just a
+few minutes to complete. The script will ask you to enter your AWS Access Key ID
+and AWS Secret Access Key, for an AWS account with access to the private S3
+bucket that is configured in `master-config.shinc`. It will also ask you to
+enter your default AWS zone, which in our case is normally `us-west-2` (you
+should enter the AWS zone that hosts the private S3 bucket that you intend to
+use with the KG2 build system).
 
-(5) Initiate a `screen` session to provide a stable pseudo-tty:
+(5) Look in the log file `/home/ubuntu/setup-kg2.sh` to see if the script
+completed successfully; it should end with `======= script finished ======`.
+
+(6) Initiate a `screen` session to provide a stable pseudo-tty:
 
     screen
 
-(6) Within the `screen` session, run:
+(7) Within the `screen` session, run:
 
     bash -x ~/kg2-code/build-kg2.sh all
 
@@ -144,8 +194,7 @@ This option requires that you have `curl` installed on your local computer. In a
     
 You will be prompted to enter the path to your AWS PEM file and the hostname of
 your AWS instance.  The script should then initiate a `bash` session on the
-remote instance. Within that `bash` session, continue to follow the instructions
-for Option 1.
+remote instance. Within that `bash` session, continue to follow the instructions for Option 1, starting at step (4).
 
 ### Option 3: in an Ubuntu container in Docker (UNTESTED, IN DEVELOPMENT)
 
@@ -203,3 +252,18 @@ Or using the AWS command-line interface (CLI) tool `aws` with the command
 You can access the various artifacts from the KG2 build (config file, log file,
 etc.) at the AWS static website endpoint for the 
 `rtx-kg2-public` S3 bucket: <http://rtx-kg2-public.s3-website-us-west-2.amazonaws.com/>
+
+# Credits
+
+Thank you to the many people who have contributed to the development of RTX KG2.
+
+## Code
+Stephen Ramsey, Finn Womack, Erica Wood, Veronica Flores, and Deqing Qu.
+
+## Technical advice
+David Koslicki, Eric Deutsch, Yao Yao, Jared Roach, Chris Mungall, Tom Conlin, Matt Brush,
+Chunlei Wu, Will Byrd.
+
+## Funding
+National Center for Advancing Translational Sciences (award number OT2TR002520).
+

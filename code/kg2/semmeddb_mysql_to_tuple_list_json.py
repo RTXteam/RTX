@@ -26,7 +26,7 @@ NEG_REGEX = re.compile('^NEG_', re.M)
 
 
 def make_arg_parser():
-    arg_parser = argparse.ArgumentParser(description='semmeddb_mysql_to_json.py: extracts all the predicate triples from SemMedDB, in the RTX KG2 JSON format')
+    arg_parser = argparse.ArgumentParser(description='semmeddb_mysql_to_tuple_list_json.py: extracts all the predicate triples from SemMedDB, as a list of tuples')
     arg_parser.add_argument('--test', dest='test', action="store_true", default=False)
     arg_parser.add_argument('--mysqlConfigFile', type=str, nargs=1)
     arg_parser.add_argument('--mysqlDBName', type=str, nargs=1)
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     mysql_config_file = args.mysqlConfigFile[0]
     mysql_db_name = args.mysqlDBName[0]
     test_mode = args.test
-    connection = pymysql.connect(read_default_file=mysql_config_file, db='semmeddb')
+    connection = pymysql.connect(read_default_file=mysql_config_file, db=mysql_db_name)
     preds_dict = dict()
     sql_statement = ("SELECT PMID, SUBJECT_CUI, PREDICATE, OBJECT_CUI, DP, SENTENCE, SUBJECT_SCORE, "
                      "OBJECT_SCORE, DATE_FORMAT(CURR_TIMESTAMP, '%Y-%m-%d %H:%i:%S') FROM ((PREDICATION NATURAL JOIN CITATIONS) "

@@ -36,7 +36,7 @@
 
 set -e
 
-file=`date '+%m%d%y-%H%M%S'`
+file=`date '+%Y%m%d-%H%M%S'`
 
 wall Neo4j will be shut down
 

@@ -51,17 +51,17 @@ def make_rel(preds_dict: dict,
         relation_iri = relation_type.title().replace(' ', '')
         relation_iri = relation_iri[0].lower() + relation_iri[1:]
         relation_iri = SEMMEDDB_IRI + '#' + relation_iri
-        key_val = {'subject': subject_curie,
-                   'object': object_curie,
-                   'edge label': relation_type,
-                   'relation': relation_iri,
-                   'relation curie': 'SEMMEDDB:' + relation_type,
-                   'negated': negated,
-                   'publications': [publication_curie],
-                   'publications info': {publication_curie: publication_info_dict},
-                   'update date': curr_timestamp,
-                   'provided by': SEMMEDDB_IRI}
-        preds_dict[key] = key_val
+        edge_dict = kg2_util.make_edge(subject_curie,
+                                       object_curie,
+                                       relation_iri,
+                                       'SEMMEDDB:' + relation_type,
+                                       relation_type,
+                                       SEMMEDDB_IRI,
+                                       curr_timestamp)
+        edge_dict['publications'] = [publication_curie]
+        edge_dict['publications info'] = {publication_curie: publication_info_dict}
+        edge_dict['negated'] = negated
+        preds_dict[key] = edge_dict
     else:
         key_val['publications info'][publication_curie] = publication_info_dict
         key_val['publications'] = key_val['publications'] + [publication_curie]
@@ -82,8 +82,14 @@ if __name__ == '__main__':
     test_mode = args.test
     input_data = json.load(open(input_file_name, 'r'))
     preds_dict = dict()
+    row_ctr = 0
     for (pmid, subject_cui_str, predicate, object_cui_str, pub_date, sentence,
          subject_score, object_score, curr_timestamp) in input_data['rows']:
+        row_ctr += 1
+        if row_ctr % 100000 == 0:
+            print("Have processed " + str(row_ctr) + " rows out of " + str(len(input_data['rows'])) + " rows")
+        if test_mode and row_ctr > 10000:
+            break
         subject_cui_split = subject_cui_str.split("|")
         subject_cui = subject_cui_split[0]
         if len(subject_cui_split) > 1:

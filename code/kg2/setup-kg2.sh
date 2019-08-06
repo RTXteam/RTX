@@ -20,12 +20,13 @@ CONFIG_DIR=`dirname "$0"`
 
 MYSQL_USER=ubuntu
 MYSQL_PASSWORD=1337
+CURL_GET="curl -s -L"
 
 source ${CONFIG_DIR}/master-config.shinc
 
 ## sym-link into RTX/code/kg2
 if [ ! -L ${CODE_DIR} ]; then
-    ln -s ~/RTX/code/kg2 ${CODE_DIR}
+    ln -sf ~/RTX/code/kg2 ${CODE_DIR}
 fi
 
 ## install the Linux distro packages that we need (python3-minimal is for docker installations)
@@ -72,13 +73,15 @@ mkdir -p ${BUILD_DIR}
 ## distribution and cURLing the startup script (note github uses URL redirection
 ## so we need the "-L" command-line option, and cURL doesn't like JAR files by
 ## default so we need the "application/zip")
-curl -s -L -H "Accept: application/zip" https://github.com/RTXteam/robot/releases/download/v1.3.0/robot.jar > ${BUILD_DIR}/robot.jar 
+${CURL_GET} -H "Accept: application/zip" https://github.com/RTXteam/robot/releases/download/v1.3.0/robot.jar > ${BUILD_DIR}/robot.jar 
 curl -s https://raw.githubusercontent.com/RTXteam/robot/v1.3.0/bin/robot > ${BUILD_DIR}/robot
 chmod +x ${BUILD_DIR}/robot
 
 ## setup owltools
-curl -s -L ${BUILD_DIR} https://github.com/RTXteam/owltools/releases/download/v0.3.0/owltools > ${BUILD_DIR}/owltools
+${CURL_GET} ${BUILD_DIR} https://github.com/RTXteam/owltools/releases/download/v0.3.0/owltools > ${BUILD_DIR}/owltools
 chmod +x ${BUILD_DIR}/owltools
+
+} >~/setup-kg2.log 2>&1
 
 ## setup AWS CLI
 if ! aws s3 cp --no-progress --region ${S3_REGION} s3://${S3_BUCKET}/test /tmp/; then
@@ -87,6 +90,7 @@ else
     rm /tmp/test
 fi
 
+{
 # setup raptor (used by the "checkOutputSyntax.sh" script in the umls2rdf package)
 wget -nv -P ${BUILD_DIR} http://download.librdf.org/source/raptor2-2.0.15.tar.gz
 rm -r -f ${BUILD_DIR}/raptor2-2.0.15
@@ -98,6 +102,7 @@ make check
 sudo make install
 sudo ldconfig
 
+# setup MySQL
 MYSQL_PWD=${MYSQL_PASSWORD} mysql -u root -e "CREATE USER '${MYSQL_USER}'@'localhost' IDENTIFIED BY '${MYSQL_PASSWORD}'"
 MYSQL_PWD=${MYSQL_PASSWORD} mysql -u root -e "GRANT ALL PRIVILEGES ON *.* to '${MYSQL_USER}'@'localhost'"
 cat >${MYSQL_CONF} <<EOF
@@ -113,4 +118,4 @@ mysql --defaults-extra-file=${MYSQL_CONF} \
 
 date
 echo "================= script finished ================="
-} >~/setup-kg2.log 2>&1
+} >>~/setup-kg2.log 2>&1
