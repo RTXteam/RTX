@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   description: "OpenAPI for RTX"
-  version: "1.4.0"
+  version: "1.9.2"
   title: "RTX"
   contact:
     email: "edeutsch@systemsbiology.org"
@@ -504,7 +504,7 @@ definitions:
         description: "List of reasoners to consult for the query"
         items:
           type: "string"
-      query_message:
+      message:
         type: "object"
         description: "Message object that represents the query to be answered"
         items:
@@ -713,15 +713,42 @@ definitions:
       result_graph:
         type: "object"
         description: "A graph that describes the thought pattern of this result (i.e. answer to the query)"
-        $ref: "#/definitions/KnowledgeGraph"
+        items:
+          $ref: "#/definitions/KnowledgeGraph"
       node_bindings:
-        type: "object"
-        description: "Lookup dict that maps QNode identifiers in the QueryGraph to Node identifiers in the KnowledgeGraph"
-        additionalProperties: true
+        type: array
+        description: List of QNode-KNode bindings.
+        items:
+          $ref: '#/definitions/NodeBinding'
       edge_bindings:
-        type: "object"
-        description: "Lookup dict that maps QEdge identifiers in the QueryGraph to Edge identifiers in the KnowledgeGraph"
-        additionalProperties: true
+        type: array
+        description: List of QEdge-KEdge bindings.
+        items:
+          $ref: '#/definitions/EdgeBinding'
+  NodeBinding:
+    type: object
+    properties:
+      qg_id:
+        type: string
+        description: Query-graph node id, i.e. the `node_id` of a QNode
+      kg_id:
+        type: string
+        description: One or more knowledge-graph node ids, i.e. the `id` of a KNode
+    required:
+      - qg_id
+      - kg_id
+  EdgeBinding:
+    type: object
+    properties:
+      qg_id:
+        type: string
+        description: Query-graph edge id, i.e. the `edge_id` of a QEdge
+      kg_id:
+        type: string
+        description: One or more knowledge-graph edge ids, i.e. the `id` of a KEdge
+    required:
+      - qg_id
+      - kg_id
   KnowledgeGraph:
     type: "object"
     description: "A thought graph associated with this result. This will commonly be a linear path subgraph from one concept to another, but related items aside of the path may be included."
@@ -784,7 +811,7 @@ definitions:
     type: "object"
     description: "A node in the QueryGraph"
     properties:
-      node_id:
+      id:
         type: "string"
         example: "n00"
         description: "QueryGraph internal identifier for this QNode. Recommended form: n00, n01, n02, etc."
@@ -801,7 +828,7 @@ definitions:
     type: "object"
     description: "An edge in the QueryGraph"
     properties:
-      edge_id:
+      id:
         type: "string"
         example: "e00"
         description: "QueryGraph internal identifier for this QEdge. Recommended form: e00, e01, e02, etc."
