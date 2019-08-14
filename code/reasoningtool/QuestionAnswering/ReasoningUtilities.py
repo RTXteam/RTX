@@ -17,6 +17,8 @@ from itertools import islice
 import itertools
 import functools
 import CustomExceptions
+import pickle
+
 try:
 	from QueryCOHD import QueryCOHD
 except ImportError:
@@ -161,6 +163,13 @@ def get_full_meta_graph():
 	Get all the node types and the edge types that can connect them in the neo4j database
 	:return: dict with all node types and how they can connect
 	"""
+
+	#### Try the cache first
+	saved_metagraph_file = "apoc.meta.graph.p"
+	if os.path.isfile(saved_metagraph_file):
+		metagraph = picke.load(open(saved_state_file,"rb"))
+		return(metagraph)
+
 	query = "call apoc.meta.graph"
 	with driver.session() as session:
 		result = session.run(query)
@@ -176,6 +185,10 @@ def get_full_meta_graph():
 			if end_name not in metagraph[start_name]:
 				metagraph[start_name][end_name] = []
 			metagraph[start_name][end_name].append(relationship.type)
+
+	#### Store the metagraph as a pickle file
+	pickle.dump(metagraph,open(saved_state_file,"wb"))
+
 	return(metagraph)
 
 
