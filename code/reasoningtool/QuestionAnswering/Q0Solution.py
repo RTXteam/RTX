@@ -27,6 +27,8 @@ from swagger_server.models.q_node import QNode
 from swagger_server.models.q_edge import QEdge
 from swagger_server.models.edge_attribute import EdgeAttribute
 from swagger_server.models.node_attribute import NodeAttribute
+from swagger_server.models.node_binding import NodeBinding
+from swagger_server.models.edge_binding import EdgeBinding
 
 from KGNodeIndex import KGNodeIndex
 
@@ -123,8 +125,8 @@ class Q0:
 			response.message.query_graph = query_graph
 
 			#### Create the corresponding knowledge_map
-			node_bindings = { "n00": [ properties["id"] ] }
-			result1.node_bindings = node_bindings
+            node_binding = NodeBinding(qgid="n00", kg_id=properties["id"])
+			result1.node_bindings = [ node_binding ]
 			result1.edge_bindings = []
 
 			#eprint(response.message)
