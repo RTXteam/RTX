@@ -263,14 +263,14 @@ class RTXFeedback:
     query_type_id = 0
     if query is not None and "query_type_id" in query:
       query_type_id = query["query_type_id"]
-    if query_type_id == 0 and query is not None and "query_message" in query and "query_type_id" in query["query_message"]:
-      query_type_id = query["query_message"]["query_type_id"]
+    if query_type_id == 0 and query is not None and "message" in query and "query_type_id" in query["message"]:
+      query_type_id = query["message"]["query_type_id"]
 
-    if query is not None and "query_message" in query:
-      if "terms" in query["query_message"]:
-        termsString = stringifyDict(query["query_message"]["terms"])
-      elif "query_graph" in query["query_message"]:
-        termsString = stringifyDict(query["query_message"]["query_graph"])
+    if query is not None and "message" in query:
+      if "terms" in query["message"]:
+        termsString = stringifyDict(query["message"]["terms"])
+      elif "query_graph" in query["message"]:
+        termsString = stringifyDict(query["message"]["query_graph"])
 
     storedMessage = Message(message_datetime=datetime.now(),restated_question=message.restated_question,query_type=query_type_id,
       terms=termsString,tool_version=rtxConfig.version,result_code=message.message_code,message=message.code_description,n_results=n_results,message_object=pickle.dumps(ast.literal_eval(repr(message))))
@@ -374,10 +374,10 @@ class RTXFeedback:
     session = self.session
     rtxConfig = RTXConfiguration()
     tool_version = rtxConfig.version
-    termsString = stringifyDict(query["query_message"]["terms"])
+    termsString = stringifyDict(query["message"]["terms"])
 
     #### Look for previous messages we could use
-    storedMessage = session.query(Message).filter(Message.query_type==query["query_message"]["query_type_id"]).filter(Message.tool_version==tool_version).filter(Message.terms==termsString).order_by(desc(Message.message_datetime)).first()
+    storedMessage = session.query(Message).filter(Message.query_type==query["message"]["query_type_id"]).filter(Message.tool_version==tool_version).filter(Message.terms==termsString).order_by(desc(Message.message_datetime)).first()
     if ( storedMessage is not None ):
       return pickle.loads(storedMessage.message_object)
     return
