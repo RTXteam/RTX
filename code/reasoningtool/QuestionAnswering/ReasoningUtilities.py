@@ -2350,7 +2350,7 @@ def test_get_top_shortest_paths():
 		assert np.isfinite(path_length)
 
 def test_cypher_gen_one_hop():
-	test_graph = {'question_graph':{"edges":[{"edge_id":"e00","source_id":"n00","target_id":"n01","type":"physically_interacts_with"}],"nodes":[{"curie":"CHEMBL.COMPOUND:CHEMBL112","node_id":"n00","type":"chemical_substance"},{"node_id":"n01","type":"protein"}]}}
+	test_graph = {'question_graph':{"edges":[{"id":"e00","source_id":"n00","target_id":"n01","type":"physically_interacts_with"}],"nodes":[{"curie":"CHEMBL.COMPOUND:CHEMBL112","id":"n00","type":"chemical_substance"},{"id":"n01","type":"protein"}]}}
 	query_gen = get_cypher_from_question_graph(test_graph)
 	print("answer_map")
 	print("==========")

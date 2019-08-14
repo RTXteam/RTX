@@ -98,15 +98,15 @@ class Q3:
 			#### Create the QueryGraph for this type of question
 			query_graph = QueryGraph()
 			source_node = QNode()
-			source_node.node_id = "n00"
+			source_node.id = "n00"
 			source_node.curie = g.node[source_node_number]['properties']['id']
 			source_node.type = g.node[source_node_number]['properties']['category']
 			target_node = QNode()
-			target_node.node_id = "n01"
+			target_node.id = "n01"
 			target_node.type = target_label
 			query_graph.nodes = [ source_node,target_node ]
 			edge1 = QEdge()
-			edge1.edge_id = "e00"
+			edge1.id = "e00"
 			edge1.source_id = "n00"
 			edge1.target_id = "n01"
 			edge1.type = relationship_type
@@ -116,9 +116,9 @@ class Q3:
 			#### Create a mapping dict with the source curie and the target type. This dict is used for reverse lookups by type
 			#### for mapping to the QueryGraph.
 			response._type_map = dict()
-			response._type_map[source_node.curie] = source_node.node_id
-			response._type_map[target_node.type] = target_node.node_id
-			response._type_map[edge1.type] = edge1.edge_id
+			response._type_map[source_node.curie] = source_node.id
+			response._type_map[target_node.type] = target_node.id
+			response._type_map[edge1.type] = edge1.id
 
 			#### Loop over all the returned targets and put them into the response structure
 			for target_number in target_numbers:

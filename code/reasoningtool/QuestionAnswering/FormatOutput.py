@@ -365,9 +365,9 @@ class FormatResponse:
 		essence_node = None
 		for node in self.message.query_graph["nodes"]:
 			if "curie" in node and node["curie"] is not None:
-			  if essence_node is None: essence_node = node["node_id"]
+			  if essence_node is None: essence_node = node["id"]
 			else:
-			  essence_node = node["node_id"]
+			  essence_node = node["id"]
 
 		#print(f"n_nodes={n_nodes}")
 		#print(f"essence_node={essence_node}")

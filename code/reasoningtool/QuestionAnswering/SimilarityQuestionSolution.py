@@ -89,28 +89,28 @@ class SimilarityQuestionSolution:
 			#### Create the QueryGraph for this type of question
 			query_graph = QueryGraph()
 			source_node = QNode()
-			source_node.node_id = "n00"
+			source_node.id = "n00"
 			source_node.curie = source_node_ID
 			source_node.type = source_node_label
 			association_node = QNode()
-			association_node.node_id = "n01"
+			association_node.id = "n01"
 			association_node.type = association_node_type
 			association_node.is_set = True
 			target_node = QNode()
-			target_node.node_id = "n02"
+			target_node.id = "n02"
 			target_node.type = target_node_type
 			query_graph.nodes = [ source_node,association_node,target_node ]
 
 			#source_association_relationship_type = "unknown1"
 			edge1 = QEdge()
-			edge1.edge_id = "en00-n01"
+			edge1.id = "en00-n01"
 			edge1.source_id = "n00"
 			edge1.target_id = "n01"
 			#edge1.type = source_association_relationship_type
 
 			#association_target_relationship_type = "unknown2"
 			edge2 = QEdge()
-			edge2.edge_id = "en01-n02"
+			edge2.id = "en01-n02"
 			edge2.source_id = "n01"
 			edge2.target_id = "n02"
 			#edge2.type = association_target_relationship_type
@@ -123,11 +123,11 @@ class SimilarityQuestionSolution:
 			#### Create a mapping dict with the source curie and node types and edge types. This dict is used for reverse lookups by type
 			#### for mapping to the QueryGraph. There is a potential point of failure here if there are duplicate node or edge types. FIXME
 			response._type_map = dict()
-			response._type_map[source_node.curie] = source_node.node_id
-			response._type_map[association_node.type] = association_node.node_id
-			response._type_map[target_node.type] = target_node.node_id
-			response._type_map["e"+edge1.source_id+"-"+edge1.target_id] = edge1.edge_id
-			response._type_map["e"+edge2.source_id+"-"+edge2.target_id] = edge2.edge_id
+			response._type_map[source_node.curie] = source_node.id
+			response._type_map[association_node.type] = association_node.id
+			response._type_map[target_node.type] = target_node.id
+			response._type_map["e"+edge1.source_id+"-"+edge1.target_id] = edge1.id
+			response._type_map["e"+edge2.source_id+"-"+edge2.target_id] = edge2.id
 
 			#### Extract the sorted IDs from the list of tuples
 			node_jaccard_ID_sorted = [id for id, jac in node_jaccard_tuples_sorted]

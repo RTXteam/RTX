@@ -79,12 +79,12 @@ class QueryGraphReasoner:
 
         #### The Robokop code renames stuff in the query_graph for strange reasons. Rename them back.
         #### It would be better to not make the changes in the first place. FIXME
-        for node in response.message.query_graph["nodes"]:
-            node["node_id"] = node["id"]
-            node.pop("id", None)
-        for edge in response.message.query_graph["edges"]:
-            edge["edge_id"] = edge["id"]
-            edge.pop("id", None)
+        #for node in response.message.query_graph["nodes"]:
+        #    node["node_id"] = node["id"]
+        #    node.pop("id", None)
+        #for edge in response.message.query_graph["edges"]:
+        #    edge["edge_id"] = edge["id"]
+        #    edge.pop("id", None)
  
         #### Execute the cypher to obtain results[]. Return an error if there are no results, or otherwise extract the list
         with RU.driver.session() as session:
@@ -139,8 +139,8 @@ class QueryGraphReasoner:
         #### Get a list of nodes referenced in edges
         referenced_nodes = {}
         for edge in query_graph["edges"]:
-          if "edge_id" not in edge or edge["edge_id"] is None:
-            return( { "message_code": "QueryGraphMissingEdgeId", "code_description": "Submitted QueryGraph has an edge with a missing edge_id" } )
+          if "id" not in edge or edge["id"] is None:
+            return( { "message_code": "QueryGraphMissingEdgeId", "code_description": "Submitted QueryGraph has an edge with a missing id" } )
           if "source_id" in edge and edge["source_id"] is not None:
             referenced_nodes[edge["source_id"]] = 1
           else:
@@ -152,14 +152,14 @@ class QueryGraphReasoner:
 
         #### Make sure any unbound nodes have an edge
         for node in query_graph["nodes"]:
-          if "node_id" not in node or node["node_id"] is None:
-            return( { "message_code": "QueryGraphMissingNodeId", "code_description": "Submitted QueryGraph has an node with a missing node_id" } )
-          if node["node_id"] not in referenced_nodes and ( "curie" not in node or node["curie"] is None ):
+          if "id" not in node or node["id"] is None:
+            return( { "message_code": "QueryGraphMissingNodeId", "code_description": "Submitted QueryGraph has an node with a missing id" } )
+          if node["id"] not in referenced_nodes and ( "curie" not in node or node["curie"] is None ):
             return( { "message_code": "QueryGraphUnboundEdglessNode", "code_description": "You smell the odor of burning silicon and a muffled boom. Please adjust your Query Graph so that any edgeless nodes have a specific identifier, otherwise thousands of nodes are involved." } )
 
         #### Remove any unapproved keys in the query_graph
-        approved_node_keys = { "curie": 1, "is_set": 1, "node_id": 1, "type": 1, "name": 1 , "require_all" : 1}
-        approved_edge_keys = { "edge_id": 1, "source_id": 1, "target_id": 1, "type": 1, "negated": 1, "relation": 1 }
+        approved_node_keys = { "curie": 1, "is_set": 1, "id": 1, "type": 1, "name": 1 , "require_all" : 1}
+        approved_edge_keys = { "id": 1, "source_id": 1, "target_id": 1, "type": 1, "negated": 1, "relation": 1 }
         for node in query_graph["nodes"]:
           #### Iterate on a copy of the node dict because python doesn't allow changing while iterating
           for key in node.copy():
@@ -195,7 +195,7 @@ class QueryGraphReasoner:
                     del query_graph['nodes'][node_idx]['require_all']
             for node_idx in sorted(split_nodes, reverse=True):
                 split_edges = []
-                node_id = query_graph['nodes'][node_idx]['node_id']
+                node_id = query_graph['nodes'][node_idx]['id']
                 if 'edges' in query_graph:
                     for edge_idx in range(len(query_graph['edges'])):
                         source_id = query_graph['edges'][edge_idx]['source_id']
@@ -207,10 +207,10 @@ class QueryGraphReasoner:
                 for curie in query_graph['nodes'][node_idx]['curie']:
                     query_graph['nodes'].append(query_graph['nodes'][node_idx].copy())
                     query_graph['nodes'][-1]['curie'] = curie
-                    query_graph['nodes'][-1]['node_id'] = node_id + '_spl' + str(added_nodes)
+                    query_graph['nodes'][-1]['id'] = node_id + '_spl' + str(added_nodes)
                     for edge_idx in split_edges:
                         query_graph['edges'].append(query_graph['edges'][edge_idx].copy())
-                        query_graph['edges'][-1]['edge_id'] = query_graph['edges'][edge_idx]['edge_id'] + '_spl' + str(added_edges)
+                        query_graph['edges'][-1]['id'] = query_graph['edges'][edge_idx]['id'] + '_spl' + str(added_edges)
                         added_edges += 1
                         if query_graph['edges'][-1]['source_id'] == node_id:
                             query_graph['edges'][-1]['source_id'] = node_id + '_spl' + str(added_nodes)
@@ -222,7 +222,7 @@ class QueryGraphReasoner:
                 del query_graph['nodes'][node_idx]
             #### todo: This will parse the query graph keys and set flags for sorting
             for node in query_graph['nodes']:
-                node_id = node['node_id']
+                node_id = node['id']
                 set_flag = False
                 if 'is_set' in node:
                     set_flag=True
@@ -332,7 +332,7 @@ class QueryGraphReasoner:
 
             #### Also manufacture a query_graph post hoc
             qnode1 = QNode()
-            qnode1.node_id = "n00"
+            qnode1.id = "n00"
             qnode1.curie = properties["id"]
             qnode1.type = None
 
@@ -381,7 +381,7 @@ def test1_2nodes_1(TxltrApiFormat=False):
     query_graph_json_stream = '''{
     "edges": [
       {
-        "edge_id": "e00",
+        "id": "e00",
         "source_id": "n00",
         "target_id": "n01",
         "type": "physically_interacts_with",
@@ -391,13 +391,13 @@ def test1_2nodes_1(TxltrApiFormat=False):
     "nodes": [
       {
         "curie": "CHEMBL.COMPOUND:CHEMBL112",
-        "node_id": "n00",
+        "id": "n00",
         "type": "chemical_substance"
       },
       {
         "curie": null,
         "is_set": null,
-        "node_id": "n01",
+        "id": "n01",
         "type": "metabolite",
         "apples": "are_red"
       }
@@ -415,7 +415,7 @@ def test1_2nodes_2(TxltrApiFormat=False):
     query_graph_json_stream = '''{
       "edges": [
         {
-          "edge_id": "e3",
+          "id": "e3",
           "source_id": "n1",
           "target_id": "n2",
           "type": "indicated_for"
@@ -423,13 +423,13 @@ def test1_2nodes_2(TxltrApiFormat=False):
       ],
       "nodes": [
         {
-          "node_id": "n1",
+          "id": "n1",
           "name": "ibuprofen",
           "curie": "CHEMBL.COMPOUND:CHEMBL521",
           "type": "chemical_substance"
         },
         {
-          "node_id": "n2",
+          "id": "n2",
           "type": "disease"
         }
       ]
@@ -447,7 +447,7 @@ def test1_2nodes_3(TxltrApiFormat=False):
       "edges": [      ],
       "nodes": [
         {
-          "node_id": "n1",
+          "id": "n1",
           "type": "metabolite"
         }
       ]
@@ -462,14 +462,14 @@ def test_2sets(TxltrApiFormat=False):
     q = QueryGraphReasoner()
     query_graph_dict = {
         'edges': [
-            {'edge_id': 'e00', 'source_id': 'n00', 'target_id': 'n01'}, 
-            {'edge_id': 'e01', 'source_id': 'n01', 'target_id': 'n02'}, 
-            {'edge_id': 'e02',  'source_id': 'n02', 'target_id': 'n03'}], 
+            {'id': 'e00', 'source_id': 'n00', 'target_id': 'n01'}, 
+            {'id': 'e01', 'source_id': 'n01', 'target_id': 'n02'}, 
+            {'id': 'e02',  'source_id': 'n02', 'target_id': 'n03'}], 
         'nodes': [
-            {'curie': ['DOID:12365','DOID:8398'], 'node_id': 'n00', 'type': 'disease'}, 
-            {'node_id': 'n01', 'type': 'protein'}, 
-            {'node_id': 'n02', 'type': 'pathway'}, 
-            {'curie': ['UniProtKB:Q06278','UniProtKB:Q12756'], 'node_id': 'n03', 'type': 'protein'}
+            {'curie': ['DOID:12365','DOID:8398'], 'id': 'n00', 'type': 'disease'}, 
+            {'id': 'n01', 'type': 'protein'}, 
+            {'id': 'n02', 'type': 'pathway'}, 
+            {'curie': ['UniProtKB:Q06278','UniProtKB:Q12756'], 'id': 'n03', 'type': 'protein'}
         ]}
     result = q.answer(query_graph_dict, TxltrApiFormat=TxltrApiFormat)
     return(result)
@@ -478,14 +478,14 @@ def test_2sets_require(TxltrApiFormat=False):
     q = QueryGraphReasoner()
     query_graph_dict = {
         'edges': [
-            {'edge_id': 'e00', 'source_id': 'n00', 'target_id': 'n01'}, 
-            {'edge_id': 'e01', 'source_id': 'n01', 'target_id': 'n02'}, 
-            {'edge_id': 'e02',  'source_id': 'n02', 'target_id': 'n03'}], 
+            {'id': 'e00', 'source_id': 'n00', 'target_id': 'n01'}, 
+            {'id': 'e01', 'source_id': 'n01', 'target_id': 'n02'}, 
+            {'id': 'e02',  'source_id': 'n02', 'target_id': 'n03'}], 
         'nodes': [
-            {'curie': ['DOID:12365','DOID:8398'], 'node_id': 'n00', 'type': 'disease'}, 
-            {'node_id': 'n01', 'type': 'protein'}, 
-            {'node_id': 'n02', 'type': 'pathway'}, 
-            {'curie': ['UniProtKB:Q06278','UniProtKB:Q12756'], 'node_id': 'n03', 'type': 'protein', 'require_all': True}
+            {'curie': ['DOID:12365','DOID:8398'], 'id': 'n00', 'type': 'disease'}, 
+            {'id': 'n01', 'type': 'protein'}, 
+            {'id': 'n02', 'type': 'pathway'}, 
+            {'curie': ['UniProtKB:Q06278','UniProtKB:Q12756'], 'id': 'n03', 'type': 'protein', 'require_all': True}
         ]}
     result = q.answer(query_graph_dict, TxltrApiFormat=TxltrApiFormat)
     return(result)

@@ -114,7 +114,7 @@ class Q0:
 
 			#### Also manufacture a query_graph post hoc
 			qnode1 = QNode()
-			qnode1.node_id = "n00"
+			qnode1.id = "n00"
 			qnode1.curie = properties["id"]
 			qnode1.type = None
 			query_graph = QueryGraph()
