@@ -62,7 +62,7 @@ class RTXQuery:
     #### If we have a query_graph, pass this on to the QueryGraphReasoner
     if "have_query_graph" in result:
       qgr = QueryGraphReasoner()
-      message = qgr.answer(query["query_message"]["query_graph"], TxltrApiFormat=True)
+      message = qgr.answer(query["message"]["query_graph"], TxltrApiFormat=True)
       #self.logQuery(query,message,'new')
       rtxFeedback = RTXFeedback()
       rtxFeedback.connect()
@@ -74,11 +74,11 @@ class RTXQuery:
 
     #### Otherwise extract the id and the terms from the incoming parameters
     else:
-      id = query["query_message"]["query_type_id"]
-      terms = query["query_message"]["terms"]
+      id = query["message"]["query_type_id"]
+      terms = query["message"]["terms"]
 
     #### Check to see if the query_options indicates to query named resource and integrate the results
-    if "have_query_type_id_and_terms" in result and "query_message" in query and "query_options" in query["query_message"] and "integrate" in query["query_message"]["query_options"]:
+    if "have_query_type_id_and_terms" in result and "message" in query and "query_options" in query["message"] and "integrate" in query["message"]["query_options"]:
       response = self.integrate(query)
       #self.logQuery(query,response,'remote')
       return response
@@ -111,11 +111,11 @@ class RTXQuery:
       #message = meshQuery.queryTerm(terms["term"])
       q0 = Q0()
       message = q0.answer(terms["term"],use_json=True)
-      if 'original_question' in query["query_message"]:
-        message.original_question = query["query_message"]["original_question"]
-        message.restated_question = query["query_message"]["restated_question"]
-      message.query_type_id = query["query_message"]["query_type_id"]
-      message.terms = query["query_message"]["terms"]
+      if 'original_question' in query["message"]:
+        message.original_question = query["message"]["original_question"]
+        message.restated_question = query["message"]["restated_question"]
+      message.query_type_id = query["message"]["query_type_id"]
+      message.terms = query["message"]["terms"]
       id = message.id
       codeString = message.message_code
       self.logQuery(query,message,'new')
@@ -165,11 +165,11 @@ class RTXQuery:
           message.code_description = "Error parsing the message from the reasoner. This is an internal bug that needs to be fixed. Unable to respond to this question at this time. The unparsable message was: " + reformattedText
 
       #print(query)
-      if 'original_question' in query["query_message"]:
-        message.original_question = query["query_message"]["original_question"]
-        message.restated_question = query["query_message"]["restated_question"]
-      message.query_type_id = query["query_message"]["query_type_id"]
-      message.terms = query["query_message"]["terms"]
+      if 'original_question' in query["message"]:
+        message.original_question = query["message"]["original_question"]
+        message.restated_question = query["message"]["restated_question"]
+      message.query_type_id = query["message"]["query_type_id"]
+      message.terms = query["message"]["terms"]
 
       #### Log the result and return the Message object
       self.logQuery(query,message,'new')
@@ -192,20 +192,20 @@ class RTXQuery:
   def logQuery(self,query,message,cacheStatus):
     datetimeString = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    if "query_type_id" not in query["query_message"] or query["query_message"]["query_type_id"] is None:
+    if "query_type_id" not in query["message"] or query["message"]["query_type_id"] is None:
       id = "?"
     else:
-      id = query["query_message"]['query_type_id']
+      id = query["message"]['query_type_id']
 
-    if "terms" not in query["query_message"] or query["query_message"]['terms'] is None:
+    if "terms" not in query["message"] or query["message"]['terms'] is None:
       terms = "{}"
     else:
-      terms = stringifyDict(query["query_message"]['terms'])
+      terms = stringifyDict(query["message"]['terms'])
 
-    if "restated_question" not in query["query_message"] or query["query_message"]["restated_question"] is None:
+    if "restated_question" not in query["message"] or query["message"]["restated_question"] is None:
       restated_question = ""
     else:
-      restated_question = query["query_message"]["restated_question"]
+      restated_question = query["message"]["restated_question"]
 
     message_code = message.message_code
 
@@ -223,29 +223,35 @@ class RTXQuery:
     if "previous_message_processing_plan" in query:
       response["have_previous_message_processing_plan"] = 1
 
-    #### Temporary band-aid for old-style queries. Put the old-style top level content into query_message. This should be disallowed eventually. FIXME
+    #### Temporary band-aid for old-style queries. Put the old-style top level content into message. This should be disallowed eventually. FIXME
     if "query_type_id" in query:
-      query["query_message"] = query
+      query["message"] = query
+
+    #### Check to see if the pre-0.9.2 query_message has come through
+    if "query_message" in query:
+      response["message_code"] = "OldStyleQuery"
+      response["code_description"] = "Query specified 'query_message' instead of 'message', which is pre-0.9.2 style. Please update."
+      return response
 
     #### Check to see if there's a query message to process
-    if "query_message" in query:
-      response["have_query_message"] = 1
+    if "message" in query:
+      response["have_message"] = 1
 
       #### Check the query_type_id and terms to make sure there is information in both
-      if "query_type_id" in query["query_message"] and query["query_message"]["query_type_id"] is not None:
-        if "terms" in query["query_message"] is not None:
+      if "query_type_id" in query["message"] and query["message"]["query_type_id"] is not None:
+        if "terms" in query["message"] is not None:
           response["have_query_type_id_and_terms"] = 1
         else:
           response["message_code"] = "QueryTypeIdWithoutTerms"
           response["code_description"] = "query_type_id was provided but terms is empty"
           return response
-      elif "terms" in query["query_message"] and query["query_message"]["terms"] is not None:
+      elif "terms" in query["message"] and query["message"]["terms"] is not None:
         response["message_code"] = "TermsWithoutQueryTypeId"
         response["code_description"] = "terms hash was provided without a query_type_id"
         return response
 
       #### Check if there is a query_graph
-      if "query_graph" in query["query_message"] and query["query_message"]["query_graph"] is not None:
+      if "query_graph" in query["message"] and query["message"]["query_graph"] is not None:
         response["have_query_graph"] = 1
 
       #### If there is both a query_type_id and a query_graph, then return an error
@@ -254,10 +260,10 @@ class RTXQuery:
         response["code_description"] = "Message contains both a query_type_id and a query_graph, which is disallowed"
         return response
 
-    #### Check to see if there is at least a query_message or a previous_message_processing_plan
-    if "have_query_message" not in response and "have_previous_message_processing_plan" not in response:
+    #### Check to see if there is at least a message or a previous_message_processing_plan
+    if "have_message" not in response and "have_previous_message_processing_plan" not in response:
       response["message_code"] = "NoQueryMessageOrPreviousMessageProcessingPlan"
-      response["code_description"] = "No query_message or previous_message_processing_plan present in Query"
+      response["code_description"] = "No message or previous_message_processing_plan present in Query"
       return response
 
     #### If we got this far, then everything seems to be good enough to proceed
@@ -271,7 +277,7 @@ class RTXQuery:
     #### Create a default response dict
     response = { "message_code": "InternalError", "code_description": "interpretQueryGraph exited abnormally" }
 
-    query_graph = query["query_message"]["query_graph"]
+    query_graph = query["message"]["query_graph"]
     nodes = query_graph["nodes"]
     edges = query_graph["edges"]
     n_nodes = len(nodes)
