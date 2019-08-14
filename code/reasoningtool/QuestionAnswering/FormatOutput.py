@@ -160,11 +160,9 @@ class FormatResponse:
 				self.message.knowledge_graph.nodes.append(node)
 				self._node_ids[node.id] = node.type[0]			# Just take the first of potentially several FIXME
 
-		#### Create the bindings construct
-		node_bindings = dict()
-		node_bindings_dict = dict()
-		edge_bindings = dict()
-		edge_bindings_dict = dict()
+		#### Create the bindings lists
+		node_bindings = ()
+		edge_bindings = ()
 
 		# for each edge, create an edge between them
 		edge_objects = []
@@ -206,12 +204,14 @@ class FormatResponse:
 			if not source_knowledge_map_key:
 				eprint("Expected to find '%s' in the response._type_map, but did not" % source_type)
 				raise Exception("Expected to find '%s' in the response._type_map, but did not" % source_type)
-			if source_knowledge_map_key not in node_bindings:
-				node_bindings[source_knowledge_map_key] = list()
-				node_bindings_dict[source_knowledge_map_key] = dict()
-			if edge.source_id not in node_bindings_dict[source_knowledge_map_key]:
-				node_bindings[source_knowledge_map_key].append(edge.source_id)
-				node_bindings_dict[source_knowledge_map_key][edge.source_id] = 1
+
+			node_bindings.append(NodeBinding(qgid=source_knowledge_map_key, kg_id=edge.source_id))
+#			if source_knowledge_map_key not in node_bindings:
+#				node_bindings[source_knowledge_map_key] = list()
+#				node_bindings_dict[source_knowledge_map_key] = dict()
+#			if edge.source_id not in node_bindings_dict[source_knowledge_map_key]:
+#				node_bindings[source_knowledge_map_key].append(edge.source_id)
+#				node_bindings_dict[source_knowledge_map_key][edge.source_id] = 1
 
 			#### Try to figure out how the target fits into the query_graph for the knowledge map
 			target_type = self._node_ids[edge.target_id]
@@ -222,12 +222,14 @@ class FormatResponse:
 			if not target_knowledge_map_key:
 				eprint("ERROR: Expected to find '%s' in the response._type_map, but did not" % target_type)
 				raise Exception("Expected to find '%s' in the response._type_map, but did not" % target_type)
-			if target_knowledge_map_key not in node_bindings:
-				node_bindings[target_knowledge_map_key] = list()
-				node_bindings_dict[target_knowledge_map_key] = dict()
-			if edge.target_id not in node_bindings_dict[target_knowledge_map_key]:
-				node_bindings[target_knowledge_map_key].append(edge.target_id)
-				node_bindings_dict[target_knowledge_map_key][edge.target_id] = 1
+
+			node_bindings.append(NodeBinding(qgid=target_knowledge_map_key, kg_id=edge.target_id))
+#			if target_knowledge_map_key not in node_bindings:
+#				node_bindings[target_knowledge_map_key] = list()
+#				node_bindings_dict[target_knowledge_map_key] = dict()
+#			if edge.target_id not in node_bindings_dict[target_knowledge_map_key]:
+#				node_bindings[target_knowledge_map_key].append(edge.target_id)
+#				node_bindings_dict[target_knowledge_map_key][edge.target_id] = 1
 
 			#### Try to figure out how the edge fits into the query_graph for the knowledge map
 			source_target_key = "e"+source_knowledge_map_key+"-"+target_knowledge_map_key
@@ -241,12 +243,14 @@ class FormatResponse:
 			else:
 				eprint("ERROR: Expected to find '%s' or '%s' or '%s' in the response._type_map, but did not" % (edge.type,source_target_key,target_source_key))
 				knowledge_map_key = "ERROR"
-			if knowledge_map_key not in edge_bindings:
-				edge_bindings[knowledge_map_key] = list()
-				edge_bindings_dict[knowledge_map_key] = dict()
-			if edge.id not in edge_bindings_dict[knowledge_map_key]:
-				edge_bindings[knowledge_map_key].append(edge.id)
-				edge_bindings_dict[knowledge_map_key][edge.id] = 1
+
+			edge_bindings.append(EdgeBinding(qgid=knowledge_map_key, kg_id=edge_id))
+#			if knowledge_map_key not in edge_bindings:
+#				edge_bindings[knowledge_map_key] = list()
+#				edge_bindings_dict[knowledge_map_key] = dict()
+#			if edge.id not in edge_bindings_dict[knowledge_map_key]:
+#				edge_bindings[knowledge_map_key].append(edge.id)
+#				edge_bindings_dict[knowledge_map_key][edge.id] = 1
 
 		# Create the result (potential answer)
 		result1 = Result()
@@ -333,9 +337,9 @@ class FormatResponse:
 			result.reasoner_id = "RTX"
 			result.result_graph = None
 			result.node_bindings = input_result["nodes"]
-			#### Convert each binding value to a list because the viewer requires it
-			for binding in result.node_bindings:
-				result.node_bindings[binding] = [ result.node_bindings[binding] ]
+#			#### Convert each binding value to a list because the viewer requires it
+#			for binding in result.node_bindings:
+#				result.node_bindings[binding] = [ result.node_bindings[binding] ]
 			result.edge_bindings = input_result["edges"]
 			self.message.results.append(result)
 
