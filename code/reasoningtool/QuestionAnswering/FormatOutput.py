@@ -404,12 +404,19 @@ class FormatResponse:
 							result.essence = essence_node_name
 							result.essence_type = essence_node_type
 
-					#print(f"**essence_node_curie={essence_node_curie}")
-					#print(f"  essence_node_name={essence_node_name}")
-					#print(f"  essence_node_type={essence_node_type}")
+			#### Reorganize the 0.9.1 formatted node bindings to 0.9.2 formatted bindings
+			if result.node_bindings is not None:
+				new_bindings = []
+				for qg_id, kg_id in result.node_bindings.items():
+					new_bindings.append( { "qg_id": qg_id, "kg_id": kg_id } )
+				result.node_bindings = new_bindings
 
-		#print(f"n_results={n_results}")
-
+			#### Reorganize the 0.9.1 formatted edge bindings to 0.9.2 formatted bindings
+			if result.edge_bindings is not None:
+				new_bindings = []
+				for qg_id, kg_id in result.edge_bindings.items():
+					new_bindings.append( { "qg_id": qg_id, "kg_id": kg_id } )
+				result.edge_bindings = new_bindings
 
 
 		return()
