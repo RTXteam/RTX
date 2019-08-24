@@ -16,6 +16,8 @@ from swagger_server.models.result import Result
 from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
+from swagger_server.models.node_binding import NodeBinding
+from swagger_server.models.edge_binding import EdgeBinding
 import datetime
 import math
 import json
@@ -40,7 +42,7 @@ class FormatResponse:
 		self.message = Message()
 		self.message.type = "translator_reasoner_message"
 		self.message.tool_version = RTXConfiguration.version
-		self.message.schema_version = "0.9.1"
+		self.message.schema_version = "0.9.2"
 		self.message.message_code = "OK"
 		#self.message.code_description = "Placeholder for description"
 		self.message.code_description = "%s results found" % self._num_results
@@ -161,8 +163,8 @@ class FormatResponse:
 				self._node_ids[node.id] = node.type[0]			# Just take the first of potentially several FIXME
 
 		#### Create the bindings lists
-		node_bindings = ()
-		edge_bindings = ()
+		node_bindings = list()
+		edge_bindings = list()
 
 		# for each edge, create an edge between them
 		edge_objects = []
@@ -205,7 +207,7 @@ class FormatResponse:
 				eprint("Expected to find '%s' in the response._type_map, but did not" % source_type)
 				raise Exception("Expected to find '%s' in the response._type_map, but did not" % source_type)
 
-			node_bindings.append(NodeBinding(qgid=source_knowledge_map_key, kg_id=edge.source_id))
+			node_bindings.append(NodeBinding(qg_id=source_knowledge_map_key, kg_id=edge.source_id))
 #			if source_knowledge_map_key not in node_bindings:
 #				node_bindings[source_knowledge_map_key] = list()
 #				node_bindings_dict[source_knowledge_map_key] = dict()
@@ -223,7 +225,7 @@ class FormatResponse:
 				eprint("ERROR: Expected to find '%s' in the response._type_map, but did not" % target_type)
 				raise Exception("Expected to find '%s' in the response._type_map, but did not" % target_type)
 
-			node_bindings.append(NodeBinding(qgid=target_knowledge_map_key, kg_id=edge.target_id))
+			node_bindings.append(NodeBinding(qg_id=target_knowledge_map_key, kg_id=edge.target_id))
 #			if target_knowledge_map_key not in node_bindings:
 #				node_bindings[target_knowledge_map_key] = list()
 #				node_bindings_dict[target_knowledge_map_key] = dict()
@@ -244,7 +246,7 @@ class FormatResponse:
 				eprint("ERROR: Expected to find '%s' or '%s' or '%s' in the response._type_map, but did not" % (edge.type,source_target_key,target_source_key))
 				knowledge_map_key = "ERROR"
 
-			edge_bindings.append(EdgeBinding(qgid=knowledge_map_key, kg_id=edge_id))
+			edge_bindings.append(EdgeBinding(qg_id=knowledge_map_key, kg_id=edge.id))
 #			if knowledge_map_key not in edge_bindings:
 #				edge_bindings[knowledge_map_key] = list()
 #				edge_bindings_dict[knowledge_map_key] = dict()
@@ -402,19 +404,13 @@ class FormatResponse:
 							result.essence = essence_node_name
 							result.essence_type = essence_node_type
 
-			#### Reorganize the 0.9.1 formatted node bindings to 0.9.2 formatted bindings
-			if result.node_bindings is not None:
-                new_bindings = []
-                for qg_id, kg_id in result.node_bindings:
-                    new_bindings.append( { "qg_id": qg_id, "kg_id": kg_id } )
-                result.node_bindings = new_bindings
+					#print(f"**essence_node_curie={essence_node_curie}")
+					#print(f"  essence_node_name={essence_node_name}")
+					#print(f"  essence_node_type={essence_node_type}")
 
-			#### Reorganize the 0.9.1 formatted edge bindings to 0.9.2 formatted bindings
-			if result.edge_bindings is not None:
-                new_bindings = []
-                for qg_id, kg_id in result.edge_bindings:
-                    new_bindings.append( { "qg_id": qg_id, "kg_id": kg_id } )
-                result.edge_bindings = new_bindings
+		#print(f"n_results={n_results}")
+
+
 
 		return()
 
