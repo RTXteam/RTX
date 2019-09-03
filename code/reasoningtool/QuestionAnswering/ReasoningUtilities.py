@@ -167,7 +167,7 @@ def get_full_meta_graph():
 	#### Try the cache first
 	saved_metagraph_file = "apoc.meta.graph.p"
 	if os.path.isfile(saved_metagraph_file):
-		metagraph = picke.load(open(saved_state_file,"rb"))
+		metagraph = pickle.load(open(saved_metagraph_file,"rb"))
 		return(metagraph)
 
 	query = "call apoc.meta.graph"
@@ -187,7 +187,7 @@ def get_full_meta_graph():
 			metagraph[start_name][end_name].append(relationship.type)
 
 	#### Store the metagraph as a pickle file
-	pickle.dump(metagraph,open(saved_state_file,"wb"))
+	pickle.dump(metagraph,open(saved_metagraph_file,"wb"))
 
 	return(metagraph)
 

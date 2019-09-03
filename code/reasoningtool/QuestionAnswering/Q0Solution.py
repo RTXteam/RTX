@@ -125,7 +125,7 @@ class Q0:
 			response.message.query_graph = query_graph
 
 			#### Create the corresponding knowledge_map
-            node_binding = NodeBinding(qgid="n00", kg_id=properties["id"])
+			node_binding = NodeBinding(qg_id="n00", kg_id=properties["id"])
 			result1.node_bindings = [ node_binding ]
 			result1.edge_bindings = []
 
