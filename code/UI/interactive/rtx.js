@@ -4,6 +4,7 @@ var cyobj = [];
 var cytodata = [];
 var fb_explvls = [];
 var fb_ratings = [];
+var predicates = {};
 var message_id = null;
 var summary_table_html = '';
 var columnlist = [];
@@ -13,7 +14,7 @@ var baseAPI = "";
 
 function main() {
     get_example_questions();
-    get_node_types();
+    load_nodes_and_predicates();
     display_list('A');
     display_list('B');
     add_status_divs();
@@ -107,7 +108,31 @@ function sendGraph(e) {
     xhr.open("post",  baseAPI + "api/rtx/v1/query", true);
     xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
-    var queryObj = { "query_message" : { "query_graph" :input_qg } };
+
+    // ids need to start with a non-numeric character...
+    for (var gnode in input_qg.nodes) {
+	if (String(input_qg.nodes[gnode].id).match(/^\d/)) {
+	    input_qg.nodes[gnode].id = "qg" + input_qg.nodes[gnode].id;
+	}
+    }
+    for (var gedge in input_qg.edges) {
+	if (String(input_qg.edges[gedge].id).match(/^\d/)) {
+	    input_qg.edges[gedge].id = "qg" + input_qg.edges[gedge].id;
+	}
+	if (String(input_qg.edges[gedge].source_id).match(/^\d/)) {
+	    input_qg.edges[gedge].source_id = "qg" + input_qg.edges[gedge].source_id;
+	}
+        if (String(input_qg.edges[gedge].target_id).match(/^\d/)) {
+	    input_qg.edges[gedge].target_id = "qg" + input_qg.edges[gedge].target_id;
+	}
+    }
+
+
+    document.getElementById('qg_form').style.visibility = 'hidden';
+    document.getElementById('qg_form').style.maxHeight = null;
+
+
+    var queryObj = { "message" : { "query_graph" :input_qg } };
     //queryObj.bypass_cache = bypass_cache;
     queryObj.max_results = 100;
 
@@ -130,8 +155,8 @@ function sendGraph(e) {
 		clear_qg();
 	    }
 	    else {
-		render_message(jsonObj);
 		input_qg = { "edges": [], "nodes": [] };
+		render_message(jsonObj);
 	    }
 	}
 	else {
@@ -165,6 +190,8 @@ function sendQuestion(e) {
     document.getElementById("devdiv").innerHTML = " (bypassing cache : " + bypass_cache + ")";
 
     sesame('openmax',statusdiv);
+    document.getElementById('qg_form').style.visibility = 'hidden';
+    document.getElementById('qg_form').style.maxHeight = null;
 
     // construct an HTTP request
     var xhr = new XMLHttpRequest();
@@ -187,7 +214,7 @@ function sendQuestion(e) {
 		xhr2.open("post",  baseAPI + "api/rtx/v1/query", true);
 		xhr2.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
-                var queryObj = { "query_message" : jsonObj };
+                var queryObj = { "message" : jsonObj };
                 queryObj.bypass_cache = bypass_cache;
                 queryObj.max_results = 100;
 
@@ -378,7 +405,7 @@ function process_graph(gne,gid) {
 	gne.nodes[gnode].parentdivnum = gid; // helps link node to div when displaying node info on click
 	if (gne.nodes[gnode].node_id) { // deal with QueryGraphNode (QNode)
 	    gne.nodes[gnode].id = gne.nodes[gnode].node_id;
-	}	
+	}
 	if (gne.nodes[gnode].curie) {
 	    if (gne.nodes[gnode].name) {
 		gne.nodes[gnode].name += " ("+gne.nodes[gnode].curie+")";
@@ -403,6 +430,36 @@ function process_graph(gne,gid) {
         var tmpdata = { "data" : gne.edges[gedge] }; // already contains id(?)
         cytodata[gid].push(tmpdata);
     }
+
+
+    if (gid == 999) {
+	for (var gnode in gne.nodes) {
+	    qgid++;
+
+	    var tmpdata = { "id"     : gne.nodes[gnode].id,
+			    "is_set" : gne.nodes[gnode].is_set,
+			    "name"   : gne.nodes[gnode].name,
+			    "curie"  : gne.nodes[gnode].curie,
+			    "type"   : gne.nodes[gnode].type
+			  };
+
+	    input_qg.nodes.push(tmpdata);
+	}
+
+	for (var gedge in gne.edges) {
+	    qgid++;
+
+	    var tmpdata = { "id"       : gne.edges[gedge].id,
+			    "negated"  : null,
+			    "relation" : null,
+			    "source_id": gne.edges[gedge].source_id,
+			    "target_id": gne.edges[gedge].target_id,
+			    "type"     : gne.edges[gedge].type
+			  };
+	    input_qg.edges.push(tmpdata);
+	}
+    }
+
 }
 
 
@@ -440,28 +497,24 @@ function process_results(reslist,kg) {
 
         cytodata[num] = [];
 
-	//console.log("=================== CYTO i:"+i+"  #nb:"+reslist[i].node_bindings[0]);
+	//console.log("=================== CYTO i:"+i+"  #nb:"+reslist[i].node_bindings.length);
 
         for (var nb in reslist[i].node_bindings) {
 	    //console.log("=================== i:"+i+"  nb:"+nb+" item:"+reslist[i].node_bindings[nb]);
-	    for (var k = 0; k < reslist[i].node_bindings[nb].length; k++) {
-		var kmne = Object.create(kg.nodes.find(item => item.id == reslist[i].node_bindings[nb][k]));
-		kmne.parentdivnum = num;
-		//console.log("=================== kmne:"+kmne.id);
-		var tmpdata = { "data" : kmne };
-		cytodata[num].push(tmpdata);
-	    }
+	    var kmne = Object.create(kg.nodes.find(item => item.id == reslist[i].node_bindings[nb].kg_id));
+            kmne.parentdivnum = num;
+            //console.log("=================== kmne:"+kmne.id);
+	    var tmpdata = { "data" : kmne };
+	    cytodata[num].push(tmpdata);
 	}
 
         for (var eb in reslist[i].edge_bindings) {
 	    //console.log("=================== i:"+i+"  eb:"+eb);
-	    for (var k = 0; k < reslist[i].edge_bindings[eb].length; k++) {
-		var kmne = Object.create(kg.edges.find(item => item.id == reslist[i].edge_bindings[eb][k]));
-		kmne.parentdivnum = num;
-		//console.log("=================== kmne:"+kmne.id);
-		var tmpdata = { "data" : kmne };
-		cytodata[num].push(tmpdata);
-	    }
+	    var kmne = Object.create(kg.edges.find(item => item.id == reslist[i].edge_bindings[eb].kg_id));
+	    kmne.parentdivnum = num;
+	    //console.log("=================== kmne:"+kmne.id);
+	    var tmpdata = { "data" : kmne };
+	    cytodata[num].push(tmpdata);
 	}
     }
 }
@@ -534,7 +587,7 @@ function add_result(reslist) {
 				    source : gd.edges[g].source_id,
 				    target : gd.edges[g].target_id,
 				    type   : gd.edges[g].type,
-				    provided_by   : gd.edges[g].provided_by
+				    provided_by  : gd.edges[g].provided_by
 				}
 			      };
 
@@ -611,7 +664,7 @@ function add_cyto() {
 
 	if (i > 900) {
 	    cyobj[i].on('tap','node', function() {
-		document.getElementById('qg_edge_n'+UIstate.nodedd).value = "n"+this.data('id');
+		document.getElementById('qg_edge_n'+UIstate.nodedd).value = this.data('id');
 		UIstate.nodedd = 3 - UIstate.nodedd;
 		get_possible_edges();
 	    });
@@ -719,17 +772,69 @@ function mapNodeShape (ele) {
     return "rectangle";
 }
 
+
+
+
+
+function edit_qg() {
+    cytodata[999] = [];
+    if (cyobj[999]) {cyobj[999].elements().remove();}
+
+    for (var gnode in input_qg.nodes) {
+	var name = "";
+
+	if (input_qg.nodes[gnode].name) {
+	    name = input_qg.nodes[gnode].name;
+	}
+	else if (input_qg.nodes[gnode].curie) {
+	    name = input_qg.nodes[gnode].curie;
+	}
+	else {
+	    name = input_qg.nodes[gnode].type + "s?";
+	}
+
+        cyobj[999].add( {
+	    "data" : {
+		"id"   : input_qg.nodes[gnode].id,
+		"name" : name,
+		"type" : input_qg.nodes[gnode].type,
+		"parentdivnum" : 999 },
+//	    "position" : {x:100*(qgid-nn), y:50+nn*50}
+	} );
+    }
+
+    for (var gedge in input_qg.edges) {
+	cyobj[999].add( {
+	    "data" : {
+		"id"     : input_qg.edges[gedge].id,
+		"source" : input_qg.edges[gedge].source_id,
+		"target" : input_qg.edges[gedge].target_id,
+		"type"   : input_qg.edges[gedge].type,
+		"parentdivnum" : 999 }
+	} );
+    }
+
+    cylayout(999,"breadthfirst");
+    document.getElementById('qg_form').style.visibility = 'visible';
+    document.getElementById('qg_form').style.maxHeight = "100%";
+    update_kg_edge_input();
+    display_query_graph_items();
+
+    document.getElementById("devdiv").innerHTML +=  "Copied query_graph to edit window<br>";
+}
+
+
 function display_query_graph_items() {
     var kghtml = '';
     var nitems = 0;
 
     input_qg.nodes.forEach(function(result, index) {
 	nitems++;
-        kghtml += "<tr class='hoverable'><td>"+result.node_id+"</td><td>"+(result.name==null?"-":result.name)+"</td><td>"+(result.curie==null?"<i>(any)</i>":result.curie)+"</td><td>"+result.type+"</td><td><a href='javascript:remove_node_from_query_graph(\"" + result.node_id.substr(1) +"\");'/> Remove </a></td></tr>";
+        kghtml += "<tr class='hoverable'><td>"+result.id+"</td><td>"+(result.name==null?"-":result.name)+"</td><td>"+(result.curie==null?"<i>(any)</i>":result.curie)+"</td><td>"+result.type+"</td><td><a href='javascript:remove_node_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
     });
 
     input_qg.edges.forEach(function(result, index) {
-        kghtml += "<tr class='hoverable'><td>"+result.edge_id+"</td><td>-</td><td>"+result.source_id+"--"+result.target_id+"</td><td>"+(result.type==null?"<i>(any)</i>":result.type)+"</td><td><a href='javascript:remove_edge_from_query_graph(\"" + result.edge_id.substr(1) +"\");'/> Remove </a></td></tr>";
+        kghtml += "<tr class='hoverable'><td>"+result.id+"</td><td>-</td><td>"+result.source_id+"--"+result.target_id+"</td><td>"+(result.type==null?"<i>(any)</i>":result.type)+"</td><td><a href='javascript:remove_edge_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
     });
 
 
@@ -757,16 +862,20 @@ function add_edge_to_query_graph() {
     if (et=='NONSPECIFIC') { et = null; }
 
     cyobj[999].add( {
-	"data" : { "id" : qgid, "source" : n1.substr(1), "target" : n2.substr(1), "type" : et, "parentdivnum" : 999 }
+	"data" : { "id"     : qgid,
+		   "source" : n1,
+		   "target" : n2,
+		   "type"   : et,
+		   "parentdivnum" : 999 }
     } );
-    cyobj[999].reset();
+    cylayout(999,"breadthfirst");
 
-    var tmpdata = { "edge_id": "e"+qgid,
-		    "negated": null,
-		    "relation": null,
+    var tmpdata = { "id"       : qgid,
+		    "negated"  : null,
+		    "relation" : null,
 		    "source_id": n1,
 		    "target_id": n2,
-		    "type": et
+		    "type"     : et
 		  };
 
     input_qg.edges.push(tmpdata);    
@@ -788,12 +897,12 @@ function update_kg_edge_input() {
     input_qg.nodes.forEach(function(qgnode) {
 	for (var x = 1; x <=2; x++) {
             var opt = document.createElement('option');
-	    opt.value = qgnode["node_id"];
+	    opt.value = qgnode["id"];
 	    opt.innerHTML = qgnode["curie"] ? qgnode["curie"] : qgnode["type"];
 	    document.getElementById("qg_edge_n"+x).appendChild(opt);
 	}
     });
-    
+    get_possible_edges();
 }
 
 function get_possible_edges() {
@@ -807,37 +916,46 @@ function get_possible_edges() {
 	return;
     }
 
-
     var nt1 = input_qg.nodes.filter(function(node){
-	return node["node_id"] === edge1;
+	return node["id"] == edge1;
     });
     var nt2 = input_qg.nodes.filter(function(node){
-	return node["node_id"] === edge2;
+	return node["id"] == edge2;
     });
 
-    document.getElementById("qg_edge_type").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Loading edges...</option>";
+    document.getElementById("qg_edge_type").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Populating edges...</option>";
 
-    var xhr13 = new XMLHttpRequest();
-    xhr13.open("get",  baseAPI + "api/rtx/v1/types/edges/"+nt1[0].type+"/"+nt2[0].type, true);
-    xhr13.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-    xhr13.send(null);
+    var relation = "A --> B";
+    if (!(nt2[0].type in predicates[nt1[0].type])) {
+	[nt1, nt2] = [nt2, nt1]; // swap
+	relation = "B --> A";
+    }
 
-    xhr13.onloadend = function() {
-	if ( xhr13.status == 200 ) {
-	    var ed_ts = JSON.parse(xhr13.responseText);
+    if (nt2[0].type in predicates[nt1[0].type]) {
+	if (predicates[nt1[0].type][nt2[0].type].length == 1) {
+	    document.getElementById("qg_edge_type").innerHTML = "";
+	    var opt = document.createElement('option');
+	    opt.value = predicates[nt1[0].type][nt2[0].type][0];
+	    opt.innerHTML = predicates[nt1[0].type][nt2[0].type][0] + " ["+relation+"]";
+	    document.getElementById("qg_edge_type").appendChild(opt);
+	}
+	else {
+	    document.getElementById("qg_edge_type").innerHTML  = "<option style='border-bottom:1px solid black;' value=''>Edge Type ["+relation+"]&nbsp; ("+predicates[nt1[0].type][nt2[0].type].length+")&nbsp;&nbsp;&nbsp;&#8675;</option>";
 
-            document.getElementById("devdiv").innerHTML += "<br>================================================================= EDGE TYPES::"+nt1[0].type+"/"+nt2[0].type+"<PRE>" + JSON.stringify(ed_ts,null,2) + "</PRE>";
-
-	    document.getElementById("qg_edge_type").innerHTML  = "<option style='border-bottom:1px solid black;' value=''>Edge Type ("+ed_ts.length+")&nbsp;&nbsp;&nbsp;&#8675;</option>";
-	    document.getElementById("qg_edge_type").innerHTML += "<option value='NONSPECIFIC'>Unspecified/Non-specific</option>";
-	    for (var i in ed_ts) {
+            for (var i in predicates[nt1[0].type][nt2[0].type]) {
 		var opt = document.createElement('option');
-		opt.value = ed_ts[i];
-		opt.innerHTML = ed_ts[i];
+		opt.value = predicates[nt1[0].type][nt2[0].type][i];
+		opt.innerHTML = predicates[nt1[0].type][nt2[0].type][i];
 		document.getElementById("qg_edge_type").appendChild(opt);
 	    }
+
+	    document.getElementById("qg_edge_type").innerHTML += "<option value='NONSPECIFIC'>Unspecified/Non-specific</option>";
 	}
-    };
+
+    }
+    else {
+        document.getElementById("qg_edge_type").innerHTML = "<option value=''>-- No edge types found --</option>";
+    }
 }
 
 
@@ -849,16 +967,20 @@ function add_nodetype_to_query_graph(nodetype) {
     qgid++;
 
     cyobj[999].add( {
-        "data" : { "id" : qgid, "name" : nodetype+"s", "type" : nodetype, "parentdivnum" : 999 },
-        "position" : {x:100*qgid, y:50}
+        "data" : { "id"   : qgid,
+		   "name" : nodetype+"s",
+		   "type" : nodetype,
+		   "parentdivnum" : 999 },
+//        "position" : {x:100*qgid, y:50}
     } );
     cyobj[999].reset();
+    cylayout(999,"breadthfirst");
 
-    var tmpdata = { "node_id": "n"+qgid,
-		    "is_set": null,
-		    "name" : null,
-		    "curie": null,
-		    "type": nodetype
+    var tmpdata = { "id"     : qgid,
+		    "is_set" : null,
+		    "name"   : null,
+		    "curie"  : null,
+		    "type"   : nodetype
 		  };
 
     input_qg.nodes.push(tmpdata);
@@ -896,22 +1018,27 @@ function add_node_to_query_graph() {
 	    qgid++;
 
 	    cyobj[999].add( {
-		"data" : { "id" : qgid, "name" : thing, "type" : things[nn].type, "parentdivnum" : 999 },
-		"position" : {x:100*(qgid-nn), y:50+nn*50}
+		"data" : { "id"   : qgid,
+			   "name" : thing,
+			   "type" : things[nn].type,
+			   "parentdivnum" : 999 },
+//		"position" : {x:100*(qgid-nn), y:50+nn*50}
 	    } );
-	    cyobj[999].reset();
 
-	    var tmpdata = { "node_id": "n"+qgid,
-			    "is_set": null,
-			    "name" : thing,
-			    "curie": things[nn].curie,
-			    "type": things[nn].type
+	    var tmpdata = { "id"     : qgid,
+			    "is_set" : null,
+			    "name"   : thing,
+			    "curie"  : things[nn].curie,
+			    "type"   : things[nn].type
 			  };
 
 	    document.getElementById("devdiv").innerHTML +=  "-- found a curie = " + things[nn].curie + "<br>";
 
 	    input_qg.nodes.push(tmpdata);
 	}
+	cyobj[999].reset();
+	cylayout(999,"breadthfirst");
+
 	update_kg_edge_input();
 	display_query_graph_items();
     }
@@ -927,7 +1054,7 @@ function remove_edge_from_query_graph(edgeid) {
     cyobj[999].remove("#"+edgeid);
 
     input_qg.edges.forEach(function(result, index) {
-	if (result["edge_id"] === "e"+edgeid) {
+	if (result["id"] == edgeid) {
 	    //Remove from array
 	    input_qg.edges.splice(index, 1);
 	}
@@ -939,23 +1066,21 @@ function remove_node_from_query_graph(nodeid) {
     cyobj[999].remove("#"+nodeid);
 
     input_qg.nodes.forEach(function(result, index) {
-	if (result["node_id"] === "n"+nodeid) {
+	if (result["id"] == nodeid) {
 	    //Remove from array
 	    input_qg.nodes.splice(index, 1);
 	}
     });
 
-    // FIX this...?
-    input_qg.edges.forEach(function(result, index) {
-	if (result["source_id"] === "n"+nodeid) {
-	    //Remove from array
-	    input_qg.edges.splice(index, 1);
+    // remove items starting from end of array...
+    for (var k = input_qg.edges.length - 1; k > -1; k--){
+	if (input_qg.edges[k].source_id == nodeid) {
+	    input_qg.edges.splice(k, 1);
 	}
-	else if (result["target_id"] === "n"+nodeid) {
-	    //Remove from array
-	    input_qg.edges.splice(index, 1);
+	else if (input_qg.edges[k].target_id == nodeid) {
+	    input_qg.edges.splice(k, 1);
 	}
-    });
+    }
 
     update_kg_edge_input();
     display_query_graph_items();
@@ -971,6 +1096,8 @@ function clear_qg(m) {
     if (m==1){
 	document.getElementById("statusdiv").innerHTML = "<p>Query Graph has been cleared.</p>";
     }
+    document.getElementById('qg_form').style.visibility = 'visible';
+    document.getElementById('qg_form').style.maxHeight = "100%";
 }
 
 
@@ -1148,7 +1275,7 @@ function get_feedback_fields() {
     xhr5.onloadend = function() {
 	if ( xhr5.status == 200 ) {
 	    var jsonObj5 = JSON.parse(xhr5.responseText);
-	    document.getElementById("devdiv").innerHTML += "---------------------------------- <PRE>\n" + JSON.stringify(jsonObj5,null,2) + "</PRE>";
+	    document.getElementById("devdiv").innerHTML += "================================================================= RATINGS::<PRE>\n" + JSON.stringify(jsonObj5,null,2) + "</PRE>";
 
 	    for (var i in jsonObj5.ratings) {
 		fb_ratings[jsonObj5.ratings[i].rating_id] = {};
@@ -1186,28 +1313,31 @@ function get_example_questions() {
 }
 
 
-function get_node_types() {
+function load_nodes_and_predicates() {
     var xhr11 = new XMLHttpRequest();
-    xhr11.open("get",  baseAPI + "api/rtx/v1/types/nodes", true);
+    xhr11.open("get",  baseAPI + "api/rtx/v1/predicates", true);
     xhr11.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
     xhr11.send(null);
 
     xhr11.onloadend = function() {
-	if ( xhr11.status == 200 ) {
-	    var nd_ts = JSON.parse(xhr11.responseText);
+        if ( xhr11.status == 200 ) {
+            predicates = JSON.parse(xhr11.responseText);
 
-	    document.getElementById("allnodetypes").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Add Node by Type&nbsp;&nbsp;&nbsp;&#86\
-75;</option>";
+	    document.getElementById("devdiv").innerHTML += "<br>================================================================= PREDICATES::<PRE>" + JSON.stringify(predicates,null,2) + "</PRE>";
+	    
+            document.getElementById("allnodetypes").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Add Node by Type&nbsp;&nbsp;&nbsp;&#8675;</option>";
 
-	    for (var i in nd_ts) {
+            for (const p in predicates) {
 		var opt = document.createElement('option');
-		opt.value = nd_ts[i];
-		opt.innerHTML = nd_ts[i];
+		opt.value = p;
+		opt.innerHTML = p;
 		document.getElementById("allnodetypes").appendChild(opt);
 	    }
 	}
+	else {
+            document.getElementById("allnodetypes").innerHTML = "<option style='border-bottom:1px solid black;' value=''>-- Error Loading Node Types --</option>";
+	}
     };
-
 }
 
 

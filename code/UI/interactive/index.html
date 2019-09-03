@@ -13,7 +13,8 @@
 <script src="/rtxcomplete/bootstrap.js"></script>
 <script src="/rtxcomplete/bootstrap3-typeahead.js"></script>
 <script src="/rtxcomplete/rtxcomplete.js"></script>
-<script src="/rtxcomplete/rtxcompletenode.js"></script>
+<!-- script src="/rtxcomplete/rtxcompletenode.js"></script -->
+<script src="rtxcompletenode.js"></script>
 
 </head>
 <body onload="main();">
@@ -34,19 +35,21 @@
 <div onclick="openSection(this,'resultsDiv');" class="menuleftitem">Results <span class="menunum" title="Individual interactive view of results" id="menunumresults">-</span></div>
 <br><br>
 <div onclick="openSection(this,'devDiv');" class="menuleftitem">Dev Info</div>
+<br><br><br><br>
+<div onclick="window.location = 'index.html';" class="menuleftitem">Reset All</div>
 </div>
 
-<div class="banner" banner-bg-text="RTX User Interface :: API 0.9.1">
+<div class="banner" banner-bg-text="RTX User Interface">
 <span class="menulinks">Documentation: 
 <a href="overview.html">Overview</a>
-<a href="api/rtx/v1/ui/">API</a>
+<a href="api/rtx/v1/ui/">API 0.9.2</a>
 <a href="https://github.com/RTXteam/RTX/wiki/RTX-Home">Resources</a>
 </span>
 </div>
 
 
 <div class="page">
-<br>
+<br><br><br><br><br>
 
 
 <div class="pagesection" id="historyDiv">
@@ -86,13 +89,14 @@ Use cache</label>
 <br>
 <h3 style="display:inline;">Query Graph:</h3>
 <a style="position:relative; left:150px;" href="#" title="remove all elements from query graph" onclick="clear_qg(1);">[ clear ]</a>
+<a style="position:relative; left:150px;" href="#" title="edit query graph" onclick="edit_qg();">[ edit ]</a>
 <div class="cytograph_q">
   <div style="height: 100%; width: 100%" id="cy999"></div>
 </div>
 
 <div id="qg_items"></div>
 
-
+<div class="pagesection" id="qg_form">
 Enter new query node:
 <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="newquerynode" name="newquerynode" onkeydown="enter_node(this);" size="30" maxlength="200"/><input type="button" class="questionBox button" name="action" value="Add" onClick="javascript:add_node_to_query_graph();">
 
@@ -128,6 +132,8 @@ Enter new relationship:
 <input type="button" class="questionBox button" name="action" value="Add" onClick="javascript:add_edge_to_query_graph();">  
 
 <input style="position:relative; left:150px;" type="button" class="questionBox button" name="action" value="QUERY" onClick="javascript:sendGraph();"/>
+</div>
+
 
 <br><br>
 
@@ -164,7 +170,7 @@ Enter new relationship:
 <div class="pagesection" id="kgDiv">
   <div id="kg_container">
     <div class="statushead">KNOWLEDGE GRAPH</div>
-    <div id="a0_div" class="status"><table class="t100"><tr><td class="cytograph_controls"><a title="reset zoom and center" onclick="cyobj[0].reset();">&#8635;</a><br><a title="breadthfirst layout" onclick="cylayout(0,'breadthfirst');">B</a><br><a title="force-directed layout" onclick="cylayout(0,'cose');">F</a><br><a title="circle layout" onclick="cylayout(0,'circle');">C</a><br><a title="random layout" onclick="cylayout(0,'random');">R</a>  </td><td class="cytograph_kg"style="width:100%;"><div style="height: 100%; width: 100%" id="cy0"></div></td></tr><tr><td></td><td><div id="d0_div"><i>Click on a node or edge to get details</i></div></td></tr></table></div>
+    <div id="a0_div" class="status"><table class="t100"><tr><td class="cytograph_controls"><a title="reset zoom and center" onclick="cyobj[0].reset();">&#8635;</a><br><a title="breadthfirst layout" onclick="cylayout(0,'breadthfirst');">B</a><br><a title="force-directed layout" onclick="cylayout(0,'cose');">F</a><br><a title="circle layout" onclick="cylayout(0,'circle');">C</a><br><a title="random layout" onclick="cylayout(0,'random');">R</a>  </td><td class="cytograph_kg" style="width:100%;"><div style="height: 100%; width: 100%" id="cy0"></div></td></tr><tr><td></td><td><div id="d0_div"><i>Click on a node or edge to get details</i></div></td></tr></table></div>
   </div>
 </div>
 

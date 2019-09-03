@@ -8,21 +8,22 @@ body {
 }
 
 .banner {
-    position: relative;
+    position: fixed;
     width: 100%;
     min-height: 80px;
     z-index: 9;
     box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
     font-size: 20px;
-    color: #c40;
-    background-color: #ddd;
+    color: #ddd;
+    background-color: #040;
+    background-image: url(banner.png);
 }
 .banner::before {
     font-size: 60px;
     left: 30px;
     top: 0px;
     position: absolute;
-    color: rgba(0,63,114,0.8);
+    color: rgba(255,255,255,0.8);
     font-weight: bold;
     letter-spacing: -3px;
     content: attr(banner-bg-text);
