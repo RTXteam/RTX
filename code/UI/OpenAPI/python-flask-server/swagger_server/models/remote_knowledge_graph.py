@@ -15,26 +15,31 @@ class RemoteKnowledgeGraph(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, url: str=None, credentials: object=None):  # noqa: E501
+    def __init__(self, url: str=None, credentials: object=None, protocol: str='neo4j'):  # noqa: E501
         """RemoteKnowledgeGraph - a model defined in Swagger
 
         :param url: The url of this RemoteKnowledgeGraph.  # noqa: E501
         :type url: str
         :param credentials: The credentials of this RemoteKnowledgeGraph.  # noqa: E501
         :type credentials: object
+        :param protocol: The protocol of this RemoteKnowledgeGraph.  # noqa: E501
+        :type protocol: str
         """
         self.swagger_types = {
             'url': str,
-            'credentials': object
+            'credentials': object,
+            'protocol': str
         }
 
         self.attribute_map = {
             'url': 'url',
-            'credentials': 'credentials'
+            'credentials': 'credentials',
+            'protocol': 'protocol'
         }
 
         self._url = url
         self._credentials = credentials
+        self._protocol = protocol
 
     @classmethod
     def from_dict(cls, dikt) -> 'RemoteKnowledgeGraph':
@@ -67,6 +72,8 @@ class RemoteKnowledgeGraph(Model):
         :param url: The url of this RemoteKnowledgeGraph.
         :type url: str
         """
+        if url is None:
+            raise ValueError("Invalid value for `url`, must not be `None`")  # noqa: E501
 
         self._url = url
 
@@ -92,3 +99,24 @@ class RemoteKnowledgeGraph(Model):
         """
 
         self._credentials = credentials
+
+    @property
+    def protocol(self) -> str:
+        """Gets the protocol of this RemoteKnowledgeGraph.
+
+
+        :return: The protocol of this RemoteKnowledgeGraph.
+        :rtype: str
+        """
+        return self._protocol
+
+    @protocol.setter
+    def protocol(self, protocol: str):
+        """Sets the protocol of this RemoteKnowledgeGraph.
+
+
+        :param protocol: The protocol of this RemoteKnowledgeGraph.
+        :type protocol: str
+        """
+
+        self._protocol = protocol

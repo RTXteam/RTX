@@ -17,7 +17,7 @@ class Message(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, context: str=None, type: str=None, id: str=None, reasoner_id: str=None, tool_version: str=None, schema_version: str=None, datetime: str=None, n_results: int=None, message_code: str=None, code_description: str=None, table_column_names: List[str]=None, original_question: str=None, restated_question: str=None, query_type_id: str=None, terms: MessageTerms=None, query_options: object=None, results: List[Result]=None, query_graph: object=None, knowledge_graph: object=None, remote_knowledge_graph: object=None):  # noqa: E501
+    def __init__(self, context: str=None, type: str=None, id: str=None, reasoner_id: str=None, tool_version: str=None, schema_version: str=None, _datetime: str=None, n_results: int=None, message_code: str=None, code_description: str=None, table_column_names: List[str]=None, original_question: str=None, restated_question: str=None, query_type_id: str=None, terms: MessageTerms=None, query_options: object=None, results: List[Result]=None, query_graph: object=None, knowledge_graph: object=None, remote_knowledge_graph: object=None):  # noqa: E501
         """Message - a model defined in Swagger
 
         :param context: The context of this Message.  # noqa: E501
@@ -32,8 +32,8 @@ class Message(Model):
         :type tool_version: str
         :param schema_version: The schema_version of this Message.  # noqa: E501
         :type schema_version: str
-        :param datetime: The datetime of this Message.  # noqa: E501
-        :type datetime: str
+        :param _datetime: The _datetime of this Message.  # noqa: E501
+        :type _datetime: str
         :param n_results: The n_results of this Message.  # noqa: E501
         :type n_results: int
         :param message_code: The message_code of this Message.  # noqa: E501
@@ -68,7 +68,7 @@ class Message(Model):
             'reasoner_id': str,
             'tool_version': str,
             'schema_version': str,
-            'datetime': str,
+            '_datetime': str,
             'n_results': int,
             'message_code': str,
             'code_description': str,
@@ -91,7 +91,7 @@ class Message(Model):
             'reasoner_id': 'reasoner_id',
             'tool_version': 'tool_version',
             'schema_version': 'schema_version',
-            'datetime': 'datetime',
+            '_datetime': 'datetime',
             'n_results': 'n_results',
             'message_code': 'message_code',
             'code_description': 'code_description',
@@ -113,7 +113,7 @@ class Message(Model):
         self._reasoner_id = reasoner_id
         self._tool_version = tool_version
         self._schema_version = schema_version
-        self._datetime = datetime
+        self.__datetime = _datetime
         self._n_results = n_results
         self._message_code = message_code
         self._code_description = code_description
@@ -278,27 +278,27 @@ class Message(Model):
         self._schema_version = schema_version
 
     @property
-    def datetime(self) -> str:
-        """Gets the datetime of this Message.
+    def _datetime(self) -> str:
+        """Gets the _datetime of this Message.
 
         Datetime string for the time that this message was generated  # noqa: E501
 
-        :return: The datetime of this Message.
+        :return: The _datetime of this Message.
         :rtype: str
         """
-        return self._datetime
+        return self.__datetime
 
-    @datetime.setter
-    def datetime(self, datetime: str):
-        """Sets the datetime of this Message.
+    @_datetime.setter
+    def _datetime(self, _datetime: str):
+        """Sets the _datetime of this Message.
 
         Datetime string for the time that this message was generated  # noqa: E501
 
-        :param datetime: The datetime of this Message.
-        :type datetime: str
+        :param _datetime: The _datetime of this Message.
+        :type _datetime: str
         """
 
-        self._datetime = datetime
+        self.__datetime = _datetime
 
     @property
     def n_results(self) -> int:

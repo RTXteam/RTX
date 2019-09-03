@@ -6,6 +6,7 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from swagger_server.models.base_model_ import Model
+from swagger_server.models.biolink_relation import BiolinkRelation  # noqa: F401,E501
 from swagger_server.models.edge_attribute import EdgeAttribute  # noqa: F401,E501
 from swagger_server import util
 
@@ -16,13 +17,13 @@ class Edge(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, id: str=None, type: str=None, relation: str=None, source_id: str=None, target_id: str=None, is_defined_by: str=None, defined_datetime: str=None, provided_by: str=None, confidence: float=None, weight: float=None, publications: List[str]=None, evidence_type: str=None, qualifiers: str=None, negated: bool=None, edge_attributes: List[EdgeAttribute]=None):  # noqa: E501
+    def __init__(self, id: str=None, type: BiolinkRelation=None, relation: str=None, source_id: str=None, target_id: str=None, is_defined_by: str=None, defined_datetime: str=None, provided_by: str=None, confidence: float=None, weight: float=None, publications: List[str]=None, evidence_type: str=None, qualifiers: str=None, negated: bool=None, edge_attributes: List[EdgeAttribute]=None):  # noqa: E501
         """Edge - a model defined in Swagger
 
         :param id: The id of this Edge.  # noqa: E501
         :type id: str
         :param type: The type of this Edge.  # noqa: E501
-        :type type: str
+        :type type: BiolinkRelation
         :param relation: The relation of this Edge.  # noqa: E501
         :type relation: str
         :param source_id: The source_id of this Edge.  # noqa: E501
@@ -52,7 +53,7 @@ class Edge(Model):
         """
         self.swagger_types = {
             'id': str,
-            'type': str,
+            'type': BiolinkRelation,
             'relation': str,
             'source_id': str,
             'target_id': str,
@@ -133,28 +134,28 @@ class Edge(Model):
         :param id: The id of this Edge.
         :type id: str
         """
+        if id is None:
+            raise ValueError("Invalid value for `id`, must not be `None`")  # noqa: E501
 
         self._id = id
 
     @property
-    def type(self) -> str:
+    def type(self) -> BiolinkRelation:
         """Gets the type of this Edge.
 
-        Higher-level relationship type of this edge  # noqa: E501
 
         :return: The type of this Edge.
-        :rtype: str
+        :rtype: BiolinkRelation
         """
         return self._type
 
     @type.setter
-    def type(self, type: str):
+    def type(self, type: BiolinkRelation):
         """Sets the type of this Edge.
 
-        Higher-level relationship type of this edge  # noqa: E501
 
         :param type: The type of this Edge.
-        :type type: str
+        :type type: BiolinkRelation
         """
 
         self._type = type
@@ -202,6 +203,8 @@ class Edge(Model):
         :param source_id: The source_id of this Edge.
         :type source_id: str
         """
+        if source_id is None:
+            raise ValueError("Invalid value for `source_id`, must not be `None`")  # noqa: E501
 
         self._source_id = source_id
 
@@ -225,6 +228,8 @@ class Edge(Model):
         :param target_id: The target_id of this Edge.
         :type target_id: str
         """
+        if target_id is None:
+            raise ValueError("Invalid value for `target_id`, must not be `None`")  # noqa: E501
 
         self._target_id = target_id
 

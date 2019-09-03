@@ -15,7 +15,7 @@ class Query(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, bypass_cache: str=None, asynchronous: str=None, max_results: int=None, page_size: int=None, page_number: int=None, reasoner_ids: List[str]=None, query_message: object=None, previous_message_processing_plan: object=None):  # noqa: E501
+    def __init__(self, bypass_cache: str=None, asynchronous: str=None, max_results: int=None, page_size: int=None, page_number: int=None, reasoner_ids: List[str]=None, message: object=None, previous_message_processing_plan: object=None):  # noqa: E501
         """Query - a model defined in Swagger
 
         :param bypass_cache: The bypass_cache of this Query.  # noqa: E501
@@ -30,8 +30,8 @@ class Query(Model):
         :type page_number: int
         :param reasoner_ids: The reasoner_ids of this Query.  # noqa: E501
         :type reasoner_ids: List[str]
-        :param query_message: The query_message of this Query.  # noqa: E501
-        :type query_message: object
+        :param message: The message of this Query.  # noqa: E501
+        :type message: object
         :param previous_message_processing_plan: The previous_message_processing_plan of this Query.  # noqa: E501
         :type previous_message_processing_plan: object
         """
@@ -42,7 +42,7 @@ class Query(Model):
             'page_size': int,
             'page_number': int,
             'reasoner_ids': List[str],
-            'query_message': object,
+            'message': object,
             'previous_message_processing_plan': object
         }
 
@@ -53,7 +53,7 @@ class Query(Model):
             'page_size': 'page_size',
             'page_number': 'page_number',
             'reasoner_ids': 'reasoner_ids',
-            'query_message': 'query_message',
+            'message': 'message',
             'previous_message_processing_plan': 'previous_message_processing_plan'
         }
 
@@ -63,7 +63,7 @@ class Query(Model):
         self._page_size = page_size
         self._page_number = page_number
         self._reasoner_ids = reasoner_ids
-        self._query_message = query_message
+        self._message = message
         self._previous_message_processing_plan = previous_message_processing_plan
 
     @classmethod
@@ -216,27 +216,27 @@ class Query(Model):
         self._reasoner_ids = reasoner_ids
 
     @property
-    def query_message(self) -> object:
-        """Gets the query_message of this Query.
+    def message(self) -> object:
+        """Gets the message of this Query.
 
         Message object that represents the query to be answered  # noqa: E501
 
-        :return: The query_message of this Query.
+        :return: The message of this Query.
         :rtype: object
         """
-        return self._query_message
+        return self._message
 
-    @query_message.setter
-    def query_message(self, query_message: object):
-        """Sets the query_message of this Query.
+    @message.setter
+    def message(self, message: object):
+        """Sets the message of this Query.
 
         Message object that represents the query to be answered  # noqa: E501
 
-        :param query_message: The query_message of this Query.
-        :type query_message: object
+        :param message: The message of this Query.
+        :type message: object
         """
 
-        self._query_message = query_message
+        self._message = message
 
     @property
     def previous_message_processing_plan(self) -> object:

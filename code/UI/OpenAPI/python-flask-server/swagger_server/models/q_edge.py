@@ -6,6 +6,7 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from swagger_server.models.base_model_ import Model
+from swagger_server.models.biolink_relation import BiolinkRelation  # noqa: F401,E501
 from swagger_server import util
 
 
@@ -15,13 +16,13 @@ class QEdge(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, edge_id: str=None, type: str=None, relation: str=None, source_id: str=None, target_id: str=None, negated: bool=None):  # noqa: E501
+    def __init__(self, id: str=None, type: BiolinkRelation=None, relation: str=None, source_id: str=None, target_id: str=None, negated: bool=None):  # noqa: E501
         """QEdge - a model defined in Swagger
 
-        :param edge_id: The edge_id of this QEdge.  # noqa: E501
-        :type edge_id: str
+        :param id: The id of this QEdge.  # noqa: E501
+        :type id: str
         :param type: The type of this QEdge.  # noqa: E501
-        :type type: str
+        :type type: BiolinkRelation
         :param relation: The relation of this QEdge.  # noqa: E501
         :type relation: str
         :param source_id: The source_id of this QEdge.  # noqa: E501
@@ -32,8 +33,8 @@ class QEdge(Model):
         :type negated: bool
         """
         self.swagger_types = {
-            'edge_id': str,
-            'type': str,
+            'id': str,
+            'type': BiolinkRelation,
             'relation': str,
             'source_id': str,
             'target_id': str,
@@ -41,7 +42,7 @@ class QEdge(Model):
         }
 
         self.attribute_map = {
-            'edge_id': 'edge_id',
+            'id': 'id',
             'type': 'type',
             'relation': 'relation',
             'source_id': 'source_id',
@@ -49,7 +50,7 @@ class QEdge(Model):
             'negated': 'negated'
         }
 
-        self._edge_id = edge_id
+        self._id = id
         self._type = type
         self._relation = relation
         self._source_id = source_id
@@ -68,47 +69,47 @@ class QEdge(Model):
         return util.deserialize_model(dikt, cls)
 
     @property
-    def edge_id(self) -> str:
-        """Gets the edge_id of this QEdge.
+    def id(self) -> str:
+        """Gets the id of this QEdge.
 
         QueryGraph internal identifier for this QEdge. Recommended form: e00, e01, e02, etc.  # noqa: E501
 
-        :return: The edge_id of this QEdge.
+        :return: The id of this QEdge.
         :rtype: str
         """
-        return self._edge_id
+        return self._id
 
-    @edge_id.setter
-    def edge_id(self, edge_id: str):
-        """Sets the edge_id of this QEdge.
+    @id.setter
+    def id(self, id: str):
+        """Sets the id of this QEdge.
 
         QueryGraph internal identifier for this QEdge. Recommended form: e00, e01, e02, etc.  # noqa: E501
 
-        :param edge_id: The edge_id of this QEdge.
-        :type edge_id: str
+        :param id: The id of this QEdge.
+        :type id: str
         """
+        if id is None:
+            raise ValueError("Invalid value for `id`, must not be `None`")  # noqa: E501
 
-        self._edge_id = edge_id
+        self._id = id
 
     @property
-    def type(self) -> str:
+    def type(self) -> BiolinkRelation:
         """Gets the type of this QEdge.
 
-        Higher-level relationship type of this edge  # noqa: E501
 
         :return: The type of this QEdge.
-        :rtype: str
+        :rtype: BiolinkRelation
         """
         return self._type
 
     @type.setter
-    def type(self, type: str):
+    def type(self, type: BiolinkRelation):
         """Sets the type of this QEdge.
 
-        Higher-level relationship type of this edge  # noqa: E501
 
         :param type: The type of this QEdge.
-        :type type: str
+        :type type: BiolinkRelation
         """
 
         self._type = type
@@ -156,6 +157,8 @@ class QEdge(Model):
         :param source_id: The source_id of this QEdge.
         :type source_id: str
         """
+        if source_id is None:
+            raise ValueError("Invalid value for `source_id`, must not be `None`")  # noqa: E501
 
         self._source_id = source_id
 
@@ -179,6 +182,8 @@ class QEdge(Model):
         :param target_id: The target_id of this QEdge.
         :type target_id: str
         """
+        if target_id is None:
+            raise ValueError("Invalid value for `target_id`, must not be `None`")  # noqa: E501
 
         self._target_id = target_id
 

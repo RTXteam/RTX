@@ -69,6 +69,8 @@ class KnowledgeGraph(Model):
         :param nodes: The nodes of this KnowledgeGraph.
         :type nodes: List[Node]
         """
+        if nodes is None:
+            raise ValueError("Invalid value for `nodes`, must not be `None`")  # noqa: E501
 
         self._nodes = nodes
 
@@ -92,5 +94,7 @@ class KnowledgeGraph(Model):
         :param edges: The edges of this KnowledgeGraph.
         :type edges: List[Edge]
         """
+        if edges is None:
+            raise ValueError("Invalid value for `edges`, must not be `None`")  # noqa: E501
 
         self._edges = edges

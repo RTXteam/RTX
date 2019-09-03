@@ -69,6 +69,8 @@ class QueryGraph(Model):
         :param nodes: The nodes of this QueryGraph.
         :type nodes: List[QNode]
         """
+        if nodes is None:
+            raise ValueError("Invalid value for `nodes`, must not be `None`")  # noqa: E501
 
         self._nodes = nodes
 
@@ -92,5 +94,7 @@ class QueryGraph(Model):
         :param edges: The edges of this QueryGraph.
         :type edges: List[QEdge]
         """
+        if edges is None:
+            raise ValueError("Invalid value for `edges`, must not be `None`")  # noqa: E501
 
         self._edges = edges
