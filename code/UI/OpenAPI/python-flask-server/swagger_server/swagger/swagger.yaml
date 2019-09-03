@@ -2,7 +2,7 @@
 swagger: "2.0"
 info:
   description: "OpenAPI for RTX"
-  version: "1.4.0"
+  version: "1.9.2"
   title: "RTX"
   contact:
     email: "edeutsch@systemsbiology.org"
@@ -59,11 +59,6 @@ tags:
   externalDocs:
     description: "Documentation for the RTX feedback function"
     url: "https://rtx.ncats.io/devED/overview.html#feedback"
-- name: "types"
-  description: "Return data types in the knowledge graph"
-  externalDocs:
-    description: "Documentation for the reasoner types function"
-    url: "https://rtx.ncats.io/devED/overview.html#types"
 schemes:
 - "https"
 paths:
@@ -380,85 +375,6 @@ paths:
         400:
           description: "Invalid status value"
       x-swagger-router-controller: "swagger_server.controllers.result_controller"
-  /types/nodes:
-    get:
-      tags:
-      - "types"
-      summary: "Obtain all possible types of nodes"
-      description: ""
-      operationId: "get_node_types"
-      produces:
-      - "application/json"
-      parameters: []
-      responses:
-        200:
-          description: "successful operation"
-        404:
-          description: "No types found"
-      x-swagger-router-controller: "swagger_server.controllers.types_controller"
-  /types/edges:
-    get:
-      tags:
-      - "types"
-      summary: "Obtain all possible types of edges"
-      description: ""
-      operationId: "get_all_edge_types"
-      produces:
-      - "application/json"
-      parameters: []
-      responses:
-        200:
-          description: "successful operation"
-        404:
-          description: "No types found"
-      x-swagger-router-controller: "swagger_server.controllers.types_controller"
-  /types/edges/{node_type}:
-    get:
-      tags:
-      - "types"
-      summary: "Obtain all possible types of edges linked to a node_type"
-      description: ""
-      operationId: "get_node_edge_types"
-      produces:
-      - "application/json"
-      parameters:
-      - name: "node_type"
-        in: "path"
-        description: "Node type to filter possible edges by"
-        required: true
-        type: "string"
-      responses:
-        200:
-          description: "successful operation"
-        404:
-          description: "No types found"
-      x-swagger-router-controller: "swagger_server.controllers.types_controller"
-  /types/edges/{node_type1}/{node_type2}:
-    get:
-      tags:
-      - "types"
-      summary: "Obtain all possible types of edges linking node_type1 and node_type2"
-      description: ""
-      operationId: "get_node_to_node_edge_types"
-      produces:
-      - "application/json"
-      parameters:
-      - name: "node_type1"
-        in: "path"
-        description: "Node type 1 to filter possible edges by"
-        required: true
-        type: "string"
-      - name: "node_type2"
-        in: "path"
-        description: "Node type 2 to filter possible edges by"
-        required: true
-        type: "string"
-      responses:
-        200:
-          description: "successful operation"
-        404:
-          description: "No types found"
-      x-swagger-router-controller: "swagger_server.controllers.types_controller"
 definitions:
   Question:
     type: "object"
@@ -533,7 +449,7 @@ definitions:
         description: "List of reasoners to consult for the query"
         items:
           type: "string"
-      query_message:
+      message:
         type: "object"
         description: "Message object that represents the query to be answered"
         properties: {}
@@ -547,8 +463,8 @@ definitions:
       bypass_cache: "true"
       page_number: 1
       asynchronous: "false"
-      query_message: "{}"
       max_results: 100
+      message: "{}"
       reasoner_ids:
       - "RTX"
       - "Robokop"
@@ -715,89 +631,7 @@ definitions:
       id: "https://rtx.ncats.io/devED/api/rtx/v1/message/123"
       results:
       - result_type: "individual query answer"
-        result_graph:
-          nodes:
-          - symbol: "HP"
-            node_attributes:
-            - name: "Wikipedia article"
-              type: "article"
-              value: "7.23e-12"
-              url: "https://en.wikipedia.org/wiki/Malaria"
-            - name: "Wikipedia article"
-              type: "article"
-              value: "7.23e-12"
-              url: "https://en.wikipedia.org/wiki/Malaria"
-            name: "Haptoglobin"
-            description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
-            id: "OMIM:603903"
-            type:
-            - "protein"
-            uri: "https://www.uniprot.org/uniprot/P00738"
-          - symbol: "HP"
-            node_attributes:
-            - name: "Wikipedia article"
-              type: "article"
-              value: "7.23e-12"
-              url: "https://en.wikipedia.org/wiki/Malaria"
-            - name: "Wikipedia article"
-              type: "article"
-              value: "7.23e-12"
-              url: "https://en.wikipedia.org/wiki/Malaria"
-            name: "Haptoglobin"
-            description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
-            id: "OMIM:603903"
-            type:
-            - "protein"
-            uri: "https://www.uniprot.org/uniprot/P00738"
-          edges:
-          - negated: true
-            evidence_type: "ECO:0000220"
-            defined_datetime: "2018-11-03 15:34:23"
-            confidence: 0.99
-            weight: 0.99
-            qualifiers: "ECO:0000220"
-            target_id: "https://www.uniprot.org/uniprot/P00738"
-            type: "affects"
-            relation: "upregulates"
-            is_defined_by: "reasoner"
-            edge_attributes:
-            - name: "Cell type limitation"
-              type: "localization"
-              value: "MFC cells"
-              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-            - name: "Cell type limitation"
-              type: "localization"
-              value: "MFC cells"
-              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-            provided_by: "OMIM"
-            id: "553903"
-            source_id: "https://omim.org/entry/603903"
-            publications:
-            - "PMID:12345562"
-          - negated: true
-            evidence_type: "ECO:0000220"
-            defined_datetime: "2018-11-03 15:34:23"
-            confidence: 0.99
-            weight: 0.99
-            qualifiers: "ECO:0000220"
-            target_id: "https://www.uniprot.org/uniprot/P00738"
-            type: "affects"
-            relation: "upregulates"
-            is_defined_by: "reasoner"
-            edge_attributes:
-            - name: "Cell type limitation"
-              type: "localization"
-              value: "MFC cells"
-              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-            - name: "Cell type limitation"
-              type: "localization"
-              value: "MFC cells"
-              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-            provided_by: "OMIM"
-            id: "553903"
-            source_id: "https://omim.org/entry/603903"
-            publications:
-            - "PMID:12345562"
+        result_graph: "{}"
         essence: "ibuprofen"
         confidence: 0.9234
         description: "The genetic condition sickle cell anemia may provide protection\
@@ -806,10 +640,18 @@ definitions:
         essence_type: "drug"
         score_direction: "lower_is_better"
         score: 163.233
-        edge_bindings: "{}"
+        edge_bindings:
+        - kg_id: "kg_id"
+          qg_id: "qg_id"
+        - kg_id: "kg_id"
+          qg_id: "qg_id"
         result_group: 1
         reasoner_id: "RTX"
-        node_bindings: "{}"
+        node_bindings:
+        - kg_id: "kg_id"
+          qg_id: "qg_id"
+        - kg_id: "kg_id"
+          qg_id: "qg_id"
         id: "https://rtx.ncats.io/devED/api/rtx/v1/result/234"
         row_data:
         - "ibuprofen"
@@ -817,89 +659,7 @@ definitions:
         result_group_similarity_score: 0.95
         score_name: "Jaccard distance"
       - result_type: "individual query answer"
-        result_graph:
-          nodes:
-          - symbol: "HP"
-            node_attributes:
-            - name: "Wikipedia article"
-              type: "article"
-              value: "7.23e-12"
-              url: "https://en.wikipedia.org/wiki/Malaria"
-            - name: "Wikipedia article"
-              type: "article"
-              value: "7.23e-12"
-              url: "https://en.wikipedia.org/wiki/Malaria"
-            name: "Haptoglobin"
-            description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
-            id: "OMIM:603903"
-            type:
-            - "protein"
-            uri: "https://www.uniprot.org/uniprot/P00738"
-          - symbol: "HP"
-            node_attributes:
-            - name: "Wikipedia article"
-              type: "article"
-              value: "7.23e-12"
-              url: "https://en.wikipedia.org/wiki/Malaria"
-            - name: "Wikipedia article"
-              type: "article"
-              value: "7.23e-12"
-              url: "https://en.wikipedia.org/wiki/Malaria"
-            name: "Haptoglobin"
-            description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
-            id: "OMIM:603903"
-            type:
-            - "protein"
-            uri: "https://www.uniprot.org/uniprot/P00738"
-          edges:
-          - negated: true
-            evidence_type: "ECO:0000220"
-            defined_datetime: "2018-11-03 15:34:23"
-            confidence: 0.99
-            weight: 0.99
-            qualifiers: "ECO:0000220"
-            target_id: "https://www.uniprot.org/uniprot/P00738"
-            type: "affects"
-            relation: "upregulates"
-            is_defined_by: "reasoner"
-            edge_attributes:
-            - name: "Cell type limitation"
-              type: "localization"
-              value: "MFC cells"
-              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-            - name: "Cell type limitation"
-              type: "localization"
-              value: "MFC cells"
-              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-            provided_by: "OMIM"
-            id: "553903"
-            source_id: "https://omim.org/entry/603903"
-            publications:
-            - "PMID:12345562"
-          - negated: true
-            evidence_type: "ECO:0000220"
-            defined_datetime: "2018-11-03 15:34:23"
-            confidence: 0.99
-            weight: 0.99
-            qualifiers: "ECO:0000220"
-            target_id: "https://www.uniprot.org/uniprot/P00738"
-            type: "affects"
-            relation: "upregulates"
-            is_defined_by: "reasoner"
-            edge_attributes:
-            - name: "Cell type limitation"
-              type: "localization"
-              value: "MFC cells"
-              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-            - name: "Cell type limitation"
-              type: "localization"
-              value: "MFC cells"
-              url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-            provided_by: "OMIM"
-            id: "553903"
-            source_id: "https://omim.org/entry/603903"
-            publications:
-            - "PMID:12345562"
+        result_graph: "{}"
         essence: "ibuprofen"
         confidence: 0.9234
         description: "The genetic condition sickle cell anemia may provide protection\
@@ -908,10 +668,18 @@ definitions:
         essence_type: "drug"
         score_direction: "lower_is_better"
         score: 163.233
-        edge_bindings: "{}"
+        edge_bindings:
+        - kg_id: "kg_id"
+          qg_id: "qg_id"
+        - kg_id: "kg_id"
+          qg_id: "qg_id"
         result_group: 1
         reasoner_id: "RTX"
-        node_bindings: "{}"
+        node_bindings:
+        - kg_id: "kg_id"
+          qg_id: "qg_id"
+        - kg_id: "kg_id"
+          qg_id: "qg_id"
         id: "https://rtx.ncats.io/devED/api/rtx/v1/result/234"
         row_data:
         - "ibuprofen"
@@ -992,105 +760,24 @@ definitions:
         description: "Identifier string of the reasoner that provided this result\
           \ (e.g., RTX, Robokop, Indigo, Integrator)"
       result_graph:
+        type: "object"
         description: "A graph that describes the thought pattern of this result (i.e.\
           \ answer to the query)"
-        $ref: "#/definitions/KnowledgeGraph"
+        properties: {}
       node_bindings:
-        type: "object"
-        description: "Lookup dict that maps QNode identifiers in the QueryGraph to\
-          \ Node identifiers in the KnowledgeGraph"
-        properties: {}
+        type: "array"
+        description: "List of QNode-KNode bindings."
+        items:
+          $ref: "#/definitions/NodeBinding"
       edge_bindings:
-        type: "object"
-        description: "Lookup dict that maps QEdge identifiers in the QueryGraph to\
-          \ Edge identifiers in the KnowledgeGraph"
-        properties: {}
+        type: "array"
+        description: "List of QEdge-KEdge bindings."
+        items:
+          $ref: "#/definitions/EdgeBinding"
     description: "One of potentially several results or answers for a query"
     example:
       result_type: "individual query answer"
-      result_graph:
-        nodes:
-        - symbol: "HP"
-          node_attributes:
-          - name: "Wikipedia article"
-            type: "article"
-            value: "7.23e-12"
-            url: "https://en.wikipedia.org/wiki/Malaria"
-          - name: "Wikipedia article"
-            type: "article"
-            value: "7.23e-12"
-            url: "https://en.wikipedia.org/wiki/Malaria"
-          name: "Haptoglobin"
-          description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
-          id: "OMIM:603903"
-          type:
-          - "protein"
-          uri: "https://www.uniprot.org/uniprot/P00738"
-        - symbol: "HP"
-          node_attributes:
-          - name: "Wikipedia article"
-            type: "article"
-            value: "7.23e-12"
-            url: "https://en.wikipedia.org/wiki/Malaria"
-          - name: "Wikipedia article"
-            type: "article"
-            value: "7.23e-12"
-            url: "https://en.wikipedia.org/wiki/Malaria"
-          name: "Haptoglobin"
-          description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
-          id: "OMIM:603903"
-          type:
-          - "protein"
-          uri: "https://www.uniprot.org/uniprot/P00738"
-        edges:
-        - negated: true
-          evidence_type: "ECO:0000220"
-          defined_datetime: "2018-11-03 15:34:23"
-          confidence: 0.99
-          weight: 0.99
-          qualifiers: "ECO:0000220"
-          target_id: "https://www.uniprot.org/uniprot/P00738"
-          type: "affects"
-          relation: "upregulates"
-          is_defined_by: "reasoner"
-          edge_attributes:
-          - name: "Cell type limitation"
-            type: "localization"
-            value: "MFC cells"
-            url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-          - name: "Cell type limitation"
-            type: "localization"
-            value: "MFC cells"
-            url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-          provided_by: "OMIM"
-          id: "553903"
-          source_id: "https://omim.org/entry/603903"
-          publications:
-          - "PMID:12345562"
-        - negated: true
-          evidence_type: "ECO:0000220"
-          defined_datetime: "2018-11-03 15:34:23"
-          confidence: 0.99
-          weight: 0.99
-          qualifiers: "ECO:0000220"
-          target_id: "https://www.uniprot.org/uniprot/P00738"
-          type: "affects"
-          relation: "upregulates"
-          is_defined_by: "reasoner"
-          edge_attributes:
-          - name: "Cell type limitation"
-            type: "localization"
-            value: "MFC cells"
-            url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-          - name: "Cell type limitation"
-            type: "localization"
-            value: "MFC cells"
-            url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-          provided_by: "OMIM"
-          id: "553903"
-          source_id: "https://omim.org/entry/603903"
-          publications:
-          - "PMID:12345562"
+      result_graph: "{}"
       essence: "ibuprofen"
       confidence: 0.9234
       description: "The genetic condition sickle cell anemia may provide protection\
@@ -1099,18 +786,59 @@ definitions:
       essence_type: "drug"
       score_direction: "lower_is_better"
       score: 163.233
-      edge_bindings: "{}"
+      edge_bindings:
+      - kg_id: "kg_id"
+        qg_id: "qg_id"
+      - kg_id: "kg_id"
+        qg_id: "qg_id"
       result_group: 1
       reasoner_id: "RTX"
-      node_bindings: "{}"
+      node_bindings:
+      - kg_id: "kg_id"
+        qg_id: "qg_id"
+      - kg_id: "kg_id"
+        qg_id: "qg_id"
       id: "https://rtx.ncats.io/devED/api/rtx/v1/result/234"
       row_data:
       - "ibuprofen"
       - "CHEMBL:CHEMBL521"
       result_group_similarity_score: 0.95
       score_name: "Jaccard distance"
+  NodeBinding:
+    type: "object"
+    required:
+    - "kg_id"
+    - "qg_id"
+    properties:
+      qg_id:
+        type: "string"
+        description: "Query-graph node id, i.e. the `node_id` of a QNode"
+      kg_id:
+        type: "string"
+        description: "One or more knowledge-graph node ids, i.e. the `id` of a KNode"
+    example:
+      kg_id: "kg_id"
+      qg_id: "qg_id"
+  EdgeBinding:
+    type: "object"
+    required:
+    - "kg_id"
+    - "qg_id"
+    properties:
+      qg_id:
+        type: "string"
+        description: "Query-graph edge id, i.e. the `edge_id` of a QEdge"
+      kg_id:
+        type: "string"
+        description: "One or more knowledge-graph edge ids, i.e. the `id` of a KEdge"
+    example:
+      kg_id: "kg_id"
+      qg_id: "qg_id"
   KnowledgeGraph:
     type: "object"
+    required:
+    - "edges"
+    - "nodes"
     properties:
       nodes:
         type: "array"
@@ -1125,91 +853,10 @@ definitions:
     description: "A thought graph associated with this result. This will commonly\
       \ be a linear path subgraph from one concept to another, but related items aside\
       \ of the path may be included."
-    example:
-      nodes:
-      - symbol: "HP"
-        node_attributes:
-        - name: "Wikipedia article"
-          type: "article"
-          value: "7.23e-12"
-          url: "https://en.wikipedia.org/wiki/Malaria"
-        - name: "Wikipedia article"
-          type: "article"
-          value: "7.23e-12"
-          url: "https://en.wikipedia.org/wiki/Malaria"
-        name: "Haptoglobin"
-        description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
-        id: "OMIM:603903"
-        type:
-        - "protein"
-        uri: "https://www.uniprot.org/uniprot/P00738"
-      - symbol: "HP"
-        node_attributes:
-        - name: "Wikipedia article"
-          type: "article"
-          value: "7.23e-12"
-          url: "https://en.wikipedia.org/wiki/Malaria"
-        - name: "Wikipedia article"
-          type: "article"
-          value: "7.23e-12"
-          url: "https://en.wikipedia.org/wiki/Malaria"
-        name: "Haptoglobin"
-        description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
-        id: "OMIM:603903"
-        type:
-        - "protein"
-        uri: "https://www.uniprot.org/uniprot/P00738"
-      edges:
-      - negated: true
-        evidence_type: "ECO:0000220"
-        defined_datetime: "2018-11-03 15:34:23"
-        confidence: 0.99
-        weight: 0.99
-        qualifiers: "ECO:0000220"
-        target_id: "https://www.uniprot.org/uniprot/P00738"
-        type: "affects"
-        relation: "upregulates"
-        is_defined_by: "reasoner"
-        edge_attributes:
-        - name: "Cell type limitation"
-          type: "localization"
-          value: "MFC cells"
-          url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-        - name: "Cell type limitation"
-          type: "localization"
-          value: "MFC cells"
-          url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-        provided_by: "OMIM"
-        id: "553903"
-        source_id: "https://omim.org/entry/603903"
-        publications:
-        - "PMID:12345562"
-      - negated: true
-        evidence_type: "ECO:0000220"
-        defined_datetime: "2018-11-03 15:34:23"
-        confidence: 0.99
-        weight: 0.99
-        qualifiers: "ECO:0000220"
-        target_id: "https://www.uniprot.org/uniprot/P00738"
-        type: "affects"
-        relation: "upregulates"
-        is_defined_by: "reasoner"
-        edge_attributes:
-        - name: "Cell type limitation"
-          type: "localization"
-          value: "MFC cells"
-          url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-        - name: "Cell type limitation"
-          type: "localization"
-          value: "MFC cells"
-          url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-        provided_by: "OMIM"
-        id: "553903"
-        source_id: "https://omim.org/entry/603903"
-        publications:
-        - "PMID:12345562"
   RemoteKnowledgeGraph:
     type: "object"
+    required:
+    - "url"
     properties:
       url:
         type: "string"
@@ -1221,6 +868,9 @@ definitions:
         description: "Credentials needed for programmatic access to the remote knowledge\
           \ graph"
         properties: {}
+      protocol:
+        type: "string"
+        default: "neo4j"
     description: "A thought graph associated with this result that is not repeated\
       \ here, but stored elsewhere in a way that can be remotely accessed by the reader\
       \ of this Message"
@@ -1242,6 +892,9 @@ definitions:
       \ graph"
   QueryGraph:
     type: "object"
+    required:
+    - "edges"
+    - "nodes"
     properties:
       nodes:
         type: "array"
@@ -1258,7 +911,7 @@ definitions:
   QNode:
     type: "object"
     properties:
-      node_id:
+      id:
         type: "string"
         example: "n00"
         description: "QueryGraph internal identifier for this QNode. Recommended form:\
@@ -1268,22 +921,22 @@ definitions:
         example: "OMIM:603903"
         description: "CURIE identifier for this node"
       type:
-        type: "string"
-        example: "disease"
-        description: "Entity type of this node (e.g., protein, disease, etc.)"
+        $ref: "#/definitions/BiolinkEntity"
     description: "A node in the QueryGraph"
   QEdge:
     type: "object"
+    required:
+    - "id"
+    - "source_id"
+    - "target_id"
     properties:
-      edge_id:
+      id:
         type: "string"
         example: "e00"
         description: "QueryGraph internal identifier for this QEdge. Recommended form:\
           \ e00, e01, e02, etc."
       type:
-        type: "string"
-        example: "affects"
-        description: "Higher-level relationship type of this edge"
+        $ref: "#/definitions/BiolinkRelation"
       relation:
         type: "string"
         example: "upregulates"
@@ -1304,6 +957,8 @@ definitions:
     description: "An edge in the QueryGraph"
   Node:
     type: "object"
+    required:
+    - "id"
     properties:
       id:
         type: "string"
@@ -1338,23 +993,6 @@ definitions:
         items:
           $ref: "#/definitions/NodeAttribute"
     description: "A node in the thought subgraph"
-    example:
-      symbol: "HP"
-      node_attributes:
-      - name: "Wikipedia article"
-        type: "article"
-        value: "7.23e-12"
-        url: "https://en.wikipedia.org/wiki/Malaria"
-      - name: "Wikipedia article"
-        type: "article"
-        value: "7.23e-12"
-        url: "https://en.wikipedia.org/wiki/Malaria"
-      name: "Haptoglobin"
-      description: "Haptoglobin captures, and combines with free plasma hemoglobin..."
-      id: "OMIM:603903"
-      type:
-      - "protein"
-      uri: "https://www.uniprot.org/uniprot/P00738"
   NodeAttribute:
     type: "object"
     properties:
@@ -1375,13 +1013,12 @@ definitions:
         example: "https://en.wikipedia.org/wiki/Malaria"
         description: "A URL corresponding to this attribute"
     description: "A generic attribute for a node"
-    example:
-      name: "Wikipedia article"
-      type: "article"
-      value: "7.23e-12"
-      url: "https://en.wikipedia.org/wiki/Malaria"
   Edge:
     type: "object"
+    required:
+    - "id"
+    - "source_id"
+    - "target_id"
     properties:
       id:
         type: "string"
@@ -1389,9 +1026,7 @@ definitions:
         description: "Local identifier for this node which is unique within this KnowledgeGraph,\
           \ and perhaps within the source reasoner's knowledge graph"
       type:
-        type: "string"
-        example: "affects"
-        description: "Higher-level relationship type of this edge"
+        $ref: "#/definitions/BiolinkRelation"
       relation:
         type: "string"
         example: "upregulates"
@@ -1457,31 +1092,6 @@ definitions:
         items:
           $ref: "#/definitions/EdgeAttribute"
     description: "An edge in the thought subgraph linking two nodes"
-    example:
-      negated: true
-      evidence_type: "ECO:0000220"
-      defined_datetime: "2018-11-03 15:34:23"
-      confidence: 0.99
-      weight: 0.99
-      qualifiers: "ECO:0000220"
-      target_id: "https://www.uniprot.org/uniprot/P00738"
-      type: "affects"
-      relation: "upregulates"
-      is_defined_by: "reasoner"
-      edge_attributes:
-      - name: "Cell type limitation"
-        type: "localization"
-        value: "MFC cells"
-        url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-      - name: "Cell type limitation"
-        type: "localization"
-        value: "MFC cells"
-        url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
-      provided_by: "OMIM"
-      id: "553903"
-      source_id: "https://omim.org/entry/603903"
-      publications:
-      - "PMID:12345562"
   EdgeAttribute:
     type: "object"
     properties:
@@ -1503,11 +1113,6 @@ definitions:
         example: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
         description: "A URL corresponding to this attribute"
     description: "A generic additional attribute for an edge"
-    example:
-      name: "Cell type limitation"
-      type: "localization"
-      value: "MFC cells"
-      url: "https://www.ncbi.nlm.nih.gov/pubmed/29309293"
   Feedback:
     type: "object"
     properties:
@@ -1607,6 +1212,20 @@ definitions:
         comment: "This is a great result because..."
         id: "https://rtx.ncats.io/devED/api/rtx/v1/result/234/feedback/56"
         commenter_full_name: "John Smith"
+  BiolinkEntity:
+    type: "string"
+    externalDocs:
+      description: "Biolink model entities"
+      url: "https://biolink.github.io/biolink-model/docs/NamedThing.html"
+    description: "A subclass of named_thing (snake_case)"
+    example: "disease"
+  BiolinkRelation:
+    type: "string"
+    externalDocs:
+      description: "Biolink model relations"
+      url: "https://biolink.github.io/biolink-model/docs/related_to.html"
+    description: "A relation, i.e. child of related_to (snake_case)"
+    example: "affects"
   Message_terms:
     properties:
       disease:
