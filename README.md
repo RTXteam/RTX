@@ -59,7 +59,7 @@ for more information.
 | Name           | Role                                        | Email                             | GitHub username                               | Areas of relevant expertise      |
 | -------------- | ------------------------------------------- | --------------------------------- | --------------------------------------------- | -------------------------------- |
 | Stephen Ramsey | Project PI, Oregon State University         | `stephen.ramsey@oregonstate.edu`  | [saramsey](https://github.com/saramsey)       | compbio, systems biology         |
-| David Koslicki | Project Co-PI, Penn State University        | `dkoslicki@math.oregonstate.edu`  | [dkoslicki](https://github.com/dkoslicki)     | compbio, graph algorithms        |
+| David Koslicki | Project Co-PI, Penn State University        | `dmk333@psu.edu`                  | [dkoslicki](https://github.com/dkoslicki)     | compbio, graph algorithms        |
 | Eric Deutsch   | PI, subaward, Institute for Systems Biology | `eric.deutsch@systemsbiology.org` | [edeutsch](https://github.com/edeutsch)       | bioinformatics, data management  | 
 
 ## RTX other key personnel
