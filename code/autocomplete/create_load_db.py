@@ -54,8 +54,8 @@ def insertNode(curie,name,type):
     if tablename not in tables or tables[tablename] == "dropped":
         print("INFO: Creating table %s" % tablename)
         c.execute("CREATE TABLE %s(curie TEXT, name TEXT, type TEXT, rank INTEGER)" % (tablename))
-        c.execute("CREATE UNIQUE INDEX idx_%s_name ON %s(name)" % (tablename, tablename))
-        c.execute("CREATE UNIQUE INDEX idx_%s_curie ON %s(curie)" % (tablename, tablename))
+        c.execute("CREATE INDEX idx_%s_name ON %s(name)" % (tablename, tablename))
+        c.execute("CREATE INDEX idx_%s_curie ON %s(curie)" % (tablename, tablename))
         tables[tablename] = "created"
     c.execute("INSERT OR IGNORE INTO %s(curie,name,type,rank) VALUES(?,?,?,?)" % (tablename), (curie,name,type,rank,))
 
