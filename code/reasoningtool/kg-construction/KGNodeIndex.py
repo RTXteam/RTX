@@ -16,6 +16,9 @@ from sqlalchemy.orm import sessionmaker
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 from RTXConfiguration import RTXConfiguration
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/..")
+import ReasoningUtilities as RU
+
 Base = declarative_base()
 
 #### Testing and debugging flags
@@ -332,7 +335,14 @@ class KGNodeIndex:
       best_name = "?"
       if names is not None:
         best_name = names[0]
-      curies_and_types_and_names.append( { "curie": match.curie, "type": match.type, "name": best_name } )
+      entity = { "curie": match.curie, "type": match.type, "name": best_name } 
+
+      #### Also try to fetch the description from the knowledge graph
+      properties = RU.get_node_properties(match.curie)
+      if 'description' in properties:
+          entity['description'] = properties['description']
+
+      curies_and_types_and_names.append( entity )
     return(curies_and_types_and_names)
 
 
