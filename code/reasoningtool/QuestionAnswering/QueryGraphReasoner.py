@@ -73,9 +73,13 @@ class QueryGraphReasoner:
         query_graph, sort_flags, res_limit, ascending_flag = self.preprocess_query_graph(query_graph)
 
         #### Interpret the query_graph object to create a cypher query and encode the result in a response
-        query_gen = RU.get_cypher_from_question_graph({'question_graph':query_graph})
-        answer_graph_cypher = query_gen.cypher_query_answer_map()
-        knowledge_graph_cypher = query_gen.cypher_query_knowledge_graph()
+        try:
+            query_gen = RU.get_cypher_from_question_graph({'question_graph':query_graph})
+            answer_graph_cypher = query_gen.cypher_query_answer_map()
+            knowledge_graph_cypher = query_gen.cypher_query_knowledge_graph()
+        except Exception as error:
+            response.add_error_message("CypherGenerationError", format(error))
+            return(response.message)
 
         #### The Robokop code renames stuff in the query_graph for strange reasons. Rename them back.
         #### It would be better to not make the changes in the first place. FIXME
@@ -87,17 +91,27 @@ class QueryGraphReasoner:
         #    edge.pop("id", None)
  
         #### Execute the cypher to obtain results[]. Return an error if there are no results, or otherwise extract the list
-        with RU.driver.session() as session:
-            result = session.run(answer_graph_cypher)
-        answer_graph_list = result.data()
+        try:
+            with RU.driver.session() as session:
+                result = session.run(answer_graph_cypher)
+            answer_graph_list = result.data()
+        except Exception as error:
+            response.add_error_message("QueryGraphError", format(error))
+            return(response.message)
+
         if len(answer_graph_list) == 0:
             response.add_error_message("NoPathsFound", "No paths satisfying this query graph were found")
             return(response.message)
 
         #### Execute the knowledge_graph cypher. Return an error if there are no results, or otherwise extract the dict
-        with RU.driver.session() as session:
-            result = session.run(knowledge_graph_cypher)
-        result_data = result.data()
+        try:
+            with RU.driver.session() as session:
+                result = session.run(knowledge_graph_cypher)
+            result_data = result.data()
+        except Exception as error:
+            response.add_error_message("QueryGraphError", format(error))
+            return(response.message)
+
         if len(result_data) == 0:
             response.add_error_message("NoPathsFound", "No paths satisfying this query graph were found")
             return(response.message)
