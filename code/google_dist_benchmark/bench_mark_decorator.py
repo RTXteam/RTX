@@ -28,19 +28,15 @@ def bench_harness(iterations):
 				to scale linearly with number
 				of iterations
 			"""
-			query = 'match p=(s:disease{id:"DOID:12365"})-[*1..2]-() return p limit %i' %(i)
-			res = cypher.run(query, conn=connection, config=defaults)
-			graph_weighted_dist = get_graph(res, directed=True)
+			graph_weighted_dist = run_cipher(i)
 			# bench mark out function and calculate our runtime
 			ts = time.time()
 			function(None,graph=graph_weighted_dist, *args, **kwargs)
 			te = time.time()
 			run_time = te-ts
 			# get number of edges and nodes
-			edges_for_graph = graph_weighted_dist.edges()
-			nodes_for_graph = nodes(graph_weighted_dist)
-			num_edges = len(list(edges_for_graph))
-			num_nodes = len(nodes_for_graph)
+			edges_for_graph, nodes_for_graph = get_edges_nodes(graph_weighted_dist)
+			num_nodes,num_edges - get_num_edges_nodes(nodes_in_graph, edges_in_graph)
 			# write the result into a text file
 			edge_runtime_data = "%i\t%f\n" % (num_edges, float(run_time))
 			f.write(edge_runtime_data)
@@ -48,4 +44,12 @@ def bench_harness(iterations):
 			print(output_msg)
 		f.close()
 		return function
+	def run_cipher(i):
+		query = 'match p=(s:disease{id:"DOID:12365"})-[*1..2]-() return p limit %i' %(i)
+		res = cypher.run(query, conn=connection, config=defaults)
+		return get_graph(res, directed=True)
+	def get_edges_nodes(graph):
+		return graph.edges(), nodes(graph)
+	def get_num_edges_nodes(nodes_in_graph, edges_in_graph):
+		return len(list(nodes_in_graph)), len(list(edges_in_graph))
 	return bench_start
