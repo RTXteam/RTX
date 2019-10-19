@@ -21,7 +21,7 @@ def bench_harness(iterations):
 	def bench_start(function, *args, **kwargs):
 		file_name = './benchmark_res/benchmark_res.txt'
 		f = open(file_name, 'a')
-		for i in range(240,iterations+1, 100):
+		for i in range(10, iterations+1, 100):
 			run_time_res = []
 			"""
 				set limit in the neo4j parameter
@@ -36,7 +36,7 @@ def bench_harness(iterations):
 			run_time = te-ts
 			# get number of edges and nodes
 			edges_for_graph, nodes_for_graph = get_edges_nodes(graph_weighted_dist)
-			num_nodes,num_edges - get_num_edges_nodes(nodes_in_graph, edges_in_graph)
+			num_nodes,num_edges = get_num_edges_nodes(nodes_for_graph, edges_for_graph)
 			# write the result into a text file
 			edge_runtime_data = "%i\t%f\n" % (num_edges, float(run_time))
 			f.write(edge_runtime_data)
