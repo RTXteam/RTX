@@ -31,8 +31,10 @@ def bench_harness(iterations):
 			graph_weighted_dist = run_cipher(i)
 			# bench mark out function and calculate our runtime
 			ts = time.time()
+			print("Testing google weighted distance function")
 			function(None,graph=graph_weighted_dist, *args, **kwargs)
 			te = time.time()
+			print("Testing Complete")
 			run_time = te-ts
 			# get number of edges and nodes
 			edges_for_graph, nodes_for_graph = get_edges_nodes(graph_weighted_dist)
