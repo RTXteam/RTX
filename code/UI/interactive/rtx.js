@@ -1,5 +1,5 @@
 var input_qg = { "edges": [], "nodes": [] };
-var qgid = 0;
+var qgids = [];
 var cyobj = [];
 var cytodata = [];
 var fb_explvls = [];
@@ -434,11 +434,12 @@ function process_graph(gne,gid) {
 
     if (gid == 999) {
 	for (var gnode in gne.nodes) {
-	    qgid++;
+	    qgids.push(gne.nodes[gnode].id);
 
 	    var tmpdata = { "id"     : gne.nodes[gnode].id,
 			    "is_set" : gne.nodes[gnode].is_set,
 			    "name"   : gne.nodes[gnode].name,
+			    "desc"   : gne.nodes[gnode].description,
 			    "curie"  : gne.nodes[gnode].curie,
 			    "type"   : gne.nodes[gnode].type
 			  };
@@ -447,7 +448,7 @@ function process_graph(gne,gid) {
 	}
 
 	for (var gedge in gne.edges) {
-	    qgid++;
+	    qgids.push(gne.edges[gedge].id);
 
 	    var tmpdata = { "id"       : gne.edges[gedge].id,
 			    "negated"  : null,
@@ -830,7 +831,7 @@ function display_query_graph_items() {
 
     input_qg.nodes.forEach(function(result, index) {
 	nitems++;
-        kghtml += "<tr class='hoverable'><td>"+result.id+"</td><td>"+(result.name==null?"-":result.name)+"</td><td>"+(result.curie==null?"<i>(any)</i>":result.curie)+"</td><td>"+result.type+"</td><td><a href='javascript:remove_node_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
+        kghtml += "<tr class='hoverable'><td>"+result.id+"</td><td title='"+result.desc+"'>"+(result.name==null?"-":result.name)+"</td><td>"+(result.curie==null?"<i>(any)</i>":result.curie)+"</td><td>"+result.type+"</td><td><a href='javascript:remove_node_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
     });
 
     input_qg.edges.forEach(function(result, index) {
@@ -857,7 +858,7 @@ function add_edge_to_query_graph() {
     }
 
     document.getElementById("statusdiv").innerHTML = "<p>Added an edge of type <i>"+et+"</i></p>";
-    qgid++;
+    var qgid = get_qg_id();
 
     if (et=='NONSPECIFIC') { et = null; }
 
@@ -964,7 +965,7 @@ function add_nodetype_to_query_graph(nodetype) {
     document.getElementById("allnodetypes").blur();
 
     document.getElementById("statusdiv").innerHTML = "<p>Added a node of type <i>"+nodetype+"</i></p>";
-    qgid++;
+    var qgid = get_qg_id();
 
     cyobj[999].add( {
         "data" : { "id"   : qgid,
@@ -979,6 +980,7 @@ function add_nodetype_to_query_graph(nodetype) {
     var tmpdata = { "id"     : qgid,
 		    "is_set" : null,
 		    "name"   : null,
+		    "desc"   : "Generic " + nodetype,
 		    "curie"  : null,
 		    "type"   : nodetype
 		  };
@@ -1015,7 +1017,7 @@ function add_node_to_query_graph() {
 	}
 	sesame('openmax',statusdiv);
 	for (var nn = 0; nn < things.num; nn++) {
-	    qgid++;
+	    var qgid = get_qg_id();
 
 	    cyobj[999].add( {
 		"data" : { "id"   : qgid,
@@ -1028,6 +1030,7 @@ function add_node_to_query_graph() {
 	    var tmpdata = { "id"     : qgid,
 			    "is_set" : null,
 			    "name"   : thing,
+			    "desc"   : things[nn].desc,
 			    "curie"  : things[nn].curie,
 			    "type"   : things[nn].type
 			  };
@@ -1059,6 +1062,11 @@ function remove_edge_from_query_graph(edgeid) {
 	    input_qg.edges.splice(index, 1);
 	}
     });
+
+    var idx = qgids.indexOf(edgeid);
+    if (idx > -1)
+	qgids.splice(idx, 1);
+
     display_query_graph_items();
 }
 
@@ -1071,6 +1079,10 @@ function remove_node_from_query_graph(nodeid) {
 	    input_qg.nodes.splice(index, 1);
 	}
     });
+
+    var idx = qgids.indexOf(nodeid);
+    if (idx > -1)
+	qgids.splice(idx, 1);
 
     // remove items starting from end of array...
     for (var k = input_qg.edges.length - 1; k > -1; k--){
@@ -1092,12 +1104,24 @@ function clear_qg(m) {
     update_kg_edge_input();
     get_possible_edges();
     display_query_graph_items();
-    qgid = 0;
+    qgids = [];
     if (m==1){
 	document.getElementById("statusdiv").innerHTML = "<p>Query Graph has been cleared.</p>";
     }
     document.getElementById('qg_form').style.visibility = 'visible';
     document.getElementById('qg_form').style.maxHeight = "100%";
+}
+
+function get_qg_id() {
+    var new_id = 0;
+    do {
+	if (!qgids.includes("qg"+new_id))
+	    break;
+	new_id++;
+    } while (new_id < 100);
+
+    qgids.push("qg"+new_id);
+    return "qg"+new_id;
 }
 
 
@@ -1430,7 +1454,7 @@ function display_list(listId) {
 	document.getElementById("menunumlistitems"+listId).classList.add("numold");
     }
 
-    listhtml = "Items in this list can be passed as input to queries that support list input, by specifying <b>["+listId+"]</b> as a query parameter.<br><br>" + listhtml + "<hr>Enter new list item or items (space and/or comma-separated):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' onkeydown='enter_item(this, \""+listId+"\");' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
+    listhtml = "Items in this list can be passed as input to queries that support list input, by specifying <b>["+listId+"]</b> as a query parameter.<br><br>" + listhtml + "<hr>Enter new list item or items (space and/or comma-separated; use &quot;double quotes&quot; for multi-word items):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' onkeydown='enter_item(this, \""+listId+"\");' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
 
 //    listhtml += "<hr>Enter new list item or items (space and/or comma-separated):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
 
@@ -1477,9 +1501,13 @@ function enter_item(ele, listId) {
 }
 
 function add_new_to_list(listId) {
-    var itemarr = document.getElementById("newlistitem"+listId).value.split(/[\t ,]/);
+    //var itemarr = document.getElementById("newlistitem"+listId).value.split(/[\t ,]/);
+    var itemarr = document.getElementById("newlistitem"+listId).value.match(/\w+|"[^"]+"/g);
+
     document.getElementById("newlistitem"+listId).value = '';
     for (var item in itemarr) {
+	itemarr[item] = itemarr[item].replace(/['"]+/g,''); // remove all manner of quotes
+        //console.log("=================== item:"+itemarr[item]);
 	if (itemarr[item]) {
 	    listItems[listId][itemarr[item]] = 1;
 	}
@@ -1561,6 +1589,7 @@ function check_entity(term) {
 		ent[i] = [];
 		ent[i].curie = xob[i].curie;
 		ent[i].type  = xob[i].type;
+		ent[i].desc  = xob[i].description.replace(/['"]/g, '&apos;');
                 entities[xob[i].curie] = xob[i].name + "::" + xob[i].type;
 	    }
 	}
