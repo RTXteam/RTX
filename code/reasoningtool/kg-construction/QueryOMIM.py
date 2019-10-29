@@ -21,7 +21,7 @@ import simplecrypt
 
 
 class QueryOMIM:
-    ENCRYPTED_BYTES = b'sc\x00\x02\x86~]\xa9,\x15\xc9\xd4\xed\x8d\x86{e\xee\xec\x06\x0b7|\xd1\x03\xab\xaeSi\xb4:\xcf\x06k)\x8b3T-\xf2Uj\xa2s!J\xbc\n\x8c\xc7gZd\x1f"\x07]\xde9\xea\x06@\xfb]^Ac\x08_>\x823\x9akD\x0c!\xa1\x0e\x0e,\x852\x80G\x11\xc6\xfb\xd4%'
+    ENCRYPTED_BYTES = b'sc\x00\x02\xcb@\xces\xda\xd6\xe4\xb4\xba\xd7&=qF\xfe(TB\xb8ax\xdd\xf3\xe4I\xc1\x94ivg\xdbY\x86\xbc\xba\x08\xd6\xee\xc9U\xe1\xf4X*\x8c\x86B.7\xa0qN\xd3\x1c\xe9\xd1\x98\xe6 \xd0\x9f\xb6t\xf9E\n\xaf\xac\x00\xad\xa3\xd5;\xcc]`}\xc6-\xab\x00\x11\xce\x12x\xfc'
     API_BASE_URL = 'https://api.omim.org/api'
     TIMEOUT_SEC = 120
 
@@ -121,7 +121,7 @@ class QueryOMIM:
 
 if __name__ == '__main__':
 
-    qo = QueryOMIM('precisionmedicine')
+    qo = QueryOMIM('1337')
     # print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:145270'))
     # print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:601351'))
     # print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:248260'))
