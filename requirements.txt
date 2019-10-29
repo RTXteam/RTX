@@ -22,5 +22,5 @@ scikit-learn
 requests
 CacheControl
 lockfile
-PyCryptodome
+simple-crypt
 
