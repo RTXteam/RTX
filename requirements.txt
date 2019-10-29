@@ -22,3 +22,4 @@ scikit-learn
 requests
 CacheControl
 lockfile
+PyCrypto
