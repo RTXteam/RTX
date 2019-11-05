@@ -35,7 +35,7 @@ TEMP_FILE_PREFIX = 'kg2'
 FIRST_CAP_RE = re.compile('(.)([A-Z][a-z]+)')
 ALL_CAP_RE = re.compile('([a-z0-9])([A-Z])')
 BIOLINK_CATEGORY_BASE_IRI = 'http://w3id.org/biolink/vocab/'
-BIOLINK_CURIE_PREFIX = 'BioLink'
+BIOLINK_CURIE_PREFIX = 'Biolink'
 IRI_OWL_SAME_AS = 'http://www.w3.org/2002/07/owl#sameAs'
 CURIE_OWL_SAME_AS = 'owl:sameAs'
 NCBI_TAXON_ID_HUMAN = 9606
@@ -209,7 +209,10 @@ def download_file_if_not_exist_locally(url: str, local_file_name: str):
 
 
 def convert_snake_case_to_camel_case(name: str):
-    return name.title().replace('_', '')
+    name = name.title().replace('_', '')
+    if len(name) > 0:
+        name = name[0].lower() + name[1:]
+    return name
 
 
 def convert_camel_case_to_snake_case(name: str):
@@ -247,6 +250,13 @@ def make_node(id: str,
             'deprecated': False,
             'replaced by': None,
             'provided by': provided_by}
+
+
+def make_edge_key(edge_dict: dict):
+    return edge_dict['subject'] + '---' + \
+           edge_dict['object'] + '---' + \
+           edge_dict['relation curie'] + '---' + \
+           edge_dict['provided by']
 
 
 def make_edge(subject_id: str,

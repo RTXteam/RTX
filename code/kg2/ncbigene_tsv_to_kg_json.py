@@ -17,7 +17,7 @@ import argparse
 import kg2_util
 
 
-NCBI_BASE_IRI = 'http://www.ncbi.nlm.nih.gov/gene/'
+NCBI_BASE_IRI = 'https://www.ncbi.nlm.nih.gov/gene'
 
 
 def get_args():
@@ -133,7 +133,7 @@ def make_kg2_graph(input_file_name: str, test_mode: bool = False):
                                                     xref_curie,
                                                     kg2_util.IRI_OWL_SAME_AS,
                                                     kg2_util.CURIE_OWL_SAME_AS,
-                                                    'is_equivalent_to',
+                                                    'equivalent_to',
                                                     NCBI_BASE_IRI,
                                                     modify_date))
     return {'nodes': nodes,

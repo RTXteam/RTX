@@ -21,7 +21,7 @@ from cache_control_helper import CacheControlHelper
 
 
 class QueryOMIMExtended:
-    API_KEY = '1YCxuN7PRHyrpuZnO7F5gQ'
+    API_KEY = ''
     API_BASE_URL = 'https://api.omim.org/api'
     TIMEOUT_SEC = 120
  

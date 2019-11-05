@@ -24,3 +24,5 @@ pymysql
 requests
 CacheControl
 lockfile
+simple-crypt
+

@@ -9,7 +9,7 @@ if [[ $# != 0 || "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
     exit 2
 fi
 
-# Usage: setup-kg2.sh
+# Usage: setup-kg2-build.sh
 
 {
 echo "================= starting setup-kg2.sh ================="
@@ -20,7 +20,6 @@ CONFIG_DIR=`dirname "$0"`
 
 MYSQL_USER=ubuntu
 MYSQL_PASSWORD=1337
-CURL_GET="curl -s -L"
 
 source ${CONFIG_DIR}/master-config.shinc
 
@@ -65,7 +64,7 @@ virtualenv ${VENV_DIR}
 ## Install python3 packages that we will need (Note: we are not using pymongo
 ## directly, but installing it silences a runtime warning from ontobio):
 ## (maybe we should eventually move this to a requirements.txt file?)
-${VENV_DIR}/bin/pip3 install -r ${CODE_DIR}/requirements.txt
+${VENV_DIR}/bin/pip3 install -r ${CODE_DIR}/requirements-kg2-build.txt
 
 mkdir -p ${BUILD_DIR}
 
@@ -81,7 +80,7 @@ chmod +x ${BUILD_DIR}/robot
 ${CURL_GET} ${BUILD_DIR} https://github.com/RTXteam/owltools/releases/download/v0.3.0/owltools > ${BUILD_DIR}/owltools
 chmod +x ${BUILD_DIR}/owltools
 
-} >~/setup-kg2.log 2>&1
+} >~/setup-kg2-build.log 2>&1
 
 ## setup AWS CLI
 if ! aws s3 cp --no-progress --region ${S3_REGION} s3://${S3_BUCKET}/test /tmp/; then
@@ -118,4 +117,4 @@ mysql --defaults-extra-file=${MYSQL_CONF} \
 
 date
 echo "================= script finished ================="
-} >>~/setup-kg2.log 2>&1
+} >>~/setup-kg2-build.log 2>&1

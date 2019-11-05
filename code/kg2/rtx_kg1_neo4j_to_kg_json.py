@@ -20,6 +20,7 @@ __status__ = 'Prototype'
 import argparse
 import json
 import kg2_util
+import prefixcommons
 import requests
 import sys
 
@@ -27,7 +28,7 @@ import sys
 TIMEOUT_SEC = 600
 
 KG1_PROVIDED_BY_TO_KG2_IRIS = {
-    'gene_ontology': "http://purl.obolibrary.org/obo/GO",
+    'gene_ontology': "http://purl.obolibrary.org/obo/go-plus.owl",
     'PC2': 'http://pathwaycommons.org/pc11',
     'BioLink': 'http://w3id.org/biolink/vocab',
     'KEGG;UniProtKB': 'https://www.uniprot.org',
@@ -39,20 +40,20 @@ KG1_PROVIDED_BY_TO_KG2_IRIS = {
     'ChEMBL': 'https://www.ebi.ac.uk/chembl',
     'Pharos': 'https://pharos.nih.gov',
     'Monarch_SciGraph': 'https://pharos.nih.gov',
-    'DiseaseOntology': 'http://purl.bioontology.org/ontology/DOID',
-    'DOID': 'http://purl.bioontology.org/ontology/DOID',
+    'DiseaseOntology': 'http://purl.obolibrary.org/obo/doid.owl',
+    'DOID': 'http://purl.obolibrary.org/obo/doid.owl',
     'miRGate': 'http://http://mirgate.bioinfo.cnio.es',
     'SIDER': 'http://sideeffects.embl.de',
     'MyChem.info': 'http://mychem.info',
-    'GO': 'http://purl.bioontology.org/ontology/GO',
+    'GO': 'http://purl.obolibrary.org/ontology/go-plus.owl',
     'REACT': 'https://identifiers.org/reactome',
-    'HP': 'http://purl.bioontology.org/ontology/HP',
-    'MONDO': 'http://purl.bioontology.org/ontology/MONDO',
-    'UBERON': 'http://purl.bioontology.org/ontology/UBERON',
-    'CL': 'http://purl.bioontology.org/ontology/CL',
+    'HP': 'http://purl.obolibrary.org/ontology/hp.obo',
+    'MONDO': 'http://purl.obolibrary.org/ontology/mondo.owl',
+    'UBERON': 'http://purl.obolibrary.org/ontology/uberon-ext.owl',
+    'CL': 'http://purl.obolibrary.org/ontology/cl.owl',
     'KEGG': 'http://genome.jp/kegg',
     'CHEMBL.COMPOUND': 'https://www.ebi.ac.uk/chembl',
-    'NCBIGene': 'http://www.ncbi.nlm.nih.gov/gene'
+    'NCBIGene': 'https://www.ncbi.nlm.nih.gov/gene'
     }
 
 
@@ -147,6 +148,7 @@ if __name__ == '__main__':
         node_dict['synonym'] = synonym_list
         node_dict['publications'] = []
         node_dict['update date'] = None
+        node_dict['creation date'] = None
         node_dict['deprecated'] = False
         curie_prefix = id.split(':')[0]
         provided_by = KG1_PROVIDED_BY_TO_KG2_IRIS.get(curie_prefix, None)
@@ -175,6 +177,9 @@ if __name__ == '__main__':
         edge_dict['edge label'] = predicate_label
         del edge_dict['relation']
         [relation, relation_curie] = kg2_util.biolink_predicate_label_to_iri_and_curie(predicate_label)
+        if relation_curie == 'BioLink:subclass_of':
+            relation_curie = 'rdfs:subClassOf'
+            relation = prefixcommons.expand_uri(relation_curie)
         edge_dict['relation'] = relation
         edge_dict['relation curie'] = relation_curie
         edge_dict['negated'] = False

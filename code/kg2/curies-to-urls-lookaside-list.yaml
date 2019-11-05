@@ -21,7 +21,7 @@
 -
   NCIT: http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#
 -
-  MGI: http://www.informatics.jax.org/marker/
+  MGI: "http://www.informatics.jax.org/marker/MGI:"
 -
   SGD: http://www.yeastgenome.org/cgi-bin/locus.fpl?dbid=
 -
@@ -47,7 +47,9 @@
 -
   skos: http://www.w3.org/2008/05/skos#
 -
-  UMLS: https://identifiers.org/umls/
+  CUI: http://purl.obolibrary.org/obo/UMLS_
+-
+  CUI: http://linkedlifedata.com/resource/umls/id/
 -
   BFO: http://www.ifomis.org/bfo/1.1/snap#
 -
@@ -93,4 +95,19 @@
 -
   UBERON: http://purl.obolibrary.org/obo/uberon/insect-anatomy#
 -
-  BioLink: http://w3id.org/biolink/vocab/
+  Biolink: http://w3id.org/biolink/vocab/
+-
+  MESH: https://identifiers.org/umls/MSH/
+-
+  NCIT: https://identifiers.org/umls/NCI/
+-
+  UMLS: https://identifiers.org/umls/
+-
+  RTX: http://rtx.ai/identifiers#
+-
+  REPODB: http://apps.chiragjpgroup.org/repoDB#
+-
+  clinicaltrials: http://clinicaltrials.gov/ct2/show/
+-
+  oboInOwl: http://www.geneontology.org/formats/oboInOwl#
+

@@ -61,13 +61,19 @@ OUTPUT_FILE_ORPHAN_EDGES=${BUILD_DIR}/kg2-orphans${TEST_SUFFIX}-edges.json
 FINAL_OUTPUT_FILE_BASE=kg2${TEST_SUFFIX}.json
 FINAL_OUTPUT_FILE_FULL=${BUILD_DIR}/${FINAL_OUTPUT_FILE_BASE}
 
+SIMPLIFIED_OUTPUT_FILE_BASE=kg2-simplified${TEST_SUFFIX}.json
+SIMPLIFIED_OUTPUT_FILE_FULL=${BUILD_DIR}/${SIMPLIFIED_OUTPUT_FILE_BASE}
+
 OUTPUT_NODES_FILE_BASE=kg2${TEST_SUFFIX}-nodes.json
 OUTPUT_NODES_FILE_FULL=${BUILD_DIR}/${OUTPUT_NODES_FILE_BASE}
 
 REPORT_FILE_BASE=kg2-report${TEST_SUFFIX}.json
 REPORT_FILE_FULL=${BUILD_DIR}/${REPORT_FILE_BASE}
 
-ENSEMBL_SOURCE_JSON_FILE=${BUILD_DIR}/ensembl/homo_sapiens.json
+SIMPLIFIED_REPORT_FILE_BASE=kg2-simplified-report${TEST_SUFFIX}.json
+SIMPLIFIED_REPORT_FILE_FULL=${BUILD_DIR}/${SIMPLIFIED_REPORT_FILE_BASE}
+
+ENSEMBL_SOURCE_JSON_FILE=${BUILD_DIR}/ensembl/ensembl_genes_homo_sapiens.json
 ENSEMBL_OUTPUT_FILE=${BUILD_DIR}/kg2-ensembl${TEST_SUFFIX}.json
 
 CHEMBL_OUTPUT_FILE=${BUILD_DIR}/kg2-chembl${TEST_SUFFIX}.json
@@ -87,6 +93,11 @@ DGIDB_OUTPUT_FILE=${BUILD_DIR}/kg2-dgidb${TEST_SUFFIX}.json
 
 KG1_OUTPUT_FILE=${BUILD_DIR}/kg2-rtx-kg1${TEST_SUFFIX}.json
 RTX_CONFIG_FILE=RTXConfiguration-config.json
+
+KG2_TSV_DIR=${BUILD_DIR}/TSV
+KG2_TSV_TARBALL=${BUILD_DIR}/kg2-tsv${TEST_SUFFIX}.tar.gz
+
+PREDICATE_MAPPING_FILE=${CODE_DIR}/predicate-remap.yaml
 
 cd ${BUILD_DIR}
 
@@ -128,10 +139,10 @@ ${VENV_DIR}/bin/python3 -u ${CODE_DIR}/uniprotkb_dat_to_json.py \
 	   --inputFile ${UNIPROTKB_DAT_FILE} \
 	   --outputFile ${UNIPROTKB_OUTPUT_FILE} 
 
-echo "running semmeddb_tuple_list_json_to_edges_json.py"
+echo "running semmeddb_tuple_list_json_to_kg_json.py"
 
 ## Build SemMedDB KG2 edges file as JSON:
-${VENV_DIR}/bin/python3 -u ${CODE_DIR}/semmeddb_tuple_list_json_to_edges_json.py \
+${VENV_DIR}/bin/python3 -u ${CODE_DIR}/semmeddb_tuple_list_json_to_kg_json.py \
            ${TEST_ARG} \
            --inputFile ${SEMMED_TUPLELIST_FILE} \
            --outputFile ${SEMMED_OUTPUT_FILE}
@@ -223,34 +234,56 @@ ${VENV_DIR}/bin/python3 -u ${CODE_DIR}/get_nodes_json_from_kg_json.py \
            --inputFile ${FINAL_OUTPUT_FILE_FULL} \
            --outputFile ${OUTPUT_NODES_FILE_FULL}
 
-echo "report_stats_on_kg.py"
+echo "report_stats_on_json_kg.py (full KG)"
 
 ## Generate a JSON report of statistics on the KG
 
-${VENV_DIR}/bin/python3 -u ${CODE_DIR}/report_stats_on_kg.py \
+${VENV_DIR}/bin/python3 -u ${CODE_DIR}/report_stats_on_json_kg.py \
            --inputFile ${FINAL_OUTPUT_FILE_FULL} \
            --outputFile ${REPORT_FILE_FULL}
 
+echo "filter the JSON KG and remap predicates"
 
-#NEO4J_COMPATIBLE_OUTPUT_FILE="${FINAL_OUTPUT_FILE_FULL%.*}"-for-neo4j.json
+## Filter the JSON KG and remap predicates:
 
-### Generate a Neo4j-compatible JSON KG
-#${VENV_DIR}/bin/python3 -u ${CODE_DIR}/stringify_json_kg_properties_for_neo4j.py \
-#           --inputFile ${FINAL_OUTPUT_FILE_FULL} \
-#           --outputfile ${NEO4J_COMPATIBLE_OUTPUT_FILE}
+${VENV_DIR}/bin/python3 -u ${CODE_DIR}/filter_kg_and_remap_predicates.py \
+           --dropNegated \
+           ${PREDICATE_MAPPING_FILE} \
+           ${CURIES_TO_URLS_FILE} \
+           ${FINAL_OUTPUT_FILE_FULL} \
+           ${SIMPLIFIED_OUTPUT_FILE_FULL} > ${BUILD_DIR}/filter_kg_and_remap_predicates.log 2>&1
+
+echo "report_stats_on_json_kg.py (simplified KG)"
+
+## Generate a JSON report of statistics on the KG
+
+${VENV_DIR}/bin/python3 -u ${CODE_DIR}/report_stats_on_json_kg.py \
+           --inputFile ${SIMPLIFIED_OUTPUT_FILE_FULL} \
+           --outputFile ${SIMPLIFIED_REPORT_FILE_FULL}
+
+gzip -f ${FINAL_OUTPUT_FILE_FULL}
+
+## build the TSV files
+rm -r -f ${KG2_TSV_DIR}
+mkdir -p ${KG2_TSV_DIR}
+${VENV_DIR}/bin/python3 -u ${CODE_DIR}/kg_json_to_tsv.py \
+           --inputFile ${SIMPLIFIED_OUTPUT_FILE_FULL} \
+           --outputFileLocation ${KG2_TSV_DIR}
+tar -C ${KG2_TSV_DIR} -czvf ${KG2_TSV_TARBALL} nodes.tsv nodes_header.tsv edges.tsv edges_header.tsv
+aws s3 cp --no-progress --region ${S3_REGION} ${KG2_TSV_TARBALL} s3://${S3_BUCKET_PUBLIC}/
 
 ## Compress the huge files
-gzip -f ${FINAL_OUTPUT_FILE_FULL}
+gzip -f ${SIMPLIFIED_OUTPUT_FILE_FULL}
 gzip -f ${OUTPUT_NODES_FILE_FULL}
 gzip -f ${OUTPUT_FILE_ORPHAN_EDGES}
-#gzip -f ${NEO4J_COMPATIBLE_OUTPUT_FILE}
 
 ## copy the KG and various build artifacts to the public S3 bucket
-aws s3 cp --no-progress --region ${S3_REGION} ${FINAL_OUTPUT_FILE_FULL}.gz s3://${S3_BUCKET_PUBLIC}/
+aws s3 cp --no-progress --region ${S3_REGION} ${FINAL_OUTPUT_FILE_FULL}.gz s3://${S3_BUCKET}/
+aws s3 cp --no-progress --region ${S3_REGION} ${SIMPLIFIED_OUTPUT_FILE_FULL}.gz s3://${S3_BUCKET}/
 aws s3 cp --no-progress --region ${S3_REGION} ${OUTPUT_NODES_FILE_FULL}.gz s3://${S3_BUCKET_PUBLIC}/
 aws s3 cp --no-progress --region ${S3_REGION} ${REPORT_FILE_FULL} s3://${S3_BUCKET_PUBLIC}/
+aws s3 cp --no-progress --region ${S3_REGION} ${SIMPLIFIED_REPORT_FILE_FULL} s3://${S3_BUCKET_PUBLIC}/
 aws s3 cp --no-progress --region ${S3_REGION} ${OUTPUT_FILE_ORPHAN_EDGES}.gz s3://${S3_BUCKET_PUBLIC}/
-#aws s3 cp --no-progress --region ${S3_REGION} ${NEO4J_COMPATIBLE_OUTPUT_FILE}.gz s3://${S3_BUCKET_PUBLIC}/
 
 ## copy the log files to the public S3 bucket
 BUILD_MULTI_OWL_STDERR_FILE="${BUILD_DIR}/build-${OUTPUT_FILE_BASE%.*}"-stderr.log
@@ -263,10 +296,12 @@ aws s3 cp --no-progress --region ${S3_REGION} ${OWL_LOAD_INVENTORY_FILE} s3://${
 # copy the index.html file to the public S3 bucket
 aws s3 cp --no-progress --region ${S3_REGION} ${CODE_DIR}/s3-index.html s3://${S3_BUCKET_PUBLIC}/index.html
 
+
 date
 echo "================= script finished ================="
 
 } >${BUILD_KG2_LOG_FILE} 2>&1
 
+# copy the KG2 build log file to the S3 bucket
 aws s3 cp --no-progress --region ${S3_REGION} ${BUILD_KG2_LOG_FILE} s3://${S3_BUCKET_PUBLIC}/
 

@@ -160,6 +160,11 @@
   url: https://identifiers.org/umls/MSH
 -
   download: false
+  file: umls-mth.ttl
+  title: Metathesaurus Names
+  url: https://identifiers.org/umls/MTH
+-
+  download: false
   file: umls-mthhh.ttl
   title: HCPCS Hierarchical Terms (UMLS)
   url: https://identifiers.org/umls/MTHHH
@@ -509,7 +514,8 @@
   download: true
   title: Chemical Entities of Biological Interest
 -
-  url: http://purl.obolibrary.org/obo/foodon.owl
+#  url: http://purl.obolibrary.org/obo/foodon.owl  ## commented out due to issue #481
+  url: https://raw.githubusercontent.com/FoodOntology/foodon/master/foodon.owl
   file: foodon.owl
   download: true
   title: FOODON (Food Ontology)
@@ -568,6 +574,11 @@
   file: pr.owl
   download: true
   title: Protein Ontology
+#-
+#  url: http://purl.obolibrary.org/obo/ino.owl
+#  file: ino.owl
+#  download: true
+#  title: Interaction Network Ontology
 # REMOVED FROM THE CONFIG FILE BUT KEPT AS A COMMENT FOR HISTORICAL PURPOSES:
 #-
 #  download: false

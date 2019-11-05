@@ -97,7 +97,7 @@ class BioNetExpander:
     def __init__(self, orangeboard):
         orangeboard.set_dict_reltype_dirs(self.MASTER_REL_IS_DIRECTED)
         self.orangeboard = orangeboard
-        self.query_omim_obj = QueryOMIM()
+        self.query_omim_obj = QueryOMIM('1337')
         self.query_mygene_obj = QueryMyGene(debug=False)
         self.gene_symbols_to_protein_nodes = dict()
 

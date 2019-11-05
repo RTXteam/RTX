@@ -1,8 +1,8 @@
 # Contact
 
-## Maintenance and technical questions
+## Maintenaner
 
-stephen.ramsey@oregonstate.edu
+Stephen Ramsey, Oregon State University (stephen.ramsey@oregonstate.edu)
 
 ## Bug reports
 
@@ -14,7 +14,7 @@ Please use the GitHub issues page for this project, and add the label `kg2`.
 
 http://kg2endpoint.rtx.ai:7474
 
-(contact the authors for the username and password)
+(contact the KG2 maintainer for the username and password)
 
 ## Where to download the RTX KG2 knowledge graph in JSON format
 
@@ -75,25 +75,25 @@ best bet would be to use Docker (see Option 3 below).
 
 Aside from your host OS, you'll need to have an Amazon Web Services (AWS)
 authentication key that is configured to be able to read from the `s3://rtx-kg2`
-Amazon Simple Cloud Storage Service (S3) bucket (ask Stephen Ramsey to set this
-up), so that the build script can download a copy of the full Unified Medical
-Language System (UMLS) distribution.  You will be asked (by the AWS Command-line
-Interface, CLI) to provide this authentication key when you run the KG2 build
-script. Your configured AWS CLI will also need to be able to programmatically
-write to the (publicly readable) S3 bucket `s3://rtx-kg2-public` (both buckets
-are in the `us-west-2` AWS zone). The KG2 build script downloads the UMLS
-distribution (including SNOMED CT) from the private S3 bucket `rtx-kg2` (IANAL,
-but it appears that the UMLS is encumbered by a license preventing
-redistribution so I have not hosted them on a public server for download; but
-you can get it for free at the
+Amazon Simple Cloud Storage Service (S3) bucket (ask the KG2 maintainer to set
+this up), so that the build script can download a copy of the full Unified
+Medical Language System (UMLS) distribution.  You will be asked (by the AWS
+Command-line Interface, CLI) to provide this authentication key when you run the
+KG2 setup script. Your configured AWS CLI will also need to be able to
+programmatically write to the (publicly readable) S3 bucket
+`s3://rtx-kg2-public` (both buckets are in the `us-west-2` AWS zone). The KG2
+build script downloads the UMLS distribution (including SNOMED CT) from the
+private S3 bucket `rtx-kg2` (IANAL, but it appears that the UMLS is encumbered
+by a license preventing redistribution so I have not hosted them on a public
+server for download; but you can get it for free at the
 [UMLS website](https://www.nlm.nih.gov/research/umls/) if you agree to the UMLS
 license terms) and it uploads the final output file `kg2.json.gz` to the public
 S3 bucket `rtx-kg2-public`. Alternatively, you can set up your own S3 bucket to
 which to copy the gzipped KG2 JSON file (which you would specify in the
 configuration file `master-config.shinc`), or in the file `build-kg2.sh`, you
 can comment out the line that copies the final gzipped JSON file to the S3
-bucket. You will also need to place a file `RTXConfiguration-config.json` in the
-S3 bucket `s3://rtx-kg2/`, that provides credentials (username, password, and
+bucket. You will also need to edit and place a file `RTXConfiguration-config.json` in the
+S3 bucket `s3://rtx-kg2/`; this file provides credentials (username, password, and
 HTTP URI for Neo4j REST API server) for accessing a RTX KG1 Neo4j endpoint; the
 KG2 build system will dump the KG1 graph from that endpoint and will merge that
 graph into KG2. As a minimal example of the data format for
@@ -115,25 +115,25 @@ The KG2 build software has been tested with the following instance type:
 - Storage: 1,023 GiB, Elastic Block Storage
 - Security Group: ingress TCP packets on port 22 (ssh) permitted
 
-As of June 10, 2019, an on-demand `r5a.8xlarge` instance in the `us-west-2` AWS
+As of summer 2019, an on-demand `r5a.8xlarge` instance in the `us-west-2` AWS
 zone costs $1.81 per hour, so the cost to build KG2 (estimated to take 67 hours)
 would be approximately $121 (this is currently just a rough estimate, plus or
 minus 20%). [Unfortunately, AWS doesn't seem to allow the provisioning of spot
 instances while specifying minimum memory greater than 240 GiB; but perhaps soon
 that will happen, and if so, it could save significantly on the cost of updating the RTX KG2.]
 There is also an experimental Snakemake build system which takes advantage of
-symmetric multiprocessing to bring the build time down to 54 hours.
+symmetric multiprocessing to bring the build time down to 54 hours (Option #2).
 
 ## Build instructions
 
 Note: to follow the instructions for Option 2 and Option 3 below, you will need
 to be using the `bash` shell on your local computer.
 
-### Option 1: build KG2 directly on an Ubuntu system:
+### Option 1: build KG2 serially (about 67 hours) directly on an Ubuntu system:
 
 These instructions assume that you are logged into the target Ubuntu system, and
-that the Ubuntu system has *not* previously had `setup-kg2.sh` run (if it has
-previously had `setup-kg2.sh` run, you may wish to clear out the instance by running
+that the Ubuntu system has *not* previously had `setup-kg2-build.sh` run (if it has
+previously had `setup-kg2-build.sh` run, you may wish to clear out the instance by running
 `clear-instance.sh` before proceeding, in order to ensure that you are getting the
 exact python packages needed in the latest `requirements.txt` file in the KG2 codebase):
 
@@ -151,10 +151,10 @@ exact python packages needed in the latest `requirements.txt` file in the KG2 co
 
 (4) Setup the KG2 build system: 
 
-    RTX/code/kg2/setup-kg2.sh
+    RTX/code/kg2/setup-kg2-build.sh
 
 Note that there is no need to redirect `stdout` or `stderr` to a log file, when
-executing `setup-kg2.sh`; this is because the script saves its own `stdout` and
+executing `setup-kg2-build.sh`; this is because the script saves its own `stdout` and
 `stderr` to a log file `/home/ubuntu/setup-kg2.log`. This script takes just a
 few minutes to complete. The script will ask you to enter your AWS Access Key ID
 and AWS Secret Access Key, for an AWS account with access to the private S3
@@ -163,7 +163,7 @@ enter your default AWS zone, which in our case is normally `us-west-2` (you
 should enter the AWS zone that hosts the private S3 bucket that you intend to
 use with the KG2 build system).
 
-(5) Look in the log file `/home/ubuntu/setup-kg2.sh` to see if the script
+(5) Look in the log file `/home/ubuntu/setup-kg2-build.sh` to see if the script
 completed successfully; it should end with `======= script finished ======`.
 
 (6) Initiate a `screen` session to provide a stable pseudo-tty:
@@ -176,7 +176,7 @@ completed successfully; it should end with `======= script finished ======`.
 
 Then exit screen (`ctrl-a d`). Note that there is no need to redirect `stdout`
 or `stderr` to a log file, when executing `build-kg2.sh`; this is because the
-script saves its own `stdout` and `stderr` to a log file `build-kg2.log`. You can
+script saves its own `stdout` and `stderr` to a log file `build-kg2.log`. You can 
 watch the progress of your KG2 build by using this command:
 
     tail -f ~/kg2-build/build-kg2.log
@@ -184,7 +184,50 @@ watch the progress of your KG2 build by using this command:
 Note that the `build-multi-owl-kg.sh` script also saves `stderr` from running `multi_owl_to_json_kg.py`
 to a file `~/kg2-build/build-kg2-owl-stderr.log`.
 
-### Option 2: remotely build KG2 in an EC2 instance via ssh, orchestrated from your local computer
+### Option 2: build KG2 in parallel (about 54 hours) directly on an Ubuntu system:
+
+(1)-(5) Follow steps (1) through (5) from Option 1
+
+(6) Initiate a `screen` session to provide a stable pseudo-tty:
+
+    screen
+
+(7) Within the `screen` session, run:
+
+    ~/kg2-code/build-kg2-snakemake.sh
+
+to generate the full size knowledge graph. Then exit screen (using `ctrl-a d`). Note that there is 
+no need to redirect `stdout` or `stderr` to a log file when executing `build-kg2-snakemake.sh`; 
+this is because the script saves its own `stdout` and `stderr` to a log file 
+(`build-kg2-snakemake.log`, located in the build directory). If you don't want to see all of the 
+printouts, but want to know which files have finished, you can look at the log file in `.snakemake/log/` 
+(if you have run snakemake before, choose the file named with the date you started the build).
+
+If you want to create a test size graph (about 31 hours), run:
+
+    ~/kg2-code/build-kg2-snakemake.sh test
+
+You can watch the progress of your KG2 build by using this command:
+
+    tail -f ~/kg2-build/build-kg2-snakemake.log
+    
+Note that the `build-multi-owl-kg.sh` script also saves `stderr` from running `multi_owl_to_json_kg.py`
+to a file `~/kg2-build/build-kg2-owl-stderr.log`.
+
+(8) When the build is complete, look for the following line (the 2nd line from
+    the bottom) in `build-kg2-snakemake.log` and `.snakemake/log/` file (you only need
+    to check one):
+
+    22 of 22 steps (100%) done
+
+If that line is present the Snakefile completed successfully (as more databases are added, 22 could grow to 
+a larger number. The important piece is 100%). If any line says:
+
+    (exited with non-zero exit code)
+
+the code failed.
+
+### Option 3: remotely build KG2 in an EC2 instance via ssh, orchestrated from your local computer
 
 This option requires that you have `curl` installed on your local computer. In a
 `bash` terminal session, set up the remote EC2 instance by running this command
@@ -194,9 +237,9 @@ This option requires that you have `curl` installed on your local computer. In a
     
 You will be prompted to enter the path to your AWS PEM file and the hostname of
 your AWS instance.  The script should then initiate a `bash` session on the
-remote instance. Within that `bash` session, continue to follow the instructions for Option 1, starting at step (4).
+remote instance. Within that `bash` session, continue to follow the instructions for Option 1 or 2, starting at step (4).
 
-### Option 3: in an Ubuntu container in Docker (UNTESTED, IN DEVELOPMENT)
+### Option 4: in an Ubuntu container in Docker (UNTESTED, IN DEVELOPMENT)
 
 (1) If you are on Ubuntu and you need to install Docker, you can run this command in `bash` on the host OS:
    
@@ -217,7 +260,7 @@ on whatever host OS you are running).
     
 (4) Setup a container and setup KG2 in it:
 
-    sudo docker run -it --name kg2 kg2:latest su - ubuntu -c "RTX/code/kg2/setup-kg2.sh"
+    sudo docker run -it --name kg2 kg2:latest su - ubuntu -c "RTX/code/kg2/setup-kg2-build.sh"
     
 (If anything goes wrong, look for an error message using `sudo docker exec kg2 "cat setup-kg2.log"`)
 
@@ -249,20 +292,48 @@ Or using the AWS command-line interface (CLI) tool `aws` with the command
 
     aws s3 cp s3://rtx-kg2-public/kg2.json.gz .
 
+The TSV files for the knowledge graph can be accessed via HTTP as well, shown here:
+
+    curl https://s3-us-west-2.amazonaws.com/rtx-kg2-public/kg2-tsv.tar.gz > kg2-tsv.tar.gz
+
+Or using the AWS command-line interface (CLI) tool `aws` with the command
+
+    aws s3 cp s3://rtx-kg2-public/kg2-tsv.tar.gz .
+
 You can access the various artifacts from the KG2 build (config file, log file,
 etc.) at the AWS static website endpoint for the 
 `rtx-kg2-public` S3 bucket: <http://rtx-kg2-public.s3-website-us-west-2.amazonaws.com/>
 
+## Hosting the KG on a Neo4j instance
+
+In a clean Ubuntu 18.04 AWS instance, run the following commands:
+
+(1) Clone the RTX software from GitHub:
+
+    git clone https://github.com/RTXteam/RTX.git
+
+(2) Install and configure Neo4j, with APOC:
+
+    RTX/code/kg2/setup-kg2-neo4j.sh
+
+(3) Set up the Neo4j password, by navigating your HTTP browser to Neo4j on the server (port 7474)
+
+(4) Load KG2 into Neo4j:
+
+    RTX/code/kg2/tsv-to-neo4j.sh
+    
+In Step 4, you will be prompted to enter the Neo4j database password that you chose in step (3).
+
 # Credits
 
-Thank you to the many people who have contributed to the development of RTX KG2.
+Thank you to the many people who have contributed to the development of RTX KG2:
 
 ## Code
 Stephen Ramsey, Finn Womack, Erica Wood, Veronica Flores, and Deqing Qu.
 
 ## Technical advice
 David Koslicki, Eric Deutsch, Yao Yao, Jared Roach, Chris Mungall, Tom Conlin, Matt Brush,
-Chunlei Wu, Will Byrd.
+Chunlei Wu, and Will Byrd.
 
 ## Funding
 National Center for Advancing Translational Sciences (award number OT2TR002520).

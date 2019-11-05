@@ -17,17 +17,19 @@ import sys
 # import CachedMethods
 # import requests_cache
 from cache_control_helper import CacheControlHelper
+import simplecrypt
 
 
 class QueryOMIM:
-    API_KEY = '1YCxuN7PRHyrpuZnO7F5gQ'
+    ENCRYPTED_BYTES = b'sc\x00\x02\xcb@\xces\xda\xd6\xe4\xb4\xba\xd7&=qF\xfe(TB\xb8ax\xdd\xf3\xe4I\xc1\x94ivg\xdbY\x86\xbc\xba\x08\xd6\xee\xc9U\xe1\xf4X*\x8c\x86B.7\xa0qN\xd3\x1c\xe9\xd1\x98\xe6 \xd0\x9f\xb6t\xf9E\n\xaf\xac\x00\xad\xa3\xd5;\xcc]`}\xc6-\xab\x00\x11\xce\x12x\xfc'
     API_BASE_URL = 'https://api.omim.org/api'
     TIMEOUT_SEC = 120
- 
-    def __init__(self):
+
+    def __init__(self, encryption_key):
         requests = CacheControlHelper()
+        api_key = simplecrypt.decrypt(encryption_key, QueryOMIM.ENCRYPTED_BYTES)
         url = QueryOMIM.API_BASE_URL + "/apiKey"
-        session_data = {'apiKey': QueryOMIM.API_KEY,
+        session_data = {'apiKey': api_key,
                         'format': 'json'}
         r = requests.post(url, data=session_data)
         assert 200 == r.status_code
@@ -119,7 +121,7 @@ class QueryOMIM:
 
 if __name__ == '__main__':
 
-    qo = QueryOMIM()
+    qo = QueryOMIM('1337')
     # print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:145270'))
     # print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:601351'))
     # print(qo.disease_mim_to_gene_symbols_and_uniprot_ids('OMIM:248260'))

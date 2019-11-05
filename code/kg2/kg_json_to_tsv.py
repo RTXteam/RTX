@@ -2,8 +2,8 @@
 
 ''' Creates a set of tsv files for importing into Neo4j from KG2 JSON
 
-    Usage: json_to_tsv.py --inputFile <inputKGfile.json>
-                        --outputFileLocation <directory>
+    Usage: kg_json_to_tsv.py --inputFile <inputKGfile.json>
+                             --outputFileLocation <directory>
 '''
 
 import json
@@ -70,20 +70,19 @@ def date():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
-def all_egdes_have_same_set(edgekeys_list):
+def check_all_edges_have_same_set(edgekeys_list):
     """
     :param edgekeys_list: A list containing keys for an edge
     """
     # Supported_ls is a list of properties that edges can have
     supported_ls = ["edge label", "negated", "object", "provided by",
                     "publications", "publications info",
-                    "relation", "relation curie", "subject", "update date"]
+                    "relation", "relation curie", "subject", "update date",
+                    "simplified relation curie","simplified relation",
+                    "simplified edge label"]
     for edgelabel in edgekeys_list:
         if edgelabel not in supported_ls:
-            # If an edge property label is not in the list, remove that label
-            edgekeys_list.remove(edgelabel)
-
-    return edgekeys_list
+            raise ValueError("edge label not in supported list: " + edgelabel)
 
 
 def nodes(graph, output_file_location):
@@ -220,11 +219,13 @@ def edges(graph, output_file_location):
         # Add all edge property label to a list in the same order and test
         # to make sure they are the same
         edgekeys = list(sorted(edge.keys()))
-        edgekeys = all_egdes_have_same_set(edgekeys)
+        check_all_edges_have_same_set(edgekeys)
 
         # Add an extra property of "edge label" to the list so that edge_labels
         # can be a property and a label
-        edgekeys.append('edge label')
+        edgekeys.append('simplified edge label')
+        edgekeys.append('subject')
+        edgekeys.append('object')
 
         # Create list for values of edge properties to be added to
         vallist = []
@@ -235,6 +236,8 @@ def edges(graph, output_file_location):
             value = edge[key]
             if key == "publications info":
                 value = limit_publication_info_size(key, value)
+            elif key == 'edge label':  # fix for issue number 473 (hyphens in edge labels)
+                value = value.replace('-', '_').replace('(', '').replace(')', '')
             vallist.append(value)
 
         # Add the edge property labels to the edge header TSV file
@@ -245,7 +248,10 @@ def edges(graph, output_file_location):
             edgekeys = no_space('provided by', edgekeys, 'provided_by')
             edgekeys = no_space('relation curie', edgekeys, 'relation_curie')
             edgekeys = no_space('update date', edgekeys, 'update_date')
-            edgekeys = no_space('edge label', edgekeys, 'edge_label:TYPE')
+            edgekeys = no_space('simplified relation curie', edgekeys, 'simplified_relation_curie')
+            edgekeys = no_space('simplified relation', edgekeys, 'simplified_relation')
+            edgekeys = no_space('simplified edge label', edgekeys, 'simplified_edge_label')
+            edgekeys = no_space('simplified edge label', edgekeys, 'edge_label:TYPE')
             edgekeys = no_space('edge label', edgekeys, 'edge_label')
             edgekeys = no_space('subject', edgekeys, ':START_ID')
             edgekeys = no_space('object', edgekeys, ':END_ID')
@@ -255,6 +261,7 @@ def edges(graph, output_file_location):
     # Close the TSV files to prevent a memory leak
     tsvfile.close()
     tsvfile_h.close()
+
 
 if __name__ == '__main__':
     print("Start time: ", date())
