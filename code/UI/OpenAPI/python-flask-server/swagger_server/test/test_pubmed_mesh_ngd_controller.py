@@ -15,7 +15,7 @@ class TestPubmedMeshNgdController(BaseTestCase):
     def test_pubmed_mesh_ngd(self):
         """Test case for pubmed_mesh_ngd
 
-        Query to get the Normalized Google Distance between two MeSH terms based on co-occurance in all PubMed article annotations
+        Query to get the Normalized Google Distance between two MeSH terms based on co-occurrence in all PubMed article annotations
         """
         response = self.client.open(
             '/api/rtx/v1/PubmedMeshNgd/{term1}/{term2}'.format(term1='term1_example', term2='term2_example'),

@@ -47,6 +47,7 @@ class ResultFeedback(Model):
     def feedback_list(self) -> List[Feedback]:
         """Gets the feedback_list of this ResultFeedback.
 
+        List of feedback posts for this result  # noqa: E501
 
         :return: The feedback_list of this ResultFeedback.
         :rtype: List[Feedback]
@@ -57,6 +58,7 @@ class ResultFeedback(Model):
     def feedback_list(self, feedback_list: List[Feedback]):
         """Sets the feedback_list of this ResultFeedback.
 
+        List of feedback posts for this result  # noqa: E501
 
         :param feedback_list: The feedback_list of this ResultFeedback.
         :type feedback_list: List[Feedback]

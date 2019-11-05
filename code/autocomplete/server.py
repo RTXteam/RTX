@@ -93,6 +93,23 @@ class autofuzzySearch(tornado.web.RequestHandler):
             #print sys.exc_info()[:]
             self.write("error")
 
+
+class nodesLikeSearch(tornado.web.RequestHandler):
+    def get(self, arg,word=None):
+        #try:
+        if 1 == 1:
+            limit = self.get_argument("limit")
+            word = self.get_argument("word")
+            callback = self.get_argument("callback")
+            result = rtxcomplete.get_nodes_like(word,limit);
+            result = callback+"("+json.dumps(result)+");"
+            self.write(result)
+        #except:
+        #    print(sys.exc_info()[:])
+        #    traceback.print_tb(sys.exc_info()[-1])
+        #    self.write("error")
+
+
 class defineSearch(tornado.web.RequestHandler):
     def get(self, arg,word=None):
         print("matched define search: not implemented")
@@ -105,6 +122,7 @@ def make_https_app():
         (r"/auto(.*)", autoSearch),
         (r"/fuzzy(.*)", fuzzySearch),
         (r"/define(.*)", defineSearch),
+        (r"/nodeslike(.*)", nodesLikeSearch),
         (r"/(.*)", tornado.web.StaticFileHandler,
          {"path": root, "default_filename": "rtxcomplete.html"}),
     ],

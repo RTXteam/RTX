@@ -13,28 +13,54 @@
 <script src="/rtxcomplete/bootstrap.js"></script>
 <script src="/rtxcomplete/bootstrap3-typeahead.js"></script>
 <script src="/rtxcomplete/rtxcomplete.js"></script>
+<!-- script src="/rtxcomplete/rtxcompletenode.js"></script -->
+<script src="rtxcompletenode.js"></script>
 
 </head>
 <body onload="main();">
 
+<div class="menuleft">
+<br><br><br><br>
+&nbsp;Input<br>
+<div onclick="openSection(this,'queryDiv');" class="menucurrent">Query</div>
+<div onclick="openSection(this,'listaDiv');" class="menuleftitem" title="view list A">List A <span class="menunum" id="menunumlistitemsA">-</span></div>
+<div onclick="openSection(this,'listbDiv');" class="menuleftitem" title="view list B">List B <span class="menunum" id="menunumlistitemsB">-</span></div>
+<br>
+<div onclick="openSection(this,'historyDiv');" class="menuleftitem" title="view session history">History <span class="menunum" id="menunumlistitemsSESSION">-</span></div>
+<!-- div onclick="openSection(this,'statusDiv');" class="menuleftitem">Status</div -->
+<br>
+&nbsp;Output<br>
+<div onclick="openSection(this,'summaryDiv');" class="menuleftitem" title="Tabular summary of all results to query">Summary</div>
+<div onclick="openSection(this,'kgDiv');" class="menuleftitem" title="Integrated and interactive graphical view of all results">Knowledge<br>Graph</div>
+<div onclick="openSection(this,'resultsDiv');" class="menuleftitem">Results <span class="menunum" title="Individual interactive view of results" id="menunumresults">-</span></div>
+<br><br>
+<div onclick="openSection(this,'devDiv');" class="menuleftitem">Dev Info</div>
+<br><br><br><br>
+<div onclick="window.location = 'index.html';" class="menuleftitem">Reset All</div>
+</div>
+
 <div class="banner" banner-bg-text="RTX User Interface">
 <span class="menulinks">Documentation: 
 <a href="overview.html">Overview</a>
-<a href="api/rtx/v1/ui/">API</a>
+<a href="api/rtx/v1/ui/">API 0.9.2</a>
 <a href="https://github.com/RTXteam/RTX/wiki/RTX-Home">Resources</a>
 </span>
 </div>
 
+
 <div class="page">
+<br><br><br><br><br>
 
-<div onclick="sesame(null,listdivSESSION);" title="click to view / hide session history" class="statushead">Session History (<span id="numlistitemsSESSION">-</span>)</div>
+
+<div class="pagesection" id="historyDiv">
+<div class="statushead">Session History (<span id="numlistitemsSESSION">-</span>)</div>
 <div class="status" id="listdivSESSION"><br>Your query history will be displayed here. It can be edited or re-set.<br><br></div>
+</div>
 
 
-<p>The RTX team presents its pilot Reasoning Tool for evaluation. This page provides a simple web interface on top of the OpenAPI web service interface to RTX. At present only a few question types are supported. Select from one of the example queries to test the tool. Different drugs, diseases, etc. may be substituted for the default ones, but note that not all drugs, diseases, etc. are yet present in our knowledge graph.</p>
 
-
-<h2 style="display:inline;">Enter question:</h2>
+<div class="pagesection" id="queryDiv">
+<h3 style="display:inline;">Enter question:</h3>
 <div class="sampleqs">
 <select id="qqq" onchange="javascript:pasteQuestion(this.value);">
 <option style="border-bottom:1px solid black;" value="">Example Questions&nbsp;&nbsp;&nbsp;&#8675;</option>
@@ -60,22 +86,111 @@
   </span>
 Use cache</label>
 </form>
+<br>
+<h3 style="display:inline;">Query Graph:</h3>
+<a style="position:relative; left:150px;" href="#" title="remove all elements from query graph" onclick="clear_qg(1);">[ clear ]</a>
+<a style="position:relative; left:150px;" href="#" title="edit query graph" onclick="edit_qg();">[ edit ]</a>
+<div class="cytograph_q">
+  <div style="height: 100%; width: 100%" id="cy999"></div>
+</div>
 
-<div onclick="sesame(null,listdivA);" title="click to view / hide list" class="statushead">List A (<span id="numlistitemsA">-</span>)</div>
-<div class="status" id="listdivA">Items in this list can be passed as input to queries that support list input, by specifying [A] as a parameter.</div>
+<div id="qg_items"></div>
 
-<div onclick="sesame(null,listdivB);" title="click to view / hide list" class="statushead">List B (<span id="numlistitemsB">-</span>)</div>
-<div class="status" id="listdivB">Items in this list can be passed as input to queries that support list input, by specifying [B] as a parameter.</div>
+<div class="pagesection" id="qg_form">
+Enter new query node:
+<input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="newquerynode" name="newquerynode" onkeydown="enter_node(this);" size="30" maxlength="200"/><input type="button" class="questionBox button" name="action" value="Add" onClick="javascript:add_node_to_query_graph();">
 
+<!-- input type="text" class="questionBox" id="newquerynode" onkeydown="enter_node(this);" value="" size="30" -->
+
+<b>&nbsp;&nbsp;&nbsp;or&nbsp;&nbsp;&nbsp;</b>
+<span class="qgselect">
+  <select id="allnodetypes" onchange="javascript:add_nodetype_to_query_graph(this.value);">
+    <option style="border-bottom:1px solid black;" value="">Add a Node by Type&nbsp;&nbsp;&nbsp;&#8675;</option>
+    <option>...loading</option>
+  </select>
+</span>
+<br>
+Enter new relationship:
+<span class="qgselect">
+  <select id="qg_edge_n1" onchange="javascript:get_possible_edges();">
+    <option style="border-bottom:1px solid black;" value="">Source Node&nbsp;&nbsp;&nbsp;&#8675;</option>
+    <option>Must have a minimum of 2 nodes</option>
+  </select>
+</span>
+<span class="qgselect">
+  <select id="qg_edge_n2" onchange="javascript:get_possible_edges();">
+    <option style="border-bottom:1px solid black;" value="">Target Node&nbsp;&nbsp;&nbsp;&#8675;</option>
+    <option>Must have a minimum of 2 nodes</option>
+  </select>
+</span>
+<span class="qgselect">
+  <select id="qg_edge_type">
+    <option style="border-bottom:1px solid black;" value="">Edge Type&nbsp;&nbsp;&nbsp;&#8675;</option>
+    <option>Must have a minimum of 2 nodes</option>
+  </select>
+</span>
+<input type="button" class="questionBox button" name="action" value="Add" onClick="javascript:add_edge_to_query_graph();">  
+
+<input style="position:relative; left:150px;" type="button" class="questionBox button" name="action" value="QUERY" onClick="javascript:sendGraph();"/>
+</div>
+
+
+<br><br>
 
 <div id="status_container"></div>
+</div>
 
+
+
+<div class="pagesection" id="listaDiv">
+<div class="statushead">List A (<span id="numlistitemsA">-</span>)</div>
+<div class="status" id="listdivA">Items in this list can be passed as input to queries that support list input, by specifying [A] as a parameter.</div>
+</div>
+
+
+
+<div class="pagesection" id="listbDiv">
+<div class="statushead">List B (<span id="numlistitemsB">-</span>)</div>
+<div class="status" id="listdivB">Items in this list can be passed as input to queries that support list input, by specifying [B] as a parameter.</div>
+</div>
+
+
+
+<div class="pagesection" id="statusDiv">
+</div>
+
+
+
+<div class="pagesection" id="summaryDiv">
 <div id="summary_container"></div>
+</div>
 
+
+
+<div class="pagesection" id="kgDiv">
+  <div id="kg_container">
+    <div class="statushead">KNOWLEDGE GRAPH</div>
+    <div id="a0_div" class="status"><table class="t100"><tr><td class="cytograph_controls"><a title="reset zoom and center" onclick="cyobj[0].reset();">&#8635;</a><br><a title="breadthfirst layout" onclick="cylayout(0,'breadthfirst');">B</a><br><a title="force-directed layout" onclick="cylayout(0,'cose');">F</a><br><a title="circle layout" onclick="cylayout(0,'circle');">C</a><br><a title="random layout" onclick="cylayout(0,'random');">R</a>  </td><td class="cytograph_kg" style="width:100%;"><div style="height: 100%; width: 100%" id="cy0"></div></td></tr><tr><td></td><td><div id="d0_div"><i>Click on a node or edge to get details</i></div></td></tr></table></div>
+  </div>
+</div>
+
+
+
+<div class="pagesection" id="resultsDiv">
 <div id="result_container"></div>
+</div>
 
-<div id="dev_result_json_container"></div>
+
+
+<div class="pagesection" id="devDiv">
+  <input type="button" class="json_copy button" name="action" value="Copy Response JSON to clipboard" onClick="javascript:copyJSON();"/>
+  <div id="dev_result_json_container"></div>
+</div>
+
+
 
 </div>
+<br>
 </body>
 </html>
+

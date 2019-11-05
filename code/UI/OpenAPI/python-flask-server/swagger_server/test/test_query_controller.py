@@ -5,8 +5,8 @@ from __future__ import absolute_import
 from flask import json
 from six import BytesIO
 
+from swagger_server.models.message import Message  # noqa: E501
 from swagger_server.models.query import Query  # noqa: E501
-from swagger_server.models.response import Response  # noqa: E501
 from swagger_server.test import BaseTestCase
 
 
@@ -16,7 +16,7 @@ class TestQueryController(BaseTestCase):
     def test_query(self):
         """Test case for query
 
-        Query RTX using a predefined question type
+        Query RTX via one of several inputs
         """
         body = Query()
         response = self.client.open(
