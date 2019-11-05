@@ -25,56 +25,55 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import desc
 from sqlalchemy import inspect
-
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 from RTXConfiguration import RTXConfiguration
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
 from swagger_server.models.result_feedback import ResultFeedback
 from swagger_server.models.feedback import Feedback
-from swagger_server.models.response import Response as TxResponse
-from swagger_server.models.response_envelope import ResponseEnvelope
+from swagger_server.models.message import Message as TxMessage
+from swagger_server.models.previous_message_processing_plan import PreviousMessageProcessingPlan
 
 #import Enricher
 
 Base = declarative_base()
 
 #### Define the database tables as classes
-class Response(Base):
-  __tablename__ = 'response'
-  response_id = Column(Integer, primary_key=True)
-  response_datetime = Column(DateTime, nullable=False)
+class Message(Base):
+  __tablename__ = 'message09'
+  message_id = Column(Integer, primary_key=True)
+  message_datetime = Column(DateTime, nullable=False)
   restated_question = Column(String(255), nullable=False)
   query_type = Column(String(50), nullable=False)
   terms = Column(String(1024), nullable=False)
   tool_version = Column(String(50), nullable=False)
   result_code = Column(String(50), nullable=False)
-  message = Column(String(255), nullable=False)
+  message = Column(Text, nullable=False)
   n_results = Column(Integer, nullable=False)
   # PickleType uses BLOB on MySQL, which is only 65k. Could not seem to work around it. Resort to LargeBinary with explicit length and my own pickling.
-  #response_object = Column(PickleType, nullable=False)
-  response_object = Column(LargeBinary(length=100500500), nullable=False)
+  #message_object = Column(PickleType, nullable=False)
+  message_object = Column(LargeBinary(length=100500500), nullable=False)
 
 class Result(Base):
-  __tablename__ = 'result'
+  __tablename__ = 'result09'
   result_id = Column(Integer, primary_key=True)
-  response_id = Column(Integer, ForeignKey('response.response_id'))   # for backward compat, this is retained as the *first* response_id
+  message_id = Column(Integer, ForeignKey('message09.message_id'))   # for backward compat, this is retained as the *first* message_id
   confidence = Column(Float, nullable=False)
   n_nodes = Column(Integer, nullable=False)
   n_edges = Column(Integer, nullable=False)
-  result_text = Column(String(1024), nullable=False)
+  result_text = Column(Text, nullable=False)
   result_object = Column(LargeBinary(length=16777200), nullable=False)
   result_hash = Column(String(255), nullable=False)
-  response = relationship(Response)
+  message = relationship(Message)
 
-class Response_result(Base):
-  __tablename__ = 'response_result'
-  response_result_id = Column(Integer, primary_key=True)
-  result_id = Column(Integer, ForeignKey('result.result_id'))
-  response_id = Column(Integer, ForeignKey('response.response_id'))
+class Message_result(Base):
+  __tablename__ = 'message_result09'
+  message_result_id = Column(Integer, primary_key=True)
+  result_id = Column(Integer, ForeignKey('result09.result_id'))
+  message_id = Column(Integer, ForeignKey('message09.message_id'))
 
 class Commenter(Base):
-  __tablename__ = 'commenter'
+  __tablename__ = 'commenter09'
   commenter_id = Column(Integer, primary_key=True)
   full_name = Column(String(255), nullable=False)
   email_address = Column(String(255), nullable=False)
@@ -82,7 +81,7 @@ class Commenter(Base):
 
 
 class Rating(Base):
-  __tablename__ = 'rating'
+  __tablename__ = 'rating09'
   rating_id = Column(Integer, primary_key=True)
   score = Column(Integer, nullable=False)
   tag = Column(String(50), nullable=False)
@@ -91,7 +90,7 @@ class Rating(Base):
 
 
 class Expertise_level(Base):
-  __tablename__ = 'expertise_level'
+  __tablename__ = 'expertise_level09'
   expertise_level_id = Column(Integer, primary_key=True)
   score = Column(Integer, nullable=False)
   tag = Column(String(50), nullable=False)
@@ -100,12 +99,12 @@ class Expertise_level(Base):
 
 
 class Result_rating(Base):
-  __tablename__ = 'result_rating'
+  __tablename__ = 'result_rating09'
   result_rating_id = Column(Integer, primary_key=True)
-  result_id = Column(Integer, ForeignKey('result.result_id'))
-  commenter_id = Column(Integer, ForeignKey('commenter.commenter_id'))
-  expertise_level_id = Column(Integer, ForeignKey('expertise_level.expertise_level_id'))
-  rating_id = Column(Integer, ForeignKey('rating.rating_id'))
+  result_id = Column(Integer, ForeignKey('result09.result_id'))
+  commenter_id = Column(Integer, ForeignKey('commenter09.commenter_id'))
+  expertise_level_id = Column(Integer, ForeignKey('expertise_level09.expertise_level_id'))
+  rating_id = Column(Integer, ForeignKey('rating09.rating_id'))
   comment_datetime = Column(DateTime, nullable=False)
   comment = Column(Text, nullable=True)
   result = relationship(Result)
@@ -223,66 +222,80 @@ class RTXFeedback:
     session.commit()
 
 
-  #### Store a new Response into the database
-  def addNewResponse(self,response,query):
+  #### Store a new Message into the database
+  def addNewMessage(self,message,query):
     session = self.session
+
+    #### Update the n_results information
     n_results = 0
-    if response.result_list is not None:
-      n_results = len(response.result_list)
+    if message.results is not None:
+      n_results = len(message.results)
+    if message.code_description is None:
+      plural = "s"
+      if n_results == 1: plural = ""
+      message.code_description = "Query returned %i result%s" % (n_results,plural)
 
     #### Add result metadata
-    if response.result_list is not None:
-      for result in response.result_list:
+    if message.results is not None:
+      for result in message.results:
         if result.reasoner_id is None:
           result.reasoner_id = "RTX"
 
-    #### Update the response with current information
+    #### Update the message with current information
     rtxConfig = RTXConfiguration()
-    if response.tool_version is None:
-      response.tool_version = rtxConfig.version
-    if response.schema_version is None:
-      response.schema_version = "0.8.0"
-    if response.reasoner_id is None:
-      response.reasoner_id = "RTX"
-    response.n_results = n_results
-    response.type = "medical_translator_query_response"
-    response.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
-    response.datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    if message.tool_version is None:
+      message.tool_version = rtxConfig.version
+    if message.schema_version is None:
+      message.schema_version = "0.9.0"
+    if message.reasoner_id is None:
+      message.reasoner_id = "RTX"
+    message.n_results = n_results
+    message.type = "translator_reasoner_message"
+    message.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
+    message.datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    if response.restated_question_text is None:
-      response.restated_question_text = ""
-    if response.original_question_text is None:
-      response.original_question_text = ""
+    if message.restated_question is None:
+      message.restated_question = ""
+    if message.original_question is None:
+      message.original_question = ""
 
     termsString = "{}"
-    if query is not None:
-      if "terms" in query:
-        termsString = stringifyDict(query["terms"])
+    query_type_id = 0
+    if query is not None and "query_type_id" in query:
+      query_type_id = query["query_type_id"]
+    if query_type_id == 0 and query is not None and "message" in query and "query_type_id" in query["message"]:
+      query_type_id = query["message"]["query_type_id"]
 
-    storedResponse = Response(response_datetime=datetime.now(),restated_question=response.restated_question_text,query_type=query["query_type_id"],
-      terms=termsString,tool_version=rtxConfig.version,result_code=response.response_code,message=response.message,n_results=n_results,response_object=pickle.dumps(ast.literal_eval(repr(response))))
-    session.add(storedResponse)
+    if query is not None and "message" in query:
+      if "terms" in query["message"]:
+        termsString = stringifyDict(query["message"]["terms"])
+      elif "query_graph" in query["message"]:
+        termsString = stringifyDict(query["message"]["query_graph"])
+
+    storedMessage = Message(message_datetime=datetime.now(),restated_question=message.restated_question,query_type=query_type_id,
+      terms=termsString,tool_version=rtxConfig.version,result_code=message.message_code,message=message.code_description,n_results=n_results,message_object=pickle.dumps(ast.literal_eval(repr(message))))
+    session.add(storedMessage)
     session.flush()
-    response.id = "https://rtx.ncats.io/api/rtx/v1/response/"+str(storedResponse.response_id)
+    message.id = "https://rtx.ncats.io/api/rtx/v1/message/"+str(storedMessage.message_id)
 
-    self.addNewResults(storedResponse.response_id,response)
+    self.addNewResults(storedMessage.message_id,message)
 
     #### After updating all the ids, store an updated object
-    storedResponse.response_object=pickle.dumps(ast.literal_eval(repr(response)))
+    storedMessage.message_object=pickle.dumps(ast.literal_eval(repr(message)))
     session.commit()
 
-    return storedResponse.response_id
+    return storedMessage.message_id
 
 
-  #### Store all the results from a response into the database
-  def addNewResults(self,response_id,response):
+  #### Store all the results from a message into the database
+  def addNewResults(self,message_id,message):
     session = self.session
     result_hash = "xxxx"
-    if response.result_list is not None:
-      for result in response.result_list:
+    if message.results is not None:
+      for result in message.results:
         n_nodes = 0
         n_edges = 0
-        result_hash = result.text
+        result_hash = result.description
         if result.result_type is None:
           result.result_type = "individual query answer"
         if result.confidence is None:
@@ -290,29 +303,31 @@ class RTXFeedback:
         if result.result_graph is not None:
           #### Calculate a hash from the list of nodes and edges in the result
           result_hash = self.calcResultHash(result)
-          if result.result_graph.node_list is not None:
-            n_nodes = len(result.result_graph.node_list)
-          if result.result_graph.edge_list is not None:
-            n_edges = len(result.result_graph.edge_list)
+          if result.result_graph.nodes is not None:
+            n_nodes = len(result.result_graph.nodes)
+          if result.result_graph.edges is not None:
+            n_edges = len(result.result_graph.edges)
 
         #### See if there is an existing result that matches this hash
         previousResult = session.query(Result).filter(Result.result_hash==result_hash).order_by(desc(Result.result_id)).first()
+        #eprint("WARNING: Forcing chache miss for result at line 309")
+        #previousResult = None
         if previousResult is not None:
           result.id = "https://rtx.ncats.io/api/rtx/v1/result/"+str(previousResult.result_id)
           eprint("Reused result_id " + str(result.id))
 
           #### Also update the linking table
-          storedLink = Response_result(response_id=response_id,result_id=previousResult.result_id)
+          storedLink = Message_result(message_id=message_id,result_id=previousResult.result_id)
           session.add(storedLink)
           session.flush()
 
         else:
-          storedResult = Result(response_id=response_id,confidence=result.confidence,n_nodes=n_nodes,n_edges=n_edges,result_text=result.text,result_object=pickle.dumps(ast.literal_eval(repr(result))),result_hash=result_hash)
+          storedResult = Result(message_id=message_id,confidence=result.confidence,n_nodes=n_nodes,n_edges=n_edges,result_text=result.description,result_object=pickle.dumps(ast.literal_eval(repr(result))),result_hash=result_hash)
           session.add(storedResult)
           session.flush()
 
           #### Also update the linking table
-          storedLink = Response_result(response_id=response_id,result_id=storedResult.result_id)
+          storedLink = Message_result(message_id=message_id,result_id=storedResult.result_id)
           session.add(storedLink)
           session.flush()
 
@@ -329,15 +344,15 @@ class RTXFeedback:
 
     #### Get a sorted list of node ids
     nodes = []
-    if result.result_graph.node_list is not None:
-      for node in result.result_graph.node_list:
+    if result.result_graph.nodes is not None:
+      for node in result.result_graph.nodes:
         nodes.append(node.id)
     nodes.sort()
 
     #### Get a sorted list of edge types
     edges = []
-    if result.result_graph.edge_list is not None:
-      for edge in result.result_graph.edge_list:
+    if result.result_graph.edges is not None:
+      for edge in result.result_graph.edges:
         edges.append(edge.type)
     edges.sort()
 
@@ -352,47 +367,47 @@ class RTXFeedback:
     return result_hash_string
 
 
-  #### Get a previously stored response for this query from the database
-  def getCachedResponse(self,query):
+  #### Get a previously stored message for this query from the database
+  def getCachedMessage(self,query):
     if "bypass_cache" in query and query["bypass_cache"] == "true":
       return
     session = self.session
     rtxConfig = RTXConfiguration()
     tool_version = rtxConfig.version
-    termsString = stringifyDict(query["terms"])
+    termsString = stringifyDict(query["message"]["terms"])
 
-    #### Look for previous responses we could use
-    storedResponse = session.query(Response).filter(Response.query_type==query["query_type_id"]).filter(Response.tool_version==tool_version).filter(Response.terms==termsString).order_by(desc(Response.response_datetime)).first()
-    if ( storedResponse is not None ):
-      return pickle.loads(storedResponse.response_object)
+    #### Look for previous messages we could use
+    storedMessage = session.query(Message).filter(Message.query_type==query["message"]["query_type_id"]).filter(Message.tool_version==tool_version).filter(Message.terms==termsString).order_by(desc(Message.message_datetime)).first()
+    if ( storedMessage is not None ):
+      return pickle.loads(storedMessage.message_object)
     return
 
 
   #### Get the list of ratings
   def getRatings(self):
     session = self.session
-    response = { "ratings": [] }
+    message = { "ratings": [] }
     count = 0
     for rating in session.query(Rating).all():
-      response["ratings"].append(object_as_dict(rating))
+      message["ratings"].append(object_as_dict(rating))
       count += 1
-    response["n_ratings"] = count
-    return(response)
+    message["n_ratings"] = count
+    return(message)
 
 
   #### Get the list of expertise levels
   def getExpertiseLevels(self):
     session = self.session
-    response = { "expertise_levels": [] }
+    message = { "expertise_levels": [] }
     count = 0
     for level in session.query(Expertise_level).all():
-      response["expertise_levels"].append(object_as_dict(level))
+      message["expertise_levels"].append(object_as_dict(level))
       count += 1
-    response["n_expertise_levels"] = count
-    return(response)
+    message["n_expertise_levels"] = count
+    return(message)
 
 
-  #### Store all the results from a response into the database
+  #### Store all the results from a message into the database
   def addNewResultRating(self, result_id, rating):
     session = self.session
 
@@ -486,45 +501,45 @@ class RTXFeedback:
       return
 
 
-  #### Fetch the feedback for a response
-  def getResponseFeedback(self, response_id):
+  #### Fetch the feedback for a message
+  def getMessageFeedback(self, message_id):
     session = self.session
 
-    if response_id is None:
-      return( { "status": 450, "title": "response_id missing", "detail": "Required attribute response_id is missing from URL", "type": "about:blank" }, 450)
+    if message_id is None:
+      return( { "status": 450, "title": "message_id missing", "detail": "Required attribute message_id is missing from URL", "type": "about:blank" }, 450)
 
-    #### Look for results for this response
-    storedResponseResults = session.query(Response_result).filter(Response_result.response_id==response_id).all()
-    #eprint("DEBUG: Getting results for response_id="+str(response_id))
-    if storedResponseResults is not None:
+    #### Look for results for this message
+    storedMessageResults = session.query(Message_result).filter(Message_result.message_id==message_id).all()
+    #eprint("DEBUG: Getting results for message_id="+str(message_id))
+    if storedMessageResults is not None:
       allResultRatings = []
-      for storedResponseResult in storedResponseResults:
-        #eprint("DEBUG:   Getting feedback for result_id="+str(storedResponseResult.result_id))
-        resultRatings = self.getResultFeedback(storedResponseResult.result_id)
+      for storedMessageResult in storedMessageResults:
+        #eprint("DEBUG:   Getting feedback for result_id="+str(storedMessageResult.result_id))
+        resultRatings = self.getResultFeedback(storedMessageResult.result_id)
         if resultRatings is not None:
           for resultRating in resultRatings:
             allResultRatings.append(resultRating)
       if len(allResultRatings) > 0:
         return(allResultRatings)
       else:
-        return( { "status": 404, "title": "Ratings not found", "detail": "There were no ratings found for this response", "type": "about:blank" }, 404)
+        return( { "status": 404, "title": "Ratings not found", "detail": "There were no ratings found for this message", "type": "about:blank" }, 404)
     else:
-      return( { "status": 404, "title": "Results not found", "detail": "There were no results found for this response", "type": "about:blank" }, 404)
+      return( { "status": 404, "title": "Results not found", "detail": "There were no results found for this message", "type": "about:blank" }, 404)
 
 
-  #### Fetch a cached response
-  def getResponse(self, response_id):
+  #### Fetch a cached message
+  def getMessage(self, message_id):
     session = self.session
 
-    if response_id is None:
-      return( { "status": 450, "title": "response_id missing", "detail": "Required attribute response_id is missing from URL", "type": "about:blank" }, 450)
+    if message_id is None:
+      return( { "status": 450, "title": "message_id missing", "detail": "Required attribute message_id is missing from URL", "type": "about:blank" }, 450)
 
-    #### Find the response
-    storedResponse = session.query(Response).filter(Response.response_id==response_id).first()
-    if storedResponse is not None:
-      return pickle.loads(storedResponse.response_object)
+    #### Find the message
+    storedMessage = session.query(Message).filter(Message.message_id==message_id).first()
+    if storedMessage is not None:
+      return pickle.loads(storedMessage.message_object)
     else:
-      return( { "status": 404, "title": "Response not found", "detail": "There is no response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
+      return( { "status": 404, "title": "Message not found", "detail": "There is no message corresponding to message_id="+str(message_id), "type": "about:blank" }, 404)
 
 
   #### Fetch a cached result
@@ -542,84 +557,88 @@ class RTXFeedback:
       return( { "status": 404, "title": "Result not found", "detail": "There is no result corresponding to result_id="+str(result_id), "type": "about:blank" }, 404)
 
 
-  #### Get a previously stored response for this query from the database
-  def processExternalResponseEnvelope(self,envelope):
+  #### Get a previously stored message for this query from the database
+  def processExternalPreviousMessageProcessingPlan(self,inputEnvelope):
     debug = 1
-    if debug: eprint("DEBUG: Entering processExternalResponseEnvelope")
-    responses = []
-    finalResponse = None
-    finalResponse_id = None
+    if debug: eprint("DEBUG: Entering processExternalPreviousMessageProcessingPlan")
+    messages = []
+    finalMessage = None
+    finalMessage_id = None
     query = None
 
-    if envelope.response_ur_is is not None:
-      if debug: eprint("DEBUG: Got responseURIs")
-      for uri in envelope.response_ur_is:
-        if debug: eprint("DEBUG:   responseURI="+uri)
-        matchResult = re.match( r'http[s]://rtx.ncats.io/.*api/rtx/.+/response/(\d+)',uri,re.M|re.I )
+    #### Pull out the main processing plan envelope
+    envelope = PreviousMessageProcessingPlan.from_dict(inputEnvelope["previous_message_processing_plan"])
+
+    #### If there are URIs provided, try to load them
+    if envelope.previous_message_uris is not None:
+      if debug: eprint("DEBUG: Got previous_message_uris")
+      for uri in envelope.previous_message_uris:
+        if debug: eprint("DEBUG:   messageURI="+uri)
+        matchResult = re.match( r'http[s]://rtx.ncats.io/.*api/rtx/.+/message/(\d+)',uri,re.M|re.I )
         if matchResult:
-          response_id = matchResult.group(1)
-          if debug: eprint("DEBUG: Found local RTX identifier corresponding to respond_id "+response_id)
-          if debug: eprint("DEBUG: Loading response_id "+response_id)
-          response = self.getResponse(response_id)
-          eprint(type(response))
-          if not isinstance(response,tuple):
-            if debug: eprint("DEBUG: Original question was: "+response["original_question_text"])
-            responses.append(response)
-            finalResponse_id = response_id
-            query = { "query_type_id": response["query_type_id"], "restated_question": response["restated_question_text"], "terms": response["terms"] }
+          message_id = matchResult.group(1)
+          if debug: eprint("DEBUG: Found local RTX identifier corresponding to respond_id "+message_id)
+          if debug: eprint("DEBUG: Loading message_id "+message_id)
+          message = self.getMessage(message_id)
+          eprint(type(message))
+          if not isinstance(message,tuple):
+            if debug: eprint("DEBUG: Original question was: "+message["original_question"])
+            messages.append(message)
+            finalMessage_id = message_id
+            query = { "query_type_id": message["query_type_id"], "restated_question": message["restated_question"], "terms": message["terms"] }
           else:
-            eprint("ERROR: Unable to load response_id "+response_id)
-            return( { "status": 404, "title": "Response not found", "detail": "There is no local response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
+            eprint("ERROR: Unable to load message_id "+message_id)
+            return( { "status": 404, "title": "Message not found", "detail": "There is no local message corresponding to message_id="+str(message_id), "type": "about:blank" }, 404)
 
+    #### If there are one or more previous_messages embedded in the POST, process them
+    if envelope.previous_messages is not None:
+      if debug: eprint("DEBUG: Got previous_messages")
+      for uploadedMessage in envelope.previous_messages:
+        if debug: eprint("DEBUG: uploadedMessage is a "+str(uploadedMessage.__class__))
+        if str(uploadedMessage.__class__) == "<class 'swagger_server.models.message.Message'>":
+          if uploadedMessage.results:
+            message = ast.literal_eval(repr(uploadedMessage))
+            messages.append(message)
 
-    if envelope.responses is not None:
-      if debug: eprint("DEBUG: Got responses")
-      for uploadedResponse in envelope.responses:
-        if debug: eprint("DEBUG: uploadedResponse is a "+str(uploadedResponse.__class__))
-        if str(uploadedResponse.__class__) == "<class 'swagger_server.models.response.Response'>":
-          if uploadedResponse.result_list:
-            response = ast.literal_eval(repr(uploadedResponse))
-            responses.append(response)
+            if message["terms"] is None:
+              message["terms"] = { "dummyTerm": "giraffe" }
+            if message["query_type_id"] is None:
+              message["query_type_id"] = "UnknownQ"
+            if message["restated_question"] is None:
+              message["restated_question"] = "What is life?"
+            if message["original_question"] is None:
+              message["original_question"] = "what is life"
 
-            if response["terms"] is None:
-              response["terms"] = { "dummyTerm": "giraffe" }
-            if response["query_type_id"] is None:
-              response["query_type_id"] = "UnknownQ"
-            if response["restated_question_text"] is None:
-              response["restated_question_text"] = "What is life?"
-            if response["original_question_text"] is None:
-              response["original_question_text"] = "what is life"
-
-            query = { "query_type_id": response["query_type_id"], "restated_question": response["restated_question_text"], "original_question": response["original_question_text"], "terms": response["terms"] }
+            query = { "query_type_id": message["query_type_id"], "restated_question": message["restated_question"], "original_question": message["original_question"], "terms": message["terms"] }
           else:
-            eprint("Uploaded response does not contain a result_list. May be the wrong format")
-            return( { "status": 404, "title": "Bad uploaded Response", "detail": "There is no result_list in the uploaded Response object=", "type": "about:blank" }, 404)
+            eprint("Uploaded message does not contain a results. May be the wrong format")
+            return( { "status": 404, "title": "Bad uploaded Message", "detail": "There is no results in the uploaded Message object=", "type": "about:blank" }, 404)
         else:
-          eprint("Uploaded response is not of type Response. It is of type"+str(uploadedResponse.__class__))
-          return( { "status": 404, "title": "Bad uploaded Response", "detail": "Uploaded response is not of type Response. It is of type"+str(uploadedResponse.__class__), "type": "about:blank" }, 404)
+          eprint("Uploaded message is not of type Message. It is of type"+str(uploadedMessage.__class__))
+          return( { "status": 404, "title": "Bad uploaded Message", "detail": "Uploaded message is not of type Message. It is of type"+str(uploadedMessage.__class__), "type": "about:blank" }, 404)
 
-    #### How many response objects do we have
-    n_responses = len(responses)
-    if n_responses == 0:
-      return( { "status": 499, "title": "No Responses", "detail": "Did not get any useful Response objects", "type": "about:blank" }, 499)
-    elif n_responses == 1:
-      finalResponse = responses[0]
+    #### Take different actions based on the number of messages we now have in hand
+    n_messages = len(messages)
+    if n_messages == 0:
+      return( { "status": 499, "title": "No Messages", "detail": "Did not get any useful Message objects", "type": "about:blank" }, 499)
+    elif n_messages == 1:
+      finalMessage = messages[0]
     else:
-      finalResponse = TxResponse.from_dict(responses[0])
+      finalMessage = TxMessage.from_dict(messages[0])
       counter = 1
-      while counter < n_responses:
-        responseToMerge = TxResponse.from_dict(responses[counter])
-        if responseToMerge.reasoner_id is None:
-          responseToMerge.reasoner_id = "Unknown"
-        if responseToMerge.reasoner_id != "RTX":
-          responseToMerge = self.fix_response(query,responseToMerge,responseToMerge.reasoner_id)
+      while counter < n_messages:
+        messageToMerge = TxMessage.from_dict(messages[counter])
+        if messageToMerge.reasoner_id is None:
+          messageToMerge.reasoner_id = "Unknown"
+        if messageToMerge.reasoner_id != "RTX":
+          messageToMerge = self.fix_message(query,messageToMerge,messageToMerge.reasoner_id)
 
-        finalResponse = self.merge_response(finalResponse,responseToMerge)
+        finalMessage = self.merge_message(finalMessage,messageToMerge)
         counter += 1
-      finalResponse = ast.literal_eval(repr(finalResponse))
-      #return( { "status": 498, "title": "Multiple Responses", "detail": "I have multiple responses. Merging code awaits!", "type": "about:blank" }, 498)
+      finalMessage = ast.literal_eval(repr(finalMessage))
+      #return( { "status": 498, "title": "Multiple Messages", "detail": "I have multiple messages. Merging code awaits!", "type": "about:blank" }, 498)
 
-
+    #### Examine the options that were provided and act accordingly
     optionsDict = {}
     if envelope.options:
       if debug: eprint("DEBUG: Got options")
@@ -628,26 +647,36 @@ class RTXFeedback:
         optionsDict[option] = 1
 
     if "AnnotateDrugs" in optionsDict:
-      annotate_std_results(finalResponse)
+      if debug: eprint("DEBUG: Annotating drugs")
+      annotate_std_results(finalMessage)
 
     if "Store" in optionsDict:
-      finalResponse_id = self.addNewResponse(TxResponse.from_dict(finalResponse),query)
+      if debug: eprint("DEBUG: Storing result")
+      finalMessage_id = self.addNewMessage(TxMessage.from_dict(finalMessage),query)
 
-    if "RedirectToResponse" in optionsDict:
-      return( redirect("https://rtx.ncats.io/api/rtx/v1/response/"+str(finalResponse_id), code=302))
-    elif "ReturnResponseId" in optionsDict:
-      return( { "status": 200, "response_id": str(finalResponse_id) }, 200)
-    elif "ReturnResponse" in optionsDict:
-      return(finalResponse)
+    #### If requesting a full redirect to the resulting message display. This doesn't really work I don't think
+    if "RedirectToMessage" in optionsDict:
+      #redirect("https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id), code=302)
+      #return( { "status": 302, "redirect": "https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id) }, 302)
+      return( "Location: https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id), 302)
+
+    #### Else if requesting the Id of the result
+    elif "ReturnMessageId" in optionsDict:
+      return( { "status": 200, "message_id": str(finalMessage_id), "url": "https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
+
+    #### Else if asking for the full message back
+    elif "ReturnMessage" in optionsDict:
+      return(finalMessage)
+
+    #### Or otherwise we don't know how to respond
     else:
-      return( { "status": 504, "title": "Response type not specified", "detail": "One of the options must be RedirectToResponse, ReturnResponseId, or ReturnResponse", "type": "about:blank" }, 504)
+      return( { "status": 504, "title": "Message type not specified", "detail": "One of the options must be RedirectToMessage, ReturnMessageId, or ReturnMessage", "type": "about:blank" }, 504)
 
-      
-    if debug: eprint("DEBUG: Exiting processExternalResponseEnvelope")
+    if debug: eprint("DEBUG: Exiting processExternalPreviousMessageProcessingPlan")
     return()
 
 
-  def fix_response(self,query,response,reasoner_id):
+  def fix_message(self,query,message,reasoner_id):
 
     if reasoner_id == "RTX":
       base_url = "https://rtx.ncats.io/api/rtx/v1"
@@ -659,26 +688,26 @@ class RTXFeedback:
       base_url = "https://unknown.url.org/"
       eprint("ERROR: Unrecognized reasoner_id '"+reasoner_id+"'")
 
-    if response.context is None:
-      response.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
-    if response.id is None or response.id == "":
-      response.id = base_url + "/response/1234"
-    response.original_question_text = query["original_question"]
-    response.restated_question_text = query["restated_question"]
-    response.reasoner_id = reasoner_id
-    if response.response_code is None or response.response_code == "":
-      response.response_code = "OK"
-    if response.n_results is None:
-      if response.result_list is not None:
-        response.n_results = len(response.result_list)
+    if message.context is None:
+      message.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
+    if message.id is None or message.id == "":
+      message.id = base_url + "/message/1234"
+    message.original_question = query["original_question"]
+    message.restated_question = query["restated_question"]
+    message.reasoner_id = reasoner_id
+    if message.message_code is None or message.message_code == "":
+      message.message_code = "OK"
+    if message.n_results is None:
+      if message.results is not None:
+        message.n_results = len(message.results)
       else:
-        response.n_results = 0
-    if response.message is None or response.message == "":
-      response.message = str(response.n_results) + " results returned"
+        message.n_results = 0
+    if message.code_description is None or message.code_description == "":
+      message.code_description = str(message.n_results) + " results returned"
 
-    if response.result_list is not None:
+    if message.results is not None:
       result_id = 2345
-      for result in response.result_list:
+      for result in message.results:
         if result.id is None or result.id == "":
           result.id = base_url + "/result/" + str(result_id)
           result_id += 1
@@ -687,15 +716,15 @@ class RTXFeedback:
         if result.confidence is None:
           result.confidence = 0
 
-    return(response)
+    return(message)
 
 
-  def merge_response(self,final_response,response_to_merge):
-    for result in response_to_merge.result_list:
-      final_response.result_list.append(result)
-    final_response.n_results = len(final_response.result_list)
-    final_response.message = str(final_response.n_results) + " merged reults"
-    return(final_response)
+  def merge_message(self,final_message,message_to_merge):
+    for result in message_to_merge.results:
+      final_message.results.append(result)
+    final_message.n_results = len(final_message.results)
+    final_message.code_description = str(final_message.n_results) + " merged reults"
+    return(final_message)
 
 
 
@@ -720,27 +749,27 @@ def stringifyDict(inputDict):
 
 # This is from Kevin Xin from team orange.
 # It performs MOD1 and MOD2 (annotation and scoring modules) of workflow 1
-# input std API response format
-# output std API response format
+# input std API message format
+# output std API message format
 
 def annotate_drug(drug_id, id_type):
     """
     Provide annotation for drug
     """
     if id_type == 'chembl':
-        query_template = 'http://mychem.info/v1/query?q=drugcentral.xref.chembl_id:{{drug_id}}&fields=drugcentral'
+        query_template = 'http://mychem.info/v1/query?q=drugcentral.xrefs.chembl_id:{{drug_id}}&fields=drugcentral'
     elif id_type == 'chebi':
-        query_template = 'http://mychem.info/v1/query?q=drugcentral.xref.chebi:"{{drug_id}}"&fields=drugcentral'
+        query_template = 'http://mychem.info/v1/query?q=drugcentral.xrefs.chebi:"{{drug_id}}"&fields=drugcentral'
     query_url = query_template.replace('{{drug_id}}', drug_id)
     results = {'annotate': {'common_side_effects': None, 'approval': None, 'indication': None, 'EPC': None}}
-    api_response = requests.get(query_url).json()
+    api_message = requests.get(query_url).json()
 
     # get drug approval information from mychem
-    approval = DictQuery(api_response).get("hits/drugcentral/approval")
+    approval = DictQuery(api_message).get("hits/drugcentral/approval")
     if approval:
         results['annotate']['approval'] = 'Yes'
     # get drug approved indication information
-    indication = DictQuery(api_response).get("hits/drugcentral/drug_use/indication")
+    indication = DictQuery(api_message).get("hits/drugcentral/drug_use/indication")
     if len(indication) > 0 and indication[0] and not isinstance(indication[0], list):
         results['annotate']['indication'] = [_doc['snomed_full_name'] for _doc in indication if
                                              'snomed_full_name' in _doc]
@@ -748,13 +777,13 @@ def annotate_drug(drug_id, id_type):
         results['annotate']['indication'] = [_doc['snomed_full_name'] for _doc in indication[0] if
                                              'snomed_full_name' in _doc]
         # get drug established pharm class information
-    epc = DictQuery(api_response).get("hits/drugcentral/pharmacology_class/fda_epc")
+    epc = DictQuery(api_message).get("hits/drugcentral/pharmacology_class/fda_epc")
     if len(epc) > 0 and epc[0] and not isinstance(epc[0], list):
         results['annotate']['EPC'] = [_doc['description'] for _doc in epc if 'description' in _doc]
     elif len(epc) > 0 and epc[0]:
         results['annotate']['EPC'] = [_doc['description'] for _doc in epc[0] if 'description' in _doc]
         # get drug common side effects
-    side_effects = DictQuery(api_response).get("hits/drugcentral/fda_adverse_event")
+    side_effects = DictQuery(api_message).get("hits/drugcentral/fda_adverse_event")
     if len(side_effects) > 0 and side_effects[0]:
         if isinstance(side_effects[0], list):
             # only keep side effects with likelihood higher than the threshold
@@ -824,8 +853,18 @@ def annotate_std_results(input_json_doc):
     """
     Annotate results from reasoner's standard output
     """
-    for _doc in input_json_doc['result_list']:
-        for _node in _doc['result_graph']['node_list']:
+    for _doc in input_json_doc['results']:
+        if 'result_graph' in _doc and _doc['result_graph'] is not None:
+            eprint("Found result_graph and it is")
+            eprint(_doc['result_graph'])
+            for _node in _doc['result_graph']['nodes']:
+                if _node['id'].startswith('CHEMBL'):
+                    _drug = _node['id'].split(':')[-1]
+                    _node['node_attributes'] = annotate_drug(_drug, 'chembl')
+                elif _node['id'].startswith("CHEBI:"):
+                    _node['node_attributes'] = annotate_drug(_node['id'], 'chebi')
+    if 'knowledge_graph' in input_json_doc:
+        for _node in input_json_doc['knowledge_graph']['nodes']:
             if _node['id'].startswith('CHEMBL'):
                 _drug = _node['id'].split(':')[-1]
                 _node['node_attributes'] = annotate_drug(_drug, 'chembl')
@@ -843,14 +882,14 @@ def main():
 
   #### Create a new RTXFeedback object
   rtxFeedback = RTXFeedback()
-  envelope = ResponseEnvelope()
-  #envelope.options = [ "Store", "RedirectToResponse" ]
-  envelope.options = [ "AnnotateDrugs", "Store", "ReturnResponseId" ]
-  #envelope.options = [ "ReturnResponse" ]
-  #envelope.options = [ "AnnotateDrugs", "ReturnResponse" ]
-  envelope.response_ur_is = [ "https://rtx.ncats.io/api/rtx/v1/response/300" ]
+  envelope = PreviousMessageProcessingPlan()
+  #envelope.options = [ "Store", "RedirectToMessage" ]
+  envelope.options = [ "AnnotateDrugs", "Store", "ReturnMessageId" ]
+  #envelope.options = [ "ReturnMessage" ]
+  #envelope.options = [ "AnnotateDrugs", "ReturnMessage" ]
+  envelope.message_ur_is = [ "https://rtx.ncats.io/api/rtx/v1/message/300" ]
 
-  result = rtxFeedback.processExternalResponseEnvelope(envelope)
+  result = rtxFeedback.processExternalPreviousMessageProcessingPlan(envelope)
   print(result)
 
 

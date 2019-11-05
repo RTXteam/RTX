@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../reas
 from NormGoogleDistance import NormGoogleDistance
 
 def pubmed_mesh_ngd(term1, term2):  # noqa: E501
-    """Query to get the Normalized Google Distance between two MeSH terms based on co-occurance in all PubMed article annotations
+    """Query to get the Normalized Google Distance between two MeSH terms based on co-occurence in all PubMed article annotations
 
      # noqa: E501
 

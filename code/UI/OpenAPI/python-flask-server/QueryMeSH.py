@@ -18,26 +18,29 @@ import requests_cache
 import time
 import datetime
 
-from swagger_server.models.response import Response
+from swagger_server.models.message import Message
 from swagger_server.models.result import Result
-from swagger_server.models.result_graph import ResultGraph
+from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
+from swagger_server.models.query_graph import QueryGraph
+from swagger_server.models.q_node import QNode
+from swagger_server.models.q_edge import QEdge
 from swagger_server.models.edge_attribute import EdgeAttribute
 from swagger_server.models.node_attribute import NodeAttribute
 
 def make_throttle_hook(timeout=1.0):
     """
     From: https://requests-cache.readthedocs.io/en/latest/user_guide.html#usage
-    Returns a response hook function which sleeps for `timeout` seconds if
-    response is not cached
+    Returns a message hook function which sleeps for `timeout` seconds if
+    message is not cached
     """
-    def hook(response, *args, **kwargs):
+    def hook(message, *args, **kwargs):
         #print("In hook")
-        if not getattr(response, 'from_cache', False):
+        if not getattr(message, 'from_cache', False):
             #print("sleeping "+str(timeout))
             time.sleep(timeout)
-        return response
+        return message
     return hook
 
 
@@ -99,49 +102,75 @@ class QueryMeSH:
         return attributes
 
 
-    def createResponse(self):
-        #### Create the response object and fill it with attributes about the response
-        response = Response()
-        response.response_code = "OK"
-        response.message = "1 result found"
-        return response
+    def createMessage(self):
+        #### Create the message object and fill it with attributes about the message
+        message = Message()
+        message.message_code = "OK"
+        message.code_description = "??"
+        return message
 
 
     def queryTerm(self, term):
         method = "queryTerm"
         attributes = self.findTermAttributesAndTypeByName(term)
-        response = self.createResponse()
+        message = self.createMessage()
         if ( attributes["status"] == 'OK' ):
+            message.code_description = "1 result found"
+            message.table_column_names = [ "id", "type", "name", "description", "uri" ]
+
+            #### Create a Node object and fill it
             node1 = Node()
             node1.id = "MESH:" + attributes["id"]
             node1.uri = "http://purl.obolibrary.org/obo/MESH_" + attributes["id"]
-            node1.type = attributes["type"]
+            node1.type = [ attributes["type"] ]
             node1.name = attributes["name"]
             node1.description = attributes["description"]
 
             #### Create the first result (potential answer)
             result1 = Result()
             result1.id = "http://rtx.ncats.io/api/v1/result/0000"
-            result1.text = "The term " + attributes["name"] + " refers to " + attributes["description"]
+            result1.description = "The term " + attributes["name"] + " refers to " + attributes["description"]
             result1.confidence = 1.0
+            result1.essence = attributes["name"]
+            result1.essence_type = attributes["type"]
+            node_types = ",".join(node1.type)
+            result1.row_data = [ node1.id, node_types, node1.name, node1.description, node1.uri ]
 
-            #### Create a ResultGraph object and put the list of nodes and edges into it
-            result_graph = ResultGraph()
-            result_graph.node_list = [ node1 ]
+            #### Create a KnowledgeGraph object and put the list of nodes and edges into it
+            result_graph = KnowledgeGraph()
+            result_graph.nodes = [ node1 ]
 
             #### Put the ResultGraph into the first result (potential answer)
             result1.result_graph = result_graph
 
-            #### Put the first result (potential answer) into the response
-            result_list = [ result1 ]
-            response.result_list = result_list
+            #### Put the first result (potential answer) into the message
+            results = [ result1 ]
+            message.results = results
+
+            #### Also put the union of all result_graph components into the top Message KnowledgeGraph
+            #### Normally the knowledge_graph will be much more complex than this, but take a shortcut for this single-node result
+            message.knowledge_graph = result_graph
+
+            #### Also manufacture a query_graph post hoc
+            qnode1 = QNode()
+            qnode1.node_id = "n00"
+            qnode1.curie = "MESH:" + attributes["id"]
+            qnode1.type = None
+            query_graph = QueryGraph()
+            query_graph.nodes = [ qnode1 ]
+            query_graph.edges = []
+            message.query_graph = query_graph
+
+            #### Create the corresponding knowledge_map
+            knowledge_map = { "n00": "MESH:" + attributes["id"] }
+            result1.knowledge_map = knowledge_map
 
         else:
-            response.response_code = "TermNotFound"
-            response.message = "Unable to find term '" + term + "' in MeSH. No further information is available at this time."
-            response.id = None
+            message.message_code = "TermNotFound"
+            message.code_description = "Unable to find this term in MeSH. No further information is available at this time."
+            message.id = None
 
-        return response
+        return message
 
 
     def findTermAttributesById(self, termId):

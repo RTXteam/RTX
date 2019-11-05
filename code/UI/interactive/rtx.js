@@ -1,28 +1,37 @@
+var input_qg = { "edges": [], "nodes": [] };
+var qgids = [];
 var cyobj = [];
 var cytodata = [];
 var fb_explvls = [];
 var fb_ratings = [];
-var response_id = null;
+var predicates = {};
+var message_id = null;
 var summary_table_html = '';
 var columnlist = [];
+var UIstate = {};
+
+var baseAPI = "";
 
 function main() {
-	get_example_questions();
-	display_list('A');
-	display_list('B');
+    get_example_questions();
+    load_nodes_and_predicates();
+    display_list('A');
+    display_list('B');
+    add_status_divs();
+    cytodata[999] = 'dummy';
+    UIstate.nodedd = 1;
 
-	response_id = getQueryVariable("r") || null;
-	if (response_id) {
-	    for (var li in listItems) {
-        	sesame('collapse',document.getElementById("listdiv"+li));
-    	    }
-
-	    add_status_divs();
-	    document.getElementById("statusdiv").innerHTML = "You have requested RTX response id = " + response_id;
-	    document.getElementById("devdiv").innerHTML =  "requested RTX response id = " + response_id + "<br>";
-	    retrieve_response();
-	}
-
+    message_id = getQueryVariable("m") || null;
+    if (message_id) {
+	document.getElementById("statusdiv").innerHTML = "You have requested RTX message id = " + message_id;
+	document.getElementById("devdiv").innerHTML =  "requested RTX message id = " + message_id + "<br>";
+	retrieve_message();
+	openSection(null,'queryDiv');
+    }
+    else {
+	openSection(null,'queryDiv');
+	add_cyto();
+   }
 }
 
 function sesame(head,content) {
@@ -47,29 +56,128 @@ function sesame(head,content) {
 }
 
 
+function openSection(obj, sect) {
+    if (obj != null) {
+	var e = document.getElementsByClassName("menucurrent");
+	e[0].className = "menuleftitem";
+	obj.className = "menucurrent";
+    }
+    e = document.getElementsByClassName("pagesection");
+    for (var i = 0; i < e.length; i++) {
+        e[i].style.maxHeight = null;
+        e[i].style.visibility = 'hidden';
+	//e[i].style.display = "none";
+    }
+    document.getElementById(sect).style.maxHeight = "100%";
+    document.getElementById(sect).style.visibility = 'visible';
+    window.scrollTo(0,0);
+    //document.getElementById(sect).style.display = "block";
+}
+
+
+
 function pasteQuestion(question) {
     document.getElementById("questionForm").elements["questionText"].value = question;
     document.getElementById("qqq").value = '';
     document.getElementById("qqq").blur();
 }
 
-function sendQuestion(e) {
-    for (var li in listItems) {
-    	sesame('collapse',document.getElementById("listdiv"+li));
-    }
-
+function reset_vars() {
     add_status_divs();
     document.getElementById("result_container").innerHTML = "";
+    //    document.getElementById("kg_container").innerHTML = "";
+    if (cyobj[0]) {cyobj[0].elements().remove();}
     document.getElementById("summary_container").innerHTML = "";
+    document.getElementById("menunumresults").innerHTML = "--";
+    document.getElementById("menunumresults").classList.remove("numnew");
+    document.getElementById("menunumresults").classList.add("numold");
     summary_table_html = '';
     cyobj = [];
     cytodata = [];
+    UIstate.nodedd = 1;
+}
+
+function sendGraph(e) {
+    reset_vars();
+    document.getElementById("questionForm").elements["questionText"].value = '-- posted query via graph --';
+
+    document.getElementById("statusdiv").innerHTML = "Posting graph.  Looking for answer...";
+
+    sesame('openmax',statusdiv);
+    var xhr = new XMLHttpRequest();
+    xhr.open("post",  baseAPI + "api/rtx/v1/query", true);
+    xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+
+
+    // ids need to start with a non-numeric character...
+    for (var gnode in input_qg.nodes) {
+	if (String(input_qg.nodes[gnode].id).match(/^\d/)) {
+	    input_qg.nodes[gnode].id = "qg" + input_qg.nodes[gnode].id;
+	}
+    }
+    for (var gedge in input_qg.edges) {
+	if (String(input_qg.edges[gedge].id).match(/^\d/)) {
+	    input_qg.edges[gedge].id = "qg" + input_qg.edges[gedge].id;
+	}
+	if (String(input_qg.edges[gedge].source_id).match(/^\d/)) {
+	    input_qg.edges[gedge].source_id = "qg" + input_qg.edges[gedge].source_id;
+	}
+        if (String(input_qg.edges[gedge].target_id).match(/^\d/)) {
+	    input_qg.edges[gedge].target_id = "qg" + input_qg.edges[gedge].target_id;
+	}
+    }
+
+
+    document.getElementById('qg_form').style.visibility = 'hidden';
+    document.getElementById('qg_form').style.maxHeight = null;
+
+
+    var queryObj = { "message" : { "query_graph" :input_qg } };
+    //queryObj.bypass_cache = bypass_cache;
+    queryObj.max_results = 100;
+
+    document.getElementById("devdiv").innerHTML += "<PRE>\nposted to QUERY:\n" + JSON.stringify(queryObj,null,2) + "</PRE>";
+
+    clear_qg();
+
+    // send the collected data as JSON
+    xhr.send(JSON.stringify(queryObj));
+
+    xhr.onloadend = function() {
+        if ( xhr.status == 200 ) {
+	    var jsonObj = JSON.parse(xhr.responseText);
+	    document.getElementById("devdiv").innerHTML += "<br>================================================================= REPONSE MESSAGE::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj,null,2) + "</PRE>";
+
+	    document.getElementById("statusdiv").innerHTML += "<br><br><I>"+jsonObj["code_description"]+"</I>";
+	    sesame('openmax',statusdiv);
+
+	    if (jsonObj["message_code"] == "QueryGraphZeroNodes") {
+		clear_qg();
+	    }
+	    else {
+		input_qg = { "edges": [], "nodes": [] };
+		render_message(jsonObj);
+	    }
+	}
+	else {
+	    document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr.status+")</SPAN>";
+	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<BR>"+xhr.responseText;
+	    sesame('openmax',statusdiv);
+	}
+	
+    };
+
+}
+
+function sendQuestion(e) {
+    reset_vars();
+    if (cyobj[999]) {cyobj[999].elements().remove();}
+    input_qg = { "edges": [], "nodes": [] };
 
     var bypass_cache = "true";
     if (document.getElementById("useCache").checked) {
 	bypass_cache = "false";
     }
-
 
     // collect the form data while iterating over the inputs
     var q = document.getElementById("questionForm").elements["questionText"].value;
@@ -82,10 +190,12 @@ function sendQuestion(e) {
     document.getElementById("devdiv").innerHTML = " (bypassing cache : " + bypass_cache + ")";
 
     sesame('openmax',statusdiv);
+    document.getElementById('qg_form').style.visibility = 'hidden';
+    document.getElementById('qg_form').style.maxHeight = null;
 
     // construct an HTTP request
     var xhr = new XMLHttpRequest();
-    xhr.open("post", "api/rtx/v1/translate", true);
+    xhr.open("post", baseAPI + "api/rtx/v1/translate", true);
     xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
     // send the collected data as JSON
@@ -99,29 +209,33 @@ function sendQuestion(e) {
 	    if ( jsonObj.query_type_id && jsonObj.terms ) {
 		document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR>Looking for answer...";
 
-		jsonObj.bypass_cache = bypass_cache;
-		jsonObj.max_results = 100;
-
 		sesame('openmax',statusdiv);
 		var xhr2 = new XMLHttpRequest();
-		xhr2.open("post", "api/rtx/v1/query", true);
+		xhr2.open("post",  baseAPI + "api/rtx/v1/query", true);
 		xhr2.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
+                var queryObj = { "message" : jsonObj };
+                queryObj.bypass_cache = bypass_cache;
+                queryObj.max_results = 100;
+
+                document.getElementById("devdiv").innerHTML += "<PRE>\nposted to QUERY:\n" + JSON.stringify(queryObj,null,2) + "</PRE>";
+
+
 		// send the collected data as JSON
-		xhr2.send(JSON.stringify(jsonObj));
+		xhr2.send(JSON.stringify(queryObj));
 
 		xhr2.onloadend = function() {
 		    if ( xhr2.status == 200 ) {
 			var jsonObj2 = JSON.parse(xhr2.responseText);
-			document.getElementById("devdiv").innerHTML += "================================================================= QUERY::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
+			document.getElementById("devdiv").innerHTML += "<br>================================================================= QUERY::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
 
-			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question_text"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["message"]+"</I>";
+			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["code_description"]+"</I>";
 			sesame('openmax',statusdiv);
 
-			render_response(jsonObj2);
+			render_message(jsonObj2);
 
 		    }
-		    else if ( jsonObj.message ) {
+		    else if ( jsonObj.message ) { // STILL APPLIES TO 0.9??  TODO
 			document.getElementById("statusdiv").innerHTML += "<BR><BR>An error was encountered:<BR><SPAN CLASS='error'>"+jsonObj.message+"</SPAN>";
 			sesame('openmax',statusdiv);
 		    }
@@ -156,72 +270,95 @@ function sendQuestion(e) {
 }
 
 
-function retrieve_response() {
-        document.getElementById("statusdiv").innerHTML = "Retrieving RTX response id = " + response_id + "<hr>";
+function retrieve_message() {
+    document.getElementById("statusdiv").innerHTML = "Retrieving RTX message id = " + message_id + "<hr>";
 
-	sesame('openmax',statusdiv);
-	var xhr = new XMLHttpRequest();
-	xhr.open("get", "api/rtx/v1/response/" + response_id, true);
-	xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-	xhr.send(null);
-	xhr.onloadend = function() {
-		if ( xhr.status == 200 ) {
-			var jsonObj2 = JSON.parse(xhr.responseText);
-			document.getElementById("devdiv").innerHTML += "================================================================= RESPONSE REQUEST::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
+    sesame('openmax',statusdiv);
+    var xhr = new XMLHttpRequest();
+    xhr.open("get",  baseAPI + "api/rtx/v1/message/" + message_id, true);
+    xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+    xhr.send(null);
+    xhr.onloadend = function() {
+	if ( xhr.status == 200 ) {
+	    var jsonObj2 = JSON.parse(xhr.responseText);
+	    document.getElementById("devdiv").innerHTML += "<br>================================================================= RESPONSE REQUEST::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
 
-			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question_text"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["message"]+"</I>";
-			document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question_text"];
+	    document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["code_description"]+"</I>";
+	    document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question"];
 
-			sesame('openmax',statusdiv);
+	    sesame('openmax',statusdiv);
 
-			render_response(jsonObj2);
-		}
-		else if ( xhr.status == 404 ) {
-			document.getElementById("statusdiv").innerHTML += "<BR>The following response id was not found:<SPAN CLASS='error'>"+response_id+"</SPAN>";
-			sesame('openmax',statusdiv);
-		}
-		else {
-			document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr2.status+")</SPAN>";
-			document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<BR>"+xhr2.responseText;
-			sesame('openmax',statusdiv);
-		}
-	};
+	    render_message(jsonObj2);
+	}
+	else if ( xhr.status == 404 ) {
+	    document.getElementById("statusdiv").innerHTML += "<BR>The following message id was not found:<SPAN CLASS='error'>"+message_id+"</SPAN>";
+	    sesame('openmax',statusdiv);
+	}
+	else {
+	    document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr2.status+")</SPAN>";
+	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<BR>"+xhr2.responseText;
+	    sesame('openmax',statusdiv);
+	}
+    };
 }
 
 
 
-function render_response(respObj) {
-	response_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
+function render_message(respObj) {
+    message_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
 
-	add_to_session(response_id,respObj.restated_question_text+"?");
+    add_to_session(message_id,respObj.restated_question+"?");
 
-	history.pushState({ id: 'RTX_UI' }, 'RTX | response='+response_id, "//"+ window.location.hostname + window.location.pathname + '?r='+response_id);
+    document.title = "RTX-UI ["+message_id+"]: "+respObj.restated_question+"?";
+    history.pushState({ id: 'RTX_UI' }, 'RTX | message='+message_id, "//"+ window.location.hostname + window.location.pathname + '?m='+message_id);
 
-	if ( respObj["table_column_names"] ) {
-		add_to_summary(respObj["table_column_names"],0);
+    if ( respObj["table_column_names"] ) {
+	add_to_summary(respObj["table_column_names"],0);
+    }
+    if ( respObj["results"] ) {
+        document.getElementById("result_container").innerHTML += "<H2>" + respObj["n_results"] + " results</H2>";
+        document.getElementById("menunumresults").innerHTML = respObj["n_results"];
+        document.getElementById("menunumresults").classList.add("numnew");
+	document.getElementById("menunumresults").classList.remove("numold");
+
+	if ( respObj["knowledge_graph"] ) {
+//	    process_kg(respObj["knowledge_graph"]);
+//	    add_kg_html();
+	    process_graph(respObj["knowledge_graph"],0);
+	    process_results(respObj["results"],respObj["knowledge_graph"]);
 	}
-        if ( respObj["result_list"] ) {
-                add_result(respObj["result_list"]);
-                add_feedback();
-                //sesame(h1_div,a1_div);
-        }
-        else {
-                document.getElementById("result_container").innerHTML += "<H2>No results...</H2>";
-        }
-
-        if ( respObj["table_column_names"] ) {
-                document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' title='click to expand / collapse summary' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br></div>";
+	else {  // fallback to old style
+            add_result(respObj["results"]);
 	}
+        add_feedback();
+        //sesame(h1_div,a1_div);
+    }
+    else {
+        document.getElementById("result_container").innerHTML += "<H2>No results...</H2>";
+        document.getElementById("summary_container").innerHTML += "<H2>No results...</H2>";
+    }
 
+    if (respObj["query_graph"]) {
+	process_graph(respObj["query_graph"],999);
+    }
+    else {
+	cytodata[999] = 'dummy'; // this enables query graph editing
+    }
+
+    if ( respObj["table_column_names"] ) {
+        document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br></div>";
+    }
+
+    add_cyto();
 }
 
 
 
 
 function add_status_divs() {
-    document.getElementById("status_container").innerHTML = "<div onclick='sesame(null,statusdiv);' title='click to expand / collapse status' class='statushead'>Status</div><div class='status' id='statusdiv'></div>";
+    document.getElementById("status_container").innerHTML = "<div class='statushead'>Status</div><div class='status' id='statusdiv'></div>";
 
-    document.getElementById("dev_result_json_container").innerHTML = "<br><input type='button' class='button' name='action' value='Copy Response JSON to clipboard' onClick='javascript:copyJSON();'/><div onclick='sesame(null,devdiv);' title='click to expand / collapse dev info' class='statushead'>Dev Info <i style='float:right; font-weight:normal;'>( json responses )</i></div><div class='status' id='devdiv'></div>";
+    document.getElementById("dev_result_json_container").innerHTML = "<div class='statushead'>Dev Info <i style='float:right; font-weight:normal;'>( json responses )</i></div><div class='status' id='devdiv'></div>";
 }
 
 
@@ -249,6 +386,138 @@ function add_to_summary(rowdata, num) {
 	summary_table_html += '<'+cell+'>' + rowdata[i] + listlink + '</'+cell+'>';
     }
     summary_table_html += '</tr>';
+}
+
+
+function add_kg_html() {  // was: process_kg(kg) {
+    // knowledge graph is stored in position zero of cytodata
+    document.getElementById("kg_container").innerHTML += "<div onclick='sesame(this,a0_div);' id='h0_div' title='Click to expand / collapse Knowledge Graph' class='accordion'>KNOWLEDGE GRAPH<span class='r100'><span title='Knowledge Graph' class='qprob'>KG</span></span></div>";
+
+    document.getElementById("kg_container").innerHTML += "<div id='a0_div' class='panel'><table class='t100'><tr><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj[0].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout(0,\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout(0,\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout(0,\"circle\");'>C</a><br><a title='random layout' onclick='cylayout(0,\"random\");'>R</a>  </td><td class='cytograph_kg' style='width:100%;'><div style='height: 100%; width: 100%' id='cy0'></div></td></tr><tr><td></td><td><div id='d0_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
+
+}
+
+
+
+function process_graph(gne,gid) {
+    cytodata[gid] = [];
+    for (var gnode in gne.nodes) {
+	gne.nodes[gnode].parentdivnum = gid; // helps link node to div when displaying node info on click
+	if (gne.nodes[gnode].node_id) { // deal with QueryGraphNode (QNode)
+	    gne.nodes[gnode].id = gne.nodes[gnode].node_id;
+	}
+	if (gne.nodes[gnode].curie) {
+	    if (gne.nodes[gnode].name) {
+		gne.nodes[gnode].name += " ("+gne.nodes[gnode].curie+")";
+	    }
+	    else {
+		gne.nodes[gnode].name = gne.nodes[gnode].curie;
+	    }
+	}
+	if (! gne.nodes[gnode].name) {
+            gne.nodes[gnode].name = gne.nodes[gnode].type + "s?";
+	}
+
+        var tmpdata = { "data" : gne.nodes[gnode] };
+        cytodata[gid].push(tmpdata);
+    }
+
+    for (var gedge in gne.edges) {
+	gne.edges[gedge].parentdivnum = gid;
+        gne.edges[gedge].source = gne.edges[gedge].source_id;
+        gne.edges[gedge].target = gne.edges[gedge].target_id;
+
+        var tmpdata = { "data" : gne.edges[gedge] }; // already contains id(?)
+        cytodata[gid].push(tmpdata);
+    }
+
+
+    if (gid == 999) {
+	for (var gnode in gne.nodes) {
+	    qgids.push(gne.nodes[gnode].id);
+
+	    var tmpdata = { "id"     : gne.nodes[gnode].id,
+			    "is_set" : gne.nodes[gnode].is_set,
+			    "name"   : gne.nodes[gnode].name,
+			    "desc"   : gne.nodes[gnode].description,
+			    "curie"  : gne.nodes[gnode].curie,
+			    "type"   : gne.nodes[gnode].type
+			  };
+
+	    input_qg.nodes.push(tmpdata);
+	}
+
+	for (var gedge in gne.edges) {
+	    qgids.push(gne.edges[gedge].id);
+
+	    var tmpdata = { "id"       : gne.edges[gedge].id,
+			    "negated"  : null,
+			    "relation" : null,
+			    "source_id": gne.edges[gedge].source_id,
+			    "target_id": gne.edges[gedge].target_id,
+			    "type"     : gne.edges[gedge].type
+			  };
+	    input_qg.edges.push(tmpdata);
+	}
+    }
+
+}
+
+
+function process_results(reslist,kg) {
+    for (var i = 0; i < reslist.length; i++) {
+	var num = Number(i) + 1;
+
+        if ( reslist[i].row_data ) {
+            add_to_summary(reslist[i].row_data, num);
+	}
+
+	var ess = '';
+	if (reslist[i].essence) {
+	    ess = reslist[i].essence;
+	}
+	var cnf = 0;
+	if (Number(reslist[i].confidence)) {
+	    cnf = Number(reslist[i].confidence).toFixed(2);
+	}
+	var pcl = (cnf>=0.9) ? "p9" : (cnf>=0.7) ? "p7" : (cnf>=0.5) ? "p5" : (cnf>=0.3) ? "p3" : "p1";
+
+	var rsrc = '';
+	if (reslist[i].reasoner_id) {
+	    rsrc = reslist[i].reasoner_id;
+	}
+	var rscl = (rsrc=="RTX") ? "srtx" : (rsrc=="Indigo") ? "sind" : (rsrc=="Robokop") ? "srob" : "p0";
+
+	var rid = reslist[i].id.substr(reslist[i].id.lastIndexOf('/') + 1);
+	var fid = "feedback_" + rid;
+	var fff = "feedback_form_" + rid;
+	
+        document.getElementById("result_container").innerHTML += "<div onclick='sesame(this,a"+num+"_div);' id='h"+num+"_div' title='Click to expand / collapse result "+num+"' class='accordion'>Result "+num+" :: <b>"+ess+"</b><span class='r100'><span title='confidence="+cnf+"' class='"+pcl+" qprob'>"+cnf+"</span><span title='source="+rsrc+"' class='"+rscl+" qprob'>"+rsrc+"</span></span></div>";
+
+	document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table class='t100'><tr><td class='textanswer'>"+reslist[i].description+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+num+"].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout("+num+",\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout("+num+",\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout("+num+",\"circle\");'>C</a><br><a title='random layout' onclick='cylayout("+num+",\"random\");'>R</a>	</td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td><span id='"+fid+"'><i>User Feedback</i><hr><span id='"+fff+"'><a href='javascript:add_fefo(\""+rid+"\",\"a"+num+"_div\");'>Add Feedback</a></span><hr></span></td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
+
+        cytodata[num] = [];
+
+	//console.log("=================== CYTO i:"+i+"  #nb:"+reslist[i].node_bindings.length);
+
+        for (var nb in reslist[i].node_bindings) {
+	    //console.log("=================== i:"+i+"  nb:"+nb+" item:"+reslist[i].node_bindings[nb]);
+	    var kmne = Object.create(kg.nodes.find(item => item.id == reslist[i].node_bindings[nb].kg_id));
+            kmne.parentdivnum = num;
+            //console.log("=================== kmne:"+kmne.id);
+	    var tmpdata = { "data" : kmne };
+	    cytodata[num].push(tmpdata);
+	}
+
+        for (var eb in reslist[i].edge_bindings) {
+	    //console.log("=================== i:"+i+"  eb:"+eb);
+	    var kmne = Object.create(kg.edges.find(item => item.id == reslist[i].edge_bindings[eb].kg_id));
+	    kmne.parentdivnum = num;
+	    //console.log("=================== kmne:"+kmne.id);
+	    var tmpdata = { "data" : kmne };
+	    cytodata[num].push(tmpdata);
+	}
+    }
 }
 
 
@@ -288,11 +557,11 @@ function add_result(reslist) {
 
 
 	if (reslist[i].result_graph == null) {
-	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><br>"+reslist[i].text+"<br><br><span id='"+fid+"'><i>User Feedback</i></span></div>";
+	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><br>"+reslist[i].description+"<br><br><span id='"+fid+"'><i>User Feedback</i></span></div>";
 
 	}
 	else {
-	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table class='t100'><tr><td class='textanswer'>"+reslist[i].text+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+i+"].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout("+i+",\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout("+i+",\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout("+i+",\"circle\");'>C</a><br><a title='random layout' onclick='cylayout("+i+",\"random\");'>R</a>	</td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td><span id='"+fid+"'><i>User Feedback</i><hr><span id='"+fff+"'><a href='javascript:add_fefo(\""+rid+"\",\"a"+num+"_div\");'>Add Feedback</a></span><hr></span></td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
+	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table class='t100'><tr><td class='textanswer'>"+reslist[i].description+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+i+"].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout("+i+",\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout("+i+",\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout("+i+",\"circle\");'>C</a><br><a title='random layout' onclick='cylayout("+i+",\"random\");'>R</a>	</td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td><span id='"+fid+"'><i>User Feedback</i><hr><span id='"+fff+"'><a href='javascript:add_fefo(\""+rid+"\",\"a"+num+"_div\");'>Add Feedback</a></span><hr></span></td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
 
 
 	    if ( reslist[i].row_data ) {
@@ -302,24 +571,24 @@ function add_result(reslist) {
 	    cytodata[i] = [];
 	    var gd = reslist[i].result_graph;
 
-	    for (var g in gd.node_list) {
-		gd.node_list[g].parentdivnum = num; // helps link node to div when displaying node info on click
-		var tmpdata = { "data" : gd.node_list[g] }; // already contains id
+	    for (var g in gd.nodes) {
+		gd.nodes[g].parentdivnum = num; // helps link node to div when displaying node info on click
+		var tmpdata = { "data" : gd.nodes[g] }; // already contains id
 		cytodata[i].push(tmpdata);
 
 		// DEBUG
-		//document.getElementById("cy"+num).innerHTML += "NODE: name="+ gd.node_list[g].name + " -- accession=" + gd.node_list[g].accession + "<BR>";
+		//document.getElementById("cy"+num).innerHTML += "NODE: name="+ gd.nodes[g].name + " -- accession=" + gd.nodes[g].accession + "<BR>";
 	    }
 
-	    for (var g in gd.edge_list) {
+	    for (var g in gd.edges) {
 		var tmpdata = { "data" : 
 				{
 				    parentdivnum : num,
-				    id : gd.edge_list[g].source_id + '--' + gd.edge_list[g].target_id,
-				    source : gd.edge_list[g].source_id,
-				    target : gd.edge_list[g].target_id,
-				    type   : gd.edge_list[g].type,
-				    provided_by   : gd.edge_list[g].provided_by
+				    id : gd.edges[g].source_id + '--' + gd.edges[g].target_id,
+				    source : gd.edges[g].source_id,
+				    target : gd.edges[g].target_id,
+				    type   : gd.edges[g].type,
+				    provided_by  : gd.edges[g].provided_by
 				}
 			      };
 
@@ -328,8 +597,8 @@ function add_result(reslist) {
 	}
     }
 
-    //    sesame(h1_div,a1_div);
-    add_cyto();
+    // sesame(h1_div,a1_div);
+    // add_cyto();
 }
 
 
@@ -341,8 +610,9 @@ function add_cyto() {
 	    continue;
 	}
 
-	var num = Number(i) + 1;
+	var num = Number(i);// + 1;
 
+//	console.log("---------------cyto i="+i);
 	cyobj[i] = cytoscape({
 	    container: document.getElementById('cy'+num),
 	    style: cytoscape.stylesheet()
@@ -360,8 +630,10 @@ function add_cyto() {
 		    'line-color': '#fff',
 		    'target-arrow-color': '#fff',
 		    'width': 2,
+                    'content': 'data(name)',
 		    'target-arrow-shape': 'triangle',
-		    'opacity': 0.8
+		    'opacity': 0.8,
+		    'content': function(ele) { if ((ele.data().parentdivnum > 900) && ele.data().type) { return ele.data().type; } return '';}
 		})
 		.selector(':selected')
 		.css({
@@ -391,6 +663,15 @@ function add_cyto() {
 	    }
 	});
 
+	if (i > 900) {
+	    cyobj[i].on('tap','node', function() {
+		document.getElementById('qg_edge_n'+UIstate.nodedd).value = this.data('id');
+		UIstate.nodedd = 3 - UIstate.nodedd;
+		get_possible_edges();
+	    });
+
+	    return;
+	}
 
 	cyobj[i].on('tap','node', function() {
 	    var dnum = 'd'+this.data('parentdivnum')+'_div';
@@ -478,12 +759,369 @@ function cylayout(index,layname) {
 
 function mapNodeShape (ele) {
     var ntype = ele.data().type;
+    if (ntype == "microRNA")           { return "hexagon";}
+    if (ntype == "metabolite")         { return "heptagon";}
     if (ntype == "protein")            { return "octagon";}
+    if (ntype == "pathway")            { return "vee";}
     if (ntype == "disease")            { return "triangle";}
+    if (ntype == "molecular_function") { return "rectangle";}
+    if (ntype == "cellular_component") { return "ellipse";}
+    if (ntype == "biological_process") { return "tag";}
     if (ntype == "chemical_substance") { return "diamond";}
-    if (ntype == "anatomical_entity")  { return "ellipse";}
+    if (ntype == "anatomical_entity")  { return "rhomboid";}
     if (ntype == "phenotypic_feature") { return "star";}
     return "rectangle";
+}
+
+
+
+
+
+function edit_qg() {
+    cytodata[999] = [];
+    if (cyobj[999]) {cyobj[999].elements().remove();}
+
+    for (var gnode in input_qg.nodes) {
+	var name = "";
+
+	if (input_qg.nodes[gnode].name) {
+	    name = input_qg.nodes[gnode].name;
+	}
+	else if (input_qg.nodes[gnode].curie) {
+	    name = input_qg.nodes[gnode].curie;
+	}
+	else {
+	    name = input_qg.nodes[gnode].type + "s?";
+	}
+
+        cyobj[999].add( {
+	    "data" : {
+		"id"   : input_qg.nodes[gnode].id,
+		"name" : name,
+		"type" : input_qg.nodes[gnode].type,
+		"parentdivnum" : 999 },
+//	    "position" : {x:100*(qgid-nn), y:50+nn*50}
+	} );
+    }
+
+    for (var gedge in input_qg.edges) {
+	cyobj[999].add( {
+	    "data" : {
+		"id"     : input_qg.edges[gedge].id,
+		"source" : input_qg.edges[gedge].source_id,
+		"target" : input_qg.edges[gedge].target_id,
+		"type"   : input_qg.edges[gedge].type,
+		"parentdivnum" : 999 }
+	} );
+    }
+
+    cylayout(999,"breadthfirst");
+    document.getElementById('qg_form').style.visibility = 'visible';
+    document.getElementById('qg_form').style.maxHeight = "100%";
+    update_kg_edge_input();
+    display_query_graph_items();
+
+    document.getElementById("devdiv").innerHTML +=  "Copied query_graph to edit window<br>";
+}
+
+
+function display_query_graph_items() {
+    var kghtml = '';
+    var nitems = 0;
+
+    input_qg.nodes.forEach(function(result, index) {
+	nitems++;
+        kghtml += "<tr class='hoverable'><td>"+result.id+"</td><td title='"+result.desc+"'>"+(result.name==null?"-":result.name)+"</td><td>"+(result.curie==null?"<i>(any)</i>":result.curie)+"</td><td>"+result.type+"</td><td><a href='javascript:remove_node_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
+    });
+
+    input_qg.edges.forEach(function(result, index) {
+        kghtml += "<tr class='hoverable'><td>"+result.id+"</td><td>-</td><td>"+result.source_id+"--"+result.target_id+"</td><td>"+(result.type==null?"<i>(any)</i>":result.type)+"</td><td><a href='javascript:remove_edge_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
+    });
+
+
+    if (nitems > 0) {
+	kghtml = "<table class='sumtab'><tr><th>Id</th><th>Name</th><th>Item</th><th>Type</th><th>Action</th></tr>" + kghtml + "</table>";
+    }
+
+    document.getElementById("qg_items").innerHTML = kghtml;
+}
+
+
+function add_edge_to_query_graph() {
+    var n1 = document.getElementById("qg_edge_n1").value;
+    var n2 = document.getElementById("qg_edge_n2").value;
+    var et = document.getElementById("qg_edge_type").value;
+
+    if (n1=='' || n2=='' || et=='') {
+	document.getElementById("statusdiv").innerHTML = "<p class='error'>Please select two nodes and a valid edge type</p>";
+	return;
+    }
+
+    document.getElementById("statusdiv").innerHTML = "<p>Added an edge of type <i>"+et+"</i></p>";
+    var qgid = get_qg_id();
+
+    if (et=='NONSPECIFIC') { et = null; }
+
+    cyobj[999].add( {
+	"data" : { "id"     : qgid,
+		   "source" : n1,
+		   "target" : n2,
+		   "type"   : et,
+		   "parentdivnum" : 999 }
+    } );
+    cylayout(999,"breadthfirst");
+
+    var tmpdata = { "id"       : qgid,
+		    "negated"  : null,
+		    "relation" : null,
+		    "source_id": n1,
+		    "target_id": n2,
+		    "type"     : et
+		  };
+
+    input_qg.edges.push(tmpdata);    
+    display_query_graph_items();
+}
+
+
+function update_kg_edge_input() {
+
+    document.getElementById("qg_edge_n1").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Source Node ("+input_qg.nodes.length+")&nbsp;&nbsp;&nbsp;&#8675;</option>";
+    document.getElementById("qg_edge_n2").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Target Node ("+input_qg.nodes.length+")&nbsp;&nbsp;&nbsp;&#8675;</option>";
+
+    if (input_qg.nodes.length < 2) {
+	document.getElementById("qg_edge_n1").innerHTML += "<option value=''>Must have 2 nodes minimum</option>";
+	document.getElementById("qg_edge_n2").innerHTML += "<option value=''>Must have 2 nodes minimum</option>";
+	return;
+    }
+
+    input_qg.nodes.forEach(function(qgnode) {
+	for (var x = 1; x <=2; x++) {
+            var opt = document.createElement('option');
+	    opt.value = qgnode["id"];
+	    opt.innerHTML = qgnode["curie"] ? qgnode["curie"] : qgnode["type"];
+	    document.getElementById("qg_edge_n"+x).appendChild(opt);
+	}
+    });
+    get_possible_edges();
+}
+
+function get_possible_edges() {
+    document.getElementById("qg_edge_type").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Edge Type&nbsp;&nbsp;&nbsp;&#8675;</option>";
+
+    var edge1 = document.getElementById("qg_edge_n1").value;
+    var edge2 = document.getElementById("qg_edge_n2").value;
+
+    if (!(edge1 && edge2) || (edge1 == edge2)) {
+        document.getElementById("qg_edge_type").innerHTML += "<option value=''>Please select 2 different nodes</option>";
+	return;
+    }
+
+    var nt1 = input_qg.nodes.filter(function(node){
+	return node["id"] == edge1;
+    });
+    var nt2 = input_qg.nodes.filter(function(node){
+	return node["id"] == edge2;
+    });
+
+    document.getElementById("qg_edge_type").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Populating edges...</option>";
+
+    var relation = "A --> B";
+    if (!(nt2[0].type in predicates[nt1[0].type])) {
+	[nt1, nt2] = [nt2, nt1]; // swap
+	relation = "B --> A";
+    }
+
+    if (nt2[0].type in predicates[nt1[0].type]) {
+	if (predicates[nt1[0].type][nt2[0].type].length == 1) {
+	    document.getElementById("qg_edge_type").innerHTML = "";
+	    var opt = document.createElement('option');
+	    opt.value = predicates[nt1[0].type][nt2[0].type][0];
+	    opt.innerHTML = predicates[nt1[0].type][nt2[0].type][0] + " ["+relation+"]";
+	    document.getElementById("qg_edge_type").appendChild(opt);
+	}
+	else {
+	    document.getElementById("qg_edge_type").innerHTML  = "<option style='border-bottom:1px solid black;' value=''>Edge Type ["+relation+"]&nbsp; ("+predicates[nt1[0].type][nt2[0].type].length+")&nbsp;&nbsp;&nbsp;&#8675;</option>";
+
+            for (var i in predicates[nt1[0].type][nt2[0].type]) {
+		var opt = document.createElement('option');
+		opt.value = predicates[nt1[0].type][nt2[0].type][i];
+		opt.innerHTML = predicates[nt1[0].type][nt2[0].type][i];
+		document.getElementById("qg_edge_type").appendChild(opt);
+	    }
+
+	    document.getElementById("qg_edge_type").innerHTML += "<option value='NONSPECIFIC'>Unspecified/Non-specific</option>";
+	}
+
+    }
+    else {
+        document.getElementById("qg_edge_type").innerHTML = "<option value=''>-- No edge types found --</option>";
+    }
+}
+
+
+function add_nodetype_to_query_graph(nodetype) {
+    document.getElementById("allnodetypes").value = '';
+    document.getElementById("allnodetypes").blur();
+
+    document.getElementById("statusdiv").innerHTML = "<p>Added a node of type <i>"+nodetype+"</i></p>";
+    var qgid = get_qg_id();
+
+    cyobj[999].add( {
+        "data" : { "id"   : qgid,
+		   "name" : nodetype+"s",
+		   "type" : nodetype,
+		   "parentdivnum" : 999 },
+//        "position" : {x:100*qgid, y:50}
+    } );
+    cyobj[999].reset();
+    cylayout(999,"breadthfirst");
+
+    var tmpdata = { "id"     : qgid,
+		    "is_set" : null,
+		    "name"   : null,
+		    "desc"   : "Generic " + nodetype,
+		    "curie"  : null,
+		    "type"   : nodetype
+		  };
+
+    input_qg.nodes.push(tmpdata);
+    update_kg_edge_input();
+    display_query_graph_items();
+}
+
+function enter_node(ele) {
+    if (event.key === 'Enter') {
+	add_node_to_query_graph();
+    }
+}
+
+function add_node_to_query_graph() {
+    var thing = document.getElementById("newquerynode").value;
+    document.getElementById("newquerynode").value = '';
+
+    if (thing == '') {
+        document.getElementById("statusdiv").innerHTML = "<p class='error'>Please enter a node value</p>";
+	return;
+    }
+
+    var things = check_entity(thing);
+    document.getElementById("devdiv").innerHTML +=  "-- found " + things.num + " nodes in graph<br>";
+
+    if (things.num > 0) {
+	if (things.num == 1) {
+            document.getElementById("statusdiv").innerHTML = "<p>Found <b>" + things.num + "</b> node that matches <i>"+thing+"</i> in our knowledge graph.</p>";
+	}
+	else {
+            document.getElementById("statusdiv").innerHTML = "<p>Found <b>" + things.num + "</b> nodes that match <i>"+thing+"</i> in our knowledge graph.</p><span class='error'>Please choose node(s) of interest by removing unwanted ones from the query graph.</span>";
+	}
+	sesame('openmax',statusdiv);
+	for (var nn = 0; nn < things.num; nn++) {
+	    var qgid = get_qg_id();
+
+	    cyobj[999].add( {
+		"data" : { "id"   : qgid,
+			   "name" : thing,
+			   "type" : things[nn].type,
+			   "parentdivnum" : 999 },
+//		"position" : {x:100*(qgid-nn), y:50+nn*50}
+	    } );
+
+	    var tmpdata = { "id"     : qgid,
+			    "is_set" : null,
+			    "name"   : thing,
+			    "desc"   : things[nn].desc,
+			    "curie"  : things[nn].curie,
+			    "type"   : things[nn].type
+			  };
+
+	    document.getElementById("devdiv").innerHTML +=  "-- found a curie = " + things[nn].curie + "<br>";
+
+	    input_qg.nodes.push(tmpdata);
+	}
+	cyobj[999].reset();
+	cylayout(999,"breadthfirst");
+
+	update_kg_edge_input();
+	display_query_graph_items();
+    }
+    else {
+        document.getElementById("statusdiv").innerHTML = "<p><span class='error'>" + thing + "</span> is not in our knowledge graph.</p>";
+	sesame('openmax',statusdiv);
+    }
+
+}
+
+
+function remove_edge_from_query_graph(edgeid) {
+    cyobj[999].remove("#"+edgeid);
+
+    input_qg.edges.forEach(function(result, index) {
+	if (result["id"] == edgeid) {
+	    //Remove from array
+	    input_qg.edges.splice(index, 1);
+	}
+    });
+
+    var idx = qgids.indexOf(edgeid);
+    if (idx > -1)
+	qgids.splice(idx, 1);
+
+    display_query_graph_items();
+}
+
+function remove_node_from_query_graph(nodeid) {
+    cyobj[999].remove("#"+nodeid);
+
+    input_qg.nodes.forEach(function(result, index) {
+	if (result["id"] == nodeid) {
+	    //Remove from array
+	    input_qg.nodes.splice(index, 1);
+	}
+    });
+
+    var idx = qgids.indexOf(nodeid);
+    if (idx > -1)
+	qgids.splice(idx, 1);
+
+    // remove items starting from end of array...
+    for (var k = input_qg.edges.length - 1; k > -1; k--){
+	if (input_qg.edges[k].source_id == nodeid) {
+	    input_qg.edges.splice(k, 1);
+	}
+	else if (input_qg.edges[k].target_id == nodeid) {
+	    input_qg.edges.splice(k, 1);
+	}
+    }
+
+    update_kg_edge_input();
+    display_query_graph_items();
+}
+
+function clear_qg(m) {
+    if (cyobj[999]) { cyobj[999].elements().remove(); }
+    input_qg = { "edges": [], "nodes": [] };
+    update_kg_edge_input();
+    get_possible_edges();
+    display_query_graph_items();
+    qgids = [];
+    if (m==1){
+	document.getElementById("statusdiv").innerHTML = "<p>Query Graph has been cleared.</p>";
+    }
+    document.getElementById('qg_form').style.visibility = 'visible';
+    document.getElementById('qg_form').style.maxHeight = "100%";
+}
+
+function get_qg_id() {
+    var new_id = 0;
+    do {
+	if (!qgids.includes("qg"+new_id))
+	    break;
+	new_id++;
+    } while (new_id < 100);
+
+    qgids.push("qg"+new_id);
+    return "qg"+new_id;
 }
 
 
@@ -543,20 +1181,20 @@ function submitFeedback(res_id,res_div_id) {
 
 
     var xhr6 = new XMLHttpRequest();
-    xhr6.open("post", "api/rtx/v1/result/" + res_id + "/feedback", true);
+    xhr6.open("post",  baseAPI + "api/rtx/v1/result/" + res_id + "/feedback", true);
     xhr6.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
     xhr6.send(JSON.stringify(feedback));
 
     xhr6.onloadend = function() {
 	var jsonObj6 = JSON.parse(xhr6.responseText);
-	document.getElementById("devdiv").innerHTML += "================================================================= FEEDBACK-POST::<PRE>\nPOST to api/rtx/v1/result/" + res_id + "/feedback ::<br>" + JSON.stringify(feedback,null,2) + "<br>------<br>" + JSON.stringify(jsonObj6,null,2) + "</PRE>";
+	document.getElementById("devdiv").innerHTML += "<br>================================================================= FEEDBACK-POST::<PRE>\nPOST to " +  baseAPI + "api/rtx/v1/result/" + res_id + "/feedback ::<br>" + JSON.stringify(feedback,null,2) + "<br>------<br>" + JSON.stringify(jsonObj6,null,2) + "</PRE>";
 
 	if ( xhr6.status == 200 ) {
 	    document.getElementById(fff+"_msgs").innerHTML = "Your feedback has been recorded...";
 	    setRTXUserCookie(nom);
 
 	    var xhr7 = new XMLHttpRequest();
-	    xhr7.open("get", "api/rtx/v1/result/" + res_id + "/feedback", true);
+	    xhr7.open("get",  baseAPI + "api/rtx/v1/result/" + res_id + "/feedback", true);
 	    xhr7.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 	    xhr7.send(null);
 
@@ -592,14 +1230,14 @@ function add_feedback() {
     }
 
     var xhr3 = new XMLHttpRequest();
-    xhr3.open("get", "api/rtx/v1/response/" + response_id + "/feedback", true);
+    xhr3.open("get",  baseAPI + "api/rtx/v1/message/" + message_id + "/feedback", true);
     xhr3.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
     xhr3.send(null);
 
     xhr3.onloadend = function() {
 	if ( xhr3.status == 200 ) {
 	    var jsonObj3 = JSON.parse(xhr3.responseText);
-	    document.getElementById("devdiv").innerHTML += "================================================================= FEEDBACK::<PRE>\n" + JSON.stringify(jsonObj3,null,2) + "</PRE>";
+	    document.getElementById("devdiv").innerHTML += "<br>================================================================= FEEDBACK::<PRE>\n" + JSON.stringify(jsonObj3,null,2) + "</PRE>";
 
 	    for (var i in jsonObj3) {
 		var fid = "feedback_" + jsonObj3[i].result_id.substr(jsonObj3[i].result_id.lastIndexOf('/') + 1);
@@ -614,6 +1252,7 @@ function add_feedback() {
 
 	}
 	sesame(h1_div,a1_div);
+//	sesame(h0_div,a0_div);
     };
 
 
@@ -633,14 +1272,14 @@ function insert_feedback_item(el_id, feed_obj) {
 
 function get_feedback_fields() {
     var xhr4 = new XMLHttpRequest();
-    xhr4.open("get", "api/rtx/v1/feedback/expertise_levels", true);
+    xhr4.open("get",  baseAPI + "api/rtx/v1/feedback/expertise_levels", true);
     xhr4.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
     xhr4.send(null);
 
     xhr4.onloadend = function() {
 	if ( xhr4.status == 200 ) {
 	    var jsonObj4 = JSON.parse(xhr4.responseText);
-	    document.getElementById("devdiv").innerHTML += "================================================================= FEEDBACK FIELDS::<PRE>\n" + JSON.stringify(jsonObj4,null,2) + "</PRE>";
+	    document.getElementById("devdiv").innerHTML += "<br>================================================================= FEEDBACK FIELDS::<PRE>\n" + JSON.stringify(jsonObj4,null,2) + "</PRE>";
 
 	    for (var i in jsonObj4.expertise_levels) {
 		fb_explvls[jsonObj4.expertise_levels[i].expertise_level_id] = {};
@@ -653,14 +1292,14 @@ function get_feedback_fields() {
 
 
     var xhr5 = new XMLHttpRequest();
-    xhr5.open("get", "api/rtx/v1/feedback/ratings", true);
+    xhr5.open("get",  baseAPI + "api/rtx/v1/feedback/ratings", true);
     xhr5.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
     xhr5.send(null);
 
     xhr5.onloadend = function() {
 	if ( xhr5.status == 200 ) {
 	    var jsonObj5 = JSON.parse(xhr5.responseText);
-	    document.getElementById("devdiv").innerHTML += "---------------------------------- <PRE>\n" + JSON.stringify(jsonObj5,null,2) + "</PRE>";
+	    document.getElementById("devdiv").innerHTML += "================================================================= RATINGS::<PRE>\n" + JSON.stringify(jsonObj5,null,2) + "</PRE>";
 
 	    for (var i in jsonObj5.ratings) {
 		fb_ratings[jsonObj5.ratings[i].rating_id] = {};
@@ -676,7 +1315,7 @@ function get_feedback_fields() {
 
 function get_example_questions() {
     var xhr8 = new XMLHttpRequest();
-    xhr8.open("get", "api/rtx/v1/exampleQuestions", true);
+    xhr8.open("get",  baseAPI + "api/rtx/v1/exampleQuestions", true);
     xhr8.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
     xhr8.send(null);
 
@@ -692,11 +1331,37 @@ function get_example_questions() {
 		opt.innerHTML = ex_qs[i].query_type_id+": "+ex_qs[i].question_text;
 		document.getElementById("qqq").appendChild(opt);
 	    }
-
 	}
-
     };
 
+}
+
+
+function load_nodes_and_predicates() {
+    var xhr11 = new XMLHttpRequest();
+    xhr11.open("get",  baseAPI + "api/rtx/v1/predicates", true);
+    xhr11.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+    xhr11.send(null);
+
+    xhr11.onloadend = function() {
+        if ( xhr11.status == 200 ) {
+            predicates = JSON.parse(xhr11.responseText);
+
+	    document.getElementById("devdiv").innerHTML += "<br>================================================================= PREDICATES::<PRE>" + JSON.stringify(predicates,null,2) + "</PRE>";
+	    
+            document.getElementById("allnodetypes").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Add Node by Type&nbsp;&nbsp;&nbsp;&#8675;</option>";
+
+            for (const p in predicates) {
+		var opt = document.createElement('option');
+		opt.value = p;
+		opt.innerHTML = p;
+		document.getElementById("allnodetypes").appendChild(opt);
+	    }
+	}
+	else {
+            document.getElementById("allnodetypes").innerHTML = "<option style='border-bottom:1px solid black;' value=''>-- Error Loading Node Types --</option>";
+	}
+    };
 }
 
 
@@ -731,15 +1396,15 @@ function togglecolor(obj,tid) {
 
 // taken from http://www.activsoftware.com/
 function getQueryVariable(variable) {
-  var query = window.location.search.substring(1);
-  var vars = query.split("&");
-  for (var i=0;i<vars.length;i++) {
-    var pair = vars[i].split("=");
-    if (decodeURIComponent(pair[0]) == variable) {
-      return decodeURIComponent(pair[1]);
-    }
-  } 
-  return false;
+    var query = window.location.search.substring(1);
+    var vars = query.split("&");
+    for (var i=0;i<vars.length;i++) {
+	var pair = vars[i].split("=");
+	if (decodeURIComponent(pair[0]) == variable) {
+	    return decodeURIComponent(pair[1]);
+	}
+    } 
+    return false;
 }
 
 // LIST FUNCTIONS
@@ -776,17 +1441,20 @@ function display_list(listId) {
     }
 
 
-    if (numitems == 0) {
-	listhtml = "Items in this list can be passed as input to queries that support list input, by specifying <b>["+listId+"]</b> as a parameter.<br>";
+    document.getElementById("numlistitems"+listId).innerHTML = numitems;
+    document.getElementById("menunumlistitems"+listId).innerHTML = numitems;
+
+    if (numitems > 0) {
+	listhtml = "<table class='sumtab'><tr><th>Item</th><th>Entity Type(s)</th><th>Action</th></tr>" + listhtml + "</table>";
+	document.getElementById("menunumlistitems"+listId).classList.add("numnew");
+	document.getElementById("menunumlistitems"+listId).classList.remove("numold");
     }
     else {
-	listhtml = "<table class='sumtab'><tr><th>Item</th><th>Entity Type(s)</th><th>Action</th></tr>" + listhtml + "</table>";
+	document.getElementById("menunumlistitems"+listId).classList.remove("numnew");
+	document.getElementById("menunumlistitems"+listId).classList.add("numold");
     }
 
-    document.getElementById("numlistitems"+listId).innerHTML = numitems;
-
-    listhtml += "<hr>Enter new list item or items (space and/or comma-separated):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' onkeydown='enter_item(this, \""+listId+"\");' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
-
+    listhtml = "Items in this list can be passed as input to queries that support list input, by specifying <b>["+listId+"]</b> as a query parameter.<br><br>" + listhtml + "<hr>Enter new list item or items (space and/or comma-separated; use &quot;double quotes&quot; for multi-word items):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' onkeydown='enter_item(this, \""+listId+"\");' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
 
 //    listhtml += "<hr>Enter new list item or items (space and/or comma-separated):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
 
@@ -796,26 +1464,23 @@ function display_list(listId) {
 
     listhtml += "<br><br>";
 
-
     document.getElementById("listdiv"+listId).innerHTML = listhtml;
-    sesame('openmax',document.getElementById("listdiv"+listId));
-    setTimeout(function() {check_entities();sesame('openmax',document.getElementById("listdiv"+listId));}, 500);
-//    sesame('openmax',document.getElementById("listdiv"+listId));
-
+//    setTimeout(function() {check_entities();sesame('openmax',document.getElementById("listdiv"+listId));}, 500);
+    check_entities();
 }
 
 
 function get_list_as_string(listId) {
-	var liststring = '[';
-	var comma = '';
-	for (var li in listItems[listId]) {
+    var liststring = '[';
+    var comma = '';
+    for (var li in listItems[listId]) {
 	if (listItems[listId].hasOwnProperty(li) && listItems[listId][li] == 1) {
 	    liststring += comma + li;
-		comma = ',';
+	    comma = ',';
 	}
-	}
-	liststring += ']';
-	return liststring;
+    }
+    liststring += ']';
+    return liststring;
 }
 
 
@@ -836,9 +1501,13 @@ function enter_item(ele, listId) {
 }
 
 function add_new_to_list(listId) {
-    var itemarr = document.getElementById("newlistitem"+listId).value.split(/[\t ,]/);
+    //var itemarr = document.getElementById("newlistitem"+listId).value.split(/[\t ,]/);
+    var itemarr = document.getElementById("newlistitem"+listId).value.match(/\w+|"[^"]+"/g);
+
     document.getElementById("newlistitem"+listId).value = '';
     for (var item in itemarr) {
+	itemarr[item] = itemarr[item].replace(/['"]+/g,''); // remove all manner of quotes
+        //console.log("=================== item:"+itemarr[item]);
 	if (itemarr[item]) {
 	    listItems[listId][itemarr[item]] = 1;
 	}
@@ -863,20 +1532,20 @@ function check_entities() {
 	if (entities[entity] == '--') {
 
             var xhr = new XMLHttpRequest();
-            xhr.open("get", "api/rtx/v1/entity/" + entity, false);
+            xhr.open("get",  baseAPI + "api/rtx/v1/entity/" + entity, false);
             xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
             xhr.onloadend = function() {
                 var xob = JSON.parse(xhr.responseText);
 	    	var entstr = "";
 
-        	document.getElementById("devdiv").innerHTML += "================================================================= ENTITIES::"+entity+"<PRE>" + JSON.stringify(xob,null,2) + "</PRE>";
+        	document.getElementById("devdiv").innerHTML += "<br>================================================================= ENTITIES::"+entity+"<PRE>" + JSON.stringify(xob,null,2) + "</PRE>";
 
 
                 if ( xhr.status == 200 ) {
 		    var comma = "";
                     for (var i in xob) {
                         entstr += comma + xob[i].type;
-document.getElementById("devdiv").innerHTML += comma + xob[i].type;
+			document.getElementById("devdiv").innerHTML += comma + xob[i].type;
 			comma = ", ";
                     }
 	            if (entstr != "") { entstr = "<span class='explevel p9'>&check;</span>&nbsp;" + entstr; }
@@ -901,6 +1570,35 @@ document.getElementById("devdiv").innerHTML += comma + xob[i].type;
     }
 }
 
+function check_entity(term) {
+    var ent = [];
+    ent.num = 0;
+    if (entities[term]) { ent.num = -1; return ent; }
+
+    var xhr = new XMLHttpRequest();
+    xhr.open("get",  baseAPI + "api/rtx/v1/entity/" + term, false);
+    xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+    xhr.onloadend = function() {
+        var xob = JSON.parse(xhr.responseText);
+
+        document.getElementById("devdiv").innerHTML += "<br>================================================================= ENTITY::"+term+"<PRE>" + JSON.stringify(xob,null,2) + "</PRE>";
+
+        if ( xhr.status == 200 ) {
+            for (var i in xob) {
+		ent.num++;
+		ent[i] = [];
+		ent[i].curie = xob[i].curie;
+		ent[i].type  = xob[i].type;
+		ent[i].desc  = xob[i].description.replace(/['"]/g, '&apos;');
+                entities[xob[i].curie] = xob[i].name + "::" + xob[i].type;
+	    }
+	}
+    };
+
+    xhr.send(null);
+    return ent;
+}
+
 
 function add_to_session(resp_id,text) {
     numquery++;
@@ -917,7 +1615,7 @@ function display_session() {
     for (var li in listItems[listId]) {
         if (listItems[listId].hasOwnProperty(li) && !li.startsWith("qtext_")) {
             numitems++;
-            listhtml += "<tr><td>"+li+".</td><td><a target='_new' title='view this response in a new window' href='//"+ window.location.hostname + window.location.pathname + "?r="+listItems[listId][li]+"'>" + listItems['SESSION']["qtext_"+li] + "</a></td><td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/> Remove </a></td></tr>";
+            listhtml += "<tr><td>"+li+".</td><td><a target='_new' title='view this message in a new window' href='//"+ window.location.hostname + window.location.pathname + "?m="+listItems[listId][li]+"'>" + listItems['SESSION']["qtext_"+li] + "</a></td><td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/> Remove </a></td></tr>";
         }
     }
     if (numitems > 0) {
@@ -933,6 +1631,7 @@ function display_session() {
     }
 
     document.getElementById("numlistitems"+listId).innerHTML = numitems;
+    document.getElementById("menunumlistitems"+listId).innerHTML = numitems;
     document.getElementById("listdiv"+listId).innerHTML = listhtml;
 }
 
@@ -949,7 +1648,7 @@ function copyJSON() {
     } else if (window.getSelection) {
 	var range = document.createRange();
 	range.selectNode(document.getElementById(containerid));
-	window.getSelection().removeAllRanges();
+        window.getSelection().removeAllRanges();
 	window.getSelection().addRange(range);
 	document.execCommand("copy");
 	//alert("text copied")

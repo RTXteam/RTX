@@ -15,7 +15,7 @@ class Feedback(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, id: str=None, result_id: str=None, expertise_level_id: int=None, rating_id: int=None, commenter_id: int=None, commenter_full_name: str=None, datetime: str=None, comment: str=None):  # noqa: E501
+    def __init__(self, id: str=None, result_id: str=None, expertise_level_id: int=None, rating_id: int=None, commenter_id: int=None, commenter_full_name: str=None, _datetime: str=None, comment: str=None):  # noqa: E501
         """Feedback - a model defined in Swagger
 
         :param id: The id of this Feedback.  # noqa: E501
@@ -30,8 +30,8 @@ class Feedback(Model):
         :type commenter_id: int
         :param commenter_full_name: The commenter_full_name of this Feedback.  # noqa: E501
         :type commenter_full_name: str
-        :param datetime: The datetime of this Feedback.  # noqa: E501
-        :type datetime: str
+        :param _datetime: The _datetime of this Feedback.  # noqa: E501
+        :type _datetime: str
         :param comment: The comment of this Feedback.  # noqa: E501
         :type comment: str
         """
@@ -42,7 +42,7 @@ class Feedback(Model):
             'rating_id': int,
             'commenter_id': int,
             'commenter_full_name': str,
-            'datetime': str,
+            '_datetime': str,
             'comment': str
         }
 
@@ -53,7 +53,7 @@ class Feedback(Model):
             'rating_id': 'rating_id',
             'commenter_id': 'commenter_id',
             'commenter_full_name': 'commenter_full_name',
-            'datetime': 'datetime',
+            '_datetime': 'datetime',
             'comment': 'comment'
         }
 
@@ -63,7 +63,7 @@ class Feedback(Model):
         self._rating_id = rating_id
         self._commenter_id = commenter_id
         self._commenter_full_name = commenter_full_name
-        self._datetime = datetime
+        self.__datetime = _datetime
         self._comment = comment
 
     @classmethod
@@ -216,27 +216,27 @@ class Feedback(Model):
         self._commenter_full_name = commenter_full_name
 
     @property
-    def datetime(self) -> str:
-        """Gets the datetime of this Feedback.
+    def _datetime(self) -> str:
+        """Gets the _datetime of this Feedback.
 
         Datetime when the feedback was provided  # noqa: E501
 
-        :return: The datetime of this Feedback.
+        :return: The _datetime of this Feedback.
         :rtype: str
         """
-        return self._datetime
+        return self.__datetime
 
-    @datetime.setter
-    def datetime(self, datetime: str):
-        """Sets the datetime of this Feedback.
+    @_datetime.setter
+    def _datetime(self, _datetime: str):
+        """Sets the _datetime of this Feedback.
 
         Datetime when the feedback was provided  # noqa: E501
 
-        :param datetime: The datetime of this Feedback.
-        :type datetime: str
+        :param _datetime: The _datetime of this Feedback.
+        :type _datetime: str
         """
 
-        self._datetime = datetime
+        self.__datetime = _datetime
 
     @property
     def comment(self) -> str:

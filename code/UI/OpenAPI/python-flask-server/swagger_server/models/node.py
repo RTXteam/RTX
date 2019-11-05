@@ -16,7 +16,7 @@ class Node(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, id: str=None, uri: str=None, name: str=None, type: str=None, description: str=None, symbol: str=None, node_attributes: List[NodeAttribute]=None):  # noqa: E501
+    def __init__(self, id: str=None, uri: str=None, name: str=None, type: List[str]=None, description: str=None, symbol: str=None, node_attributes: List[NodeAttribute]=None):  # noqa: E501
         """Node - a model defined in Swagger
 
         :param id: The id of this Node.  # noqa: E501
@@ -26,7 +26,7 @@ class Node(Model):
         :param name: The name of this Node.  # noqa: E501
         :type name: str
         :param type: The type of this Node.  # noqa: E501
-        :type type: str
+        :type type: List[str]
         :param description: The description of this Node.  # noqa: E501
         :type description: str
         :param symbol: The symbol of this Node.  # noqa: E501
@@ -38,7 +38,7 @@ class Node(Model):
             'id': str,
             'uri': str,
             'name': str,
-            'type': str,
+            'type': List[str],
             'description': str,
             'symbol': str,
             'node_attributes': List[NodeAttribute]
@@ -93,6 +93,8 @@ class Node(Model):
         :param id: The id of this Node.
         :type id: str
         """
+        if id is None:
+            raise ValueError("Invalid value for `id`, must not be `None`")  # noqa: E501
 
         self._id = id
 
@@ -143,24 +145,24 @@ class Node(Model):
         self._name = name
 
     @property
-    def type(self) -> str:
+    def type(self) -> List[str]:
         """Gets the type of this Node.
 
         Entity type of this node (e.g., protein, disease, etc.)  # noqa: E501
 
         :return: The type of this Node.
-        :rtype: str
+        :rtype: List[str]
         """
         return self._type
 
     @type.setter
-    def type(self, type: str):
+    def type(self, type: List[str]):
         """Sets the type of this Node.
 
         Entity type of this node (e.g., protein, disease, etc.)  # noqa: E501
 
         :param type: The type of this Node.
-        :type type: str
+        :type type: List[str]
         """
 
         self._type = type

@@ -16,11 +16,16 @@ import requests
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")
 from RTXConfiguration import RTXConfiguration
 
-from QueryMeSH import QueryMeSH
-from swagger_server.models.response import Response
+from swagger_server.models.message import Message
+from swagger_server.models.q_node import QNode
+from swagger_server.models.q_edge import QEdge
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/QuestionAnswering/")
 from ParseQuestion import ParseQuestion
+#from QueryMeSH import QueryMeSH
+from Q0Solution import Q0
+import ReasoningUtilities
+from QueryGraphReasoner import QueryGraphReasoner
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/kg-construction/")
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/SemMedDB/")
@@ -35,87 +40,101 @@ class RTXQuery:
 
     #### Get our configuration information
     
+    #### Create a Message object as a response
+    response = Message()
+    execution_string = None
+
+    #### Determine a plan for what to do based on the input
+    result = self.examineIncomingQuery(query)
+    if result["message_code"] != "OK":
+      response.message_code = result["message_code"]
+      response.code_description = result["code_description"]
+      return response
+
+    #### If we have a previous message processing plan, handle that
+    if "have_previous_message_processing_plan" in result:
+      rtxFeedback = RTXFeedback()       # FIXME. This should be a separate class I think, not the Feedback class. TODO: Separate them
+      rtxFeedback.connect()
+      message = rtxFeedback.processExternalPreviousMessageProcessingPlan(query)
+      rtxFeedback.disconnect()
+      return(message)
+
+    #### If we have a query_graph, pass this on to the QueryGraphReasoner
+    if "have_query_graph" in result:
+      qgr = QueryGraphReasoner()
+      message = qgr.answer(query["message"]["query_graph"], TxltrApiFormat=True)
+      #self.logQuery(query,message,'new')
+      rtxFeedback = RTXFeedback()
+      rtxFeedback.connect()
+      rtxFeedback.addNewMessage(message,query)
+      rtxFeedback.disconnect()
+      self.limitMessage(message,query)
+      return(message)
 
 
-    #### If there is no query_type_id, then return an error
-    if "query_type_id" not in query:
-      response = Response()
-      response.response_code = "No_query_type_id"
-      response.message = "There was no query_type_id specified in the query"
-      return(response)
+    #### Otherwise extract the id and the terms from the incoming parameters
+    else:
+      id = query["message"]["query_type_id"]
+      terms = query["message"]["terms"]
 
-    #### If there is no terms, then return an error
-    if "terms" not in query:
-      response = Response()
-      response.response_code = "No_terms"
-      response.message = "There was no terms element specified in the query"
-      return(response)
-
-    #### Extract the id and the terms from the incoming parameters
-    id = query["query_type_id"]
-    terms = query["terms"]
-
-    eprint(query)
-    #### Check to see if the options indicate to query another resource
-    if "options" in query and re.search("integrate=",query["options"]):
+    #### Check to see if the query_options indicates to query named resource and integrate the results
+    if "have_query_type_id_and_terms" in result and "message" in query and "query_options" in query["message"] and "integrate" in query["message"]["query_options"]:
       response = self.integrate(query)
       #self.logQuery(query,response,'remote')
       return response
-
-
-
-    #### Temportary hack FIXME
-    if "chemical_substance" in terms:
-      if re.match("CHEMBL:",terms["chemical_substance"]):
-        terms["chemical_substance"] = re.sub("CHEMBL:","",terms["chemical_substance"])
-    query["known_query_type_id"] = query["query_type_id"]
-
-
 
     #### Create an RTX Feedback management object
     #eprint(query)
     rtxFeedback = RTXFeedback()
     rtxFeedback.connect()
-    cachedResponse = rtxFeedback.getCachedResponse(query)
+    cachedMessage = rtxFeedback.getCachedMessage(query)
 
-    #### If we can find a cached response for this query and this version of RTX, then return the cached response
-    if ( cachedResponse is not None ):
-      apiResponse = Response().from_dict(cachedResponse)
+    #### If we can find a cached message for this query and this version of RTX, then return the cached message
+    if ( cachedMessage is not None ):
+      apiMessage = Message().from_dict(cachedMessage)
       rtxFeedback.disconnect()
-      self.limitResponse(apiResponse,query)
+      self.limitMessage(apiMessage,query)
 
-      if apiResponse.response_code is None:
-        if apiResponse.result_code is not None:
-          apiResponse.response_code = apiResponse.result_code
+      if apiMessage.message_code is None:
+        if apiMessage.result_code is not None:
+          apiMessage.message_code = apiMessage.result_code
         else:
-          apiResponse.response_code = "wha??"
+          apiMessage.message_code = "wha??"
 
-      self.logQuery(query,apiResponse,'cached')
-      return apiResponse
+      self.logQuery(query,apiMessage,'cached')
+      return apiMessage
 
     #### Still have special handling for Q0
     if id == 'Q0':
       # call out to QueryMeSH here to satify the query "What is XXXXXX?"
-      meshQuery = QueryMeSH()
-      response = meshQuery.queryTerm(terms["term"])
-      if 'original_question' in query:
-        response.original_question_text = query["original_question"]
-        response.restated_question_text = query["restated_question"]
-      response.query_type_id = query["query_type_id"]
-      response.terms = query["terms"]
-      id = response.id
-      codeString = response.response_code
-      self.logQuery(query,response,'new')
-      rtxFeedback.addNewResponse(response,query)
+      #meshQuery = QueryMeSH()
+      #message = meshQuery.queryTerm(terms["term"])
+      q0 = Q0()
+      message = q0.answer(terms["term"],use_json=True)
+      if 'original_question' in query["message"]:
+        message.original_question = query["message"]["original_question"]
+        message.restated_question = query["message"]["restated_question"]
+      message.query_type_id = query["message"]["query_type_id"]
+      message.terms = query["message"]["terms"]
+      id = message.id
+      codeString = message.message_code
+      self.logQuery(query,message,'new')
+      rtxFeedback.addNewMessage(message,query)
       rtxFeedback.disconnect()
-      self.limitResponse(response,query)
-      return(response)
+      self.limitMessage(message,query)
+      return(message)
 
     #### Call out to OrangeBoard to answer the other types of queries
     else:
 
-      txltr = ParseQuestion()
-      command = "python3 " + txltr.get_execution_string(id,terms)
+      #### If some previous processing has determined what the solution script to use is, then use that
+      if execution_string is not None:
+        command = "python3 " + execution_string
+
+      #### Else use the ParseQuestion system to determine what the execution_string should be
+      else:
+        txltr = ParseQuestion()
+        command = "python3 " + txltr.get_execution_string(id,terms)
 
       #### Set CWD to the QuestioningAnswering area and then invoke from the shell the Q1Solution code
       cwd = os.getcwd()
@@ -128,78 +147,246 @@ class RTXQuery:
       reformattedText = returnedText.stdout.decode('utf-8')
       #eprint(reformattedText)
 
-      #### Try to decode that string into a response object
+      #### Try to decode that string into a message object
       try:
           #data = ast.literal_eval(reformattedText)
           data = json.loads(reformattedText)
-          response = Response.from_dict(data)
-          if response.response_code is None:
-            if response.result_code is not None:
-              response.response_code = response.result_code
+          message = Message.from_dict(data)
+          if message.message_code is None:
+            if message.result_code is not None:
+              message.message_code = message.result_code
             else:
-              response.response_code = "wha??"
+              message.message_code = "wha??"
 
-      #### If it fails, the just create a new Response object with a notice about the failure
+      #### If it fails, the just create a new Message object with a notice about the failure
       except:
-          response = Response()
-          response.response_code = "InternalError"
-          response.message = "Error parsing the response from the reasoner. This is an internal bug that needs to be fixed. Unable to respond to this question at this time. The unparsable response was: " + reformattedText
+          message = Message()
+          message.message_code = "InternalError"
+          message.code_description = "Error parsing the message from the reasoner. This is an internal bug that needs to be fixed. Unable to respond to this question at this time. The unparsable message was: " + reformattedText
 
       #print(query)
-      if 'original_question' in query:
-        response.original_question_text = query["original_question"]
-        response.restated_question_text = query["restated_question"]
-      response.query_type_id = query["query_type_id"]
-      response.terms = query["terms"]
+      if 'original_question' in query["message"]:
+        message.original_question = query["message"]["original_question"]
+        message.restated_question = query["message"]["restated_question"]
+      message.query_type_id = query["message"]["query_type_id"]
+      message.terms = query["message"]["terms"]
 
-      #### Log the result and return the Response object
-      self.logQuery(query,response,'new')
-      rtxFeedback.addNewResponse(response,query)
+      #### Log the result and return the Message object
+      self.logQuery(query,message,'new')
+      rtxFeedback.addNewMessage(message,query)
       rtxFeedback.disconnect()
 
-      #### Limit response
-      self.limitResponse(response,query)
-      return(response)
+      #### Limit message
+      self.limitMessage(message,query)
+      return(message)
 
 
     #### If the query type id is not triggered above, then return an error
-    response = Response()
-    response.response_code = "UnsupportedQueryTypeID"
-    response.message = "The specified query id '" + id + "' is not supported at this time"
+    message = Message()
+    message.message_code = "UnsupportedQueryTypeID"
+    message.code_description = "The specified query id '" + id + "' is not supported at this time"
     rtxFeedback.disconnect()
+    return(message)
+
+
+  def logQuery(self,query,message,cacheStatus):
+    datetimeString = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if "query_type_id" not in query["message"] or query["message"]["query_type_id"] is None:
+      id = "?"
+    else:
+      id = query["message"]['query_type_id']
+
+    if "terms" not in query["message"] or query["message"]['terms'] is None:
+      terms = "{}"
+    else:
+      terms = stringifyDict(query["message"]['terms'])
+
+    if "restated_question" not in query["message"] or query["message"]["restated_question"] is None:
+      restated_question = ""
+    else:
+      restated_question = query["message"]["restated_question"]
+
+    message_code = message.message_code
+
+    with open(os.path.dirname(os.path.abspath(__file__))+"/RTXQueries.log","a") as logfile:
+      logfile.write(datetimeString+"\t"+cacheStatus+"\t"+message_code+"\t"+id+"\t"+terms+"\t"+restated_question+"\n")
+    return
+
+
+  def examineIncomingQuery(self,query):
+
+    #### Examine the query object to see what we got and set some flags
+    response = { "message_code": "OK", "code_description": "Query examined" }
+
+    #### Check to see if there's a processing plan
+    if "previous_message_processing_plan" in query:
+      response["have_previous_message_processing_plan"] = 1
+
+    #### Temporary band-aid for old-style queries. Put the old-style top level content into message. This should be disallowed eventually. FIXME
+    if "query_type_id" in query:
+      query["message"] = query
+
+    #### Check to see if the pre-0.9.2 query_message has come through
+    if "query_message" in query:
+      response["message_code"] = "OldStyleQuery"
+      response["code_description"] = "Query specified 'query_message' instead of 'message', which is pre-0.9.2 style. Please update."
+      return response
+
+    #### Check to see if there's a query message to process
+    if "message" in query:
+      response["have_message"] = 1
+
+      #### Check the query_type_id and terms to make sure there is information in both
+      if "query_type_id" in query["message"] and query["message"]["query_type_id"] is not None:
+        if "terms" in query["message"] is not None:
+          response["have_query_type_id_and_terms"] = 1
+        else:
+          response["message_code"] = "QueryTypeIdWithoutTerms"
+          response["code_description"] = "query_type_id was provided but terms is empty"
+          return response
+      elif "terms" in query["message"] and query["message"]["terms"] is not None:
+        response["message_code"] = "TermsWithoutQueryTypeId"
+        response["code_description"] = "terms hash was provided without a query_type_id"
+        return response
+
+      #### Check if there is a query_graph
+      if "query_graph" in query["message"] and query["message"]["query_graph"] is not None:
+        response["have_query_graph"] = 1
+
+      #### If there is both a query_type_id and a query_graph, then return an error
+      if "have_query_graph" in response and "have_query_type_id_and_terms" in response:
+        response["message_code"] = "BothQueryTypeIdAndQueryGraph"
+        response["code_description"] = "Message contains both a query_type_id and a query_graph, which is disallowed"
+        return response
+
+    #### Check to see if there is at least a message or a previous_message_processing_plan
+    if "have_message" not in response and "have_previous_message_processing_plan" not in response:
+      response["message_code"] = "NoQueryMessageOrPreviousMessageProcessingPlan"
+      response["code_description"] = "No message or previous_message_processing_plan present in Query"
+      return response
+
+    #### If we got this far, then everything seems to be good enough to proceed
+    return response
+
+
+  def interpretQueryGraph(self,query):
+    """Try to interpret a QueryGraph and convert it into something RTX can process
+    """
+
+    #### Create a default response dict
+    response = { "message_code": "InternalError", "code_description": "interpretQueryGraph exited abnormally" }
+
+    query_graph = query["message"]["query_graph"]
+    nodes = query_graph["nodes"]
+    edges = query_graph["edges"]
+    n_nodes = len(nodes)
+    n_edges = len(edges)
+    eprint("DEBUG: n_nodes = %d, n_edges = %d" % (n_nodes,n_edges))
+
+    #### Handle impossible cases
+    if n_nodes == 0:
+      response = { "message_code": "QueryGraphZeroNodes", "code_description": "Submitted QueryGraph has 0 nodes. At least 1 node is required" }
+      return(response)
+    if n_nodes == 1 and n_edges > 0:
+      response = { "message_code": "QueryGraphTooManyEdges", "code_description": "Submitted QueryGraph may not have edges if there is only one node" }
+      return(response)
+    if n_nodes == 2 and n_edges > 1:
+      response = { "message_code": "QueryGraphTooManyEdges", "code_description": "Submitted QueryGraph may not have more than 1 edge if there are only 2 nodes" }
+      return(response)
+    if n_nodes > 2:
+      response = { "message_code": "UnsupportedQueryGraph", "code_description": "Submitted QueryGraph may currently only have 1 or 2 node. Support for 3 or more nodes coming soon." }
+      return(response)
+
+    #### Handle the single node case
+    if n_nodes == 1:
+      response = { "message_code": "OK", "code_description": "Interpreted QueryGraph as single node Q0" }
+      response["id"] = "Q0"
+      entity = nodes[0]["curie"]
+      eprint("DEBUG: Q0 - entity = %s" % entity)
+      response["terms"] = { "term": entity }
+      response["original_question"] = "Submitted QueryGraph"
+      response["restated_question"] = "What is %s?" % entity
+      return(response)
+
+    #### Handle the 2 node case
+    if n_nodes == 2:
+      eprint("DEBUG: Handling the 2-node case")
+      source_type = None
+      source_name = None
+      target_type = None
+      edge_type = None
+
+      #### Loop through nodes trying to figure out which is the source and target
+      for qnode in nodes:
+        node = QNode.from_dict(qnode)
+
+        if node.type == "gene":
+          if node.curie is None:
+            node.type = "protein"
+          else:
+            response = { "message_code": "UnsupportedNodeType", "code_description": "At least one of the nodes in the QueryGraph is a specific gene, which cannot be handled at the moment, a generic gene type with no curie is translated into a protein by RTX." }
+            return(response)
+
+        if node.curie is None:
+          if node.type is None:
+            response = { "message_code": "UnderspecifiedNode", "code_description": "At least one of the nodes in the QueryGraph has neither a CURIE nor a type. It must have one of those." }
+            return(response)
+          else:
+            if target_type is None:
+              target_type = node.type
+            else:
+              response = { "message_code": "TooManyTargets", "code_description": "Both nodes have only types and are interpreted as targets. At least one node must have an exact identity." }
+              return(response)
+        else:
+          if re.match(r"'",node.curie):
+            response = { "message_code": "IllegalCharacters", "code_description": "Node type contains one or more illegal characters." }
+            return(response)
+          if source_name is None:
+            if node.type is None:
+              response = { "message_code": "UnderspecifiedSourceNode", "code_description": "The source node must have a type in addition to a curie." }
+              return(response)
+            else:
+              source_name = node.curie
+              source_type = node.type
+          else:
+            response = { "message_code": "OverspecifiedQueryGraph", "code_description": "All nodes in the QueryGraph have exact identities, so there is really nothing left to query." }
+            return(response)
+
+      #### Loop over the edges (should be just 1), ensuring that it has a type and recording it
+      for qedge in edges:
+        edge = QEdge.from_dict(qedge)
+        if edge.type is None:
+          response = { "message_code": "EdgeWithNoType", "code_description": "At least one edge has no type. All edges must have a type." }
+          return(response)
+        else:
+          edge_type = edge.type
+
+      #### Perform a crude sanitation of the input parameters to make sure the shell command won't fail or cause harm
+      if re.match(r"'",edge_type) or re.match(r"'",target_type) or re.match(r"'",source_name):
+        response = { "message_code": "IllegalCharacters", "code_description": "The input query_graph entities contain one or more illegal characters." }
+        return(response)
+
+      #### Create the necessary components to hand off the queries to Q3Solution.py
+      response = { "message_code": "OK", "code_description": "Interpreted QueryGraph as a single hop question" }
+      response["id"] = "1hop"
+      response["terms"] = { source_type: source_name, "target_label": target_type, "rel_type": edge_type }
+      response["original_question"] = "Submitted QueryGraph"
+      response["restated_question"] = "Which %s(s) are connected to the %s %s via edge type %s?" % (target_type,source_type,source_name,edge_type)
+      #response["execution_string"] = "Q3Solution.py -s '%s' -t '%s' -r '%s' -j --directed" % (source_name,target_type,edge_type)
+      response["execution_string"] = "Q3Solution.py -s '%s' -t '%s' -r '%s' -j" % (source_name,target_type,edge_type)
+      return(response)
+
     return(response)
 
 
-  def logQuery(self,query,response,cacheStatus):
-    datetimeString = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    if "query_type_id" not in query or query["query_type_id"] is None:
-      id = "?"
-    else:
-      id = query['query_type_id']
-
-    if "terms" not in query or query['terms'] is None:
-      terms = "{}"
-    else:
-      terms = stringifyDict(query['terms'])
-
-    if "restated_question" not in query or query["restated_question"] is None:
-      restated_question = ""
-    else:
-      restated_question = query["restated_question"]
-
-    response_code = response.response_code
-
-    with open(os.path.dirname(os.path.abspath(__file__))+"/RTXQueries.log","a") as logfile:
-      logfile.write(datetimeString+"\t"+cacheStatus+"\t"+response_code+"\t"+id+"\t"+terms+"\t"+restated_question+"\n")
-
-
-  def limitResponse(self,response,query):
+  def limitMessage(self,message,query):
     if "max_results" in query and query["max_results"] is not None:
-      if response.result_list is not None:
-        if len(response.result_list) > query["max_results"]:
-          del response.result_list[query["max_results"]:]
-          response.message += " (output is limited to "+str(query["max_results"]) + " results)"
+      if message.results is not None:
+        if len(message.results) > query["max_results"]:
+          del message.results[query["max_results"]:]
+          message.code_description += " (output is limited to "+str(query["max_results"]) + " results)"
 
 
   def integrate(self,query):
@@ -211,7 +398,7 @@ class RTXQuery:
         targets = re.split(",",target_string)
         eprint(targets)
 
-        final_response = Response()
+        final_message = Message()
 
         for reasoner_id in targets:
           eprint("Looping with reasoner_id="+reasoner_id)
@@ -228,25 +415,25 @@ class RTXQuery:
             eprint("ERROR: Unrecognized target '"+target+"'")
           if url is not None:
             eprint("Querying url "+url)
-            response_content = requests.post(url, headers={'accept': 'application/json'}, json=query)
-            status_code = response_content.status_code
-            response_dict = response_content.json()
-            response = Response.from_dict(response_dict)
+            message_content = requests.post(url, headers={'accept': 'application/json'}, json=query)
+            status_code = message_content.status_code
+            message_dict = message_content.json()
+            message = Message.from_dict(message_dict)
             if reasoner_id == "RTX":
-              final_response = response
+              final_message = message
             if reasoner_id == "Robokop" or reasoner_id == "Indigo":
             #if reasoner_id == "Robokop":
               eprint("Merging in "+reasoner_id)
-              response = self.fix_response(query,response,reasoner_id)
-              if response.result_list is not None:
-                final_response = self.merge_response2(final_response,response)
+              message = self.fix_message(query,message,reasoner_id)
+              if message.results is not None:
+                final_message = self.merge_message2(final_message,message)
 
-        return(final_response)
+        return(final_message)
       return(None)
     return(None)
 
 
-  def fix_response(self,query,response,reasoner_id):
+  def fix_message(self,query,message,reasoner_id):
 
     if reasoner_id == "RTX":
       base_url = "https://rtx.ncats.io/devED/api/rtx/v1"
@@ -257,26 +444,26 @@ class RTXQuery:
     else:
       eprint("ERROR: Unrecognized target '"+target+"'")
 
-    if response.context is None:
-      response.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
-    if response.id is None or response.id == "":
-      response.id = base_url + "/response/1234"
-    response.original_question_text = query["original_question"]
-    response.restated_question_text = query["restated_question"]
-    response.reasoner_id = reasoner_id
-    if response.response_code is None or response.response_code == "":
-      response.response_code = "OK"
-    if response.n_results is None:
-      if response.result_list is not None:
-        response.n_results = len(response.result_list)
+    if message.context is None:
+      message.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
+    if message.id is None or message.id == "":
+      message.id = base_url + "/message/1234"
+    message.original_question = query["original_question"]
+    message.restated_question = query["restated_question"]
+    message.reasoner_id = reasoner_id
+    if message.message_code is None or message.message_code == "":
+      message.message_code = "OK"
+    if message.n_results is None:
+      if message.results is not None:
+        message.n_results = len(message.results)
       else:
-        response.n_results = 0
-    if response.message is None or response.message == "":
-      response.message = str(response.n_results) + " reults returned"
+        message.n_results = 0
+    if message.code_description is None or message.code_description == "":
+      message.code_description = str(message.n_results) + " results returned"
 
-    if response.result_list is not None:
+    if message.results is not None:
       result_id = 2345
-      for result in response.result_list:
+      for result in message.results:
         if result.id is None or result.id == "":
           result.id = base_url + "/result/" + str(result_id)
           result_id += 1
@@ -285,24 +472,24 @@ class RTXQuery:
         if result.confidence is None:
           result.confidence = 0
 
-    return(response)
+    return(message)
 
 
-  def merge_response(self,final_response,response_to_merge):
-    for result in response_to_merge.result_list:
-      final_response.result_list.append(result)
-    final_response.n_results = len(final_response.result_list)
-    final_response.message = str(final_response.n_results) + " merged reults"
-    return(final_response)
+  def merge_message(self,final_message,message_to_merge):
+    for result in message_to_merge.results:
+      final_message.results.append(result)
+    final_message.n_results = len(final_message.results)
+    final_message.code_description = str(final_message.n_results) + " merged reults"
+    return(final_message)
 
 
-  def merge_response2(self,final_response,response_to_merge):
-    new_result_list = []
+  def merge_message2(self,final_message,message_to_merge):
+    new_results = []
     mapper = SynonymMapper()
     result_group_counter = 1
-    if final_response.result_list is None: final_response.result_list = []
-    for main_result in final_response.result_list:
-      new_result_list.append(main_result)
+    if final_message.results is None: final_message.results = []
+    for main_result in final_message.results:
+      new_results.append(main_result)
       if main_result.result_group is None:
         main_result.result_group = "G"+str(result_group_counter)
         result_group_counter += 1
@@ -310,13 +497,13 @@ class RTXQuery:
         num = re.sub("G","",main_result.result_group)
         result_group_counter = int(num) + 1
       protein = None
-      for node in main_result.result_graph.node_list:
+      for node in main_result.knowledge_graph.nodes:
         if node.type == "protein":
           protein = node.id
       if protein is not None:
         eprint("protein="+protein)
-        for other_result in response_to_merge.result_list:
-          for node in other_result.result_graph.node_list:
+        for other_result in message_to_merge.results:
+          for node in other_result.knowledge_graph.nodes:
 
             #### Custom code for Indigo proteins/genes
             if node.type == "Target":
@@ -325,7 +512,7 @@ class RTXQuery:
               if node.node_attributes is not None:
                 for attribute in node.node_attributes:
                   if attribute.name == "uniprot_id" and protein == "UniProtKB:"+attribute.value:
-                    new_result_list.append(other_result)
+                    new_results.append(other_result)
                     other_result.result_group = main_result.result_group
                     eprint("             "+attribute.value)
 
@@ -334,22 +521,38 @@ class RTXQuery:
               match = mapper.prot_to_gene(protein)
               eprint("  "+node.id)
               if node.id in match:
-                new_result_list.append(other_result)
+                new_results.append(other_result)
                 other_result.result_group = main_result.result_group
                 eprint("  "+node.name)
             else:
               pass
 
-    for other_result in response_to_merge.result_list:
+    for other_result in message_to_merge.results:
       if other_result.result_group is None:
-        new_result_list.append(other_result)
+        new_results.append(other_result)
         other_result.result_group = "G"+str(result_group_counter)
         result_group_counter += 1
 
-    final_response.result_list = new_result_list
-    final_response.n_results = len(final_response.result_list)
-    final_response.message = str(final_response.n_results) + " merged reults"
-    return(final_response)
+    final_message.results = new_results
+    final_message.n_results = len(final_message.results)
+    final_message.code_description = str(final_message.n_results) + " merged results"
+    return(final_message)
+
+
+  def get_node_types(self):
+    return(ReasoningUtilities.get_node_labels())
+
+
+  def get_all_edge_types(self):
+    return(ReasoningUtilities.get_relationship_types())
+
+
+  def get_node_to_node_edge_types(self,node_type1,node_type2):
+    return(ReasoningUtilities.get_relationship_types_between(None,node_type1,None,node_type2,1))
+
+
+  def get_node_edge_types(self,node_type):
+    return(ReasoningUtilities.get_relationship_types_between(None,node_type,None,None,1))
 
 
   def __init__(self):
@@ -375,9 +578,9 @@ def main():
   #query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "DOID:1686" ] }
   #query = { "knownQueryTypeId": "Q2", "terms": [ "DOID:1686", "physostigmine" ] }
   #query = { "knownQueryTypeId": "Q3", "terms": [ "acetaminophen" ] }
-  response = rtxq.query(query)
-  print(json.dumps(ast.literal_eval(repr(response)),sort_keys=True,indent=2))
-  #print(response)
+  message = rtxq.query(query)
+  print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+  #print(message)
 
 
 if __name__ == "__main__": main()
