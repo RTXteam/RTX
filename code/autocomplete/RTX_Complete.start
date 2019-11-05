@@ -1,0 +1,21 @@
+#!/bin/bash
+
+export DEVAREA=devED
+
+LOGFILE=/tmp/RTX_Complete.log
+ELOGFILE=/tmp/RTX_Complete.elog
+
+if [ -e $LOGFILE ]
+then
+    /bin/rm $LOGFILE
+fi
+
+if [ -e $ELOGFILE ]
+then
+    /bin/rm $ELOGFILE
+fi
+
+cd /mnt/data/orangeboard/$DEVAREA/RTX/code/autocomplete
+
+exec /usr/bin/python3 server.py 1>$LOGFILE 2>$ELOGFILE
+

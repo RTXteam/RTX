@@ -23,8 +23,8 @@ $( document ).ready( function(){
 	    return html;
 	},
 	updater: function (item) {
-	    console.log("updater: ");
-	    console.log($('.typeInput').val());
+	    //console.log("updater: ");
+	    //console.log($('.typeInput').val());
 	    var tmp = $('.typeInput').val().split(",");
 	    tmp = tmp.slice(0,tmp.length-1).join(", ");
 	    var parts = item.split('#');
@@ -42,8 +42,8 @@ $( document ).ready( function(){
 	name: 'stuff',
 	display: 'value',
 	source: function(query, callback) {
-	    console.log("'"+query+"'");
-	    console.log($('.typeInput').innerWidth());
+	    //console.log("'"+query+"'");
+	    //console.log($('.typeInput').innerWidth());
 	    //console.log(query.split(","));
 	    query = query.split(",");
 	    //var first_part = query.slice(0,query.length-1).join(", ");

@@ -52,7 +52,7 @@ class EdgeAttribute(Model):
 
         :param dikt: A dict.
         :type: dict
-        :return: The Edge_attribute of this EdgeAttribute.  # noqa: E501
+        :return: The EdgeAttribute of this EdgeAttribute.  # noqa: E501
         :rtype: EdgeAttribute
         """
         return util.deserialize_model(dikt, cls)

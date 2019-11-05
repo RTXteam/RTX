@@ -52,7 +52,7 @@ class NodeAttribute(Model):
 
         :param dikt: A dict.
         :type: dict
-        :return: The Node_attribute of this NodeAttribute.  # noqa: E501
+        :return: The NodeAttribute of this NodeAttribute.  # noqa: E501
         :rtype: NodeAttribute
         """
         return util.deserialize_model(dikt, cls)

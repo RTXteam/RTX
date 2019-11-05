@@ -16,6 +16,9 @@ from sqlalchemy.orm import sessionmaker
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 from RTXConfiguration import RTXConfiguration
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/..")
+import ReasoningUtilities as RU
+
 Base = declarative_base()
 
 #### Testing and debugging flags
@@ -44,6 +47,7 @@ class KGNodeIndex:
   #### Constructor
   def __init__(self):
     filepath = os.path.dirname(os.path.abspath(__file__))
+    self.databaseLocation = filepath
     is_rtx_production = False
     if re.match("/mnt/data/orangeboard",filepath):
       is_rtx_production = True
@@ -103,16 +107,25 @@ class KGNodeIndex:
     self._databaseName = databaseName
 
 
+  #### databaseLocation
+  @property
+  def databaseLocation(self) -> str:
+    return self._databaseLocation
+  @databaseLocation.setter
+  def databaseLocation(self, databaseLocation: str):
+    self._databaseLocation = databaseLocation
+
+
   #### Delete and create the SQLite database. Careful!
   def createDatabase(self):
     if self.engine_type == "sqlite":
-      if os.path.exists(self.databaseName):
-        if DEBUG is True: print("INFO: Removing previous database "+self.databaseName)
-        os.remove(self.databaseName)
+      if os.path.exists(self.databaseLocation + "/" + self.databaseName):
+        if DEBUG is True: print("INFO: Removing previous database "+self.databaseLocation + "/" + self.databaseName)
+        os.remove(self.databaseLocation + "/" + self.databaseName)
 
     if DEBUG is True: print("INFO: Creating database "+self.databaseName)
     if self.engine_type == "sqlite":
-      engine = create_engine("sqlite:///"+self.databaseName)
+      engine = create_engine("sqlite:///"+self.databaseLocation + "/" + self.databaseName)
     else:
       rtxConfig = RTXConfiguration()
       engine = create_engine("mysql+pymysql://" + rtxConfig.mysql_feedback_username + ":" + rtxConfig.mysql_feedback_password + "@" + rtxConfig.mysql_feedback_host + "/" + self.databaseName)
@@ -124,13 +137,13 @@ class KGNodeIndex:
   def connect(self):
     if self.session is not None: return
     if self.engine_type == "sqlite":
-      if not os.path.isfile(self.databaseName):
+      if not os.path.isfile(self.databaseLocation + "/" + self.databaseName):
         self.createDatabase()
 
     #### Create an engine object
     if DEBUG is True: print("INFO: Connecting to database")
     if self.engine_type == "sqlite":
-      engine = create_engine("sqlite:///"+self.databaseName)
+      engine = create_engine("sqlite:///"+self.databaseLocation+"/"+self.databaseName)
     else:
       rtxConfig = RTXConfiguration()
       engine = create_engine("mysql+pymysql://" + rtxConfig.mysql_feedback_username + ":" + rtxConfig.mysql_feedback_password + "@" + rtxConfig.mysql_feedback_host + "/" + self.databaseName)
@@ -296,6 +309,66 @@ class KGNodeIndex:
     return(curies_and_types)
 
 
+  def get_curies_and_types_and_names(self,name):
+    #### Ensure that we are connected
+    self.connect()
+    session = self.session
+
+    #### First check to see if this is a curie. And if so, just return it
+    #### oops, don't do this. it takes twice as long! Better to put them all in the index and do one query
+    #if self.is_curie_present(name):
+    #  return([name])
+
+    #### Try to find the curie
+    try:
+      matches = session.query(KGNode).filter(KGNode.name==name.upper()).all()
+    except:
+      session.rollback()
+      raise
+
+    if matches is None: return None
+
+    #### Return a list of curies
+    curies_and_types_and_names = []
+    for match in matches:
+      names = self.get_names(match.curie)
+      best_name = "?"
+      if names is not None:
+        best_name = names[0]
+      entity = { "curie": match.curie, "type": match.type, "name": best_name } 
+
+      #### Also try to fetch the description from the knowledge graph
+      properties = RU.get_node_properties(match.curie)
+      if 'description' in properties:
+          entity['description'] = properties['description']
+
+      curies_and_types_and_names.append( entity )
+    return(curies_and_types_and_names)
+
+
+  def get_names(self,curie):
+    #### Ensure that we are connected
+    self.connect()
+    session = self.session
+
+    #### Try to find the name using the curie
+    try:
+      matches = session.query(KGNode).filter(KGNode.curie==curie).all()
+    except:
+      session.rollback()
+      raise
+
+    if matches is None: return None
+
+    #### Return a list of curies
+    names = []
+    for match in matches:
+      if match.name == curie:
+        continue
+      names.append(match.name)
+    return(names)
+
+
   def get_curies(self,name):
 
     curies_and_types = self.get_curies_and_types(name)
@@ -315,11 +388,20 @@ class KGNodeIndex:
     session = self.session
 
     #### Try to find the curie
+    failed = False
     try:
       match = session.query(KGNode).filter(KGNode.curie==curie).first()
     except:
       session.rollback()
-      raise
+      failed = True
+
+    #### If the query failed, try it again because it is sometimes a temporary glitch because the MySQL drops after disuse
+    if failed is True:
+      try:
+        match = session.query(KGNode).filter(KGNode.curie==curie).first()
+      except:
+        session.rollback()
+        raise
 
     if match is None: return(False)
     return(True)
@@ -375,6 +457,15 @@ def main():
   t1 = timeit.default_timer()
   print("Elapsed time: "+str(t1-t0))
 
+  print("==== Testing presence of CURIEs ============================")
+  tests = [ "REACT:R-HSA-2160456", "DOID:9281", "OMIM:261600", "DOID:1926xx", "P06865" ]
+
+  t0 = timeit.default_timer()
+  for test in tests:
+    node_properties = kgNodeIndex.get_curies_and_types_and_names(test)
+    print(test+" = "+str(node_properties))
+  t1 = timeit.default_timer()
+  print("Elapsed time: "+str(t1-t0))
 
 ####################################################################################################
 if __name__ == "__main__":
