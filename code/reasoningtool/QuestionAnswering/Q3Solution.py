@@ -83,7 +83,7 @@ class Q3:
 		if not use_json:
 			results_list = list()
 			for target_number in target_numbers:
-				data = g.node[target_number]
+				data = g.nodes[target_number]
 				results_list.append(
 					{'type': list(set(data['labels'])-{'Base'}).pop(),
 					 'name': data['properties']['name'],
