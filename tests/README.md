@@ -46,6 +46,6 @@ dependencies not detailed here, and thus may not run properly.
 The going protocol for contributing is to push changes to our RTX fork, and then make pull requests from our fork 
 to the [original repository](https://github.com/NCATS-Tangerine/translator-testing-framework).
 
-Currently, all of the RTX-specific tests live in one feature file: [rtx-tests.feature](https://github.com/NCATS-Tangerine/translator-testing-framework/blob/master/features/rtx-tests.feature). 
-The Python implementations of the steps these tests use are currently in the main [steps.py](https://github.com/NCATS-Tangerine/translator-testing-framework/blob/master/features/steps/steps.py) 
+Currently, **all of the RTX-specific tests live in one feature file**: [rtx-tests.feature](https://github.com/RTXteam/translator-testing-framework/blob/master/features/rtx-tests.feature). 
+The Python implementations of the steps these tests use are currently in the main [steps.py](https://github.com/RTXteam/translator-testing-framework/blob/master/features/steps/steps.py) 
 file (along with various other projects' step implementations).
