@@ -1,8 +1,10 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
+# This script runs all the RTX Behave tests and uploads the JSON-formatted results to our S3 bucket. It clones the
+# testing repo (if not already present) and saves the JSON report into whatever directory it is run from.
 
 echo -e "\n=================== STARTING SCRIPT ===================\n"
 
-OUTPUT_REPORT="rtx-test-harness-report.json"
+REPORT_NAME="rtx-test-harness-report.json"
 TESTING_REPO="translator-testing-framework"
 
 echo -e "\nSETTING UP...\n"
@@ -13,31 +15,29 @@ then
     git clone --recursive https://github.com/RTXteam/translator-testing-framework.git
 fi
 
-# Start up a virtual environment
+# Start up a virtual environment for Behave and install requirements
 python3 -m venv behave-env
 source behave-env/bin/activate
-
-# Install requirements
 cd ${TESTING_REPO}
 git pull origin master
 pip install -r requirements.txt
 
+# Run all of our Behave tests, outputting a JSON report with results
 echo -e "\nRUNNING RTX BEHAVE TESTS...\n"
-behave -i rtx-tests.feature -f json.pretty -o ../${OUTPUT_REPORT}
-
-echo -e "\nUPLOADING REPORT TO S3...\n"
+behave -i rtx-tests.feature -f json.pretty -o ../${REPORT_NAME}
 cd ..
-aws s3 cp --no-progress --region us-west-2 ${OUTPUT_REPORT} s3://rtx-kg2-versioned/
 
-echo -e "\nNOTIFYING STAFF IF FAILED TESTS...\n"
-FAILED=$(grep -c failed ${OUTPUT_REPORT})
-if [[ ${FAILED} ]]
+# Direct user to the report in event of test failure
+test_failed=$(grep -c failed ${REPORT_NAME})
+if [[ ${test_failed} -gt 0 ]]
 then
-    MESSAGE="There was an error: Tests failed in the RTX Behave harness."
-    echo ${MESSAGE}
-    # TODO: Add proper 'aws sns publish' line that sends message about failed tests
+    echo -e "\nOne or more tests failed! Examine '${REPORT_NAME}' to see which tests."
 else
-    echo "All tests passed - no need to notify anyone."
+    echo -e "\nAll tests passed!"
 fi
+
+# Upload the report to our S3 bucket
+echo -e "\nUPLOADING REPORT TO S3...\n"
+aws s3 cp --no-progress --region us-west-2 ${REPORT_NAME} s3://rtx-kg2-versioned/
 
 echo -e "\n=================== SCRIPT FINISHED ===================\n"
