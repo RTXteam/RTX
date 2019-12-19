@@ -34,7 +34,7 @@ if [[ ${test_failed} -gt 0 ]]
 then
     echo -e "\nOne or more tests failed! Examine '${REPORT_NAME}' to see which tests."
     echo -e "\nNOTIFYING STAFF OF TEST FAILURE...\n"
-    failure_message="Test(s) failed in the RTX Behave harness. See ${PWD}/${REPORT_NAME} for results."
+    failure_message="Test(s) failed in the RTX Behave harness. See '${REPORT_NAME}' for results."
     aws sns publish --topic-arn arn:aws:sns:us-west-2:621419614036:rtx-testing --message ${failure_message}
 else
     echo -e "\nAll tests passed!"
