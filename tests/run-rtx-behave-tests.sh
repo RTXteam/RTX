@@ -37,7 +37,7 @@ else
 fi
 
 # Upload the report to our S3 bucket
-echo -e "\nUPLOADING REPORT TO S3...\n"
+echo -e "\nUPLOADING REPORT TO S3 BUCKET...\n"
 aws s3 cp --no-progress --region us-west-2 ${REPORT_NAME} s3://rtx-kg2-versioned/
 
 echo -e "\n=================== SCRIPT FINISHED ===================\n"
