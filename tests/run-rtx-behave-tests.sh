@@ -4,6 +4,7 @@
 
 echo -e "\n=================== STARTING SCRIPT ===================\n"
 
+
 REPORT_NAME="rtx-test-harness-report.json"
 TESTING_REPO="translator-testing-framework"
 
@@ -27,11 +28,14 @@ echo -e "\nRUNNING RTX BEHAVE TESTS...\n"
 behave -i rtx-tests.feature -f json.pretty -o ../${REPORT_NAME}
 cd ..
 
-# Direct user to the report in event of test failure
+# Notify staff via SNS if any tests failed
 test_failed=$(grep -c failed ${REPORT_NAME})
 if [[ ${test_failed} -gt 0 ]]
 then
     echo -e "\nOne or more tests failed! Examine '${REPORT_NAME}' to see which tests."
+    echo -e "\nNOTIFYING STAFF OF TEST FAILURE...\n"
+    failure_message="Test(s) failed in the RTX Behave harness. See ${PWD}/${REPORT_NAME} for results."
+    aws sns publish --topic-arn arn:aws:sns:us-west-2:621419614036:rtx-testing --message ${failure_message}
 else
     echo -e "\nAll tests passed!"
 fi
@@ -39,5 +43,6 @@ fi
 # Upload the report to our S3 bucket
 echo -e "\nUPLOADING REPORT TO S3 BUCKET...\n"
 aws s3 cp --no-progress --region us-west-2 ${REPORT_NAME} s3://rtx-kg2-versioned/
+
 
 echo -e "\n=================== SCRIPT FINISHED ===================\n"
