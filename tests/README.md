@@ -1,7 +1,7 @@
 # Behave testing harness for RTX
 
 As part of the larger [translator-testing-framework](https://github.com/NCATS-Tangerine/translator-testing-framework), 
-we've created a small testing harness for RTX using [Behave](https://behave.readthedocs.io/en/latest/), a Python-based 
+we've created a testing harness for RTX using [Behave](https://behave.readthedocs.io/en/latest/), a Python-based 
 behavior-driven development testing framework. These tests ask RTX questions through the [RTX OpenAPI](https://rtx.ncats.io/api/rtx/v1/ui/)
 (which currently uses KG1), and compare its answers to ground truths.
 
@@ -19,9 +19,9 @@ Then navigate into your newly created directory and **sync the fork** to the ori
     
 Then start up a Python **virtual environment**:
 
-    python3 -m venv my-working-environment
+    python3 -m venv behave-env
 
-    source my-working-environment/bin/activate
+    source behave-env/bin/activate
 
 And run this to **install packages**:
 
@@ -46,6 +46,6 @@ dependencies not detailed here, and thus may not run properly.
 The going protocol for contributing is to push changes to our RTX fork, and then make pull requests from our fork 
 to the [original repository](https://github.com/NCATS-Tangerine/translator-testing-framework).
 
-Currently, **all of the RTX-specific tests live in one feature file**: [rtx-tests.feature](https://github.com/RTXteam/translator-testing-framework/blob/master/features/rtx-tests.feature). 
+Currently, all of the RTX-specific tests live in one feature file: [rtx-tests.feature](https://github.com/RTXteam/translator-testing-framework/blob/master/features/rtx-tests.feature). 
 The Python implementations of the steps these tests use are currently in the main [steps.py](https://github.com/RTXteam/translator-testing-framework/blob/master/features/steps/steps.py) 
 file (along with various other projects' step implementations).
