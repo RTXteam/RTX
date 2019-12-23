@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# This script runs all the RTX Behave tests and uploads the JSON-formatted results to our S3 bucket. It clones the
-# testing repo (if not already present) and saves the JSON report into whatever directory it is run from.
+# This script runs all the RTX Behave tests and uploads JSON-formatted results to our S3 bucket; it notifies staff
+# via SNS message if any tests failed. It requires aws-cli to be set up. Any relevant files (i.e., the testing repo
+# and the output JSON report) are created in the directory the script is run from.
 
 echo -e "\n=================== STARTING SCRIPT ===================\n"
-
 
 REPORT_NAME="rtx-test-harness-report.json"
 TESTING_REPO="translator-testing-framework"
@@ -32,7 +32,7 @@ cd ..
 test_failed=$(grep -c failed ${REPORT_NAME})
 if [[ ${test_failed} -gt 0 ]]
 then
-    echo -e "\nOne or more tests failed! Examine '${REPORT_NAME}' to see which tests."
+    echo -e "\nOne or more tests failed! Examine '${REPORT_NAME}' to see output."
     echo -e "\nNOTIFYING STAFF OF TEST FAILURE...\n"
     failure_message="Test(s) failed in the RTX Behave harness. See '${REPORT_NAME}' for results."
     aws sns publish --topic-arn arn:aws:sns:us-west-2:621419614036:rtx-testing --message ${failure_message}
@@ -43,6 +43,5 @@ fi
 # Upload the report to our S3 bucket
 echo -e "\nUPLOADING REPORT TO S3 BUCKET...\n"
 aws s3 cp --no-progress --region us-west-2 ${REPORT_NAME} s3://rtx-kg2-versioned/
-
 
 echo -e "\n=================== SCRIPT FINISHED ===================\n"
