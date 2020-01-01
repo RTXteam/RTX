@@ -19,6 +19,8 @@ Then **clone the [RTX fork](https://github.com/RTXteam/translator-testing-framew
     
 Then navigate into your newly created directory and **sync the fork** to the original repository:
 
+    cd translator-testing-framework
+    
     git remote add upstream https://github.com/NCATS-Tangerine/translator-testing-framework.git
 
     git pull upstream master
