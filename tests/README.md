@@ -7,22 +7,22 @@ behavior-driven development testing framework. These tests ask RTX questions thr
 
 ### To get set up
 
-First, **clone the RTX fork** of translator-testing-framework:
+First, create and start up a Python **virtual environment**:
+
+    python3 -m venv behave-env
+
+    source behave-env/bin/activate
+
+Then **clone the [RTX fork](https://github.com/RTXteam/translator-testing-framework)** of translator-testing-framework:
 
     git clone --recursive https://github.com/RTXteam/translator-testing-framework.git
-
+    
 Then navigate into your newly created directory and **sync the fork** to the original repository:
 
     git remote add upstream https://github.com/NCATS-Tangerine/translator-testing-framework.git
 
     git pull upstream master
     
-Then start up a Python **virtual environment**:
-
-    python3 -m venv behave-env
-
-    source behave-env/bin/activate
-
 And run this to **install packages**:
 
     pip install -r requirements.txt
