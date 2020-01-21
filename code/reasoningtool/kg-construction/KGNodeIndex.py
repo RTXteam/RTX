@@ -16,7 +16,7 @@ from sqlalchemy.orm import sessionmaker
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 from RTXConfiguration import RTXConfiguration
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/..")
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../QuestionAnswering")
 import ReasoningUtilities as RU
 
 Base = declarative_base()
@@ -51,7 +51,7 @@ class KGNodeIndex:
     is_rtx_production = False
     if re.match("/mnt/data/orangeboard",filepath):
       is_rtx_production = True
-    if DEBUG: print("is_rtx_production="+str(is_rtx_production))
+    if DEBUG: print("INFO: is_rtx_production="+str(is_rtx_production))
 
     if is_rtx_production:
       self.databaseName = "RTXFeedback"
@@ -121,6 +121,7 @@ class KGNodeIndex:
     if self.engine_type == "sqlite":
       if os.path.exists(self.databaseLocation + "/" + self.databaseName):
         if DEBUG is True: print("INFO: Removing previous database "+self.databaseLocation + "/" + self.databaseName)
+        #raise()
         os.remove(self.databaseLocation + "/" + self.databaseName)
 
     if DEBUG is True: print("INFO: Creating database "+self.databaseName)
@@ -137,7 +138,9 @@ class KGNodeIndex:
   def connect(self):
     if self.session is not None: return
     if self.engine_type == "sqlite":
-      if not os.path.isfile(self.databaseLocation + "/" + self.databaseName):
+      database_path = self.databaseLocation + "/" + self.databaseName
+      if not os.path.exists(database_path):
+        print(f"INFO: Did not find {database_path}")
         self.createDatabase()
 
     #### Create an engine object
