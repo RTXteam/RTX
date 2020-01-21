@@ -34,11 +34,6 @@ from KGNodeIndex import KGNodeIndex
 KGNodeIndex = KGNodeIndex()
 KGNodeIndex.connect()
 
-# If the database isn't built, build it now (will take a bit)
-if not os.path.exists(KGNodeIndex.databaseName):
-	KGNodeIndex.createDatabase()
-	KGNodeIndex.createIndex()
-
 re_no_punc = re.compile('[%s]|\s' % re.escape(string.punctuation))
 
 # TODO: replace this stuff with the RU.get_node_property (along with RU.node_exists_with_property)
