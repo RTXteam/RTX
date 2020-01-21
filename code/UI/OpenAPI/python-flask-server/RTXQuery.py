@@ -571,6 +571,8 @@ def stringifyDict(inputDict):
 def main():
   rtxq = RTXQuery()
   query = { "query_type_id": "Q0", "terms": { "term": "lovastatin" } }
+  #query = { "query_type_id": "Q0", "terms": { "term": "lovastatin" }, "bypass_cache": "true" }  # Use bypass_cache if the cache if bad for this question
+
   #query = { "knownQueryTypeId": "Q0", "terms": [ "foo" ] }
   #query = { "query_type_id": "Q1", "terms": [ "malaria" ] }
   #query = { "knownQueryTypeId": "Q2", "terms": [ "physostigmine", "glaucoma" ] }
