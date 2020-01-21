@@ -889,15 +889,15 @@ def main():
   #envelope.options = [ "AnnotateDrugs", "ReturnMessage" ]
   envelope.message_ur_is = [ "https://rtx.ncats.io/api/rtx/v1/message/300" ]
 
-  result = rtxFeedback.processExternalPreviousMessageProcessingPlan(envelope)
-  print(result)
+  #result = rtxFeedback.processExternalPreviousMessageProcessingPlan(envelope)
+  #print(result)
 
 
 
   #### Careful, don't destroy an important database!!!
   ##rtxFeedback.createDatabase()
   ##rtxFeedback.prepopulateDatabase()
-  sys.exit()
+  #sys.exit()
 
   #### Connect to the database
   session = rtxFeedback.session
