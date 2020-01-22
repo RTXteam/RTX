@@ -43,7 +43,7 @@ class RTXQuery:
         execution_string = None
 
         #### Determine a plan for what to do based on the input
-        result = self.examineIncomingQuery(query)
+        result = self.examine_incoming_query(query)
         if result["message_code"] != "OK":
             response.message_code = result["message_code"]
             response.code_description = result["code_description"]
@@ -61,12 +61,12 @@ class RTXQuery:
         if "have_query_graph" in result:
             qgr = QueryGraphReasoner()
             message = qgr.answer(query["message"]["query_graph"], TxltrApiFormat=True)
-            #self.logQuery(query,message,'new')
+            #self.log_query(query,message,'new')
             rtxFeedback = RTXFeedback()
             rtxFeedback.connect()
             rtxFeedback.addNewMessage(message,query)
             rtxFeedback.disconnect()
-            self.limitMessage(message,query)
+            self.limit_message(message,query)
             return(message)
 
 
@@ -78,7 +78,7 @@ class RTXQuery:
         #### Check to see if the query_options indicates to query named resource and integrate the results
         if "have_query_type_id_and_terms" in result and "message" in query and "query_options" in query["message"] and "integrate" in query["message"]["query_options"]:
             response = self.integrate(query)
-            #self.logQuery(query,response,'remote')
+            #self.log_query(query,response,'remote')
             return response
 
         #### Create an RTX Feedback management object
@@ -91,7 +91,7 @@ class RTXQuery:
         if ( cachedMessage is not None ):
             apiMessage = Message().from_dict(cachedMessage)
             rtxFeedback.disconnect()
-            self.limitMessage(apiMessage,query)
+            self.limit_message(apiMessage,query)
 
             if apiMessage.message_code is None:
                 if apiMessage.result_code is not None:
@@ -99,7 +99,7 @@ class RTXQuery:
                 else:
                     apiMessage.message_code = "wha??"
 
-            self.logQuery(query,apiMessage,'cached')
+            self.log_query(query,apiMessage,'cached')
             return apiMessage
 
         #### Still have special handling for Q0
@@ -113,10 +113,10 @@ class RTXQuery:
             message.terms = query["message"]["terms"]
             id = message.id
             codeString = message.message_code
-            self.logQuery(query,message,'new')
+            self.log_query(query,message,'new')
             rtxFeedback.addNewMessage(message,query)
             rtxFeedback.disconnect()
-            self.limitMessage(message,query)
+            self.limit_message(message,query)
             return(message)
 
         #### Else call out to original solution scripts for an answer
@@ -167,12 +167,12 @@ class RTXQuery:
             message.terms = query["message"]["terms"]
 
             #### Log the result and return the Message object
-            self.logQuery(query,message,'new')
+            self.log_query(query,message,'new')
             rtxFeedback.addNewMessage(message,query)
             rtxFeedback.disconnect()
 
             #### Limit message
-            self.limitMessage(message,query)
+            self.limit_message(message,query)
             return(message)
 
 
@@ -184,7 +184,7 @@ class RTXQuery:
         return(message)
 
 
-    def logQuery(self,query,message,cacheStatus):
+    def log_query(self,query,message,cacheStatus):
         datetimeString = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         if "query_type_id" not in query["message"] or query["message"]["query_type_id"] is None:
@@ -195,7 +195,7 @@ class RTXQuery:
         if "terms" not in query["message"] or query["message"]['terms'] is None:
             terms = "{}"
         else:
-            terms = stringifyDict(query["message"]['terms'])
+            terms = stringify_dict(query["message"]['terms'])
 
         if "restated_question" not in query["message"] or query["message"]["restated_question"] is None:
             restated_question = ""
@@ -209,7 +209,7 @@ class RTXQuery:
         return
 
 
-    def examineIncomingQuery(self,query):
+    def examine_incoming_query(self,query):
 
         #### Examine the query object to see what we got and set some flags
         response = { "message_code": "OK", "code_description": "Query examined" }
@@ -265,12 +265,12 @@ class RTXQuery:
         return response
 
 
-    def interpretQueryGraph(self,query):
+    def interpret_query_graph(self,query):
         """Try to interpret a QueryGraph and convert it into something RTX can process
         """
 
         #### Create a default response dict
-        response = { "message_code": "InternalError", "code_description": "interpretQueryGraph exited abnormally" }
+        response = { "message_code": "InternalError", "code_description": "interpret_query_graph exited abnormally" }
 
         query_graph = query["message"]["query_graph"]
         nodes = query_graph["nodes"]
@@ -376,7 +376,7 @@ class RTXQuery:
 
 
 
-    def limitMessage(self,message,query):
+    def limit_message(self,message,query):
         if "max_results" in query and query["max_results"] is not None:
             if message.results is not None:
                 if len(message.results) > query["max_results"]:
@@ -553,7 +553,7 @@ class RTXQuery:
     def __init__(self):
         None
 
-def stringifyDict(inputDict):
+def stringify_dict(inputDict):
     outString = "{"
     for key,value in sorted(inputDict.items(), key=lambda t: t[0]):
         if outString != "{":
