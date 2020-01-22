@@ -1,8 +1,6 @@
 #!/usr/bin/python3
-from __future__ import print_function
 import sys
-def eprint(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 import re
 import os
@@ -22,7 +20,6 @@ from swagger_server.models.q_edge import QEdge
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/QuestionAnswering/")
 from ParseQuestion import ParseQuestion
-#from QueryMeSH import QueryMeSH
 from Q0Solution import Q0
 import ReasoningUtilities
 from QueryGraphReasoner import QueryGraphReasoner
@@ -33,6 +30,7 @@ from SynonymMapper import SynonymMapper
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../Feedback/")
 from RTXFeedback import RTXFeedback
+
 
 class RTXQuery:
 
@@ -106,9 +104,6 @@ class RTXQuery:
 
     #### Still have special handling for Q0
     if id == 'Q0':
-      # call out to QueryMeSH here to satify the query "What is XXXXXX?"
-      #meshQuery = QueryMeSH()
-      #message = meshQuery.queryTerm(terms["term"])
       q0 = Q0()
       message = q0.answer(terms["term"],use_json=True)
       if 'original_question' in query["message"]:
@@ -124,7 +119,7 @@ class RTXQuery:
       self.limitMessage(message,query)
       return(message)
 
-    #### Call out to OrangeBoard to answer the other types of queries
+    #### Else call out to original solution scripts for an answer
     else:
 
       #### If some previous processing has determined what the solution script to use is, then use that
