@@ -1,4 +1,4 @@
-# Code for the RTX Proof-of-Concept software
+# Code for the RTX Proof-of-Concept software 
 
 ### Subdirectory `reasoningtool`
 
