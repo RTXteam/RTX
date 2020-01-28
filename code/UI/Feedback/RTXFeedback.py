@@ -1,9 +1,7 @@
 #!/usr/bin/python3
 # Database definition and RTXFeedback class
-from __future__ import print_function
 import sys
-def eprint(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 import os
 import sys
@@ -35,6 +33,9 @@ from swagger_server.models.message import Message as TxMessage
 from swagger_server.models.previous_message_processing_plan import PreviousMessageProcessingPlan
 
 #import Enricher
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../ARAX/ARAXQuery")
+from actions_parser import ActionsParser
+from ARAX_filter import ARAXFilter
 
 Base = declarative_base()
 
@@ -580,7 +581,7 @@ class RTXFeedback:
           if debug: eprint("DEBUG: Found local RTX identifier corresponding to respond_id "+message_id)
           if debug: eprint("DEBUG: Loading message_id "+message_id)
           message = self.getMessage(message_id)
-          eprint(type(message))
+          #eprint(type(message))
           if not isinstance(message,tuple):
             if debug: eprint("DEBUG: Original question was: "+message["original_question"])
             messages.append(message)
@@ -646,36 +647,68 @@ class RTXFeedback:
         if debug: eprint("DEBUG:   option="+option)
         optionsDict[option] = 1
 
-    if "AnnotateDrugs" in optionsDict:
-      if debug: eprint("DEBUG: Annotating drugs")
-      annotate_std_results(finalMessage)
+    #### If there are processing_actions, then fulfill those
+    processing_actions = []
+    if envelope.processing_actions:
+      if debug: eprint("DEBUG: Found processing_actions")
+      actions_parser = ActionsParser()
+      result = actions_parser.parse(envelope.processing_actions)
+      if result['message_code'] != 'OK':
+        eprint(result)
+        raise()
 
-    if "Store" in optionsDict:
-      if debug: eprint("DEBUG: Storing result")
+      #### Process each action in order
+      action_stats = { }
+      actions = result['actions']
+      for action in actions:
+        if debug: eprint(f"DEBUG: Considering action '{action['command']}' with parameters {action['parameters']}")
+        #### If we encounter a return, then this is the end of the line
+        if action['command'] == 'return':
+          action_stats['return_action'] = action
+          break
+        if action['command'] == 'filter':
+          filter = ARAXFilter()
+          result = filter.apply(finalMessage,action['parameters'])
+          if result['message_code'] != 'OK':
+            response = result
+            break
+        else:
+          if debug: eprint(f"DEBUG: Action '{action['command']}' is not known")
+
+      #### At the end, process the explicit return() action, or implicitly perform one
+      return_action = { 'command': 'return', 'parameters': { 'message': 'false', 'store': 'false' } }
+      if action is not None and action['command'] == 'return':
+        return_action = action
+        #### If an explicit one left out some parameters, set the defaults
+        if 'store' not in return_action['parameters']:
+          return_action['parameters']['store'] == 'false'
+        if 'message' not in return_action['parameters']:
+          return_action['parameters']['message'] == 'false'
+
+    #if "AnnotateDrugs" in optionsDict:
+    #  if debug: eprint("DEBUG: Annotating drugs")
+    #  annotate_std_results(finalMessage)
+
+    if return_action['parameters']['store'] == 'true':
+      if debug: eprint("DEBUG: Storing resulting Message")
       finalMessage_id = self.addNewMessage(TxMessage.from_dict(finalMessage),query)
 
     #### If requesting a full redirect to the resulting message display. This doesn't really work I don't think
-    if "RedirectToMessage" in optionsDict:
-      #redirect("https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id), code=302)
-      #return( { "status": 302, "redirect": "https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id) }, 302)
-      return( "Location: https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id), 302)
+    #if "RedirectToMessage" in optionsDict:
+    #  #redirect("https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id), code=302)
+    #  #return( { "status": 302, "redirect": "https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id) }, 302)
+    #  return( "Location: https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id), 302)
 
-    #### Else if requesting the Id of the result
-    elif "ReturnMessageId" in optionsDict:
-      return( { "status": 200, "message_id": str(finalMessage_id), "url": "https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
-
-    #### Else if asking for the full message back
-    elif "ReturnMessage" in optionsDict:
+    #### If asking for the full message back
+    if return_action['parameters']['message'] == 'true':
       return(finalMessage)
 
-    #### Or otherwise we don't know how to respond
+    #### Else just the id is returned
     else:
-      return( { "status": 504, "title": "Message type not specified", "detail": "One of the options must be RedirectToMessage, ReturnMessageId, or ReturnMessage", "type": "about:blank" }, 504)
-
-    if debug: eprint("DEBUG: Exiting processExternalPreviousMessageProcessingPlan")
-    return()
+      return( { "status": 200, "message_id": str(finalMessage_id), "n_results": finalMessage['n_results'], "url": "https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
 
 
+  ##########################################################################################################################
   def fix_message(self,query,message,reasoner_id):
 
     if reasoner_id == "RTX":
