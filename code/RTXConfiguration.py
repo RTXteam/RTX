@@ -17,14 +17,14 @@ class RTXConfiguration:
 
         if not os.path.exists(file_path):
             # scp the file
-            os.system("scp rtxconfig@arax.rtx.ai:/mnt/temp/config.json " + file_path)
+            os.system("pscp rtxconfig@arax.rtx.ai:/mnt/temp/config.json " + file_path)
         else:
             now_time = datetime.datetime.now()
             modified_time = time.localtime(os.stat(file_path).st_mtime)
             modified_time = datetime.datetime(*modified_time[:6])
             if (now_time - modified_time).days > 0:
                 # scp the file
-                os.system("scp rtxconfig@arax.rtx.ai:/mnt/temp/config.json " + file_path)
+                os.system("pscp rtxconfig@arax.rtx.ai:/mnt/temp/config.json " + file_path)
 
         f = open(file_path, 'r')
         config_data = f.read()

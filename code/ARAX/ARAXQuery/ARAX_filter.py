@@ -8,48 +8,15 @@ import ast
 import re
 
 from response import Response
-from actions_parser import ActionsParser
 
 
 class ARAXFilter:
 
     #### Constructor
     def __init__(self):
-        pass
-
-    #### Destructor
-    def __del__(self):
-        pass
-
-
-    #### Define attribute message
-    @property
-    def message(self) -> str:
-        return self._message
-
-    @message.setter
-    def message(self, message: str):
-        self._message = message
-
-
-    #### Define attribute parameters
-    @property
-    def parameters(self) -> str:
-        return self._parameters
-
-    @parameters.setter
-    def parameters(self, parameters: str):
-        self._parameters = parameters
-
-
-    #### Define attribute response
-    @property
-    def response(self) -> Response:
-        return self._response
-
-    @response.setter
-    def response(self, response: Response):
-        self._response = response
+        self.response = None
+        self.message = None
+        self.parameters = None
 
 
     #### Top level decision maker for applying filters
@@ -78,17 +45,19 @@ class ARAXFilter:
                 response.error(f"Supplied parameter {key} is not permitted", error_code="UnknownParameter")
             else:
                 parameters[key] = value
+        #### Return if any of the parameters generated an error (showing not just the first one)
         if response.status != 'OK':
             return response
 
         #### Store these final parameters for convenience
         response.data['parameters'] = parameters
+        self.parameters = parameters
 
-        response.debug(f"Applying filter to Message with parameters {parameters}")
 
         #### Now apply the filters. Order of operations is probably quite important
         #### Scalar value filters probably come first like minimum_confidence, then complex logic filters
         #### based on edge or node properties, and then finally maximum_results
+        response.debug(f"Applying filter to Message with parameters {parameters}")
 
         #### Apply scalar value filters first to do easy things and reduce the problem
         # TODO
@@ -98,20 +67,20 @@ class ARAXFilter:
 
         #### Finally, if the maximum_results parameter is set, then limit the number of results to that last
         if parameters['maximum_results'] is not None:
-           self.apply_maximum_results_filter(parameters['maximum_results'])
+           self.__apply_maximum_results_filter(parameters['maximum_results'])
 
         #### Return the response
         return response
 
 
-    #### Top level decision maker for applying filters
-    def apply_maximum_results_filter(self, maximum_results):
+    #### Apply the maximum_results filter. Double underscore means this is a private method
+    def __apply_maximum_results_filter(self, maximum_results):
 
-        #### Set up local handles to the response and the message
+        #### Set up local references to the response and the message
         response = self.response
         message = self.message
 
-        #### Check the input
+        #### Check the input. Null or None is fine and just returned, else must be an int
         if not isinstance(maximum_results, int):
             maximum_results = str(maximum_results)
             if maximum_results.upper() == 'NONE' or maximum_results.upper() == 'NULL':
@@ -125,7 +94,7 @@ class ARAXFilter:
  
         response.debug(f"Applying maximum_results filter")
 
-        #### Double check the number of results
+        #### Verify that n_results is correct and warn if not
         results = message.results
         if len(results) != message.n_results:
             response.warning(f"n_results does not match the number of results in list")
@@ -154,14 +123,16 @@ class ARAXFilter:
 ##########################################################################################
 def main():
 
+    #### Create a response object
     response = Response()
 
     #### Create an ActionsParser object
+    from actions_parser import ActionsParser
     actions_parser = ActionsParser()
  
     #### Set a simple list of actions
     actions_list = [
-        "filter(start_node=1, maximum_results=None, minimum_confidence=0.5)",
+        "filter(start_node=1, maximum_results=10, minimum_confidence=0.5)",
         "return(message=true,store=false)"
     ]
 
@@ -170,7 +141,7 @@ def main():
     response.merge(result)
     if result.status != 'OK':
         print(response.show(level=Response.DEBUG))
-        return
+        return response
     actions = result.data['actions']
 
     #### Read message #2 from the database. This should be the acetaminophen proteins query result message
@@ -178,6 +149,8 @@ def main():
     from RTXFeedback import RTXFeedback
     araxdb = RTXFeedback()
     message_dict = araxdb.getMessage(2)
+
+    #### The stored message comes back as a dict. Transform it to objects
     sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
     from swagger_server.models.message import Message
     message = Message().from_dict(message_dict)
@@ -186,18 +159,15 @@ def main():
     filter = ARAXFilter()
     result = filter.apply(message,actions[0]['parameters'])
     response.merge(result)
-    response.data = result.data
     if result.status != 'OK':
         print(response.show(level=Response.DEBUG))
-        return
+        return response
+    response.data = result.data
 
     #### If successful, show the result
     print(response.show(level=Response.DEBUG))
-    response.data['message_stats'] = {}
-    response.data['message_stats']['n_results'] = message.n_results
-    response.data['message_stats']['id'] = message.id
-    response.data['message_stats']['reasoner_id'] = message.reasoner_id
-    response.data['message_stats']['tool_version'] = message.tool_version
+    response.data['message_stats'] = { 'n_results': message.n_results, 'id': message.id,
+        'reasoner_id': message.reasoner_id, 'tool_version': message.tool_version }
     print(json.dumps(ast.literal_eval(repr(response.data['parameters'])),sort_keys=True,indent=2))
     print(json.dumps(ast.literal_eval(repr(response.data['message_stats'])),sort_keys=True,indent=2))
 

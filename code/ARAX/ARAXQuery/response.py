@@ -30,95 +30,6 @@ class Response:
         self.n_warnings = 0
         self.data = {}
 
-    #### Define attribute status
-    @property
-    def status(self) -> str:
-        return self._status
-
-    @status.setter
-    def status(self, status: str):
-        self._status = status
-
-
-    #### Define attribute logging_level
-    @property
-    def logging_level(self) -> str:
-        return self._logging_level
-
-    @logging_level.setter
-    def logging_level(self, logging_level: str):
-        self._logging_level = logging_level
-
-
-    #### Define attribute error_code
-    @property
-    def error_code(self) -> str:
-        return self._error_code
-
-    @error_code.setter
-    def error_code(self, error_code: str):
-        self._error_code = error_code
-
-
-    #### Define attribute message
-    @property
-    def message(self) -> str:
-        return self._message
-
-    @message.setter
-    def message(self, message: str):
-        self._message = message
-
-
-    #### Define attribute n_errors
-    @property
-    def n_errors(self) -> int:
-        return self._n_errors
-
-    @n_errors.setter
-    def n_errors(self, n_errors: int):
-        self._n_errors = n_errors
-
-
-    #### Define attribute n_warnings
-    @property
-    def n_warnings(self) -> int:
-        return self._n_warnings
-
-    @n_warnings.setter
-    def n_warnings(self, n_warnings: int):
-        self._n_warnings = n_warnings
-
-
-    #### Define attribute n_messages
-    @property
-    def n_messages(self) -> int:
-        return self._n_messages
-
-    @n_messages.setter
-    def n_messages(self, n_messages: int):
-        self._n_messages = n_messages
-
-
-    #### Define attribute messages
-    @property
-    def messages(self) -> list:
-        return self._messages
-
-    @messages.setter
-    def messages(self, messages: list):
-        self._messages = messages
-
-
-    #### Define attribute data
-    @property
-    def data(self) -> dict:
-        return self._data
-
-    @data.setter
-    def data(self, data: dict):
-        self._data = data
-
 
     #### Add a debugging message
     def debug(self, message):
@@ -154,6 +65,7 @@ class Response:
                 print(f"{self.level_names[message_level]}: {message}")
             if self.output == 'STDERR':
                 eprint(f"{self.level_names[message_level]}: {message}")
+
 
     #### Merge a new response into an existing response
     def merge(self, response_to_merge):
@@ -195,6 +107,10 @@ def main():
 
     #### Create an Response object
     response = Response()
+
+    #### Output all logging to STDERR as well as save it for later
+    #### By default, they are not written out, but just saved for later
+    #### This is a **class** variable, so applies to all instances of response objects!
     Response.output = 'STDERR'
 
     #### Set some messages
@@ -203,10 +119,12 @@ def main():
     response.warning('This does not look good')
     response.error('Bad news, Pal')
 
-    #### Show the resulting object
+    #### Show the resulting object including logged events at INFO or greater
     print(response.show(level=response.INFO))
 
+    #### Request and print the full messages list at DEBUG and greater
     print("Messages list:")
     print(response.messages_list(level=response.DEBUG))
+
 
 if __name__ == "__main__": main()

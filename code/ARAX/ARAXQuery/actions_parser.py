@@ -14,20 +14,7 @@ class ActionsParser:
 
     #### Constructor
     def __init__(self):
-        self.session = "dummy"
-
-    #### Destructor
-    def __del__(self):
         pass
-
-    #### Define attribute session
-    @property
-    def session(self) -> str:
-        return self._session
-
-    @session.setter
-    def session(self, session: str):
-        self._session = session
 
     #### Parse the provided action list with validation
     def parse(self, input_actions):
@@ -48,30 +35,40 @@ class ActionsParser:
         n_lines = 1
         for action in input_actions:
             response.debug(f"Parsing action: {action}")
+
+            #### First look for a naked command without parentheses
             match = re.match("\s*([A-Za-z]+)\s*$",action)
             if match is not None:
                 action = { "line": n_lines, "command": match.group(1), "parameters": None }
                 actions.append(action)
+
+            #### Then parse a command with parentheses and a comma-separated parameter list
             if match is None:
                 match = re.match("\s*([A-Za-z]+)\((.*)\)\s*$",action)
                 if match is not None:
                     param_string = match.group(2)
+
+                    #### Split the parameters on comma and process those
                     param_string_list = re.split(",",param_string)
                     parameters = {}
                     for param_item in param_string_list:
+                        #### Split on the first = only (might be = in the value)
                         values = re.split("=",param_item,1)
                         key = values[0]
+                        #### If there isn't a value after an =, then just set to string true
                         value = 'true'
                         if len(values) > 1:
                             value = values[1]
                         key = key.strip()
                         value = value.strip()
                         parameters[key] = value
-                    action = { "line": n_lines, "command": match.group(1), "parameters": parameters }
 
+                    #### Store the parsed result in a dict and add to the list
+                    action = { "line": n_lines, "command": match.group(1), "parameters": parameters }
                     actions.append(action)
             n_lines += 1
 
+        #### Put the actions in the response data envelope and return
         response.data["actions"] = actions
         return response
 
@@ -92,9 +89,13 @@ def main():
         "return(message=true,store=false)"
     ]
 
-    #### Parse the action_list and print the result
+    #### Parse the action_list
     result = actions_parser.parse(actions_list)
+
+    #### Print the response information (including debug information)
     print(result.show(level=Response.DEBUG))
+
+    #### Print the final response data envelope
     print(json.dumps(ast.literal_eval(repr(result.data)),sort_keys=True,indent=2))
 
 
