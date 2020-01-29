@@ -12,10 +12,10 @@
 
 - Care should be taken that the code never just dies because then there is no feedback about the problem in the API/UI
 - Use the response.error mechanism. Always set up a response object and always return it
-    DEBUG: Only something an ARAX team member would want to see
-    INFO: Something an API user might like to see to examine the steps behind the scenes. Good for innocuous assumptions.
-    WARNING: Something that an API user should sit up and notice. Good for assumptions with impact
-    ERROR: A failure that prevents fulfilling the request. Note that logging an error may not halt processing. Several can accumulate
+    - DEBUG: Only something an ARAX team member would want to see
+    - INFO: Something an API user might like to see to examine the steps behind the scenes. Good for innocuous assumptions.
+    - WARNING: Something that an API user should sit up and notice. Good for assumptions with impact
+    - ERROR: A failure that prevents fulfilling the request. Note that logging an error may not halt processing. Several can accumulate
 
 General response paradigm:
 - Major methods (not little helper ones that can't fail) and calls to different ARAX classes should always:
