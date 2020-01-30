@@ -117,7 +117,7 @@ class ARAXMessenger:
         #### Now apply the filters. Order of operations is probably quite important
         #### Scalar value filters probably come first like minimum_confidence, then complex logic filters
         #### based on edge or node properties, and then finally maximum_results
-        response.debug(f"Adding a QueryNode to Message with parameters {parameters}")
+        response.info(f"Adding a QueryNode to Message with parameters {parameters}")
 
         #### Make sure there's a query_graph already here
         if message.query_graph is None:
@@ -258,7 +258,7 @@ class ARAXMessenger:
         #### Now apply the filters. Order of operations is probably quite important
         #### Scalar value filters probably come first like minimum_confidence, then complex logic filters
         #### based on edge or node properties, and then finally maximum_results
-        response.debug(f"Adding a QueryEdge to Message with parameters {parameters}")
+        response.info(f"Adding a QueryEdge to Message with parameters {parameters}")
 
         #### Make sure there's a query_graph already here
         if message.query_graph is None:
