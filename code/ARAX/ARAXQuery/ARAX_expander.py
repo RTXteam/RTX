@@ -9,6 +9,9 @@ import re
 
 from response import Response
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+from swagger_server.models.node import Node
+
 
 class ARAXExpander:
 
@@ -26,6 +29,7 @@ class ARAXExpander:
         response = Response()
         self.response = response
         self.message = input_message
+        message = self.message
 
         #### Basic checks on arguments
         if not isinstance(input_parameters, dict):
@@ -34,8 +38,7 @@ class ARAXExpander:
 
         #### Define a complete set of allowed parameters and their defaults
         parameters = {
-            'start_node': 1,
-            'steps': 1,
+            'edge_id': None,
         }
 
         #### Loop through the input_parameters and override the defaults and make sure they are allowed
@@ -62,6 +65,13 @@ class ARAXExpander:
         response.warning(f"There's no code here yet, what can we do?")
         # TODO
 
+        #### Just to show we did something. FIXME
+        node1 = Node()
+        node1.id = 'DOID:9281'
+        node1.type = [ 'disease' ]
+        node1.name = 'Parkinsons Disease'
+        message.knowledge_graph.nodes.append(node1)
+
         #### Return the response and done
         return response
 
@@ -79,13 +89,19 @@ def main():
     from actions_parser import ActionsParser
     actions_parser = ActionsParser()
  
-    #### Set a simple list of actions
+    #### Set a list of actions
     actions_list = [
-        "expander(start_node=1,steps=1)",
-        "return(message=true,store=false)"
+        "create_message",
+        "add_qnode(name=Parkinsons disease, id=n00)",
+        "add_qnode(type=protein, is_set=True, id=n01)",
+        "add_qnode(type=drug, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e01)",
+        "add_qedge(source_id=n01, target_id=n02, id=e02)",
+        "expand(edge_id=e01)",
+        "return(message=true,store=false)",
     ]
 
-    #### Parse the action_list and print the result
+    #### Parse the raw action_list into commands and parameters
     result = actions_parser.parse(actions_list)
     response.merge(result)
     if result.status != 'OK':
@@ -93,32 +109,39 @@ def main():
         return response
     actions = result.data['actions']
 
-    #### Read message #2 from the database. This should be the acetaminophen proteins query result message
-    sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/Feedback")
-    from RTXFeedback import RTXFeedback
-    araxdb = RTXFeedback()
-    message_dict = araxdb.getMessage(2)
+    #### Create a Messager and an Expander and execute the command list
+    from ARAX_messenger import ARAXMessenger
+    messenger = ARAXMessenger()
+    expander = ARAXExpander()
 
-    #### The stored message comes back as a dict. Transform it to objects
-    sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
-    from swagger_server.models.message import Message
-    message = Message().from_dict(message_dict)
+    #### Loop over each action and dispatch to the correct place
+    for action in actions:
+        if action['command'] == 'create_message':
+            result = messenger.create()
+            message = result.data['message']
+            response.data = result.data
+        elif action['command'] == 'add_qnode':
+            result = messenger.add_qnode(message,action['parameters'])
+        elif action['command'] == 'add_qedge':
+            result = messenger.add_qedge(message,action['parameters'])
+        elif action['command'] == 'expand':
+            result = expander.apply(message,action['parameters'])
+        elif action['command'] == 'return':
+            break
+        else:
+            response.error(f"Unrecognized command {action['command']}", error_code="UnrecognizedCommand")
+            print(response.show(level=Response.DEBUG))
+            return response
 
-    #### Create an overlay object and use it to apply action[0] from the list
-    overlay = ARAXExpander()
-    result = overlay.apply(message,actions[0]['parameters'])
-    response.merge(result)
-    if result.status != 'OK':
-        print(response.show(level=Response.DEBUG))
-        return response
-    response.data = result.data
+        #### Merge down this result and end if we're in an error state
+        response.merge(result)
+        if result.status != 'OK':
+            print(response.show(level=Response.DEBUG))
+            return response
 
-    #### If successful, show the result
+    #### Show the final response
     print(response.show(level=Response.DEBUG))
-    response.data['message_stats'] = { 'n_results': message.n_results, 'id': message.id,
-        'reasoner_id': message.reasoner_id, 'tool_version': message.tool_version }
-    print(json.dumps(ast.literal_eval(repr(response.data['parameters'])),sort_keys=True,indent=2))
-    print(json.dumps(ast.literal_eval(repr(response.data['message_stats'])),sort_keys=True,indent=2))
+    print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
 
 
 if __name__ == "__main__": main()
