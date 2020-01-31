@@ -17,8 +17,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/py
 from swagger_server.models.message import Message
 from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.query_graph import QueryGraph
-from swagger_server.models.query_graph import QNode
-from swagger_server.models.query_graph import QEdge
+from swagger_server.models.q_node import QNode
+from swagger_server.models.q_edge import QEdge
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction")
 from KGNodeIndex import KGNodeIndex
@@ -219,7 +219,7 @@ class ARAXMessenger:
             index += 1
 
 
-    #### Add a new QNode
+    #### Add a new QEdge
     def add_qedge(self, message, input_parameters):
 
         #### Define a default response
