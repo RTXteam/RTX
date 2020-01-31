@@ -37,14 +37,14 @@ class ActionsParser:
             response.debug(f"Parsing action: {action}")
 
             #### First look for a naked command without parentheses
-            match = re.match("\s*([A-Za-z]+)\s*$",action)
+            match = re.match("\s*([A-Za-z_]+)\s*$",action)
             if match is not None:
                 action = { "line": n_lines, "command": match.group(1), "parameters": None }
                 actions.append(action)
 
             #### Then parse a command with parentheses and a comma-separated parameter list
             if match is None:
-                match = re.match("\s*([A-Za-z]+)\((.*)\)\s*$",action)
+                match = re.match("\s*([A-Za-z_]+)\((.*)\)\s*$",action)
                 if match is not None:
                     param_string = match.group(2)
 
@@ -66,6 +66,8 @@ class ActionsParser:
                     #### Store the parsed result in a dict and add to the list
                     action = { "line": n_lines, "command": match.group(1), "parameters": parameters }
                     actions.append(action)
+                else:
+                    response.error(f"Unable to parse action {action}", error_code="ActionsListEmpty")
             n_lines += 1
 
         #### Put the actions in the response data envelope and return
