@@ -345,6 +345,24 @@ class ARAXMessenger:
             index += 1
 
 
+    #### Convert a Message as a dict to a Message as objects
+    def from_dict(self, message):
+
+        message = Message().from_dict(message)
+        message.query_graph = QueryGraph().from_dict(message.query_graph)
+        message.knowledge_graph = KnowledgeGraph().from_dict(message.knowledge_graph)
+        #new_nodes = []
+        #for qnode in message.query_graph.nodes:
+        #    print(type(qnode))
+        #    new_nodes.append(QNode().from_dict(qnode))
+        #message.query_graph.nodes = new_nodes
+        #for qedge in message.query_graph.edges:
+        #    new_edges.append(QEdge().from_dict(qedge))
+        #message.query_graph.edges = new_edges
+
+        return message
+
+
 ##########################################################################################
 def main():
 
