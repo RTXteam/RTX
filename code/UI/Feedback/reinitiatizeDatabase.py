@@ -1,5 +1,5 @@
-#!/usr/bin/python3
-# Some example test code for the RTX feedback system
+#!/bin/env python3
+# Reinitialize the Message/Feedback MySQL database
 
 import os
 import sys
@@ -8,8 +8,14 @@ import ast
 
 from RTXFeedback import RTXFeedback
 
-You will need to delete this line if you really want to run this. Careful!
+if len(sys.argv) < 2:
+    print("Run reinitializeDatabase.pl with the parameter 'yes' if you really want to delete and re-create the feedback/Message database")
+    sys.exit(0)
 
+if sys.argv[1] != 'yes':
+    print("If you really want to delete and re-create the feedback/Message database, use:")
+    print("  python reinitializeDatabase.py yes")
+    sys.exit(0)
 
 #### Create an RTX Feedback management object
 rtxFeedback = RTXFeedback()
