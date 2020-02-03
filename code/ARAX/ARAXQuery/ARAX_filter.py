@@ -59,6 +59,11 @@ class ARAXFilter:
         #### based on edge or node properties, and then finally maximum_results
         response.debug(f"Applying filter to Message with parameters {parameters}")
 
+        #### First, as a test, blow away the results and see if we can recompute them
+        #message.n_results = 0
+        #message.results = []
+        #self.__recompute_results()
+
         #### Apply scalar value filters first to do easy things and reduce the problem
         # TODO
 
@@ -71,6 +76,23 @@ class ARAXFilter:
 
         #### Return the response
         return response
+
+
+    #### Apply the maximum_results filter. Double underscore means this is a private method
+    def __recompute_results(self):
+
+        #### Set up local references to the response and the message
+        response = self.response
+        message = self.message
+
+        query_graph_info = QueryGraphInfo()
+        result = query_graph_info.assess(message)
+        response.merge(result)
+        if result.status != 'OK':
+            print(response.show(level=Response.DEBUG))
+            return response
+        print(json.dumps(ast.literal_eval(repr(query_graph_info.node_order)),sort_keys=True,indent=2))
+
 
 
     #### Apply the maximum_results filter. Double underscore means this is a private method
@@ -164,11 +186,17 @@ def main():
         return response
     response.data = result.data
 
-    #### If successful, show the result
+    #### Show the final message
     print(response.show(level=Response.DEBUG))
     response.data['message_stats'] = { 'n_results': message.n_results, 'id': message.id,
         'reasoner_id': message.reasoner_id, 'tool_version': message.tool_version }
     print(json.dumps(ast.literal_eval(repr(response.data['parameters'])),sort_keys=True,indent=2))
+    for result in message.results:
+        if result.essence is not None:
+            essence = result.essence
+        else:
+            essence = f"{len(result.node_bindings)} node bindings, {len(result.edge_bindings)} edge bindings"
+        print(f" - {essence}")
     print(json.dumps(ast.literal_eval(repr(response.data['message_stats'])),sort_keys=True,indent=2))
 
 
