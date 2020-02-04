@@ -359,6 +359,9 @@ class ARAXMessenger:
         #for qedge in message.query_graph.edges:
         #    new_edges.append(QEdge().from_dict(qedge))
         #message.query_graph.edges = new_edges
+       #newresults = []
+       #for result in message.results
+       #KnowledgeGraph().from_dict(message.knowledge_graph)
 
         return message
 
