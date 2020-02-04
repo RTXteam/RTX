@@ -122,13 +122,14 @@ class QueryGraphInfo:
         #### Loop through the nodes again, trying to identify the start_node and the end_node
         singletons = []
         for node_id,node_data in node_info.items():
-            if node_data['n_edges'] == 1:
+            if node_data['n_edges'] < 2:
                 singletons.append(node_data)
             elif node_data['n_edges'] > 2:
                 self.is_bifurcated_graph = True
                 response.warning("QueryGraph appears to have a fork in it. This might cause trouble")
 
         #### Try to identify the start_node and the end_node
+        start_node = singletons[0]
         if len(nodes) == 1:
             # Just a single node, fine
             pass
@@ -239,7 +240,8 @@ def main():
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger
     message = ARAXMessenger().from_dict(message_dict)
- 
+    #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+
     #### Create a filter object and use it to apply action[0] from the list
     query_graph_info = QueryGraphInfo()
     result = query_graph_info.assess(message)
