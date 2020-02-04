@@ -8,7 +8,6 @@ import ast
 import re
 
 from response import Response
-from ARAX_messenger import ARAXMessenger
 from query_graph_info import QueryGraphInfo
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -27,6 +26,10 @@ class KnowledgeGraphInfo:
         self.n_edges = None
         self.query_graph_id_node_status = None
         self.query_graph_id_edge_status = None
+
+        self.node_map = {}
+        self.edge_map = {}
+
 
     #### Top level decision maker for applying filters
     def check_for_query_graph_tags(self, message, query_graph_info):
@@ -47,6 +50,10 @@ class KnowledgeGraphInfo:
         self.n_edges = len(edges)
         response.debug(f"Found {self.n_nodes} nodes and {self.n_edges} edges")
 
+        #### Clear the maps
+        self.node_map = {}
+        self.edge_map = {}
+
         #### Loop through nodes computing some stats
         n_nodes_with_query_graph_ids = 0
         for node in nodes:
@@ -58,10 +65,17 @@ class KnowledgeGraphInfo:
             if n_attributes > 0:
                 for attribute in node.node_attributes:
                     if attribute.name == 'query_graph_id':
+                        query_graph_id = attribute.value
                         have_query_graph_id = True
+                        #### Also, add this node to a lookup hash by query_graph_id
+                        if query_graph_id not in self.node_map:
+                            self.node_map[query_graph_id] = []
+                        self.node_map[query_graph_id].append(node)
                         break
             if have_query_graph_id:
                 n_nodes_with_query_graph_ids += 1
+
+        #### Tally the stats
         if n_nodes_with_query_graph_ids == self.n_nodes:
             self.query_graph_id_node_status = 'all nodes have query_graph_ids'
         elif n_nodes_with_query_graph_ids == 0:
@@ -81,7 +95,12 @@ class KnowledgeGraphInfo:
             if n_attributes > 0:
                 for attribute in edge.edge_attributes:
                     if attribute.name == 'query_graph_id':
+                        query_graph_id = attribute.value
                         have_query_graph_id = True
+                        #### Also, add this edge to a lookup hash by query_graph_id
+                        if query_graph_id not in self.edge_map:
+                            self.edge_map[query_graph_id] = []
+                        self.edge_map[query_graph_id].append(edge)
                         break
             if have_query_graph_id:
                 n_edges_with_query_graph_ids += 1
@@ -225,6 +244,7 @@ def main():
     message_dict = araxdb.getMessage(2)
 
     #### The stored message comes back as a dict. Transform it to objects
+    from ARAX_messenger import ARAXMessenger
     message = ARAXMessenger().from_dict(message_dict)
  
     #### Asses some information about the QueryGraph
