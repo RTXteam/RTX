@@ -8,7 +8,6 @@ import ast
 import re
 
 from response import Response
-from ARAX_messenger import ARAXMessenger
 
 
 class QueryGraphInfo:
@@ -238,6 +237,7 @@ def main():
     message_dict = araxdb.getMessage(2)
 
     #### The stored message comes back as a dict. Transform it to objects
+    from ARAX_messenger import ARAXMessenger
     message = ARAXMessenger().from_dict(message_dict)
  
     #### Create a filter object and use it to apply action[0] from the list
