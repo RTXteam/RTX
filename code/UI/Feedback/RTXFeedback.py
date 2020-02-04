@@ -165,6 +165,7 @@ class RTXFeedback:
     #engine = create_engine("sqlite:///"+self.databaseName)
     rtxConfig = RTXConfiguration()
     engine = create_engine("mysql+pymysql://" + rtxConfig.mysql_feedback_username + ":" + rtxConfig.mysql_feedback_password + "@" + rtxConfig.mysql_feedback_host + "/" + self.databaseName)
+    Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     self.connect()
 
