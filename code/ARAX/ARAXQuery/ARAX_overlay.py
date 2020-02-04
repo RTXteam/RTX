@@ -127,9 +127,8 @@ def main():
     message_dict = araxdb.getMessage(2)
 
     #### The stored message comes back as a dict. Transform it to objects
-    sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
-    from swagger_server.models.message import Message
-    message = Message().from_dict(message_dict)
+    from ARAX_messenger import ARAXMessenger
+    message = ARAXMessenger().from_dict(message_dict)
 
     #### Create an overlay object and use it to apply action[0] from the list
     overlay = ARAXOverlay()
