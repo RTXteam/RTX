@@ -9,6 +9,8 @@ import re
 from datetime import datetime
 
 from response import Response
+from query_graph_info import QueryGraphInfo
+from knowledge_graph_info import KnowledgeGraphInfo
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 from RTXConfiguration import RTXConfiguration
@@ -364,6 +366,45 @@ class ARAXMessenger:
        #KnowledgeGraph().from_dict(message.knowledge_graph)
 
         return message
+
+
+    #### Re-create the results[] list based on the QueryGraph and the KnowledgeGraph
+    def generate_results(self, message):
+
+        #### Define a default response
+        response = Response()
+        self.response = response
+        self.message = message
+
+        #### Create a new results list
+        results = []
+
+        #### Get QueryGraph information
+        query_graph_info = QueryGraphInfo()
+        result = query_graph_info.assess(message)
+        response.merge(result)
+        if result.status != 'OK':
+            print(response.show(level=Response.DEBUG))
+            return response
+
+        #### Assess some information about the KnowledgeGraph
+        knowledge_graph_info = KnowledgeGraphInfo()
+        result = knowledge_graph_info.check_for_query_graph_tags(message,query_graph_info)
+        response.merge(result)
+        if result.status != 'OK':
+            print(response.show(level=Response.DEBUG))
+            return response
+
+        #### Figure out where to start
+        start_node_qg_id = query_graph_info.start_node['id']
+        print(start_node_qg_id)
+        for node1 in knowledge_graph_info.node_map[start_node_qg_id]:
+            print(node1)
+
+        #Continue here in some recurcive edge following
+
+
+        return response
 
 
 ##########################################################################################
