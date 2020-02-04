@@ -26,6 +26,8 @@ class QueryGraphInfo:
         self.edge_info = None
         self.node_order = None
         self.edge_order = None
+        self.node_type_map = None
+        self.edge_type_map = None
 
     #### Top level decision maker for applying filters
     def assess(self, message):
@@ -59,9 +61,10 @@ class QueryGraphInfo:
 
         #### Loop through nodes computing some stats
         node_info = {}
+        self.node_type_map = {}
         for qnode in nodes:
             id = qnode.id
-            node_info[id] = { 'id': id, 'has_curie': False, 'has_type': False, 'is_set': False, 'n_edges': 0, 'is_connected': False, 'edges': [], 'edge_dict': {} }
+            node_info[id] = { 'id': id, 'has_curie': False, 'type': qnode.type, 'has_type': False, 'is_set': False, 'n_edges': 0, 'is_connected': False, 'edges': [], 'edge_dict': {} }
             if qnode.curie is not None: node_info[id]['has_curie'] = True
             if qnode.type is not None: node_info[id]['has_type'] = True
             #if qnode.is_set is not None: node_info[id]['is_set'] = True
@@ -69,12 +72,25 @@ class QueryGraphInfo:
                 response.error("QueryGraph has a node with no id. This is not permitted", error_code="QueryGraphNodeWithNoId")
                 return response
 
+            #### Store lookup of types
+            warning_counter = 0
+            if qnode.type is None:
+                if warning_counter == 0:
+                    response.warning("QueryGraph has nodes with no type. This may cause problems with results inference later")
+                warning_counter += 1
+                self.node_type_map['unknown'] = id
+            else:
+                self.node_type_map[qnode.type] = id
+
         #### Loop through edges computing some stats
         edge_info = {}
+        self.edge_type_map = {}
         for qedge in edges:
             id = qedge.id
-            edge_info[id] = { 'id': id, 'has_type': False, 'source_id': qedge.source_id, 'target_id': qedge.target_id }
-            if qnode.type is not None: edge_info[id]['has_type'] = True
+            edge_info[id] = { 'id': id, 'has_type': False, 'source_id': qedge.source_id, 'target_id': qedge.target_id, 'type': None }
+            if qnode.type is not None:
+                edge_info[id]['has_type'] = True
+                edge_info[id]['type'] = qnode.type
             if qedge.id is None:
                 response.error("QueryGraph has a edge with no id. This is not permitted", error_code="QueryGraphEdgeWithNoId")
                 return response
@@ -88,6 +104,21 @@ class QueryGraphInfo:
             node_info[qedge.target_id]['edges'].append(edge_info[id])
             node_info[qedge.source_id]['edge_dict'][id] = edge_info[id]
             node_info[qedge.target_id]['edge_dict'][id] = edge_info[id]
+
+            #### Store lookup of types
+            warning_counter = 0
+            edge_type = 'any'
+            if qedge.type is None:
+                if warning_counter == 0:
+                    response.warning("QueryGraph has edges with no type. This may cause problems with results inference later")
+                warning_counter += 1
+            else:
+                edge_type = qedge.type
+
+            #### It's not clear yet whether we need to store the whole sentence or just the type
+            #type_encoding = f"{node_info[qedge.source_id]['type']}---{edge_type}---{node_info[qedge.target_id]['type']}"
+            type_encoding = edge_type
+            self.edge_type_map[type_encoding] = id
 
         #### Loop through the nodes again, trying to identify the start_node and the end_node
         singletons = []
@@ -216,7 +247,20 @@ def main():
     if result.status != 'OK':
         print(response.show(level=Response.DEBUG))
         return response
-    print(json.dumps(ast.literal_eval(repr(query_graph_info.node_order)),sort_keys=True,indent=2))
+    
+    query_graph_info_dict = {
+        'n_nodes': query_graph_info.n_nodes,
+        'n_edges': query_graph_info.n_edges,
+        'is_bifurcated_graph': query_graph_info.is_bifurcated_graph,
+        'start_node': query_graph_info.start_node,
+        'node_info': query_graph_info.node_info,
+        'edge_info': query_graph_info.edge_info,
+        'node_order': query_graph_info.node_order,
+        'edge_order': query_graph_info.edge_order,
+        'node_type_map': query_graph_info.node_type_map,
+        'edge_type_map': query_graph_info.edge_type_map,
+    }
+    print(json.dumps(ast.literal_eval(repr(query_graph_info_dict)),sort_keys=True,indent=2))
 
 
 if __name__ == "__main__": main()
