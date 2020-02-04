@@ -60,7 +60,8 @@ class ARAXOverlay:
         response.debug(f"Applying Overlay to Message with parameters {parameters}")
 
         #### Apply compute_ngd task
-        # TODO
+        if parameters['compute_ngd'] is not None:
+            self.__compute_ngd()
 
         #### Apply add_pubmed_ids task
         # TODO
@@ -72,6 +73,12 @@ class ARAXOverlay:
         #### Return the response and done
         return response
 
+    def __compute_ngd(self):
+        from Overlay.compute_ngd import ComputeNGD
+        ngd_params = self.parameters['compute_ngd']
+        NGD = ComputeNGD(self.response, self.message, ngd_params)
+        response = NGD.compute_ngd()
+        return response
 
     #### Compute confidence scores. Double underscore means this is a private method
     def __compute_confidence_scores(self):
@@ -93,7 +100,6 @@ class ARAXOverlay:
         return response
 
 
-
 ##########################################################################################
 def main():
 
@@ -107,8 +113,13 @@ def main():
     actions_parser = ActionsParser()
  
     #### Set a simple list of actions
+    #actions_list = [
+    #    "overlay(compute_confidence_scores=true)",
+    #    "return(message=true,store=false)"
+    #]
+
     actions_list = [
-        "overlay(compute_confidence_scores=true)",
+        "overlay(compute_ngd=true)",
         "return(message=true,store=false)"
     ]
 
@@ -146,6 +157,7 @@ def main():
     response.data['message_stats']['confidence_scores'] = []
     for result in message.results:
         response.data['message_stats']['confidence_scores'].append(result.confidence)
+
     print(json.dumps(ast.literal_eval(repr(response.data['parameters'])),sort_keys=True,indent=2))
     print(json.dumps(ast.literal_eval(repr(response.data['message_stats'])),sort_keys=True,indent=2))
     # a comment on the end so you can better see the network on github
