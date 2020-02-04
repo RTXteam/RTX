@@ -653,13 +653,19 @@ class RTXFeedback:
       if debug: eprint("DEBUG: Found processing_actions")
       actions_parser = ActionsParser()
       result = actions_parser.parse(envelope.processing_actions)
-      if result['message_code'] != 'OK':
+      if result.error_code != 'OK':
         eprint(result)
         raise()
 
+      #### Message suffers from a dual life as a dict and an object. above we seem to treat it as a dict. Fix that. FIXME
+      #### Below we start treating it as and object. This should be the way forward.
+      #### This is not a good place to do this, but may need to convert here
+      from ARAX_messenger import ARAXMessenger
+      finalMessage = ARAXMessenger().from_dict(finalMessage)
+
       #### Process each action in order
       action_stats = { }
-      actions = result['actions']
+      actions = result.data['actions']
       for action in actions:
         if debug: eprint(f"DEBUG: Considering action '{action['command']}' with parameters {action['parameters']}")
         #### If we encounter a return, then this is the end of the line
@@ -669,7 +675,7 @@ class RTXFeedback:
         if action['command'] == 'filter':
           filter = ARAXFilter()
           result = filter.apply(finalMessage,action['parameters'])
-          if result['message_code'] != 'OK':
+        if result.error_code != 'OK':
             response = result
             break
         else:
@@ -705,7 +711,8 @@ class RTXFeedback:
 
     #### Else just the id is returned
     else:
-      return( { "status": 200, "message_id": str(finalMessage_id), "n_results": finalMessage['n_results'], "url": "https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
+      #return( { "status": 200, "message_id": str(finalMessage_id), "n_results": finalMessage['n_results'], "url": "https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
+      return( { "status": 200, "message_id": str(finalMessage_id), "n_results": finalMessage.n_results, "url": "https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
 
 
   ##########################################################################################################################
