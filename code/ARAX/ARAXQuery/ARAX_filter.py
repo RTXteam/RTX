@@ -198,6 +198,6 @@ def main():
             essence = f"{len(result.node_bindings)} node bindings, {len(result.edge_bindings)} edge bindings"
         print(f" - {essence}")
     print(json.dumps(ast.literal_eval(repr(response.data['message_stats'])),sort_keys=True,indent=2))
-
+    # yet another meaningless comment
 
 if __name__ == "__main__": main()
