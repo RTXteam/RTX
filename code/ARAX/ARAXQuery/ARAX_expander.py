@@ -1,7 +1,8 @@
 #!/bin/env python3
-import sys
+
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
+import sys
 import os
 import json
 import ast
@@ -11,6 +12,9 @@ from response import Response
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.node import Node
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering/")
+from QueryGraphReasoner import QueryGraphReasoner
 
 
 class ARAXExpander:
@@ -61,19 +65,31 @@ class ARAXExpander:
         #### based on edge or node properties, and then finally maximum_results
         response.debug(f"Applying Expander to Message with parameters {parameters}")
 
-        #### What might we do here? Call another method
-        response.warning(f"There's no code here yet, what can we do?")
-        # TODO
+        # First, extract the query sub-graph that will be expanded
+        query_sub_graph = self.__extract_subgraph_to_expand(message)
 
-        #### Just to show we did something. FIXME
-        node1 = Node()
-        node1.id = 'DOID:9281'
-        node1.type = [ 'disease' ]
-        node1.name = 'Parkinsons Disease'
-        message.knowledge_graph.nodes.append(node1)
+        # Then answer that query using QueryGraphReasoner
+        q = QueryGraphReasoner()
+        response.info(f"Sending query graph to QueryGraphReasoner: {query_sub_graph}")
+        answer_message = q.answer(query_sub_graph, TxltrApiFormat=True)
+        response.info(f"QueryGraphReasoner returned {len(answer_message.results)} results")
+
+        # TODO: Then process results... merge answer knowledge graph with current knowledge graph?
+        # For now, storing answer knowledge graph in larger knowledge graph
+        message.knowledge_graph = answer_message
 
         #### Return the response and done
         return response
+
+    # This function is very simple for now (only handles single edge query, etc...will become more complex soon)
+    def __extract_subgraph_to_expand(self, message):
+        query_graph = message.query_graph
+        # Nodes/edges must be dicts for QueryGraphReasoner...says 'not iterable' otherwise
+        edge_to_expand = next(edge.to_dict() for edge in query_graph.edges if edge.id == self.parameters['edge_id'])
+        node_ids = [edge_to_expand['source_id'], edge_to_expand['target_id']]
+        nodes = [node.to_dict() for node in query_graph.nodes if node.id in node_ids]
+        sub_query_graph = {'edges': [edge_to_expand], 'nodes': nodes}
+        return sub_query_graph
 
 
 
@@ -92,13 +108,13 @@ def main():
     #### Set a list of actions
     actions_list = [
         "create_message",
-        "add_qnode(name=Parkinsons disease, id=n00)",
+        "add_qnode(curie=DOID:14330, id=n00)",
         "add_qnode(type=protein, is_set=True, id=n01)",
         "add_qnode(type=drug, id=n02)",
-        "add_qedge(source_id=n00, target_id=n01, id=e01)",
-        "add_qedge(source_id=n01, target_id=n02, id=e02)",
-        "expand(edge_id=e01)",
-        "return(message=true,store=false)",
+        "add_qedge(source_id=n01, target_id=n00, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "expand(edge_id=e00)",
+        "return(message=true, store=false)",
     ]
 
     #### Parse the raw action_list into commands and parameters
