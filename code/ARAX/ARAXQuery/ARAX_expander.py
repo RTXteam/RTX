@@ -158,6 +158,6 @@ def main():
     #### Show the final response
     print(response.show(level=Response.DEBUG))
     print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
-
+    # now you can see the expander branch
 
 if __name__ == "__main__": main()
