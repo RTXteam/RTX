@@ -6,7 +6,6 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from swagger_server.models.base_model_ import Model
-from swagger_server.models.node_attribute import NodeAttribute  # noqa: F401,E501
 from swagger_server import util
 
 
@@ -16,7 +15,7 @@ class Node(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, id: str=None, uri: str=None, name: str=None, type: List[str]=None, description: str=None, symbol: str=None, node_attributes: List[NodeAttribute]=None):  # noqa: E501
+    def __init__(self, id: str=None, uri: str=None, name: str=None, type: List[str]=None, description: str=None, symbol: str=None, node_attributes: List[NodeAttribute]=None, qnode_id: str=None):  # noqa: E501
         """Node - a model defined in Swagger
 
         :param id: The id of this Node.  # noqa: E501
@@ -33,6 +32,8 @@ class Node(Model):
         :type symbol: str
         :param node_attributes: The node_attributes of this Node.  # noqa: E501
         :type node_attributes: List[NodeAttribute]
+        :param qnode_id: The qnode_id of this Node.  # noqa: E501
+        :type qnode_id: str
         """
         self.swagger_types = {
             'id': str,
@@ -41,7 +42,8 @@ class Node(Model):
             'type': List[str],
             'description': str,
             'symbol': str,
-            'node_attributes': List[NodeAttribute]
+            'node_attributes': List[NodeAttribute],
+            'qnode_id': str
         }
 
         self.attribute_map = {
@@ -51,7 +53,8 @@ class Node(Model):
             'type': 'type',
             'description': 'description',
             'symbol': 'symbol',
-            'node_attributes': 'node_attributes'
+            'node_attributes': 'node_attributes',
+            'qnode_id': 'qnode_id'
         }
 
         self._id = id
@@ -61,6 +64,7 @@ class Node(Model):
         self._description = description
         self._symbol = symbol
         self._node_attributes = node_attributes
+        self._qnode_id = qnode_id
 
     @classmethod
     def from_dict(cls, dikt) -> 'Node':
@@ -235,3 +239,26 @@ class Node(Model):
         """
 
         self._node_attributes = node_attributes
+
+    @property
+    def qnode_id(self) -> str:
+        """Gets the qnode_id of this Node.
+
+        Identifier (id) of a QueryGraph QNode in this same message that yielded this Node in the KnowledgeGraph  # noqa: E501
+
+        :return: The qnode_id of this Node.
+        :rtype: str
+        """
+        return self._qnode_id
+
+    @qnode_id.setter
+    def qnode_id(self, qnode_id: str):
+        """Sets the qnode_id of this Node.
+
+        Identifier (id) of a QueryGraph QNode in this same message that yielded this Node in the KnowledgeGraph  # noqa: E501
+
+        :param qnode_id: The qnode_id of this Node.
+        :type qnode_id: str
+        """
+
+        self._qnode_id = qnode_id
