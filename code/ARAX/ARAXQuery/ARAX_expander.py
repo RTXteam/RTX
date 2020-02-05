@@ -12,6 +12,8 @@ from response import Response
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.node import Node
+from swagger_server.models.edge_attribute import EdgeAttribute
+from swagger_server.models.node_attribute import NodeAttribute
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering/")
 from QueryGraphReasoner import QueryGraphReasoner
@@ -59,6 +61,7 @@ class ARAXExpander:
         response.data['parameters'] = parameters
         self.parameters = parameters
 
+        #### Do the actual expansion!
         response.debug(f"Applying Expander to Message with parameters {parameters}")
 
         # First, extract the query sub-graph that will be expanded
@@ -94,17 +97,41 @@ class ARAXExpander:
         return answer_message
 
     def __add_query_graph_ids_to_knowledge_graph(self, answer_message):
-        # TODO: Extract query graph ID from bindings in results, and attach to each node/edge in KG
-        pass
+        # Build dictionary mapping edges/nodes to their corresponding query graph edge/node IDs
+        edge_map = dict()
+        node_map = dict()
+        for result in answer_message.results:
+            for edge_binding in result.edge_bindings:
+                edge_id = edge_binding['kg_id'][0]  # TODO! make more robust (scalars, lists...?)
+                qedge_id = edge_binding['qg_id']
+                edge_map[edge_id] = qedge_id
+
+            for node_binding in result.node_bindings:
+                node_id = node_binding['kg_id']  # TODO! make more robust (lists...?)
+                qnode_id = node_binding['qg_id']
+                node_map[node_id] = qnode_id
+
+        # Attach the proper query edge ID onto each edge
+        for edge in answer_message.knowledge_graph.edges:
+            if edge.edge_attributes is None:
+                edge.edge_attributes = []
+            edge_attribute = EdgeAttribute()
+            edge_attribute.name = 'qedge_id'
+            edge_attribute.value = edge_map.get(edge.id)
+            edge.edge_attributes.append(edge_attribute)
+
+        # Attach the proper query node ID onto each node
+        for node in answer_message.knowledge_graph.nodes:
+            if node.node_attributes is None:
+                node.node_attributes = []
+            node_attribute = NodeAttribute()
+            node_attribute.name = 'qnode_id'
+            node_attribute.value = node_map.get(node.id)
+            node.node_attributes.append(node_attribute)
 
     def __merge_answer_into_knowledge_graph(self, answer_knowledge_graph):
-        # Handle case when message knowledge graph is empty
-        if len(self.message.knowledge_graph.nodes) == 0:
-            self.response.debug("Message knowledge graph is empty at this point; setting equal to answer knowledge graph")
-            self.message.knowledge_graph = answer_knowledge_graph
-        else:
-            # TODO: Merge this KG with whatever is currently in the message KG
-            self.response.debug("Should merge answer into message knowledge graph here")
+        self.message.knowledge_graph.nodes += answer_knowledge_graph.nodes
+        self.message.knowledge_graph.edges += answer_knowledge_graph.edges
 
 
 
