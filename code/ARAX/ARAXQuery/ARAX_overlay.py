@@ -145,23 +145,31 @@ def main():
     overlay = ARAXOverlay()
     result = overlay.apply(message,actions[0]['parameters'])
     response.merge(result)
-    if result.status != 'OK':
-        print(response.show(level=Response.DEBUG))
-        return response
-    response.data = result.data
+
+    #if result.status != 'OK':
+    #    print(response.show(level=Response.DEBUG))
+    #    return response
+    #response.data = result.data
 
     #### If successful, show the result
-    print(response.show(level=Response.DEBUG))
-    response.data['message_stats'] = { 'n_results': message.n_results, 'id': message.id,
-        'reasoner_id': message.reasoner_id, 'tool_version': message.tool_version }
-    response.data['message_stats']['confidence_scores'] = []
-    for result in message.results:
-        response.data['message_stats']['confidence_scores'].append(result.confidence)
+    #print(response.show(level=Response.DEBUG))
+    #response.data['message_stats'] = { 'n_results': message.n_results, 'id': message.id,
+    #    'reasoner_id': message.reasoner_id, 'tool_version': message.tool_version }
+    #response.data['message_stats']['confidence_scores'] = []
+    #for result in message.results:
+    #    response.data['message_stats']['confidence_scores'].append(result.confidence)
 
-    print(json.dumps(ast.literal_eval(repr(response.data['parameters'])),sort_keys=True,indent=2))
-    print(json.dumps(ast.literal_eval(repr(response.data['message_stats'])),sort_keys=True,indent=2))
+    #print(json.dumps(ast.literal_eval(repr(response.data['parameters'])),sort_keys=True,indent=2))
+    #print(json.dumps(ast.literal_eval(repr(response.data['message_stats'])),sort_keys=True,indent=2))
     # a comment on the end so you can better see the network on github
-    # and now you can see the overlay branch
+
+    # look at the response
+    print(response.show(level=Response.DEBUG))
+    #print(response.show())
+    print("Still executed")
+
+    # look at the edges
+    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)),sort_keys=True,indent=2))
 
 
 if __name__ == "__main__": main()
