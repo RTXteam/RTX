@@ -164,12 +164,15 @@ def main():
     # a comment on the end so you can better see the network on github
 
     # look at the response
-    print(response.show(level=Response.DEBUG))
+    #print(response.show(level=Response.DEBUG))
     #print(response.show())
-    print("Still executed")
+    #print("Still executed")
 
     # look at the edges
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)),sort_keys=True,indent=2))
+    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
+    print(json.dumps(ast.literal_eval(repr(message)), sort_keys=True, indent=2))
+    print(response.show(level=Response.DEBUG))
 
 
 if __name__ == "__main__": main()
