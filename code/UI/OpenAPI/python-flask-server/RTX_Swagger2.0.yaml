@@ -649,7 +649,9 @@ definitions:
       log:
         description: "List of logged information lines from the ARA, e.g. logged INFO, WARNING, and ERROR message lines"
         type: "array"
-    additionalProperties: true
+        items:
+          type: string
+      additionalProperties: true
   Result:
     type: "object"
     description: "One of potentially several results or answers for a query"
