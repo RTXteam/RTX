@@ -10,6 +10,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-f
 from swagger_server.models.edge_attribute import EdgeAttribute
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
 from QueryCOHD import QueryCOHD as COHD
+# FIXME:^ this should be pulled from a YAML file pointing to the parser
 
 
 class OverlayClinicalInfo:
@@ -69,10 +70,10 @@ class OverlayClinicalInfo:
                         if target_type[0] in self.who_knows_about_what[KP]: # FIXME: source type is a list, will need to look for non-zero intersection
                             KP_to_use = KP
                 if KP_to_use == 'COHD':
-                    # convert identifiers
-                    # this will return a list of identifiers, go through and look at all pairs
-                    # sum them up
-                    # decorate the edge
+                    # TODO: convert identifiers
+                    # TODO: this will return a list of identifiers, go through and look at all pairs
+                    # TODO: sum them up
+                    # TODO: decorate the edge
                     name = "COHD paired concept frequency"
                     type = "float"
                     value = 0.25  # put the actual code in here
@@ -85,4 +86,4 @@ class OverlayClinicalInfo:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
             self.response.error(tb, error_code=error_type.__name__)
-            self.response.debug(f"Something went wrong when querying the knowledge provider COHD")
+            self.response.debug(f"Something went wrong when overlaying clinical info")
