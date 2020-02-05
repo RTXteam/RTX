@@ -646,6 +646,9 @@ definitions:
         description: "Connection information for a remote knowledge graph that is a substitute for local KnowledgeGraph contained in this Message"
         items:
           $ref: "#/definitions/RemoteKnowledgeGraph"
+      log:
+        description: "List of logged information lines from the ARA, e.g. logged INFO, WARNING, and ERROR message lines"
+        type: "array"
     additionalProperties: true
   Result:
     type: "object"
@@ -823,6 +826,10 @@ definitions:
         type: "string"
         description: "Entity type of this node (e.g., protein, disease, etc.)"
         example: "disease"
+      is_set:
+        description: "Boolean that if set to true, indicates the QNode represents a set of entities rather than an individual entity"
+        type: "boolean"
+        example: "true"
     additionalProperties: true
   QEdge:
     type: "object"
@@ -888,6 +895,10 @@ definitions:
         description: "A list of arbitrary attributes for the node"
         items:
           $ref: "#/definitions/NodeAttribute"
+      qnode_id:
+        description: "Identifier (id) of a QueryGraph QNode in this same message that yielded this Node in the KnowledgeGraph"
+        type: "string"
+        example: "n00"
     additionalProperties: true
   NodeAttribute:
     type: "object"
@@ -979,6 +990,10 @@ definitions:
         description: "A list of additional attributes for this edge"
         items:
           $ref: "#/definitions/EdgeAttribute"
+      qedge_id:
+        description: "Identifier (id) of a QueryGraph QEdge in this same message that yielded this Edge in the KnowledgeGraph"
+        type: "string"
+        example: "n00"
     additionalProperties: true
   EdgeAttribute:
     type: "object"
