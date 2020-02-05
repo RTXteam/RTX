@@ -135,7 +135,8 @@ def main():
     sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/Feedback")
     from RTXFeedback import RTXFeedback
     araxdb = RTXFeedback()
-    message_dict = araxdb.getMessage(2)
+    #message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
+    message_dict = araxdb.getMessage(13)  # ibuprofen -> proteins -> disease
 
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger
@@ -143,7 +144,7 @@ def main():
 
     #### Create an overlay object and use it to apply action[0] from the list
     overlay = ARAXOverlay()
-    result = overlay.apply(message,actions[0]['parameters'])
+    result = overlay.apply(message, actions[0]['parameters'])
     response.merge(result)
 
     #if result.status != 'OK':
@@ -171,8 +172,13 @@ def main():
     # look at the edges
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)),sort_keys=True,indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
-    print(json.dumps(ast.literal_eval(repr(message)), sort_keys=True, indent=2))
-    print(response.show(level=Response.DEBUG))
+    #print(json.dumps(ast.literal_eval(repr(message)), sort_keys=True, indent=2))
+    #print(response.show(level=Response.DEBUG))
+
+    # just print off the values
+    for edge in message.knowledge_graph.edges:
+        print(edge.edge_attributes.pop().value)
+    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
 
 
 if __name__ == "__main__": main()

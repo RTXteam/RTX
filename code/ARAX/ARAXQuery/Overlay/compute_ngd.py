@@ -43,7 +43,7 @@ class ComputeNGD:
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
-            self.response.error(tb, error_code = error_type.__name__)
+            self.response.error(tb, error_code=error_type.__name__)
             self.response.debug(f"Something went wrong when converting names")
 
         self.response.warning(f"So far just a fixed value to make sure things go in the right place")
