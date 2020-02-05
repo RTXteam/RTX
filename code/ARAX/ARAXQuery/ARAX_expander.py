@@ -59,37 +59,52 @@ class ARAXExpander:
         response.data['parameters'] = parameters
         self.parameters = parameters
 
-
-        #### Now apply the filters. Order of operations is probably quite important
-        #### Scalar value filters probably come first like minimum_confidence, then complex logic filters
-        #### based on edge or node properties, and then finally maximum_results
         response.debug(f"Applying Expander to Message with parameters {parameters}")
 
         # First, extract the query sub-graph that will be expanded
-        query_sub_graph = self.__extract_subgraph_to_expand(message)
+        query_sub_graph = self.__extract_subgraph_to_expand()
 
         # Then answer that query using QueryGraphReasoner
-        q = QueryGraphReasoner()
-        response.info(f"Sending query graph to QueryGraphReasoner: {query_sub_graph}")
-        answer_message = q.answer(query_sub_graph, TxltrApiFormat=True)
-        response.info(f"QueryGraphReasoner returned {len(answer_message.results)} results")
+        answer_message = self.__get_answer_to_query_using_kg1(query_sub_graph)
 
-        # TODO: Then process results... merge answer knowledge graph with current knowledge graph?
-        # For now, storing answer knowledge graph in larger knowledge graph
-        message.knowledge_graph = answer_message
+        # Then process the results (add query graph IDs to each node/edge)
+        self.__add_query_graph_ids_to_knowledge_graph(answer_message)
+
+        # And add them to the running knowledge graph
+        self.__merge_answer_into_knowledge_graph(answer_message.knowledge_graph)
 
         #### Return the response and done
         return response
 
-    # This function is very simple for now (only handles single edge query, etc...will become more complex soon)
-    def __extract_subgraph_to_expand(self, message):
-        query_graph = message.query_graph
+    def __extract_subgraph_to_expand(self):
+        # TODO: Add to this function so it can handle is_set=True nodes, multiple edge queries, etc.
+        query_graph = self.message.query_graph
         # Nodes/edges must be dicts for QueryGraphReasoner...says 'not iterable' otherwise
         edge_to_expand = next(edge.to_dict() for edge in query_graph.edges if edge.id == self.parameters['edge_id'])
         node_ids = [edge_to_expand['source_id'], edge_to_expand['target_id']]
         nodes = [node.to_dict() for node in query_graph.nodes if node.id in node_ids]
         sub_query_graph = {'edges': [edge_to_expand], 'nodes': nodes}
         return sub_query_graph
+
+    def __get_answer_to_query_using_kg1(self, query_graph):
+        q = QueryGraphReasoner()
+        self.response.info(f"Sending query graph to QueryGraphReasoner: {query_graph}")
+        answer_message = q.answer(query_graph, TxltrApiFormat=True)
+        self.response.info(f"QueryGraphReasoner returned {len(answer_message.results)} results")
+        return answer_message
+
+    def __add_query_graph_ids_to_knowledge_graph(self, answer_message):
+        # TODO: Extract query graph ID from bindings in results, and attach to each node/edge in KG
+        pass
+
+    def __merge_answer_into_knowledge_graph(self, answer_knowledge_graph):
+        # Handle case when message knowledge graph is empty
+        if len(self.message.knowledge_graph.nodes) == 0:
+            self.response.debug("Message knowledge graph is empty at this point; setting equal to answer knowledge graph")
+            self.message.knowledge_graph = answer_knowledge_graph
+        else:
+            # TODO: Merge this KG with whatever is currently in the message KG
+            self.response.debug("Should merge answer into message knowledge graph here")
 
 
 
