@@ -6,8 +6,6 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from swagger_server.models.base_model_ import Model
-from swagger_server.models.q_edge import QEdge  # noqa: F401,E501
-from swagger_server.models.q_node import QNode  # noqa: F401,E501
 from swagger_server import util
 
 

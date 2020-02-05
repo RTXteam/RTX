@@ -6,8 +6,6 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from swagger_server.models.base_model_ import Model
-from swagger_server.models.edge_binding import EdgeBinding  # noqa: F401,E501
-from swagger_server.models.node_binding import NodeBinding  # noqa: F401,E501
 from swagger_server import util
 
 
@@ -461,6 +459,8 @@ class Result(Model):
         :param node_bindings: The node_bindings of this Result.
         :type node_bindings: List[NodeBinding]
         """
+        if node_bindings is None:
+            raise ValueError("Invalid value for `node_bindings`, must not be `None`")  # noqa: E501
 
         self._node_bindings = node_bindings
 
@@ -484,5 +484,7 @@ class Result(Model):
         :param edge_bindings: The edge_bindings of this Result.
         :type edge_bindings: List[EdgeBinding]
         """
+        if edge_bindings is None:
+            raise ValueError("Invalid value for `edge_bindings`, must not be `None`")  # noqa: E501
 
         self._edge_bindings = edge_bindings
