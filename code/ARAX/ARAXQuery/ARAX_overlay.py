@@ -36,7 +36,8 @@ class ARAXOverlay:
         parameters = {
             'compute_ngd': None,
             'add_pubmed_ids': None,
-            'compute_confidence_scores': None
+            'compute_confidence_scores': None,
+            'overlay_clinical_info': None
         }
 
         #### Loop through the input_parameters and override the defaults and make sure they are allowed
@@ -70,6 +71,10 @@ class ARAXOverlay:
         if parameters['compute_confidence_scores'] is not None:
            self.__compute_confidence_scores()
 
+        ### Apply overlay_clinical_info
+        if parameters['overlay_clinical_info'] is not None:
+            self.__overlay_clinical_info()
+
         #### Return the response and done
         return response
 
@@ -97,6 +102,12 @@ class ARAXOverlay:
             result.confidence = float(int(random.random()*1000))/1000
 
         #### Return the response
+        return response
+
+    def __overlay_clinical_info(self):
+        from Overlay.overlay_clinical_info import OverlayClinicalInfo
+        OCI = OverlayClinicalInfo(self.response, self.message, self.parameters['overlay_clinical_info'])
+        response = OCI.decorate()
         return response
 
 

@@ -2,19 +2,15 @@
 #!/bin/env python3
 import sys
 import os
-import json
-import ast
-import re
 import traceback
 import numpy as np
-import math
-from response import Response
+
+# relative imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
 from swagger_server.models.edge_attribute import EdgeAttribute
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
 from NormGoogleDistance import NormGoogleDistance as NGD
 
-def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 class ComputeNGD:
 
@@ -46,7 +42,7 @@ class ComputeNGD:
             self.response.error(tb, error_code=error_type.__name__)
             self.response.debug(f"Something went wrong when converting names")
 
-        self.response.warning(f"So far just a fixed value to make sure things go in the right place")
+        self.response.warning(f"Utilizing API calls to NCBI eUtils, so this may take a while...")
         name = "normalized Google distance"
         type = "float"
         value = default
