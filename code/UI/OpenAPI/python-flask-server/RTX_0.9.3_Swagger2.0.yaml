@@ -59,11 +59,6 @@ tags:
   externalDocs:
     description: "Documentation for the RTX feedback function"
     url: "https://rtx.ncats.io/overview.html#feedback"
-- name: types
-  description: Return data types in the knowledge graph
-  externalDocs:
-    description: Documentation for the reasoner types function
-    url: 'https://rtx.ncats.io/overview.html#types'
 schemes:
 - "https"
 paths:
@@ -371,79 +366,6 @@ paths:
         400:
           description: "Invalid status value"
       x-swagger-router-controller: "swagger_server.controllers.result_controller"
-  /types/nodes:
-    get:
-      tags:
-      - types
-      summary: Obtain all possible types of nodes
-      description: ''
-      operationId: get_node_types
-      produces:
-      - "application/json"
-      responses:
-        200:
-          description: "successful operation"
-        404:
-          description: "No types found"
-  /types/edges:
-    get:
-      tags:
-      - types
-      summary: Obtain all possible types of edges
-      description: ''
-      operationId: get_all_edge_types
-      produces:
-      - "application/json"
-      responses:
-        200:
-          description: "successful operation"
-        404:
-          description: "No types found"
-  /types/edges/{node_type}:
-    get:
-      tags:
-      - types
-      summary: Obtain all possible types of edges linked to a node_type
-      description: ''
-      operationId: get_node_edge_types
-      parameters:
-      - in: path
-        name: node_type
-        description: Node type to filter possible edges by
-        required: true
-        type: string
-      produces:
-      - "application/json"
-      responses:
-        200:
-          description: "successful operation"
-        404:
-          description: "No types found"
-  /types/edges/{node_type1}/{node_type2}:
-    get:
-      tags:
-      - types
-      summary: Obtain all possible types of edges linking node_type1 and node_type2
-      description: ''
-      operationId: get_node_to_node_edge_types
-      parameters:
-      - in: path
-        name: node_type1
-        description: Node type 1 to filter possible edges by
-        required: true
-        type: string
-      - in: path
-        name: node_type2
-        description: Node type 2 to filter possible edges by
-        required: true
-        type: string
-      produces:
-      - "application/json"
-      responses:
-        200:
-          description: "successful operation"
-        404:
-          description: "No types found"
 definitions:
   Question:
     type: "object"
@@ -788,7 +710,12 @@ definitions:
         description: "Credentials needed for programmatic access to the remote knowledge graph"
         items:
           $ref: "#/definitions/Credentials"
+      protocol:
+        type: string
+        default: neo4j
     additionalProperties: true
+    required:
+      - url
   Credentials:
     description: "Credentials needed for programmatic access to the remote knowledge graph"
     type: "object"
@@ -834,9 +761,7 @@ definitions:
         example: "OMIM:603903"
         description: "CURIE identifier for this node"
       type:
-        type: "string"
-        description: "Entity type of this node (e.g., protein, disease, etc.)"
-        example: "disease"
+        $ref: '#/definitions/BiolinkEntity'
       is_set:
         description: "Boolean that if set to true, indicates the QNode represents a set of entities rather than an individual entity"
         type: "boolean"
@@ -853,9 +778,7 @@ definitions:
         example: "e00"
         description: "QueryGraph internal identifier for this QEdge. Recommended form: e00, e01, e02, etc."
       type:
-        type: "string"
-        example: "affects"
-        description: "Higher-level relationship type of this edge"
+        $ref: '#/definitions/BiolinkRelation'
       relation:
         type: "string"
         example: "upregulates"
@@ -949,9 +872,7 @@ definitions:
         example: "553903"
         description: "Local identifier for this node which is unique within this KnowledgeGraph, and perhaps within the source reasoner's knowledge graph"
       type:
-        type: "string"
-        example: "affects"
-        description: "Higher-level relationship type of this edge"
+        $ref: '#/definitions/BiolinkRelation'
       relation:
         type: "string"
         example: "upregulates"
@@ -1093,3 +1014,17 @@ definitions:
         description: "List of feedback posts for this entire message"
         items:
           $ref: "#/definitions/Feedback"
+  BiolinkEntity:
+    description: A subclass of named_thing (snake_case)
+    type: string
+    externalDocs:
+      description: Biolink model entities
+      url: https://biolink.github.io/biolink-model/docs/NamedThing.html
+    example: disease
+  BiolinkRelation:
+    description: A relation, i.e. child of related_to (snake_case)
+    type: string
+    externalDocs:
+      description: Biolink model relations
+      url: https://biolink.github.io/biolink-model/docs/related_to.html
+    example: affects
