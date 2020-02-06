@@ -103,38 +103,56 @@ class ARAXExpander:
         q = QueryGraphReasoner()
         self.response.info(f"Sending query graph to QueryGraphReasoner: {query_graph}")
         answer_message = q.answer(query_graph, TxltrApiFormat=True)
-        self.response.info(f"QueryGraphReasoner returned {len(answer_message.results)} results")
+        if not answer_message.results:
+            self.response.info(f"QueryGraphReasoner found no results for this query graph")
+        else:
+            kg = answer_message.knowledge_graph
+            self.response.info(f"QueryGraphReasoner returned {len(answer_message.results)} results ({len(kg.nodes)} nodes, {len(kg.edges)} edges)")
         return answer_message
 
     def __add_query_graph_ids_to_knowledge_graph(self, answer_message):
         # Map each node/edge in our answer to its corresponding query node/edge ID
-        edge_map = dict()
-        node_map = dict()
-        for result in answer_message.results:
-            for edge_binding in result.edge_bindings:
-                edge_id = edge_binding['kg_id'][0]  # TODO! make more robust (scalars, lists...?)
-                qedge_id = edge_binding['qg_id']
-                edge_map[edge_id] = qedge_id
+        # TODO: Allow multiple query graph IDs per node/edge?
+        if answer_message.results:
+            edge_map = dict()
+            node_map = dict()
+            for result in answer_message.results:
+                for edge_binding in result.edge_bindings:
+                    edge_id = edge_binding['kg_id'][0]  # TODO! make more robust (scalars, lists...?)
+                    qedge_id = edge_binding['qg_id']
+                    edge_map[edge_id] = qedge_id
 
-            for node_binding in result.node_bindings:
-                node_id = node_binding['kg_id']  # TODO! make more robust (lists...?)
-                qnode_id = node_binding['qg_id']
-                node_map[node_id] = qnode_id
+                for node_binding in result.node_bindings:
+                    node_id = node_binding['kg_id']  # TODO! make more robust (lists...?)
+                    qnode_id = node_binding['qg_id']
+                    node_map[node_id] = qnode_id
 
-        # Add the proper query edge ID onto each edge
-        for edge in answer_message.knowledge_graph.edges:
-            edge.qedge_id = edge_map.get(edge.id)
+            # Add the proper query edge ID onto each edge
+            for edge in answer_message.knowledge_graph.edges:
+                edge.qedge_id = edge_map.get(edge.id)
 
-        # Add the proper query node ID onto each node
-        for node in answer_message.knowledge_graph.nodes:
-            node.qnode_id = node_map.get(node.id)
-
-        # TODO: Figure out how to handle potential duplicates here?
+            # Add the proper query node ID onto each node
+            for node in answer_message.knowledge_graph.nodes:
+                node.qnode_id = node_map.get(node.id)
 
     def __merge_answer_into_knowledge_graph(self, answer_knowledge_graph):
-        self.message.knowledge_graph.nodes += answer_knowledge_graph.nodes
-        self.message.knowledge_graph.edges += answer_knowledge_graph.edges
-        # TODO: Figure out how to handle potential duplicates here..
+        knowledge_graph = self.message.knowledge_graph
+
+        # Add nodes to message knowledge graph, preventing duplicates
+        for answer_node in answer_knowledge_graph.nodes:
+            if any(node.id == answer_node.id for node in knowledge_graph.nodes):
+                # TODO: Add additional query node ID onto this node
+                pass
+            else:
+                knowledge_graph.nodes.append(answer_node)
+
+        # Add edges to message knowledge graph, preventing duplicates
+        for answer_edge in answer_knowledge_graph.edges:
+            if any(edge.id == answer_edge.id for edge in knowledge_graph.edges):
+                # TODO: Add additional query edge ID onto this edge
+                pass
+            else:
+                knowledge_graph.edges.append(answer_edge)
 
 
 ##########################################################################################
@@ -202,7 +220,6 @@ def main():
 
     #### Show the final response
     print(response.show(level=Response.DEBUG))
-    print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
-    # now you can see the expander branch
+    # print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
 
 if __name__ == "__main__": main()
