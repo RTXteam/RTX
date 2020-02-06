@@ -12,8 +12,6 @@ from response import Response
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.node import Node
-from swagger_server.models.edge_attribute import EdgeAttribute
-from swagger_server.models.node_attribute import NodeAttribute
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering/")
 from QueryGraphReasoner import QueryGraphReasoner
@@ -111,27 +109,21 @@ class ARAXExpander:
                 qnode_id = node_binding['qg_id']
                 node_map[node_id] = qnode_id
 
-        # Attach the proper query edge ID onto each edge
+        # Add the proper query edge ID onto each edge
         for edge in answer_message.knowledge_graph.edges:
-            if edge.edge_attributes is None:
-                edge.edge_attributes = []
-            edge_attribute = EdgeAttribute()
-            edge_attribute.name = 'qedge_id'
-            edge_attribute.value = edge_map.get(edge.id)
-            edge.edge_attributes.append(edge_attribute)
+            edge.qedge_id = edge_map.get(edge.id)
 
-        # Attach the proper query node ID onto each node
+        # Add the proper query node ID onto each node
         for node in answer_message.knowledge_graph.nodes:
-            if node.node_attributes is None:
-                node.node_attributes = []
-            node_attribute = NodeAttribute()
-            node_attribute.name = 'qnode_id'
-            node_attribute.value = node_map.get(node.id)
-            node.node_attributes.append(node_attribute)
+            node.qnode_id = node_map.get(node.id)
+
+        # TODO: Figure out how to handle potential duplicates here?
+        #  (the same node could be returned for two different query graph nodes..)
 
     def __merge_answer_into_knowledge_graph(self, answer_knowledge_graph):
         self.message.knowledge_graph.nodes += answer_knowledge_graph.nodes
         self.message.knowledge_graph.edges += answer_knowledge_graph.edges
+        # TODO: Figure out how to handle potential duplicates here.. (leave and merge at end, w/ multiple qnode_ids?)
 
 
 
