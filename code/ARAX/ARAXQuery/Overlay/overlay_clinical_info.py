@@ -36,6 +36,19 @@ class OverlayClinicalInfo:
             if parameters['associated_concept_freq'] == 'true':
                 #self.associated_concept_freq()  # TODO: make this function, and all the other COHD functions too
                 pass
+        if 'chi_square' in parameters:
+            if parameters['chi_square'] == 'true':
+                #self.chi_square()  # TODO: make this function, and all the other COHD functions too
+                pass
+        if 'observed_expected_ratio' in parameters:
+            if parameters['observed_expected_ratio'] == 'true':
+                #self.observed_expected_ratio()  # TODO: make this function, and all the other COHD functions too
+                pass
+        if 'relative_frequency' in parameters:
+            if parameters['relative_frequency'] == 'true':
+                #self.associated_concept_freq()  # TODO: make this function, and all the other COHD functions too
+                pass
+
         return self.response
 
     def in_common(self, list1, list2):
@@ -80,7 +93,7 @@ class OverlayClinicalInfo:
                 target_curie = edge.target_id
                 source_type = node_curie_to_type[source_curie]
                 target_type = node_curie_to_type[target_curie]
-                # figure out which knowledge provider to use
+                # figure out which knowledge provider to use  # TODO: should handle this in a more structured fashion, does there exist a standardized KP API format?
                 KP_to_use = None
                 for KP in self.who_knows_about_what:
                     # see which KP's can label both sources of information
