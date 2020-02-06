@@ -14,7 +14,7 @@ def get_entity_by_string(search_string):  # noqa: E501
      # noqa: E501
 
     :param search_string: Some string to search by (name, abbreviation, CURIE, etc.)
-    :type search_string: int
+    :type search_string: str
 
     :rtype: List[object]
     """

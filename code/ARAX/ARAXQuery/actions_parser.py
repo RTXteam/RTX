@@ -100,5 +100,4 @@ def main():
     #### Print the final response data envelope
     print(json.dumps(ast.literal_eval(repr(result.data)),sort_keys=True,indent=2))
 
-
 if __name__ == "__main__": main()
