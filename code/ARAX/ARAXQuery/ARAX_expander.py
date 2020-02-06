@@ -60,7 +60,7 @@ class ARAXExpander:
         self.parameters = parameters
 
         #### Do the actual expansion!
-        response.debug(f"Applying Expander to Message with parameters {parameters}")
+        response.debug(f"Applying Expand to Message with parameters {parameters}")
 
         # First, extract the query sub-graph that will be expanded
         query_sub_graph = self.__extract_subgraph_to_expand()
@@ -75,16 +75,28 @@ class ARAXExpander:
         self.__merge_answer_into_knowledge_graph(answer_message.knowledge_graph)
 
         #### Return the response and done
+        kg = self.message.knowledge_graph
+        response.info(f"At the end of Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges")
         return response
 
+    # This currently handles only single-edge expansion
     def __extract_subgraph_to_expand(self):
-        # TODO: Add to this function so it can handle is_set=True nodes, multiple edge queries, etc.
         query_graph = self.message.query_graph
-        # Nodes/edges must be dicts for QueryGraphReasoner...says 'not iterable' otherwise
-        edge_to_expand = next(edge.to_dict() for edge in query_graph.edges if edge.id == self.parameters['edge_id'])
-        node_ids = [edge_to_expand['source_id'], edge_to_expand['target_id']]
-        nodes = [node.to_dict() for node in query_graph.nodes if node.id in node_ids]
-        sub_query_graph = {'edges': [edge_to_expand], 'nodes': nodes}
+        knowledge_graph = self.message.knowledge_graph
+
+        # Note: Nodes/edges must be dicts for QueryGraphReasoner
+        qedge_to_expand = next(qedge.to_dict() for qedge in query_graph.edges if qedge.id == self.parameters['edge_id'])
+        qnode_ids = [qedge_to_expand['source_id'], qedge_to_expand['target_id']]
+        qnodes = [qnode.to_dict() for qnode in query_graph.nodes if qnode.id in qnode_ids]
+
+        # Handle case where a query node is a set, and need to use answers from a prior Expand()
+        for qnode in qnodes:
+            if qnode['is_set']:
+                curies_of_kg_nodes_with_this_qnode_id = [node.id for node in knowledge_graph.nodes if node.qnode_id == qnode['id']]
+                if len(curies_of_kg_nodes_with_this_qnode_id):
+                    qnode['curie'] = curies_of_kg_nodes_with_this_qnode_id
+
+        sub_query_graph = {'edges': [qedge_to_expand], 'nodes': qnodes}
         return sub_query_graph
 
     def __get_answer_to_query_using_kg1(self, query_graph):
@@ -95,7 +107,7 @@ class ARAXExpander:
         return answer_message
 
     def __add_query_graph_ids_to_knowledge_graph(self, answer_message):
-        # Build dictionary mapping edges/nodes to their corresponding query graph edge/node IDs
+        # Map each node/edge in our answer to its corresponding query node/edge ID
         edge_map = dict()
         node_map = dict()
         for result in answer_message.results:
@@ -118,13 +130,11 @@ class ARAXExpander:
             node.qnode_id = node_map.get(node.id)
 
         # TODO: Figure out how to handle potential duplicates here?
-        #  (the same node could be returned for two different query graph nodes..)
 
     def __merge_answer_into_knowledge_graph(self, answer_knowledge_graph):
         self.message.knowledge_graph.nodes += answer_knowledge_graph.nodes
         self.message.knowledge_graph.edges += answer_knowledge_graph.edges
-        # TODO: Figure out how to handle potential duplicates here.. (leave and merge at end, w/ multiple qnode_ids?)
-
+        # TODO: Figure out how to handle potential duplicates here..
 
 
 ##########################################################################################
@@ -142,12 +152,13 @@ def main():
     #### Set a list of actions
     actions_list = [
         "create_message",
-        "add_qnode(curie=DOID:14330, id=n00)",
-        "add_qnode(type=protein, is_set=True, id=n01)",
-        "add_qnode(type=drug, id=n02)",
-        "add_qedge(source_id=n01, target_id=n00, id=e00)",
-        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "add_qnode(id=n00, curie=DOID:14330)",
+        "add_qnode(id=n01, type=protein, is_set=True)",
+        "add_qnode(id=n02, type=chemical_substance)",
+        "add_qedge(id=e00, source_id=n01, target_id=n00, type=gene_associated_with_condition)",
+        "add_qedge(id=e01, source_id=n01, target_id=n02, type=physically_interacts_with)",
         "expand(edge_id=e00)",
+        "expand(edge_id=e01)",
         "return(message=true, store=false)",
     ]
 
