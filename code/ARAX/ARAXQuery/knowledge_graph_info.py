@@ -10,10 +10,6 @@ import re
 from response import Response
 from query_graph_info import QueryGraphInfo
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
-from swagger_server.models.node_attribute import NodeAttribute
-from swagger_server.models.edge_attribute import EdgeAttribute
-
 
 class KnowledgeGraphInfo:
 
@@ -58,22 +54,9 @@ class KnowledgeGraphInfo:
         n_nodes_with_query_graph_ids = 0
         for node in nodes:
             id = node.id
-            if node.node_attributes is None:
+            if node.qnode_id is None:
                 continue
-            n_attributes = len(node.node_attributes)
-            have_query_graph_id = False
-            if n_attributes > 0:
-                for attribute in node.node_attributes:
-                    if attribute.name == 'query_graph_id':
-                        query_graph_id = attribute.value
-                        have_query_graph_id = True
-                        #### Also, add this node to a lookup hash by query_graph_id
-                        if query_graph_id not in self.node_map:
-                            self.node_map[query_graph_id] = []
-                        self.node_map[query_graph_id].append(node)
-                        break
-            if have_query_graph_id:
-                n_nodes_with_query_graph_ids += 1
+            n_nodes_with_query_graph_ids += 1
 
         #### Tally the stats
         if n_nodes_with_query_graph_ids == self.n_nodes:
@@ -88,22 +71,10 @@ class KnowledgeGraphInfo:
         n_edges_with_query_graph_ids = 0
         for edge in edges:
             id = edge.id
-            if edge.edge_attributes is None:
+            if edge.qedge_id is None:
                 continue
-            n_attributes = len(edge.edge_attributes)
-            have_query_graph_id = False
-            if n_attributes > 0:
-                for attribute in edge.edge_attributes:
-                    if attribute.name == 'query_graph_id':
-                        query_graph_id = attribute.value
-                        have_query_graph_id = True
-                        #### Also, add this edge to a lookup hash by query_graph_id
-                        if query_graph_id not in self.edge_map:
-                            self.edge_map[query_graph_id] = []
-                        self.edge_map[query_graph_id].append(edge)
-                        break
-            if have_query_graph_id:
-                n_edges_with_query_graph_ids += 1
+            n_edges_with_query_graph_ids += 1
+
         if n_edges_with_query_graph_ids == self.n_edges:
             self.query_graph_id_edge_status = 'all edges have query_graph_ids'
         elif n_edges_with_query_graph_ids == 0:
@@ -114,6 +85,7 @@ class KnowledgeGraphInfo:
 
         #### Return the response
         return response
+
 
 
     #### Top level decision maker for applying filters
@@ -130,21 +102,11 @@ class KnowledgeGraphInfo:
         nodes = knowedge_graph.nodes
         edges = knowedge_graph.edges
 
-        #### Loop through nodes adding query_graph_ids
+        #### Loop through nodes adding qnode_ids
         for node in nodes:
 
-            #### Check to see if there is already a query_graph_id attribute on the node
-            already_have_query_graph_id = False
-            if node.node_attributes is None:
-                node.node_attributes = []
-            else:
-                for attribute in node.node_attributes:
-                    if attribute.name == 'query_graph_id':
-                        already_have_query_graph_id = True
-                        break
-
-            #### If not, then determine what it should be and add it
-            if not already_have_query_graph_id:
+            #### If there is not qnode_id, then determine what it should be and add it
+            if node.qnode_id is None:
                 id = node.id
                 types = node.type
  
@@ -166,47 +128,27 @@ class KnowledgeGraphInfo:
                 elif n_found_types > 1:
                     response.error(f"Tried to find types '{types}' for KnowledgeGraph node {id} in query_graph_info, and found multiple matches. This is ambiguous", error_code="MultipleNodeTypesInQueryGraph")
                     return response
-                query_graph_id = query_graph_info.node_type_map[found_type]
 
-                #### And add it
-                node_attribute = NodeAttribute()
-                node_attribute.name = 'query_graph_id'
-                node_attribute.value = query_graph_id
-                node.node_attributes.append(node_attribute)
+                #### Else add it
+                node.qnode_id = query_graph_info.node_type_map[found_type]
 
-
-        #### Loop through the edges adding query_graph_ids
+        #### Loop through the edges adding qedge_ids
         for edge in edges:
             id = edge.id
 
-            #### Check to see if there is already a query_graph_id attribute on the edge
-            already_have_query_graph_id = False
-            if edge.edge_attributes is None:
-                edge.edge_attributes = []
-            else:
-                for attribute in edge.edge_attributes:
-                    if attribute.name == 'query_graph_id':
-                        already_have_query_graph_id = True
-                        break
+            #### Check to see if there is already a qedge_id attribute on the edge
+            if edge.qedge_id is None:
 
-            #### If not, then add it
-            if not already_have_query_graph_id:
-
-                #### Determine what the query_graph_id should be for this edge
+                #### If there isn't a type or can't find it in the query_graph, error out
                 if edge.type is None:
                     response.error(f"KnowledgeGraph edge {id} does not have a type. This should never be", error_code="EdgeMissingType")
                     return response
                 if edge.type not in query_graph_info.edge_type_map:
                     response.error(f"Tried to find type '{edge.type}' for KnowledgeGraph node {id} in query_graph_info, but did not find it", error_code="EdgeTypeMissingInQueryGraph")
                     return response
-                query_graph_id = query_graph_info.edge_type_map[edge.type]
 
-            query_graph_id = query_graph_info.edge_type_map[edge.type]
-            edge_attribute = EdgeAttribute()
-            edge_attribute.name = 'query_graph_id'
-            edge_attribute.value = query_graph_id
-            edge.edge_attributes.append(edge_attribute)
-
+                #### Else add it
+                edge.qedge_id = query_graph_info.edge_type_map[edge.type]
 
         #### Return the response
         return response
