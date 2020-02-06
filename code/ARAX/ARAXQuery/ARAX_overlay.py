@@ -37,7 +37,8 @@ class ARAXOverlay:
             'compute_ngd': None,
             'add_pubmed_ids': None,
             'compute_confidence_scores': None,
-            'overlay_clinical_info': None
+            'overlay_clinical_info': None,
+            'paired_concept_freq': None  # TODO: would really like this to be a sub-command of overlay_clinical_info
         }
 
         #### Loop through the input_parameters and override the defaults and make sure they are allowed
@@ -107,7 +108,7 @@ class ARAXOverlay:
     def __overlay_clinical_info(self):
         from Overlay.overlay_clinical_info import OverlayClinicalInfo
         OCI = OverlayClinicalInfo(self.response, self.message, self.parameters['overlay_clinical_info'])
-        response = OCI.decorate()
+        response = OCI.decorate(self.parameters)  # TODO: would really like to just pass the sub-commands of overlay_clinical_info
         return response
 
 
@@ -130,7 +131,8 @@ def main():
     #]
 
     actions_list = [
-        "overlay(compute_ngd=true)",
+        #"overlay(compute_ngd=true)",
+        "overlay(overlay_clinical_info=true, paired_concept_freq)",
         "return(message=true,store=false)"
     ]
 
@@ -146,8 +148,12 @@ def main():
     sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/Feedback")
     from RTXFeedback import RTXFeedback
     araxdb = RTXFeedback()
+
     #message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
-    message_dict = araxdb.getMessage(13)  # ibuprofen -> proteins -> disease
+    # message_dict = araxdb.getMessage(13)  # ibuprofen -> proteins -> disease
+    #message_dict = araxdb.getMessage(14)  # pleuropneumonia -> phenotypic_feature
+    message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature
+
 
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger
@@ -177,7 +183,7 @@ def main():
     # a comment on the end so you can better see the network on github
 
     # look at the response
-    #print(response.show(level=Response.DEBUG))
+    print(response.show(level=Response.DEBUG))
     #print(response.show())
     #print("Still executed")
 
@@ -188,9 +194,9 @@ def main():
     #print(response.show(level=Response.DEBUG))
 
     # just print off the values
+    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
     for edge in message.knowledge_graph.edges:
         print(edge.edge_attributes.pop().value)
-    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
-
+    print(response.show(level=Response.DEBUG))
 
 if __name__ == "__main__": main()
