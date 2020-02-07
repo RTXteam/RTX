@@ -32,8 +32,9 @@ class ARAXOverlay:
             response.error("Provided parameters is not a dict", error_code="ParametersNotDict")
             return response
 
-        #### Define a complete set of allowed parameters and their defaults
+        #### Define a complete set of allowed parameters and their defaults (the universe of all possible parameters)
         parameters = {
+            'action': None,
             'compute_ngd': None,
             'add_pubmed_ids': None,
             'compute_confidence_scores': None,
@@ -41,12 +42,22 @@ class ARAXOverlay:
             'paired_concept_freq': None  # TODO: would really like this to be a sub-command of overlay_clinical_info
         }
 
+        # list of actions that have so far been created for ARAX_overlay
+        allowable_actions = {
+            'compute_ngd',
+            'overlay_clinical_info'
+        }
+
         #### Loop through the input_parameters and override the defaults and make sure they are allowed
-        for key,value in input_parameters.items():
+        for key, value in input_parameters.items():
             if key not in parameters:
                 response.error(f"Supplied parameter {key} is not permitted", error_code="UnknownParameter")
             else:
                 parameters[key] = value
+        # check to see if an action is actually provided
+        if parameters['action'] not in allowable_actions:
+            response.error(f"Supplied action {parameters['action']} is not permitted. Allowable actions are: {allowable_actions}", error_code="UnknownAction")
+
         #### Return if any of the parameters generated an error (showing not just the first one)
         if response.status != 'OK':
             return response
@@ -55,11 +66,14 @@ class ARAXOverlay:
         response.data['parameters'] = parameters
         self.parameters = parameters
 
+        # TODO: now apply the actions
 
-        #### Now apply the filters. Order of operations is probably quite important
-        #### Scalar value filters probably come first like minimum_confidence, then complex logic filters
-        #### based on edge or node properties, and then finally maximum_results
-        response.debug(f"Applying Overlay to Message with parameters {parameters}")
+        # TODO: check to see if I can auto convert the action to a function so I don't need a ton of if statements
+
+
+
+
+        response.debug(f"Applying Overlay to Message with parameters {parameters}")  # TODO: re-write this
 
         #### Apply compute_ngd task
         if parameters['compute_ngd'] is not None:
@@ -131,8 +145,8 @@ def main():
     #]
 
     actions_list = [
-        #"overlay(compute_ngd=true)",
-        "overlay(overlay_clinical_info=true, paired_concept_freq)",
+        "overlay(compute_ngd=true)",
+        #"overlay(overlay_clinical_info=true, paired_concept_freq)",
         "return(message=true,store=false)"
     ]
 
@@ -149,10 +163,10 @@ def main():
     from RTXFeedback import RTXFeedback
     araxdb = RTXFeedback()
 
-    #message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
+    message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
     # message_dict = araxdb.getMessage(13)  # ibuprofen -> proteins -> disease
     #message_dict = araxdb.getMessage(14)  # pleuropneumonia -> phenotypic_feature
-    message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature
+    # message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature
 
 
     #### The stored message comes back as a dict. Transform it to objects
@@ -183,7 +197,7 @@ def main():
     # a comment on the end so you can better see the network on github
 
     # look at the response
-    print(response.show(level=Response.DEBUG))
+    #print(response.show(level=Response.DEBUG))
     #print(response.show())
     #print("Still executed")
 
@@ -195,8 +209,8 @@ def main():
 
     # just print off the values
     print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
-    for edge in message.knowledge_graph.edges:
-        print(edge.edge_attributes.pop().value)
+    #for edge in message.knowledge_graph.edges:
+    #    print(edge.edge_attributes.pop().value)
     print(response.show(level=Response.DEBUG))
 
 if __name__ == "__main__": main()
