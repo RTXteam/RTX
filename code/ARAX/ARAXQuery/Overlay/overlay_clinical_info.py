@@ -82,7 +82,7 @@ class OverlayClinicalInfo:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
             self.response.error(tb, error_code=error_type.__name__)
-            self.response.debug(f"Something went wrong when converting names")
+            self.response.error(f"Something went wrong when converting names")
 
         # Now iterate over all edges in the KG, looking for ones that COHD can handle
         try:
@@ -123,4 +123,4 @@ class OverlayClinicalInfo:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
             self.response.error(tb, error_code=error_type.__name__)
-            self.response.debug(f"Something went wrong when overlaying clinical info")
+            self.response.error(f"Something went wrong when overlaying clinical info")

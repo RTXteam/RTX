@@ -39,8 +39,9 @@ class ComputeNGD:
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
+            self.response.error(f"Something went wrong when converting names")
             self.response.error(tb, error_code=error_type.__name__)
-            self.response.debug(f"Something went wrong when converting names")
+
 
         self.response.warning(f"Utilizing API calls to NCBI eUtils, so this may take a while...")
         name = "normalized Google distance"
@@ -68,7 +69,7 @@ class ComputeNGD:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
             self.response.error(tb, error_code = error_type.__name__)
-            self.response.debug(f"Something went wrong adding the NGD edge attributes")
+            self.response.error(f"Something went wrong adding the NGD edge attributes")
         else:
             self.response.info(f"NGD values successfully added to edges")
 
