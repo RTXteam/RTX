@@ -20,7 +20,7 @@ class ComputeNGD:
         self.message = message
         self.ngd_parameters = ngd_params
 
-    def compute_ngd(self, default=np.inf):
+    def compute_ngd(self):
         """
         Iterate over all the edges in the knowledge graph, compute the normalized google distance and stick that info
         on the edge_attributes
@@ -46,7 +46,7 @@ class ComputeNGD:
         self.response.warning(f"Utilizing API calls to NCBI eUtils, so this may take a while...")
         name = "normalized Google distance"
         type = "float"
-        value = default
+        value = self.ngd_parameters['default_value']
         url = "TBD"
 
         # iterate over KG edges, add the information

@@ -6,7 +6,7 @@ import os
 import json
 import ast
 import re
-
+import numpy as np
 from response import Response
 
 
@@ -17,6 +17,19 @@ class ARAXOverlay:
         self.response = None
         self.message = None
         self.parameters = None
+        self.allowable_actions = {
+            'compute_ngd',
+            'overlay_clinical_info'
+        }
+
+    def describe_me(self):
+        """
+        Little helper function for internal use that describes the actions and what they can do
+        :return:
+        """
+        temp_allowable_actions = {'compute_ngd'}  #TODO: use self.allowable_actions after the rest have been populated
+        for action in temp_allowable_actions:
+            getattr(self, '_' + self.__class__.__name__ + '__' + action)(describe=True)
 
 
     #### Top level decision maker for applying filters
@@ -32,70 +45,79 @@ class ARAXOverlay:
             response.error("Provided parameters is not a dict", error_code="ParametersNotDict")
             return response
 
-        #### Define a complete set of allowed parameters and their defaults (the universe of all possible parameters)
-        parameters = {
-            'action': None,
-            'compute_ngd': None,
-            'add_pubmed_ids': None,
-            'compute_confidence_scores': None,
-            'overlay_clinical_info': None,
-            'paired_concept_freq': None  # TODO: would really like this to be a sub-command of overlay_clinical_info
-        }
-
         # list of actions that have so far been created for ARAX_overlay
-        allowable_actions = {
-            'compute_ngd',
-            'overlay_clinical_info'
-        }
+        allowable_actions = self.allowable_actions
 
-        #### Loop through the input_parameters and override the defaults and make sure they are allowed
-        for key, value in input_parameters.items():
-            if key not in parameters:
-                response.error(f"Supplied parameter {key} is not permitted", error_code="UnknownParameter")
-            else:
-                parameters[key] = value
         # check to see if an action is actually provided
-        if parameters['action'] not in allowable_actions:
-            response.error(f"Supplied action {parameters['action']} is not permitted. Allowable actions are: {allowable_actions}", error_code="UnknownAction")
+        if 'action' not in input_parameters:
+            response.error(f"Must supply an action. Allowable actions are: action={allowable_actions}", error_code="MissingAction")
+        elif input_parameters['action'] not in allowable_actions:
+            response.error(f"Supplied action {input_parameters['action']} is not permitted. Allowable actions are: {allowable_actions}", error_code="UnknownAction")
 
         #### Return if any of the parameters generated an error (showing not just the first one)
         if response.status != 'OK':
             return response
 
+        # populate the parameters dict
+        parameters = dict()
+        for key, value in input_parameters.items():
+            parameters[key] = value
+
         #### Store these final parameters for convenience
         response.data['parameters'] = parameters
         self.parameters = parameters
 
-        # TODO: now apply the actions
+        # convert the action string to a function call (so I don't need a ton of if statements
+        getattr(self, '_' + self.__class__.__name__ + '__' + parameters['action'])()  # thank you https://stackoverflow.com/questions/11649848/call-methods-by-string
 
-        # TODO: check to see if I can auto convert the action to a function so I don't need a ton of if statements
+        response.debug(f"Applying Overlay to Message with parameters {parameters}")  # TODO: re-write this to be more specific about the actual action
 
-
-
-
-        response.debug(f"Applying Overlay to Message with parameters {parameters}")  # TODO: re-write this
-
-        #### Apply compute_ngd task
-        if parameters['compute_ngd'] is not None:
-            self.__compute_ngd()
-
-        #### Apply add_pubmed_ids task
-        # TODO
-
-        #### Apply compute_confidence_scores
-        if parameters['compute_confidence_scores'] is not None:
-           self.__compute_confidence_scores()
-
-        ### Apply overlay_clinical_info
-        if parameters['overlay_clinical_info'] is not None:
-            self.__overlay_clinical_info()
+        # TODO: add_pubmed_ids
+        # TODO: compute_confidence_scores
+        # TODO: finish COHD
+        # TODO: Jaccard
 
         #### Return the response and done
         return response
 
-    def __compute_ngd(self):
+    def __compute_ngd(self, describe=False):
+        """
+        Computes normalized google distance between two nodes connected by an edge in the knowledge graph
+        and adds that as an edge attribute.
+        Allowable parameters: {default_value: {'0', 'inf'}}
+        :return:
+        """
+        # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
+        allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}}
+
+        # A little function to describe what this thing does
+        if describe:
+            print(allowable_parameters)
+            return
+
+        # Make sure only allowable parameters and values have been passed
+        for key, item in self.parameters.items():
+            if key not in allowable_parameters:
+                self.response.error(f"Supplied parameter {key} is not permitted. Allowable parameters are: {list(allowable_parameters.keys())}", error_code="UnknownParameter")
+            elif item not in allowable_parameters[key]:
+                self.response.error(f"Supplied value {item} is not permitted. Allowable values to {key} are: {list(allowable_parameters[key])}", error_code="UnknownValue")
+        # return if bad parameters have been passed
+        if self.response.status != 'OK':
+            return self.response
+
+        ngd_params = {'default_value': np.inf}  # here is where you can set default values
+
+        # parse the input parameters to be the data types I need them to be
+        for key, value in self.parameters.items():
+            if key != 'action':
+                if key == 'default_value':
+                    if value == '0':
+                        ngd_params[key] = 0
+                    elif value == 'inf':
+                        ngd_params[key] = np.inf
+
+        # now do the call out to NGD
         from Overlay.compute_ngd import ComputeNGD
-        ngd_params = self.parameters['compute_ngd']
         NGD = ComputeNGD(self.response, self.message, ngd_params)
         response = NGD.compute_ngd()
         return response
@@ -119,7 +141,7 @@ class ARAXOverlay:
         #### Return the response
         return response
 
-    def __overlay_clinical_info(self):
+    def __overlay_clinical_info(self):  # TODO: put the default paramas and all that other goodness in
         from Overlay.overlay_clinical_info import OverlayClinicalInfo
         OCI = OverlayClinicalInfo(self.response, self.message, self.parameters['overlay_clinical_info'])
         response = OCI.decorate(self.parameters)  # TODO: would really like to just pass the sub-commands of overlay_clinical_info
@@ -145,8 +167,8 @@ def main():
     #]
 
     actions_list = [
-        "overlay(compute_ngd=true)",
-        #"overlay(overlay_clinical_info=true, paired_concept_freq)",
+        "overlay(action=compute_ngd)",
+        #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
         "return(message=true,store=false)"
     ]
 
@@ -212,5 +234,6 @@ def main():
     #for edge in message.knowledge_graph.edges:
     #    print(edge.edge_attributes.pop().value)
     print(response.show(level=Response.DEBUG))
+    #print(actions_parser.parse(actions_list))
 
 if __name__ == "__main__": main()
