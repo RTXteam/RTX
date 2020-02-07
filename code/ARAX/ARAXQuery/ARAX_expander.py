@@ -121,11 +121,11 @@ class ARAXExpander:
         return answer_message
 
     def __add_query_graph_ids_to_knowledge_graph(self, answer_message):
-        # Map each node/edge in our answer to its corresponding query node/edge ID
-        # TODO: Allow multiple query graph IDs per node/edge?
+        # Create a map of each node/edge in our answer and its corresponding query node/edge ID
         if answer_message.results:
             edge_map = dict()
             node_map = dict()
+            # TODO: Allow multiple query graph IDs per node/edge? (would need to add to map)
             for result in answer_message.results:
                 for edge_binding in result.edge_bindings:
                     for edge_id in edge_binding['kg_id']:
@@ -140,30 +140,30 @@ class ARAXExpander:
             # Add the proper query edge ID onto each edge
             for edge in answer_message.knowledge_graph.edges:
                 edge.qedge_id = edge_map.get(edge.id)
+                if edge.qedge_id is None:
+                    self.response.warning(f"Edge is missing qedge_id: {edge.id}")
 
             # Add the proper query node ID onto each node
             for node in answer_message.knowledge_graph.nodes:
                 node.qnode_id = node_map.get(node.id)
+                if node.qnode_id is None:
+                    self.response.warning(f"Node is missing qnode_id: {node.id}")
 
     def __merge_answer_into_knowledge_graph(self, answer_knowledge_graph):
         knowledge_graph = self.message.knowledge_graph
 
         # Add nodes to message knowledge graph, preventing duplicates
         for answer_node in answer_knowledge_graph.nodes:
-            if answer_node.qnode_id is None:
-                self.response.warning(f"Node is missing qnode_id: {answer_node.id}")
             if any(node.id == answer_node.id for node in knowledge_graph.nodes):
-                # TODO: Add additional query node ID onto this node (if different)
+                # TODO: Add additional query node ID onto this node (if different)?
                 pass
             else:
                 knowledge_graph.nodes.append(answer_node)
 
         # Add edges to message knowledge graph, preventing duplicates
         for answer_edge in answer_knowledge_graph.edges:
-            if answer_edge.qedge_id is None:
-                self.response.warning(f"Edge is missing qedge_id: {answer_edge.id}")
             if any(edge.id == answer_edge.id for edge in knowledge_graph.edges):  # TODO: make this not rely on ID
-                # TODO: Add additional query edge ID onto this edge (if different)
+                # TODO: Add additional query edge ID onto this edge (if different)?
                 pass
             else:
                 knowledge_graph.edges.append(answer_edge)
