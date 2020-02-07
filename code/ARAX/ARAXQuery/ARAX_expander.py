@@ -103,7 +103,7 @@ class ARAXExpander:
                     if len(curies_of_kg_nodes_with_this_qnode_id):
                         qnode['curie'] = curies_of_kg_nodes_with_this_qnode_id
 
-            # Add this edge and its two nodes into our sub query graph, excluding any duplicate nodes
+            # Add this edge and its two nodes to our sub query graph, excluding any duplicate nodes
             sub_query_graph['edges'].append(qedge_to_expand)
             sub_query_graph['nodes'] += [qnode for qnode in qnodes if not any(node['id'] == qnode['id'] for node in sub_query_graph['nodes'])]
 
@@ -162,7 +162,9 @@ class ARAXExpander:
 
         # Add edges to message knowledge graph, preventing duplicates
         for answer_edge in answer_knowledge_graph.edges:
-            if any(edge.id == answer_edge.id for edge in knowledge_graph.edges):  # TODO: make this not rely on ID
+            if any(edge.type == answer_edge.type and
+                   edge.source_id == answer_edge.source_id and
+                   edge.target_id == answer_edge.target_id for edge in knowledge_graph.edges):
                 # TODO: Add additional query edge ID onto this edge (if different)?
                 pass
             else:
@@ -187,8 +189,8 @@ def main():
         "add_qnode(id=n00, curie=DOID:14330)",
         "add_qnode(id=n01, type=protein, is_set=True)",
         "add_qnode(id=n02, type=chemical_substance)",
-        "add_qedge(id=e00, source_id=n00, target_id=n01)",
-        "add_qedge(id=e01, source_id=n01, target_id=n02)",
+        "add_qedge(id=e00, source_id=n01, target_id=n00, type=gene_associated_with_condition)",
+        "add_qedge(id=e01, source_id=n01, target_id=n02, type=physically_interacts_with)",
         "expand(edge_id=e00)",
         "expand(edge_id=e01)",
         "return(message=true, store=false)",
