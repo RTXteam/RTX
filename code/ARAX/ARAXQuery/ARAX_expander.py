@@ -128,11 +128,9 @@ class ARAXExpander:
             node_map = dict()
             for result in answer_message.results:
                 for edge_binding in result.edge_bindings:
-                    edge_id = edge_binding['kg_id'][0]  # TODO: Figure out if this should really be a string?
-                    if len(edge_binding['kg_id']) > 1:
-                        self.response.warning(f"Edge binding has more than one kg_id listed ({edge_binding})")
-                    qedge_id = edge_binding['qg_id']
-                    edge_map[edge_id] = qedge_id
+                    for edge_id in edge_binding['kg_id']:
+                        qedge_id = edge_binding['qg_id']
+                        edge_map[edge_id] = qedge_id
 
                 for node_binding in result.node_bindings:
                     node_id = node_binding['kg_id']
@@ -152,6 +150,8 @@ class ARAXExpander:
 
         # Add nodes to message knowledge graph, preventing duplicates
         for answer_node in answer_knowledge_graph.nodes:
+            if answer_node.qnode_id is None:
+                self.response.warning(f"Node is missing qnode_id: {answer_node.id}")
             if any(node.id == answer_node.id for node in knowledge_graph.nodes):
                 # TODO: Add additional query node ID onto this node (if different)
                 pass
@@ -160,7 +160,9 @@ class ARAXExpander:
 
         # Add edges to message knowledge graph, preventing duplicates
         for answer_edge in answer_knowledge_graph.edges:
-            if any(edge.id == answer_edge.id for edge in knowledge_graph.edges):
+            if answer_edge.qedge_id is None:
+                self.response.warning(f"Edge is missing qedge_id: {answer_edge.id}")
+            if any(edge.id == answer_edge.id for edge in knowledge_graph.edges):  # TODO: make this not rely on ID
                 # TODO: Add additional query edge ID onto this edge (if different)
                 pass
             else:
