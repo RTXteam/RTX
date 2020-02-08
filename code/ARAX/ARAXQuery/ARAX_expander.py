@@ -12,6 +12,7 @@ from response import Response
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.node import Node
+from swagger_server.models.query_graph import QueryGraph
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering/")
 from QueryGraphReasoner import QueryGraphReasoner
@@ -82,7 +83,9 @@ class ARAXExpander:
         return response
 
     def __extract_subgraph_to_expand(self):
-        sub_query_graph = {'edges': [], 'nodes': []}
+        sub_query_graph = QueryGraph()
+        sub_query_graph.nodes = []
+        sub_query_graph.edges = []
 
         # Grab and validate the edge ID passed in
         qedge_ids_to_expand = self.parameters['edge_id']
@@ -96,7 +99,7 @@ class ARAXExpander:
             query_graph = self.message.query_graph
             knowledge_graph = self.message.knowledge_graph
 
-            # Build a query graph with the proper nodes/edges
+            # Build a query graph with the specified subset of nodes/edges from the larger query graph
             for qedge_id in qedge_ids_to_expand:
                 # Make sure this query edge ID actually exists in the larger query graph
                 if not any(edge.id == qedge_id for edge in query_graph.edges):
@@ -115,17 +118,15 @@ class ARAXExpander:
                                 qnode.curie = curies_of_kg_nodes_with_this_qnode_id
 
                     # Add this edge and its two nodes to our sub query graph, excluding any duplicate nodes
-                    # Note: nodes/edges must be in dict format for QueryGraphReasoner
-                    # TODO: perhaps this conversion to dict should happen in function that calls QueryGraphReasoner?
-                    sub_query_graph['edges'].append(qedge_to_expand.to_dict())
-                    sub_query_graph['nodes'] += [qnode.to_dict() for qnode in qnodes if not any(node['id'] == qnode.id for node in sub_query_graph['nodes'])]
+                    sub_query_graph.edges.append(qedge_to_expand)
+                    sub_query_graph.nodes += [qnode for qnode in qnodes if not any(node.id == qnode.id for node in sub_query_graph.nodes)]
 
         return sub_query_graph
 
     def __get_answer_to_query_using_kg1(self, query_graph):
         q = QueryGraphReasoner()
         self.response.info(f"Sending query graph to QueryGraphReasoner: {query_graph}")
-        answer_message = q.answer(query_graph, TxltrApiFormat=True)
+        answer_message = q.answer(query_graph.to_dict(), TxltrApiFormat=True)
         if not answer_message.results:
             self.response.info(f"QueryGraphReasoner found no results for this query graph")
         else:
