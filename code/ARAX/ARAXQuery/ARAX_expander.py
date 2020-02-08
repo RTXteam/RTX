@@ -64,6 +64,8 @@ class ARAXExpander:
 
         # First, extract the query sub-graph that will be expanded
         query_sub_graph = self.__extract_subgraph_to_expand()
+        if response.status != 'OK':
+            return response
 
         # Then answer that query using QueryGraphReasoner
         answer_message = self.__get_answer_to_query_using_kg1(query_sub_graph)
@@ -76,36 +78,47 @@ class ARAXExpander:
 
         #### Return the response and done
         kg = self.message.knowledge_graph
-        response.info(f"At the end of Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges")
+        response.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges")
         return response
 
     def __extract_subgraph_to_expand(self):
-        query_graph = self.message.query_graph
-        knowledge_graph = self.message.knowledge_graph
-
-        qedge_ids_to_expand = self.parameters['edge_id']
-        # Make sure edge ID(s) are in list format (edge_id argument can be a string or list of strings)
-        if type(qedge_ids_to_expand) is not list:
-            qedge_ids_to_expand = [qedge_ids_to_expand]
-
-        # Build a query graph with the proper nodes/edges
         sub_query_graph = {'edges': [], 'nodes': []}
-        for qedge_id in qedge_ids_to_expand:
-            # Note: Nodes/edges must be dicts for QueryGraphReasoner
-            qedge_to_expand = next(edge.to_dict() for edge in query_graph.edges if edge.id == qedge_id)
-            qnode_ids = [qedge_to_expand['source_id'], qedge_to_expand['target_id']]
-            qnodes = [node.to_dict() for node in query_graph.nodes if node.id in qnode_ids]
 
-            # Handle case where a query node is a set, and we need to use answers from a prior Expand()
-            for qnode in qnodes:
-                if qnode['is_set']:
-                    curies_of_kg_nodes_with_this_qnode_id = [node.id for node in knowledge_graph.nodes if node.qnode_id == qnode['id']]
-                    if len(curies_of_kg_nodes_with_this_qnode_id):
-                        qnode['curie'] = curies_of_kg_nodes_with_this_qnode_id
+        # Grab and validate the edge ID passed in
+        qedge_ids_to_expand = self.parameters['edge_id']
+        if not qedge_ids_to_expand:
+            self.response.error("Expand is missing required parameter edge_id", error_code="MissingParameter")
+        else:
+            # Make sure edge ID(s) are stored in a list (can be passed in as a string or a list of strings)
+            if type(qedge_ids_to_expand) is not list:
+                qedge_ids_to_expand = [qedge_ids_to_expand]
 
-            # Add this edge and its two nodes to our sub query graph, excluding any duplicate nodes
-            sub_query_graph['edges'].append(qedge_to_expand)
-            sub_query_graph['nodes'] += [qnode for qnode in qnodes if not any(node['id'] == qnode['id'] for node in sub_query_graph['nodes'])]
+            query_graph = self.message.query_graph
+            knowledge_graph = self.message.knowledge_graph
+
+            # Build a query graph with the proper nodes/edges
+            for qedge_id in qedge_ids_to_expand:
+                # Make sure this query edge ID actually exists in the larger query graph
+                if not any(edge.id == qedge_id for edge in query_graph.edges):
+                    self.response.error(f"An edge with ID '{qedge_id}' does not exist in Message.QueryGraph", error_code="UnknownQedge")
+                else:
+                    # Grab this query edge and its two nodes
+                    qedge_to_expand = next(edge for edge in query_graph.edges if edge.id == qedge_id)
+                    qnode_ids = [qedge_to_expand.source_id, qedge_to_expand.target_id]
+                    qnodes = [node for node in query_graph.nodes if node.id in qnode_ids]
+
+                    # Handle case where a query node is a set and we need to use answers from a prior Expand()
+                    for qnode in qnodes:
+                        if qnode.is_set:
+                            curies_of_kg_nodes_with_this_qnode_id = [node.id for node in knowledge_graph.nodes if node.qnode_id == qnode.id]
+                            if len(curies_of_kg_nodes_with_this_qnode_id):
+                                qnode.curie = curies_of_kg_nodes_with_this_qnode_id
+
+                    # Add this edge and its two nodes to our sub query graph, excluding any duplicate nodes
+                    # Note: nodes/edges must be in dict format for QueryGraphReasoner
+                    # TODO: perhaps this conversion to dict should happen in function that calls QueryGraphReasoner?
+                    sub_query_graph['edges'].append(qedge_to_expand.to_dict())
+                    sub_query_graph['nodes'] += [qnode.to_dict() for qnode in qnodes if not any(node['id'] == qnode.id for node in sub_query_graph['nodes'])]
 
         return sub_query_graph
 
