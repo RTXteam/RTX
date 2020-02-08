@@ -117,6 +117,7 @@ class ARAXExpander:
                             curies_of_kg_nodes_with_this_qnode_id = [node.id for node in knowledge_graph.nodes if node.qnode_id == qnode.id]
                             if len(curies_of_kg_nodes_with_this_qnode_id):
                                 qnode.curie = curies_of_kg_nodes_with_this_qnode_id
+                                # TODO: Make it so that this isn't modifying the original query graph...
 
                     # Add this edge and its two nodes to our sub query graph, excluding any duplicate nodes
                     sub_query_graph.edges.append(qedge_to_expand)
@@ -162,7 +163,9 @@ class ARAXExpander:
                     self.response.warning(f"Edge {edge.id} is missing a qedge_id")
 
                 # Add this edge to the overarching knowledge graph, preventing duplicates
-                if any(edge.id == existing_edge.id for existing_edge in overarching_kg.edges):
+                if any(edge.type == existing_edge.type and
+                       edge.source_id == existing_edge.source_id and
+                       edge.target_id == existing_edge.target_id for existing_edge in overarching_kg.edges):
                     # TODO: Add additional query edge ID onto this edge (if different)?
                     pass
                 else:
