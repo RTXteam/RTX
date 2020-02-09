@@ -11,7 +11,7 @@ class RTXConfiguration:
 
     #### Constructor
     def __init__(self):
-        self.version = "RTX 0.5.4"
+        self.version = "ARAX 0.6.0"
 
         file_path = os.path.dirname(os.path.abspath(__file__)) + '/config.json'
 
