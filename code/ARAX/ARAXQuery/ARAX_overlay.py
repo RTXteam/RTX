@@ -31,6 +31,24 @@ class ARAXOverlay:
         for action in temp_allowable_actions:
             getattr(self, '_' + self.__class__.__name__ + '__' + action)(describe=True)
 
+    # Write a little helper function to test parameters
+    def check_params(self, allowable_parameters):
+        """
+        Checks to see if the input parameters are allowed
+        :param input_parameters: input parameters supplied to ARAXOverlay.apply()
+        :param allowable_parameters: the allowable parameters
+        :return: None
+        """
+        for key, item in self.parameters.items():
+            if key not in allowable_parameters:
+                self.response.error(
+                    f"Supplied parameter {key} is not permitted. Allowable parameters are: {list(allowable_parameters.keys())}",
+                    error_code="UnknownParameter")
+            elif item not in allowable_parameters[key]:
+                self.response.error(
+                    f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}",
+                    error_code="UnknownValue")
+
 
     #### Top level decision maker for applying filters
     def apply(self, input_message, input_parameters):
@@ -96,11 +114,7 @@ class ARAXOverlay:
             return
 
         # Make sure only allowable parameters and values have been passed
-        for key, item in self.parameters.items():
-            if key not in allowable_parameters:
-                self.response.error(f"Supplied parameter {key} is not permitted. Allowable parameters are: {list(allowable_parameters.keys())}", error_code="UnknownParameter")
-            elif item not in allowable_parameters[key]:
-                self.response.error(f"Supplied value {item} is not permitted. Allowable values to {key} are: {list(allowable_parameters[key])}", error_code="UnknownValue")
+        self.check_params(allowable_parameters)
         # return if bad parameters have been passed
         if self.response.status != 'OK':
             return self.response
