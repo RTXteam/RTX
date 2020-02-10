@@ -27,8 +27,7 @@ class ARAXOverlay:
         Little helper function for internal use that describes the actions and what they can do
         :return:
         """
-        temp_allowable_actions = {'compute_ngd'}  #TODO: use self.allowable_actions after the rest have been populated
-        for action in temp_allowable_actions:
+        for action in self.allowable_actions:
             getattr(self, '_' + self.__class__.__name__ + '__' + action)(describe=True)
 
     # Write a little helper function to test parameters
@@ -155,10 +154,35 @@ class ARAXOverlay:
         #### Return the response
         return response
 
-    def __overlay_clinical_info(self):  # TODO: put the default paramas and all that other goodness in
+    def __overlay_clinical_info(self, describe=False):  # TODO: put the default paramas and all that other goodness in
+        """
+        This function will apply the action overlay_clinical_info.
+        Allowable parameters are:
+        :return: a response
+        """
+        # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
+        allowable_parameters = {'action': {'overlay_clinical_info'}, 'paired_concept_freq': {'true', 'false'}}
+
+        # A little function to describe what this thing does
+        if describe:
+            print(allowable_parameters)
+            return
+
+        # Make sure only allowable parameters and values have been passed
+        self.check_params(allowable_parameters)
+        # return if bad parameters have been passed
+        if self.response.status != 'OK':
+            return self.response
+
+        # TODO: make sure that not more than one other kind of action has been asked for since COHD has a lot of functionality #606
+        # TODO: make sure conflicting defaults aren't called either
+        # TODO: until then, just pass the parameters as is
+
+        default_params = self.parameters  # here is where you can set default values
+
         from Overlay.overlay_clinical_info import OverlayClinicalInfo
-        OCI = OverlayClinicalInfo(self.response, self.message, self.parameters['overlay_clinical_info'])
-        response = OCI.decorate(self.parameters)  # TODO: would really like to just pass the sub-commands of overlay_clinical_info
+        OCI = OverlayClinicalInfo(self.response, self.message, default_params)
+        response = OCI.decorate()  # TODO: refactor this so it's basically another apply() like function
         return response
 
 
@@ -181,8 +205,8 @@ def main():
     #]
 
     actions_list = [
-        "overlay(action=compute_ngd)",
-        #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
+        #"overlay(action=compute_ngd)",
+        "overlay(action=overlay_clinical_info, paired_concept_freq=true)",
         "return(message=true,store=false)"
     ]
 
@@ -199,10 +223,10 @@ def main():
     from RTXFeedback import RTXFeedback
     araxdb = RTXFeedback()
 
-    message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
+    #message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
     # message_dict = araxdb.getMessage(13)  # ibuprofen -> proteins -> disease
     #message_dict = araxdb.getMessage(14)  # pleuropneumonia -> phenotypic_feature
-    # message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature
+    message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature
 
 
     #### The stored message comes back as a dict. Transform it to objects

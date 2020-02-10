@@ -22,12 +22,13 @@ class OverlayClinicalInfo:
         self.parameters = params
         self.who_knows_about_what = {'COHD': ['chemical_substance', 'phenotypic_feature', 'disease']}  # FIXME: replace this with information about the KP's, KS's, and their API's
 
-    def decorate(self, parameters):
+    def decorate(self):
         """
         Main decorator: looks at parameters and figures out which subroutine to farm out to
         :param parameters:
         :return: response object
         """
+        parameters = self.parameters
         if 'paired_concept_freq' in parameters:
             if parameters['paired_concept_freq'] == 'true':
                 self.paired_concept_freq()
