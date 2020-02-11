@@ -508,7 +508,7 @@ def main():
             "add_qnode(name=hypertension, id=n00)",
             "add_qnode(type=protein, is_set=True, id=n01)",
             "add_qedge(source_id=n01, target_id=n00, id=e00)",
-            "query_graph_reasoner()",
+            "expand(edge_id=e00)",
             "filter(maximum_results=2)",
             "return(message=true, store=false)",
             ] } }
