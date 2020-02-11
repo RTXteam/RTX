@@ -518,7 +518,7 @@ def main():
             "add_qnode(name=hypertension, id=n00)",
             "add_qnode(type=protein, is_set=True, id=n01)",
             "add_qedge(source_id=n01, target_id=n00, id=e00)",
-            "query_graph_reasoner()",
+            "expand(edge_id=e00)",
             "overlay(action=compute_ngd)",
             "filter(maximum_results=2)",
             "return(message=true, store=false)",
@@ -529,7 +529,7 @@ def main():
             "add_qnode(curie=DOID:1936, id=n00)",  # Atherosclerosis
             "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00, type=has_phenotype)",
-            "query_graph_reasoner()",
+            "expand(edge_id=e00)",
             "overlay(action=overlay_clinical_info, paired_concept_freq=true)",
             "filter(maximum_results=2)",
             "return(message=true, store=false)",
