@@ -13,6 +13,8 @@ from response import Response
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.node import Node
 from swagger_server.models.query_graph import QueryGraph
+from swagger_server.models.q_node import QNode
+from swagger_server.models.q_edge import QEdge
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering/")
 from QueryGraphReasoner import QueryGraphReasoner
@@ -114,19 +116,44 @@ class ARAXExpander:
                     qnode_ids = [qedge_to_expand.source_id, qedge_to_expand.target_id]
                     qnodes = [node for node in query_graph.nodes if node.id in qnode_ids]
 
-                    # Handle case where a query node is a set and we need to use answers from a prior Expand()
-                    for qnode in qnodes:
-                        if qnode.is_set:
-                            curies_of_kg_nodes_with_this_qnode_id = [node.id for node in knowledge_graph.nodes if node.qnode_id == qnode.id]
-                            if len(curies_of_kg_nodes_with_this_qnode_id):
-                                qnode.curie = curies_of_kg_nodes_with_this_qnode_id
-                                # TODO: Make it so that this isn't modifying the original query graph...
+                    # Create a copy of this edge for our new sub query graph
+                    new_qedge = self.__copy_qedge(qedge_to_expand)
+                    sub_query_graph.edges.append(new_qedge)
 
-                    # Add this edge and its two nodes to our sub query graph, excluding any duplicate nodes
-                    sub_query_graph.edges.append(qedge_to_expand)
-                    sub_query_graph.nodes += [qnode for qnode in qnodes if not any(node.id == qnode.id for node in sub_query_graph.nodes)]
+                    # Create copies of this edge's two nodes for our new sub query graph
+                    for qnode in qnodes:
+                        new_qnode = self.__copy_qnode(qnode)
+
+                        # Handle case where query node is a set and we need to use answers from a prior Expand()
+                        if new_qnode.is_set:
+                            curies_of_kg_nodes_with_this_qnode_id = [node.id for node in knowledge_graph.nodes if
+                                                                     node.qnode_id == new_qnode.id]
+                            if len(curies_of_kg_nodes_with_this_qnode_id):
+                                new_qnode.curie = curies_of_kg_nodes_with_this_qnode_id
+
+                        # Add this node to our query sub graph if it's not already in there
+                        if not any(node.id == new_qnode.id for node in sub_query_graph.nodes):
+                            sub_query_graph.nodes.append(new_qnode)
 
         return sub_query_graph
+
+    def __copy_qedge(self, qedge):
+        new_qedge = QEdge()
+        new_qedge.id = qedge.id
+        new_qedge.type = qedge.type
+        new_qedge.negated = qedge.negated
+        new_qedge.relation = qedge.relation
+        new_qedge.source_id = qedge.source_id
+        new_qedge.target_id = qedge.target_id
+        return new_qedge
+
+    def __copy_qnode(self, qnode):
+        new_qnode = QNode()
+        new_qnode.id = qnode.id
+        new_qnode.curie = qnode.curie
+        new_qnode.type = qnode.type
+        new_qnode.is_set = qnode.is_set
+        return new_qnode
 
     def __get_answer_to_query_using_kg1(self, query_graph):
         q = QueryGraphReasoner()
