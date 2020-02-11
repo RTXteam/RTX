@@ -26,7 +26,6 @@ class ARAXExpander:
         self.message = None
         self.parameters = None
 
-
     #### Top level decision maker for applying filters
     def apply(self, input_message, input_parameters):
 
@@ -73,8 +72,12 @@ class ARAXExpander:
         if response.status != 'OK':
             return response
 
-        # And add answers to overarching knowledge graph
-        self.__process_and_merge_results(answer_message)
+        # Tack on query graph IDs to the nodes/edges in our answer knowledge graph as necessary (for later processing)
+        if answer_message.results:
+            self.__add_query_ids_to_answer_kg(answer_message)
+
+        # And add our answer knowledge graph to the overarching knowledge graph
+        self.__merge_answer_kg_into_overarching_kg(answer_message.knowledge_graph)
         if response.status != 'OK':
             return response
 
@@ -134,42 +137,48 @@ class ARAXExpander:
         else:
             kg = answer_message.knowledge_graph
             self.response.info(f"QueryGraphReasoner returned {len(answer_message.results)} results ({len(kg.nodes)} nodes, {len(kg.edges)} edges)")
+
         return answer_message
 
-    def __process_and_merge_results(self, answer_message):
-        if answer_message.results:
-            overarching_kg = self.message.knowledge_graph
-            answer_nodes = answer_message.knowledge_graph.nodes
-            answer_edges = answer_message.knowledge_graph.edges
-            query_id_map = self.__build_query_id_map(answer_message.results)
+    def __add_query_ids_to_answer_kg(self, answer_message):
+        answer_nodes = answer_message.knowledge_graph.nodes
+        answer_edges = answer_message.knowledge_graph.edges
+        query_id_map = self.__build_query_id_map(answer_message.results)
 
-            for node in answer_nodes:
-                # Tack this node's corresponding query node ID onto it (needed for later processing)
-                node.qnode_id = query_id_map['nodes'].get(node.id)
-                if node.qnode_id is None:
-                    self.response.warning(f"Node {node.id} is missing a qnode_id")
+        for node in answer_nodes:
+            # Tack this node's corresponding query node ID onto it
+            node.qnode_id = query_id_map['nodes'].get(node.id)
+            if node.qnode_id is None:
+                self.response.warning(f"Node {node.id} is missing a qnode_id")
 
-                # Add this node to the overarching knowledge graph, preventing duplicates
-                if any(node.id == existing_node.id for existing_node in overarching_kg.nodes):
-                    # TODO: Add additional query node ID onto this node (if different)?
-                    pass
-                else:
-                    overarching_kg.nodes.append(node)
+        for edge in answer_edges:
+            # Tack this edge's corresponding query edge ID onto it (needed for later processing)
+            edge.qedge_id = query_id_map['edges'].get(edge.id)
+            if edge.qedge_id is None:
+                self.response.warning(f"Edge {edge.id} is missing a qedge_id")
 
-            for edge in answer_edges:
-                # Tack this edge's corresponding query edge ID onto it (needed for later processing)
-                edge.qedge_id = query_id_map['edges'].get(edge.id)
-                if edge.qedge_id is None:
-                    self.response.warning(f"Edge {edge.id} is missing a qedge_id")
+    def __merge_answer_kg_into_overarching_kg(self, knowledge_graph):
+        overarching_kg = self.message.knowledge_graph
+        answer_nodes = knowledge_graph.nodes
+        answer_edges = knowledge_graph.edges
 
-                # Add this edge to the overarching knowledge graph, preventing duplicates
-                if any(edge.type == existing_edge.type and
-                       edge.source_id == existing_edge.source_id and
-                       edge.target_id == existing_edge.target_id for existing_edge in overarching_kg.edges):
-                    # TODO: Add additional query edge ID onto this edge (if different)?
-                    pass
-                else:
-                    overarching_kg.edges.append(edge)
+        for node in answer_nodes:
+            # Add this node to the overarching knowledge graph, preventing duplicates
+            if any(node.id == existing_node.id for existing_node in overarching_kg.nodes):
+                # TODO: Add additional query node ID onto this node (if different)?
+                pass
+            else:
+                overarching_kg.nodes.append(node)
+
+        for edge in answer_edges:
+            # Add this edge to the overarching knowledge graph, preventing duplicates
+            if any(edge.type == existing_edge.type and
+                   edge.source_id == existing_edge.source_id and
+                   edge.target_id == existing_edge.target_id for existing_edge in overarching_kg.edges):
+                # TODO: Add additional query edge ID onto this edge (if different)?
+                pass
+            else:
+                overarching_kg.edges.append(edge)
 
     def __build_query_id_map(self, results):
         query_id_map = {'edges': dict(), 'nodes': dict()}
