@@ -1,0 +1,90 @@
+# The master list for the translator Datasets,
+# which are subject to convert to an API.
+#
+# Some basic metadata fields are defined as:
+#   "name": a short name for the dataset
+#   "description": a longer description about the dataset
+#   "url": a url that points to the dataset
+#   "translator"  translator-specific attributes:
+#     "enpoint"  dataset access information
+#       "url"  endpoint url
+#       "biolink_model"  yes/no - whether the dataset conforms to the biolink data model
+#       "source_format"  a format of the source file/API
+#       "api_type"  a type of the API (OpenAPI/smartAPI/REST/knowledge-beacon/...)
+#       "api_registry"  a link to a registry contaninig additional information about the endpoint
+#       "parse_code"  a link to code used to parse/generate the dataset
+#     "categories"  categories of data contained in the dataset
+
+
+datasets:
+  - name: BioLink
+    description: Monarch BioLink API
+    url: https://monarchinitiative.org/page/services
+    translator:
+        endpoint:
+          - url: https://biolink-kb.ncats.io/beacon/biolink/
+            biolink_model: yes
+            source_format: API/JSON
+            api_type: knowledge-beacon
+            api_registry: 
+            parse_code: 
+          - url: https://api.monarchinitiative.org/api/
+            biolink_model: yes
+            source_format: API/JSON
+            api_type: knowledge-beacon
+            api_registry: https://github.com/NCATS-Tangerine/translator-api-registry/blob/master/biolink/openapi.yml
+            parse_code:
+        categories:
+          - sequence feature 
+          - gene 
+          - anatomical entity 
+          - phenotype 
+          - cellular component 
+          - cell 
+          - disease 
+          - quality 
+          - variant locus 
+          - sequence alteration 
+          - molecular entity 
+          - clinical_course 
+          - snv 
+          - organism 
+          - genotype 
+          - inheritance 
+
+  - name: HMDB
+    description: Human Metabolome Database
+    url: http://www.hmdb.ca/
+    translator:
+        endpoint:
+          - url: http://www.hmdb.ca/system/downloads/current/hmdb_metabolites.zip
+            biolink_model: no
+            source_format: XML
+          - url: https://translator.ncats.io/hmdb-knowledge-beacon
+            biolink_model: yes
+            source_format: API/JSON
+            api_type: knowledge-beacon
+            api_registry: 
+            parse-code: https://github.com/NCATS-Tangerine/HMDB-knowledge-beacon
+        categories:
+          - metabolite 
+          - disease 
+          - pathway 
+          - cellular location 
+          - biospecimen 
+          - tissue 
+          - protein 
+
+  - name: PubChem
+    description: PubChem is an open chemistry database at the National Institutes of Health (NIH).
+    url: https://pubchem.ncbi.nlm.nih.gov/
+    translator:
+        endpoint:
+          - url: https://pubchemdocs.ncbi.nlm.nih.gov/power-user-gateway
+            biolink_model: no
+            source_format: API/XML
+            api_type: custom
+        categories:
+          - chemical substance
+          - assay
+
