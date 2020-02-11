@@ -52,7 +52,7 @@ class ARAXMessenger:
         message.type = "translator_reasoner_message"
         message.reasoner_id = "ARAX"
         message.tool_version = RTXConfiguration().version
-        message.schema_version = "0.9.2"
+        message.schema_version = "0.9.3"
         message.message_code = "OK"
         message.code_description = "Created empty template Message"
         message.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
