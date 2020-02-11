@@ -182,7 +182,7 @@ class ARAXOverlay:
 
         from Overlay.overlay_clinical_info import OverlayClinicalInfo
         OCI = OverlayClinicalInfo(self.response, self.message, default_params)
-        response = OCI.decorate()  # TODO: refactor this so it's basically another apply() like function
+        response = OCI.decorate()  # TODO: refactor this so it's basically another apply() like function # 606
         return response
 
 
@@ -224,10 +224,10 @@ def main():
     araxdb = RTXFeedback()
 
     #message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
-    # message_dict = araxdb.getMessage(13)  # ibuprofen -> proteins -> disease
-    #message_dict = araxdb.getMessage(14)  # pleuropneumonia -> phenotypic_feature
-    message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature
-
+    # message_dict = araxdb.getMessage(13)  # ibuprofen -> proteins -> disease # work computer
+    #message_dict = araxdb.getMessage(14)  # pleuropneumonia -> phenotypic_feature # work computer
+    # message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature  # work computer
+    message_dict = araxdb.getMessage(5)  # atherosclerosis -> phenotypic_feature  # home computer
 
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger
