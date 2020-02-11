@@ -372,9 +372,11 @@ class ARAXQuery:
             #### This is not a good place to do this, but may need to convert here
             from ARAX_messenger import ARAXMessenger
             from ARAX_expander import ARAXExpander
+            from ARAX_overlay import ARAXOverlay
             messenger = ARAXMessenger()
             expander = ARAXExpander()
             filter = ARAXFilter()
+            overlay = ARAXOverlay()
 
             message = ARAXMessenger().from_dict(message)
 
@@ -404,6 +406,8 @@ class ARAXQuery:
                 elif action['command'] == 'return':
                     action_stats['return_action'] = action
                     break
+                elif action['command'] == 'overlay':  # recognize the overlay command
+                    result = overlay.apply(message, action['parameters'])
                 else:
                     response.error(f"Unrecognized command {action['command']}", error_code="UnrecognizedCommand")
                     print(response.show(level=Response.DEBUG))
@@ -508,8 +512,30 @@ def main():
             "filter(maximum_results=2)",
             "return(message=true, store=false)",
             ] } }
+    elif params.example_number == 5:  # test overlay with ngd: hypertension->protein
+        query = { "previous_message_processing_plan": { "processing_actions": [
+            "create_message",
+            "add_qnode(name=hypertension, id=n00)",
+            "add_qnode(type=protein, is_set=True, id=n01)",
+            "add_qedge(source_id=n01, target_id=n00, id=e00)",
+            "query_graph_reasoner()",
+            "overlay(action=compute_ngd)",
+            "filter(maximum_results=2)",
+            "return(message=true, store=false)",
+            ] } }
+    elif params.example_number == 6:  # test overlay with overlay_clinical_info, paired_concept_freq via COHD. Atherosclerosis-[:has_phenotype]-(:phenotypic_feature)
+        query = { "previous_message_processing_plan": { "processing_actions": [
+            "create_message",
+            "add_qnode(curie=DOID:1936, id=n00)",  # Atherosclerosis
+            "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00, type=has_phenotype)",
+            "query_graph_reasoner()",
+            "overlay(action=overlay_clinical_info, paired_concept_freq=true)",
+            "filter(maximum_results=2)",
+            "return(message=true, store=false)",
+            ] } }
     else:
-        eprint(f"Invalid test number {params.example_number}. Try 1 through 3")
+        eprint(f"Invalid test number {params.example_number}. Try 1 through 6")
         return
 
     if 0:

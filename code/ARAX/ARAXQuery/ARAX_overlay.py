@@ -205,8 +205,8 @@ def main():
     #]
 
     actions_list = [
-        #"overlay(action=compute_ngd)",
-        "overlay(action=overlay_clinical_info, paired_concept_freq=true)",
+        "overlay(action=compute_ngd)",
+        #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
         "return(message=true,store=false)"
     ]
 
@@ -223,11 +223,11 @@ def main():
     from RTXFeedback import RTXFeedback
     araxdb = RTXFeedback()
 
-    #message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
+    message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
     # message_dict = araxdb.getMessage(13)  # ibuprofen -> proteins -> disease # work computer
     #message_dict = araxdb.getMessage(14)  # pleuropneumonia -> phenotypic_feature # work computer
     # message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature  # work computer
-    message_dict = araxdb.getMessage(5)  # atherosclerosis -> phenotypic_feature  # home computer
+    #message_dict = araxdb.getMessage(5)  # atherosclerosis -> phenotypic_feature  # home computer
 
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger
