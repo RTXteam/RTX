@@ -19,7 +19,8 @@ class ARAXOverlay:
         self.parameters = None
         self.allowable_actions = {
             'compute_ngd',
-            'overlay_clinical_info'
+            'overlay_clinical_info',
+            'compute_jaccard'
         }
 
     def describe_me(self):
@@ -185,6 +186,53 @@ class ARAXOverlay:
         response = OCI.decorate()  # TODO: refactor this so it's basically another apply() like function # 606
         return response
 
+    def __compute_jaccard(self, describe=False):
+        """
+        Computes the jaccard distance: starting_node -> {set of intermediate nodes} -> {set of end nodes}.
+        for each end node x, looks at (number of intermediate nodes connected to x) / (total number of intermediate nodes).
+        Basically, which of the end nodes is connected to many of the intermediate nodes. Adds an edge to the KG with the
+        jaccard value, source, and target info as an edge attribute .
+        Allowable parameters:
+        :return:
+        """
+        message = self.message
+        parameters = self.parameters
+        # need two different ones of these since the allowable parameters will depend on the id's that they used
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
+            allowable_parameters = {'action': {'compute_jaccard'},
+                                'start_node_id': set([x.id for x in self.message.query_graph.nodes]),
+                                'intermediate_node_id': set([x.id for x in self.message.query_graph.nodes]),
+                                'end_node_id': set([x.id for x in self.message.query_graph.nodes]),
+                                'virtual_edge_label': {self.parameters['virtual_edge_label'] if 'virtual_edge_label' in self.parameters else "any_string"}
+                                }
+        else:
+            allowable_parameters = {'action': {'compute_jaccard'},
+                                    'start_node_id': {"a node id"},
+                                    'intermediate_node_id': {"a node id"},
+                                    'end_node_id': {"a node id"},
+                                    'virtual_edge_label': {"any string label"}
+                                    }
+        print(allowable_parameters)
+        # A little function to describe what this thing does
+        if describe:
+            print(allowable_parameters)
+            return
+
+        # Make sure only allowable parameters and values have been passed
+        self.check_params(allowable_parameters)
+        # return if bad parameters have been passed
+        if self.response.status != 'OK':
+            return self.response
+
+        # No default parameters to set
+
+        # in the above allowable_parameters, we've already checked if the node id's exist, so no need to check them
+
+        # now do the call out to NGD
+        from Overlay.compute_jaccard import ComputeJaccard
+        JAC = ComputeJaccard(self.response, self.message, self.parameters)
+        response = JAC.compute_jaccard()
+        return response
 
 ##########################################################################################
 def main():
@@ -205,8 +253,9 @@ def main():
     #]
 
     actions_list = [
-        "overlay(action=compute_ngd)",
+        #"overlay(action=compute_ngd)",
         #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
+        "overlay(action=compute_jaccard, start_node_id=qg1, intermediate_node_id=qg1, end_node_id=qg0, virtual_edge_label=J1)",
         "return(message=true,store=false)"
     ]
 
