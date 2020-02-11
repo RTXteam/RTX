@@ -65,7 +65,7 @@ class ARAXExpander:
         response.debug(f"Applying Expand to Message with parameters {parameters}")
 
         # First, extract the sub-query to expand
-        query_sub_graph = self.__extract_subgraph_to_expand()
+        query_sub_graph = self.__extract_subgraph_to_expand(self.parameters['edge_id'])
         if response.status != 'OK':
             return response
 
@@ -88,13 +88,18 @@ class ARAXExpander:
         response.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges")
         return response
 
-    def __extract_subgraph_to_expand(self):
+    def __extract_subgraph_to_expand(self, qedge_ids_to_expand):
+        """
+        This function extracts the portion of the original query graph (stored in message.query_graph) that this current
+        Expand() call will expand.
+        :param qedge_ids_to_expand: A single qedge_id (str) OR a list of qedge_ids
+        :return: A query graph, in Translator API format
+        """
         sub_query_graph = QueryGraph()
         sub_query_graph.nodes = []
         sub_query_graph.edges = []
 
-        # Grab and validate the edge ID passed in
-        qedge_ids_to_expand = self.parameters['edge_id']
+        # Grab and validate the edge ID(s) passed in
         if not qedge_ids_to_expand:
             self.response.error("Expand is missing value for required parameter edge_id", error_code="MissingValue")
         else:
@@ -137,6 +142,99 @@ class ARAXExpander:
 
         return sub_query_graph
 
+    def __get_answer_to_query_using_kg1(self, query_graph):
+        """
+        This function answers a query using KG1 (via the QueryGraphReasoner).
+        NOTE: Later on multiple knowledge providers will be used to Expand, not only KG1.
+        :param query_graph: A query graph, in Translator API format.
+        :return: An answer 'message', in Translator API format.
+        """
+        q = QueryGraphReasoner()
+        self.response.info(f"Sending query graph to QueryGraphReasoner: {query_graph.to_dict()}")
+        answer_message = q.answer(query_graph.to_dict(), TxltrApiFormat=True)
+        if not answer_message.results:
+            self.response.info(f"QueryGraphReasoner found no results for this query graph")
+        else:
+            kg = answer_message.knowledge_graph
+            self.response.info(f"QueryGraphReasoner returned {len(answer_message.results)} results ({len(kg.nodes)} nodes, {len(kg.edges)} edges)")
+
+        return answer_message
+
+    def __add_query_ids_to_answer_kg(self, answer_message):
+        """
+        This function attaches corresponding query edge/node IDs to each edge/node in an answer knowledge graph. These
+        IDs indicate which node/edge in the query graph the given node/edge maps to.
+        :param answer_message: An answer 'message', in Translator API format.
+        :return: None
+        """
+        answer_nodes = answer_message.knowledge_graph.nodes
+        answer_edges = answer_message.knowledge_graph.edges
+        query_id_map = self.__build_query_id_map(answer_message.results)
+
+        for node in answer_nodes:
+            # Tack this node's corresponding query node ID onto it
+            node.qnode_id = query_id_map['nodes'].get(node.id)
+            if node.qnode_id is None:
+                self.response.warning(f"Node {node.id} is missing a qnode_id")
+
+        for edge in answer_edges:
+            # Tack this edge's corresponding query edge ID onto it (needed for later processing)
+            edge.qedge_id = query_id_map['edges'].get(edge.id)
+            if edge.qedge_id is None:
+                self.response.warning(f"Edge {edge.id} is missing a qedge_id")
+
+    def __merge_answer_kg_into_overarching_kg(self, knowledge_graph):
+        """
+        This function merges a knowledge graph into the overarching knowledge graph (stored in message.knowledge_graph).
+        It prevents duplicate nodes/edges in the merged kg.
+        :param knowledge_graph: A knowledge graph, in Translator API format.
+        :return: None
+        """
+        overarching_kg = self.message.knowledge_graph
+        answer_nodes = knowledge_graph.nodes
+        answer_edges = knowledge_graph.edges
+
+        for node in answer_nodes:
+            # Check if this is a duplicate node
+            if any(node.id == existing_node.id for existing_node in overarching_kg.nodes):
+                # TODO: Add additional query node ID onto this node (if different)?
+                pass
+            else:
+                overarching_kg.nodes.append(node)
+
+        for edge in answer_edges:
+            # Check if this is a duplicate edge
+            if any(edge.type == existing_edge.type and
+                   edge.source_id == existing_edge.source_id and
+                   edge.target_id == existing_edge.target_id for existing_edge in overarching_kg.edges):
+                # TODO: Add additional query edge ID onto this edge (if different)?
+                pass
+            else:
+                overarching_kg.edges.append(edge)
+
+    def __build_query_id_map(self, results):
+        """
+        This is a helper function that creates a dictionary mapping each edge/node in a query's results to the
+        qedge/qnode it corresponds to in the query graph that produced those results.
+        :param results: The 'results' of a query, in Translator API format.
+        :return: A dictionary
+        """
+        query_id_map = {'edges': dict(), 'nodes': dict()}
+
+        for result in results:
+            for edge_binding in result.edge_bindings:
+                for edge_id in edge_binding['kg_id']:
+                    qedge_id = edge_binding['qg_id']
+                    query_id_map['edges'][edge_id] = qedge_id
+
+            for node_binding in result.node_bindings:
+                node_id = node_binding['kg_id']
+                qnode_id = node_binding['qg_id']
+                query_id_map['nodes'][node_id] = qnode_id
+
+        # TODO: Allow multiple query graph IDs per node/edge?
+        return query_id_map
+
     def __copy_qedge(self, qedge):
         new_qedge = QEdge()
         new_qedge.id = qedge.id
@@ -155,75 +253,6 @@ class ARAXExpander:
         new_qnode.is_set = qnode.is_set
         return new_qnode
 
-    def __get_answer_to_query_using_kg1(self, query_graph):
-        q = QueryGraphReasoner()
-        self.response.info(f"Sending query graph to QueryGraphReasoner: {query_graph.to_dict()}")
-        answer_message = q.answer(query_graph.to_dict(), TxltrApiFormat=True)
-        if not answer_message.results:
-            self.response.info(f"QueryGraphReasoner found no results for this query graph")
-        else:
-            kg = answer_message.knowledge_graph
-            self.response.info(f"QueryGraphReasoner returned {len(answer_message.results)} results ({len(kg.nodes)} nodes, {len(kg.edges)} edges)")
-
-        return answer_message
-
-    def __add_query_ids_to_answer_kg(self, answer_message):
-        answer_nodes = answer_message.knowledge_graph.nodes
-        answer_edges = answer_message.knowledge_graph.edges
-        query_id_map = self.__build_query_id_map(answer_message.results)
-
-        for node in answer_nodes:
-            # Tack this node's corresponding query node ID onto it
-            node.qnode_id = query_id_map['nodes'].get(node.id)
-            if node.qnode_id is None:
-                self.response.warning(f"Node {node.id} is missing a qnode_id")
-
-        for edge in answer_edges:
-            # Tack this edge's corresponding query edge ID onto it (needed for later processing)
-            edge.qedge_id = query_id_map['edges'].get(edge.id)
-            if edge.qedge_id is None:
-                self.response.warning(f"Edge {edge.id} is missing a qedge_id")
-
-    def __merge_answer_kg_into_overarching_kg(self, knowledge_graph):
-        overarching_kg = self.message.knowledge_graph
-        answer_nodes = knowledge_graph.nodes
-        answer_edges = knowledge_graph.edges
-
-        for node in answer_nodes:
-            # Add this node to the overarching knowledge graph, preventing duplicates
-            if any(node.id == existing_node.id for existing_node in overarching_kg.nodes):
-                # TODO: Add additional query node ID onto this node (if different)?
-                pass
-            else:
-                overarching_kg.nodes.append(node)
-
-        for edge in answer_edges:
-            # Add this edge to the overarching knowledge graph, preventing duplicates
-            if any(edge.type == existing_edge.type and
-                   edge.source_id == existing_edge.source_id and
-                   edge.target_id == existing_edge.target_id for existing_edge in overarching_kg.edges):
-                # TODO: Add additional query edge ID onto this edge (if different)?
-                pass
-            else:
-                overarching_kg.edges.append(edge)
-
-    def __build_query_id_map(self, results):
-        query_id_map = {'edges': dict(), 'nodes': dict()}
-
-        for result in results:
-            for edge_binding in result.edge_bindings:
-                for edge_id in edge_binding['kg_id']:
-                    qedge_id = edge_binding['qg_id']
-                    query_id_map['edges'][edge_id] = qedge_id
-
-            for node_binding in result.node_bindings:
-                node_id = node_binding['kg_id']
-                qnode_id = node_binding['qg_id']
-                query_id_map['nodes'][node_id] = qnode_id
-
-        # TODO: Allow multiple query graph IDs per node/edge?
-        return query_id_map
-
 ##########################################################################################
 def main():
 
@@ -239,6 +268,9 @@ def main():
     #### Set a list of actions
     actions_list = [
         "create_message",
+        # "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",
+        # "add_qnode(id=n01, type=protein, is_set=true)",
+        # "add_qedge(id=e00, type=physically_interacts_with, source_id=n00, target_id=n01)",
         "add_qnode(id=n00, curie=DOID:14330)",
         "add_qnode(id=n01, type=protein, is_set=True)",
         "add_qnode(id=n02, type=chemical_substance)",
@@ -289,6 +321,6 @@ def main():
 
     #### Show the final response
     print(response.show(level=Response.DEBUG))
-    #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph)),sort_keys=True,indent=2))
 
 if __name__ == "__main__": main()
