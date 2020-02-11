@@ -8,62 +8,57 @@ info:
   license:
     name: "Apache 2.0"
     url: "https://www.apache.org/licenses/LICENSE-2.0.html"
-host: "rtx.ncats.io"
+host: "arax.rtx.ai"
 basePath: "/api/rtx/v1"
 externalDocs:
   description: "Documentation for the RTX web service"
-  url: "https://rtx.ncats.io/overview.html"
+  url: "https://arax.rtx.ai/overview.html"
 tags:
 - name: "translate"
   description: "Translate natural language question into a standardized query"
   externalDocs:
     description: "Documentation for the RTX translate function"
-    url: "https://rtx.ncats.io/overview.html#translate"
+    url: "https://arax.rtx.ai/overview.html#translate"
 - name: "predicates"
   description: "Get all supported relationships in the knowledge graph, organized by source and target"
   externalDocs:
     description: "Documentation for the RTX predicates function"
-    url: "https://rtx.ncats.io/overview.html#predicates"
+    url: "https://arax.rtx.ai/overview.html#predicates"
 - name: "query"
   description: "Query RTX using a predefined question type"
   externalDocs:
     description: "Documentation for the RTX query function"
-    url: "https://rtx.ncats.io/overview.html#query"
+    url: "https://arax.rtx.ai/overview.html#query"
 - name: "entity"
   description: "Obtain the CURIE and type of some entity by name"
   externalDocs:
     description: "Documentation for the RTX entity endpoint"
-    url: "https://rtx.ncats.io/overview.html#entity"
+    url: "https://arax.rtx.ai/overview.html#entity"
 - name: "PubmedMeshNgd"
   description: "Query to get the Normalized Google Distance between two MeSH terms based on co-occurance in all PubMed article annotations"
   externalDocs:
     description: "Documentation for the RTX PubmedMeshNgd function"
-    url: "https://rtx.ncats.io/overview.html#PubmedMeshNgd"
+    url: "https://arax.rtx.ai/overview.html#PubmedMeshNgd"
 - name: "message"
   description: "Request stored messages and feedback for messages"
   externalDocs:
     description: "Documentation for the RTX message function"
-    url: "https://rtx.ncats.io/overview.html#message"
+    url: "https://arax.rtx.ai/overview.html#message"
 - name: "result"
   description: "Request stored results and feedback for results"
   externalDocs:
     description: "Documentation for the RTX result function"
-    url: "https://rtx.ncats.io/overview.html#result"
+    url: "https://arax.rtx.ai/overview.html#result"
 - name: "exampleQuestions"
   description: "Request a list of example questions that can be answered by the system"
   externalDocs:
     description: "Documentation for the RTX exampleQuestions function"
-    url: "https://rtx.ncats.io/overview.html#exampleQuestions"
+    url: "https://arax.rtx.ai/overview.html#exampleQuestions"
 - name: "feedback"
   description: "Request feedback data"
   externalDocs:
     description: "Documentation for the RTX feedback function"
-    url: "https://rtx.ncats.io/overview.html#feedback"
-- name: types
-  description: Return data types in the knowledge graph
-  externalDocs:
-    description: Documentation for the reasoner types function
-    url: 'https://rtx.ncats.io/overview.html#types'
+    url: "https://arax.rtx.ai/overview.html#feedback"
 schemes:
 - "https"
 paths:
@@ -371,79 +366,6 @@ paths:
         400:
           description: "Invalid status value"
       x-swagger-router-controller: "swagger_server.controllers.result_controller"
-  /types/nodes:
-    get:
-      tags:
-      - types
-      summary: Obtain all possible types of nodes
-      description: ''
-      operationId: get_node_types
-      produces:
-      - "application/json"
-      responses:
-        200:
-          description: "successful operation"
-        404:
-          description: "No types found"
-  /types/edges:
-    get:
-      tags:
-      - types
-      summary: Obtain all possible types of edges
-      description: ''
-      operationId: get_all_edge_types
-      produces:
-      - "application/json"
-      responses:
-        200:
-          description: "successful operation"
-        404:
-          description: "No types found"
-  /types/edges/{node_type}:
-    get:
-      tags:
-      - types
-      summary: Obtain all possible types of edges linked to a node_type
-      description: ''
-      operationId: get_node_edge_types
-      parameters:
-      - in: path
-        name: node_type
-        description: Node type to filter possible edges by
-        required: true
-        type: string
-      produces:
-      - "application/json"
-      responses:
-        200:
-          description: "successful operation"
-        404:
-          description: "No types found"
-  /types/edges/{node_type1}/{node_type2}:
-    get:
-      tags:
-      - types
-      summary: Obtain all possible types of edges linking node_type1 and node_type2
-      description: ''
-      operationId: get_node_to_node_edge_types
-      parameters:
-      - in: path
-        name: node_type1
-        description: Node type 1 to filter possible edges by
-        required: true
-        type: string
-      - in: path
-        name: node_type2
-        description: Node type 2 to filter possible edges by
-        required: true
-        type: string
-      produces:
-      - "application/json"
-      responses:
-        200:
-          description: "successful operation"
-        404:
-          description: "No types found"
 definitions:
   Question:
     type: "object"
@@ -520,7 +442,7 @@ definitions:
     properties:
       previous_message_uris:
         type: "array"
-        example: [ "https://rtx.ncats.io/api/rtx/v1/message/300" ]
+        example: [ "https://arax.rtx.ai/api/rtx/v1/message/300" ]
         description: "List of URIs for Message objects to fetch and process"
         items:
           type: "string"
@@ -546,7 +468,7 @@ definitions:
     properties:
       context:
         type: "string"
-        example: "https://rtx.ncats.io/ns/translator.jsonld"
+        example: "https://arax.rtx.ai/ns/translator.jsonld"
         description: "JSON-LD context URI"
       type:
         type: "string"
@@ -554,7 +476,7 @@ definitions:
         description: "Entity type of this message"
       id:
         type: "string"
-        example: "https://rtx.ncats.io/api/rtx/v1/message/123"
+        example: "https://arax.rtx.ai/api/rtx/v1/message/123"
         description: "URI for this message"
       reasoner_id:
         type: "string"
@@ -646,14 +568,19 @@ definitions:
         description: "Connection information for a remote knowledge graph that is a substitute for local KnowledgeGraph contained in this Message"
         items:
           $ref: "#/definitions/RemoteKnowledgeGraph"
-    additionalProperties: true
+      log:
+        description: "List of logged information lines from the ARA, e.g. logged INFO, WARNING, and ERROR message lines"
+        type: "array"
+        items:
+          type: string
+      additionalProperties: true
   Result:
     type: "object"
     description: "One of potentially several results or answers for a query"
     properties:
       id:
         type: "string"
-        example: "https://rtx.ncats.io/api/rtx/v1/result/234"
+        example: "https://arax.rtx.ai/api/rtx/v1/result/234"
         description: "URI for this message"
       description:
         type: "string"
@@ -725,6 +652,9 @@ definitions:
         description: List of QEdge-KEdge bindings.
         items:
           $ref: '#/definitions/EdgeBinding'
+    required:
+      - node_bindings
+      - edge_bindings
   NodeBinding:
     type: object
     properties:
@@ -764,6 +694,9 @@ definitions:
         items:
           $ref: "#/definitions/Edge"
     additionalProperties: true
+    required:
+      - nodes
+      - edges
   RemoteKnowledgeGraph:
     type: "object"
     description: "A thought graph associated with this result that is not repeated here, but stored elsewhere in a way that can be remotely accessed by the reader of this Message"
@@ -777,7 +710,12 @@ definitions:
         description: "Credentials needed for programmatic access to the remote knowledge graph"
         items:
           $ref: "#/definitions/Credentials"
+      protocol:
+        type: string
+        default: neo4j
     additionalProperties: true
+    required:
+      - url
   Credentials:
     description: "Credentials needed for programmatic access to the remote knowledge graph"
     type: "object"
@@ -807,6 +745,9 @@ definitions:
         items:
           $ref: "#/definitions/QEdge"
     additionalProperties: true
+    required:
+      - nodes
+      - edges
   QNode:
     type: "object"
     description: "A node in the QueryGraph"
@@ -820,10 +761,14 @@ definitions:
         example: "OMIM:603903"
         description: "CURIE identifier for this node"
       type:
-        type: "string"
-        description: "Entity type of this node (e.g., protein, disease, etc.)"
-        example: "disease"
+        $ref: '#/definitions/BiolinkEntity'
+      is_set:
+        description: "Boolean that if set to true, indicates the QNode represents a set of entities rather than an individual entity"
+        type: "boolean"
+        example: "true"
     additionalProperties: true
+    required:
+      - id
   QEdge:
     type: "object"
     description: "An edge in the QueryGraph"
@@ -833,9 +778,7 @@ definitions:
         example: "e00"
         description: "QueryGraph internal identifier for this QEdge. Recommended form: e00, e01, e02, etc."
       type:
-        type: "string"
-        example: "affects"
-        description: "Higher-level relationship type of this edge"
+        $ref: '#/definitions/BiolinkRelation'
       relation:
         type: "string"
         example: "upregulates"
@@ -853,6 +796,10 @@ definitions:
         example: "true"
         description: "Boolean that if set to true, indicates the edge statement is negated i.e. is not true"
     additionalProperties: true
+    required:
+      - id
+      - source_id
+      - target_id
   Node:
     type: "object"
     description: "A node in the thought subgraph"
@@ -888,7 +835,13 @@ definitions:
         description: "A list of arbitrary attributes for the node"
         items:
           $ref: "#/definitions/NodeAttribute"
+      qnode_id:
+        description: "Identifier (id) of a QueryGraph QNode in this same message that yielded this Node in the KnowledgeGraph"
+        type: "string"
+        example: "n00"
     additionalProperties: true
+    required:
+      - id
   NodeAttribute:
     type: "object"
     description: "A generic attribute for a node"
@@ -919,9 +872,7 @@ definitions:
         example: "553903"
         description: "Local identifier for this node which is unique within this KnowledgeGraph, and perhaps within the source reasoner's knowledge graph"
       type:
-        type: "string"
-        example: "affects"
-        description: "Higher-level relationship type of this edge"
+        $ref: '#/definitions/BiolinkRelation'
       relation:
         type: "string"
         example: "upregulates"
@@ -979,7 +930,15 @@ definitions:
         description: "A list of additional attributes for this edge"
         items:
           $ref: "#/definitions/EdgeAttribute"
+      qedge_id:
+        description: "Identifier (id) of a QueryGraph QEdge in this same message that yielded this Edge in the KnowledgeGraph"
+        type: "string"
+        example: "n00"
     additionalProperties: true
+    required:
+      - id
+      - source_id
+      - target_id
   EdgeAttribute:
     type: "object"
     description: "A generic additional attribute for an edge"
@@ -1007,11 +966,11 @@ definitions:
     properties:
       id:
         type: "string"
-        example: "https://rtx.ncats.io/api/rtx/v1/result/234/feedback/56"
+        example: "https://arax.rtx.ai/api/rtx/v1/result/234/feedback/56"
         description: "URI for this feedback item"
       result_id:
         type: "string"
-        example: "https://rtx.ncats.io/api/rtx/v1/result/234"
+        example: "https://arax.rtx.ai/api/rtx/v1/result/234"
         description: "URI for the result that this feedback corresponds to"
       expertise_level_id:
         type: "integer"
@@ -1055,3 +1014,17 @@ definitions:
         description: "List of feedback posts for this entire message"
         items:
           $ref: "#/definitions/Feedback"
+  BiolinkEntity:
+    description: A subclass of named_thing (snake_case)
+    type: string
+    externalDocs:
+      description: Biolink model entities
+      url: https://biolink.github.io/biolink-model/docs/NamedThing.html
+    example: disease
+  BiolinkRelation:
+    description: A relation, i.e. child of related_to (snake_case)
+    type: string
+    externalDocs:
+      description: Biolink model relations
+      url: https://biolink.github.io/biolink-model/docs/related_to.html
+    example: affects

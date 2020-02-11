@@ -17,7 +17,7 @@ class Edge(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, id: str=None, type: BiolinkRelation=None, relation: str=None, source_id: str=None, target_id: str=None, is_defined_by: str=None, defined_datetime: str=None, provided_by: str=None, confidence: float=None, weight: float=None, publications: List[str]=None, evidence_type: str=None, qualifiers: str=None, negated: bool=None, edge_attributes: List[EdgeAttribute]=None):  # noqa: E501
+    def __init__(self, id: str=None, type: BiolinkRelation=None, relation: str=None, source_id: str=None, target_id: str=None, is_defined_by: str=None, defined_datetime: str=None, provided_by: str=None, confidence: float=None, weight: float=None, publications: List[str]=None, evidence_type: str=None, qualifiers: str=None, negated: bool=None, edge_attributes: List[EdgeAttribute]=None, qedge_id: str=None):  # noqa: E501
         """Edge - a model defined in Swagger
 
         :param id: The id of this Edge.  # noqa: E501
@@ -50,6 +50,8 @@ class Edge(Model):
         :type negated: bool
         :param edge_attributes: The edge_attributes of this Edge.  # noqa: E501
         :type edge_attributes: List[EdgeAttribute]
+        :param qedge_id: The qedge_id of this Edge.  # noqa: E501
+        :type qedge_id: str
         """
         self.swagger_types = {
             'id': str,
@@ -66,7 +68,8 @@ class Edge(Model):
             'evidence_type': str,
             'qualifiers': str,
             'negated': bool,
-            'edge_attributes': List[EdgeAttribute]
+            'edge_attributes': List[EdgeAttribute],
+            'qedge_id': str
         }
 
         self.attribute_map = {
@@ -84,7 +87,8 @@ class Edge(Model):
             'evidence_type': 'evidence_type',
             'qualifiers': 'qualifiers',
             'negated': 'negated',
-            'edge_attributes': 'edge_attributes'
+            'edge_attributes': 'edge_attributes',
+            'qedge_id': 'qedge_id'
         }
 
         self._id = id
@@ -102,6 +106,7 @@ class Edge(Model):
         self._qualifiers = qualifiers
         self._negated = negated
         self._edge_attributes = edge_attributes
+        self._qedge_id = qedge_id
 
     @classmethod
     def from_dict(cls, dikt) -> 'Edge':
@@ -462,3 +467,26 @@ class Edge(Model):
         """
 
         self._edge_attributes = edge_attributes
+
+    @property
+    def qedge_id(self) -> str:
+        """Gets the qedge_id of this Edge.
+
+        Identifier (id) of a QueryGraph QEdge in this same message that yielded this Edge in the KnowledgeGraph  # noqa: E501
+
+        :return: The qedge_id of this Edge.
+        :rtype: str
+        """
+        return self._qedge_id
+
+    @qedge_id.setter
+    def qedge_id(self, qedge_id: str):
+        """Sets the qedge_id of this Edge.
+
+        Identifier (id) of a QueryGraph QEdge in this same message that yielded this Edge in the KnowledgeGraph  # noqa: E501
+
+        :param qedge_id: The qedge_id of this Edge.
+        :type qedge_id: str
+        """
+
+        self._qedge_id = qedge_id
