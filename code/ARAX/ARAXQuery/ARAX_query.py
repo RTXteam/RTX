@@ -534,8 +534,19 @@ def main():
             "filter(maximum_results=2)",
             "return(message=true, store=false)",
             ] } }
+    elif params.example_number == 7:  # stub to test out the compute_jaccard feature
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(curie=DOID:14330, id=n00)",  # parkinsons
+            "add_qnode(type=protein, is_set=True, id=n01)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n02)",
+            "add_qedge(source_id=n01, target_id=n00, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01)",
+            "expand(edge_id=[e00,e01])",
+            "return(message=true, store=false)",
+        ]}}
     else:
-        eprint(f"Invalid test number {params.example_number}. Try 1 through 6")
+        eprint(f"Invalid test number {params.example_number}. Try 1 through 7")
         return
 
     if 0:
@@ -555,6 +566,7 @@ def main():
     #### Print out the message that came back
     print(response.show(level=Response.DEBUG))
     print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
 
 
 if __name__ == "__main__": main()
