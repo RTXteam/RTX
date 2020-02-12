@@ -1,19 +1,17 @@
 #!/bin/env python3
 
+
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 import sys
 import os
-import json
-import ast
-import re
 import traceback
 
 from response import Response
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
-from swagger_server.models.node import Node
 from swagger_server.models.query_graph import QueryGraph
+from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.q_node import QNode
 from swagger_server.models.q_edge import QEdge
 
@@ -31,7 +29,6 @@ class ARAXExpander:
 
     #### Top level decision maker for applying filters
     def apply(self, input_message, input_parameters):
-
         #### Define a default response
         response = Response()
         self.response = response
@@ -65,7 +62,11 @@ class ARAXExpander:
         #### Do the actual expansion!
         response.debug(f"Applying Expand to Message with parameters {parameters}")
 
-        # First, extract the sub-query to expand
+        # Convert message knowledge graph to dictionary format, for faster processing
+        dict_version_of_kg = self.__convert_standard_kg_to_dict_kg(self.message.knowledge_graph)
+        self.message.knowledge_graph = dict_version_of_kg
+
+        # Extract the sub-query to expand
         query_sub_graph = self.__extract_subgraph_to_expand(self.parameters['edge_id'])
         if response.status != 'OK':
             return response
@@ -83,6 +84,10 @@ class ARAXExpander:
         self.__merge_answer_kg_into_overarching_kg(answer_message.knowledge_graph)
         if response.status != 'OK':
             return response
+
+        # Convert message knowledge graph back to API standard format
+        standard_kg = self.__convert_dict_kg_to_standard_kg(self.message.knowledge_graph)
+        self.message.knowledge_graph = standard_kg
 
         #### Return the response and done
         kg = self.message.knowledge_graph
@@ -128,7 +133,7 @@ class ARAXExpander:
 
                         # Handle case where query node is a set and we need to use answers from a prior Expand()
                         if new_qnode.is_set:
-                            curies_of_kg_nodes_with_this_qnode_id = [node.id for node in self.message.knowledge_graph.nodes
+                            curies_of_kg_nodes_with_this_qnode_id = [node.id for node_key, node in self.message.knowledge_graph['nodes'].items()
                                                                      if node.qnode_id == new_qnode.id]
                             if len(curies_of_kg_nodes_with_this_qnode_id):
                                 new_qnode.curie = curies_of_kg_nodes_with_this_qnode_id
@@ -160,9 +165,13 @@ class ARAXExpander:
             if not answer_message.results:
                 self.response.info(f"QueryGraphReasoner found no results for this query graph")
             else:
+                # Convert our answer knowledge graph into dictionary format (for faster processing)
+                dict_answer_kg = self.__convert_standard_kg_to_dict_kg(answer_message.knowledge_graph)
+                answer_message.knowledge_graph = dict_answer_kg
+
                 kg = answer_message.knowledge_graph
                 self.response.info(
-                    f"QueryGraphReasoner returned {len(answer_message.results)} results ({len(kg.nodes)} nodes, {len(kg.edges)} edges)")
+                    f"QueryGraphReasoner returned {len(answer_message.results)} results ({len(kg['nodes'])} nodes, {len(kg['edges'])} edges)")
 
         return answer_message
 
@@ -173,21 +182,21 @@ class ARAXExpander:
         :param answer_message: An answer 'message', in Translator API format.
         :return: None
         """
-        answer_nodes = answer_message.knowledge_graph.nodes
-        answer_edges = answer_message.knowledge_graph.edges
+        answer_nodes = answer_message.knowledge_graph.get('nodes')
+        answer_edges = answer_message.knowledge_graph.get('edges')
         query_id_map = self.__build_query_id_map(answer_message.results)
 
-        for node in answer_nodes:
+        for node_key, node in answer_nodes.items():
             # Tack this node's corresponding query node ID onto it
-            node.qnode_id = query_id_map['nodes'].get(node.id)
+            node.qnode_id = query_id_map['nodes'].get(node_key)
             if node.qnode_id is None:
-                self.response.warning(f"Node {node.id} is missing a qnode_id")
+                self.response.warning(f"Node {node_key} is missing a qnode_id")
 
-        for edge in answer_edges:
+        for edge_key, edge in answer_edges.items():
             # Tack this edge's corresponding query edge ID onto it (needed for later processing)
-            edge.qedge_id = query_id_map['edges'].get(edge.id)
+            edge.qedge_id = query_id_map['edges'].get(edge_key)
             if edge.qedge_id is None:
-                self.response.warning(f"Edge {edge.id} is missing a qedge_id")
+                self.response.warning(f"Edge {edge_key} is missing a qedge_id")
 
     def __merge_answer_kg_into_overarching_kg(self, knowledge_graph):
         """
@@ -196,27 +205,26 @@ class ARAXExpander:
         :param knowledge_graph: A knowledge graph, in Translator API format.
         :return: None
         """
-        overarching_kg = self.message.knowledge_graph
-        answer_nodes = knowledge_graph.nodes
-        answer_edges = knowledge_graph.edges
+        answer_nodes = knowledge_graph.get('nodes')
+        answer_edges = knowledge_graph.get('edges')
+        existing_nodes = self.message.knowledge_graph.get('nodes')
+        existing_edges = self.message.knowledge_graph.get('edges')
 
-        for node in answer_nodes:
+        for node_key, node in answer_nodes.items():
             # Check if this is a duplicate node
-            if any(node.id == existing_node.id for existing_node in overarching_kg.nodes):
+            if existing_nodes.get(node_key):
                 # TODO: Add additional query node ID onto this node (if different)?
                 pass
             else:
-                overarching_kg.nodes.append(node)
+                existing_nodes[node_key] = node
 
-        for edge in answer_edges:
+        for edge_key, edge in answer_edges.items():
             # Check if this is a duplicate edge
-            if any(edge.type == existing_edge.type and
-                   edge.source_id == existing_edge.source_id and
-                   edge.target_id == existing_edge.target_id for existing_edge in overarching_kg.edges):
+            if existing_edges.get(edge_key):
                 # TODO: Add additional query edge ID onto this edge (if different)?
                 pass
             else:
-                overarching_kg.edges.append(edge)
+                existing_edges[edge_key] = edge
 
     def __build_query_id_map(self, results):
         """
@@ -240,6 +248,26 @@ class ARAXExpander:
 
         # TODO: Allow multiple query graph IDs per node/edge?
         return query_id_map
+
+    def __convert_standard_kg_to_dict_kg(self, knowledge_graph):
+        dict_kg = dict()
+        dict_kg['nodes'] = dict()
+        dict_kg['edges'] = dict()
+        for node in knowledge_graph.nodes:
+            dict_kg['nodes'][node.id] = node
+        for edge in knowledge_graph.edges:
+            dict_kg['edges'][edge.id] = edge
+        return dict_kg
+
+    def __convert_dict_kg_to_standard_kg(self, dict_kg):
+        standard_kg = KnowledgeGraph()
+        standard_kg.nodes = []
+        standard_kg.edges = []
+        for node_key, node in dict_kg.get('nodes').items():
+            standard_kg.nodes.append(node)
+        for edge_key, edge in dict_kg.get('edges').items():
+            standard_kg.edges.append(edge)
+        return standard_kg
 
     def __copy_qedge(self, qedge):
         new_qedge = QEdge()
@@ -274,16 +302,22 @@ def main():
     #### Set a list of actions
     actions_list = [
         "create_message",
-        # "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",
+        # "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
         # "add_qnode(id=n01, type=protein, is_set=true)",
         # "add_qedge(id=e00, type=physically_interacts_with, source_id=n00, target_id=n01)",
-        "add_qnode(id=n00, curie=DOID:14330)",
+        "add_qnode(id=n00, curie=DOID:14330)",  # parkinson's
         "add_qnode(id=n01, type=protein, is_set=True)",
         "add_qnode(id=n02, type=chemical_substance)",
         "add_qedge(id=e00, source_id=n01, target_id=n00, type=gene_associated_with_condition)",
         "add_qedge(id=e01, source_id=n01, target_id=n02, type=physically_interacts_with)",
         "expand(edge_id=e00)",
         "expand(edge_id=e01)",
+        # "add_qnode(curie=DOID:8398, id=n00)",  # osteoarthritis
+        # "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
+        # "add_qnode(type=disease, is_set=true, id=n02)",
+        # "add_qedge(source_id=n01, target_id=n00, id=e00)",
+        # "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        # "expand(edge_id=[e00,e01])",
         "return(message=true, store=false)",
     ]
 
