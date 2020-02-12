@@ -589,14 +589,14 @@ def main():
 
     #### Print out the message that came back
     print(response.show(level=Response.DEBUG))
-    print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
-    print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
-    # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
-    #vals = []
-    #for edge in message.knowledge_graph.edges:
-    #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
-    #        vals.append(edge.edge_attributes.pop().value)
-    #print(sorted(vals))
+    #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
+    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
+    vals = []
+    for edge in message.knowledge_graph.edges:
+        if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
+            vals.append(edge.edge_attributes.pop().value)
+    print(sorted(vals))
 
 
 if __name__ == "__main__": main()
