@@ -198,19 +198,20 @@ class ARAXOverlay:
         message = self.message
         parameters = self.parameters
         # need two different ones of these since the allowable parameters will depend on the id's that they used
+        # TODO: the start_node_id CANNOT be a set
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'compute_jaccard'},
                                 'start_node_id': set([x.id for x in self.message.query_graph.nodes]),
                                 'intermediate_node_id': set([x.id for x in self.message.query_graph.nodes]),
                                 'end_node_id': set([x.id for x in self.message.query_graph.nodes]),
-                                'virtual_edge_label': {self.parameters['virtual_edge_label'] if 'virtual_edge_label' in self.parameters else "any_string"}
+                                'virtual_edge_type': {self.parameters['virtual_edge_type'] if 'virtual_edge_type' in self.parameters else "any_string"}
                                 }
         else:
             allowable_parameters = {'action': {'compute_jaccard'},
                                     'start_node_id': {"a node id"},
                                     'intermediate_node_id': {"a node id"},
                                     'end_node_id': {"a node id"},
-                                    'virtual_edge_label': {"any string label"}
+                                    'virtual_edge_type': {"any string label"}
                                     }
         print(allowable_parameters)
         # A little function to describe what this thing does
@@ -255,7 +256,7 @@ def main():
     actions_list = [
         #"overlay(action=compute_ngd)",
         #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
-        "overlay(action=compute_jaccard, start_node_id=qg1, intermediate_node_id=qg1, end_node_id=qg0, virtual_edge_label=J1)",
+        "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
         "return(message=true,store=false)"
     ]
 
@@ -272,11 +273,12 @@ def main():
     from RTXFeedback import RTXFeedback
     araxdb = RTXFeedback()
 
-    message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
+    #message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
     # message_dict = araxdb.getMessage(13)  # ibuprofen -> proteins -> disease # work computer
     #message_dict = araxdb.getMessage(14)  # pleuropneumonia -> phenotypic_feature # work computer
     # message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature  # work computer
     #message_dict = araxdb.getMessage(5)  # atherosclerosis -> phenotypic_feature  # home computer
+    message_dict = araxdb.getMessage(10)
 
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger
@@ -318,8 +320,9 @@ def main():
 
     # just print off the values
     print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
-    #for edge in message.knowledge_graph.edges:
-    #    print(edge.edge_attributes.pop().value)
+    for edge in message.knowledge_graph.edges:
+        if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
+            print(edge.edge_attributes.pop().value)
     print(response.show(level=Response.DEBUG))
     #print(actions_parser.parse(actions_list))
 
