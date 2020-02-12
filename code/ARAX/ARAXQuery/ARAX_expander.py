@@ -7,6 +7,7 @@ import os
 import json
 import ast
 import re
+import traceback
 
 from response import Response
 
@@ -85,16 +86,17 @@ class ARAXExpander:
 
         #### Return the response and done
         kg = self.message.knowledge_graph
-        response.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges")
+        response.info(f"After expansion, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges")
         return response
 
     def __extract_subgraph_to_expand(self, qedge_ids_to_expand):
         """
         This function extracts the portion of the original query graph (stored in message.query_graph) that this current
-        Expand() call will expand.
+        expand() call will expand, based on the query edge ID(s) specified.
         :param qedge_ids_to_expand: A single qedge_id (str) OR a list of qedge_ids
         :return: A query graph, in Translator API format
         """
+        query_graph = self.message.query_graph
         sub_query_graph = QueryGraph()
         sub_query_graph.nodes = []
         sub_query_graph.edges = []
@@ -107,10 +109,6 @@ class ARAXExpander:
             if type(qedge_ids_to_expand) is not list:
                 qedge_ids_to_expand = [qedge_ids_to_expand]
 
-            query_graph = self.message.query_graph
-            knowledge_graph = self.message.knowledge_graph
-
-            # Build a query graph with the specified subset of nodes/edges from the larger query graph
             for qedge_id in qedge_ids_to_expand:
                 # Make sure this query edge ID actually exists in the larger query graph
                 if not any(edge.id == qedge_id for edge in query_graph.edges):
@@ -121,18 +119,17 @@ class ARAXExpander:
                     qnode_ids = [qedge_to_expand.source_id, qedge_to_expand.target_id]
                     qnodes = [node for node in query_graph.nodes if node.id in qnode_ids]
 
-                    # Create a copy of this edge for our new sub query graph
+                    # Add (a copy of) this edge to our new query sub graph
                     new_qedge = self.__copy_qedge(qedge_to_expand)
                     sub_query_graph.edges.append(new_qedge)
 
-                    # Create copies of this edge's two nodes for our new sub query graph
                     for qnode in qnodes:
                         new_qnode = self.__copy_qnode(qnode)
 
                         # Handle case where query node is a set and we need to use answers from a prior Expand()
                         if new_qnode.is_set:
-                            curies_of_kg_nodes_with_this_qnode_id = [node.id for node in knowledge_graph.nodes if
-                                                                     node.qnode_id == new_qnode.id]
+                            curies_of_kg_nodes_with_this_qnode_id = [node.id for node in self.message.knowledge_graph.nodes
+                                                                     if node.qnode_id == new_qnode.id]
                             if len(curies_of_kg_nodes_with_this_qnode_id):
                                 new_qnode.curie = curies_of_kg_nodes_with_this_qnode_id
 
@@ -149,14 +146,23 @@ class ARAXExpander:
         :param query_graph: A query graph, in Translator API format.
         :return: An answer 'message', in Translator API format.
         """
-        q = QueryGraphReasoner()
+        answer_message = None
         self.response.info(f"Sending query graph to QueryGraphReasoner: {query_graph.to_dict()}")
-        answer_message = q.answer(query_graph.to_dict(), TxltrApiFormat=True)
-        if not answer_message.results:
-            self.response.info(f"QueryGraphReasoner found no results for this query graph")
+
+        try:
+            QGR = QueryGraphReasoner()
+            answer_message = QGR.answer(query_graph.to_dict(), TxltrApiFormat=True)
+        except:
+            tb = traceback.format_exc()
+            error_type, error, _ = sys.exc_info()
+            self.response.error(f"QueryGraphReasoner encountered an error. {tb}", error_code=error_type.__name__)
         else:
-            kg = answer_message.knowledge_graph
-            self.response.info(f"QueryGraphReasoner returned {len(answer_message.results)} results ({len(kg.nodes)} nodes, {len(kg.edges)} edges)")
+            if not answer_message.results:
+                self.response.info(f"QueryGraphReasoner found no results for this query graph")
+            else:
+                kg = answer_message.knowledge_graph
+                self.response.info(
+                    f"QueryGraphReasoner returned {len(answer_message.results)} results ({len(kg.nodes)} nodes, {len(kg.edges)} edges)")
 
         return answer_message
 
