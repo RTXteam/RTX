@@ -557,10 +557,10 @@ def main():
             "expand(edge_id=[e00,e01])",
             "return(message=true, store=true)",
         ]}}
-    elif params.example_number == 9:  # to test jaccard with known result
+    elif params.example_number == 9:  # to test jaccard with known result. This check's out by comparing with match p=(s:disease{id:"DOID:1588"})-[]-(r:protein)-[]-(:chemical_substance) return p and manually counting
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(curie=DOID:456, id=n00)",  # osteoarthritis
+            "add_qnode(curie=DOID:1588, id=n00)",
             "add_qnode(type=protein, is_set=True, id=n01)",
             "add_qnode(type=chemical_substance, is_set=true, id=n02)",
             "add_qedge(source_id=n01, target_id=n00, id=e00)",
@@ -592,11 +592,11 @@ def main():
     print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
     print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
-    # vals = []
-    # for edge in message.knowledge_graph.edges:
-    #     if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
-    #         vals.append(edge.edge_attributes.pop().value)
-    # print(sorted(vals))
+    #vals = []
+    #for edge in message.knowledge_graph.edges:
+    #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
+    #        vals.append(edge.edge_attributes.pop().value)
+    #print(sorted(vals))
 
 
 if __name__ == "__main__": main()
