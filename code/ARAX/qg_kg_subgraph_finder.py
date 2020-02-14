@@ -305,7 +305,6 @@ def find_all_kg_subgraphs_for_qg(kg: Graph,
     assert len([count for count in categories_to_counts_qg.values() if count > MAX_NUMBER_OF_QUERY_NODES_PER_CATEGORY]) == 0
     kg_copy = copy.deepcopy(kg)
     kg_pruned = prune_unneeded_nodes_and_mark_fixed_nodes(kg_copy, qg)
-    print(kg_pruned)
     del kg_copy
     kg_fixed_nodes = set()
     kg_query_nodes = dict()
@@ -487,10 +486,8 @@ def test8():
                                         {'source_id': [0, 1, 3],
                                          'target_id': [1, 3, 2]})
     subgraphs = find_all_kg_subgraphs_for_qg(new_kg, query_graph)
-    for subgraph in subgraphs:
-        print(subgraph)
     assert len(subgraphs) == 2
-    
+
 if __name__ == '__main__':
     test1()
     test2()
