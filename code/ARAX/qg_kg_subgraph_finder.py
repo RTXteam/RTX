@@ -531,6 +531,22 @@ def test11():
     assert len(subgraphs) == 4
 
 
+def test12():
+    kg = Graph.make_from_dicts(
+        {'id':        ['NCBIGene:1', 'NCBIGene:2', 'NCBIGene:3', 'DOID:1', 'HP:1', 'HP:2', 'HP:3'],
+         'category':  ['gene', 'gene', 'gene', 'disease', 'phenotypic feature', 'phenotypic feature', 'phenotypic feature']},
+        {'source_id': [0, 1, 2, 3, 3, 3],
+         'target_id': [3, 3, 3, 4, 5, 6]})
+    qg = Graph.make_from_dicts(
+        {'id':        ['n01', 'DOID:1', 'n02'],
+         'type':      [NodeType.QUERY, NodeType.FIXED, NodeType.QUERY],
+         'category':  ['gene', 'disease', 'phenotypic feature']},
+        {'source_id': [0, 1],
+         'target_id': [1, 2]})
+    subgraphs = find_all_kg_subgraphs_for_qg(kg, qg)
+    assert len(subgraphs) == 9
+
+
 if __name__ == '__main__':
     test1()
     test2()
@@ -543,3 +559,4 @@ if __name__ == '__main__':
     test9()
     test10()
     test11()
+    test12()
