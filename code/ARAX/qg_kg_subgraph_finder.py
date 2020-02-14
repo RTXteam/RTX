@@ -204,7 +204,7 @@ def match_small_kg_to_qg(qg: Graph,
         return False
     # for the nodes in small_kg, make a mapping between categories and sets of nodes
     kg_query_nodes_by_categories = dict()
-    fixed_nodes_kg_to_qg_map = dict()
+    fixed_nodes_qg_to_kg_map = dict()
     for node in small_kg.nodes:
         corresponding_node_type = node.corresponding_node_type
         assert corresponding_node_type is not None
@@ -213,7 +213,7 @@ def match_small_kg_to_qg(qg: Graph,
             if qg_node is None:
                 # if small_kg is missing one of the "fixed" nodes of qg then small_kg does not match qg
                 return False
-            fixed_nodes_kg_to_qg_map[node] = qg_node
+            fixed_nodes_qg_to_kg_map[qg_node] = node
         elif corresponding_node_type == NodeType.QUERY:
             cat = node.category
             categ_set = kg_query_nodes_by_categories.get(cat, None)
@@ -245,15 +245,15 @@ def match_small_kg_to_qg(qg: Graph,
         # check consistency of the flattened lists
         assert len(kg_query_nodes_flat) == len(qg_query_nodes_flat)
         # build up a mapping
-        kg_to_qg_node_map = {kg_query_nodes_flat[i]: qg_query_nodes_flat[i] for i in range(0, len(kg_query_nodes_flat))}
-        kg_to_qg_node_map.update(fixed_nodes_kg_to_qg_map)
+        qg_to_kg_node_map = {qg_query_nodes_flat[i]: kg_query_nodes_flat[i] for i in range(0, len(qg_query_nodes_flat))}
+        qg_to_kg_node_map.update(fixed_nodes_qg_to_kg_map)
         mapping_is_consistent = True
         # check each edge for consistency:
-        for edge in small_kg.edges:
-            qg_source = kg_to_qg_node_map[edge.source]
-            qg_target = kg_to_qg_node_map[edge.target]
-            edge_key = make_edge_key(qg_source, qg_target)
-            if edge_key not in qg.edges_by_key:
+        for edge in qg.edges:
+            kg_source = qg_to_kg_node_map[edge.source]
+            kg_target = qg_to_kg_node_map[edge.target]
+            edge_key = make_edge_key(kg_source, kg_target)
+            if edge_key not in small_kg.edges_by_key:
                 mapping_is_consistent = False
                 break
         if mapping_is_consistent:
@@ -305,6 +305,7 @@ def find_all_kg_subgraphs_for_qg(kg: Graph,
     assert len([count for count in categories_to_counts_qg.values() if count > MAX_NUMBER_OF_QUERY_NODES_PER_CATEGORY]) == 0
     kg_copy = copy.deepcopy(kg)
     kg_pruned = prune_unneeded_nodes_and_mark_fixed_nodes(kg_copy, qg)
+    print(kg_pruned)
     del kg_copy
     kg_fixed_nodes = set()
     kg_query_nodes = dict()
@@ -474,6 +475,22 @@ def test7():
     assert len(subgraphs) == 4
 
 
+def test8():
+    new_kg = Graph.make_from_dicts(
+            {'id':        ['NCBIGene:1', 'UniProtKB:1', 'UniProtKB:2', 'REACTOME:1', 'REACTOME:2', 'DOID:1'],
+             'category':  ['gene', 'protein', 'protein', 'pathway', 'pathway', 'disease']},
+            {'source_id': [0, 0, 1, 2, 3, 4, 1],
+             'target_id': [1, 2, 3, 4, 5, 5, 1]})
+    query_graph = Graph.make_from_dicts({'id':        ['NCBIGene:1', 'n01', 'DOID:1', 'n02'],
+                                         'type':      [NodeType.FIXED, NodeType.QUERY, NodeType.FIXED, NodeType.QUERY],
+                                         'category':  ['gene', 'protein', 'disease', 'pathway']},
+                                        {'source_id': [0, 1, 3],
+                                         'target_id': [1, 3, 2]})
+    subgraphs = find_all_kg_subgraphs_for_qg(new_kg, query_graph)
+    for subgraph in subgraphs:
+        print(subgraph)
+    assert len(subgraphs) == 2
+    
 if __name__ == '__main__':
     test1()
     test2()
@@ -482,3 +499,4 @@ if __name__ == '__main__':
     test5()
     test6()
     test7()
+    test8()
