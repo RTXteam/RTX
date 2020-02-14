@@ -567,7 +567,7 @@ def main():
             "add_qedge(source_id=n01, target_id=n02, id=e01)",
             "expand(edge_id=[e00,e01])",
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
-            "return(message=true, store=false)",
+            "return(message=true, store=true)",
         ]}}
     elif params.example_number == 10:  # test case of drug prediction
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -612,12 +612,14 @@ def main():
     #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
-    #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
-    vals = []
-    for edge in message.knowledge_graph.edges:
-        if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
-            vals.append(edge.edge_attributes.pop().value)
-    print(sorted(vals))
+    print(json.dumps(ast.literal_eval(repr(message.query_graph)), sort_keys=True, indent=2))
+    print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
+
+    #vals = []
+    #for edge in message.knowledge_graph.edges:
+    #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
+    #        vals.append(edge.edge_attributes.pop().value)
+    #print(sorted(vals))
 
 
 if __name__ == "__main__": main()

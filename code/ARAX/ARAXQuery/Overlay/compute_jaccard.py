@@ -14,6 +14,7 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
 from swagger_server.models.edge_attribute import EdgeAttribute
 from swagger_server.models.edge import Edge
+from swagger_server.models.q_edge import QEdge
 
 class ComputeJaccard:
 
@@ -92,6 +93,11 @@ class ComputeJaccard:
                             is_defined_by=is_defined_by, defined_datetime=defined_datetime, provided_by=provided_by,
                             confidence=confidence, weight=weight, edge_attributes=[edge_attribute])
                 message.knowledge_graph.edges.append(edge)
+
+            # Now add a q_edge the query_graph since I've added an extra edge to the KG
+            q_edge = QEdge(id=edge_type, type=edge_type, relation=relation, source_id=parameters['start_node_id'], target_id=parameters['end_node_id'])  # TODO: ok to make the id and type the same thing?
+            self.message.query_graph.edges.append(q_edge)
+
             return self.response
         except:
             tb = traceback.format_exc()
