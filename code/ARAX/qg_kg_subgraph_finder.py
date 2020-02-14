@@ -2,6 +2,15 @@ import copy
 import enum
 import itertools
 import pandas
+'''
+For a given (1) query graph (assumed small) which has both "fixed" nodes and placeholder
+"query" nodes, and (2) knowledge graph, computes a "relevant" subgraph of the knowledge graph
+containing the set of all possible nodes that could match the query graph, and then computes
+the set of all subgraphs within the "relevant" KG that exactly match the query graph structure.
+
+Limitations: running time is exponential in the number of query graph vertices. Self-loops
+in the query graph are not supported.
+'''
 
 __author__ = 'Stephen Ramsey'
 __copyright__ = 'Oregon State University'
@@ -188,6 +197,12 @@ class Graph:
                            nodes[target_id]))
         return Graph(set(nodes), edges)
 
+    def contains_self_loop(self):
+        for edge in self.edges:
+            if edge.source == edge.target:
+                return True
+        return False
+
 
 def make_edge_key(node1: Node,
                   node2: Node):
@@ -300,6 +315,7 @@ def prune_unneeded_nodes_and_mark_fixed_nodes(kg: Graph,
 
 def find_all_kg_subgraphs_for_qg(kg: Graph,
                                  qg: Graph):
+    assert not qg.contains_self_loop()
     ret_subgraphs = []
     categories_to_counts_qg = {category: len(value) for category, value in qg.query_nodes.items()}
     assert len([count for count in categories_to_counts_qg.values() if count > MAX_NUMBER_OF_QUERY_NODES_PER_CATEGORY]) == 0
