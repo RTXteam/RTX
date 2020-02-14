@@ -9,7 +9,7 @@ containing the set of all possible nodes that could match the query graph, and t
 the set of all subgraphs within the "relevant" KG that exactly match the query graph structure.
 
 Limitations: running time is exponential in the number of query graph vertices. Self-loops
-in the query graph are not supported.
+in the query graph are not supported (it will throw an exception if QG has a self-loop).
 '''
 
 __author__ = 'Stephen Ramsey'
