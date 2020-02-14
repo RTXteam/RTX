@@ -589,6 +589,18 @@ def main():
             "filter(maximum_results=2)",
             "return(message=true, store=false)",
             ] } }
+    elif params.example_number == 12:  # dry run of example 2
+        query = { "previous_message_processing_plan": { "processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:14330, id=n00)",
+            "add_qnode(type=protein, is_set=true, id=n01)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
+            "expand(edge_id=[e00,e01])",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+            "return(message=true, store=true)",
+            ] } }
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 7")
         return
