@@ -105,7 +105,7 @@ class ARAXFilterKG:
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'remove_edges_by_type'},
                                     'edge_type': set([x.type for x in self.message.knowledge_graph.edges]),
-                                    'remove_connected_nodes':{'true', 'false'}
+                                    'remove_connected_nodes':{'true', 'false', 'True', 'False', 't', 'f'}
                                 }
         else:
             allowable_parameters = {'action': {'remove_edges_by_type'}, 
@@ -125,9 +125,8 @@ class ARAXFilterKG:
             return self.response
 
         edge_params = self.parameters
-
         if 'remove_connected_nodes' in edge_params:
-            edge_params[key] = bool(edge_params[key])
+            edge_params['remove_connected_nodes'] = bool(edge_params['remove_connected_nodes'])
         else:
             edge_params['remove_connected_nodes'] = False
 
@@ -152,14 +151,14 @@ class ARAXFilterKG:
                                     'edge_property': set([k for x in self.message.knowledge_graph.edges for k in x.swagger_types.keys()]),
                                     'direction': {'above', 'below'},
                                     'threshold':{'a threshold value'},
-                                    'remove_connected_nodes':{'true', 'false'}
+                                    'remove_connected_nodes':{'true', 'false', 'True', 'False', 't', 'f'}
                                     }
         else:
             allowable_parameters = {'action': {'remove_edges_by_property'}, 
                                     'edge_property': {'a edge property'},
                                     'direction': {'above', 'below'},
                                     'threshold':{'a threshold value'},
-                                    'remove_connected_nodes':{'true', 'false'}
+                                    'remove_connected_nodes':{'true', 'false', 'True', 'False', 't', 'f'}
                                     }
 
         # A little function to describe what this thing does
@@ -174,6 +173,11 @@ class ARAXFilterKG:
             return self.response
 
         edge_params = self.parameters
+        edge_params['threshold'] = float(edge_params['threshold'])
+        if 'remove_connected_nodes' in edge_params:
+            edge_params['remove_connected_nodes'] = bool(edge_params['remove_connected_nodes'])
+        else:
+            edge_params['remove_connected_nodes'] = False
 
         # now do the call out to NGD
         from Filter_KG.remove_edges import RemoveEdges
