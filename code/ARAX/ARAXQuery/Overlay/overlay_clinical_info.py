@@ -113,7 +113,7 @@ class OverlayClinicalInfo:
                         if freq_data and 'concept_frequency' in freq_data:
                             frequncy += freq_data['concept_frequency']
                     # decorate the edges
-                    name = "COHD paired concept frequency"
+                    name = "paired_concept_frequency"
                     type = "float"
                     value = frequncy
                     url = "http://cohd.smart-api.info/"
