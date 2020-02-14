@@ -500,6 +500,37 @@ def test9():
     assert False
 
 
+def test10():
+    new_kg = Graph.make_from_dicts(
+            {'id':        ['NCBIGene:1', 'UniProtKB:1', 'UniProtKB:2', 'REACTOME:1', 'REACTOME:2', 'DOID:1', 'UniProtKB:3'],
+             'category':  ['gene', 'protein', 'protein', 'pathway', 'pathway', 'disease', 'protein']},
+            {'source_id': [0, 0, 1, 2, 3, 4, 1, 6],
+             'target_id': [1, 2, 3, 4, 5, 5, 1, 4]})
+    query_graph = Graph.make_from_dicts({'id':        ['NCBIGene:1', 'n01', 'DOID:1', 'n02'],
+                                         'type':      [NodeType.FIXED, NodeType.QUERY, NodeType.FIXED, NodeType.QUERY],
+                                         'category':  ['gene', 'protein', 'disease', 'pathway']},
+                                        {'source_id': [0, 1, 3],
+                                         'target_id': [1, 3, 2]})
+    subgraphs = find_all_kg_subgraphs_for_qg(new_kg, query_graph)
+    assert len(subgraphs) == 2
+
+
+def test11():
+    kg = Graph.make_from_dicts(
+        {'id':        ['DOID:1', 'NCBIGene:1', 'NCBIGene:2', 'NCBIGene:3', 'REACTOME:1', 'REACTOME:2', 'HP:1'],
+         'category':  ['disease', 'gene', 'gene', 'gene', 'pathway', 'pathway', 'phenotypic feature']},
+        {'source_id': [0, 0, 0, 1, 1, 2, 3, 4, 5],
+         'target_id': [1, 2, 3, 4, 5, 4, 5, 6, 6]})
+    qg = Graph.make_from_dicts(
+        {'id':        ['DOID:1', 'n01', 'n02', 'HP:1'],
+         'type':      [NodeType.FIXED, NodeType.QUERY, NodeType.QUERY, NodeType.FIXED],
+         'category':  ['disease', 'gene', 'pathway', 'phenotypic feature']},
+        {'source_id': [0, 1, 2],
+         'target_id': [1, 2, 3]})
+    subgraphs = find_all_kg_subgraphs_for_qg(kg, qg)
+    assert len(subgraphs) == 4
+
+
 if __name__ == '__main__':
     test1()
     test2()
@@ -510,4 +541,5 @@ if __name__ == '__main__':
     test7()
     test8()
     test9()
-
+    test10()
+    test11()
