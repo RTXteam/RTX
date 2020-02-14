@@ -47,8 +47,8 @@ class KnowledgeGraphInfo:
         response.debug(f"Found {self.n_nodes} nodes and {self.n_edges} edges")
 
         #### Clear the maps
-        self.node_map = {}
-        self.edge_map = {}
+        self.node_map = { 'by_qnode_id': {} }
+        self.edge_map = { 'by_qedge_id': {} }
 
         #### Loop through nodes computing some stats
         n_nodes_with_query_graph_ids = 0
@@ -57,6 +57,11 @@ class KnowledgeGraphInfo:
             if node.qnode_id is None:
                 continue
             n_nodes_with_query_graph_ids += 1
+
+            #### Place an entry in the node_map
+            if node.qnode_id not in self.node_map['by_qnode_id']:
+                self.node_map['by_qnode_id'][node.qnode_id] = {}
+            self.node_map['by_qnode_id'][node.qnode_id][id] = 1
 
         #### Tally the stats
         if n_nodes_with_query_graph_ids == self.n_nodes:
@@ -74,6 +79,11 @@ class KnowledgeGraphInfo:
             if edge.qedge_id is None:
                 continue
             n_edges_with_query_graph_ids += 1
+
+            #### Place an entry in the edge_map
+            if edge.qedge_id not in self.edge_map['by_qedge_id']:
+                self.edge_map['by_qedge_id'][edge.qedge_id] = {}
+            self.edge_map['by_qedge_id'][edge.qedge_id][id] = 1
 
         if n_edges_with_query_graph_ids == self.n_edges:
             self.query_graph_id_edge_status = 'all edges have query_graph_ids'
