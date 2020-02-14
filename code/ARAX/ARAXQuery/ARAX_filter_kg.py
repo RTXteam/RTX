@@ -10,7 +10,7 @@ import numpy as np
 from response import Response
 
 
-class ARAXOverlay:
+class ARAXFilterKG:
 
     #### Constructor
     def __init__(self):
@@ -18,8 +18,9 @@ class ARAXOverlay:
         self.message = None
         self.parameters = None
         self.allowable_actions = {
-            'remove_edges',
-            'remove_nodes'
+            'remove_edges_by_type',
+            'remove_edges_by_property',
+            'remove_nodes_by_type'
         }
 
     def describe_me(self):
@@ -92,7 +93,7 @@ class ARAXOverlay:
         #### Return the response and done
         return response
 
-    def __remove_edges(self, describe=False):
+    def __remove_edges_by_type(self, describe=False):
         """
         Removes edges from the KG.
         Allowable parameters: {'edge_type': str, 
@@ -101,11 +102,65 @@ class ARAXOverlay:
         :return:
         """
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
-        allowable_parameters = {'action': {'remove_edges'}, 
-                                'edge_type': str, 
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
+            allowable_parameters = {'action': {'remove_edges_by_type'},
+                                    'edge_type': set([x.type for x in self.message.knowledge_graph.edges]),
+                                    'remove_connected_nodes':{'true', 'false'}
+                                }
+        else:
+            allowable_parameters = {'action': {'remove_edges_by_type'}, 
+                                    'edge_type': {'an edge type'},
+                                    'remove_connected_nodes':{'true', 'false', 'True', 'False', 't', 'f'}
+                                }
+
+        # A little function to describe what this thing does
+        if describe:
+            print(allowable_parameters)
+            return
+
+        # Make sure only allowable parameters and values have been passed
+        self.check_params(allowable_parameters)
+        # return if bad parameters have been passed
+        if self.response.status != 'OK':
+            return self.response
+
+        edge_params = self.parameters
+
+        if 'remove_connected_nodes' in edge_params:
+            edge_params[key] = bool(edge_params[key])
+        else:
+            edge_params['remove_connected_nodes'] = False
+
+
+        # now do the call out to NGD
+        from Filter_KG.remove_edges import RemoveEdges
+        RE = RemoveEdges(self.response, self.message, edge_params)
+        response = RE.remove_edges_by_type()
+        return response
+
+    def __remove_edges_by_property(self, describe=False):
+        """
+        Removes edges from the KG.
+        Allowable parameters: {'edge_type': str, 
                                 'edge_property': str,
-                                'direction': {'above', 'below'},
-                                'value':{int, float}}
+                                'direction': {'above', 'below'}}
+        :return:
+        """
+        # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
+            allowable_parameters = {'action': {'remove_edges_by_property'},
+                                    'edge_property': set([k for x in self.message.knowledge_graph.edges for k in x.swagger_types.keys()]),
+                                    'direction': {'above', 'below'},
+                                    'threshold':{'a threshold value'},
+                                    'remove_connected_nodes':{'true', 'false'}
+                                    }
+        else:
+            allowable_parameters = {'action': {'remove_edges_by_property'}, 
+                                    'edge_property': {'a edge property'},
+                                    'direction': {'above', 'below'},
+                                    'threshold':{'a threshold value'},
+                                    'remove_connected_nodes':{'true', 'false'}
+                                    }
 
         # A little function to describe what this thing does
         if describe:
@@ -121,12 +176,12 @@ class ARAXOverlay:
         edge_params = self.parameters
 
         # now do the call out to NGD
-        from Filter_KG.filter_edge import FilterEdge
-        FE = FilterEdge(self.response, self.message, edge_params)
-        response = FE.filter_edge()
+        from Filter_KG.remove_edges import RemoveEdges
+        RE = RemoveEdges(self.response, self.message, edge_params)
+        response = RE.remove_edges_by_property()
         return response
 
-    def __remove_nodes(self, describe=False):
+    def __remove_nodes_by_type(self, describe=False):
         """
         Removes nodes from the KG.
         Allowable parameters: {'node_type': str, 
@@ -135,11 +190,13 @@ class ARAXOverlay:
         :return:
         """
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
-        allowable_parameters = {'action': {'remove_edges'}, 
-                                'node_type': {str}, 
-                                'node_property': {str},
-                                'direction': {'above', 'below'},
-                                'value':{int, float}}
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
+            allowable_parameters = {'action': {'remove_nodes_by_type'},
+                                    'node_type': set([t for x in self.message.knowledge_graph.nodes for t in x.type])
+                                }
+        else:
+            allowable_parameters = {'action': {'remove_nodes_by_type'}, 
+                                'node_type': {'a node type'}}
 
         # A little function to describe what this thing does
         if describe:
@@ -155,9 +212,9 @@ class ARAXOverlay:
         node_params = self.parameters
 
         # now do the call out to NGD
-        from Filter_KG.filter_node import FilterNode
-        FN = FilterNode(self.response, self.message, node_params)
-        response = FN.filter_node()
+        from Filter_KG.remove_nodes import RemoveNodes
+        RN = RemoveNodes(self.response, self.message, node_params)
+        response = RN.remove_nodes_by_type()
         return response
 
 ##########################################################################################
@@ -179,7 +236,7 @@ def main():
     #]
 
     actions_list = [
-        "overlay(action=compute_ngd)",
+        "filter_kg(action=remove_edges, edge_type=associated_with)",
         #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
         "return(message=true,store=false)"
     ]
@@ -196,7 +253,6 @@ def main():
     sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/Feedback")
     from RTXFeedback import RTXFeedback
     araxdb = RTXFeedback()
-
     message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
     # message_dict = araxdb.getMessage(13)  # ibuprofen -> proteins -> disease # work computer
     #message_dict = araxdb.getMessage(14)  # pleuropneumonia -> phenotypic_feature # work computer
