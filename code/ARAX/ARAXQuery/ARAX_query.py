@@ -578,6 +578,17 @@ def main():
             "expand(edge_id=e00)",
             "return(message=true, store=true)",
         ]}}
+    elif params.example_number == 11:  # test overlay with overlay_clinical_info, paired_concept_freq via COHD
+        query = { "previous_message_processing_plan": { "processing_actions": [
+            "create_message",
+            "add_qnode(curie=DOID:0060227, id=n00)",  # Adam's oliver
+            "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00, type=has_phenotype)",
+            "expand(edge_id=e00)",
+            "overlay(action=overlay_clinical_info, paired_concept_freq=true)",
+            "filter(maximum_results=2)",
+            "return(message=true, store=false)",
+            ] } }
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 7")
         return
@@ -600,13 +611,13 @@ def main():
     print(response.show(level=Response.DEBUG))
     #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
-    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
-    print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
-    #vals = []
-    #for edge in message.knowledge_graph.edges:
-    #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
-    #        vals.append(edge.edge_attributes.pop().value)
-    #print(sorted(vals))
+    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
+    #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
+    vals = []
+    for edge in message.knowledge_graph.edges:
+        if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
+            vals.append(edge.edge_attributes.pop().value)
+    print(sorted(vals))
 
 
 if __name__ == "__main__": main()
