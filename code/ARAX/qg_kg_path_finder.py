@@ -299,7 +299,7 @@ def prune_unneeded_nodes_and_mark_fixed_nodes(kg: Graph,
     return kg.delete(nodes_remove)
 
 
-def find_all_kg_paths_for_qg(kg: Graph,
+def find_all_kg_subgraphs_for_qg(kg: Graph,
                              qg: Graph):
     ret_subgraphs = []
     categories_to_counts_qg = {category: len(value) for category, value in qg.query_nodes.items()}
@@ -426,7 +426,7 @@ def test4():
                                          'category':  ['gene', 'protein', 'disease']},
                                         {'source_id': [0, 1],
                                          'target_id': [1, 2]})
-    subgraphs = find_all_kg_paths_for_qg(new_kg, query_graph)
+    subgraphs = find_all_kg_subgraphs_for_qg(new_kg, query_graph)
     assert len(subgraphs) == 2
 
 
