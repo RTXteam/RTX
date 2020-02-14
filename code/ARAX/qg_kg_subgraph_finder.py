@@ -262,7 +262,6 @@ def match_small_kg_to_qg(qg: Graph,
     return found_consistent_mapping
 
 
-
 def check_kg_node_if_should_keep(kg: Graph,
                                  qg: Graph,
                                  kg_node: Node):
