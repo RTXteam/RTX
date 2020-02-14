@@ -352,29 +352,6 @@ def find_all_kg_subgraphs_for_qg(kg: Graph,
     return ret_subgraphs
 
 
-# ----------- CODE INTRON; MIGHT BE USEFUL LATER -----------
-# def single_vertex_bfs(p_graph: Graph,
-#                       p_start_node: Node,
-#                       p_visitor: callable = None):
-#     queue = collections.deque([p_start_node])
-#     visited_res = dict()
-#     first_res = None
-#     if p_visitor is not None:
-#         first_res = p_visitor(p_start_node)
-#     visited_res[p_start_node] = first_res
-#     while len(queue) > 0:
-#         node = queue.popleft()
-#         for neighbor in p_graph.neighbors(node):
-#             neighbor_node = p_graph.nodes[neighbor]
-#             if neighbor_node not in visited_res:
-#                 queue.append(neighbor_node)
-#                 visit_res = None
-#                 if p_visitor is not None:
-#                     visit_res = p_visitor(neighbor_node)
-#                 visited_res[neighbor_node] = visit_res
-#     return visited_res
-# ----------- CODE INTRON; MIGHT BE USEFUL LATER -----------
-
 def test1():
     query_graph = Graph.make_from_dicts(
         {'id': ['NCBIGene:123456', 'n01'],
