@@ -300,7 +300,7 @@ def prune_unneeded_nodes_and_mark_fixed_nodes(kg: Graph,
 
 
 def find_all_kg_subgraphs_for_qg(kg: Graph,
-                             qg: Graph):
+                                 qg: Graph):
     ret_subgraphs = []
     categories_to_counts_qg = {category: len(value) for category, value in qg.query_nodes.items()}
     assert len([count for count in categories_to_counts_qg.values() if count > MAX_NUMBER_OF_QUERY_NODES_PER_CATEGORY]) == 0
