@@ -352,6 +352,14 @@ def find_all_kg_subgraphs_for_qg(kg: Graph,
     return ret_subgraphs
 
 
+def find_all_kg_subgraphs_for_qg_dicts(kg: dict,
+                                       qg: dict):
+    return find_all_kg_subgraphs_for_qg(Graph.make_from_dicts(kg['nodes'],
+                                                              kg['edges']),
+                                        Graph.make_from_dicts(qg['nodes'],
+                                                              qg['edges']))
+
+
 def test1():
     query_graph = Graph.make_from_dicts(
         {'id': ['NCBIGene:123456', 'n01'],
@@ -547,6 +555,19 @@ def test12():
     assert len(subgraphs) == 9
 
 
+def test13():
+    subgraphs = find_all_kg_subgraphs_for_qg_dicts({'nodes': {'id':        ['NCBIGene:1', 'UniProtKB:1', 'UniProtKB:2', 'DOID:1'],
+                                                              'category':  ['gene', 'protein', 'protein', 'disease']},
+                                                    'edges': {'source_id': [0, 0, 1, 2],
+                                                              'target_id': [1, 2, 3, 3]}},
+                                                   {'nodes': {'id':        ['NCBIGene:1', 'n01', 'DOID:1'],
+                                                              'type':      [NodeType.FIXED, NodeType.QUERY, NodeType.FIXED],
+                                                              'category':  ['gene', 'protein', 'disease']},
+                                                    'edges': {'source_id': [0, 1],
+                                                              'target_id': [1, 2]}})
+    assert len(subgraphs) == 2
+
+
 if __name__ == '__main__':
     test1()
     test2()
@@ -560,3 +581,5 @@ if __name__ == '__main__':
     test10()
     test11()
     test12()
+    test13()
+
