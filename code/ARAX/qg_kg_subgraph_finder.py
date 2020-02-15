@@ -172,11 +172,31 @@ class Graph:
 
     def make_from_dicts(node_info: dict,
                         edge_info: dict):
-        N = len(node_info['id'])  # if caller doesn't specify node types, just assume all are KG
+        node_ids = node_info['id']
+        N = len(node_ids)  # if caller doesn't specify node types, just assume all are KG
         if node_info.get('type', None) is None:
             node_info['type'] = [NodeType.KG] * N
-        return Graph.make_from_df(pandas.DataFrame(node_info),
-                                  pandas.DataFrame(edge_info))
+        categories = node_info['category']
+        types = node_info['type']
+        nodes = list()
+        for node_index in range(0, N):
+            node_id = node_ids[node_index]
+            category = categories[node_index]
+            node_type = types[node_index]
+            nodes.append(Node(node_type,
+                              category,
+                              node_id,
+                              node_index))
+        edges = set()
+        source_ids = edge_info['source_id']
+        E = len(source_ids)
+        target_ids = edge_info['target_id']
+        for e in range(0, E):
+            source_id = source_ids[e]
+            target_id = target_ids[e]
+            edges.add(Edge(nodes[source_id],
+                           nodes[target_id]))
+        return Graph(set(nodes), edges)
 
     def make_from_df(node_info: pandas.DataFrame,
                      edge_info: pandas.DataFrame):
@@ -188,7 +208,7 @@ class Graph:
             nodes.append(Node(NodeType(type_int),
                               category,
                               node_id,
-                         index))
+                              index))
         edges = set()
         for index, row in edge_info.iterrows():
             source_id = row['source_id']
