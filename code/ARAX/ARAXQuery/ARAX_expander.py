@@ -6,6 +6,8 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 import sys
 import os
 import traceback
+import json
+import ast
 
 from response import Response
 
@@ -76,14 +78,14 @@ class ARAXExpander:
         if response.status != 'OK':
             return response
 
-        # Tack on query graph IDs to the nodes/edges in our answer knowledge graph as necessary (for later processing)
         if answer_message.results:
+            # Tack on query graph IDs to the nodes/edges in our answer knowledge graph (for later processing)
             self.__add_query_ids_to_answer_kg(answer_message)
 
-        # And add our answer knowledge graph to the overarching knowledge graph
-        self.__merge_answer_kg_into_overarching_kg(answer_message.knowledge_graph)
-        if response.status != 'OK':
-            return response
+            # And add our answer knowledge graph to the overarching knowledge graph
+            self.__merge_answer_kg_into_overarching_kg(answer_message.knowledge_graph)
+            if response.status != 'OK':
+                return response
 
         # Convert message knowledge graph back to API standard format
         standard_kg = self.__convert_dict_kg_to_standard_kg(self.message.knowledge_graph)
@@ -162,13 +164,13 @@ class ARAXExpander:
             error_type, error, _ = sys.exc_info()
             self.response.error(f"QueryGraphReasoner encountered an error. {tb}", error_code=error_type.__name__)
         else:
+            # Convert our answer knowledge graph into dictionary format (for faster processing)
+            dict_answer_kg = self.__convert_standard_kg_to_dict_kg(answer_message.knowledge_graph)
+            answer_message.knowledge_graph = dict_answer_kg
+
             if not answer_message.results:
                 self.response.info(f"QueryGraphReasoner found no results for this query graph")
             else:
-                # Convert our answer knowledge graph into dictionary format (for faster processing)
-                dict_answer_kg = self.__convert_standard_kg_to_dict_kg(answer_message.knowledge_graph)
-                answer_message.knowledge_graph = dict_answer_kg
-
                 kg = answer_message.knowledge_graph
                 self.response.info(
                     f"QueryGraphReasoner returned {len(answer_message.results)} results ({len(kg['nodes'])} nodes, {len(kg['edges'])} edges)")
@@ -310,13 +312,13 @@ def main():
         "add_qnode(id=n02, type=chemical_substance)",
         "add_qedge(id=e00, source_id=n01, target_id=n00, type=gene_associated_with_condition)",
         "add_qedge(id=e01, source_id=n01, target_id=n02, type=physically_interacts_with)",
-        "expand(edge_id=e00)",
-        "expand(edge_id=e01)",
         # "add_qnode(curie=DOID:8398, id=n00)",  # osteoarthritis
         # "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
         # "add_qnode(type=disease, is_set=true, id=n02)",
         # "add_qedge(source_id=n01, target_id=n00, id=e00)",
         # "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "expand(edge_id=e00)",
+        "expand(edge_id=e01)",
         # "expand(edge_id=[e00,e01])",
         "return(message=true, store=false)",
     ]
