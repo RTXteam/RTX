@@ -27,7 +27,6 @@ class AddNodePMIDS:
         """
         self.response.debug(f"Adding node PMIDs")
         self.response.info(f"Adding pubmed ID's to nodes based on occurrence in PubMed abstracts")
-
         self.response.warning(f"Utilizing API calls to NCBI eUtils, so this may take a while...")
         name = "pubmed_ids"
         type = "list of PMIDS (as a string)"
@@ -44,6 +43,9 @@ class AddNodePMIDS:
                 node_curie = node.id
                 node_name = node.name
                 pmids = NGD.get_pmids_for_all([node_curie], [node_name])[0]  # since the function was designed for multiple inputs, but I only want the first
+
+                if 'max_num' in self.parameters:
+                    pmids = pmids[0:self.parameters['max_num']]
                 value = str(pmids)
                 ngd_edge_attribute = NodeAttribute(type=type, name=name, value=value, url=url)  # populate the NGD edge attribute
                 node.node_attributes.append(ngd_edge_attribute)  # append it to the list of attributes

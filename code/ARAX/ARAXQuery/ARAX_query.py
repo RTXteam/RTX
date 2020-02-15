@@ -589,7 +589,7 @@ def main():
             "filter(maximum_results=2)",
             "return(message=true, store=false)",
             ] } }
-    elif params.example_number == 12:  # dry run of example 2
+    elif params.example_number == 12:  # dry run of example 2 #TODO!!!!!
         query = { "previous_message_processing_plan": { "processing_actions": [
             "create_message",
             "add_qnode(name=DOID:14330, id=n00)",
@@ -608,8 +608,8 @@ def main():
             "add_qnode(type=chemical_substance, is_set=true, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
-            "overlay(action=add_node_pmids)",
-            "return(message=true, store=true)"
+            "overlay(action=add_node_pmids, max_num=10)",
+            "return(message=true, store=false)"
         ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 7")

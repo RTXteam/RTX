@@ -191,11 +191,11 @@ class ARAXOverlay:
         """
         Computes normalized google distance between two nodes connected by an edge in the knowledge graph
         and adds that as an edge attribute.
-        Allowable parameters: {default_value: {'0', 'inf'}}
+        Allowable parameters: {max_num: {'all', '10', '100', '1000'}}
         :return:
         """
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
-        allowable_parameters = {'action': {'add_node_pmids'}}
+        allowable_parameters = {'action': {'add_node_pmids'}, 'max_num': {'all', '10', '100', '1000'}}
 
         # A little function to describe what this thing does
         if describe:
@@ -208,9 +208,28 @@ class ARAXOverlay:
         if self.response.status != 'OK':
             return self.response
 
+        # Set the default parameters
+        pass_params = {'max_num': 100}  # here is where you can set default values
+
+        # parse the input parameters to be the data types I need them to be
+        # TODO: there has got to be a cleaner way to do this...
+        for key, value in self.parameters.items():
+            if key != 'action':
+                if key == 'max_num':
+                    if value == '0':
+                        pass_params[key] = 0
+                    elif value == '10':
+                        pass_params[key] = 10
+                    elif value == '100':
+                        pass_params[key] = 100
+                    elif value == '1000':
+                        pass_params[key] = 1000
+                    elif value == 'all':
+                        pass_params[key] = None
+
         # now do the call out to NGD
         from Overlay.add_node_pmids import AddNodePMIDS
-        ANP = AddNodePMIDS(self.response, self.message, allowable_parameters)
+        ANP = AddNodePMIDS(self.response, self.message, pass_params)
         response = ANP.add_node_pmids()
         return response
 
