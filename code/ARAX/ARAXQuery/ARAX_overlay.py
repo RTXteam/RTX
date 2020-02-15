@@ -20,7 +20,8 @@ class ARAXOverlay:
         self.allowable_actions = {
             'compute_ngd',
             'overlay_clinical_info',
-            'compute_jaccard'
+            'compute_jaccard',
+            'add_node_pmids'
         }
 
     def describe_me(self):
@@ -186,6 +187,33 @@ class ARAXOverlay:
         response = OCI.decorate()  # TODO: refactor this so it's basically another apply() like function # 606
         return response
 
+    def __add_node_pmids(self, describe=False):
+        """
+        Computes normalized google distance between two nodes connected by an edge in the knowledge graph
+        and adds that as an edge attribute.
+        Allowable parameters: {default_value: {'0', 'inf'}}
+        :return:
+        """
+        # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
+        allowable_parameters = {'action': {'add_node_pmids'}}
+
+        # A little function to describe what this thing does
+        if describe:
+            print(allowable_parameters)
+            return
+
+        # Make sure only allowable parameters and values have been passed
+        self.check_params(allowable_parameters)
+        # return if bad parameters have been passed
+        if self.response.status != 'OK':
+            return self.response
+
+        # now do the call out to NGD
+        from Overlay.add_node_pmids import AddNodePMIDS
+        ANP = AddNodePMIDS(self.response, self.message, allowable_parameters)
+        response = ANP.add_node_pmids()
+        return response
+
     def __compute_jaccard(self, describe=False):
         """
         Computes the jaccard distance: starting_node -> {set of intermediate nodes} -> {set of end nodes}.
@@ -255,8 +283,9 @@ def main():
 
     actions_list = [
         #"overlay(action=compute_ngd)",
-        "overlay(action=overlay_clinical_info, paired_concept_freq=true)",
+        #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
         #"overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+        "overlay(action=add_node_pmids)",
         "return(message=true,store=false)"
     ]
 
@@ -273,10 +302,10 @@ def main():
     from RTXFeedback import RTXFeedback
     araxdb = RTXFeedback()
 
-    #message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
+    message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
     # message_dict = araxdb.getMessage(13)  # ibuprofen -> proteins -> disease # work computer
     #message_dict = araxdb.getMessage(14)  # pleuropneumonia -> phenotypic_feature # work computer
-    message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature  # work computer
+    #message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature  # work computer
     #message_dict = araxdb.getMessage(5)  # atherosclerosis -> phenotypic_feature  # home computer
     #message_dict = araxdb.getMessage(10)
 
@@ -319,10 +348,11 @@ def main():
     #print(response.show(level=Response.DEBUG))
 
     # just print off the values
-    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
-    for edge in message.knowledge_graph.edges:
-        if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
-            print(edge.edge_attributes.pop().value)
+    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
+    #for edge in message.knowledge_graph.edges:
+    #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
+    #        print(edge.edge_attributes.pop().value)
+    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
     print(response.show(level=Response.DEBUG))
     #print(actions_parser.parse(actions_list))
 

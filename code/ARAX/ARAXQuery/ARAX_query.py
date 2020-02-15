@@ -601,6 +601,16 @@ def main():
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
             "return(message=true, store=true)",
             ] } }
+    elif params.example_number == 13:  # add pubmed id's
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:1227, id=n00)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00)",
+            "overlay(action=add_node_pmids)",
+            "return(message=true, store=true)"
+        ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 7")
         return
@@ -624,8 +634,9 @@ def main():
     #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
-    print(json.dumps(ast.literal_eval(repr(message.query_graph)), sort_keys=True, indent=2))
-    print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
+    #print(json.dumps(ast.literal_eval(repr(message.query_graph)), sort_keys=True, indent=2))
+    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
+    #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
 
     #vals = []
     #for edge in message.knowledge_graph.edges:
