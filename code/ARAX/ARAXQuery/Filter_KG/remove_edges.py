@@ -27,12 +27,12 @@ class RemoveEdges:
         """
         self.response.debug(f"Removing Edges")
         self.response.info(f"Removing edges from the knowledge graph matching the specified type")
-
+        edge_params = self.edge_parameters
         try:
             i = 0
             edges_to_remove = set()
             node_ids_to_remove = set()
-            # iterrate over the edges find the edges to remove
+            # iterate over the edges find the edges to remove
             for edge in self.message.knowledge_graph.edges:
                 if edge.type == edge_params['edge_type']:
                     edges_to_remove.add(i)
@@ -77,7 +77,7 @@ class RemoveEdges:
         """
         self.response.debug(f"Removing Edges")
         self.response.info(f"Removing edges from the knowledge graph with the specified property values")
-
+        edge_params = self.edge_parameters
         try:
             if edge_params['direction'] == 'above':
                 def compare(x,y):
@@ -121,7 +121,7 @@ class RemoveEdges:
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
-            self.response.error(tb, error_code = error_type.__name__)
+            self.response.error(tb, error_code=error_type.__name__)
             self.response.error(f"Something went wrong removing edges from the knowledge graph")
         else:
             self.response.info(f"Edges successfully removed")

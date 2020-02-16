@@ -44,7 +44,7 @@ class ARAXFilterKG:
                 self.response.error(
                     f"Supplied parameter {key} is not permitted. Allowable parameters are: {list(allowable_parameters.keys())}",
                     error_code="UnknownParameter")
-            elif item not in allowable_parameters[key] or type(item) not in allowable_parameters[key]:
+            elif item not in allowable_parameters[key]:# or type(item) not in allowable_parameters[key]:  # FIXME: @Finn why is "type(item) not in allowable_parameters[key]" included here?
                 self.response.error(
                     f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}",
                     error_code="UnknownValue")
@@ -104,15 +104,15 @@ class ARAXFilterKG:
         message = self.message
         parameters = self.parameters
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
-        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
             allowable_parameters = {'action': {'remove_edges_by_type'},
                                     'edge_type': set([x.type for x in self.message.knowledge_graph.edges]),
-                                    'remove_connected_nodes':{'true', 'false', 'True', 'False', 't', 'f'}
+                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f'}
                                 }
         else:
-            allowable_parameters = {'action': {'remove_edges_by_type'}, 
+            allowable_parameters = {'action': {'remove_edges_by_type'},
                                     'edge_type': {'an edge type'},
-                                    'remove_connected_nodes':{'true', 'false', 'True', 'False', 't', 'f'}
+                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f'}
                                 }
 
         # A little function to describe what this thing does
@@ -128,10 +128,16 @@ class ARAXFilterKG:
 
         edge_params = self.parameters
         if 'remove_connected_nodes' in edge_params:
-            edge_params['remove_connected_nodes'] = bool(edge_params['remove_connected_nodes'])
+            value = edge_params['remove_connected_nodes']
+            if value in {'true', 'True', 't'}:
+                edge_params['remove_connected_nodes'] = True
+            elif value in {'false', 'False', 'F'}:
+                edge_params['remove_connected_nodes'] = False
+            else:
+                self.response.error(f"Supplied value {value} is not permitted. In parameter remove_connected_nodes, allowable values are: {list(allowable_parameters['remove_connected_nodes'])}",
+                    error_code="UnknownValue")
         else:
             edge_params['remove_connected_nodes'] = False
-
 
         # now do the call out to NGD
         from Filter_KG.remove_edges import RemoveEdges
@@ -154,15 +160,15 @@ class ARAXFilterKG:
             allowable_parameters = {'action': {'remove_edges_by_property'},
                                     'edge_property': set([k for x in self.message.knowledge_graph.edges for k in x.swagger_types.keys()]),
                                     'direction': {'above', 'below'},
-                                    'threshold':{'a threshold value'},
-                                    'remove_connected_nodes':{'true', 'false', 'True', 'False', 't', 'f'}
+                                    'threshold': {'a threshold value'},
+                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f'}
                                     }
         else:
             allowable_parameters = {'action': {'remove_edges_by_property'}, 
                                     'edge_property': {'a edge property'},
                                     'direction': {'above', 'below'},
-                                    'threshold':{'a threshold value'},
-                                    'remove_connected_nodes':{'true', 'false', 'True', 'False', 't', 'f'}
+                                    'threshold': {'a threshold value'},
+                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f'}
                                     }
 
         # A little function to describe what this thing does
@@ -229,8 +235,7 @@ class ARAXFilterKG:
 
 ##########################################################################################
 def main():
-
-    #### Note that most of this is just manually doing what ARAXQuery() would normally do for you
+    ### Note that most of this is just manually doing what ARAXQuery() would normally do for you
 
     #### Create a response object
     response = Response()
@@ -238,16 +243,16 @@ def main():
     #### Create an ActionsParser object
     from actions_parser import ActionsParser
     actions_parser = ActionsParser()
- 
+
     #### Set a simple list of actions
-    #actions_list = [
+    # actions_list = [
     #    "overlay(compute_confidence_scores=true)",
     #    "return(message=true,store=false)"
-    #]
+    # ]
 
     actions_list = [
-        "filter_kg(action=remove_edges, edge_type=associated_with)",
-        #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
+        "filter_kg(action=remove_edges_by_type, edge_type=physically_interacts_with, remove_connected_nodes=false)",
+        #"filter_kg(action=remove_edges_by_type, edge_type=physically_interacts_with, remove_connected_nodes=something)",
         "return(message=true,store=false)"
     ]
 
@@ -260,58 +265,62 @@ def main():
     actions = result.data['actions']
 
     #### Read message #2 from the database. This should be the acetaminophen proteins query result message
-    sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/Feedback")
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/Feedback")
     from RTXFeedback import RTXFeedback
     araxdb = RTXFeedback()
+
     message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
     # message_dict = araxdb.getMessage(13)  # ibuprofen -> proteins -> disease # work computer
-    #message_dict = araxdb.getMessage(14)  # pleuropneumonia -> phenotypic_feature # work computer
+    # message_dict = araxdb.getMessage(14)  # pleuropneumonia -> phenotypic_feature # work computer
     # message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature  # work computer
-    #message_dict = araxdb.getMessage(5)  # atherosclerosis -> phenotypic_feature  # home computer
+    # message_dict = araxdb.getMessage(5)  # atherosclerosis -> phenotypic_feature  # home computer
+    # message_dict = araxdb.getMessage(10)
 
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger
     message = ARAXMessenger().from_dict(message_dict)
-    #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    # print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
 
     #### Create an overlay object and use it to apply action[0] from the list
-    overlay = ARAXOverlay()
-    result = overlay.apply(message, actions[0]['parameters'])
+    filterkg = ARAXFilterKG()
+    result = filterkg.apply(message, actions[0]['parameters'])
     response.merge(result)
 
-    #if result.status != 'OK':
+    # if result.status != 'OK':
     #    print(response.show(level=Response.DEBUG))
     #    return response
-    #response.data = result.data
+    # response.data = result.data
 
     #### If successful, show the result
-    #print(response.show(level=Response.DEBUG))
-    #response.data['message_stats'] = { 'n_results': message.n_results, 'id': message.id,
+    # print(response.show(level=Response.DEBUG))
+    # response.data['message_stats'] = { 'n_results': message.n_results, 'id': message.id,
     #    'reasoner_id': message.reasoner_id, 'tool_version': message.tool_version }
-    #response.data['message_stats']['confidence_scores'] = []
-    #for result in message.results:
+    # response.data['message_stats']['confidence_scores'] = []
+    # for result in message.results:
     #    response.data['message_stats']['confidence_scores'].append(result.confidence)
 
-    #print(json.dumps(ast.literal_eval(repr(response.data['parameters'])),sort_keys=True,indent=2))
-    #print(json.dumps(ast.literal_eval(repr(response.data['message_stats'])),sort_keys=True,indent=2))
+    # print(json.dumps(ast.literal_eval(repr(response.data['parameters'])),sort_keys=True,indent=2))
+    # print(json.dumps(ast.literal_eval(repr(response.data['message_stats'])),sort_keys=True,indent=2))
     # a comment on the end so you can better see the network on github
 
     # look at the response
-    #print(response.show(level=Response.DEBUG))
-    #print(response.show())
-    #print("Still executed")
+    # print(response.show(level=Response.DEBUG))
+    # print(response.show())
+    # print("Still executed")
 
     # look at the edges
-    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)),sort_keys=True,indent=2))
-    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
-    #print(json.dumps(ast.literal_eval(repr(message)), sort_keys=True, indent=2))
-    #print(response.show(level=Response.DEBUG))
+    # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)),sort_keys=True,indent=2))
+    # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
+    # print(json.dumps(ast.literal_eval(repr(message)), sort_keys=True, indent=2))
+    # print(response.show(level=Response.DEBUG))
 
     # just print off the values
+    # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
+    # for edge in message.knowledge_graph.edges:
+    #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
+    #        print(edge.edge_attributes.pop().value)
     print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
-    #for edge in message.knowledge_graph.edges:
-    #    print(edge.edge_attributes.pop().value)
     print(response.show(level=Response.DEBUG))
-    #print(actions_parser.parse(actions_list))
+    # print(actions_parser.parse(actions_list))
 
 if __name__ == "__main__": main()
