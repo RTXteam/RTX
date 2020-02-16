@@ -165,8 +165,9 @@ class ARAXFilterKG:
             known_attributes = set()
             for edge in message.knowledge_graph.edges:
                 if hasattr(edge, 'edge_attributes'):
-                    for attribute in edge.edge_attributes:
-                        known_attributes.add(attribute.name)
+                    if edge.edge_attributes:
+                        for attribute in edge.edge_attributes:
+                            known_attributes.add(attribute.name)
             print(known_attributes)
             allowable_parameters = {'action': {'remove_edges_by_attribute'},
                                     'edge_attribute': known_attributes,
@@ -293,6 +294,7 @@ def main():
         #"filter(action=remove_nodes_by_type, node_type=protein)",
         "overlay(action=compute_ngd)",
         "filter(action=remove_edges_by_attribute, edge_attribute=ngd, threshold=.6, direction=below, remove_connected_nodes=False)",
+        #"filter(action=remove_edges_by_attribute, edge_attribute=ngd, threshold=.6, remove_connected_nodes=False)",
         "return(message=true,store=false)"
     ]
 

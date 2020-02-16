@@ -373,10 +373,12 @@ class ARAXQuery:
             from ARAX_messenger import ARAXMessenger
             from ARAX_expander import ARAXExpander
             from ARAX_overlay import ARAXOverlay
+            from ARAX_filter_kg import ARAXFilterKG
             messenger = ARAXMessenger()
             expander = ARAXExpander()
             filter = ARAXFilter()
             overlay = ARAXOverlay()
+            filter_kg = ARAXFilterKG()
 
             message = ARAXMessenger().from_dict(message)
 
@@ -408,6 +410,8 @@ class ARAXQuery:
                     break
                 elif action['command'] == 'overlay':  # recognize the overlay command
                     result = overlay.apply(message, action['parameters'])
+                elif action['command'] == 'filter_kg':  # recognize the filter_kg command
+                    result = filter_kg.apply(message, action['parameters'])
                 else:
                     response.error(f"Unrecognized command {action['command']}", error_code="UnrecognizedCommand")
                     print(response.show(level=Response.DEBUG))
@@ -599,6 +603,7 @@ def main():
             "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
             "expand(edge_id=[e00,e01])",
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=true)",
             "return(message=true, store=true)",
             ] } }
     elif params.example_number == 13:  # add pubmed id's
@@ -635,14 +640,16 @@ def main():
     #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.query_graph)), sort_keys=True, indent=2))
-    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
+    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     print(response.show(level=Response.DEBUG))
-    #vals = []
-    #for edge in message.knowledge_graph.edges:
-    #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
-    #        vals.append(edge.edge_attributes.pop().value)
-    #print(sorted(vals))
+    vals = []
+    for edge in message.knowledge_graph.edges:
+        if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
+            vals.append(edge.edge_attributes.pop().value)
+    print(sorted(vals))
+    for node in message.knowledge_graph.nodes:
+        print(node.name)
 
 
 if __name__ == "__main__": main()

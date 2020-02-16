@@ -92,13 +92,14 @@ class RemoveEdges:
             # iterate over the edges find the edges to remove
             for edge in self.message.knowledge_graph.edges:  # iterate over the edges
                 if hasattr(edge, 'edge_attributes'):  # check if they have attributes
-                    for attribute in edge.edge_attributes:  # for each attribute
-                        if attribute.name == edge_params['edge_attribute']:  # check if it's the desired one
-                            if compare(float(attribute.value), edge_params['threshold']):  # check if it's above/below the threshold
-                                edges_to_remove.add(i)  # mark it to be removed
-                                if edge_params['remove_connected_nodes']:  # if you want to remove the connected nodes, mark those too
-                                    node_ids_to_remove.add(edge.source_id)
-                                    node_ids_to_remove.add(edge.target_id)
+                    if edge.edge_attributes:  # if there are any edge attributes
+                        for attribute in edge.edge_attributes:  # for each attribute
+                            if attribute.name == edge_params['edge_attribute']:  # check if it's the desired one
+                                if compare(float(attribute.value), edge_params['threshold']):  # check if it's above/below the threshold
+                                    edges_to_remove.add(i)  # mark it to be removed
+                                    if edge_params['remove_connected_nodes']:  # if you want to remove the connected nodes, mark those too
+                                        node_ids_to_remove.add(edge.source_id)
+                                        node_ids_to_remove.add(edge.target_id)
                 i += 1
             if edge_params['remove_connected_nodes']:
                 self.response.debug(f"Removing Nodes")
