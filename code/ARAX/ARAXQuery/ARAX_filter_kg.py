@@ -292,7 +292,7 @@ def main():
         #"filter_kg(action=remove_edges_by_type, edge_type=physically_interacts_with, remove_connected_nodes=something)",
         #"filter(action=remove_nodes_by_type, node_type=protein)",
         "overlay(action=compute_ngd)",
-        "filter(action=remove_edges_by_attribute, edge_attribute=ngd, threshold=.08, direction=below, remove_connected_nodes=False)",
+        "filter(action=remove_edges_by_attribute, edge_attribute=ngd, threshold=.6, direction=below, remove_connected_nodes=False)",
         "return(message=true,store=false)"
     ]
 
@@ -371,6 +371,11 @@ def main():
     #        print(edge.edge_attributes.pop().value)
     print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
     print(response.show(level=Response.DEBUG))
-    # print(actions_parser.parse(actions_list))
+    vals = []
+    for edge in message.knowledge_graph.edges:
+        if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
+            vals.append(edge.edge_attributes.pop().value)
+    print(sorted(vals))
+
 
 if __name__ == "__main__": main()
