@@ -185,7 +185,7 @@ class ARAXFilterKG:
         edge_params = self.parameters
         edge_params['threshold'] = float(edge_params['threshold'])
         if 'remove_connected_nodes' in edge_params:
-            edge_params['remove_connected_nodes'] = bool(edge_params['remove_connected_nodes'])
+            edge_params['remove_connected_nodes'] = bool(edge_params['remove_connected_nodes'])  #FIXME: here again, this will convert any non empty string to TRUE
         else:
             edge_params['remove_connected_nodes'] = False
 
