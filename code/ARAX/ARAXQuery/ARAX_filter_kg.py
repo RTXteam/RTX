@@ -251,8 +251,9 @@ def main():
     # ]
 
     actions_list = [
-        "filter_kg(action=remove_edges_by_type, edge_type=physically_interacts_with, remove_connected_nodes=false)",
+        #"filter_kg(action=remove_edges_by_type, edge_type=physically_interacts_with, remove_connected_nodes=false)",
         #"filter_kg(action=remove_edges_by_type, edge_type=physically_interacts_with, remove_connected_nodes=something)",
+        "filter(action=remove_nodes_by_type, node_type=protein)",
         "return(message=true,store=false)"
     ]
 
@@ -319,7 +320,7 @@ def main():
     # for edge in message.knowledge_graph.edges:
     #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
     #        print(edge.edge_attributes.pop().value)
-    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
+    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
     print(response.show(level=Response.DEBUG))
     # print(actions_parser.parse(actions_list))
 
