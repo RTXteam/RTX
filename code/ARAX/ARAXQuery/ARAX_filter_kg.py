@@ -8,6 +8,7 @@ import ast
 import re
 import numpy as np
 from response import Response
+import traceback
 
 
 class ARAXFilterKG:
@@ -19,7 +20,7 @@ class ARAXFilterKG:
         self.parameters = None
         self.allowable_actions = {
             'remove_edges_by_type',
-            'remove_edges_by_property',
+            'remove_edges_by_attribute',
             'remove_nodes_by_type'
         }
 
@@ -45,13 +46,13 @@ class ARAXFilterKG:
                     f"Supplied parameter {key} is not permitted. Allowable parameters are: {list(allowable_parameters.keys())}",
                     error_code="UnknownParameter")
             elif item not in allowable_parameters[key]:
-                self.response.error(
-                    f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}",
-                    error_code="UnknownValue")
-            elif type(item) not in set(type(x) for x in allowable_parameters[key]):  # check if supplied value is of any type in the allowable parameters
-                self.response.error(
-                    f"Supplied value {item} is not of the correct type. In action {allowable_parameters['action']}, allowable types to {key} are: {[type(x) for x in allowable_parameters[key]]}",
-                    error_code="UnknownValue")
+                if any([type(x) == float for x in allowable_parameters[key]]):  # if it's a float, just accept it as it is
+                    return
+                else:  # otherwise, it's really not an allowable parameter
+                    self.response.error(
+                        f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}",
+                        error_code="UnknownValue")
+
 
 
     #### Top level decision maker for applying filters
@@ -149,29 +150,35 @@ class ARAXFilterKG:
         response = RE.remove_edges_by_type()
         return response
 
-    def __remove_edges_by_property(self, describe=False):
+    def __remove_edges_by_attribute(self, describe=False):
         """
         Removes edges from the KG.
         Allowable parameters: {'edge_type': str, 
-                                'edge_property': str,
+                                'edge_attribute': str,
                                 'direction': {'above', 'below'}}
         :return:
         """
         message = self.message
         parameters = self.parameters
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
-        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
-            allowable_parameters = {'action': {'remove_edges_by_property'},
-                                    'edge_property': set([k for x in self.message.knowledge_graph.edges for k in x.swagger_types.keys()]),
+        if message and parameters and hasattr(message, 'knowledge_graph') and hasattr(message.knowledge_graph, 'edges'):
+            known_attributes = set()
+            for edge in message.knowledge_graph.edges:
+                if hasattr(edge, 'edge_attributes'):
+                    for attribute in edge.edge_attributes:
+                        known_attributes.add(attribute.name)
+            print(known_attributes)
+            allowable_parameters = {'action': {'remove_edges_by_attribute'},
+                                    'edge_attribute': known_attributes,
                                     'direction': {'above', 'below'},
-                                    'threshold': {'a threshold value'},
+                                    'threshold': {float()},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f'}
                                     }
         else:
-            allowable_parameters = {'action': {'remove_edges_by_property'}, 
-                                    'edge_property': {'a edge property'},
+            allowable_parameters = {'action': {'remove_edges_by_attribute'},
+                                    'edge_attribute': {'an edge attribute name'},
                                     'direction': {'above', 'below'},
-                                    'threshold': {'a threshold value'},
+                                    'threshold': {'a floating point number'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f'}
                                     }
 
@@ -180,23 +187,49 @@ class ARAXFilterKG:
             print(allowable_parameters)
             return
 
+        edge_params = self.parameters
+
+        # try to convert the threshold to a float
+        try:
+            edge_params['threshold'] = float(edge_params['threshold'])
+        except:
+            tb = traceback.format_exc()
+            error_type, error, _ = sys.exc_info()
+            self.response.error(tb, error_code=error_type.__name__)
+            self.response.error(f"parameter 'threshold' must be a float")
+        if self.response.status != 'OK':
+            return self.response
+
         # Make sure only allowable parameters and values have been passed
         self.check_params(allowable_parameters)
         # return if bad parameters have been passed
         if self.response.status != 'OK':
             return self.response
 
-        edge_params = self.parameters
-        edge_params['threshold'] = float(edge_params['threshold'])
         if 'remove_connected_nodes' in edge_params:
-            edge_params['remove_connected_nodes'] = bool(edge_params['remove_connected_nodes'])  #FIXME: here again, this will convert any non empty string to TRUE
+            value = edge_params['remove_connected_nodes']
+            if value in {'true', 'True', 't'}:
+                edge_params['remove_connected_nodes'] = True
+            elif value in {'false', 'False', 'F'}:
+                edge_params['remove_connected_nodes'] = False
+            else:
+                self.response.error(
+                    f"Supplied value {value} is not permitted. In parameter remove_connected_nodes, allowable values are: {list(allowable_parameters['remove_connected_nodes'])}",
+                    error_code="UnknownValue")
         else:
             edge_params['remove_connected_nodes'] = False
+
+        if 'direction' not in edge_params:
+            self.response.error(
+                f"Direction must be provided, allowable directions are: {list(allowable_parameters['direction'])}",
+                error_code="UnknownValue")
+        if self.response.status != 'OK':
+            return self.response
 
         # now do the call out to NGD
         from Filter_KG.remove_edges import RemoveEdges
         RE = RemoveEdges(self.response, self.message, edge_params)
-        response = RE.remove_edges_by_property()
+        response = RE.remove_edges_by_attribute()
         return response
 
     def __remove_nodes_by_type(self, describe=False):
@@ -257,7 +290,9 @@ def main():
     actions_list = [
         #"filter_kg(action=remove_edges_by_type, edge_type=physically_interacts_with, remove_connected_nodes=false)",
         #"filter_kg(action=remove_edges_by_type, edge_type=physically_interacts_with, remove_connected_nodes=something)",
-        "filter(action=remove_nodes_by_type, node_type=protein)",
+        #"filter(action=remove_nodes_by_type, node_type=protein)",
+        "overlay(action=compute_ngd)",
+        "filter(action=remove_edges_by_attribute, edge_attribute=ngd, threshold=.08, direction=below, remove_connected_nodes=False)",
         "return(message=true,store=false)"
     ]
 
@@ -287,8 +322,18 @@ def main():
     # print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
 
     #### Create an overlay object and use it to apply action[0] from the list
+    #filterkg = ARAXFilterKG()
+    #result = filterkg.apply(message, actions[0]['parameters'])
+    #response.merge(result)
+
+    # Apply overlay so you get an edge attribute to work with, then apply the filter
+    from ARAX_overlay import ARAXOverlay
+    overlay = ARAXOverlay()
+    result = overlay.apply(message, actions[0]['parameters'])
+    response.merge(result)
+    # then apply the filter
     filterkg = ARAXFilterKG()
-    result = filterkg.apply(message, actions[0]['parameters'])
+    result = filterkg.apply(message, actions[1]['parameters'])
     response.merge(result)
 
     # if result.status != 'OK':
@@ -324,7 +369,7 @@ def main():
     # for edge in message.knowledge_graph.edges:
     #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
     #        print(edge.edge_attributes.pop().value)
-    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
+    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
     print(response.show(level=Response.DEBUG))
     # print(actions_parser.parse(actions_list))
 
