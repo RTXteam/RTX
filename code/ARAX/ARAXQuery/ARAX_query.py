@@ -630,14 +630,14 @@ def main():
     message = araxq.message
 
     #### Print out the message that came back
-    print(response.show(level=Response.DEBUG))
+    #print(response.show(level=Response.DEBUG))
     #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.query_graph)), sort_keys=True, indent=2))
     print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
-
+    print(response.show(level=Response.DEBUG))
     #vals = []
     #for edge in message.knowledge_graph.edges:
     #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
