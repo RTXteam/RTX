@@ -603,8 +603,8 @@ def main():
             "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
             "expand(edge_id=[e00,e01])",
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
-            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=true)",
-            "return(message=true, store=true)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.9, remove_connected_nodes=t)",
+            "return(message=true, store=false)",
             ] } }
     elif params.example_number == 13:  # add pubmed id's
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -643,13 +643,35 @@ def main():
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     print(response.show(level=Response.DEBUG))
+    ids = ['UniProtKB:P02675',
+            'UniProtKB:P01375',
+            'UniProtKB:P15559',
+            'UniProtKB:P06213',
+            'UniProtKB:P05231',
+            'UniProtKB:Q99683',
+            'UniProtKB:P10635',
+            'UniProtKB:Q01959',
+            'UniProtKB:P21728',
+            'UniProtKB:P21397',
+            'UniProtKB:P10636',
+            'UniProtKB:P08183',
+            'UniProtKB:P04062',
+            'UniProtKB:P14416',
+            'UniProtKB:Q5S007',
+            'UniProtKB:P27338',
+            'UniProtKB:P37840',
+            'UniProtKB:P08069']
     vals = []
     for edge in message.knowledge_graph.edges:
         if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
             vals.append(edge.edge_attributes.pop().value)
+            if edge.source_id in ids:
+                print(edge.source_id)
+            if edge.target_id in ids:
+                print(edgge.target_id)
     print(sorted(vals))
     for node in message.knowledge_graph.nodes:
-        print(node.name)
+        print(node.id)
 
 
 if __name__ == "__main__": main()

@@ -136,7 +136,7 @@ class ARAXFilterKG:
             value = edge_params['remove_connected_nodes']
             if value in {'true', 'True', 't'}:
                 edge_params['remove_connected_nodes'] = True
-            elif value in {'false', 'False', 'F'}:
+            elif value in {'false', 'False', 'f'}:
                 edge_params['remove_connected_nodes'] = False
             else:
                 self.response.error(f"Supplied value {value} is not permitted. In parameter remove_connected_nodes, allowable values are: {list(allowable_parameters['remove_connected_nodes'])}",
@@ -211,7 +211,7 @@ class ARAXFilterKG:
             value = edge_params['remove_connected_nodes']
             if value in {'true', 'True', 't'}:
                 edge_params['remove_connected_nodes'] = True
-            elif value in {'false', 'False', 'F'}:
+            elif value in {'false', 'False', 'f'}:
                 edge_params['remove_connected_nodes'] = False
             else:
                 self.response.error(
@@ -293,7 +293,7 @@ def main():
         #"filter_kg(action=remove_edges_by_type, edge_type=physically_interacts_with, remove_connected_nodes=something)",
         #"filter(action=remove_nodes_by_type, node_type=protein)",
         "overlay(action=compute_ngd)",
-        "filter(action=remove_edges_by_attribute, edge_attribute=ngd, threshold=.6, direction=below, remove_connected_nodes=False)",
+        "filter(action=remove_edges_by_attribute, edge_attribute=ngd, threshold=.63, direction=below, remove_connected_nodes=t)",
         #"filter(action=remove_edges_by_attribute, edge_attribute=ngd, threshold=.6, remove_connected_nodes=False)",
         "return(message=true,store=false)"
     ]
@@ -374,6 +374,9 @@ def main():
     print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
     print(response.show(level=Response.DEBUG))
     vals = []
+    for node in message.knowledge_graph.nodes:
+        print(node.id)
+    print(len(message.knowledge_graph.nodes))
     for edge in message.knowledge_graph.edges:
         if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
             vals.append(edge.edge_attributes.pop().value)
