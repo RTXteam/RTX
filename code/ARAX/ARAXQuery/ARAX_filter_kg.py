@@ -44,9 +44,13 @@ class ARAXFilterKG:
                 self.response.error(
                     f"Supplied parameter {key} is not permitted. Allowable parameters are: {list(allowable_parameters.keys())}",
                     error_code="UnknownParameter")
-            elif item not in allowable_parameters[key]:# or type(item) not in allowable_parameters[key]:  # FIXME: @Finn why is "type(item) not in allowable_parameters[key]" included here?
+            elif item not in allowable_parameters[key]:
                 self.response.error(
                     f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}",
+                    error_code="UnknownValue")
+            elif type(item) not in set(type(x) for x in allowable_parameters[key]):  # check if supplied value is of any type in the allowable parameters
+                self.response.error(
+                    f"Supplied value {item} is not of the correct type. In action {allowable_parameters['action']}, allowable types to {key} are: {[type(x) for x in allowable_parameters[key]]}",
                     error_code="UnknownValue")
 
 
@@ -209,7 +213,7 @@ class ARAXFilterKG:
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'remove_nodes_by_type'},
                                     'node_type': set([t for x in self.message.knowledge_graph.nodes for t in x.type])
-                                }
+                                   }
         else:
             allowable_parameters = {'action': {'remove_nodes_by_type'}, 
                                 'node_type': {'a node type'}}
