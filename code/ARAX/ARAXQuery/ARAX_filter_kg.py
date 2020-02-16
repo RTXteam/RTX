@@ -112,12 +112,14 @@ class ARAXFilterKG:
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
             allowable_parameters = {'action': {'remove_edges_by_type'},
                                     'edge_type': set([x.type for x in self.message.knowledge_graph.edges]),
-                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f'}
+                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'qnode_id':set([x.qnode_id for x in self.message.knowledge_graph.nodes])
                                 }
         else:
             allowable_parameters = {'action': {'remove_edges_by_type'},
                                     'edge_type': {'an edge type'},
-                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f'}
+                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'qnode_id':{'a specific query node id to remove'}
                                 }
 
         # A little function to describe what this thing does
@@ -134,9 +136,9 @@ class ARAXFilterKG:
         edge_params = self.parameters
         if 'remove_connected_nodes' in edge_params:
             value = edge_params['remove_connected_nodes']
-            if value in {'true', 'True', 't'}:
+            if value in {'true', 'True', 't', 'T'}:
                 edge_params['remove_connected_nodes'] = True
-            elif value in {'false', 'False', 'f'}:
+            elif value in {'false', 'False', 'f', 'F'}:
                 edge_params['remove_connected_nodes'] = False
             else:
                 self.response.error(f"Supplied value {value} is not permitted. In parameter remove_connected_nodes, allowable values are: {list(allowable_parameters['remove_connected_nodes'])}",
@@ -173,14 +175,16 @@ class ARAXFilterKG:
                                     'edge_attribute': known_attributes,
                                     'direction': {'above', 'below'},
                                     'threshold': {float()},
-                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f'}
+                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'qnode_id':set([x.qnode_id for x in self.message.knowledge_graph.nodes])
                                     }
         else:
             allowable_parameters = {'action': {'remove_edges_by_attribute'},
                                     'edge_attribute': {'an edge attribute name'},
                                     'direction': {'above', 'below'},
                                     'threshold': {'a floating point number'},
-                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f'}
+                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'qnode_id':{'a specific query node id to remove'}
                                     }
 
         # A little function to describe what this thing does
@@ -209,9 +213,9 @@ class ARAXFilterKG:
 
         if 'remove_connected_nodes' in edge_params:
             value = edge_params['remove_connected_nodes']
-            if value in {'true', 'True', 't'}:
+            if value in {'true', 'True', 't', 'T'}:
                 edge_params['remove_connected_nodes'] = True
-            elif value in {'false', 'False', 'f'}:
+            elif value in {'false', 'False', 'f', 'F'}:
                 edge_params['remove_connected_nodes'] = False
             else:
                 self.response.error(

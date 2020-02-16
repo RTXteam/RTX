@@ -603,7 +603,7 @@ def main():
             "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
             "expand(edge_id=[e00,e01])",
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
-            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.9, remove_connected_nodes=t)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.7, remove_connected_nodes=t, qnode_id=n02)",
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 13:  # add pubmed id's
@@ -671,7 +671,8 @@ def main():
                 print(edgge.target_id)
     print(sorted(vals))
     for node in message.knowledge_graph.nodes:
-        print(node.id)
+        print(node.name)
+        print(node.qnode_id)
 
 
 if __name__ == "__main__": main()

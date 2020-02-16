@@ -48,7 +48,13 @@ class RemoveEdges:
                 # iterate over nodes find adjacent connected nodes
                 for node in self.message.knowledge_graph.nodes:
                     if node.id in node_ids_to_remove:
-                        nodes_to_remove.add(i)
+                        if 'qnode_id' in edge_params:
+                            if node.qnode_id == edge_params['qnode_id']:
+                                nodes_to_remove.add(i)
+                            else:
+                                node_ids_to_remove.remove(node.id)
+                        else:
+                            nodes_to_remove.add(i)
                     i += 1
                 # remove connected nodes
                 self.message.knowledge_graph.nodes = [val for idx,val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
@@ -109,7 +115,13 @@ class RemoveEdges:
                 # iterate over nodes find adjacent connected nodes
                 for node in self.message.knowledge_graph.nodes:
                     if node.id in node_ids_to_remove:
-                        nodes_to_remove.add(i)
+                        if 'qnode_id' in edge_params:
+                            if node.qnode_id == edge_params['qnode_id']:
+                                nodes_to_remove.add(i)
+                            else:
+                                node_ids_to_remove.remove(node.id)
+                        else:
+                            nodes_to_remove.add(i)
                     i += 1
                 # remove connected nodes
                 self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
