@@ -19,7 +19,9 @@ class ARAXOverlay:
         self.parameters = None
         self.allowable_actions = {
             'compute_ngd',
-            'overlay_clinical_info'
+            'overlay_clinical_info',
+            'compute_jaccard',
+            'add_node_pmids'
         }
 
     def describe_me(self):
@@ -185,6 +187,100 @@ class ARAXOverlay:
         response = OCI.decorate()  # TODO: refactor this so it's basically another apply() like function # 606
         return response
 
+    def __add_node_pmids(self, describe=False):
+        """
+        Computes normalized google distance between two nodes connected by an edge in the knowledge graph
+        and adds that as an edge attribute.
+        Allowable parameters: {max_num: {'all', '10', '100', '1000'}}
+        :return:
+        """
+        # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
+        allowable_parameters = {'action': {'add_node_pmids'}, 'max_num': {'all', '10', '100', '1000'}}
+
+        # A little function to describe what this thing does
+        if describe:
+            print(allowable_parameters)
+            return
+
+        # Make sure only allowable parameters and values have been passed
+        self.check_params(allowable_parameters)
+        # return if bad parameters have been passed
+        if self.response.status != 'OK':
+            return self.response
+
+        # Set the default parameters
+        pass_params = {'max_num': 100}  # here is where you can set default values
+
+        # parse the input parameters to be the data types I need them to be
+        # TODO: there has got to be a cleaner way to do this...
+        for key, value in self.parameters.items():
+            if key != 'action':
+                if key == 'max_num':
+                    if value == '0':
+                        pass_params[key] = 0
+                    elif value == '10':
+                        pass_params[key] = 10
+                    elif value == '100':
+                        pass_params[key] = 100
+                    elif value == '1000':
+                        pass_params[key] = 1000
+                    elif value == 'all':
+                        pass_params[key] = None
+
+        # now do the call out to NGD
+        from Overlay.add_node_pmids import AddNodePMIDS
+        ANP = AddNodePMIDS(self.response, self.message, pass_params)
+        response = ANP.add_node_pmids()
+        return response
+
+    def __compute_jaccard(self, describe=False):
+        """
+        Computes the jaccard distance: starting_node -> {set of intermediate nodes} -> {set of end nodes}.
+        for each end node x, looks at (number of intermediate nodes connected to x) / (total number of intermediate nodes).
+        Basically, which of the end nodes is connected to many of the intermediate nodes. Adds an edge to the KG with the
+        jaccard value, source, and target info as an edge attribute .
+        Allowable parameters:
+        :return:
+        """
+        message = self.message
+        parameters = self.parameters
+        # need two different ones of these since the allowable parameters will depend on the id's that they used
+        # TODO: the start_node_id CANNOT be a set
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
+            allowable_parameters = {'action': {'compute_jaccard'},
+                                'start_node_id': set([x.id for x in self.message.query_graph.nodes]),
+                                'intermediate_node_id': set([x.id for x in self.message.query_graph.nodes]),
+                                'end_node_id': set([x.id for x in self.message.query_graph.nodes]),
+                                'virtual_edge_type': {self.parameters['virtual_edge_type'] if 'virtual_edge_type' in self.parameters else "any_string"}
+                                }
+        else:
+            allowable_parameters = {'action': {'compute_jaccard'},
+                                    'start_node_id': {"a node id"},
+                                    'intermediate_node_id': {"a node id"},
+                                    'end_node_id': {"a node id"},
+                                    'virtual_edge_type': {"any string label"}
+                                    }
+        print(allowable_parameters)
+        # A little function to describe what this thing does
+        if describe:
+            print(allowable_parameters)
+            return
+
+        # Make sure only allowable parameters and values have been passed
+        self.check_params(allowable_parameters)
+        # return if bad parameters have been passed
+        if self.response.status != 'OK':
+            return self.response
+
+        # No default parameters to set
+
+        # in the above allowable_parameters, we've already checked if the node id's exist, so no need to check them
+
+        # now do the call out to NGD
+        from Overlay.compute_jaccard import ComputeJaccard
+        JAC = ComputeJaccard(self.response, self.message, self.parameters)
+        response = JAC.compute_jaccard()
+        return response
 
 ##########################################################################################
 def main():
@@ -205,8 +301,10 @@ def main():
     #]
 
     actions_list = [
-        "overlay(action=compute_ngd)",
+        #"overlay(action=compute_ngd)",
         #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
+        #"overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+        "overlay(action=add_node_pmids)",
         "return(message=true,store=false)"
     ]
 
@@ -226,8 +324,9 @@ def main():
     message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
     # message_dict = araxdb.getMessage(13)  # ibuprofen -> proteins -> disease # work computer
     #message_dict = araxdb.getMessage(14)  # pleuropneumonia -> phenotypic_feature # work computer
-    # message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature  # work computer
+    #message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature  # work computer
     #message_dict = araxdb.getMessage(5)  # atherosclerosis -> phenotypic_feature  # home computer
+    #message_dict = araxdb.getMessage(10)
 
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger
@@ -268,9 +367,11 @@ def main():
     #print(response.show(level=Response.DEBUG))
 
     # just print off the values
-    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
+    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
     #for edge in message.knowledge_graph.edges:
-    #    print(edge.edge_attributes.pop().value)
+    #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
+    #        print(edge.edge_attributes.pop().value)
+    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
     print(response.show(level=Response.DEBUG))
     #print(actions_parser.parse(actions_list))
 

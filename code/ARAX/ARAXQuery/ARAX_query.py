@@ -518,7 +518,7 @@ def main():
             "add_qnode(name=hypertension, id=n00)",
             "add_qnode(type=protein, is_set=True, id=n01)",
             "add_qedge(source_id=n01, target_id=n00, id=e00)",
-            "query_graph_reasoner()",
+            "expand(edge_id=e00)",
             "overlay(action=compute_ngd)",
             "filter(maximum_results=2)",
             "return(message=true, store=false)",
@@ -529,13 +529,90 @@ def main():
             "add_qnode(curie=DOID:1936, id=n00)",  # Atherosclerosis
             "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00, type=has_phenotype)",
-            "query_graph_reasoner()",
+            "expand(edge_id=e00)",
             "overlay(action=overlay_clinical_info, paired_concept_freq=true)",
             "filter(maximum_results=2)",
             "return(message=true, store=false)",
             ] } }
+    elif params.example_number == 7:  # stub to test out the compute_jaccard feature
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(curie=DOID:14330, id=n00)",  # parkinsons
+            "add_qnode(type=protein, is_set=True, id=n01)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n02)",
+            "add_qedge(source_id=n01, target_id=n00, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01)",
+            "expand(edge_id=[e00,e01])",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+            "return(message=true, store=false)",
+        ]}}
+    elif params.example_number == 8:  # to test jaccard with known result
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(curie=DOID:8398, id=n00)",  # osteoarthritis
+            "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
+            "add_qnode(type=disease, is_set=true, id=n02)",
+            "add_qedge(source_id=n01, target_id=n00, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01)",
+            "expand(edge_id=[e00,e01])",
+            "return(message=true, store=true)",
+        ]}}
+    elif params.example_number == 9:  # to test jaccard with known result. This check's out by comparing with match p=(s:disease{id:"DOID:1588"})-[]-(r:protein)-[]-(:chemical_substance) return p and manually counting
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(curie=DOID:1588, id=n00)",
+            "add_qnode(type=protein, is_set=True, id=n01)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n02)",
+            "add_qedge(source_id=n01, target_id=n00, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01)",
+            "expand(edge_id=[e00,e01])",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+            "return(message=true, store=true)",
+        ]}}
+    elif params.example_number == 10:  # test case of drug prediction
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(curie=DOID:1588, id=n00)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00)",
+            "return(message=true, store=true)",
+        ]}}
+    elif params.example_number == 11:  # test overlay with overlay_clinical_info, paired_concept_freq via COHD
+        query = { "previous_message_processing_plan": { "processing_actions": [
+            "create_message",
+            "add_qnode(curie=DOID:0060227, id=n00)",  # Adam's oliver
+            "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00, type=has_phenotype)",
+            "expand(edge_id=e00)",
+            "overlay(action=overlay_clinical_info, paired_concept_freq=true)",
+            "filter(maximum_results=2)",
+            "return(message=true, store=false)",
+            ] } }
+    elif params.example_number == 12:  # dry run of example 2 #TODO!!!!!
+        query = { "previous_message_processing_plan": { "processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:14330, id=n00)",
+            "add_qnode(type=protein, is_set=true, id=n01)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
+            "expand(edge_id=[e00,e01])",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+            "return(message=true, store=true)",
+            ] } }
+    elif params.example_number == 13:  # add pubmed id's
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:1227, id=n00)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00)",
+            "overlay(action=add_node_pmids, max_num=10)",
+            "return(message=true, store=false)"
+        ]}}
     else:
-        eprint(f"Invalid test number {params.example_number}. Try 1 through 6")
+        eprint(f"Invalid test number {params.example_number}. Try 1 through 7")
         return
 
     if 0:
@@ -553,8 +630,19 @@ def main():
     message = araxq.message
 
     #### Print out the message that came back
+    #print(response.show(level=Response.DEBUG))
+    #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
+    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
+    #print(json.dumps(ast.literal_eval(repr(message.query_graph)), sort_keys=True, indent=2))
+    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
+    #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     print(response.show(level=Response.DEBUG))
-    print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    #vals = []
+    #for edge in message.knowledge_graph.edges:
+    #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
+    #        vals.append(edge.edge_attributes.pop().value)
+    #print(sorted(vals))
 
 
 if __name__ == "__main__": main()
