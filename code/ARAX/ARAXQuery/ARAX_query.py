@@ -603,7 +603,7 @@ def main():
             "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
             "expand(edge_id=[e00,e01])",
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
-            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.3, remove_connected_nodes=t, qnode_id=n02)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 13:  # add pubmed id's
@@ -662,17 +662,17 @@ def main():
     #         'UniProtKB:P27338',
     #         'UniProtKB:P37840',
     #         'UniProtKB:P08069']
-    # vals = []
-    # for edge in message.knowledge_graph.edges:
-    #     if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
-    #         vals.append(edge.edge_attributes.pop().value)
-    #         if edge.source_id in ids:
-    #             print(edge.source_id)
-    #         if edge.target_id in ids:
+    vals = []
+    for edge in message.knowledge_graph.edges:
+        if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
+            vals.append(edge.edge_attributes.pop().value)
+    #        if edge.source_id in ids:
+    #            print(edge.source_id)
+    #        if edge.target_id in ids:
     #             print(edgge.target_id)
-    # print(sorted(vals))
-    # for node in message.knowledge_graph.nodes:
-    #     print(node.name)
+    print(sorted(vals))
+    for node in message.knowledge_graph.nodes:
+        print(f"{node.name} {node.type[0]}")
     #     print(node.qnode_id)
 
 
