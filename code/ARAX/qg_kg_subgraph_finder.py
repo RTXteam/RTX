@@ -85,31 +85,29 @@ class Graph:
         self.edges_by_key = dict()
         self.neighbors_incoming = dict()
         self.neighbors_outgoing = dict()
+        for node in self.nodes:
+            self.neighbors_incoming[node] = set()
+            self.neighbors_outgoing[node] = set()
+            self.edges_by_node[node] = set()
         for edge in self.edges:
+            assert edge.source in self.nodes
+            assert edge.target in self.nodes
             # first for the edge source
             edges_by_node_single = self.edges_by_node.get(edge.source, None)
-            if edges_by_node_single is None:
-                edges_by_node_single = []
-            self.edges_by_node[edge.source] = edges_by_node_single
-            edges_by_node_single.append(edge)
+            assert edges_by_node_single is not None
+            edges_by_node_single.add(edge)
             # now by the edge target
             neighbors_incoming_node = self.neighbors_incoming.get(edge.target, None)
-            if neighbors_incoming_node is None:
-                neighbors_incoming_node = set()
-                self.neighbors_incoming[edge.target] = neighbors_incoming_node
+            assert neighbors_incoming_node is not None
             neighbors_incoming_node.add(edge.source)
             neighbors_outgoing_node = self.neighbors_outgoing.get(edge.source, None)
-            if neighbors_outgoing_node is None:
-                neighbors_outgoing_node = set()
-                self.neighbors_outgoing[edge.source] = neighbors_outgoing_node
+            assert neighbors_outgoing_node is not None
             neighbors_outgoing_node.add(edge.target)
             edges_by_node_single = self.edges_by_node.get(edge.target, None)
-            if edges_by_node_single is None:
-                edges_by_node_single = []
-            self.edges_by_node[edge.target] = edges_by_node_single
-            edges_by_node_single.append(edge)
-            self.edges_by_key[make_edge_key(edge.source,
-                                            edge.target)] = edge
+            assert edges_by_node_single is not None
+            edges_by_node_single.add(edge)
+            self.edges_by_key[Graph.make_edge_key(edge.source,
+                                                  edge.target)] = edge
         for node in self.nodes:
             self.nodes_by_id[node.node_id] = node
             if node.node_type == NodeType.FIXED:
@@ -135,6 +133,23 @@ class Graph:
         return("((" + ', '.join([str(node) for node in self.nodes]) + "), " + "\n" +
                " (" + '\n  '.join([str(edge) for edge in self.edges]) + "))")
 
+    def __deepcopy__(self, memo):
+        nodes_map = dict()
+        newgraph = copy.copy(self)
+        for node in self.nodes:
+            new_node = copy.copy(node)
+            nodes_map[node] = new_node
+        newgraph.nodes = set([node for node in nodes_map.values()])
+        newedges = set()
+        for edge in self.edges:
+            newedge = copy.copy(edge)
+            newedge.source = nodes_map.get(newedge.source)
+            newedge.target = nodes_map.get(newedge.target)
+            newedges.add(newedge)
+        newgraph.edges = newedges
+        newgraph.setup()
+        return newgraph
+
     def subgraph_for_nodes(self,
                            nodes: set):
         subgraph_edges_set = set()
@@ -152,16 +167,17 @@ class Graph:
     def has_edge_category_category(self,
                                    node1: Node,
                                    node2: Node):
-        return (make_edge_key(node1, node2) in self.edges_by_key) or \
-               (make_edge_key(node2, node1) in self.edges_by_key)
+        return (Graph.make_edge_key(node1, node2) in self.edges_by_key) or \
+               (Graph.make_edge_key(node2, node1) in self.edges_by_key)
 
     def neighbors(self,
                   p_node: Node,
                   mode: EdgeDir):  # mode: 1 = incoming, 2 = outgoing, 3 = both
+        assert p_node in self.nodes
         ret_nodes = []
         if mode == EdgeDir.INCOMING or mode == EdgeDir.BOTH:
             ret_nodes += [node for node in self.neighbors_incoming[p_node]]
-        if mode == EdgeDir.OUTGOING or mode == EdgeDir.BOTH > 0:
+        if mode == EdgeDir.OUTGOING or mode == EdgeDir.BOTH:
             ret_nodes += [node for node in self.neighbors_outgoing[p_node]]
         return set(ret_nodes)
 
@@ -223,10 +239,9 @@ class Graph:
                 return True
         return False
 
-
-def make_edge_key(node1: Node,
-                  node2: Node):
-    return node1.key() + '->' + node2.key()
+    def make_edge_key(node1: Node,
+                      node2: Node):
+        return node1.key() + '->' + node2.key()
 
 
 def match_small_kg_to_qg(qg: Graph,
@@ -287,7 +302,7 @@ def match_small_kg_to_qg(qg: Graph,
         for edge in qg.edges:
             kg_source = qg_to_kg_node_map[edge.source]
             kg_target = qg_to_kg_node_map[edge.target]
-            edge_key = make_edge_key(kg_source, kg_target)
+            edge_key = Graph.make_edge_key(kg_source, kg_target)
             if edge_key not in small_kg.edges_by_key:
                 mapping_is_consistent = False
                 break
@@ -310,10 +325,10 @@ def check_kg_node_if_should_keep(kg: Graph,
     category_nodes_dict = qg.query_nodes[node_category]
     for qg_node_id in category_nodes_dict:
         qg_node = qg.nodes_by_id[qg_node_id]
-        if len(qg.neighbors(qg_node, 3)) == 0:
+        if len(qg.neighbors(qg_node, EdgeDir.BOTH)) == 0:
             # this is a lone node in the query graph; return True
             return NodeType.QUERY
-    for node in kg.neighbors(kg_node, 3):
+    for node in kg.neighbors(kg_node, EdgeDir.BOTH):
         if node.node_id in qg.fixed_nodes:
             return NodeType.QUERY
         if qg.has_edge_category_category(kg_node, node):
@@ -588,7 +603,24 @@ def test13():
     assert len(subgraphs) == 2
 
 
+def test_single_node():
+    qg = Graph.make_from_dicts({'id': ['DOID:1'],
+                                'category': ['disease']},
+                               {'source_id': [],
+                                'target_id': []})
+    find_all_kg_subgraphs_for_qg_dicts({'nodes': {'id': ['DOID:1'],
+                                                  'category': ['disease']},
+                                        'edges': {'source_id': [],
+                                                  'target_id': []}},
+                                       {'nodes': {'id': ['n00'],
+                                                  'type': [NodeType.QUERY],
+                                                  'category': ['disease']},
+                                        'edges': {'source_id': [],
+                                                  'target_id': []}})
+
+
 if __name__ == '__main__':
+    test_single_node()
     test1()
     test2()
     test3()
