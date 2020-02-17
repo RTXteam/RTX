@@ -604,10 +604,6 @@ def test13():
 
 
 def test_single_node():
-    qg = Graph.make_from_dicts({'id': ['DOID:1'],
-                                'category': ['disease']},
-                               {'source_id': [],
-                                'target_id': []})
     find_all_kg_subgraphs_for_qg_dicts({'nodes': {'id': ['DOID:1'],
                                                   'category': ['disease']},
                                         'edges': {'source_id': [],
