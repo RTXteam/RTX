@@ -559,7 +559,7 @@ def main():
             "add_qedge(source_id=n01, target_id=n00, id=e00)",
             "add_qedge(source_id=n01, target_id=n02, id=e01)",
             "expand(edge_id=[e00,e01])",
-            "return(message=true, store=true)",
+            "return(message=true, store=false)",
         ]}}
     elif params.example_number == 9:  # to test jaccard with known result. This check's out by comparing with match p=(s:disease{id:"DOID:1588"})-[]-(r:protein)-[]-(:chemical_substance) return p and manually counting
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -571,7 +571,7 @@ def main():
             "add_qedge(source_id=n01, target_id=n02, id=e01)",
             "expand(edge_id=[e00,e01])",
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
-            "return(message=true, store=true)",
+            "return(message=true, store=false)",
         ]}}
     elif params.example_number == 10:  # test case of drug prediction
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -580,7 +580,7 @@ def main():
             "add_qnode(type=chemical_substance, is_set=true, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
-            "return(message=true, store=true)",
+            "return(message=true, store=false)",
         ]}}
     elif params.example_number == 11:  # test overlay with overlay_clinical_info, paired_concept_freq via COHD
         query = { "previous_message_processing_plan": { "processing_actions": [
@@ -603,7 +603,7 @@ def main():
             "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
             "expand(edge_id=[e00,e01])",
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
-            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.7, remove_connected_nodes=t, qnode_id=n02)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 13:  # add pubmed id's
@@ -642,37 +642,38 @@ def main():
     #print(json.dumps(ast.literal_eval(repr(message.query_graph)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
+    #print(response.show(level=Response.DEBUG))
     print(response.show(level=Response.DEBUG))
-    ids = ['UniProtKB:P02675',
-            'UniProtKB:P01375',
-            'UniProtKB:P15559',
-            'UniProtKB:P06213',
-            'UniProtKB:P05231',
-            'UniProtKB:Q99683',
-            'UniProtKB:P10635',
-            'UniProtKB:Q01959',
-            'UniProtKB:P21728',
-            'UniProtKB:P21397',
-            'UniProtKB:P10636',
-            'UniProtKB:P08183',
-            'UniProtKB:P04062',
-            'UniProtKB:P14416',
-            'UniProtKB:Q5S007',
-            'UniProtKB:P27338',
-            'UniProtKB:P37840',
-            'UniProtKB:P08069']
+    # ids = ['UniProtKB:P02675',
+    #         'UniProtKB:P01375',
+    #         'UniProtKB:P15559',
+    #         'UniProtKB:P06213',
+    #         'UniProtKB:P05231',
+    #         'UniProtKB:Q99683',
+    #         'UniProtKB:P10635',
+    #         'UniProtKB:Q01959',
+    #         'UniProtKB:P21728',
+    #         'UniProtKB:P21397',
+    #         'UniProtKB:P10636',
+    #         'UniProtKB:P08183',
+    #         'UniProtKB:P04062',
+    #         'UniProtKB:P14416',
+    #         'UniProtKB:Q5S007',
+    #         'UniProtKB:P27338',
+    #         'UniProtKB:P37840',
+    #         'UniProtKB:P08069']
     vals = []
     for edge in message.knowledge_graph.edges:
         if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
             vals.append(edge.edge_attributes.pop().value)
-            if edge.source_id in ids:
-                print(edge.source_id)
-            if edge.target_id in ids:
-                print(edgge.target_id)
+    #        if edge.source_id in ids:
+    #            print(edge.source_id)
+    #        if edge.target_id in ids:
+    #             print(edgge.target_id)
     print(sorted(vals))
     for node in message.knowledge_graph.nodes:
-        print(node.name)
-        print(node.qnode_id)
+        print(f"{node.name} {node.type[0]}")
+    #     print(node.qnode_id)
 
 
 if __name__ == "__main__": main()
