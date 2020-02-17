@@ -170,7 +170,7 @@ class ARAXFilterKG:
                     if edge.edge_attributes:
                         for attribute in edge.edge_attributes:
                             known_attributes.add(attribute.name)
-            print(known_attributes)
+            # print(known_attributes)
             allowable_parameters = {'action': {'remove_edges_by_attribute'},
                                     'edge_attribute': known_attributes,
                                     'direction': {'above', 'below'},

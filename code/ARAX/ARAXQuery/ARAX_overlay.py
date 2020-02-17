@@ -260,7 +260,7 @@ class ARAXOverlay:
                                     'end_node_id': {"a node id"},
                                     'virtual_edge_type': {"any string label"}
                                     }
-        print(allowable_parameters)
+        # print(allowable_parameters)
         # A little function to describe what this thing does
         if describe:
             print(allowable_parameters)
