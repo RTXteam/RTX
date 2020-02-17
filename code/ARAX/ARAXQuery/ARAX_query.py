@@ -616,6 +616,23 @@ def main():
             "overlay(action=add_node_pmids, max_num=10)",
             "return(message=true, store=false)"
         ]}}
+    elif params.example_number == 14:  # test out example 3
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:11130, id=n00)",  # Secondary hypertension
+            "add_qnode(type=phenotypic_feature, is_set=true, id=n01)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n02)",
+            "add_qnode(type=protein, is_set=true, id=n03)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00, type=has_phenotype)",  # phenotypes of secondary hypertension
+            "add_qedge(source_id=n02, target_id=n01, id=e01, type=indicated_for)",  # only look for drugs that are indicated for those phenotypes
+            "add_qedge(source_id=n02, target_id=n03, id=e02)",  # find proteins that interact with those drugs
+            "expand(edge_id=[e00, e01, e02])",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",  # only look at drugs that target lots of phenotypes
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.07, remove_connected_nodes=t, qnode_id=n02)",  # remove edges that connect to few phenotypes
+            "overlay(action=overlay_clinical_info, paired_concept_freq=true)",  # overlay with COHD information
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=paired_concept_frequency, direction=below, threshold=0.00000001, remove_connected_nodes=f)",
+            "return(message=true, store=false)"
+        ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 7")
         return
@@ -665,15 +682,16 @@ def main():
     vals = []
     for edge in message.knowledge_graph.edges:
         if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
-            vals.append(edge.edge_attributes.pop().value)
-    #        if edge.source_id in ids:
-    #            print(edge.source_id)
-    #        if edge.target_id in ids:
-    #             print(edgge.target_id)
+            for attr in edge.edge_attributes:
+                if attr.name == "paired_concept_frequency":
+                    vals.append(attr.value)
+                    print(edge.source_id)
+                    print(edge.target_id)
     print(sorted(vals))
-    for node in message.knowledge_graph.nodes:
-        print(f"{node.name} {node.type[0]}")
+    #for node in message.knowledge_graph.nodes:
+    #    print(f"{node.name} {node.type[0]}")
     #     print(node.qnode_id)
-
+    from collections import Counter
+    print(Counter([x.provided_by for x in message.knowledge_graph.edges]))
 
 if __name__ == "__main__": main()
