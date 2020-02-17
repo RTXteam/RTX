@@ -9,7 +9,7 @@ import re
 import numpy as np
 from response import Response
 import traceback
-
+from collections import Counter
 
 class ARAXFilterKG:
 
@@ -23,6 +23,32 @@ class ARAXFilterKG:
             'remove_edges_by_attribute',
             'remove_nodes_by_type'
         }
+        self.report_stats = True
+
+    def report_response_stats(self, response):
+        """
+        Little helper function that will report the KG, QG, and results stats to the debug in the process of executing actions. Basically to help diagnose problems
+        """
+        message = self.message
+        if self.report_stats:
+            # report number of nodes and edges, and their type in the QG
+            if hasattr(message, 'query_graph') and message.query_graph:
+                response.debug(f"Query graph is {message.query_graph}")
+            if hasattr(message, 'knowledge_graph') and message.knowledge_graph and hasattr(message.knowledge_graph, 'nodes') and message.knowledge_graph.nodes and hasattr(message.knowledge_graph, 'edges') and message.knowledge_graph.edges:
+                response.debug(f"Number of nodes in KG is {len(message.knowledge_graph.nodes)}")
+                response.debug(f"Number of nodes in KG by type is {Counter([x.type[0] for x in message.knowledge_graph.nodes])}")  # type is a list, just get the first one
+                #response.debug(f"Number of nodes in KG by with attributes are {Counter([x.type for x in message.knowledge_graph.nodes])}")  # don't really need to worry about this now
+                response.debug(f"Number of edges in KG is {len(message.knowledge_graph.edges)}")
+                response.debug(f"Number of edges in KG by type is {Counter([x.type for x in message.knowledge_graph.edges])}")
+                response.debug(f"Number of edges in KG with attributes is {len([x for x in message.knowledge_graph.edges if x.edge_attributes])}")
+                # Collect attribute names, could do this with list comprehension, but this is so much more readable
+                attribute_names = []
+                for x in message.knowledge_graph.edges:
+                    if x.edge_attributes:
+                        for attr in x.edge_attributes:
+                            attribute_names.append(attr.name)
+                response.debug(f"Number of edges in KG by attribute {Counter(attribute_names)}")
+        return response
 
     def describe_me(self):
         """
@@ -52,8 +78,6 @@ class ARAXFilterKG:
                     self.response.error(
                         f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}",
                         error_code="UnknownValue")
-
-
 
     #### Top level decision maker for applying filters
     def apply(self, input_message, input_parameters):
@@ -96,6 +120,8 @@ class ARAXFilterKG:
         response.debug(f"Applying Overlay to Message with parameters {parameters}")  # TODO: re-write this to be more specific about the actual action
 
         #### Return the response and done
+        if self.report_stats:  # helper to report information in debug if class self.report_stats = True
+            response = self.report_response_stats(response)
         return response
 
     def __remove_edges_by_type(self, describe=False):
