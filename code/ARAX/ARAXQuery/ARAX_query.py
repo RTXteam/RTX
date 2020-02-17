@@ -662,18 +662,20 @@ def main():
     #         'UniProtKB:P27338',
     #         'UniProtKB:P37840',
     #         'UniProtKB:P08069']
-    vals = []
-    for edge in message.knowledge_graph.edges:
-        if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
-            vals.append(edge.edge_attributes.pop().value)
+    #vals = []
+    #for edge in message.knowledge_graph.edges:
+    #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
+    #        vals.append(edge.edge_attributes.pop().value)
     #        if edge.source_id in ids:
     #            print(edge.source_id)
     #        if edge.target_id in ids:
     #             print(edgge.target_id)
-    print(sorted(vals))
-    for node in message.knowledge_graph.nodes:
-        print(f"{node.name} {node.type[0]}")
+    #print(sorted(vals))
+    #for node in message.knowledge_graph.nodes:
+    #    print(f"{node.name} {node.type[0]}")
     #     print(node.qnode_id)
+    from collections import Counter
+    print(Counter(x.provided_by for x in message.knowledge_graph.edges))
 
 
 if __name__ == "__main__": main()
