@@ -8,6 +8,7 @@ import ast
 import re
 import numpy as np
 from response import Response
+from collections import Counter
 
 
 class ARAXOverlay:
@@ -23,6 +24,32 @@ class ARAXOverlay:
             'compute_jaccard',
             'add_node_pmids'
         }
+        self.report_stats = True
+
+    def report_response_stats(self, response):
+        """
+        Little helper function that will report the KG, QG, and results stats to the debug in the process of executing actions. Basically to help diagnose problems
+        """
+        message = self.message
+        if self.report_stats:
+            # report number of nodes and edges, and their type in the QG
+            if hasattr(message, 'query_graph') and message.query_graph:
+                response.debug(f"Query graph is {message.query_graph}")
+            if hasattr(message, 'knowledge_graph') and message.knowledge_graph and hasattr(message.knowledge_graph, 'nodes') and message.knowledge_graph.nodes and hasattr(message.knowledge_graph, 'edges') and message.knowledge_graph.edges:
+                response.debug(f"Number of nodes in KG is {len(message.knowledge_graph.nodes)}")
+                response.debug(f"Number of nodes in KG by type is {Counter([x.type[0] for x in message.knowledge_graph.nodes])}")  # type is a list, just get the first one
+                #response.debug(f"Number of nodes in KG by with attributes are {Counter([x.type for x in message.knowledge_graph.nodes])}")  # don't really need to worry about this now
+                response.debug(f"Number of edges in KG is {len(message.knowledge_graph.edges)}")
+                response.debug(f"Number of edges in KG by type is {Counter([x.type for x in message.knowledge_graph.edges])}")
+                response.debug(f"Number of edges in KG with attributes is {len([x for x in message.knowledge_graph.edges if x.edge_attributes])}")
+                # Collect attribute names, could do this with list comprehension, but this is so much more readable
+                attribute_names = []
+                for x in message.knowledge_graph.edges:
+                    if x.edge_attributes:
+                        for attr in x.edge_attributes:
+                            attribute_names.append(attr.name)
+                response.debug(f"Number of edges in KG by attribute {Counter(attribute_names)}")
+        return response
 
     def describe_me(self):
         """
@@ -135,6 +162,8 @@ class ARAXOverlay:
         from Overlay.compute_ngd import ComputeNGD
         NGD = ComputeNGD(self.response, self.message, ngd_params)
         response = NGD.compute_ngd()
+        if self.report_stats:  # helper to report information in debug if class self.report_stats = True
+            response = self.report_response_stats(response)
         return response
 
     #### Compute confidence scores. Double underscore means this is a private method

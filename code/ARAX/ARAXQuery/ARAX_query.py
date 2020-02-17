@@ -643,7 +643,7 @@ def main():
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     #print(response.show(level=Response.DEBUG))
-    print(response.show(level=Response.ERROR))
+    print(response.show(level=Response.DEBUG))
     # ids = ['UniProtKB:P02675',
     #         'UniProtKB:P01375',
     #         'UniProtKB:P15559',
