@@ -124,6 +124,8 @@ class ARAXOverlay:
         # TODO: Jaccard
 
         #### Return the response and done
+        if self.report_stats:  # helper to report information in debug if class self.report_stats = True
+            response = self.report_response_stats(response)
         return response
 
     def __compute_ngd(self, describe=False):
@@ -162,8 +164,6 @@ class ARAXOverlay:
         from Overlay.compute_ngd import ComputeNGD
         NGD = ComputeNGD(self.response, self.message, ngd_params)
         response = NGD.compute_ngd()
-        if self.report_stats:  # helper to report information in debug if class self.report_stats = True
-            response = self.report_response_stats(response)
         return response
 
     #### Compute confidence scores. Double underscore means this is a private method
@@ -183,8 +183,6 @@ class ARAXOverlay:
             result.confidence = float(int(random.random()*1000))/1000
 
         #### Return the response
-        if self.report_stats:  # helper to report information in debug if class self.report_stats = True
-            response = self.report_response_stats(response)
         return response
 
     def __overlay_clinical_info(self, describe=False):  # TODO: put the default paramas and all that other goodness in
@@ -216,8 +214,6 @@ class ARAXOverlay:
         from Overlay.overlay_clinical_info import OverlayClinicalInfo
         OCI = OverlayClinicalInfo(self.response, self.message, default_params)
         response = OCI.decorate()  # TODO: refactor this so it's basically another apply() like function # 606
-        if self.report_stats:  # helper to report information in debug if class self.report_stats = True
-            response = self.report_response_stats(response)
         return response
 
     def __add_node_pmids(self, describe=False):
@@ -264,8 +260,6 @@ class ARAXOverlay:
         from Overlay.add_node_pmids import AddNodePMIDS
         ANP = AddNodePMIDS(self.response, self.message, pass_params)
         response = ANP.add_node_pmids()
-        if self.report_stats:  # helper to report information in debug if class self.report_stats = True
-            response = self.report_response_stats(response)
         return response
 
     def __compute_jaccard(self, describe=False):
@@ -315,8 +309,6 @@ class ARAXOverlay:
         from Overlay.compute_jaccard import ComputeJaccard
         JAC = ComputeJaccard(self.response, self.message, self.parameters)
         response = JAC.compute_jaccard()
-        if self.report_stats:  # helper to report information in debug if class self.report_stats = True
-            response = self.report_response_stats(response)
         return response
 
 ##########################################################################################
