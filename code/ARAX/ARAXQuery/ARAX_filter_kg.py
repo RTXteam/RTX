@@ -23,7 +23,7 @@ class ARAXFilterKG:
             'remove_edges_by_attribute',
             'remove_nodes_by_type'
         }
-        self.report_stats = True
+        self.report_stats = True  # Set this to False when ready to go to production, this is only for debugging purposes
 
     def report_response_stats(self, response):
         """
