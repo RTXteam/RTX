@@ -8,8 +8,8 @@ For a given (1) query graph (assumed small) which has both "fixed" nodes and pla
 containing the set of all possible nodes that could match the query graph, and then computes
 the set of all subgraphs within the "relevant" KG that exactly match the query graph structure.
 
-Limitations: running time is exponential in the number of query graph vertices. Self-loops
-in the query graph are not supported (it will throw an exception if QG has a self-loop).
+Limitations: running time is exponential in the number of query graph vertices. Currently does
+not support the is-set node property.
 '''
 
 __author__ = 'Stephen Ramsey'
@@ -350,7 +350,7 @@ def prune_unneeded_nodes_and_mark_fixed_nodes(kg: Graph,
 
 def find_all_kg_subgraphs_for_qg(kg: Graph,
                                  qg: Graph):
-    assert not qg.contains_self_loop()
+#    assert not qg.contains_self_loop()
     ret_subgraphs = []
     categories_to_counts_qg = {category: len(value) for category, value in qg.query_nodes.items()}
     assert len([count for count in categories_to_counts_qg.values() if count > MAX_NUMBER_OF_QUERY_NODES_PER_CATEGORY]) == 0
@@ -393,6 +393,18 @@ def find_all_kg_subgraphs_for_qg_dicts(kg: dict,
                                                               kg['edges']),
                                         Graph.make_from_dicts(qg['nodes'],
                                                               qg['edges']))
+
+
+def test0():
+    find_all_kg_subgraphs_for_qg_dicts({'nodes': {'id': ['DOID:1'],
+                                                  'category': ['disease']},
+                                        'edges': {'source_id': [],
+                                                  'target_id': []}},
+                                       {'nodes': {'id': ['n00'],
+                                                  'type': [NodeType.QUERY],
+                                                  'category': ['disease']},
+                                        'edges': {'source_id': [],
+                                                  'target_id': []}})
 
 
 def test1():
@@ -536,11 +548,7 @@ def test9():
                                          'category':  ['gene', 'protein', 'disease', 'pathway']},
                                         {'source_id': [0, 1, 3, 1],
                                          'target_id': [1, 3, 2, 1]})
-    try:
-        find_all_kg_subgraphs_for_qg(new_kg, query_graph)
-    except AssertionError:
-        return
-    assert False
+    assert 1 == len(find_all_kg_subgraphs_for_qg(new_kg, query_graph))
 
 
 def test10():
@@ -603,20 +611,9 @@ def test13():
     assert len(subgraphs) == 2
 
 
-def test_single_node():
-    find_all_kg_subgraphs_for_qg_dicts({'nodes': {'id': ['DOID:1'],
-                                                  'category': ['disease']},
-                                        'edges': {'source_id': [],
-                                                  'target_id': []}},
-                                       {'nodes': {'id': ['n00'],
-                                                  'type': [NodeType.QUERY],
-                                                  'category': ['disease']},
-                                        'edges': {'source_id': [],
-                                                  'target_id': []}})
-
 
 if __name__ == '__main__':
-    test_single_node()
+    test0()
     test1()
     test2()
     test3()
