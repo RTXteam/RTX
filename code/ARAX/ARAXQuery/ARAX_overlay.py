@@ -194,8 +194,22 @@ class ARAXOverlay:
         Allowable parameters are:
         :return: a response
         """
+        message = self.message
+        parameters = self.parameters
+
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
-        allowable_parameters = {'action': {'overlay_clinical_info'}, 'paired_concept_freq': {'true', 'false'}}
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
+            allowable_parameters = {'action': {'overlay_clinical_info'}, 'paired_concept_freq': {'true', 'false'},
+                                    'virtual_edge_type': {self.parameters['virtual_edge_type'] if 'virtual_edge_type' in self.parameters else None},
+                                    'source_qnode_id': set([x.id for x in self.message.query_graph.nodes]),
+                                    'target_qnode_id': set([x.id for x in self.message.query_graph.nodes])
+                                    }
+        else:
+            allowable_parameters = {'action': {'overlay_clinical_info'}, 'paired_concept_freq': {'true', 'false'},
+                                    'virtual_edge_type': {'any string label (optional)'},
+                                    'source_qnode_id': {'a specific source query node id (optional)'},
+                                    'target_qnode_id': {'a specific target query node id (optional)'}
+                                    }
 
         # A little function to describe what this thing does
         if describe:
@@ -205,6 +219,17 @@ class ARAXOverlay:
         # Make sure only allowable parameters and values have been passed
         self.check_params(allowable_parameters)
         # return if bad parameters have been passed
+        if self.response.status != 'OK':
+            return self.response
+
+        # check if all required parameters are provided
+        if any([x in ['virtual_edge_type', 'source_qnode_id', 'target_qnode_id'] for x in parameters.keys()]):
+            if not all([x in parameters.keys() for x in ['virtual_edge_type', 'source_qnode_id', 'target_qnode_id']]):
+                self.response.error(f"If any of of the following parameters are provided ['virtual_edge_type', 'source_qnode_id', 'target_qnode_id'], all must be provided. Allowable parameters include: {allowable_parameters}")
+            elif parameters['source_qnode_id'] not in allowable_parameters['source_qnode_id']:
+                    self.response.error(f"source_qnode_id value is not valid. Valid values are: {allowable_parameters['source_qnode_id']}")
+            elif parameters['target_qnode_id'] not in allowable_parameters['target_qnode_id']:
+                self.response.error(f"target_qnode_id value is not valid. Valid values are: {allowable_parameters['target_qnode_id']}")
         if self.response.status != 'OK':
             return self.response
 
