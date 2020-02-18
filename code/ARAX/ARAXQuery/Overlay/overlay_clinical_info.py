@@ -134,11 +134,13 @@ class OverlayClinicalInfo:
                             source_curies_to_decorate.add(node.id)
                         if node.qnode_id == parameters['target_qnode_id']:
                             target_curies_to_decorate.add(node.id)
+                added_flag = False  # check to see if any edges where added
                 # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
                 for (source_curie, target_curie) in itertools.product(source_curies_to_decorate, target_curies_to_decorate):
                     # create the edge attribute if it can be
                     edge_attribute = make_edge_attribute_from_curies(source_curie, target_curie)
                     if edge_attribute:
+                        added_flag = True
                         # make the edge, add the attribute
 
                         # edge properties
@@ -164,10 +166,13 @@ class OverlayClinicalInfo:
                                     confidence=confidence, weight=weight, edge_attributes=[edge_attribute])
                         self.message.knowledge_graph.edges.append(edge)
 
-                        # Now add a q_edge the query_graph since I've added an extra edge to the KG
-                        q_edge = QEdge(id=edge_type, type=edge_type, relation=relation,
-                                       source_id=parameters['source_qnode_id'], target_id=parameters['target_qnode_id'])  # TODO: ok to make the id and type the same thing?
-                        self.message.query_graph.edges.append(q_edge)
+                # Now add a q_edge the query_graph since I've added an extra edge to the KG
+                if added_flag:
+                    edge_type = parameters['virtual_edge_type']
+                    relation = "COHD_paired_concept_frequency"
+                    q_edge = QEdge(id=edge_type, type=edge_type, relation=relation,
+                                   source_id=parameters['source_qnode_id'], target_id=parameters['target_qnode_id'])  # TODO: ok to make the id and type the same thing?
+                    self.message.query_graph.edges.append(q_edge)
 
             else:  # otherwise, just add to existing edges in the KG
                 for edge in self.message.knowledge_graph.edges:
