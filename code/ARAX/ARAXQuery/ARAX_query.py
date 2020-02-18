@@ -628,11 +628,14 @@ def main():
             "add_qedge(source_id=n02, target_id=n01, id=e01, type=indicated_for)",  # only look for drugs that are indicated for those phenotypes
             "add_qedge(source_id=n02, target_id=n03, id=e02)",  # find proteins that interact with those drugs
             "expand(edge_id=[e00, e01, e02])",
-            #"overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",  # only look at drugs that target lots of phenotypes
-            #"filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.07, remove_connected_nodes=t, qnode_id=n02)",  # remove edges that connect to few phenotypes
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",  # only look at drugs that target lots of phenotypes
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.07, remove_connected_nodes=t, qnode_id=n02)",  # remove edges and drugs that connect to few phenotypes
+            "filter_kg(action=remove_edges_by_type, edge_type=J1, remove_connected_nodes=f)",
             #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",  # overlay with COHD information
             "overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n02)",  # overlay virtual edges with COHD information
-            #"filter_kg(action=remove_edges_by_attribute, edge_attribute=paired_concept_frequency, direction=below, threshold=0.00000001, remove_connected_nodes=f)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=paired_concept_frequency, direction=below, threshold=0.01, remove_connected_nodes=t, qnode_id=n02)",
+            "filter_kg(action=remove_edges_by_type, edge_type=C1, remove_connected_nodes=f)",
+            "overlay(action=compute_ngd)",
             "return(message=true, store=false)"
         ]}}
     else:
@@ -685,8 +688,8 @@ def main():
     for edge in message.knowledge_graph.edges:
         if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
             for attr in edge.edge_attributes:
-                if attr.name == "paired_concept_frequency":
-                    vals.append(attr.value)
+                #if attr.name == "paired_concept_frequency":
+                vals.append(attr.value)
                     #print(edge.source_id)
                     #print(edge.target_id)
     print(sorted(vals))
