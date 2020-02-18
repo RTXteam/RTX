@@ -189,11 +189,22 @@ class ARAXFilterKG:
         """
         message = self.message
         parameters = self.parameters
+
+        
+
+
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
+            known_values = set()
+            if 'edge_property' in parameters:
+                for edge in message.knowledge_graph.edges:
+                    if hasattr(edge, parameters['edge_property']):
+                        value = edge.to_dict()[parameters['edge_property']]
+                        if type(value) == str:
+                            known_values.add(value)
             allowable_parameters = {'action': {'remove_edges_by_property'},
                                     'edge_property': set([key for x in self.message.knowledge_graph.edges for key, val in x.to_dict().items() if type(val) == str]),
-                                    'property_value': set([val for x in self.message.knowledge_graph.edges for key, val in x.to_dict().items() if type(val) == str]),
+                                    'property_value': known_values,
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'qnode_id':set([x.qnode_id for x in self.message.knowledge_graph.nodes])
                                 }
