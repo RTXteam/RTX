@@ -613,7 +613,7 @@ def main():
             "add_qnode(type=chemical_substance, is_set=true, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
-            "overlay(action=add_node_pmids, max_num=10)",
+            "overlay(action=add_node_pmids, max_num=15)",
             "return(message=true, store=false)"
         ]}}
     elif params.example_number == 14:  # test out example 3
@@ -657,7 +657,7 @@ def main():
     #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.query_graph)), sort_keys=True, indent=2))
-    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
+    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     #print(response.show(level=Response.DEBUG))
     print(response.show(level=Response.DEBUG))

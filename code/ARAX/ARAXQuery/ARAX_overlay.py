@@ -9,7 +9,7 @@ import re
 import numpy as np
 from response import Response
 from collections import Counter
-
+import traceback
 
 class ARAXOverlay:
 
@@ -73,9 +73,12 @@ class ARAXOverlay:
                     f"Supplied parameter {key} is not permitted. Allowable parameters are: {list(allowable_parameters.keys())}",
                     error_code="UnknownParameter")
             elif item not in allowable_parameters[key]:
-                self.response.error(
-                    f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}",
-                    error_code="UnknownValue")
+                if any([type(x) == float for x in allowable_parameters[key]]) or any([type(x) == int for x in allowable_parameters[key]]):  # if it's a float or int, just accept it as it is
+                    return
+                else:  # otherwise, it's really not an allowable parameter
+                    self.response.error(
+                        f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}",
+                        error_code="UnknownValue")
 
 
     #### Top level decision maker for applying filters
@@ -220,11 +223,11 @@ class ARAXOverlay:
         """
         Computes normalized google distance between two nodes connected by an edge in the knowledge graph
         and adds that as an edge attribute.
-        Allowable parameters: {max_num: {'all', '10', '100', '1000'}}
+        Allowable parameters: {max_num: {'all', 'any integer'}}
         :return:
         """
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
-        allowable_parameters = {'action': {'add_node_pmids'}, 'max_num': {'all', '10', '100', '1000'}}
+        allowable_parameters = {'action': {'add_node_pmids'}, 'max_num': {'all', int()}}
 
         # A little function to describe what this thing does
         if describe:
@@ -241,20 +244,20 @@ class ARAXOverlay:
         pass_params = {'max_num': 100}  # here is where you can set default values
 
         # parse the input parameters to be the data types I need them to be
-        # TODO: there has got to be a cleaner way to do this...
         for key, value in self.parameters.items():
-            if key != 'action':
-                if key == 'max_num':
-                    if value == '0':
-                        pass_params[key] = 0
-                    elif value == '10':
-                        pass_params[key] = 10
-                    elif value == '100':
-                        pass_params[key] = 100
-                    elif value == '1000':
-                        pass_params[key] = 1000
-                    elif value == 'all':
-                        pass_params[key] = None
+            if key == 'max_num':
+                if value == 'all':
+                    pass_params[key] = None
+                else:
+                    try:
+                        pass_params[key] = int(value)
+                    except:
+                        tb = traceback.format_exc()
+                        error_type, error, _ = sys.exc_info()
+                        self.response.error(tb, error_code=error_type.__name__)
+                        self.response.error(f"parameter 'max_num' must be an integer")
+        if self.response.status != 'OK':
+            return self.response
 
         # now do the call out to NGD
         from Overlay.add_node_pmids import AddNodePMIDS
