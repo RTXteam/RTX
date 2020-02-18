@@ -227,14 +227,14 @@ class ARAXOverlay:
             if not all([x in parameters.keys() for x in ['virtual_edge_type', 'source_qnode_id', 'target_qnode_id']]):
                 self.response.error(f"If any of of the following parameters are provided ['virtual_edge_type', 'source_qnode_id', 'target_qnode_id'], all must be provided. Allowable parameters include: {allowable_parameters}")
             elif parameters['source_qnode_id'] not in allowable_parameters['source_qnode_id']:
-                    self.response.error(f"source_qnode_id value is not valid. Valid values are: {allowable_parameters['source_qnode_id']}")
+                self.response.error(f"source_qnode_id value is not valid. Valid values are: {allowable_parameters['source_qnode_id']}")
             elif parameters['target_qnode_id'] not in allowable_parameters['target_qnode_id']:
                 self.response.error(f"target_qnode_id value is not valid. Valid values are: {allowable_parameters['target_qnode_id']}")
         if self.response.status != 'OK':
             return self.response
 
         # TODO: make sure that not more than one other kind of action has been asked for since COHD has a lot of functionality #606
-        # TODO: make sure conflicting defaults aren't called either
+        # TODO: make sure conflicting defaults aren't called either, partially completed
         # TODO: until then, just pass the parameters as is
 
         default_params = self.parameters  # here is where you can set default values
