@@ -15,6 +15,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool
 from QueryCOHD import QueryCOHD as COHD
 # FIXME:^ this should be pulled from a YAML file pointing to the parser
 
+# TODO: boy howdy this can be modularized quite a bit. Since COHD and other clinical KP's will be adding edge attributes and/or edges, should pull out functions to easy their addition.
+
 
 class OverlayClinicalInfo:
 
