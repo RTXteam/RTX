@@ -21,6 +21,7 @@ class ARAXFilterKG:
         self.allowable_actions = {
             'remove_edges_by_type',
             'remove_edges_by_attribute',
+            'remove_edges_by_property',
             'remove_nodes_by_type'
         }
         self.report_stats = True  # Set this to False when ready to go to production, this is only for debugging purposes
@@ -176,6 +177,62 @@ class ARAXFilterKG:
         from Filter_KG.remove_edges import RemoveEdges
         RE = RemoveEdges(self.response, self.message, edge_params)
         response = RE.remove_edges_by_type()
+        return response
+
+    def __remove_edges_by_property(self, describe=False):
+        """
+        Removes edges from the KG.
+        Allowable parameters: {'edge_type': str, 
+                                'edge_property': str,
+                                'direction': {'above', 'below'}}
+        :return:
+        """
+        message = self.message
+        parameters = self.parameters
+        # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
+            allowable_parameters = {'action': {'remove_edges_by_property'},
+                                    'edge_property': set([key for x in self.message.knowledge_graph.edges for key, val in x.to_dict().items() if type(val) == str]),
+                                    'property_value': set([val for x in self.message.knowledge_graph.edges for key, val in x.to_dict().items() if type(val) == str]),
+                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'qnode_id':set([x.qnode_id for x in self.message.knowledge_graph.nodes])
+                                }
+        else:
+            allowable_parameters = {'action': {'remove_edges_by_property'},
+                                    'edge_property': {'an edge property'},
+                                    'property_value':{'a value for the edge property'},
+                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'qnode_id':{'a specific query node id to remove'}
+                                }
+
+        # A little function to describe what this thing does
+        if describe:
+            print(allowable_parameters)
+            return
+
+        # Make sure only allowable parameters and values have been passed
+        self.check_params(allowable_parameters)
+        # return if bad parameters have been passed
+        if self.response.status != 'OK':
+            return self.response
+
+        edge_params = self.parameters
+        if 'remove_connected_nodes' in edge_params:
+            value = edge_params['remove_connected_nodes']
+            if value in {'true', 'True', 't', 'T'}:
+                edge_params['remove_connected_nodes'] = True
+            elif value in {'false', 'False', 'f', 'F'}:
+                edge_params['remove_connected_nodes'] = False
+            else:
+                self.response.error(f"Supplied value {value} is not permitted. In parameter remove_connected_nodes, allowable values are: {list(allowable_parameters['remove_connected_nodes'])}",
+                    error_code="UnknownValue")
+        else:
+            edge_params['remove_connected_nodes'] = False
+
+        # now do the call out to NGD
+        from Filter_KG.remove_edges import RemoveEdges
+        RE = RemoveEdges(self.response, self.message, edge_params)
+        response = RE.remove_edges_by_property()
         return response
 
     def __remove_edges_by_attribute(self, describe=False):
