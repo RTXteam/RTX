@@ -260,6 +260,11 @@ class ARAXFilterKG:
         parameters = self.parameters
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'knowledge_graph') and hasattr(message.knowledge_graph, 'edges'):
+            # check if all required parameters are provided
+            if not {'edge_attribute', 'direction', 'threshold'}  <= set(parameters.keys()):
+                self.response.error(f"All of the following parameters must be provided to remove_edges_by_attribute: ['edge_attribute', 'direction', 'threshold'].")
+            if self.response.status != 'OK':
+                return self.response
             known_attributes = set()
             for edge in message.knowledge_graph.edges:
                 if hasattr(edge, 'edge_attributes'):
