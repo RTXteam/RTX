@@ -190,11 +190,13 @@ class ARAXFilterKG:
         message = self.message
         parameters = self.parameters
 
-        
-
-
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
+            # check if all required parameters are provided
+            if 'edge_property' not in parameters.keys() or 'property_value' not in parameters.keys():
+                self.response.error(f"All of the following parameters must be provided to remove_edges_by_property: ['edge_property', 'property_value'].")
+            if self.response.status != 'OK':
+                return self.response
             known_values = set()
             if 'edge_property' in parameters:
                 for edge in message.knowledge_graph.edges:
