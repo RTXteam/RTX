@@ -604,7 +604,7 @@ def main():
             "expand(edge_id=[e00,e01])",
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
-            #"filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
+            "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 13:  # add pubmed id's
