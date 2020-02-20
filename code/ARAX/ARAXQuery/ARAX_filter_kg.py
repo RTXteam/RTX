@@ -189,11 +189,24 @@ class ARAXFilterKG:
         """
         message = self.message
         parameters = self.parameters
+
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
+            # check if all required parameters are provided
+            if 'edge_property' not in parameters.keys():
+                self.response.error(f"The parameter edge_property must be provided to remove edges by propery, allowable parameters include: {set([key for x in self.message.knowledge_graph.edges for key, val in x.to_dict().items() if type(val) == str])}")
+            if self.response.status != 'OK':
+                return self.response
+            known_values = set()
+            if 'edge_property' in parameters:
+                for edge in message.knowledge_graph.edges:
+                    if hasattr(edge, parameters['edge_property']):
+                        value = edge.to_dict()[parameters['edge_property']]
+                        if type(value) == str:
+                            known_values.add(value)
             allowable_parameters = {'action': {'remove_edges_by_property'},
                                     'edge_property': set([key for x in self.message.knowledge_graph.edges for key, val in x.to_dict().items() if type(val) == str]),
-                                    'property_value': set([val for x in self.message.knowledge_graph.edges for key, val in x.to_dict().items() if type(val) == str]),
+                                    'property_value': known_values,
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'qnode_id':set([x.qnode_id for x in self.message.knowledge_graph.nodes])
                                 }
@@ -228,6 +241,17 @@ class ARAXFilterKG:
                     error_code="UnknownValue")
         else:
             edge_params['remove_connected_nodes'] = False
+
+        if 'edge_property' not in edge_params:
+            self.response.error(
+                f"Edge property must be provided, allowable properties are: {list(allowable_parameters['edge_property'])}",
+                error_code="UnknownValue")
+        if 'property_value' not in edge_params:
+            self.response.error(
+                f"Property value must be provided, allowable values are: {list(allowable_parameters['property_value'])}",
+                error_code="UnknownValue")
+        if self.response.status != 'OK':
+            return self.response
 
         # now do the call out to NGD
         from Filter_KG.remove_edges import RemoveEdges
@@ -310,6 +334,10 @@ class ARAXFilterKG:
         if 'direction' not in edge_params:
             self.response.error(
                 f"Direction must be provided, allowable directions are: {list(allowable_parameters['direction'])}",
+                error_code="UnknownValue")
+        if 'edge_attribute' not in edge_params:
+            self.response.error(
+                f"Edge attribute must be provided, allowable attributes are: {list(allowable_parameters['edge_attribute'])}",
                 error_code="UnknownValue")
         if self.response.status != 'OK':
             return self.response
