@@ -62,7 +62,7 @@ class OverlayClinicalInfo:
                 pass
         if 'observed_expected_ratio' in parameters:
             if parameters['observed_expected_ratio'] == 'true':
-                #self.observed_expected_ratio()  # TODO: make this function, and all the other COHD functions too
+                self.observed_expected_ratio()  # TODO: make this function, and all the other COHD functions too
                 pass
         if 'relative_frequency' in parameters:
             if parameters['relative_frequency'] == 'true':
@@ -120,6 +120,7 @@ class OverlayClinicalInfo:
                     target_OMOPs = [str(x['concept_id']) for x in
                                     COHD.find_concept_ids(target_name, domain="Drug", dataset_id=3)]
 
+                # Decide how to handle the response from the KP
                 if name == 'paired_concept_freq':
                     # sum up all frequencies  #TODO check with COHD people to see if this is kosher
                     frequency = default
@@ -129,7 +130,18 @@ class OverlayClinicalInfo:
                             frequency += freq_data['concept_frequency']
                     # decorate the edges
                     value = frequency
-
+                elif name == 'observed_expected_ratio':
+                    # should probably take the largest obs/exp ratio  # TODO: check with COHD people to see if this is kosher
+                    # FIXME: the ln_ratio can be negative, so I should probably account for this, but the object model doesn't like -np.inf
+                    value = -10000000000000
+                    for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
+                        print(f"{omop1},{omop2}")
+                        response = COHD.get_obs_exp_ratio(omop1, concept_id_2=omop2, domain="", dataset_id=3)  # use the hierarchical dataset
+                        print(response)
+                        if response and 'ln_ratio' in response:
+                            temp_val = response['ln_ratio']
+                            if temp_val > value:
+                                value = temp_val
                 # create the edge attribute
                 edge_attribute = EdgeAttribute(type=type, name=name, value=value, url=url)  # populate the edge attribute
                 return edge_attribute
@@ -224,7 +236,8 @@ class OverlayClinicalInfo:
 
     def paired_concept_freq(self, default=0):
         """
-        Iterate over all the edges, check if they're disease, phenotype, or chemical_substance, and do the decorating
+        calulate paired concept frequency.
+        Retrieves observed clinical frequencies of a pair of concepts.
         :return: response
         """
         parameters = self.parameters
@@ -237,6 +250,29 @@ class OverlayClinicalInfo:
                 self.add_virtual_edge(name="paired_concept_freq", default=default)
             else:  # otherwise, just add to existing edges in the KG
                 self.add_all_edges(name="paired_concept_freq", default=default)
+
+        except:
+            tb = traceback.format_exc()
+            error_type, error, _ = sys.exc_info()
+            self.response.error(tb, error_code=error_type.__name__)
+            self.response.error(f"Something went wrong when overlaying clinical info")
+
+    def observed_expected_ratio(self, default=0):
+        """
+        Returns the natural logarithm of the ratio between the observed count and expected count.
+        Expected count is calculated from the single concept frequencies and assuming independence between the concepts.
+        Results are returned as maximum over all ln_ratios matching to OMOP concept id.
+        """
+        parameters = self.parameters
+        self.response.debug("Computing observed expected ratios.")
+        self.response.info("Overlaying observed expected ratios utilizing Columbia Open Health Data. This calls an external knowledge provider and may take a while")
+
+        # Now add the edges or virtual edges
+        try:
+            if 'virtual_edge_type' in parameters:
+                self.add_virtual_edge(name="observed_expected_ratio", default=default)
+            else:  # otherwise, just add to existing edges in the KG
+                self.add_all_edges(name="observed_expected_ratio", default=default)
 
         except:
             tb = traceback.format_exc()

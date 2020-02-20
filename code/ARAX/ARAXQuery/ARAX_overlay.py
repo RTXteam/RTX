@@ -348,7 +348,7 @@ class ARAXOverlay:
 
 ##########################################################################################
 def main():
-
+    print("start ARAX_overlay")
     #### Note that most of this is just manually doing what ARAXQuery() would normally do for you
 
     #### Create a response object
@@ -367,9 +367,11 @@ def main():
     actions_list = [
         #"overlay(action=compute_ngd)",
         #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
+        # "overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
         #"overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
         #"overlay(action=add_node_pmids)",
-        "overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
+        "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
+        #"overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
         "return(message=true,store=false)"
     ]
 
@@ -392,7 +394,7 @@ def main():
     #message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature  # work computer
     #message_dict = araxdb.getMessage(5)  # atherosclerosis -> phenotypic_feature  # home computer
     #message_dict = araxdb.getMessage(10)
-    message_dict = araxdb.getMessage(35)  # test COHD obs/exp
+    message_dict = araxdb.getMessage(36)  # test COHD obs/exp, via ARAX_query.py 16
 
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger
@@ -400,9 +402,11 @@ def main():
     #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
 
     #### Create an overlay object and use it to apply action[0] from the list
+    print("Applying action")
     overlay = ARAXOverlay()
     result = overlay.apply(message, actions[0]['parameters'])
     response.merge(result)
+    print("Finished applying action")
 
     #if result.status != 'OK':
     #    print(response.show(level=Response.DEBUG))
@@ -437,7 +441,7 @@ def main():
     #for edge in message.knowledge_graph.edges:
     #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
     #        print(edge.edge_attributes.pop().value)
-    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
+    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
     print(response.show(level=Response.DEBUG))
     print("Yet you still got here")
     #print(actions_parser.parse(actions_list))

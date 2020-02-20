@@ -662,7 +662,7 @@ def main():
     elif params.example_number == 16:  # To test COHD obs/exp ratio
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(name=DOID:11997, id=n00)",
+            "add_qnode(name=DOID:8398, id=n00)",
             "add_qnode(type=phenotypic_feature, is_set=true, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, type=has_phenotype, id=e00)",
             "expand(edge_id=e00)",
