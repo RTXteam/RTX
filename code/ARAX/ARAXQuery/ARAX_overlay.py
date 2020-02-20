@@ -170,7 +170,13 @@ class ARAXOverlay:
         return response
 
     #### Compute confidence scores. Double underscore means this is a private method
-    def __compute_confidence_scores(self):
+    def __compute_confidence_scores(self, describe=False):
+
+        # A little function to describe what this thing does
+        allowable_parameters = {'action': {'compute_confidence_scores'}}
+        if describe:
+            print(allowable_parameters)
+            return
 
         #### Set up local references to the response and the message
         response = self.response
