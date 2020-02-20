@@ -369,7 +369,7 @@ def main():
         #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
         #"overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
         #"overlay(action=add_node_pmids)",
-        "overlay(action=overlay_clinical_info, paired_concept_freq=true)",
+        "overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
         "return(message=true,store=false)"
     ]
 
