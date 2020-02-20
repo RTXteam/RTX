@@ -52,7 +52,7 @@ def make_result_from_node_set(kg: KnowledgeGraph,
 
 
 def get_results_for_kg_by_qg(kg: KnowledgeGraph, # all nodes *must* have qnode_id specified
-                             qg: QueryGraph):
+                             qg: QueryGraph) -> List[Result]:
 
     kg_node_ids_without_qnode_id = [node.id for node in kg.nodes if node.qnode_id is None]
     if len(kg_node_ids_without_qnode_id) > 0:
