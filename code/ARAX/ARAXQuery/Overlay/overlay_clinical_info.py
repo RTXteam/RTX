@@ -134,10 +134,38 @@ class OverlayClinicalInfo:
                     # decorate the edges
                     value = frequency
                 elif name == 'observed_expected_ratio':
-                    # TODO: looks like I could speed this up by taking advantage of the fact that if I don't specify concept_id_2, then it gets ALL concept ID's pretty quickly, would just need to then make a set/dict out of this and check if the others are in there
                     # should probably take the largest obs/exp ratio  # TODO: check with COHD people to see if this is kosher
                     # FIXME: the ln_ratio can be negative, so I should probably account for this, but the object model doesn't like -np.inf
                     value = float("-inf")  # FIXME: unclear in object model if attribute type dictates value type, or if value always needs to be a string
+
+                    ###############################
+                    # The following code was an experiment to see if it would speed things up, leaving it out for now since it's difficult to quantify if it does speed things up given the cacheing
+                    #if len(source_OMOPs) < len(target_OMOPs):
+                    #    for omop1 in source_OMOPs:
+                    #        omop_to_ln_ratio = dict()
+                    #        response = COHD.get_obs_exp_ratio(omop1, domain="", dataset_id=3)  # use the hierarchical dataset
+                    #        if response:
+                    #            for res in response:
+                    #                omop_to_ln_ratio[str(res['concept_id_2'])] = res['ln_ratio']
+                    #        for omop2 in target_OMOPs:
+                    #            if omop2 in omop_to_ln_ratio:
+                    #                temp_value = omop_to_ln_ratio[omop2]
+                    #                if temp_value > value:
+                    #                    value = temp_value
+                    #else:
+                    #    for omop1 in target_OMOPs:
+                    #        omop_to_ln_ratio = dict()
+                    #        response = COHD.get_obs_exp_ratio(omop1, domain="", dataset_id=3)  # use the hierarchical dataset
+                    #        if response:
+                    #            for res in response:
+                    #                omop_to_ln_ratio[str(res['concept_id_2'])] = res['ln_ratio']
+                    #        for omop2 in source_OMOPs:
+                    #            if omop2 in omop_to_ln_ratio:
+                    #                temp_value = omop_to_ln_ratio[omop2]
+                    #                if temp_value > value:
+                    #                    value = temp_value
+                    ###################################
+
                     for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
                         #print(f"{omop1},{omop2}")
                         response = COHD.get_obs_exp_ratio(omop1, concept_id_2=omop2, domain="", dataset_id=3)  # use the hierarchical dataset
