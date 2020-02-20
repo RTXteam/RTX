@@ -199,13 +199,13 @@ class ARAXOverlay:
 
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
-            allowable_parameters = {'action': {'overlay_clinical_info'}, 'paired_concept_freq': {'true', 'false'},
+            allowable_parameters = {'action': {'overlay_clinical_info'}, 'paired_concept_freq': {'true', 'false'}, 'observed_expected_ratio': {'true','false'},
                                     'virtual_edge_type': {self.parameters['virtual_edge_type'] if 'virtual_edge_type' in self.parameters else None},
                                     'source_qnode_id': set([x.id for x in self.message.query_graph.nodes]),
                                     'target_qnode_id': set([x.id for x in self.message.query_graph.nodes])
                                     }
         else:
-            allowable_parameters = {'action': {'overlay_clinical_info'}, 'paired_concept_freq': {'true', 'false'},
+            allowable_parameters = {'action': {'overlay_clinical_info'}, 'paired_concept_freq': {'true', 'false'}, 'observed_expected_ratio': {'true','false'},
                                     'virtual_edge_type': {'any string label (optional)'},
                                     'source_qnode_id': {'a specific source query node id (optional)'},
                                     'target_qnode_id': {'a specific target query node id (optional)'}
@@ -219,6 +219,13 @@ class ARAXOverlay:
         # Make sure only allowable parameters and values have been passed
         self.check_params(allowable_parameters)
         # return if bad parameters have been passed
+        if self.response.status != 'OK':
+            return self.response
+
+        #check if conflicting parameters have been provided
+        mutually_exclusive_params = {'paired_concept_freq', 'observed_expected_ratio'}
+        if np.sum([x in mutually_exclusive_params for x in parameters]) > 1:
+            self.response.error(f"The parameters {mutually_exclusive_params} are mutually exclusive. Please provide only one for each call to overlay(action=overlay_clinical_info)")
         if self.response.status != 'OK':
             return self.response
 
@@ -237,8 +244,8 @@ class ARAXOverlay:
         # TODO: make sure conflicting defaults aren't called either, partially completed
         # TODO: until then, just pass the parameters as is
 
-        default_params = self.parameters  # here is where you can set default values
-
+        default_params = parameters  # here is where you can set default values
+        return self.response  # FIXME just for testing
         from Overlay.overlay_clinical_info import OverlayClinicalInfo
         OCI = OverlayClinicalInfo(self.response, self.message, default_params)
         response = OCI.decorate()  # TODO: refactor this so it's basically another apply() like function # 606
@@ -361,7 +368,8 @@ def main():
         #"overlay(action=compute_ngd)",
         #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
         #"overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
-        "overlay(action=add_node_pmids)",
+        #"overlay(action=add_node_pmids)",
+        "overlay(action=overlay_clinical_info, observed_expected_ratio=true, paired_concept_freq=true)",
         "return(message=true,store=false)"
     ]
 
@@ -378,12 +386,13 @@ def main():
     from RTXFeedback import RTXFeedback
     araxdb = RTXFeedback()
 
-    message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
+    #message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
     # message_dict = araxdb.getMessage(13)  # ibuprofen -> proteins -> disease # work computer
     #message_dict = araxdb.getMessage(14)  # pleuropneumonia -> phenotypic_feature # work computer
     #message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature  # work computer
     #message_dict = araxdb.getMessage(5)  # atherosclerosis -> phenotypic_feature  # home computer
     #message_dict = araxdb.getMessage(10)
+    message_dict = araxdb.getMessage(35)  # test COHD obs/exp
 
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger
