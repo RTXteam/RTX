@@ -7,10 +7,10 @@ mypath = os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-con
 onlyfiles = [f for f in os.listdir(mypath) if os.path.isfile(os.path.join(mypath, f))]
 not_parsed = 0
 parsed = 0
-fid = open('API_LIST2.yaml', 'w')
+fid = open('API_LIST.yaml', 'w')
 fid.write("""# Example list of KP API's ARAX has the ability to automatically utilize
 # Each API provider should add one entry under APIs
-# NOTE: THIS IS A VERY INCOMPLETE LIST OF ALL THE KP'S ARAX/RTX IS USING (eg. only 12 of 28+ are listed here)
+# NOTE: THIS IS A VERY INCOMPLETE LIST OF ALL THE KP'S ARAX/RTX IS USING ONLY FOR KG1 (eg. only 12 of 28+ are listed here)
 # "metadata" points to the API's openapi metadata
 #            a relative path in this repo, or a full URL
 # "translator" is a placeholder for translator specific attributes
