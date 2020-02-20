@@ -56,8 +56,11 @@ class ARAXOverlay:
         Little helper function for internal use that describes the actions and what they can do
         :return:
         """
+        description_list = []
         for action in self.allowable_actions:
-            getattr(self, '_' + self.__class__.__name__ + '__' + action)(describe=True)
+            description_list.append(getattr(self, '_' + self.__class__.__name__ + '__' + action)(describe=True))
+        return description_list
+
 
     # Write a little helper function to test parameters
     def check_params(self, allowable_parameters):
@@ -143,8 +146,7 @@ class ARAXOverlay:
 
         # A little function to describe what this thing does
         if describe:
-            print(allowable_parameters)
-            return
+            return allowable_parameters
 
         # Make sure only allowable parameters and values have been passed
         self.check_params(allowable_parameters)
@@ -175,8 +177,8 @@ class ARAXOverlay:
         # A little function to describe what this thing does
         allowable_parameters = {'action': {'compute_confidence_scores'}}
         if describe:
-            print(allowable_parameters)
-            return
+            return allowable_parameters
+
 
         #### Set up local references to the response and the message
         response = self.response
@@ -219,8 +221,8 @@ class ARAXOverlay:
 
         # A little function to describe what this thing does
         if describe:
-            print(allowable_parameters)
-            return
+            return allowable_parameters
+
 
         # Make sure only allowable parameters and values have been passed
         self.check_params(allowable_parameters)
@@ -269,8 +271,8 @@ class ARAXOverlay:
 
         # A little function to describe what this thing does
         if describe:
-            print(allowable_parameters)
-            return
+            return allowable_parameters
+
 
         # Make sure only allowable parameters and values have been passed
         self.check_params(allowable_parameters)
@@ -333,8 +335,7 @@ class ARAXOverlay:
         # print(allowable_parameters)
         # A little function to describe what this thing does
         if describe:
-            print(allowable_parameters)
-            return
+            return allowable_parameters
 
         # Make sure only allowable parameters and values have been passed
         self.check_params(allowable_parameters)
