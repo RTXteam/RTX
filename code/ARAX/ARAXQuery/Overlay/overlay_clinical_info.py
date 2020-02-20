@@ -83,6 +83,11 @@ class OverlayClinicalInfo:
 
     def make_edge_attribute_from_curies(self, source_curie, target_curie, source_name="", target_name="", default=0, name=""):
         try:
+            # edge attributes
+            name = name
+            type = "float"
+            url = "http://cohd.smart-api.info/"
+
             node_curie_to_type = self.node_curie_to_type
             source_type = node_curie_to_type[source_curie]
             target_type = node_curie_to_type[target_curie]
@@ -103,19 +108,18 @@ class OverlayClinicalInfo:
                 if target_curie.split('.')[0] == 'CHEMBL':
                     target_OMOPs = [str(x['concept_id']) for x in
                                     COHD.find_concept_ids(target_name, domain="Drug", dataset_id=3)]
-                # print(source_OMOPs)
-                # print(target_name)
-                # sum up all frequencies
-                frequency = default
-                for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
-                    freq_data = COHD.get_paired_concept_freq(omop1, omop2, 3)  # us the hierarchical dataset
-                    if freq_data and 'concept_frequency' in freq_data:
-                        frequency += freq_data['concept_frequency']
-                # decorate the edges
-                name = "paired_concept_frequency"
-                type = "float"
-                value = frequency
-                url = "http://cohd.smart-api.info/"
+
+                if name == 'paired_concept_frequency':
+                    # sum up all frequencies
+                    frequency = default
+                    for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
+                        freq_data = COHD.get_paired_concept_freq(omop1, omop2, 3)  # us the hierarchical dataset
+                        if freq_data and 'concept_frequency' in freq_data:
+                            frequency += freq_data['concept_frequency']
+                    # decorate the edges
+                    value = frequency
+
+                # create the edge attribute
                 edge_attribute = EdgeAttribute(type=type, name=name, value=value, url=url)  # populate the edge attribute
                 return edge_attribute
             else:
@@ -157,7 +161,7 @@ class OverlayClinicalInfo:
                 # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
                 for (source_curie, target_curie) in itertools.product(source_curies_to_decorate, target_curies_to_decorate):
                     # create the edge attribute if it can be
-                    edge_attribute = self.make_edge_attribute_from_curies(source_curie, target_curie, source_name=curies_to_names[source_curie], target_name=curies_to_names[target_curie], default=default)  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
+                    edge_attribute = self.make_edge_attribute_from_curies(source_curie, target_curie, source_name=curies_to_names[source_curie], target_name=curies_to_names[target_curie], default=default, name='paired_concept_frequency')  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
                     if edge_attribute:
                         added_flag = True
                         # make the edge, add the attribute
@@ -203,7 +207,7 @@ class OverlayClinicalInfo:
                         edge.edge_attributes = []
                     source_curie = edge.source_id
                     target_curie = edge.target_id
-                    edge_attribute = self.make_edge_attribute_from_curies(source_curie, target_curie, source_name=curies_to_names[source_curie], target_name=curies_to_names[target_curie])  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
+                    edge_attribute = self.make_edge_attribute_from_curies(source_curie, target_curie, source_name=curies_to_names[source_curie], target_name=curies_to_names[target_curie], default=default, name='paired_concept_frequency')  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
                     if edge_attribute:  # make sure an edge attribute was actually created
                         edge.edge_attributes.append(edge_attribute)
         except:
