@@ -98,6 +98,7 @@ class OverlayClinicalInfo:
             name = name
             type = "float"
             url = "http://cohd.smart-api.info/"
+            value = default
 
             node_curie_to_type = self.node_curie_to_type
             source_type = node_curie_to_type[source_curie]
@@ -110,8 +111,8 @@ class OverlayClinicalInfo:
                     KP_to_use = KP
             if KP_to_use == 'COHD':
                 # convert CURIE to OMOP identifiers
-                source_OMOPs = [str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(source_curie, 2)]
-                target_OMOPs = [str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(target_curie, 2)]
+                source_OMOPs = [str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(source_curie, 1)]
+                target_OMOPs = [str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(target_curie, 1)]
                 # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
                 if source_curie.split('.')[0] == 'CHEMBL':
                     source_OMOPs = [str(x['concept_id']) for x in
@@ -119,31 +120,34 @@ class OverlayClinicalInfo:
                 if target_curie.split('.')[0] == 'CHEMBL':
                     target_OMOPs = [str(x['concept_id']) for x in
                                     COHD.find_concept_ids(target_name, domain="Drug", dataset_id=3)]
-
+                # uniquify everything
+                source_OMOPs = list(set(source_OMOPs))
+                target_OMOPs = list(set(target_OMOPs))
                 # Decide how to handle the response from the KP
                 if name == 'paired_concept_freq':
                     # sum up all frequencies  #TODO check with COHD people to see if this is kosher
                     frequency = default
                     for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
-                        freq_data = COHD.get_paired_concept_freq(omop1, omop2, 3)  # us the hierarchical dataset
+                        freq_data = COHD.get_paired_concept_freq(omop1, omop2, 3)  # use the hierarchical dataset
                         if freq_data and 'concept_frequency' in freq_data:
                             frequency += freq_data['concept_frequency']
                     # decorate the edges
                     value = frequency
                 elif name == 'observed_expected_ratio':
+                    # TODO: looks like I could speed this up by taking advantage of the fact that if I don't specify concept_id_2, then it gets ALL concept ID's pretty quickly, would just need to then make a set/dict out of this and check if the others are in there
                     # should probably take the largest obs/exp ratio  # TODO: check with COHD people to see if this is kosher
                     # FIXME: the ln_ratio can be negative, so I should probably account for this, but the object model doesn't like -np.inf
-                    value = -10000000000000
+                    value = float("-inf")  # FIXME: unclear in object model if attribute type dictates value type, or if value always needs to be a string
                     for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
-                        print(f"{omop1},{omop2}")
+                        #print(f"{omop1},{omop2}")
                         response = COHD.get_obs_exp_ratio(omop1, concept_id_2=omop2, domain="", dataset_id=3)  # use the hierarchical dataset
-                        print(response)
-                        if response and 'ln_ratio' in response:
-                            temp_val = response['ln_ratio']
+                        # response is a list, since this function is overloaded and can omit concept_id_2, take the first element
+                        if response and 'ln_ratio' in response[0]:
+                            temp_val = response[0]['ln_ratio']
                             if temp_val > value:
                                 value = temp_val
                 # create the edge attribute
-                edge_attribute = EdgeAttribute(type=type, name=name, value=value, url=url)  # populate the edge attribute
+                edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the edge attribute # FIXME: unclear in object model if attribute type dictates value type, or if value always needs to be a string
                 return edge_attribute
             else:
                 return None

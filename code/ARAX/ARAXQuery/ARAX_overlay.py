@@ -441,7 +441,7 @@ def main():
     #for edge in message.knowledge_graph.edges:
     #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
     #        print(edge.edge_attributes.pop().value)
-    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
+    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
     print(response.show(level=Response.DEBUG))
     print("Yet you still got here")
     #print(actions_parser.parse(actions_list))
