@@ -621,22 +621,42 @@ def main():
     elif params.example_number == 14:  # test out example 3
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(name=DOID:11130, id=n00)",  # Secondary hypertension
+            "add_qnode(name=DOID:8712, id=n00)",
             "add_qnode(type=phenotypic_feature, is_set=true, id=n01)",
             "add_qnode(type=chemical_substance, is_set=true, id=n02)",
             "add_qnode(type=protein, is_set=true, id=n03)",
-            "add_qedge(source_id=n00, target_id=n01, id=e00, type=has_phenotype)",  # phenotypes of secondary hypertension
+            "add_qedge(source_id=n00, target_id=n01, id=e00, type=has_phenotype)",  # phenotypes of disease
             "add_qedge(source_id=n02, target_id=n01, id=e01, type=indicated_for)",  # only look for drugs that are indicated for those phenotypes
             "add_qedge(source_id=n02, target_id=n03, id=e02)",  # find proteins that interact with those drugs
             "expand(edge_id=[e00, e01, e02])",
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",  # only look at drugs that target lots of phenotypes
-            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.07, remove_connected_nodes=t, qnode_id=n02)",  # remove edges and drugs that connect to few phenotypes
-            "filter_kg(action=remove_edges_by_type, edge_type=J1, remove_connected_nodes=f)",
-            #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",  # overlay with COHD information
-            "overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n02)",  # overlay virtual edges with COHD information
-            "filter_kg(action=remove_edges_by_attribute, edge_attribute=paired_concept_frequency, direction=below, threshold=0.01, remove_connected_nodes=t, qnode_id=n02)",
-            "filter_kg(action=remove_edges_by_type, edge_type=C1, remove_connected_nodes=f)",
+            #"filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.06, remove_connected_nodes=t, qnode_id=n02)",  # remove edges and drugs that connect to few phenotypes
+            #"filter_kg(action=remove_edges_by_type, edge_type=J1, remove_connected_nodes=f)",
+            ##"overlay(action=overlay_clinical_info, paired_concept_freq=true)",  # overlay with COHD information
+            #"overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n02)",  # overlay drug->disease virtual edges with COHD information
+            #"filter_kg(action=remove_edges_by_attribute, edge_attribute=paired_concept_frequency, direction=below, threshold=0.0000001, remove_connected_nodes=t, qnode_id=n02)",  # remove drugs below COHD threshold
+            #"overlay(action=compute_jaccard, start_node_id=n01, intermediate_node_id=n02, end_node_id=n03, virtual_edge_type=J2)",  # look at proteins that share many/any drugs in common with the phenotypes
+            #"filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.001, remove_connected_nodes=t, qnode_id=n03)",
+            #"filter_kg(action=remove_edges_by_type, edge_type=J2, remove_connected_nodes=f)",
+            #"filter_kg(action=remove_edges_by_type, edge_type=C1, remove_connected_nodes=f)",
+            ##"overlay(action=compute_ngd)",
+            "return(message=true, store=false)"
+        ]}}
+    elif params.example_number == 15:  # test out example 3, scrapping the complicated example, going simple
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:631, id=n00)",
+            "add_qnode(type=phenotypic_feature, is_set=true, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, type=has_phenotype, id=e00)",
+            "expand(edge_id=e00)",
             "overlay(action=compute_ngd)",
+            #"overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
+            #"filter_kg(action=remove_edges_by_attribute, edge_attribute=ngd, direction=above, threshold=100, remove_connected_nodes=f)",
+            #"add_qnode(type=protein, is_set=true, id=n02)",
+            #"add_qedge(source_id=n02, target_id=n01, id=e01)",
+            #"expand(edge_id=e01)",
+            #"filter_kg(action=remove_edges_by_attribute, edge_attribute=ngd, direction=above, threshold=100, remove_connected_nodes=f)",
+            #"filter_kg(action=remove_edges_by_type, edge_type=C1, remove_connected_nodes=false)",
             "return(message=true, store=false)"
         ]}}
     else:
@@ -667,37 +687,28 @@ def main():
     #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     #print(response.show(level=Response.DEBUG))
     print(response.show(level=Response.DEBUG))
-    # ids = ['UniProtKB:P02675',
-    #         'UniProtKB:P01375',
-    #         'UniProtKB:P15559',
-    #         'UniProtKB:P06213',
-    #         'UniProtKB:P05231',
-    #         'UniProtKB:Q99683',
-    #         'UniProtKB:P10635',
-    #         'UniProtKB:Q01959',
-    #         'UniProtKB:P21728',
-    #         'UniProtKB:P21397',
-    #         'UniProtKB:P10636',
-    #         'UniProtKB:P08183',
-    #         'UniProtKB:P04062',
-    #         'UniProtKB:P14416',
-    #         'UniProtKB:Q5S007',
-    #         'UniProtKB:P27338',
-    #         'UniProtKB:P37840',
-    #         'UniProtKB:P08069']
-    #vals = []
-    #for edge in message.knowledge_graph.edges:
-    #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
-    #        vals.append(edge.edge_attributes.pop().value)
-    #        if edge.source_id in ids:
-    #            print(edge.source_id)
-    #        if edge.target_id in ids:
-    #             print(edgge.target_id)
-    #print(sorted(vals))
+
+    from collections import Counter
+    vals = []
+    for edge in message.knowledge_graph.edges:
+        if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
+            for attr in edge.edge_attributes:
+                vals.append((attr.name, attr.value))
+
+    print(sorted(Counter(vals).items(), key=lambda x:x[0][1]))
     #for node in message.knowledge_graph.nodes:
     #    print(f"{node.name} {node.type[0]}")
     #     print(node.qnode_id)
-    from collections import Counter
+    if False:
+        proteins = []
+        for node in message.knowledge_graph.nodes:
+            if node.type[0] == "protein":
+                proteins.append(node.name)
+        #for protein in sorted(proteins):
+        #    print(f"{protein}")
+        known_proteins = []
+        print(len(set(known_proteins).intersection(set(proteins))))  # fill these in after finding a good example
+
     print(Counter([x.provided_by for x in message.knowledge_graph.edges]))
 
 if __name__ == "__main__": main()
