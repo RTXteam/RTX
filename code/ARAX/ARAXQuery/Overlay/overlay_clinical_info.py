@@ -175,7 +175,6 @@ class OverlayClinicalInfo:
                 # make the edge, add the attribute
 
                 # edge properties
-                iter = 0
                 now = datetime.now()
                 edge_type = parameters['virtual_edge_type']
                 relation = name
@@ -188,8 +187,8 @@ class OverlayClinicalInfo:
                 target_id = target_curie
 
                 # now actually add the virtual edges in
-                id = f"{edge_type}_{iter}"
-                iter += 1
+                id = f"{edge_type}_{self.global_iter}"
+                self.global_iter += 1
                 edge = Edge(id=id, type=edge_type, relation=relation, source_id=source_id,
                             target_id=target_id,
                             is_defined_by=is_defined_by, defined_datetime=defined_datetime,
@@ -197,14 +196,14 @@ class OverlayClinicalInfo:
                             confidence=confidence, weight=weight, edge_attributes=[edge_attribute])
                 self.message.knowledge_graph.edges.append(edge)
 
-            # Now add a q_edge the query_graph since I've added an extra edge to the KG
-            if added_flag:
-                edge_type = parameters['virtual_edge_type']
-                relation = name
-                q_edge = QEdge(id=edge_type, type=edge_type, relation=relation,
-                               source_id=parameters['source_qnode_id'], target_id=parameters[
-                        'target_qnode_id'])  # TODO: ok to make the id and type the same thing?
-                self.message.query_graph.edges.append(q_edge)
+        # Now add a q_edge the query_graph since I've added an extra edge to the KG
+        if added_flag:
+            edge_type = parameters['virtual_edge_type']
+            relation = name
+            q_edge = QEdge(id=edge_type, type=edge_type, relation=relation,
+                           source_id=parameters['source_qnode_id'], target_id=parameters[
+                    'target_qnode_id'])  # TODO: ok to make the id and type the same thing?
+            self.message.query_graph.edges.append(q_edge)
 
     def add_all_edges(self, name="", default=0):
         curies_to_names = dict()
