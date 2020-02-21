@@ -9,7 +9,7 @@ import re
 import numpy as np
 from response import Response
 from collections import Counter
-
+import traceback
 
 class ARAXOverlay:
 
@@ -56,8 +56,11 @@ class ARAXOverlay:
         Little helper function for internal use that describes the actions and what they can do
         :return:
         """
+        description_list = []
         for action in self.allowable_actions:
-            getattr(self, '_' + self.__class__.__name__ + '__' + action)(describe=True)
+            description_list.append(getattr(self, '_' + self.__class__.__name__ + '__' + action)(describe=True))
+        return description_list
+
 
     # Write a little helper function to test parameters
     def check_params(self, allowable_parameters):
@@ -73,9 +76,23 @@ class ARAXOverlay:
                     f"Supplied parameter {key} is not permitted. Allowable parameters are: {list(allowable_parameters.keys())}",
                     error_code="UnknownParameter")
             elif item not in allowable_parameters[key]:
-                self.response.error(
-                    f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}",
-                    error_code="UnknownValue")
+                if any([type(x) == float for x in allowable_parameters[key]]) or any([type(x) == int for x in allowable_parameters[key]]):  # if it's a float or int, just accept it as it is
+                    return
+                else:  # otherwise, it's really not an allowable parameter
+                    self.response.error(
+                        f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}",
+                        error_code="UnknownValue")
+
+    # helper function to check if all virtual edge parameters have been properly provided
+    def check_virtual_edge_params(self, allowable_parameters):
+        parameters = self.parameters
+        if any([x in ['virtual_edge_type', 'source_qnode_id', 'target_qnode_id'] for x in parameters.keys()]):
+            if not all([x in parameters.keys() for x in ['virtual_edge_type', 'source_qnode_id', 'target_qnode_id']]):
+                self.response.error(f"If any of of the following parameters are provided ['virtual_edge_type', 'source_qnode_id', 'target_qnode_id'], all must be provided. Allowable parameters include: {allowable_parameters}")
+            elif parameters['source_qnode_id'] not in allowable_parameters['source_qnode_id']:
+                self.response.error(f"source_qnode_id value is not valid. Valid values are: {allowable_parameters['source_qnode_id']}")
+            elif parameters['target_qnode_id'] not in allowable_parameters['target_qnode_id']:
+                self.response.error(f"target_qnode_id value is not valid. Valid values are: {allowable_parameters['target_qnode_id']}")
 
 
     #### Top level decision maker for applying filters
@@ -135,13 +152,24 @@ class ARAXOverlay:
         Allowable parameters: {default_value: {'0', 'inf'}}
         :return:
         """
+        message = self.message
+        parameters = self.parameters
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
-        allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}}
+        #allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}}
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
+            allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_edge_type': {self.parameters['virtual_edge_type'] if 'virtual_edge_type' in self.parameters else None},
+                                    'source_qnode_id': set([x.id for x in self.message.query_graph.nodes]),
+                                    'target_qnode_id': set([x.id for x in self.message.query_graph.nodes])
+                                    }
+        else:
+            allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_edge_type': {'any string label (optional, otherwise applied to all edges)'},
+                                    'source_qnode_id': {'a specific source query node id (optional, otherwise applied to all edges)'},
+                                    'target_qnode_id': {'a specific target query node id (optional, otherwise applied to all edges)'}
+                                    }
 
         # A little function to describe what this thing does
         if describe:
-            print(allowable_parameters)
-            return
+            return allowable_parameters
 
         # Make sure only allowable parameters and values have been passed
         self.check_params(allowable_parameters)
@@ -149,25 +177,34 @@ class ARAXOverlay:
         if self.response.status != 'OK':
             return self.response
 
-        ngd_params = {'default_value': np.inf}  # here is where you can set default values
+        # set the default value if it's not already done
+        if 'default_value' not in parameters:
+            parameters['default_value'] = np.inf
+        else:
+            if parameters['default_value'] == '0':
+                parameters['default_value'] = '0'
+            else:
+                parameters['default_value'] = float("-inf")
 
-        # parse the input parameters to be the data types I need them to be
-        for key, value in self.parameters.items():
-            if key != 'action':
-                if key == 'default_value':
-                    if value == '0':
-                        ngd_params[key] = 0
-                    elif value == 'inf':
-                        ngd_params[key] = np.inf
+        # Check if all virtual edge params have been provided properly
+        self.check_virtual_edge_params(allowable_parameters)
+        if self.response.status != 'OK':
+            return self.response
 
         # now do the call out to NGD
         from Overlay.compute_ngd import ComputeNGD
-        NGD = ComputeNGD(self.response, self.message, ngd_params)
+        NGD = ComputeNGD(self.response, self.message, parameters)
         response = NGD.compute_ngd()
         return response
 
     #### Compute confidence scores. Double underscore means this is a private method
-    def __compute_confidence_scores(self):
+    def __compute_confidence_scores(self, describe=False):
+
+        # A little function to describe what this thing does
+        allowable_parameters = {'action': {'compute_confidence_scores'}}
+        if describe:
+            return allowable_parameters
+
 
         #### Set up local references to the response and the message
         response = self.response
@@ -191,13 +228,33 @@ class ARAXOverlay:
         Allowable parameters are:
         :return: a response
         """
+        message = self.message
+        parameters = self.parameters
+
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
-        allowable_parameters = {'action': {'overlay_clinical_info'}, 'paired_concept_freq': {'true', 'false'}}
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
+            allowable_parameters = {'action': {'overlay_clinical_info'},
+                                    'paired_concept_freq': {'true', 'false'},
+                                    'observed_expected_ratio': {'true', 'false'},
+                                    'chi_square': {'true', 'false'},
+                                    'virtual_edge_type': {self.parameters['virtual_edge_type'] if 'virtual_edge_type' in self.parameters else None},
+                                    'source_qnode_id': set([x.id for x in self.message.query_graph.nodes]),
+                                    'target_qnode_id': set([x.id for x in self.message.query_graph.nodes])
+                                    }
+        else:
+            allowable_parameters = {'action': {'overlay_clinical_info'},
+                                    'paired_concept_freq': {'true', 'false'},
+                                    'observed_expected_ratio': {'true', 'false'},
+                                    'chi_square': {'true', 'false'},
+                                    'virtual_edge_type': {'any string label (optional, otherwise applied to all edges)'},
+                                    'source_qnode_id': {'a specific source query node id (optional, otherwise applied to all edges)'},
+                                    'target_qnode_id': {'a specific target query node id (optional, otherwise applied to all edges)'}
+                                    }
 
         # A little function to describe what this thing does
         if describe:
-            print(allowable_parameters)
-            return
+            return allowable_parameters
+
 
         # Make sure only allowable parameters and values have been passed
         self.check_params(allowable_parameters)
@@ -205,11 +262,23 @@ class ARAXOverlay:
         if self.response.status != 'OK':
             return self.response
 
+        #check if conflicting parameters have been provided
+        mutually_exclusive_params = {'paired_concept_freq', 'observed_expected_ratio', 'chi_square'}
+        if np.sum([x in mutually_exclusive_params for x in parameters]) > 1:
+            self.response.error(f"The parameters {mutually_exclusive_params} are mutually exclusive. Please provide only one for each call to overlay(action=overlay_clinical_info)")
+        if self.response.status != 'OK':
+            return self.response
+
+        # Check if all virtual edge params have been provided properly
+        self.check_virtual_edge_params(allowable_parameters)
+        if self.response.status != 'OK':
+            return self.response
+
         # TODO: make sure that not more than one other kind of action has been asked for since COHD has a lot of functionality #606
-        # TODO: make sure conflicting defaults aren't called either
+        # TODO: make sure conflicting defaults aren't called either, partially completed
         # TODO: until then, just pass the parameters as is
 
-        default_params = self.parameters  # here is where you can set default values
+        default_params = parameters  # here is where you can set default values
 
         from Overlay.overlay_clinical_info import OverlayClinicalInfo
         OCI = OverlayClinicalInfo(self.response, self.message, default_params)
@@ -220,16 +289,16 @@ class ARAXOverlay:
         """
         Computes normalized google distance between two nodes connected by an edge in the knowledge graph
         and adds that as an edge attribute.
-        Allowable parameters: {max_num: {'all', '10', '100', '1000'}}
+        Allowable parameters: {max_num: {'all', 'any integer'}}
         :return:
         """
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
-        allowable_parameters = {'action': {'add_node_pmids'}, 'max_num': {'all', '10', '100', '1000'}}
+        allowable_parameters = {'action': {'add_node_pmids'}, 'max_num': {'all', int()}}
 
         # A little function to describe what this thing does
         if describe:
-            print(allowable_parameters)
-            return
+            return allowable_parameters
+
 
         # Make sure only allowable parameters and values have been passed
         self.check_params(allowable_parameters)
@@ -241,20 +310,20 @@ class ARAXOverlay:
         pass_params = {'max_num': 100}  # here is where you can set default values
 
         # parse the input parameters to be the data types I need them to be
-        # TODO: there has got to be a cleaner way to do this...
         for key, value in self.parameters.items():
-            if key != 'action':
-                if key == 'max_num':
-                    if value == '0':
-                        pass_params[key] = 0
-                    elif value == '10':
-                        pass_params[key] = 10
-                    elif value == '100':
-                        pass_params[key] = 100
-                    elif value == '1000':
-                        pass_params[key] = 1000
-                    elif value == 'all':
-                        pass_params[key] = None
+            if key == 'max_num':
+                if value == 'all':
+                    pass_params[key] = None
+                else:
+                    try:
+                        pass_params[key] = int(value)
+                    except:
+                        tb = traceback.format_exc()
+                        error_type, error, _ = sys.exc_info()
+                        self.response.error(tb, error_code=error_type.__name__)
+                        self.response.error(f"parameter 'max_num' must be an integer")
+        if self.response.status != 'OK':
+            return self.response
 
         # now do the call out to NGD
         from Overlay.add_node_pmids import AddNodePMIDS
@@ -292,8 +361,7 @@ class ARAXOverlay:
         # print(allowable_parameters)
         # A little function to describe what this thing does
         if describe:
-            print(allowable_parameters)
-            return
+            return allowable_parameters
 
         # Make sure only allowable parameters and values have been passed
         self.check_params(allowable_parameters)
@@ -313,7 +381,7 @@ class ARAXOverlay:
 
 ##########################################################################################
 def main():
-
+    print("start ARAX_overlay")
     #### Note that most of this is just manually doing what ARAXQuery() would normally do for you
 
     #### Create a response object
@@ -331,9 +399,13 @@ def main():
 
     actions_list = [
         #"overlay(action=compute_ngd)",
+        "overlay(action=compute_ngd, virtual_edge_type=NGD1, source_qnode_id=n00, target_qnode_id=n01)",
         #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
+        # "overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
         #"overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
-        "overlay(action=add_node_pmids)",
+        #"overlay(action=add_node_pmids)",
+        #"overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
+        #"overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
         "return(message=true,store=false)"
     ]
 
@@ -350,12 +422,14 @@ def main():
     from RTXFeedback import RTXFeedback
     araxdb = RTXFeedback()
 
-    message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
+    #message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
     # message_dict = araxdb.getMessage(13)  # ibuprofen -> proteins -> disease # work computer
     #message_dict = araxdb.getMessage(14)  # pleuropneumonia -> phenotypic_feature # work computer
     #message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature  # work computer
     #message_dict = araxdb.getMessage(5)  # atherosclerosis -> phenotypic_feature  # home computer
     #message_dict = araxdb.getMessage(10)
+    #message_dict = araxdb.getMessage(36)  # test COHD obs/exp, via ARAX_query.py 16
+    message_dict = araxdb.getMessage(39)  # ngd virtual edge test
 
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger
@@ -363,9 +437,11 @@ def main():
     #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
 
     #### Create an overlay object and use it to apply action[0] from the list
+    print("Applying action")
     overlay = ARAXOverlay()
     result = overlay.apply(message, actions[0]['parameters'])
     response.merge(result)
+    print("Finished applying action")
 
     #if result.status != 'OK':
     #    print(response.show(level=Response.DEBUG))
@@ -400,8 +476,9 @@ def main():
     #for edge in message.knowledge_graph.edges:
     #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
     #        print(edge.edge_attributes.pop().value)
-    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
+    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
     print(response.show(level=Response.DEBUG))
+    print("Yet you still got here")
     #print(actions_parser.parse(actions_list))
 
 if __name__ == "__main__": main()
