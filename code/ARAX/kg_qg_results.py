@@ -18,6 +18,7 @@ from swagger_server.models.node_binding import NodeBinding
 from swagger_server.models.edge_binding import EdgeBinding
 from swagger_server.models.biolink_entity import BiolinkEntity
 from swagger_server.models.result import Result
+from swagger_server.models.message import Message
 from typing import List, Dict, Set
 
 
@@ -51,6 +52,29 @@ def make_result_from_node_set(kg: KnowledgeGraph,
                   edge_bindings=edge_bindings)
 
 
+def get_results_for_kg_by_qg_return_message(kg: KnowledgeGraph,
+                                            qg: QueryGraph,
+                                            qg_nodes_override_treat_is_set_as_false: bool = True,
+                                            ignore_edge_direction: bool = True) -> Message:
+    try:
+        results = get_results_for_kg_by_qg(kg,
+                                           qg,
+                                           qg_nodes_override_treat_is_set_as_false,
+                                           ignore_edge_direction)
+        message_code = 'OK'
+        code_description = None
+    except Exception as e:
+        code_description = str(e)
+        message_code = e.__class__.__name__
+        results = []
+    return Message(query_graph=qg,
+                   knowledge_graph=kg,
+                   results=results,
+                   message_code=message_code,
+                   code_description=code_description,
+                   n_results=len(results))
+
+
 def get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must* have qnode_id specified
                              qg: QueryGraph,
                              qg_nodes_override_treat_is_set_as_false: set = None,
@@ -79,6 +103,11 @@ def get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must*
     # build up maps of node IDs to nodes, for both the KG and QG
     kg_nodes_map = {node.id: node for node in kg.nodes}
     qg_nodes_map = {node.id: node for node in qg.nodes}
+
+    missing_node_ids = [node_id for node_id in qg_nodes_override_treat_is_set_as_false if node_id not in qg_nodes_map]
+    if len(missing_node_ids) > 0:
+        raise ValueError("the following nodes in qg_nodse_override_treat_is_set_as_false are not in the query graph: " +
+                         str(missing_node_ids))
 
     # make an inverse "node bindings" map of QG node IDs to KG node ids
     reverse_node_bindings_map = {node.id: set() for node in qg.nodes}
@@ -562,13 +591,105 @@ def test04():
                                             query_graph,
                                             qg_nodes_override_treat_is_set_as_false={'n02'},
                                             ignore_edge_direction=True)
-    assert len(results_list) == 2    
+    assert len(results_list) == 2
 
 
-    
+def test05():
+    kg_node_info = ({'id': 'UniProtKB:12345',
+                     'type': 'protein',
+                     'qnode_id': 'n01'},
+                    {'id': 'UniProtKB:23456',
+                     'type': 'protein',
+                     'qnode_id': 'n01'},
+                    {'id': 'DOID:12345',
+                     'type': 'disease',
+                     'qnode_id': 'DOID:12345'},
+                    {'id': 'UniProtKB:56789',
+                     'type': 'protein',
+                     'qnode_id': 'n01'},
+                    {'id': 'ChEMBL.COMPOUND:12345',
+                     'type': 'chemical_substance',
+                     'qnode_id': 'n02'},
+                    {'id': 'ChEMBL.COMPOUND:23456',
+                     'type': 'chemical_substance',
+                     'qnode_id': 'n02'})
+
+    kg_edge_info = ({'edge_id': 'ke01',
+                     'source_id': 'ChEMBL.COMPOUND:12345',
+                     'target_id': 'UniProtKB:12345',
+                     'qedge_id': 'qe01'},
+                    {'edge_id': 'ke02',
+                     'source_id': 'ChEMBL.COMPOUND:12345',
+                     'target_id': 'UniProtKB:23456',
+                     'qedge_id': 'qe01'},
+                    {'edge_id': 'ke03',
+                     'source_id': 'ChEMBL.COMPOUND:23456',
+                     'target_id': 'UniProtKB:12345',
+                     'qedge_id': 'qe01'},
+                    {'edge_id': 'ke04',
+                     'source_id': 'ChEMBL.COMPOUND:23456',
+                     'target_id': 'UniProtKB:23456',
+                     'qedge_id': 'qe01'},                  
+                    {'edge_id': 'ke05',
+                     'source_id': 'DOID:12345',
+                     'target_id': 'UniProtKB:12345',
+                     'qedge_id': 'qe02'},
+                    {'edge_id': 'ke06',
+                     'source_id': 'DOID:12345',
+                     'target_id': 'UniProtKB:23456',
+                     'qedge_id': 'qe02'},
+                    {'edge_id': 'ke08',
+                     'source_id': 'UniProtKB:12345',
+                     'target_id': 'UniProtKB:23456',
+                     'qedge_id': None})
+
+    kg_nodes = [Node(id=node_info['id'],
+                     type=[node_info['type']],
+                     qnode_id=node_info['qnode_id']) for node_info in kg_node_info]
+
+    kg_edges = [Edge(id=edge_info['edge_id'],
+                     source_id=edge_info['source_id'],
+                     target_id=edge_info['target_id'],
+                     qedge_id=edge_info['qedge_id']) for edge_info in kg_edge_info]
+
+    knowledge_graph = KnowledgeGraph(kg_nodes, kg_edges)
+
+    qg_node_info = ({'id': 'n01',
+                     'type': 'protein',
+                     'is_set': True},
+                    {'id': 'DOID:12345',
+                     'type': 'disease',
+                     'is_set': False},
+                    {'id': 'n02',
+                     'type': 'chemical_substance',
+                     'is_set': True})
+
+    qg_edge_info = ({'edge_id': 'qe01',
+                     'source_id': 'n02',
+                     'target_id': 'n01'},
+                    {'edge_id': 'qe02',
+                     'source_id': 'DOID:12345',
+                     'target_id': 'n01'})
+
+    qg_nodes = [QNode(id=node_info['id'],
+                      type=BIOLINK_ENTITY_TYPE_OBJECTS[node_info['type']],
+                      is_set=node_info['is_set']) for node_info in qg_node_info]
+
+    qg_edges = [QEdge(id=edge_info['edge_id'],
+                      source_id=edge_info['source_id'],
+                      target_id=edge_info['target_id']) for edge_info in qg_edge_info]
+
+    query_graph = QueryGraph(qg_nodes, qg_edges)
+
+    message = get_results_for_kg_by_qg_return_message(knowledge_graph,
+                                                      query_graph,
+                                                      qg_nodes_override_treat_is_set_as_false={'n02'},
+                                                      ignore_edge_direction=True)
+    assert len(message.results) == 2
+
 if __name__ == '__main__':
     test01()
     test02()
     test03()
     test04()
-
+    test05()
