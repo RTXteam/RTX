@@ -35,6 +35,7 @@ class BiolinkEntityStr(BiolinkEntity):
 BIOLINK_CATEGORY_LABELS = {'protein', 'disease', 'phenotypic_feature', 'gene', 'chemical_substance'}
 BIOLINK_ENTITY_TYPE_OBJECTS = {category_label: BiolinkEntityStr(category_label) for category_label in BIOLINK_CATEGORY_LABELS}
 
+
 def make_edge_key(node1_id: str,
                   node2_id: str):
     return node1_id + '->' + node2_id
