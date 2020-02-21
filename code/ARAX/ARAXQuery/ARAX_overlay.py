@@ -233,13 +233,19 @@ class ARAXOverlay:
 
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
-            allowable_parameters = {'action': {'overlay_clinical_info'}, 'paired_concept_freq': {'true', 'false'}, 'observed_expected_ratio': {'true','false'},
+            allowable_parameters = {'action': {'overlay_clinical_info'},
+                                    'paired_concept_freq': {'true', 'false'},
+                                    'observed_expected_ratio': {'true', 'false'},
+                                    'chi_square': {'true', 'false'},
                                     'virtual_edge_type': {self.parameters['virtual_edge_type'] if 'virtual_edge_type' in self.parameters else None},
                                     'source_qnode_id': set([x.id for x in self.message.query_graph.nodes]),
                                     'target_qnode_id': set([x.id for x in self.message.query_graph.nodes])
                                     }
         else:
-            allowable_parameters = {'action': {'overlay_clinical_info'}, 'paired_concept_freq': {'true', 'false'}, 'observed_expected_ratio': {'true','false'},
+            allowable_parameters = {'action': {'overlay_clinical_info'},
+                                    'paired_concept_freq': {'true', 'false'},
+                                    'observed_expected_ratio': {'true', 'false'},
+                                    'chi_square': {'true', 'false'},
                                     'virtual_edge_type': {'any string label (optional, otherwise applied to all edges)'},
                                     'source_qnode_id': {'a specific source query node id (optional, otherwise applied to all edges)'},
                                     'target_qnode_id': {'a specific target query node id (optional, otherwise applied to all edges)'}
@@ -257,7 +263,7 @@ class ARAXOverlay:
             return self.response
 
         #check if conflicting parameters have been provided
-        mutually_exclusive_params = {'paired_concept_freq', 'observed_expected_ratio'}
+        mutually_exclusive_params = {'paired_concept_freq', 'observed_expected_ratio', 'chi_square'}
         if np.sum([x in mutually_exclusive_params for x in parameters]) > 1:
             self.response.error(f"The parameters {mutually_exclusive_params} are mutually exclusive. Please provide only one for each call to overlay(action=overlay_clinical_info)")
         if self.response.status != 'OK':

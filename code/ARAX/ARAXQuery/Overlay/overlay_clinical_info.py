@@ -58,7 +58,7 @@ class OverlayClinicalInfo:
                 pass
         if 'chi_square' in parameters:
             if parameters['chi_square'] == 'true':
-                #self.chi_square()  # TODO: make this function, and all the other COHD functions too
+                self.chi_square()  # TODO: make this function, and all the other COHD functions too
                 pass
         if 'observed_expected_ratio' in parameters:
             if parameters['observed_expected_ratio'] == 'true':
@@ -83,7 +83,7 @@ class OverlayClinicalInfo:
         else:
             return False
 
-    def make_edge_attribute_from_curies(self, source_curie, target_curie, source_name="", target_name="", default=0, name=""):
+    def make_edge_attribute_from_curies(self, source_curie, target_curie, source_name="", target_name="", default=0., name=""):
         """
         Generic function to make an edge attribute
         :source_curie: CURIE of the source node for the edge under consideration
@@ -123,6 +123,7 @@ class OverlayClinicalInfo:
                 # uniquify everything
                 source_OMOPs = list(set(source_OMOPs))
                 target_OMOPs = list(set(target_OMOPs))
+
                 # Decide how to handle the response from the KP
                 if name == 'paired_concept_freq':
                     # sum up all frequencies  #TODO check with COHD people to see if this is kosher
@@ -174,6 +175,15 @@ class OverlayClinicalInfo:
                             temp_val = response[0]['ln_ratio']
                             if temp_val > value:
                                 value = temp_val
+                elif name == 'chi_square':
+                    value = float("inf")
+                    for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
+                        response = COHD.get_chi_square(omop1, concept_id_2=omop2, domain="", dataset_id=3)  # use the hierarchical dataset
+                        # response is a list, since this function is overloaded and can omit concept_id_2, take the first element
+                        if response and 'p-value' in response[0]:
+                            temp_val = response[0]['p-value']
+                            if temp_val < value:  # looking at p=values, so lower is better
+                                value = temp_val
                 # create the edge attribute
                 edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the edge attribute # FIXME: unclear in object model if attribute type dictates value type, or if value always needs to be a string
                 return edge_attribute
@@ -185,7 +195,7 @@ class OverlayClinicalInfo:
             self.response.error(tb, error_code=error_type.__name__)
             self.response.error(f"Something went wrong when adding the edge attribute from {KP_to_use}.")
 
-    def add_virtual_edge(self, name="", default=0):
+    def add_virtual_edge(self, name="", default=0.):
         """
         Generic function to add a virtual edge to the KG an QG
         :name: name of the functionality of the KP to use
@@ -249,7 +259,7 @@ class OverlayClinicalInfo:
                     'target_qnode_id'])  # TODO: ok to make the id and type the same thing?
             self.message.query_graph.edges.append(q_edge)
 
-    def add_all_edges(self, name="", default=0):
+    def add_all_edges(self, name="", default=0.):
         curies_to_names = dict()
         for node in self.message.knowledge_graph.nodes:
             curies_to_names[node.id] = node.name
@@ -305,6 +315,29 @@ class OverlayClinicalInfo:
                 self.add_virtual_edge(name="observed_expected_ratio", default=default)
             else:  # otherwise, just add to existing edges in the KG
                 self.add_all_edges(name="observed_expected_ratio", default=default)
+
+        except:
+            tb = traceback.format_exc()
+            error_type, error, _ = sys.exc_info()
+            self.response.error(tb, error_code=error_type.__name__)
+            self.response.error(f"Something went wrong when overlaying clinical info")
+
+
+    def chi_square(self, default=float("inf")):
+        """
+        Returns the chi-square statistic and p-value between pairs of concepts. Results are returned in descending order of the chi-square statistic. Note that due to large sample sizes, the chi-square can become very large.
+        The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and assuming independence between concepts. P-value is calculated with 1 DOF.
+        """
+        parameters = self.parameters
+        self.response.debug("Computing Chi square p-values.")
+        self.response.info("Overlaying Chi square p-values utilizing Columbia Open Health Data. This calls an external knowledge provider and may take a while")
+
+        # Now add the edges or virtual edges
+        try:
+            if 'virtual_edge_type' in parameters:
+                self.add_virtual_edge(name="chi_square", default=default)
+            else:  # otherwise, just add to existing edges in the KG
+                self.add_all_edges(name="chi_square", default=default)
 
         except:
             tb = traceback.format_exc()
