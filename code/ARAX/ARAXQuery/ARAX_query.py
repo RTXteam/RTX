@@ -534,8 +534,10 @@ def main():
             "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00, type=has_phenotype)",
             "expand(edge_id=e00)",
-            "overlay(action=overlay_clinical_info, paired_concept_freq=true)",
+            #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
             #"overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
+            #"overlay(action=compute_ngd)",
+            "overlay(action=compute_ngd, virtual_edge_type=NGD1, source_qnode_id=n00, target_qnode_id=n01)",
             "filter(maximum_results=2)",
             "return(message=true, store=false)",
             ] } }

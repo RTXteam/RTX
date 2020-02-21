@@ -182,9 +182,9 @@ class ARAXOverlay:
             parameters['default_value'] = np.inf
         else:
             if parameters['default_value'] == '0':
-                parameters['default_value'] = 0
+                parameters['default_value'] = '0'
             else:
-                parameters['default_value'] = np.inf
+                parameters['default_value'] = float("-inf")
 
         # Check if all virtual edge params have been provided properly
         self.check_virtual_edge_params(allowable_parameters)
@@ -392,7 +392,8 @@ def main():
     #]
 
     actions_list = [
-        "overlay(action=compute_ngd)",
+        #"overlay(action=compute_ngd)",
+        "overlay(action=compute_ngd, virtual_edge_type=NGD1, source_qnode_id=n00, target_qnode_id=n01)",
         #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
         # "overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
         #"overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
@@ -415,13 +416,14 @@ def main():
     from RTXFeedback import RTXFeedback
     araxdb = RTXFeedback()
 
-    message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
+    #message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
     # message_dict = araxdb.getMessage(13)  # ibuprofen -> proteins -> disease # work computer
     #message_dict = araxdb.getMessage(14)  # pleuropneumonia -> phenotypic_feature # work computer
     #message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature  # work computer
     #message_dict = araxdb.getMessage(5)  # atherosclerosis -> phenotypic_feature  # home computer
     #message_dict = araxdb.getMessage(10)
     #message_dict = araxdb.getMessage(36)  # test COHD obs/exp, via ARAX_query.py 16
+    message_dict = araxdb.getMessage(39)  # ngd virtual edge test
 
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger
