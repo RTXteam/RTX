@@ -983,7 +983,7 @@ def test08():
         "add_qnode(type=phenotypic_feature, is_set=false, id=n01)",
         "add_qedge(source_id=DOID:731, target_id=n01, id=e00)",
         "query_graph_reasoner()",
-        'resultify(ignore_edge_direction=True)',
+        'resultify(ignore_edge_direction=true)',
         "return(message=true, store=false)"]}}
     response = Response()
     result = araxq.query(query)
