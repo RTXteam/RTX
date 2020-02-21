@@ -687,6 +687,7 @@ def test05():
                                                       ignore_edge_direction=True)
     assert len(message.results) == 2
 
+
 if __name__ == '__main__':
     test01()
     test02()
