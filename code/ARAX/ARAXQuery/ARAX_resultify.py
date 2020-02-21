@@ -974,6 +974,115 @@ def test07():
     assert result.status == 'OK'
 
 
+# def test08():
+#     kg_node_info = ({'id': 'UniProtKB:12345',
+#                      'type': 'protein',
+#                      'qnode_id': 'n01'},
+#                     {'id': 'UniProtKB:23456',
+#                      'type': 'protein',
+#                      'qnode_id': 'n01'},
+#                     {'id': 'DOID:12345',
+#                      'type': 'disease',
+#                      'qnode_id': 'DOID:12345'},
+#                     {'id': 'UniProtKB:56789',
+#                      'type': 'protein',
+#                      'qnode_id': 'n01'},
+#                     {'id': 'ChEMBL.COMPOUND:12345',
+#                      'type': 'chemical_substance',
+#                      'qnode_id': 'n02'},
+#                     {'id': 'ChEMBL.COMPOUND:23456',
+#                      'type': 'chemical_substance',
+#                      'qnode_id': 'n02'})
+
+#     kg_edge_info = ({'edge_id': 'ke01',
+#                      'source_id': 'ChEMBL.COMPOUND:12345',
+#                      'target_id': 'UniProtKB:12345',
+#                      'qedge_id': 'qe01'},
+#                     {'edge_id': 'ke02',
+#                      'source_id': 'ChEMBL.COMPOUND:12345',
+#                      'target_id': 'UniProtKB:23456',
+#                      'qedge_id': 'qe01'},
+#                     {'edge_id': 'ke03',
+#                      'source_id': 'ChEMBL.COMPOUND:23456',
+#                      'target_id': 'UniProtKB:12345',
+#                      'qedge_id': 'qe01'},
+#                     {'edge_id': 'ke04',
+#                      'source_id': 'ChEMBL.COMPOUND:23456',
+#                      'target_id': 'UniProtKB:23456',
+#                      'qedge_id': 'qe01'},
+#                     {'edge_id': 'ke05',
+#                      'source_id': 'DOID:12345',
+#                      'target_id': 'UniProtKB:12345',
+#                      'qedge_id': 'qe02'},
+#                     {'edge_id': 'ke06',
+#                      'source_id': 'DOID:12345',
+#                      'target_id': 'UniProtKB:23456',
+#                      'qedge_id': 'qe02'},
+#                     {'edge_id': 'ke08',
+#                      'source_id': 'UniProtKB:12345',
+#                      'target_id': 'UniProtKB:23456',
+#                      'qedge_id': None})
+
+#     kg_nodes = [Node(id=node_info['id'],
+#                      type=[node_info['type']],
+#                      qnode_id=node_info['qnode_id']) for node_info in kg_node_info]
+
+#     kg_edges = [Edge(id=edge_info['edge_id'],
+#                      source_id=edge_info['source_id'],
+#                      target_id=edge_info['target_id'],
+#                      qedge_id=edge_info['qedge_id']) for edge_info in kg_edge_info]
+
+#     knowledge_graph = KnowledgeGraph(kg_nodes, kg_edges)
+
+#     qg_node_info = ({'id': 'n01',
+#                      'type': 'protein',
+#                      'is_set': True},
+#                     {'id': 'DOID:12345',
+#                      'type': 'disease',
+#                      'is_set': False},
+#                     {'id': 'n02',
+#                      'type': 'chemical_substance',
+#                      'is_set': True})
+
+#     qg_edge_info = ({'edge_id': 'qe01',
+#                      'source_id': 'n02',
+#                      'target_id': 'n01'},
+#                     {'edge_id': 'qe02',
+#                      'source_id': 'DOID:12345',
+#                      'target_id': 'n01'})
+
+#     qg_nodes = [QNode(id=node_info['id'],
+#                       type=BIOLINK_ENTITY_TYPE_OBJECTS[node_info['type']],
+#                       is_set=node_info['is_set']) for node_info in qg_node_info]
+
+#     qg_edges = [QEdge(id=edge_info['edge_id'],
+#                       source_id=edge_info['source_id'],
+#                       target_id=edge_info['target_id']) for edge_info in qg_edge_info]
+
+#     query_graph = QueryGraph(qg_nodes, qg_edges)
+
+#     from ARAX_query import ARAXQuery
+#     araxq = ARAXQuery()
+#     query = 
+#     response = Response()
+#     from actions_parser import ActionsParser
+#     actions_parser = ActionsParser()
+#     # why are we doing [n02,n02]??  see issue #637
+#     actions_list = ['resultify(ignore_edge_direction=True,qg_nodes_override_treat_is_set_as_false=[n02,n02])']
+#     result = actions_parser.parse(actions_list)
+#     response.merge(result)
+#     actions = result.data['actions']
+#     assert result.status == 'OK'
+#     resultifier = ARAXResultify()
+#     message = Message(query_graph=query_graph,
+#                       knowledge_graph=knowledge_graph,
+#                       results=[])
+#     result = resultifier.apply(message, actions[0]['parameters'])
+#     response.merge(result)
+#     assert len(message.results) == 2
+#     assert result.status == 'OK'
+
+
 def run_module_level_tests():
     test01()
     test02()
@@ -982,13 +1091,13 @@ def run_module_level_tests():
 
 
 def run_arax_class_tests():
-#    test05()
-#    test06()
+    test05()
+    test06()
     test07()
 
 
 def main():
-#    run_module_level_tests()
+    run_module_level_tests()
     run_arax_class_tests()
 
 
