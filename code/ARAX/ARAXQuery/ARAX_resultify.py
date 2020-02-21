@@ -118,7 +118,7 @@ class ARAXResultify:
         if qg_nodes_override_treat_is_set_as_false_list is not None:
             qg_nodes_override_treat_is_set_as_false = set(qg_nodes_override_treat_is_set_as_false_list)
         else:
-            qg_nodes_override_treat_is_set_as_false = None
+            qg_nodes_override_treat_is_set_as_false = set()
         ignore_edge_direction = parameters['ignore_edge_direction']
         try:
             results = get_results_for_kg_by_qg(kg,
@@ -144,7 +144,7 @@ def make_edge_key(node1_id: str,
 
 
 def make_result_from_node_set(kg: KnowledgeGraph,
-                              node_ids: Set[str]):
+                              node_ids: Set[str]) -> Result:
     node_bindings = [NodeBinding(qg_id=node.qnode_id, kg_id=node.id) for node in kg.nodes if node.id in node_ids]
     edge_bindings = [EdgeBinding(qg_id=edge.qedge_id, kg_id=edge.id)
                      for edge in kg.edges if edge.source_id in node_ids and
@@ -173,8 +173,8 @@ def get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must*
     edge_bindings_map = {edge.id: edge.qedge_id for edge in kg.edges if edge.qedge_id is not None}
 
     # make a map of KG node ID to KG edges, by source:
-    kg_node_id_outgoing_adjacency_map = {node.id: set() for node in kg.nodes}
-    kg_node_id_incoming_adjacency_map = {node.id: set() for node in kg.nodes}
+    kg_node_id_outgoing_adjacency_map: Dict[str, set] = {node.id: set() for node in kg.nodes}
+    kg_node_id_incoming_adjacency_map: Dict[str, set] = {node.id: set() for node in kg.nodes}
     for edge in kg.edges:
         kg_node_id_outgoing_adjacency_map[edge.source_id].add(edge.target_id)
         kg_node_id_incoming_adjacency_map[edge.target_id].add(edge.source_id)
@@ -189,7 +189,7 @@ def get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must*
                          str(missing_node_ids))
 
     # make an inverse "node bindings" map of QG node IDs to KG node ids
-    reverse_node_bindings_map = {node.id: set() for node in qg.nodes}
+    reverse_node_bindings_map: Dict[str, set] = {node.id: set() for node in qg.nodes}
     for node in kg.nodes:
         reverse_node_bindings_map[node.qnode_id].add(node.id)
 
@@ -291,7 +291,7 @@ def get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must*
     # (2) for any QG node that has "is_set=True", *all* KG nodes that are bound to the same QG node are in the subgraph
     # (3) every edge in the QG is "covered" by at least one edge in the KG
 
-    kg_node_ids_to_include_always = set()
+    kg_node_ids_to_include_always: Set[str] = set()
     kg_node_id_lists_for_qg_nodes = []
     for node in qg.nodes:
         if node.is_set is not None and \
@@ -302,10 +302,10 @@ def get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must*
             kg_node_id_lists_for_qg_nodes.append(list(reverse_node_bindings_map[node.id]))
     kg_node_ids_to_include_always_list = list(kg_node_ids_to_include_always)
 
-    results = []
+    results: List[Result] = []
     for node_ids_for_subgraph_from_non_set_nodes in itertools.product(*kg_node_id_lists_for_qg_nodes):
         node_ids_for_subgraph = list(node_ids_for_subgraph_from_non_set_nodes) + kg_node_ids_to_include_always_list
-        results.append(make_result_from_node_set(kg, node_ids_for_subgraph))
+        results.append(make_result_from_node_set(kg, set(node_ids_for_subgraph)))
 
     return results
 
@@ -1003,7 +1003,7 @@ def run_arax_class_tests():
     test05()
     test06()
     test07()
-    test08()
+#    test08()
 
 
 def main():
