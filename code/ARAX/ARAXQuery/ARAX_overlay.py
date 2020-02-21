@@ -83,6 +83,17 @@ class ARAXOverlay:
                         f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}",
                         error_code="UnknownValue")
 
+    # helper function to check if all virtual edge parameters have been properly provided
+    def check_virtual_edge_params(self, allowable_parameters):
+        parameters = self.parameters
+        if any([x in ['virtual_edge_type', 'source_qnode_id', 'target_qnode_id'] for x in parameters.keys()]):
+            if not all([x in parameters.keys() for x in ['virtual_edge_type', 'source_qnode_id', 'target_qnode_id']]):
+                self.response.error(f"If any of of the following parameters are provided ['virtual_edge_type', 'source_qnode_id', 'target_qnode_id'], all must be provided. Allowable parameters include: {allowable_parameters}")
+            elif parameters['source_qnode_id'] not in allowable_parameters['source_qnode_id']:
+                self.response.error(f"source_qnode_id value is not valid. Valid values are: {allowable_parameters['source_qnode_id']}")
+            elif parameters['target_qnode_id'] not in allowable_parameters['target_qnode_id']:
+                self.response.error(f"target_qnode_id value is not valid. Valid values are: {allowable_parameters['target_qnode_id']}")
+
 
     #### Top level decision maker for applying filters
     def apply(self, input_message, input_parameters):
@@ -141,8 +152,20 @@ class ARAXOverlay:
         Allowable parameters: {default_value: {'0', 'inf'}}
         :return:
         """
+        message = self.message
+        parameters = self.parameters
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
-        allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}}
+        #allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}}
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
+            allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_edge_type': {self.parameters['virtual_edge_type'] if 'virtual_edge_type' in self.parameters else None},
+                                    'source_qnode_id': set([x.id for x in self.message.query_graph.nodes]),
+                                    'target_qnode_id': set([x.id for x in self.message.query_graph.nodes])
+                                    }
+        else:
+            allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_edge_type': {'any string label (optional, otherwise applied to all edges)'},
+                                    'source_qnode_id': {'a specific source query node id (optional, otherwise applied to all edges)'},
+                                    'target_qnode_id': {'a specific target query node id (optional, otherwise applied to all edges)'}
+                                    }
 
         # A little function to describe what this thing does
         if describe:
@@ -154,20 +177,23 @@ class ARAXOverlay:
         if self.response.status != 'OK':
             return self.response
 
-        ngd_params = {'default_value': np.inf}  # here is where you can set default values
+        # set the default value if it's not already done
+        if 'default_value' not in parameters:
+            parameters['default_value'] = np.inf
+        else:
+            if parameters['default_value'] == '0':
+                parameters['default_value'] = 0
+            else:
+                parameters['default_value'] = np.inf
 
-        # parse the input parameters to be the data types I need them to be
-        for key, value in self.parameters.items():
-            if key != 'action':
-                if key == 'default_value':
-                    if value == '0':
-                        ngd_params[key] = 0
-                    elif value == 'inf':
-                        ngd_params[key] = np.inf
+        # Check if all virtual edge params have been provided properly
+        self.check_virtual_edge_params(allowable_parameters)
+        if self.response.status != 'OK':
+            return self.response
 
         # now do the call out to NGD
         from Overlay.compute_ngd import ComputeNGD
-        NGD = ComputeNGD(self.response, self.message, ngd_params)
+        NGD = ComputeNGD(self.response, self.message, parameters)
         response = NGD.compute_ngd()
         return response
 
@@ -214,9 +240,9 @@ class ARAXOverlay:
                                     }
         else:
             allowable_parameters = {'action': {'overlay_clinical_info'}, 'paired_concept_freq': {'true', 'false'}, 'observed_expected_ratio': {'true','false'},
-                                    'virtual_edge_type': {'any string label (optional)'},
-                                    'source_qnode_id': {'a specific source query node id (optional)'},
-                                    'target_qnode_id': {'a specific target query node id (optional)'}
+                                    'virtual_edge_type': {'any string label (optional, otherwise applied to all edges)'},
+                                    'source_qnode_id': {'a specific source query node id (optional, otherwise applied to all edges)'},
+                                    'target_qnode_id': {'a specific target query node id (optional, otherwise applied to all edges)'}
                                     }
 
         # A little function to describe what this thing does
@@ -237,14 +263,8 @@ class ARAXOverlay:
         if self.response.status != 'OK':
             return self.response
 
-        # check if all required parameters are provided
-        if any([x in ['virtual_edge_type', 'source_qnode_id', 'target_qnode_id'] for x in parameters.keys()]):
-            if not all([x in parameters.keys() for x in ['virtual_edge_type', 'source_qnode_id', 'target_qnode_id']]):
-                self.response.error(f"If any of of the following parameters are provided ['virtual_edge_type', 'source_qnode_id', 'target_qnode_id'], all must be provided. Allowable parameters include: {allowable_parameters}")
-            elif parameters['source_qnode_id'] not in allowable_parameters['source_qnode_id']:
-                self.response.error(f"source_qnode_id value is not valid. Valid values are: {allowable_parameters['source_qnode_id']}")
-            elif parameters['target_qnode_id'] not in allowable_parameters['target_qnode_id']:
-                self.response.error(f"target_qnode_id value is not valid. Valid values are: {allowable_parameters['target_qnode_id']}")
+        # Check if all virtual edge params have been provided properly
+        self.check_virtual_edge_params(allowable_parameters)
         if self.response.status != 'OK':
             return self.response
 
@@ -372,12 +392,12 @@ def main():
     #]
 
     actions_list = [
-        #"overlay(action=compute_ngd)",
+        "overlay(action=compute_ngd)",
         #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
         # "overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
         #"overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
         #"overlay(action=add_node_pmids)",
-        "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
+        #"overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
         #"overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
         "return(message=true,store=false)"
     ]
@@ -395,13 +415,13 @@ def main():
     from RTXFeedback import RTXFeedback
     araxdb = RTXFeedback()
 
-    #message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
+    message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
     # message_dict = araxdb.getMessage(13)  # ibuprofen -> proteins -> disease # work computer
     #message_dict = araxdb.getMessage(14)  # pleuropneumonia -> phenotypic_feature # work computer
     #message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature  # work computer
     #message_dict = araxdb.getMessage(5)  # atherosclerosis -> phenotypic_feature  # home computer
     #message_dict = araxdb.getMessage(10)
-    message_dict = araxdb.getMessage(36)  # test COHD obs/exp, via ARAX_query.py 16
+    #message_dict = araxdb.getMessage(36)  # test COHD obs/exp, via ARAX_query.py 16
 
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger

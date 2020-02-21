@@ -47,7 +47,7 @@ class ComputeNGD:
         name = "ngd"
         type = "float"
         value = self.ngd_parameters['default_value']
-        url = "TBD"
+        url = "https://arax.rtx.ai/api/rtx/v1/ui/#/PubmedMeshNgd"
 
         # iterate over KG edges, add the information
         try:

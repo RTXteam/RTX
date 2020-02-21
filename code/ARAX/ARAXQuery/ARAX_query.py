@@ -535,6 +535,7 @@ def main():
             "add_qedge(source_id=n00, target_id=n01, id=e00, type=has_phenotype)",
             "expand(edge_id=e00)",
             "overlay(action=overlay_clinical_info, paired_concept_freq=true)",
+            #"overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
             "filter(maximum_results=2)",
             "return(message=true, store=false)",
             ] } }
