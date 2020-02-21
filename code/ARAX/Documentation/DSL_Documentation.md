@@ -65,26 +65,80 @@ while initially an empty list, a set of processing actions can be applied with s
 
 ## ARAX_filter_kg
 ### `filter_kg(action=remove_edges_by_property)`
+`remove_edges_by_property` removes edges from the knowledge graph (KG) based on a given edge property.
+                Use cases include:
+                
+                * removing all edges that were provided by a certain knowledge provider (KP) via `edge_property=provided, property_value=Pharos` to remove all edges provided by the KP Pharos.
+                * removing all edges that connect to a certain node via `edge_property=source_id, property_value=DOID:8398`
+                * removing all edges with a certain relation via `edge_property=relation, property_value=upregulates`
+                * removing all edges provided by another ARA via `edge_property=is_defined_by, property_value=ARAX/RTX`
+                * etc. etc.
+                
+                You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
+                else, only remove a single source/target node based on a query node id (via `remove_connected_nodes=t, qnode_id=<a query node id.>`
+                
+                This can be applied to an arbitrary knowledge graph as possible edge properties are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                
+
 ||||||
 |-----|-----|-----|-----|-----|
 |_DSL parameters_| edge_property | property_value | remove_connected_nodes | qnode_id |
-|_DSL arguments_| {'an edge property'} | {'a value for the edge property'} | {'True', 'true', 'False', 'f', 't', 'F', 'T', 'false'} | {'a specific query node id to remove'} |
+|_DSL arguments_| {'an edge property'} | {'a value for the edge property'} | {'True', 'T', 't', 'False', 'F', 'false', 'f', 'true'} | {'a specific query node id to remove'} |
 
 ### `filter_kg(action=remove_edges_by_type)`
+`remove_edges_by_type` removes edges from the knowledge graph (KG) based on a given edge type.
+            Use cases include:
+             
+            * removing all edges that have `edge_type=contraindicated_for`. 
+            * if virtual edges have been introduced with `overlay()` DSL commands, this action can remove all of them.
+            * etc.
+            
+            You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
+            else, only remove a single source/target node based on a query node id (via `remove_connected_nodes=t, qnode_id=<a query node id.>`
+            
+            This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+            
+
 |||||
 |-----|-----|-----|-----|
 |_DSL parameters_| edge_type | remove_connected_nodes | qnode_id |
-|_DSL arguments_| {'an edge type'} | {'True', 'true', 'False', 'f', 't', 'F', 'T', 'false'} | {'a specific query node id to remove'} |
+|_DSL arguments_| {'an edge type'} | {'True', 'T', 't', 'False', 'F', 'false', 'f', 'true'} | {'a specific query node id to remove'} |
 
 ### `filter_kg(action=remove_nodes_by_type)`
+`remove_node_by_type` removes nodes from the knowledge graph (KG) based on a given node type.
+            Use cases include:
+
+            * removing all nodes that have `node_type=protein`.
+            * removing all nodes that have `node_type=chemical_substance`.
+            * etc.
+
+            This can be applied to an arbitrary knowledge graph as possible node types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+            
+
 |||
 |-----|-----|
 |_DSL parameters_| node_type |
 |_DSL arguments_| {'a node type'} |
 
 ### `filter_kg(action=remove_edges_by_attribute)`
+`remove_edges_by_attribute` removes edges from the knowledge graph (KG) based on a a certain edge attribute.
+                Edge attributes are a list of additional attributes for an edge.
+                This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
+                Use cases include:
+
+                * removing all edges that have a normalized google distance above/below a certain value `edge_attribute=ngd, direction=above, threshold=0.85` (i.e. remove edges that aren't represented well in the literature)
+                * removing all edges that Jaccard index above/below a certain value `edge_attribute=jaccard_index, direction=below, threshold=0.2` (i.e. all edges that have less than 20% of intermediate nodes in common)
+                * removing all edges with clinical information satisfying some condition `edge_attribute=chi_square, direction=above, threshold=.005` (i.e. all edges that have a chi square p-value above .005)
+                * etc. etc.
+                
+                You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
+                else, only remove a single source/target node based on a query node id (via `remove_connected_nodes=t, qnode_id=<a query node id.>`
+                
+                This can be applied to an arbitrary knowledge graph as possible edge attributes are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                
+
 |||||||
 |-----|-----|-----|-----|-----|-----|
 |_DSL parameters_| edge_attribute | direction | threshold | remove_connected_nodes | qnode_id |
-|_DSL arguments_| {'an edge attribute name'} | {'above', 'below'} | {'a floating point number'} | {'True', 'true', 'False', 'f', 't', 'F', 'T', 'false'} | {'a specific query node id to remove'} |
+|_DSL arguments_| {'an edge attribute name'} | {'below', 'above'} | {'a floating point number'} | {'True', 'T', 't', 'False', 'F', 'false', 'f', 'true'} | {'a specific query node id to remove'} |
 
