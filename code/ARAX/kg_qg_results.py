@@ -121,9 +121,6 @@ def get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must*
     # make a map between QG edge keys and QG edge IDs
     qg_edge_key_to_edge_id_map = {make_edge_key(edge.source_id, edge.target_id): edge.id for edge in qg.edges}
 
-    # make a map between KG edge keys and KG edge IDs
-    kg_edge_key_to_edge_id_map = {make_edge_key(edge.source_id, edge.target_id): edge.id for edge in kg.edges}
-
     # --------------------- checking for validity of the NodeBindings list --------------
     # we require that every query graph node ID in the "values" slot of the node_bindings_map corresponds to an actual node in the QG
     node_ids_mapped_that_are_not_in_qg = [node_id for node_id in node_bindings_map.values() if node_id not in qg_nodes_map]
