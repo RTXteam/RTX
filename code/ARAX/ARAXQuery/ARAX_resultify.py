@@ -760,7 +760,7 @@ def test05():
                       results=[])
     resultifier = ARAXResultify()
     input_parameters = {'ignore_edge_direction': True,
-                        'qg_nodes_override_treat_is_set_as_false': {'n02'},
+                        'qg_nodes_override_treat_is_set_as_false': ['n02'],
                         'action': 'resultify'}
     resultifier.apply(message, input_parameters)
     assert resultifier.response.status == 'OK'
