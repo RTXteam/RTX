@@ -54,6 +54,9 @@ for (module, cls) in zip(modules, classes):
         action = dic['action'].pop()
         del dic['action']
         to_print += '### ' + re.sub('\(\)',f'(action={action})', dsl_name) + '\n'
+        if 'brief_description' in dic:
+            to_print += dic['brief_description'] + '\n\n'
+            del dic['brief_description']
         temp_table = Tomark.table([dic])
         temp_table_split = temp_table.split("\n")
         #better_table = "|"+re.sub('\(\)',f'(action={action})', dsl_name) + ('|' * temp_table_split[0].count('|')) + '\n'

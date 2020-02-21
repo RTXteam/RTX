@@ -18,52 +18,73 @@ while initially an empty list, a set of processing actions can be applied with s
  
 # Full documentation of current DSL commands
 ## ARAX_overlay
+### `overlay(action=compute_ngd)`
+`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
+            This information is then included as an edge attribute.
+            You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_edge_type`.
+
+||||||
+|-----|-----|-----|-----|-----|
+|_DSL parameters_| default_value | virtual_edge_type | source_qnode_id | target_qnode_id |
+|_DSL arguments_| {'inf', '0'} | {'any string label (optional, otherwise applied to all edges)'} | {'a specific source query node id (optional, otherwise applied to all edges)'} | {'a specific target query node id (optional, otherwise applied to all edges)'} |
+
+### `overlay(action=add_node_pmids)`
+`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
+            This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+            either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
+
+|||
+|-----|-----|
+|_DSL parameters_| max_num |
+|_DSL arguments_| {0, 'all'} |
+
 ### `overlay(action=overlay_clinical_info)`
+`overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
+            This KP has a number of different functionalities, such as `paired_concept_frequenc`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
+            All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
+            This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
+            This information is then included as an edge attribute.
+            You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_edge_type`.
+
 ||||||||
 |-----|-----|-----|-----|-----|-----|-----|
 |_DSL parameters_| paired_concept_freq | observed_expected_ratio | chi_square | virtual_edge_type | source_qnode_id | target_qnode_id |
 |_DSL arguments_| {'true', 'false'} | {'true', 'false'} | {'true', 'false'} | {'any string label (optional, otherwise applied to all edges)'} | {'a specific source query node id (optional, otherwise applied to all edges)'} | {'a specific target query node id (optional, otherwise applied to all edges)'} |
 
 ### `overlay(action=compute_jaccard)`
+`compute_jaccard` creates virtual edges and adds an edge attribute containing the following information:
+            The jaccard similarity measures how many `intermediate_node_id`'s are shared in common between each `start_node_id` and `target_node_id`.
+            This is used for purposes such as "find me all drugs (`start_node_id`) that have many proteins (`intermediate_node_id`) in common with this disease (`end_node_id`)."
+            This can be used for downstream filtering to concentrate on relevant bioentities.
+            
+
 ||||||
 |-----|-----|-----|-----|-----|
 |_DSL parameters_| start_node_id | intermediate_node_id | end_node_id | virtual_edge_type |
-|_DSL arguments_| {'a node id'} | {'a node id'} | {'a node id'} | {'any string label'} |
-
-### `overlay(action=compute_ngd)`
-||||||
-|-----|-----|-----|-----|-----|
-|_DSL parameters_| default_value | virtual_edge_type | source_qnode_id | target_qnode_id |
-|_DSL arguments_| {'0', 'inf'} | {'any string label (optional, otherwise applied to all edges)'} | {'a specific source query node id (optional, otherwise applied to all edges)'} | {'a specific target query node id (optional, otherwise applied to all edges)'} |
-
-### `overlay(action=add_node_pmids)`
-|||
-|-----|-----|
-|_DSL parameters_| max_num |
-|_DSL arguments_| {'all', 0} |
+|_DSL arguments_| {'a node id (required)'} | {'a query node id (required)'} | {'a query node id (required)'} | {'any string label (required)'} |
 
 ## ARAX_filter_kg
-### `filter_kg(action=remove_edges_by_attribute)`
-|||||||
-|-----|-----|-----|-----|-----|-----|
-|_DSL parameters_| edge_attribute | direction | threshold | remove_connected_nodes | qnode_id |
-|_DSL arguments_| {'an edge attribute name'} | {'above', 'below'} | {'a floating point number'} | {'f', 'True', 'T', 'False', 'true', 'F', 't', 'false'} | {'a specific query node id to remove'} |
-
 ### `filter_kg(action=remove_edges_by_property)`
 ||||||
 |-----|-----|-----|-----|-----|
 |_DSL parameters_| edge_property | property_value | remove_connected_nodes | qnode_id |
-|_DSL arguments_| {'an edge property'} | {'a value for the edge property'} | {'f', 'True', 'T', 'False', 'true', 'F', 't', 'false'} | {'a specific query node id to remove'} |
+|_DSL arguments_| {'an edge property'} | {'a value for the edge property'} | {'True', 'true', 'False', 'f', 't', 'F', 'T', 'false'} | {'a specific query node id to remove'} |
 
 ### `filter_kg(action=remove_edges_by_type)`
 |||||
 |-----|-----|-----|-----|
 |_DSL parameters_| edge_type | remove_connected_nodes | qnode_id |
-|_DSL arguments_| {'an edge type'} | {'f', 'True', 'T', 'False', 'true', 'F', 't', 'false'} | {'a specific query node id to remove'} |
+|_DSL arguments_| {'an edge type'} | {'True', 'true', 'False', 'f', 't', 'F', 'T', 'false'} | {'a specific query node id to remove'} |
 
 ### `filter_kg(action=remove_nodes_by_type)`
 |||
 |-----|-----|
 |_DSL parameters_| node_type |
 |_DSL arguments_| {'a node type'} |
+
+### `filter_kg(action=remove_edges_by_attribute)`
+|||||||
+|-----|-----|-----|-----|-----|-----|
+|_DSL parameters_| edge_attribute | direction | threshold | remove_connected_nodes | qnode_id |
+|_DSL arguments_| {'an edge attribute name'} | {'above', 'below'} | {'a floating point number'} | {'True', 'true', 'False', 'f', 't', 'F', 'T', 'false'} | {'a specific query node id to remove'} |
 
