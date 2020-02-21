@@ -54,7 +54,7 @@ def make_result_from_node_set(kg: KnowledgeGraph,
 
 def get_results_for_kg_by_qg_return_message(kg: KnowledgeGraph,
                                             qg: QueryGraph,
-                                            qg_nodes_override_treat_is_set_as_false: bool = True,
+                                            qg_nodes_override_treat_is_set_as_false: set = None,
                                             ignore_edge_direction: bool = True) -> Message:
     try:
         results = get_results_for_kg_by_qg(kg,
