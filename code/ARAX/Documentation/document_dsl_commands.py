@@ -63,6 +63,6 @@ for (module, cls) in zip(modules, classes):
         better_table += '|_DSL arguments_' + temp_table_split[2] + "\n"
         to_print += better_table + '\n'
 
-fid = open('test.md', 'w')
+fid = open('DSL_Documentation.md', 'w')
 fid.write(to_print)
 fid.close()
