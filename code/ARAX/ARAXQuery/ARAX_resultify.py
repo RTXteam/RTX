@@ -5,7 +5,7 @@ import sys
 
 __author__ = 'Stephen Ramsey'
 __copyright__ = 'Oregon State University'
-__credits__ = ['Stephen Ramsey']
+__credits__ = ['Stephen Ramsey', 'David Koslicki', 'Eric Deutsch']
 __license__ = 'MIT'
 __version__ = '0.1.0'
 __maintainer__ = ''
