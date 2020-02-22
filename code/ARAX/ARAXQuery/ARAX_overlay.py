@@ -169,6 +169,10 @@ class ARAXOverlay:
 
         # A little function to describe what this thing does
         if describe:
+            brief_description = """`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
+            This information is then included as an edge attribute.
+            You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_edge_type`."""
+            allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
         # Make sure only allowable parameters and values have been passed
@@ -253,6 +257,13 @@ class ARAXOverlay:
 
         # A little function to describe what this thing does
         if describe:
+            brief_description = """`overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
+            This KP has a number of different functionalities, such as `paired_concept_frequenc`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
+            All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
+            This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
+            This information is then included as an edge attribute.
+            You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_edge_type`."""
+            allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
 
@@ -297,6 +308,10 @@ class ARAXOverlay:
 
         # A little function to describe what this thing does
         if describe:
+            brief_description = """`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
+            This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+            either labeling in the metadata or has the MeSH term occurring in the abstract of the article."""
+            allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
 
@@ -353,14 +368,20 @@ class ARAXOverlay:
                                 }
         else:
             allowable_parameters = {'action': {'compute_jaccard'},
-                                    'start_node_id': {"a node id"},
-                                    'intermediate_node_id': {"a node id"},
-                                    'end_node_id': {"a node id"},
-                                    'virtual_edge_type': {"any string label"}
+                                    'start_node_id': {"a node id (required)"},
+                                    'intermediate_node_id': {"a query node id (required)"},
+                                    'end_node_id': {"a query node id (required)"},
+                                    'virtual_edge_type': {"any string label (required)"}
                                     }
         # print(allowable_parameters)
         # A little function to describe what this thing does
         if describe:
+            brief_description = """`compute_jaccard` creates virtual edges and adds an edge attribute containing the following information:
+            The jaccard similarity measures how many `intermediate_node_id`'s are shared in common between each `start_node_id` and `target_node_id`.
+            This is used for purposes such as "find me all drugs (`start_node_id`) that have many proteins (`intermediate_node_id`) in common with this disease (`end_node_id`)."
+            This can be used for downstream filtering to concentrate on relevant bioentities.
+            """
+            allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
         # Make sure only allowable parameters and values have been passed

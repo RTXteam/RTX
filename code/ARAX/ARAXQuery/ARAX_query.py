@@ -13,6 +13,7 @@ from query_graph_info import QueryGraphInfo
 from knowledge_graph_info import KnowledgeGraphInfo
 from actions_parser import ActionsParser
 from ARAX_filter import ARAXFilter
+from ARAX_resultify import ARAXResultify
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.message import Message
@@ -60,7 +61,6 @@ class ARAXQuery:
 
 
     def query(self,query):
-
         #### Define a default response
         response = Response()
         self.response = response
@@ -262,14 +262,12 @@ class ARAXQuery:
 
     #### Get a previously stored message for this query from the database
     def executeProcessingPlan(self,inputEnvelope):
-
         response = self.response
         response.debug(f"Entering executeProcessingPlan")
         messages = []
         message = None
         message_id = None
         query = None
-
         #### Pull out the main processing plan envelope
         envelope = PreviousMessageProcessingPlan.from_dict(inputEnvelope["previous_message_processing_plan"])
 
@@ -374,12 +372,13 @@ class ARAXQuery:
             from ARAX_expander import ARAXExpander
             from ARAX_overlay import ARAXOverlay
             from ARAX_filter_kg import ARAXFilterKG
+            from ARAX_resultify import ARAXResultify
             messenger = ARAXMessenger()
             expander = ARAXExpander()
             filter = ARAXFilter()
             overlay = ARAXOverlay()
             filter_kg = ARAXFilterKG()
-
+            resultifier = ARAXResultify()
             message = ARAXMessenger().from_dict(message)
 
             #### Process each action in order
@@ -400,6 +399,8 @@ class ARAXQuery:
                     result = expander.apply(message,action['parameters'])
                 elif action['command'] == 'filter':
                     result = filter.apply(message,action['parameters'])
+                elif action['command'] == 'resultify':
+                    result = resultifier.apply(message, action['parameters'])
                 elif action['command'] == 'query_graph_reasoner':
                     response.info(f"Sending current query_graph to the QueryGraphReasoner")
                     qgr = QueryGraphReasoner()
@@ -414,7 +415,6 @@ class ARAXQuery:
                     result = filter_kg.apply(message, action['parameters'])
                 else:
                     response.error(f"Unrecognized command {action['command']}", error_code="UnrecognizedCommand")
-                    print(response.show(level=Response.DEBUG))
                     return response
 
                 #### Merge down this result and end if we're in an error state
@@ -610,6 +610,7 @@ def main():
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
             "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
+            "resultify(ignore_edge_direction=true, qg_nodes_override_treat_is_set_as_false=[n02,n02])",
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 13:  # add pubmed id's
@@ -649,18 +650,18 @@ def main():
     elif params.example_number == 15:  # test out example 3, scrapping the complicated example, going simple
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(name=DOID:631, id=n00)",
-            "add_qnode(type=phenotypic_feature, is_set=true, id=n01)",
-            "add_qedge(source_id=n00, target_id=n01, type=has_phenotype, id=e00)",
-            "expand(edge_id=e00)",
-            "overlay(action=compute_ngd)",
-            #"overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
-            #"filter_kg(action=remove_edges_by_attribute, edge_attribute=ngd, direction=above, threshold=100, remove_connected_nodes=f)",
-            #"add_qnode(type=protein, is_set=true, id=n02)",
-            #"add_qedge(source_id=n02, target_id=n01, id=e01)",
-            #"expand(edge_id=e01)",
-            #"filter_kg(action=remove_edges_by_attribute, edge_attribute=ngd, direction=above, threshold=100, remove_connected_nodes=f)",
-            #"filter_kg(action=remove_edges_by_type, edge_type=C1, remove_connected_nodes=false)",
+            "add_qnode(name=DOID:9406, id=n00)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+            "add_qnode(type=protein, is_set=true, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01)",
+            "expand(edge_id=[e00,e01])",
+            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=3, remove_connected_nodes=t, qnode_id=n01)",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=0.0000001, remove_connected_nodes=t, qnode_id=n02)",
+            "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n01, target_qnode_id=n02)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=ngd, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",
             "return(message=true, store=false)"
         ]}}
     elif params.example_number == 16:  # To test COHD obs/exp ratio
@@ -672,8 +673,17 @@ def main():
             "expand(edge_id=e00)",
             "return(message=true, store=true)"
         ]}}
+    elif params.example_number == 17:  # Test resultify #FIXME: this returns a single result instead of a list (one for each disease/phenotype found)
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:731, id=n00, type=disease, is_set=false)",
+            "add_qnode(type=phenotypic_feature, is_set=false, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00)",
+            'resultify(ignore_edge_direction=true)',
+            "return(message=true, store=false)"]}}
     else:
-        eprint(f"Invalid test number {params.example_number}. Try 1 through 7")
+        eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return
 
     if 0:
@@ -694,12 +704,14 @@ def main():
     #print(response.show(level=Response.DEBUG))
     #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
-    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
+    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.query_graph)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
     print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     #print(response.show(level=Response.DEBUG))
     print(response.show(level=Response.DEBUG))
+    print(f"Number of results: {len(message.results)}")
+    #print(json.dumps(ast.literal_eval(repr(message.results[0])), sort_keys=True, indent=2))
 
     from collections import Counter
     vals = []
@@ -708,18 +720,67 @@ def main():
             for attr in edge.edge_attributes:
                 vals.append((attr.name, attr.value))
 
-    print(sorted(Counter(vals).items(), key=lambda x:x[0][1]))
+    print(sorted(Counter(vals).items(), key=lambda x:float(x[0][1])))
     #for node in message.knowledge_graph.nodes:
     #    print(f"{node.name} {node.type[0]}")
     #     print(node.qnode_id)
-    if False:
+    if True:
         proteins = []
         for node in message.knowledge_graph.nodes:
             if node.type[0] == "protein":
-                proteins.append(node.name)
+                proteins.append(node.id)
         #for protein in sorted(proteins):
         #    print(f"{protein}")
-        known_proteins = []
+        known_proteins = ["UniProtKB:P16473",
+"UniProtKB:P05093",
+"UniProtKB:P06401",
+"UniProtKB:P08235",
+"UniProtKB:P18405",
+"UniProtKB:P03372",
+"UniProtKB:P10275",
+"UniProtKB:P11511",
+"UniProtKB:P19838",
+"UniProtKB:Q13936",
+"UniProtKB:Q16665",
+"UniProtKB:P22888",
+"UniProtKB:Q9HB55",
+"UniProtKB:P05108",
+"UniProtKB:P08684",
+"UniProtKB:Q92731",
+"UniProtKB:P80365",
+"UniProtKB:P24462",
+"UniProtKB:P04278",
+"UniProtKB:P31213",
+"UniProtKB:P08842",
+"UniProtKB:Q15125",
+"UniProtKB:P04150",
+"UniProtKB:P37058",
+"UniProtKB:P54132",
+"UniProtKB:P24462",
+"UniProtKB:P80365",
+"UniProtKB:Q92731",
+"UniProtKB:P04278",
+"UniProtKB:P31213",
+"UniProtKB:Q15125",
+"UniProtKB:P08842",
+"UniProtKB:P16473",
+"UniProtKB:P08235",
+"UniProtKB:P05093",
+"UniProtKB:P06401",
+"UniProtKB:P18405",
+"UniProtKB:P54132",
+"UniProtKB:P04150",
+"UniProtKB:P37058",
+"UniProtKB:P08684",
+"UniProtKB:P22888",
+"UniProtKB:P05108",
+"UniProtKB:Q9HB55",
+"UniProtKB:Q13936",
+"UniProtKB:P19838",
+"UniProtKB:P11511",
+"UniProtKB:P10275",
+"UniProtKB:Q16665",
+"UniProtKB:P03372"]
         print(len(set(known_proteins).intersection(set(proteins))))  # fill these in after finding a good example
 
     print(Counter([x.provided_by for x in message.knowledge_graph.edges]))
