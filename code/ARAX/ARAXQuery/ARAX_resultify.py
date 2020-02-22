@@ -1009,7 +1009,7 @@ def test09():
             "add_qnode(type=phenotypic_feature, is_set=false, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
-            'resultify(ignore_edge_direction=true,qg_nodes_override_treat_is_set_as_false=[n01,n01])',
+            'resultify(ignore_edge_direction=true)',
             "return(message=true, store=false)"]}}
     response = Response()
     result = araxq.query(query)
