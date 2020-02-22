@@ -106,6 +106,8 @@ class ARAXMessenger:
             if key not in parameters:
                 response.error(f"Supplied parameter {key} is not permitted", error_code="UnknownParameter")
             else:
+                if key=='is_set':
+                    print(value)
                 parameters[key] = value
         #### Return if any of the parameters generated an error (showing not just the first one)
         if response.status != 'OK':
@@ -148,7 +150,7 @@ class ARAXMessenger:
             qnode.curie = nodes[0]['curie']
             qnode.type = nodes[0]['type']
             if parameters['is_set'] is not None:
-                qnode.is_set = True
+                qnode.is_set = (parameters['is_set']==True)
             message.query_graph.nodes.append(qnode)
             return response
 
@@ -168,7 +170,7 @@ class ARAXMessenger:
             qnode.curie = nodes[0]['curie']
             qnode.type = nodes[0]['type']
             if parameters['is_set'] is not None:
-                qnode.is_set = True
+                qnode.is_set = (parameters['is_set']=='True')
             message.query_graph.nodes.append(qnode)
             return response
 
@@ -182,7 +184,7 @@ class ARAXMessenger:
             qnode.id = id
             qnode.type = parameters['type']
             if parameters['is_set'] is not None:
-                qnode.is_set = True
+                qnode.is_set = (parameters['is_set']==True)
             message.query_graph.nodes.append(qnode)
             return response
 
