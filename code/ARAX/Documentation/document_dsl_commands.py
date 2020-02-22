@@ -9,20 +9,6 @@ classes = ["ARAXOverlay", "ARAXFilterKG"]
 modules_to_command_name = {'ARAX_overlay': '`overlay()`', 'ARAX_filter_kg': '`filter_kg()`'}
 to_print = ""
 header_info = """
-- [Domain Specific Langauage (DSL) description](#domain-specific-langauage--dsl--description)
-- [Full documentation of current DSL commands](#full-documentation-of-current-dsl-commands)
-  * [ARAX_overlay](#arax-overlay)
-    + [`overlay(action=add_node_pmids)`](#-overlay-action-add-node-pmids--)
-    + [`overlay(action=compute_ngd)`](#-overlay-action-compute-ngd--)
-    + [`overlay(action=overlay_clinical_info)`](#-overlay-action-overlay-clinical-info--)
-    + [`overlay(action=compute_jaccard)`](#-overlay-action-compute-jaccard--)
-  * [ARAX_filter_kg](#arax-filter-kg)
-    + [`filter_kg(action=remove_edges_by_attribute)`](#-filter-kg-action-remove-edges-by-attribute--)
-    + [`filter_kg(action=remove_edges_by_type)`](#-filter-kg-action-remove-edges-by-type--)
-    + [`filter_kg(action=remove_edges_by_property)`](#-filter-kg-action-remove-edges-by-property--)
-    + [`filter_kg(action=remove_nodes_by_type)`](#-filter-kg-action-remove-nodes-by-type--)
-
-
 # Domain Specific Langauage (DSL) description
 This document describes the features and components of the DSL developed for the ARA Expander team.
 
