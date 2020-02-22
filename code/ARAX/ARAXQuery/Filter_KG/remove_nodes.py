@@ -52,4 +52,42 @@ class RemoveNodes:
 
         return self.response
 
-  
+    def remove_orphaned_nodes(self):
+        """
+        Iterate over all the nodes/edges in the knowledge graph, remove any nodes not connected to edges (optionally matching the type provided)
+        :return: response
+        """
+        self.response.debug(f"Removing orphaned nodes")
+        self.response.info(f"Removing orphaned nodes")
+        node_parameters = self.node_parameters
+
+        try:
+            # iterate over edges in KG to find all id's that connect the edges
+            connected_node_ids = set()
+            for edge in self.message.knowledge_graph.edges:
+                connected_node_ids.add(edge.source_id)
+                connected_node_ids.add(edge.target_id)
+
+            # iterate over all nodes in KG
+            node_indexes_to_remove = set()
+            i = 0  # counter to keep track of where this node is in the message.knowledge_graph.nodes list
+            for node in self.message.knowledge_graph.nodes:
+                if 'node_type' in node_parameters and node_parameters['node_type'] in node.type:
+                    if node.id not in connected_node_ids:
+                        node_indexes_to_remove.add(i)
+                else:
+                    if node.id not in connected_node_ids:
+                        node_indexes_to_remove.add(i)
+                i += 1
+
+            # remove the orphaned nodes
+            self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in node_indexes_to_remove]
+        except:
+            tb = traceback.format_exc()
+            error_type, error, _ = sys.exc_info()
+            self.response.error(tb, error_code=error_type.__name__)
+            self.response.error(f"Something went wrong removing orphaned nodes from the knowledge graph")
+        else:
+            self.response.info(f"Nodes successfully removed")
+
+        return self.response
