@@ -598,7 +598,7 @@ def main():
             "filter(maximum_results=2)",
             "return(message=true, store=false)",
             ] } }
-    elif params.example_number == 12:  # dry run of example 2 #TODO!!!!!
+    elif params.example_number == 12:  # dry run of example 2 # FIXME NOTE: this is our planned example 2 (so don't fix, it's just so it's highlighted in my IDE)
         query = { "previous_message_processing_plan": { "processing_actions": [
             "create_message",
             "add_qnode(name=DOID:14330, id=n00)",
