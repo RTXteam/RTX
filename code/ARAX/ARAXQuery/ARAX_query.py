@@ -681,7 +681,21 @@ def main():
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
             'resultify(ignore_edge_direction=true)',
-            "return(message=true, store=false)"]}}
+            "return(message=true, store=false)"
+        ]}}
+    elif params.example_number == 18:  # test removing orphaned nodes
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:9406, id=n00)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+            "add_qnode(type=protein, is_set=true, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
+            "expand(edge_id=[e00, e01])",
+            "filter_kg(action=remove_edges_by_type, edge_type=physically_interacts_with, remove_connected_nodes=f)",
+            "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
+            "return(message=true, store=false)"
+        ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return
