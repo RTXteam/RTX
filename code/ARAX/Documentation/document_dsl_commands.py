@@ -5,9 +5,9 @@ from tomark import Tomark
 import re
 import md_toc
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
-modules = ["ARAX_overlay", "ARAX_filter_kg"]
-classes = ["ARAXOverlay", "ARAXFilterKG"]
-modules_to_command_name = {'ARAX_overlay': '`overlay()`', 'ARAX_filter_kg': '`filter_kg()`'}
+modules = ["ARAX_overlay", "ARAX_filter_kg", 'ARAX_expander']
+classes = ["ARAXOverlay", "ARAXFilterKG", 'ARAXExpander']
+modules_to_command_name = {'ARAX_overlay': '`overlay()`', 'ARAX_filter_kg': '`filter_kg()`', 'ARAX_expander': '`expand()`'}
 to_print = ""
 header_info = """
 # Domain Specific Langauage (DSL) description
@@ -53,9 +53,12 @@ for (module, cls) in zip(modules, classes):
     dsl_name = modules_to_command_name[module]
     to_print += f"## {module}\n"
     for dic in getattr(m, cls)().describe_me():
-        action = dic['action'].pop()
-        del dic['action']
-        to_print += '### ' + re.sub('\(\)',f'(action={action})', dsl_name) + '\n'
+        if 'action' in dic:
+            action = dic['action'].pop()
+            del dic['action']
+            to_print += '### ' + re.sub('\(\)',f'(action={action})', dsl_name) + '\n'
+        else:
+            to_print += '### ' +  dsl_name + '\n'
         if 'brief_description' in dic:
             to_print += dic['brief_description'] + '\n\n'
             del dic['brief_description']
