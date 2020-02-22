@@ -148,7 +148,7 @@ class ARAXMessenger:
             qnode.curie = nodes[0]['curie']
             qnode.type = nodes[0]['type']
             if parameters['is_set'] is not None:
-                qnode.is_set = (parameters['is_set']==True)
+                qnode.is_set = (parameters['is_set'].lower() == 'true')
             message.query_graph.nodes.append(qnode)
             return response
 
@@ -168,7 +168,7 @@ class ARAXMessenger:
             qnode.curie = nodes[0]['curie']
             qnode.type = nodes[0]['type']
             if parameters['is_set'] is not None:
-                qnode.is_set = (parameters['is_set']=='True')
+                qnode.is_set = (parameters['is_set'].lower() == 'true')
             message.query_graph.nodes.append(qnode)
             return response
 
@@ -182,7 +182,7 @@ class ARAXMessenger:
             qnode.id = id
             qnode.type = parameters['type']
             if parameters['is_set'] is not None:
-                qnode.is_set = (parameters['is_set']==True)
+                qnode.is_set = (parameters['is_set'].lower() == 'true')
             message.query_graph.nodes.append(qnode)
             return response
 
