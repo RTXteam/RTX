@@ -1,8 +1,17 @@
 #!/usr/bin/env python3
 import itertools
 import os
-import pprint
 import sys
+
+__author__ = 'Stephen Ramsey'
+__copyright__ = 'Oregon State University'
+__credits__ = ['Stephen Ramsey']
+__license__ = 'MIT'
+__version__ = '0.1.0'
+__maintainer__ = ''
+__email__ = ''
+__status__ = 'Prototype'
+
 
 # is there a better way to import swagger_server?  Following SO posting 16981921
 PACKAGE_PARENT = '../../UI/OpenAPI/python-flask-server'
