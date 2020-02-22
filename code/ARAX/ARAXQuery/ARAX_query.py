@@ -610,6 +610,7 @@ def main():
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
             "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
+            "resultify(ignore_edge_direction=true, qg_nodes_override_treat_is_set_as_false=[n02,n02])",
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 13:  # add pubmed id's
@@ -672,8 +673,17 @@ def main():
             "expand(edge_id=e00)",
             "return(message=true, store=true)"
         ]}}
+    elif params.example_number == 17:  # Test resultify #FIXME: this returns a single result instead of a list (one for each disease/phenotype found)
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:731, id=n00, type=disease, is_set=false)",
+            "add_qnode(type=phenotypic_feature, is_set=false, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00)",
+            'resultify(ignore_edge_direction=true)',
+            "return(message=true, store=false)"]}}
     else:
-        eprint(f"Invalid test number {params.example_number}. Try 1 through 7")
+        eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return
 
     if 0:
@@ -700,6 +710,8 @@ def main():
     print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     #print(response.show(level=Response.DEBUG))
     print(response.show(level=Response.DEBUG))
+    print(f"Number of results: {len(message.results)}")
+    #print(json.dumps(ast.literal_eval(repr(message.results[0])), sort_keys=True, indent=2))
 
     from collections import Counter
     vals = []
