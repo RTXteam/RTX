@@ -1,11 +1,12 @@
 - [Domain Specific Langauage (DSL) description](#domain-specific-langauage-dsl-description)
 - [Full documentation of current DSL commands](#full-documentation-of-current-dsl-commands)
   - [ARAX_overlay](#arax_overlay)
-    - [`overlay(action=add_node_pmids)`](#overlayactionadd_node_pmids)
-    - [`overlay(action=compute_ngd)`](#overlayactioncompute_ngd)
     - [`overlay(action=overlay_clinical_info)`](#overlayactionoverlay_clinical_info)
+    - [`overlay(action=add_node_pmids)`](#overlayactionadd_node_pmids)
     - [`overlay(action=compute_jaccard)`](#overlayactioncompute_jaccard)
+    - [`overlay(action=compute_ngd)`](#overlayactioncompute_ngd)
   - [ARAX_filter_kg](#arax_filter_kg)
+    - [`filter_kg(action=remove_orphaned_nodes)`](#filter_kgactionremove_orphaned_nodes)
     - [`filter_kg(action=remove_edges_by_attribute)`](#filter_kgactionremove_edges_by_attribute)
     - [`filter_kg(action=remove_nodes_by_type)`](#filter_kgactionremove_nodes_by_type)
     - [`filter_kg(action=remove_edges_by_property)`](#filter_kgactionremove_edges_by_property)
@@ -31,26 +32,6 @@ while initially an empty list, a set of processing actions can be applied with s
  
 # Full documentation of current DSL commands
 ## ARAX_overlay
-### `overlay(action=add_node_pmids)`
-`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
-            This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
-            either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
-
-|||
-|-----|-----|
-|_DSL parameters_| max_num |
-|_DSL arguments_| {'all', 0} |
-
-### `overlay(action=compute_ngd)`
-`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
-            This information is then included as an edge attribute.
-            You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_edge_type`.
-
-||||||
-|-----|-----|-----|-----|-----|
-|_DSL parameters_| default_value | virtual_edge_type | source_qnode_id | target_qnode_id |
-|_DSL arguments_| {'inf', '0'} | {'any string label (optional, otherwise applied to all edges)'} | {'a specific source query node id (optional, otherwise applied to all edges)'} | {'a specific target query node id (optional, otherwise applied to all edges)'} |
-
 ### `overlay(action=overlay_clinical_info)`
 `overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
             This KP has a number of different functionalities, such as `paired_concept_frequenc`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
@@ -64,6 +45,16 @@ while initially an empty list, a set of processing actions can be applied with s
 |_DSL parameters_| paired_concept_freq | observed_expected_ratio | chi_square | virtual_edge_type | source_qnode_id | target_qnode_id |
 |_DSL arguments_| {'false', 'true'} | {'false', 'true'} | {'false', 'true'} | {'any string label (optional, otherwise applied to all edges)'} | {'a specific source query node id (optional, otherwise applied to all edges)'} | {'a specific target query node id (optional, otherwise applied to all edges)'} |
 
+### `overlay(action=add_node_pmids)`
+`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
+            This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+            either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
+
+|||
+|-----|-----|
+|_DSL parameters_| max_num |
+|_DSL arguments_| {0, 'all'} |
+
 ### `overlay(action=compute_jaccard)`
 `compute_jaccard` creates virtual edges and adds an edge attribute containing the following information:
             The jaccard similarity measures how many `intermediate_node_id`'s are shared in common between each `start_node_id` and `target_node_id`.
@@ -76,7 +67,29 @@ while initially an empty list, a set of processing actions can be applied with s
 |_DSL parameters_| start_node_id | intermediate_node_id | end_node_id | virtual_edge_type |
 |_DSL arguments_| {'a node id (required)'} | {'a query node id (required)'} | {'a query node id (required)'} | {'any string label (required)'} |
 
+### `overlay(action=compute_ngd)`
+`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
+            This information is then included as an edge attribute.
+            You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_edge_type`.
+
+||||||
+|-----|-----|-----|-----|-----|
+|_DSL parameters_| default_value | virtual_edge_type | source_qnode_id | target_qnode_id |
+|_DSL arguments_| {'inf', '0'} | {'any string label (optional, otherwise applied to all edges)'} | {'a specific source query node id (optional, otherwise applied to all edges)'} | {'a specific target query node id (optional, otherwise applied to all edges)'} |
+
 ## ARAX_filter_kg
+### `filter_kg(action=remove_orphaned_nodes)`
+
+`remove_orphaned_nodes` removes nodes from the knowledge graph (KG) that are not connected via any edges.
+Specifying a `node_type` will restrict this to only remove orphaned nodes of a certain type
+This can be applied to an arbitrary knowledge graph as possible node types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+
+
+|||
+|-----|-----|
+|_DSL parameters_| node_type |
+|_DSL arguments_| {'a node type (optional)'} |
+
 ### `filter_kg(action=remove_edges_by_attribute)`
 
 `remove_edges_by_attribute` removes edges from the knowledge graph (KG) based on a a certain edge attribute.
@@ -98,7 +111,7 @@ This can be applied to an arbitrary knowledge graph as possible edge attributes 
 |||||||
 |-----|-----|-----|-----|-----|-----|
 |_DSL parameters_| edge_attribute | direction | threshold | remove_connected_nodes | qnode_id |
-|_DSL arguments_| {'an edge attribute name'} | {'above', 'below'} | {'a floating point number'} | {'F', 't', 'true', 'T', 'f', 'True', 'False', 'false'} | {'a specific query node id to remove'} |
+|_DSL arguments_| {'an edge attribute name'} | {'below', 'above'} | {'a floating point number'} | {'false', 'False', 'F', 'f', 'T', 'True', 't', 'true'} | {'a specific query node id to remove'} |
 
 ### `filter_kg(action=remove_nodes_by_type)`
 
@@ -135,7 +148,7 @@ This can be applied to an arbitrary knowledge graph as possible edge properties 
 ||||||
 |-----|-----|-----|-----|-----|
 |_DSL parameters_| edge_property | property_value | remove_connected_nodes | qnode_id |
-|_DSL arguments_| {'an edge property'} | {'a value for the edge property'} | {'F', 't', 'true', 'T', 'f', 'True', 'False', 'false'} | {'a specific query node id to remove'} |
+|_DSL arguments_| {'an edge property'} | {'a value for the edge property'} | {'false', 'False', 'F', 'f', 'T', 'True', 't', 'true'} | {'a specific query node id to remove'} |
 
 ### `filter_kg(action=remove_edges_by_type)`
 
@@ -155,5 +168,5 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 |||||
 |-----|-----|-----|-----|
 |_DSL parameters_| edge_type | remove_connected_nodes | qnode_id |
-|_DSL arguments_| {'an edge type'} | {'F', 't', 'true', 'T', 'f', 'True', 'False', 'false'} | {'a specific query node id to remove'} |
+|_DSL arguments_| {'an edge type'} | {'false', 'False', 'F', 'f', 'T', 'True', 't', 'true'} | {'a specific query node id to remove'} |
 
