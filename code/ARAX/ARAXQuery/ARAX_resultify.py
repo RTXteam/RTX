@@ -77,7 +77,6 @@ class ARAXResultify:
         elif input_parameters['action'] not in allowable_actions:
             response.error(f"Supplied action {input_parameters['action']} is not permitted. Allowable actions are: {allowable_actions}", error_code="UnknownAction")
 
-
         # Return if any of the parameters generated an error (showing not just the first one)
         if response.status != 'OK':
             return response
