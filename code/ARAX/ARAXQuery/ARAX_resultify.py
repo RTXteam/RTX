@@ -1000,6 +1000,24 @@ def test08():
     assert len(araxq.message.results) == 2
 
 
+def test09():
+    from ARAX_query import ARAXQuery
+    araxq = ARAXQuery()
+    query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:731, id=n00, type=disease, is_set=false)",
+            "add_qnode(type=phenotypic_feature, is_set=false, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00)",
+            'resultify(ignore_edge_direction=true,qg_nodes_override_treat_is_set_as_false=[n01,n01])',
+            "return(message=true, store=false)"]}}
+    response = Response()
+    result = araxq.query(query)
+    response.merge(result)
+    assert result.status == 'OK'
+    assert len(araxq.message.results) == 3223
+
+
 def run_module_level_tests():
     test01()
     test02()
@@ -1012,6 +1030,7 @@ def run_arax_class_tests():
     test06()
     test07()
 #    test08()
+    test09()
 
 
 def main():
