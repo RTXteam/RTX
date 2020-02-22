@@ -55,7 +55,7 @@ class ARAXResultify:
         for action in self.allowable_actions:
             getattr(self, '_' + self.__class__.__name__ + '__' + action)(describe=True)
 
-    def apply(self, input_message: Message, input_parameters: dict):
+    def apply(self, input_message: Message, input_parameters: dict) -> Response:
 
         input_parameters['action'] = 'resultify'
         # Define a default response
@@ -139,7 +139,7 @@ class ARAXResultify:
 
 
 def make_edge_key(node1_id: str,
-                  node2_id: str):
+                  node2_id: str) -> str:
     return node1_id + '->' + node2_id
 
 
