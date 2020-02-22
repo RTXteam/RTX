@@ -3,6 +3,7 @@ import os
 import importlib
 from tomark import Tomark
 import re
+import md_toc
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 modules = ["ARAX_overlay", "ARAX_filter_kg"]
 classes = ["ARAXOverlay", "ARAXFilterKG"]
@@ -67,6 +68,14 @@ for (module, cls) in zip(modules, classes):
         better_table += '|_DSL arguments_' + temp_table_split[2] + "\n"
         to_print += better_table + '\n'
 
-fid = open('DSL_Documentation.md', 'w')
+file_name = 'DSL_Documentation.md'
+fid = open(file_name, 'w')
 fid.write(to_print)
 fid.close()
+
+with_toc = md_toc.build_toc(os.path.dirname(os.path.abspath(__file__)) + '/' + file_name)
+with_toc += to_print
+fid = open(file_name, 'w')
+fid.write(with_toc)
+fid.close()
+
