@@ -76,7 +76,8 @@ fid = open(file_name, 'w')
 fid.write(to_print)
 fid.close()
 
-with_toc = md_toc.build_toc(os.path.dirname(os.path.abspath(__file__)) + '/' + file_name)
+with_toc = "# Table of contents\n\n"
+with_toc += md_toc.build_toc(os.path.dirname(os.path.abspath(__file__)) + '/' + file_name)
 with_toc += to_print
 fid = open(file_name, 'w')
 fid.write(with_toc)
