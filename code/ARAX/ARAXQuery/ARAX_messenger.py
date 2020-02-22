@@ -106,8 +106,6 @@ class ARAXMessenger:
             if key not in parameters:
                 response.error(f"Supplied parameter {key} is not permitted", error_code="UnknownParameter")
             else:
-                if key=='is_set':
-                    print(value)
                 parameters[key] = value
         #### Return if any of the parameters generated an error (showing not just the first one)
         if response.status != 'OK':
