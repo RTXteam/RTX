@@ -13,6 +13,7 @@ from query_graph_info import QueryGraphInfo
 from knowledge_graph_info import KnowledgeGraphInfo
 from actions_parser import ActionsParser
 from ARAX_filter import ARAXFilter
+from ARAX_resultify import ARAXResultify
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.message import Message
@@ -60,7 +61,6 @@ class ARAXQuery:
 
 
     def query(self,query):
-
         #### Define a default response
         response = Response()
         self.response = response
@@ -262,14 +262,12 @@ class ARAXQuery:
 
     #### Get a previously stored message for this query from the database
     def executeProcessingPlan(self,inputEnvelope):
-
         response = self.response
         response.debug(f"Entering executeProcessingPlan")
         messages = []
         message = None
         message_id = None
         query = None
-
         #### Pull out the main processing plan envelope
         envelope = PreviousMessageProcessingPlan.from_dict(inputEnvelope["previous_message_processing_plan"])
 
@@ -374,12 +372,13 @@ class ARAXQuery:
             from ARAX_expander import ARAXExpander
             from ARAX_overlay import ARAXOverlay
             from ARAX_filter_kg import ARAXFilterKG
+            from ARAX_resultify import ARAXResultify
             messenger = ARAXMessenger()
             expander = ARAXExpander()
             filter = ARAXFilter()
             overlay = ARAXOverlay()
             filter_kg = ARAXFilterKG()
-
+            resultifier = ARAXResultify()
             message = ARAXMessenger().from_dict(message)
 
             #### Process each action in order
@@ -400,6 +399,8 @@ class ARAXQuery:
                     result = expander.apply(message,action['parameters'])
                 elif action['command'] == 'filter':
                     result = filter.apply(message,action['parameters'])
+                elif action['command'] == 'resultify':
+                    result = resultifier.apply(message, action['parameters'])
                 elif action['command'] == 'query_graph_reasoner':
                     response.info(f"Sending current query_graph to the QueryGraphReasoner")
                     qgr = QueryGraphReasoner()
@@ -414,7 +415,6 @@ class ARAXQuery:
                     result = filter_kg.apply(message, action['parameters'])
                 else:
                     response.error(f"Unrecognized command {action['command']}", error_code="UnrecognizedCommand")
-                    print(response.show(level=Response.DEBUG))
                     return response
 
                 #### Merge down this result and end if we're in an error state
