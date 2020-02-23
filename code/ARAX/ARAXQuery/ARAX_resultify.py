@@ -315,9 +315,10 @@ def get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must*
         node_ids_for_subgraph = list(node_ids_for_subgraph_from_non_set_nodes) + kg_node_ids_to_include_always_list
         results.append(make_result_from_node_set(kg, set(node_ids_for_subgraph)))
 
-    #### Each result should have a text description, EWD unsure how to do this. SAR FIXME
+    # Setting a description for each result is difficult, but is required by the database and should be there anyway.
+    # Just put in a placeholder for now, as is done by the QueryGraphReasoner
     for result in results:
-        result.description = "This should have been set earlier"
+        result.description = "No description available"
 
     return results
 
