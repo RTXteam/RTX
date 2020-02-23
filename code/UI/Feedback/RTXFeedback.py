@@ -316,7 +316,7 @@ class RTXFeedback:
         #previousResult = None
         if previousResult is not None:
           result.id = "https://arax.rtx.ai/api/rtx/v1/result/"+str(previousResult.result_id)
-          eprint("Reused result_id " + str(result.id))
+          #eprint("Reused result_id " + str(result.id))
 
           #### Also update the linking table
           storedLink = Message_result(message_id=message_id,result_id=previousResult.result_id)
