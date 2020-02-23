@@ -133,8 +133,8 @@ class ARAXResultify:
                                                qg,
                                                qg_nodes_override_treat_is_set_as_false,
                                                ignore_edge_direction)
-            message_code = None
-            code_description = None
+            message_code = 'OK'
+            code_description = 'Result list computed from KG and QG'
         except Exception as e:
             code_description = str(e)
             message_code = e.__class__.__name__
@@ -314,6 +314,10 @@ def get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must*
     for node_ids_for_subgraph_from_non_set_nodes in itertools.product(*kg_node_id_lists_for_qg_nodes):
         node_ids_for_subgraph = list(node_ids_for_subgraph_from_non_set_nodes) + kg_node_ids_to_include_always_list
         results.append(make_result_from_node_set(kg, set(node_ids_for_subgraph)))
+
+    #### Each result should have a text description, EWD unsure how to do this. SAR FIXME
+    for result in results:
+        result.description = "This should have been set earlier"
 
     return results
 
