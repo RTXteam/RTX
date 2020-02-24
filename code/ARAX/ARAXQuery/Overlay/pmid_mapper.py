@@ -4,7 +4,7 @@ import os
 import pickledb
 import gzip
 import time
-from bs4 import BeautifulSoup
+from lxml import etree
 
 __author__ = 'Amy Glen'
 __copyright__ = 'Oregon State University'
@@ -55,14 +55,14 @@ class PMIDMapper:
                 file_contents = pubmed_file.read()
                 pubmed_file.close()
 
-                # Load the xml data into a parse tree
-                parsed_file_contents = BeautifulSoup(file_contents, 'xml')
+                parsed_file_contents = etree.fromstring(file_contents)
+                pubmed_articles = parsed_file_contents.xpath('//PubmedArticle')
 
                 # Build our giant dictionary of mesh terms to PMIDs
-                for article in parsed_file_contents.find_all('PubmedArticle'):
-                    pmid = article.PMID.string
-                    mesh_headings = article.find_all('MeshHeading')
-                    mesh_terms = [MESH_PREFIX + ":" + mesh_heading.DescriptorName['UI'] for mesh_heading in mesh_headings]
+                for article in pubmed_articles:
+                    pmid = article.xpath(".//MedlineCitation/PMID/text()")[0]
+                    mesh_headings = article.xpath(".//MedlineCitation/MeshHeadingList/MeshHeading/DescriptorName/@UI")
+                    mesh_terms = [MESH_PREFIX + ":" + mesh_heading for mesh_heading in mesh_headings]
 
                     # Map this article's mesh terms to its PMID
                     for mesh_term in mesh_terms:
