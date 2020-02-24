@@ -15,10 +15,12 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-PICKLEDB_AUTO_DUMP = False
+PICKLEDB_AUTO_DUMP = False  # Note: It's MUCH faster to not use auto dump, and just dump the db at the end
 MESH_PICKLEDB_FILE_NAME = "curie_to_mesh.db"
 PMID_PICKLEDB_FILE_NAME = "mesh_to_pmid.db"
 PUBMED_DIRECTORY_PATH = "/home/ubuntu/pubmed_files"
+MESH_PREFIX = "MESH"
+PMID_PREFIX = "PMID"
 
 
 class PMIDMapper:
@@ -32,8 +34,8 @@ class PMIDMapper:
         mesh_terms_mapped_to = set()
         for curie in mapped_curies:
             for mesh_term in self.mesh_db.get(curie):
-                mesh_id = mesh_term.split(":")[1]  # Strip off the 'MeSH' prefix
-                mesh_terms_mapped_to.add(mesh_id)
+                assert mesh_term.startswith(MESH_PREFIX)
+                mesh_terms_mapped_to.add(mesh_term)
         return mesh_terms_mapped_to
 
     def __build_mesh_to_pmid_dict(self, set_of_mesh_terms_to_map):
@@ -45,7 +47,7 @@ class PMIDMapper:
         for file in os.listdir(pubmed_directory):
             file_name = os.fsdecode(file)
             if file_name.startswith("pubmed") and file_name.endswith(".xml.gz"):
-                print(f"    Starting file '{file_name}'...")
+                print(f"    Starting to process file '{file_name}'...")
                 start = time.time()
 
                 # Read the contents of this file into a string
@@ -59,14 +61,15 @@ class PMIDMapper:
                 # Build our giant dictionary of mesh terms to PMIDs
                 for article in parsed_file_contents.find_all('PubmedArticle'):
                     pmid = article.PMID.string
-                    mesh_terms = [mesh_heading.DescriptorName['UI'] for mesh_heading in article.find_all('MeshHeading')]
+                    mesh_headings = article.find_all('MeshHeading')
+                    mesh_terms = [MESH_PREFIX + ":" + mesh_heading.DescriptorName['UI'] for mesh_heading in mesh_headings]
 
                     # Map this article's mesh terms to its PMID
                     for mesh_term in mesh_terms:
                         if mesh_term in set_of_mesh_terms_to_map:
                             if mesh_term not in mesh_to_pmid_dict:
                                 mesh_to_pmid_dict[mesh_term] = []
-                            mesh_to_pmid_dict[mesh_term].append(pmid)
+                            mesh_to_pmid_dict[mesh_term].append(PMID_PREFIX + ":" + pmid)
 
                 print(f"           took {round((time.time() - start) / 60, 4)} minutes")
 
