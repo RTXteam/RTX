@@ -7,6 +7,7 @@ import json
 import ast
 import re
 from datetime import datetime
+import subprocess
 
 from response import Response
 from query_graph_info import QueryGraphInfo
@@ -153,7 +154,7 @@ class ARAXQuery:
 
             #### Set CWD to the QuestioningAnswering area and then invoke from the shell the Q1Solution code
             cwd = os.getcwd()
-            os.chdir(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/QuestionAnswering")
+            os.chdir(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering")
             eprint(command)
             returnedText = subprocess.run( [ command ], stdout=subprocess.PIPE, shell=True )
             os.chdir(cwd)
