@@ -51,7 +51,7 @@ class PMIDMapper:
                 start = time.time()
 
                 # Read the contents of this file into a string
-                pubmed_file = gzip.open(file_name, 'r')
+                pubmed_file = gzip.open(PUBMED_DIRECTORY_PATH + "/" + file_name, 'r')
                 file_contents = pubmed_file.read()
                 pubmed_file.close()
 
