@@ -65,6 +65,7 @@ class ARAXQuery:
         #### Define a default response
         response = Response()
         self.response = response
+        #Response.output = 'STDERR'
         response.info(f"ARAXQuery launching")
 
         #### Determine a plan for what to do based on the input
@@ -276,6 +277,10 @@ class ARAXQuery:
         rtxFeedback = RTXFeedback()
         rtxFeedback.connect()
 
+        #### Create a messenger object for basic message processing
+        from ARAX_messenger import ARAXMessenger
+        messenger = ARAXMessenger()
+
         #### If there are URIs provided, try to load them
         if envelope.previous_message_uris is not None:
             response.debug(f"Found previous_message_uris")
@@ -289,10 +294,11 @@ class ARAXQuery:
                     referenced_message = rtxFeedback.getMessage(referenced_message_id)
                     #eprint(type(message))
                     if not isinstance(referenced_message,tuple):
-                        response.debug(f"Original question was: "+referenced_message["original_question"])
+                        referenced_message = ARAXMessenger().from_dict(referenced_message)
+                        response.debug(f"Original question was: {referenced_message.original_question}")
                         messages.append(referenced_message)
                         message_id = referenced_message_id
-                        query = { "query_type_id": referenced_message["query_type_id"], "restated_question": referenced_message["restated_question"], "terms": referenced_message["terms"] }
+                        query = { "query_type_id": referenced_message.query_type_id, "restated_question": referenced_message.restated_question, "terms": referenced_message.terms }
                     else:
                         response.error(f"Unable to load message_id {referenced_message_id}", error_code="CannotLoadMessageById")
                         return response
@@ -324,11 +330,12 @@ class ARAXQuery:
                     response.error(f"Uploaded message is not of type Message. It is of type"+str(uploadedMessage.__class__))
                     return response
 
-
         #### Take different actions based on the number of messages we now have in hand
         n_messages = len(messages)
         if n_messages == 0:
             response.debug(f"No starting messages were referenced. Will start with a blank template Message")
+            result = messenger.create()
+            message = result.data['message']
         elif n_messages == 1:
             response.debug(f"A single Message is ready and in hand")
             message = messages[0]
@@ -345,7 +352,8 @@ class ARAXQuery:
 
                 #finalMessage = self.merge_message(finalMessage,messageToMerge)
                 counter += 1
-        message = ast.literal_eval(repr(message))
+            message = ast.literal_eval(repr(message))
+            message = ARAXMessenger().from_dict(message)
 
         #### Examine the options that were provided and act accordingly
         optionsDict = {}
@@ -369,18 +377,15 @@ class ARAXQuery:
             #### Message suffers from a dual life as a dict and an object. above we seem to treat it as a dict. Fix that. FIXME
             #### Below we start treating it as and object. This should be the way forward.
             #### This is not a good place to do this, but may need to convert here
-            from ARAX_messenger import ARAXMessenger
             from ARAX_expander import ARAXExpander
             from ARAX_overlay import ARAXOverlay
             from ARAX_filter_kg import ARAXFilterKG
             from ARAX_resultify import ARAXResultify
-            messenger = ARAXMessenger()
             expander = ARAXExpander()
             filter = ARAXFilter()
             overlay = ARAXOverlay()
             filter_kg = ARAXFilterKG()
             resultifier = ARAXResultify()
-            message = ARAXMessenger().from_dict(message)
 
             #### Process each action in order
             action_stats = { }
