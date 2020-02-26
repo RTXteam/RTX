@@ -5,9 +5,9 @@ from tomark import Tomark
 import re
 import md_toc
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
-modules = ["ARAX_resultify", "ARAX_overlay", "ARAX_filter_kg"]
-classes = ["ARAXResultify", "ARAXOverlay", "ARAXFilterKG"]
-modules_to_command_name = {'ARAX_resultify': '`resultify()`',
+modules = ["ARAX_resultify", "ARAX_overlay", "ARAX_filter_kg", "ARAX_messenger"]
+classes = ["ARAXResultify", "ARAXOverlay", "ARAXFilterKG", "ARAXMessenger"]
+modules_to_command_name = {'ARAX_resultify': '`resultify()`', 'ARAX_messenger': '`create_message()`',
                            'ARAX_overlay': '`overlay()`', 'ARAX_filter_kg': '`filter_kg()`'}
 to_print = ""
 header_info = """
