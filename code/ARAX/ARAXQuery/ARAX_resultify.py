@@ -138,7 +138,6 @@ Note that this command will successfully execute given an arbitrary query graph 
             force_isset_false: a parameter of type `List(set)` containing string `id` fields of query nodes for which the `is_set` property should be set to `false`, overriding whatever the state of `is_set` for each of those nodes in the query graph. Optional.
             ignore_edge_direction: a parameter of type `bool` indicating whether the direction of an edge in the knowledge graph should be taken into account when matching that edge to an edge in the query graph. By default, this parameter is `true`. Set this parameter to false in order to require that an edge in a subgraph of the KG will only match an edge in the QG if both have the same direction (taking into account the source/target node mapping). Optional.            
         """
-
         assert self.response is not None
         results = self.message.results
         if results is not None and len(results) > 0:
@@ -156,10 +155,10 @@ Note that this command will successfully execute given an arbitrary query graph 
             qg_nodes_override_treat_is_set_as_false = set()
         ignore_edge_direction = parameters['ignore_edge_direction']
         try:
-            results = __get_results_for_kg_by_qg(kg,
-                                                 qg,
-                                                 qg_nodes_override_treat_is_set_as_false,
-                                                 ignore_edge_direction)
+            results = _get_results_for_kg_by_qg(kg,
+                                                qg,
+                                                qg_nodes_override_treat_is_set_as_false,
+                                                ignore_edge_direction)
             message_code = 'OK'
             code_description = 'Result list computed from KG and QG'
         except Exception as e:
@@ -173,13 +172,13 @@ Note that this command will successfully execute given an arbitrary query graph 
         message.message_code = message_code
 
 
-def __make_edge_key(node1_id: str,
-                    node2_id: str) -> str:
+def _make_edge_key(node1_id: str,
+                   node2_id: str) -> str:
     return node1_id + '->' + node2_id
 
 
-def __make_result_from_node_set(kg: KnowledgeGraph,
-                                node_ids: Set[str]) -> Result:
+def _make_result_from_node_set(kg: KnowledgeGraph,
+                               node_ids: Set[str]) -> Result:
     node_bindings = [NodeBinding(qg_id=node.qnode_id, kg_id=node.id) for node in kg.nodes if node.id in node_ids]
     edge_bindings = [EdgeBinding(qg_id=edge.qedge_id, kg_id=edge.id)
                      for edge in kg.edges if edge.source_id in node_ids and
@@ -189,10 +188,10 @@ def __make_result_from_node_set(kg: KnowledgeGraph,
                   edge_bindings=edge_bindings)
 
 
-def __get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must* have qnode_id specified
-                               qg: QueryGraph,
-                               qg_nodes_override_treat_is_set_as_false: set = None,
-                               ignore_edge_direction: bool = True) -> List[Result]:
+def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must* have qnode_id specified
+                              qg: QueryGraph,
+                              qg_nodes_override_treat_is_set_as_false: set = None,
+                              ignore_edge_direction: bool = True) -> List[Result]:
 
     kg_node_ids_without_qnode_id = [node.id for node in kg.nodes if node.qnode_id is None]
     if len(kg_node_ids_without_qnode_id) > 0:
@@ -233,7 +232,7 @@ def __get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *mus
     qg_edges_map = {edge.id: edge for edge in qg.edges}
 
     # make a map between QG edge keys and QG edge IDs
-    qg_edge_key_to_edge_id_map = {__make_edge_key(edge.source_id, edge.target_id): edge.id for edge in qg.edges}
+    qg_edge_key_to_edge_id_map = {_make_edge_key(edge.source_id, edge.target_id): edge.id for edge in qg.edges}
 
     # --------------------- checking for validity of the NodeBindings list --------------
     # we require that every query graph node ID in the "values" slot of the node_bindings_map corresponds to an actual node in the QG
@@ -289,8 +288,8 @@ def __get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *mus
         kg_target_node_id = kg_edge.target_id
         qg_source_node_id = node_bindings_map[kg_source_node_id]
         qg_target_node_id = node_bindings_map[kg_target_node_id]
-        if qg_edge_key_to_edge_id_map.get(__make_edge_key(qg_source_node_id, qg_target_node_id), None) is None:
-            if not ignore_edge_direction or qg_edge_key_to_edge_id_map.get(__make_edge_key(qg_target_node_id, qg_source_node_id), None) is None:
+        if qg_edge_key_to_edge_id_map.get(_make_edge_key(qg_source_node_id, qg_target_node_id), None) is None:
+            if not ignore_edge_direction or qg_edge_key_to_edge_id_map.get(_make_edge_key(qg_target_node_id, qg_source_node_id), None) is None:
                 raise ValueError("The two nodes for KG edge " + kg_edge.id + ", " + kg_source_node_id + " and " +
                                  kg_target_node_id + ", have no corresponding edge in the QG")
 
@@ -340,7 +339,7 @@ def __get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *mus
     results: List[Result] = []
     for node_ids_for_subgraph_from_non_set_nodes in itertools.product(*kg_node_id_lists_for_qg_nodes):
         node_ids_for_subgraph = list(node_ids_for_subgraph_from_non_set_nodes) + kg_node_ids_to_include_always_list
-        results.append(__make_result_from_node_set(kg, set(node_ids_for_subgraph)))
+        results.append(_make_result_from_node_set(kg, set(node_ids_for_subgraph)))
 
     # Setting a description for each result is difficult, but is required by the database and should be there anyway.
     # Just put in a placeholder for now, as is done by the QueryGraphReasoner
@@ -350,7 +349,7 @@ def __get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *mus
     return results
 
 
-def __test01():
+def _test01():
     kg_node_info = ({'id': 'UniProtKB:12345',
                      'type': 'protein',
                      'qnode_id': 'n01'},
@@ -433,13 +432,13 @@ def __test01():
 
     query_graph = QueryGraph(qg_nodes, qg_edges)
 
-    results_list = __get_results_for_kg_by_qg(knowledge_graph,
-                                              query_graph)
+    results_list = _get_results_for_kg_by_qg(knowledge_graph,
+                                             query_graph)
 
     assert len(results_list) == 2
 
 
-def __test02():
+def _test02():
     kg_node_info = ({'id': 'UniProtKB:12345',
                      'type': 'protein',
                      'qnode_id': 'n01'},
@@ -522,12 +521,12 @@ def __test02():
 
     query_graph = QueryGraph(qg_nodes, qg_edges)
 
-    results_list = __get_results_for_kg_by_qg(knowledge_graph,
-                                              query_graph)
+    results_list = _get_results_for_kg_by_qg(knowledge_graph,
+                                             query_graph)
     assert len(results_list) == 2
 
 
-def __test03():
+def _test03():
     kg_node_info = ({'id': 'UniProtKB:12345',
                      'type': 'protein',
                      'qnode_id': 'n01'},
@@ -610,13 +609,13 @@ def __test03():
 
     query_graph = QueryGraph(qg_nodes, qg_edges)
 
-    results_list = __get_results_for_kg_by_qg(knowledge_graph,
-                                            query_graph,
-                                            ignore_edge_direction=True)
+    results_list = _get_results_for_kg_by_qg(knowledge_graph,
+                                             query_graph,
+                                             ignore_edge_direction=True)
     assert len(results_list) == 2
 
 
-def __test04():
+def _test04():
     kg_node_info = ({'id': 'UniProtKB:12345',
                      'type': 'protein',
                      'qnode_id': 'n01'},
@@ -703,14 +702,14 @@ def __test04():
 
     query_graph = QueryGraph(qg_nodes, qg_edges)
 
-    results_list = __get_results_for_kg_by_qg(knowledge_graph,
-                                              query_graph,
-                                              qg_nodes_override_treat_is_set_as_false={'n02'},
-                                              ignore_edge_direction=True)
+    results_list = _get_results_for_kg_by_qg(knowledge_graph,
+                                             query_graph,
+                                             qg_nodes_override_treat_is_set_as_false={'n02'},
+                                             ignore_edge_direction=True)
     assert len(results_list) == 2
 
 
-def __test05():
+def _test05():
     kg_node_info = ({'id': 'UniProtKB:12345',
                      'type': 'protein',
                      'qnode_id': 'n01'},
@@ -808,7 +807,7 @@ def __test05():
     assert len(resultifier.message.results) == 2
 
 
-def __test06():
+def _test06():
     kg_node_info = ({'id': 'UniProtKB:12345',
                      'type': 'protein',
                      'qnode_id': 'n01'},
@@ -907,7 +906,7 @@ def __test06():
     assert len(resultifier.message.results) == 0
 
 
-def __test07():
+def _test07():
     kg_node_info = ({'id': 'UniProtKB:12345',
                      'type': 'protein',
                      'qnode_id': 'n01'},
@@ -1012,7 +1011,7 @@ def __test07():
     assert result.status == 'OK'
 
 
-def __test08():
+def _test08():
     from ARAX_query import ARAXQuery
     araxq = ARAXQuery()
     query = {"previous_message_processing_plan": {"processing_actions": [
@@ -1030,7 +1029,7 @@ def __test08():
     assert len(araxq.message.results) == 3223
 
 
-def __test09():
+def _test09():
     from ARAX_query import ARAXQuery
     araxq = ARAXQuery()
     query = {"previous_message_processing_plan": {"processing_actions": [
@@ -1048,7 +1047,7 @@ def __test09():
     assert len(araxq.message.results) == 3223
 
 
-def __test10():
+def _test10():
     resultifier = ARAXResultify()
     desc = resultifier.describe_me()
     assert 'brief_description' in desc[0]
@@ -1057,19 +1056,19 @@ def __test10():
 
 
 def run_module_level_tests():
-    __test01()
-    __test02()
-    __test03()
-    __test04()
+    _test01()
+    _test02()
+    _test03()
+    _test04()
 
 
 def run_arax_class_tests():
-    __test05()
-    __test06()
-    __test07()
-    __test08()
-    __test09()
-    __test10()
+    _test05()
+    _test06()
+    _test07()
+    _test08()
+    _test09()
+    _test10()
 
 
 def main():
