@@ -395,7 +395,7 @@ class ARAXQuery:
                 nonstandard_result = False
 
                 if action['command'] == 'create_message':
-                    result = messenger.create()
+                    result = messenger.create_message()
                     message = result.data['message']
                 elif action['command'] == 'add_qnode':
                     result = messenger.add_qnode(message,action['parameters'])
