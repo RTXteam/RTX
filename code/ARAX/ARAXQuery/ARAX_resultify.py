@@ -44,7 +44,8 @@ class BiolinkEntityStr(BiolinkEntity):
 
 # define a map between category_label and BiolinkEntity object
 BIOLINK_CATEGORY_LABELS = {'protein', 'disease', 'phenotypic_feature', 'gene', 'chemical_substance'}
-BIOLINK_ENTITY_TYPE_OBJECTS = {category_label: BiolinkEntityStr(category_label) for category_label in BIOLINK_CATEGORY_LABELS}
+BIOLINK_ENTITY_TYPE_OBJECTS = {category_label: BiolinkEntityStr(category_label) for
+                               category_label in BIOLINK_CATEGORY_LABELS}
 
 
 class ARAXResultify:
@@ -102,7 +103,7 @@ class ARAXResultify:
         # convert the action string to a function call (so I don't need a ton of if statements
         getattr(self, '_' + self.__class__.__name__ + '__' + parameters['action'])()  # https://stackoverflow.com/questions/11649848/call-methods-by-string
 
-        response.debug(f"Applying Resultifier to Message with parameters {parameters}")  # TODO: re-write this to be more specific about the actual action
+        response.debug(f"Applying Resultifier to Message with parameters {parameters}")
 
         # Return the response and done
         return response
@@ -110,7 +111,7 @@ class ARAXResultify:
     def __resultify(self, describe: bool = False):
         """
         From a knowledge graph and a query graph (both in a Message object), extract a list of Results objects, each containing
-        lists of NodeBinding and EdgeBinding objects. Return the list of Results objects in a Message object.
+        lists of NodeBinding and EdgeBinding objects. Add a list of Results objects to self.message.rseults.
         """
         assert self.response is not None
         results = self.message.results
@@ -122,7 +123,7 @@ class ARAXResultify:
         parameters = self.parameters
         kg = message.knowledge_graph
         qg = message.query_graph
-        qg_nodes_override_treat_is_set_as_false_list = parameters.get('qg_nodes_override_treat_is_set_as_false', None)
+        qg_nodes_override_treat_is_set_as_false_list = parameters.get('force_isset_false', None)
         if qg_nodes_override_treat_is_set_as_false_list is not None:
             qg_nodes_override_treat_is_set_as_false = set(qg_nodes_override_treat_is_set_as_false_list)
         else:
@@ -775,7 +776,7 @@ def test05():
                       results=[])
     resultifier = ARAXResultify()
     input_parameters = {'ignore_edge_direction': True,
-                        'qg_nodes_override_treat_is_set_as_false': ['n02'],
+                        'force_isset_false': ['n02'],
                         'action': 'resultify'}
     resultifier.apply(message, input_parameters)
     assert resultifier.response.status == 'OK'
@@ -874,7 +875,7 @@ def test06():
                       results=[])
     resultifier = ARAXResultify()
     input_parameters = {'ignore_edge_direction': True,
-                        'qg_nodes_override_treat_is_set_as_false': ['n07'],
+                        'force_isset_false': ['n07'],
                         'action': 'resultify'}
     resultifier.apply(message, input_parameters)
     assert resultifier.response.status != 'OK'
@@ -971,8 +972,7 @@ def test07():
     response = Response()
     from actions_parser import ActionsParser
     actions_parser = ActionsParser()
-    # why are we doing [n02,n02]??  see issue #637
-    actions_list = ['resultify(ignore_edge_direction=true,qg_nodes_override_treat_is_set_as_false=[n02,n02])']
+    actions_list = ['resultify(ignore_edge_direction=true,force_isset_false=[n02])']
     result = actions_parser.parse(actions_list)
     response.merge(result)
     actions = result.data['actions']
