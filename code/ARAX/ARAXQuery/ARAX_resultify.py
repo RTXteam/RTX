@@ -62,8 +62,36 @@ class ARAXResultify:
         Little helper function for internal use that describes the actions and what they can do
         :return:
         """
-        for action in self.allowable_actions:
-            getattr(self, '_' + self.__class__.__name__ + '__' + action)(describe=True)
+
+        brief_description = """ `resultify` enumerates subgraphs of a knowledge graph (KG) that match a
+pattern set by a query graph (QG) and sets the `results` data attribute of the
+`message` object to be a list of `Result` objects, each corresponding to one of
+the enumerated subgraphs. The matching between the KG subgraphs and the QG can
+be forced to be sensitive to edge direction by setting
+`ignore_edge_direction=false` (the default is to ignore edge direction). If any
+query nodes in the QG have the `is_set` property set to `true`, this can be
+overridden in `resultify` by including the query node `id` string (or the `id`
+fields of more than one query node) in a parameter `force_isset_false` of type
+`List[str]`.  """
+        description_list = []
+        params_dict = dict()
+        params_dict['action'] = ['resultify']
+        params_dict['brief_description'] = brief_description
+        params_dict['force_isset_false'] = {'''a parameter of type `List(set)`
+ containing string `id` fields of query nodes for which the `is_set` property
+ should be set to `false`, overriding whatever the state of `is_set` for each
+ of those nodes in the query graph. Optional.'''}
+        params_dict['ignore_edge_direction'] = {'''a parameter of type `bool`
+ indicating whether the direction of an edge in the knowledge graph should be
+ taken into account when matching that edge to an edge in the query graph. By
+ default, this parameter is `true`. Set this parameter to false in order to
+ require that an edge in a subgraph of the KG will only match an edge in the QG
+ if both have the same direction (taking into account the source/target node 
+ mapping). Optional.'''}
+        # TODO: will need to update manually if more self.parameters are added
+        # eg. params_dict[node_id] = {"a query graph node ID or list of such id's (required)"} as per issue #640
+        description_list.append(params_dict)
+        return description_list
 
     def apply(self, input_message: Message, input_parameters: dict) -> Response:
 
@@ -116,7 +144,7 @@ class ARAXResultify:
         assert self.response is not None
         results = self.message.results
         if results is not None and len(results) > 0:
-            self.response.error(f"Supplied response has nonzero number of entries. Must be empty")
+            self.response.warning(f"Supplied response has nonzero number of entries. Must be empty")
             return
 
         message = self.message
@@ -319,7 +347,7 @@ def get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must*
     # Setting a description for each result is difficult, but is required by the database and should be there anyway.
     # Just put in a placeholder for now, as is done by the QueryGraphReasoner
     for result in results:
-        result.description = "No description available"
+        result.description = "No description available"  # see issue 642
 
     return results
 
@@ -992,9 +1020,9 @@ def test08():
     araxq = ARAXQuery()
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(type=disease, id=DOID:731)",
+        "add_qnode(type=disease, curie=DOID:731, id=n00)",
         "add_qnode(type=phenotypic_feature, is_set=false, id=n01)",
-        "add_qedge(source_id=DOID:731, target_id=n01, id=e00)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "query_graph_reasoner()",
         'resultify(ignore_edge_direction=true)',
         "return(message=true, store=false)"]}}
@@ -1002,7 +1030,7 @@ def test08():
     result = araxq.query(query)
     response.merge(result)
     assert result.status == 'OK'
-    assert len(araxq.message.results) == 2
+    assert len(araxq.message.results) == 3223
 
 
 def test09():
@@ -1022,6 +1050,12 @@ def test09():
     assert result.status == 'OK'
     assert len(araxq.message.results) == 3223
 
+def test10():
+    resultifier = ARAXResultify()
+    desc = resultifier.describe_me()
+    assert 'brief_description' in desc[0]
+    assert 'force_isset_false' in desc[0]
+    assert 'ignore_edge_direction' in desc[0]
 
 def run_module_level_tests():
     test01()
@@ -1034,9 +1068,9 @@ def run_arax_class_tests():
     test05()
     test06()
     test07()
-#    test08()
+    test08()
     test09()
-
+    test10()
 
 def main():
     run_module_level_tests()
