@@ -133,20 +133,11 @@ Note that this command will successfully execute given an arbitrary query graph 
         """
         From a knowledge graph and a query graph (both in a Message object), extract a list of Results objects, each containing
         lists of NodeBinding and EdgeBinding objects. Add a list of Results objects to self.message.rseults.
-        """
 
-# Technical documentation on the parameter types for `resultify`:
-# - force_isset_false: a parameter of type `List(set)`
-#   containing string `id` fields of query nodes for which the `is_set` property
-#   should be set to `false`, overriding whatever the state of `is_set` for each
-#   of those nodes in the query graph. Optional.
-# - ignore_edge_direction: a parameter of type `bool`
-#   indicating whether the direction of an edge in the knowledge graph should be
-#   taken into account when matching that edge to an edge in the query graph. By
-#   default, this parameter is `true`. Set this parameter to false in order to
-#   require that an edge in a subgraph of the KG will only match an edge in the QG
-#   if both have the same direction (taking into account the source/target node
-#   mapping). Optional.
+        It is required that `self.parameters` contain the following:
+            force_isset_false: a parameter of type `List(set)` containing string `id` fields of query nodes for which the `is_set` property should be set to `false`, overriding whatever the state of `is_set` for each of those nodes in the query graph. Optional.
+            ignore_edge_direction: a parameter of type `bool` indicating whether the direction of an edge in the knowledge graph should be taken into account when matching that edge to an edge in the query graph. By default, this parameter is `true`. Set this parameter to false in order to require that an edge in a subgraph of the KG will only match an edge in the QG if both have the same direction (taking into account the source/target node mapping). Optional.            
+        """
 
         assert self.response is not None
         results = self.message.results
