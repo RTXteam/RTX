@@ -34,9 +34,33 @@ class ARAXMessenger:
         self.message = None
         self.parameters = None
 
+    def describe_me(self):
+        """
+        Self-documentation method for internal use that returns the available actions and what they can do
+        :return: A list of allowable actions supported by this class
+        :rtype: list
+        """
+        description_list = []
+        description_list.append(self.create_message(describe=True))
+        description_list.append(self.add_qnode(0,0,describe=True))
+        description_list.append(self.add_qedge(0,0,describe=True))
+        return description_list
 
-    #### Create a fresh Message object and fill with defaults
-    def create(self):
+
+    # #### Create a fresh Message object and fill with defaults
+    def create_message(self, describe=False):
+        """
+        Creates a basic empty Message object with basic boilerplate metadata
+        :return: Response object with execution information and the new message object inside the data envelope
+        :rtype: Response
+        """
+
+        # Internal documentation setup
+        allowable_parameters = { 'action': { 'None' } }
+        if describe:
+            allowable_parameters['brief_description'] = """The `create_message` method creates a basic empty Message object with basic boilerplate metadata
+            such as reasoner_id, schema_version, etc. filled in."""
+            return allowable_parameters
 
         #### Define a default response
         response = Response()
@@ -79,8 +103,27 @@ class ARAXMessenger:
         return response
 
 
-    #### Add a new QNode
-    def add_qnode(self, message, input_parameters):
+    # #### Add a new QNode
+    def add_qnode(self, message, input_parameters, describe=False):
+        """
+        Adds a new QNode object to the QueryGraph inside the Message object
+        :return: Response object with execution information
+        :rtype: Response
+        """
+
+        # #### Internal documentation setup
+        allowable_parameters = {
+            'id': { 'Any string that is unique among all QNode id fields, with recommended format n00, n01, n02, etc.'},
+            'curie': { 'Any compact URI (CURIE) (e.g. DOID:9281, UniProtKB:P12345)'},
+            'name': { 'Any name of a bioentity that will be resolved into a CURIE if possible or result in an error if not (e.g. hypertension, insulin)'},
+            'type': { 'Any valid Translator bioentity type (e.g. protein, chemical_substance, disease)'},
+            'is_set': { 'If set to true, this QNode represents a set of nodes that are all in common between the two other linked QNodes'},
+            }
+        if describe:
+            allowable_parameters['action'] = { 'None' }
+            allowable_parameters['brief_description'] = """The `add_qnode` method adds an additional QNode to the QueryGraph in the Message object. Currently
+                when a curie or name is specified, this method will only return success if a matching node is found in the KG1 KGNodeIndex."""
+            return allowable_parameters
 
         #### Define a default response
         response = Response()
@@ -222,7 +265,27 @@ class ARAXMessenger:
 
 
     #### Add a new QEdge
-    def add_qedge(self, message, input_parameters):
+    def add_qedge(self, message, input_parameters, describe=False):
+        """
+        Adds a new QEdge object to the QueryGraph inside the Message object
+        :return: Response object with execution information
+        :rtype: Response
+        """
+
+        # #### Internal documentation setup
+        allowable_parameters = {
+            'id': { 'Any string that is unique among all QEdge id fields, with recommended format e00, e01, e02, etc.'},
+            'source_id': { 'id of the source QNode already present in the QueryGraph (e.g. n01, n02)'},
+            'target_id': { 'id of the target QNode already present in the QueryGraph (e.g. n01, n02)'},
+            'type': { 'Any valid Translator/BioLink relationship type (e.g. physically_interacts_with, participates_in)'},
+            }
+        if describe:
+            allowable_parameters['action'] = { 'None' }
+            allowable_parameters['brief_description'] = """The `add_qedge` method adds an additional QEdge to the QueryGraph in the Message object. Currently
+                source_id and target_id QNodes must already be present in the QueryGraph. The specified type is not currently checked that it is a
+                valid Translator/BioLink relationship type, but it should be."""
+            return allowable_parameters
+
 
         #### Define a default response
         response = Response()
@@ -415,7 +478,7 @@ def main():
 
     #### Create a default ARAX Message
     messenger = ARAXMessenger()
-    result = messenger.create()
+    result = messenger.create_message()
     response.merge(result)
     if result.status != 'OK':
         print(response.show(level=Response.DEBUG))
