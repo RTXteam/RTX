@@ -53,9 +53,6 @@ class ARAXResultify:
         self.response = None
         self.message = None
         self.parameters = None
-        self.allowable_actions = {
-            'resultify'
-        }
 
     def describe_me(self):
         """
@@ -95,7 +92,6 @@ fields of more than one query node) in a parameter `force_isset_false` of type
 
     def apply(self, input_message: Message, input_parameters: dict) -> Response:
 
-        input_parameters['action'] = 'resultify'
         # Define a default response
         response = Response()
         self.response = response
@@ -105,15 +101,6 @@ fields of more than one query node) in a parameter `force_isset_false` of type
         if not isinstance(input_parameters, dict):
             response.error("Provided parameters is not a dict", error_code="ParametersNotDict")
             return response
-
-        # list of actions that have so far been created for ARAX_overlay
-        allowable_actions = self.allowable_actions
-
-        # check to see if an action is actually provided
-        if 'action' not in input_parameters:
-            response.error(f"Must supply an action. Allowable actions are: action={allowable_actions}", error_code="MissingAction")
-        elif input_parameters['action'] not in allowable_actions:
-            response.error(f"Supplied action {input_parameters['action']} is not permitted. Allowable actions are: {allowable_actions}", error_code="UnknownAction")
 
         # Return if any of the parameters generated an error (showing not just the first one)
         if response.status != 'OK':
@@ -128,8 +115,8 @@ fields of more than one query node) in a parameter `force_isset_false` of type
         response.data['parameters'] = parameters
         self.parameters = parameters
 
-        # convert the action string to a function call (so I don't need a ton of if statements
-        getattr(self, '_' + self.__class__.__name__ + '__' + parameters['action'])()  # https://stackoverflow.com/questions/11649848/call-methods-by-string
+        # call __resultify
+        self.__resultify(describe=False)
 
         response.debug(f"Applying Resultifier to Message with parameters {parameters}")
 
@@ -804,8 +791,7 @@ def test05():
                       results=[])
     resultifier = ARAXResultify()
     input_parameters = {'ignore_edge_direction': True,
-                        'force_isset_false': ['n02'],
-                        'action': 'resultify'}
+                        'force_isset_false': ['n02']}
     resultifier.apply(message, input_parameters)
     assert resultifier.response.status == 'OK'
     assert len(resultifier.message.results) == 2
