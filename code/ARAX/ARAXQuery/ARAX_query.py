@@ -604,7 +604,7 @@ def main():
             "filter(maximum_results=2)",
             "return(message=true, store=false)",
             ] } }
-    elif params.example_number == 12:  # dry run of example 2 #TODO!!!!!
+    elif params.example_number == 12:  # dry run of example 2 # FIXME NOTE: this is our planned example 2 (so don't fix, it's just so it's highlighted in my IDE)
         query = { "previous_message_processing_plan": { "processing_actions": [
             "create_message",
             "add_qnode(name=DOID:14330, id=n00)",
@@ -653,21 +653,20 @@ def main():
             ##"overlay(action=compute_ngd)",
             "return(message=true, store=false)"
         ]}}
-    elif params.example_number == 15:  # test out example 3, scrapping the complicated example, going simple
+    elif params.example_number == 15:  # FIXME NOTE: this is our planned example 3 (so don't fix, it's just so it's highlighted in my IDE)
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(name=DOID:9406, id=n00)",
-            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
-            "add_qnode(type=protein, is_set=true, id=n02)",
-            "add_qedge(source_id=n00, target_id=n01, id=e00)",
-            "add_qedge(source_id=n01, target_id=n02, id=e01)",
-            "expand(edge_id=[e00,e01])",
-            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
-            "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=3, remove_connected_nodes=t, qnode_id=n01)",
-            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
-            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=0.0000001, remove_connected_nodes=t, qnode_id=n02)",
-            "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n01, target_qnode_id=n02)",
-            "filter_kg(action=remove_edges_by_attribute, edge_attribute=ngd, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",
+            "add_qnode(name=DOID:9406, id=n00)",  # hypopituitarism
+            "add_qnode(type=chemical_substance, is_set=true, id=n01)",  # look for all drugs associated with this disease (29 total drugs)
+            "add_qnode(type=protein, is_set=true, id=n02)",   # look for proteins associated with these diseases (240 total proteins)
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",  # get connections
+            "add_qedge(source_id=n01, target_id=n02, id=e01)",  # get connections
+            "expand(edge_id=[e00,e01])",  # expand the query graph
+            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",  # Look in COHD to find which drug are being used to treat this disease based on the log ratio of expected frequency of this drug being used to treat a disease, vs. the observed number of times it’s used to treat this disease
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=3, remove_connected_nodes=t, qnode_id=n01)",   # concentrate only on those drugs that are more likely to be treating this disease than expected
+            "filter_kg(action=remove_orphaned_nodes, node_type=protein)",  # remove proteins that got disconnected as a result of this filter action
+            "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n01, target_qnode_id=n02)",   # use normalized google distance to find how frequently the protein and the drug are mentioned in abstracts
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=ngd, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",   # remove proteins that are not frequently mentioned together in PubMed abstracts
             "return(message=true, store=false)"
         ]}}
     elif params.example_number == 16:  # To test COHD obs/exp ratio
@@ -687,7 +686,21 @@ def main():
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
             'resultify(ignore_edge_direction=true)',
-            "return(message=true, store=false)"]}}
+            "return(message=true, store=false)"
+        ]}}
+    elif params.example_number == 18:  # test removing orphaned nodes
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:9406, id=n00)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+            "add_qnode(type=protein, is_set=true, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
+            "expand(edge_id=[e00, e01])",
+            "filter_kg(action=remove_edges_by_type, edge_type=physically_interacts_with, remove_connected_nodes=f)",
+            "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
+            "return(message=true, store=false)"
+        ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return

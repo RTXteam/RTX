@@ -27,7 +27,28 @@ class ARAXExpander:
     def __init__(self):
         self.response = None
         self.message = None
-        self.parameters = None
+        self.parameters = {'edge_id': None}
+
+    def describe_me(self):
+        """
+        Little helper function for internal use that describes the actions and what they can do
+        :return:
+        """
+        # this is quite different than the `describe_me` in ARAX_overlay and ARAX_filter_kg due to expander being less
+        # of a dispatcher (like overlay and filter_kg) and more of a single self contained class
+        brief_description = """
+`expand` effectively takes a query graph (QG) and reaches out to various knowledge providers (KP's) to find all bioentity subgraphs
+that satisfy that QG and augments the knowledge graph (KG) with them. As currently implemented, `expand` can utilize the ARA Expander team KG1 Neo4j instance to fulfill QG's,
+with functionality built in to reach out to other KP's (such as the ARA Expander team KG2 and other KP's as they are rolled out).
+        """
+        description_list = []
+        params_dict = dict()
+        params_dict['brief_description'] = brief_description
+        params_dict['edge_id'] = {"a query graph edge ID or list of such id's (required)"}  # this is a workaround due to how self.parameters is utilized in this class
+        # TODO: will need to update manually if more self.parameters are added
+        # eg. params_dict[node_id] = {"a query graph node ID or list of such id's (required)"} as per issue #640
+        description_list.append(params_dict)
+        return description_list
 
     #### Top level decision maker for applying filters
     def apply(self, input_message, input_parameters):
@@ -43,9 +64,7 @@ class ARAXExpander:
             return response
 
         #### Define a complete set of allowed parameters and their defaults
-        parameters = {
-            'edge_id': None,
-        }
+        parameters = self.parameters
 
         #### Loop through the input_parameters and override the defaults and make sure they are allowed
         for key,value in input_parameters.items():

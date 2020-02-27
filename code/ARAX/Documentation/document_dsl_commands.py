@@ -5,8 +5,8 @@ from tomark import Tomark
 import re
 import md_toc
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
-modules = ["ARAX_resultify", "ARAX_overlay", "ARAX_filter_kg", "ARAX_messenger"]
-classes = ["ARAXResultify", "ARAXOverlay", "ARAXFilterKG", "ARAXMessenger"]
+modules = ["ARAX_messenger", "ARAX_overlay", "ARAX_filter_kg", "ARAX_resultify"]
+classes = ["ARAXMessenger", "ARAXOverlay", "ARAXFilterKG", "ARAXResultify"]
 modules_to_command_name = {'ARAX_resultify': '`resultify()`', 'ARAX_messenger': '`create_message()`',
                            'ARAX_overlay': '`overlay()`', 'ARAX_filter_kg': '`filter_kg()`'}
 to_print = ""
@@ -54,9 +54,12 @@ for (module, cls) in zip(modules, classes):
     dsl_name = modules_to_command_name[module]
     to_print += f"## {module}\n"
     for dic in getattr(m, cls)().describe_me():
-        action = dic['action'].pop()
-        del dic['action']
-        to_print += '### ' + re.sub('\(\)',f'(action={action})', dsl_name) + '\n'
+        if 'action' in dic:
+            action = dic['action'].pop()
+            del dic['action']
+            to_print += '### ' + re.sub('\(\)',f'(action={action})', dsl_name) + '\n'
+        else:
+            to_print += '### ' +  dsl_name + '\n'
         if 'brief_description' in dic:
             to_print += dic['brief_description'] + '\n\n'
             del dic['brief_description']
@@ -74,7 +77,8 @@ fid = open(file_name, 'w')
 fid.write(to_print)
 fid.close()
 
-with_toc = md_toc.build_toc(os.path.dirname(os.path.abspath(__file__)) + '/' + file_name)
+with_toc = "# Table of contents\n\n"
+with_toc += md_toc.build_toc(os.path.dirname(os.path.abspath(__file__)) + '/' + file_name)
 with_toc += to_print
 fid = open(file_name, 'w')
 fid.write(with_toc)
