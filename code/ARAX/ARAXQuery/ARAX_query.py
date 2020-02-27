@@ -334,7 +334,7 @@ class ARAXQuery:
         n_messages = len(messages)
         if n_messages == 0:
             response.debug(f"No starting messages were referenced. Will start with a blank template Message")
-            result = messenger.create()
+            result = messenger.create_message()
             message = result.data['message']
         elif n_messages == 1:
             response.debug(f"A single Message is ready and in hand")
@@ -629,7 +629,7 @@ def main():
             "overlay(action=add_node_pmids, max_num=15)",
             "return(message=true, store=false)"
         ]}}
-    elif params.example_number == 14:  # test out example 3
+    elif params.example_number == 14:  # test
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(name=DOID:8712, id=n00)",
@@ -721,7 +721,8 @@ def main():
 
     #### Print out the message that came back
     #print(response.show(level=Response.DEBUG))
-    #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    print("Returned message:\n")
+    print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.query_graph)), sort_keys=True, indent=2))

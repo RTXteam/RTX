@@ -63,7 +63,7 @@ for (module, cls) in zip(modules, classes):
             del dic['dsl_command']
             #to_print += '### ' + re.sub('\(\)', f'({subcommand}=)', dsl_name) + '\n'
             to_print += '### ' + dsl_command + '\n'
-        else:  # for classes that don't use the `action=` paradigm and are meant to be called sans parameters. eg: `foo()`
+        else:  # for classes that don't use the `action=` paradigm like `expand()` and `resultify()`
             to_print += '### ' + dsl_name + '\n'
         if 'brief_description' in dic:
             to_print += dic['brief_description'] + '\n\n'
