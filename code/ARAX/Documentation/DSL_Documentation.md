@@ -9,16 +9,16 @@
   - [ARAX_expander](#arax_expander)
     - [`expand()`](#expand)
   - [ARAX_overlay](#arax_overlay)
-    - [`overlay(action=compute_ngd)`](#overlayactioncompute_ngd)
-    - [`overlay(action=overlay_clinical_info)`](#overlayactionoverlay_clinical_info)
     - [`overlay(action=add_node_pmids)`](#overlayactionadd_node_pmids)
+    - [`overlay(action=overlay_clinical_info)`](#overlayactionoverlay_clinical_info)
     - [`overlay(action=compute_jaccard)`](#overlayactioncompute_jaccard)
+    - [`overlay(action=compute_ngd)`](#overlayactioncompute_ngd)
   - [ARAX_filter_kg](#arax_filter_kg)
     - [`filter_kg(action=remove_orphaned_nodes)`](#filter_kgactionremove_orphaned_nodes)
     - [`filter_kg(action=remove_nodes_by_type)`](#filter_kgactionremove_nodes_by_type)
     - [`filter_kg(action=remove_edges_by_type)`](#filter_kgactionremove_edges_by_type)
-    - [`filter_kg(action=remove_edges_by_property)`](#filter_kgactionremove_edges_by_property)
     - [`filter_kg(action=remove_edges_by_attribute)`](#filter_kgactionremove_edges_by_attribute)
+    - [`filter_kg(action=remove_edges_by_property)`](#filter_kgactionremove_edges_by_property)
   - [ARAX_resultify](#arax_resultify)
     - [`resultify()`](#resultify)
 
@@ -80,44 +80,6 @@ with functionality built in to reach out to other KP's (such as the ARA Expander
 |_DSL arguments_| {"a query graph edge ID or list of such id's (required)"} |
 
 ## ARAX_overlay
-### `overlay(action=compute_ngd)`
-`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
-            This information is then included as an edge attribute.
-            You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_edge_type`.
-
-||||||
-|-----|-----|-----|-----|-----|
-|_DSL parameters_| default_value | virtual_edge_type | source_qnode_id | target_qnode_id |
-|_DSL arguments_| {'0', 'inf'} | {'any string label (optional, otherwise applied to all edges)'} | {'a specific source query node id (optional, otherwise applied to all edges)'} | {'a specific target query node id (optional, otherwise applied to all edges)'} |
-
-### `overlay(action=overlay_clinical_info)`
-`overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
-            This KP has a number of different functionalities, such as `paired_concept_freq`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
-            All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
-            This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
-            This information is then included as an edge attribute.
-            You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_edge_type`.
-            
-
-            
-
-            Note that this DSL command has quite a bit of functionality, so a brief description of the DSL parameters is given here:
-            
-
-            * `paired_concept_frequency`: Retrieves observed clinical frequencies of a pair of concepts indicated by edge source and target nodes and adds these values as edge attributes.
-
-            * `observed_expected_ratio`: Returns the natural logarithm of the ratio between the observed count and expected count of edge source and target nodes. Expected count is calculated from the single concept frequencies and assuming independence between the concepts. This information is added as an edge attribute.
-
-            * `chi_square`: Returns the chi-square statistic and p-value between pairs of concepts indicated by edge source/target nodes and adds these values as edge attributes. The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and assuming independence between concepts. P-value is calculated with 1 DOF.
-
-            * `virtual_edge_type`: overlays the requested information on virtual edges (ones that don't exist in the query graph).
-            
-
-||||||||
-|-----|-----|-----|-----|-----|-----|-----|
-|_DSL parameters_| paired_concept_freq | observed_expected_ratio | chi_square | virtual_edge_type | source_qnode_id | target_qnode_id |
-|_DSL arguments_| {'false', 'true'} | {'false', 'true'} | {'false', 'true'} | {'any string label (optional, otherwise applied to all edges)'} | {'a specific source query node id (optional, otherwise applied to all edges)'} | {'a specific target query node id (optional, otherwise applied to all edges)'} |
-
 ### `overlay(action=add_node_pmids)`
 `add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
             This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
@@ -126,7 +88,29 @@ with functionality built in to reach out to other KP's (such as the ARA Expander
 |||
 |-----|-----|
 |_DSL parameters_| max_num |
-|_DSL arguments_| {0, 'all'} |
+|_DSL arguments_| {'all', 0} |
+
+### `overlay(action=overlay_clinical_info)`
+
+`overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
+This KP has a number of different functionalities, such as `paired_concept_freq`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
+All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
+This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
+This information is then included as an edge attribute.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_edge_type`.
+
+Note that this DSL command has quite a bit of functionality, so a brief description of the DSL parameters is given here:
+
+* `paired_concept_frequency`: If set to `true`, retrieves observed clinical frequencies of a pair of concepts indicated by edge source and target nodes and adds these values as edge attributes.
+* `observed_expected_ratio`: If set to `true`, returns the natural logarithm of the ratio between the observed count and expected count of edge source and target nodes. Expected count is calculated from the single concept frequencies and assuming independence between the concepts. This information is added as an edge attribute.
+* `chi_square`: If set to `true`, returns the chi-square statistic and p-value between pairs of concepts indicated by edge source/target nodes and adds these values as edge attributes. The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and assuming independence between concepts. P-value is calculated with 1 DOF.
+* `virtual_edge_type`: Overlays the requested information on virtual edges (ones that don't exist in the query graph).
+
+
+||||||||
+|-----|-----|-----|-----|-----|-----|-----|
+|_DSL parameters_| paired_concept_freq | observed_expected_ratio | chi_square | virtual_edge_type | source_qnode_id | target_qnode_id |
+|_DSL arguments_| {'false', 'true'} | {'false', 'true'} | {'false', 'true'} | {'any string label (optional, otherwise applied to all edges)'} | {'a specific source query node id (optional, otherwise applied to all edges)'} | {'a specific target query node id (optional, otherwise applied to all edges)'} |
 
 ### `overlay(action=compute_jaccard)`
 `compute_jaccard` creates virtual edges and adds an edge attribute containing the following information:
@@ -139,6 +123,16 @@ with functionality built in to reach out to other KP's (such as the ARA Expander
 |-----|-----|-----|-----|-----|
 |_DSL parameters_| start_node_id | intermediate_node_id | end_node_id | virtual_edge_type |
 |_DSL arguments_| {'a node id (required)'} | {'a query node id (required)'} | {'a query node id (required)'} | {'any string label (required)'} |
+
+### `overlay(action=compute_ngd)`
+`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
+            This information is then included as an edge attribute.
+            You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_edge_type`.
+
+||||||
+|-----|-----|-----|-----|-----|
+|_DSL parameters_| default_value | virtual_edge_type | source_qnode_id | target_qnode_id |
+|_DSL arguments_| {'inf', '0'} | {'any string label (optional, otherwise applied to all edges)'} | {'a specific source query node id (optional, otherwise applied to all edges)'} | {'a specific target query node id (optional, otherwise applied to all edges)'} |
 
 ## ARAX_filter_kg
 ### `filter_kg(action=remove_orphaned_nodes)`
@@ -186,29 +180,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 |||||
 |-----|-----|-----|-----|
 |_DSL parameters_| edge_type | remove_connected_nodes | qnode_id |
-|_DSL arguments_| {'an edge type'} | {'t', 'false', 'F', 'T', 'False', 'True', 'f', 'true'} | {'a specific query node id to remove'} |
-
-### `filter_kg(action=remove_edges_by_property)`
-
-`remove_edges_by_property` removes edges from the knowledge graph (KG) based on a given edge property.
-Use cases include:
-                
-* removing all edges that were provided by a certain knowledge provider (KP) via `edge_property=provided, property_value=Pharos` to remove all edges provided by the KP Pharos.
-* removing all edges that connect to a certain node via `edge_property=source_id, property_value=DOID:8398`
-* removing all edges with a certain relation via `edge_property=relation, property_value=upregulates`
-* removing all edges provided by another ARA via `edge_property=is_defined_by, property_value=ARAX/RTX`
-* etc. etc.
-                
-You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
-else, only remove a single source/target node based on a query node id (via `remove_connected_nodes=t, qnode_id=<a query node id.>`
-                
-This can be applied to an arbitrary knowledge graph as possible edge properties are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-
-
-||||||
-|-----|-----|-----|-----|-----|
-|_DSL parameters_| edge_property | property_value | remove_connected_nodes | qnode_id |
-|_DSL arguments_| {'an edge property'} | {'a value for the edge property'} | {'t', 'false', 'F', 'T', 'False', 'True', 'f', 'true'} | {'a specific query node id to remove'} |
+|_DSL arguments_| {'an edge type'} | {'f', 'True', 'T', 't', 'true', 'F', 'false', 'False'} | {'a specific query node id to remove'} |
 
 ### `filter_kg(action=remove_edges_by_attribute)`
 
@@ -231,7 +203,29 @@ This can be applied to an arbitrary knowledge graph as possible edge attributes 
 |||||||
 |-----|-----|-----|-----|-----|-----|
 |_DSL parameters_| edge_attribute | direction | threshold | remove_connected_nodes | qnode_id |
-|_DSL arguments_| {'an edge attribute name'} | {'above', 'below'} | {'a floating point number'} | {'t', 'false', 'F', 'T', 'False', 'True', 'f', 'true'} | {'a specific query node id to remove'} |
+|_DSL arguments_| {'an edge attribute name'} | {'above', 'below'} | {'a floating point number'} | {'f', 'True', 'T', 't', 'true', 'F', 'false', 'False'} | {'a specific query node id to remove'} |
+
+### `filter_kg(action=remove_edges_by_property)`
+
+`remove_edges_by_property` removes edges from the knowledge graph (KG) based on a given edge property.
+Use cases include:
+                
+* removing all edges that were provided by a certain knowledge provider (KP) via `edge_property=provided, property_value=Pharos` to remove all edges provided by the KP Pharos.
+* removing all edges that connect to a certain node via `edge_property=source_id, property_value=DOID:8398`
+* removing all edges with a certain relation via `edge_property=relation, property_value=upregulates`
+* removing all edges provided by another ARA via `edge_property=is_defined_by, property_value=ARAX/RTX`
+* etc. etc.
+                
+You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
+else, only remove a single source/target node based on a query node id (via `remove_connected_nodes=t, qnode_id=<a query node id.>`
+                
+This can be applied to an arbitrary knowledge graph as possible edge properties are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+
+
+||||||
+|-----|-----|-----|-----|-----|
+|_DSL parameters_| edge_property | property_value | remove_connected_nodes | qnode_id |
+|_DSL arguments_| {'an edge property'} | {'a value for the edge property'} | {'f', 'True', 'T', 't', 'true', 'F', 'false', 'False'} | {'a specific query node id to remove'} |
 
 ## ARAX_resultify
 ### `resultify()`
