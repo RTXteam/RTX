@@ -9,18 +9,18 @@
   - [ARAX_expander](#arax_expander)
     - [`expand()`](#expand)
   - [ARAX_overlay](#arax_overlay)
+    - [`overlay(action=compute_jaccard)`](#overlayactioncompute_jaccard)
+    - [`overlay(action=compute_ngd)`](#overlayactioncompute_ngd)
     - [`overlay(action=add_node_pmids)`](#overlayactionadd_node_pmids)
     - [`overlay(action=overlay_clinical_info)`](#overlayactionoverlay_clinical_info)
-    - [`overlay(action=compute_ngd)`](#overlayactioncompute_ngd)
-    - [`overlay(action=compute_jaccard)`](#overlayactioncompute_jaccard)
   - [ARAX_filter_kg](#arax_filter_kg)
     - [`filter_kg(action=remove_edges_by_attribute)`](#filter_kgactionremove_edges_by_attribute)
     - [`filter_kg(action=remove_nodes_by_type)`](#filter_kgactionremove_nodes_by_type)
     - [`filter_kg(action=remove_edges_by_type)`](#filter_kgactionremove_edges_by_type)
-    - [`filter_kg(action=remove_edges_by_property)`](#filter_kgactionremove_edges_by_property)
     - [`filter_kg(action=remove_orphaned_nodes)`](#filter_kgactionremove_orphaned_nodes)
+    - [`filter_kg(action=remove_edges_by_property)`](#filter_kgactionremove_edges_by_property)
   - [ARAX_resultify](#arax_resultify)
-    - [`resultify(action=resultify)`](#resultifyactionresultify)
+    - [`resultify()`](#resultify)
 
 # Domain Specific Langauage (DSL) description
 This document describes the features and components of the DSL developed for the ARA Expander team.
@@ -84,6 +84,28 @@ with functionality built in to reach out to other KP's (such as the ARA Expander
 |_DSL arguments_| {"a query graph edge ID or list of such id's (required)"} |
 
 ## ARAX_overlay
+### `overlay(action=compute_jaccard)`
+`compute_jaccard` creates virtual edges and adds an edge attribute containing the following information:
+            The jaccard similarity measures how many `intermediate_node_id`'s are shared in common between each `start_node_id` and `target_node_id`.
+            This is used for purposes such as "find me all drugs (`start_node_id`) that have many proteins (`intermediate_node_id`) in common with this disease (`end_node_id`)."
+            This can be used for downstream filtering to concentrate on relevant bioentities.
+            
+
+||||||
+|-----|-----|-----|-----|-----|
+|_DSL parameters_| start_node_id | intermediate_node_id | end_node_id | virtual_edge_type |
+|_DSL arguments_| {'a node id (required)'} | {'a query node id (required)'} | {'a query node id (required)'} | {'any string label (required)'} |
+
+### `overlay(action=compute_ngd)`
+`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
+            This information is then included as an edge attribute.
+            You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_edge_type`.
+
+||||||
+|-----|-----|-----|-----|-----|
+|_DSL parameters_| default_value | virtual_edge_type | source_qnode_id | target_qnode_id |
+|_DSL arguments_| {'0', 'inf'} | {'any string label (optional, otherwise applied to all edges)'} | {'a specific source query node id (optional, otherwise applied to all edges)'} | {'a specific target query node id (optional, otherwise applied to all edges)'} |
+
 ### `overlay(action=add_node_pmids)`
 `add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
             This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
@@ -105,29 +127,7 @@ with functionality built in to reach out to other KP's (such as the ARA Expander
 ||||||||
 |-----|-----|-----|-----|-----|-----|-----|
 |_DSL parameters_| paired_concept_freq | observed_expected_ratio | chi_square | virtual_edge_type | source_qnode_id | target_qnode_id |
-|_DSL arguments_| {'false', 'true'} | {'false', 'true'} | {'false', 'true'} | {'any string label (optional, otherwise applied to all edges)'} | {'a specific source query node id (optional, otherwise applied to all edges)'} | {'a specific target query node id (optional, otherwise applied to all edges)'} |
-
-### `overlay(action=compute_ngd)`
-`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
-            This information is then included as an edge attribute.
-            You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_edge_type`.
-
-||||||
-|-----|-----|-----|-----|-----|
-|_DSL parameters_| default_value | virtual_edge_type | source_qnode_id | target_qnode_id |
-|_DSL arguments_| {'0', 'inf'} | {'any string label (optional, otherwise applied to all edges)'} | {'a specific source query node id (optional, otherwise applied to all edges)'} | {'a specific target query node id (optional, otherwise applied to all edges)'} |
-
-### `overlay(action=compute_jaccard)`
-`compute_jaccard` creates virtual edges and adds an edge attribute containing the following information:
-            The jaccard similarity measures how many `intermediate_node_id`'s are shared in common between each `start_node_id` and `target_node_id`.
-            This is used for purposes such as "find me all drugs (`start_node_id`) that have many proteins (`intermediate_node_id`) in common with this disease (`end_node_id`)."
-            This can be used for downstream filtering to concentrate on relevant bioentities.
-            
-
-||||||
-|-----|-----|-----|-----|-----|
-|_DSL parameters_| start_node_id | intermediate_node_id | end_node_id | virtual_edge_type |
-|_DSL arguments_| {'a node id (required)'} | {'a query node id (required)'} | {'a query node id (required)'} | {'any string label (required)'} |
+|_DSL arguments_| {'true', 'false'} | {'true', 'false'} | {'true', 'false'} | {'any string label (optional, otherwise applied to all edges)'} | {'a specific source query node id (optional, otherwise applied to all edges)'} | {'a specific target query node id (optional, otherwise applied to all edges)'} |
 
 ## ARAX_filter_kg
 ### `filter_kg(action=remove_edges_by_attribute)`
@@ -151,7 +151,7 @@ This can be applied to an arbitrary knowledge graph as possible edge attributes 
 |||||||
 |-----|-----|-----|-----|-----|-----|
 |_DSL parameters_| edge_attribute | direction | threshold | remove_connected_nodes | qnode_id |
-|_DSL arguments_| {'an edge attribute name'} | {'below', 'above'} | {'a floating point number'} | {'f', 'False', 'F', 'T', 't', 'true', 'false', 'True'} | {'a specific query node id to remove'} |
+|_DSL arguments_| {'an edge attribute name'} | {'above', 'below'} | {'a floating point number'} | {'t', 'True', 'F', 'T', 'False', 'f', 'false', 'true'} | {'a specific query node id to remove'} |
 
 ### `filter_kg(action=remove_nodes_by_type)`
 
@@ -186,7 +186,19 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 |||||
 |-----|-----|-----|-----|
 |_DSL parameters_| edge_type | remove_connected_nodes | qnode_id |
-|_DSL arguments_| {'an edge type'} | {'f', 'False', 'F', 'T', 't', 'true', 'false', 'True'} | {'a specific query node id to remove'} |
+|_DSL arguments_| {'an edge type'} | {'t', 'True', 'F', 'T', 'False', 'f', 'false', 'true'} | {'a specific query node id to remove'} |
+
+### `filter_kg(action=remove_orphaned_nodes)`
+
+`remove_orphaned_nodes` removes nodes from the knowledge graph (KG) that are not connected via any edges.
+Specifying a `node_type` will restrict this to only remove orphaned nodes of a certain type
+This can be applied to an arbitrary knowledge graph as possible node types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+
+
+|||
+|-----|-----|
+|_DSL parameters_| node_type |
+|_DSL arguments_| {'a node type (optional)'} |
 
 ### `filter_kg(action=remove_edges_by_property)`
 
@@ -208,22 +220,10 @@ This can be applied to an arbitrary knowledge graph as possible edge properties 
 ||||||
 |-----|-----|-----|-----|-----|
 |_DSL parameters_| edge_property | property_value | remove_connected_nodes | qnode_id |
-|_DSL arguments_| {'an edge property'} | {'a value for the edge property'} | {'f', 'False', 'F', 'T', 't', 'true', 'false', 'True'} | {'a specific query node id to remove'} |
-
-### `filter_kg(action=remove_orphaned_nodes)`
-
-`remove_orphaned_nodes` removes nodes from the knowledge graph (KG) that are not connected via any edges.
-Specifying a `node_type` will restrict this to only remove orphaned nodes of a certain type
-This can be applied to an arbitrary knowledge graph as possible node types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-
-
-|||
-|-----|-----|
-|_DSL parameters_| node_type |
-|_DSL arguments_| {'a node type (optional)'} |
+|_DSL arguments_| {'an edge property'} | {'a value for the edge property'} | {'t', 'True', 'F', 'T', 'False', 'f', 'false', 'true'} | {'a specific query node id to remove'} |
 
 ## ARAX_resultify
-### `resultify(action=resultify)`
+### `resultify()`
  Creates a list of results from the input query graph (QG) based on the the information contained in the message knowledge graph (KG). Every subgraph through the KG that satisfies the GQ is returned. Such use cases include: 
 - `resultify()` Returns all subgraphs in the knowledge graph that satisfy the query graph
 - `resultify(force_isset_false=[n01])` This forces each result to include only one example of node `n01` if it was originally part of a set in the QG. An example where one might use this mode is: suppose that the preceding DSL commands constructed a knowledge graph containing several proteins that are targets of a given drug, by making the protein node (suppose it is called `n01`) on the query graph have `is_set=true`. To extract one subgraph for each such protein, one would use `resultify(force_isset_false=[n01])`. The brackets around `n01` are because it is a list; in fact, multiple node IDs can be specified there, if they are separated by commas.
