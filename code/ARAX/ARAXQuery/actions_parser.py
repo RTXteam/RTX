@@ -75,14 +75,22 @@ class ActionsParser:
                             #### If the value begins with a "[", then this is a list
                             match = re.match(r"\[(.+)$",value)
                             if match:
-                                mode = 'in_list'
-                                list_buffer = [ match.group(1) ]
+                                #### If it also ends with a "]", then this is a list of one element
+                                match2 = re.match(r"\[(.*)\]$",value)
+                                if match2:
+                                    if match2.group(1) == '':
+                                        parameters[key] = [ ]
+                                    else:
+                                        parameters[key] = [ match2.group(1) ]
+                                else:
+                                    mode = 'in_list'
+                                    list_buffer = [ match.group(1) ]
                             else:
                                 parameters[key] = value
 
                         #### Special processing if we're in the middle of a list
                         elif mode == 'in_list':
-                            match = re.match(r"(.+)\]$",param_item)
+                            match = re.match(r"(.*)\]$",param_item)
                             if match:
                                 mode = 'normal'
                                 list_buffer.append(match.group(1))
@@ -119,6 +127,7 @@ def main():
         "filter(start_node=1, maximum_results=10, minimum_probability=0.5, maximum_ngd=0.8)",
         "expand(command=expand_nodes, edge_id=[e00,e01,e02], add_virtual_nodes=true)",
         "expand(edge_id=[e00,e01,e02], sort_by=[type,name])",
+        "expand(edge_id=[e00], sort_by=[type], empty_list=[] , dangling_comma=[p,q,])",
         "overlay(compute_ngd=true,default)",
         "overlay(add_pubmed_ids=true, start_node=2)",
         "return(message=true,store=false)"

@@ -5,9 +5,10 @@ from tomark import Tomark
 import re
 import md_toc
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
-modules = ["ARAX_overlay", "ARAX_filter_kg", 'ARAX_expander']
-classes = ["ARAXOverlay", "ARAXFilterKG", 'ARAXExpander']
-modules_to_command_name = {'ARAX_overlay': '`overlay()`', 'ARAX_filter_kg': '`filter_kg()`', 'ARAX_expander': '`expand()`'}
+modules = ["ARAX_messenger", "ARAX_overlay", "ARAX_filter_kg", "ARAX_resultify"]
+classes = ["ARAXMessenger", "ARAXOverlay", "ARAXFilterKG", "ARAXResultify"]
+modules_to_command_name = {'ARAX_resultify': '`resultify()`', 'ARAX_messenger': '`create_message()`',
+                           'ARAX_overlay': '`overlay()`', 'ARAX_filter_kg': '`filter_kg()`'}
 to_print = ""
 header_info = """
 # Domain Specific Langauage (DSL) description

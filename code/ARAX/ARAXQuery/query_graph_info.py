@@ -167,7 +167,7 @@ class QueryGraphInfo:
             edge_order.append(edges[0])
             previous_node = current_node
             if edges[0]['source_id'] == current_node['id']:
-                current_node = node_info[edges[0].target_id]
+                current_node = node_info[edges[0]['target_id']]
             elif edges[0]['target_id'] == current_node['id']:
                 current_node = node_info[edges[0]['source_id']]
             else:
