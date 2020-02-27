@@ -54,23 +54,31 @@ for (module, cls) in zip(modules, classes):
     dsl_name = modules_to_command_name[module]
     to_print += f"## {module}\n"
     for dic in getattr(m, cls)().describe_me():
-        if 'action' in dic:
+        if 'action' in dic:  # for classes that use the `action=` paradigm
             action = dic['action'].pop()
             del dic['action']
             to_print += '### ' + re.sub('\(\)',f'(action={action})', dsl_name) + '\n'
-        else:
-            to_print += '### ' +  dsl_name + '\n'
+        elif 'dsl_command' in dic:  # for classes like ARAX_messenger that have different DSL commands with different top level names as methods to the main class
+            dsl_command = dic['dsl_command']
+            del dic['dsl_command']
+            #to_print += '### ' + re.sub('\(\)', f'({subcommand}=)', dsl_name) + '\n'
+            to_print += '### ' + dsl_command + '\n'
+        else:  # for classes that don't use the `action=` paradigm and are meant to be called sans parameters. eg: `foo()`
+            to_print += '### ' + dsl_name + '\n'
         if 'brief_description' in dic:
             to_print += dic['brief_description'] + '\n\n'
             del dic['brief_description']
-        temp_table = Tomark.table([dic])
-        temp_table_split = temp_table.split("\n")
-        #better_table = "|"+re.sub('\(\)',f'(action={action})', dsl_name) + ('|' * temp_table_split[0].count('|')) + '\n'
-        better_table = ('|' * (temp_table_split[0].count('|')+1)) + '\n'
-        better_table += temp_table_split[1] + '-----|\n'
-        better_table += '|_DSL parameters_' + temp_table_split[0] + "\n"
-        better_table += '|_DSL arguments_' + temp_table_split[2] + "\n"
-        to_print += better_table + '\n'
+        if dic:  # if the dic is empty, then don't create a table
+            temp_table = Tomark.table([dic])
+            temp_table_split = temp_table.split("\n")
+            #better_table = "|"+re.sub('\(\)',f'(action={action})', dsl_name) + ('|' * temp_table_split[0].count('|')) + '\n'
+            better_table = ('|' * (temp_table_split[0].count('|')+1)) + '\n'
+            better_table += temp_table_split[1] + '-----|\n'
+            better_table += '|_DSL parameters_' + temp_table_split[0] + "\n"
+            better_table += '|_DSL arguments_' + temp_table_split[2] + "\n"
+            to_print += better_table + '\n'
+        else:
+            to_print += '\n'
 
 file_name = 'DSL_Documentation.md'
 fid = open(file_name, 'w')
