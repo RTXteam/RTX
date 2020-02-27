@@ -282,7 +282,7 @@ def main():
         "add_qnode(id=n00, curie=DOID:824)",
         "add_qnode(id=n01, type=protein)",
         "add_qedge(id=e00, source_id=n01, target_id=n00)",
-        "expand(edge_id=e00, kp=ARAX/KG2)",
+        "expand(edge_id=e00)",
         # "expand(edge_id=e01)",
         # "expand(edge_id=e00, kp=ARAX/KG1)",
         "return(message=true, store=false)",
@@ -304,7 +304,7 @@ def main():
     #### Loop over each action and dispatch to the correct place
     for action in actions:
         if action['command'] == 'create_message':
-            result = messenger.create()
+            result = messenger.create_message()
             message = result.data['message']
             response.data = result.data
         elif action['command'] == 'add_qnode':
@@ -328,6 +328,6 @@ def main():
 
     #### Show the final response
     print(response.show(level=Response.DEBUG))
-    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph)),sort_keys=True,indent=2))
+    # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph)),sort_keys=True,indent=2))
 
 if __name__ == "__main__": main()

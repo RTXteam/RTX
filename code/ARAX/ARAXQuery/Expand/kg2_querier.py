@@ -63,9 +63,7 @@ class KG2Querier:
             driver = GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
             with driver.session() as session:
                 self.answer_results = session.run(self.cypher_query_to_get_results).data()
-                print(self.answer_results)
                 self.answer_kg = session.run(self.cypher_query_to_get_kg).data()[0]
-                # print(self.answer_kg)
             driver.close()
         except:
             tb = traceback.format_exc()
