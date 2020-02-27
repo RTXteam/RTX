@@ -56,10 +56,11 @@ class ARAXMessenger:
         """
 
         # Internal documentation setup
-        allowable_parameters = { 'action': { 'None' } }
+        #allowable_parameters = { 'action': { 'None' } }
+        allowable_parameters = { 'dsl_command': '`create_message()`'}  # can't get this name at run-time, need to manually put it in per https://www.python.org/dev/peps/pep-3130/
         if describe:
             allowable_parameters['brief_description'] = """The `create_message` method creates a basic empty Message object with basic boilerplate metadata
-            such as reasoner_id, schema_version, etc. filled in."""
+            such as reasoner_id, schema_version, etc. filled in. This DSL command takes no arguments"""
             return allowable_parameters
 
         #### Define a default response
@@ -120,7 +121,7 @@ class ARAXMessenger:
             'is_set': { 'If set to true, this QNode represents a set of nodes that are all in common between the two other linked QNodes'},
             }
         if describe:
-            allowable_parameters['action'] = { 'None' }
+            allowable_parameters['dsl_command'] = '`add_qnode()`'  # can't get this name at run-time, need to manually put it in per https://www.python.org/dev/peps/pep-3130/
             allowable_parameters['brief_description'] = """The `add_qnode` method adds an additional QNode to the QueryGraph in the Message object. Currently
                 when a curie or name is specified, this method will only return success if a matching node is found in the KG1 KGNodeIndex."""
             return allowable_parameters
@@ -280,7 +281,9 @@ class ARAXMessenger:
             'type': { 'Any valid Translator/BioLink relationship type (e.g. physically_interacts_with, participates_in)'},
             }
         if describe:
-            allowable_parameters['action'] = { 'None' }
+            #allowable_parameters['action'] = { 'None' }
+            #allowable_parameters = dict()
+            allowable_parameters['dsl_command'] = '`add_qedge()`'  # can't get this name at run-time, need to manually put it in per https://www.python.org/dev/peps/pep-3130/
             allowable_parameters['brief_description'] = """The `add_qedge` method adds an additional QEdge to the QueryGraph in the Message object. Currently
                 source_id and target_id QNodes must already be present in the QueryGraph. The specified type is not currently checked that it is a
                 valid Translator/BioLink relationship type, but it should be."""
