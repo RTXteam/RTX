@@ -12,9 +12,10 @@ import sys
 
 requests_cache.install_cache('orangeboard')
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../code")  # code directory
+from RTXConfiguration import RTXConfiguration
 
 
-def dump_name_description_KG2(file_name, session):
+def dump_name_description_KG2(file_name, session, write_mode):
 	"""
 	dump node names and descriptions of all nodes
 	:param file_name: name of file to save to (TSV)
@@ -23,23 +24,26 @@ def dump_name_description_KG2(file_name, session):
 	"""
 	query = "match (n) return properties(n) as p, labels(n) as l"
 	res = session.run(query)
-	with open(file_name, 'w') as fid:
+	with open(file_name, write_mode) as fid:
 		for item in res:
 			prop_dict = item['p']
 			labels = item['l']
 			if 'id' in prop_dict and 'name' in prop_dict:
-				fid.write('%s\t' % prop_dict['id'])
-				fid.write('%s\t' % prop_dict['name'])
-				label = list(set(labels) - {'Base'}).pop()
-				fid.write('%s\n' % label)
+				if prop_dict['id'] and prop_dict['name'] and labels:
+					label = list(set(labels) - {'Base'}).pop()
+					if label:
+						fid.write('%s\t' % prop_dict['id'])
+						fid.write('%s\t' % prop_dict['name'])
+						fid.write('%s\n' % label)
 				if label == "protein" and 'id' in prop_dict and 'symbol' in prop_dict:  # If it's a protein, also do the symbol
-					fid.write('%s\t' % prop_dict['id'])
-					fid.write('%s\t' % prop_dict['symbol'])
-					fid.write('%s\n' % label)
+					if prop_dict['id'] and prop_dict['symbol'] and label:
+						fid.write('%s\t' % prop_dict['id'])
+						fid.write('%s\t' % prop_dict['symbol'])
+						fid.write('%s\n' % label)
 	return
 
 
-def dump_name_description_KG1(file_name, session):
+def dump_name_description_KG1(file_name, session, write_mode):
 	"""
 	dump node names and descriptions of all nodes
 	:param file_name: name of file to save to (TSV)
@@ -48,7 +52,7 @@ def dump_name_description_KG1(file_name, session):
 	"""
 	query = "match (n) return properties(n) as p, labels(n) as l"
 	res = session.run(query)
-	with open(file_name, 'w') as fid:
+	with open(file_name, write_mode) as fid:
 		for item in res:
 			prop_dict = item['p']
 			labels = item['l']
@@ -62,7 +66,7 @@ def dump_name_description_KG1(file_name, session):
 				fid.write('%s\n' % label)
 	return
 
-def dump_node_labels_KG1(file_name, session):
+def dump_node_labels_KG1(file_name, session, write_mode):
 	"""
 	Dump the types of nodes
 	:param file_name: to write to
@@ -71,14 +75,14 @@ def dump_node_labels_KG1(file_name, session):
 	"""
 	query = "match (n) return distinct labels(n)"
 	res = session.run(query)
-	with open(file_name, 'w') as fid:
+	with open(file_name, write_mode) as fid:
 		for i in res:
 			label = list(set(i["labels(n)"]).difference({"Base"}))  # get rid of the extra base label
 			label = label.pop()  # this assumes only a single relationship type, but that's ok since that's how neo4j works
 			fid.write('%s\n' % label)
 	return
 
-def dump_edge_types_KG1(file_name, session):
+def dump_edge_types_KG1(file_name, session, write_mode):
 	"""
 	Dump the types of nodes
 	:param file_name: to write to
@@ -94,11 +98,21 @@ def dump_edge_types_KG1(file_name, session):
 	return
 
 # Actually dump the data for KG1
-from RTXConfiguration import RTXConfiguration
 rtxConfig = RTXConfiguration()
 rtxConfig.live = 'Production'
 driver = GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=basic_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
 session = driver.session()
-dump_name_description_KG1('NodeNamesDescriptions2.tsv', session)
-dump_node_labels_KG1('NodeLabels.tsv', session)
-dump_edge_types_KG1('EdgeTypes.tsv', session)
+dump_name_description_KG1('NodeNamesDescriptions.tsv', session, 'w')
+dump_node_labels_KG1('NodeLabels.tsv', session, 'w')
+dump_edge_types_KG1('EdgeTypes.tsv', session, 'w')
+
+
+# now dump data for KG2
+del rtxConfig
+rtxConfig = RTXConfiguration()
+rtxConfig.live = 'KG2'
+driver = GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=basic_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
+session = driver.session()
+dump_name_description_KG1('NodeNamesDescriptions.tsv', session, 'w')
+dump_node_labels_KG1('NodeLabels.tsv', session, 'w')
+dump_edge_types_KG1('EdgeTypes.tsv', session, 'w')
