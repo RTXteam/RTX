@@ -65,6 +65,7 @@ with functionality built in to reach out to other KP's (such as the ARA Expander
 
         #### Define a complete set of allowed parameters and their defaults
         parameters = self.parameters
+        parameters['kp'] = None  # Make sure the kp is reset every time we apply expand
 
         #### Loop through the input_parameters and override the defaults and make sure they are allowed
         for key,value in input_parameters.items():
@@ -172,14 +173,12 @@ with functionality built in to reach out to other KP's (such as the ARA Expander
         querier = None
         # TODO: Add some way of catching when an invalid knowledge provider is entered
 
-        if kp_to_use is None or kp_to_use == 'ARAX/KG1':
-            from Expand.kg1_querier import KG1Querier
-            querier = KG1Querier(self.response)
-        elif kp_to_use == 'ARAX/KG2':
+        if kp_to_use == 'ARAX/KG2':
             from Expand.kg2_querier import KG2Querier
             querier = KG2Querier(self.response)
         else:
-            self.response.error(f"Unknown knowledge provider specified. Valid options are 'ARAX/KG1' or 'ARAX/KG2'.", error_code="UnknownKP")
+            from Expand.kg1_querier import KG1Querier
+            querier = KG1Querier(self.response)
 
         self.response.info(f"Sending this query graph to {type(querier).__name__}: {query_graph.to_dict()}")
         answer_knowledge_graph = querier.answer_query(query_graph)
@@ -280,10 +279,12 @@ def main():
         # "add_qedge(source_id=n01, target_id=n00, id=e00)",
         # "add_qedge(source_id=n01, target_id=n02, id=e01)",
         "add_qnode(id=n00, curie=DOID:824)",
-        "add_qnode(id=n01, type=protein)",
+        "add_qnode(id=n01, type=protein, is_set=True)",
+        "add_qnode(id=n02, type=phenotypic_feature)",
         "add_qedge(id=e00, source_id=n01, target_id=n00)",
-        "expand(edge_id=e00)",
-        # "expand(edge_id=e01)",
+        "add_qedge(id=e01, source_id=n01, target_id=n02)",
+        "expand(edge_id=e00, kp=ARAX/KG2)",
+        "expand(edge_id=e01)",
         # "expand(edge_id=e00, kp=ARAX/KG1)",
         "return(message=true, store=false)",
     ]
