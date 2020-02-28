@@ -9,11 +9,13 @@ from neo4j.v1 import GraphDatabase, basic_auth
 import requests_cache
 import os
 import sys
+import re
 
 requests_cache.install_cache('orangeboard')
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../code")  # code directory
 from RTXConfiguration import RTXConfiguration
 
+remove_tab_newlines = re.compile(r"\s+")
 
 def dump_name_description_KG2(file_name, session, write_mode):
 	"""
@@ -34,7 +36,8 @@ def dump_name_description_KG2(file_name, session, write_mode):
 					label = list(set(labels) - {'Base'}).pop()
 					if label:
 						fid.write('%s\t' % prop_dict['id'])
-						fid.write('%s\t' % prop_dict['name'])
+						#fid.write('%s\t' % ' '.join(prop_dict['name'].split('\n')))  # FIXME: ugly workaround for node CHEMBL.COMPOUND:CHEMBL2259757 that has a tab in its name
+						fid.write('%s\t' % remove_tab_newlines.sub(" ", prop_dict['name']))  # better approach
 						fid.write('%s\n' % label)
 				if label == "protein" and 'id' in prop_dict and 'symbol' in prop_dict:  # If it's a protein, also do the symbol
 					if prop_dict['id'] and prop_dict['symbol'] and label:
@@ -104,11 +107,11 @@ def dump_edge_types_KG1(file_name, session, write_mode):
 # Actually dump the data for KG1
 rtxConfig = RTXConfiguration()
 rtxConfig.live = 'Production'
-#driver = GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=basic_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
-#session = driver.session()
-#dump_name_description_KG1('NodeNamesDescriptions.tsv', session, 'w')
-#dump_node_labels_KG1('NodeLabels.tsv', session, 'w')
-#dump_edge_types_KG1('EdgeTypes.tsv', session, 'w')
+driver = GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=basic_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
+session = driver.session()
+dump_name_description_KG1('NodeNamesDescriptions.tsv', session, 'w')
+#dump_node_labels_KG1('NodeLabels.tsv', session, 'w') # TODO: these are apparently unused?
+#dump_edge_types_KG1('EdgeTypes.tsv', session, 'w') # TODO: these are apparently unused?
 
 
 # now dump data for KG2
