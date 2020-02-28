@@ -20,6 +20,7 @@ def dump_name_description_KG2(file_name, session, write_mode):
 	dump node names and descriptions of all nodes
 	:param file_name: name of file to save to (TSV)
 	:param session: neo4j session
+	:param write_mode: 'w' for overwriting the file, 'a' for appending to the file at the end (or creating a new on if it DNE)
 	:return: None
 	"""
 	query = "match (n) return properties(n) as p, labels(n) as l"
@@ -48,6 +49,7 @@ def dump_name_description_KG1(file_name, session, write_mode):
 	dump node names and descriptions of all nodes
 	:param file_name: name of file to save to (TSV)
 	:param session: neo4j session
+	:param write_mode: 'w' for overwriting the file, 'a' for appending to the file at the end (or creating a new on if it DNE)
 	:return: None
 	"""
 	query = "match (n) return properties(n) as p, labels(n) as l"
@@ -71,6 +73,7 @@ def dump_node_labels_KG1(file_name, session, write_mode):
 	Dump the types of nodes
 	:param file_name: to write to
 	:param session: neo4j session
+	:param write_mode: 'w' for overwriting the file, 'a' for appending to the file at the end (or creating a new on if it DNE)
 	:return: None
 	"""
 	query = "match (n) return distinct labels(n)"
@@ -87,11 +90,12 @@ def dump_edge_types_KG1(file_name, session, write_mode):
 	Dump the types of nodes
 	:param file_name: to write to
 	:param session: neo4j session
+	:param write_mode: 'w' for overwriting the file, 'a' for appending to the file at the end (or creating a new on if it DNE)
 	:return: None
 	"""
 	query = "match ()-[r]-() return distinct type(r)"
 	res = session.run(query)
-	with open(file_name, 'w') as fid:
+	with open(file_name, write_mode) as fid:
 		for i in res:
 			type = i["type(r)"]
 			fid.write('%s\n' % type)
@@ -100,11 +104,11 @@ def dump_edge_types_KG1(file_name, session, write_mode):
 # Actually dump the data for KG1
 rtxConfig = RTXConfiguration()
 rtxConfig.live = 'Production'
-driver = GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=basic_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
-session = driver.session()
-dump_name_description_KG1('NodeNamesDescriptions.tsv', session, 'w')
-dump_node_labels_KG1('NodeLabels.tsv', session, 'w')
-dump_edge_types_KG1('EdgeTypes.tsv', session, 'w')
+#driver = GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=basic_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
+#session = driver.session()
+#dump_name_description_KG1('NodeNamesDescriptions.tsv', session, 'w')
+#dump_node_labels_KG1('NodeLabels.tsv', session, 'w')
+#dump_edge_types_KG1('EdgeTypes.tsv', session, 'w')
 
 
 # now dump data for KG2
@@ -113,6 +117,6 @@ rtxConfig = RTXConfiguration()
 rtxConfig.live = 'KG2'
 driver = GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=basic_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
 session = driver.session()
-dump_name_description_KG1('NodeNamesDescriptions.tsv', session, 'w')
-dump_node_labels_KG1('NodeLabels.tsv', session, 'w')
-dump_edge_types_KG1('EdgeTypes.tsv', session, 'w')
+dump_name_description_KG2('NodeNamesDescriptions.tsv', session, 'w')
+#dump_node_labels_KG2('NodeLabels.tsv', session, 'w')  # TODO: these are apparently unused?
+#dump_edge_types_KG2('EdgeTypes.tsv', session, 'w') # TODO: these are apparently unused?
