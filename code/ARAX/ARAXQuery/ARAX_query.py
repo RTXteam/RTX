@@ -703,6 +703,15 @@ def main():
             "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
             "return(message=true, store=false)"
         ]}}
+    elif params.example_number == 19:  # Let's see what happens if you ask for a node in KG2, but not in KG1 and try to expand
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=CUI:C1452002, id=n00)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00, type=interacts_with)",
+            "expand(edge_id=e00)",
+            "return(message=true, store=false)"
+        ]}}  # returns response of "OK" with the info: QueryGraphReasoner found no results for this query graph
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return
