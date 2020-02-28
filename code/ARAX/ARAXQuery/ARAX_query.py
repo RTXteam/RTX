@@ -507,10 +507,11 @@ def main():
             "create_message",
             "add_qnode(curie=DOID:14330, id=n00)",
             "add_qnode(type=protein, is_set=True, id=n01)",
-            "add_qnode(type=drug, id=n02)",
+            #"add_qnode(type=chemical_substance, id=n02)",
             "add_qedge(source_id=n01, target_id=n00, id=e00)",
-            "add_qedge(source_id=n01, target_id=n02, id=e01)",
-            "return(message=true, store=false)",
+            #"add_qedge(source_id=n01, target_id=n02, id=e01)",
+            "expand(edge_id=e00)",
+            "return(message=true, store=true)",
             ] } }
     elif params.example_number == 4:
         query = { "previous_message_processing_plan": { "processing_actions": [
@@ -667,6 +668,7 @@ def main():
             "filter_kg(action=remove_orphaned_nodes, node_type=protein)",  # remove proteins that got disconnected as a result of this filter action
             "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n01, target_qnode_id=n02)",   # use normalized google distance to find how frequently the protein and the drug are mentioned in abstracts
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=ngd, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",   # remove proteins that are not frequently mentioned together in PubMed abstracts
+            "resultify(ignore_edge_direction=true, force_isset_false=[n02])",
             "return(message=true, store=false)"
         ]}}
     elif params.example_number == 16:  # To test COHD obs/exp ratio
@@ -701,6 +703,15 @@ def main():
             "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
             "return(message=true, store=false)"
         ]}}
+    elif params.example_number == 19:  # Let's see what happens if you ask for a node in KG2, but not in KG1 and try to expand
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=CUI:C1452002, id=n00)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00, type=interacts_with)",
+            "expand(edge_id=e00)",
+            "return(message=true, store=false)"
+        ]}}  # returns response of "OK" with the info: QueryGraphReasoner found no results for this query graph
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return
@@ -721,8 +732,8 @@ def main():
 
     #### Print out the message that came back
     #print(response.show(level=Response.DEBUG))
-    print("Returned message:\n")
-    print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    #print("Returned message:\n")
+    #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.query_graph)), sort_keys=True, indent=2))
@@ -732,6 +743,12 @@ def main():
     print(response.show(level=Response.DEBUG))
     print(f"Number of results: {len(message.results)}")
     #print(json.dumps(ast.literal_eval(repr(message.results[0])), sort_keys=True, indent=2))
+    #print(json.dumps(ast.literal_eval(repr(message.results)), sort_keys=True, indent=2))
+    #print(set.union(*[set(x.qg_id for x in r.edge_bindings if x.qg_id.startswith('J')) for r in message.results]))
+    try:
+        print(f"Result qg_id's in results: {set.union(*[set(x.qg_id for x in r.edge_bindings) for r in message.results])}")
+    except:
+        pass
 
     from collections import Counter
     vals = []
@@ -740,7 +757,8 @@ def main():
             for attr in edge.edge_attributes:
                 vals.append((attr.name, attr.value))
 
-    print(sorted(Counter(vals).items(), key=lambda x:float(x[0][1])))
+    #print(sorted(Counter(vals).items(), key=lambda x:float(x[0][1])))
+
     #for node in message.knowledge_graph.nodes:
     #    print(f"{node.name} {node.type[0]}")
     #     print(node.qnode_id)
@@ -801,8 +819,8 @@ def main():
 "UniProtKB:P10275",
 "UniProtKB:Q16665",
 "UniProtKB:P03372"]
-        print(len(set(known_proteins).intersection(set(proteins))))  # fill these in after finding a good example
+        print(f"For example 15 (demo eg. 3), number of TP proteins: {len(set(known_proteins).intersection(set(proteins)))}")  # fill these in after finding a good example
 
-    print(Counter([x.provided_by for x in message.knowledge_graph.edges]))
+    print(f"Number of KnowledgeProviders in KG: {Counter([x.provided_by for x in message.knowledge_graph.edges])}")
 
 if __name__ == "__main__": main()
