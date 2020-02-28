@@ -69,6 +69,7 @@ class ComputeJaccard:
             j_iter = 0
             now = datetime.now()
             edge_type = parameters['virtual_edge_type']
+            qedge_id = parameters['virtual_edge_type']
             relation = "jaccard_index"
             is_defined_by = "https://arax.rtx.ai/api/rtx/v1/ui/"
             defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -91,7 +92,7 @@ class ComputeJaccard:
                 target_id = end_node_id
                 edge = Edge(id=id, type=edge_type, relation=relation, source_id=source_id, target_id=target_id,
                             is_defined_by=is_defined_by, defined_datetime=defined_datetime, provided_by=provided_by,
-                            confidence=confidence, weight=weight, edge_attributes=[edge_attribute])
+                            confidence=confidence, weight=weight, edge_attributes=[edge_attribute], qedge_id=qedge_id)
                 message.knowledge_graph.edges.append(edge)
 
             # Now add a q_edge the query_graph since I've added an extra edge to the KG

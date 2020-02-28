@@ -459,7 +459,8 @@ def main():
     #message_dict = araxdb.getMessage(5)  # atherosclerosis -> phenotypic_feature  # home computer
     #message_dict = araxdb.getMessage(10)
     #message_dict = araxdb.getMessage(36)  # test COHD obs/exp, via ARAX_query.py 16
-    message_dict = araxdb.getMessage(39)  # ngd virtual edge test
+    #message_dict = araxdb.getMessage(39)  # ngd virtual edge test
+    message_dict = araxdb.getMessage(29)
 
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger
@@ -506,7 +507,8 @@ def main():
     #for edge in message.knowledge_graph.edges:
     #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
     #        print(edge.edge_attributes.pop().value)
-    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
+    print(f"Message: {json.dumps(ast.literal_eval(repr(message)), sort_keys=True, indent=2)}")
+    print(f"KG edges: {json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2)}")
     print(response.show(level=Response.DEBUG))
     print("Yet you still got here")
     #print(actions_parser.parse(actions_list))
