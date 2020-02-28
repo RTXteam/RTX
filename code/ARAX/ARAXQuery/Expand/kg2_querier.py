@@ -7,6 +7,7 @@ from neo4j import GraphDatabase
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering/")
 import ReasoningUtilities as RU
+from QueryGraphReasoner import QueryGraphReasoner
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -50,7 +51,12 @@ class KG2Querier:
     def __generate_cypher_to_run(self, query_graph):
         self.response.debug("Generating cypher based on query graph sent to KG2Querier")
         try:
-            cypher_generator = RU.get_cypher_from_question_graph({'question_graph': query_graph.to_dict()})
+            # First pre-process the query graph to get it ready to generate cypher from
+            QGR = QueryGraphReasoner()
+            processed_query_graph, sort_flags, res_limit, ascending_flag = QGR.preprocess_query_graph(query_graph.to_dict())
+
+            # Then actually generate the corresponding cypher
+            cypher_generator = RU.get_cypher_from_question_graph({'question_graph': processed_query_graph})
             self.cypher_query_to_get_results = cypher_generator.cypher_query_answer_map()
             self.cypher_query_to_get_kg = cypher_generator.cypher_query_knowledge_graph()
         except:
@@ -61,7 +67,6 @@ class KG2Querier:
     def __run_cypher_in_neo4j(self):
         self.response.debug("Sending cypher query to KG2 neo4j")
         try:
-            # TODO: Update config file with accurate bolt for kg2
             rtxConfig = RTXConfiguration()
             rtxConfig.live="KG2"
             driver = GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
@@ -84,7 +89,6 @@ class KG2Querier:
     def __build_final_kg_of_answers(self):
         # Create a map of each node/edge and its corresponding qnode/qedge ID
         query_id_map = self.__create_query_id_map()
-        print(query_id_map)
 
         # Create swagger model nodes based on our results and add to final knowledge graph
         for node in self.answer_kg.get('nodes'):
@@ -116,8 +120,6 @@ class KG2Querier:
                 self.response.warning(f"Edge {new_edge.id} is missing a qedge_id")
 
             self.final_kg['edges'][new_edge.id] = new_edge
-
-        print(self.final_kg)
 
     def __create_query_id_map(self):
         query_id_map = {'nodes': dict(), 'edges': dict()}
