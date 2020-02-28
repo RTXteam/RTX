@@ -38,13 +38,14 @@ class ARAXExpander:
         # of a dispatcher (like overlay and filter_kg) and more of a single self contained class
         brief_description = """
 `expand` effectively takes a query graph (QG) and reaches out to various knowledge providers (KP's) to find all bioentity subgraphs
-that satisfy that QG and augments the knowledge graph (KG) with them. As currently implemented, `expand` can utilize the ARA Expander team KG1 Neo4j instance to fulfill QG's,
-with functionality built in to reach out to other KP's (such as the ARA Expander team KG2 and other KP's as they are rolled out).
+that satisfy that QG and augments the knowledge graph (KG) with them. As currently implemented, `expand` can utilize the ARA Expander
+team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to reach out to other KP's as they are rolled out.
         """
         description_list = []
         params_dict = dict()
         params_dict['brief_description'] = brief_description
         params_dict['edge_id'] = {"a query graph edge ID or list of such id's (required)"}  # this is a workaround due to how self.parameters is utilized in this class
+        params_dict['kp'] = {"the knowledge provider to use - current options are 'ARAX/KG1' or 'ARAX/KG2' (optional, default is ARAX/KG1)"}
         # TODO: will need to update manually if more self.parameters are added
         # eg. params_dict[node_id] = {"a query graph node ID or list of such id's (required)"} as per issue #640
         description_list.append(params_dict)
