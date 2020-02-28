@@ -78,7 +78,7 @@ class KG2Querier:
                                 error_code=error_type.__name__)
         else:
             if len(self.answer_kg) == 0:
-                self.response.info("No paths were found in KG2 satisfying this query graph")
+                self.response.warning("No paths were found in KG2 satisfying this query graph")
                 self.answer_kg = {'nodes': dict(), 'edges': dict()}
             else:
                 self.answer_kg = self.answer_kg[0]  # The answer knowledge graph is returned from neo4j in a list

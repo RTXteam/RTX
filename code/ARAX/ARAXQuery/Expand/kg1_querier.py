@@ -33,7 +33,7 @@ class KG1Querier:
             answer_message.knowledge_graph = dict_answer_kg
 
             if not answer_message.results:
-                self.response.info(f"QueryGraphReasoner found no results for this query graph")
+                self.response.warning(f"No paths were found in KG1 satisfying this query graph")
             else:
                 answer_kg = answer_message.knowledge_graph
                 self.response.info(
