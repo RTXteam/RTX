@@ -94,9 +94,15 @@ class KG2Querier:
             new_node = Node()
             new_node.id = node.get('id')
             new_node.type = node.get('category_label')
-            new_node.name = node.get('full_name')
-            new_node.symbol = node.get('name')
             new_node.description = node.get('description')
+            new_node.uri = node.get('iri')
+
+            # Handle different name properties in KG2 vs. KG1
+            if new_node.id.startswith("UniProt"):
+                new_node.name = node.get('full_name')
+                new_node.symbol = node.get('name')
+            else:
+                new_node.name = node.get('name')
 
             new_node.qnode_id = query_id_map['nodes'].get(new_node.id)
             if not new_node.qnode_id:
