@@ -1,10 +1,6 @@
 # This script will dump indexes like node names, edge names, etc.
-import networkx as nx
-from numpy import linalg as LA
 import numpy as np
-
 np.warnings.filterwarnings('ignore')
-from collections import namedtuple
 from neo4j.v1 import GraphDatabase, basic_auth
 import requests_cache
 import os
@@ -120,6 +116,6 @@ rtxConfig = RTXConfiguration()
 rtxConfig.live = 'KG2'
 driver = GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=basic_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
 session = driver.session()
-dump_name_description_KG2('NodeNamesDescriptions.tsv', session, 'w')
+dump_name_description_KG2('NodeNamesDescriptions.tsv', session, 'a')
 #dump_node_labels_KG2('NodeLabels.tsv', session, 'w')  # TODO: these are apparently unused?
 #dump_edge_types_KG2('EdgeTypes.tsv', session, 'w') # TODO: these are apparently unused?
