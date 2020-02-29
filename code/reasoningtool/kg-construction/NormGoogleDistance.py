@@ -53,15 +53,27 @@ class NormGoogleDistance:
     @staticmethod
     def compute_multiway_ngd_from_counts(marginal_counts: List[int],
                                          joint_count: int) -> float:
-        return (max([math.log(count) for count in marginal_counts]) - math.log(joint_count)) / \
-               (math.log(NGD_NORMALIZER) - min([math.log(count) for count in marginal_counts]))
+        # Make sure that things are within the right domain for the logs
+        # Should also make sure things are not negative, but I'll just do this with a ValueError
+        if None in marginal_counts:
+            return math.nan
+        elif 0 in marginal_counts or 0. in marginal_counts:
+            return math.nan
+        elif joint_count == 0 or joint_count == 0.:
+            return math.nan
+        else:
+            try:
+                return (max([math.log(count) for count in marginal_counts]) - math.log(joint_count)) / \
+                   (math.log(NGD_NORMALIZER) - min([math.log(count) for count in marginal_counts]))
+            except ValueError:
+                return math.nan
 
     def get_ngd_for_all_fast(self, curie_id_list: List[str], description_list: List[str]) -> float:
         assert len(curie_id_list) == len(description_list)
-
         if self.db_whatever_to_mesh is not None and self.db_mesh_to_pubmed is not None:
             mesh_ids_all = [self.db_whatever_to_mesh.get(curie_id) for curie_id in curie_id_list]
             if all(mesh_ids_all):
+                #print(f"Going fast: {curie_id_list}")  # for debugging purposes and counting db hits
                 pubmed_ids_for_curies = []
                 for mesh_ids in mesh_ids_all:
                     pubmed_ids_for_curie_set = set()
@@ -72,6 +84,7 @@ class NormGoogleDistance:
                     pubmed_ids_for_curies.append(list(pubmed_ids_for_curie_set))
                 counts_res = NormGoogleDistance.compute_marginal_and_joint_counts(pubmed_ids_for_curies)
                 return NormGoogleDistance.compute_multiway_ngd_from_counts(*counts_res)
+        #print(f"Going slow: {curie_id_list}")  # for debugging purposes and counting db misses
         return NormGoogleDistance.get_ngd_for_all(curie_id_list, description_list)
 
     @staticmethod
