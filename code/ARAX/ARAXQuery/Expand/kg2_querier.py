@@ -115,9 +115,11 @@ class KG2Querier:
             new_edge = Edge()
             new_edge.id = edge.get('id')
             new_edge.type = edge.get('simplified_edge_label')
+            new_edge.relation = edge.get('relation')
             new_edge.source_id = edge.get('subject')
             new_edge.target_id = edge.get('object')
             new_edge.publications = edge.get('publications')
+            new_edge.provided_by = edge.get('provided_by')
             new_edge.is_defined_by = "ARAX/KG2"
 
             new_edge.qedge_id = query_id_map['edges'].get(new_edge.id)
