@@ -712,6 +712,15 @@ def main():
             "expand(edge_id=e00)",
             "return(message=true, store=false)"
         ]}}  # returns response of "OK" with the info: QueryGraphReasoner found no results for this query graph
+    elif params.example_number == 20:  # Now try with KG2 expander
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=CUI:C1452002, id=n00)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00, type=interacts_with)",
+            "expand(edge_id=e00, kp=ARAX/KG2)",
+            "return(message=true, store=false)"
+        ]}}  # returns response of "OK" with the info: QueryGraphReasoner found no results for this query graph
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return
