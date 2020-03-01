@@ -83,7 +83,7 @@ class KG2Querier:
             else:
                 self.answer_kg = self.answer_kg[0]  # The answer knowledge graph is returned from neo4j in a list
                 self.response.info(f"Query returned {len(self.answer_kg.get('nodes'))} nodes "
-                                   f"and {len(self.answer_kg.get('edges'))} edges")
+                                   f"and {len(self.answer_kg.get('edges'))} edges from KG2")
 
     def __build_final_kg_of_answers(self):
         # Create a map of each node/edge and its corresponding qnode/qedge ID
@@ -93,17 +93,19 @@ class KG2Querier:
         for node in self.answer_kg.get('nodes'):
             new_node = Node()
             new_node.id = node.get('id')
-            new_node.type = node.get('category_label')
             new_node.description = node.get('description')
             new_node.uri = node.get('iri')
+            node_type = node.get('category_label')
+            new_node.type = node_type if type(node_type) is list else [node_type]  # Must be list per API standard
 
-            # Handle different name properties in KG2 vs. KG1
-            if new_node.id.startswith("UniProt"):
+            # Handle different name/symbol properties in KG2 vs. KG1
+            if new_node.id.startswith("UniProt"):  # Largely only UniProtKB nodes seem to have 'symbols' as names in KG2
                 new_node.name = node.get('full_name')
                 new_node.symbol = node.get('name')
             else:
                 new_node.name = node.get('name')
 
+            # Tack the query node ID that this node corresponds to onto it (needed for processing down the line)
             new_node.qnode_id = query_id_map['nodes'].get(new_node.id)
             if not new_node.qnode_id:
                 self.response.warning(f"Node {new_node.id} is missing a qnode_id")
@@ -122,6 +124,10 @@ class KG2Querier:
             new_edge.provided_by = edge.get('provided_by')
             new_edge.is_defined_by = "ARAX/KG2"
 
+            negated_string = edge.get('negated')
+            new_edge.negated = True if negated_string.lower() == "true" else False
+
+            # Tack the query edge ID that this edge corresponds to onto it (needed for processing down the line)
             new_edge.qedge_id = query_id_map['edges'].get(new_edge.id)
             if not new_edge.qedge_id:
                 self.response.warning(f"Edge {new_edge.id} is missing a qedge_id")
@@ -131,13 +137,13 @@ class KG2Querier:
     def __create_query_id_map(self):
         query_id_map = {'nodes': dict(), 'edges': dict()}
         for result in self.answer_results:
-            # Map all of the nodes to their qnode IDs
+            # Map all of the nodes to their corresponding query node IDs
             result_nodes = result.get('nodes')
             for qnode_id, node_curie in result_nodes.items():
                 if node_curie not in query_id_map['nodes']:
                     query_id_map['nodes'][node_curie] = qnode_id
 
-            # Map all of the edges to their qedge IDs
+            # Map all of the edges to their corresponding query edge IDs
             result_edges = result.get('edges')
             for qedge_id, edge_ids in result_edges.items():
                 for edge_id in edge_ids:
