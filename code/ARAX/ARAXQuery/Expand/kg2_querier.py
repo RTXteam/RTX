@@ -13,6 +13,8 @@ from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
+from swagger_server.models.node_attribute import NodeAttribute
+from swagger_server.models.edge_attribute import EdgeAttribute
 
 
 class KG2Querier:
@@ -125,17 +127,12 @@ class KG2Querier:
     def __create_swagger_node_from_neo4j_node(self, neo4j_node, query_id_map):
         swagger_node = Node()
 
-        # Loop through all properties on our swagger model node and attempt to fill them out using neo4j node
-        for node_property in swagger_node.to_dict():
-            value = neo4j_node.get(node_property)
-            setattr(swagger_node, node_property, value)
-
-        if swagger_node.uri is None:
-            swagger_node.uri = neo4j_node.get('iri')  # URI is called 'IRI' in KG2 currently
-
-        # Convert node 'type' from string to list (currently string in KG2, but API standard says list)
-        if type(swagger_node.type) is not list:
-            swagger_node.type = [swagger_node.type]
+        swagger_node.id = neo4j_node.get('id')
+        swagger_node.type = neo4j_node.get('type')
+        swagger_node.name = neo4j_node.get('name')
+        swagger_node.description = neo4j_node.get('description')
+        swagger_node.uri = neo4j_node.get('iri')
+        swagger_node.node_attributes = []
 
         # Fill out the 'symbol' property (only really relevant for nodes from UniProtKB)
         if swagger_node.symbol is None and swagger_node.id.lower().startswith("uniprot"):
@@ -146,6 +143,16 @@ class KG2Querier:
         swagger_node.qnode_id = query_id_map['nodes'].get(swagger_node.id)
         if not swagger_node.qnode_id:
             self.response.warning(f"Node {swagger_node.id} is missing a qnode_id")
+
+        # Add all additional properties on KG2 nodes as swagger NodeAttribute objects
+        additional_kg2_properties = ['publications', 'provided_by', 'deprecated', 'synonym', 'category', 'update_date']
+        for property_name in additional_kg2_properties:
+            property_value = neo4j_node.get(property_name)
+            if property_value is not None and property_value != [] and property_value != "[]":
+                new_node_attribute = NodeAttribute()
+                new_node_attribute.name = property_name
+                new_node_attribute.value = property_value
+                swagger_node.node_attributes.append(new_node_attribute)
 
         return swagger_node
 
