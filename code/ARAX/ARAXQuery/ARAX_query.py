@@ -34,7 +34,7 @@ from swagger_server.models.q_edge import QEdge
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering")
 from ParseQuestion import ParseQuestion
 from Q0Solution import Q0
-import ReasoningUtilities
+#import ReasoningUtilities
 from QueryGraphReasoner import QueryGraphReasoner
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/Feedback/")
@@ -534,17 +534,17 @@ def main():
             "filter(maximum_results=2)",
             "return(message=true, store=false)",
             ] } }
-    elif params.example_number == 6:  # test overlay with overlay_clinical_info, paired_concept_freq via COHD. Atherosclerosis-[:has_phenotype]-(:phenotypic_feature)
+    elif params.example_number == 6:  # test overlay
         query = { "previous_message_processing_plan": { "processing_actions": [
             "create_message",
-            "add_qnode(curie=DOID:1936, id=n00)",  # Atherosclerosis
+            "add_qnode(curie=DOID:12384, id=n00)",
             "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00, type=has_phenotype)",
             "expand(edge_id=e00)",
             #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
-            "overlay(action=overlay_clinical_info, chi_square=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
+            #"overlay(action=overlay_clinical_info, chi_square=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
             #"overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
-            #"overlay(action=compute_ngd)",
+            "overlay(action=compute_ngd, default_value=inf)",
             #"overlay(action=compute_ngd, virtual_edge_type=NGD1, source_qnode_id=n00, target_qnode_id=n01)",
             "filter(maximum_results=2)",
             "return(message=true, store=false)",
@@ -703,6 +703,15 @@ def main():
             "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
             "return(message=true, store=false)"
         ]}}
+    elif params.example_number == 19:  # Let's see what happens if you ask for a node in KG2, but not in KG1 and try to expand
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=CUI:C1452002, id=n00)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00, type=interacts_with)",
+            "expand(edge_id=e00)",
+            "return(message=true, store=false)"
+        ]}}  # returns response of "OK" with the info: QueryGraphReasoner found no results for this query graph
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return
@@ -748,7 +757,7 @@ def main():
             for attr in edge.edge_attributes:
                 vals.append((attr.name, attr.value))
 
-    #print(sorted(Counter(vals).items(), key=lambda x:float(x[0][1])))
+    print(sorted(Counter(vals).items(), key=lambda x:float(x[0][1])))
 
     #for node in message.knowledge_graph.nodes:
     #    print(f"{node.name} {node.type[0]}")
