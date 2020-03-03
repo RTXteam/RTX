@@ -84,10 +84,12 @@ class KG2Querier:
                 self.answer_kg = {'nodes': dict(), 'edges': dict()}
             else:
                 self.answer_kg = self.answer_kg[0]  # The answer knowledge graph is returned from neo4j in a list
-                self.response.info(f"Query returned {len(self.answer_kg.get('nodes'))} nodes "
-                                   f"and {len(self.answer_kg.get('edges'))} edges from KG2")
+                self.response.info(f"Query returned {len(self.answer_results)} results "
+                                   f"({len(self.answer_kg.get('nodes'))} nodes, "
+                                   f"{len(self.answer_kg.get('edges'))} edges)")
 
     def __build_final_kg_of_answers(self):
+        self.response.info("Processing query results")
         # Create a map of each node/edge and its corresponding qnode/qedge ID
         query_id_map = self.__create_query_id_map()
 

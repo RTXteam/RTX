@@ -107,7 +107,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
 
         #### Return the response and done
         kg = self.message.knowledge_graph
-        response.info(f"After expansion, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges")
+        response.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges")
         return response
 
     def __extract_subgraph_to_expand(self, qedge_ids_to_expand):
@@ -117,6 +117,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         :param qedge_ids_to_expand: A single qedge_id (str) OR a list of qedge_ids
         :return: A query graph, in Translator API format
         """
+        self.response.info("Extracting sub query graph to expand")
         query_graph = self.message.query_graph
         sub_query_graph = QueryGraph()
         sub_query_graph.nodes = []
@@ -178,7 +179,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
             from Expand.kg1_querier import KG1Querier
             querier = KG1Querier(self.response)
 
-        self.response.info(f"Sending this query graph to {type(querier).__name__}: {query_graph.to_dict()}")
+        self.response.info(f"Sending sub query graph to {type(querier).__name__}: {query_graph.to_dict()}")
         answer_knowledge_graph = querier.answer_query(query_graph)
         return answer_knowledge_graph
 
@@ -189,6 +190,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         :param knowledge_graph: A knowledge graph, in Translator API format.
         :return: None
         """
+        self.response.info("Merging answer knowledge graph into Message.KnowledgeGraph")
         answer_nodes = knowledge_graph.get('nodes')
         answer_edges = knowledge_graph.get('edges')
         existing_nodes = self.message.knowledge_graph.get('nodes')
@@ -277,8 +279,8 @@ def main():
         "add_qnode(id=n02, type=phenotypic_feature)",
         "add_qedge(id=e00, source_id=n01, target_id=n00)",
         "add_qedge(id=e01, source_id=n01, target_id=n02)",
-        "expand(edge_id=e00)",
-        "expand(edge_id=e01)",
+        "expand(edge_id=e00, kp=ARAX/KG2)",
+        "expand(edge_id=e01, kp=ARAX/KG2)",
         # "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
         "return(message=true, store=false)",
     ]
