@@ -81,7 +81,7 @@ class SortResults:
                                 # this will take the sum off all edges with the attribute if we want to change to max edit this line
                                 value_list[i] += edge_values[binding.kg_id]['value']
                 i+=1
-            idx = sort_index(value_list)
+            idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
             if 'max_results' in params:
                 self.limit_number_of_results()
@@ -109,7 +109,7 @@ class SortResults:
             for result in self.message.results:
                 value_list[i] = len(result.edge_bindings)
                 i+=1
-            idx = sort_index(value_list)
+            idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
             if 'max_results' in params:
                 self.limit_number_of_results()
@@ -157,7 +157,7 @@ class SortResults:
                                 # this will take the sum off all nodes with the attribute if we want to change to max edit this line
                                 value_list[i] += node_values[binding.kg_id]['value']
                 i+=1
-            idx = sort_index(value_list)
+            idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
             if 'max_results' in params:
                 self.limit_number_of_results()
@@ -185,7 +185,7 @@ class SortResults:
             for result in self.message.results:
                 value_list[i] = len(result.node_bindings)
                 i+=1
-            idx = sort_index(value_list)
+            idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
             if 'max_results' in params:
                 self.limit_number_of_results()

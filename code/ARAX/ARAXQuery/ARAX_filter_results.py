@@ -11,7 +11,7 @@ from response import Response
 import traceback
 from collections import Counter
 
-class ARAXFilterKG:
+class ARAXFilterResults:
 
     #### Constructor
     def __init__(self):
@@ -148,7 +148,7 @@ class ARAXFilterKG:
                                     'edge_attribute': known_attributes,
                                     'edge_type': set([t for x in self.message.knowledge_graph.edges for t in x.type]),
                                     'direction': {'descending', 'd', 'ascending', 'a'},
-                                    'max_results': {int()}
+                                    'max_results': {float()}
                                     }
         else:
             allowable_parameters = {'action': {'sort_by_edge_attribute'},
@@ -243,7 +243,7 @@ Also, you have the option of limiting the number of results returned (e.g. via `
                                     'node_attribute': known_attributes,
                                     'node_type': set([t for x in self.message.knowledge_graph.nodes for t in x.type]),
                                     'direction': {'descending', 'd', 'ascending', 'a'},
-                                    'max_results': {int()}
+                                    'max_results': {float()}
                                     }
         else:
             allowable_parameters = {'action': {'sort_by_node_attribute'},
@@ -329,7 +329,7 @@ Also, you have the option of limiting the number of results returned (e.g. via `
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'results'):
             allowable_parameters = {'action': {'limit_number_of_results'},
-                                    'max_results': {int()}
+                                    'max_results': {float()}
                                     }
         else:
             allowable_parameters = {'action': {'limit_number_of_results'},
@@ -362,8 +362,8 @@ Use cases include:
         # try to convert the max results to an int
         if 'max_results' in params:
             try:
-                edge_params['max_results'] = int(edge_params['max_results'])
-                assert edge_params['max_results'] >= 0
+                params['max_results'] = int(params['max_results'])
+                assert params['max_results'] >= 0
             except:
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
@@ -399,7 +399,7 @@ Use cases include:
         if message and parameters and hasattr(message, 'results') and hasattr(message, 'knowledge_graph') and hasattr(message.knowledge_graph, 'edges'):
             allowable_parameters = {'action': {'sort_by_edge_count'},
                                     'direction': {'descending', 'd', 'ascending', 'a'},
-                                    'max_results': {int()}
+                                    'max_results': {float()}
                                     }
         else:
             allowable_parameters = {'action': {'sort_by_edge_count'},
@@ -478,7 +478,7 @@ Also, you have the option of limiting the number of results returned (e.g. via `
         if message and parameters and hasattr(message, 'results') and hasattr(message, 'knowledge_graph') and hasattr(message.knowledge_graph, 'nodes'):
             allowable_parameters = {'action': {'sort_by_node_count'},
                                     'direction': {'descending', 'd', 'ascending', 'a'},
-                                    'max_results': {int()}
+                                    'max_results': {float()}
                                     }
         else:
             allowable_parameters = {'action': {'sort_by_node_count'},
