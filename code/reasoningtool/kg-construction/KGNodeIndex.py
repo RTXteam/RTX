@@ -15,7 +15,7 @@ import ReasoningUtilities as RU
 #from RTXConfiguration import RTXConfiguration
 
 # Testing and debugging flags
-DEBUG = True
+DEBUG = False
 TESTSUFFIX = ""
 #TESTSUFFIX = "_test2"
 
