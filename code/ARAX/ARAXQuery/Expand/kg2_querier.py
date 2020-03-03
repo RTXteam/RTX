@@ -28,8 +28,10 @@ class KG2Querier:
     def answer_query(self, query_graph):
         """
         This function answers a query using KG2.
-        :param query_graph: A query graph, in Translator API standard format.
-        :return: A knowledge graph containing the answers to the queries.
+        :param query_graph: A Translator API standard query graph.
+        :return: An (almost) Translator API standard knowledge graph containing all of the nodes and edges returned from
+        KG2 as results for that query. ('Almost' standard in that kg.edges and kg.nodes are dictionaries rather than
+        lists.)
         """
         self.__generate_cypher_to_run(query_graph)
         if not self.response.status == 'OK':
@@ -64,9 +66,9 @@ class KG2Querier:
     def __run_cypher_in_neo4j(self):
         self.response.debug("Sending cypher query to KG2 neo4j")
         try:
-            rtxConfig = RTXConfiguration()
-            rtxConfig.live="KG2"
-            driver = GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
+            rtx_config = RTXConfiguration()
+            rtx_config.live = "KG2"
+            driver = GraphDatabase.driver(rtx_config.neo4j_bolt, auth=(rtx_config.neo4j_username, rtx_config.neo4j_password))
             with driver.session() as session:
                 self.answer_results = session.run(self.cypher_query_to_get_results).data()
                 self.answer_kg = session.run(self.cypher_query_to_get_kg).data()
@@ -91,48 +93,13 @@ class KG2Querier:
 
         # Create swagger model nodes based on our results and add to final knowledge graph
         for node in self.answer_kg.get('nodes'):
-            new_node = Node()
-            new_node.id = node.get('id')
-            new_node.description = node.get('description')
-            new_node.uri = node.get('iri')
-            node_type = node.get('category_label')
-            new_node.type = node_type if type(node_type) is list else [node_type]  # Must be list per API standard
-
-            # Handle different name/symbol properties in KG2 vs. KG1
-            if new_node.id.startswith("UniProt"):  # Largely only UniProtKB nodes seem to have 'symbols' as names in KG2
-                new_node.name = node.get('full_name')
-                new_node.symbol = node.get('name')
-            else:
-                new_node.name = node.get('name')
-
-            # Tack the query node ID that this node corresponds to onto it (needed for processing down the line)
-            new_node.qnode_id = query_id_map['nodes'].get(new_node.id)
-            if not new_node.qnode_id:
-                self.response.warning(f"Node {new_node.id} is missing a qnode_id")
-
-            self.final_kg['nodes'][new_node.id] = new_node
+            swagger_node = self.__create_swagger_node_from_neo4j_node(node, query_id_map)
+            self.final_kg['nodes'][swagger_node.id] = swagger_node
 
         # Create swagger model edges based on our results and add to final knowledge graph
         for edge in self.answer_kg.get('edges'):
-            new_edge = Edge()
-            new_edge.id = edge.get('id')
-            new_edge.type = edge.get('simplified_edge_label')
-            new_edge.relation = edge.get('relation')
-            new_edge.source_id = edge.get('subject')
-            new_edge.target_id = edge.get('object')
-            new_edge.publications = edge.get('publications')
-            new_edge.provided_by = edge.get('provided_by')
-            new_edge.is_defined_by = "ARAX/KG2"
-
-            negated_string = edge.get('negated')
-            new_edge.negated = True if negated_string.lower() == "true" else False
-
-            # Tack the query edge ID that this edge corresponds to onto it (needed for processing down the line)
-            new_edge.qedge_id = query_id_map['edges'].get(new_edge.id)
-            if not new_edge.qedge_id:
-                self.response.warning(f"Edge {new_edge.id} is missing a qedge_id")
-
-            self.final_kg['edges'][new_edge.id] = new_edge
+            swagger_edge = self.__create_swagger_edge_from_neo4j_edge(edge, query_id_map)
+            self.final_kg['edges'][swagger_edge.id] = swagger_edge
 
     def __create_query_id_map(self):
         query_id_map = {'nodes': dict(), 'edges': dict()}
@@ -152,3 +119,53 @@ class KG2Querier:
 
         # TODO: Later adjust for the possibility of the same node/edge having more than one qnode/qedge ID
         return query_id_map
+
+    def __create_swagger_node_from_neo4j_node(self, neo4j_node, query_id_map):
+        swagger_node = Node()
+
+        # Loop through all properties on our swagger model node and attempt to fill them out using neo4j node
+        for node_property in swagger_node.to_dict():
+            value = neo4j_node.get(node_property)
+            setattr(swagger_node, node_property, value)
+
+        if swagger_node.uri is None:
+            swagger_node.uri = neo4j_node.get('iri')  # URI is called 'IRI' in KG2 currently
+
+        # Convert node 'type' from string to list (currently string in KG2, but API standard says list)
+        if type(swagger_node.type) is not list:
+            swagger_node.type = [swagger_node.type]
+
+        # Fill out the 'symbol' property (only really relevant for nodes from UniProtKB)
+        if swagger_node.symbol is None and swagger_node.id.lower().startswith("uniprot"):
+            swagger_node.symbol = neo4j_node.get('name')
+            swagger_node.name = neo4j_node.get('full_name')
+
+        # Tack the query node ID that this node corresponds to onto it (needed for processing down the line)
+        swagger_node.qnode_id = query_id_map['nodes'].get(swagger_node.id)
+        if not swagger_node.qnode_id:
+            self.response.warning(f"Node {swagger_node.id} is missing a qnode_id")
+
+        return swagger_node
+
+    def __create_swagger_edge_from_neo4j_edge(self, neo4j_edge, query_id_map):
+        swagger_edge = Edge()
+
+        # Loop through all properties on our swagger model edge and attempt to fill them out using neo4j edge
+        for edge_property in swagger_edge.to_dict():
+            value = neo4j_edge.get(edge_property)
+            setattr(swagger_edge, edge_property, value)
+
+        # Convert the 'negated' property from string to boolean
+        if type(swagger_edge.negated) is str:
+            swagger_edge.negated = True if neo4j_edge.get('negated').lower() == "true" else False
+
+        # Indicate what knowledge source this edge comes from
+        if swagger_edge.is_defined_by is None:
+            swagger_edge.is_defined_by = "ARAX/KG2"
+
+        # Tack the query edge ID that this edge corresponds to onto it (needed for processing down the line)
+        swagger_edge.qedge_id = query_id_map['edges'].get(swagger_edge.id)
+        if not swagger_edge.qedge_id:
+            self.response.warning(f"Edge {swagger_edge.id} is missing a qedge_id")
+
+        return swagger_edge
