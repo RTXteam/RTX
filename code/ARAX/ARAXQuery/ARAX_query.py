@@ -734,6 +734,18 @@ def main():
             "filter_results(action=limit_number_of_results, max_results=5)",
             "return(message=true, store=false)",
             ] } }
+    elif params.example_number == 102:  # add pubmed id's
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:1227, id=n00)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00)",
+            "overlay(action=add_node_pmids, max_num=15)",
+            "resultify(ignore_edge_direction=true, force_isset_false=[n01])",
+            "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
+            "return(message=true, store=false)"
+        ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return
@@ -815,6 +827,35 @@ def main():
     #         i+=1
     #     print(value_list)
     #     print([len(r.edge_bindings) for r in message.results])
+    # if params.example_number == 102:
+    #     import math
+    #     node_values = {}
+    #     # iterate over the nodes find the attribute values
+    #     for node in message.knowledge_graph.nodes:  # iterate over the nodes
+    #         node_values[str(node.id)] = {'value': None, 'type': node.type}
+    #         if hasattr(node, 'node_attributes'):  # check if they have attributes
+    #             if node.node_attributes:  # if there are any node attributes
+    #                 for attribute in node.node_attributes:  # for each attribute
+    #                     if attribute.name == 'pubmed_ids':  # check if it's the desired one
+    #                         node_values[str(node.id)] = {'value': attribute.value.count("PMID"), 'type': node.type}
+    #     if True:
+    #         value_list=[-math.inf]*len(message.results)
+    #     else:
+    #         value_list=[math.inf]*len(message.results)
+    #     i = 0
+    #     type_flag = False
+    #     for result in message.results:
+    #         for binding in result.node_bindings:
+    #             if node_values[binding.kg_id]['value'] is not None:
+    #                 if not type_flag or (type_flag and params['node_type'] == node_values[binding.kg_id]['type']):
+    #                     if abs(value_list[i]) == math.inf:
+    #                         value_list[i] = node_values[binding.kg_id]['value']
+    #                     else:
+    #                         # this will take the sum off all nodes with the attribute if we want to change to max edit this line
+    #                         value_list[i] += node_values[binding.kg_id]['value']
+    #         i+=1
+    #     print(value_list)
+    #     #print([len(r.node_bindings) for r in message.results])
         
 
     if True:

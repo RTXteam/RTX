@@ -140,7 +140,10 @@ class SortResults:
                     if node.node_attributes:  # if there are any node attributes
                         for attribute in node.node_attributes:  # for each attribute
                             if attribute.name == params['node_attribute']:  # check if it's the desired one
-                                node_values[str(node.id)] = {'value': attribute.value, 'type': node.type}
+                                if attribute.name == 'pubmed_ids':
+                                    node_values[str(node.id)] = {'value': attribute.value.count("PMID"), 'type': node.type}
+                                else:
+                                    node_values[str(node.id)] = {'value': attribute.value, 'type': node.type}
             if params['descending']:
                 value_list=[-math.inf]*len(self.message.results)
             else:
