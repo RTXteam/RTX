@@ -230,22 +230,18 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
             standard_kg.edges.append(edge)
         return standard_kg
 
-    def __copy_qedge(self, qedge):
+    def __copy_qedge(self, old_qedge):
         new_qedge = QEdge()
-        new_qedge.id = qedge.id
-        new_qedge.type = qedge.type
-        new_qedge.negated = qedge.negated
-        new_qedge.relation = qedge.relation
-        new_qedge.source_id = qedge.source_id
-        new_qedge.target_id = qedge.target_id
+        for edge_property in new_qedge.to_dict():
+            value = getattr(old_qedge, edge_property)
+            setattr(new_qedge, edge_property, value)
         return new_qedge
 
-    def __copy_qnode(self, qnode):
+    def __copy_qnode(self, old_qnode):
         new_qnode = QNode()
-        new_qnode.id = qnode.id
-        new_qnode.curie = qnode.curie
-        new_qnode.type = qnode.type
-        new_qnode.is_set = qnode.is_set
+        for node_property in new_qnode.to_dict():
+            value = getattr(old_qnode, node_property)
+            setattr(new_qnode, node_property, value)
         return new_qnode
 
 ##########################################################################################
@@ -265,7 +261,7 @@ def main():
         "create_message",
         # "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
         # "add_qnode(id=n01, type=protein, is_set=true)",
-        # "add_qedge(id=e00, type=physically_interacts_with, source_id=n00, target_id=n01)",
+        # "add_qedge(id=e00, source_id=n00, target_id=n01, type=molecularly_interacts_with)",
         # "add_qnode(id=n00, curie=DOID:14330)",  # parkinson's
         # "add_qnode(id=n01, type=protein, is_set=True)",
         # "add_qnode(id=n02, type=chemical_substance)",
@@ -281,9 +277,9 @@ def main():
         "add_qnode(id=n02, type=phenotypic_feature)",
         "add_qedge(id=e00, source_id=n01, target_id=n00)",
         "add_qedge(id=e01, source_id=n01, target_id=n02)",
-        "expand(edge_id=e00, kp=ARAX/KG2)",
+        "expand(edge_id=e00)",
         "expand(edge_id=e01)",
-        # "expand(edge_id=e00, kp=ARAX/KG1)",
+        # "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
         "return(message=true, store=false)",
     ]
 
@@ -329,4 +325,6 @@ def main():
     print(response.show(level=Response.DEBUG))
     # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph)),sort_keys=True,indent=2))
 
-if __name__ == "__main__": main()
+
+if __name__ == "__main__":
+    main()
