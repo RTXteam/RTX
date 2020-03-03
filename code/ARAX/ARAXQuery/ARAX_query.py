@@ -381,11 +381,13 @@ class ARAXQuery:
             from ARAX_overlay import ARAXOverlay
             from ARAX_filter_kg import ARAXFilterKG
             from ARAX_resultify import ARAXResultify
+            from ARAX_filter_results import ARAXFilterResults
             expander = ARAXExpander()
             filter = ARAXFilter()
             overlay = ARAXOverlay()
             filter_kg = ARAXFilterKG()
             resultifier = ARAXResultify()
+            filter_results = ARAXFilterResults()
 
             #### Process each action in order
             action_stats = { }
@@ -419,6 +421,8 @@ class ARAXQuery:
                     result = overlay.apply(message, action['parameters'])
                 elif action['command'] == 'filter_kg':  # recognize the filter_kg command
                     result = filter_kg.apply(message, action['parameters'])
+                elif action['command'] == 'filter_results':  # recognize the filter_kg command
+                    result = filter_results.apply(message, action['parameters'])
                 else:
                     response.error(f"Unrecognized command {action['command']}", error_code="UnrecognizedCommand")
                     return response
@@ -712,6 +716,24 @@ def main():
             "expand(edge_id=e00)",
             "return(message=true, store=false)"
         ]}}  # returns response of "OK" with the info: QueryGraphReasoner found no results for this query graph
+    elif params.example_number == 101:  # test of filter results code
+        query = { "previous_message_processing_plan": { "processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:14330, id=n00)",
+            "add_qnode(type=protein, is_set=true, id=n01)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
+            "expand(edge_id=[e00,e01])",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
+            "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
+            "resultify(ignore_edge_direction=true, force_isset_false=[n02])",
+            "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=d, max_results=20)",
+            #"filter_results(action=sort_by_edge_count, direction=a)",
+            "filter_results(action=limit_number_of_results, max_results=5)",
+            "return(message=true, store=false)",
+            ] } }
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return
@@ -762,6 +784,39 @@ def main():
     #for node in message.knowledge_graph.nodes:
     #    print(f"{node.name} {node.type[0]}")
     #     print(node.qnode_id)
+
+    
+    # if params.example_number == 101:
+    #     import math
+    #     edge_values = {}
+    #     # iterate over the edges find the attribute values
+    #     for edge in message.knowledge_graph.edges:  # iterate over the edges
+    #         edge_values[str(edge.id)] = {'value': None, 'type': edge.type}
+    #         if hasattr(edge, 'edge_attributes'):  # check if they have attributes
+    #             if edge.edge_attributes:  # if there are any edge attributes
+    #                 for attribute in edge.edge_attributes:  # for each attribute
+    #                     if attribute.name == 'jaccard_index':  # check if it's the desired one
+    #                         edge_values[str(edge.id)] = {'value': attribute.value, 'type': edge.type}
+    #     if True:
+    #         value_list=[-math.inf]*len(message.results)
+    #     else:
+    #         value_list=[math.inf]*len(message.results)
+    #     i = 0
+    #     type_flag = False
+    #     for result in message.results:
+    #         for binding in result.edge_bindings:
+    #             if edge_values[binding.kg_id]['value'] is not None:
+    #                 if not type_flag or (type_flag and params['edge_type'] == edge_values[binding.kg_id]['type']):
+    #                     if abs(value_list[i]) == math.inf:
+    #                         value_list[i] = edge_values[binding.kg_id]['value']
+    #                     else:
+    #                         # this will take the sum off all edges with the attribute if we want to change to max edit this line
+    #                         value_list[i] += edge_values[binding.kg_id]['value']
+    #         i+=1
+    #     print(value_list)
+    #     print([len(r.edge_bindings) for r in message.results])
+        
+
     if True:
         proteins = []
         for node in message.knowledge_graph.nodes:
