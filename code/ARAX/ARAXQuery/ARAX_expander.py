@@ -114,7 +114,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         """
         This function extracts the portion of the original query graph (stored in message.query_graph) that this current
         expand() call will expand, based on the query edge ID(s) specified.
-        :param qedge_ids_to_expand: A single qedge_id (str) OR a list of qedge_ids
+        :param qedge_ids_to_expand: A single qedge_id (str) OR a list of qedge_ids.
         :return: A query graph, in Translator API standard format.
         """
         self.response.info("Extracting sub query graph to expand")
@@ -134,7 +134,8 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
             for qedge_id in qedge_ids_to_expand:
                 # Make sure this query edge ID actually exists in the larger query graph
                 if not any(edge.id == qedge_id for edge in query_graph.edges):
-                    self.response.error(f"An edge with ID '{qedge_id}' does not exist in Message.QueryGraph", error_code="UnknownValue")
+                    self.response.error(f"An edge with ID '{qedge_id}' does not exist in Message.QueryGraph",
+                                        error_code="UnknownValue")
                 else:
                     # Grab this query edge and its two nodes
                     qedge_to_expand = next(edge for edge in query_graph.edges if edge.id == qedge_id)
@@ -145,17 +146,18 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
                     new_qedge = self.__copy_qedge(qedge_to_expand)
                     sub_query_graph.edges.append(new_qedge)
 
+                    # Add (copies of) this edge's two nodes to our new query sub graph
                     for qnode in qnodes:
                         new_qnode = self.__copy_qnode(qnode)
 
                         # Handle case where query node is a set and we need to use answers from a prior Expand()
                         if new_qnode.is_set:
-                            curies_of_kg_nodes_with_this_qnode_id = [node.id for node_key, node in self.message.knowledge_graph['nodes'].items()
+                            curies_of_kg_nodes_with_this_qnode_id = [node.id for node_key, node in
+                                                                     self.message.knowledge_graph['nodes'].items()
                                                                      if node.qnode_id == new_qnode.id]
                             if len(curies_of_kg_nodes_with_this_qnode_id):
                                 new_qnode.curie = curies_of_kg_nodes_with_this_qnode_id
 
-                        # Add this node to our query sub graph if it's not already in there
                         if not any(node.id == new_qnode.id for node in sub_query_graph.nodes):
                             sub_query_graph.nodes.append(new_qnode)
 
@@ -167,8 +169,8 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         added later on.) If no KP was specified, KG1 is used by default. (Eventually it will be possible to automatically
         determine which KP to use.)
         :param query_graph: A Translator API standard query graph.
-        :param kp_to_use: The knowledge provider to fulfill this query with.
-        :return: An (almost) Translator API standard knowledge graph.
+        :param kp_to_use: A string representing the knowledge provider to fulfill this query with.
+        :return: An (almost) Translator API standard knowledge graph (dictionary version).
         """
         valid_kps = ['ARAX/KG2', 'ARAX/KG1']
 
@@ -193,8 +195,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         """
         This function merges a knowledge graph into the overarching knowledge graph (stored in message.knowledge_graph).
         It prevents duplicate nodes/edges in the merged kg.
-        :param knowledge_graph: A knowledge graph, in (almost) Translator API standard format (kg.nodes and kg.edges are
-        dictionaries rather than lists).
+        :param knowledge_graph: An (almost) Translator API standard knowledge graph (dictionary version).
         :return: None
         """
         self.response.info("Merging answer knowledge graph into Message.KnowledgeGraph")
@@ -215,6 +216,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
             # Check if this is a duplicate edge
             if existing_edges.get(edge_key):
                 # TODO: Add additional query edge ID onto this edge (if different)?
+                # TODO: Fix how we're identifying edges (edge.id doesn't work when using multiple KPs)
                 pass
             else:
                 existing_edges[edge_key] = edge
@@ -334,8 +336,8 @@ def main():
             return response
 
     #### Show the final response
-    print(response.show(level=Response.DEBUG))
     # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph)),sort_keys=True,indent=2))
+    print(response.show(level=Response.DEBUG))
 
 
 if __name__ == "__main__":
