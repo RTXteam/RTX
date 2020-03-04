@@ -92,7 +92,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
             return response
 
         # Then answer that query using specified knowledge provider
-        answer_knowledge_graph = self.__answer_query(query_sub_graph)
+        answer_knowledge_graph = self.__answer_query(query_sub_graph, self.parameters['kp'])
         if response.status != 'OK':
             return response
 
@@ -115,7 +115,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         This function extracts the portion of the original query graph (stored in message.query_graph) that this current
         expand() call will expand, based on the query edge ID(s) specified.
         :param qedge_ids_to_expand: A single qedge_id (str) OR a list of qedge_ids
-        :return: A query graph, in Translator API format
+        :return: A query graph, in Translator API standard format.
         """
         self.response.info("Extracting sub query graph to expand")
         query_graph = self.message.query_graph
@@ -161,33 +161,40 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
 
         return sub_query_graph
 
-    def __answer_query(self, query_graph):
+    def __answer_query(self, query_graph, kp_to_use):
         """
         This function answers a query using the specified knowledge provider (KG1 or KG2 for now, with other KPs to be
-        added later on.) If no KP was specified, KG1 is used by default.
+        added later on.) If no KP was specified, KG1 is used by default. (Eventually it will be possible to automatically
+        determine which KP to use.)
         :param query_graph: A Translator API standard query graph.
-        :return: A knowledge graph containing all the answers to the query.
+        :param kp_to_use: The knowledge provider to fulfill this query with.
+        :return: An (almost) Translator API standard knowledge graph.
         """
-        kp_to_use = self.parameters['kp']
-        querier = None
-        # TODO: Add some way of catching when an invalid knowledge provider is entered
+        valid_kps = ['ARAX/KG2', 'ARAX/KG1']
 
-        if kp_to_use == 'ARAX/KG2':
-            from Expand.kg2_querier import KG2Querier
-            querier = KG2Querier(self.response)
+        if kp_to_use in valid_kps or kp_to_use is None:
+            querier = None
+            if kp_to_use == 'ARAX/KG2':
+                from Expand.kg2_querier import KG2Querier
+                querier = KG2Querier(self.response)
+            else:
+                from Expand.kg1_querier import KG1Querier
+                querier = KG1Querier(self.response)
+
+            self.response.info(f"Sending sub query graph to {type(querier).__name__}: {query_graph.to_dict()}")
+            answer_knowledge_graph = querier.answer_query(query_graph)
+            return answer_knowledge_graph
         else:
-            from Expand.kg1_querier import KG1Querier
-            querier = KG1Querier(self.response)
-
-        self.response.info(f"Sending sub query graph to {type(querier).__name__}: {query_graph.to_dict()}")
-        answer_knowledge_graph = querier.answer_query(query_graph)
-        return answer_knowledge_graph
+            self.response.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are: "
+                                f"{', '.join(valid_kps)} (or you can omit this parameter).", error_code="UnknownValue")
+            return None
 
     def __merge_answer_kg_into_message_kg(self, knowledge_graph):
         """
         This function merges a knowledge graph into the overarching knowledge graph (stored in message.knowledge_graph).
         It prevents duplicate nodes/edges in the merged kg.
-        :param knowledge_graph: A knowledge graph, in Translator API format.
+        :param knowledge_graph: A knowledge graph, in (almost) Translator API standard format (kg.nodes and kg.edges are
+        dictionaries rather than lists).
         :return: None
         """
         self.response.info("Merging answer knowledge graph into Message.KnowledgeGraph")
@@ -274,13 +281,16 @@ def main():
         # "add_qnode(type=disease, is_set=true, id=n02)",
         # "add_qedge(source_id=n01, target_id=n00, id=e00)",
         # "add_qedge(source_id=n01, target_id=n02, id=e01)",
-        "add_qnode(id=n00, curie=DOID:824)",
-        "add_qnode(id=n01, type=protein, is_set=True)",
-        "add_qnode(id=n02, type=phenotypic_feature)",
+        # "add_qnode(id=n00, curie=DOID:824)",  # periodontitis
+        # "add_qnode(id=n01, type=protein, is_set=True)",
+        # "add_qnode(id=n02, type=phenotypic_feature)",
+        # "add_qedge(id=e00, source_id=n01, target_id=n00)",
+        # "add_qedge(id=e01, source_id=n01, target_id=n02)",
+        "add_qnode(id=n00, curie=DOID:0060227)",  # Adams-Oliver
+        "add_qnode(id=n01, type=protein)",
         "add_qedge(id=e00, source_id=n01, target_id=n00)",
-        "add_qedge(id=e01, source_id=n01, target_id=n02)",
-        "expand(edge_id=e00, kp=ARAX/KG2)",
-        "expand(edge_id=e01, kp=ARAX/KG2)",
+        "expand(edge_id=e00)",
+        # "expand(edge_id=e01, kp=ARAX/KG2)",
         # "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
         "return(message=true, store=false)",
     ]
