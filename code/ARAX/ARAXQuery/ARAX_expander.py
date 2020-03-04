@@ -133,32 +133,39 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
 
             for qedge_id in qedge_ids_to_expand:
                 # Make sure this query edge ID actually exists in the larger query graph
-                if not any(edge.id == qedge_id for edge in query_graph.edges):
+                if not any(qedge.id == qedge_id for qedge in query_graph.edges):
                     self.response.error(f"An edge with ID '{qedge_id}' does not exist in Message.QueryGraph",
                                         error_code="UnknownValue")
                 else:
                     # Grab this query edge and its two nodes
-                    qedge_to_expand = next(edge for edge in query_graph.edges if edge.id == qedge_id)
+                    qedge_to_expand = next(qedge for qedge in query_graph.edges if qedge.id == qedge_id)
                     qnode_ids = [qedge_to_expand.source_id, qedge_to_expand.target_id]
-                    qnodes = [node for node in query_graph.nodes if node.id in qnode_ids]
+                    qnodes = [qnode for qnode in query_graph.nodes if qnode.id in qnode_ids]
 
                     # Add (a copy of) this edge to our new query sub graph
                     new_qedge = self.__copy_qedge(qedge_to_expand)
-                    sub_query_graph.edges.append(new_qedge)
+                    if not any(qedge.id == new_qedge.id for qedge in sub_query_graph.edges):
+                        sub_query_graph.edges.append(new_qedge)
+
+                    # Check for (unusual) case in which this edge has already been expanded in a prior Expand() call
+                    edge_has_already_been_expanded = False
+                    if any(node.qnode_id == qnodes[0].id for node in self.message.knowledge_graph['nodes'].values()) and \
+                            any(node.qnode_id == qnodes[1].id for node in self.message.knowledge_graph['nodes'].values()):
+                        edge_has_already_been_expanded = True
 
                     # Add (copies of) this edge's two nodes to our new query sub graph
                     for qnode in qnodes:
                         new_qnode = self.__copy_qnode(qnode)
 
-                        # Handle case where query node is a set and we need to use answers from a prior Expand()
-                        if new_qnode.is_set:
-                            curies_of_kg_nodes_with_this_qnode_id = [node.id for node_key, node in
-                                                                     self.message.knowledge_graph['nodes'].items()
+                        # Handle case where we need to use nodes found in a prior Expand() as the curie for this qnode
+                        if not new_qnode.curie and not edge_has_already_been_expanded:
+                            curies_of_kg_nodes_with_this_qnode_id = [node.id for node in
+                                                                     self.message.knowledge_graph['nodes'].values()
                                                                      if node.qnode_id == new_qnode.id]
-                            if len(curies_of_kg_nodes_with_this_qnode_id):
+                            if curies_of_kg_nodes_with_this_qnode_id:
                                 new_qnode.curie = curies_of_kg_nodes_with_this_qnode_id
 
-                        if not any(node.id == new_qnode.id for node in sub_query_graph.nodes):
+                        if not any(qnode.id == new_qnode.id for qnode in sub_query_graph.nodes):
                             sub_query_graph.nodes.append(new_qnode)
 
         return sub_query_graph
@@ -273,11 +280,11 @@ def main():
         # "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
         # "add_qnode(id=n01, type=protein, is_set=true)",
         # "add_qedge(id=e00, source_id=n00, target_id=n01, type=molecularly_interacts_with)",
-        # "add_qnode(id=n00, curie=DOID:14330)",  # parkinson's
-        # "add_qnode(id=n01, type=protein, is_set=True)",
-        # "add_qnode(id=n02, type=chemical_substance)",
-        # "add_qedge(id=e00, source_id=n01, target_id=n00, type=gene_associated_with_condition)",
-        # "add_qedge(id=e01, source_id=n01, target_id=n02, type=physically_interacts_with)",
+        "add_qnode(id=n00, curie=DOID:14330)",  # parkinson's
+        "add_qnode(id=n01, type=protein, is_set=True)",
+        "add_qnode(id=n02, type=chemical_substance)",
+        "add_qedge(id=e00, source_id=n01, target_id=n00)",
+        "add_qedge(id=e01, source_id=n01, target_id=n02)",
         # "add_qnode(curie=DOID:8398, id=n00)",  # osteoarthritis
         # "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
         # "add_qnode(type=disease, is_set=true, id=n02)",
@@ -288,9 +295,10 @@ def main():
         # "add_qnode(id=n02, type=phenotypic_feature)",
         # "add_qedge(id=e00, source_id=n01, target_id=n00)",
         # "add_qedge(id=e01, source_id=n01, target_id=n02)",
-        "add_qnode(id=n00, curie=DOID:0060227)",  # Adams-Oliver
-        "add_qnode(id=n01, type=protein)",
-        "add_qedge(id=e00, source_id=n01, target_id=n00)",
+        # "add_qnode(id=n00, curie=DOID:0060227)",  # Adams-Oliver
+        # "add_qnode(id=n01, type=protein)",
+        # "add_qedge(id=e00, source_id=n01, target_id=n00)",
+        "expand(edge_id=e00, kp=ARAX/KG2)",
         "expand(edge_id=e00)",
         # "expand(edge_id=e01, kp=ARAX/KG2)",
         # "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
