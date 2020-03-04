@@ -2,6 +2,8 @@
 import sys
 import os
 import traceback
+import json
+import ast
 
 from neo4j import GraphDatabase
 
@@ -145,36 +147,54 @@ class KG2Querier:
             self.response.warning(f"Node {swagger_node.id} is missing a qnode_id")
 
         # Add all additional properties on KG2 nodes as swagger NodeAttribute objects
-        additional_kg2_properties = ['publications', 'provided_by', 'deprecated', 'synonym', 'category', 'update_date']
-        for property_name in additional_kg2_properties:
-            property_value = neo4j_node.get(property_name)
-            if property_value is not None and property_value != [] and property_value != "[]":
-                new_node_attribute = NodeAttribute()
-                new_node_attribute.name = property_name
-                new_node_attribute.value = property_value
-                swagger_node.node_attributes.append(new_node_attribute)
+        additional_kg2_node_properties = ['publications', 'provided_by', 'deprecated', 'synonym', 'category',
+                                          'category_label', 'update_date']
+        node_attributes = self.__create_swagger_attributes("node", additional_kg2_node_properties, neo4j_node)
+        swagger_node.node_attributes += node_attributes
 
         return swagger_node
 
     def __create_swagger_edge_from_neo4j_edge(self, neo4j_edge, query_id_map):
         swagger_edge = Edge()
 
-        # Loop through all properties on our swagger model edge and attempt to fill them out using neo4j edge
-        for edge_property in swagger_edge.to_dict():
-            value = neo4j_edge.get(edge_property)
-            setattr(swagger_edge, edge_property, value)
-
-        # Convert the 'negated' property from string to boolean
-        if type(swagger_edge.negated) is str:
-            swagger_edge.negated = True if neo4j_edge.get('negated').lower() == "true" else False
-
-        # Indicate what knowledge source this edge comes from
-        if swagger_edge.is_defined_by is None:
-            swagger_edge.is_defined_by = "ARAX/KG2"
+        swagger_edge.id = neo4j_edge.get('id')
+        swagger_edge.type = neo4j_edge.get('type')
+        swagger_edge.source_id = neo4j_edge.get('subject')
+        swagger_edge.target_id = neo4j_edge.get('object')
+        swagger_edge.relation = neo4j_edge.get('relation')
+        swagger_edge.publications = ast.literal_eval(neo4j_edge.get('publications'))
+        swagger_edge.provided_by = neo4j_edge.get('provided_by')
+        swagger_edge.negated = ast.literal_eval(neo4j_edge.get('negated'))
+        swagger_edge.is_defined_by = "ARAX/KG2"
+        swagger_edge.edge_attributes = []
 
         # Tack the query edge ID that this edge corresponds to onto it (needed for processing down the line)
         swagger_edge.qedge_id = query_id_map['edges'].get(swagger_edge.id)
         if not swagger_edge.qedge_id:
             self.response.warning(f"Edge {swagger_edge.id} is missing a qedge_id")
 
+        # Add additional properties on KG2 edges as swagger EdgeAttribute objects
+        additional_kg2_edge_properties = ['publications_info', 'relation_curie', 'simplified_relation',
+                                          'simplified_relation_curie', 'edge_label', 'simplified_edge_label']
+        edge_attributes = self.__create_swagger_attributes("edge", additional_kg2_edge_properties, neo4j_edge)
+        swagger_edge.edge_attributes += edge_attributes
+
         return swagger_edge
+
+    def __create_swagger_attributes(self, object_type, property_names, neo4j_object):
+        new_attributes = []
+        for property_name in property_names:
+            property_value = neo4j_object.get(property_name)
+            if type(property_value) is str:
+                if (property_value.startswith('[') and property_value.endswith(']')) or \
+                        (property_value.startswith('{') and property_value.endswith('}')) or \
+                        property_value.lower() == "true" or property_value.lower() == "false":
+                    property_value = ast.literal_eval(property_value)
+
+            if property_value is not None and property_value != {} and property_value != []:
+                swagger_attribute = NodeAttribute() if object_type == "node" else EdgeAttribute()
+                swagger_attribute.name = property_name
+                swagger_attribute.value = property_value
+                new_attributes.append(swagger_attribute)
+
+        return new_attributes
