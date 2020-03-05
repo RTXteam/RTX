@@ -614,14 +614,14 @@ def main():
             "create_message",
             "add_qnode(name=DOID:14330, id=n00)",
             "add_qnode(type=protein, is_set=true, id=n01)",
-            "add_qnode(type=chemical_substance, is_set=true, id=n02)",
+            "add_qnode(type=chemical_substance, id=n02)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
             "expand(edge_id=[e00,e01])",
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
-            "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
-            "resultify(ignore_edge_direction=true, force_isset_false=[n02])",
+            #"filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",  # can be removed, but shows we can filter by Knowledge provider
+            "resultify(ignore_edge_direction=true)",
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 13:  # add pubmed id's
@@ -785,6 +785,7 @@ def main():
     #print(response.show(level=Response.DEBUG))
     print(response.show(level=Response.DEBUG))
     print(f"Number of results: {len(message.results)}")
+    print(f"Drugs names in the results: {[x.name for x in message.knowledge_graph.nodes if 'chemical_substance' in x.type]}")
     #print(json.dumps(ast.literal_eval(repr(message.results[0])), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.results)), sort_keys=True, indent=2))
     #print(set.union(*[set(x.qg_id for x in r.edge_bindings if x.qg_id.startswith('J')) for r in message.results]))
