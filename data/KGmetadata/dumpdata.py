@@ -23,7 +23,7 @@ def dump_name_description_KG2(file_name, session, write_mode):
 	"""
 	query = "match (n) return properties(n) as p, labels(n) as l"
 	res = session.run(query)
-	with open(file_name, write_mode) as fid:
+	with open(file_name, write_mode, encoding="utf-8") as fid:
 		for item in res:
 			prop_dict = item['p']
 			labels = item['l']
