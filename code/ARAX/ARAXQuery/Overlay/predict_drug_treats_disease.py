@@ -63,7 +63,6 @@ class PredictDrugTreatsDisease:
                 if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
                     value = probability[0]
                 edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the edge attribute
-                print(value)
                 if edge_attribute and value != 0:
                     added_flag = True
                     # make the edge, add the attribute
@@ -76,8 +75,8 @@ class PredictDrugTreatsDisease:
                     is_defined_by = "https://arax.rtx.ai/api/rtx/v1/ui/"
                     defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
                     provided_by = "ARAX/RTX"
-                    confidence = probability
-                    weight = probability  # TODO: could make the actual value of the attribute
+                    confidence = value
+                    weight = value  # TODO: could make the actual value of the attribute
                     source_id = source_curie
                     target_id = target_curie
 
