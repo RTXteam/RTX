@@ -595,6 +595,7 @@ def main():
             "add_qnode(type=chemical_substance, is_set=true, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
+            "overlay(action=predict_drug_treats_disease)",
             "return(message=true, store=false)",
         ]}}
     elif params.example_number == 11:  # test overlay with overlay_clinical_info, paired_concept_freq via COHD
@@ -767,6 +768,23 @@ def main():
             "filter_kg(action=remove_nodes_by_property, node_property=uri, property_value=https://www.ebi.ac.uk/chembl/compound/inspect/CHEMBL2111164)",
             "return(message=true, store=false)"
         ]}}
+    elif params.example_number == 1212:  # dry run of example 2 with the machine learning model
+        query = { "previous_message_processing_plan": { "processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:14330, id=n00)",
+            "add_qnode(type=protein, is_set=true, id=n01)",
+            "add_qnode(type=chemical_substance, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
+            "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
+            "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",  # can be removed, but shows we can filter by Knowledge provider
+            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_edge_type=P1)",  # overlay by probability that the drug treats the disease
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=sort_by_edge_attribute, edge_attribute=probability_drug_treats, direction=descending, max_results=15)",  # filter by the probability that the drug treats the disease. cilnidipine prob=0.8976650309881645 which is the 9th highest (so top 10)
+            "return(message=true, store=false)",
+            ] } }
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return
@@ -814,6 +832,10 @@ def main():
                 vals.append((attr.name, attr.value))
 
     print(sorted(Counter(vals).items(), key=lambda x:float(x[0][1])))
+
+    for edge in message.knowledge_graph.edges:
+        if edge.source_id == "CHEMBL.COMPOUND:CHEMBL452076" or edge.target_id == "CHEMBL.COMPOUND:CHEMBL452076":
+            print(edge)
 
     #for node in message.knowledge_graph.nodes:
     #    print(f"{node.name} {node.type[0]}")
