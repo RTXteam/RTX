@@ -63,6 +63,7 @@ class PredictDrugTreatsDisease:
                 if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
                     value = probability[0]
                 edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the edge attribute
+                print(value)
                 if edge_attribute and value != 0:
                     added_flag = True
                     # make the edge, add the attribute
