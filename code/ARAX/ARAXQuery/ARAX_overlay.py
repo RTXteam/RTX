@@ -22,7 +22,8 @@ class ARAXOverlay:
             'compute_ngd',
             'overlay_clinical_info',
             'compute_jaccard',
-            'add_node_pmids'
+            'add_node_pmids',
+            'predict_drug_treats_disease'
         }
         self.report_stats = True
 
@@ -169,9 +170,17 @@ class ARAXOverlay:
 
         # A little function to describe what this thing does
         if describe:
-            brief_description = """`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
-            This information is then included as an edge attribute.
-            You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_edge_type`."""
+            brief_description = """
+`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
+This information is then included as an edge attribute.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_edge_type`.
+Use cases include:
+
+* focusing in on edges that are well represented in the literature
+* focusing in on edges that are under-represented in the literature
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+"""
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
@@ -271,6 +280,8 @@ Note that this DSL command has quite a bit of functionality, so a brief descript
 * `observed_expected_ratio`: If set to `true`, returns the natural logarithm of the ratio between the observed count and expected count of edge source and target nodes. Expected count is calculated from the single concept frequencies and assuming independence between the concepts. This information is added as an edge attribute.
 * `chi_square`: If set to `true`, returns the chi-square statistic and p-value between pairs of concepts indicated by edge source/target nodes and adds these values as edge attributes. The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and assuming independence between concepts. P-value is calculated with 1 DOF.
 * `virtual_edge_type`: Overlays the requested information on virtual edges (ones that don't exist in the query graph).
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
 """
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
@@ -312,14 +323,25 @@ Note that this DSL command has quite a bit of functionality, so a brief descript
         Allowable parameters: {max_num: {'all', 'any integer'}}
         :return:
         """
+        message = self.message
+        parameters = self.parameters
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
-        allowable_parameters = {'action': {'add_node_pmids'}, 'max_num': {'all', int()}}
+        #allowable_parameters = {'action': {'add_node_pmids'}, 'max_num': {'all', int()}}
+
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
+            allowable_parameters = {'action': {'add_node_pmids'}, 'max_num': {'all', int()}}
+        else:
+            allowable_parameters = {'action': {'add_node_pmids'}, 'max_num': {'all','any integer'}}
 
         # A little function to describe what this thing does
         if describe:
-            brief_description = """`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
-            This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
-            either labeling in the metadata or has the MeSH term occurring in the abstract of the article."""
+            brief_description = """
+`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
+This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+"""
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
@@ -385,11 +407,14 @@ Note that this DSL command has quite a bit of functionality, so a brief descript
         # print(allowable_parameters)
         # A little function to describe what this thing does
         if describe:
-            brief_description = """`compute_jaccard` creates virtual edges and adds an edge attribute containing the following information:
-            The jaccard similarity measures how many `intermediate_node_id`'s are shared in common between each `start_node_id` and `target_node_id`.
-            This is used for purposes such as "find me all drugs (`start_node_id`) that have many proteins (`intermediate_node_id`) in common with this disease (`end_node_id`)."
-            This can be used for downstream filtering to concentrate on relevant bioentities.
-            """
+            brief_description = """
+`compute_jaccard` creates virtual edges and adds an edge attribute containing the following information:
+The jaccard similarity measures how many `intermediate_node_id`'s are shared in common between each `start_node_id` and `target_node_id`.
+This is used for purposes such as "find me all drugs (`start_node_id`) that have many proteins (`intermediate_node_id`) in common with this disease (`end_node_id`)."
+This can be used for downstream filtering to concentrate on relevant bioentities.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+"""
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
@@ -407,6 +432,60 @@ Note that this DSL command has quite a bit of functionality, so a brief descript
         from Overlay.compute_jaccard import ComputeJaccard
         JAC = ComputeJaccard(self.response, self.message, self.parameters)
         response = JAC.compute_jaccard()
+        return response
+
+    def __predict_drug_treats_disease(self, describe=False):
+        """
+        Utilizes a machine learning model to predict if a given chemical_substance treats a disease or phenotypic_feature
+        Allowable parameters:
+        :return:
+        """
+        message = self.message
+        parameters = self.parameters
+        # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
+            allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_edge_type': {self.parameters['virtual_edge_type'] if 'virtual_edge_type' in self.parameters else None},
+                                    'source_qnode_id': set([x.id for x in self.message.query_graph.nodes if x.type == "chemical_substance"]),
+                                    'target_qnode_id': set([x.id for x in self.message.query_graph.nodes if (x.type == "disease" or x.type == "phenotypic_feature")])
+                                    }
+        else:
+            allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_edge_type': {'optional: any string label (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
+                                    'source_qnode_id': {'optional: a specific source query node id corresponding to a disease query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
+                                    'target_qnode_id': {'optional: a specific target query node id corresponding to a disease or phenotypic_feature query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'}
+                                    }
+
+        # A little function to describe what this thing does
+        if describe:
+            brief_description = """
+`predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substanct treats a disease/phenotypic feature.
+For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
+The drug-disease treatment prediction probability is included as an edge attribute.
+You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified source/target qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). If the later, virtual edges are added with the type specified by `virtual_edge_type`.
+Use cases include:
+
+* Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
+* For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_edge_type=P1)`
+* Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_drug_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_id=n02)`
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+"""
+            allowable_parameters['brief_description'] = brief_description
+            return allowable_parameters
+
+        # Make sure only allowable parameters and values have been passed
+        self.check_params(allowable_parameters)
+        # return if bad parameters have been passed
+        if self.response.status != 'OK':
+            return self.response
+        # Check if all virtual edge params have been provided properly
+        self.check_virtual_edge_params(allowable_parameters)
+        if self.response.status != 'OK':
+            return self.response
+
+        # now do the call out to NGD
+        from Overlay.predict_drug_treats_disease import PredictDrugTreatsDisease
+        PDTD = PredictDrugTreatsDisease(self.response, self.message, parameters)
+        response = PDTD.predict_drug_treats_disease()
         return response
 
 ##########################################################################################
@@ -429,13 +508,14 @@ def main():
 
     actions_list = [
         #"overlay(action=compute_ngd)",
-        "overlay(action=compute_ngd, virtual_edge_type=NGD1, source_qnode_id=n00, target_qnode_id=n01)",
+        #"overlay(action=compute_ngd, virtual_edge_type=NGD1, source_qnode_id=n00, target_qnode_id=n01)",
         #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
         # "overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
         #"overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
         #"overlay(action=add_node_pmids)",
         #"overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
         #"overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
+        "overlay(action=predict_drug_treats_disease, source_qnode_id=n01, target_qnode_id=n00, virtual_edge_type=P1)",
         "return(message=true,store=false)"
     ]
 
@@ -460,7 +540,7 @@ def main():
     #message_dict = araxdb.getMessage(10)
     #message_dict = araxdb.getMessage(36)  # test COHD obs/exp, via ARAX_query.py 16
     #message_dict = araxdb.getMessage(39)  # ngd virtual edge test
-    message_dict = araxdb.getMessage(29)
+    message_dict = araxdb.getMessage(1)
 
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger
@@ -507,9 +587,10 @@ def main():
     #for edge in message.knowledge_graph.edges:
     #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
     #        print(edge.edge_attributes.pop().value)
-    print(f"Message: {json.dumps(ast.literal_eval(repr(message)), sort_keys=True, indent=2)}")
+    #print(f"Message: {json.dumps(ast.literal_eval(repr(message)), sort_keys=True, indent=2)}")
+    #print(message)
     print(f"KG edges: {json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2)}")
-    print(response.show(level=Response.DEBUG))
+    #print(response.show(level=Response.DEBUG))
     print("Yet you still got here")
     #print(actions_parser.parse(actions_list))
 
