@@ -323,8 +323,15 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         Allowable parameters: {max_num: {'all', 'any integer'}}
         :return:
         """
+        message = self.message
+        parameters = self.parameters
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
-        allowable_parameters = {'action': {'add_node_pmids'}, 'max_num': {'all', int()}}
+        #allowable_parameters = {'action': {'add_node_pmids'}, 'max_num': {'all', int()}}
+
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
+            allowable_parameters = {'action': {'add_node_pmids'}, 'max_num': {'all', int()}}
+        else:
+            allowable_parameters = {'action': {'add_node_pmids'}, 'max_num': {'all','any integer'}}
 
         # A little function to describe what this thing does
         if describe:
