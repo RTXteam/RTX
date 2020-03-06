@@ -476,13 +476,14 @@ def main():
 
     actions_list = [
         #"overlay(action=compute_ngd)",
-        "overlay(action=compute_ngd, virtual_edge_type=NGD1, source_qnode_id=n00, target_qnode_id=n01)",
+        #"overlay(action=compute_ngd, virtual_edge_type=NGD1, source_qnode_id=n00, target_qnode_id=n01)",
         #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
         # "overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
         #"overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
         #"overlay(action=add_node_pmids)",
         #"overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
         #"overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
+        "overlay(action=predict_drug_treats_disease)",
         "return(message=true,store=false)"
     ]
 
@@ -554,7 +555,7 @@ def main():
     #for edge in message.knowledge_graph.edges:
     #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
     #        print(edge.edge_attributes.pop().value)
-    print(f"Message: {json.dumps(ast.literal_eval(repr(message)), sort_keys=True, indent=2)}")
+    #print(f"Message: {json.dumps(ast.literal_eval(repr(message)), sort_keys=True, indent=2)}")
     print(f"KG edges: {json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2)}")
     print(response.show(level=Response.DEBUG))
     print("Yet you still got here")

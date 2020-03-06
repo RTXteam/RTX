@@ -61,7 +61,7 @@ class PredictDrugTreatsDisease:
                 # create the edge attribute if it can be
                 probability = self.pred.prob_single('ChEMBL:' + source_curie[22:], target_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
                 if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
-                    value = probability
+                    value = probability[0]
                 edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the edge attribute
                 if edge_attribute and value != 0:
                     added_flag = True
@@ -118,11 +118,11 @@ class PredictDrugTreatsDisease:
                     if "chemical_substance" in source_types and (("disease" in target_types) or ("phenotypic_feature" in target_types)):
                         probability = self.pred.prob_single('ChEMBL:' + source_curie[22:], target_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
                         if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
-                            value = probability
+                            value = probability[0]
                     elif "chemical_substance" in target_types and (("disease" in source_types) or ("phenotypic_feature" in source_types)):
                         probability = self.pred.prob_single('ChEMBL:' + target_curie[22:], source_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
                         if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
-                            value = probability
+                            value = probability[0]
                     else:
                         continue
                     if value != 0:
