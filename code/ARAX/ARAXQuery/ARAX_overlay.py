@@ -22,7 +22,8 @@ class ARAXOverlay:
             'compute_ngd',
             'overlay_clinical_info',
             'compute_jaccard',
-            'add_node_pmids'
+            'add_node_pmids',
+            'predict_drug_treats_disease'
         }
         self.report_stats = True
 
