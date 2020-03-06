@@ -1,5 +1,3 @@
-# This class will overlay the normalized google distance on a message (all edges)
-#!/bin/env python3
 import sys
 import os
 import traceback
@@ -13,8 +11,8 @@ from swagger_server.models.edge_attribute import EdgeAttribute
 from swagger_server.models.edge import Edge
 from swagger_server.models.q_edge import QEdge
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
-import NormGoogleDistance
-
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from Overlay.predictor.predictor import predictor
 
 class PredictDrugTreatsDisease:
 
@@ -24,6 +22,9 @@ class PredictDrugTreatsDisease:
         self.message = message
         self.parameters = parameters
         self.global_iter = 0
+        self.pred = predictor(model_file='Overlay/predictor/LogModel.pkl')
+        self.pred.import_file(None, graph_file='Overlay/predictor/rel_max.emb.gz',
+                              map_file='Overlay/predictor/map.csv')
 
     def predict_drug_treats_disease(self):
         """
@@ -35,46 +36,29 @@ class PredictDrugTreatsDisease:
         self.response.debug(f"Computing drug disease treatment probability based on a machine learning model")
         self.response.info(f"Computing drug disease treatment probability based on a machine learning model: See [this publication](https://doi.org/10.1101/765305) for more details about how this is accomplished.")
 
-        self.response.info("Converting CURIE identifiers to human readable names")
-        node_curie_to_name = dict()
-        try:
-            for node in self.message.knowledge_graph.nodes:
-                node_curie_to_name[node.id] = node.name
-        except:
-            tb = traceback.format_exc()
-            error_type, error, _ = sys.exc_info()
-            self.response.error(f"Something went wrong when converting names")
-            self.response.error(tb, error_code=error_type.__name__)
-
-
-        self.response.warning(f"Utilizing API calls to NCBI eUtils, so this may take a while...")
-        name = "ngd"
+        name = "probability_drug_treats"
         type = "float"
-        value = self.parameters['default_value']
-        url = "https://arax.rtx.ai/api/rtx/v1/ui/#/PubmedMeshNgd"
+        value = 0  # this will be the default value. If the model returns 0, or the default is there, don't include that edge
+        url = "https://arax.rtx.ai/api/rtx/v1/ui/"
 
         # if you want to add virtual edges, identify the source/targets, decorate the edges, add them to the KG, and then add one to the QG corresponding to them
         if 'virtual_edge_type' in parameters:
             source_curies_to_decorate = set()
             target_curies_to_decorate = set()
-            curies_to_names = dict()
             # identify the nodes that we should be adding virtual edges for
             for node in self.message.knowledge_graph.nodes:
                 if hasattr(node, 'qnode_id'):
                     if node.qnode_id == parameters['source_qnode_id']:
-                        source_curies_to_decorate.add(node.id)
-                        curies_to_names[
-                            node.id] = node.name
+                        if "chemical_substance" in node.type:
+                            source_curies_to_decorate.add(node.id)
                     if node.qnode_id == parameters['target_qnode_id']:
-                        target_curies_to_decorate.add(node.id)
-                        curies_to_names[
-                            node.id] = node.name
+                        if "disease" in node.type or "phenotypic_feature" in node.type:
+                            target_curies_to_decorate.add(node.id)
+
             added_flag = False  # check to see if any edges where added
             # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
             for (source_curie, target_curie) in itertools.product(source_curies_to_decorate, target_curies_to_decorate):
                 # create the edge attribute if it can be
-                source_name = curies_to_names[source_curie]
-                target_name = curies_to_names[target_curie]
                 ngd_value = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name])
                 if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                     value = ngd_value
