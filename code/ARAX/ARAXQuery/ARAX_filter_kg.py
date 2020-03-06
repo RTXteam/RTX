@@ -23,6 +23,7 @@ class ARAXFilterKG:
             'remove_edges_by_attribute',
             'remove_edges_by_property',
             'remove_nodes_by_type',
+            'remove_nodes_by_property',
             'remove_orphaned_nodes',
         }
         self.report_stats = True  # Set this to False when ready to go to production, this is only for debugging purposes
@@ -439,6 +440,81 @@ This can be applied to an arbitrary knowledge graph as possible node types are c
         from Filter_KG.remove_nodes import RemoveNodes
         RN = RemoveNodes(self.response, self.message, node_params)
         response = RN.remove_nodes_by_type()
+        return response
+
+    def __remove_nodes_by_property(self, describe=False):
+        """
+        Removes nodes from the KG.
+        Allowable parameters: {'node_type': str, 
+                                'node_property': str,
+                                'direction': {'above', 'below'}}
+        :return:
+        """
+        message = self.message
+        parameters = self.parameters
+
+        # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
+            # check if all required parameters are provided
+            if 'node_property' not in parameters.keys():
+                self.response.error(f"The parameter node_property must be provided to remove nodes by propery, allowable parameters include: {set([key for x in self.message.knowledge_graph.nodes for key, val in x.to_dict().items() if type(val) == str])}")
+            if self.response.status != 'OK':
+                return self.response
+            known_values = set()
+            if 'node_property' in parameters:
+                for node in message.knowledge_graph.nodes:
+                    if hasattr(node, parameters['node_property']):
+                        value = node.to_dict()[parameters['node_property']]
+                        if type(value) == str:
+                            known_values.add(value)
+            allowable_parameters = {'action': {'remove_nodes_by_property'},
+                                    'node_property': set([key for x in self.message.knowledge_graph.nodes for key, val in x.to_dict().items() if type(val) == str]),
+                                    'property_value': known_values
+                                }
+        else:
+            allowable_parameters = {'action': {'remove_nodes_by_property'},
+                                    'node_property': {'an node property'},
+                                    'property_value':{'a value for the node property'}
+                                }
+
+        # A little function to describe what this thing does
+        if describe:
+            brief_description = """
+`remove_nodes_by_property` removes nodes from the knowledge graph (KG) based on a given node property.
+Use cases include:
+                
+* removing all nodes that were provided by a certain knowledge provider (KP) via `node_property=provided, property_value=Pharos` to remove all nodes provided by the KP Pharos.
+* removing all nodes provided by another ARA via `node_property=is_defined_by, property_value=ARAX/RTX`
+* etc. etc.
+                
+This can be applied to an arbitrary knowledge graph as possible node properties are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+"""
+            allowable_parameters['brief_description'] = brief_description
+            return allowable_parameters
+
+        # Make sure only allowable parameters and values have been passed
+        self.check_params(allowable_parameters)
+        # return if bad parameters have been passed
+        if self.response.status != 'OK':
+            return self.response
+
+        node_params = self.parameters
+
+        if 'node_property' not in node_params:
+            self.response.error(
+                f"node property must be provided, allowable properties are: {list(allowable_parameters['node_property'])}",
+                error_code="UnknownValue")
+        if 'property_value' not in node_params:
+            self.response.error(
+                f"Property value must be provided, allowable values are: {list(allowable_parameters['property_value'])}",
+                error_code="UnknownValue")
+        if self.response.status != 'OK':
+            return self.response
+
+        # now do the call out to NGD
+        from Filter_KG.remove_nodes import RemoveNodes
+        RN = RemoveNodes(self.response, self.message, node_params)
+        response = RN.remove_nodes_by_property()
         return response
 
     def __remove_orphaned_nodes(self, describe=False):

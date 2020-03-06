@@ -92,7 +92,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
             return response
 
         # Then answer that query using specified knowledge provider
-        answer_knowledge_graph = self.__answer_query(query_sub_graph)
+        answer_knowledge_graph = self.__answer_query(query_sub_graph, self.parameters['kp'])
         if response.status != 'OK':
             return response
 
@@ -114,8 +114,8 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         """
         This function extracts the portion of the original query graph (stored in message.query_graph) that this current
         expand() call will expand, based on the query edge ID(s) specified.
-        :param qedge_ids_to_expand: A single qedge_id (str) OR a list of qedge_ids
-        :return: A query graph, in Translator API format
+        :param qedge_ids_to_expand: A single qedge_id (str) OR a list of qedge_ids.
+        :return: A query graph, in Translator API standard format.
         """
         self.response.info("Extracting sub query graph to expand")
         query_graph = self.message.query_graph
@@ -133,61 +133,76 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
 
             for qedge_id in qedge_ids_to_expand:
                 # Make sure this query edge ID actually exists in the larger query graph
-                if not any(edge.id == qedge_id for edge in query_graph.edges):
-                    self.response.error(f"An edge with ID '{qedge_id}' does not exist in Message.QueryGraph", error_code="UnknownValue")
+                if not any(qedge.id == qedge_id for qedge in query_graph.edges):
+                    self.response.error(f"An edge with ID '{qedge_id}' does not exist in Message.QueryGraph",
+                                        error_code="UnknownValue")
                 else:
                     # Grab this query edge and its two nodes
-                    qedge_to_expand = next(edge for edge in query_graph.edges if edge.id == qedge_id)
+                    qedge_to_expand = next(qedge for qedge in query_graph.edges if qedge.id == qedge_id)
                     qnode_ids = [qedge_to_expand.source_id, qedge_to_expand.target_id]
-                    qnodes = [node for node in query_graph.nodes if node.id in qnode_ids]
+                    qnodes = [qnode for qnode in query_graph.nodes if qnode.id in qnode_ids]
 
                     # Add (a copy of) this edge to our new query sub graph
                     new_qedge = self.__copy_qedge(qedge_to_expand)
-                    sub_query_graph.edges.append(new_qedge)
+                    if not any(qedge.id == new_qedge.id for qedge in sub_query_graph.edges):
+                        sub_query_graph.edges.append(new_qedge)
 
+                    # Check for (unusual) case in which this edge has already been expanded in a prior Expand() call
+                    edge_has_already_been_expanded = False
+                    if any(node.qnode_id == qnodes[0].id for node in self.message.knowledge_graph['nodes'].values()) and \
+                            any(node.qnode_id == qnodes[1].id for node in self.message.knowledge_graph['nodes'].values()):
+                        edge_has_already_been_expanded = True
+
+                    # Add (copies of) this edge's two nodes to our new query sub graph
                     for qnode in qnodes:
                         new_qnode = self.__copy_qnode(qnode)
 
-                        # Handle case where query node is a set and we need to use answers from a prior Expand()
-                        if new_qnode.is_set:
-                            curies_of_kg_nodes_with_this_qnode_id = [node.id for node_key, node in self.message.knowledge_graph['nodes'].items()
+                        # Handle case where we need to use nodes found in a prior Expand() as the curie for this qnode
+                        if not new_qnode.curie and not edge_has_already_been_expanded:
+                            curies_of_kg_nodes_with_this_qnode_id = [node.id for node in
+                                                                     self.message.knowledge_graph['nodes'].values()
                                                                      if node.qnode_id == new_qnode.id]
-                            if len(curies_of_kg_nodes_with_this_qnode_id):
+                            if curies_of_kg_nodes_with_this_qnode_id:
                                 new_qnode.curie = curies_of_kg_nodes_with_this_qnode_id
 
-                        # Add this node to our query sub graph if it's not already in there
-                        if not any(node.id == new_qnode.id for node in sub_query_graph.nodes):
+                        if not any(qnode.id == new_qnode.id for qnode in sub_query_graph.nodes):
                             sub_query_graph.nodes.append(new_qnode)
 
         return sub_query_graph
 
-    def __answer_query(self, query_graph):
+    def __answer_query(self, query_graph, kp_to_use):
         """
         This function answers a query using the specified knowledge provider (KG1 or KG2 for now, with other KPs to be
-        added later on.) If no KP was specified, KG1 is used by default.
+        added later on.) If no KP was specified, KG1 is used by default. (Eventually it will be possible to automatically
+        determine which KP to use.)
         :param query_graph: A Translator API standard query graph.
-        :return: A knowledge graph containing all the answers to the query.
+        :param kp_to_use: A string representing the knowledge provider to fulfill this query with.
+        :return: An (almost) Translator API standard knowledge graph (dictionary version).
         """
-        kp_to_use = self.parameters['kp']
-        querier = None
-        # TODO: Add some way of catching when an invalid knowledge provider is entered
+        valid_kps = ['ARAX/KG2', 'ARAX/KG1']
 
-        if kp_to_use == 'ARAX/KG2':
-            from Expand.kg2_querier import KG2Querier
-            querier = KG2Querier(self.response)
+        if kp_to_use in valid_kps or kp_to_use is None:
+            querier = None
+            if kp_to_use == 'ARAX/KG2':
+                from Expand.kg2_querier import KG2Querier
+                querier = KG2Querier(self.response)
+            else:
+                from Expand.kg1_querier import KG1Querier
+                querier = KG1Querier(self.response)
+
+            self.response.info(f"Sending sub query graph to {type(querier).__name__}: {query_graph.to_dict()}")
+            answer_knowledge_graph = querier.answer_query(query_graph)
+            return answer_knowledge_graph
         else:
-            from Expand.kg1_querier import KG1Querier
-            querier = KG1Querier(self.response)
-
-        self.response.info(f"Sending sub query graph to {type(querier).__name__}: {query_graph.to_dict()}")
-        answer_knowledge_graph = querier.answer_query(query_graph)
-        return answer_knowledge_graph
+            self.response.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are: "
+                                f"{', '.join(valid_kps)} (or you can omit this parameter).", error_code="UnknownValue")
+            return None
 
     def __merge_answer_kg_into_message_kg(self, knowledge_graph):
         """
         This function merges a knowledge graph into the overarching knowledge graph (stored in message.knowledge_graph).
         It prevents duplicate nodes/edges in the merged kg.
-        :param knowledge_graph: A knowledge graph, in Translator API format.
+        :param knowledge_graph: An (almost) Translator API standard knowledge graph (dictionary version).
         :return: None
         """
         self.response.info("Merging answer knowledge graph into Message.KnowledgeGraph")
@@ -208,6 +223,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
             # Check if this is a duplicate edge
             if existing_edges.get(edge_key):
                 # TODO: Add additional query edge ID onto this edge (if different)?
+                # TODO: Fix how we're identifying edges (edge.id doesn't work when using multiple KPs)
                 pass
             else:
                 existing_edges[edge_key] = edge
@@ -264,23 +280,27 @@ def main():
         # "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
         # "add_qnode(id=n01, type=protein, is_set=true)",
         # "add_qedge(id=e00, source_id=n00, target_id=n01, type=molecularly_interacts_with)",
-        # "add_qnode(id=n00, curie=DOID:14330)",  # parkinson's
-        # "add_qnode(id=n01, type=protein, is_set=True)",
-        # "add_qnode(id=n02, type=chemical_substance)",
-        # "add_qedge(id=e00, source_id=n01, target_id=n00, type=gene_associated_with_condition)",
-        # "add_qedge(id=e01, source_id=n01, target_id=n02, type=physically_interacts_with)",
+        "add_qnode(id=n00, curie=DOID:14330)",  # parkinson's
+        "add_qnode(id=n01, type=protein, is_set=True)",
+        "add_qnode(id=n02, type=chemical_substance)",
+        "add_qedge(id=e00, source_id=n01, target_id=n00)",
+        "add_qedge(id=e01, source_id=n01, target_id=n02)",
         # "add_qnode(curie=DOID:8398, id=n00)",  # osteoarthritis
         # "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
         # "add_qnode(type=disease, is_set=true, id=n02)",
         # "add_qedge(source_id=n01, target_id=n00, id=e00)",
         # "add_qedge(source_id=n01, target_id=n02, id=e01)",
-        "add_qnode(id=n00, curie=DOID:824)",
-        "add_qnode(id=n01, type=protein, is_set=True)",
-        "add_qnode(id=n02, type=phenotypic_feature)",
-        "add_qedge(id=e00, source_id=n01, target_id=n00)",
-        "add_qedge(id=e01, source_id=n01, target_id=n02)",
+        # "add_qnode(id=n00, curie=DOID:824)",  # periodontitis
+        # "add_qnode(id=n01, type=protein, is_set=True)",
+        # "add_qnode(id=n02, type=phenotypic_feature)",
+        # "add_qedge(id=e00, source_id=n01, target_id=n00)",
+        # "add_qedge(id=e01, source_id=n01, target_id=n02)",
+        # "add_qnode(id=n00, curie=DOID:0060227)",  # Adams-Oliver
+        # "add_qnode(id=n01, type=protein)",
+        # "add_qedge(id=e00, source_id=n01, target_id=n00)",
         "expand(edge_id=e00, kp=ARAX/KG2)",
-        "expand(edge_id=e01, kp=ARAX/KG2)",
+        "expand(edge_id=e00)",
+        # "expand(edge_id=e01, kp=ARAX/KG2)",
         # "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
         "return(message=true, store=false)",
     ]
@@ -324,8 +344,8 @@ def main():
             return response
 
     #### Show the final response
-    print(response.show(level=Response.DEBUG))
     # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph)),sort_keys=True,indent=2))
+    print(response.show(level=Response.DEBUG))
 
 
 if __name__ == "__main__":
