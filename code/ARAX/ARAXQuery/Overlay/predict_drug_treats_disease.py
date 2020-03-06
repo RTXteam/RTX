@@ -49,11 +49,11 @@ class PredictDrugTreatsDisease:
             for node in self.message.knowledge_graph.nodes:
                 if hasattr(node, 'qnode_id'):
                     if node.qnode_id == parameters['source_qnode_id']:
-                        if "chemical_substance" in node.type:
-                            source_curies_to_decorate.add(node.id)
+                        #if "chemical_substance" in node.type:  # this has already been checked by ARAX_overlay
+                        source_curies_to_decorate.add(node.id)
                     if node.qnode_id == parameters['target_qnode_id']:
-                        if "disease" in node.type or "phenotypic_feature" in node.type:
-                            target_curies_to_decorate.add(node.id)
+                        #if "disease" in node.type or "phenotypic_feature" in node.type:
+                        target_curies_to_decorate.add(node.id)
 
             added_flag = False  # check to see if any edges where added
             # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
@@ -95,9 +95,10 @@ class PredictDrugTreatsDisease:
                 edge_type = parameters['virtual_edge_type']
                 relation = name
                 q_edge = QEdge(id=edge_type, type=edge_type, relation=relation,
-                               source_id=parameters['source_qnode_id'], target_id=parameters[
-                        'target_qnode_id'])  # TODO: ok to make the id and type the same thing?
+                               source_id=parameters['source_qnode_id'], target_id=parameters['target_qnode_id'])  # TODO: ok to make the id and type the same thing?
                 self.message.query_graph.edges.append(q_edge)
+            return self.response
+
         else:  # you want to add it for each edge in the KG
             # iterate over KG edges, add the information
             try:
