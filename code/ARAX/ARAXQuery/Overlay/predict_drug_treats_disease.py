@@ -59,11 +59,11 @@ class PredictDrugTreatsDisease:
             # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
             for (source_curie, target_curie) in itertools.product(source_curies_to_decorate, target_curies_to_decorate):
                 # create the edge attribute if it can be
-                ngd_value = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name])
-                if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
-                    value = ngd_value
-                edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the NGD edge attribute
-                if edge_attribute:
+                probability = self.pred.prob_single('ChEMBL:' + source_curie[22:], target_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
+                if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
+                    value = probability
+                edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the edge attribute
+                if edge_attribute and value != 0:
                     added_flag = True
                     # make the edge, add the attribute
 
@@ -75,8 +75,8 @@ class PredictDrugTreatsDisease:
                     is_defined_by = "https://arax.rtx.ai/api/rtx/v1/ui/"
                     defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
                     provided_by = "ARAX/RTX"
-                    confidence = 1.0
-                    weight = None  # TODO: could make the actual value of the attribute
+                    confidence = probability
+                    weight = probability  # TODO: could make the actual value of the attribute
                     source_id = source_curie
                     target_id = target_curie
 
@@ -101,6 +101,11 @@ class PredictDrugTreatsDisease:
         else:  # you want to add it for each edge in the KG
             # iterate over KG edges, add the information
             try:
+                # map curies to types
+                curie_to_type = dict()
+                for node in self.message.knowledge_graph.nodes:
+                    curie_to_type[node.id] = node.type
+                # then iterate over the edges and decorate if appropriate
                 for edge in self.message.knowledge_graph.edges:
                     # Make sure the edge_attributes are not None
                     if not edge.edge_attributes:
@@ -108,19 +113,27 @@ class PredictDrugTreatsDisease:
                     # now go and actually get the NGD
                     source_curie = edge.source_id
                     target_curie = edge.target_id
-                    source_name = node_curie_to_name[source_curie]
-                    target_name = node_curie_to_name[target_curie]
-                    ngd_value = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name])
-                    if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
-                        value = ngd_value
-                    ngd_edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the NGD edge attribute
-                    edge.edge_attributes.append(ngd_edge_attribute)  # append it to the list of attributes
+                    source_types = curie_to_type[source_curie]
+                    target_types = curie_to_type[target_curie]
+                    if "chemical_substance" in source_types and (("disease" in target_types) or ("phenotypic_feature" in target_types)):
+                        probability = self.pred.prob_single('ChEMBL:' + source_curie[22:], target_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
+                        if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
+                            value = probability
+                    elif "chemical_substance" in target_types and (("disease" in source_types) or ("phenotypic_feature" in source_types)):
+                        probability = self.pred.prob_single('ChEMBL:' + target_curie[22:], source_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
+                        if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
+                            value = probability
+                    else:
+                        continue
+                    if value != 0:
+                        edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the attribute
+                        edge.edge_attributes.append(edge_attribute)  # append it to the list of attributes
             except:
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
                 self.response.error(tb, error_code=error_type.__name__)
-                self.response.error(f"Something went wrong adding the NGD edge attributes")
+                self.response.error(f"Something went wrong adding the drug disease treatment probability")
             else:
-                self.response.info(f"NGD values successfully added to edges")
+                self.response.info(f"Drug disease treatment probability successfully added to edges")
 
             return self.response
