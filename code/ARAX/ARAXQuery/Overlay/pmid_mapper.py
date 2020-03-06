@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# This script loops through all the downloaded PubMed xml files and creates a PickleDB mapping each MESH term in
+# 'curie_to_mesh.db' to its corresponding PMIDs.
 
 import os
 import pickledb

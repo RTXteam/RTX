@@ -76,7 +76,14 @@ class ComputeJaccard:
             provided_by = "ARAX/RTX"
             confidence = 1.0
             weight = None  # TODO: could make the jaccard index the weight
-            source_id = source_node_id
+            try:
+                source_id = source_node_id
+            except:
+                tb = traceback.format_exc()
+                error_type, error, _ = sys.exc_info()
+                self.response.error(
+                    f"Source node id: {parameters['start_node_id']} not found in the KG. Perhaps the KG is empty?")
+                self.response.error(tb, error_code=error_type.__name__)
 
             # edge attribute properties
             description = f"Jaccard index based on intermediate query nodes {parameters['intermediate_node_id']}"

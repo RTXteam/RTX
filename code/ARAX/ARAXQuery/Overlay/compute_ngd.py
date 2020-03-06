@@ -13,7 +13,7 @@ from swagger_server.models.edge_attribute import EdgeAttribute
 from swagger_server.models.edge import Edge
 from swagger_server.models.q_edge import QEdge
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
-from NormGoogleDistance import NormGoogleDistance as NGD
+import NormGoogleDistance
 
 
 class ComputeNGD:
@@ -24,6 +24,7 @@ class ComputeNGD:
         self.message = message
         self.parameters = parameters
         self.global_iter = 0
+        self.NGD = NormGoogleDistance.NormGoogleDistance()  # should I be importing here, or before the class? Feel like Eric said avoid global vars...
 
     def compute_ngd(self):
         """
@@ -77,7 +78,7 @@ class ComputeNGD:
                 # create the edge attribute if it can be
                 source_name = curies_to_names[source_curie]
                 target_name = curies_to_names[target_curie]
-                ngd_value = NGD.get_ngd_for_all([source_curie, target_curie], [source_name, target_name])
+                ngd_value = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name])
                 if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                     value = ngd_value
                 edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the NGD edge attribute
@@ -128,7 +129,7 @@ class ComputeNGD:
                     target_curie = edge.target_id
                     source_name = node_curie_to_name[source_curie]
                     target_name = node_curie_to_name[target_curie]
-                    ngd_value = NGD.get_ngd_for_all([source_curie, target_curie], [source_name, target_name])
+                    ngd_value = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name])
                     if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                         value = ngd_value
                     ngd_edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the NGD edge attribute
