@@ -34,12 +34,12 @@ server {
 
     location /.well-known {
     	try_files $uri $uri/ =404;
+        add_header 'Access-Control-Allow-Origin' '*';
     }
     
     location / {
-        add_header 'X-Frame-Options' 'SAMEORIGIN';
-        add_header 'Access-Control-Allow-Origin' '*';
 	proxy_read_timeout 3000s;
+        add_header 'X-Frame-Options' 'SAMEORIGIN';
 
 	include proxy_params;
 	proxy_pass http://localhost:8080;

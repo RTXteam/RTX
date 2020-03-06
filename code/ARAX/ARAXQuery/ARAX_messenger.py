@@ -123,7 +123,7 @@ class ARAXMessenger:
         if describe:
             allowable_parameters['dsl_command'] = '`add_qnode()`'  # can't get this name at run-time, need to manually put it in per https://www.python.org/dev/peps/pep-3130/
             allowable_parameters['brief_description'] = """The `add_qnode` method adds an additional QNode to the QueryGraph in the Message object. Currently
-                when a curie or name is specified, this method will only return success if a matching node is found in the KG1 KGNodeIndex."""
+                when a curie or name is specified, this method will only return success if a matching node is found in the KG1/KG2 KGNodeIndex."""
             return allowable_parameters
 
         #### Define a default response

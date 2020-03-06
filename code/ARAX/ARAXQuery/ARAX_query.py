@@ -716,6 +716,15 @@ def main():
             "expand(edge_id=e00)",
             "return(message=true, store=false)"
         ]}}  # returns response of "OK" with the info: QueryGraphReasoner found no results for this query graph
+    elif params.example_number == 20:  # Now try with KG2 expander
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=CUI:C1452002, id=n00)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00, type=interacts_with)",
+            "expand(edge_id=e00, kp=ARAX/KG2)",
+            "return(message=true, store=false)"
+        ]}}  # returns response of "OK" with the info: QueryGraphReasoner found no results for this query graph
     elif params.example_number == 101:  # test of filter results code
         query = { "previous_message_processing_plan": { "processing_actions": [
             "create_message",
@@ -729,9 +738,9 @@ def main():
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
             "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
             "resultify(ignore_edge_direction=true, force_isset_false=[n02])",
-            "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=d, max_results=20)",
+            "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=d, max_results=15)",
             #"filter_results(action=sort_by_edge_count, direction=a)",
-            "filter_results(action=limit_number_of_results, max_results=5)",
+            #"filter_results(action=limit_number_of_results, max_results=5)",
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 102:  # add pubmed id's
@@ -744,6 +753,17 @@ def main():
             "overlay(action=add_node_pmids, max_num=15)",
             "resultify(ignore_edge_direction=true, force_isset_false=[n01])",
             "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
+            "return(message=true, store=false)"
+        ]}}
+    elif params.example_number == 103:  # add pubmed id's
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:1227, id=n00)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00)",
+            "overlay(action=add_node_pmids, max_num=15)",
+            "filter_kg(action=remove_nodes_by_property, node_property=uri, property_value=https://www.ebi.ac.uk/chembl/compound/inspect/CHEMBL2111164)",
             "return(message=true, store=false)"
         ]}}
     else:
@@ -857,7 +877,8 @@ def main():
     #         i+=1
     #     print(value_list)
     #     #print([len(r.node_bindings) for r in message.results])
-        
+    
+    #print(len(message.knowledge_graph.nodes))
 
     if True:
         proteins = []
