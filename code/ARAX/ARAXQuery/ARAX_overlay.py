@@ -409,6 +409,52 @@ Note that this DSL command has quite a bit of functionality, so a brief descript
         response = JAC.compute_jaccard()
         return response
 
+    def __predict_drug_treats_disease(self, describe=False):
+        """
+        Utilizes a machine learning model to predict if a given chemical_substance treats a disease or phenotypic_feature
+        Allowable parameters:
+        :return:
+        """
+        message = self.message
+        parameters = self.parameters
+        # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
+            allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_edge_type': {self.parameters['virtual_edge_type'] if 'virtual_edge_type' in self.parameters else None},
+                                    'source_qnode_id': set([x.id for x in self.message.query_graph.nodes if x.type == "chemical_substance"]),
+                                    'target_qnode_id': set([x.id for x in self.message.query_graph.nodes if (x.type == "disease" or x.type == "phenotypic_feature")])
+                                    }
+        else:
+            allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_edge_type': {'any string label (optional, otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
+                                    'source_qnode_id': {'a specific source query node id corresponding to a disease query node (optional, otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
+                                    'target_qnode_id': {'a specific target query node id corresponding to a disease or phenotypic_feature query node (optional, otherwise applied to all drug->disease and drug->phenotypic_feature edges)'}
+                                    }
+
+        # A little function to describe what this thing does
+        if describe:
+            brief_description = """
+`predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substanct treats a disease/phenotypic feature.
+For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
+The drug-disease treatment prediction probability is included as an edge attribute.
+You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified source/target qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). If the later, virtual edges are added with the type specified by `virtual_edge_type`."""
+            allowable_parameters['brief_description'] = brief_description
+            return allowable_parameters
+
+        # Make sure only allowable parameters and values have been passed
+        self.check_params(allowable_parameters)
+        # return if bad parameters have been passed
+        if self.response.status != 'OK':
+            return self.response
+        # Check if all virtual edge params have been provided properly
+        self.check_virtual_edge_params(allowable_parameters)
+        if self.response.status != 'OK':
+            return self.response
+
+        # now do the call out to NGD
+        from Overlay.predict_drug_treats_disease import PredictDrugTreatsDisease
+        PDTD = PredictDrugTreatsDisease(self.response, self.message, parameters)
+        response = PDTD.predict_drug_treats_disease()
+        return response
+
 ##########################################################################################
 def main():
     print("start ARAX_overlay")
@@ -460,7 +506,7 @@ def main():
     #message_dict = araxdb.getMessage(10)
     #message_dict = araxdb.getMessage(36)  # test COHD obs/exp, via ARAX_query.py 16
     #message_dict = araxdb.getMessage(39)  # ngd virtual edge test
-    message_dict = araxdb.getMessage(29)
+    message_dict = araxdb.getMessage(1)
 
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger
