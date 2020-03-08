@@ -135,7 +135,6 @@ class ARAXQuery:
             message.query_type_id = query["message"]["query_type_id"]
             message.terms = query["message"]["terms"]
             id = message.id
-            codeString = message.message_code
             #self.log_query(query,message,'new')
             rtxFeedback.addNewMessage(message,query)
             rtxFeedback.disconnect()
@@ -340,20 +339,8 @@ class ARAXQuery:
             response.debug(f"A single Message is ready and in hand")
             message = messages[0]
         else:
-            response.debug(f"Multiple Messages were uploaded or loaded by reference. Proper merging code awaits! Will use just the first one for now.")
-            message = TxMessage.from_dict(messages[0])
-            counter = 1
-            while counter < n_messages:
-                messageToMerge = TxMessage.from_dict(messages[counter])
-                if messageToMerge.reasoner_id is None:
-                    messageToMerge.reasoner_id = "Unknown"
-                #if messageToMerge.reasoner_id != "RTX":
-                #    messageToMerge = self.fix_message(query,messageToMerge,messageToMerge.reasoner_id)
-
-                #finalMessage = self.merge_message(finalMessage,messageToMerge)
-                counter += 1
-            message = ast.literal_eval(repr(message))
-            message = ARAXMessenger().from_dict(message)
+            response.debug(f"Multiple Messages were uploaded or imported by reference. However, proper merging code has not been implmented yet! Will use just the first Message for now.")
+            message = messages[0]
 
         #### Examine the options that were provided and act accordingly
         optionsDict = {}
@@ -365,7 +352,6 @@ class ARAXQuery:
 
 
         #### If there are processing_actions, then fulfill those
-        processing_actions = []
         if envelope.processing_actions:
             response.debug(f"Found processing_actions")
             actions_parser = ActionsParser()
