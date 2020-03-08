@@ -651,7 +651,7 @@ def main():
             "create_message",
             "add_qnode(name=DOID:9406, id=n00)",  # hypopituitarism
             "add_qnode(type=chemical_substance, is_set=true, id=n01)",  # look for all drugs associated with this disease (29 total drugs)
-            "add_qnode(type=protein, is_set=true, id=n02)",   # look for proteins associated with these diseases (240 total proteins)
+            "add_qnode(type=protein, id=n02)",   # look for proteins associated with these diseases (240 total proteins)
             "add_qedge(source_id=n00, target_id=n01, id=e00)",  # get connections
             "add_qedge(source_id=n01, target_id=n02, id=e01)",  # get connections
             "expand(edge_id=[e00,e01])",  # expand the query graph
@@ -660,7 +660,7 @@ def main():
             "filter_kg(action=remove_orphaned_nodes, node_type=protein)",  # remove proteins that got disconnected as a result of this filter action
             "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n01, target_qnode_id=n02)",   # use normalized google distance to find how frequently the protein and the drug are mentioned in abstracts
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=ngd, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",   # remove proteins that are not frequently mentioned together in PubMed abstracts
-            "resultify(ignore_edge_direction=true, force_isset_false=[n02])",
+            "resultify(ignore_edge_direction=true)",
             "return(message=true, store=false)"
         ]}}
     elif params.example_number == 16:  # To test COHD obs/exp ratio
@@ -817,7 +817,7 @@ def main():
             for attr in edge.edge_attributes:
                 vals.append((attr.name, attr.value))
 
-    print(sorted(Counter(vals).items(), key=lambda x:float(x[0][1])))
+    #print(sorted(Counter(vals).items(), key=lambda x:float(x[0][1])))
 
     for edge in message.knowledge_graph.edges:
         if edge.source_id == "CHEMBL.COMPOUND:CHEMBL452076" or edge.target_id == "CHEMBL.COMPOUND:CHEMBL452076":
