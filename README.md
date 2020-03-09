@@ -1,4 +1,4 @@
-# About ARA Expand, the Translator project, and ARAX
+# About the Translator project, Team ARA Expand, and ARAX
 
 We are **ARA Expand**, a team of researchers and software experts working within
 a consortium effort called the **Biomedical Data Translator** program
