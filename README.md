@@ -190,38 +190,38 @@ This subdirectory contains example Jupyter notebooks for using ARAX from softwar
 This subdirectory contains (1) the YAML code that defines the Reasoners Standard
 API and (2) the code for the Reasoners Standard API python object model that is
 used to describe a knowledge graph, query nodes, and results
-[link](code/UI/OpenAPI/python-flask-server).
+[(link)](code/UI/OpenAPI/python-flask-server).
 
 ### subdirectory `code/UI/Feedback`
 
 This subdirectory contains the code for the server-side logging system for the
-RTX web browser-based user interface [link](code/UI/Feedback).
+RTX web browser-based user interface [(link)](code/UI/Feedback).
 
 ### subdirectory `code/UI/interactive`
 
 This subdirectory contains the code for the RTX web browser-based user interface 
-[link](code/UI/interactive).
+[(link)](code/UI/interactive).
 
 ### subdirectory `code/kg2`
 
 This subdirectory contains the code for building the RTX second-generation
-knowledge graph (RTX-KG2) and hosting it in Neo4j [link](code/kg2).
+knowledge graph (RTX-KG2) and hosting it in Neo4j [(link)](code/kg2).
 
 ### subdirectory `code/reasoningtool/kg-construction`
 
 This subdirectory contains the code for building the RTX first-generation
-knowledge graph (RTX-KG1) [link](code/reasoningtool/kg-construction).
+knowledge graph (RTX-KG1) [(link)](code/reasoningtool/kg-construction).
 
 ### subdirectory `code/reasoningtool/SemMedDB`
 
 This subdirectory contains the code for a python interface to an instance of the
 Semantic Medline Database (SemMedDB) that is being hosted in a MySQL database
-[link](code/reasoningtool/SemMedDB).
+[(link)](code/reasoningtool/SemMedDB).
 
 ### subdirectory `code/reasoningtool/QuestionAnswering`
 
 This subdirectory contains the code for parsing and answering questions
-posed to the RTX reasoning tool [link](code/reasoningtool/QuestionAnswering).
+posed to the RTX reasoning tool [(link)](code/reasoningtool/QuestionAnswering).
 
 ### subdirectory `code/reasoningtool/MLDrugRepurposing`
 
@@ -229,12 +229,12 @@ This subdirectory contains the code that is used for the machine-learning
 model for drug repositioning that was described in the article
 *Leveraging distributed biomedical knowledge sources to discover novel uses for known drugs*
 [article](https://doi.org/10.1101/765305) by Womack, McClelland, and Koslicki 
-[link](code/reasoningtool/MLDrugRepurposing).
+[(link)](code/reasoningtool/MLDrugRepurposing).
 
 ### subdirectory `code/autocomplete`
 
 This subdirectory contains the code for the concept autocomplete feature in the
-RTX web browser-based user interface [link](code/autocomplete).
+RTX web browser-based user interface [(link)](code/autocomplete).
 
 ## subdirectory `data`
 
@@ -242,7 +242,7 @@ Text data files for the RTX system that are deployed using git are stored under
 this subdirectory. There are only a few such files because the RTX POC software
 obtaines most of the information that makes up the biomedical knowledge graph by
 RESTfully querying web-based knowledge sources, rather than by loading flat files
-[link](data).
+[(link)](data).
 
 ## Key repository branches
 
