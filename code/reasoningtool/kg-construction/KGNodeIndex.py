@@ -55,14 +55,6 @@ class KGNodeIndex:
             pass
 
 
-    # Delete and create the kgnode table
-    def create_database(self):
-        if DEBUG is True:
-            print("INFO: Creating database "+self.databaseName)
-        self.connection.execute(f"DROP TABLE IF EXISTS kgnode{TESTSUFFIX}")
-        self.connection.execute(f"CREATE TABLE kgnode{TESTSUFFIX}( curie VARCHAR(255), name VARCHAR(255), type VARCHAR(255) )" )
-
-
     # Create and store a database connection
     def connect(self):
         # If already connected, don't need to do it again
@@ -94,21 +86,40 @@ class KGNodeIndex:
         self.connection = None
 
 
+    # Delete and create the kgnode table
+    def create_tables(self):
+        if DEBUG is True:
+            print("INFO: Creating database "+self.databaseName)
+        self.connection.execute(f"DROP TABLE IF EXISTS kgnode{TESTSUFFIX}")
+        self.connection.execute(f"DROP TABLE IF EXISTS kg1node{TESTSUFFIX}")
+        self.connection.execute(f"CREATE TABLE kg1node{TESTSUFFIX}( curie VARCHAR(255), name VARCHAR(255), type VARCHAR(255) )" )
+        self.connection.execute(f"DROP TABLE IF EXISTS kg2node{TESTSUFFIX}")
+        self.connection.execute(f"CREATE TABLE kg2node{TESTSUFFIX}( curie VARCHAR(255), name VARCHAR(255), type VARCHAR(255) )" )
+
+
     # Create the KG node table
-    def create_node_table(self):
+    def populate_table(self, kg_name):
 
-        self.create_database()
+        if kg_name == 'KG1':
+            table_name = 'kg1node'
+            file_suffix = '_KG1'
+        elif kg_name == 'KG2':
+            table_name = 'kg2node'
+            file_suffix = '_KG2'
+        else:
+            print("ERROR: kg_name must be either 'KG1' or 'KG2'")
+            sys.exit(5)
 
-        filename = os.path.dirname(os.path.abspath(__file__)) + "/../../../data/KGmetadata/NodeNamesDescriptions.tsv"
+        filename = os.path.dirname(os.path.abspath(__file__)) + f"/../../../data/KGmetadata/NodeNamesDescriptions{file_suffix}.tsv"
         filesize = os.path.getsize(filename)
         previous_percentage = -1
         bytes_read = 0
 
         lineCounter = 0
         fh = open(filename, 'r', encoding="latin-1", errors="replace")
+        print(f"INFO: Populating table {table_name}")
 
         # Have a dict for items already inserted so that we don't insert them twice
-        # Prefill it with some abbreviations that are too common and we don't want
         namesDict = {}
         rows = []
 
@@ -205,7 +216,7 @@ class KGNodeIndex:
             # Commit every 10000 lines
             percentage = int(bytes_read*100.0/filesize)
             if percentage > previous_percentage:
-                self.connection.executemany(f"INSERT INTO kgnode{TESTSUFFIX}(curie,name,type) values (?,?,?)", rows)
+                self.connection.executemany(f"INSERT INTO {table_name}{TESTSUFFIX}(curie,name,type) values (?,?,?)", rows)
                 self.connection.commit()
                 rows = []
                 previous_percentage = percentage
@@ -216,7 +227,7 @@ class KGNodeIndex:
 
         # Write out the last rows
         if len(rows) > 0:
-            self.connection.executemany(f"INSERT INTO kgnode{TESTSUFFIX}(curie,name,type) values (?,?,?)", rows)
+            self.connection.executemany(f"INSERT INTO {table_name}{TESTSUFFIX}(curie,name,type) values (?,?,?)", rows)
             self.connection.commit()
             print("100..", end='', flush=True)
 
@@ -224,15 +235,29 @@ class KGNodeIndex:
         print("")
 
 
-    def create_index(self):
-        print(f"INFO: Creating INDEX on kgnode{TESTSUFFIX}(name)")
-        self.connection.execute(f"CREATE INDEX idx_name ON kgnode{TESTSUFFIX}(name)")
-        self.connection.execute(f"CREATE INDEX idx_curie ON kgnode{TESTSUFFIX}(curie)")
+    def create_indexes(self, kg_name):
+
+        if kg_name == 'KG1':
+            table_name = 'kg1node'
+        elif kg_name == 'KG2':
+            table_name = 'kg2node'
+        else:
+            print("ERROR: kg_name must be either 'KG1' or 'KG2'")
+            sys.exit(5)
+
+        print(f"INFO: Creating INDEXes on {table_name}{TESTSUFFIX}")
+        self.connection.execute(f"CREATE INDEX idx_{table_name}{TESTSUFFIX}_name ON {table_name}{TESTSUFFIX}(name)")
+        self.connection.execute(f"CREATE INDEX idx_{table_name}{TESTSUFFIX}_curie ON {table_name}{TESTSUFFIX}(curie)")
 
 
-    def get_curies_and_types(self, name):
+    def get_curies_and_types(self, name, kg_name='KG1'):
+
+        table_name = 'kg1node'
+        if kg_name.upper() == 'KG2':
+            table_name = 'kg2node'
+
         cursor = self.connection.cursor()
-        cursor.execute( f"SELECT * FROM kgnode{TESTSUFFIX} WHERE name = ?", (name.upper(),) )
+        cursor.execute( f"SELECT * FROM {table_name}{TESTSUFFIX} WHERE name = ?", (name.upper(),) )
         rows = cursor.fetchall()
         curies_and_types = []
         for row in rows:
@@ -240,9 +265,14 @@ class KGNodeIndex:
         return curies_and_types
 
 
-    def get_curies_and_types_and_names(self, name):
+    def get_curies_and_types_and_names(self, name, kg_name='KG1'):
+
+        table_name = 'kg1node'
+        if kg_name.upper() == 'KG2':
+            table_name = 'kg2node'
+
         cursor = self.connection.cursor()
-        cursor.execute( f"SELECT * FROM kgnode{TESTSUFFIX} WHERE name = ?", (name.upper(),) )
+        cursor.execute( f"SELECT * FROM {table_name}{TESTSUFFIX} WHERE name = ?", (name.upper(),) )
         rows = cursor.fetchall()
         curies_and_types_and_names = []
         for row in rows:
@@ -266,9 +296,14 @@ class KGNodeIndex:
         return curies_and_types_and_names
 
 
-    def get_names(self, curie):
+    def get_names(self, curie, kg_name='KG1'):
+
+        table_name = 'kg1node'
+        if kg_name.upper() == 'KG2':
+            table_name = 'kg2node'
+
         cursor = self.connection.cursor()
-        cursor.execute( f"SELECT * FROM kgnode{TESTSUFFIX} WHERE curie = ?", (curie,) )
+        cursor.execute( f"SELECT * FROM {table_name}{TESTSUFFIX} WHERE curie = ?", (curie,) )
         rows = cursor.fetchall()
 
         # Return a list of curies
@@ -280,8 +315,8 @@ class KGNodeIndex:
         return curies
 
 
-    def get_curies(self, name):
-        curies_and_types = self.get_curies_and_types(name)
+    def get_curies(self, name, kg_name='KG1'):
+        curies_and_types = self.get_curies_and_types(name, kg_name)
 
         if curies_and_types is None:
             return None
@@ -293,9 +328,14 @@ class KGNodeIndex:
         return(curies)
 
 
-    def is_curie_present(self, curie):
+    def is_curie_present(self, curie, kg_name='KG1'):
+
+        table_name = 'kg1node'
+        if kg_name.upper() == 'KG2':
+            table_name = 'kg2node'
+
         cursor = self.connection.cursor()
-        cursor.execute( f"SELECT * FROM kgnode{TESTSUFFIX} WHERE curie = ?", (curie,) )
+        cursor.execute( f"SELECT * FROM {table_name}{TESTSUFFIX} WHERE curie = ?", (curie,) )
         rows = cursor.fetchall()
 
         if len(rows) == 0:
@@ -321,8 +361,11 @@ def main():
 
     # To (re)build
     if args.build:
-        kgNodeIndex.create_node_table()
-        kgNodeIndex.create_index()
+        kgNodeIndex.create_tables()
+        kgNodeIndex.populate_table(kg_name='KG1')
+        kgNodeIndex.create_indexes(kg_name='KG1')
+        kgNodeIndex.populate_table(kg_name='KG2')
+        kgNodeIndex.create_indexes(kg_name='KG2')
 
     # Exit here if tests are not requested
     if not args.test:
@@ -364,6 +407,20 @@ def main():
     for test in tests:
         node_properties = kgNodeIndex.get_curies_and_types_and_names(test)
         print(test+" = "+str(node_properties))
+    t1 = timeit.default_timer()
+    print("Elapsed time: "+str(t1-t0))
+
+
+    print("==== Testing for KG1 and KG2 ============================")
+    tests = ["APS2", "phenylketonuria", "Gauchers disease", "kidney", "HEXA",
+             "UniProtKB:P12004", "fanconi anemia"]
+
+    t0 = timeit.default_timer()
+    for test in tests:
+        curies = kgNodeIndex.get_curies(test)
+        print(test+" in KG1 = "+str(curies))
+        curies = kgNodeIndex.get_curies(test, kg_name='KG2')
+        print(test+" in KG2 = "+str(curies))
     t1 = timeit.default_timer()
     print("Elapsed time: "+str(t1-t0))
 
