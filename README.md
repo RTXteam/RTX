@@ -181,17 +181,21 @@ All software code files for ARAX and RTX are stored under this directory [link](
 
 This subdirectory contains the core software code for ARAX [link](code/ARAX/README.md).
 
+### subdirectory `code/ARAX/Examples`
+
+This subdirectory contains example Jupyter notebooks for using ARAX from software [link](code/ARAX/Examples)
+
 ### subdirectory `code/UI/OpenAPI`
 
 This subdirectory contains (1) the YAML code that defines the Reasoners Standard
 API and (2) the code for the Reasoners Standard API python object model that is
 used to describe a knowledge graph, query nodes, and results
-[link](code/UI/OpenAPI/python-flask-server/README.md).
+[link](code/UI/OpenAPI/python-flask-server).
 
 ### subdirectory `code/UI/Feedback`
 
 This subdirectory contains the code for the server-side logging system for the
-RTX web browser-based user interface [link](code/UI/Feedback/README.md).
+RTX web browser-based user interface [link](code/UI/Feedback).
 
 ### subdirectory `code/UI/interactive`
 
@@ -201,35 +205,36 @@ This subdirectory contains the code for the RTX web browser-based user interface
 ### subdirectory `code/kg2`
 
 This subdirectory contains the code for building the RTX second-generation
-knowledge graph (RTX-KG2) and hosting it in Neo4j [link](code/kg/README.md).
+knowledge graph (RTX-KG2) and hosting it in Neo4j [link](code/kg).
 
 ### subdirectory `code/reasoningtool/kg-construction`
 
 This subdirectory contains the code for building the RTX first-generation
-knowledge graph (RTX-KG1) [link](code/reasoningtool/kg-construction/README.md).
+knowledge graph (RTX-KG1) [link](code/reasoningtool/kg-construction).
 
 ### subdirectory `code/reasoningtool/SemMedDB`
 
 This subdirectory contains the code for a python interface to an instance of the
 Semantic Medline Database (SemMedDB) that is being hosted in a MySQL database
-[link](code/reasoningtool/SemMedDB/README.md).
+[link](code/reasoningtool/SemMedDB).
 
 ### subdirectory `code/reasoningtool/QuestionAnswering`
 
 This subdirectory contains the code for parsing and answering questions
-posed to the RTX reasoning tool [link](code/reasoningtool/QuestionAnswering/README.md).
+posed to the RTX reasoning tool [link](code/reasoningtool/QuestionAnswering).
 
 ### subdirectory `code/reasoningtool/MLDrugRepurposing`
 
 This subdirectory contains the code that is used for the machine-learning
 model for drug repositioning that was described in the article
 *Leveraging distributed biomedical knowledge sources to discover novel uses for known drugs*
-by Womack, McClelland, and Koslicki [link](https://doi.org/10.1101/765305).
+[article](https://doi.org/10.1101/765305) by Womack, McClelland, and Koslicki 
+[link](code/reasoningtool/MLDrugRepurposing).
 
 ### subdirectory `code/autocomplete`
 
 This subdirectory contains the code for the concept autocomplete feature in the
-RTX web browser-based user interface [link](code/autocomplete/README.md).
+RTX web browser-based user interface [link](code/autocomplete).
 
 ## subdirectory `data`
 
@@ -237,7 +242,7 @@ Text data files for the RTX system that are deployed using git are stored under
 this subdirectory. There are only a few such files because the RTX POC software
 obtaines most of the information that makes up the biomedical knowledge graph by
 RESTfully querying web-based knowledge sources, rather than by loading flat files
-[link](data/README.md).
+[link](data).
 
 ## Key repository branches
 
@@ -250,13 +255,26 @@ release of RTX.
 ARAX and RTX are furnished under the MIT open-source software license; see the
 `LICENSE.txt` file for details.
 
+# Disclaimer
+
+Per the MIT license, the ARAX and RTX software are provided "as-is" without
+warranty of any kind. The content of this site and the RTX and ARAX software is
+solely the responsibility of the authors and does not necessarily represent the
+official views of the National Institutes of Health.
+
 # Credits
 
-Many people contributed to the development of ARAX and RTX. A list of code contributors
-can be found under [contributors](graphs/contributors), in addition to the team
-members listed above. Support for the development of RTX was provided by NCATS
-through the Translator program award OT2TR002520.  Support for the development
-of ARAX was provided by NCATS through the Translator program award OT2TR003428.
+Many people contributed to the development of ARAX and RTX. A list of code
+contributors can be found under [contributors](graphs/contributors), in addition
+to the team members listed above. We also acknowledge technical assistance and
+contributions from NCATS staff (Christine Colvis, Noel Southall, Mark Williams,
+Trung Nguyen, Tyler Beck, Sarah Stemann, and Debbi Adelakun), and Arnab Nandi,
+Will Byrd, Greg Rosenblatt, Michael Patton, Chunlei Wu, Kevin Xin, Tom Conlin,
+Harold Solbrig, Matt Brush, Karamarie Fecho, Julie McMurray, Kent Shefchek,
+Chris Bizon, Steve Cox, Patrick Wang, Chris Mungall, and Melissa
+Haendel. Support for the development of RTX was provided by NCATS through the
+Translator program award OT2TR002520.  Support for the development of ARAX was
+provided by NCATS through the Translator program award OT2TR003428.
 
 # Installation and dependencies
 
@@ -288,10 +306,12 @@ Here is the link to documentation on the web API interface to RTX:  [arax.rtx.ai
 
 ## Via Jupyter Notebooks
 
-STEVE TO PUT LINKS HERE
+Three Jupyter notebooks that illustrate how to programmatically use ARAX are provided
+[here](code/ARAX/Examples).
 
 # Links
 
 - [Biomedical Data Translator consortium-wide project information (ncats.nih.gov)](https://ncats.nih.gov/translator/about)
 - [Biomedical Data Translator 2020 funding opportunity announcement (grants.nih.gov)](https://grants.nih.gov/grants/guide/notice-files/NOT-TR-19-028.html)
-- [Biomedical Data Translator open-source software repository (github.com)](https://github.com/NCATS-Tangerine/)
+- [Biomedical Data Translator Feasibility Assessment Phase open-source software repository (github.com)](https://github.com/NCATS-Tangerine/)
+- [Biomedical Data Translator open-source software repository (github.com)](https://github.com/NCATSTranslator)
