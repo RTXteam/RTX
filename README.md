@@ -175,11 +175,11 @@ code-base.
 
 ## subdirectory `code`
 
-All software code files for ARAX and RTX are stored under this directory [link](code/README.md).
+All software code files for ARAX and RTX are stored under this directory [link](code).
 
 ### subdirectory `code/ARAX`
 
-This subdirectory contains the core software code for ARAX [link](code/ARAX/README.md).
+This subdirectory contains the core software code for ARAX [link](code/ARAX).
 
 ### subdirectory `code/ARAX/Examples`
 
@@ -200,12 +200,12 @@ RTX web browser-based user interface [link](code/UI/Feedback).
 ### subdirectory `code/UI/interactive`
 
 This subdirectory contains the code for the RTX web browser-based user interface 
-[link](code/UI/interactive/README.md).
+[link](code/UI/interactive).
 
 ### subdirectory `code/kg2`
 
 This subdirectory contains the code for building the RTX second-generation
-knowledge graph (RTX-KG2) and hosting it in Neo4j [link](code/kg).
+knowledge graph (RTX-KG2) and hosting it in Neo4j [link](code/kg2).
 
 ### subdirectory `code/reasoningtool/kg-construction`
 
