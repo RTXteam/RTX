@@ -440,7 +440,7 @@ ARAX is designed to be installed on an Amazon Web Services Elastic Compute Cloud
 - host OS Ubuntu&nbsp;v18.04. 
 
 The host OS has nginx&nbsp;v1.14.0 installed and configured
-(see `team-private/ARAX/rtx-host-os-nginx-config` for configuration details) for
+(see `notes/ARAX/rtx-host-os-nginx-config` for configuration details) for
 SSL/TLS termination and proxying of HTTP traffic to `localhost:8080`. The SSL
 site certificate was generated using Letsencrypt (certbot&nbsp;v0.27.0). ARAX
 and all of its database dependencies run inside a Docker container
@@ -453,7 +453,7 @@ follows (host-port:container-port):
 - 8080:80 
 
 (for the specific Docker run command, see
-`team-private/ARAX/arax-run-container-nodes.md`). Within the Docker container,
+`notes/ARAX/arax-run-container-nodes.md`). Within the Docker container,
 ARAX uses
 
 - Ubuntu&nbsp;v16.04
