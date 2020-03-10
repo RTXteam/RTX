@@ -407,11 +407,12 @@ contributions, and helpful feedback from NCATS staff (Christine Colvis, Noel
 Southall, Mark Williams, Trung Nguyen, Tyler Beck, Sarah Stemann, Debbi
 Adelakun, and Tyler Peryea), and Will Byrd, Greg Rosenblatt, Michael Patton,
 Chunlei Wu, Kevin Xin, Tom Conlin, Harold Solbrig, Matt Brush, Karamarie Fecho,
-Julie McMurray, Kent Shefchek, Chris Bizon, Steve Cox, Patrick Wang, Sui Huang,
-Theo Knijnenburg, Gustavo Glusman, John Earls, Andrew Su, Chris Mungall, and
-Melissa Haendel. Support for the development of RTX was provided by NCATS
-through the Translator program award OT2TR002520.  Support for the development
-of ARAX was provided by NCATS through the Translator program award OT2TR003428.
+Julie McMurray, Kent Shefchek, Chris Bizon, Steve Cox, Deepak Unni, Tim Putman,
+Patrick Wang, Sui Huang, Theo Knijnenburg, Gustavo Glusman, John Earls, Andrew
+Su, Chris Mungall, and Melissa Haendel. Support for the development of RTX was
+provided by NCATS through the Translator program award OT2TR002520.  Support for
+the development of ARAX was provided by NCATS through the Translator program
+award OT2TR003428.
 
 # Installation and dependencies
 
