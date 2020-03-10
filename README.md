@@ -469,12 +469,15 @@ SQLite&nbsp;v3.11.0.
 
 # Contact us
 
-The best way to contact Team Expander&nbsp;Agent is by sending an email message to
-**[`expander.agent@gmail.com`](mailto:expander.agent@gmail.com)** or by logging a
-[GitHub issue](issues/).  Members of the Biomedical Data Translator consortium
-can also reach us on the
-[NCATS Translator Slack](https://ncatstranslator.slack.com). See also the
-contact information for the Team Expander&nbsp;Agent PIs above.
+The best way to contact Team Expander&nbsp;Agent is by 
+
+- sending an email message to
+**[`expander.agent@gmail.com`](mailto:expander.agent@gmail.com)**
+- logging a [GitHub issue](issues/)
+- (for members of the Biomedical Data Translator consortium) messaging us on the
+[NCATS Translator Slack](https://ncatstranslator.slack.com). 
+
+See also the contact information for the Team Expander&nbsp;Agent PIs above.
 
 # Try out ARAX/RTX...
 
