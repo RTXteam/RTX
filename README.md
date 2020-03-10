@@ -509,4 +509,5 @@ Three Jupyter notebooks that illustrate how to programmatically use ARAX are pro
 - [ARAX browser-based interface (arax.rtx.ai)](https://arax.rtx.ai)
 - [Technical documentation on ARAXi, the ARAX domain-specific language (this repo)](code/ARAX/Documentation/DSL_Documentation.md)
 - [Technical documentation on the ARAX web API interface (arax.rtx.ai)](https://arax.rtx.ai/api/rtx/v1/ui/)
+- [Example notebooks on how to programmatically use ARAX (this repo)](code/ARAX/Examples)
 
