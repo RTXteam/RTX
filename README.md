@@ -1,6 +1,6 @@
-# About the Translator project, Team ARA Expand, and ARAX
+# About the Translator project, Team ARA&nbsp;Expand, and ARAX
 
-We are **ARA Expand**, a team of researchers and software experts working within
+We are **ARA&nbsp;Expand**, a team of researchers and software experts working within
 a consortium effort called the **Biomedical Data Translator** program
 ("Translator program"). Initiated by the NIH National Center for Advancing
 Translational Sciences (NCATS), the Translator program's goal is to accelerate
@@ -83,11 +83,16 @@ using ARAXi can be much more powerful than the sum of its individual
 parts.
 
 3. ARAX natively speaks the information standard&mdash;called the **Reasoners
-Standard Application Programming Interface**&mdash;that Translator has adopted for
-data interchange between Translator components. Team ARA Expand has been at the
-forefront of the development and stewardship of the Reasoners Standard API (as
-described [below](#api)), and with this perspective, ARAX was built from the
+Standard Application Programming Interface**&mdash;that Translator has adopted
+for data interchange between Translator components. Team ARA&nbsp;Expand has been at
+the forefront of the development and stewardship of the Reasoners Standard API
+(as described [below](#api)), and with this perspective, ARAX was built from the
 ground up to seamlessly interoperate with other Translator software components.
+In addition to complying with the Translator standard for inter-reasoner 
+communication, ARAX uses knowledge sources (see [below](#kp)) that comply with the
+*Biomedical Data Translator Knowledge Graph Standard* (for which our team has
+been an active participant in the standards development process) which is based
+on the [Biolink Model](https://biolink.github.io/biolink-model).
 
 4. ARAX is integrated with the _RTX_ reasoning tool's knowledge graphs and graph
 visualization capabilities. During the NCATS Translator feasibility asssessment
@@ -128,7 +133,89 @@ biomedical concepts)
    - a *knowledge graph* representing the union of concepts in all of the results,
    along with all known relationships among the concepts in the union.
 
-# Team ARA Expand: who we are
+# What knowledge providers/sources does ARAX use?
+
+Currently, ARAX/RTX accesses four primary knowledge sources in order to
+handle queries:
+
+## RTX-KG1
+
+RTX-KG1 is a knowledge graph comprising 130k nodes and 3.5M relationships that
+is built by integrating concepts and concept-predicate-concept triples obtained
+from 16 different knowledge sources by way of their web APIs:
+
+1. Pathway Commons 2
+2. Disease Ontology
+3. Monarch Project Biolink API
+4. Drug-Gene Interactions Database
+5. KEGG
+6. UniProtKB
+7. DisGeNet
+8. OMIM
+9. ChEMBL
+10. SIDER
+11. Pharos
+12. MyChem.info
+13. miRGate
+14. Gene Ontology
+15. Monarch SciGraph API
+16. Reactome
+
+RTX-KG1 complies with the Biomedical Data Translator Knowledge Graph object
+model standard, which is based on the Biolink model. RTX-KG1 is hosted in a
+Neo4j graph database server and can be accessed at
+[kg1endpoint.rtx.ai:7474](http://kg1endpoint.rtx.ai:7474) (username is `neo4j`;
+contact Team ARA&nbsp;Expand for the password). Alternatively, a Neo4j dump file
+(in gzipped tar archive format) of KG1 can be downloaded without password from
+the [kg1endpoint server](http://kg1endpoint.rtx.ai).
+
+## RTX-KG2
+
+RTX-KG2 is a knowledge graph comprising 7.5M nodes and 34.3M relationships
+that is built by integrating concepts and concept-predicate-concept triples
+obtained from all of the KG1 knowledge sources plus:
+
+1. Unified Medical Language System (UMLS; including SNOMED&nbsp;CT)
+2. NCBI Genes
+3. Ensembl Genes
+4. UniChem
+5. Semantic Medline Database (SemMedDB)
+
+RTX-KG2 complies with the Biomedical Data Translator Knowledge Graph object
+model standard, which is based on the Biolink model. RTX-KG2 is hosted in a
+Neo4j graph database server and can be accessed at
+[kg2endpoint2.rtx.ai:7474](http://kg2endpoint2.rtx.ai:7474) (username is `neo4j`;
+contact Team ARA&nbsp;Expand for the password). Alternatively, a JSON
+dump of KG2 is available from the [RTX-KG2 S3 bucket](http://rtx-kg2-public.s3-website-us-west-2.amazonaws.com/).
+A version of KG2 that is formatted and indexed for the knowledge graph
+exploration tool [mediKanren](https://github.com/webyrd/mediKanren) is
+available; contact Team ARA&nbsp;Expand for details.
+
+## Columbia Open Health Data (COHD)
+
+ARAX accesses the Columbia Open Health Data (COHD) resource (provided by the
+Red&nbsp;Team and the Tatonetti Lab from the NCATS Translator Feasibility
+Assessment Phase) for overlaying clinical health record co-occurrence
+significance information for biomedical concepts in a knowledge graph, 
+via the `overlay` feature (for more information, see `code/ARAX`). ARAX
+accesses COHD via a web API.
+
+## PubMed
+
+ARAX accesses PubMed for overlaying biomedical literature abstract co-occurrence
+significance information for biomedical concepts in a knowledge graph, via the
+`overlay` feature (for more information, see `code/ARAX`). For overlaying
+literature co-occurrence information, ARAX uses a pre-indexed version of PubMed
+(indexed for Medical Subject Heading or MeSH terms). For any concepts that
+cannot be mapped to MeSH, ARAX queries PubMed via a web API.
+
+## Ontology Lookup Service (OLS)
+
+RTX uses the Ontology Lookup Service (provided as a web API by the European
+Bioinformatics Institute) for on-the-fly mapping between certain
+identifier types.
+
+# Team ARA&nbsp;Expand: who we are
 
 Our team includes investigators from Oregon State University, the Pennsylvania
 State University, Institute for Systems Biology, and Radboud University in the
@@ -168,10 +255,10 @@ a user-friendly language
 # Organization of the ARAX/RTX software repository
 
 ARAX and RTX are mostly written in the Python programming language and a small
-amount of Javascript and bash shell. YAML and JSON are extensively used for
-configuration files. Many examples of analysis workflow code that access RTX
-and/or ARAX are provided in Jupyter notebook format, in several places in the 
-code-base.
+amount of Javascript and bash shell. Yet Another Markup Language (YAML) and
+Javascript Object Nontation (JSON) are extensively used for configuration
+files. Many examples of analysis workflow code that access RTX and/or ARAX are
+provided in Jupyter notebook format, in several places in the code-base.
 
 ## subdirectory `code`
 
@@ -179,53 +266,60 @@ All software code files for ARAX and RTX are stored under this directory [link](
 
 ### subdirectory `code/ARAX`
 
-This subdirectory contains the core software code for ARAX [link](code/ARAX).
+Contains the core software code for ARAX [link](code/ARAX).
 
 ### subdirectory `code/ARAX/Examples`
 
-This subdirectory contains example Jupyter notebooks for using ARAX from software [link](code/ARAX/Examples)
+Contains example Jupyter notebooks for using ARAX from
+software [link](code/ARAX/Examples)
 
 ### subdirectory `code/UI/OpenAPI`
 
-This subdirectory contains (1) the YAML code that defines the Reasoners Standard
+Contains (1) the YAML code that defines the Reasoners Standard
 API and (2) the code for the Reasoners Standard API python object model that is
 used to describe a knowledge graph, query nodes, and results
 [(link)](code/UI/OpenAPI/python-flask-server).
 
 ### subdirectory `code/UI/Feedback`
 
-This subdirectory contains the code for the server-side logging system for the
+Contains the code for the server-side logging system for the
 RTX web browser-based user interface [(link)](code/UI/Feedback).
 
 ### subdirectory `code/UI/interactive`
 
-This subdirectory contains the code for the RTX web browser-based user interface 
+Contains the code for the RTX web browser-based user interface 
 [(link)](code/UI/interactive).
 
 ### subdirectory `code/kg2`
 
-This subdirectory contains the code for building the RTX second-generation
+Contains the code for building the RTX second-generation
 knowledge graph (RTX-KG2) and hosting it in Neo4j [(link)](code/kg2).
+
+### subdirectory `code/kg2/mediKanren`
+
+Contains the code for exporting a version of the RTX-KG2
+knowledge graph that is formatted and indexed for use with the [mediKanren](https://github.com/webyrd/mediKanren).
+knowledge graph exploration tool.
 
 ### subdirectory `code/reasoningtool/kg-construction`
 
-This subdirectory contains the code for building the RTX first-generation
+Contains the code for building the RTX first-generation
 knowledge graph (RTX-KG1) [(link)](code/reasoningtool/kg-construction).
 
 ### subdirectory `code/reasoningtool/SemMedDB`
 
-This subdirectory contains the code for a python interface to an instance of the
+Contains the code for a python interface to an instance of the
 Semantic Medline Database (SemMedDB) that is being hosted in a MySQL database
 [(link)](code/reasoningtool/SemMedDB).
 
 ### subdirectory `code/reasoningtool/QuestionAnswering`
 
-This subdirectory contains the code for parsing and answering questions
+Contains the code for parsing and answering questions
 posed to the RTX reasoning tool [(link)](code/reasoningtool/QuestionAnswering).
 
 ### subdirectory `code/reasoningtool/MLDrugRepurposing`
 
-This subdirectory contains the code that is used for the machine-learning
+Contains the code that is used for the machine-learning
 model for drug repositioning that was described in the article
 *Leveraging distributed biomedical knowledge sources to discover novel uses for known drugs*
 [article](https://doi.org/10.1101/765305) by Womack, McClelland, and Koslicki 
@@ -233,7 +327,7 @@ model for drug repositioning that was described in the article
 
 ### subdirectory `code/autocomplete`
 
-This subdirectory contains the code for the concept autocomplete feature in the
+Contains the code for the concept autocomplete feature in the
 RTX web browser-based user interface [(link)](code/autocomplete).
 
 ## subdirectory `data`
@@ -278,9 +372,9 @@ provided by NCATS through the Translator program award OT2TR003428.
 
 # Installation and dependencies
 
-ARAX is designed to be installed on a `m5a.4xlarge` instance (which has
-16&nbsp;vCPUs and 64&nbsp;GiB of RAM) in an Amazon Web Services Elastic Compute
-Cloud (EC2) instance with 1,023&nbsp;TiB of elastic block storage, with host OS
+ARAX is designed to be installed on an Amazon Web Services Elastic Compute Cloud
+(EC2) `m5a.4xlarge` instance (which has 16&nbsp;vCPUs and 64&nbsp;GiB of RAM)
+with 1,023&nbsp;TiB of elastic block storage, with host OS
 Ubuntu&nbsp;18.04. The host OS has nginx v1.14.0 installed and configured (see
 `team-private/ARAX/rtx-host-os-nginx-config` for configuration details) for
 SSL/TLS temination and proxying of HTTP traffic to `localhost:8080`. The SSL
@@ -291,27 +385,40 @@ follows: 7473:7473, 7474:7474, 7687:7687, and 8080:80 (for details see
 `team-private/ARAX/arax-run-container-nodes.md`). Within the Docker container,
 ARAX uses Apache&nbsp;v2.4.18, python&nbsp;v3.7.3, Neo4j&nbsp;v3.2.6,
 OpenJDK&nbsp;v1.8.0_131, and mysql&nbsp;v5.7.19-0ubuntu0.16.04.1. The python
-package requirements for ARAX are described in the top-level `requirements.txt` file.
-RTX makes extensive use of internal caching via SQLite&nbsp;v3.11.0.
+package requirements for ARAX are described in the top-level `requirements.txt`
+file.  RTX makes extensive use of internal caching via SQLite&nbsp;v3.11.0.
 
-# Try ARAX/RTX
+# Contact us
 
-## Via web browser
+The best way to contact Team ARA&nbsp;Expand is by email to
+[ara.expand@gmail.com](mailto:ara.expand@gmail.com) or by adding a
+[GitHub issue](issues/).  Members of the Biomedical Data Translator consortium
+can also reach us on the
+[NCATS Translator Slack](https://ncatstranslator.slack.com). See also the
+contact information for the Team ARA&nbsp;Expand PIs above.
 
-Here is the link to access the web browser interface to RTX:  [arax.rtx.ai](https://arax.rtx.ai)
+# Try out ARAX/RTX...
 
-## Via web API
+## In your web browser
 
-Here is the link to documentation on the web API interface to RTX:  [arax.rtx.ai/api/rtx/v1/ui](https://arax.rtx.ai/api/rtx/v1/ui/)
+Here is the link to access the web browser interface to RTX:
+[arax.rtx.ai](https://arax.rtx.ai)
 
-## Via Jupyter Notebooks
+## Using our web API
+
+Here is the link to documentation on the web API interface to RTX:
+[arax.rtx.ai/api/rtx/v1/ui](https://arax.rtx.ai/api/rtx/v1/ui/)
+
+## By customizing a Jupyter Notebook
 
 Three Jupyter notebooks that illustrate how to programmatically use ARAX are provided
 [here](code/ARAX/Examples).
 
 # Links
 
+- [Technical Documentation on ARAX](code/ARAX/Documentation/DSL_Documentation.md)
 - [Biomedical Data Translator consortium-wide project information (ncats.nih.gov)](https://ncats.nih.gov/translator/about)
 - [Biomedical Data Translator 2020 funding opportunity announcement (grants.nih.gov)](https://grants.nih.gov/grants/guide/notice-files/NOT-TR-19-028.html)
 - [Biomedical Data Translator Feasibility Assessment Phase open-source software repository (github.com)](https://github.com/NCATS-Tangerine/)
 - [Biomedical Data Translator open-source software repository (github.com)](https://github.com/NCATSTranslator)
+- [Biomedical Data Translator Knowledge Graph object model standard (github.io)](https://biolink.github.io/biolink-model)
