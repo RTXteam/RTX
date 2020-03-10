@@ -392,10 +392,10 @@ ARAX and RTX are furnished under the MIT open-source software license; see the
 
 # Disclaimer
 
-Per the MIT license, the ARAX and RTX software are provided "as-is" without
-warranty of any kind. The content of this site and the RTX and ARAX software is
-solely the responsibility of the authors and does not necessarily represent the
-official views of the National Institutes of Health.
+Per the MIT [license](LICENSE), the ARAX and RTX software are provided
+"as-is" without warranty of any kind. The content of this site and the RTX and
+ARAX software is solely the responsibility of the authors and does not
+necessarily represent the official views of the National Institutes of Health.
 
 # Credits
 
