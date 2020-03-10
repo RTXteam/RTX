@@ -20,7 +20,7 @@ Contains technical documentation of ARAX and the ARAXi domain-specific language.
 
 Contains scripts for integration testing the ARAX system.
 
-# For ARAX Developers: General software development guidelines
+## For ARAX Developers: General software development guidelines
 
 - Care should be taken that the code never just dies because then there is no feedback about the problem in the API/UI
 - Use the response.error mechanism. Always set up a response object and always return it
