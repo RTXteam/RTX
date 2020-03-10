@@ -401,16 +401,17 @@ official views of the National Institutes of Health.
 
 Many people contributed to the development of ARAX and RTX. A list of code
 contributors can be found under [contributors](graphs/contributors), in addition
-to the current team members listed above. We also acknowledge technical
-assistance and contributions from NCATS staff (Christine Colvis, Noel Southall,
-Mark Williams, Trung Nguyen, Tyler Beck, Sarah Stemann, Debbi Adelakun, and
-Tyler Peryea), and Will Byrd, Greg Rosenblatt, Michael Patton, Chunlei Wu, Kevin
-Xin, Tom Conlin, Harold Solbrig, Matt Brush, Karamarie Fecho, Julie McMurray,
-Kent Shefchek, Chris Bizon, Steve Cox, Patrick Wang, Sui Huang, Theo
-Knijnenburg, Gustavo Glusman, John Earls, Chris Mungall, and Melissa
-Haendel. Support for the development of RTX was provided by NCATS through the
-Translator program award OT2TR002520.  Support for the development of ARAX was
-provided by NCATS through the Translator program award OT2TR003428.
+to the current team members listed above. In addition to the code contributors
+listed in this repo, we gratefully acknowledge technical assistance,
+contributions, and helpful feedback from NCATS staff (Christine Colvis, Noel
+Southall, Mark Williams, Trung Nguyen, Tyler Beck, Sarah Stemann, Debbi
+Adelakun, and Tyler Peryea), and Will Byrd, Greg Rosenblatt, Michael Patton,
+Chunlei Wu, Kevin Xin, Tom Conlin, Harold Solbrig, Matt Brush, Karamarie Fecho,
+Julie McMurray, Kent Shefchek, Chris Bizon, Steve Cox, Patrick Wang, Sui Huang,
+Theo Knijnenburg, Gustavo Glusman, John Earls, Andrew Su, Chris Mungall, and
+Melissa Haendel. Support for the development of RTX was provided by NCATS
+through the Translator program award OT2TR002520.  Support for the development
+of ARAX was provided by NCATS through the Translator program award OT2TR003428.
 
 # Installation and dependencies
 
