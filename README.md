@@ -492,7 +492,7 @@ Here is the link to documentation on the web API interface to RTX:
 
 ## ...by customizing a Jupyter Notebook
 
-Three Jupyter notebooks that illustrate how to programmatically use ARAX are provided
+Three Jupyter notebooks that demonstrate how to programmatically use ARAX are provided
 [here](code/ARAX/Examples).
 
 # Links
