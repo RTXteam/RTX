@@ -4,7 +4,7 @@ This directory contains the core software for the **ARAX** system for
 computationally-assisted biomedical knowledge exploration that was built by
 **Team ARA Expand** within the NCATS Biomedical Data Translator program. For a
 high-level description of ARAX, ARA Expand, and the Translator program, please
-see the [main RTX repository page](../..).
+see the [main RTX repository page](../../../../tree/demo).
 
 ## Organization of the ARAX software code
 
