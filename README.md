@@ -459,7 +459,7 @@ ARAX uses
 - Ubuntu&nbsp;v16.04
 - Apache&nbsp;v2.4.18 
 - python&nbsp;v3.7.3
-- Neo4j&nbsp;v3.2.6
+- Neo4j&nbsp;v3.2.6 (see [`code/reasoningtool/kg-construction`](code/reasoningtool/kg-construction) on how to set up Neo4j for running ARAX/RTX)
 - OpenJDK&nbsp;v1.8.0_131
 - mysql&nbsp;v5.7.19-0ubuntu0.16.04.1
 
