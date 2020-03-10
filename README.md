@@ -45,13 +45,15 @@ and respond to the top-level layer in a standardized structured data
 format. When completed, ARAX will contribute to and advance the Translator
 program in four ways:
 
-1. ARAX provides a powerful **domain-specific language (DSL)**, called
-**ARAXi**, that is designed designed to enable researchers and clinicians to
-formulate, reuse, comprehend, and share workflows for biomedical knowledge
-exploration. One of the key advantages of ARAXi is that it is *not* a
-general-purpose programming language; it is purpose-built for the task of
-describing&mdash;in user friendly syntax&mdash;a knowledge graph manipulation
-workflow in terms of ARAX's modular capabilities. Using ARAXi, an analyst can:
+1. ARAX provides a powerful **domain-specific language (DSL)**, called **ARAXi**
+(technical documentation on ARAXi can be found
+[here](code/ARAX/Documentation/DSL_Documentation.md)), that is designed designed
+to enable researchers and clinicians to formulate, reuse, comprehend, and share
+workflows for biomedical knowledge exploration. One of the key advantages of
+ARAXi is that it is *not* a general-purpose programming language; it is
+purpose-built for the task of describing&mdash;in user friendly syntax&mdash;a
+knowledge graph manipulation workflow in terms of ARAX's modular
+capabilities. Using ARAXi, an analyst can:
   - define a small *query graph*; query for entities (e.g., proteins, pathways, or
 diseases) that match the search criteria represented in the query graph; 
   - *expand* a knowledge graph, pulling in concepts that are related to
@@ -135,7 +137,7 @@ biomedical concepts)
 
 # What knowledge providers/sources does ARAX use?
 
-Currently, ARAX/RTX accesses four primary knowledge sources in order to
+Currently, ARAX/RTX accesses five primary knowledge sources in order to
 handle queries:
 
 ## RTX-KG1
@@ -416,7 +418,7 @@ Three Jupyter notebooks that illustrate how to programmatically use ARAX are pro
 
 # Links
 
-- [Technical Documentation on ARAX](code/ARAX/Documentation/DSL_Documentation.md)
+- [Technical Documentation on ARAXi, the ARAX DSL](code/ARAX/Documentation/DSL_Documentation.md)
 - [Biomedical Data Translator consortium-wide project information (ncats.nih.gov)](https://ncats.nih.gov/translator/about)
 - [Biomedical Data Translator 2020 funding opportunity announcement (grants.nih.gov)](https://grants.nih.gov/grants/guide/notice-files/NOT-TR-19-028.html)
 - [Biomedical Data Translator Feasibility Assessment Phase open-source software repository (github.com)](https://github.com/NCATS-Tangerine/)
