@@ -374,10 +374,10 @@ RTX web browser-based user interface [(link)](code/autocomplete).
 ## subdirectory `data`
 
 Text data files for the RTX system that are deployed using git are stored under
-this subdirectory. There are only a few such files because the RTX POC software
-obtaines most of the information that makes up the biomedical knowledge graph by
-RESTfully querying web-based knowledge sources, rather than by loading flat files
-[(link)](data).
+this subdirectory. There are only a few such files because the RTX software
+obtains most of the information that makes up the RTX-KG1 knowledge graph by
+querying external knowledge sources via web APIs, rather than by loading flat
+files [(link)](data).
 
 ## Key repository branches
 
