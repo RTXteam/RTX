@@ -136,6 +136,7 @@ biomedical concepts)
 
 # What knowledge providers/sources does ARAX use?
 
+(#kp)
 Currently, ARAX/RTX directly accesses four main knowledge sources in order to
 handle queries, along with several additional APIs for identifier mapping.
 
