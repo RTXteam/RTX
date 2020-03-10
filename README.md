@@ -1,6 +1,6 @@
-# About the Translator project, Team Expander&nbsp;Agent, and ARAX
+# About the Translator project, Team Expander Agent, and ARAX
 
-We are **Expander&nbsp;Agent**, a team of researchers and software experts
+We are **Expander Agent**, a team of researchers and software experts
 working within a consortium effort called the **Biomedical Data Translator**
 program ("Translator program"). Initiated by the NIH National Center for
 Advancing Translational Sciences (NCATS), the Translator program's goal is to
@@ -87,7 +87,7 @@ parts.
 3. ARAX is a Web service that speaks the information standard&mdash;called the
 **Reasoners Standard Application Programming Interface**&mdash;that Translator
 has adopted for data interchange between Translator components. Team
-Expander&nbsp;Agent has been at the forefront of the development and stewardship
+Expander Agent has been at the forefront of the development and stewardship
 of the Reasoners Standard API (as described
 [below](#the-reasoners-standard-application-programming-interface)), and with
 this perspective, ARAX was built from the ground up to seamlessly interoperate
@@ -153,8 +153,8 @@ Reasoners Standard API contains an issue list (the primary forum for documented
 and archived discussion of issues and proposed changes with the standard),
 automated regression tests, some presentation slide decks that provide information
 about the standard, and (of course) the YAML file that defines the standard.
-Team Expander&nbsp;Agent (and under our previous name during the Feasibility
-Assessment phase, Team&nbsp;X-ray) is an active participant in the ongoing
+Team Expander Agent (and under our previous name during the Feasibility
+Assessment phase, Team X-ray) is an active participant in the ongoing
 development process for the Reasoners Standard API.
 
 # What knowledge providers does ARAX use?
@@ -189,7 +189,7 @@ from 17 different knowledge providers by way of their web APIs:
 RTX-KG1 complies with the Biolink model-based Translator Knowledge Graph object
 model standard. RTX-KG1 is hosted in a Neo4j graph database server and can be
 accessed at [kg1endpoint.rtx.ai:7474](http://kg1endpoint.rtx.ai:7474) (username
-is `neo4j`; contact Team Expander&nbsp;Agent for the password). Alternatively, a
+is `neo4j`; contact Team Expander Agent for the password). Alternatively, a
 Neo4j dump file (in gzipped tar archive format) of KG1 can be downloaded without
 password from the [kg1endpoint server](http://kg1endpoint.rtx.ai).
 
@@ -200,7 +200,7 @@ that is built by integrating concepts and concept-predicate-concept triples
 obtained from:
 
 1. *All of the KG1 knowledge providers*
-2. Unified Medical Language System (UMLS; including SNOMED&nbsp;CT)
+2. Unified Medical Language System (UMLS; including SNOMED CT)
 3. NCBI Genes
 4. Ensembl Genes
 5. UniChem
@@ -210,18 +210,18 @@ RTX-KG2 complies with the Biomedical Data Translator Knowledge Graph object
 model standard, which is based on the Biolink model. RTX-KG2 is hosted in a
 Neo4j graph database server and can be accessed at
 [kg2endpoint2.rtx.ai:7474](http://kg2endpoint2.rtx.ai:7474) (username is
-`neo4j`; contact Team Expander&nbsp;Agent for the password). Alternatively, a
+`neo4j`; contact Team Expander Agent for the password). Alternatively, a
 JSON dump of KG2 is available from the
 [RTX-KG2 S3 bucket](http://rtx-kg2-public.s3-website-us-west-2.amazonaws.com/).
 A version of KG2 that is formatted and indexed for the knowledge graph
 exploration tool [mediKanren](https://github.com/webyrd/mediKanren) is
-available; contact Team Expander&nbsp;Agent for details. For extensive technical
+available; contact Team Expander Agent for details. For extensive technical
 documentation on RTX-KG2, see this repository's [KG2 subdirectory](code/kg2).
 
 ## Columbia Open Health Data (COHD)
 
 ARAX accesses the Columbia Open Health Data (COHD) resource (provided by the
-Red&nbsp;Team and the Tatonetti Lab from the NCATS Translator Feasibility
+Red Team and the Tatonetti Lab from the NCATS Translator Feasibility
 Assessment Phase) for overlaying clinical health record co-occurrence
 significance information for biomedical concepts in a knowledge graph, 
 via the `overlay` feature (for more information, see `code/ARAX`). ARAX
@@ -251,7 +251,7 @@ A computable file enumerating and summarizing the external APIs that are
 used by ARAX/RTX, in YAML format, can be found
 [here](code/ARAX/KnowledgeSources/API_LIST.yaml). 
 
-# Team Expander&nbsp;Agent: who we are
+# Team Expander Agent: who we are
 
 Our team includes investigators from Oregon State University, the Pennsylvania
 State University, Institute for Systems Biology, and Radboud University in the
@@ -261,17 +261,17 @@ Netherlands.
 
 | Name           | Role                                        | Email                             | GitHub username                               | Areas of relevant expertise      |
 | -------------- | ------------------------------------------- | --------------------------------- | --------------------------------------------- | -------------------------------- |
-| Stephen&nbsp;Ramsey | PI, Oregon State University                 | `stephen.ramsey@oregonstate.edu`  | [saramsey](https://github.com/saramsey)       | compbio, systems biology         |
-| David&nbsp;Koslicki | PI, Penn State University                   | `dmk333@psu.edu`                  | [dkoslicki](https://github.com/dkoslicki)     | compbio, graph algorithms        |
-| Eric&nbsp;Deutsch   | PI, Institute for Systems Biology           | `eric.deutsch@systemsbiology.org` | [edeutsch](https://github.com/edeutsch)       | bioinformatics, data management, standards development  | 
+| Stephen Ramsey | PI, Oregon State University                 | `stephen.ramsey@oregonstate.edu`  | [saramsey](https://github.com/saramsey)       | compbio, systems biology         |
+| David Koslicki | PI, Penn State University                   | `dmk333@psu.edu`                  | [dkoslicki](https://github.com/dkoslicki)     | compbio, graph algorithms        |
+| Eric Deutsch   | PI, Institute for Systems Biology           | `eric.deutsch@systemsbiology.org` | [edeutsch](https://github.com/edeutsch)       | bioinformatics, data management, standards development  | 
 
 ## Team members
 
 | Name             | Affiliation                   | Email                                 | GitHub username                                     | Areas of relevant expertise |
 | ---------------- | ----------------------------- | ------------------------------------- | --------------------------------------------------- | --------------------------- |
-| Jared&nbsp;Roach      | Institute for Systems Biology | `jared.roach@systemsbiology.org`      |                                                     | genomics, genetics, medicine, systems biology | 
-| Luis&nbsp;Mendoza     | Institute for Systems Biology | `luis.mendoza@systemsbiology.org`     | [isbluis](https://github.com/isbluis)               | software engineering, proteomics, systems biology |
-| Andrew&nbsp;Hoffman   | Radboud University, NL        | `A.Hoffman@ftr.ru.nl`                 | [parrhesiastic](https://github.com/parrhesiastic)   | ethnographer of data science and cyberinfrastructure  |
+| Jared Roach      | Institute for Systems Biology | `jared.roach@systemsbiology.org`      |                                                     | genomics, genetics, medicine, systems biology | 
+| Luis Mendoza     | Institute for Systems Biology | `luis.mendoza@systemsbiology.org`     | [isbluis](https://github.com/isbluis)               | software engineering, proteomics, systems biology |
+| Andrew Hoffman   | Radboud University, NL        | `A.Hoffman@ftr.ru.nl`                 | [parrhesiastic](https://github.com/parrhesiastic)   | ethnographer of data science and cyberinfrastructure  |
 | Finn Womack           | Oregon State University       | `womackf@oregonstate.edu`        | [finnagin](https://github.com/finnagin)   | drug repositioning, Neo4j  |
 | Amy Glen           | Oregon State University       | `glena@oregonstate.edu`        | [amykglen](https://github.com/amykglen)   | knowledge graphs  |
 
@@ -432,17 +432,17 @@ provided by NCATS through the Translator program award OT2TR003428.
 ARAX is designed to be installed on an Amazon Web Services Elastic Compute Cloud
 (EC2) instance with the following minimum requirements (we use a `m5a.4xlarge` instance):
 
-- 16&nbsp;vCPUs
-- 64&nbsp;GiB of RAM
-- 1,023&nbsp;TiB of elastic block storage
-- host OS Ubuntu&nbsp;v18.04. 
+- 16 vCPUs
+- 64 GiB of RAM
+- 1,023 TiB of elastic block storage
+- host OS Ubuntu v18.04. 
 
-The host OS has nginx&nbsp;v1.14.0 installed and configured
+The host OS has nginx v1.14.0 installed and configured
 (see `notes/ARAX/rtx-host-os-nginx-config` for configuration details) for
 SSL/TLS termination and proxying of HTTP traffic to `localhost:8080`. The SSL
-site certificate was generated using Letsencrypt (certbot&nbsp;v0.27.0). ARAX
+site certificate was generated using Letsencrypt (certbot v0.27.0). ARAX
 and all of its database dependencies run inside a Docker container
-(Docker&nbsp;v19.03.5) that is configured to map TCP ports as
+(Docker v19.03.5) that is configured to map TCP ports as
 follows (host-port:container-port):
 
 - 7473:7473
@@ -454,20 +454,20 @@ follows (host-port:container-port):
 `notes/ARAX/arax-run-container-nodes.md`). Within the Docker container,
 ARAX uses
 
-- Ubuntu&nbsp;v16.04
-- Apache&nbsp;v2.4.18 
-- python&nbsp;v3.7.3
-- Neo4j&nbsp;v3.2.6 (see [`code/reasoningtool/kg-construction`](code/reasoningtool/kg-construction) on how to set up Neo4j for running ARAX/RTX)
-- OpenJDK&nbsp;v1.8.0_131
-- mysql&nbsp;v5.7.19-0ubuntu0.16.04.1
+- Ubuntu v16.04
+- Apache v2.4.18 
+- python v3.7.3
+- Neo4j v3.2.6 (see [`code/reasoningtool/kg-construction`](code/reasoningtool/kg-construction) on how to set up Neo4j for running ARAX/RTX)
+- OpenJDK v1.8.0_131
+- mysql v5.7.19-0ubuntu0.16.04.1
 
 The python package requirements for ARAX are described in the top-level
 `requirements.txt` file.  RTX makes extensive use of internal caching via
-SQLite&nbsp;v3.11.0.
+SQLite v3.11.0.
 
 # Contact us
 
-The best way to contact Team Expander&nbsp;Agent is by 
+The best way to contact Team Expander Agent is by 
 
 - sending an email message to
 **[`expander.agent@gmail.com`](mailto:expander.agent@gmail.com)**
@@ -475,7 +475,7 @@ The best way to contact Team Expander&nbsp;Agent is by
 - (for members of the Biomedical Data Translator consortium) messaging us on the
 [NCATS Translator Slack](https://ncatstranslator.slack.com). 
 
-See also the contact information for the Team Expander&nbsp;Agent PIs above.
+See also the contact information for the Team Expander Agent PIs above.
 
 # Try out ARAX/RTX...
 
