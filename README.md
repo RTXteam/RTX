@@ -431,9 +431,14 @@ award OT2TR003428.
 # Installation and dependencies
 
 ARAX is designed to be installed on an Amazon Web Services Elastic Compute Cloud
-(EC2) `m5a.4xlarge` instance (which has 16&nbsp;vCPUs and 64&nbsp;GiB of RAM)
-with 1,023&nbsp;TiB of elastic block storage, with host OS
-Ubuntu&nbsp;18.04. The host OS has nginx&nbsp;v1.14.0 installed and configured
+(EC2) instance with the following minimum requirements (we use a `m5a.4xlarge` instance):
+
+- 16&nbsp;vCPUs
+- 64&nbsp;GiB of RAM
+- 1,023&nbsp;TiB of elastic block storage
+- host OS Ubuntu&nbsp;v18.04. 
+
+The host OS has nginx&nbsp;v1.14.0 installed and configured
 (see `team-private/ARAX/rtx-host-os-nginx-config` for configuration details) for
 SSL/TLS termination and proxying of HTTP traffic to `localhost:8080`. The SSL
 site certificate was generated using Letsencrypt (certbot&nbsp;v0.27.0). ARAX
