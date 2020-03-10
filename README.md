@@ -85,15 +85,17 @@ parts.
 
 3. ARAX natively speaks the information standard&mdash;called the **Reasoners
 Standard Application Programming Interface**&mdash;that Translator has adopted
-for data interchange between Translator components. Team Expander&nbsp;Agent has been at
-the forefront of the development and stewardship of the Reasoners Standard API
-(as described [below](#api)), and with this perspective, ARAX was built from the
-ground up to seamlessly interoperate with other Translator software components.
-In addition to complying with the Translator standard for inter-reasoner 
-communication, ARAX uses knowledge sources (see [below](#kp)) that comply with the
-*Biomedical Data Translator Knowledge Graph Standard* (for which our team has
-been an active participant in the standards development process) which is based
-on the [Biolink Model](https://biolink.github.io/biolink-model).
+for data interchange between Translator components. Team Expander&nbsp;Agent has
+been at the forefront of the development and stewardship of the Reasoners
+Standard API (as described
+[below](#the-reasoners-standard-application-programming-interface)), and with
+this perspective, ARAX was built from the ground up to seamlessly interoperate
+with other Translator software components.  In addition to complying with the
+Translator standard for inter-reasoner communication, ARAX uses knowledge
+sources (see [below](#what-knowledge-sources-does-arax-use)) that comply with
+the *Biomedical Data Translator Knowledge Graph Standard* (for which our team
+has been an active participant in the standards development process) which is
+based on the [Biolink Model](https://biolink.github.io/biolink-model).
 
 4. ARAX is integrated with the _RTX_ reasoning tool's knowledge graphs and graph
 visualization capabilities. During the NCATS Translator feasibility asssessment
@@ -133,6 +135,25 @@ biomedical concepts)
      between the concepts
    - a *knowledge graph* representing the union of concepts in all of the results,
    along with all known relationships among the concepts in the union.
+
+# The Reasoners Standard Application Programming Interface
+
+During the Feasibility Assessment Phase of the Biomedical Data Translator
+program, a data interchange standard (the Reasoners Standard Application
+Programming Interface) for communication two/from Translator reasoning tools was
+developed and ratified by the Translator stakeholders. The Reasoners Standard
+API is formally defined by a Yet Another Markup Language (YAML)
+[file](https://github.com/NCATS-Tangerine/NCATS-ReasonerStdAPI/blob/master/API/TranslatorReasonersAPI.yaml)
+that is in OpenAPI 3.0.1 format and that is versioned on GitHub. The current
+version of the Reasoners Standard API is 0.9.1. The GitHub
+[repository](https://github.com/NCATS-Tangerine/NCATS-ReasonerStdAPI) for the
+Reasoners Standard API contains an issue list (the primary forum for documented
+and archived discussion of issues and proposed changes with the standard),
+automated regression tests, some presentation slide decks that provide information
+about the standard, and (of course) the YAML file that defines the standard.
+Team Expander&nbsp;Agent (and under our previous name during the Feasibility
+Assessment phase, Team&nbsp;X-ray) is an active participant in the ongoing
+development process for the Reasoners Standard API.
 
 # What knowledge sources does ARAX use?
 
@@ -378,16 +399,16 @@ official views of the National Institutes of Health.
 
 Many people contributed to the development of ARAX and RTX. A list of code
 contributors can be found under [contributors](graphs/contributors), in addition
-to the team members listed above. We also acknowledge technical assistance and
-contributions from NCATS staff (Christine Colvis, Noel Southall, Mark Williams,
-Trung Nguyen, Tyler Beck, Sarah Stemann, Debbi Adelakun, and Tyler Peryea), and
-Arnab Nandi, Will Byrd, Greg Rosenblatt, Michael Patton, Chunlei Wu, Kevin Xin,
-Tom Conlin, Harold Solbrig, Matt Brush, Karamarie Fecho, Julie McMurray, Kent
-Shefchek, Chris Bizon, Steve Cox, Patrick Wang, Sui Huang, Theo Knijnenburg,
-Gustavo Glusman, John Earls, Chris Mungall, and Melissa Haendel. Support for the
-development of RTX was provided by NCATS through the Translator program award
-OT2TR002520.  Support for the development of ARAX was provided by NCATS through
-the Translator program award OT2TR003428.
+to the current team members listed above. We also acknowledge technical
+assistance and contributions from NCATS staff (Christine Colvis, Noel Southall,
+Mark Williams, Trung Nguyen, Tyler Beck, Sarah Stemann, Debbi Adelakun, and
+Tyler Peryea), and Will Byrd, Greg Rosenblatt, Michael Patton, Chunlei Wu, Kevin
+Xin, Tom Conlin, Harold Solbrig, Matt Brush, Karamarie Fecho, Julie McMurray,
+Kent Shefchek, Chris Bizon, Steve Cox, Patrick Wang, Sui Huang, Theo
+Knijnenburg, Gustavo Glusman, John Earls, Chris Mungall, and Melissa
+Haendel. Support for the development of RTX was provided by NCATS through the
+Translator program award OT2TR002520.  Support for the development of ARAX was
+provided by NCATS through the Translator program award OT2TR003428.
 
 # Installation and dependencies
 
@@ -441,3 +462,4 @@ Three Jupyter notebooks that illustrate how to programmatically use ARAX are pro
 - [Biomedical Data Translator Feasibility Assessment Phase open-source software repository (github.com)](https://github.com/NCATS-Tangerine/)
 - [Biomedical Data Translator open-source software repository (github.com)](https://github.com/NCATSTranslator)
 - [Biomedical Data Translator Knowledge Graph object model standard (github.io)](https://biolink.github.io/biolink-model)
+- [Biomedical Data Translator Reasoners Standard API (github.com)](https://github.com/NCATS-Tangerine/NCATS-ReasonerStdAPI)
