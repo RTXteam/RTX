@@ -38,9 +38,9 @@ knowledge graphs. It is designed to be a type of middleware&mdash;an *autonomous
 relay agent*&mdash;within the Translator system. The top-level layer of
 Translator (which is called the *autonomous relay system*) will issue structured
 queries to ARAX via ARAX's web application programming interface; based on the
-query type, ARAX will determine which *knowledge sources* it needs to consult in
+query type, ARAX will determine which *knowledge providers* it needs to consult in
 order to be able to answer the query; ARAX will then query the required
-knowledge sources, synthesize the information that it gets from those queries,
+knowledge providers, synthesize the information that it gets from those queries,
 and respond to the top-level layer in a standardized structured data
 format. When completed, ARAX will contribute to and advance the Translator
 program in four ways:
@@ -114,15 +114,16 @@ When the ARAX server is queried by the Autonomous Relay System or by another
 application, four things happen in sequence:
 
 1. From the query data structure that is provided to ARAX in accordance with the
-Reasoners Standard API, ARAX extracts a series of ARAXi commands or a natural-language
-question that has been interpreted by ARAX to be of a specific question type.
+Reasoners Standard API, ARAX extracts a series of ARAXi commands, a query graph,
+or a natural-language question that has been interpreted by ARAX to be of a
+specific question type.
 
-2. ARAX chooses&mdash;based on the ARAXi commands or the interpreted
-question&mdash;which upstream *knowledge providers* to query in order to obtain
-the information required to answer the question
+2. ARAX chooses&mdash;based on the ARAXi commands, the query graph, or the
+interpreted question&mdash;which upstream *knowledge providers* to query in
+order to obtain the information required to answer the question
 
 3. ARAX integrates and processes the information returned from the knowledge
-providers, as required by the initial question
+providers, in accordance with the query type.
 
 4. ARAX responds to the question with an answer that complies with the Reasoners
    Standard API. ARAX's responses to questions or queries typically contain
@@ -156,16 +157,16 @@ Team Expander&nbsp;Agent (and under our previous name during the Feasibility
 Assessment phase, Team&nbsp;X-ray) is an active participant in the ongoing
 development process for the Reasoners Standard API.
 
-# What knowledge sources does ARAX use?
+# What knowledge providers does ARAX use?
 
-Currently, ARAX/RTX directly accesses four main knowledge sources in order to
+Currently, ARAX/RTX directly accesses four main knowledge providers in order to
 handle queries, along with several additional APIs for identifier mapping.
 
 ## RTX-KG1
 
 RTX-KG1 is a knowledge graph comprising 130k nodes and 3.5M relationships that
 is built by integrating concepts and concept-predicate-concept triples obtained
-from 17 different knowledge sources by way of their web APIs:
+from 17 different knowledge providers by way of their web APIs:
 
 1. Pathway Commons 2
 2. Disease Ontology
@@ -199,7 +200,7 @@ RTX-KG2 is a knowledge graph comprising 7.5M nodes and 34.3M relationships
 that is built by integrating concepts and concept-predicate-concept triples
 obtained from:
 
-1. *All of the KG1 knowledge sources*
+1. *All of the KG1 knowledge providers*
 2. Unified Medical Language System (UMLS; including SNOMED&nbsp;CT)
 3. NCBI Genes
 4. Ensembl Genes
@@ -372,11 +373,11 @@ posed to the RTX reasoning tool [(link)](code/reasoningtool/QuestionAnswering).
 
 ### subdirectory `code/reasoningtool/MLDrugRepurposing`
 
-Contains the code that is used for the machine-learning
-model for drug repositioning that was described in the article
-*Leveraging distributed biomedical knowledge sources to discover novel uses for known drugs*
-[article](https://doi.org/10.1101/765305) by Womack, McClelland, and Koslicki 
-[(link)](code/reasoningtool/MLDrugRepurposing).
+Contains the code that is used for the machine-learning model for drug
+repositioning that was described in the article *Leveraging distributed
+biomedical knowledge sources to discover novel uses for known drugs*
+[article](https://doi.org/10.1101/765305) by Finn Womack, Jason McClelland, and
+David Koslicki [(link)](code/reasoningtool/MLDrugRepurposing).
 
 ### subdirectory `code/autocomplete`
 
@@ -388,7 +389,7 @@ RTX web browser-based user interface [(link)](code/autocomplete).
 Text data files for the RTX system that are deployed using git are stored under
 this subdirectory. There are only a few such files because the RTX software
 obtains most of the information that makes up the RTX-KG1 knowledge graph by
-querying external knowledge sources via web APIs, rather than by loading flat
+querying external knowledge providers via web APIs, rather than by loading flat
 files [(link)](data).
 
 ## Key repository branches
