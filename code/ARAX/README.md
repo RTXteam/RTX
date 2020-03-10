@@ -1,10 +1,11 @@
 # Code for the ARAX Pilot software 
 
 This directory contains the core software for the **ARAX** system for
-computationally-assisted biomedical knowledge exploration that was built by
-**Team ARA Expand** within the NCATS Biomedical Data Translator program. For a
-high-level description of ARAX, ARA Expand, and the Translator program, please
-see the [main RTX repository page](../../../../tree/demo).
+computationally-assisted biomedical knowledge exploration that was built (on top
+of our RTX reasoning tool system) by **Team ARA Expand** within the NCATS
+Biomedical Data Translator program. For a high-level description of ARAX, ARA
+Expand, and the Translator program, please see the
+[main RTX repository page](../../../../tree/demo).
 
 ## Organization of the ARAX software code
 
