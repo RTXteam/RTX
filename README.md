@@ -1,7 +1,7 @@
 # About the Translator project, Team ARA&nbsp;Expand, and ARAX
 
-We are **ARA&nbsp;Expand**, a team of researchers and software experts working within
-a consortium effort called the **Biomedical Data Translator** program
+We are **ARA&nbsp;Expand**, a team of researchers and software experts working
+within a consortium effort called the **Biomedical Data Translator** program
 ("Translator program"). Initiated by the NIH National Center for Advancing
 Translational Sciences (NCATS), the Translator program's goal is to accelerate
 the development of disease therapies by harnessing artificial intelligence,
@@ -15,8 +15,8 @@ identifying molecular targets for developing new therapeutic agents, and
 providing software infrastructure that could enable development of more powerful
 clinical decision support tools. The 18 teams on the translator project are
 working with NCATS to achieve this goal by building the **Translator** software,
-a modular system of standards-based Web services for biomedical knowledge
-exploration, reasoning, and hypothesis generation. 
+a modular system of Web services for biomedical knowledge exploration,
+reasoning, and hypothesis generation.
 
 After a multi-year feasibility assessment, during which our team built a
 prototype Translator reasoning tool called **RTX,** the Translator program is
@@ -67,7 +67,6 @@ literature)
   knowledge graph; as a sub-case of this step, ARAX can return as a single
   result, all concepts from the knowledge graph that match a given concept type
   and that match a given pattern of neighbor-concept-type relationships.
-
 
 2. ARAX is based on a *modular architecture*. It provides distinct, orthogonal,
 and human-understandable knowledge graph manipulation and analysis capabilities
@@ -137,14 +136,14 @@ biomedical concepts)
 
 # What knowledge providers/sources does ARAX use?
 
-Currently, ARAX/RTX accesses five primary knowledge sources in order to
-handle queries:
+Currently, ARAX/RTX directly accesses four main knowledge sources in order to
+handle queries, along with several additional APIs for identifier mapping.
 
 ## RTX-KG1
 
 RTX-KG1 is a knowledge graph comprising 130k nodes and 3.5M relationships that
 is built by integrating concepts and concept-predicate-concept triples obtained
-from 16 different knowledge sources by way of their web APIs:
+from 17 different knowledge sources by way of their web APIs:
 
 1. Pathway Commons 2
 2. Disease Ontology
@@ -162,6 +161,7 @@ from 16 different knowledge sources by way of their web APIs:
 14. Gene Ontology
 15. Monarch SciGraph API
 16. Reactome
+17. PubChem
 
 RTX-KG1 complies with the Biomedical Data Translator Knowledge Graph object
 model standard, which is based on the Biolink model. RTX-KG1 is hosted in a
@@ -212,20 +212,21 @@ literature co-occurrence information, ARAX uses a pre-indexed version of PubMed
 (indexed for Medical Subject Heading or MeSH terms). For any concepts that
 cannot be mapped to MeSH, ARAX queries PubMed via a web API.
 
-## Ontology Lookup Service (OLS)
+## Identifier mapping
 
-RTX uses the Ontology Lookup Service (provided as a web API by the European
-Bioinformatics Institute) for on-the-fly mapping between certain
-identifier types.
+RTX's reasoning code uses several different web services for on-the-fly mapping
+between certain identifier types:
+1. Ontology Lookup Service 
+2. MyChem.info
+3. Disease Ontology
+4. PubChem
+5. NCBI eUtils
 
 # Team ARA&nbsp;Expand: who we are
 
 Our team includes investigators from Oregon State University, the Pennsylvania
 State University, Institute for Systems Biology, and Radboud University in the
-Netherlands. For our work on the Translator program, we also extensively
-collaborate and cooperate with investigators at Oregon Health &amp; Science
-University, Lawrence Berkeley National Laboratory, University of North Carolina
-Chapel Hill, and the University of Alabama Birmingham.
+Netherlands. 
 
 ## Principal investigators
 
@@ -242,6 +243,14 @@ Chapel Hill, and the University of Alabama Birmingham.
 | Jared&nbsp;Roach      | Institute for Systems Biology | `jared.roach@systemsbiology.org`      |                                                     | genomics, genetics, medicine, systems biology | 
 | Luis&nbsp;Mendoza     | Institute for Systems Biology | `luis.mendoza@systemsbiology.org`     | [isbluis](https://github.com/isbluis)               | software engineering, proteomics, systems biology |
 | Andrew&nbsp;Hoffman   | Radboud University, NL        | `A.Hoffman@ftr.ru.nl`                 | [parrhesiastic](https://github.com/parrhesiastic)   | ethnographer of data science and cyberinfrastructure  |
+| Finn Womack           | Oregon State University       | `womackf@oregonstate.edu`        | [finnagin](https://github.com/finnagin)   | programmer analyst  |
+| Amy Glen           | Oregon State University       | `glena@oregonstate.edu`        | [amykglen](https://github.com/amykglen)   | programmer analyst  |
+
+
+For our work on the Translator program, we also extensively
+collaborate and cooperate with investigators at Oregon Health &amp; Science
+University, Lawrence Berkeley National Laboratory, University of North Carolina
+Chapel Hill, and the University of Alabama Birmingham.
 
 # What is RTX? How does it differ from ARAX?
 
@@ -394,8 +403,8 @@ file.  RTX makes extensive use of internal caching via SQLite&nbsp;v3.11.0.
 
 # Contact us
 
-The best way to contact Team ARA&nbsp;Expand is by email to
-[ara.expand@gmail.com](mailto:ara.expand@gmail.com) or by adding a
+The best way to contact Team ARA&nbsp;Expand is by sending an email message to
+**[ara.expand@gmail.com](mailto:ara.expand@gmail.com)** or by logging a
 [GitHub issue](issues/).  Members of the Biomedical Data Translator consortium
 can also reach us on the
 [NCATS Translator Slack](https://ncatstranslator.slack.com). See also the
