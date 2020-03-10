@@ -18,7 +18,7 @@ project are working with NCATS to achieve this goal by building the
 **Translator** software, a modular system of Web services for biomedical
 knowledge exploration, reasoning, and hypothesis generation.
 
-After a multi-year feasibility assessment, during which our team built a
+After a multiyear feasibility assessment, during which our team built a
 prototype Translator reasoning tool called **RTX,** the Translator program is
 moving into a prototype development phase during early 2020. In this new phase,
 our team is building a modular web-based software system, **ARAX**, that enables
@@ -43,7 +43,7 @@ order to be able to answer the query; ARAX will then query the required
 knowledge providers, synthesize the information that it gets from those queries,
 and respond to the top-level layer in a standardized structured data
 format. When completed, ARAX will contribute to and advance the Translator
-program in four ways:
+program in four key ways:
 
 1. ARAX provides a powerful **domain-specific language (DSL)**, called **ARAXi**
 (technical documentation on ARAXi can be found
@@ -84,11 +84,11 @@ ARAX-powered analysis vignettes linked below, we describe how an ARAX workflow
 using ARAXi can be much more powerful than the sum of its individual
 parts.
 
-3. ARAX is a Web service that natively speaks the information
-standard&mdash;called the **Reasoners Standard Application Programming
-Interface**&mdash;that Translator has adopted for data interchange between
-Translator components. Team Expander&nbsp;Agent has been at the forefront of the
-development and stewardship of the Reasoners Standard API (as described
+3. ARAX is a Web service that speaks the information standard&mdash;called the
+**Reasoners Standard Application Programming Interface**&mdash;that Translator
+has adopted for data interchange between Translator components. Team
+Expander&nbsp;Agent has been at the forefront of the development and stewardship
+of the Reasoners Standard API (as described
 [below](#the-reasoners-standard-application-programming-interface)), and with
 this perspective, ARAX was built from the ground up to seamlessly interoperate
 with other Translator software components.  In addition to complying with the
@@ -99,7 +99,7 @@ has been an active participant in the standards development process) which is
 based on the [Biolink Model](https://biolink.github.io/biolink-model).
 
 4. ARAX is integrated with the _RTX_ reasoning tool's knowledge graphs and graph
-visualization capabilities. During the NCATS Translator feasibility asssessment
+visualization capabilities. During the NCATS Translator feasibility assessment
 phase (2017-2019), our team built a prototype reasoning tool system called RTX,
 whose knowledge graphs (both the first-generation knowledge graph **RTX-KG1**
 and the second-generation knowledge graph **RTX-KG2**) and user interface
@@ -309,8 +309,8 @@ implement) than RTX.
 # Organization of the ARAX/RTX software repository
 
 ARAX and RTX are mostly written in the Python programming language and a small
-amount of Javascript and bash shell. Yet Another Markup Language (YAML) and
-Javascript Object Nontation (JSON) are extensively used for configuration
+amount of JavaScript and bash shell. Yet Another Markup Language (YAML) and
+JavaScript Object Notation (JSON) are extensively used for configuration
 files. Many examples of analysis workflow code that access RTX and/or ARAX are
 provided in Jupyter notebook format, in several places in the code-base.
 
@@ -416,7 +416,7 @@ necessarily represent the official views of the National Institutes of Health.
 Many people contributed to the development of ARAX and RTX. A list of code
 contributors can be found under [contributors](graphs/contributors), in addition
 to the current team members listed above. In addition to the code contributors
-listed in this repo, we gratefully acknowledge technical assistance,
+listed in this repository, we gratefully acknowledge technical assistance,
 contributions, and helpful feedback from NCATS staff (Christine Colvis, Noel
 Southall, Mark Williams, Trung Nguyen, Tyler Beck, Sarah Stemann, Debbi
 Adelakun, and Tyler Peryea), and Will Byrd, Greg Rosenblatt, Michael Patton,
@@ -435,7 +435,7 @@ ARAX is designed to be installed on an Amazon Web Services Elastic Compute Cloud
 with 1,023&nbsp;TiB of elastic block storage, with host OS
 Ubuntu&nbsp;18.04. The host OS has nginx&nbsp;v1.14.0 installed and configured
 (see `team-private/ARAX/rtx-host-os-nginx-config` for configuration details) for
-SSL/TLS temination and proxying of HTTP traffic to `localhost:8080`. The SSL
+SSL/TLS termination and proxying of HTTP traffic to `localhost:8080`. The SSL
 site certificate was generated using Letsencrypt (certbot&nbsp;v0.27.0). ARAX
 and all of its database dependencies run inside a Docker container
 (Docker&nbsp;v19.03.5) on that instance that is based on an Ubuntu&nbsp;16.04
