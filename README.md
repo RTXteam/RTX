@@ -444,9 +444,8 @@ The host OS has nginx&nbsp;v1.14.0 installed and configured
 SSL/TLS termination and proxying of HTTP traffic to `localhost:8080`. The SSL
 site certificate was generated using Letsencrypt (certbot&nbsp;v0.27.0). ARAX
 and all of its database dependencies run inside a Docker container
-(Docker&nbsp;v19.03.5) on that instance that is based on an Ubuntu&nbsp;16.04
-image.  The docker container is configured to map host:container TCP ports as
-follows:
+(Docker&nbsp;v19.03.5) that is configured to map TCP ports as
+follows (host-port:container-port):
 
 - 7473:7473
 - 7474:7474
@@ -457,6 +456,7 @@ follows:
 `team-private/ARAX/arax-run-container-nodes.md`). Within the Docker container,
 ARAX uses
 
+- Ubuntu&nbsp;v16.04
 - Apache&nbsp;v2.4.18 
 - python&nbsp;v3.7.3
 - Neo4j&nbsp;v3.2.6
