@@ -221,6 +221,11 @@ between certain identifier types:
 3. Disease Ontology
 4. PubChem
 5. NCBI eUtils
+6. Human Metabolite Database
+
+A computable file enumerating and summarizing the external APIs that are
+used by ARAX/RTX, in YAML format, can be found
+[here](code/ARAX/KnowledgeSources/API_LIST.yaml). 
 
 # Team ARA&nbsp;Expand: who we are
 
@@ -243,8 +248,8 @@ Netherlands.
 | Jared&nbsp;Roach      | Institute for Systems Biology | `jared.roach@systemsbiology.org`      |                                                     | genomics, genetics, medicine, systems biology | 
 | Luis&nbsp;Mendoza     | Institute for Systems Biology | `luis.mendoza@systemsbiology.org`     | [isbluis](https://github.com/isbluis)               | software engineering, proteomics, systems biology |
 | Andrew&nbsp;Hoffman   | Radboud University, NL        | `A.Hoffman@ftr.ru.nl`                 | [parrhesiastic](https://github.com/parrhesiastic)   | ethnographer of data science and cyberinfrastructure  |
-| Finn Womack           | Oregon State University       | `womackf@oregonstate.edu`        | [finnagin](https://github.com/finnagin)   | programmer analyst  |
-| Amy Glen           | Oregon State University       | `glena@oregonstate.edu`        | [amykglen](https://github.com/amykglen)   | programmer analyst  |
+| Finn Womack           | Oregon State University       | `womackf@oregonstate.edu`        | [finnagin](https://github.com/finnagin)   | drug repositioning, Neo4j  |
+| Amy Glen           | Oregon State University       | `glena@oregonstate.edu`        | [amykglen](https://github.com/amykglen)   | knowledge graphs  |
 
 
 For our work on the Translator program, we also extensively
@@ -429,7 +434,7 @@ Three Jupyter notebooks that illustrate how to programmatically use ARAX are pro
 
 # Links
 
-- [Technical Documentation on ARAXi, the ARAX DSL](code/ARAX/Documentation/DSL_Documentation.md)
+- [Technical Documentation on ARAXi, the ARAX domain-specific language](code/ARAX/Documentation/DSL_Documentation.md)
 - [Biomedical Data Translator consortium-wide project information (ncats.nih.gov)](https://ncats.nih.gov/translator/about)
 - [Biomedical Data Translator 2020 funding opportunity announcement (grants.nih.gov)](https://grants.nih.gov/grants/guide/notice-files/NOT-TR-19-028.html)
 - [Biomedical Data Translator Feasibility Assessment Phase open-source software repository (github.com)](https://github.com/NCATS-Tangerine/)
