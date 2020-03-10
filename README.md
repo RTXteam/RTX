@@ -1,22 +1,22 @@
 # About the Translator project, Team Expander&nbsp;Agent, and ARAX
 
-We are **Expander&nbsp;Agent**, a team of researchers and software experts working
-within a consortium effort called the **Biomedical Data Translator** program
-("Translator program"). Initiated by the NIH National Center for Advancing
-Translational Sciences (NCATS), the Translator program's goal is to accelerate
-the development of disease therapies by harnessing artificial intelligence,
-distributed computing, and computationally-assisted biomedical knowledge
-exploration.  Although the Translator program is only in its third year,
-Translator tools are already being used by biomedical researchers for hypothesis
-generation and by analysts who are supporting clinical management of rare
-disease cases. Key intended applications of Translator include repositioning
-already-approved drugs for new indications (thus accelerating time-to-market),
-identifying molecular targets for developing new therapeutic agents, and
-providing software infrastructure that could enable development of more powerful
-clinical decision support tools. The 18 teams on the translator project are
-working with NCATS to achieve this goal by building the **Translator** software,
-a modular system of Web services for biomedical knowledge exploration,
-reasoning, and hypothesis generation.
+We are **Expander&nbsp;Agent**, a team of researchers and software experts
+working within a consortium effort called the **Biomedical Data Translator**
+program ("Translator program"). Initiated by the NIH National Center for
+Advancing Translational Sciences (NCATS), the Translator program's goal is to
+accelerate the development of disease therapies by harnessing artificial
+intelligence, Web-based distributed computing, and computationally-assisted
+biomedical knowledge exploration. Although the Translator program is only in its
+third year, Translator tools are already being used by biomedical researchers
+for hypothesis generation and by analysts who are supporting clinical management
+of rare disease cases. Key intended applications of Translator include
+repositioning already-approved drugs for new indications (thus accelerating
+time-to-market), identifying molecular targets for developing new therapeutic
+agents, and providing software infrastructure that could enable development of
+more powerful clinical decision support tools. The 18 teams on the translator
+project are working with NCATS to achieve this goal by building the
+**Translator** software, a modular system of Web services for biomedical
+knowledge exploration, reasoning, and hypothesis generation.
 
 After a multi-year feasibility assessment, during which our team built a
 prototype Translator reasoning tool called **RTX,** the Translator program is
@@ -53,7 +53,8 @@ workflows for biomedical knowledge exploration. One of the key advantages of
 ARAXi is that it is *not* a general-purpose programming language; it is
 purpose-built for the task of describing&mdash;in user friendly syntax&mdash;a
 knowledge graph manipulation workflow in terms of ARAX's modular
-capabilities. Using ARAXi, an analyst can:
+capabilities. All of ARAX's capabilities are exposed through ARAXi. Using ARAXi,
+an analyst can:
   - define a small *query graph*; query for entities (e.g., proteins, pathways, or
 diseases) that match the search criteria represented in the query graph; 
   - *expand* a knowledge graph, pulling in concepts that are related to
@@ -83,11 +84,11 @@ ARAX-powered analysis vignettes linked below, we describe how an ARAX workflow
 using ARAXi can be much more powerful than the sum of its individual
 parts.
 
-3. ARAX natively speaks the information standard&mdash;called the **Reasoners
-Standard Application Programming Interface**&mdash;that Translator has adopted
-for data interchange between Translator components. Team Expander&nbsp;Agent has
-been at the forefront of the development and stewardship of the Reasoners
-Standard API (as described
+3. ARAX is a Web service that natively speaks the information
+standard&mdash;called the **Reasoners Standard Application Programming
+Interface**&mdash;that Translator has adopted for data interchange between
+Translator components. Team Expander&nbsp;Agent has been at the forefront of the
+development and stewardship of the Reasoners Standard API (as described
 [below](#the-reasoners-standard-application-programming-interface)), and with
 this perspective, ARAX was built from the ground up to seamlessly interoperate
 with other Translator software components.  In addition to complying with the
@@ -286,12 +287,23 @@ During the Translator program's feasibility assessment phase (2017-2019), our
 team&mdash;under the name "X-ray" that was assigned in accordance with the
 feasibility assessment's team-naming scheme based on the electromagnetic
 spectrum&mdash;built and released a prototype biomedical reasoning tool called
-RTX, which is why this software repository is called `RTX`. Our design for the
-ARAX software system builds on the code-base for RTX and leverages the
-already-built user interface and knowledge graph for RTX. Think of ARAX as
-extending RTX's capabilities by adding powerful new graph exploration
-capabilities and by adding an expressive, but user-friendly language (ARAXi) for
-describing knowledge exploration workflows.
+RTX, which is why this software repository is called `RTX`. RTX's capabilities
+center around answering questions from a list of natural-language question
+templates (e.g., *what proteins does acetaminophen target?* or *what drugs
+target proteins associated with the glycolysis pathway?*) and around graphical
+construction of a "query graph" that is used as a template for finding subgraphs
+of a the RTX-KG1 knowledge graph. The design for the ARAX software system
+relates to RTX in three ways:
+1. ARAX builds on the code-base for RTX and leverages the
+already-built user interface and knowledge graphs for RTX (RTX-KG1 and RTX-Kg2).
+2. Through the expressive (but user-friendly) domain-specific language ARAXi, ARAX exposes RTX's graph
+exploration and analysis capabilities so that they can be used (in combination
+or individually) by Translator tools or workflows in accordance with the
+Translator standard for inter-tool communication (Reasoners Standard API).
+3. ARAX adds new and powerful graph exploration and analysis capabilities, such
+as `expand`, `overlay` and `filter`, that make ARAX significantly more flexible
+(in terms of the types of graph exploration/analysis workflows that it can
+implement) than RTX.
 
 # Organization of the ARAX/RTX software repository
 
