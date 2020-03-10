@@ -436,9 +436,9 @@ ARAX uses
 
 - Apache&nbsp;v2.4.18 
 - python&nbsp;v3.7.3
-- Neo4j&nbsp;v3.2.6,
+- Neo4j&nbsp;v3.2.6
 - OpenJDK&nbsp;v1.8.0_131
-- mysql&nbsp;v5.7.19-0ubuntu0.16.04.1.
+- mysql&nbsp;v5.7.19-0ubuntu0.16.04.1
 
 The python package requirements for ARAX are described in the top-level
 `requirements.txt` file.  RTX makes extensive use of internal caching via
