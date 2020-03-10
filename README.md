@@ -263,7 +263,7 @@ Netherlands.
 | -------------- | ------------------------------------------- | --------------------------------- | --------------------------------------------- | -------------------------------- |
 | Stephen&nbsp;Ramsey | PI, Oregon State University                 | `stephen.ramsey@oregonstate.edu`  | [saramsey](https://github.com/saramsey)       | compbio, systems biology         |
 | David&nbsp;Koslicki | PI, Penn State University                   | `dmk333@psu.edu`                  | [dkoslicki](https://github.com/dkoslicki)     | compbio, graph algorithms        |
-| Eric&nbsp;Deutsch   | PI, Institute for Systems Biology           | `eric.deutsch@systemsbiology.org` | [edeutsch](https://github.com/edeutsch)       | bioinformatics, data management  | 
+| Eric&nbsp;Deutsch   | PI, Institute for Systems Biology           | `eric.deutsch@systemsbiology.org` | [edeutsch](https://github.com/edeutsch)       | bioinformatics, data management, standards development  | 
 
 ## Team members
 
