@@ -175,13 +175,14 @@ the [kg1endpoint server](http://kg1endpoint.rtx.ai).
 
 RTX-KG2 is a knowledge graph comprising 7.5M nodes and 34.3M relationships
 that is built by integrating concepts and concept-predicate-concept triples
-obtained from all of the KG1 knowledge sources plus:
+obtained from:
 
-1. Unified Medical Language System (UMLS; including SNOMED&nbsp;CT)
-2. NCBI Genes
-3. Ensembl Genes
-4. UniChem
-5. Semantic Medline Database (SemMedDB)
+1. *All of the KG1 knowledge sources*
+2. Unified Medical Language System (UMLS; including SNOMED&nbsp;CT)
+3. NCBI Genes
+4. Ensembl Genes
+5. UniChem
+6. Semantic Medline Database (SemMedDB)
 
 RTX-KG2 complies with the Biomedical Data Translator Knowledge Graph object
 model standard, which is based on the Biolink model. RTX-KG2 is hosted in a
