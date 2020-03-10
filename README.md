@@ -417,18 +417,32 @@ provided by NCATS through the Translator program award OT2TR003428.
 ARAX is designed to be installed on an Amazon Web Services Elastic Compute Cloud
 (EC2) `m5a.4xlarge` instance (which has 16&nbsp;vCPUs and 64&nbsp;GiB of RAM)
 with 1,023&nbsp;TiB of elastic block storage, with host OS
-Ubuntu&nbsp;18.04. The host OS has nginx v1.14.0 installed and configured (see
-`team-private/ARAX/rtx-host-os-nginx-config` for configuration details) for
+Ubuntu&nbsp;18.04. The host OS has nginx&nbsp;v1.14.0 installed and configured
+(see `team-private/ARAX/rtx-host-os-nginx-config` for configuration details) for
 SSL/TLS temination and proxying of HTTP traffic to `localhost:8080`. The SSL
-site certificate was generated using Letsencrypt (certbot version 0.27.0). ARAX
-and all of its database dependencies run inside a Docker container (Docker
-version 19.03.5) on that instance that is configured to map TCP ports as
-follows: 7473:7473, 7474:7474, 7687:7687, and 8080:80 (for details see
+site certificate was generated using Letsencrypt (certbot&nbsp;v0.27.0). ARAX
+and all of its database dependencies run inside a Docker container
+(Docker&nbsp;v19.03.5) on that instance that is configured to map TCP ports as
+follows: 
+
+- 7473:7473
+- 7474:7474
+- 7687:7687
+- 8080:80 
+
+(for the specific Docker run command, see
 `team-private/ARAX/arax-run-container-nodes.md`). Within the Docker container,
-ARAX uses Apache&nbsp;v2.4.18, python&nbsp;v3.7.3, Neo4j&nbsp;v3.2.6,
-OpenJDK&nbsp;v1.8.0_131, and mysql&nbsp;v5.7.19-0ubuntu0.16.04.1. The python
-package requirements for ARAX are described in the top-level `requirements.txt`
-file.  RTX makes extensive use of internal caching via SQLite&nbsp;v3.11.0.
+ARAX uses
+
+- Apache&nbsp;v2.4.18 
+- python&nbsp;v3.7.3
+- Neo4j&nbsp;v3.2.6,
+- OpenJDK&nbsp;v1.8.0_131
+- mysql&nbsp;v5.7.19-0ubuntu0.16.04.1.
+
+The python package requirements for ARAX are described in the top-level
+`requirements.txt` file.  RTX makes extensive use of internal caching via
+SQLite&nbsp;v3.11.0.
 
 # Contact us
 
