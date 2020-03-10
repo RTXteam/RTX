@@ -262,7 +262,7 @@ Netherlands.
 | David&nbsp;Koslicki | PI, Penn State University                   | `dmk333@psu.edu`                  | [dkoslicki](https://github.com/dkoslicki)     | compbio, graph algorithms        |
 | Eric&nbsp;Deutsch   | PI, Institute for Systems Biology           | `eric.deutsch@systemsbiology.org` | [edeutsch](https://github.com/edeutsch)       | bioinformatics, data management  | 
 
-## Key personnel
+## Team members
 
 | Name             | Affiliation                   | Email                                 | GitHub username                                     | Areas of relevant expertise |
 | ---------------- | ----------------------------- | ------------------------------------- | --------------------------------------------------- | --------------------------- |
@@ -439,27 +439,34 @@ contact information for the Team Expander&nbsp;Agent PIs above.
 
 # Try out ARAX/RTX...
 
-## In your web browser
+## ...in your web browser
 
 Here is the link to access the web browser interface to RTX:
 [arax.rtx.ai](https://arax.rtx.ai)
 
-## Using our web API
+## ...using our web API
 
 Here is the link to documentation on the web API interface to RTX:
-[arax.rtx.ai/api/rtx/v1/ui](https://arax.rtx.ai/api/rtx/v1/ui/)
+[arax.rtx.ai/api/rtx/v1/ui](https://arax.rtx.ai/api/rtx/v1/ui/).
 
-## By customizing a Jupyter Notebook
+## ...by customizing a Jupyter Notebook
 
 Three Jupyter notebooks that illustrate how to programmatically use ARAX are provided
 [here](code/ARAX/Examples).
 
 # Links
 
-- [Technical Documentation on ARAXi, the ARAX domain-specific language](code/ARAX/Documentation/DSL_Documentation.md)
+## General links for the Biomedical Data Translator project
+
 - [Biomedical Data Translator consortium-wide project information (ncats.nih.gov)](https://ncats.nih.gov/translator/about)
 - [Biomedical Data Translator 2020 funding opportunity announcement (grants.nih.gov)](https://grants.nih.gov/grants/guide/notice-files/NOT-TR-19-028.html)
 - [Biomedical Data Translator Feasibility Assessment Phase open-source software repository (github.com)](https://github.com/NCATS-Tangerine/)
 - [Biomedical Data Translator open-source software repository (github.com)](https://github.com/NCATSTranslator)
 - [Biomedical Data Translator Knowledge Graph object model standard (github.io)](https://biolink.github.io/biolink-model)
 - [Biomedical Data Translator Reasoners Standard API (github.com)](https://github.com/NCATS-Tangerine/NCATS-ReasonerStdAPI)
+
+## ARAX- and RTX-specific links
+
+- [Technical documentation on ARAXi, the ARAX domain-specific language](code/ARAX/Documentation/DSL_Documentation.md)
+- [Technical documentation on the ARAX web API interface](https://arax.rtx.ai/api/rtx/v1/ui/)
+
