@@ -15,7 +15,7 @@ Contains the classes for controlling the ARAX components.
 
 ### Subdirectory `Documentation`
 
-Contains technical documentation of ARAX and the ARAXi domain-specific language.
+Contains [technical documentation](https://github.com/RTXteam/RTX/blob/demo/code/ARAX/Documentation/DSL_Documentation.md) of ARAX and the ARAXi domain-specific language.
 
 ### Subdirectory `Testing`
 
