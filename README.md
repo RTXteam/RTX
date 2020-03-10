@@ -186,13 +186,12 @@ from 17 different knowledge providers by way of their web APIs:
 16. Reactome
 17. PubChem
 
-RTX-KG1 complies with the Biomedical Data Translator Knowledge Graph object
-model standard, which is based on the Biolink model. RTX-KG1 is hosted in a
-Neo4j graph database server and can be accessed at
-[kg1endpoint.rtx.ai:7474](http://kg1endpoint.rtx.ai:7474) (username is `neo4j`;
-contact Team Expander&nbsp;Agent for the password). Alternatively, a Neo4j dump file
-(in gzipped tar archive format) of KG1 can be downloaded without password from
-the [kg1endpoint server](http://kg1endpoint.rtx.ai).
+RTX-KG1 complies with the Biolink model-based Translator Knowledge Graph object
+model standard. RTX-KG1 is hosted in a Neo4j graph database server and can be
+accessed at [kg1endpoint.rtx.ai:7474](http://kg1endpoint.rtx.ai:7474) (username
+is `neo4j`; contact Team Expander&nbsp;Agent for the password). Alternatively, a
+Neo4j dump file (in gzipped tar archive format) of KG1 can be downloaded without
+password from the [kg1endpoint server](http://kg1endpoint.rtx.ai).
 
 ## RTX-KG2
 
