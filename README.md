@@ -1,6 +1,6 @@
-# About the Translator project, Team ARA&nbsp;Expand, and ARAX
+# About the Translator project, Team Expander&nbsp;Agent, and ARAX
 
-We are **ARA&nbsp;Expand**, a team of researchers and software experts working
+We are **Expander&nbsp;Agent**, a team of researchers and software experts working
 within a consortium effort called the **Biomedical Data Translator** program
 ("Translator program"). Initiated by the NIH National Center for Advancing
 Translational Sciences (NCATS), the Translator program's goal is to accelerate
@@ -85,7 +85,7 @@ parts.
 
 3. ARAX natively speaks the information standard&mdash;called the **Reasoners
 Standard Application Programming Interface**&mdash;that Translator has adopted
-for data interchange between Translator components. Team ARA&nbsp;Expand has been at
+for data interchange between Translator components. Team Expander&nbsp;Agent has been at
 the forefront of the development and stewardship of the Reasoners Standard API
 (as described [below](#api)), and with this perspective, ARAX was built from the
 ground up to seamlessly interoperate with other Translator software components.
@@ -134,9 +134,8 @@ biomedical concepts)
    - a *knowledge graph* representing the union of concepts in all of the results,
    along with all known relationships among the concepts in the union.
 
-# What knowledge providers/sources does ARAX use?
+# What knowledge sources does ARAX use?
 
-(#kp)
 Currently, ARAX/RTX directly accesses four main knowledge sources in order to
 handle queries, along with several additional APIs for identifier mapping.
 
@@ -168,7 +167,7 @@ RTX-KG1 complies with the Biomedical Data Translator Knowledge Graph object
 model standard, which is based on the Biolink model. RTX-KG1 is hosted in a
 Neo4j graph database server and can be accessed at
 [kg1endpoint.rtx.ai:7474](http://kg1endpoint.rtx.ai:7474) (username is `neo4j`;
-contact Team ARA&nbsp;Expand for the password). Alternatively, a Neo4j dump file
+contact Team Expander&nbsp;Agent for the password). Alternatively, a Neo4j dump file
 (in gzipped tar archive format) of KG1 can be downloaded without password from
 the [kg1endpoint server](http://kg1endpoint.rtx.ai).
 
@@ -189,11 +188,11 @@ RTX-KG2 complies with the Biomedical Data Translator Knowledge Graph object
 model standard, which is based on the Biolink model. RTX-KG2 is hosted in a
 Neo4j graph database server and can be accessed at
 [kg2endpoint2.rtx.ai:7474](http://kg2endpoint2.rtx.ai:7474) (username is `neo4j`;
-contact Team ARA&nbsp;Expand for the password). Alternatively, a JSON
+contact Team Expander&nbsp;Agent for the password). Alternatively, a JSON
 dump of KG2 is available from the [RTX-KG2 S3 bucket](http://rtx-kg2-public.s3-website-us-west-2.amazonaws.com/).
 A version of KG2 that is formatted and indexed for the knowledge graph
 exploration tool [mediKanren](https://github.com/webyrd/mediKanren) is
-available; contact Team ARA&nbsp;Expand for details.
+available; contact Team Expander&nbsp;Agent for details.
 
 ## Columbia Open Health Data (COHD)
 
@@ -228,7 +227,7 @@ A computable file enumerating and summarizing the external APIs that are
 used by ARAX/RTX, in YAML format, can be found
 [here](code/ARAX/KnowledgeSources/API_LIST.yaml). 
 
-# Team ARA&nbsp;Expand: who we are
+# Team Expander&nbsp;Agent: who we are
 
 Our team includes investigators from Oregon State University, the Pennsylvania
 State University, Institute for Systems Biology, and Radboud University in the
@@ -263,12 +262,13 @@ Chapel Hill, and the University of Alabama Birmingham.
 During the Translator program's feasibility assessment phase (2017-2019), our
 team&mdash;under the name "X-ray" that was assigned in accordance with the
 feasibility assessment's team-naming scheme based on the electromagnetic
-spectrum&mdash;built and released a prototype biomedical reasoning tool called RTX, which is
-why this software repository is called `RTX`. Our design for the ARAX software
-system builds on the code-base for RTX and leverages the already-built user
-interface and knowledge graph for RTX. Think of ARAX as extending RTX's
-capabilities by adding powerful new graph exploration capabilities and by adding
-a user-friendly language
+spectrum&mdash;built and released a prototype biomedical reasoning tool called
+RTX, which is why this software repository is called `RTX`. Our design for the
+ARAX software system builds on the code-base for RTX and leverages the
+already-built user interface and knowledge graph for RTX. Think of ARAX as
+extending RTX's capabilities by adding powerful new graph exploration
+capabilities and by adding an expressive, but user-friendly language (ARAXi) for
+describing knowledge exploration workflows.
 
 # Organization of the ARAX/RTX software repository
 
@@ -409,12 +409,12 @@ file.  RTX makes extensive use of internal caching via SQLite&nbsp;v3.11.0.
 
 # Contact us
 
-The best way to contact Team ARA&nbsp;Expand is by sending an email message to
-**[ara.expand@gmail.com](mailto:ara.expand@gmail.com)** or by logging a
+The best way to contact Team Expander&nbsp;Agent is by sending an email message to
+**[expander.agent@gmail.com](mailto:expander.agent@gmail.com)** or by logging a
 [GitHub issue](issues/).  Members of the Biomedical Data Translator consortium
 can also reach us on the
 [NCATS Translator Slack](https://ncatstranslator.slack.com). See also the
-contact information for the Team ARA&nbsp;Expand PIs above.
+contact information for the Team Expander&nbsp;Agent PIs above.
 
 # Try out ARAX/RTX...
 
