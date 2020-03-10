@@ -351,8 +351,7 @@ knowledge graph (RTX-KG2) and hosting it in Neo4j [(link)](code/kg2).
 ### subdirectory `code/kg2/mediKanren`
 
 Contains the code for exporting a version of the RTX-KG2
-knowledge graph that is formatted and indexed for use with the [mediKanren](https://github.com/webyrd/mediKanren).
-knowledge graph exploration tool.
+knowledge graph that is formatted and indexed for use with the [mediKanren](https://github.com/webyrd/mediKanren) knowledge graph exploration tool [(link)](code/kg2/mediKanren).
 
 ### subdirectory `code/reasoningtool/kg-construction`
 
