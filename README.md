@@ -104,9 +104,9 @@ phase, our team built a prototype reasoning tool system called RTX, whose
 knowledge graphs (both the first-generation knowledge graph **RTX-KG1** and the
 second-generation knowledge graph **RTX-KG2**) and user interface capabilities
 are now available through ARAX. This integration enables a user of ARAX to
-seamlessly refer a server-side knowledge graph or result-set for graphical
-visualization within a web browser. It also provides ARAX with significant speed
-efficiencies for graph expansion and identifier mapping.
+seamlessly refer a server-side knowledge graph or result-set for RTX-based
+graphical visualization within a web browser. It also provides ARAX with
+significant speed efficiencies for graph expansion and identifier mapping.
 
 # How does ARAX work?
 
