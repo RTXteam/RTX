@@ -304,6 +304,7 @@ Translator standard for inter-tool communication (Reasoners Standard API).
 as `expand`, `overlay` and `filter`, that make ARAX significantly more flexible
 (in terms of the types of graph exploration/analysis workflows that it can
 implement) than RTX.
+4. RTX could produce results in the Reasoners Standard API format. However, it could not be queried in this API format. In contrast, ARAX can perform all of is capabilities upon receiving any input Reasoners Standard API, while still producing such a standardized output format. As such, ARAX an its capabilities will be accessible to any automated reasoning agent, automated reasoning system, or knowledge provider capable of sending a Reasoners Standard API message.
 
 # Organization of the ARAX/RTX software repository
 
