@@ -104,7 +104,7 @@ an analyst can:
 diseases) that match the search criteria represented in the query graph; 
   - *expand* a knowledge graph, pulling in concepts that are related to
   concepts that are already in the knowledge graph
-  - filter a knowledge graph, eliminating concepts or relationships that do
+  - *filter* a knowledge graph, eliminating concepts or relationships that do
   not match a given set of search criteria
   - *overlay* contextual information from large datasets (such as co-occurrence of
 terms in clinical health records or in abstracts of articles in the biomedical
