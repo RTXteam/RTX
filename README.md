@@ -473,7 +473,7 @@ The best way to contact Team Expander&nbsp;Agent is by
 
 - sending an email message to
 **[`expander.agent@gmail.com`](mailto:expander.agent@gmail.com)**
-- logging a [GitHub issue](issues/)
+- logging a [GitHub issue](../../issues/)
 - (for members of the Biomedical Data Translator consortium) messaging us on the
 [NCATS Translator Slack](https://ncatstranslator.slack.com). 
 
