@@ -208,12 +208,14 @@ obtained from:
 RTX-KG2 complies with the Biomedical Data Translator Knowledge Graph object
 model standard, which is based on the Biolink model. RTX-KG2 is hosted in a
 Neo4j graph database server and can be accessed at
-[kg2endpoint2.rtx.ai:7474](http://kg2endpoint2.rtx.ai:7474) (username is `neo4j`;
-contact Team Expander&nbsp;Agent for the password). Alternatively, a JSON
-dump of KG2 is available from the [RTX-KG2 S3 bucket](http://rtx-kg2-public.s3-website-us-west-2.amazonaws.com/).
+[kg2endpoint2.rtx.ai:7474](http://kg2endpoint2.rtx.ai:7474) (username is
+`neo4j`; contact Team Expander&nbsp;Agent for the password). Alternatively, a
+JSON dump of KG2 is available from the
+[RTX-KG2 S3 bucket](http://rtx-kg2-public.s3-website-us-west-2.amazonaws.com/).
 A version of KG2 that is formatted and indexed for the knowledge graph
 exploration tool [mediKanren](https://github.com/webyrd/mediKanren) is
-available; contact Team Expander&nbsp;Agent for details.
+available; contact Team Expander&nbsp;Agent for details. For extensive technical
+documentation on RTX-KG2, see this repository's [KG2 subdirectory](code/kg2).
 
 ## Columbia Open Health Data (COHD)
 
@@ -467,6 +469,6 @@ Three Jupyter notebooks that illustrate how to programmatically use ARAX are pro
 
 ## ARAX- and RTX-specific links
 
-- [Technical documentation on ARAXi, the ARAX domain-specific language](code/ARAX/Documentation/DSL_Documentation.md)
-- [Technical documentation on the ARAX web API interface](https://arax.rtx.ai/api/rtx/v1/ui/)
+- [Technical documentation on ARAXi, the ARAX domain-specific language (this repo)](code/ARAX/Documentation/DSL_Documentation.md)
+- [Technical documentation on the ARAX web API interface (arax.rtx.ai)](https://arax.rtx.ai/api/rtx/v1/ui/)
 
