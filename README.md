@@ -388,7 +388,8 @@ release of RTX.
 # License
 
 ARAX and RTX are furnished under the MIT open-source software license; see the
-`LICENSE.txt` file for details.
+`LICENSE` file for details. For the copyright on the code in the
+`code/NLPCode` subdirectory, see the `LICENSE` file in that subdirectory.
 
 # Disclaimer
 
