@@ -18,7 +18,7 @@ project are working with NCATS to achieve this goal by building the
 **Translator** software, a modular system of Web services for biomedical
 knowledge exploration, reasoning, and hypothesis generation.
 
-After a multiyear feasibility assessment, during which our team built a
+After a multiyear feasibility assessment (2017-2019), during which our team built a
 prototype Translator reasoning tool called **RTX,** the Translator program is
 moving into a prototype development phase during early 2020. In this new phase,
 our team is building a modular web-based software system, **ARAX**, that enables
@@ -100,13 +100,13 @@ based on the [Biolink Model](https://biolink.github.io/biolink-model).
 
 4. ARAX is integrated with the _RTX_ reasoning tool's knowledge graphs and graph
 visualization capabilities. During the NCATS Translator feasibility assessment
-phase (2017-2019), our team built a prototype reasoning tool system called RTX,
-whose knowledge graphs (both the first-generation knowledge graph **RTX-KG1**
-and the second-generation knowledge graph **RTX-KG2**) and user interface
-capabilities are now available through ARAX. This integration enables a user of
-ARAX to seamlessly refer a server-side knowledge graph or result-set for
-graphical visualization within a web browser. It also provides ARAX with
-significant speed efficiencies for graph expansion and identifier mapping.
+phase, our team built a prototype reasoning tool system called RTX, whose
+knowledge graphs (both the first-generation knowledge graph **RTX-KG1** and the
+second-generation knowledge graph **RTX-KG2**) and user interface capabilities
+are now available through ARAX. This integration enables a user of ARAX to
+seamlessly refer a server-side knowledge graph or result-set for graphical
+visualization within a web browser. It also provides ARAX with significant speed
+efficiencies for graph expansion and identifier mapping.
 
 # How does ARAX work?
 
@@ -414,20 +414,20 @@ necessarily represent the official views of the National Institutes of Health.
 # Credits
 
 Many people contributed to the development of ARAX and RTX. A list of code
-contributors can be found under [contributors](graphs/contributors), in addition
-to the current team members listed above. In addition to the code contributors
-listed in this repository, we gratefully acknowledge technical assistance,
-contributions, and helpful feedback from NCATS staff (Christine Colvis, Noel
-Southall, Mark Williams, Trung Nguyen, Tyler Beck, Sarah Stemann, Debbi
-Adelakun, Dena Procaccini, and Tyler Peryea), and Will Byrd, Greg Rosenblatt,
-Michael Patton, Chunlei Wu, Kevin Xin, Tom Conlin, Harold Solbrig, Matt Brush,
-Karamarie Fecho, Julie McMurray, Kent Shefchek, Chris Bizon, Steve Cox, Deepak
-Unni, Tim Putman, Patrick Wang, Sui Huang, Theo Knijnenburg, Gustavo Glusman,
-John Earls, Andrew Su, Chris Mungall, Marcin Joachimiak, Michel Dumontier,
-Richard Bruskiewich, and Melissa Haendel. Support for the development of RTX was
-provided by NCATS through the Translator program award OT2TR002520.  Support for
-the development of ARAX was provided by NCATS through the Translator program
-award OT2TR003428.
+contributors can be found under the
+[contributors tab for this repository](graphs/contributors), in addition to the
+current team members listed above. In addition to the code contributors, we
+gratefully acknowledge technical assistance, contributions, and helpful feedback
+from NCATS staff (Christine Colvis, Noel Southall, Mark Williams, Trung Nguyen,
+Tyler Beck, Sarah Stemann, Debbi Adelakun, Dena Procaccini, and Tyler Peryea),
+and Will Byrd, Greg Rosenblatt, Michael Patton, Chunlei Wu, Kevin Xin, Tom
+Conlin, Harold Solbrig, Matt Brush, Karamarie Fecho, Julie McMurray, Kent
+Shefchek, Chris Bizon, Steve Cox, Deepak Unni, Tim Putman, Patrick Wang, Sui
+Huang, Theo Knijnenburg, Gustavo Glusman, John Earls, Andrew Su, Chris Mungall,
+Marcin Joachimiak, Michel Dumontier, Richard Bruskiewich, and Melissa
+Haendel. Support for the development of RTX was provided by NCATS through the
+Translator program award OT2TR002520.  Support for the development of ARAX was
+provided by NCATS through the Translator program award OT2TR003428.
 
 # Installation and dependencies
 
