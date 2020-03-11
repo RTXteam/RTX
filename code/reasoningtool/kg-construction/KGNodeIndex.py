@@ -386,9 +386,11 @@ class KGNodeIndex:
         curies = {}
         curies_list = []
         for row in rows:
-            if row[3] not in curies:
-                curies_list.append(row[3])
-                curies[row[3]] = 1
+            curie = row[3]
+            if curie not in curies:
+                if self.is_curie_present(curie):
+                    curies_list.append(curie)
+                    curies[curie] = 1
         return curies_list
 
 
@@ -421,13 +423,13 @@ class KGNodeIndex:
     def test_select(self, name):
 
         cursor = self.connection.cursor()
-        cursor.execute( f"SELECT * FROM kg1node{TESTSUFFIX} WHERE curie = ?", (name,) )
+        cursor.execute( f"SELECT * FROM kg1node{TESTSUFFIX} WHERE curie = ?", (name.upper(),) )
         rows = cursor.fetchall()
         for row in rows:
             print('KG1:',row)
 
         cursor = self.connection.cursor()
-        cursor.execute( f"SELECT * FROM kg2node{TESTSUFFIX} WHERE curie = ?", (name,) )
+        cursor.execute( f"SELECT * FROM kg2node{TESTSUFFIX} WHERE curie = ?", (name.upper(),) )
         rows = cursor.fetchall()
         for row in rows:
             print('KG2:',row)
@@ -517,7 +519,7 @@ def main():
 
     print("==== Getting KG1 CURIEs ============================")
     tests = ["CUI:C0031485", "CUI:C0017205", "UniProtKB:P06865", "MESH:D005199", "HEXA",
-             "CHEBI:5855", "fanconi anemia", "ibuprofen"]
+             "CHEBI:5855", "fanconi anemia", "ibuprofen", 'DOID:9281']
 
     t0 = timeit.default_timer()
     for test in tests:
@@ -540,8 +542,10 @@ def main():
 
 
     print("==== Test SELECT ============================")
-    #kgNodeIndex.test_select('DOID:13636')
+    #kgNodeIndex.test_select('phenylketonuria')
+    #kgNodeIndex.test_select('CUI:C4710278')
     #kgNodeIndex.test_select('UniProtKB:P06865')
+    #print(kgNodeIndex.is_curie_present('CUI:C4710278'))
 
 ####################################################################################################
 if __name__ == "__main__":
