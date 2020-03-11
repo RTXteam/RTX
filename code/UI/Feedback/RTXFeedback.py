@@ -311,7 +311,9 @@ class RTXFeedback:
             n_edges = len(result.result_graph.edges)
 
         #### See if there is an existing result that matches this hash
-        previousResult = session.query(Result).filter(Result.result_hash==result_hash).order_by(desc(Result.result_id)).first()
+        previousResult = None
+        if result_hash != 'xxxx':
+          previousResult = session.query(Result).filter(Result.result_hash==result_hash).order_by(desc(Result.result_id)).first()
         #eprint("WARNING: Forcing chache miss for result at line 309")
         #previousResult = None
         if previousResult is not None:
@@ -334,7 +336,7 @@ class RTXFeedback:
           session.flush()
 
           result.id = "https://arax.rtx.ai/api/rtx/v1/result/"+str(storedResult.result_id)
-          eprint("Stored new result. Returned result_id is "+str(storedResult.result_id)+", n_nodes="+str(n_nodes)+", n_edges="+str(n_edges)+", hash="+result_hash)
+          #eprint("Stored new result. Returned result_id is "+str(storedResult.result_id)+", n_nodes="+str(n_nodes)+", n_edges="+str(n_edges)+", hash="+result_hash)
           storedResult.result_object=pickle.dumps(ast.literal_eval(repr(result)))
 
     session.commit()
