@@ -24,7 +24,6 @@ import math
 import numpy
 import os
 import sys
-from operator import add
 from typing import List, Dict, Set, Union
 from response import Response
 
@@ -69,9 +68,6 @@ class BiolinkEntityStr(BiolinkEntity):
 BIOLINK_CATEGORY_LABELS = {'protein', 'disease', 'phenotypic_feature', 'gene', 'chemical_substance'}
 BIOLINK_ENTITY_TYPE_OBJECTS = {category_label: BiolinkEntityStr(category_label) for
                                category_label in BIOLINK_CATEGORY_LABELS}
-
-RELATIONS_TO_FILTER_OUT_FOR_DETERMINING_LEAF_NODES = {'jaccard_index',
-                                                      'probability_drug_treats'}
 
 
 class ARAXResultify:
@@ -209,33 +205,36 @@ def _is_specific_query_node(qnode: QNode):
 
 
 def _make_adj_maps(graph: Union[QueryGraph, KnowledgeGraph],
-                   relations_to_filter_out: Set[str] = None) -> List[Dict[str, Set[str]]]:
-    adj_map_in: Dict[str, Set[str]] = {node.id: set() for node in graph.nodes}
-    adj_map_out: Dict[str, Set[str]] = {node.id: set() for node in graph.nodes}
-    if relations_to_filter_out is None:
-        relations_to_filter_out = set()
+                   directed=True) -> Dict[str, Dict[str, Set[str]]]:
+    if directed:
+        adj_map_in: Dict[str, Set[str]] = {node.id: set() for node in graph.nodes}
+        adj_map_out: Dict[str, Set[str]] = {node.id: set() for node in graph.nodes}
+    else:
+        adj_map: Dict[str, Set[str]] = {node.id: set() for node in graph.nodes}
     for edge in graph.edges:
-        if edge.relation in relations_to_filter_out:
-            continue
-        adj_map_out[edge.source_id].add(edge.target_id)
-        adj_map_in[edge.target_id].add(edge.source_id)
-    return [adj_map_in, adj_map_out]
+        if directed:
+            adj_map_out[edge.source_id].add(edge.target_id)
+            adj_map_in[edge.target_id].add(edge.source_id)
+        else:
+            adj_map[edge.source_id].add(edge.target_id)
+            adj_map[edge.target_id].add(edge.source_id)
+    if directed:
+        ret_dict = {'in': adj_map_in, 'out': adj_map_out}
+    else:
+        ret_dict = {'both': adj_map}
+    return ret_dict
 
 
-def _bfs_dists(adj_map_in: Dict[str, Set[str]],
-               adj_map_out: Dict[str, Set[str]],
+def _bfs_dists(adj_map: Dict[str, Set[str]],
                start_node_id: str) -> Dict[str, int]:
-    N = len(adj_map_in)
-    assert N == len(adj_map_out)
     queue = collections.deque([start_node_id])
-    distances = {node_id: numpy.nan for node_id in adj_map_in.keys()}
+    distances = {node_id: numpy.nan for node_id in adj_map.keys()}
     distances[start_node_id] = 0
     while len(queue) > 0:
         node_id = queue.popleft()
         node_dist = distances[node_id]
         assert not math.isnan(node_dist)
-        for neighb_node_id in (adj_map_in[node_id] |
-                               adj_map_out[node_id]):
+        for neighb_node_id in (adj_map[node_id]):
             if math.isnan(distances[neighb_node_id]):
                 distances[neighb_node_id] = node_dist + 1
                 queue.append(neighb_node_id)
@@ -243,10 +242,10 @@ def _bfs_dists(adj_map_in: Dict[str, Set[str]],
 
 
 def _get_essence_node_for_qg(qg: QueryGraph) -> str:
-    [adj_map_in, adj_map_out] = _make_adj_maps(qg, RELATIONS_TO_FILTER_OUT_FOR_DETERMINING_LEAF_NODES)
-    node_ids_list = list(adj_map_in.keys())
+    adj_map = _make_adj_maps(qg, directed=False)['both']
+    node_ids_list = list(adj_map.keys())
     all_nodes = set(node_ids_list)
-    node_degrees = list(map(add, map(len, adj_map_in.values()), map(len, adj_map_out.values())))
+    node_degrees = map(len, adj_map.values())
     leaf_nodes = set(node_ids_list[i] for i, k in enumerate(node_degrees) if k == 1)
     is_set_nodes = set(node.id for node in qg.nodes if node.is_set)
     specific_nodes = set(node.id for node in qg.nodes if _is_specific_query_node(node))
@@ -288,10 +287,9 @@ def _get_essence_node_for_qg(qg: QueryGraph) -> str:
         else:
             if len(specific_leaf_nodes) == 1:
                 specific_leaf_node_id = next(iter(specific_leaf_nodes))
-                map_node_id_to_pos = _bfs_dists(adj_map_in, adj_map_out, specific_leaf_node_id)
+                map_node_id_to_pos = _bfs_dists(adj_map, specific_leaf_node_id)
             else:
-                all_dist_maps_for_spec_leaf_nodes = {node_id: _bfs_dists(adj_map_in,
-                                                                         adj_map_out,
+                all_dist_maps_for_spec_leaf_nodes = {node_id: _bfs_dists(adj_map,
                                                                          node_id) for
                                                      node_id in specific_leaf_nodes}
                 map_node_id_to_pos = {node.id: min([dist_map[node.id] for dist_map in all_dist_maps_for_spec_leaf_nodes]) for
@@ -327,7 +325,9 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     edge_bindings_map = {edge.id: edge.qedge_id for edge in kg.edges if edge.qedge_id is not None}
 
     # make a map of KG node ID to KG edges, by source:
-    [kg_node_id_incoming_adjacency_map, kg_node_id_outgoing_adjacency_map] = _make_adj_maps(kg)
+    adj_maps_dict = _make_adj_maps(kg)
+    kg_node_id_incoming_adjacency_map = adj_maps_dict['in']
+    kg_node_id_outgoing_adjacency_map = adj_maps_dict['out']
 
     # build up maps of node IDs to nodes, for both the KG and QG
     kg_nodes_map = {node.id: node for node in kg.nodes}
@@ -1234,6 +1234,28 @@ def _test_example2():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     assert len(message.results) == 38
+    assert message.results[0].essence is not None
+
+
+def _test_example3():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "add_qnode(name=DOID:9406, id=n00)",
+        "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+        "add_qnode(type=protein, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "expand(edge_id=[e00,e01])",
+        "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=3, remove_connected_nodes=t, qnode_id=n01)",
+        "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
+        "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n01, target_qnode_id=n02)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=ngd, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",
+        "resultify(ignore_edge_direction=true, debug=true)",
+        "return(message=true, store=true)"
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    print(str(len(message.results)))
     assert message.results[0].essence is not None
 
 
