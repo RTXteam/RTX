@@ -21,7 +21,6 @@ node) in a parameter `force_isset_false` of type `List[str]`.
 import collections
 import itertools
 import math
-import numpy
 import os
 import sys
 from typing import List, Dict, Set, Union
@@ -231,14 +230,14 @@ def _make_adj_maps(graph: Union[QueryGraph, KnowledgeGraph],
 def _bfs_dists(adj_map: Dict[str, Set[str]],
                start_node_id: str) -> Dict[str, int]:
     queue = collections.deque([start_node_id])
-    distances = {node_id: numpy.nan for node_id in adj_map.keys()}
+    distances = {node_id: math.inf for node_id in adj_map.keys()}
     distances[start_node_id] = 0
     while len(queue) > 0:
         node_id = queue.popleft()
         node_dist = distances[node_id]
-        assert not math.isnan(node_dist)
+        assert not math.isinf(node_dist)
         for neighb_node_id in (adj_map[node_id]):
-            if math.isnan(distances[neighb_node_id]):
+            if math.isinf(distances[neighb_node_id]):
                 distances[neighb_node_id] = node_dist + 1
                 queue.append(neighb_node_id)
     return distances
