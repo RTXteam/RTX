@@ -205,13 +205,16 @@ def _is_specific_query_node(qnode: QNode):
 
 
 def _make_adj_maps(graph: Union[QueryGraph, KnowledgeGraph],
-                   directed=True) -> Dict[str, Dict[str, Set[str]]]:
+                   directed=True,
+                   droploops=True) -> Dict[str, Dict[str, Set[str]]]:
     if directed:
         adj_map_in: Dict[str, Set[str]] = {node.id: set() for node in graph.nodes}
         adj_map_out: Dict[str, Set[str]] = {node.id: set() for node in graph.nodes}
     else:
         adj_map: Dict[str, Set[str]] = {node.id: set() for node in graph.nodes}
     for edge in graph.edges:
+        if droploops and edge.target_id == edge.source_id:
+            continue
         if directed:
             adj_map_out[edge.source_id].add(edge.target_id)
             adj_map_in[edge.target_id].add(edge.source_id)
