@@ -328,7 +328,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     edge_bindings_map = {edge.id: edge.qedge_id for edge in kg.edges if edge.qedge_id is not None}
 
     # make a map of KG node ID to KG edges, by source:
-    adj_maps_dict = _make_adj_maps(kg)
+    adj_maps_dict = _make_adj_maps(kg, directed=True, droploops=False)
     kg_node_id_incoming_adjacency_map = adj_maps_dict['in']
     kg_node_id_outgoing_adjacency_map = adj_maps_dict['out']
 
@@ -1258,18 +1258,53 @@ def _test_example3():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    print(str(len(message.results)))
+    assert len(message.results) == 48
     assert message.results[0].essence is not None
 
 
-def run_module_level_tests():
+def _test_bfs():
+    qg_node_info = ({'id': 'n01',
+                     'type': 'protein',
+                     'is_set': None},
+                    {'id': 'DOID:12345',
+                     'type': 'disease',
+                     'is_set': False},
+                    {'id': 'n02',
+                     'type': 'phenotypic_feature',
+                     'is_set': True})
+
+    qg_edge_info = ({'edge_id': 'qe01',
+                     'source_id': 'n01',
+                     'target_id': 'DOID:12345'},
+                    {'edge_id': 'qe02',
+                     'source_id': 'DOID:12345',
+                     'target_id': 'n02'})
+
+    qg_nodes = [QNode(id=node_info['id'],
+                      type=BIOLINK_ENTITY_TYPE_OBJECTS[node_info['type']],
+                      is_set=node_info['is_set']) for node_info in qg_node_info]
+
+    qg_edges = [QEdge(id=edge_info['edge_id'],
+                      source_id=edge_info['source_id'],
+                      target_id=edge_info['target_id']) for edge_info in qg_edge_info]
+
+    qg = QueryGraph(qg_nodes, qg_edges)
+    adj_map = _make_adj_maps(qg, directed=False, droploops=True)['both']
+    bfs_dists = _bfs_dists(adj_map, 'n01')
+    assert bfs_dists == {'n01': 0, 'DOID:12345': 1, 'n02': 2}
+    bfs_dists = _bfs_dists(adj_map, 'DOID:12345')
+    assert bfs_dists == {'n01': 1, 'DOID:12345': 0, 'n02': 1}
+
+
+def _run_module_level_tests():
     _test01()
     _test02()
     _test03()
     _test04()
+    _test_bfs()
 
 
-def run_arax_class_tests():
+def _run_arax_class_tests():
     _test05()
     _test06()
     _test07()
@@ -1278,6 +1313,7 @@ def run_arax_class_tests():
     _test10()
     _test_example1()
     _test_example2()
+    _test_example3()
 
 
 def main():
@@ -1285,8 +1321,8 @@ def main():
         for func_name in sys.argv[1:len(sys.argv)]:
             globals()[func_name]()
     else:
-        run_module_level_tests()
-        run_arax_class_tests()
+        _run_module_level_tests()
+        _run_arax_class_tests()
 
 
 if __name__ == '__main__':
