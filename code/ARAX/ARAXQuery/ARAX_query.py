@@ -323,8 +323,9 @@ class ARAXQuery:
 
                         query = { "query_type_id": message["query_type_id"], "restated_question": message["restated_question"], "original_question": message["original_question"], "terms": message["terms"] }
                     else:
-                        response.error(f"Uploaded message does not contain a results. May be the wrong format")
-                        return response
+                        #response.error(f"Uploaded message does not contain a results. May be the wrong format")
+                        #return response
+                        response.warning(f"There are no results in this uploaded message, but maybe that's okay")
                 else:
                     response.error(f"Uploaded message is not of type Message. It is of type"+str(uploadedMessage.__class__))
                     return response
