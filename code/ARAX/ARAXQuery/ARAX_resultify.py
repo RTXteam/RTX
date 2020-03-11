@@ -71,6 +71,8 @@ BIOLINK_CATEGORY_LABELS = {'protein', 'disease', 'phenotypic_feature', 'gene', '
 BIOLINK_ENTITY_TYPE_OBJECTS = {category_label: BiolinkEntityStr(category_label) for
                                category_label in BIOLINK_CATEGORY_LABELS}
 
+RELATIONS_TO_FILTER_OUT = {'jaccard_index', 'probability_drug_treats'}
+
 
 class ARAXResultify:
     def __init__(self):
@@ -139,16 +141,20 @@ Note that this command will successfully execute given an arbitrary query graph 
 
         It is required that `self.parameters` contain the following:
             force_isset_false: a parameter of type `List[set]` containing string `id` fields of query nodes for which the `is_set` property should be set to `false`, overriding whatever the state of `is_set` for each of those nodes in the query graph. Optional.
-            ignore_edge_direction: a parameter of type `bool` indicating whether the direction of an edge in the knowledge graph should be taken into account when matching that edge to an edge in the query graph. By default, this parameter is `true`. Set this parameter to false in order to require that an edge in a subgraph of the KG will only match an edge in the QG if both have the same direction (taking into account the source/target node mapping). Optional.            
+            ignore_edge_direction: a parameter of type `bool` indicating whether the direction of an edge in the knowledge graph should be taken into account when matching that edge to an edge in the query graph. By default, this parameter is `true`. Set this parameter to false in order to require that an edge in a subgraph of the KG will only match an edge in the QG if both have the same direction (taking into account the source/target node mapping). Optional. 
         """
         assert self.response is not None
         results = self.message.results
         if results is not None and len(results) > 0:
-            self.response.warning(f"Supplied response has nonzero number of entries. Must be empty")
+            self.response.error(f"Supplied response has nonzero number of entries. ARAX_resultify expects it to be empty")
             return
 
         message = self.message
         parameters = self.parameters
+
+        debug_mode = parameters.get('debug', None)
+        if debug_mode is not None:
+            debug_mode = (debug_mode.lower() == 'true')
         kg = message.knowledge_graph
         qg = message.query_graph
         qg_nodes_override_treat_is_set_as_false_list = parameters.get('force_isset_false', None)
@@ -157,6 +163,8 @@ Note that this command will successfully execute given an arbitrary query graph 
         else:
             qg_nodes_override_treat_is_set_as_false = set()
         ignore_edge_direction = parameters['ignore_edge_direction']
+        if ignore_edge_direction is not None:
+            ignore_edge_direction = (ignore_edge_direction.lower() == 'true')
         try:
             results = _get_results_for_kg_by_qg(kg,
                                                 qg,
@@ -165,10 +173,13 @@ Note that this command will successfully execute given an arbitrary query graph 
             message_code = 'OK'
             code_description = 'Result list computed from KG and QG'
         except Exception as e:
-            code_description = str(e)
-            message_code = e.__class__.__name__
-            self.response.error(code_description)
-            results = []
+            if not debug_mode:
+                code_description = str(e)
+                message_code = e.__class__.__name__
+                self.response.error(code_description)
+                results = []
+            else:
+                raise e
         message.results = results
         message.n_results = len(results)
         message.code_description = code_description
@@ -197,10 +208,15 @@ def _is_specific_query_node(qnode: QNode):
         (qnode.curie is not None and ':' in qnode.curie)
 
 
-def _make_adj_maps(graph: Union[QueryGraph, KnowledgeGraph]) -> List[Dict[str, Set[str]]]:
+def _make_adj_maps(graph: Union[QueryGraph, KnowledgeGraph],
+                   relations_to_filter_out: Set[str] = None) -> List[Dict[str, Set[str]]]:
     adj_map_in: Dict[str, Set[str]] = {node.id: set() for node in graph.nodes}
     adj_map_out: Dict[str, Set[str]] = {node.id: set() for node in graph.nodes}
+    if relations_to_filter_out is None:
+        relations_to_filter_out = set()
     for edge in graph.edges:
+        if edge.relation in relations_to_filter_out:
+            continue
         adj_map_out[edge.source_id].add(edge.target_id)
         adj_map_in[edge.target_id].add(edge.source_id)
     return [adj_map_in, adj_map_out]
@@ -227,7 +243,7 @@ def _bfs_dists(adj_map_in: Dict[str, Set[str]],
 
 
 def _get_essence_node_for_qg(qg: QueryGraph) -> str:
-    [adj_map_in, adj_map_out] = _make_adj_maps(qg)
+    [adj_map_in, adj_map_out] = _make_adj_maps(qg, RELATIONS_TO_FILTER_OUT)
     node_ids = list(adj_map_in.keys())
     node_degrees = list(map(add, map(len, adj_map_in.values()), map(len, adj_map_out.values())))
     leaf_nodes = set(node_ids[i] for i, k in enumerate(node_degrees) if k == 1)
@@ -444,9 +460,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         assert len(essence_kg_node_id_set) == 1
         essence_kg_node_id = next(iter(essence_kg_node_id_set))
         essence_kg_node = kg_nodes_map[essence_kg_node_id]
-        result.essence = essence_kg_node.symbol
-        if result.essence is None:
-            result.essence = essence_kg_node.name
+        result.essence = essence_kg_node.name
         if result.essence is None:
             result.essence = essence_kg_node_id
         result.essence_type = essence_node_type
@@ -458,6 +472,13 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         result.description = "No description available"  # see issue 642
 
     return results
+
+
+def _do_arax_query(query: str) -> List[Union[Response, Message]]:
+    from ARAX_query import ARAXQuery
+    araxq = ARAXQuery()
+    response = araxq.query(query)
+    return [response, araxq.message]
 
 
 def _test01():
@@ -1116,47 +1137,41 @@ def _test07():
     message = Message(query_graph=query_graph,
                       knowledge_graph=knowledge_graph,
                       results=[])
-    result = resultifier.apply(message, actions[0]['parameters'])
+    parameters = actions[0]['parameters']
+    parameters['debug'] = 'true'
+    result = resultifier.apply(message, parameters)
     response.merge(result)
     assert len(message.results) == 2
     assert result.status == 'OK'
 
 
 def _test08():
-    from ARAX_query import ARAXQuery
-    araxq = ARAXQuery()
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
         "add_qnode(type=disease, curie=DOID:731, id=n00)",
         "add_qnode(type=phenotypic_feature, is_set=false, id=n01)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "query_graph_reasoner()",
-        'resultify(ignore_edge_direction=true)',
+        "expand(edge_id=e00)",
+        'resultify(ignore_edge_direction=true, debug=true)',
         "return(message=true, store=false)"]}}
-    response = Response()
-    result = araxq.query(query)
-    response.merge(result)
-    print(response.messages_list())
-    assert result.status == 'OK'
-    assert len(araxq.message.results) == 3223
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) == 3223
 
 
 def _test09():
-    from ARAX_query import ARAXQuery
-    araxq = ARAXQuery()
     query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(name=DOID:731, id=n00, type=disease, is_set=false)",
             "add_qnode(type=phenotypic_feature, is_set=false, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
-            'resultify(ignore_edge_direction=true)',
+            'resultify(ignore_edge_direction=true, debug=true)',
+            'filter_results(action=limit_number_of_results, max_results=100)',
             "return(message=true, store=false)"]}}
-    response = Response()
-    result = araxq.query(query)
-    response.merge(result)
-    assert result.status == 'OK'
-    assert len(araxq.message.results) == 3223
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) == 100
 
 
 def _test10():
@@ -1168,23 +1183,42 @@ def _test10():
 
 
 def _test_example1():
-    from ARAX_query import ARAXQuery
-    araxq = ARAXQuery()
     query = {"previous_message_processing_plan": {"processing_actions": [
                                                       'create_message',
                                                       'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
                                                       'add_qnode(id=qg1, type=protein)',
                                                       'add_qedge(source_id=qg1, target_id=qg0, id=qe0)',
                                                       'expand(edge_id=qe0)',
-                                                      'resultify(ignore_edge_direction=true)',
+                                                      'resultify(ignore_edge_direction=true, debug=true)',
                                                       "filter_results(action=limit_number_of_results, max_results=10)",
                                                       "return(message=true, store=true)",
                                                   ]}}
-    response = Response()
-    new_response = araxq.query(query)
-    response.merge(new_response)
-    assert new_response.status == 'OK'
-    assert araxq.message.results[0].essence is not None
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) == 10
+    assert message.results[0].essence is not None
+
+
+def _test_example2():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=DOID:14330, id=n00)",
+        "add_qnode(type=protein, is_set=true, id=n01)",
+        "add_qnode(type=chemical_substance, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
+        "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
+        "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
+        "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
+        "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_edge_type=P1)",
+        "resultify(ignore_edge_direction=true, debug=true)",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) == 38
+    assert message.results[0].essence is not None
 
 
 def run_module_level_tests():
@@ -1201,6 +1235,8 @@ def run_arax_class_tests():
     _test08()
     _test09()
     _test10()
+    _test_example1()
+    _test_example2()
 
 
 def main():
