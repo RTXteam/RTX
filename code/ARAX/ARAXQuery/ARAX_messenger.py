@@ -546,7 +546,8 @@ class ARAXMessenger:
     #### Convert a Message as a dict to a Message as objects
     def from_dict(self, message):
 
-        message = Message().from_dict(message)
+        if str(message.__class__) != "<class 'swagger_server.models.message.Message'>":
+            message = Message().from_dict(message)
         message.query_graph = QueryGraph().from_dict(message.query_graph)
         message.knowledge_graph = KnowledgeGraph().from_dict(message.knowledge_graph)
         #new_nodes = []
