@@ -435,6 +435,8 @@ class ARAXQuery:
                 message.message_code = response.error_code
                 message.code_description = response.message
                 message.log = response.messages
+                if message.query_options is None:
+                    message.query_options = {}
                 message.query_options['processing_actions'] = envelope.processing_actions
                 message_id = rtxFeedback.addNewMessage(message,query)
 
