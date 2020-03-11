@@ -308,10 +308,10 @@ class ARAXQuery:
             for uploadedMessage in envelope.previous_messages:
                 response.debug(f"uploadedMessage is a "+str(uploadedMessage.__class__))
                 if str(uploadedMessage.__class__) == "<class 'swagger_server.models.message.Message'>":
-                    if uploadedMessage.results:
-                        message = ast.literal_eval(repr(uploadedMessage))
-                        messages.append(message)
+                    uploadedMessage = ARAXMessenger().from_dict(uploadedMessage)
+                    messages.append(uploadedMessage)
 
+                    if uploadedMessage.results:
                         if message["terms"] is None:
                             message["terms"] = { "dummyTerm": "giraffe" }
                         if message["query_type_id"] is None:
