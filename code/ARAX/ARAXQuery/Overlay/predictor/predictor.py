@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 from sklearn.externals import joblib
@@ -5,7 +6,7 @@ from sklearn.externals import joblib
 
 class predictor():
 
-    def __init__(self, model_file='LogModel.pkl'):
+    def __init__(self, model_file=os.path.dirname(os.path.abspath(__file__))+'LogModel.pkl'):
         self.model = joblib.load(model_file)
         self.graph = None
         self.X = None
@@ -26,7 +27,7 @@ class predictor():
         """
         return self.model.predict(X)
 
-    def import_file(self, file, graph_file='rel_max.emb.gz', map_file='map.csv'):
+    def import_file(self, file, graph_file=os.path.dirname(os.path.abspath(__file__))+'rel_max.emb.gz', map_file=os.path.dirname(os.path.abspath(__file__))+'map.csv'):
         """
         Imports all necisary files to take curie ids and extract their feature vectors.
 
