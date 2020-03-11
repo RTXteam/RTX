@@ -436,10 +436,11 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     kg_node_ids_to_include_always_list = list(kg_node_ids_to_include_always)
 
     results: List[Result] = []
+    essence_nodes_in_kg = reverse_node_bindings_map.get(essence_qnode_id, set())
     for node_ids_for_subgraph_from_non_set_nodes in itertools.product(*kg_node_id_lists_for_qg_nodes):
         node_ids_for_subgraph = list(node_ids_for_subgraph_from_non_set_nodes) + kg_node_ids_to_include_always_list
         result = _make_result_from_node_set(kg, set(node_ids_for_subgraph))
-        essence_kg_node_id_set = reverse_node_bindings_map.get(essence_qnode_id, None) & set(node_ids_for_subgraph)
+        essence_kg_node_id_set = essence_nodes_in_kg & set(node_ids_for_subgraph)
         assert len(essence_kg_node_id_set) == 1
         essence_kg_node_id = next(iter(essence_kg_node_id_set))
         essence_kg_node = kg_nodes_map[essence_kg_node_id]
@@ -1135,6 +1136,7 @@ def _test08():
     response = Response()
     result = araxq.query(query)
     response.merge(result)
+    print(response.messages_list())
     assert result.status == 'OK'
     assert len(araxq.message.results) == 3223
 
