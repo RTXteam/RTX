@@ -432,6 +432,9 @@ class ARAXQuery:
 
             if return_action['parameters']['store'] == 'true':
                 response.debug(f"Storing resulting Message")
+                message.message_code = response.error_code
+                message.code_description = response.message
+                message.log = response.messages
                 message_id = rtxFeedback.addNewMessage(message,query)
 
             self.message = message
