@@ -248,7 +248,7 @@ def _get_essence_node_for_qg(qg: QueryGraph) -> str:
     adj_map = _make_adj_maps(qg, directed=False)['both']
     node_ids_list = list(adj_map.keys())
     all_nodes = set(node_ids_list)
-    node_degrees = map(len, adj_map.values())
+    node_degrees = list(map(len, adj_map.values()))
     leaf_nodes = set(node_ids_list[i] for i, k in enumerate(node_degrees) if k == 1)
     is_set_nodes = set(node.id for node in qg.nodes if node.is_set)
     specific_nodes = set(node.id for node in qg.nodes if _is_specific_query_node(node))
@@ -295,7 +295,7 @@ def _get_essence_node_for_qg(qg: QueryGraph) -> str:
                 all_dist_maps_for_spec_leaf_nodes = {node_id: _bfs_dists(adj_map,
                                                                          node_id) for
                                                      node_id in specific_leaf_nodes}
-                map_node_id_to_pos = {node.id: min([dist_map[node.id] for dist_map in all_dist_maps_for_spec_leaf_nodes]) for
+                map_node_id_to_pos = {node.id: min([dist_map[node.id] for dist_map in all_dist_maps_for_spec_leaf_nodes.values()]) for
                                       node in qg.nodes}
             return sorted(candidate_essence_nodes,
                           key=lambda node_id: map_node_id_to_pos[node_id],
@@ -1296,12 +1296,101 @@ def _test_bfs():
     assert bfs_dists == {'n01': 1, 'DOID:12345': 0, 'n02': 1}
 
 
+def _test_bfs_in_essence_code():
+    kg_node_info = ({'id': 'UniProtKB:12345',
+                     'type': 'protein',
+                     'qnode_id': 'n01'},
+                    {'id': 'UniProtKB:23456',
+                     'type': 'protein',
+                     'qnode_id': 'n01'},
+                    {'id': 'DOID:12345',
+                     'type': 'disease',
+                     'qnode_id': 'DOID:12345'},
+                    {'id': 'HP:56789',
+                     'type': 'phenotypic_feature',
+                     'qnode_id': 'HP:56789'},
+                    {'id': 'FOO:12345',
+                     'type': 'gene',
+                     'qnode_id': 'n02'})
+
+    kg_edge_info = ({'edge_id': 'ke01',
+                     'target_id': 'UniProtKB:12345',
+                     'source_id': 'DOID:12345',
+                     'qedge_id': 'qe01'},
+                    {'edge_id': 'ke02',
+                     'target_id': 'UniProtKB:23456',
+                     'source_id': 'DOID:12345',
+                     'qedge_id': 'qe01'},
+                    {'edge_id': 'ke03',
+                     'source_id': 'UniProtKB:12345',
+                     'target_id': 'FOO:12345',
+                     'qedge_id': 'qe02'},
+                    {'edge_id': 'ke04',
+                     'source_id': 'UniProtKB:23456',
+                     'target_id': 'FOO:12345',
+                     'qedge_id': 'qe02'},
+                    {'edge_id': 'ke05',
+                     'source_id': 'FOO:12345',
+                     'target_id': 'HP:56789',
+                     'qedge_id':  'qe03'})
+
+    kg_nodes = [Node(id=node_info['id'],
+                     type=[node_info['type']],
+                     qnode_id=node_info['qnode_id']) for node_info in kg_node_info]
+
+    kg_edges = [Edge(id=edge_info['edge_id'],
+                     source_id=edge_info['source_id'],
+                     target_id=edge_info['target_id'],
+                     qedge_id=edge_info['qedge_id']) for edge_info in kg_edge_info]
+
+    knowledge_graph = KnowledgeGraph(kg_nodes, kg_edges)
+
+    qg_node_info = ({'id': 'n01',
+                     'type': 'protein',
+                     'is_set': False},
+                    {'id': 'DOID:12345',
+                     'type': 'disease',
+                     'is_set': False},
+                    {'id': 'HP:56789',
+                     'type': 'phenotypic_feature',
+                     'is_set': False},
+                    {'id': 'n02',
+                     'type': 'gene',
+                     'is_set': False})
+
+    qg_edge_info = ({'edge_id': 'qe01',
+                     'source_id': 'DOID:12345',
+                     'target_id': 'n01'},
+                    {'edge_id': 'qe02',
+                     'source_id': 'n02',
+                     'target_id': 'HP:56789'},
+                    {'edge_id': 'qe03',
+                     'source_id': 'n01',
+                     'target_id': 'n02'})
+
+    qg_nodes = [QNode(id=node_info['id'],
+                      type=BIOLINK_ENTITY_TYPE_OBJECTS[node_info['type']],
+                      is_set=node_info['is_set']) for node_info in qg_node_info]
+
+    qg_edges = [QEdge(id=edge_info['edge_id'],
+                      source_id=edge_info['source_id'],
+                      target_id=edge_info['target_id']) for edge_info in qg_edge_info]
+
+    query_graph = QueryGraph(qg_nodes, qg_edges)
+
+    results_list = _get_results_for_kg_by_qg(knowledge_graph,
+                                             query_graph)
+    assert len(results_list) == 2
+    assert results_list[0].essence is not None
+
+
 def _run_module_level_tests():
     _test01()
     _test02()
     _test03()
     _test04()
     _test_bfs()
+    _test_bfs_in_essence_code()
 
 
 def _run_arax_class_tests():
