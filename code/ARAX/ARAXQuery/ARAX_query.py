@@ -498,17 +498,17 @@ def main():
                     { "id": "qg0", "name": "acetaminophen", "curie": "CHEMBL.COMPOUND:CHEMBL112", "type": "chemical_substance" },
                     { "id": "qg1", "name": None, "desc": "Generic protein", "curie": None, "type": "protein" }
                 ] } } }
-    elif params.example_number == 3:
-        query = { "previous_message_processing_plan": { "processing_actions": [
+    elif params.example_number == 3:  # FIXME: Don't fix me, this is our planned demo example 1.
+        query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(curie=DOID:14330, id=n00)",
-            "add_qnode(type=protein, is_set=True, id=n01)",
-            #"add_qnode(type=chemical_substance, id=n02)",
-            "add_qedge(source_id=n01, target_id=n00, id=e00)",
-            #"add_qedge(source_id=n01, target_id=n02, id=e01)",
-            "expand(edge_id=e00)",
-            "return(message=true, store=true)",
-            ] } }
+            "add_qnode(name=acetaminophen, id=n0)",
+            "add_qnode(type=protein, id=n1)",
+            "add_qedge(source_id=n0, target_id=n1, id=e0)",
+            "expand(edge_id=e0)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=limit_number_of_results, max_results=10)",
+            "return(message=true, store=false)",
+        ]}}
     elif params.example_number == 4:
         query = { "previous_message_processing_plan": { "processing_actions": [
             "create_message",
@@ -655,7 +655,7 @@ def main():
     elif params.example_number == 15:  # FIXME NOTE: this is our planned example 3 (so don't fix, it's just so it's highlighted in my IDE)
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(name=DOID:9406, id=n00)",  # hypopituitarism
+            "add_qnode(curie=DOID:9406, id=n00)",  # hypopituitarism
             "add_qnode(type=chemical_substance, is_set=true, id=n01)",  # look for all drugs associated with this disease (29 total drugs)
             "add_qnode(type=protein, id=n02)",   # look for proteins associated with these diseases (240 total proteins)
             "add_qedge(source_id=n00, target_id=n01, id=e00)",  # get connections
@@ -763,7 +763,7 @@ def main():
     elif params.example_number == 1212:  # dry run of example 2 with the machine learning model
         query = { "previous_message_processing_plan": { "processing_actions": [
             "create_message",
-            "add_qnode(name=DOID:14330, id=n00)",
+            "add_qnode(curie=DOID:14330, id=n00)",
             "add_qnode(type=protein, is_set=true, id=n01)",
             "add_qnode(type=chemical_substance, id=n02)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
