@@ -471,6 +471,9 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
             result.essence = essence_kg_node.name
             if result.essence is None:
                 result.essence = essence_kg_node_id
+            assert result.essence is not None
+            if essence_kg_node.symbol is not None:
+                result.essence += " (" + str(essence_kg_node.symbol) + ")"
             result.essence_type = essence_node_type
         elif len(essence_kg_node_id_set) == 0:
             result.essence = None
