@@ -328,7 +328,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     edge_bindings_map = {edge.id: edge.qedge_id for edge in kg.edges if edge.qedge_id is not None}
 
     # make a map of KG node ID to KG edges, by source:
-    adj_maps_dict = _make_adj_maps(kg)
+    adj_maps_dict = _make_adj_maps(kg, directed=True, droploops=False)
     kg_node_id_incoming_adjacency_map = adj_maps_dict['in']
     kg_node_id_outgoing_adjacency_map = adj_maps_dict['out']
 
