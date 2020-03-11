@@ -92,7 +92,7 @@ program in four key ways:
 
 1. ARAX provides a powerful **domain-specific language (DSL)**, called **ARAXi**
 (technical documentation on ARAXi can be found
-[here](code/ARAX/Documentation/DSL_Documentation.md)), that is designed designed
+[here](code/ARAX/Documentation/DSL_Documentation.md)), that is designed
 to enable researchers and clinicians to formulate, reuse, comprehend, and share
 workflows for biomedical knowledge exploration. One of the key advantages of
 ARAXi is that it is *not* a general-purpose programming language; it is
@@ -101,7 +101,7 @@ knowledge graph manipulation workflow in terms of ARAX's modular
 capabilities. All of ARAX's capabilities are exposed through ARAXi. Using ARAXi,
 an analyst can:
   - define a small *query graph*; query for entities (e.g., proteins, pathways, or
-diseases) that match the search criteria represented in the query graph; 
+diseases) that match the search criteria represented in the query graph 
   - *expand* a knowledge graph, pulling in concepts that are related to
   concepts that are already in the knowledge graph
   - *filter* a knowledge graph, eliminating concepts or relationships that do
@@ -138,7 +138,7 @@ of the Reasoners Standard API (as described
 this perspective, ARAX was built from the ground up to seamlessly interoperate
 with other Translator software components.  In addition to complying with the
 Translator standard for inter-reasoner communication, ARAX uses knowledge
-sources (see [below](#what-knowledge-sources-does-arax-use)) that comply with
+sources (see [below](#what-knowledge-providers-does-arax-use)) that comply with
 the *Biomedical Data Translator Knowledge Graph Standard* (for which our team
 has been an active participant in the standards development process) which is
 based on the [Biolink Model](https://biolink.github.io/biolink-model).
@@ -178,7 +178,7 @@ providers, in accordance with the query type.
 the question or a structured representation of a small *query graph* of
 biomedical concepts)
    - a list of *results*, each of which may be a concept (e.g., "imatinib" or
-     "BCR-Abl tyrosine kinase")) or a small graph of concepts and relationships
+     "BCR-Abl tyrosine kinase") or a small graph of concepts and relationships
      between the concepts
    - a *knowledge graph* representing the union of concepts in all of the results,
    along with all known relationships among the concepts in the union.
@@ -187,7 +187,7 @@ biomedical concepts)
 
 During the Feasibility Assessment Phase of the Biomedical Data Translator
 program, a data interchange standard (the Reasoners Standard Application
-Programming Interface) for communication two/from Translator reasoning tools was
+Programming Interface) for communication to/from Translator reasoning tools was
 developed and ratified by the Translator stakeholders. The Reasoners Standard
 API is formally defined by a Yet Another Markup Language (YAML)
 [file](https://github.com/NCATS-Tangerine/NCATS-ReasonerStdAPI/blob/master/API/TranslatorReasonersAPI.yaml)
@@ -290,7 +290,7 @@ between certain identifier types:
 3. Disease Ontology
 4. PubChem
 5. NCBI eUtils
-6. Human Metabolite Database
+6. Human Metabolome Database
 
 A computable file enumerating and summarizing the external APIs that are
 used by ARAX/RTX, in YAML format, can be found
@@ -337,10 +337,10 @@ center around answering questions from a list of natural-language question
 templates (e.g., *what proteins does acetaminophen target?* or *what drugs
 target proteins associated with the glycolysis pathway?*) and around graphical
 construction of a "query graph" that is used as a template for finding subgraphs
-of a the RTX-KG1 knowledge graph. The design for the ARAX software system
-relates to RTX in three ways:
+of the RTX-KG1 knowledge graph. The design for the ARAX software system
+relates to RTX in four ways:
 1. ARAX builds on the code-base for RTX and leverages the
-already-built user interface and knowledge graphs for RTX (RTX-KG1 and RTX-Kg2).
+already-built user interface and knowledge graphs for RTX (RTX-KG1 and RTX-KG2).
 2. Through the expressive (but user-friendly) domain-specific language ARAXi, ARAX exposes RTX's graph
 exploration and analysis capabilities so that they can be used (in combination
 or individually) by Translator tools or workflows in accordance with the
@@ -351,7 +351,7 @@ as `expand`, `overlay` and `filter`, that make ARAX significantly more flexible
 implement) than RTX.
 4. RTX could produce results in the Reasoners Standard API format. However, its 
 more extensive reasoning capabilities could not be queried in this API format without 
-specialized knowledge of the RTX system. In contrast. ARAX can now perform its complex 
+specialized knowledge of the RTX system. In contrast, ARAX can now perform its complex 
 reasoning capabilities upon receiving any input Reasoners Standard API, while still 
 producing such a standardized output format. As such, ARAX and its reasoning capabilities 
 will be accessible to any automated reasoning agent, automated reasoning system, or 
@@ -465,7 +465,7 @@ necessarily represent the official views of the National Institutes of Health.
 
 Many people contributed to the development of ARAX and RTX. A list of code
 contributors can be found under the
-[contributors tab for this repository](graphs/contributors), in addition to the
+[contributors tab for this repository](https://github.com/RTXteam/RTX/graphs/contributors), in addition to the
 current team members listed above. In addition to the code contributors, we
 gratefully acknowledge technical assistance, contributions, and helpful feedback
 from NCATS staff (Christine Colvis, Noel Southall, Mark Williams, Trung Nguyen,
