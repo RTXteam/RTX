@@ -29,6 +29,8 @@ Contains scripts for integration testing the ARAX system.
     - `INFO`: Something an API user might like to see to examine the steps behind the scenes. Good for innocuous assumptions.
     - `WARNING`: Something that an API user should sit up and notice. Good for assumptions with impact
     - `ERROR`: A failure that prevents fulfilling the request. Note that logging an error may not halt processing. Several can accumulate
+- In your code, do not assume a particular location for the "current working directory". In general, try to use `os.path.abspath` to find
+the location of `__FILE__` for your module and then construct a relative path to find other ARAX/RTX files/modules.
 
 General response paradigm:
 - Major methods (not little helper ones that can't fail) and calls to different ARAX classes should always:
