@@ -1258,7 +1258,7 @@ def _test_example3():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    print(str(len(message.results)))
+    assert len(message.results) == 48
     assert message.results[0].essence is not None
 
 
@@ -1278,6 +1278,7 @@ def run_arax_class_tests():
     _test10()
     _test_example1()
     _test_example2()
+    _test_example3()
 
 
 def main():
