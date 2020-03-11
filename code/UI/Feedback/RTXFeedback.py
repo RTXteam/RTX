@@ -297,7 +297,7 @@ class RTXFeedback:
       for result in message.results:
         n_nodes = 0
         n_edges = 0
-        result_hash = result.description
+        #result_hash = result.description
         if result.result_type is None:
           result.result_type = "individual query answer"
         if result.confidence is None:
@@ -309,9 +309,12 @@ class RTXFeedback:
             n_nodes = len(result.result_graph.nodes)
           if result.result_graph.edges is not None:
             n_edges = len(result.result_graph.edges)
+        else:
+          result_hash = 'xxxx'
 
         #### See if there is an existing result that matches this hash
         previousResult = None
+        eprint(f"- {result_hash}")
         if result_hash != 'xxxx':
           previousResult = session.query(Result).filter(Result.result_hash==result_hash).order_by(desc(Result.result_id)).first()
         #eprint("WARNING: Forcing chache miss for result at line 309")
