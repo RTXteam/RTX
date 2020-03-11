@@ -18,7 +18,10 @@ node) in a parameter `force_isset_false` of type `List[str]`.
 
 '''
 
+import collections
 import itertools
+import math
+import numpy
 import os
 import sys
 
@@ -30,7 +33,6 @@ __version__ = '0.1.0'
 __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
-
 
 
 # is there a better way to import swagger_server?  Following SO posting 16981921
@@ -48,7 +50,9 @@ from swagger_server.models.edge_binding import EdgeBinding
 from swagger_server.models.biolink_entity import BiolinkEntity
 from swagger_server.models.result import Result
 from swagger_server.models.message import Message
-from typing import List, Dict, Set
+
+from operator import add
+from typing import List, Dict, Set, Union
 from response import Response
 
 
@@ -134,7 +138,7 @@ Note that this command will successfully execute given an arbitrary query graph 
         lists of NodeBinding and EdgeBinding objects. Add a list of Results objects to self.message.rseults.
 
         It is required that `self.parameters` contain the following:
-            force_isset_false: a parameter of type `List(set)` containing string `id` fields of query nodes for which the `is_set` property should be set to `false`, overriding whatever the state of `is_set` for each of those nodes in the query graph. Optional.
+            force_isset_false: a parameter of type `List[set]` containing string `id` fields of query nodes for which the `is_set` property should be set to `false`, overriding whatever the state of `is_set` for each of those nodes in the query graph. Optional.
             ignore_edge_direction: a parameter of type `bool` indicating whether the direction of an edge in the knowledge graph should be taken into account when matching that edge to an edge in the query graph. By default, this parameter is `true`. Set this parameter to false in order to require that an edge in a subgraph of the KG will only match an edge in the QG if both have the same direction (taking into account the source/target node mapping). Optional.            
         """
         assert self.response is not None
@@ -183,14 +187,107 @@ def _make_result_from_node_set(kg: KnowledgeGraph,
                      for edge in kg.edges if edge.source_id in node_ids and
                      edge.target_id in node_ids and
                      edge.qedge_id is not None]
-    return Result(node_bindings=node_bindings,
-                  edge_bindings=edge_bindings)
+    result = Result(node_bindings=node_bindings,
+                    edge_bindings=edge_bindings)
+    return result
+
+
+def _is_specific_query_node(qnode: QNode):
+    return (qnode.id is not None and ':' in qnode.id) or \
+        (qnode.curie is not None and ':' in qnode.curie)
+
+
+def _make_adj_maps(graph: Union[QueryGraph, KnowledgeGraph]) -> List[Dict[str, Set[str]]]:
+    adj_map_in: Dict[str, Set[str]] = {node.id: set() for node in graph.nodes}
+    adj_map_out: Dict[str, Set[str]] = {node.id: set() for node in graph.nodes}
+    for edge in graph.edges:
+        adj_map_out[edge.source_id].add(edge.target_id)
+        adj_map_in[edge.target_id].add(edge.source_id)
+    return [adj_map_in, adj_map_out]
+
+
+def _bfs_dists(adj_map_in: Dict[str, Set[str]],
+               adj_map_out: Dict[str, Set[str]],
+               start_node_id: str) -> Dict[str, int]:
+    N = len(adj_map_in)
+    assert N == len(adj_map_out)
+    queue = collections.deque([start_node_id])
+    distances = {node_id: numpy.nan for node_id in adj_map_in.keys()}
+    distances[start_node_id] = 0
+    while len(queue) > 0:
+        node_id = queue.popleft()
+        node_dist = distances[node_id]
+        assert not math.isnan(node_dist)
+        for neighb_node_id in (adj_map_in[node_id] |
+                               adj_map_out[node_id]):
+            if math.isnan(distances[neighb_node_id]):
+                distances[neighb_node_id] = node_dist + 1
+                queue.append(neighb_node_id)
+    return distances
+
+
+def _get_essence_node_for_qg(qg: QueryGraph) -> str:
+    [adj_map_in, adj_map_out] = _make_adj_maps(qg)
+    node_ids = list(adj_map_in.keys())
+    node_degrees = list(map(add, map(len, adj_map_in.values()), map(len, adj_map_out.values())))
+    leaf_nodes = set(node_ids[i] for i, k in enumerate(node_degrees) if k == 1)
+    non_specific_nodes = {node.id for node in qg.nodes if not _is_specific_query_node(node)}
+    non_specific_leaf_nodes = leaf_nodes & non_specific_nodes
+    if len(non_specific_leaf_nodes) == 0:
+        return None
+    elif len(non_specific_leaf_nodes) == 1:
+        return next(iter(non_specific_leaf_nodes))
+    else:
+        specific_nodes = set(node_ids) - non_specific_nodes
+        specific_leaf_nodes = specific_nodes & leaf_nodes
+        if len(specific_leaf_nodes) == 0:
+            map_node_id_to_pos = {node.id: i for i, node in enumerate(qg.nodes)}
+            if len(specific_nodes) == 0:
+                # return the node.id of the non-specific node with the rightmost position in the QG node list
+                return sorted(non_specific_leaf_nodes,
+                              key=lambda node_id: map_node_id_to_pos[node_id],
+                              reverse=True)[0]
+            else:
+                if len(specific_nodes) == 1:
+                    specific_node_id = next(iter(specific_nodes))
+                    return sorted(non_specific_leaf_nodes,
+                                  key=lambda node_id: abs(map_node_id_to_pos[node_id] -
+                                                          map_node_id_to_pos[specific_node_id]),
+                                  reverse=True)[0]
+                else:
+                    # there are at least two non-specific leaf nodes and at least two specific nodes
+                    return sorted(non_specific_leaf_nodes,
+                                  key=lambda node_id: min([abs(map_node_id_to_pos[node_id] -
+                                                               map_node_id_to_pos[specific_node_id]) for
+                                                           specific_node_id in specific_nodes]),
+                                  reverse=True)[0]
+        else:
+            if len(specific_leaf_nodes) == 1:
+                specific_leaf_node_id = next(iter(specific_leaf_nodes))
+                map_node_id_to_pos = _bfs_dists(adj_map_in, adj_map_out, specific_leaf_node_id)
+            else:
+                all_dist_maps_for_spec_leaf_nodes = {node_id: _bfs_dists(adj_map_in,
+                                                                         adj_map_out,
+                                                                         node_id) for
+                                                     node_id in specific_leaf_nodes}
+                map_node_id_to_pos = {node.id: min([dist_map[node.id] for dist_map in all_dist_maps_for_spec_leaf_nodes]) for
+                                      node in qg.nodes}
+            return sorted(non_specific_leaf_nodes,
+                          key=lambda node_id: map_node_id_to_pos[node_id],
+                          reverse=True)[0]
+    assert False
 
 
 def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must* have qnode_id specified
                               qg: QueryGraph,
                               qg_nodes_override_treat_is_set_as_false: set = None,
                               ignore_edge_direction: bool = True) -> List[Result]:
+
+    if len([node.id for node in qg.nodes if node.id is None]) > 0:
+        raise ValueError("node has None for node.id in query graph")
+
+    if len([node.id for node in kg.nodes if node.id is None]) > 0:
+        raise ValueError("node has None for node.id in knowledge graph")
 
     kg_node_ids_without_qnode_id = [node.id for node in kg.nodes if node.qnode_id is None]
     if len(kg_node_ids_without_qnode_id) > 0:
@@ -206,11 +303,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     edge_bindings_map = {edge.id: edge.qedge_id for edge in kg.edges if edge.qedge_id is not None}
 
     # make a map of KG node ID to KG edges, by source:
-    kg_node_id_outgoing_adjacency_map: Dict[str, set] = {node.id: set() for node in kg.nodes}
-    kg_node_id_incoming_adjacency_map: Dict[str, set] = {node.id: set() for node in kg.nodes}
-    for edge in kg.edges:
-        kg_node_id_outgoing_adjacency_map[edge.source_id].add(edge.target_id)
-        kg_node_id_incoming_adjacency_map[edge.target_id].add(edge.source_id)
+    [kg_node_id_incoming_adjacency_map, kg_node_id_outgoing_adjacency_map] = _make_adj_maps(kg)
 
     # build up maps of node IDs to nodes, for both the KG and QG
     kg_nodes_map = {node.id: node for node in kg.nodes}
@@ -308,6 +401,13 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                 raise ValueError("Inconsistent with its binding to the QG, the KG node: " + target_node_id_kg +
                                  " is not connected to *any* of the following nodes: " + str(source_node_ids_kg))
 
+    node_types_map = {node.id: node.type for node in qg.nodes}
+    essence_qnode_id = _get_essence_node_for_qg(qg)
+    if essence_qnode_id is not None:
+        essence_node_type = node_types_map[essence_qnode_id]
+    else:
+        essence_node_type = None
+
     # ============= save until I can discuss with Eric whether there can be unmapped nodes in the KG =============
     # # if any node in the KG is not bound to a node in the QG, drop the KG node; redefine "kg" as the filtered KG
     # kg_node_ids_keep = {node.id for node in kg.nodes if node.id in node_bindings_map}
@@ -338,7 +438,18 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     results: List[Result] = []
     for node_ids_for_subgraph_from_non_set_nodes in itertools.product(*kg_node_id_lists_for_qg_nodes):
         node_ids_for_subgraph = list(node_ids_for_subgraph_from_non_set_nodes) + kg_node_ids_to_include_always_list
-        results.append(_make_result_from_node_set(kg, set(node_ids_for_subgraph)))
+        result = _make_result_from_node_set(kg, set(node_ids_for_subgraph))
+        essence_kg_node_id_set = reverse_node_bindings_map.get(essence_qnode_id, None) & set(node_ids_for_subgraph)
+        assert len(essence_kg_node_id_set) == 1
+        essence_kg_node_id = next(iter(essence_kg_node_id_set))
+        essence_kg_node = kg_nodes_map[essence_kg_node_id]
+        result.essence = essence_kg_node.symbol
+        if result.essence is None:
+            result.essence = essence_kg_node.name
+        if result.essence is None:
+            result.essence = essence_kg_node_id
+        result.essence_type = essence_node_type
+        results.append(result)
 
     # Setting a description for each result is difficult, but is required by the database and should be there anyway.
     # Just put in a placeholder for now, as is done by the QueryGraphReasoner
@@ -1054,6 +1165,26 @@ def _test10():
     assert 'ignore_edge_direction' in desc[0]
 
 
+def _test_example1():
+    from ARAX_query import ARAXQuery
+    araxq = ARAXQuery()
+    query = {"previous_message_processing_plan": {"processing_actions": [
+                                                      'create_message',
+                                                      'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
+                                                      'add_qnode(id=qg1, type=protein)',
+                                                      'add_qedge(source_id=qg1, target_id=qg0, id=qe0)',
+                                                      'expand(edge_id=qe0)',
+                                                      'resultify(ignore_edge_direction=true)',
+                                                      "filter_results(action=limit_number_of_results, max_results=10)",
+                                                      "return(message=true, store=true)",
+                                                  ]}}
+    response = Response()
+    new_response = araxq.query(query)
+    response.merge(new_response)
+    assert new_response.status == 'OK'
+    assert araxq.message.results[0].essence is not None
+
+
 def run_module_level_tests():
     _test01()
     _test02()
@@ -1071,8 +1202,12 @@ def run_arax_class_tests():
 
 
 def main():
-    run_module_level_tests()
-    run_arax_class_tests()
+    if len(sys.argv) > 1:
+        for func_name in sys.argv[1:len(sys.argv)]:
+            globals()[func_name]()
+    else:
+        run_module_level_tests()
+        run_arax_class_tests()
 
 
 if __name__ == '__main__':
