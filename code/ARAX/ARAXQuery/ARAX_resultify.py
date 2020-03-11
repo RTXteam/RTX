@@ -24,6 +24,9 @@ import math
 import numpy
 import os
 import sys
+from operator import add
+from typing import List, Dict, Set, Union
+from response import Response
 
 __author__ = 'Stephen Ramsey'
 __copyright__ = 'Oregon State University'
@@ -51,10 +54,6 @@ from swagger_server.models.biolink_entity import BiolinkEntity
 from swagger_server.models.result import Result
 from swagger_server.models.message import Message
 
-from operator import add
-from typing import List, Dict, Set, Union
-from response import Response
-
 
 # define a string-parameterized BiolinkEntity class
 class BiolinkEntityStr(BiolinkEntity):
@@ -71,7 +70,8 @@ BIOLINK_CATEGORY_LABELS = {'protein', 'disease', 'phenotypic_feature', 'gene', '
 BIOLINK_ENTITY_TYPE_OBJECTS = {category_label: BiolinkEntityStr(category_label) for
                                category_label in BIOLINK_CATEGORY_LABELS}
 
-RELATIONS_TO_FILTER_OUT = {'jaccard_index', 'probability_drug_treats'}
+RELATIONS_TO_FILTER_OUT_FOR_DETERMINING_LEAF_NODES = {'jaccard_index',
+                                                      'probability_drug_treats'}
 
 
 class ARAXResultify:
@@ -243,36 +243,44 @@ def _bfs_dists(adj_map_in: Dict[str, Set[str]],
 
 
 def _get_essence_node_for_qg(qg: QueryGraph) -> str:
-    [adj_map_in, adj_map_out] = _make_adj_maps(qg, RELATIONS_TO_FILTER_OUT)
-    node_ids = list(adj_map_in.keys())
+    [adj_map_in, adj_map_out] = _make_adj_maps(qg, RELATIONS_TO_FILTER_OUT_FOR_DETERMINING_LEAF_NODES)
+    node_ids_list = list(adj_map_in.keys())
+    all_nodes = set(node_ids_list)
     node_degrees = list(map(add, map(len, adj_map_in.values()), map(len, adj_map_out.values())))
-    leaf_nodes = set(node_ids[i] for i, k in enumerate(node_degrees) if k == 1)
-    non_specific_nodes = {node.id for node in qg.nodes if not _is_specific_query_node(node)}
+    leaf_nodes = set(node_ids_list[i] for i, k in enumerate(node_degrees) if k == 1)
+    is_set_nodes = set(node.id for node in qg.nodes if node.is_set)
+    specific_nodes = set(node.id for node in qg.nodes if _is_specific_query_node(node))
+    non_specific_nodes = all_nodes - specific_nodes
     non_specific_leaf_nodes = leaf_nodes & non_specific_nodes
-    if len(non_specific_leaf_nodes) == 0:
+
+    if len(is_set_nodes & specific_nodes) > 0:
+        raise ValueError("the following query nodes have specific CURIE IDs but have is_set=true: " + str(is_set_nodes & specific_nodes))
+    candidate_essence_nodes = non_specific_leaf_nodes - is_set_nodes
+    if len(candidate_essence_nodes) == 0:
+        candidate_essence_nodes = non_specific_nodes - is_set_nodes
+    if len(candidate_essence_nodes) == 0:
         return None
-    elif len(non_specific_leaf_nodes) == 1:
-        return next(iter(non_specific_leaf_nodes))
+    elif len(candidate_essence_nodes) == 1:
+        return next(iter(candidate_essence_nodes))
     else:
-        specific_nodes = set(node_ids) - non_specific_nodes
         specific_leaf_nodes = specific_nodes & leaf_nodes
         if len(specific_leaf_nodes) == 0:
             map_node_id_to_pos = {node.id: i for i, node in enumerate(qg.nodes)}
             if len(specific_nodes) == 0:
                 # return the node.id of the non-specific node with the rightmost position in the QG node list
-                return sorted(non_specific_leaf_nodes,
+                return sorted(candidate_essence_nodes,
                               key=lambda node_id: map_node_id_to_pos[node_id],
                               reverse=True)[0]
             else:
                 if len(specific_nodes) == 1:
                     specific_node_id = next(iter(specific_nodes))
-                    return sorted(non_specific_leaf_nodes,
+                    return sorted(candidate_essence_nodes,
                                   key=lambda node_id: abs(map_node_id_to_pos[node_id] -
                                                           map_node_id_to_pos[specific_node_id]),
                                   reverse=True)[0]
                 else:
                     # there are at least two non-specific leaf nodes and at least two specific nodes
-                    return sorted(non_specific_leaf_nodes,
+                    return sorted(candidate_essence_nodes,
                                   key=lambda node_id: min([abs(map_node_id_to_pos[node_id] -
                                                                map_node_id_to_pos[specific_node_id]) for
                                                            specific_node_id in specific_nodes]),
@@ -288,7 +296,7 @@ def _get_essence_node_for_qg(qg: QueryGraph) -> str:
                                                      node_id in specific_leaf_nodes}
                 map_node_id_to_pos = {node.id: min([dist_map[node.id] for dist_map in all_dist_maps_for_spec_leaf_nodes]) for
                                       node in qg.nodes}
-            return sorted(non_specific_leaf_nodes,
+            return sorted(candidate_essence_nodes,
                           key=lambda node_id: map_node_id_to_pos[node_id],
                           reverse=True)[0]
     assert False
@@ -457,13 +465,18 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         node_ids_for_subgraph = list(node_ids_for_subgraph_from_non_set_nodes) + kg_node_ids_to_include_always_list
         result = _make_result_from_node_set(kg, set(node_ids_for_subgraph))
         essence_kg_node_id_set = essence_nodes_in_kg & set(node_ids_for_subgraph)
-        assert len(essence_kg_node_id_set) == 1
-        essence_kg_node_id = next(iter(essence_kg_node_id_set))
-        essence_kg_node = kg_nodes_map[essence_kg_node_id]
-        result.essence = essence_kg_node.name
-        if result.essence is None:
-            result.essence = essence_kg_node_id
-        result.essence_type = essence_node_type
+        if len(essence_kg_node_id_set) == 1:
+            essence_kg_node_id = next(iter(essence_kg_node_id_set))
+            essence_kg_node = kg_nodes_map[essence_kg_node_id]
+            result.essence = essence_kg_node.name
+            if result.essence is None:
+                result.essence = essence_kg_node_id
+            result.essence_type = essence_node_type
+        elif len(essence_kg_node_id_set) == 0:
+            result.essence = None
+            result.essence_type = None
+        else:
+            raise ValueError("there are more than two nodes in the KG that are candidates for teh essence: " + str(essence_kg_node_id_set))
         results.append(result)
 
     # Setting a description for each result is difficult, but is required by the database and should be there anyway.
@@ -932,7 +945,7 @@ def _test05():
                       knowledge_graph=knowledge_graph,
                       results=[])
     resultifier = ARAXResultify()
-    input_parameters = {'ignore_edge_direction': True,
+    input_parameters = {'ignore_edge_direction': 'true',
                         'force_isset_false': ['n02']}
     resultifier.apply(message, input_parameters)
     assert resultifier.response.status == 'OK'
@@ -1030,7 +1043,7 @@ def _test06():
                       knowledge_graph=knowledge_graph,
                       results=[])
     resultifier = ARAXResultify()
-    input_parameters = {'ignore_edge_direction': True,
+    input_parameters = {'ignore_edge_direction': 'true',
                         'force_isset_false': ['n07'],
                         'action': 'resultify'}
     resultifier.apply(message, input_parameters)
