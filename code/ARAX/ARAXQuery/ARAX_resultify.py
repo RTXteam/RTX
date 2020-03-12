@@ -434,7 +434,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     else:
         essence_node_type = None
 
-    # ============= save until I can discuss with Eric whether there can be unmapped nodes in the KG =============
+    # ============= save until SAR can discuss with {EWD,DMK} whether there can be unmapped nodes in the KG =============
     # # if any node in the KG is not bound to a node in the QG, drop the KG node; redefine "kg" as the filtered KG
     # kg_node_ids_keep = {node.id for node in kg.nodes if node.id in node_bindings_map}
     # kg_nodes_keep_list = [node for node in kg.nodes if node.id in kg_node_ids_keep]
@@ -442,7 +442,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     #                                                         edge.target_id in kg_node_ids_keep)]
     # kg = KnowledgeGraph(nodes=kg_nodes_keep_list,
     #                     edges=kg_edges_keep_list)
-    # ============= save until I can discuss with Eric whether there can be unmapped nodes in the KG =============
+    # ============= save until SAR can discuss with {EWD,DMK} whether there can be unmapped nodes in the KG =============
 
     # Our goal is to enumerate all distinct "edge-maximal" subgraphs of the KG that each "covers"
     # the QG. A subgraph of KG that "covers" the QG is one for which all of the following conditions hold:
@@ -450,23 +450,50 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     # (2) for any QG node that has "is_set=True", *all* KG nodes that are bound to the same QG node are in the subgraph
     # (3) every edge in the QG is "covered" by at least one edge in the KG
 
-    kg_node_ids_to_include_always: Set[str] = set()
+    # need a map between a KG node ID and the IDs of KG edge objects (that are *bound* to the QG) that connect to it
+    map_kg_node_id_to_bound_kg_edges = {node.id: set() for node in kg.nodes}
+    for edge in kg.edges:
+        if edge.qedge_id is not None:
+            map_kg_node_id_to_bound_kg_edges[edge.source_id].add(edge.id)
+            map_kg_node_id_to_bound_kg_edges[edge.target_id].add(edge.id)
+
+    kg_node_ids_with_isset_true: Set[str] = set()
     kg_node_id_lists_for_qg_nodes = []
+    # for each node in the query graph:
     for node in qg.nodes:
         if node.is_set is not None and \
            node.is_set and \
            node.id not in qg_nodes_override_treat_is_set_as_false:
-            kg_node_ids_to_include_always |= reverse_node_bindings_map[node.id]
+            kg_node_ids_with_isset_true |= reverse_node_bindings_map[node.id]
         else:
             kg_node_id_lists_for_qg_nodes.append(list(reverse_node_bindings_map[node.id]))
-    kg_node_ids_to_include_always_list = list(kg_node_ids_to_include_always)
+    kg_node_ids_with_isset_true_list = list(kg_node_ids_with_isset_true)
 
     results: List[Result] = []
     essence_nodes_in_kg = reverse_node_bindings_map.get(essence_qnode_id, set())
     for node_ids_for_subgraph_from_non_set_nodes in itertools.product(*kg_node_id_lists_for_qg_nodes):
-        node_ids_for_subgraph = list(node_ids_for_subgraph_from_non_set_nodes) + kg_node_ids_to_include_always_list
-        result = _make_result_from_node_set(kg, set(node_ids_for_subgraph))
-        essence_kg_node_id_set = essence_nodes_in_kg & set(node_ids_for_subgraph)
+        node_ids_for_subgraph = set(node_ids_for_subgraph_from_non_set_nodes) | kg_node_ids_with_isset_true
+
+        # for all KG nodes with isset_true:
+        for kg_node_id in kg_node_ids_with_isset_true:
+            # find all edges of this kg_node_id in the KG
+            nbhd_kg_edge_ids = map_kg_node_id_to_bound_kg_edges[kg_node_id]
+            # for all KG edges that connect to this KG node:
+            for edge_id in nbhd_kg_edge_ids:
+                kg_edge = kg_edges_map[edge_id]
+                if kg_node_id == kg_edge.source_id:
+                    if kg_edge.target_id not in node_ids_for_subgraph:
+                        if kg_node_id in node_ids_for_subgraph:
+                            node_ids_for_subgraph.remove(kg_node_id)
+                elif kg_node_id == kg_edge.target_id:
+                    if kg_edge.source_id not in node_ids_for_subgraph:
+                        if kg_node_id in node_ids_for_subgraph:
+                            node_ids_for_subgraph.remove(kg_node_id)
+                else:
+                    assert False  # should never get here in the code
+
+        result = _make_result_from_node_set(kg, node_ids_for_subgraph)
+        essence_kg_node_id_set = essence_nodes_in_kg & node_ids_for_subgraph
         if len(essence_kg_node_id_set) == 1:
             essence_kg_node_id = next(iter(essence_kg_node_id_set))
             essence_kg_node = kg_nodes_map[essence_kg_node_id]
@@ -481,11 +508,13 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
             result.essence = None
             result.essence_type = None
         else:
-            raise ValueError("there are more than two nodes in the KG that are candidates for teh essence: " + str(essence_kg_node_id_set))
+            raise ValueError("there are more than two nodes in the KG that are candidates for the essence: " + str(essence_kg_node_id_set))
         results.append(result)
 
-    # Setting a description for each result is difficult, but is required by the database and should be there anyway.
-    # Just put in a placeholder for now, as is done by the QueryGraphReasoner
+    # Programmatically generating an informative description for each result
+    # seems difficult, but having something non-None is required by the
+    # database.  Just put in a placeholder for now, as is done by the
+    # QueryGraphReasoner
     for result in results:
         result.description = "No description available"  # see issue 642
 
@@ -1257,7 +1286,7 @@ def _test_example3():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert len(message.results) == 48
+    assert len(message.results) in [47, 48]  # :BUG: sometimes the workflow returns 47 results, sometimes 48 (!?)
     assert message.results[0].essence is not None
 
 
@@ -1383,6 +1412,31 @@ def _test_bfs_in_essence_code():
     assert results_list[0].essence is not None
 
 
+def _test_issue680():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=DOID:14330, id=n00)",
+        "add_qnode(type=protein, is_set=true, id=n01)",
+        "add_qnode(type=chemical_substance, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
+        "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
+        "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
+        "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
+        "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_edge_type=P1)",
+        "resultify(ignore_edge_direction=true, debug=true)",
+        "filter_results(action=limit_number_of_results, max_results=1)",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) == 1
+    result = message.results[0]
+    assert len(result.node_bindings) == 7
+    assert result.essence is not None
+
+
 def _run_module_level_tests():
     _test01()
     _test02()
@@ -1401,6 +1455,7 @@ def _run_arax_class_tests():
     _test10()
     _test_example1()
     _test_example2()
+    _test_issue680()
     _test_example3()
 
 
