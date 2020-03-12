@@ -75,7 +75,24 @@ function openSection(obj, sect) {
     //document.getElementById(sect).style.display = "block";
 }
 
+// somehow merge with above?  eh...
+function selectInput (obj, input_id) {
+    var e = document.getElementsByClassName("on");
+    if (e[0]) { e[0].classList.remove("on"); }
+    obj.classList.add("on");
 
+    for (var s of ['qtext_input','qgraph_input','qdsl_input']) {
+	document.getElementById(s).style.maxHeight = null;
+	document.getElementById(s).style.visibility = 'hidden';
+    }
+    document.getElementById(input_id).style.maxHeight = "100%";
+    document.getElementById(input_id).style.visibility = 'visible';
+}
+
+
+function clearDSL() {
+    document.getElementById("dslText").value = '';
+}
 
 function pasteQuestion(question) {
     document.getElementById("questionForm").elements["questionText"].value = question;
@@ -89,6 +106,7 @@ function reset_vars() {
     //    document.getElementById("kg_container").innerHTML = "";
     if (cyobj[0]) {cyobj[0].elements().remove();}
     document.getElementById("summary_container").innerHTML = "";
+    document.getElementById("menunummessages").innerHTML = "--";
     document.getElementById("menunumresults").innerHTML = "--";
     document.getElementById("menunumresults").classList.remove("numnew");
     document.getElementById("menunumresults").classList.add("numold");
@@ -97,6 +115,59 @@ function reset_vars() {
     cytodata = [];
     UIstate.nodedd = 1;
 }
+
+function sendDSL(e) {
+    reset_vars();
+    document.getElementById("questionForm").elements["questionText"].value = '-- posted query via DSL input --';
+    document.getElementById("statusdiv").innerHTML = "Posting DSL.  Looking for answer...";
+
+    sesame('openmax',statusdiv);
+    var xhr = new XMLHttpRequest();
+    xhr.open("post",  baseAPI + "api/rtx/v1/query", true);
+    xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+
+    var dslArrayOfLines = document.getElementById("dslText").value.split("\n");
+    var queryObj = { "previous_message_processing_plan": { "processing_actions": dslArrayOfLines}};
+    //queryObj.max_results = 100;
+
+    document.getElementById("devdiv").innerHTML += "<PRE>\nposted to QUERY:\n" + JSON.stringify(queryObj,null,2) + "</PRE>";
+
+    // send the collected data as JSON
+    xhr.send(JSON.stringify(queryObj));
+
+    xhr.onloadend = function() {
+	if ( xhr.status == 200 ) {
+	    var jsonObj = JSON.parse(xhr.responseText);
+	    document.getElementById("devdiv").innerHTML += "<br>================================================================= RESPONSE MESSAGE::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj,null,2) + "</PRE>";
+
+	    document.getElementById("statusdiv").innerHTML += "<br><br><I>"+jsonObj["code_description"]+"</I>";
+	    sesame('openmax',statusdiv);
+
+	    if (jsonObj["message_code"] == "QueryGraphZeroNodes") {
+		clear_qg();
+	    }
+	    else if (jsonObj["message_code"] == "ActionsListEmpty" ||
+		     jsonObj["message_code"] == "UnrecognizedCommand"
+		    ) {
+		process_log(jsonObj["log"]);
+	    }
+	    else {
+		input_qg = { "edges": [], "nodes": [] };
+		render_message(jsonObj);
+	    }
+	}
+	else {
+	    document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr.status+")</SPAN>";
+	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<BR>"+xhr.responseText;
+	    sesame('openmax',statusdiv);
+	    if (xhr.log) {
+		process_log(xhr.log);
+	    }
+	}
+    };
+
+}
+
 
 function sendGraph(e) {
     reset_vars();
@@ -296,8 +367,8 @@ function retrieve_message() {
 	    sesame('openmax',statusdiv);
 	}
 	else {
-	    document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr2.status+")</SPAN>";
-	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<BR>"+xhr2.responseText;
+	    document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr.status+")</SPAN>";
+	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<BR>"+xhr.responseText;
 	    sesame('openmax',statusdiv);
 	}
     };
@@ -350,16 +421,65 @@ function render_message(respObj) {
         document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br></div>";
     }
 
+    if (respObj["query_options"]) {
+	process_q_options(respObj["query_options"]);
+    }
+
+    if (respObj["log"]) {
+	process_log(respObj["log"]);
+    }
+
     add_cyto();
 }
 
+function process_q_options(q_opts) {
 
+    if (q_opts.processing_actions) {
+	clearDSL();
+	for (var act of q_opts.processing_actions) {
+	    document.getElementById("dslText").value += act + "\n";
+	}
+    }
+
+}
+
+function process_log(logarr) {
+    var errors = 0;
+    for (var msg of logarr) {
+	if (msg.level_str == "ERROR") { errors++; }
+
+	var span = document.createElement("span");
+	span.className = "hoverable msg " + msg.level_str;
+
+
+	var span2 = document.createElement("span");
+	span2.className = "explevel msg" + msg.level_str;
+	span2.appendChild(document.createTextNode('\u00A0'));
+	span2.appendChild(document.createTextNode('\u00A0'));
+        span.appendChild(span2);
+
+	span.appendChild(document.createTextNode('\u00A0'));
+
+	txt = document.createTextNode(msg.prefix);
+	span.appendChild(txt);
+	span.appendChild(document.createElement("br"));
+
+	txt = document.createTextNode(msg.message);
+	span.appendChild(txt);
+
+	document.getElementById("logdiv").appendChild(span);
+    }
+    document.getElementById("menunummessages").innerHTML = logarr.length;
+
+}
 
 
 function add_status_divs() {
     document.getElementById("status_container").innerHTML = "<div class='statushead'>Status</div><div class='status' id='statusdiv'></div>";
 
     document.getElementById("dev_result_json_container").innerHTML = "<div class='statushead'>Dev Info <i style='float:right; font-weight:normal;'>( json responses )</i></div><div class='status' id='devdiv'></div>";
+
+    document.getElementById("messages_container").innerHTML = "<div class='statushead'>Messages</div><div class='status' id='logdiv'></div>";
 }
 
 
@@ -589,7 +709,9 @@ function add_result(reslist) {
 				    source : gd.edges[g].source_id,
 				    target : gd.edges[g].target_id,
 				    type   : gd.edges[g].type,
-				    provided_by  : gd.edges[g].provided_by
+				    weight : gd.edges[g].weight,
+				    provided_by     : gd.edges[g].provided_by,
+				    edge_attributes : gd.edges[g].edge_attributes
 				}
 			      };
 
@@ -630,7 +752,7 @@ function add_cyto() {
 		    'curve-style' : 'bezier',
 		    'line-color': '#fff',
 		    'target-arrow-color': '#fff',
-		    'width': 2,
+		    'width': function(ele) { if (ele.data().weight) { return ele.data().weight; } return 2; },
                     'content': 'data(name)',
 		    'target-arrow-shape': 'triangle',
 		    'opacity': 0.8,
@@ -686,33 +808,7 @@ function add_cyto() {
 		document.getElementById(dnum).innerHTML+= "<b>Description:</b> " + this.data('description') + "<br>";
 	    }
 
-	    var linebreak = "<hr>";
-            for (var na in this.data('node_attributes')) {
-		var snippet = linebreak;
-
-                if (this.data('node_attributes')[na].name != null) {
-                    snippet += "<b>" + this.data('node_attributes')[na].name + "</b>";
-		    if (this.data('node_attributes')[na].type != null) {
-	            	snippet += " (" + this.data('node_attributes')[na].type + ")";
-		    }
-                    snippet += " : ";
-		}
-                if (this.data('node_attributes')[na].url != null) {
-                    snippet += "<a target='rtxext' href='" + this.data('node_attributes')[na].url + "'>";
-                }
-                if (this.data('node_attributes')[na].value != null) {
-                    snippet += this.data('node_attributes')[na].value;
-                }
-		else if (this.data('node_attributes')[na].url != null) {
-                    snippet += "[ url ]";
-		}
-                if (this.data('node_attributes')[na].url != null) {
-                    snippet += "</a>";
-                }
-
-                document.getElementById(dnum).innerHTML+= snippet;
-		linebreak = "<br>";
-	    }
+	    show_attributes(dnum, this.data('node_attributes'));
 
 	    sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
 	});
@@ -731,6 +827,7 @@ function add_cyto() {
             	document.getElementById(dnum).innerHTML+= "<b>Provenance:</b> " + this.data('provided_by') + "<br>";
 	    }
 
+	    show_attributes(dnum, this.data('edge_attributes'));
 
 	    sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
 	});
@@ -738,6 +835,41 @@ function add_cyto() {
     }
 
 }
+
+function show_attributes(html_id, atts) {
+    var linebreak = "<hr>";
+
+    if (atts == null)  { console.log("no atts? "+atts); return; }
+
+    for (var att of atts) {
+	var snippet = linebreak;
+
+	if (att.name != null) {
+	    snippet += "<b>" + att.name + "</b>";
+	    if (att.type != null) {
+		snippet += " (" + att.type + ")";
+	    }
+	    snippet += " : ";
+	}
+	if (att.url != null) {
+	    snippet += "<a target='rtxext' href='" + att.url + "'>";
+	}
+	if (att.value != null) {
+	    snippet += att.value;
+	}
+	else if (att.url != null) {
+	    snippet += "[ url ]";
+	}
+	if (att.url != null) {
+	    snippet += "</a>";
+	}
+
+	document.getElementById(html_id).innerHTML+= snippet;
+	linebreak = "<br>";
+    }
+
+}
+
 
 function cylayout(index,layname) {
     var layout = cyobj[index].layout({
