@@ -77,9 +77,9 @@ function openSection(obj, sect) {
 
 // somehow merge with above?  eh...
 function selectInput (obj, input_id) {
-    var e = document.getElementsByClassName("on");
-    if (e[0]) { e[0].classList.remove("on"); }
-    obj.classList.add("on");
+    var e = document.getElementsByClassName("slink_on");
+    if (e[0]) { e[0].classList.remove("slink_on"); }
+    obj.classList.add("slink_on");
 
     for (var s of ['qtext_input','qgraph_input','qdsl_input']) {
 	document.getElementById(s).style.maxHeight = null;
@@ -692,29 +692,25 @@ function add_result(reslist) {
 	    cytodata[i] = [];
 	    var gd = reslist[i].result_graph;
 
-	    for (var g in gd.nodes) {
-		gd.nodes[g].parentdivnum = num; // helps link node to div when displaying node info on click
-		var tmpdata = { "data" : gd.nodes[g] }; // already contains id
+	    for (var node of gd.nodes) {
+		node.parentdivnum = num; // helps link node to div when displaying node info on click
+		var tmpdata = { "data" : node }; // already contains id
 		cytodata[i].push(tmpdata);
 
 		// DEBUG
-		//document.getElementById("cy"+num).innerHTML += "NODE: name="+ gd.nodes[g].name + " -- accession=" + gd.nodes[g].accession + "<BR>";
+		//document.getElementById("cy"+num).innerHTML += "NODE: name="+ node.name + " -- accession=" + node.accession + "<BR>";
 	    }
 
-	    for (var g in gd.edges) {
-		var tmpdata = { "data" : 
-				{
-				    parentdivnum : num,
-				    id : gd.edges[g].source_id + '--' + gd.edges[g].target_id,
-				    source : gd.edges[g].source_id,
-				    target : gd.edges[g].target_id,
-				    type   : gd.edges[g].type,
-				    weight : gd.edges[g].weight,
-				    provided_by     : gd.edges[g].provided_by,
-				    edge_attributes : gd.edges[g].edge_attributes
-				}
-			      };
+	    for (var g of gd.edges) {
+		var edge = JSON.parse(JSON.stringify(g)); // cheap and deep copy
+		edge.parentdivnum = num;
+                edge.id     = g.source_id + '--' + g.target_id;
+		edge.source = g.source_id;
+		edge.target = g.target_id;
+		edge.source_id = null;
+		edge.target_id = null;
 
+		var tmpdata = { "data" : edge };
 		cytodata[i].push(tmpdata);
 	    }
 	}
@@ -827,6 +823,49 @@ function add_cyto() {
             	document.getElementById(dnum).innerHTML+= "<b>Provenance:</b> " + this.data('provided_by') + "<br>";
 	    }
 
+            if(this.data('confidence')) {
+                document.getElementById(dnum).innerHTML+= "<b>Confidence:</b> " + this.data('confidence') + "<br>";
+	    }
+
+            if(this.data('weight')) {
+                document.getElementById(dnum).innerHTML+= "<b>Weight:</b> " + this.data('weight') + "<br>";
+	    }
+
+	    if(this.data('evidence_type')) {
+                document.getElementById(dnum).innerHTML+= "<b>Evidence Type:</b> " + this.data('evidence_type') + "<br>";
+	    }
+
+            if(this.data('qualifiers')) {
+                document.getElementById(dnum).innerHTML+= "<b>Qualifiers:</b> " + this.data('qualifiers') + "<br>";
+	    }
+
+	    if(this.data('negated')) {
+                document.getElementById(dnum).innerHTML+= "<b>Negated:</b> " + this.data('negated') + "<br>";
+	    }
+
+	    if(this.data('relation')) {
+		document.getElementById(dnum).innerHTML+= "<b>Relation:</b> " + this.data('relation') + "<br>";
+	    }
+
+
+	    if(this.data('is_defined_by')) {
+		document.getElementById(dnum).innerHTML+= "<b>Defined by:</b> " + this.data('is_defined_by') + "<br>";
+	    }
+            if(this.data('defined_datetime')) {
+		document.getElementById(dnum).innerHTML+= "<b>Defined on:</b> " + this.data('defined_datetime') + "<br>";
+	    }
+
+            if(this.data('publications')) {
+		document.getElementById(dnum).innerHTML+= "<b>Publications:</b> " + this.data('publications') + "<br>";
+	    }
+
+            if(this.data('id')) {
+		document.getElementById(dnum).innerHTML+= "<b>Id:</b> " + this.data('id') + "<br>";
+	    }
+            if(this.data('qedge_id')) {
+		document.getElementById(dnum).innerHTML+= "<b>Qedge id:</b> " + this.data('qedge_id') + "<br>";
+	    }
+
 	    show_attributes(dnum, this.data('edge_attributes'));
 
 	    sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
@@ -837,9 +876,9 @@ function add_cyto() {
 }
 
 function show_attributes(html_id, atts) {
-    var linebreak = "<hr>";
+    if (atts == null)  { return; }
 
-    if (atts == null)  { console.log("no atts? "+atts); return; }
+    var linebreak = "<hr>";
 
     for (var att of atts) {
 	var snippet = linebreak;

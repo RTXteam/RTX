@@ -62,7 +62,7 @@
   &nbsp;&nbsp;&nbsp;
   <img src="qtxt.png" class="slink" onclick="selectInput(this,'qtext_input');" title="Enter Query using Natural Language"/>
   <img src="qg.png" class="slink" onclick="selectInput(this,'qgraph_input');" title="Enter Query Graph"/>
-  <img src="qdsl.png" class="slink" onclick="selectInput(this,'qdsl_input');" title="Enter Query using Domain-specific Language"/>
+  <img src="qdsl.png" class="slink" onclick="selectInput(this,'qdsl_input');" title="Enter Query using Domain-Specific Language"/>
 
   <div class="inputsection" id="qtext_input">
     <h3 style="display:inline;">Enter question:</h3>
@@ -146,8 +146,11 @@
   
   <div class="inputsection" id="qdsl_input">
     <h3 style="display:inline;">DSL Input:</h3>
+    <span class="tiny" style="position:relative; left:150px;">One line per DSL command, no quotes or commas;
+    <a href="https://github.com/RTXteam/RTX/blob/demo/code/ARAX/Documentation/DSL_Documentation.md" target="_new">more info here</a></span>
     <form id="dslForm" name="dslForm" method="post" action="javascript:sendDSL();">
-      <span title="clear DSL input" class="clq" onclick="javascript:clearDSL();">&#215;</span>&nbsp;<textarea class="questionBox" wrap="off" id="dslText"></textarea>
+      
+      <textarea class="questionBox" wrap="off" id="dslText"></textarea>&nbsp;<span title="clear DSL input" class="clq" onclick="javascript:clearDSL();">&#215;</span>
       <br/>
       <input type="button" class="questionBox button" name="action" value="POST" onClick="javascript:sendDSL();">
     </form>
