@@ -319,7 +319,7 @@ Netherlands.
 | Andrew Hoffman   | Radboud University, NL        | `A.Hoffman@ftr.ru.nl`                 | [parrhesiastic](https://github.com/parrhesiastic)   | ethnographer of data science and cyberinfrastructure  |
 | Finn Womack           | Oregon State University       | `womackf@oregonstate.edu`        | [finnagin](https://github.com/finnagin)   | drug repositioning, Neo4j  |
 | Amy Glen           | Oregon State University       | `glena@oregonstate.edu`        | [amykglen](https://github.com/amykglen)   | knowledge graphs  |
-| Arun Muluka          | Penn State University       | `avm6604@psu.edu`        | [aruntejam1](https://github.com/aruntejam1   | knowledge graphs  |
+| Arun Muluka          | Penn State University       | `avm6604@psu.edu`        | [aruntejam1](https://github.com/aruntejam1)   | knowledge graphs  |
 
 
 For our work on the Translator program, we also extensively
