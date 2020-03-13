@@ -306,9 +306,9 @@ Netherlands.
 
 | Name           | Role                                        | Email                             | GitHub username                               | Areas of relevant expertise      |
 | -------------- | ------------------------------------------- | --------------------------------- | --------------------------------------------- | -------------------------------- |
-| Stephen&nbsp;Ramsey | PI, OSU                 | `stephen.ramsey@oregonstate.edu`  | [saramsey](https://github.com/saramsey)       | compbio, systems biology         |
-| David&nbsp;Koslicki | PI, PSU                   | `dmk333@psu.edu`                  | [dkoslicki](https://github.com/dkoslicki)     | compbio, graph algorithms        |
-| Eric&nbsp;Deutsch   | PI, ISB           | `eric.deutsch@systemsbiology.org` | [edeutsch](https://github.com/edeutsch)       | bioinformatics, data management, standards development  | 
+| Stephen&nbsp;Ramsey | OSU                 | `stephen.ramsey@oregonstate.edu`  | [saramsey](https://github.com/saramsey)       | compbio, systems biology         |
+| David&nbsp;Koslicki | PSU                   | `dmk333@psu.edu`                  | [dkoslicki](https://github.com/dkoslicki)     | compbio, graph algorithms        |
+| Eric&nbsp;Deutsch   | ISB           | `eric.deutsch@systemsbiology.org` | [edeutsch](https://github.com/edeutsch)       | bioinformatics, data management, standards development  | 
 
 ## Team members
 
