@@ -314,11 +314,11 @@ class RTXFeedback:
 
         #### See if there is an existing result that matches this hash
         previousResult = None
-        eprint(f"- {result_hash}")
-        if result_hash != 'xxxx':
-          previousResult = session.query(Result).filter(Result.result_hash==result_hash).order_by(desc(Result.result_id)).first()
+        #eprint(f"- {result_hash}")
+        #if result_hash != 'xxxx':
+        #  previousResult = session.query(Result).filter(Result.result_hash==result_hash).order_by(desc(Result.result_id)).first()
         #eprint("WARNING: Forcing chache miss for result at line 309")
-        #previousResult = None
+        previousResult = None
         if previousResult is not None:
           result.id = "https://arax.rtx.ai/api/rtx/v1/result/"+str(previousResult.result_id)
           #eprint("Reused result_id " + str(result.id))
