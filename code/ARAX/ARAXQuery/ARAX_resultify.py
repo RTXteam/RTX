@@ -481,13 +481,6 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         else:
             kg_node_id_lists_for_qg_nodes.append(list(reverse_node_bindings_map[node.id]))
 
-    # need a map between a KG node ID and the IDs of KG edge objects (that are *bound* to the QG) that connect to it
-    # map_qg_node_id_to_bound_qg_edges = {node.id: set() for node in qg.nodes}
-    # for edge in qg.edges:
-    #     if edge.qedge_id is not None:
-    #         map_qg_node_id_to_bound_qg_edges[edge.source_id].add(edge.id)
-    #         map_qg_node_id_to_bound_qg_edges[edge.target_id].add(edge.id)
-
     results: List[Result] = []
     essence_nodes_in_kg = reverse_node_bindings_map.get(essence_qnode_id, set())
     for node_ids_for_subgraph_from_non_set_nodes in itertools.product(*kg_node_id_lists_for_qg_nodes):
@@ -497,11 +490,8 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
             qg_node_id = node_bindings_map[kg_node_id]
             # find all edges of this kg_node_id in the KG
             qg_neighbor_nodes_set = qg_adj_map[qg_node_id]
-            # nbhd_qg_edge_ids = map_qg_node_id_to_bound_qg_edges[qg_node_id]
-            # # for all KG edges that connect to this KG node:
             # for qg_edge_id in nbhd_qg_edge_ids:
             for qg_neighbor_node_id in qg_neighbor_nodes_set:
-                # qg_edge = qg_edges_map[qg_edge_id]
                 kg_nodes_for_qg_neighbor_node = reverse_node_bindings_map[qg_neighbor_node_id]
                 found_neighbor_connected_to_kg_node_id = False
                 for kg_neighbor_node_id in kg_nodes_for_qg_neighbor_node:
@@ -511,17 +501,6 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                         break
                 if not found_neighbor_connected_to_kg_node_id and kg_node_id in node_ids_for_subgraph:
                     node_ids_for_subgraph.remove(kg_node_id)
-                # if kg_node_id == kg_edge.source_id:
-                #     if kg_edge.target_id not in node_ids_for_subgraph:
-                #         if kg_node_id in node_ids_for_subgraph:
-                #             node_ids_for_subgraph.remove(kg_node_id)
-                # elif kg_node_id == kg_edge.target_id:
-                #     if kg_edge.source_id not in node_ids_for_subgraph:
-                #         if kg_node_id in node_ids_for_subgraph:
-                #             node_ids_for_subgraph.remove(kg_node_id)
-                # else:
-                #     assert False  # should never get here in the code
-
         result = _make_result_from_node_set(kg, node_ids_for_subgraph)
         essence_kg_node_id_set = essence_nodes_in_kg & node_ids_for_subgraph
         if len(essence_kg_node_id_set) == 1:
