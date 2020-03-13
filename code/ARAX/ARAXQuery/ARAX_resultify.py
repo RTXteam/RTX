@@ -188,13 +188,27 @@ def _make_edge_key(node1_id: str,
 
 def _make_result_from_node_set(kg: KnowledgeGraph,
                                node_ids: Set[str]) -> Result:
-    node_bindings = [NodeBinding(qg_id=node.qnode_id, kg_id=node.id) for node in kg.nodes if node.id in node_ids]
-    edge_bindings = [EdgeBinding(qg_id=edge.qedge_id, kg_id=edge.id)
-                     for edge in kg.edges if edge.source_id in node_ids and
-                     edge.target_id in node_ids and
-                     edge.qedge_id is not None]
+    node_bindings = []
+    nodes = []
+    for node in kg.nodes:
+        if node.id in node_ids:
+            node_bindings.append(NodeBinding(qg_id=node.qnode_id, kg_id=node.id))
+            nodes.append(node)
+    edge_bindings = []
+    edges = []
+    for edge in kg.edges:
+        if edge.source_id in node_ids and edge.target_id in node_ids and edge.qedge_id is not None:
+            edge_bindings.append(EdgeBinding(qg_id=edge.qedge_id, kg_id=edge.id))
+            edges.append(edge)
+#    node_bindings = [NodeBinding(qg_id=node.qnode_id, kg_id=node.id) for node in kg.nodes if node.id in node_ids]
+#    edge_bindings = [EdgeBinding(qg_id=edge.qedge_id, kg_id=edge.id)
+#                     for edge in kg.edges if edge.source_id in node_ids and
+#                     edge.target_id in node_ids and
+#                     edge.qedge_id is not None]
+    result_graph = KnowledgeGraph(nodes=nodes, edges=edges)
     result = Result(node_bindings=node_bindings,
-                    edge_bindings=edge_bindings)
+                    edge_bindings=edge_bindings,
+                    result_graph=result_graph)
     return result
 
 
@@ -327,9 +341,12 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     edge_bindings_map = {edge.id: edge.qedge_id for edge in kg.edges if edge.qedge_id is not None}
 
     # make a map of KG node ID to KG edges, by source:
-    adj_maps_dict = _make_adj_maps(kg, directed=True, droploops=False)
-    kg_node_id_incoming_adjacency_map = adj_maps_dict['in']
-    kg_node_id_outgoing_adjacency_map = adj_maps_dict['out']
+    kg_adj_map_direc = _make_adj_maps(kg, directed=True, droploops=False)
+    kg_node_id_incoming_adjacency_map = kg_adj_map_direc['in']
+    kg_node_id_outgoing_adjacency_map = kg_adj_map_direc['out']
+
+    kg_adj_map = _make_adj_maps(kg, directed=False, droploops=True)['both']
+    qg_adj_map = _make_adj_maps(qg, directed=False, droploops=True)['both']  # can the QG have a self-loop?  not sure
 
     # build up maps of node IDs to nodes, for both the KG and QG
     kg_nodes_map = {node.id: node for node in kg.nodes}
@@ -351,6 +368,9 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
 
     # make a map between QG edge keys and QG edge IDs
     qg_edge_key_to_edge_id_map = {_make_edge_key(edge.source_id, edge.target_id): edge.id for edge in qg.edges}
+
+    kg_undir_edge_keys_set = set(_make_edge_key(edge.source_id, edge.target_id) for edge in kg.edges) |\
+        set(_make_edge_key(edge.target_id, edge.source_id) for edge in kg.edges)
 
     # --------------------- checking for validity of the NodeBindings list --------------
     # we require that every query graph node ID in the "values" slot of the node_bindings_map corresponds to an actual node in the QG
@@ -450,13 +470,6 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     # (2) for any QG node that has "is_set=True", *all* KG nodes that are bound to the same QG node are in the subgraph
     # (3) every edge in the QG is "covered" by at least one edge in the KG
 
-    # need a map between a KG node ID and the IDs of KG edge objects (that are *bound* to the QG) that connect to it
-    map_kg_node_id_to_bound_kg_edges = {node.id: set() for node in kg.nodes}
-    for edge in kg.edges:
-        if edge.qedge_id is not None:
-            map_kg_node_id_to_bound_kg_edges[edge.source_id].add(edge.id)
-            map_kg_node_id_to_bound_kg_edges[edge.target_id].add(edge.id)
-
     kg_node_ids_with_isset_true: Set[str] = set()
     kg_node_id_lists_for_qg_nodes = []
     # for each node in the query graph:
@@ -467,30 +480,47 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
             kg_node_ids_with_isset_true |= reverse_node_bindings_map[node.id]
         else:
             kg_node_id_lists_for_qg_nodes.append(list(reverse_node_bindings_map[node.id]))
-    kg_node_ids_with_isset_true_list = list(kg_node_ids_with_isset_true)
+
+    # need a map between a KG node ID and the IDs of KG edge objects (that are *bound* to the QG) that connect to it
+    # map_qg_node_id_to_bound_qg_edges = {node.id: set() for node in qg.nodes}
+    # for edge in qg.edges:
+    #     if edge.qedge_id is not None:
+    #         map_qg_node_id_to_bound_qg_edges[edge.source_id].add(edge.id)
+    #         map_qg_node_id_to_bound_qg_edges[edge.target_id].add(edge.id)
 
     results: List[Result] = []
     essence_nodes_in_kg = reverse_node_bindings_map.get(essence_qnode_id, set())
     for node_ids_for_subgraph_from_non_set_nodes in itertools.product(*kg_node_id_lists_for_qg_nodes):
         node_ids_for_subgraph = set(node_ids_for_subgraph_from_non_set_nodes) | kg_node_ids_with_isset_true
-
         # for all KG nodes with isset_true:
         for kg_node_id in kg_node_ids_with_isset_true:
+            qg_node_id = node_bindings_map[kg_node_id]
             # find all edges of this kg_node_id in the KG
-            nbhd_kg_edge_ids = map_kg_node_id_to_bound_kg_edges[kg_node_id]
-            # for all KG edges that connect to this KG node:
-            for edge_id in nbhd_kg_edge_ids:
-                kg_edge = kg_edges_map[edge_id]
-                if kg_node_id == kg_edge.source_id:
-                    if kg_edge.target_id not in node_ids_for_subgraph:
-                        if kg_node_id in node_ids_for_subgraph:
-                            node_ids_for_subgraph.remove(kg_node_id)
-                elif kg_node_id == kg_edge.target_id:
-                    if kg_edge.source_id not in node_ids_for_subgraph:
-                        if kg_node_id in node_ids_for_subgraph:
-                            node_ids_for_subgraph.remove(kg_node_id)
-                else:
-                    assert False  # should never get here in the code
+            qg_neighbor_nodes_set = qg_adj_map[qg_node_id]
+            # nbhd_qg_edge_ids = map_qg_node_id_to_bound_qg_edges[qg_node_id]
+            # # for all KG edges that connect to this KG node:
+            # for qg_edge_id in nbhd_qg_edge_ids:
+            for qg_neighbor_node_id in qg_neighbor_nodes_set:
+                # qg_edge = qg_edges_map[qg_edge_id]
+                kg_nodes_for_qg_neighbor_node = reverse_node_bindings_map[qg_neighbor_node_id]
+                found_neighbor_connected_to_kg_node_id = False
+                for kg_neighbor_node_id in kg_nodes_for_qg_neighbor_node:
+                    if _make_edge_key(kg_node_id, kg_neighbor_node_id) in kg_undir_edge_keys_set and \
+                       kg_neighbor_node_id in node_ids_for_subgraph:
+                        found_neighbor_connected_to_kg_node_id = True
+                        break
+                if not found_neighbor_connected_to_kg_node_id and kg_node_id in node_ids_for_subgraph:
+                    node_ids_for_subgraph.remove(kg_node_id)
+                # if kg_node_id == kg_edge.source_id:
+                #     if kg_edge.target_id not in node_ids_for_subgraph:
+                #         if kg_node_id in node_ids_for_subgraph:
+                #             node_ids_for_subgraph.remove(kg_node_id)
+                # elif kg_node_id == kg_edge.target_id:
+                #     if kg_edge.source_id not in node_ids_for_subgraph:
+                #         if kg_node_id in node_ids_for_subgraph:
+                #             node_ids_for_subgraph.remove(kg_node_id)
+                # else:
+                #     assert False  # should never get here in the code
 
         result = _make_result_from_node_set(kg, node_ids_for_subgraph)
         essence_kg_node_id_set = essence_nodes_in_kg & node_ids_for_subgraph
@@ -1433,7 +1463,15 @@ def _test_issue680():
     assert response.status == 'OK'
     assert len(message.results) == 1
     result = message.results[0]
-    assert len(result.node_bindings) == 7
+    resgraph = result.result_graph
+    count_drug_prot = 0
+    count_disease_prot = 0
+    for edge in resgraph.edges:
+        if edge.target_id.startswith("CHEMBL.") and edge.source_id.startswith("UniProtKB:"):
+            count_drug_prot += 1
+        if edge.target_id.startswith("DOID:") and edge.source_id.startswith("UniProtKB:"):
+            count_disease_prot += 1
+    assert count_drug_prot == count_disease_prot
     assert result.essence is not None
 
 
