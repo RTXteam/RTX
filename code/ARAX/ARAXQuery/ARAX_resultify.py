@@ -146,7 +146,11 @@ Note that this command will successfully execute given an arbitrary query graph 
 
         debug_mode = parameters.get('debug', None)
         if debug_mode is not None:
-            debug_mode = (debug_mode.lower() == 'true')
+            try:
+                debug_mode = _parse_boolean_case_insensitive(debug_mode)
+            except Exception as e:
+                self.response.error(str(e))
+                return
 
         for parameter_name in parameters.keys():
             if parameter_name == '':
@@ -168,7 +172,16 @@ Note that this command will successfully execute given an arbitrary query graph 
             qg_nodes_override_treat_is_set_as_false = set()
         ignore_edge_direction = parameters.get('ignore_edge_direction', None)
         if ignore_edge_direction is not None:
-            ignore_edge_direction = (ignore_edge_direction.lower() == 'true')
+            try:
+                ignore_edge_direction = _parse_boolean_case_insensitive(ignore_edge_direction)
+            except ValueError as e:
+                error_string = "parameter value is not allowed in ARAXResultify: " + str(ignore_edge_direction)
+                if not debug_mode:
+                    self.response.error(error_string)
+                    return
+                else:
+                    raise e
+
         try:
             results = _get_results_for_kg_by_qg(kg,
                                                 qg,
@@ -323,6 +336,18 @@ def _get_essence_node_for_qg(qg: QueryGraph) -> str:
                           key=lambda node_id: map_node_id_to_pos[node_id],
                           reverse=True)[0]
     assert False
+
+
+def _parse_boolean_case_insensitive(input_string:  str) -> bool:
+    if input_string is None:
+        raise ValueError("invalid value for input_string")
+    input_string = input_string.lower()
+    if input_string == 'true':
+        return True
+    elif input_string == 'false':
+        return False
+    else:
+        raise ValueError("invalid value for input_string")
 
 
 def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must* have qnode_id specified
@@ -1462,7 +1487,7 @@ def _test_issue680():
     assert result.essence is not None
 
 
-def _test_issue686():
+def _test_issue686a():
     query = {"previous_message_processing_plan": {"processing_actions": [
         'create_message',
         'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
@@ -1487,6 +1512,20 @@ def _test_issue686b():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
+
+
+def _test_issue686c():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        'create_message',
+        'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
+        'add_qnode(id=qg1, type=protein)',
+        'add_qedge(source_id=qg1, target_id=qg0, id=qe0)',
+        'add_qedge(source_id=qg0, target_id=qg1, id=qe0)',
+        'expand(edge_id=qe0)',
+        'resultify(ignore_edge_direction=foo)'
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status != 'OK' and 'foo' in response.show()
 
 
 def _test_issue687():
@@ -1524,8 +1563,9 @@ def _run_arax_class_tests():
     _test_example2()
     _test_issue680()
     _test_example3()
-    _test_issue686()
+    _test_issue686a()
     _test_issue686b()
+    _test_issue686c()
     _test_issue687()
 
 
