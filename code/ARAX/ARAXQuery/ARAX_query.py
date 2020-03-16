@@ -8,6 +8,7 @@ import ast
 import re
 from datetime import datetime
 import subprocess
+import traceback
 
 from response import Response
 from query_graph_info import QueryGraphInfo
@@ -380,49 +381,61 @@ class ARAXQuery:
             action_stats = { }
             actions = result.data['actions']
             for action in actions:
-                response.debug(f"Considering action '{action['command']}' with parameters {action['parameters']}")
+                response.debug(f"Processing action '{action['command']}' with parameters {action['parameters']}")
                 nonstandard_result = False
 
-                if action['command'] == 'create_message':
-                    result = messenger.create_message()
-                    message = result.data['message']
-                elif action['command'] == 'add_qnode':
-                    result = messenger.add_qnode(message,action['parameters'])
-                elif action['command'] == 'add_qedge':
-                    result = messenger.add_qedge(message,action['parameters'])
-                elif action['command'] == 'expand':
-                    result = expander.apply(message,action['parameters'])
-                elif action['command'] == 'filter':
-                    result = filter.apply(message,action['parameters'])
-                elif action['command'] == 'resultify':
-                    result = resultifier.apply(message, action['parameters'])
-                elif action['command'] == 'query_graph_reasoner':
-                    response.info(f"Sending current query_graph to the QueryGraphReasoner")
-                    qgr = QueryGraphReasoner()
-                    message = qgr.answer(ast.literal_eval(repr(message.query_graph)), TxltrApiFormat=True)
-                    nonstandard_result = True
-                elif action['command'] == 'return':
-                    action_stats['return_action'] = action
-                    break
-                elif action['command'] == 'overlay':  # recognize the overlay command
-                    result = overlay.apply(message, action['parameters'])
-                elif action['command'] == 'filter_kg':  # recognize the filter_kg command
-                    result = filter_kg.apply(message, action['parameters'])
-                elif action['command'] == 'filter_results':  # recognize the filter_kg command
-                    result = filter_results.apply(message, action['parameters'])
-                else:
-                    response.error(f"Unrecognized command {action['command']}", error_code="UnrecognizedCommand")
+                # Catch a crash
+                try:
+
+                    if action['command'] == 'create_message':
+                        result = messenger.create_message()
+                        message = result.data['message']
+                    elif action['command'] == 'add_qnode':
+                        result = messenger.add_qnode(message,action['parameters'])
+                    elif action['command'] == 'add_qedge':
+                        result = messenger.add_qedge(message,action['parameters'])
+                    elif action['command'] == 'expand':
+                        result = expander.apply(message,action['parameters'])
+                    elif action['command'] == 'filter':
+                        result = filter.apply(message,action['parameters'])
+                    elif action['command'] == 'resultify':
+                        result = resultifier.apply(message, action['parameters'])
+
+                    elif action['command'] == 'query_graph_reasoner':
+                        response.info(f"Sending current query_graph to the QueryGraphReasoner")
+                        qgr = QueryGraphReasoner()
+                        message = qgr.answer(ast.literal_eval(repr(message.query_graph)), TxltrApiFormat=True)
+                        nonstandard_result = True
+                    elif action['command'] == 'return':
+                        action_stats['return_action'] = action
+                        break
+                    elif action['command'] == 'overlay':  # recognize the overlay command
+                        result = overlay.apply(message, action['parameters'])
+                    elif action['command'] == 'filter_kg':  # recognize the filter_kg command
+                        result = filter_kg.apply(message, action['parameters'])
+                    elif action['command'] == 'filter_results':  # recognize the filter_kg command
+                        result = filter_results.apply(message, action['parameters'])
+                    else:
+                        response.error(f"Unrecognized command {action['command']}", error_code="UnrecognizedCommand")
+                        return response
+
+                except Exception as error:
+                    exception_type, exception_value, exception_traceback = sys.exc_info()
+                    response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
                     return response
 
                 #### Merge down this result and end if we're in an error state
                 if nonstandard_result is False:
                     response.merge(result)
                     if result.status != 'OK':
+                        message.message_code = response.error_code
+                        message.code_description = response.message
+                        message.log = response.messages
                         return response
 
 
             #### At the end, process the explicit return() action, or implicitly perform one
-            return_action = { 'command': 'return', 'parameters': { 'message': 'false', 'store': 'false' } }
+            return_action = { 'command': 'return', 'parameters': { 'message': 'true', 'store': 'true' } }
             if action is not None and action['command'] == 'return':
                 return_action = action
                 #### If an explicit one left out some parameters, set the defaults
@@ -431,14 +444,17 @@ class ARAXQuery:
                 if 'message' not in return_action['parameters']:
                     return_action['parameters']['message'] == 'false'
 
+            # Fill out the message with data
+            message.message_code = response.error_code
+            message.code_description = response.message
+            message.log = response.messages
+            if message.query_options is None:
+                message.query_options = {}
+            message.query_options['processing_actions'] = envelope.processing_actions
+
+            # If store=true, then put the message in the database
             if return_action['parameters']['store'] == 'true':
                 response.debug(f"Storing resulting Message")
-                message.message_code = response.error_code
-                message.code_description = response.message
-                message.log = response.messages
-                if message.query_options is None:
-                    message.query_options = {}
-                message.query_options['processing_actions'] = envelope.processing_actions
                 message_id = rtxFeedback.addNewMessage(message,query)
 
             self.message = message
@@ -449,9 +465,9 @@ class ARAXQuery:
 
             #### Else just the id is returned
             else:
-                #return( { "status": 200, "message_id": str(finalMessage_id), "n_results": finalMessage['n_results'], "url": "https://arax.rtx.ai/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
-                #return( { "status": 200, "message_id": str(finalMessage_id), "n_results": finalMessage.n_results, "url": "https://arax.rtx.ai/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
-                return response
+                if message_id is None:
+                    message_id = 0
+                return( { "status": 200, "message_id": str(message_id), "n_results": message.n_results, "url": "https://arax.rtx.ai/api/rtx/v1/message/"+str(message_id) }, 200)
 
 
 
