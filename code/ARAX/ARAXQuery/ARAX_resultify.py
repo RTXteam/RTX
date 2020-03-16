@@ -155,7 +155,6 @@ Note that this command will successfully execute given an arbitrary query graph 
 
         for parameter_name in parameters.keys():
             if parameter_name not in ARAXResultify.ALLOWED_PARAMETERS:
-                print(debug_mode)
                 error_string = "parameter type is not allowed in ARAXResultify: " + str(parameter_name)
                 if not debug_mode:
                     self.response.error(error_string)
