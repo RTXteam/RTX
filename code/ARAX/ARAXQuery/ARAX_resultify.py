@@ -1542,7 +1542,6 @@ def _test_issue687():
     _do_arax_query(query)
 
 
-
 def _run_module_level_tests():
     _test01()
     _test02()
