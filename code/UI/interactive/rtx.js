@@ -146,14 +146,17 @@ function sendDSL(e) {
 	    if (jsonObj["message_code"] == "QueryGraphZeroNodes") {
 		clear_qg();
 	    }
-	    else if (jsonObj["message_code"] == "ActionsListEmpty" ||
-		     jsonObj["message_code"] == "UnrecognizedCommand"
-		    ) {
+	    else if (jsonObj["message_code"] == "OK") {
+		input_qg = { "edges": [], "nodes": [] };
+		render_message(jsonObj);
+	    }
+	    else if (jsonObj["log"]) {
 		process_log(jsonObj["log"]);
 	    }
 	    else {
-		input_qg = { "edges": [], "nodes": [] };
-		render_message(jsonObj);
+		document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while parsing the response from the server (no log; code:"+jsonObj.message_code+")</SPAN>";
+		document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<BR>"+xhr.responseText;
+		sesame('openmax',statusdiv);
 	    }
 	}
 	else {
@@ -451,6 +454,7 @@ function process_log(logarr) {
 	var span = document.createElement("span");
 	span.className = "hoverable msg " + msg.level_str;
 
+        if (msg.level_str == "DEBUG") { span.style.display = 'none'; }
 
 	var span2 = document.createElement("span");
 	span2.className = "explevel msg" + msg.level_str;
@@ -460,12 +464,13 @@ function process_log(logarr) {
 
 	span.appendChild(document.createTextNode('\u00A0'));
 
-	txt = document.createTextNode(msg.prefix);
-	span.appendChild(txt);
-	span.appendChild(document.createElement("br"));
+	span.appendChild(document.createTextNode(msg.prefix));
+//	span.appendChild(document.createElement("br"));
 
-	txt = document.createTextNode(msg.message);
-	span.appendChild(txt);
+	span.appendChild(document.createTextNode('\u00A0'));
+	span.appendChild(document.createTextNode('\u00A0'));
+	span.appendChild(document.createTextNode('\u00A0'));
+	span.appendChild(document.createTextNode(msg.message));
 
 	document.getElementById("logdiv").appendChild(span);
     }
@@ -479,9 +484,25 @@ function add_status_divs() {
 
     document.getElementById("dev_result_json_container").innerHTML = "<div class='statushead'>Dev Info <i style='float:right; font-weight:normal;'>( json responses )</i></div><div class='status' id='devdiv'></div>";
 
-    document.getElementById("messages_container").innerHTML = "<div class='statushead'>Messages</div><div class='status' id='logdiv'></div>";
+    document.getElementById("messages_container").innerHTML = "<div class='statushead'>Filter Messages :&nbsp;&nbsp;&nbsp;<span onclick='filtermsgs(this,\"ERROR\")' style='cursor:pointer;' class='qprob msgERROR'>Error</span>&nbsp;&nbsp;&nbsp;<span onclick='filtermsgs(this,\"WARNING\")' style='cursor:pointer;' class='qprob msgWARNING'>Warning</span>&nbsp;&nbsp;&nbsp;<span onclick='filtermsgs(this,\"INFO\")' style='cursor:pointer;' class='qprob msgINFO'>Info</span>&nbsp;&nbsp;&nbsp;<span onclick='filtermsgs(this,\"DEBUG\")' style='cursor:pointer;' class='qprob msgDEBUG hide'>Debug</span></div><div class='status' id='logdiv'></div>";
 }
 
+function filtermsgs(span, type) {
+    var disp = 'none';
+    if (span.classList.contains('hide')) {
+	disp = '';
+	span.classList.remove('hide');
+    }
+    else {
+	span.classList.add('hide');
+    }
+
+    for (var msg of document.getElementById("logdiv").children) {
+	if (msg.classList.contains(type)) {
+	    msg.style.display = disp;
+	}
+    }
+}
 
 
 function add_to_summary(rowdata, num) {

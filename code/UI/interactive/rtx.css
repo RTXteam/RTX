@@ -3,7 +3,7 @@ body {
     margin:  0px;
     box-sizing:border-box;
     background-color:#eee;
-    font-size: 12pt;
+    font-size: 12px;
     font-family: Arial, sans-serif;
 }
 
@@ -32,7 +32,7 @@ body {
 
 .menulinks {
     position: relative;
-    top:25px;
+    top:30px;
     right: 30px;
     float: right;
 }
@@ -40,7 +40,7 @@ body {
     text-decoration: none;
     color: #eef;
     font-weight:bold;
-    padding: 55px 15px 15px 15px;
+    padding: 55px 15px 10px 15px;
 }
 .banner a:hover, .banner a:active{
     text-decoration: none;
@@ -59,7 +59,7 @@ body {
     position: fixed;
     width: 150px;
     height: 100%;
-    //	margin-top: 80px;
+    font-size: 15px;
     font-weight: bold;
     color: #000;
     border-right: 2px solid black;
@@ -207,7 +207,7 @@ body {
     border-right: 1px solid #444;
     text-align: left;
     outline: none;
-    font-size: 20px;
+    font-size: 16px;
     font-weight:bold;
     transition: 0.1s;
 }
@@ -219,6 +219,12 @@ body {
     padding: 0 25px;
     background-color: #fff;
     max-width: 100%;
+}
+.statushead .qprob {
+    font-size: 12px;
+}
+#logdiv {
+    padding: 0px;
 }
 
 .accordion {
@@ -316,6 +322,10 @@ body {
 .sind { background-color: #3bc; }
 .srob { background-color: #000; }
 
+.hide {
+    background-color: #bbb;
+}
+
 h1 {
     margin-top: 40px;
     margin-bottom: -5px;
@@ -377,7 +387,7 @@ table.sumtab {
 .msg {
     display: block;
     border-bottom: 1px solid #aaa;
-    padding: 10px;
+    padding: 4px 3px;
 }
 .DEBUG {
     color: #ccc;
