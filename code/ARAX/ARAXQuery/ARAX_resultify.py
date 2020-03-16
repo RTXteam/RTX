@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-'''This module defines the `ARAXResultify` class whose `__resultify` method
+'''This module defines the `ARAXResultify` class whose `_resultify` method
 enumerates subgraphs of a knowledge graph (KG) that match a pattern set by a
 query graph (QG) and sets the `results` data attribute of the `message` object
 to be a list of `Result` objects, each corresponding to one of the enumerated
@@ -114,31 +114,26 @@ Note that this command will successfully execute given an arbitrary query graph 
         if response.status != 'OK':
             return response
 
-        # populate the parameters dict
-        parameters = dict()
-        for key, value in input_parameters.items():
-            parameters[key] = value
-
         # Store these final parameters for convenience
-        response.data['parameters'] = parameters
-        self.parameters = parameters
+        response.data['parameters'] = input_parameters
+        self.parameters = input_parameters
 
-        # call __resultify
-        self.__resultify(describe=False)
+        # call _resultify
+        self._resultify(describe=False)
 
-        response.debug(f"Applying Resultifier to Message with parameters {parameters}")
+        response.debug(f"Applying Resultifier to Message with parameters {input_parameters}")
 
         # Return the response and done
         return response
 
-    def __resultify(self, describe: bool = False):
+    def _resultify(self, describe: bool = False):
         """
         From a knowledge graph and a query graph (both in a Message object), extract a list of Results objects, each containing
         lists of NodeBinding and EdgeBinding objects. Add a list of Results objects to self.message.rseults.
 
         It is required that `self.parameters` contain the following:
             force_isset_false: a parameter of type `List[set]` containing string `id` fields of query nodes for which the `is_set` property should be set to `false`, overriding whatever the state of `is_set` for each of those nodes in the query graph. Optional.
-            ignore_edge_direction: a parameter of type `bool` indicating whether the direction of an edge in the knowledge graph should be taken into account when matching that edge to an edge in the query graph. By default, this parameter is `true`. Set this parameter to false in order to require that an edge in a subgraph of the KG will only match an edge in the QG if both have the same direction (taking into account the source/target node mapping). Optional. 
+            ignore_edge_direction: a parameter of type `bool` indicating whether the direction of an edge in the knowledge graph should be taken into account when matching that edge to an edge in the query graph. By default, this parameter is `true`. Set this parameter to false in order to require that an edge in a subgraph of the KG will only match an edge in the QG if both have the same direction (taking into account the source/target node mapping). Optional.
         """
         assert self.response is not None
         results = self.message.results
@@ -154,6 +149,8 @@ Note that this command will successfully execute given an arbitrary query graph 
             debug_mode = (debug_mode.lower() == 'true')
 
         for parameter_name in parameters.keys():
+            if parameter_name == '':
+                continue
             if parameter_name not in ARAXResultify.ALLOWED_PARAMETERS:
                 error_string = "parameter type is not allowed in ARAXResultify: " + str(parameter_name)
                 if not debug_mode:
@@ -1466,38 +1463,45 @@ def _test_issue680():
 
 
 def _test_issue686():
-    try:
-        query = {"previous_message_processing_plan": {"processing_actions": [
-            'create_message',
-            'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
-            'add_qnode(id=qg1, type=protein)',
-            'add_qedge(source_id=qg1, target_id=qg0, id=qe0)',
-            'expand(edge_id=qe0)',
-            'resultify(ignore_edge_direction=true, debug=true, INVALID_PARAMETER_NAME=true)'
-        ]}}
-        _do_arax_query(query)
-    except Exception:
-        return
-    assert False
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        'create_message',
+        'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
+        'add_qnode(id=qg1, type=protein)',
+        'add_qedge(source_id=qg1, target_id=qg0, id=qe0)',
+        'expand(edge_id=qe0)',
+        'resultify(ignore_edge_direction=true, INVALID_PARAMETER_NAME=true)'
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert 'INVALID_PARAMETER_NAME' in response.show()
+
+
+def _test_issue686b():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        'create_message',
+        'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
+        'add_qnode(id=qg1, type=protein)',
+        'add_qedge(source_id=qg1, target_id=qg0, id=qe0)',
+        'add_qedge(source_id=qg0, target_id=qg1, id=qe0)',
+        'expand(edge_id=qe0)',
+        'resultify()'
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
 
 
 def _test_issue687():
-    try:
-        query = {"previous_message_processing_plan": {"processing_actions": [
-            'create_message',
-            'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
-            'add_qnode(id=qg1, type=protein)',
-            'add_qedge(source_id=qg1, target_id=qg0, id=qe0)',
-            'add_qedge(source_id=qg0, target_id=qg1, id=qe1)',
-            'expand(edge_id=qe0)',
-            'resultify(debug=true)',
-            "return(message=true, store=true)"
-        ]}}
-        _do_arax_query(query)
-    except Exception as e:
-        print(str(e))
-        assert False
-    return
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        'create_message',
+        'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
+        'add_qnode(id=qg1, type=protein)',
+        'add_qedge(source_id=qg1, target_id=qg0, id=qe0)',
+        'add_qedge(source_id=qg0, target_id=qg1, id=qe1)',
+        'expand(edge_id=qe0)',
+        'resultify(debug=true)',
+        "return(message=true, store=true)"
+    ]}}
+    _do_arax_query(query)
+
 
 
 def _run_module_level_tests():
@@ -1521,6 +1525,7 @@ def _run_arax_class_tests():
     _test_issue680()
     _test_example3()
     _test_issue686()
+    _test_issue686b()
     _test_issue687()
 
 
