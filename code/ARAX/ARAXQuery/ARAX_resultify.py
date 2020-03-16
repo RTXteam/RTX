@@ -148,13 +148,21 @@ Note that this command will successfully execute given an arbitrary query graph 
 
         message = self.message
         parameters = self.parameters
-        for parameter_name in parameters.keys():
-            if parameter_name not in ARAXResultify.ALLOWED_PARAMETERS:
-                raise ValueError("parameter type is not allowed in ARAXResultify: " + str(parameter_name))
 
         debug_mode = parameters.get('debug', None)
         if debug_mode is not None:
             debug_mode = (debug_mode.lower() == 'true')
+
+        for parameter_name in parameters.keys():
+            if parameter_name not in ARAXResultify.ALLOWED_PARAMETERS:
+                print(debug_mode)
+                error_string = "parameter type is not allowed in ARAXResultify: " + str(parameter_name)
+                if not debug_mode:
+                    self.response.error(error_string)
+                    return
+                else:
+                    raise ValueError(error_string)
+
         kg = message.knowledge_graph
         qg = message.query_graph
         qg_nodes_override_treat_is_set_as_false_list = parameters.get('force_isset_false', None)
