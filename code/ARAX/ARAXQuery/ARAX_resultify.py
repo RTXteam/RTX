@@ -70,6 +70,8 @@ BIOLINK_ENTITY_TYPE_OBJECTS = {category_label: BiolinkEntityStr(category_label) 
 
 
 class ARAXResultify:
+    ALLOWED_PARAMETERS = {'debug', 'force_isset_false', 'ignore_edge_direction'}
+
     def __init__(self):
         self.response = None
         self.message = None
@@ -146,6 +148,9 @@ Note that this command will successfully execute given an arbitrary query graph 
 
         message = self.message
         parameters = self.parameters
+        for parameter_name in parameters.keys():
+            if parameter_name not in ARAXResultify.ALLOWED_PARAMETERS:
+                raise ValueError("parameter type is not allowed in ARAXResultify: " + str(parameter_name))
 
         debug_mode = parameters.get('debug', None)
         if debug_mode is not None:
@@ -157,7 +162,7 @@ Note that this command will successfully execute given an arbitrary query graph 
             qg_nodes_override_treat_is_set_as_false = set(qg_nodes_override_treat_is_set_as_false_list)
         else:
             qg_nodes_override_treat_is_set_as_false = set()
-        ignore_edge_direction = parameters['ignore_edge_direction']
+        ignore_edge_direction = parameters.get('ignore_edge_direction', None)
         if ignore_edge_direction is not None:
             ignore_edge_direction = (ignore_edge_direction.lower() == 'true')
         try:
@@ -1087,8 +1092,7 @@ def _test06():
                       results=[])
     resultifier = ARAXResultify()
     input_parameters = {'ignore_edge_direction': 'true',
-                        'force_isset_false': ['n07'],
-                        'action': 'resultify'}
+                        'force_isset_false': ['n07']}
     resultifier.apply(message, input_parameters)
     assert resultifier.response.status != 'OK'
     assert len(resultifier.message.results) == 0
@@ -1454,6 +1458,41 @@ def _test_issue680():
     assert result.essence is not None
 
 
+def _test_issue686():
+    try:
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            'create_message',
+            'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
+            'add_qnode(id=qg1, type=protein)',
+            'add_qedge(source_id=qg1, target_id=qg0, id=qe0)',
+            'expand(edge_id=qe0)',
+            'resultify(ignore_edge_direction=true, debug=true, INVALID_PARAMETER_NAME=true)'
+        ]}}
+        _do_arax_query(query)
+    except Exception:
+        return
+    assert False
+
+
+def _test_issue687():
+    try:
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            'create_message',
+            'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
+            'add_qnode(id=qg1, type=protein)',
+            'add_qedge(source_id=qg1, target_id=qg0, id=qe0)',
+            'add_qedge(source_id=qg0, target_id=qg1, id=qe1)',
+            'expand(edge_id=qe0)',
+            'resultify(debug=true)',
+            "return(message=true, store=true)"
+        ]}}
+        _do_arax_query(query)
+    except Exception as e:
+        print(str(e))
+        assert False
+    return
+
+
 def _run_module_level_tests():
     _test01()
     _test02()
@@ -1474,6 +1513,8 @@ def _run_arax_class_tests():
     _test_example2()
     _test_issue680()
     _test_example3()
+    _test_issue686()
+    _test_issue687()
 
 
 def main():
