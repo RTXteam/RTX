@@ -845,11 +845,11 @@ function add_cyto() {
 	    }
 
             if(this.data('confidence')) {
-                document.getElementById(dnum).innerHTML+= "<b>Confidence:</b> " + this.data('confidence') + "<br>";
+                document.getElementById(dnum).innerHTML+= "<b>Confidence:</b> " + Number(this.data('confidence')).toPrecision(3) + "<br>";
 	    }
 
             if(this.data('weight')) {
-                document.getElementById(dnum).innerHTML+= "<b>Weight:</b> " + this.data('weight') + "<br>";
+                document.getElementById(dnum).innerHTML+= "<b>Weight:</b> " + Number(this.data('weight')).toPrecision(3) + "<br>";
 	    }
 
 	    if(this.data('evidence_type')) {
@@ -915,7 +915,17 @@ function show_attributes(html_id, atts) {
 	    snippet += "<a target='rtxext' href='" + att.url + "'>";
 	}
 	if (att.value != null) {
-	    snippet += att.value;
+	    var val = att.value;
+	    if (att.name == "probability_drug_treats" |
+		att.name == "jaccard_index" |
+		att.name == "ngd" |
+		att.name == "paired_concept_freq" |
+		att.name == "observed_expected_ratio" |
+		att.name == "chi_square") {
+		val = Number(val);
+		val = val.toPrecision(3);
+	    }
+	    snippet += val;
 	}
 	else if (att.url != null) {
 	    snippet += "[ url ]";
