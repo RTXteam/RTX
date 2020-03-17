@@ -558,9 +558,13 @@ class ARAXMessenger:
         #for qedge in message.query_graph.edges:
         #    new_edges.append(QEdge().from_dict(qedge))
         #message.query_graph.edges = new_edges
-       #newresults = []
-       #for result in message.results
-       #KnowledgeGraph().from_dict(message.knowledge_graph)
+
+        if message.results is not None:
+            for result in message.results:
+                if result.result_graph is not None:
+                    #eprint(str(result.result_graph.__class__))
+                    if str(result.result_graph.__class__) != "<class 'swagger_server.models.knowledge_graph.KnowledgeGraph'>":
+                        result.result_graph = KnowledgeGraph().from_dict(result.result_graph)
 
         return message
 
