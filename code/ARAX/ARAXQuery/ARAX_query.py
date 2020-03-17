@@ -313,16 +313,17 @@ class ARAXQuery:
                     messages.append(uploadedMessage)
 
                     if uploadedMessage.results:
-                        if message["terms"] is None:
-                            message["terms"] = { "dummyTerm": "giraffe" }
-                        if message["query_type_id"] is None:
-                            message["query_type_id"] = "UnknownQ"
-                        if message["restated_question"] is None:
-                            message["restated_question"] = "Unknown question"
-                        if message["original_question"] is None:
-                            message["original_question"] = "Unknown question"
+                        pass
+                        #if message["terms"] is None:
+                        #    message["terms"] = { "dummyTerm": "giraffe" }
+                        #if message["query_type_id"] is None:
+                        #    message["query_type_id"] = "UnknownQ"
+                        #if message["restated_question"] is None:
+                        #    message["restated_question"] = "Unknown question"
+                        #if message["original_question"] is None:
+                        #    message["original_question"] = "Unknown question"
 
-                        query = { "query_type_id": message["query_type_id"], "restated_question": message["restated_question"], "original_question": message["original_question"], "terms": message["terms"] }
+                        #query = { "query_type_id": message["query_type_id"], "restated_question": message["restated_question"], "original_question": message["original_question"], "terms": message["terms"] }
                     else:
                         #response.error(f"Uploaded message does not contain a results. May be the wrong format")
                         #return response
