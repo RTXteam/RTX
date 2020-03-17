@@ -138,8 +138,12 @@ Note that this command will successfully execute given an arbitrary query graph 
         assert self.response is not None
         results = self.message.results
         if results is not None and len(results) > 0:
-            self.response.error(f"Supplied response has nonzero number of entries. ARAX_resultify expects it to be empty")
-            return
+            #self.response.error(f"Supplied response has nonzero number of entries. ARAX_resultify expects it to be empty")
+            self.response.info(f"Clearing previous results and computing a new set of results")
+            self.message.results = []
+            results = self.message.results
+            self.message.n_results = 0
+            #return
 
         message = self.message
         parameters = self.parameters
