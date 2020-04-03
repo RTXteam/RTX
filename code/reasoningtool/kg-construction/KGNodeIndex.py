@@ -420,6 +420,67 @@ class KGNodeIndex:
         return curies_list
 
 
+    def get_equivalent_curies(self, curie):
+
+        cursor = self.connection.cursor()
+        cursor.execute( f"SELECT * FROM kg2node{TESTSUFFIX} WHERE curie = ?", (curie,) )
+        rows = cursor.fetchall()
+
+        if len(rows) == 0: return []
+
+        reference_curies = {}
+        reference_curie = None
+        for row in rows:
+            reference_curies[row[3]] = 1
+            reference_curie = row[3]
+
+        cursor = self.connection.cursor()
+        cursor.execute( f"SELECT * FROM kg2node{TESTSUFFIX} WHERE reference_curie = ?", (reference_curie,) )
+        rows = cursor.fetchall()
+
+        curies = {}
+        for row in rows:
+            curies[row[0]] = 1
+
+        return list(curies.keys())
+
+
+    def get_equivalent_entities(self, curie):
+
+        equivalence = { curie: { } }
+
+        cursor = self.connection.cursor()
+        cursor.execute( f"SELECT * FROM kg2node{TESTSUFFIX} WHERE curie = ?", (curie,) )
+        rows = cursor.fetchall()
+
+        if len(rows) == 0: return equivalence
+
+        reference_curie = rows[0][3]
+        equivalence[curie]['id'] = { 'identifier': reference_curie }
+        equivalence[curie]['equivalent_identifiers'] = []
+        equivalence[curie]['type'] = [ rows[0][2]]
+
+        # What if there are multiple rows returned, this is not handled. FIXME
+        #reference_curies = {}
+        #for row in rows:
+        #    reference_curies[row[3]] = 1
+
+        cursor = self.connection.cursor()
+        cursor.execute( f"SELECT * FROM kg2node{TESTSUFFIX} WHERE reference_curie = ?", (reference_curie,) )
+        rows = cursor.fetchall()
+
+        curies = {}
+        for row in rows:
+            row_curie = row[0]
+            if row_curie not in curies:
+                equivalence[curie]['equivalent_identifiers'].append( { 'identifier': row_curie, 'label': row[1] } )
+                if row_curie == curie:
+                    equivalence[curie]['id']['label'] = row[1]
+                curies[row_curie] = 1
+
+        return equivalence
+
+
     def test_select(self, name):
 
         cursor = self.connection.cursor()
@@ -437,6 +498,9 @@ class KGNodeIndex:
 
 ####################################################################################################
 def main():
+
+    import json
+
     parser = argparse.ArgumentParser(
         description="Tests or rebuilds the KG Node Index", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-b', '--build', action="store_true",
@@ -539,9 +603,21 @@ def main():
     t1 = timeit.default_timer()
     print("Elapsed time: "+str(t1-t0))
 
+    print("==== Get all known synonyms of a CURIE using KG2 index ============================")
+    tests = [ "DOID:14330", "CUI:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855" ]
+
+    t0 = timeit.default_timer()
+    for test in tests:
+        curies = kgNodeIndex.get_equivalent_curies(test)
+        print(f"{test} = " + str(curies))
+        equivalence_mapping = kgNodeIndex.get_equivalent_entities(test)
+        print(json.dumps(equivalence_mapping,sort_keys=True,indent=2))
+    t1 = timeit.default_timer()
+    print("Elapsed time: "+str(t1-t0))
 
 
-    print("==== Test SELECT ============================")
+
+    #print("==== Test SELECT ============================")
     #kgNodeIndex.test_select('phenylketonuria')
     #kgNodeIndex.test_select('CUI:C4710278')
     #kgNodeIndex.test_select('UniProtKB:P06865')
