@@ -9,6 +9,7 @@ from neo4j import GraphDatabase
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering/")
 import ReasoningUtilities as RU
+from KGNodeIndex import KGNodeIndex
 from QueryGraphReasoner import QueryGraphReasoner
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
 from RTXConfiguration import RTXConfiguration
@@ -37,6 +38,10 @@ class KG2Querier:
         KG2 as results for that query. ('Almost' standard in that kg.edges and kg.nodes are dictionaries rather than
         lists.)
         """
+        self.__add_curie_synonyms_to_query_graph(query_graph)
+        if not self.response.status == 'OK':
+            return self.final_kg
+
         self.__generate_cypher_to_run(query_graph)
         if not self.response.status == 'OK':
             return self.final_kg
@@ -51,8 +56,17 @@ class KG2Querier:
 
         return self.final_kg
 
+    def __add_curie_synonyms_to_query_graph(self, query_graph):
+        self.response.debug("Looking for curie synonyms to use")
+        KGNI = KGNodeIndex()
+        for node in query_graph.nodes:
+            original_curie = node.curie
+            if original_curie and type(original_curie) is str:  # Important because sometimes lists of curies are passed behind the scenes (when expanding one edge at a time)
+                node.curie = KGNI.get_equivalent_curies(original_curie)
+                self.response.info(f"Using equivalent curies for node {original_curie}: {node.curie}")
+
     def __generate_cypher_to_run(self, query_graph):
-        self.response.debug("Generating cypher based on query graph sent to KG2Querier")
+        self.response.debug("Generating cypher based on query graph")
         try:
             # First pre-process the query graph to get it ready to generate cypher from
             QGR = QueryGraphReasoner()
@@ -174,8 +188,9 @@ class KG2Querier:
             self.response.warning(f"Edge {swagger_edge.id} is missing a qedge_id")
 
         # Add additional properties on KG2 edges as swagger EdgeAttribute objects
-        additional_kg2_edge_properties = ['publications_info', 'relation_curie', 'simplified_relation',
-                                          'simplified_relation_curie', 'edge_label', 'simplified_edge_label']
+        # TODO: fix issues coming from strange characters in 'publications_info'! (EOF error)
+        additional_kg2_edge_properties = ['relation_curie', 'simplified_relation', 'simplified_relation_curie',
+                                          'edge_label', 'simplified_edge_label']
         edge_attributes = self.__create_swagger_attributes("edge", additional_kg2_edge_properties, neo4j_edge)
         swagger_edge.edge_attributes += edge_attributes
 
