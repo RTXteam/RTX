@@ -8,6 +8,7 @@ import ast
 import re
 from datetime import datetime
 import subprocess
+import traceback
 
 from response import Response
 from query_graph_info import QueryGraphInfo
@@ -135,7 +136,6 @@ class ARAXQuery:
             message.query_type_id = query["message"]["query_type_id"]
             message.terms = query["message"]["terms"]
             id = message.id
-            codeString = message.message_code
             #self.log_query(query,message,'new')
             rtxFeedback.addNewMessage(message,query)
             rtxFeedback.disconnect()
@@ -309,23 +309,25 @@ class ARAXQuery:
             for uploadedMessage in envelope.previous_messages:
                 response.debug(f"uploadedMessage is a "+str(uploadedMessage.__class__))
                 if str(uploadedMessage.__class__) == "<class 'swagger_server.models.message.Message'>":
+                    uploadedMessage = ARAXMessenger().from_dict(uploadedMessage)
+                    messages.append(uploadedMessage)
+
                     if uploadedMessage.results:
-                        message = ast.literal_eval(repr(uploadedMessage))
-                        messages.append(message)
+                        pass
+                        #if message["terms"] is None:
+                        #    message["terms"] = { "dummyTerm": "giraffe" }
+                        #if message["query_type_id"] is None:
+                        #    message["query_type_id"] = "UnknownQ"
+                        #if message["restated_question"] is None:
+                        #    message["restated_question"] = "Unknown question"
+                        #if message["original_question"] is None:
+                        #    message["original_question"] = "Unknown question"
 
-                        if message["terms"] is None:
-                            message["terms"] = { "dummyTerm": "giraffe" }
-                        if message["query_type_id"] is None:
-                            message["query_type_id"] = "UnknownQ"
-                        if message["restated_question"] is None:
-                            message["restated_question"] = "Unknown question"
-                        if message["original_question"] is None:
-                            message["original_question"] = "Unknown question"
-
-                        query = { "query_type_id": message["query_type_id"], "restated_question": message["restated_question"], "original_question": message["original_question"], "terms": message["terms"] }
+                        #query = { "query_type_id": message["query_type_id"], "restated_question": message["restated_question"], "original_question": message["original_question"], "terms": message["terms"] }
                     else:
-                        response.error(f"Uploaded message does not contain a results. May be the wrong format")
-                        return response
+                        #response.error(f"Uploaded message does not contain a results. May be the wrong format")
+                        #return response
+                        response.warning(f"There are no results in this uploaded message, but maybe that's okay")
                 else:
                     response.error(f"Uploaded message is not of type Message. It is of type"+str(uploadedMessage.__class__))
                     return response
@@ -340,20 +342,8 @@ class ARAXQuery:
             response.debug(f"A single Message is ready and in hand")
             message = messages[0]
         else:
-            response.debug(f"Multiple Messages were uploaded or loaded by reference. Proper merging code awaits! Will use just the first one for now.")
-            message = TxMessage.from_dict(messages[0])
-            counter = 1
-            while counter < n_messages:
-                messageToMerge = TxMessage.from_dict(messages[counter])
-                if messageToMerge.reasoner_id is None:
-                    messageToMerge.reasoner_id = "Unknown"
-                #if messageToMerge.reasoner_id != "RTX":
-                #    messageToMerge = self.fix_message(query,messageToMerge,messageToMerge.reasoner_id)
-
-                #finalMessage = self.merge_message(finalMessage,messageToMerge)
-                counter += 1
-            message = ast.literal_eval(repr(message))
-            message = ARAXMessenger().from_dict(message)
+            response.debug(f"Multiple Messages were uploaded or imported by reference. However, proper merging code has not been implmented yet! Will use just the first Message for now.")
+            message = messages[0]
 
         #### Examine the options that were provided and act accordingly
         optionsDict = {}
@@ -365,7 +355,6 @@ class ARAXQuery:
 
 
         #### If there are processing_actions, then fulfill those
-        processing_actions = []
         if envelope.processing_actions:
             response.debug(f"Found processing_actions")
             actions_parser = ActionsParser()
@@ -393,49 +382,61 @@ class ARAXQuery:
             action_stats = { }
             actions = result.data['actions']
             for action in actions:
-                response.debug(f"Considering action '{action['command']}' with parameters {action['parameters']}")
+                response.debug(f"Processing action '{action['command']}' with parameters {action['parameters']}")
                 nonstandard_result = False
 
-                if action['command'] == 'create_message':
-                    result = messenger.create_message()
-                    message = result.data['message']
-                elif action['command'] == 'add_qnode':
-                    result = messenger.add_qnode(message,action['parameters'])
-                elif action['command'] == 'add_qedge':
-                    result = messenger.add_qedge(message,action['parameters'])
-                elif action['command'] == 'expand':
-                    result = expander.apply(message,action['parameters'])
-                elif action['command'] == 'filter':
-                    result = filter.apply(message,action['parameters'])
-                elif action['command'] == 'resultify':
-                    result = resultifier.apply(message, action['parameters'])
-                elif action['command'] == 'query_graph_reasoner':
-                    response.info(f"Sending current query_graph to the QueryGraphReasoner")
-                    qgr = QueryGraphReasoner()
-                    message = qgr.answer(ast.literal_eval(repr(message.query_graph)), TxltrApiFormat=True)
-                    nonstandard_result = True
-                elif action['command'] == 'return':
-                    action_stats['return_action'] = action
-                    break
-                elif action['command'] == 'overlay':  # recognize the overlay command
-                    result = overlay.apply(message, action['parameters'])
-                elif action['command'] == 'filter_kg':  # recognize the filter_kg command
-                    result = filter_kg.apply(message, action['parameters'])
-                elif action['command'] == 'filter_results':  # recognize the filter_kg command
-                    result = filter_results.apply(message, action['parameters'])
-                else:
-                    response.error(f"Unrecognized command {action['command']}", error_code="UnrecognizedCommand")
+                # Catch a crash
+                try:
+
+                    if action['command'] == 'create_message':
+                        result = messenger.create_message()
+                        message = result.data['message']
+                    elif action['command'] == 'add_qnode':
+                        result = messenger.add_qnode(message,action['parameters'])
+                    elif action['command'] == 'add_qedge':
+                        result = messenger.add_qedge(message,action['parameters'])
+                    elif action['command'] == 'expand':
+                        result = expander.apply(message,action['parameters'])
+                    elif action['command'] == 'filter':
+                        result = filter.apply(message,action['parameters'])
+                    elif action['command'] == 'resultify':
+                        result = resultifier.apply(message, action['parameters'])
+
+                    elif action['command'] == 'query_graph_reasoner':
+                        response.info(f"Sending current query_graph to the QueryGraphReasoner")
+                        qgr = QueryGraphReasoner()
+                        message = qgr.answer(ast.literal_eval(repr(message.query_graph)), TxltrApiFormat=True)
+                        nonstandard_result = True
+                    elif action['command'] == 'return':
+                        action_stats['return_action'] = action
+                        break
+                    elif action['command'] == 'overlay':  # recognize the overlay command
+                        result = overlay.apply(message, action['parameters'])
+                    elif action['command'] == 'filter_kg':  # recognize the filter_kg command
+                        result = filter_kg.apply(message, action['parameters'])
+                    elif action['command'] == 'filter_results':  # recognize the filter_kg command
+                        result = filter_results.apply(message, action['parameters'])
+                    else:
+                        response.error(f"Unrecognized command {action['command']}", error_code="UnrecognizedCommand")
+                        return response
+
+                except Exception as error:
+                    exception_type, exception_value, exception_traceback = sys.exc_info()
+                    response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
                     return response
 
                 #### Merge down this result and end if we're in an error state
                 if nonstandard_result is False:
                     response.merge(result)
                     if result.status != 'OK':
+                        message.message_code = response.error_code
+                        message.code_description = response.message
+                        message.log = response.messages
                         return response
 
 
             #### At the end, process the explicit return() action, or implicitly perform one
-            return_action = { 'command': 'return', 'parameters': { 'message': 'false', 'store': 'false' } }
+            return_action = { 'command': 'return', 'parameters': { 'message': 'true', 'store': 'true' } }
             if action is not None and action['command'] == 'return':
                 return_action = action
                 #### If an explicit one left out some parameters, set the defaults
@@ -444,6 +445,15 @@ class ARAXQuery:
                 if 'message' not in return_action['parameters']:
                     return_action['parameters']['message'] == 'false'
 
+            # Fill out the message with data
+            message.message_code = response.error_code
+            message.code_description = response.message
+            message.log = response.messages
+            if message.query_options is None:
+                message.query_options = {}
+            message.query_options['processing_actions'] = envelope.processing_actions
+
+            # If store=true, then put the message in the database
             if return_action['parameters']['store'] == 'true':
                 response.debug(f"Storing resulting Message")
                 message_id = rtxFeedback.addNewMessage(message,query)
@@ -456,9 +466,9 @@ class ARAXQuery:
 
             #### Else just the id is returned
             else:
-                #return( { "status": 200, "message_id": str(finalMessage_id), "n_results": finalMessage['n_results'], "url": "https://arax.rtx.ai/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
-                #return( { "status": 200, "message_id": str(finalMessage_id), "n_results": finalMessage.n_results, "url": "https://arax.rtx.ai/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
-                return response
+                if message_id is None:
+                    message_id = 0
+                return( { "status": 200, "message_id": str(message_id), "n_results": message.n_results, "url": "https://arax.rtx.ai/api/rtx/v1/message/"+str(message_id) }, 200)
 
 
 
@@ -506,17 +516,17 @@ def main():
                     { "id": "qg0", "name": "acetaminophen", "curie": "CHEMBL.COMPOUND:CHEMBL112", "type": "chemical_substance" },
                     { "id": "qg1", "name": None, "desc": "Generic protein", "curie": None, "type": "protein" }
                 ] } } }
-    elif params.example_number == 3:
-        query = { "previous_message_processing_plan": { "processing_actions": [
+    elif params.example_number == 3:  # FIXME: Don't fix me, this is our planned demo example 1.
+        query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(curie=DOID:14330, id=n00)",
-            "add_qnode(type=protein, is_set=True, id=n01)",
-            #"add_qnode(type=chemical_substance, id=n02)",
-            "add_qedge(source_id=n01, target_id=n00, id=e00)",
-            #"add_qedge(source_id=n01, target_id=n02, id=e01)",
-            "expand(edge_id=e00)",
-            "return(message=true, store=true)",
-            ] } }
+            "add_qnode(name=acetaminophen, id=n0)",
+            "add_qnode(type=protein, id=n1)",
+            "add_qedge(source_id=n0, target_id=n1, id=e0)",
+            "expand(edge_id=e0)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=limit_number_of_results, max_results=10)",
+            "return(message=true, store=false)",
+        ]}}
     elif params.example_number == 4:
         query = { "previous_message_processing_plan": { "processing_actions": [
             "create_message",
@@ -663,9 +673,9 @@ def main():
     elif params.example_number == 15:  # FIXME NOTE: this is our planned example 3 (so don't fix, it's just so it's highlighted in my IDE)
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(name=DOID:9406, id=n00)",  # hypopituitarism
+            "add_qnode(curie=DOID:9406, id=n00)",  # hypopituitarism
             "add_qnode(type=chemical_substance, is_set=true, id=n01)",  # look for all drugs associated with this disease (29 total drugs)
-            "add_qnode(type=protein, is_set=true, id=n02)",   # look for proteins associated with these diseases (240 total proteins)
+            "add_qnode(type=protein, id=n02)",   # look for proteins associated with these diseases (240 total proteins)
             "add_qedge(source_id=n00, target_id=n01, id=e00)",  # get connections
             "add_qedge(source_id=n01, target_id=n02, id=e01)",  # get connections
             "expand(edge_id=[e00,e01])",  # expand the query graph
@@ -674,7 +684,7 @@ def main():
             "filter_kg(action=remove_orphaned_nodes, node_type=protein)",  # remove proteins that got disconnected as a result of this filter action
             "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n01, target_qnode_id=n02)",   # use normalized google distance to find how frequently the protein and the drug are mentioned in abstracts
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=ngd, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",   # remove proteins that are not frequently mentioned together in PubMed abstracts
-            "resultify(ignore_edge_direction=true, force_isset_false=[n02])",
+            "resultify(ignore_edge_direction=true)",
             "return(message=true, store=false)"
         ]}}
     elif params.example_number == 16:  # To test COHD obs/exp ratio
@@ -771,7 +781,7 @@ def main():
     elif params.example_number == 1212:  # dry run of example 2 with the machine learning model
         query = { "previous_message_processing_plan": { "processing_actions": [
             "create_message",
-            "add_qnode(name=DOID:14330, id=n00)",
+            "add_qnode(curie=DOID:14330, id=n00)",
             "add_qnode(type=protein, is_set=true, id=n01)",
             "add_qnode(type=chemical_substance, id=n02)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
@@ -831,7 +841,7 @@ def main():
             for attr in edge.edge_attributes:
                 vals.append((attr.name, attr.value))
 
-    print(sorted(Counter(vals).items(), key=lambda x:float(x[0][1])))
+    #print(sorted(Counter(vals).items(), key=lambda x:float(x[0][1])))
 
     for edge in message.knowledge_graph.edges:
         if edge.source_id == "CHEMBL.COMPOUND:CHEMBL452076" or edge.target_id == "CHEMBL.COMPOUND:CHEMBL452076":

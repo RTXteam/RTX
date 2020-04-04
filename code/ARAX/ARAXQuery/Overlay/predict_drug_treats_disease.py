@@ -22,9 +22,9 @@ class PredictDrugTreatsDisease:
         self.message = message
         self.parameters = parameters
         self.global_iter = 0
-        self.pred = predictor(model_file='Overlay/predictor/LogModel.pkl')
-        self.pred.import_file(None, graph_file='Overlay/predictor/rel_max.emb.gz',
-                              map_file='Overlay/predictor/map.csv')
+        self.pred = predictor(model_file=os.path.dirname(os.path.abspath(__file__))+'/predictor/LogModel.pkl')
+        self.pred.import_file(None, graph_file=os.path.dirname(os.path.abspath(__file__))+'/predictor/rel_max.emb.gz',
+                              map_file=os.path.dirname(os.path.abspath(__file__))+'/predictor/map.csv')
 
     def predict_drug_treats_disease(self):
         """

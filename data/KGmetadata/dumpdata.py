@@ -105,7 +105,7 @@ rtxConfig = RTXConfiguration()
 rtxConfig.live = 'Production'
 driver = GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=basic_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
 session = driver.session()
-dump_name_description_KG1('NodeNamesDescriptions.tsv', session, 'w')
+dump_name_description_KG1('NodeNamesDescriptions_KG1.tsv', session, 'w')
 #dump_node_labels_KG1('NodeLabels.tsv', session, 'w') # TODO: these are apparently unused?
 #dump_edge_types_KG1('EdgeTypes.tsv', session, 'w') # TODO: these are apparently unused?
 
@@ -116,6 +116,6 @@ rtxConfig = RTXConfiguration()
 rtxConfig.live = 'KG2'
 driver = GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=basic_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
 session = driver.session()
-dump_name_description_KG2('NodeNamesDescriptions.tsv', session, 'a')
+dump_name_description_KG2('NodeNamesDescriptions_KG2.tsv', session, 'w')
 #dump_node_labels_KG2('NodeLabels.tsv', session, 'w')  # TODO: these are apparently unused?
 #dump_edge_types_KG2('EdgeTypes.tsv', session, 'w') # TODO: these are apparently unused?

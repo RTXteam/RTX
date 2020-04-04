@@ -297,7 +297,7 @@ class RTXFeedback:
       for result in message.results:
         n_nodes = 0
         n_edges = 0
-        result_hash = result.description
+        #result_hash = result.description
         if result.result_type is None:
           result.result_type = "individual query answer"
         if result.confidence is None:
@@ -309,11 +309,16 @@ class RTXFeedback:
             n_nodes = len(result.result_graph.nodes)
           if result.result_graph.edges is not None:
             n_edges = len(result.result_graph.edges)
+        else:
+          result_hash = 'xxxx'
 
         #### See if there is an existing result that matches this hash
-        previousResult = session.query(Result).filter(Result.result_hash==result_hash).order_by(desc(Result.result_id)).first()
+        previousResult = None
+        #eprint(f"- {result_hash}")
+        #if result_hash != 'xxxx':
+        #  previousResult = session.query(Result).filter(Result.result_hash==result_hash).order_by(desc(Result.result_id)).first()
         #eprint("WARNING: Forcing chache miss for result at line 309")
-        #previousResult = None
+        previousResult = None
         if previousResult is not None:
           result.id = "https://arax.rtx.ai/api/rtx/v1/result/"+str(previousResult.result_id)
           #eprint("Reused result_id " + str(result.id))
@@ -334,7 +339,7 @@ class RTXFeedback:
           session.flush()
 
           result.id = "https://arax.rtx.ai/api/rtx/v1/result/"+str(storedResult.result_id)
-          eprint("Stored new result. Returned result_id is "+str(storedResult.result_id)+", n_nodes="+str(n_nodes)+", n_edges="+str(n_edges)+", hash="+result_hash)
+          #eprint("Stored new result. Returned result_id is "+str(storedResult.result_id)+", n_nodes="+str(n_nodes)+", n_edges="+str(n_edges)+", hash="+result_hash)
           storedResult.result_object=pickle.dumps(ast.literal_eval(repr(result)))
 
     session.commit()
