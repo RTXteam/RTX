@@ -210,31 +210,6 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         response = NGD.compute_ngd()
         return response
 
-    #### Compute confidence scores. Double underscore means this is a private method
-    def __compute_confidence_scores(self, describe=False):
-
-        # A little function to describe what this thing does
-        allowable_parameters = {'action': {'compute_confidence_scores'}}
-        if describe:
-            return allowable_parameters
-
-
-        #### Set up local references to the response and the message
-        response = self.response
-        message = self.message
-
-        response.debug(f"Computing confidence scores for all results")
-
-        response.warning(f"OMG, we're just generating random numbers!")
-        import random
-
-        #### Loop over all results, computing and storing confidence scores
-        for result in message.results:
-            result.confidence = float(int(random.random()*1000))/1000
-
-        #### Return the response
-        return response
-
     def __overlay_clinical_info(self, describe=False):  # TODO: put the default paramas and all that other goodness in
         """
         This function will apply the action overlay_clinical_info.
