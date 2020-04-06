@@ -278,7 +278,7 @@ class RTXFeedback:
       terms=termsString,tool_version=rtxConfig.version,result_code=message.message_code,message=message.code_description,n_results=n_results,message_object=pickle.dumps(ast.literal_eval(repr(message))))
     session.add(storedMessage)
     session.flush()
-    message.id = "https://rtx.ncats.io/api/rtx/v1/message/"+str(storedMessage.message_id)
+    message.id = "https://arax.rtx.ai/api/rtx/v1/message/"+str(storedMessage.message_id)
 
     self.addNewResults(storedMessage.message_id,message)
 
@@ -297,7 +297,7 @@ class RTXFeedback:
       for result in message.results:
         n_nodes = 0
         n_edges = 0
-        result_hash = result.description
+        #result_hash = result.description
         if result.result_type is None:
           result.result_type = "individual query answer"
         if result.confidence is None:
@@ -309,14 +309,19 @@ class RTXFeedback:
             n_nodes = len(result.result_graph.nodes)
           if result.result_graph.edges is not None:
             n_edges = len(result.result_graph.edges)
+        else:
+          result_hash = 'xxxx'
 
         #### See if there is an existing result that matches this hash
-        previousResult = session.query(Result).filter(Result.result_hash==result_hash).order_by(desc(Result.result_id)).first()
+        previousResult = None
+        #eprint(f"- {result_hash}")
+        #if result_hash != 'xxxx':
+        #  previousResult = session.query(Result).filter(Result.result_hash==result_hash).order_by(desc(Result.result_id)).first()
         #eprint("WARNING: Forcing chache miss for result at line 309")
-        #previousResult = None
+        previousResult = None
         if previousResult is not None:
-          result.id = "https://rtx.ncats.io/api/rtx/v1/result/"+str(previousResult.result_id)
-          eprint("Reused result_id " + str(result.id))
+          result.id = "https://arax.rtx.ai/api/rtx/v1/result/"+str(previousResult.result_id)
+          #eprint("Reused result_id " + str(result.id))
 
           #### Also update the linking table
           storedLink = Message_result(message_id=message_id,result_id=previousResult.result_id)
@@ -333,8 +338,8 @@ class RTXFeedback:
           session.add(storedLink)
           session.flush()
 
-          result.id = "https://rtx.ncats.io/api/rtx/v1/result/"+str(storedResult.result_id)
-          eprint("Stored new result. Returned result_id is "+str(storedResult.result_id)+", n_nodes="+str(n_nodes)+", n_edges="+str(n_edges)+", hash="+result_hash)
+          result.id = "https://arax.rtx.ai/api/rtx/v1/result/"+str(storedResult.result_id)
+          #eprint("Stored new result. Returned result_id is "+str(storedResult.result_id)+", n_nodes="+str(n_nodes)+", n_edges="+str(n_edges)+", hash="+result_hash)
           storedResult.result_object=pickle.dumps(ast.literal_eval(repr(result)))
 
     session.commit()
@@ -458,7 +463,7 @@ class RTXFeedback:
       resultRatings = []
       for rating in storedRatings:
         resultRating = Feedback()
-        resultRating.result_id = "https://rtx.ncats.io/api/rtx/v1/result/"+str(rating.result_id)
+        resultRating.result_id = "https://arax.rtx.ai/api/rtx/v1/result/"+str(rating.result_id)
         resultRating.id = resultRating.result_id + "/feedback/" + str(rating.result_rating_id)
         resultRating.expertise_level_id = rating.expertise_level_id
         resultRating.rating_id = rating.rating_id
@@ -485,7 +490,7 @@ class RTXFeedback:
       resultRatings = []
       for rating in storedRatings:
         resultRating = Feedback()
-        resultRating.result_id = "https://rtx.ncats.io/api/rtx/v1/result/"+str(result_id)
+        resultRating.result_id = "https://arax.rtx.ai/api/rtx/v1/result/"+str(result_id)
         resultRating.id = resultRating.result_id + "/feedback/" + str(rating.result_rating_id)
         resultRating.expertise_level_id = rating.expertise_level_id
         resultRating.rating_id = rating.rating_id
@@ -576,7 +581,7 @@ class RTXFeedback:
       if debug: eprint("DEBUG: Got previous_message_uris")
       for uri in envelope.previous_message_uris:
         if debug: eprint("DEBUG:   messageURI="+uri)
-        matchResult = re.match( r'http[s]://rtx.ncats.io/.*api/rtx/.+/message/(\d+)',uri,re.M|re.I )
+        matchResult = re.match( r'http[s]://arax.rtx.ai/.*api/rtx/.+/message/(\d+)',uri,re.M|re.I )
         if matchResult:
           message_id = matchResult.group(1)
           if debug: eprint("DEBUG: Found local RTX identifier corresponding to respond_id "+message_id)
@@ -702,9 +707,9 @@ class RTXFeedback:
 
     #### If requesting a full redirect to the resulting message display. This doesn't really work I don't think
     #if "RedirectToMessage" in optionsDict:
-    #  #redirect("https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id), code=302)
-    #  #return( { "status": 302, "redirect": "https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id) }, 302)
-    #  return( "Location: https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id), 302)
+    #  #redirect("https://arax.rtx.ai/api/rtx/v1/message/"+str(finalMessage_id), code=302)
+    #  #return( { "status": 302, "redirect": "https://arax.rtx.ai/api/rtx/v1/message/"+str(finalMessage_id) }, 302)
+    #  return( "Location: https://arax.rtx.ai/api/rtx/v1/message/"+str(finalMessage_id), 302)
 
     #### If asking for the full message back
     if return_action['parameters']['message'] == 'true':
@@ -712,15 +717,15 @@ class RTXFeedback:
 
     #### Else just the id is returned
     else:
-      #return( { "status": 200, "message_id": str(finalMessage_id), "n_results": finalMessage['n_results'], "url": "https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
-      return( { "status": 200, "message_id": str(finalMessage_id), "n_results": finalMessage.n_results, "url": "https://rtx.ncats.io/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
+      #return( { "status": 200, "message_id": str(finalMessage_id), "n_results": finalMessage['n_results'], "url": "https://arax.rtx.ai/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
+      return( { "status": 200, "message_id": str(finalMessage_id), "n_results": finalMessage.n_results, "url": "https://arax.rtx.ai/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
 
 
   ##########################################################################################################################
   def fix_message(self,query,message,reasoner_id):
 
     if reasoner_id == "RTX":
-      base_url = "https://rtx.ncats.io/api/rtx/v1"
+      base_url = "https://arax.rtx.ai/api/rtx/v1"
     elif reasoner_id == "Robokop":
       base_url = "http://robokop.renci.org:6011/api"
     elif reasoner_id == "Indigo":
@@ -928,7 +933,7 @@ def main():
   envelope.options = [ "AnnotateDrugs", "Store", "ReturnMessageId" ]
   #envelope.options = [ "ReturnMessage" ]
   #envelope.options = [ "AnnotateDrugs", "ReturnMessage" ]
-  envelope.message_ur_is = [ "https://rtx.ncats.io/api/rtx/v1/message/300" ]
+  envelope.message_ur_is = [ "https://arax.rtx.ai/api/rtx/v1/message/300" ]
 
   #result = rtxFeedback.processExternalPreviousMessageProcessingPlan(envelope)
   #print(result)

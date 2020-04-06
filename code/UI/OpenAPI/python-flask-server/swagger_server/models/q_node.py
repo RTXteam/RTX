@@ -16,7 +16,7 @@ class QNode(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, id: str=None, curie: str=None, type: BiolinkEntity=None):  # noqa: E501
+    def __init__(self, id: str=None, curie: str=None, type: BiolinkEntity=None, is_set: bool=None):  # noqa: E501
         """QNode - a model defined in Swagger
 
         :param id: The id of this QNode.  # noqa: E501
@@ -25,22 +25,27 @@ class QNode(Model):
         :type curie: str
         :param type: The type of this QNode.  # noqa: E501
         :type type: BiolinkEntity
+        :param is_set: The is_set of this QNode.  # noqa: E501
+        :type is_set: bool
         """
         self.swagger_types = {
             'id': str,
             'curie': str,
-            'type': BiolinkEntity
+            'type': BiolinkEntity,
+            'is_set': bool
         }
 
         self.attribute_map = {
             'id': 'id',
             'curie': 'curie',
-            'type': 'type'
+            'type': 'type',
+            'is_set': 'is_set'
         }
 
         self._id = id
         self._curie = curie
         self._type = type
+        self._is_set = is_set
 
     @classmethod
     def from_dict(cls, dikt) -> 'QNode':
@@ -73,6 +78,8 @@ class QNode(Model):
         :param id: The id of this QNode.
         :type id: str
         """
+        if id is None:
+            raise ValueError("Invalid value for `id`, must not be `None`")  # noqa: E501
 
         self._id = id
 
@@ -119,3 +126,26 @@ class QNode(Model):
         """
 
         self._type = type
+
+    @property
+    def is_set(self) -> bool:
+        """Gets the is_set of this QNode.
+
+        Boolean that if set to true, indicates the QNode represents a set of entities rather than an individual entity  # noqa: E501
+
+        :return: The is_set of this QNode.
+        :rtype: bool
+        """
+        return self._is_set
+
+    @is_set.setter
+    def is_set(self, is_set: bool):
+        """Sets the is_set of this QNode.
+
+        Boolean that if set to true, indicates the QNode represents a set of entities rather than an individual entity  # noqa: E501
+
+        :param is_set: The is_set of this QNode.
+        :type is_set: bool
+        """
+
+        self._is_set = is_set

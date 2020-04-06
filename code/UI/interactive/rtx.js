@@ -11,6 +11,7 @@ var columnlist = [];
 var UIstate = {};
 
 var baseAPI = "";
+//var baseAPI = "http://localhost:5001/devED/";
 
 function main() {
     get_example_questions();
@@ -74,7 +75,24 @@ function openSection(obj, sect) {
     //document.getElementById(sect).style.display = "block";
 }
 
+// somehow merge with above?  eh...
+function selectInput (obj, input_id) {
+    var e = document.getElementsByClassName("slink_on");
+    if (e[0]) { e[0].classList.remove("slink_on"); }
+    obj.classList.add("slink_on");
 
+    for (var s of ['qtext_input','qgraph_input','qdsl_input']) {
+	document.getElementById(s).style.maxHeight = null;
+	document.getElementById(s).style.visibility = 'hidden';
+    }
+    document.getElementById(input_id).style.maxHeight = "100%";
+    document.getElementById(input_id).style.visibility = 'visible';
+}
+
+
+function clearDSL() {
+    document.getElementById("dslText").value = '';
+}
 
 function pasteQuestion(question) {
     document.getElementById("questionForm").elements["questionText"].value = question;
@@ -88,6 +106,7 @@ function reset_vars() {
     //    document.getElementById("kg_container").innerHTML = "";
     if (cyobj[0]) {cyobj[0].elements().remove();}
     document.getElementById("summary_container").innerHTML = "";
+    document.getElementById("menunummessages").innerHTML = "--";
     document.getElementById("menunumresults").innerHTML = "--";
     document.getElementById("menunumresults").classList.remove("numnew");
     document.getElementById("menunumresults").classList.add("numold");
@@ -96,6 +115,62 @@ function reset_vars() {
     cytodata = [];
     UIstate.nodedd = 1;
 }
+
+function sendDSL(e) {
+    reset_vars();
+    document.getElementById("questionForm").elements["questionText"].value = '-- posted query via DSL input --';
+    document.getElementById("statusdiv").innerHTML = "Posting DSL.  Looking for answer...";
+
+    sesame('openmax',statusdiv);
+    var xhr = new XMLHttpRequest();
+    xhr.open("post",  baseAPI + "api/rtx/v1/query", true);
+    xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+
+    var dslArrayOfLines = document.getElementById("dslText").value.split("\n");
+    var queryObj = { "previous_message_processing_plan": { "processing_actions": dslArrayOfLines}};
+    //queryObj.max_results = 100;
+
+    document.getElementById("devdiv").innerHTML += "<PRE>\nposted to QUERY:\n" + JSON.stringify(queryObj,null,2) + "</PRE>";
+
+    // send the collected data as JSON
+    xhr.send(JSON.stringify(queryObj));
+
+    xhr.onloadend = function() {
+	if ( xhr.status == 200 ) {
+	    var jsonObj = JSON.parse(xhr.responseText);
+	    document.getElementById("devdiv").innerHTML += "<br>================================================================= RESPONSE MESSAGE::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj,null,2) + "</PRE>";
+
+	    document.getElementById("statusdiv").innerHTML += "<br><br><I>"+jsonObj["code_description"]+"</I>";
+	    sesame('openmax',statusdiv);
+
+	    if (jsonObj["message_code"] == "QueryGraphZeroNodes") {
+		clear_qg();
+	    }
+	    else if (jsonObj["message_code"] == "OK") {
+		input_qg = { "edges": [], "nodes": [] };
+		render_message(jsonObj);
+	    }
+	    else if (jsonObj["log"]) {
+		process_log(jsonObj["log"]);
+	    }
+	    else {
+		document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while parsing the response from the server (no log; code:"+jsonObj.message_code+")</SPAN>";
+		document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<BR>"+xhr.responseText;
+		sesame('openmax',statusdiv);
+	    }
+	}
+	else {
+	    document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr.status+")</SPAN>";
+	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<BR>"+xhr.responseText;
+	    sesame('openmax',statusdiv);
+	    if (xhr.log) {
+		process_log(xhr.log);
+	    }
+	}
+    };
+
+}
+
 
 function sendGraph(e) {
     reset_vars();
@@ -295,8 +370,8 @@ function retrieve_message() {
 	    sesame('openmax',statusdiv);
 	}
 	else {
-	    document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr2.status+")</SPAN>";
-	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<BR>"+xhr2.responseText;
+	    document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr.status+")</SPAN>";
+	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<BR>"+xhr.responseText;
 	    sesame('openmax',statusdiv);
 	}
     };
@@ -349,18 +424,85 @@ function render_message(respObj) {
         document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br></div>";
     }
 
+    if (respObj["query_options"]) {
+	process_q_options(respObj["query_options"]);
+    }
+
+    if (respObj["log"]) {
+	process_log(respObj["log"]);
+    }
+
     add_cyto();
 }
 
+function process_q_options(q_opts) {
 
+    if (q_opts.processing_actions) {
+	clearDSL();
+	for (var act of q_opts.processing_actions) {
+	    document.getElementById("dslText").value += act + "\n";
+	}
+    }
+
+}
+
+function process_log(logarr) {
+    var errors = 0;
+    for (var msg of logarr) {
+	if (msg.level_str == "ERROR") { errors++; }
+
+	var span = document.createElement("span");
+	span.className = "hoverable msg " + msg.level_str;
+
+        if (msg.level_str == "DEBUG") { span.style.display = 'none'; }
+
+	var span2 = document.createElement("span");
+	span2.className = "explevel msg" + msg.level_str;
+	span2.appendChild(document.createTextNode('\u00A0'));
+	span2.appendChild(document.createTextNode('\u00A0'));
+        span.appendChild(span2);
+
+	span.appendChild(document.createTextNode('\u00A0'));
+
+	span.appendChild(document.createTextNode(msg.prefix));
+//	span.appendChild(document.createElement("br"));
+
+	span.appendChild(document.createTextNode('\u00A0'));
+	span.appendChild(document.createTextNode('\u00A0'));
+	span.appendChild(document.createTextNode('\u00A0'));
+	span.appendChild(document.createTextNode(msg.message));
+
+	document.getElementById("logdiv").appendChild(span);
+    }
+    document.getElementById("menunummessages").innerHTML = logarr.length;
+
+}
 
 
 function add_status_divs() {
     document.getElementById("status_container").innerHTML = "<div class='statushead'>Status</div><div class='status' id='statusdiv'></div>";
 
     document.getElementById("dev_result_json_container").innerHTML = "<div class='statushead'>Dev Info <i style='float:right; font-weight:normal;'>( json responses )</i></div><div class='status' id='devdiv'></div>";
+
+    document.getElementById("messages_container").innerHTML = "<div class='statushead'>Filter Messages :&nbsp;&nbsp;&nbsp;<span onclick='filtermsgs(this,\"ERROR\")' style='cursor:pointer;' class='qprob msgERROR'>Error</span>&nbsp;&nbsp;&nbsp;<span onclick='filtermsgs(this,\"WARNING\")' style='cursor:pointer;' class='qprob msgWARNING'>Warning</span>&nbsp;&nbsp;&nbsp;<span onclick='filtermsgs(this,\"INFO\")' style='cursor:pointer;' class='qprob msgINFO'>Info</span>&nbsp;&nbsp;&nbsp;<span onclick='filtermsgs(this,\"DEBUG\")' style='cursor:pointer;' class='qprob msgDEBUG hide'>Debug</span></div><div class='status' id='logdiv'></div>";
 }
 
+function filtermsgs(span, type) {
+    var disp = 'none';
+    if (span.classList.contains('hide')) {
+	disp = '';
+	span.classList.remove('hide');
+    }
+    else {
+	span.classList.add('hide');
+    }
+
+    for (var msg of document.getElementById("logdiv").children) {
+	if (msg.classList.contains(type)) {
+	    msg.style.display = disp;
+	}
+    }
+}
 
 
 function add_to_summary(rowdata, num) {
@@ -571,27 +713,25 @@ function add_result(reslist) {
 	    cytodata[i] = [];
 	    var gd = reslist[i].result_graph;
 
-	    for (var g in gd.nodes) {
-		gd.nodes[g].parentdivnum = num; // helps link node to div when displaying node info on click
-		var tmpdata = { "data" : gd.nodes[g] }; // already contains id
+	    for (var node of gd.nodes) {
+		node.parentdivnum = num; // helps link node to div when displaying node info on click
+		var tmpdata = { "data" : node }; // already contains id
 		cytodata[i].push(tmpdata);
 
 		// DEBUG
-		//document.getElementById("cy"+num).innerHTML += "NODE: name="+ gd.nodes[g].name + " -- accession=" + gd.nodes[g].accession + "<BR>";
+		//document.getElementById("cy"+num).innerHTML += "NODE: name="+ node.name + " -- accession=" + node.accession + "<BR>";
 	    }
 
-	    for (var g in gd.edges) {
-		var tmpdata = { "data" : 
-				{
-				    parentdivnum : num,
-				    id : gd.edges[g].source_id + '--' + gd.edges[g].target_id,
-				    source : gd.edges[g].source_id,
-				    target : gd.edges[g].target_id,
-				    type   : gd.edges[g].type,
-				    provided_by  : gd.edges[g].provided_by
-				}
-			      };
+	    for (var g of gd.edges) {
+		var edge = JSON.parse(JSON.stringify(g)); // cheap and deep copy
+		edge.parentdivnum = num;
+                edge.id     = g.source_id + '--' + g.target_id;
+		edge.source = g.source_id;
+		edge.target = g.target_id;
+		edge.source_id = null;
+		edge.target_id = null;
 
+		var tmpdata = { "data" : edge };
 		cytodata[i].push(tmpdata);
 	    }
 	}
@@ -629,7 +769,7 @@ function add_cyto() {
 		    'curve-style' : 'bezier',
 		    'line-color': '#fff',
 		    'target-arrow-color': '#fff',
-		    'width': 2,
+		    'width': function(ele) { if (ele.data().weight) { return ele.data().weight; } return 2; },
                     'content': 'data(name)',
 		    'target-arrow-shape': 'triangle',
 		    'opacity': 0.8,
@@ -685,33 +825,7 @@ function add_cyto() {
 		document.getElementById(dnum).innerHTML+= "<b>Description:</b> " + this.data('description') + "<br>";
 	    }
 
-	    var linebreak = "<hr>";
-            for (var na in this.data('node_attributes')) {
-		var snippet = linebreak;
-
-                if (this.data('node_attributes')[na].name != null) {
-                    snippet += "<b>" + this.data('node_attributes')[na].name + "</b>";
-		    if (this.data('node_attributes')[na].type != null) {
-	            	snippet += " (" + this.data('node_attributes')[na].type + ")";
-		    }
-                    snippet += " : ";
-		}
-                if (this.data('node_attributes')[na].url != null) {
-                    snippet += "<a target='rtxext' href='" + this.data('node_attributes')[na].url + "'>";
-                }
-                if (this.data('node_attributes')[na].value != null) {
-                    snippet += this.data('node_attributes')[na].value;
-                }
-		else if (this.data('node_attributes')[na].url != null) {
-                    snippet += "[ url ]";
-		}
-                if (this.data('node_attributes')[na].url != null) {
-                    snippet += "</a>";
-                }
-
-                document.getElementById(dnum).innerHTML+= snippet;
-		linebreak = "<br>";
-	    }
+	    show_attributes(dnum, this.data('node_attributes'));
 
 	    sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
 	});
@@ -730,6 +844,50 @@ function add_cyto() {
             	document.getElementById(dnum).innerHTML+= "<b>Provenance:</b> " + this.data('provided_by') + "<br>";
 	    }
 
+            if(this.data('confidence')) {
+                document.getElementById(dnum).innerHTML+= "<b>Confidence:</b> " + Number(this.data('confidence')).toPrecision(3) + "<br>";
+	    }
+
+            if(this.data('weight')) {
+                document.getElementById(dnum).innerHTML+= "<b>Weight:</b> " + Number(this.data('weight')).toPrecision(3) + "<br>";
+	    }
+
+	    if(this.data('evidence_type')) {
+                document.getElementById(dnum).innerHTML+= "<b>Evidence Type:</b> " + this.data('evidence_type') + "<br>";
+	    }
+
+            if(this.data('qualifiers')) {
+                document.getElementById(dnum).innerHTML+= "<b>Qualifiers:</b> " + this.data('qualifiers') + "<br>";
+	    }
+
+	    if(this.data('negated')) {
+                document.getElementById(dnum).innerHTML+= "<b>Negated:</b> " + this.data('negated') + "<br>";
+	    }
+
+	    if(this.data('relation')) {
+		document.getElementById(dnum).innerHTML+= "<b>Relation:</b> " + this.data('relation') + "<br>";
+	    }
+
+
+	    if(this.data('is_defined_by')) {
+		document.getElementById(dnum).innerHTML+= "<b>Defined by:</b> " + this.data('is_defined_by') + "<br>";
+	    }
+            if(this.data('defined_datetime')) {
+		document.getElementById(dnum).innerHTML+= "<b>Defined on:</b> " + this.data('defined_datetime') + "<br>";
+	    }
+
+            if(this.data('publications')) {
+		document.getElementById(dnum).innerHTML+= "<b>Publications:</b> " + this.data('publications') + "<br>";
+	    }
+
+            if(this.data('id')) {
+		document.getElementById(dnum).innerHTML+= "<b>Id:</b> " + this.data('id') + "<br>";
+	    }
+            if(this.data('qedge_id')) {
+		document.getElementById(dnum).innerHTML+= "<b>Qedge id:</b> " + this.data('qedge_id') + "<br>";
+	    }
+
+	    show_attributes(dnum, this.data('edge_attributes'));
 
 	    sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
 	});
@@ -737,6 +895,51 @@ function add_cyto() {
     }
 
 }
+
+function show_attributes(html_id, atts) {
+    if (atts == null)  { return; }
+
+    var linebreak = "<hr>";
+
+    for (var att of atts) {
+	var snippet = linebreak;
+
+	if (att.name != null) {
+	    snippet += "<b>" + att.name + "</b>";
+	    if (att.type != null) {
+		snippet += " (" + att.type + ")";
+	    }
+	    snippet += " : ";
+	}
+	if (att.url != null) {
+	    snippet += "<a target='rtxext' href='" + att.url + "'>";
+	}
+	if (att.value != null) {
+	    var val = att.value;
+	    if (att.name == "probability_drug_treats" |
+		att.name == "jaccard_index" |
+		att.name == "ngd" |
+		att.name == "paired_concept_freq" |
+		att.name == "observed_expected_ratio" |
+		att.name == "chi_square") {
+		val = Number(val);
+		val = val.toPrecision(3);
+	    }
+	    snippet += val;
+	}
+	else if (att.url != null) {
+	    snippet += "[ url ]";
+	}
+	if (att.url != null) {
+	    snippet += "</a>";
+	}
+
+	document.getElementById(html_id).innerHTML+= snippet;
+	linebreak = "<br>";
+    }
+
+}
+
 
 function cylayout(index,layname) {
     var layout = cyobj[index].layout({

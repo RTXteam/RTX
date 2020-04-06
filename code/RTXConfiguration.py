@@ -11,7 +11,7 @@ class RTXConfiguration:
 
     #### Constructor
     def __init__(self):
-        self.version = "RTX 0.5.4"
+        self.version = "ARAX 0.6.0"
 
         file_path = os.path.dirname(os.path.abspath(__file__)) + '/config.json'
 
@@ -92,12 +92,12 @@ class RTXConfiguration:
             self.mysql_umls_password = self.config[self.live]["mysql_umls"]["password"]
 
         # if self.live == "Production":
-        #     self.bolt = "bolt://rtx.ncats.io:7687"
-        #     self.database = "rtx.ncats.io:7474/db/data"
+        #     self.bolt = "bolt://arax.rtx.ai:7687"
+        #     self.database = "arax.rtx.ai:7474/db/data"
         #
         # elif self.live == "KG2":
-        #     self.bolt = "bolt://rtx.ncats.io:7787"
-        #     self.database = "rtx.ncats.io:7574/db/data"
+        #     self.bolt = "bolt://arax.rtx.ai:7787"
+        #     self.database = "arax.rtx.ai:7574/db/data"
         #
         # elif self.live == "rtxdev":
         #     self.bolt = "bolt://rtxdev.saramsey.org:7887"

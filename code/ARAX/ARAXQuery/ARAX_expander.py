@@ -1,20 +1,21 @@
 #!/bin/env python3
 
+
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 import sys
 import os
+import traceback
 import json
 import ast
-import re
 
 from response import Response
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
-from swagger_server.models.node import Node
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering/")
-from QueryGraphReasoner import QueryGraphReasoner
+from swagger_server.models.query_graph import QueryGraph
+from swagger_server.models.knowledge_graph import KnowledgeGraph
+from swagger_server.models.q_node import QNode
+from swagger_server.models.q_edge import QEdge
 
 
 class ARAXExpander:
@@ -23,12 +24,32 @@ class ARAXExpander:
     def __init__(self):
         self.response = None
         self.message = None
-        self.parameters = None
+        self.parameters = {'edge_id': None, 'kp': None}
 
+    def describe_me(self):
+        """
+        Little helper function for internal use that describes the actions and what they can do
+        :return:
+        """
+        # this is quite different than the `describe_me` in ARAX_overlay and ARAX_filter_kg due to expander being less
+        # of a dispatcher (like overlay and filter_kg) and more of a single self contained class
+        brief_description = """
+`expand` effectively takes a query graph (QG) and reaches out to various knowledge providers (KP's) to find all bioentity subgraphs
+that satisfy that QG and augments the knowledge graph (KG) with them. As currently implemented, `expand` can utilize the ARA Expander
+team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to reach out to other KP's as they are rolled out.
+        """
+        description_list = []
+        params_dict = dict()
+        params_dict['brief_description'] = brief_description
+        params_dict['edge_id'] = {"a query graph edge ID or list of such id's (required)"}  # this is a workaround due to how self.parameters is utilized in this class
+        params_dict['kp'] = {"the knowledge provider to use - current options are 'ARAX/KG1' or 'ARAX/KG2' (optional, default is ARAX/KG1)"}
+        # TODO: will need to update manually if more self.parameters are added
+        # eg. params_dict[node_id] = {"a query graph node ID or list of such id's (required)"} as per issue #640
+        description_list.append(params_dict)
+        return description_list
 
     #### Top level decision maker for applying filters
     def apply(self, input_message, input_parameters):
-
         #### Define a default response
         response = Response()
         self.response = response
@@ -41,9 +62,8 @@ class ARAXExpander:
             return response
 
         #### Define a complete set of allowed parameters and their defaults
-        parameters = {
-            'edge_id': None,
-        }
+        parameters = self.parameters
+        parameters['kp'] = None  # Make sure the kp is reset every time we apply expand
 
         #### Loop through the input_parameters and override the defaults and make sure they are allowed
         for key,value in input_parameters.items():
@@ -59,39 +79,188 @@ class ARAXExpander:
         response.data['parameters'] = parameters
         self.parameters = parameters
 
+        #### Do the actual expansion!
+        response.debug(f"Applying Expand to Message with parameters {parameters}")
 
-        #### Now apply the filters. Order of operations is probably quite important
-        #### Scalar value filters probably come first like minimum_confidence, then complex logic filters
-        #### based on edge or node properties, and then finally maximum_results
-        response.debug(f"Applying Expander to Message with parameters {parameters}")
+        # Convert message knowledge graph to dictionary format, for faster processing
+        dict_version_of_kg = self.__convert_standard_kg_to_dict_kg(self.message.knowledge_graph)
+        self.message.knowledge_graph = dict_version_of_kg
 
-        # First, extract the query sub-graph that will be expanded
-        query_sub_graph = self.__extract_subgraph_to_expand(message)
+        # Extract the sub-query to expand
+        query_sub_graph = self.__extract_subgraph_to_expand(self.parameters['edge_id'])
+        if response.status != 'OK':
+            return response
 
-        # Then answer that query using QueryGraphReasoner
-        q = QueryGraphReasoner()
-        response.info(f"Sending query graph to QueryGraphReasoner: {query_sub_graph}")
-        answer_message = q.answer(query_sub_graph, TxltrApiFormat=True)
-        response.info(f"QueryGraphReasoner returned {len(answer_message.results)} results")
+        # Then answer that query using specified knowledge provider
+        answer_knowledge_graph = self.__answer_query(query_sub_graph, self.parameters['kp'])
+        if response.status != 'OK':
+            return response
 
-        # TODO: Then process results... merge answer knowledge graph with current knowledge graph?
-        # For now, storing answer knowledge graph in larger knowledge graph
-        message.knowledge_graph = answer_message
+        # And add our answer knowledge graph to the overarching knowledge graph
+        self.__merge_answer_kg_into_message_kg(answer_knowledge_graph)
+        if response.status != 'OK':
+            return response
+
+        # Convert message knowledge graph back to API standard format
+        standard_kg = self.__convert_dict_kg_to_standard_kg(self.message.knowledge_graph)
+        self.message.knowledge_graph = standard_kg
 
         #### Return the response and done
+        kg = self.message.knowledge_graph
+        response.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges")
         return response
 
-    # This function is very simple for now (only handles single edge query, etc...will become more complex soon)
-    def __extract_subgraph_to_expand(self, message):
-        query_graph = message.query_graph
-        # Nodes/edges must be dicts for QueryGraphReasoner...says 'not iterable' otherwise
-        edge_to_expand = next(edge.to_dict() for edge in query_graph.edges if edge.id == self.parameters['edge_id'])
-        node_ids = [edge_to_expand['source_id'], edge_to_expand['target_id']]
-        nodes = [node.to_dict() for node in query_graph.nodes if node.id in node_ids]
-        sub_query_graph = {'edges': [edge_to_expand], 'nodes': nodes}
+    def __extract_subgraph_to_expand(self, qedge_ids_to_expand):
+        """
+        This function extracts the portion of the original query graph (stored in message.query_graph) that this current
+        expand() call will expand, based on the query edge ID(s) specified.
+        :param qedge_ids_to_expand: A single qedge_id (str) OR a list of qedge_ids.
+        :return: A query graph, in Translator API standard format.
+        """
+        self.response.info("Extracting sub query graph to expand")
+        query_graph = self.message.query_graph
+        sub_query_graph = QueryGraph()
+        sub_query_graph.nodes = []
+        sub_query_graph.edges = []
+
+        # Grab and validate the edge ID(s) passed in
+        if not qedge_ids_to_expand:
+            self.response.error("Expand is missing value for required parameter edge_id", error_code="MissingValue")
+        else:
+            # Make sure edge ID(s) are stored in a list (can be passed in as a string or a list of strings)
+            if type(qedge_ids_to_expand) is not list:
+                qedge_ids_to_expand = [qedge_ids_to_expand]
+
+            for qedge_id in qedge_ids_to_expand:
+                # Make sure this query edge ID actually exists in the larger query graph
+                if not any(qedge.id == qedge_id for qedge in query_graph.edges):
+                    self.response.error(f"An edge with ID '{qedge_id}' does not exist in Message.QueryGraph",
+                                        error_code="UnknownValue")
+                else:
+                    # Grab this query edge and its two nodes
+                    qedge_to_expand = next(qedge for qedge in query_graph.edges if qedge.id == qedge_id)
+                    qnode_ids = [qedge_to_expand.source_id, qedge_to_expand.target_id]
+                    qnodes = [qnode for qnode in query_graph.nodes if qnode.id in qnode_ids]
+
+                    # Add (a copy of) this edge to our new query sub graph
+                    new_qedge = self.__copy_qedge(qedge_to_expand)
+                    if not any(qedge.id == new_qedge.id for qedge in sub_query_graph.edges):
+                        sub_query_graph.edges.append(new_qedge)
+
+                    # Check for (unusual) case in which this edge has already been expanded in a prior Expand() call
+                    edge_has_already_been_expanded = False
+                    if any(node.qnode_id == qnodes[0].id for node in self.message.knowledge_graph['nodes'].values()) and \
+                            any(node.qnode_id == qnodes[1].id for node in self.message.knowledge_graph['nodes'].values()):
+                        edge_has_already_been_expanded = True
+
+                    # Add (copies of) this edge's two nodes to our new query sub graph
+                    for qnode in qnodes:
+                        new_qnode = self.__copy_qnode(qnode)
+
+                        # Handle case where we need to use nodes found in a prior Expand() as the curie for this qnode
+                        if not new_qnode.curie and not edge_has_already_been_expanded:
+                            curies_of_kg_nodes_with_this_qnode_id = [node.id for node in
+                                                                     self.message.knowledge_graph['nodes'].values()
+                                                                     if node.qnode_id == new_qnode.id]
+                            if curies_of_kg_nodes_with_this_qnode_id:
+                                new_qnode.curie = curies_of_kg_nodes_with_this_qnode_id
+
+                        if not any(qnode.id == new_qnode.id for qnode in sub_query_graph.nodes):
+                            sub_query_graph.nodes.append(new_qnode)
+
         return sub_query_graph
 
+    def __answer_query(self, query_graph, kp_to_use):
+        """
+        This function answers a query using the specified knowledge provider (KG1 or KG2 for now, with other KPs to be
+        added later on.) If no KP was specified, KG1 is used by default. (Eventually it will be possible to automatically
+        determine which KP to use.)
+        :param query_graph: A Translator API standard query graph.
+        :param kp_to_use: A string representing the knowledge provider to fulfill this query with.
+        :return: An (almost) Translator API standard knowledge graph (dictionary version).
+        """
+        valid_kps = ['ARAX/KG2', 'ARAX/KG1']
 
+        if kp_to_use in valid_kps or kp_to_use is None:
+            querier = None
+            if kp_to_use == 'ARAX/KG2':
+                from Expand.kg2_querier import KG2Querier
+                querier = KG2Querier(self.response)
+            else:
+                from Expand.kg1_querier import KG1Querier
+                querier = KG1Querier(self.response)
+
+            self.response.info(f"Sending sub query graph to {type(querier).__name__}: {query_graph.to_dict()}")
+            answer_knowledge_graph = querier.answer_query(query_graph)
+            return answer_knowledge_graph
+        else:
+            self.response.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are: "
+                                f"{', '.join(valid_kps)} (or you can omit this parameter).", error_code="UnknownValue")
+            return None
+
+    def __merge_answer_kg_into_message_kg(self, knowledge_graph):
+        """
+        This function merges a knowledge graph into the overarching knowledge graph (stored in message.knowledge_graph).
+        It prevents duplicate nodes/edges in the merged kg.
+        :param knowledge_graph: An (almost) Translator API standard knowledge graph (dictionary version).
+        :return: None
+        """
+        self.response.info("Merging answer knowledge graph into Message.KnowledgeGraph")
+        answer_nodes = knowledge_graph.get('nodes')
+        answer_edges = knowledge_graph.get('edges')
+        existing_nodes = self.message.knowledge_graph.get('nodes')
+        existing_edges = self.message.knowledge_graph.get('edges')
+
+        for node_key, node in answer_nodes.items():
+            # Check if this is a duplicate node
+            if existing_nodes.get(node_key):
+                # TODO: Add additional query node ID onto this node (if different)?
+                pass
+            else:
+                existing_nodes[node_key] = node
+
+        for edge_key, edge in answer_edges.items():
+            # Check if this is a duplicate edge
+            if existing_edges.get(edge_key):
+                # TODO: Add additional query edge ID onto this edge (if different)?
+                # TODO: Fix how we're identifying edges (edge.id doesn't work when using multiple KPs)
+                pass
+            else:
+                existing_edges[edge_key] = edge
+
+    def __convert_standard_kg_to_dict_kg(self, knowledge_graph):
+        dict_kg = dict()
+        dict_kg['nodes'] = dict()
+        dict_kg['edges'] = dict()
+        for node in knowledge_graph.nodes:
+            dict_kg['nodes'][node.id] = node
+        for edge in knowledge_graph.edges:
+            dict_kg['edges'][edge.id] = edge
+        return dict_kg
+
+    def __convert_dict_kg_to_standard_kg(self, dict_kg):
+        standard_kg = KnowledgeGraph()
+        standard_kg.nodes = []
+        standard_kg.edges = []
+        for node_key, node in dict_kg.get('nodes').items():
+            standard_kg.nodes.append(node)
+        for edge_key, edge in dict_kg.get('edges').items():
+            standard_kg.edges.append(edge)
+        return standard_kg
+
+    def __copy_qedge(self, old_qedge):
+        new_qedge = QEdge()
+        for edge_property in new_qedge.to_dict():
+            value = getattr(old_qedge, edge_property)
+            setattr(new_qedge, edge_property, value)
+        return new_qedge
+
+    def __copy_qnode(self, old_qnode):
+        new_qnode = QNode()
+        for node_property in new_qnode.to_dict():
+            value = getattr(old_qnode, node_property)
+            setattr(new_qnode, node_property, value)
+        return new_qnode
 
 ##########################################################################################
 def main():
@@ -108,12 +277,31 @@ def main():
     #### Set a list of actions
     actions_list = [
         "create_message",
-        "add_qnode(curie=DOID:14330, id=n00)",
-        "add_qnode(type=protein, is_set=True, id=n01)",
-        "add_qnode(type=drug, id=n02)",
-        "add_qedge(source_id=n01, target_id=n00, id=e00)",
-        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        # "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
+        # "add_qnode(id=n01, type=protein, is_set=true)",
+        # "add_qedge(id=e00, source_id=n00, target_id=n01, type=molecularly_interacts_with)",
+        "add_qnode(id=n00, curie=DOID:14330)",  # parkinson's
+        "add_qnode(id=n01, type=protein, is_set=True)",
+        "add_qnode(id=n02, type=chemical_substance)",
+        "add_qedge(id=e00, source_id=n01, target_id=n00)",
+        "add_qedge(id=e01, source_id=n01, target_id=n02)",
+        # "add_qnode(curie=DOID:8398, id=n00)",  # osteoarthritis
+        # "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
+        # "add_qnode(type=disease, is_set=true, id=n02)",
+        # "add_qedge(source_id=n01, target_id=n00, id=e00)",
+        # "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        # "add_qnode(id=n00, curie=DOID:824)",  # periodontitis
+        # "add_qnode(id=n01, type=protein, is_set=True)",
+        # "add_qnode(id=n02, type=phenotypic_feature)",
+        # "add_qedge(id=e00, source_id=n01, target_id=n00)",
+        # "add_qedge(id=e01, source_id=n01, target_id=n02)",
+        # "add_qnode(id=n00, curie=DOID:0060227)",  # Adams-Oliver
+        # "add_qnode(id=n01, type=protein)",
+        # "add_qedge(id=e00, source_id=n01, target_id=n00)",
+        "expand(edge_id=e00, kp=ARAX/KG2)",
         "expand(edge_id=e00)",
+        # "expand(edge_id=e01, kp=ARAX/KG2)",
+        # "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
         "return(message=true, store=false)",
     ]
 
@@ -133,7 +321,7 @@ def main():
     #### Loop over each action and dispatch to the correct place
     for action in actions:
         if action['command'] == 'create_message':
-            result = messenger.create()
+            result = messenger.create_message()
             message = result.data['message']
             response.data = result.data
         elif action['command'] == 'add_qnode':
@@ -156,8 +344,9 @@ def main():
             return response
 
     #### Show the final response
+    # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph)),sort_keys=True,indent=2))
     print(response.show(level=Response.DEBUG))
-    print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
 
 
-if __name__ == "__main__": main()
+if __name__ == "__main__":
+    main()

@@ -3,23 +3,23 @@ body {
     margin:  0px;
     box-sizing:border-box;
     background-color:#eee;
-    font-size: 12pt;
+    font-size: 12px;
     font-family: Arial, sans-serif;
 }
 
 .banner {
     position: fixed;
     width: 100%;
-    min-height: 80px;
+    min-height: 50px;
     z-index: 9;
     box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
-    font-size: 20px;
+    //font-size: 20px;
     color: #ddd;
     background-color: #040;
     background-image: url(banner.png);
 }
 .banner::before {
-    font-size: 60px;
+    font-size: 40px;
     left: 30px;
     top: 0px;
     position: absolute;
@@ -32,7 +32,7 @@ body {
 
 .menulinks {
     position: relative;
-    top:55px;
+    top:30px;
     right: 30px;
     float: right;
 }
@@ -40,7 +40,7 @@ body {
     text-decoration: none;
     color: #eef;
     font-weight:bold;
-    padding: 55px 15px 15px 15px;
+    padding: 55px 15px 10px 15px;
 }
 .banner a:hover, .banner a:active{
     text-decoration: none;
@@ -55,39 +55,39 @@ body {
 }
 
 .menuleft {
-	z-index: 8;
-	position: fixed;
-	width: 150px;
-	height: 100%;
-//	margin-top: 80px;
-	font-size: 20px;
-	color: #000;
-	border-right: 2px solid black;
-	background-color: #ddd;
+    z-index: 8;
+    position: fixed;
+    width: 150px;
+    height: 100%;
+    font-size: 15px;
+    font-weight: bold;
+    color: #000;
+    border-right: 2px solid black;
+    background-color: #ddd;
 }
 .menuleftitem  {
-	color: #666;
-	padding: 10px;
-	text-align:right;
-	display:block;
-	text-decoration: none;
-	cursor: pointer;
+    color: #666;
+    padding: 10px;
+    text-align:right;
+    display:block;
+    text-decoration: none;
+    cursor: pointer;
 }
 .menuleftitem:hover {
-	color: #000;
-	background-color: #9bc;
+    color: #000;
+    background-color: #9bc;
 }
 .menucurrent {
-	padding: 10px;
-	text-align:right;
-	display:block;
-	text-decoration: none;
-	color: #000;
-	background-color: #eee;
-	border-bottom: 2px solid black;
-	border-top: 2px solid black;
-	border-left: 15px solid #444;
-	margin-right: -2px;
+    padding: 10px;
+    text-align:right;
+    display:block;
+    text-decoration: none;
+    color: #000;
+    background-color: #eee;
+    border-bottom: 2px solid black;
+    border-top: 2px solid black;
+    border-left: 15px solid #444;
+    margin-right: -2px;
 }
 
 
@@ -95,10 +95,26 @@ body {
     margin-left: 170px;
     margin-right: 10px;
 }
-.pagesection {
+.pagesection, .inputsection {
     visibility: hidden;
     max-height: 0;
     overflow: hidden;
+}
+
+.slink {
+    padding: 10px 20px;
+    width: 70px;
+    border-top: 1px solid #eee;
+    border-left: 1px solid #eee;
+    border-right: 1px solid #eee;
+    border-bottom: 4px solid #eee;
+    cursor: pointer;
+}
+.slink:hover {
+    box-shadow: 0 0 5px #999;
+}
+.slink_on {
+    border-bottom: 4px solid #c40;
 }
 
 .sampleqs {
@@ -128,6 +144,12 @@ body {
     font-weight: bold;
     color: #eee;
     background-color: #c40;
+}
+
+#dslText {
+    width: 80%;
+    height: 20em;
+    overflow:scroll;
 }
 
 .ratings {
@@ -185,7 +207,7 @@ body {
     border-right: 1px solid #444;
     text-align: left;
     outline: none;
-    font-size: 20px;
+    font-size: 16px;
     font-weight:bold;
     transition: 0.1s;
 }
@@ -197,6 +219,12 @@ body {
     padding: 0 25px;
     background-color: #fff;
     max-width: 100%;
+}
+.statushead .qprob {
+    font-size: 12px;
+}
+#logdiv {
+    padding: 0px;
 }
 
 .accordion {
@@ -283,16 +311,20 @@ body {
     border-color: #b00;
 }
 
-.p9 { background-color: #291; }
-.p7 { background-color: #7b4; }
-.p5 { background-color: #cc5; }
-.p3 { background-color: #f80; }
-.p1 { background-color: #821; }
-.p0 { background-color: #444; }
+.p9, .msgINFO    { background-color: #291; }
+.p7              { background-color: #7b4; }
+.p5              { background-color: #cc5; }
+.p3, .msgWARNING { background-color: #f80; }
+.p1, .msgERROR   { background-color: #821; }
+.p0, .msgDEBUG   { background-color: #444; }
 
 .srtx { background-color: #cb5; }
 .sind { background-color: #3bc; }
 .srob { background-color: #000; }
+
+.hide {
+    background-color: #bbb;
+}
 
 h1 {
     margin-top: 40px;
@@ -352,6 +384,25 @@ table.sumtab {
 }
 
 
+.msg {
+    display: block;
+    border-bottom: 1px solid #aaa;
+    padding: 4px 3px;
+}
+.DEBUG {
+    color: #ccc;
+}
+.INFO {
+    color: #666;
+}
+.WARNING {
+    color: #750;
+}
+.ERROR {
+    color: #c40;
+}
+
+
 td {
     vertical-align:top;
 }
@@ -384,17 +435,18 @@ td {
 }
 .cytograph_q {
     border: 1px solid #444;
-    height: 200px;
+    height: 280px;
     width: 80%;
     background-color: #def;
     box-shadow: inset 0 4px 8px 0 rgba(0,0,0,0.2), inset 0 6px 20px 0 rgba(0,0,0,0.19);
 }
 
 .questionBox {
-    font-size: large;
+    //font-size: large;
     margin: 4px;
     padding: 6px;
     border: 2px solid black;
+    vertical-align: baseline;
 }
 
 .button {
