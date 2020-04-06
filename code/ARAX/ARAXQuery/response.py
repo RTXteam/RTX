@@ -97,7 +97,7 @@ class Response:
         :param message_level: One of the four numerical levels (i.e. 10, 20, 30, 40).
         :type message_level: int
         """
-        timestamp = datetime.datetime.now()
+        timestamp = str(datetime.datetime.now())
         prefix = f"{timestamp} {self.level_names[message_level]}: "
         self.messages.append( { 'level': message_level, 'level_str': self.level_names[message_level], 'timestamp': timestamp, 'prefix': prefix, 'message': message } )
         self.n_messages += 1

@@ -37,6 +37,16 @@ class ActionsParser:
         for action in input_actions:
             response.debug(f"Parsing action: {action}")
 
+            # If this line is empty, then skip
+            match = re.match(r"\s*$",action)
+            if match:
+                continue
+
+            # If this line begins with a #, it is a comment, then skip
+            match = re.match(r"#",action)
+            if match:
+                continue
+
             #### First look for a naked command without parentheses
             match = re.match(r"\s*([A-Za-z_]+)\s*$",action)
             if match is not None:
