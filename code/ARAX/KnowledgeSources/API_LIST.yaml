@@ -1,0 +1,118 @@
+# Example list of KP API's ARAX has the ability to automatically utilize
+# Each API provider should add one entry under APIs
+# NOTE: THIS IS A VERY INCOMPLETE LIST OF ALL THE KP'S ARAX/RTX IS USING (eg. only 12 of 28+ are listed here)
+# "metadata" points to the API's openapi metadata
+#            a relative path in this repo, or a full URL
+# "translator" is a placeholder for translator specific attributes
+# "parser" is a relative path indicating where the ARAX parser resides
+# "name" is the name of the knowledge provider or source (mainly for internal use or human discussion)
+# "functionalities" is a dictionary of endpoint functionality that this KP can provide
+APIs:
+  - name: MyGene
+    translator:
+          - returnjson: true
+          - metadata: http://mygene.info/v3
+    ARAXInfo:
+          - parser: ../../reasoningtool/kg-construction/QueryMyGene.py
+          - functionalities: {'query': 'query', 'gene': 'gene'}
+          - name: MyGene
+
+  - name: ReactomeExtended
+    translator:
+          - returnjson: true
+          - metadata: https://reactome.org/ContentService
+    ARAXInfo:
+          - parser: ../../reasoningtool/kg-construction/QueryReactomeExtended.py
+          - functionalities: {'get_pathway': 'data/pathway/{id}/containedEvents', 'get_pathway_desc': 'data/query/{id}'}
+          - name: ReactomeExtended
+
+  - name: MyChem
+    translator:
+          - returnjson: true
+          - metadata: http://mychem.info/v1
+    ARAXInfo:
+          - parser: ../../reasoningtool/kg-construction/QueryMyChem.py
+          - functionalities: {'get_chemical_substance': 'chem/{id}', 'get_drug': 'chem/{id}', 'get_pubchem_info': 'query?q=pubchem.cid:{cid}'}
+          - name: MyChem
+
+  - name: EBIOLS
+    translator:
+          - returnjson: true
+          - metadata: https://www.ebi.ac.uk/ols/api/ontologies
+    ARAXInfo:
+          - parser: ../../reasoningtool/kg-construction/QueryEBIOLS.py
+          - functionalities: {'get_anatomy': '{ontology}/terms/{id}', 'get_phenotype': '{ontology}/terms/{id}', 'get_disease': '{ontology}/terms/{id}', 'get_bio_process': '{ontology}/terms/{id}', 'get_cellular_component': '{ontology}/terms/{id}', 'get_molecular_function': '{ontology}/terms/{id}'}
+          - name: EBIOLS
+
+  - name: MyGeneExtended
+    translator:
+          - returnjson: true
+          - metadata: http://mygene.info/v3
+    ARAXInfo:
+          - parser: ../../reasoningtool/kg-construction/QueryMyGeneExtended.py
+          - functionalities: {'query': 'query', 'gene': 'gene'}
+          - name: MyGeneExtended
+
+  - name: BioLinkExtended
+    translator:
+          - returnjson: true
+          - metadata: https://api.monarchinitiative.org/api/bioentity
+    ARAXInfo:
+          - parser: ../../reasoningtool/kg-construction/QueryBioLinkExtended.py
+          - functionalities: {'get_anatomy': 'anatomy/{id}', 'get_phenotype': 'phenotype/{id}', 'get_disease': 'disease/{id}', 'get_bio_process': '{id}'}
+          - name: BioLinkExtended
+
+  - name: EBIOLSExtended
+    translator:
+          - returnjson: true
+          - metadata: https://www.ebi.ac.uk/ols/api/ontologies
+    ARAXInfo:
+          - parser: ../../reasoningtool/kg-construction/QueryEBIOLSExtended.py
+          - functionalities: {'get_anatomy': '{ontology}/terms/{id}', 'get_phenotype': '{ontology}/terms/{id}', 'get_disease': '{ontology}/terms/{id}', 'get_bio_process': '{ontology}/terms/{id}', 'get_cellular_component': '{ontology}/terms/{id}', 'get_molecular_function': '{ontology}/terms/{id}'}
+          - name: EBIOLSExtended
+
+  - name: BioLink
+    translator:
+          - returnjson: true
+          - metadata: https://api.monarchinitiative.org/api
+    ARAXInfo:
+          - parser: ../../reasoningtool/kg-construction/QueryBioLink.py
+          - functionalities: {'get_phenotypes_for_disease': 'bioentity/disease/{disease_id}/phenotypes', 'get_diseases_for_gene': 'bioentity/gene/{gene_id}/diseases', 'get_genes_for_disease': 'bioentity/disease/{disease_id}/genes', 'get_phenotypes_for_gene': 'bioentity/gene/{gene_id}/phenotypes?exclude_automatic_assertions=true&unselect_evidence=true', 'get_genes_for_pathway': 'bioentity/pathway/{pathway_id}/genes&unselect_evidence=true', 'get_label_for_disease': 'bioentity/disease/{disease_id}', 'get_label_for_phenotype': 'bioentity/phenotype/{phenotype_id}', 'get_anatomies_for_gene': 'bioentity/gene/{gene_id}/expression/anatomy', 'get_genes_for_anatomy': 'bioentity/anatomy/{anatomy_id}/genes', 'get_anatomies_for_phenotype': 'bioentityphenotype/{phenotype_id}/anatomy', 'get_synonyms_for_disease': 'bioentity/{disease_id}/associations', 'get_anatomy': 'bioentity/anatomy/{id}', 'get_phenotype': 'bioentity/phenotype/{id}', 'get_disease': 'bioentity/disease/{id}', 'get_bio_process': 'bioentity/{id}', 'map_disease_to_phenotype': 'bioentity/disease/{disease_id}/phenotypes'}
+          - name: BioLink
+
+  - name: KEGG
+    translator:
+          - returnjson: true
+          - metadata:  http://rest.kegg.jp
+    ARAXInfo:
+          - parser: ../../reasoningtool/kg-construction/QueryKEGG.py
+          - functionalities: {'map_kegg_compound_to_enzyme_commission_ids': 'link/ec/{id}', 'map_kegg_compound_to_pub_chem_id': 'conv/pubchem/compound:{id}', 'map_kegg_compound_to_hmdb_id': 'link/hmdb/{id}'}
+          - name: KEGG
+
+  - name: Reactome
+    translator:
+          - returnjson: true
+          - metadata: https://reactome.org/ContentService
+    ARAXInfo:
+          - parser: ../../reasoningtool/kg-construction/QueryReactome.py
+          - functionalities: {'get_pathway': 'data/pathway/{id}/containedEvents', 'get_pathway_desc': 'data/query/{id}'}
+          - name: Reactome
+
+  - name: PubChem
+    translator:
+          - returnjson: true
+          - metadata: https://pubchem.ncbi.nlm.nih.gov/rest/pug
+    ARAXInfo:
+          - parser: ../../reasoningtool/kg-construction/QueryPubChem.py
+          - functionalities: {'get_pubchem_cid': 'substance/sid/{sid}/JSON', 'get_description_url': 'compound/cid/{cid}/description/JSON'}
+          - name: PubChem
+
+  - name: COHD
+    translator:
+          - returnjson: true
+          - metadata: http://cohd.nsides.io/api
+    ARAXInfo:
+          - parser: ../../reasoningtool/kg-construction/QueryCOHD.py
+          - functionalities: {'find_concept_id': 'omop/findConceptIDs', 'get_paired_concept_freq': 'frequencies/pairedConceptFreq', 'get_individual_concept_freq': 'frequencies/singleConceptFreq', 'get_associated_concept_domain_freq': 'frequencies/associatedConceptDomainFreq', 'get_concepts': 'omop/concepts', 'get_xref_from_OMOP': 'omop/xrefFromOMOP', 'get_xref_to_OMOP': 'omop/xrefToOMOP', 'get_map_from_standard_concept_id': 'omop/mapFromStandardConceptID', 'get_map_to_standard_concept_id': 'omop/mapToStandardConceptID', 'get_vocabularies': 'omop/vocabularies', 'get_associated_concept_freq': 'frequencies/associatedConceptFreq', 'get_most_frequent_concepts': 'frequencies/mostFrequentConcepts', 'get_chi_square': 'association/chiSquare', 'get_obs_exp_ratio': 'association/obsExpRatio', 'get_relative_frequency': 'association/relativeFrequency', 'get_datasets': 'metadata/datasets', 'get_domain_counts': 'metadata/domainCounts', 'get_domain_pair_counts': 'metadata/domainPairCounts', 'get_patient_count': 'metadata/patientCount', 'get_concept_ancestors': '/omop/conceptAncestors', 'get_concept_descendants': '/omop/conceptDescendants'}
+          - name: COHD
+

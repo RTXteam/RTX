@@ -7,29 +7,85 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-# import requests
-import urllib
 import math
 import sys
 import time
-from io import StringIO
-import re
-import pandas
-import pprint
 import CachedMethods
 from cache_control_helper import CacheControlHelper
-# import requests_cache
-import numpy
+import pickledb
+import os
+import functools
 from QueryNCBIeUtils import QueryNCBIeUtils
 from QueryDisont import QueryDisont  # DOID -> MeSH
 from QueryEBIOLS import QueryEBIOLS  # UBERON -> MeSH
-from QueryPubChem import QueryPubChem  # ChEMBL -> PubMed id
 from QueryMyChem import QueryMyChem
+from typing import List
+
 
 # requests_cache.install_cache('NGDCache')
 
+SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
+WHATEVER_TO_MESH_DB_FILE = os.path.join(SCRIPT_DIR, 'curie_to_mesh.db')
+MESH_TO_PUBMED_DB_FILE = os.path.join(SCRIPT_DIR, 'mesh_to_pmid.db')
+NGD_NORMALIZER = 2.2e+7 * 20   # from PubMed home page there are 27 million articles; avg 20 MeSH terms per article
+
 
 class NormGoogleDistance:
+    def __init__(self):
+        if os.path.exists(WHATEVER_TO_MESH_DB_FILE) and os.path.isfile(WHATEVER_TO_MESH_DB_FILE):
+            self.db_whatever_to_mesh = pickledb.load(WHATEVER_TO_MESH_DB_FILE,
+                                                     auto_dump=False)
+        else:
+            self.db_whatever_to_mesh = None
+        if os.path.exists(MESH_TO_PUBMED_DB_FILE) and os.path.isfile(MESH_TO_PUBMED_DB_FILE):
+            self.db_mesh_to_pubmed = pickledb.load(MESH_TO_PUBMED_DB_FILE,
+                                                   auto_dump=False)
+        else:
+            self.db_mesh_to_pubmed = None
+
+    @staticmethod
+    def compute_marginal_and_joint_counts(concept_pubmed_ids: List[str]) -> list:
+        return [list(map(lambda pmid_list: len(set(pmid_list)), concept_pubmed_ids)),
+                len(functools.reduce(lambda pmids_intersec_cumul, pmids_next:
+                                     set(pmids_next).intersection(pmids_intersec_cumul),
+                                     concept_pubmed_ids))]
+
+    @staticmethod
+    def compute_multiway_ngd_from_counts(marginal_counts: List[int],
+                                         joint_count: int) -> float:
+        # Make sure that things are within the right domain for the logs
+        # Should also make sure things are not negative, but I'll just do this with a ValueError
+        if None in marginal_counts:
+            return math.nan
+        elif 0 in marginal_counts or 0. in marginal_counts:
+            return math.nan
+        elif joint_count == 0 or joint_count == 0.:
+            return math.nan
+        else:
+            try:
+                return (max([math.log(count) for count in marginal_counts]) - math.log(joint_count)) / \
+                   (math.log(NGD_NORMALIZER) - min([math.log(count) for count in marginal_counts]))
+            except ValueError:
+                return math.nan
+
+    def get_ngd_for_all_fast(self, curie_id_list: List[str], description_list: List[str]) -> float:
+        assert len(curie_id_list) == len(description_list)
+        if self.db_whatever_to_mesh is not None and self.db_mesh_to_pubmed is not None:
+            mesh_ids_all = [self.db_whatever_to_mesh.get(curie_id) for curie_id in curie_id_list]
+            if all(mesh_ids_all):
+                #print(f"Going fast: {curie_id_list}")  # for debugging purposes and counting db hits
+                pubmed_ids_for_curies = []
+                for mesh_ids in mesh_ids_all:
+                    pubmed_ids_for_curie_set = set()
+                    for mesh_id in mesh_ids:
+                        pubmed_ids = self.db_mesh_to_pubmed.get(mesh_id)
+                        if pubmed_ids is not False:
+                            pubmed_ids_for_curie_set |= set(pubmed_ids)
+                    pubmed_ids_for_curies.append(list(pubmed_ids_for_curie_set))
+                counts_res = NormGoogleDistance.compute_marginal_and_joint_counts(pubmed_ids_for_curies)
+                return NormGoogleDistance.compute_multiway_ngd_from_counts(*counts_res)
+        #print(f"Going slow: {curie_id_list}")  # for debugging purposes and counting db misses
+        return NormGoogleDistance.get_ngd_for_all(curie_id_list, description_list)
 
     @staticmethod
     @CachedMethods.register
@@ -242,6 +298,64 @@ class NormGoogleDistance:
                 response['value'] = value
         return response
 
+    @staticmethod
+    # @CachedMethods.register
+    def get_pmids_for_all(curie_id_list, description_list):
+        """
+        Takes a list of currie ids and descriptions then calculates the normalized google distance for the set of nodes.
+        Params:
+            curie_id_list - a list of strings containing the curie ids of the nodes. Formatted <source abbreviation>:<number> e.g. DOID:8398
+            description_list - a list of strings containing the English names for the nodes
+        """
+        assert len(curie_id_list) == len(description_list)
+        terms = [None] * len(curie_id_list)
+        for a in range(len(description_list)):
+            terms[a] = NormGoogleDistance.get_mesh_term_for_all(curie_id_list[a], description_list[a])
+            if type(terms[a]) != list:
+                terms[a] = [terms[a]]
+            if len(terms[a]) == 0:
+                terms[a] = [description_list[a]]
+            if len(terms[a]) > 30:
+                terms[a] = terms[a][:30]
+        terms_combined = [''] * len(terms)
+        mesh_flags = [True] * len(terms)
+        for a in range(len(terms)):
+            if len(terms[a]) > 1:
+                if not terms[a][0].endswith('[uid]'):
+                    for b in range(len(terms[a])):
+                        if QueryNCBIeUtils.is_mesh_term(terms[a][b]) and not terms[a][b].endswith('[MeSH Terms]'):
+                            terms[a][b] += '[MeSH Terms]'
+                terms_combined[a] = '|'.join(terms[a])
+                mesh_flags[a] = False
+            else:
+                terms_combined[a] = terms[a][0]
+                if terms[a][0].endswith('[MeSH Terms]'):
+                    terms_combined[a] = terms[a][0][:-12]
+                elif not QueryNCBIeUtils.is_mesh_term(terms[a][0]):
+                    mesh_flags[a] = False
+        pmids = QueryNCBIeUtils.multi_normalized_pmids(terms_combined, mesh_flags)
+        pmids_with_prefix = []
+        for lst in pmids:
+            pmids_with_prefix.append([f"PMID:{x}" for x in lst])
+        return pmids_with_prefix
+
+
+def test01():
+    res = NormGoogleDistance.compute_marginal_and_joint_counts([['a', 'b', 'a'], ['a', 'd'], ['e', 'a', 'c']])
+    assert abs(NormGoogleDistance.compute_multiway_ngd_from_counts(*res) - 0.05719216982573684) < 1e-10
+
+
+def test02():
+    ngd = NormGoogleDistance()
+    assert abs(0.3901010209565451 - ngd.get_ngd_for_all_fast(['DOID:10763', 'DOID:6713'], [None, None])) < 1e-10
+
+
+def test03():
+    ngd = NormGoogleDistance()
+    assert abs(0.3969190387758672 - ngd.get_ngd_for_all_fast(['DOID:XXX', 'DOID:6713'], ["hypertension", "cerebrovascular disease"])) < 1e-10
+
 
 if __name__ == '__main__':
-    pass
+    test01()
+    test02()
+    test03()
