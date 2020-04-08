@@ -125,11 +125,14 @@ class KG2Querier:
             self.response.error(f"Encountered an error interacting with KG2 neo4j. {tb}",
                                 error_code=error_type.__name__)
         else:
-            no_results = any(len(self.query_results[0].get(column)) == 0 for column in self.query_results[0])
-            if no_results:
+            columns_with_lengths = dict()
+            for column in self.query_results[0]:
+                columns_with_lengths[column] = len(self.query_results[0].get(column))
+            if any(length == 0 for length in columns_with_lengths.values()):
                 self.response.warning("No paths were found in KG2 satisfying this query graph")
             else:
-                self.response.info(f"Query for edge {self.query_graph.edges[0].id} returned results")
+                num_results_string = ", ".join([f"{column}: {value}" for column, value in columns_with_lengths.items()])
+                self.response.info(f"Query for edge {self.query_graph.edges[0].id} returned results ({num_results_string})")
 
     def __add_answers_to_kg(self):
         self.response.debug(f"Processing query results for edge {self.query_graph.edges[0].id}")

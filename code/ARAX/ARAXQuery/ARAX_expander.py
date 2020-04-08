@@ -81,6 +81,9 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
 
         #### Do the actual expansion!
         response.debug(f"Applying Expand to Message with parameters {parameters}")
+        edge_id = self.parameters['edge_id']
+        edges_to_expand_string = f"edges {', '.join(edge_id)}" if type(edge_id) is list else f"edge {edge_id}"
+        response.info(f"Beginning expansion of {edges_to_expand_string} using {self.parameters['kp']}")
 
         # Convert message knowledge graph to dictionary format, for faster processing
         dict_version_of_kg = self.__convert_standard_kg_to_dict_kg(self.message.knowledge_graph)
@@ -90,7 +93,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         query_sub_graph = self.__extract_subgraph_to_expand(self.parameters['edge_id'])
         if response.status != 'OK':
             return response
-        self.response.info(f"Sub query graph to expand is: {query_sub_graph.to_dict()}")
+        self.response.debug(f"Query graph to expand is: {query_sub_graph.to_dict()}")
 
         # Expand the query graph edge by edge because it's much faster for neo4j queries
         ordered_edges = self.__get_order_to_expand_edges_in(query_sub_graph)
@@ -151,7 +154,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
                     if not any(qedge.id == new_qedge.id for qedge in sub_query_graph.edges):
                         sub_query_graph.edges.append(new_qedge)
 
-                    # Check for (unusual) case in which this edge has already been expanded in a prior Expand() call
+                    # Check for (unusual) case in which this edge has already been expanded (e.g., in a prior Expand() call)
                     edge_has_already_been_expanded = False
                     if any(node.qnode_id == qnodes[0].id for node in self.message.knowledge_graph['nodes'].values()) and \
                             any(node.qnode_id == qnodes[1].id for node in self.message.knowledge_graph['nodes'].values()):
@@ -185,7 +188,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
                 ordered_edges = [first_edge]
                 edges_remaining.pop(edges_remaining.index(first_edge))
             else:
-                # Otherwise, add connected edges in a rightward direction if possible
+                # Add connected edges in a rightward direction if possible
                 right_end_edge = ordered_edges[-1]
                 edge_connected_to_right_end = self.__find_connected_edge(edges_remaining, right_end_edge)
                 if edge_connected_to_right_end:
@@ -348,6 +351,9 @@ def main():
         # "add_qedge(id=e01, source_id=n01, target_id=n02)",
         # "add_qnode(id=n00, curie=DOID:0060227)",  # Adams-Oliver
         # "add_qnode(id=n01, type=protein)",
+        # "add_qedge(id=e00, source_id=n01, target_id=n00)",
+        # "add_qnode(id=n00, curie=DOID:0050156)",  # idiopathic pulmonary fibrosis
+        # "add_qnode(id=n01, type=chemical_substance)",
         # "add_qedge(id=e00, source_id=n01, target_id=n00)",
         # "expand(edge_id=e00, kp=ARAX/KG2)",
         # "expand(edge_id=e00, kp=ARAX/KG2)",
