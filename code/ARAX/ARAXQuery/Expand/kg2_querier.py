@@ -158,7 +158,7 @@ class KG2Querier:
 
         swagger_node.qnode_id = qnode_id
         swagger_node.id = neo4j_node.get('id')
-        swagger_node.type = neo4j_node.get('type')
+        swagger_node.type = neo4j_node.get('category_label')
         swagger_node.name = neo4j_node.get('name')
         swagger_node.description = neo4j_node.get('description')
         swagger_node.uri = neo4j_node.get('iri')
@@ -170,8 +170,8 @@ class KG2Querier:
             swagger_node.name = neo4j_node.get('full_name')
 
         # Add all additional properties on KG2 nodes as swagger NodeAttribute objects
-        additional_kg2_node_properties = ['publications', 'provided_by', 'deprecated', 'synonym', 'category',
-                                          'category_label', 'update_date']
+        additional_kg2_node_properties = ['publications', 'synonym', 'category', 'provided_by', 'deprecated',
+                                          'update_date']
         node_attributes = self.__create_swagger_attributes("node", additional_kg2_node_properties, neo4j_node)
         swagger_node.node_attributes += node_attributes
 
@@ -181,7 +181,7 @@ class KG2Querier:
         swagger_edge = Edge()
 
         swagger_edge.qedge_id = qedge_id
-        swagger_edge.type = neo4j_edge.get('type')
+        swagger_edge.type = neo4j_edge.get('simplified_edge_label')
         swagger_edge.source_id = neo4j_edge.get('subject')
         swagger_edge.target_id = neo4j_edge.get('object')
         swagger_edge.id = f"{swagger_edge.source_id}--{swagger_edge.type}--{swagger_edge.target_id}"
@@ -194,8 +194,8 @@ class KG2Querier:
 
         # Add additional properties on KG2 edges as swagger EdgeAttribute objects
         # TODO: fix issues coming from strange characters in 'publications_info'! (EOF error)
-        additional_kg2_edge_properties = ['relation_curie', 'simplified_relation', 'simplified_relation_curie',
-                                          'edge_label', 'simplified_edge_label']
+        additional_kg2_edge_properties = ['relation_curie', 'simplified_relation_curie', 'simplified_relation',
+                                          'edge_label']
         edge_attributes = self.__create_swagger_attributes("edge", additional_kg2_edge_properties, neo4j_edge)
         swagger_edge.edge_attributes += edge_attributes
 
