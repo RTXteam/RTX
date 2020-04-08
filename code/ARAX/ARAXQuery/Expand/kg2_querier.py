@@ -64,6 +64,7 @@ class KG2Querier:
             original_curie = node.curie
             if original_curie and type(original_curie) is str:  # Important because sometimes lists of curies are passed behind the scenes (when expanding one edge at a time)
                 node.curie = KGNI.get_equivalent_curies(original_curie)
+                node.type = None  # Equivalent curie types may be different than the original, so we clear this
                 self.response.info(f"Using equivalent curies for node {original_curie}: {node.curie}")
 
     def __generate_cypher_to_run(self):
