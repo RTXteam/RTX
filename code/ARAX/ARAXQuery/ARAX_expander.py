@@ -93,7 +93,8 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         self.response.info(f"Sub query graph to expand is: {query_sub_graph.to_dict()}")
 
         # Expand the query graph edge by edge because it's much faster for neo4j queries
-        for edge in query_sub_graph.edges:
+        ordered_edges = self.__get_order_to_expand_edges_in(query_sub_graph)
+        for edge in ordered_edges:
             self.response.info(f"Expanding edge {edge.id}")
             edge_query_graph = self.__extract_subgraph_to_expand(edge.id)
 
@@ -173,6 +174,31 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
 
         return sub_query_graph
 
+    def __get_order_to_expand_edges_in(self, query_graph):
+        edges_remaining = [edge for edge in query_graph.edges]
+        ordered_edges = []
+        while edges_remaining:
+            if not ordered_edges:
+                # Start with an edge that has a node with a curie specified
+                edge_with_curie = self.__get_edge_with_curie_node(query_graph)
+                first_edge = edge_with_curie if edge_with_curie else edges_remaining[0]
+                ordered_edges = [first_edge]
+                edges_remaining.pop(edges_remaining.index(first_edge))
+            else:
+                # Otherwise, add connected edges in a rightward direction if possible
+                right_end_edge = ordered_edges[-1]
+                edge_connected_to_right_end = self.__find_connected_edge(edges_remaining, right_end_edge)
+                if edge_connected_to_right_end:
+                    ordered_edges.append(edge_connected_to_right_end)
+                    edges_remaining.pop(edges_remaining.index(edge_connected_to_right_end))
+                else:
+                    left_end_edge = ordered_edges[0]
+                    edge_connected_to_left_end = self.__find_connected_edge(edges_remaining, left_end_edge)
+                    if edge_connected_to_left_end:
+                        ordered_edges.insert(0, edge_connected_to_left_end)
+                        edges_remaining.pop(edges_remaining.index(edge_connected_to_left_end))
+        return ordered_edges
+
     def __answer_query(self, query_graph, kp_to_use):
         """
         This function answers a query using the specified knowledge provider (KG1 or KG2 for now, with other KPs to be
@@ -230,6 +256,28 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
                 pass
             else:
                 existing_edges[edge_key] = edge
+
+    def __get_edge_with_curie_node(self, query_graph):
+        for edge in query_graph.edges:
+            source_node = self.__get_query_node(query_graph, edge.source_id)
+            target_node = self.__get_query_node(query_graph, edge.target_id)
+            if source_node.curie or target_node.curie:
+                return edge
+        return None
+
+    def __find_connected_edge(self, edge_list, edge):
+        edge_node_ids = {edge.source_id, edge.target_id}
+        for potential_connected_edge in edge_list:
+            potential_connected_edge_node_ids = {potential_connected_edge.source_id, potential_connected_edge.target_id}
+            if edge_node_ids.intersection(potential_connected_edge_node_ids):
+                return potential_connected_edge
+        return None
+
+    def __get_query_node(self, query_graph, qnode_id):
+        for node in query_graph.nodes:
+            if node.id == qnode_id:
+                return node
+        return None
 
     def __convert_standard_kg_to_dict_kg(self, knowledge_graph):
         dict_kg = dict()
