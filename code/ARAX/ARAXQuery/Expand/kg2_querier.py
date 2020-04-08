@@ -125,7 +125,8 @@ class KG2Querier:
             self.response.error(f"Encountered an error interacting with KG2 neo4j. {tb}",
                                 error_code=error_type.__name__)
         else:
-            if len(self.query_results) == 0:
+            no_results = any(len(self.query_results[0].get(column)) == 0 for column in self.query_results[0])
+            if no_results:
                 self.response.warning("No paths were found in KG2 satisfying this query graph")
             else:
                 self.response.info(f"Query for edge {self.query_graph.edges[0].id} returned results")
