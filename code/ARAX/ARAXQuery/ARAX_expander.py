@@ -81,25 +81,33 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
 
         #### Do the actual expansion!
         response.debug(f"Applying Expand to Message with parameters {parameters}")
+        edge_id = self.parameters['edge_id']
+        edges_to_expand_string = f"edges {', '.join(edge_id)}" if type(edge_id) is list else f"edge {edge_id}"
+        response.info(f"Beginning expansion of {edges_to_expand_string} using {self.parameters['kp']}")
 
         # Convert message knowledge graph to dictionary format, for faster processing
         dict_version_of_kg = self.__convert_standard_kg_to_dict_kg(self.message.knowledge_graph)
         self.message.knowledge_graph = dict_version_of_kg
 
-        # Extract the sub-query to expand
+        self.response.debug("Extracting sub query graph to expand")
         query_sub_graph = self.__extract_subgraph_to_expand(self.parameters['edge_id'])
         if response.status != 'OK':
             return response
+        self.response.debug(f"Query graph to expand is: {query_sub_graph.to_dict()}")
 
-        # Then answer that query using specified knowledge provider
-        answer_knowledge_graph = self.__answer_query(query_sub_graph, self.parameters['kp'])
-        if response.status != 'OK':
-            return response
+        # Expand the query graph edge by edge because it's much faster for neo4j queries
+        ordered_edges = self.__get_order_to_expand_edges_in(query_sub_graph)
+        for edge in ordered_edges:
+            self.response.info(f"Expanding edge {edge.id}")
+            edge_query_graph = self.__extract_subgraph_to_expand(edge.id)
 
-        # And add our answer knowledge graph to the overarching knowledge graph
-        self.__merge_answer_kg_into_message_kg(answer_knowledge_graph)
-        if response.status != 'OK':
-            return response
+            answer_knowledge_graph = self.__answer_query(edge_query_graph, self.parameters['kp'])
+            if response.status != 'OK':
+                return response
+
+            self.__merge_answer_kg_into_message_kg(answer_knowledge_graph)
+            if response.status != 'OK':
+                return response
 
         # Convert message knowledge graph back to API standard format
         standard_kg = self.__convert_dict_kg_to_standard_kg(self.message.knowledge_graph)
@@ -117,7 +125,6 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         :param qedge_ids_to_expand: A single qedge_id (str) OR a list of qedge_ids.
         :return: A query graph, in Translator API standard format.
         """
-        self.response.info("Extracting sub query graph to expand")
         query_graph = self.message.query_graph
         sub_query_graph = QueryGraph()
         sub_query_graph.nodes = []
@@ -147,7 +154,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
                     if not any(qedge.id == new_qedge.id for qedge in sub_query_graph.edges):
                         sub_query_graph.edges.append(new_qedge)
 
-                    # Check for (unusual) case in which this edge has already been expanded in a prior Expand() call
+                    # Check for (unusual) case in which this edge has already been expanded (e.g., in a prior Expand() call)
                     edge_has_already_been_expanded = False
                     if any(node.qnode_id == qnodes[0].id for node in self.message.knowledge_graph['nodes'].values()) and \
                             any(node.qnode_id == qnodes[1].id for node in self.message.knowledge_graph['nodes'].values()):
@@ -170,6 +177,31 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
 
         return sub_query_graph
 
+    def __get_order_to_expand_edges_in(self, query_graph):
+        edges_remaining = [edge for edge in query_graph.edges]
+        ordered_edges = []
+        while edges_remaining:
+            if not ordered_edges:
+                # Start with an edge that has a node with a curie specified
+                edge_with_curie = self.__get_edge_with_curie_node(query_graph)
+                first_edge = edge_with_curie if edge_with_curie else edges_remaining[0]
+                ordered_edges = [first_edge]
+                edges_remaining.pop(edges_remaining.index(first_edge))
+            else:
+                # Add connected edges in a rightward direction if possible
+                right_end_edge = ordered_edges[-1]
+                edge_connected_to_right_end = self.__find_connected_edge(edges_remaining, right_end_edge)
+                if edge_connected_to_right_end:
+                    ordered_edges.append(edge_connected_to_right_end)
+                    edges_remaining.pop(edges_remaining.index(edge_connected_to_right_end))
+                else:
+                    left_end_edge = ordered_edges[0]
+                    edge_connected_to_left_end = self.__find_connected_edge(edges_remaining, left_end_edge)
+                    if edge_connected_to_left_end:
+                        ordered_edges.insert(0, edge_connected_to_left_end)
+                        edges_remaining.pop(edges_remaining.index(edge_connected_to_left_end))
+        return ordered_edges
+
     def __answer_query(self, query_graph, kp_to_use):
         """
         This function answers a query using the specified knowledge provider (KG1 or KG2 for now, with other KPs to be
@@ -190,7 +222,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
                 from Expand.kg1_querier import KG1Querier
                 querier = KG1Querier(self.response)
 
-            self.response.info(f"Sending sub query graph to {type(querier).__name__}: {query_graph.to_dict()}")
+            self.response.debug(f"Sending edge query graph to {type(querier).__name__}: {query_graph.to_dict()}")
             answer_knowledge_graph = querier.answer_query(query_graph)
             return answer_knowledge_graph
         else:
@@ -205,7 +237,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         :param knowledge_graph: An (almost) Translator API standard knowledge graph (dictionary version).
         :return: None
         """
-        self.response.info("Merging answer knowledge graph into Message.KnowledgeGraph")
+        self.response.debug("Merging results into Message.KnowledgeGraph")
         answer_nodes = knowledge_graph.get('nodes')
         answer_edges = knowledge_graph.get('edges')
         existing_nodes = self.message.knowledge_graph.get('nodes')
@@ -227,6 +259,28 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
                 pass
             else:
                 existing_edges[edge_key] = edge
+
+    def __get_edge_with_curie_node(self, query_graph):
+        for edge in query_graph.edges:
+            source_node = self.__get_query_node(query_graph, edge.source_id)
+            target_node = self.__get_query_node(query_graph, edge.target_id)
+            if source_node.curie or target_node.curie:
+                return edge
+        return None
+
+    def __find_connected_edge(self, edge_list, edge):
+        edge_node_ids = {edge.source_id, edge.target_id}
+        for potential_connected_edge in edge_list:
+            potential_connected_edge_node_ids = {potential_connected_edge.source_id, potential_connected_edge.target_id}
+            if edge_node_ids.intersection(potential_connected_edge_node_ids):
+                return potential_connected_edge
+        return None
+
+    def __get_query_node(self, query_graph, qnode_id):
+        for node in query_graph.nodes:
+            if node.id == qnode_id:
+                return node
+        return None
 
     def __convert_standard_kg_to_dict_kg(self, knowledge_graph):
         dict_kg = dict()
@@ -284,7 +338,7 @@ def main():
         "add_qnode(id=n01, type=protein, is_set=True)",
         "add_qnode(id=n02, type=chemical_substance)",
         "add_qedge(id=e00, source_id=n01, target_id=n00)",
-        "add_qedge(id=e01, source_id=n01, target_id=n02)",
+        "add_qedge(id=e01, source_id=n01, target_id=n02, type=molecularly_interacts_with)",
         # "add_qnode(curie=DOID:8398, id=n00)",  # osteoarthritis
         # "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
         # "add_qnode(type=disease, is_set=true, id=n02)",
@@ -298,10 +352,13 @@ def main():
         # "add_qnode(id=n00, curie=DOID:0060227)",  # Adams-Oliver
         # "add_qnode(id=n01, type=protein)",
         # "add_qedge(id=e00, source_id=n01, target_id=n00)",
-        "expand(edge_id=e00, kp=ARAX/KG2)",
-        "expand(edge_id=e00)",
+        # "add_qnode(id=n00, curie=DOID:0050156)",  # idiopathic pulmonary fibrosis
+        # "add_qnode(id=n01, type=chemical_substance)",
+        # "add_qedge(id=e00, source_id=n01, target_id=n00)",
+        # "expand(edge_id=e00, kp=ARAX/KG2)",
+        # "expand(edge_id=e00, kp=ARAX/KG2)",
         # "expand(edge_id=e01, kp=ARAX/KG2)",
-        # "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
+        "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
         "return(message=true, store=false)",
     ]
 
