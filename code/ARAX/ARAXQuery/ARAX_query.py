@@ -9,6 +9,7 @@ import re
 from datetime import datetime
 import subprocess
 import traceback
+from collections import Counter
 
 from response import Response
 from query_graph_info import QueryGraphInfo
@@ -813,6 +814,8 @@ def main():
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "add_qedge(source_id=n01, target_id=n02, id=e01, type=molecularly_interacts_with)",
             "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",  # seems to work just fine
+            #"filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 203:  # KG2 version of demo example 3 (but using idiopathic pulmonary fibrosis)
@@ -854,29 +857,49 @@ def main():
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
     print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     #print(response.show(level=Response.DEBUG))
+
     print(response.show(level=Response.DEBUG))
+
     print(f"Number of results: {len(message.results)}")
-    print(f"Drugs names in the results: {[x.name for x in message.knowledge_graph.nodes if 'chemical_substance' in x.type]}")
+
+    #print(f"Drugs names in the results: {[x.name for x in message.knowledge_graph.nodes if 'chemical_substance' in x.type or 'drug' in x.type]}")
+
     #print(json.dumps(ast.literal_eval(repr(message.results[0])), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.results)), sort_keys=True, indent=2))
     #print(set.union(*[set(x.qg_id for x in r.edge_bindings if x.qg_id.startswith('J')) for r in message.results]))
-    try:
-        print(f"Result qg_id's in results: {set.union(*[set(x.qg_id for x in r.edge_bindings) for r in message.results])}")
-    except:
-        pass
 
-    from collections import Counter
-    vals = []
-    for edge in message.knowledge_graph.edges:
-        if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
-            for attr in edge.edge_attributes:
-                vals.append((attr.name, attr.value))
+    # look for qg id's in edge_bindings in results
+    if False:
+        try:
+            print(f"Result qg_id's in results: {set.union(*[set(x.qg_id for x in r.edge_bindings) for r in message.results])}")
+        except:
+            pass
 
-    #print(sorted(Counter(vals).items(), key=lambda x:float(x[0][1])))
+    # Check edge attributes
+    if True:
+        vals = []
+        num_edges_show = 2
+        num_edges_shown = 0
+        attribute_of_interest = 'jaccard_index'
+        for edge in message.knowledge_graph.edges:
+            if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
+                for edge_attribute in edge.edge_attributes:
+                    if edge_attribute.name == attribute_of_interest:
+                        if num_edges_shown < num_edges_show:
+                            print(json.dumps(ast.literal_eval(repr(edge)), sort_keys=True, indent=2))
+                            num_edges_shown += 1
+                        #for attr in edge.edge_attributes:
+                        #    vals.append((attr.name, attr.value))
+                        vals.append((edge_attribute.name, edge_attribute.value))
+        print(f"number of edges with attribute {attribute_of_interest}: {len(vals)}")
+        # show all the values of the edge attributes
+        #print(sorted(Counter(vals).items(), key=lambda x:float(x[0][1])))
 
-    for edge in message.knowledge_graph.edges:
-        if edge.source_id == "CHEMBL.COMPOUND:CHEMBL452076" or edge.target_id == "CHEMBL.COMPOUND:CHEMBL452076":
-            print(edge)
+    # check for edges from a given drug
+    if False:
+        for edge in message.knowledge_graph.edges:
+            if edge.source_id == "CHEMBL.COMPOUND:CHEMBL452076" or edge.target_id == "CHEMBL.COMPOUND:CHEMBL452076":
+                print(edge)
 
     #for node in message.knowledge_graph.nodes:
     #    print(f"{node.name} {node.type[0]}")
@@ -944,7 +967,8 @@ def main():
     
     #print(len(message.knowledge_graph.nodes))
 
-    if True:
+    # check number of TP's for example 3
+    if False:
         proteins = []
         for node in message.knowledge_graph.nodes:
             if node.type[0] == "protein":
