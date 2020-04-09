@@ -10,6 +10,7 @@ from datetime import datetime
 import subprocess
 import traceback
 from collections import Counter
+import numpy as np
 
 from response import Response
 from query_graph_info import QueryGraphInfo
@@ -812,11 +813,15 @@ def main():
             "add_qnode(type=protein, is_set=true, id=n01)",
             "add_qnode(type=chemical_substance, id=n02)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
-            "add_qedge(source_id=n01, target_id=n02, id=e01, type=molecularly_interacts_with)",
-            "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=molecularly_interacts_with)",  # for KG2
+            #"add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",  # for KG1
+            "expand(edge_id=[e00,e01], kp=ARAX/KG2)",  # for KG2
+            #"expand(edge_id=[e00,e01], kp=ARAX/KG1)",  # for KG1
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",  # seems to work just fine
-            #"filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
-            "return(message=true, store=false)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.008, remove_connected_nodes=t, qnode_id=n02)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
+            "return(message=true, store=true)",
             ] } }
     elif params.example_number == 203:  # KG2 version of demo example 3 (but using idiopathic pulmonary fibrosis)
         query = { "previous_message_processing_plan": { "processing_actions": [
@@ -862,7 +867,9 @@ def main():
 
     print(f"Number of results: {len(message.results)}")
 
-    #print(f"Drugs names in the results: {[x.name for x in message.knowledge_graph.nodes if 'chemical_substance' in x.type or 'drug' in x.type]}")
+    #print(f"Drugs names in the KG: {[x.name for x in message.knowledge_graph.nodes if 'chemical_substance' in x.type or 'drug' in x.type]}")
+
+    print(f"Essence names in the answers: {[x.essence for x in message.results]}")
 
     #print(json.dumps(ast.literal_eval(repr(message.results[0])), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.results)), sort_keys=True, indent=2))
@@ -892,6 +899,10 @@ def main():
                         #    vals.append((attr.name, attr.value))
                         vals.append((edge_attribute.name, edge_attribute.value))
         print(f"number of edges with attribute {attribute_of_interest}: {len(vals)}")
+        print(f"Mean of attribute {attribute_of_interest}: {np.mean([x[1] for x in vals])}")
+        print(f"Median of attribute {attribute_of_interest}: {np.median([x[1] for x in vals])}")
+        print(f"Max of attribute {attribute_of_interest}: {np.max([x[1] for x in vals])}")
+        print(f"Min of attribute {attribute_of_interest}: {np.min([x[1] for x in vals])}")
         # show all the values of the edge attributes
         #print(sorted(Counter(vals).items(), key=lambda x:float(x[0][1])))
 
