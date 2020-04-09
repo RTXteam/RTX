@@ -821,17 +821,21 @@ def main():
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.008, remove_connected_nodes=t, qnode_id=n02)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
-            "return(message=true, store=true)",
+            "return(message=true, store=false)",
             ] } }
     elif params.example_number == 203:  # KG2 version of demo example 3 (but using idiopathic pulmonary fibrosis)
         query = { "previous_message_processing_plan": { "processing_actions": [
             "create_message",
-            "add_qnode(id=n00, curie=DOID:0050156)",  # idiopathic pulmonary fibrosis
+            #"add_qnode(id=n00, curie=DOID:0050156)",  # idiopathic pulmonary fibrosis
+            "add_qnode(curie=DOID:9406, id=n00)",  # hypopituitarism, original demo example
             "add_qnode(id=n01, type=chemical_substance, is_set=true)",
             "add_qnode(id=n02, type=protein)",
             "add_qedge(id=e00, source_id=n00, target_id=n01)",
             "add_qedge(id=e01, source_id=n01, target_id=n02)",
             "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
+            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=0, remove_connected_nodes=t, qnode_id=n01)",
+            #"filter_kg(action=remove_orphaned_nodes, node_type=protein)",
             "return(message=true, store=false)",
             ] } }
     else:
@@ -887,22 +891,27 @@ def main():
         vals = []
         num_edges_show = 2
         num_edges_shown = 0
-        attribute_of_interest = 'jaccard_index'
+        #attribute_of_interest = 'jaccard_index'
+        attribute_of_interest = 'observed_expected_ratio'
+        all_attribute_names = set()
         for edge in message.knowledge_graph.edges:
             if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
                 for edge_attribute in edge.edge_attributes:
+                    all_attribute_names.add(edge_attribute.name)
                     if edge_attribute.name == attribute_of_interest:
                         if num_edges_shown < num_edges_show:
                             print(json.dumps(ast.literal_eval(repr(edge)), sort_keys=True, indent=2))
                             num_edges_shown += 1
                         #for attr in edge.edge_attributes:
                         #    vals.append((attr.name, attr.value))
-                        vals.append((edge_attribute.name, edge_attribute.value))
-        print(f"number of edges with attribute {attribute_of_interest}: {len(vals)}")
-        print(f"Mean of attribute {attribute_of_interest}: {np.mean([x[1] for x in vals])}")
-        print(f"Median of attribute {attribute_of_interest}: {np.median([x[1] for x in vals])}")
-        print(f"Max of attribute {attribute_of_interest}: {np.max([x[1] for x in vals])}")
-        print(f"Min of attribute {attribute_of_interest}: {np.min([x[1] for x in vals])}")
+                        vals.append((edge_attribute.name, float(edge_attribute.value)))  # FIXME: some edge_attributes are floats, others are strings, object model weirdness
+        print(f"All edge attribute names: {all_attribute_names}")
+        if vals:
+            print(f"number of edges with attribute {attribute_of_interest}: {len(vals)}")
+            print(f"Mean of attribute {attribute_of_interest}: {np.mean([x[1] for x in vals])}")
+            print(f"Median of attribute {attribute_of_interest}: {np.median([x[1] for x in vals])}")
+            print(f"Max of attribute {attribute_of_interest}: {np.max([x[1] for x in vals])}")
+            print(f"Min of attribute {attribute_of_interest}: {np.min([x[1] for x in vals])}")
         # show all the values of the edge attributes
         #print(sorted(Counter(vals).items(), key=lambda x:float(x[0][1])))
 
@@ -1039,5 +1048,8 @@ def main():
         print(f"For example 15 (demo eg. 3), number of TP proteins: {len(set(known_proteins).intersection(set(proteins)))}")  # fill these in after finding a good example
 
     print(f"Number of KnowledgeProviders in KG: {Counter([x.provided_by for x in message.knowledge_graph.edges])}")
+
+# print the message id at the bottom for convenience too:
+    print(f"message id: {json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2)}")
 
 if __name__ == "__main__": main()
