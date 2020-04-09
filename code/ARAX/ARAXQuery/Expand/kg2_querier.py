@@ -158,11 +158,13 @@ class KG2Querier:
 
         swagger_node.qnode_id = qnode_id
         swagger_node.id = neo4j_node.get('id')
-        swagger_node.type = neo4j_node.get('category_label')
         swagger_node.name = neo4j_node.get('name')
         swagger_node.description = neo4j_node.get('description')
         swagger_node.uri = neo4j_node.get('iri')
         swagger_node.node_attributes = []
+
+        node_category = neo4j_node.get('category_label')
+        swagger_node.type = node_category if type(node_category) is list else [node_category]
 
         # Fill out the 'symbol' property (only really relevant for nodes from UniProtKB)
         if swagger_node.symbol is None and swagger_node.id.lower().startswith("uniprot"):
