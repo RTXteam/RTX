@@ -105,7 +105,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
             if response.status != 'OK':
                 return response
 
-            self.__merge_answer_kg_into_message_kg(answer_knowledge_graph)
+            self.__merge_answer_kg_into_message_kg(answer_knowledge_graph, edge_query_graph)
             if response.status != 'OK':
                 return response
 
@@ -230,18 +230,38 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
                                 f"{', '.join(valid_kps)} (or you can omit this parameter).", error_code="UnknownValue")
             return None
 
-    def __merge_answer_kg_into_message_kg(self, knowledge_graph):
+    def __merge_answer_kg_into_message_kg(self, answer_knowledge_graph, edge_query_graph):
         """
         This function merges a knowledge graph into the overarching knowledge graph (stored in message.knowledge_graph).
         It prevents duplicate nodes/edges in the merged kg.
-        :param knowledge_graph: An (almost) Translator API standard knowledge graph (dictionary version).
+        :param answer_knowledge_graph: An (almost) Translator API standard knowledge graph (dictionary version).
         :return: None
         """
         self.response.debug("Merging results into Message.KnowledgeGraph")
-        answer_nodes = knowledge_graph.get('nodes')
-        answer_edges = knowledge_graph.get('edges')
+        answer_nodes = answer_knowledge_graph.get('nodes')
+        answer_edges = answer_knowledge_graph.get('edges')
         existing_nodes = self.message.knowledge_graph.get('nodes')
         existing_edges = self.message.knowledge_graph.get('edges')
+
+        # Prune any dead end intermediate nodes in overarching KG, if this is not the first edge to be expanded
+        if answer_nodes:
+            for qnode in edge_query_graph.nodes:
+                qnode_already_fulfilled = any(node.qnode_id == qnode.id for node in existing_nodes.values())
+                if qnode_already_fulfilled and type(qnode.curie) is list:
+                    # Figure out which nodes are dead ends
+                    existing_nodes_for_this_qnode = [node.id for node in existing_nodes.values() if node.qnode_id == qnode.id]
+                    answer_nodes_for_this_qnode = [node.id for node in answer_nodes.values() if node.qnode_id == qnode.id]
+                    existing_nodes_not_in_answer = set(existing_nodes_for_this_qnode).difference(set(answer_nodes_for_this_qnode))
+                    self.response.debug(f"Pruning {len(existing_nodes_not_in_answer)} dead end nodes corresponding to "
+                                        f"qnode {qnode.id} ({qnode.type})")
+
+                    # Remove them and their connected edges
+                    for node_id in existing_nodes_not_in_answer:
+                        existing_nodes.pop(node_id)
+                        connected_edges_to_remove = [edge.id for edge in existing_edges.values() if
+                                                     edge.source_id == node_id or edge.target_id == node_id]
+                        for edge in connected_edges_to_remove:
+                            existing_edges.pop(edge)
 
         for node_key, node in answer_nodes.items():
             # Check if this is a duplicate node
@@ -338,7 +358,7 @@ def main():
         "add_qnode(id=n01, type=protein, is_set=True)",
         "add_qnode(id=n02, type=chemical_substance)",
         "add_qedge(id=e00, source_id=n01, target_id=n00)",
-        "add_qedge(id=e01, source_id=n01, target_id=n02, type=molecularly_interacts_with)",
+        "add_qedge(id=e01, source_id=n01, target_id=n02, type=physically_interacts_with)",
         # "add_qnode(curie=DOID:8398, id=n00)",  # osteoarthritis
         # "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
         # "add_qnode(type=disease, is_set=true, id=n02)",
@@ -353,12 +373,14 @@ def main():
         # "add_qnode(id=n01, type=protein)",
         # "add_qedge(id=e00, source_id=n01, target_id=n00)",
         # "add_qnode(id=n00, curie=DOID:0050156)",  # idiopathic pulmonary fibrosis
-        # "add_qnode(id=n01, type=chemical_substance)",
-        # "add_qedge(id=e00, source_id=n01, target_id=n00)",
+        # "add_qnode(id=n01, type=chemical_substance, is_set=true)",
+        # "add_qnode(id=n02, type=protein)",
+        # "add_qedge(id=e00, source_id=n00, target_id=n01)",
+        # "add_qedge(id=e01, source_id=n01, target_id=n02)",
         # "expand(edge_id=e00, kp=ARAX/KG2)",
         # "expand(edge_id=e00, kp=ARAX/KG2)",
         # "expand(edge_id=e01, kp=ARAX/KG2)",
-        "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
+        "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
         "return(message=true, store=false)",
     ]
 
