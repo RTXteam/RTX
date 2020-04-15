@@ -55,3 +55,5 @@ Setup letsencrypt with the config file located in [RTX/notes/ARAX/letsencrypt-ar
 sudo docker run -d -it --name <container name> --mount type=bind,source=<path to directory with data files>,target=/mnt/data -p 8080:80 -p 7473:7473 -p 7474:7474 -p 7687:7687 rtx1:20191205
 ```
 
+**TODO: flesh out letsencrypt and nginx sections**
+
