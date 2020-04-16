@@ -24,7 +24,7 @@ class ARAXExpander:
     def __init__(self):
         self.response = None
         self.message = None
-        self.parameters = {'edge_id': None, 'kp': None}
+        self.parameters = {'edge_id': None, 'kp': None, 'synonym_handling': None}
 
     def describe_me(self):
         """
@@ -43,7 +43,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         params_dict['brief_description'] = brief_description
         params_dict['edge_id'] = {"a query graph edge ID or list of such id's (required)"}  # this is a workaround due to how self.parameters is utilized in this class
         params_dict['kp'] = {"the knowledge provider to use - current options are 'ARAX/KG1' or 'ARAX/KG2' (optional, default is ARAX/KG1)"}
-        # TODO: will need to update manually if more self.parameters are added
+        params_dict['synonym_handling'] = {"how to handle synonyms for query nodes with a curie - options are 'map_back' (default; use synonyms but map edges using them back to the original curie), 'add_all' (use synonyms and add synonym nodes to answer as they are), or 'none' (don't use synonyms)."}
         # eg. params_dict[node_id] = {"a query graph node ID or list of such id's (required)"} as per issue #640
         description_list.append(params_dict)
         return description_list
@@ -64,6 +64,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         #### Define a complete set of allowed parameters and their defaults
         parameters = self.parameters
         parameters['kp'] = None  # Make sure the kp is reset every time we apply expand
+        parameters['synonym_handling'] = 'map_back'
 
         #### Loop through the input_parameters and override the defaults and make sure they are allowed
         for key,value in input_parameters.items():
@@ -108,6 +109,9 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
             self.__merge_answer_kg_into_message_kg(answer_knowledge_graph, edge_query_graph)
             if response.status != 'OK':
                 return response
+
+        # Prune any remaining dead-end paths in our knowledge graph
+        self.__prune_dead_ends(self.message.knowledge_graph)
 
         # Convert message knowledge graph back to API standard format
         standard_kg = self.__convert_dict_kg_to_standard_kg(self.message.knowledge_graph)
@@ -202,6 +206,55 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
                         edges_remaining.pop(edges_remaining.index(edge_connected_to_left_end))
         return ordered_edges
 
+    def __get_ordered_query_nodes(self, query_graph):
+        ordered_edges = self.__get_order_to_expand_edges_in(query_graph)
+        ordered_nodes = []
+        # First add intermediate nodes in order
+        if len(ordered_edges) > 1:
+            for num in range(len(ordered_edges) - 1):
+                current_edge = ordered_edges[num]
+                next_edge = ordered_edges[num + 1]
+                current_edge_node_ids = {current_edge.source_id, current_edge.target_id}
+                next_edge_node_ids = {next_edge.source_id, next_edge.target_id}
+                common_node_id = list(current_edge_node_ids.intersection(next_edge_node_ids))[0]  # Note: Only handle linear query graphs
+                ordered_nodes.append(self.__get_query_node(query_graph, common_node_id))
+
+            # Then tack the initial node onto the beginning
+            first_edge = ordered_edges[0]
+            second_edge = ordered_edges[1]
+            first_edge_node_ids = {first_edge.source_id, first_edge.target_id}
+            second_edge_node_ids = {second_edge.source_id, second_edge.target_id}
+            first_node_id = list(first_edge_node_ids.difference(second_edge_node_ids))[0]
+            ordered_nodes.insert(0, self.__get_query_node(query_graph, first_node_id))
+
+            # And tack the last node onto the end
+            last_edge = ordered_edges[-1]
+            second_to_last_edge = ordered_edges[-2]
+            last_edge_node_ids = {last_edge.source_id, last_edge.target_id}
+            second_to_last_edge_node_ids = {second_to_last_edge.source_id, second_to_last_edge.target_id}
+            last_node_id = list(last_edge_node_ids.difference(second_to_last_edge_node_ids))[0]
+            ordered_nodes.append(self.__get_query_node(query_graph, last_node_id))
+        else:
+            # TODO: Pick first node to be one with curie?
+            source_node = self.__get_query_node(query_graph, ordered_edges[0].source_id)
+            target_node = self.__get_query_node(query_graph, ordered_edges[0].target_id)
+            ordered_nodes = [source_node, target_node]
+
+        return ordered_nodes
+
+    def __get_qnode_to_qedge_dict(self, query_graph):
+        ordered_edges = self.__get_order_to_expand_edges_in(query_graph)
+        ordered_nodes = self.__get_ordered_query_nodes(query_graph)
+        qnode_to_qedge_dict = dict()
+        for node in ordered_nodes:
+            node_index = ordered_nodes.index(node)
+            left_edge_index = node_index - 1
+            right_edge_index = node_index
+            left_edge_id = ordered_edges[left_edge_index].id if left_edge_index >= 0 else None
+            right_edge_id = ordered_edges[right_edge_index].id if right_edge_index < len(ordered_edges) else None
+            qnode_to_qedge_dict[node.id] = {'left': left_edge_id, 'right': right_edge_id}
+        return qnode_to_qedge_dict
+
     def __answer_query(self, query_graph, kp_to_use):
         """
         This function answers a query using the specified knowledge provider (KG1 or KG2 for now, with other KPs to be
@@ -280,6 +333,42 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
             else:
                 existing_edges[edge_key] = edge
 
+    def __prune_dead_ends(self, knowledge_graph):
+        # First figure out our intermediate query nodes and their corresponding query edges
+        ordered_qnodes = self.__get_ordered_query_nodes(self.message.query_graph)
+        qnodes_to_qedges_dict = self.__get_qnode_to_qedge_dict(self.message.query_graph)
+
+        if len(ordered_qnodes) > 2:
+            # Loop through ordered qnodes (layers) in reverse order (skipping the last)
+            index = len(ordered_qnodes) - 2
+            while index >= 0:
+                current_qnode_id = ordered_qnodes[index].id
+                left_qedge_id = qnodes_to_qedges_dict[current_qnode_id].get('left')
+
+                # Start by adding all nodes of this qnode_id to the dict
+                nodes_to_edges_dict = dict()
+                for node in knowledge_graph['nodes'].values():
+                    if node.qnode_id == current_qnode_id:
+                        nodes_to_edges_dict[node.id] = {'left': [], 'right': []}
+
+                # Fill out the dict, adding edges to their nodes' edge lists
+                for edge in knowledge_graph['edges'].values():
+                    edge_node_ids = [edge.source_id, edge.target_id]
+                    side = 'left' if edge.qedge_id == left_qedge_id else 'right'
+                    for node_id in edge_node_ids:
+                        if node_id in nodes_to_edges_dict:
+                            nodes_to_edges_dict[node_id][side].append(edge.id)
+
+                # Make sure each node has a right-side edge (indicating it's not a dead end)
+                for node_id, edge_dict in nodes_to_edges_dict.items():
+                    if not edge_dict.get('right'):
+                        # If not, remove it and its left edges from the knowledge graph
+                        knowledge_graph['nodes'].pop(node_id)
+                        for left_edge_id in edge_dict.get('left'):
+                            knowledge_graph['edges'].pop(left_edge_id)
+
+                index -= 1
+
     def __get_edge_with_curie_node(self, query_graph):
         for edge in query_graph.edges:
             source_node = self.__get_query_node(query_graph, edge.source_id)
@@ -356,9 +445,9 @@ def main():
         # "add_qedge(id=e00, source_id=n00, target_id=n01, type=molecularly_interacts_with)",
         "add_qnode(id=n00, curie=DOID:14330)",  # parkinson's
         "add_qnode(id=n01, type=protein, is_set=True)",
-        "add_qnode(id=n02, type=chemical_substance)",
+        # "add_qnode(id=n02, type=chemical_substance)",
         "add_qedge(id=e00, source_id=n01, target_id=n00)",
-        "add_qedge(id=e01, source_id=n01, target_id=n02, type=physically_interacts_with)",
+        # "add_qedge(id=e01, source_id=n01, target_id=n02, type=physically_interacts_with)",
         # "add_qnode(curie=DOID:8398, id=n00)",  # osteoarthritis
         # "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
         # "add_qnode(type=disease, is_set=true, id=n02)",
@@ -377,10 +466,10 @@ def main():
         # "add_qnode(id=n02, type=protein)",
         # "add_qedge(id=e00, source_id=n00, target_id=n01)",
         # "add_qedge(id=e01, source_id=n01, target_id=n02)",
-        # "expand(edge_id=e00, kp=ARAX/KG2)",
+        "expand(edge_id=e00, kp=ARAX/KG2)",
         # "expand(edge_id=e00, kp=ARAX/KG2)",
         # "expand(edge_id=e01, kp=ARAX/KG2)",
-        "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
+        # "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
         "return(message=true, store=false)",
     ]
 

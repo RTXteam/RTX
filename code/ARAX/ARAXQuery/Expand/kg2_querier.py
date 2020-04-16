@@ -38,8 +38,9 @@ class KG2Querier:
         lists.)
         """
         self.query_graph = query_graph
+        dsl_parameters = self.response.data['parameters']
 
-        self.__add_curie_synonyms_to_query_graph()
+        node_synonym_usage_info = self.__add_curie_synonyms_to_query_graph()
         if not self.response.status == 'OK':
             return self.final_kg
 
@@ -51,7 +52,7 @@ class KG2Querier:
         if not self.response.status == 'OK':
             return self.final_kg
 
-        self.__add_answers_to_kg()
+        self.__add_answers_to_kg(dsl_parameters['synonym_handling'], node_synonym_usage_info)
         if not self.response.status == 'OK':
             return self.final_kg
 
@@ -60,12 +61,15 @@ class KG2Querier:
     def __add_curie_synonyms_to_query_graph(self):
         self.response.debug("Looking for curie synonyms to use")
         KGNI = KGNodeIndex()
+        synonym_usages_dict = dict()
         for node in self.query_graph.nodes:
             original_curie = node.curie
             if original_curie and type(original_curie) is str:  # Important because sometimes lists of curies are passed behind the scenes (when expanding one edge at a time)
                 node.curie = KGNI.get_equivalent_curies(original_curie)
                 node.type = None  # Equivalent curie types may be different than the original, so we clear this
                 self.response.info(f"Using equivalent curies for node {original_curie}: {node.curie}")
+                synonym_usages_dict[node.id] = {'original_curie': original_curie, 'synonym_curies': node.curie}
+        return synonym_usages_dict
 
     def __generate_cypher_to_run(self):
         self.response.debug(f"Generating cypher for edge {self.query_graph.edges[0].id} query graph")
@@ -135,22 +139,40 @@ class KG2Querier:
                 num_results_string = ", ".join([f"{column}: {value}" for column, value in columns_with_lengths.items()])
                 self.response.info(f"Query for edge {self.query_graph.edges[0].id} returned results ({num_results_string})")
 
-    def __add_answers_to_kg(self):
+    def __add_answers_to_kg(self, synonym_handling, synonym_usages_dict):
         self.response.debug(f"Processing query results for edge {self.query_graph.edges[0].id}")
 
-        # Create swagger model nodes/edges based on our results and add to answer knowledge graph
         results_table = self.query_results[0]
         column_names = [column_name for column_name in results_table]
         for column_name in column_names:
+            # Load answer nodes into our knowledge graph
             if column_name.startswith('nodes'):  # Example column name: 'nodes_n00'
                 qnode_id = column_name.replace("nodes_", "", 1)
                 for node in results_table.get(column_name):
+                    # Create an API object model version of this node
                     swagger_node = self.__create_swagger_node_from_neo4j_node(node, qnode_id)
-                    self.final_kg['nodes'][swagger_node.id] = swagger_node
+                    if synonym_handling == 'map_back' and qnode_id in synonym_usages_dict:
+                        # Only keep the node corresponding to the original curie (discard synonym nodes)
+                        original_curie = synonym_usages_dict[qnode_id].get('original_curie')
+                        if swagger_node.id == original_curie:
+                            self.final_kg['nodes'][swagger_node.id] = swagger_node
+                    else:
+                        self.final_kg['nodes'][swagger_node.id] = swagger_node
+            # Load answer edges into our knowledge graph
             elif column_name.startswith('edges'):  # Example column name: 'edges_e01'
                 qedge_id = column_name.replace("edges_", "", 1)
                 for edge in results_table.get(column_name):
+                    # Create an API object model version of this edge
                     swagger_edge = self.__create_swagger_edge_from_neo4j_edge(edge, qedge_id)
+                    if synonym_handling == 'map_back':
+                        # Edit edge to point to original curie, if it uses a synonym
+                        for qnode_id, synonym_info in synonym_usages_dict.items():
+                            if swagger_edge.source_id in synonym_info.get('synonym_curies'):
+                                swagger_edge.source_id = synonym_info.get('original_curie')
+                                swagger_edge.id = swagger_edge.source_id + "--" + swagger_edge.type + "--" + swagger_edge.target_id
+                            if swagger_edge.target_id in synonym_info.get('synonym_curies'):
+                                swagger_edge.target_id = synonym_info.get('original_curie')
+                                swagger_edge.id = swagger_edge.source_id + "--" + swagger_edge.type + "--" + swagger_edge.target_id
                     self.final_kg['edges'][swagger_edge.id] = swagger_edge
 
     def __create_swagger_node_from_neo4j_node(self, neo4j_node, qnode_id):
