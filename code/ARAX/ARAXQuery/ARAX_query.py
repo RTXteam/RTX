@@ -834,7 +834,8 @@ def main():
             "add_qedge(id=e01, source_id=n01, target_id=n02)",
             "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
-            "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=0, remove_connected_nodes=t, qnode_id=n01)",
+            "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n01, target_qnode_id=n02)",
+            #"filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=0, remove_connected_nodes=t, qnode_id=n01)",
             #"filter_kg(action=remove_orphaned_nodes, node_type=protein)",
             "return(message=true, store=false)",
             ] } }
@@ -892,7 +893,8 @@ def main():
         num_edges_show = 2
         num_edges_shown = 0
         #attribute_of_interest = 'jaccard_index'
-        attribute_of_interest = 'observed_expected_ratio'
+        #attribute_of_interest = 'observed_expected_ratio'
+        attribute_of_interest = 'ngd'
         all_attribute_names = set()
         for edge in message.knowledge_graph.edges:
             if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
