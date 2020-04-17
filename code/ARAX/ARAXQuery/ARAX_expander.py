@@ -24,7 +24,7 @@ class ARAXExpander:
     def __init__(self):
         self.response = None
         self.message = None
-        self.parameters = {'edge_id': None, 'kp': None, 'synonym_handling': None}
+        self.parameters = {'edge_id': None, 'kp': None, 'use_synonyms': None, 'synonym_handling': None}
 
     def describe_me(self):
         """
@@ -43,8 +43,8 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         params_dict['brief_description'] = brief_description
         params_dict['edge_id'] = {"a query graph edge ID or list of such id's (required)"}  # this is a workaround due to how self.parameters is utilized in this class
         params_dict['kp'] = {"the knowledge provider to use - current options are 'ARAX/KG1' or 'ARAX/KG2' (optional, default is ARAX/KG1)"}
-        params_dict['synonym_handling'] = {"how to handle synonyms for query nodes with a curie - options are 'map_back' (default; use synonyms but map edges using them back to the original curie), 'add_all' (use synonyms and add synonym nodes to answer as they are), or 'none' (don't use synonyms)."}
-        # eg. params_dict[node_id] = {"a query graph node ID or list of such id's (required)"} as per issue #640
+        params_dict['use_synonyms'] = {"whether to consider synonym curies for query nodes with a curie specified - options are 'true' or 'false' (optional, default is 'true')"}
+        params_dict['synonym_handling'] = {"how to handle synonyms in the answer - options are 'map_back' (default; use synonyms but map edges using them back to the original curie) or 'add_all' (use synonyms and add synonym nodes to answer as they are)"}
         description_list.append(params_dict)
         return description_list
 
@@ -64,6 +64,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         #### Define a complete set of allowed parameters and their defaults
         parameters = self.parameters
         parameters['kp'] = None  # Make sure the kp is reset every time we apply expand
+        parameters['use_synonyms'] = True
         parameters['synonym_handling'] = 'map_back'
 
         #### Loop through the input_parameters and override the defaults and make sure they are allowed
@@ -71,6 +72,10 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
             if key not in parameters:
                 response.error(f"Supplied parameter {key} is not permitted", error_code="UnknownParameter")
             else:
+                if type(value) is str and value.lower() == "true":
+                    value = True
+                elif type(value) is str and value.lower() == "false":
+                    value = False
                 parameters[key] = value
         #### Return if any of the parameters generated an error (showing not just the first one)
         if response.status != 'OK':

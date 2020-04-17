@@ -40,9 +40,11 @@ class KG2Querier:
         self.query_graph = query_graph
         dsl_parameters = self.response.data['parameters']
 
-        node_synonym_usage_info = self.__add_curie_synonyms_to_query_graph()
-        if not self.response.status == 'OK':
-            return self.final_kg
+        synonym_usages_dict = dict()
+        if dsl_parameters['use_synonyms']:
+            synonym_usages_dict = self.__add_curie_synonyms_to_query_graph()
+            if not self.response.status == 'OK':
+                return self.final_kg
 
         self.__generate_cypher_to_run()
         if not self.response.status == 'OK':
@@ -52,7 +54,7 @@ class KG2Querier:
         if not self.response.status == 'OK':
             return self.final_kg
 
-        self.__add_answers_to_kg(dsl_parameters['synonym_handling'], node_synonym_usage_info)
+        self.__add_answers_to_kg(dsl_parameters['synonym_handling'], synonym_usages_dict)
         if not self.response.status == 'OK':
             return self.final_kg
 
@@ -88,7 +90,7 @@ class KG2Querier:
             for node in [source_node, target_node]:
                 if node.curie:
                     if type(node.curie) is str:
-                        where_fragment = f"{node.id}.id={node.curie}"
+                        where_fragment = f"{node.id}.id='{node.curie}'"
                     else:
                         where_fragment = f"{node.id}.id in {node.curie}"
                     where_fragments.append(where_fragment)
