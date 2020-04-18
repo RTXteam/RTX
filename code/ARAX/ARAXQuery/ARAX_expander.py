@@ -272,15 +272,8 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         valid_kps = ['ARAX/KG2', 'ARAX/KG1']
 
         if kp_to_use in valid_kps or kp_to_use is None:
-            querier = None
-            if kp_to_use == 'ARAX/KG2':
-                from Expand.kg2_querier import KG2Querier
-                querier = KG2Querier(self.response)
-            else:
-                from Expand.kg1_querier import KG1Querier
-                querier = KG1Querier(self.response)
-
-            self.response.debug(f"Sending edge query graph to {type(querier).__name__}: {query_graph.to_dict()}")
+            from Expand.kg_querier import KGQuerier
+            querier = KGQuerier(self.response, kp_to_use)
             answer_knowledge_graph = querier.answer_query(query_graph)
             return answer_knowledge_graph
         else:
