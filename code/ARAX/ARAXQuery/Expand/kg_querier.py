@@ -48,7 +48,7 @@ class KGQuerier:
             if not self.response.status == 'OK':
                 return self.final_kg
 
-        self.__generate_cypher_to_run(kp)
+        self.__generate_cypher_to_run()
         if not self.response.status == 'OK':
             return self.final_kg
 
@@ -75,7 +75,7 @@ class KGQuerier:
                 synonym_usages_dict[node.id] = {'original_curie': original_curie, 'synonym_curies': node.curie}
         return synonym_usages_dict
 
-    def __generate_cypher_to_run(self, kp):
+    def __generate_cypher_to_run(self):
         self.response.debug(f"Generating cypher for edge {self.query_graph.edges[0].id} query graph")
         try:
             # Build the match clause
