@@ -44,6 +44,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         params_dict['brief_description'] = brief_description
         params_dict['edge_id'] = {"a query graph edge ID or list of such id's (required)"}  # this is a workaround due to how self.parameters is utilized in this class
         params_dict['kp'] = {"the knowledge provider to use - current options are `ARAX/KG1` or `ARAX/KG2` (optional, default is `ARAX/KG1`)"}
+        params_dict['enforce_directionality'] = {"whether to obey (vs. ignore) edge directions in query graph - options are `true` or `false` (optional, default is `false`)"}
         params_dict['use_synonyms'] = {"whether to consider synonym curies for query nodes with a curie specified - options are `true` or `false` (optional, default is `true`)"}
         params_dict['synonym_handling'] = {"how to handle synonyms in the answer - options are `map_back` (default; map edges using a synonym back to the original curie) or `add_all` (add synonym nodes as they are - no mapping/merging)"}
         params_dict['continue_if_no_results'] = {"whether to continue execution if no paths are found matching the query graph - options are `true` or `false` (optional, default is `false`)"}
@@ -66,6 +67,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         #### Define a complete set of allowed parameters and their defaults
         parameters = self.parameters
         parameters['kp'] = None  # Make sure the kp is reset every time we apply expand
+        parameters['enforce_directionality'] = False
         parameters['use_synonyms'] = True
         parameters['synonym_handling'] = 'map_back'
         parameters['continue_if_no_results'] = False

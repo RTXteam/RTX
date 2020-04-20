@@ -48,7 +48,7 @@ class KGQuerier:
             if not self.response.status == 'OK':
                 return self.final_kg
 
-        self.__generate_cypher_to_run()
+        self.__generate_cypher_to_run(dsl_parameters['enforce_directionality'])
         if not self.response.status == 'OK':
             return self.final_kg
 
@@ -75,14 +75,14 @@ class KGQuerier:
                 synonym_usages_dict[node.id] = {'original_curie': original_curie, 'synonym_curies': node.curie}
         return synonym_usages_dict
 
-    def __generate_cypher_to_run(self):
+    def __generate_cypher_to_run(self, enforce_directionality):
         self.response.debug(f"Generating cypher for edge {self.query_graph.edges[0].id} query graph")
         try:
             # Build the match clause
             edge = self.query_graph.edges[0]  # Currently only single-edge query graphs are sent to kg_querier
             source_node = self.__get_query_node(edge.source_id)
             target_node = self.__get_query_node(edge.target_id)
-            edge_cypher = self.__get_cypher_for_query_edge(edge)
+            edge_cypher = self.__get_cypher_for_query_edge(edge, enforce_directionality)
             source_node_cypher = self.__get_cypher_for_query_node(source_node)
             target_node_cypher = self.__get_cypher_for_query_node(target_node)
             match_clause = f"MATCH {source_node_cypher}{edge_cypher}{target_node_cypher}"
@@ -306,7 +306,9 @@ class KGQuerier:
         final_node_string = f"({node.id}{node_type_string})"
         return final_node_string
 
-    def __get_cypher_for_query_edge(self, edge):
+    def __get_cypher_for_query_edge(self, edge, enforce_directionality):
         edge_type_string = f":{edge.type}" if edge.type else ""
         final_edge_string = f"-[{edge.id}{edge_type_string}]-"
+        if enforce_directionality:
+            final_edge_string += ">"
         return final_edge_string
