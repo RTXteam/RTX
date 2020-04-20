@@ -325,9 +325,12 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
             if not node.qnode_id:
                 self.response.error(f"Node {node_key} in answer is missing its corresponding qnode_id", error_code="MissingProperty")
             # Check if this is a duplicate node
-            if existing_nodes.get(node_key):
-                # TODO: Add additional query node ID onto this node (if different)?
-                pass
+            existing_version_of_node = existing_nodes.get(node_key)
+            if existing_version_of_node:
+                if existing_version_of_node.qnode_id != node.qnode_id:
+                    self.response.error(f"Node {node_key} has been returned as an answer for multiple query graph nodes"
+                                        f" ({node.qnode_id} and {existing_version_of_node.qnode_id})", error_code="MultipleQGIDs")
+                    return
             else:
                 existing_nodes[node_key] = node
 
@@ -335,10 +338,12 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
             if not edge.qedge_id:
                 self.response.error(f"Edge {edge_key} in answer is missing its corresponding qedge_id", error_code="MissingProperty")
             # Check if this is a duplicate edge
-            if existing_edges.get(edge_key):
-                # TODO: Add additional query edge ID onto this edge (if different)?
-                # TODO: Fix how we're identifying edges (edge.id doesn't work when using multiple KPs)
-                pass
+            existing_version_of_edge = existing_edges.get(edge_key)
+            if existing_version_of_edge:
+                if existing_version_of_edge.qedge_id != edge.qedge_id:
+                    self.response.error(f"Edge {edge_key} has been returned as an answer for multiple query graph edges"
+                                        f" ({edge.qedge_id} and {existing_version_of_edge.qedge_id})", error_code="MultipleQGIDs")
+                    return
             else:
                 existing_edges[edge_key] = edge
 
