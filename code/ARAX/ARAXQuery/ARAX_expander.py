@@ -322,6 +322,8 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
                             existing_edges.pop(edge)
 
         for node_key, node in answer_nodes.items():
+            if not node.qnode_id:
+                self.response.error(f"Node {node_key} in answer is missing its corresponding qnode_id", error_code="MissingProperty")
             # Check if this is a duplicate node
             if existing_nodes.get(node_key):
                 # TODO: Add additional query node ID onto this node (if different)?
@@ -330,6 +332,8 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
                 existing_nodes[node_key] = node
 
         for edge_key, edge in answer_edges.items():
+            if not edge.qedge_id:
+                self.response.error(f"Edge {edge_key} in answer is missing its corresponding qedge_id", error_code="MissingProperty")
             # Check if this is a duplicate edge
             if existing_edges.get(edge_key):
                 # TODO: Add additional query edge ID onto this edge (if different)?
