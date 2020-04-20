@@ -52,7 +52,7 @@ class KGQuerier:
         if not self.response.status == 'OK':
             return self.final_kg
 
-        self.__run_cypher_in_neo4j(kp)
+        self.__run_cypher_in_neo4j(kp, dsl_parameters['continue_if_no_results'])
         if not self.response.status == 'OK':
             return self.final_kg
 
@@ -119,7 +119,7 @@ class KGQuerier:
             error_type, error, _ = sys.exc_info()
             self.response.error(f"Problem generating cypher for query. {tb}", error_code=error_type.__name__)
 
-    def __run_cypher_in_neo4j(self, kp):
+    def __run_cypher_in_neo4j(self, kp, continue_if_no_results):
         self.response.info(f"Sending cypher query for edge {self.query_graph.edges[0].id} to {kp} neo4j")
         try:
             rtx_config = RTXConfiguration()
@@ -139,7 +139,10 @@ class KGQuerier:
             for column in self.query_results[0]:
                 columns_with_lengths[column] = len(self.query_results[0].get(column))
             if any(length == 0 for length in columns_with_lengths.values()):
-                self.response.error(f"No paths were found in {kp} satisfying this query graph", error_code="NoResults")
+                if continue_if_no_results:
+                    self.response.warning(f"No paths were found in {kp} satisfying this query graph")
+                else:
+                    self.response.error(f"No paths were found in {kp} satisfying this query graph", error_code="NoResults")
             else:
                 num_results_string = ", ".join([f"{column}: {value}" for column, value in columns_with_lengths.items()])
                 self.response.info(f"Query for edge {self.query_graph.edges[0].id} returned results ({num_results_string})")
