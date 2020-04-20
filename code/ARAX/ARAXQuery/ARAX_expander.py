@@ -66,7 +66,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
 
         #### Define a complete set of allowed parameters and their defaults
         parameters = self.parameters
-        parameters['kp'] = None  # Make sure the kp is reset every time we apply expand
+        parameters['kp'] = "ARAX/KG1"
         parameters['enforce_directionality'] = False
         parameters['use_synonyms'] = True
         parameters['synonym_handling'] = 'map_back'
@@ -82,6 +82,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
                 elif type(value) is str and value.lower() == "false":
                     value = False
                 parameters[key] = value
+
         #### Return if any of the parameters generated an error (showing not just the first one)
         if response.status != 'OK':
             return response
@@ -276,7 +277,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         """
         valid_kps = ['ARAX/KG2', 'ARAX/KG1']
 
-        if kp_to_use in valid_kps or kp_to_use is None:
+        if kp_to_use in valid_kps:
             from Expand.kg_querier import KGQuerier
             querier = KGQuerier(self.response, kp_to_use)
             answer_knowledge_graph = querier.answer_query(query_graph)
@@ -308,8 +309,9 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
                     existing_nodes_for_this_qnode = [node.id for node in existing_nodes.values() if node.qnode_id == qnode.id]
                     answer_nodes_for_this_qnode = [node.id for node in answer_nodes.values() if node.qnode_id == qnode.id]
                     existing_nodes_not_in_answer = set(existing_nodes_for_this_qnode).difference(set(answer_nodes_for_this_qnode))
-                    self.response.debug(f"Pruning {len(existing_nodes_not_in_answer)} dead end nodes corresponding to "
-                                        f"qnode {qnode.id} ({qnode.type})")
+                    if existing_nodes_not_in_answer:
+                        self.response.debug(f"Pruning {len(existing_nodes_not_in_answer)} dead end nodes corresponding to "
+                                            f"qnode {qnode.id} ({qnode.type})")
 
                     # Remove them and their connected edges
                     for node_id in existing_nodes_not_in_answer:
