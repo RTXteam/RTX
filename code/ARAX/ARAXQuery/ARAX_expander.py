@@ -94,8 +94,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         #### Do the actual expansion!
         response.debug(f"Applying Expand to Message with parameters {parameters}")
         edge_id = self.parameters['edge_id']
-        edges_to_expand_string = f"edges {', '.join(edge_id)}" if type(edge_id) is list else f"edge {edge_id}"
-        response.info(f"Beginning expansion of {edges_to_expand_string} using {self.parameters['kp']}")
+        response.info(f"Beginning expansion using {self.parameters['kp']}")
 
         # Convert message knowledge graph to dictionary format, for faster processing
         dict_version_of_kg = self.__convert_standard_kg_to_dict_kg(self.message.knowledge_graph)

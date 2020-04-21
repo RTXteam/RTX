@@ -63,16 +63,20 @@ class KGQuerier:
         return self.final_kg
 
     def __add_curie_synonyms_to_query_graph(self, kp):
-        self.response.debug("Looking for curie synonyms to use")
+        self.response.debug("Looking for query nodes to use curie synonyms for")
         KGNI = KGNodeIndex()
         synonym_usages_dict = dict()
         for node in self.query_graph.nodes:
             original_curie = node.curie
             if original_curie and type(original_curie) is str:  # Important because sometimes lists of curies are passed behind the scenes (when expanding one edge at a time)
-                node.curie = KGNI.get_equivalent_curies(original_curie, kg_name=kp)
-                node.type = None  # Equivalent curie types may be different than the original, so we clear this
-                self.response.info(f"Using equivalent curies for node {original_curie}: {node.curie}")
-                synonym_usages_dict[node.id] = {'original_curie': original_curie, 'synonym_curies': node.curie}
+                equivalent_curies = KGNI.get_equivalent_curies(original_curie, kg_name=kp)
+                if len(equivalent_curies) > 1:
+                    self.response.info(f"Using equivalent curies for node {original_curie}: {equivalent_curies}")
+                    node.curie = equivalent_curies
+                    node.type = None  # Equivalent curie types may be different than the original, so we clear this
+                    synonym_usages_dict[node.id] = {'original_curie': original_curie, 'synonym_curies': node.curie}
+                else:
+                    self.response.info(f"Could not find any equivalent curies in {kp} for {original_curie}")
         return synonym_usages_dict
 
     def __generate_cypher_to_run(self, enforce_directionality):
@@ -144,7 +148,7 @@ class KGQuerier:
                 else:
                     self.response.error(f"No paths were found in {kp} satisfying this query graph", error_code="NoResults")
             else:
-                num_results_string = ", ".join([f"{column}: {value}" for column, value in columns_with_lengths.items()])
+                num_results_string = ", ".join([f"{column.split('_')[1]}: {value}" for column, value in columns_with_lengths.items()])
                 self.response.info(f"Query for edge {self.query_graph.edges[0].id} returned results ({num_results_string})")
 
     def __add_answers_to_kg(self, synonym_handling, synonym_usages_dict, kp):
