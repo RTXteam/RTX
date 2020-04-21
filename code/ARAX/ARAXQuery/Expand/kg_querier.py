@@ -271,6 +271,9 @@ class KGQuerier:
         swagger_edge.relation = neo4j_edge.get('relation')
         swagger_edge.provided_by = neo4j_edge.get('provided_by')
         swagger_edge.is_defined_by = "ARAX/KG1"
+
+        if neo4j_edge.get('probability'):
+            swagger_edge.edge_attributes = self.__create_swagger_attributes("edge", ['probability'], neo4j_edge)
         return swagger_edge
 
     def __create_swagger_attributes(self, object_type, property_names, neo4j_object):
