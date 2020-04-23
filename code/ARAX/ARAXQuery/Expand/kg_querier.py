@@ -2,15 +2,12 @@
 import sys
 import os
 import traceback
-import json
 import ast
 
 from neo4j import GraphDatabase
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering/")
-import ReasoningUtilities as RU
 from KGNodeIndex import KGNodeIndex
-from QueryGraphReasoner import QueryGraphReasoner
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -30,7 +27,7 @@ class KGQuerier:
         self.query_results = None
         self.final_kg = {'nodes': dict(), 'edges': dict()}
 
-    def answer_query(self, query_graph):
+    def answer_one_hop_query(self, query_graph):
         """
         This function answers a query using KG2.
         :param query_graph: A Translator API standard query graph.
