@@ -363,9 +363,7 @@ class ARAXQuery:
             if result.error_code != 'OK':
                 return response
 
-            #### Message suffers from a dual life as a dict and an object. above we seem to treat it as a dict. Fix that. FIXME
-            #### Below we start treating it as and object. This should be the way forward.
-            #### This is not a good place to do this, but may need to convert here
+            #### Import the individual ARAX processing modules and process DSL commands
             from ARAX_expander import ARAXExpander
             from ARAX_overlay import ARAXOverlay
             from ARAX_filter_kg import ARAXFilterKG
@@ -382,40 +380,49 @@ class ARAXQuery:
             action_stats = { }
             actions = result.data['actions']
             for action in actions:
-                response.debug(f"Processing action '{action['command']}' with parameters {action['parameters']}")
+                response.info(f"Processing action '{action['command']}' with parameters {action['parameters']}")
                 nonstandard_result = False
 
                 # Catch a crash
                 try:
-
                     if action['command'] == 'create_message':
                         result = messenger.create_message()
                         message = result.data['message']
+
                     elif action['command'] == 'add_qnode':
                         result = messenger.add_qnode(message,action['parameters'])
+
                     elif action['command'] == 'add_qedge':
                         result = messenger.add_qedge(message,action['parameters'])
+
                     elif action['command'] == 'expand':
                         result = expander.apply(message,action['parameters'])
+
                     elif action['command'] == 'filter':
                         result = filter.apply(message,action['parameters'])
+
                     elif action['command'] == 'resultify':
                         result = resultifier.apply(message, action['parameters'])
+
+                    elif action['command'] == 'overlay':  # recognize the overlay command
+                        result = overlay.apply(message, action['parameters'])
+
+                    elif action['command'] == 'filter_kg':  # recognize the filter_kg command
+                        result = filter_kg.apply(message, action['parameters'])
+
+                    elif action['command'] == 'filter_results':  # recognize the filter_kg command
+                        result = filter_results.apply(message, action['parameters'])
 
                     elif action['command'] == 'query_graph_reasoner':
                         response.info(f"Sending current query_graph to the QueryGraphReasoner")
                         qgr = QueryGraphReasoner()
                         message = qgr.answer(ast.literal_eval(repr(message.query_graph)), TxltrApiFormat=True)
                         nonstandard_result = True
+
                     elif action['command'] == 'return':
                         action_stats['return_action'] = action
                         break
-                    elif action['command'] == 'overlay':  # recognize the overlay command
-                        result = overlay.apply(message, action['parameters'])
-                    elif action['command'] == 'filter_kg':  # recognize the filter_kg command
-                        result = filter_kg.apply(message, action['parameters'])
-                    elif action['command'] == 'filter_results':  # recognize the filter_kg command
-                        result = filter_results.apply(message, action['parameters'])
+
                     else:
                         response.error(f"Unrecognized command {action['command']}", error_code="UnrecognizedCommand")
                         return response
