@@ -377,22 +377,36 @@ class QueryNCBIeUtils:
         if res is not None:
             status_code = res.status_code
             if status_code == 200:
-                res_int = [int(res.json()['esearchresult']['count'])]
-                if n_terms >= 2:
-                    if 'errorlist' in res.json()['esearchresult'].keys():
-                        if 'phrasesnotfound' in res.json()['esearchresult']['errorlist'].keys():
-                                res_int += res.json()['esearchresult']['errorlist']['phrasesnotfound']
+                if 'esearchresult' in res.json().keys():
+                    if 'count' in res.json()['esearchresult'].keys():
+                        res_int = [int(res.json()['esearchresult']['count'])]
+                        if n_terms >= 2:
+                            if 'errorlist' in res.json()['esearchresult'].keys():
+                                if 'phrasesnotfound' in res.json()['esearchresult']['errorlist'].keys():
+                                    if res.json()['esearchresult']['errorlist']['phrasesnotfound'] != []:
+                                        res_int += res.json()['esearchresult']['errorlist']['phrasesnotfound']
+                                    elif 'translationstack' in res.json()['esearchresult'].keys():
+                                        for a in range(len(res.json()['esearchresult']['translationstack'])):
+                                            if type(res.json()['esearchresult']['translationstack'][a]) == dict:
+                                                res_int += [int(res.json()['esearchresult']['translationstack'][a]['count'])]
+                                            elif res.json()['esearchresult']['translationstack'][a] == 'OR':
+                                                res_int = [res_int[0]]
+                                                res_int += ['null_flag']
+                                                return res_int
+                            else:
+                                for a in range(len(res.json()['esearchresult']['translationstack'])):
+                                    if type(res.json()['esearchresult']['translationstack'][a]) == dict:
+                                        res_int += [int(res.json()['esearchresult']['translationstack'][a]['count'])]
+                                    elif res.json()['esearchresult']['translationstack'][a] == 'OR':
+                                        res_int = [res_int[0]]
+                                        res_int += ['null_flag']
+                                        return res_int
                     else:
-                        for a in range(len(res.json()['esearchresult']['translationstack'])):
-                            if type(res.json()['esearchresult']['translationstack'][a]) == dict:
-                                res_int += [int(res.json()['esearchresult']['translationstack'][a]['count'])]
-                            elif res.json()['esearchresult']['translationstack'][a] == 'OR':
-                                res_int = [res_int[0]]
-                                res_int += ['null_flag']
-                                return res_int
-
+                        return [0]*n_terms
             else:
                 print('HTTP response status code: ' + str(status_code) + ' for query term string {term}'.format(term=term_str))
+        if res_int is None:
+            res_int = [0]*n_terms
         return res_int
 
     @staticmethod

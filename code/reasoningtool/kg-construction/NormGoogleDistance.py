@@ -20,6 +20,7 @@ from QueryDisont import QueryDisont  # DOID -> MeSH
 from QueryEBIOLS import QueryEBIOLS  # UBERON -> MeSH
 from QueryMyChem import QueryMyChem
 from typing import List
+import sqlite3
 
 
 # requests_cache.install_cache('NGDCache')
@@ -105,6 +106,9 @@ class NormGoogleDistance:
         except requests.exceptions.ConnectionError:
             print('HTTP connection error in SemMedInterface.py; URL: ' + url_str, file=sys.stderr)
             time.sleep(1)  ## take a timeout because NCBI rate-limits connections
+            return None
+        except sqlite3.OperationalError:
+            print('Error reading sqlite cache; URL: ' + url_str, file=sys.stderr)
             return None
         status_code = res.status_code
         if status_code != 200:
