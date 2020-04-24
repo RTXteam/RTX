@@ -1072,7 +1072,10 @@ def main():
 "UniProtKB:P03372"]
         print(f"For example 15 (demo eg. 3), number of TP proteins: {len(set(known_proteins).intersection(set(proteins)))}")  # fill these in after finding a good example
 
-    print(f"Number of KnowledgeProviders in KG: {Counter([x.provided_by for x in message.knowledge_graph.edges])}")
+    try:
+        print(f"Number of KnowledgeProviders in KG: {Counter([x.provided_by for x in message.knowledge_graph.edges])}")
+    except:
+        print(f"Number of KnowledgeProviders in KG: {Counter([x.provided_by[0] for x in message.knowledge_graph.edges])}")
 
 # print the message id at the bottom for convenience too:
     print(f"message id: {json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2)}")
