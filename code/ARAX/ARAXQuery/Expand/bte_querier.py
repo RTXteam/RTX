@@ -15,6 +15,7 @@ class BTEQuerier:
     def __init__(self, response_object):
         self.response = response_object
         self.final_kg = {'nodes': dict(), 'edges': dict()}
+        self.continue_if_no_results = self.response.data['parameters']['continue_if_no_results']
 
     def answer_one_hop_query(self, query_graph):
         edge = query_graph.edges[0]
@@ -37,49 +38,32 @@ class BTEQuerier:
                                     error_code=error_type.__name__)
                 break
             else:
-                print(reasoner_std_response['knowledge_graph'])
-                query_graph_ids_map = self.__build_query_graph_ids_map(reasoner_std_response, input_node, output_node, edge)
-                self.__add_answers_to_kg(reasoner_std_response, query_graph_ids_map)
+                # query_graph_ids_map = self.__build_query_graph_ids_map(reasoner_std_response, input_node, output_node, edge)
+                self.__add_answers_to_kg(reasoner_std_response, input_node_curie, input_node.id, output_node.id, edge.id)
 
+        if self.final_kg['edges']:
+            self.response.info(f"Found results for edge {edge.id} using BTE (nodes: {len(self.final_kg['nodes'])}, "
+                               f"edges: {len(self.final_kg['edges'])})")
+        else:
+            if self.continue_if_no_results:
+                self.response.warning(f"No paths were found in BTE satisfying this query graph")
+            else:
+                self.response.error(f"No paths were found in BTE satisfying this query graph", error_code="NoResults")
         return self.final_kg
 
-    def __add_answers_to_kg(self, reasoner_std_response, query_graph_ids_map):
-        for node in reasoner_std_response['knowledge_graph']['nodes']:
-            swagger_node = Node(id=node['id'], name=node['name'])
-            swagger_node.qnode_id = query_graph_ids_map['nodes'].get(swagger_node.id)
-            self.final_kg['nodes'][swagger_node.id] = swagger_node
-        for edge in reasoner_std_response['knowledge_graph']['edges']:
-            swagger_edge = Edge(id=edge['id'], type=edge['type'], source_id=edge['source_id'], target_id=edge['target_id'])
-            swagger_edge.qedge_id = query_graph_ids_map['edges'].get(swagger_edge.id)
-            self.final_kg['edges'][swagger_edge.id] = swagger_edge
-        self.response.info(f"Found results using BTE (nodes: {len(self.final_kg['nodes'])}, edges: {len(self.final_kg['edges'])})")
-
-    def __build_query_graph_ids_map(self, reasoner_std_response, input_node, output_node, edge):
-        query_graph_ids_map = {'nodes': dict(), 'edges': dict()}
-        for node_binding in reasoner_std_response['results']['node_bindings']:
-            node_id = node_binding['kg_id']
-            qnode_id = output_node.id
-            if node_id in query_graph_ids_map['nodes'] and query_graph_ids_map['nodes'].get(node_id) != qnode_id:
-                self.response.error(f"Node {node_id} has been returned as an answer for multiple query graph nodes"
-                                    f" ({query_graph_ids_map['nodes'].get(node_id)} and {qnode_id})",
-                                    error_code="MultipleQGIDs")
-            else:
-                query_graph_ids_map['nodes'][node_id] = qnode_id
-        for edge_binding in reasoner_std_response['results']['edge_bindings']:
-            edge_id = edge_binding['kg_id'][0]  # TODO: loop through all...
-            qedge_id = edge.id
-            if edge_id in query_graph_ids_map['edges'] and query_graph_ids_map['edges'].get(edge_id) != qedge_id:
-                self.response.error(f"Edge {edge_id} has been returned as an answer for multiple query graph edges"
-                                    f" ({query_graph_ids_map['edges'].get(edge_id)} and {qedge_id})", error_code="MultipleQGIDs")
-            else:
-                query_graph_ids_map['edges'][edge_id] = qedge_id
-
-        # Attach query graph ID to input node (doesn't currently appear in BTE's node bindings)
-        for node in reasoner_std_response['knowledge_graph']['nodes']:
-            if node['id'] not in query_graph_ids_map['nodes']:
-                query_graph_ids_map['nodes'][node['id']] = input_node.id
-
-        return query_graph_ids_map
+    def __add_answers_to_kg(self, reasoner_std_response, input_node_curie, input_qnode_id, output_qnode_id, qedge_id):
+        if reasoner_std_response['knowledge_graph']['edges']:  # Note: BTE response currently includes some nodes even when no edges found
+            for node in reasoner_std_response['knowledge_graph']['nodes']:
+                swagger_node = Node(id=node['id'], name=node['name'])
+                if swagger_node.id == input_node_curie:
+                    swagger_node.qnode_id = input_qnode_id
+                else:
+                    swagger_node.qnode_id = output_qnode_id
+                self.final_kg['nodes'][swagger_node.id] = swagger_node
+            for edge in reasoner_std_response['knowledge_graph']['edges']:
+                swagger_edge = Edge(id=edge['id'], type=edge['type'], source_id=edge['source_id'], target_id=edge['target_id'])
+                swagger_edge.qedge_id = qedge_id
+                self.final_kg['edges'][swagger_edge.id] = swagger_edge
 
     def __convert_snake_case_to_pascal_case(self, snake_string):
         # Converts a string like 'chemical_substance' to 'ChemicalSubstance'
@@ -104,4 +88,4 @@ class BTEQuerier:
         return prefix
 
     def __get_curie_local_id(self, curie):
-        return curie.split(':')[1]
+        return curie.split(':')[-1]

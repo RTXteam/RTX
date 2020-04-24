@@ -110,7 +110,6 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         for edge in ordered_edges:
             self.response.info(f"Expanding edge {edge.id} using {self.parameters['kp']}")
             edge_query_graph = self.__extract_subgraph_to_expand(edge.id)
-            self.response.debug(f"Query graph for edge is: {edge_query_graph.to_dict()}")
 
             answer_knowledge_graph = self.__expand_edge(edge_query_graph, self.parameters['kp'])
             if response.status != 'OK':
@@ -122,7 +121,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
 
         # Prune any remaining dead-end paths in our knowledge graph
         # TODO: Update to work for branched query graphs as well (only works for linear currently)
-        self.__prune_dead_ends(self.message.knowledge_graph)
+        self.__prune_dead_ends(self.message.knowledge_graph, query_sub_graph)
 
         # Convert message knowledge graph back to API standard format
         standard_kg = self.__convert_dict_kg_to_standard_kg(self.message.knowledge_graph)
@@ -310,10 +309,10 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
             else:
                 existing_edges[edge_key] = edge
 
-    def __prune_dead_ends(self, knowledge_graph):
+    def __prune_dead_ends(self, knowledge_graph, query_sub_graph):
         # First figure out our intermediate query nodes and their corresponding query edges
-        ordered_qnodes = self.__get_ordered_query_nodes(self.message.query_graph)
-        qnodes_to_qedges_dict = self.__get_qnode_to_qedge_dict(self.message.query_graph)
+        ordered_qnodes = self.__get_ordered_query_nodes(query_sub_graph)
+        qnodes_to_qedges_dict = self.__get_qnode_to_qedge_dict(query_sub_graph)
 
         if len(ordered_qnodes) > 2:
             # Loop through ordered qnodes (layers) in reverse order (skipping the last)
