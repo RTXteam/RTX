@@ -145,7 +145,7 @@ class KGQuerier:
                 else:
                     self.response.error(f"No paths were found in {kp} satisfying this query graph", error_code="NoResults")
             else:
-                num_results_string = ", ".join([f"{column.split('_')[1]}: {value}" for column, value in columns_with_lengths.items()])
+                num_results_string = ", ".join([f"{column.split('_')[1]}: {value}" for column, value in sorted(columns_with_lengths.items())])
                 self.response.info(f"Query for edge {self.query_graph.edges[0].id} returned results ({num_results_string})")
 
     def __add_answers_to_kg(self, synonym_handling, synonym_usages_dict, kp):

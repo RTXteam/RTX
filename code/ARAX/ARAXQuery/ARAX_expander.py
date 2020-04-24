@@ -94,7 +94,6 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         #### Do the actual expansion!
         response.debug(f"Applying Expand to Message with parameters {parameters}")
         edge_id = self.parameters['edge_id']
-        response.info(f"Beginning expansion using {self.parameters['kp']}")
 
         # Convert message knowledge graph to dictionary format, for faster processing
         dict_version_of_kg = self.__convert_standard_kg_to_dict_kg(self.message.knowledge_graph)
@@ -109,10 +108,10 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         # Expand the query graph edge by edge because it's much faster for neo4j queries
         ordered_edges = self.__get_order_to_expand_edges_in(query_sub_graph)
         for edge in ordered_edges:
-            self.response.info(f"Expanding edge {edge.id}")
+            self.response.info(f"Expanding edge {edge.id} using {self.parameters['kp']}")
             edge_query_graph = self.__extract_subgraph_to_expand(edge.id)
 
-            answer_knowledge_graph = self.__answer_query(edge_query_graph, self.parameters['kp'])
+            answer_knowledge_graph = self.__expand_edge(edge_query_graph, self.parameters['kp'])
             if response.status != 'OK':
                 return response
 
@@ -121,6 +120,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
                 return response
 
         # Prune any remaining dead-end paths in our knowledge graph
+        # TODO: Update to work for branched query graphs as well (only works for linear currently)
         self.__prune_dead_ends(self.message.knowledge_graph)
 
         # Convert message knowledge graph back to API standard format
@@ -216,56 +216,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
                         edges_remaining.pop(edges_remaining.index(edge_connected_to_left_end))
         return ordered_edges
 
-    def __get_ordered_query_nodes(self, query_graph):
-        ordered_edges = self.__get_order_to_expand_edges_in(query_graph)
-        ordered_nodes = []
-        # First add intermediate nodes in order
-        if len(ordered_edges) > 1:
-            for num in range(len(ordered_edges) - 1):
-                current_edge = ordered_edges[num]
-                next_edge = ordered_edges[num + 1]
-                current_edge_node_ids = {current_edge.source_id, current_edge.target_id}
-                next_edge_node_ids = {next_edge.source_id, next_edge.target_id}
-                common_node_id = list(current_edge_node_ids.intersection(next_edge_node_ids))[0]  # Note: Only handle linear query graphs
-                ordered_nodes.append(self.__get_query_node(query_graph, common_node_id))
-
-            # Then tack the initial node onto the beginning
-            first_edge = ordered_edges[0]
-            second_edge = ordered_edges[1]
-            first_edge_node_ids = {first_edge.source_id, first_edge.target_id}
-            second_edge_node_ids = {second_edge.source_id, second_edge.target_id}
-            first_node_id = list(first_edge_node_ids.difference(second_edge_node_ids))[0]
-            ordered_nodes.insert(0, self.__get_query_node(query_graph, first_node_id))
-
-            # And tack the last node onto the end
-            last_edge = ordered_edges[-1]
-            second_to_last_edge = ordered_edges[-2]
-            last_edge_node_ids = {last_edge.source_id, last_edge.target_id}
-            second_to_last_edge_node_ids = {second_to_last_edge.source_id, second_to_last_edge.target_id}
-            last_node_id = list(last_edge_node_ids.difference(second_to_last_edge_node_ids))[0]
-            ordered_nodes.append(self.__get_query_node(query_graph, last_node_id))
-        else:
-            # TODO: Pick first node to be one with curie?
-            source_node = self.__get_query_node(query_graph, ordered_edges[0].source_id)
-            target_node = self.__get_query_node(query_graph, ordered_edges[0].target_id)
-            ordered_nodes = [source_node, target_node]
-
-        return ordered_nodes
-
-    def __get_qnode_to_qedge_dict(self, query_graph):
-        ordered_edges = self.__get_order_to_expand_edges_in(query_graph)
-        ordered_nodes = self.__get_ordered_query_nodes(query_graph)
-        qnode_to_qedge_dict = dict()
-        for node in ordered_nodes:
-            node_index = ordered_nodes.index(node)
-            left_edge_index = node_index - 1
-            right_edge_index = node_index
-            left_edge_id = ordered_edges[left_edge_index].id if left_edge_index >= 0 else None
-            right_edge_id = ordered_edges[right_edge_index].id if right_edge_index < len(ordered_edges) else None
-            qnode_to_qedge_dict[node.id] = {'left': left_edge_id, 'right': right_edge_id}
-        return qnode_to_qedge_dict
-
-    def __answer_query(self, query_graph, kp_to_use):
+    def __expand_edge(self, query_graph, kp_to_use):
         """
         This function answers a query using the specified knowledge provider (KG1 or KG2 for now, with other KPs to be
         added later on.) If no KP was specified, KG1 is used by default. (Eventually it will be possible to automatically
@@ -274,16 +225,26 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         :param kp_to_use: A string representing the knowledge provider to fulfill this query with.
         :return: An (almost) Translator API standard knowledge graph (dictionary version).
         """
-        valid_kps = ['ARAX/KG2', 'ARAX/KG1']
+        # Make sure we have a valid one-hop query graph
+        if len(query_graph.edges) != 1 or len(query_graph.nodes) != 2:
+            self.response.error(f"expand_edge() did not receive a valid one-hop query graph: {query_graph.to_dict()}",
+                                error_code="InvalidInput")
+            return None
 
-        if kp_to_use in valid_kps:
+        # Route this one-hop query to the proper knowledge provider
+        if kp_to_use == 'BTE':
+            from Expand.bte_querier import BTEQuerier
+            bte_querier = BTEQuerier(self.response)
+            answer_kg = bte_querier.answer_one_hop_query(query_graph)
+            return answer_kg
+        elif kp_to_use == 'ARAX/KG2' or kp_to_use == 'ARAX/KG1':
             from Expand.kg_querier import KGQuerier
-            querier = KGQuerier(self.response, kp_to_use)
-            answer_knowledge_graph = querier.answer_query(query_graph)
-            return answer_knowledge_graph
+            kg_querier = KGQuerier(self.response, kp_to_use)
+            answer_kg = kg_querier.answer_one_hop_query(query_graph)
+            return answer_kg
         else:
-            self.response.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are: "
-                                f"{', '.join(valid_kps)} (or you can omit this parameter).", error_code="UnknownValue")
+            self.response.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are ARAX/KG1, ARAX/KG2, or BTE",
+                                error_code="UnknownValue")
             return None
 
     def __merge_answer_kg_into_message_kg(self, answer_knowledge_graph, edge_query_graph):
@@ -382,6 +343,55 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
 
                 index -= 1
 
+    def __get_ordered_query_nodes(self, query_graph):
+        ordered_edges = self.__get_order_to_expand_edges_in(query_graph)
+        ordered_nodes = []
+        # First add intermediate nodes in order
+        if len(ordered_edges) > 1:
+            for num in range(len(ordered_edges) - 1):
+                current_edge = ordered_edges[num]
+                next_edge = ordered_edges[num + 1]
+                current_edge_node_ids = {current_edge.source_id, current_edge.target_id}
+                next_edge_node_ids = {next_edge.source_id, next_edge.target_id}
+                common_node_id = list(current_edge_node_ids.intersection(next_edge_node_ids))[0]  # Note: Only handle linear query graphs
+                ordered_nodes.append(self.__get_query_node(query_graph, common_node_id))
+
+            # Then tack the initial node onto the beginning
+            first_edge = ordered_edges[0]
+            second_edge = ordered_edges[1]
+            first_edge_node_ids = {first_edge.source_id, first_edge.target_id}
+            second_edge_node_ids = {second_edge.source_id, second_edge.target_id}
+            first_node_id = list(first_edge_node_ids.difference(second_edge_node_ids))[0]
+            ordered_nodes.insert(0, self.__get_query_node(query_graph, first_node_id))
+
+            # And tack the last node onto the end
+            last_edge = ordered_edges[-1]
+            second_to_last_edge = ordered_edges[-2]
+            last_edge_node_ids = {last_edge.source_id, last_edge.target_id}
+            second_to_last_edge_node_ids = {second_to_last_edge.source_id, second_to_last_edge.target_id}
+            last_node_id = list(last_edge_node_ids.difference(second_to_last_edge_node_ids))[0]
+            ordered_nodes.append(self.__get_query_node(query_graph, last_node_id))
+        else:
+            # TODO: Pick first node to be one with curie?
+            source_node = self.__get_query_node(query_graph, ordered_edges[0].source_id)
+            target_node = self.__get_query_node(query_graph, ordered_edges[0].target_id)
+            ordered_nodes = [source_node, target_node]
+
+        return ordered_nodes
+
+    def __get_qnode_to_qedge_dict(self, query_graph):
+        ordered_edges = self.__get_order_to_expand_edges_in(query_graph)
+        ordered_nodes = self.__get_ordered_query_nodes(query_graph)
+        qnode_to_qedge_dict = dict()
+        for node in ordered_nodes:
+            node_index = ordered_nodes.index(node)
+            left_edge_index = node_index - 1
+            right_edge_index = node_index
+            left_edge_id = ordered_edges[left_edge_index].id if left_edge_index >= 0 else None
+            right_edge_id = ordered_edges[right_edge_index].id if right_edge_index < len(ordered_edges) else None
+            qnode_to_qedge_dict[node.id] = {'left': left_edge_id, 'right': right_edge_id}
+        return qnode_to_qedge_dict
+
     def __get_edge_with_curie_node(self, query_graph):
         for edge in query_graph.edges:
             source_node = self.__get_query_node(query_graph, edge.source_id)
@@ -453,33 +463,20 @@ def main():
     #### Set a list of actions
     actions_list = [
         "create_message",
-        # "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
-        # "add_qnode(id=n01, type=protein, is_set=true)",
-        # "add_qedge(id=e00, source_id=n00, target_id=n01, type=molecularly_interacts_with)",
-        "add_qnode(id=n00, curie=DOID:14330)",  # parkinson's
-        "add_qnode(id=n01, type=protein, is_set=True)",
-        "add_qnode(id=n02, type=chemical_substance)",
-        "add_qedge(id=e00, source_id=n01, target_id=n00)",
-        "add_qedge(id=e01, source_id=n01, target_id=n02, type=physically_interacts_with)",
+        "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
+        "add_qnode(id=n01, type=protein, is_set=true)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01)",
+        # "add_qnode(id=n00, curie=DOID:14330)",  # parkinson's
+        # "add_qnode(id=n01, type=protein, is_set=True)",
+        # "add_qnode(id=n02, type=chemical_substance)",
+        # "add_qedge(id=e00, source_id=n01, target_id=n00)",
+        # "add_qedge(id=e01, source_id=n01, target_id=n02, type=physically_interacts_with)",
         # "add_qnode(curie=DOID:8398, id=n00)",  # osteoarthritis
         # "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
         # "add_qnode(type=disease, is_set=true, id=n02)",
         # "add_qedge(source_id=n01, target_id=n00, id=e00)",
         # "add_qedge(source_id=n01, target_id=n02, id=e01)",
-        # "add_qnode(id=n00, curie=DOID:824)",  # periodontitis
-        # "add_qnode(id=n01, type=protein, is_set=True)",
-        # "add_qnode(id=n02, type=phenotypic_feature)",
-        # "add_qedge(id=e00, source_id=n01, target_id=n00)",
-        # "add_qedge(id=e01, source_id=n01, target_id=n02)",
-        # "add_qnode(id=n00, curie=DOID:0060227)",  # Adams-Oliver
-        # "add_qnode(id=n01, type=protein)",
-        # "add_qedge(id=e00, source_id=n01, target_id=n00)",
-        # "add_qnode(id=n00, curie=DOID:0050156)",  # idiopathic pulmonary fibrosis
-        # "add_qnode(id=n01, type=chemical_substance, is_set=true)",
-        # "add_qnode(id=n02, type=protein)",
-        # "add_qedge(id=e00, source_id=n00, target_id=n01)",
-        # "add_qedge(id=e01, source_id=n01, target_id=n02)",
-        "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
+        "expand(edge_id=e00, kp=BTE)",
         # "expand(edge_id=e00, kp=ARAX/KG2)",
         # "expand(edge_id=e01, kp=ARAX/KG2)",
         # "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
