@@ -110,6 +110,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         for edge in ordered_edges:
             self.response.info(f"Expanding edge {edge.id} using {self.parameters['kp']}")
             edge_query_graph = self.__extract_subgraph_to_expand(edge.id)
+            self.response.debug(f"Query graph for edge is: {edge_query_graph.to_dict()}")
 
             answer_knowledge_graph = self.__expand_edge(edge_query_graph, self.parameters['kp'])
             if response.status != 'OK':
@@ -284,6 +285,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         for node_key, node in answer_nodes.items():
             if not node.qnode_id:
                 self.response.error(f"Node {node_key} in answer is missing its corresponding qnode_id", error_code="MissingProperty")
+                return
             # Check if this is a duplicate node
             existing_version_of_node = existing_nodes.get(node_key)
             if existing_version_of_node:
@@ -297,6 +299,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         for edge_key, edge in answer_edges.items():
             if not edge.qedge_id:
                 self.response.error(f"Edge {edge_key} in answer is missing its corresponding qedge_id", error_code="MissingProperty")
+                return
             # Check if this is a duplicate edge
             existing_version_of_edge = existing_edges.get(edge_key)
             if existing_version_of_edge:
