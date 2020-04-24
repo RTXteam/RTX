@@ -696,6 +696,22 @@ def main():
             "resultify(ignore_edge_direction=true)",
             "return(message=true, store=false)"
         ]}}
+    elif params.example_number == 1515:  # Exact duplicate of ARAX_Example3.ipynb
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "add_qnode(curie=DOID:9406, id=n00)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+            "add_qnode(type=protein, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01)",
+            "expand(edge_id=[e00,e01])",
+            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=3, remove_connected_nodes=t, qnode_id=n01)",
+            "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
+            "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n01, target_qnode_id=n02)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=ngd, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",
+            "resultify(ignore_edge_direction=true)",
+            "return(message=true, store=true)"
+        ]}}
     elif params.example_number == 16:  # To test COHD obs/exp ratio
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
@@ -849,8 +865,8 @@ def main():
     elif params.example_number == 2033:  # KG2 version of demo example 3 (but using idiopathic pulmonary fibrosis), with all decorations
         query = { "previous_message_processing_plan": { "processing_actions": [
             "create_message",
-            #"add_qnode(id=n00, curie=DOID:0050156)",  # idiopathic pulmonary fibrosis
-            "add_qnode(curie=DOID:9406, id=n00)",  # hypopituitarism, original demo example
+            "add_qnode(id=n00, curie=DOID:0050156)",  # idiopathic pulmonary fibrosis
+            #"add_qnode(curie=DOID:9406, id=n00)",  # hypopituitarism, original demo example
             "add_qnode(id=n01, type=chemical_substance, is_set=true)",
             "add_qnode(id=n02, type=protein)",
             "add_qedge(id=e00, source_id=n00, target_id=n01)",
