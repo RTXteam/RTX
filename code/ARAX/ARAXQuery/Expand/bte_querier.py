@@ -11,6 +11,7 @@ class BTEQuerier:
         self.response = response_object
 
     def answer_one_hop_query(self, query_graph):
+        final_kg = {'nodes': dict(), 'edges': dict()}
         edge = query_graph.edges[0]
         source_node = next(node for node in query_graph.nodes if node.id == edge.source_id)
         target_node = next(node for node in query_graph.nodes if node.id == edge.target_id)
@@ -27,9 +28,9 @@ class BTEQuerier:
             error_type, error, _ = sys.exc_info()
             self.response.error(f"Encountered a problem while using BioThings Explorer. {trace_back}",
                                 error_code=error_type.__name__)
-
-        knowledge_graph = self.__convert_answers_to_kg(reasoner_std_response)
-        return knowledge_graph
+        else:
+            final_kg = self.__convert_answers_to_kg(reasoner_std_response)
+        return final_kg
 
     def __convert_answers_to_kg(self, reasoner_std_response):
         final_kg = {'nodes': dict(), 'edges': dict()}
