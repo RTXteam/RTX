@@ -121,7 +121,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
 
         # Prune any remaining dead-end paths in our knowledge graph
         # TODO: Update to work for branched query graphs as well (only works for linear currently)
-        self.__prune_dead_ends(self.message.knowledge_graph)
+        self.__prune_dead_ends(self.message.knowledge_graph, query_sub_graph)
 
         # Convert message knowledge graph back to API standard format
         standard_kg = self.__convert_dict_kg_to_standard_kg(self.message.knowledge_graph)
@@ -284,6 +284,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         for node_key, node in answer_nodes.items():
             if not node.qnode_id:
                 self.response.error(f"Node {node_key} in answer is missing its corresponding qnode_id", error_code="MissingProperty")
+                return
             # Check if this is a duplicate node
             existing_version_of_node = existing_nodes.get(node_key)
             if existing_version_of_node:
@@ -297,6 +298,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         for edge_key, edge in answer_edges.items():
             if not edge.qedge_id:
                 self.response.error(f"Edge {edge_key} in answer is missing its corresponding qedge_id", error_code="MissingProperty")
+                return
             # Check if this is a duplicate edge
             existing_version_of_edge = existing_edges.get(edge_key)
             if existing_version_of_edge:
@@ -307,10 +309,10 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
             else:
                 existing_edges[edge_key] = edge
 
-    def __prune_dead_ends(self, knowledge_graph):
+    def __prune_dead_ends(self, knowledge_graph, query_sub_graph):
         # First figure out our intermediate query nodes and their corresponding query edges
-        ordered_qnodes = self.__get_ordered_query_nodes(self.message.query_graph)
-        qnodes_to_qedges_dict = self.__get_qnode_to_qedge_dict(self.message.query_graph)
+        ordered_qnodes = self.__get_ordered_query_nodes(query_sub_graph)
+        qnodes_to_qedges_dict = self.__get_qnode_to_qedge_dict(query_sub_graph)
 
         if len(ordered_qnodes) > 2:
             # Loop through ordered qnodes (layers) in reverse order (skipping the last)
