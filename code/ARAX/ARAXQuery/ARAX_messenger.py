@@ -232,7 +232,16 @@ class ARAXMessenger:
             message.query_graph.nodes.append(qnode)
             return response
 
-        #### Return the response
+        #### If we get here, it means that all three main parameters are null. Just a generic node with no type or anything
+        qnode = QNode()
+        if parameters['id'] is not None:
+            id = parameters['id']
+        else:
+            id = self.__get_next_free_node_id()
+        qnode.id = id
+        if parameters['is_set'] is not None:
+            qnode.is_set = (parameters['is_set'].lower() == 'true')
+        message.query_graph.nodes.append(qnode)
         return response
 
 

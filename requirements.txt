@@ -4,7 +4,8 @@ pandas
 neo4j-driver
 numpy
 ipython-cypher
-networkx
+networkx==2.3
+# Note: biothings explorer currently requires networkx 2.3
 pronto
 lxml
 mygene
@@ -28,3 +29,4 @@ simple-crypt
 tomark
 md-toc
 pickledb
+git+https://github.com/biothings/biothings_explorer#egg=biothings_explorer
