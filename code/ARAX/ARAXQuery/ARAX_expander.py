@@ -110,6 +110,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         for edge in ordered_edges:
             self.response.info(f"Expanding edge {edge.id} using {self.parameters['kp']}")
             edge_query_graph = self.__extract_subgraph_to_expand(edge.id)
+            # self.response.debug(f"Edge query graph is {edge_query_graph.to_dict()}")
 
             answer_knowledge_graph = self.__expand_edge(edge_query_graph, self.parameters['kp'])
             if response.status != 'OK':

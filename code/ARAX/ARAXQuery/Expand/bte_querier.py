@@ -8,6 +8,7 @@ from biothings_explorer.user_query_dispatcher import SingleEdgeQueryDispatcher
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
+from swagger_server.models.edge_attribute import EdgeAttribute
 
 
 class BTEQuerier:
@@ -23,23 +24,23 @@ class BTEQuerier:
         output_node = next(node for node in query_graph.nodes if node.id != input_node.id)
         input_node_curies = input_node.curie if type(input_node.curie) is list else [input_node.curie]  # Make sure these are in list form
         for input_node_curie in input_node_curies:
-            try:
-                seqd = SingleEdgeQueryDispatcher(input_cls=self.__convert_snake_case_to_pascal_case(input_node.type),
-                                                 output_cls=self.__convert_snake_case_to_pascal_case(output_node.type),
-                                                 pred=self.__convert_snake_case_to_camel_case(edge.type),
-                                                 input_id=self.__get_curie_prefix(input_node_curie).lower(),
-                                                 values=self.__get_curie_local_id(input_node_curie))
-                seqd.query()
-                reasoner_std_response = seqd.to_reasoner_std()
-            except:
-                trace_back = traceback.format_exc()
-                error_type, error, _ = sys.exc_info()
-                self.response.error(f"Encountered a problem while using BioThings Explorer. {trace_back}",
-                                    error_code=error_type.__name__)
-                break
-            else:
-                # query_graph_ids_map = self.__build_query_graph_ids_map(reasoner_std_response, input_node, output_node, edge)
-                self.__add_answers_to_kg(reasoner_std_response, input_node_curie, input_node.id, output_node.id, edge.id)
+            if not input_node_curie.lower().startswith("name:"):  # Note: Sometimes "NAME:XXXXX" nodes are answers to prior BTE queries, but it doesn't except that as input_cls
+                try:
+                    seqd = SingleEdgeQueryDispatcher(input_cls=self.__convert_snake_case_to_pascal_case(input_node.type),
+                                                     output_cls=self.__convert_snake_case_to_pascal_case(output_node.type),
+                                                     pred=self.__convert_snake_case_to_camel_case(edge.type),
+                                                     input_id=self.__get_curie_prefix(input_node_curie).lower(),
+                                                     values=self.__get_curie_local_id(input_node_curie))
+                    seqd.query()
+                    reasoner_std_response = seqd.to_reasoner_std()
+                except:
+                    trace_back = traceback.format_exc()
+                    error_type, error, _ = sys.exc_info()
+                    self.response.error(f"Encountered a problem while using BioThings Explorer. {trace_back}",
+                                        error_code=error_type.__name__)
+                    break
+                else:
+                    self.__add_answers_to_kg(reasoner_std_response, input_node_curie, input_node.id, output_node.id, edge.id)
 
         if self.final_kg['edges']:
             self.response.info(f"Found results for edge {edge.id} using BTE (nodes: {len(self.final_kg['nodes'])}, "
@@ -54,14 +55,26 @@ class BTEQuerier:
     def __add_answers_to_kg(self, reasoner_std_response, input_node_curie, input_qnode_id, output_qnode_id, qedge_id):
         if reasoner_std_response['knowledge_graph']['edges']:  # Note: BTE response currently includes some nodes even when no edges found
             for node in reasoner_std_response['knowledge_graph']['nodes']:
-                swagger_node = Node(id=node['id'], name=node['name'])
-                if swagger_node.id == input_node_curie:
+                swagger_node = Node()
+                swagger_node.id = node['id']
+                swagger_node.name = node['name']
+                swagger_node.type = node['type']
+                # All nodes except our input node should have a qnode_id corresponding to the output node
+                input_node_in_bte_qg = next(node for node in reasoner_std_response['query_graph']['nodes'] if node['id'] == "n0")
+                if swagger_node.id == input_node_in_bte_qg['curie'][0].upper():  # Hack to get around different formats of same curie in QG vs. KG
                     swagger_node.qnode_id = input_qnode_id
                 else:
                     swagger_node.qnode_id = output_qnode_id
                 self.final_kg['nodes'][swagger_node.id] = swagger_node
             for edge in reasoner_std_response['knowledge_graph']['edges']:
-                swagger_edge = Edge(id=edge['id'], type=edge['type'], source_id=edge['source_id'], target_id=edge['target_id'])
+                swagger_edge = Edge()
+                swagger_edge.type = edge['type']
+                swagger_edge.source_id = edge['source_id']
+                swagger_edge.target_id = edge['target_id']
+                swagger_edge.provided_by = "BTE"
+                edge_source_attribute = EdgeAttribute(name="edge_source", value=edge['edge_source'])
+                swagger_edge.edge_attributes = [edge_source_attribute]
+                swagger_edge.id = f"{swagger_edge.source_id}--{swagger_edge.type}--{swagger_edge.target_id}"
                 swagger_edge.qedge_id = qedge_id
                 self.final_kg['edges'][swagger_edge.id] = swagger_edge
 
@@ -83,9 +96,16 @@ class BTEQuerier:
 
     def __get_curie_prefix(self, curie):
         prefix = curie.split(':')[0]
-        if prefix == "CHEMBL.COMPOUND":
+        # Note: Make some temporary prefix adjustments (until prefixes are standardized somehow)
+        if prefix.startswith("CHEMBL"):
             prefix = "CHEMBL"
+        elif prefix == "NCBIGene":
+            prefix = "ENTREZ"
+        elif prefix.startswith("UniProtKB"):
+            prefix = "UniProt"
+        elif prefix == "CUI":
+            prefix = "UMLS"
         return prefix
 
     def __get_curie_local_id(self, curie):
-        return curie.split(':')[-1]
+        return curie.split(':')[-1]  # Note: Taking last item gets around "PR:PR:000001" situation
