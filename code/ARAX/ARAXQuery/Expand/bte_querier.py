@@ -29,12 +29,12 @@ class BTEQuerier:
         output_node = next(node for node in query_graph.nodes if node.id != input_node.id)
         input_node_curies = input_node.curie if type(input_node.curie) is list else [input_node.curie]  # Make sure these are in list form
         for input_node_curie in input_node_curies:
-            if self.__get_curie_prefix(input_node_curie).lower() in self.allowed_input_curie_prefixes:
+            if self.__get_curie_prefix_for_bte(input_node_curie) in self.allowed_input_curie_prefixes:
                 try:
                     seqd = SingleEdgeQueryDispatcher(input_cls=self.__convert_snake_case_to_pascal_case(input_node.type),
                                                      output_cls=self.__convert_snake_case_to_pascal_case(output_node.type),
                                                      pred=self.__convert_snake_case_to_camel_case(edge.type),
-                                                     input_id=self.__get_curie_prefix(input_node_curie).lower(),
+                                                     input_id=self.__get_curie_prefix_for_bte(input_node_curie),
                                                      values=self.__get_curie_local_id(input_node_curie))
                     seqd.query()
                     reasoner_std_response = seqd.to_reasoner_std()
@@ -113,9 +113,9 @@ class BTEQuerier:
         else:
             return ""
 
-    def __get_curie_prefix(self, curie):
+    def __get_curie_prefix_for_bte(self, curie):
         prefix = curie.split(':')[0]
-        # Note: Make some temporary prefix adjustments (until prefixes are standardized somehow)
+        # Note: Make some temporary prefix adjustments (until prefixes are standardized somehow?)
         if prefix.startswith("CHEMBL"):
             prefix = "CHEMBL"
         elif prefix == "NCBIGene":
@@ -126,7 +126,7 @@ class BTEQuerier:
             prefix = "UMLS"
         elif prefix == "SNOMEDCT":
             prefix = "SNOMED"
-        return prefix
+        return prefix.lower()
 
     def __get_curie_local_id(self, curie):
         return curie.split(':')[-1]  # Note: Taking last item gets around "PR:PR:000001" situation
