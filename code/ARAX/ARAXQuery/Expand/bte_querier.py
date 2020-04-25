@@ -48,8 +48,9 @@ class BTEQuerier:
                     self.__add_answers_to_kg(reasoner_std_response, input_node.id, output_node.id, edge.id)
 
         if self.final_kg['edges']:
-            self.response.info(f"Found results for edge {edge.id} using BTE (nodes: {len(self.final_kg['nodes'])}, "
-                               f"edges: {len(self.final_kg['edges'])})")
+            counts_by_qg_id = self.__get_counts_by_qg_id(self.final_kg)
+            num_results_string = ", ".join([f"{qg_id}: {count}" for qg_id, count in sorted(counts_by_qg_id.items())])
+            self.response.info(f"Query for edge {edge.id} returned results ({num_results_string})")
         else:
             if self.continue_if_no_results:
                 self.response.warning(f"No paths were found in BTE satisfying this query graph")
@@ -83,6 +84,18 @@ class BTEQuerier:
                 swagger_edge.id = f"{swagger_edge.source_id}--{swagger_edge.type}--{swagger_edge.target_id}"
                 swagger_edge.qedge_id = qedge_id
                 self.final_kg['edges'][swagger_edge.id] = swagger_edge
+
+    def __get_counts_by_qg_id(self, knowledge_graph):
+        counts_by_qg_id = dict()
+        for node in knowledge_graph['nodes'].values():
+            if node.qnode_id not in counts_by_qg_id:
+                counts_by_qg_id[node.qnode_id] = 0
+            counts_by_qg_id[node.qnode_id] += 1
+        for edge in knowledge_graph['edges'].values():
+            if edge.qedge_id not in counts_by_qg_id:
+                counts_by_qg_id[edge.qedge_id] = 0
+            counts_by_qg_id[edge.qedge_id] += 1
+        return counts_by_qg_id
 
     def __convert_snake_case_to_pascal_case(self, snake_string):
         # Converts a string like 'chemical_substance' to 'ChemicalSubstance'
