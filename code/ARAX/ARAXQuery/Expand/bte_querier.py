@@ -77,8 +77,9 @@ class BTEQuerier:
                 swagger_edge.source_id = edge['source_id']
                 swagger_edge.target_id = edge['target_id']
                 swagger_edge.provided_by = "BTE"
-                edge_source_attribute = EdgeAttribute(name="edge_source", value=edge['edge_source'])
-                swagger_edge.edge_attributes = [edge_source_attribute]
+                if edge.get('edge_source'):
+                    edge_source_attribute = EdgeAttribute(name="edge_source", value=edge['edge_source'])
+                    swagger_edge.edge_attributes = [edge_source_attribute]
                 swagger_edge.id = f"{swagger_edge.source_id}--{swagger_edge.type}--{swagger_edge.target_id}"
                 swagger_edge.qedge_id = qedge_id
                 self.final_kg['edges'][swagger_edge.id] = swagger_edge
