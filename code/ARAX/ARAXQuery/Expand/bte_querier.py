@@ -62,9 +62,9 @@ class BTEQuerier:
         if reasoner_std_response['knowledge_graph']['edges']:  # Note: BTE response currently includes some nodes even when no edges found
             for node in reasoner_std_response['knowledge_graph']['nodes']:
                 swagger_node = Node()
-                swagger_node.id = node['id']
-                swagger_node.name = node['name']
-                swagger_node.type = node['type']
+                swagger_node.id = node.get('id')
+                swagger_node.name = node.get('name')
+                swagger_node.type = node.get('type')
                 # All nodes except our input node should have a qnode_id corresponding to the output node
                 input_node_in_bte_qg = next(node for node in reasoner_std_response['query_graph']['nodes'] if node['id'] == "n0")
                 if swagger_node.id == input_node_in_bte_qg['curie'][0].upper():  # Hack to get around different formats of same curie in QG vs. KG
@@ -74,14 +74,12 @@ class BTEQuerier:
                 self.final_kg['nodes'][swagger_node.id] = swagger_node
             for edge in reasoner_std_response['knowledge_graph']['edges']:
                 swagger_edge = Edge()
-                swagger_edge.type = edge['type']
-                swagger_edge.source_id = edge['source_id']
-                swagger_edge.target_id = edge['target_id']
-                swagger_edge.provided_by = "BTE"
-                if edge.get('edge_source'):
-                    edge_source_attribute = EdgeAttribute(name="edge_source", value=edge['edge_source'])
-                    swagger_edge.edge_attributes = [edge_source_attribute]
+                swagger_edge.type = edge.get('type')
+                swagger_edge.source_id = edge.get('source_id')
+                swagger_edge.target_id = edge.get('target_id')
                 swagger_edge.id = f"{swagger_edge.source_id}--{swagger_edge.type}--{swagger_edge.target_id}"
+                swagger_edge.is_defined_by = "BTE"
+                swagger_edge.provided_by = edge.get('edge_source')
                 swagger_edge.qedge_id = qedge_id
                 self.final_kg['edges'][swagger_edge.id] = swagger_edge
 
