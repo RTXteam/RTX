@@ -28,7 +28,7 @@ import sys
 TIMEOUT_SEC = 600
 
 KG1_RELATION_CURIE_PREFIX = 'RTXKG1'
-KG1_RELATION_IRI_PREFIX = 'http://kg1endpoint.rtx.ai'
+KG1_RELATION_IRI_PREFIX = 'http://arax.rtx.ai'
 
 KG1_PROVIDED_BY_TO_KG2_IRIS = {
     'gene_ontology': "http://purl.obolibrary.org/obo/go-plus.owl",
@@ -56,7 +56,9 @@ KG1_PROVIDED_BY_TO_KG2_IRIS = {
     'CL': 'http://purl.obolibrary.org/ontology/cl.owl',
     'KEGG': 'http://genome.jp/kegg',
     'CHEMBL.COMPOUND': 'https://www.ebi.ac.uk/chembl',
-    'NCBIGene': 'https://www.ncbi.nlm.nih.gov/gene'
+    'NCBIGene': 'https://www.ncbi.nlm.nih.gov/gene',
+    'AQTLTrait': 'http://purl.obolibrary.org/ontology/hp.obo',  # KG1 has a single AQTLTrait node, which has an HP uri
+    'GeneProf': 'http://www.geneprof.org/'
     }
 
 

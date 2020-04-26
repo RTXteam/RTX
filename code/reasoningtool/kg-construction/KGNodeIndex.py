@@ -420,10 +420,14 @@ class KGNodeIndex:
         return curies_list
 
 
-    def get_equivalent_curies(self, curie):
+    def get_equivalent_curies(self, curie, kg_name='KG2'):
+
+        table_name = 'kg1node'
+        if kg_name.upper() == 'KG2':
+            table_name = 'kg2node'
 
         cursor = self.connection.cursor()
-        cursor.execute( f"SELECT * FROM kg2node{TESTSUFFIX} WHERE curie = ?", (curie,) )
+        cursor.execute( f"SELECT * FROM {table_name}{TESTSUFFIX} WHERE curie = ?", (curie,) )
         rows = cursor.fetchall()
 
         if len(rows) == 0: return []
@@ -435,7 +439,7 @@ class KGNodeIndex:
             reference_curie = row[3]
 
         cursor = self.connection.cursor()
-        cursor.execute( f"SELECT * FROM kg2node{TESTSUFFIX} WHERE reference_curie = ?", (reference_curie,) )
+        cursor.execute( f"SELECT * FROM {table_name}{TESTSUFFIX} WHERE reference_curie = ?", (reference_curie,) )
         rows = cursor.fetchall()
 
         curies = {}
@@ -445,12 +449,16 @@ class KGNodeIndex:
         return list(curies.keys())
 
 
-    def get_equivalent_entities(self, curie):
+    def get_equivalent_entities(self, curie, kg_name='KG2'):
+
+        table_name = 'kg1node'
+        if kg_name.upper() == 'KG2':
+            table_name = 'kg2node'
 
         equivalence = { curie: { } }
 
         cursor = self.connection.cursor()
-        cursor.execute( f"SELECT * FROM kg2node{TESTSUFFIX} WHERE curie = ?", (curie,) )
+        cursor.execute( f"SELECT * FROM {table_name}{TESTSUFFIX} WHERE curie = ?", (curie,) )
         rows = cursor.fetchall()
 
         if len(rows) == 0: return equivalence
@@ -466,7 +474,7 @@ class KGNodeIndex:
         #    reference_curies[row[3]] = 1
 
         cursor = self.connection.cursor()
-        cursor.execute( f"SELECT * FROM kg2node{TESTSUFFIX} WHERE reference_curie = ?", (reference_curie,) )
+        cursor.execute( f"SELECT * FROM {table_name}{TESTSUFFIX} WHERE reference_curie = ?", (reference_curie,) )
         rows = cursor.fetchall()
 
         curies = {}
@@ -604,13 +612,18 @@ def main():
     print("Elapsed time: "+str(t1-t0))
 
     print("==== Get all known synonyms of a CURIE using KG2 index ============================")
-    tests = [ "DOID:14330", "CUI:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855" ]
+    tests = [ "DOID:14330", "CUI:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281" ]
+    tests = [ "DOID:9281" ]
 
     t0 = timeit.default_timer()
     for test in tests:
-        curies = kgNodeIndex.get_equivalent_curies(test)
+        curies = kgNodeIndex.get_equivalent_curies(test,kg_name='KG1')
         print(f"{test} = " + str(curies))
-        equivalence_mapping = kgNodeIndex.get_equivalent_entities(test)
+        curies = kgNodeIndex.get_equivalent_curies(test,kg_name='KG2')
+        print(f"{test} = " + str(curies))
+        equivalence_mapping = kgNodeIndex.get_equivalent_entities(test,kg_name='KG1')
+        print(json.dumps(equivalence_mapping,sort_keys=True,indent=2))
+        equivalence_mapping = kgNodeIndex.get_equivalent_entities(test,kg_name='KG2')
         print(json.dumps(equivalence_mapping,sort_keys=True,indent=2))
     t1 = timeit.default_timer()
     print("Elapsed time: "+str(t1-t0))

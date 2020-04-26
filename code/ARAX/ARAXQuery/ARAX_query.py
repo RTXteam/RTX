@@ -363,9 +363,7 @@ class ARAXQuery:
             if result.error_code != 'OK':
                 return response
 
-            #### Message suffers from a dual life as a dict and an object. above we seem to treat it as a dict. Fix that. FIXME
-            #### Below we start treating it as and object. This should be the way forward.
-            #### This is not a good place to do this, but may need to convert here
+            #### Import the individual ARAX processing modules and process DSL commands
             from ARAX_expander import ARAXExpander
             from ARAX_overlay import ARAXOverlay
             from ARAX_filter_kg import ARAXFilterKG
@@ -382,40 +380,49 @@ class ARAXQuery:
             action_stats = { }
             actions = result.data['actions']
             for action in actions:
-                response.debug(f"Processing action '{action['command']}' with parameters {action['parameters']}")
+                response.info(f"Processing action '{action['command']}' with parameters {action['parameters']}")
                 nonstandard_result = False
 
                 # Catch a crash
                 try:
-
                     if action['command'] == 'create_message':
                         result = messenger.create_message()
                         message = result.data['message']
+
                     elif action['command'] == 'add_qnode':
                         result = messenger.add_qnode(message,action['parameters'])
+
                     elif action['command'] == 'add_qedge':
                         result = messenger.add_qedge(message,action['parameters'])
+
                     elif action['command'] == 'expand':
                         result = expander.apply(message,action['parameters'])
+
                     elif action['command'] == 'filter':
                         result = filter.apply(message,action['parameters'])
+
                     elif action['command'] == 'resultify':
                         result = resultifier.apply(message, action['parameters'])
+
+                    elif action['command'] == 'overlay':  # recognize the overlay command
+                        result = overlay.apply(message, action['parameters'])
+
+                    elif action['command'] == 'filter_kg':  # recognize the filter_kg command
+                        result = filter_kg.apply(message, action['parameters'])
+
+                    elif action['command'] == 'filter_results':  # recognize the filter_kg command
+                        result = filter_results.apply(message, action['parameters'])
 
                     elif action['command'] == 'query_graph_reasoner':
                         response.info(f"Sending current query_graph to the QueryGraphReasoner")
                         qgr = QueryGraphReasoner()
                         message = qgr.answer(ast.literal_eval(repr(message.query_graph)), TxltrApiFormat=True)
                         nonstandard_result = True
+
                     elif action['command'] == 'return':
                         action_stats['return_action'] = action
                         break
-                    elif action['command'] == 'overlay':  # recognize the overlay command
-                        result = overlay.apply(message, action['parameters'])
-                    elif action['command'] == 'filter_kg':  # recognize the filter_kg command
-                        result = filter_kg.apply(message, action['parameters'])
-                    elif action['command'] == 'filter_results':  # recognize the filter_kg command
-                        result = filter_results.apply(message, action['parameters'])
+
                     else:
                         response.error(f"Unrecognized command {action['command']}", error_code="UnrecognizedCommand")
                         return response
@@ -795,6 +802,46 @@ def main():
             "filter_results(action=sort_by_edge_attribute, edge_attribute=probability_drug_treats, direction=descending, max_results=15)",  # filter by the probability that the drug treats the disease. cilnidipine prob=0.8976650309881645 which is the 9th highest (so top 10)
             "return(message=true, store=false)",
             ] } }
+    elif params.example_number == 201:  # KG2 version of demo example 1 (acetaminophen)
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
+            "add_qnode(id=n01, type=protein, is_set=true)",
+            "add_qedge(id=e00, source_id=n00, target_id=n01)",
+            "expand(edge_id=e00, kp=ARAX/KG2)",
+            "return(message=true, store=false)",
+        ]}}
+    elif params.example_number == 202:  # KG2 version of demo example 2 (Parkinson's)
+        query = { "previous_message_processing_plan": { "processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:14330, id=n00)",
+            "add_qnode(type=protein, is_set=true, id=n01)",
+            "add_qnode(type=chemical_substance, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=molecularly_interacts_with)",
+            "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
+            "return(message=true, store=false)",
+            ] } }
+    elif params.example_number == 203:  # KG2 version of demo example 3 (but using idiopathic pulmonary fibrosis)
+        query = { "previous_message_processing_plan": { "processing_actions": [
+            "create_message",
+            "add_qnode(id=n00, curie=DOID:0050156)",  # idiopathic pulmonary fibrosis
+            "add_qnode(id=n01, type=chemical_substance, is_set=true)",
+            "add_qnode(id=n02, type=protein)",
+            "add_qedge(id=e00, source_id=n00, target_id=n01)",
+            "add_qedge(id=e01, source_id=n01, target_id=n02)",
+            "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
+            "return(message=true, store=false)",
+            ] } }
+    elif params.example_number == 222:  # Simple BTE query
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(id=n00, curie=NCBIGene:1017)",  # CDK2
+            "add_qnode(id=n01, type=chemical_substance, is_set=True)",
+            "add_qedge(id=e00, source_id=n01, target_id=n00, type=targetedBy)",
+            "expand(edge_id=e00, kp=BTE)",
+            "return(message=true, store=false)",
+        ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return

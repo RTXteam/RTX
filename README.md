@@ -82,7 +82,7 @@ ARAX is a tool for querying, manipulating, filtering, and exploring biomedical
 knowledge graphs. It is designed to be a type of middleware&mdash;an *autonomous
 relay agent*&mdash;within the Translator system. The top-level layer of
 Translator (which is called the *autonomous relay system*) will issue structured
-queries to ARAX via ARAX's web application programming interface; based on the
+queries to ARAX via ARAX's web application programming interface. Then, based on the
 query type, ARAX will determine which *knowledge providers* it needs to consult in
 order to be able to answer the query; ARAX will then query the required
 knowledge providers, synthesize the information that it gets from those queries,
@@ -319,8 +319,8 @@ Netherlands.
 | Finn&nbsp;Womack           | OSU       | `womackf@oregonstate.edu`        | [finnagin](https://github.com/finnagin)   | drug repositioning, Neo4j  |
 | Amy&nbsp;Glen           | OSU       | `glena@oregonstate.edu`        | [amykglen](https://github.com/amykglen)   | knowledge graphs  |
 | Arun&nbsp;Muluka          | PSU       | `avm6604@psu.edu`        | [aruntejam1](https://github.com/aruntejam1)   | knowledge graphs  |
+| Chunyu&nbsp;Ma        | PSU     | `cqm5886@psu.edu` | [chunyuma](https://github.com/chunyuma) | programmer/analyst | 
 | Andrew&nbsp;Hoffman   | RU      | `A.Hoffman@ftr.ru.nl`                 | [parrhesiastic](https://github.com/parrhesiastic)   | ethnographer of data science and cyberinfrastructure  |
-
 
 For our work on the Translator program, we also extensively
 collaborate and cooperate with investigators at Oregon Health &amp; Science
