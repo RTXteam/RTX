@@ -37,13 +37,13 @@ class ARAXExpander:
         brief_description = """
 `expand` effectively takes a query graph (QG) and reaches out to various knowledge providers (KP's) to find all bioentity subgraphs
 that satisfy that QG and augments the knowledge graph (KG) with them. As currently implemented, `expand` can utilize the ARA Expander
-team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to reach out to other KP's as they are rolled out.
+team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, with functionality built in to reach out to other KP's as they are rolled out.
         """
         description_list = []
         params_dict = dict()
         params_dict['brief_description'] = brief_description
         params_dict['edge_id'] = {"a query graph edge ID or list of such id's (required)"}  # this is a workaround due to how self.parameters is utilized in this class
-        params_dict['kp'] = {"the knowledge provider to use - current options are `ARAX/KG1` or `ARAX/KG2` (optional, default is `ARAX/KG1`)"}
+        params_dict['kp'] = {"the knowledge provider to use - current options are `ARAX/KG1`, `ARAX/KG2`, or `BTE` (optional, default is `ARAX/KG1`)"}
         params_dict['enforce_directionality'] = {"whether to obey (vs. ignore) edge directions in query graph - options are `true` or `false` (optional, default is `false`)"}
         params_dict['use_synonyms'] = {"whether to consider synonym curies for query nodes with a curie specified - options are `true` or `false` (optional, default is `true`)"}
         params_dict['synonym_handling'] = {"how to handle synonyms in the answer - options are `map_back` (default; map edges using a synonym back to the original curie) or `add_all` (add synonym nodes as they are - no mapping/merging)"}
@@ -110,6 +110,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         for edge in ordered_edges:
             self.response.info(f"Expanding edge {edge.id} using {self.parameters['kp']}")
             edge_query_graph = self.__extract_subgraph_to_expand(edge.id)
+            # self.response.debug(f"Edge query graph is {edge_query_graph.to_dict()}")
 
             answer_knowledge_graph = self.__expand_edge(edge_query_graph, self.parameters['kp'])
             if response.status != 'OK':
@@ -121,7 +122,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
 
         # Prune any remaining dead-end paths in our knowledge graph
         # TODO: Update to work for branched query graphs as well (only works for linear currently)
-        self.__prune_dead_ends(self.message.knowledge_graph)
+        self.__prune_dead_ends(self.message.knowledge_graph, query_sub_graph)
 
         # Convert message knowledge graph back to API standard format
         standard_kg = self.__convert_dict_kg_to_standard_kg(self.message.knowledge_graph)
@@ -284,6 +285,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         for node_key, node in answer_nodes.items():
             if not node.qnode_id:
                 self.response.error(f"Node {node_key} in answer is missing its corresponding qnode_id", error_code="MissingProperty")
+                return
             # Check if this is a duplicate node
             existing_version_of_node = existing_nodes.get(node_key)
             if existing_version_of_node:
@@ -297,6 +299,7 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
         for edge_key, edge in answer_edges.items():
             if not edge.qedge_id:
                 self.response.error(f"Edge {edge_key} in answer is missing its corresponding qedge_id", error_code="MissingProperty")
+                return
             # Check if this is a duplicate edge
             existing_version_of_edge = existing_edges.get(edge_key)
             if existing_version_of_edge:
@@ -307,10 +310,10 @@ team KG1 and KG2 Neo4j instances to fulfill QG's, with functionality built in to
             else:
                 existing_edges[edge_key] = edge
 
-    def __prune_dead_ends(self, knowledge_graph):
+    def __prune_dead_ends(self, knowledge_graph, query_sub_graph):
         # First figure out our intermediate query nodes and their corresponding query edges
-        ordered_qnodes = self.__get_ordered_query_nodes(self.message.query_graph)
-        qnodes_to_qedges_dict = self.__get_qnode_to_qedge_dict(self.message.query_graph)
+        ordered_qnodes = self.__get_ordered_query_nodes(query_sub_graph)
+        qnodes_to_qedges_dict = self.__get_qnode_to_qedge_dict(query_sub_graph)
 
         if len(ordered_qnodes) > 2:
             # Loop through ordered qnodes (layers) in reverse order (skipping the last)
