@@ -878,6 +878,15 @@ def main():
             #"filter_kg(action=remove_orphaned_nodes, node_type=protein)",
             "return(message=true, store=false)",
             ] } }
+    elif params.example_number == 222:  # Simple BTE query
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(id=n00, curie=NCBIGene:1017)",  # CDK2
+            "add_qnode(id=n01, type=chemical_substance, is_set=True)",
+            "add_qedge(id=e00, source_id=n01, target_id=n00, type=targetedBy)",
+            "expand(edge_id=e00, kp=BTE)",
+            "return(message=true, store=false)",
+        ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return

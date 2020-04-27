@@ -34,12 +34,12 @@ NGD_NORMALIZER = 2.2e+7 * 20   # from PubMed home page there are 27 million arti
 class NormGoogleDistance:
     def __init__(self):
         if os.path.exists(WHATEVER_TO_MESH_DB_FILE) and os.path.isfile(WHATEVER_TO_MESH_DB_FILE):
-            self.db_whatever_to_mesh = pickledb.load(WHATEVER_TO_MESH_DB_FILE,
+            self.db_whatever_to_mesh = pickledb.load(WHATEVER_TO_MESH_DB_FILE,sig=False,
                                                      auto_dump=False)
         else:
             self.db_whatever_to_mesh = None
         if os.path.exists(MESH_TO_PUBMED_DB_FILE) and os.path.isfile(MESH_TO_PUBMED_DB_FILE):
-            self.db_mesh_to_pubmed = pickledb.load(MESH_TO_PUBMED_DB_FILE,
+            self.db_mesh_to_pubmed = pickledb.load(MESH_TO_PUBMED_DB_FILE,sig=False,
                                                    auto_dump=False)
         else:
             self.db_mesh_to_pubmed = None
