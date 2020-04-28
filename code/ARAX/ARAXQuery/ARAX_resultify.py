@@ -359,6 +359,9 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                               qg_nodes_override_treat_is_set_as_false: set = None,
                               ignore_edge_direction: bool = True) -> List[Result]:
 
+    if ignore_edge_direction is None:
+        return _get_results_for_kg_by_qg(kg, qg, qg_nodes_override_treat_is_set_as_false)
+
     if len([node.id for node in qg.nodes if node.id is None]) > 0:
         raise ValueError("node has None for node.id in query graph")
 
@@ -1248,6 +1251,7 @@ def _test08():
         'resultify(ignore_edge_direction=true, debug=true)',
         "return(message=true, store=false)"]}}
     [response, message] = _do_arax_query(query)
+#    print(response.messages_list())
     assert response.status == 'OK'
     assert len(message.results) == 3223
 
@@ -1546,6 +1550,17 @@ def _test_issue687():
     _do_arax_query(query)
 
 
+def _test_issue727():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "add_qnode(name=CHEMBL.COMPOUND:CHEMBL1276308, id=n00)",
+        "add_qnode(type=protein, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(edge_id=e00)",
+        "resultify()"]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+
+
 def _run_module_level_tests():
     _test01()
     _test02()
@@ -1570,6 +1585,7 @@ def _run_arax_class_tests():
     _test_issue686b()
     _test_issue686c()
     _test_issue687()
+    _test_issue727()
 
 
 def main():

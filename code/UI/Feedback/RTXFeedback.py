@@ -184,7 +184,11 @@ class RTXFeedback:
     session = self.session
     engine = self.engine
     session.close()
-    engine.dispose()
+    try:
+      engine.dispose()
+    except:
+      pass
+
 
   #### Pre-populate the database with reference data
   def prepopulateDatabase(self):
