@@ -91,11 +91,18 @@ class RemoveEdges:
             # iterate over the edges find the edges to remove
             for edge in self.message.knowledge_graph.edges:
                 edge_dict = edge.to_dict()
-                if edge_dict[edge_params['edge_property']] == edge_params['property_value']:
-                    edges_to_remove.add(i)
-                    if edge_params['remove_connected_nodes']:
-                        node_ids_to_remove.add(edge.source_id)
-                        node_ids_to_remove.add(edge.target_id)
+                if type(edge_dict[edge_params['edge_property']]) == list:
+                    if edge_params['property_value'] in edge_dict[edge_params['edge_property']]:
+                        edges_to_remove.add(i)
+                        if edge_params['remove_connected_nodes']:
+                            node_ids_to_remove.add(edge.source_id)
+                            node_ids_to_remove.add(edge.target_id)
+                else:
+                    if edge_dict[edge_params['edge_property']] == edge_params['property_value']:
+                        edges_to_remove.add(i)
+                        if edge_params['remove_connected_nodes']:
+                            node_ids_to_remove.add(edge.source_id)
+                            node_ids_to_remove.add(edge.target_id)
                 i += 1
             if edge_params['remove_connected_nodes']:
                 self.response.debug(f"Removing Nodes")

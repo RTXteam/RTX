@@ -221,8 +221,12 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
                         value = edge.to_dict()[parameters['edge_property']]
                         if type(value) == str:
                             known_values.add(value)
+                        elif type(value) == list:
+                            for x in value:
+                                if type(x) == str:
+                                    known_values.add(x)
             allowable_parameters = {'action': {'remove_edges_by_property'},
-                                    'edge_property': set([key for x in self.message.knowledge_graph.edges for key, val in x.to_dict().items() if type(val) == str]),
+                                    'edge_property': set([key for x in self.message.knowledge_graph.edges for key, val in x.to_dict().items() if type(val) == str or type(val) == list]),
                                     'property_value': known_values,
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'qnode_id':set([x.qnode_id for x in self.message.knowledge_graph.nodes])

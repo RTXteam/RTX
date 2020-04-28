@@ -842,6 +842,16 @@ def main():
             "expand(edge_id=e00, kp=BTE)",
             "return(message=true, store=false)",
         ]}}
+    elif params.example_number == 233:  # KG2 version of demo example 1 (acetaminophen)
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
+            "add_qnode(id=n01, type=protein, is_set=true)",
+            "add_qedge(id=e00, source_id=n00, target_id=n01)",
+            "expand(edge_id=e00, kp=ARAX/KG2)",
+            "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=https://pharos.nih.gov)",
+            "return(message=true, store=false)",
+        ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return
@@ -1018,7 +1028,7 @@ def main():
 "UniProtKB:Q16665",
 "UniProtKB:P03372"]
         print(f"For example 15 (demo eg. 3), number of TP proteins: {len(set(known_proteins).intersection(set(proteins)))}")  # fill these in after finding a good example
-
-    print(f"Number of KnowledgeProviders in KG: {Counter([x.provided_by for x in message.knowledge_graph.edges])}")
+    if type(message.knowledge_graph.edges[0].provided_by) == list:
+        print(f"Number of KnowledgeProviders in KG: {Counter([y for x in message.knowledge_graph.edges for y in x.provided_by])}")
 
 if __name__ == "__main__": main()
