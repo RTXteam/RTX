@@ -43,7 +43,7 @@ class BTEQuerier:
                     error_type, error, _ = sys.exc_info()
                     self.response.error(f"Encountered a problem while using BioThings Explorer. {trace_back}",
                                         error_code=error_type.__name__)
-                    break
+                    return self.final_kg
                 else:
                     self.__add_answers_to_kg(reasoner_std_response, input_node.id, output_node.id, edge.id)
 
