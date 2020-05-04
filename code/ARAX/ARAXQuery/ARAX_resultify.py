@@ -1606,6 +1606,7 @@ def _run_arax_class_tests():
     _test_issue686c()
     _test_issue687()
     _test_issue727()
+    _test_issue731()
 
 
 def main():
