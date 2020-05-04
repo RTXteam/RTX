@@ -6,11 +6,13 @@ import os
 import json
 import ast
 import re
+import time
 from datetime import datetime
 import subprocess
 import traceback
 from collections import Counter
 import numpy as np
+import threading
 
 from response import Response
 from query_graph_info import QueryGraphInfo
@@ -50,6 +52,52 @@ class ARAXQuery:
     def __init__(self):
         self.response = None
         self.message = None
+
+
+    def query_return_stream(self,query):
+
+        main_query_thread = threading.Thread(target=self.asynchronous_query, args=(query,))
+        main_query_thread.start()
+
+        if self.response is None or "DONE" not in self.response.status:
+
+            # Sleep until a response object has been created
+            while self.response is None:
+                time.sleep(0.1)
+
+            i_message = 0
+            n_messages = len(self.response.messages)
+
+            while "DONE" not in self.response.status:
+                n_messages = len(self.response.messages)
+                while i_message < n_messages:
+                    yield(json.dumps(self.response.messages[i_message])+"\n")
+                    i_message += 1
+                time.sleep(0.2)
+
+            yield(json.dumps(ast.literal_eval(repr(self.message))))
+
+        main_query_thread.join()
+        return self.message
+
+
+    def asynchronous_query(self,query):
+
+        #### Define a new response object if one does not yet exist
+        if self.response is None:
+            self.response = Response()
+
+        result = self.query(query)
+        message = self.message
+        if message is None:
+            message = Message()
+        message.message_code = result.error_code
+        message.code_description = result.message
+        message.log = result.messages
+
+        # Insert a little flag into the response status to denote that this thread is done
+        self.response.status = f"DONE,{self.response.status}"
+        return
 
 
     def query_return_message(self,query):
