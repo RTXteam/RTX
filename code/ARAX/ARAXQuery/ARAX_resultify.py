@@ -393,7 +393,8 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     kg_node_id_incoming_adjacency_map = kg_adj_map_direc['in']
     kg_node_id_outgoing_adjacency_map = kg_adj_map_direc['out']
 
-    kg_adj_map = _make_adj_maps(kg, directed=False, droploops=True)['both']
+    # calling this method just for validation
+    _make_adj_maps(kg, directed=False, droploops=True)['both']
     qg_adj_map = _make_adj_maps(qg, directed=False, droploops=True)['both']  # can the QG have a self-loop?  not sure
 
     # build up maps of node IDs to nodes, for both the KG and QG
