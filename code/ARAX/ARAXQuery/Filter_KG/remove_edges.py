@@ -183,10 +183,13 @@ class RemoveEdges:
                 # remove connected nodes
                 self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
                 i = 0
+                c = 0
                 # iterate over edges find edges connected to the nodes
                 for edge in self.message.knowledge_graph.edges:
                     if edge.source_id in node_ids_to_remove or edge.target_id in node_ids_to_remove:
                         edges_to_remove.add(i)
+                    else:
+                        c += 1
                     i += 1
             # remove edges
             self.message.knowledge_graph.edges = [val for idx,val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]

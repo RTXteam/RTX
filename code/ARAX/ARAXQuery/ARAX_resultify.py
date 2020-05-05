@@ -251,15 +251,22 @@ def _make_adj_maps(graph: Union[QueryGraph, KnowledgeGraph],
         adj_map_out: Dict[str, Set[str]] = {node.id: set() for node in graph.nodes}
     else:
         adj_map: Dict[str, Set[str]] = {node.id: set() for node in graph.nodes}
-    for edge in graph.edges:
-        if droploops and edge.target_id == edge.source_id:
-            continue
-        if directed:
-            adj_map_out[edge.source_id].add(edge.target_id)
-            adj_map_in[edge.target_id].add(edge.source_id)
-        else:
-            adj_map[edge.source_id].add(edge.target_id)
-            adj_map[edge.target_id].add(edge.source_id)
+    try:
+        for edge in graph.edges:
+            if droploops and edge.target_id == edge.source_id:
+                continue
+            if directed:
+                edge_node_id = edge.source_id
+                adj_map_out[edge_node_id].add(edge.target_id)
+                edge_node_id = edge.target_id
+                adj_map_in[edge_node_id].add(edge.source_id)
+            else:
+                edge_node_id = edge.source_id
+                adj_map[edge_node_id].add(edge.target_id)
+                edge_node_id = edge.target_id
+                adj_map[edge_node_id].add(edge.source_id)
+    except KeyError:
+        raise ValueError("Graph has an edge " + str(edge) + " that refers to a node ID (" + edge_node_id + ") that is not in the graph")
     if directed:
         ret_dict = {'in': adj_map_in, 'out': adj_map_out}
     else:
@@ -359,6 +366,9 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                               qg_nodes_override_treat_is_set_as_false: set = None,
                               ignore_edge_direction: bool = True) -> List[Result]:
 
+    if ignore_edge_direction is None:
+        return _get_results_for_kg_by_qg(kg, qg, qg_nodes_override_treat_is_set_as_false)
+
     if len([node.id for node in qg.nodes if node.id is None]) > 0:
         raise ValueError("node has None for node.id in query graph")
 
@@ -383,7 +393,8 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     kg_node_id_incoming_adjacency_map = kg_adj_map_direc['in']
     kg_node_id_outgoing_adjacency_map = kg_adj_map_direc['out']
 
-    kg_adj_map = _make_adj_maps(kg, directed=False, droploops=True)['both']
+    # calling this method just for validation
+    _make_adj_maps(kg, directed=False, droploops=True)['both']
     qg_adj_map = _make_adj_maps(qg, directed=False, droploops=True)['both']  # can the QG have a self-loop?  not sure
 
     # build up maps of node IDs to nodes, for both the KG and QG
@@ -1248,6 +1259,7 @@ def _test08():
         'resultify(ignore_edge_direction=true, debug=true)',
         "return(message=true, store=false)"]}}
     [response, message] = _do_arax_query(query)
+#    print(response.messages_list())
     assert response.status == 'OK'
     assert len(message.results) == 3223
 
@@ -1546,6 +1558,30 @@ def _test_issue687():
     _do_arax_query(query)
 
 
+def _test_issue727():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "add_qnode(name=CHEMBL.COMPOUND:CHEMBL1276308, id=n00)",
+        "add_qnode(type=protein, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(edge_id=e00)",
+        "resultify()"]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+
+def _test_issue731():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=MONDO:0005737, id=n0, type=disease)",
+            "add_qnode(type=protein, id=n1)",
+            "add_qnode(type=disease, id=n2)",
+            "add_qedge(source_id=n0, target_id=n1, id=e0)",
+            "add_qedge(source_id=n1, target_id=n2, id=e1)",
+            "expand(edge_id=[e0,e1], kp=ARAX/KG2)",
+            "resultify(debug=true)"]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'ERROR' and 'MONDO:0005737' in response.messages_list()[0]
+
+
 def _run_module_level_tests():
     _test01()
     _test02()
@@ -1570,6 +1606,8 @@ def _run_arax_class_tests():
     _test_issue686b()
     _test_issue686c()
     _test_issue687()
+    _test_issue727()
+    _test_issue731()
 
 
 def main():

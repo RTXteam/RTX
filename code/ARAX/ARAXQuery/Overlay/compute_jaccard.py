@@ -81,9 +81,9 @@ class ComputeJaccard:
             except:
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
-                self.response.error(
+                self.response.warning(
                     f"Source node id: {parameters['start_node_id']} not found in the KG. Perhaps the KG is empty?")
-                self.response.error(tb, error_code=error_type.__name__)
+                #self.response.error(tb, error_code=error_type.__name__)
 
             # edge attribute properties
             description = f"Jaccard index based on intermediate query nodes {parameters['intermediate_node_id']}"

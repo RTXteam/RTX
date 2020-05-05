@@ -6,9 +6,13 @@ import os
 import json
 import ast
 import re
+import time
 from datetime import datetime
 import subprocess
 import traceback
+from collections import Counter
+import numpy as np
+import threading
 
 from response import Response
 from query_graph_info import QueryGraphInfo
@@ -48,6 +52,52 @@ class ARAXQuery:
     def __init__(self):
         self.response = None
         self.message = None
+
+
+    def query_return_stream(self,query):
+
+        main_query_thread = threading.Thread(target=self.asynchronous_query, args=(query,))
+        main_query_thread.start()
+
+        if self.response is None or "DONE" not in self.response.status:
+
+            # Sleep until a response object has been created
+            while self.response is None:
+                time.sleep(0.1)
+
+            i_message = 0
+            n_messages = len(self.response.messages)
+
+            while "DONE" not in self.response.status:
+                n_messages = len(self.response.messages)
+                while i_message < n_messages:
+                    yield(json.dumps(self.response.messages[i_message])+"\n")
+                    i_message += 1
+                time.sleep(0.2)
+
+            yield(json.dumps(ast.literal_eval(repr(self.message))))
+
+        main_query_thread.join()
+        return self.message
+
+
+    def asynchronous_query(self,query):
+
+        #### Define a new response object if one does not yet exist
+        if self.response is None:
+            self.response = Response()
+
+        result = self.query(query)
+        message = self.message
+        if message is None:
+            message = Message()
+        message.message_code = result.error_code
+        message.code_description = result.message
+        message.log = result.messages
+
+        # Insert a little flag into the response status to denote that this thread is done
+        self.response.status = f"DONE,{self.response.status}"
+        return
 
 
     def query_return_message(self,query):
@@ -694,6 +744,22 @@ def main():
             "resultify(ignore_edge_direction=true)",
             "return(message=true, store=false)"
         ]}}
+    elif params.example_number == 1515:  # Exact duplicate of ARAX_Example3.ipynb
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "add_qnode(curie=DOID:9406, id=n00)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+            "add_qnode(type=protein, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01)",
+            "expand(edge_id=[e00,e01])",
+            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=3, remove_connected_nodes=t, qnode_id=n01)",
+            "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
+            "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n01, target_qnode_id=n02)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=ngd, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",
+            "resultify(ignore_edge_direction=true)",
+            "return(message=true, store=true)"
+        ]}}
     elif params.example_number == 16:  # To test COHD obs/exp ratio
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
@@ -818,19 +884,46 @@ def main():
             "add_qnode(type=protein, is_set=true, id=n01)",
             "add_qnode(type=chemical_substance, id=n02)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
-            "add_qedge(source_id=n01, target_id=n02, id=e01, type=molecularly_interacts_with)",
-            "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=molecularly_interacts_with)",  # for KG2
+            #"add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",  # for KG1
+            "expand(edge_id=[e00,e01], kp=ARAX/KG2)",  # for KG2
+            #"expand(edge_id=[e00,e01], kp=ARAX/KG1)",  # for KG1
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",  # seems to work just fine
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.008, remove_connected_nodes=t, qnode_id=n02)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 203:  # KG2 version of demo example 3 (but using idiopathic pulmonary fibrosis)
         query = { "previous_message_processing_plan": { "processing_actions": [
             "create_message",
-            "add_qnode(id=n00, curie=DOID:0050156)",  # idiopathic pulmonary fibrosis
+            #"add_qnode(id=n00, curie=DOID:0050156)",  # idiopathic pulmonary fibrosis
+            "add_qnode(curie=DOID:9406, id=n00)",  # hypopituitarism, original demo example
             "add_qnode(id=n01, type=chemical_substance, is_set=true)",
             "add_qnode(id=n02, type=protein)",
             "add_qedge(id=e00, source_id=n00, target_id=n01)",
             "add_qedge(id=e01, source_id=n01, target_id=n02)",
             "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
+            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
+            "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n01, target_qnode_id=n02)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=2, remove_connected_nodes=t, qnode_id=n01)",
+            "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
+            "return(message=true, store=false)",
+            ] } }
+    elif params.example_number == 2033:  # KG2 version of demo example 3 (but using idiopathic pulmonary fibrosis), with all decorations
+        query = { "previous_message_processing_plan": { "processing_actions": [
+            "create_message",
+            "add_qnode(id=n00, curie=DOID:0050156)",  # idiopathic pulmonary fibrosis
+            #"add_qnode(curie=DOID:9406, id=n00)",  # hypopituitarism, original demo example
+            "add_qnode(id=n01, type=chemical_substance, is_set=true)",
+            "add_qnode(id=n02, type=protein)",
+            "add_qedge(id=e00, source_id=n00, target_id=n01)",
+            "add_qedge(id=e01, source_id=n01, target_id=n02)",
+            "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
+            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
+            "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n01, target_qnode_id=n02)",
+            #"filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=0, remove_connected_nodes=t, qnode_id=n01)",
+            #"filter_kg(action=remove_orphaned_nodes, node_type=protein)",
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 222:  # Simple BTE query
@@ -841,6 +934,18 @@ def main():
             "add_qedge(id=e00, source_id=n01, target_id=n00, type=targetedBy)",
             "expand(edge_id=e00, kp=BTE)",
             "return(message=true, store=false)",
+        ]}}
+    elif params.example_number == 690:  # test issue 690
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:14330, id=n00)",
+            "add_qnode(type=not_a_real_type, is_set=true, id=n01)",
+            "add_qnode(type=chemical_substance, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=molecularly_interacts_with)",
+            "expand(edge_id=[e00,e01], continue_if_no_results=true)",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+            "return(message=true, store=false)"
         ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
@@ -870,29 +975,61 @@ def main():
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
     print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     #print(response.show(level=Response.DEBUG))
+
     print(response.show(level=Response.DEBUG))
+
     print(f"Number of results: {len(message.results)}")
-    print(f"Drugs names in the results: {[x.name for x in message.knowledge_graph.nodes if 'chemical_substance' in x.type]}")
+
+    #print(f"Drugs names in the KG: {[x.name for x in message.knowledge_graph.nodes if 'chemical_substance' in x.type or 'drug' in x.type]}")
+
+    print(f"Essence names in the answers: {[x.essence for x in message.results]}")
+
     #print(json.dumps(ast.literal_eval(repr(message.results[0])), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.results)), sort_keys=True, indent=2))
     #print(set.union(*[set(x.qg_id for x in r.edge_bindings if x.qg_id.startswith('J')) for r in message.results]))
-    try:
-        print(f"Result qg_id's in results: {set.union(*[set(x.qg_id for x in r.edge_bindings) for r in message.results])}")
-    except:
-        pass
 
-    from collections import Counter
-    vals = []
-    for edge in message.knowledge_graph.edges:
-        if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
-            for attr in edge.edge_attributes:
-                vals.append((attr.name, attr.value))
+    # look for qg id's in edge_bindings in results
+    if False:
+        try:
+            print(f"Result qg_id's in results: {set.union(*[set(x.qg_id for x in r.edge_bindings) for r in message.results])}")
+        except:
+            pass
 
-    #print(sorted(Counter(vals).items(), key=lambda x:float(x[0][1])))
+    # Check edge attributes
+    if True:
+        vals = []
+        num_edges_show = 2
+        num_edges_shown = 0
+        #attribute_of_interest = 'jaccard_index'
+        attribute_of_interest = 'observed_expected_ratio'
+        #attribute_of_interest = 'ngd'
+        all_attribute_names = set()
+        for edge in message.knowledge_graph.edges:
+            if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
+                for edge_attribute in edge.edge_attributes:
+                    all_attribute_names.add(edge_attribute.name)
+                    if edge_attribute.name == attribute_of_interest:
+                        if num_edges_shown < num_edges_show:
+                            print(json.dumps(ast.literal_eval(repr(edge)), sort_keys=True, indent=2))
+                            num_edges_shown += 1
+                        #for attr in edge.edge_attributes:
+                        #    vals.append((attr.name, attr.value))
+                        vals.append((edge_attribute.name, float(edge_attribute.value)))  # FIXME: some edge_attributes are floats, others are strings, object model weirdness
+        print(f"All edge attribute names: {all_attribute_names}")
+        if vals:
+            print(f"number of edges with attribute {attribute_of_interest}: {len(vals)}")
+            print(f"Mean of attribute {attribute_of_interest}: {np.mean([x[1] for x in vals])}")
+            print(f"Median of attribute {attribute_of_interest}: {np.median([x[1] for x in vals])}")
+            print(f"Max of attribute {attribute_of_interest}: {np.max([x[1] for x in vals])}")
+            print(f"Min of attribute {attribute_of_interest}: {np.min([x[1] for x in vals])}")
+        # show all the values of the edge attributes
+        #print(sorted(Counter(vals).items(), key=lambda x:float(x[0][1])))
 
-    for edge in message.knowledge_graph.edges:
-        if edge.source_id == "CHEMBL.COMPOUND:CHEMBL452076" or edge.target_id == "CHEMBL.COMPOUND:CHEMBL452076":
-            print(edge)
+    # check for edges from a given drug
+    if False:
+        for edge in message.knowledge_graph.edges:
+            if edge.source_id == "CHEMBL.COMPOUND:CHEMBL452076" or edge.target_id == "CHEMBL.COMPOUND:CHEMBL452076":
+                print(edge)
 
     #for node in message.knowledge_graph.nodes:
     #    print(f"{node.name} {node.type[0]}")
@@ -960,7 +1097,8 @@ def main():
     
     #print(len(message.knowledge_graph.nodes))
 
-    if True:
+    # check number of TP's for example 3
+    if False:
         proteins = []
         for node in message.knowledge_graph.nodes:
             if node.type[0] == "protein":
@@ -1019,6 +1157,12 @@ def main():
 "UniProtKB:P03372"]
         print(f"For example 15 (demo eg. 3), number of TP proteins: {len(set(known_proteins).intersection(set(proteins)))}")  # fill these in after finding a good example
 
-    print(f"Number of KnowledgeProviders in KG: {Counter([x.provided_by for x in message.knowledge_graph.edges])}")
+    try:
+        print(f"Number of KnowledgeProviders in KG: {Counter([x.provided_by for x in message.knowledge_graph.edges])}")
+    except:
+        print(f"Number of KnowledgeProviders in KG: {Counter([x.provided_by[0] for x in message.knowledge_graph.edges])}")
+
+# print the message id at the bottom for convenience too:
+    print(f"message id: {json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2)}")
 
 if __name__ == "__main__": main()

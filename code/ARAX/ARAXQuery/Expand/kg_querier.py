@@ -72,8 +72,10 @@ class KGQuerier:
                     node.curie = equivalent_curies
                     node.type = None  # Equivalent curie types may be different than the original, so we clear this
                     synonym_usages_dict[node.id] = {'original_curie': original_curie, 'synonym_curies': node.curie}
-                else:
+                elif len(equivalent_curies) == 1:
                     self.response.info(f"Could not find any equivalent curies in {kp} for {original_curie}")
+                else:
+                    self.response.error(f"{kp} does not contain a node with curie {original_curie}", error_code="UnknownCurie")
         return synonym_usages_dict
 
     def __generate_cypher_to_run(self, enforce_directionality):

@@ -38,8 +38,10 @@ class ARAXOverlay:
                 response.debug(f"Query graph is {message.query_graph}")
             if hasattr(message, 'knowledge_graph') and message.knowledge_graph and hasattr(message.knowledge_graph, 'nodes') and message.knowledge_graph.nodes and hasattr(message.knowledge_graph, 'edges') and message.knowledge_graph.edges:
                 response.debug(f"Number of nodes in KG is {len(message.knowledge_graph.nodes)}")
+                # This works for KG1 and KG2
                 response.debug(f"Number of nodes in KG by type is {Counter([x.type[0] for x in message.knowledge_graph.nodes])}")  # type is a list, just get the first one
-                #response.debug(f"Number of nodes in KG by with attributes are {Counter([x.type for x in message.knowledge_graph.nodes])}")  # don't really need to worry about this now
+                # don't really need to worry about this now
+                #response.debug(f"Number of nodes in KG by with attributes are {Counter([x.type for x in message.knowledge_graph.nodes])}")
                 response.debug(f"Number of edges in KG is {len(message.knowledge_graph.edges)}")
                 response.debug(f"Number of edges in KG by type is {Counter([x.type for x in message.knowledge_graph.edges])}")
                 response.debug(f"Number of edges in KG with attributes is {len([x for x in message.knowledge_graph.edges if x.edge_attributes])}")
