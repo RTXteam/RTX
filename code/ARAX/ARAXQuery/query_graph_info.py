@@ -28,6 +28,9 @@ class QueryGraphInfo:
         self.node_type_map = None
         self.edge_type_map = None
 
+        self.query_graph_template = None
+
+
     #### Top level decision maker for applying filters
     def assess(self, message):
 
@@ -75,7 +78,7 @@ class QueryGraphInfo:
             warning_counter = 0
             if qnode.type is None:
                 if warning_counter == 0:
-                    response.warning("QueryGraph has nodes with no type. This may cause problems with results inference later")
+                    response.debug("QueryGraph has nodes with no type. This may cause problems with results inference later")
                 warning_counter += 1
                 self.node_type_map['unknown'] = id
             else:
@@ -109,7 +112,7 @@ class QueryGraphInfo:
             edge_type = 'any'
             if qedge.type is None:
                 if warning_counter == 0:
-                    response.warning("QueryGraph has edges with no type. This may cause problems with results inference later")
+                    response.debug("QueryGraph has edges with no type. This may cause problems with results inference later")
                 warning_counter += 1
             else:
                 edge_type = qedge.type
@@ -196,6 +199,27 @@ class QueryGraphInfo:
 
         self.node_order = node_order
         self.edge_order = edge_order
+
+        # Create a text rendering of the QueryGraph geometry for matching against a template
+        self.query_graph_template = ''
+        node_index = 0
+        edge_index = 0
+        for node in node_order:
+            template_id = f"n{node_index:02}"
+            content = ''
+            if node['has_curie']:
+                content = 'curie'
+            elif node['has_type']:
+                content = 'type'
+            template_part = f"{template_id}({content})"
+            self.query_graph_template += template_part
+
+            node_index += 1
+            if node_index < self.n_nodes:
+                self.query_graph_template += f"-e{edge_index:02}()-"
+                edge_index += 1
+
+        response.debug(f"The QueryGraph reference template is: {self.query_graph_template}")
 
         #tmp = { 'node_info': node_info, 'edge_info': edge_info, 'start_node': start_node, 'n_nodes': self.n_nodes, 'n_edges': self.n_edges,
         #    'is_bifurcated_graph': self.is_bifurcated_graph, 'node_order': node_order, 'edge_order': edge_order }

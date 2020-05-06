@@ -6,11 +6,13 @@ import os
 import json
 import ast
 import re
+import time
 from datetime import datetime
 import subprocess
 import traceback
 from collections import Counter
 import numpy as np
+import threading
 
 from response import Response
 from query_graph_info import QueryGraphInfo
@@ -18,6 +20,8 @@ from knowledge_graph_info import KnowledgeGraphInfo
 from actions_parser import ActionsParser
 from ARAX_filter import ARAXFilter
 from ARAX_resultify import ARAXResultify
+from ARAX_query_graph_interpreter import ARAXQueryGraphInterpreter
+from ARAX_messenger import ARAXMessenger
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.message import Message
@@ -52,6 +56,63 @@ class ARAXQuery:
         self.message = None
 
 
+    def query_return_stream(self,query):
+
+        main_query_thread = threading.Thread(target=self.asynchronous_query, args=(query,))
+        main_query_thread.start()
+
+        if self.response is None or "DONE" not in self.response.status:
+
+            # Sleep until a response object has been created
+            while self.response is None:
+                time.sleep(0.1)
+
+            i_message = 0
+            n_messages = len(self.response.messages)
+
+            while "DONE" not in self.response.status:
+                n_messages = len(self.response.messages)
+                while i_message < n_messages:
+                    yield(json.dumps(self.response.messages[i_message])+"\n")
+                    i_message += 1
+                time.sleep(0.2)
+
+            # #### If there are any more logging messages in the queue, send them first
+            n_messages = len(self.response.messages)
+            while i_message < n_messages:
+                yield(json.dumps(self.response.messages[i_message])+"\n")
+                i_message += 1
+
+            # Remove the little DONE flag the other thread used to signal this thread that it is done
+            self.response.status = re.sub('DONE,','',self.response.status)
+
+            # Stream the resulting message back to the client
+            yield(json.dumps(ast.literal_eval(repr(self.message))))
+
+        # Wait until both threads rejoin here and the return
+        main_query_thread.join()
+        return self.message
+
+
+    def asynchronous_query(self,query):
+
+        #### Define a new response object if one does not yet exist
+        if self.response is None:
+            self.response = Response()
+
+        result = self.query(query)
+        message = self.message
+        if message is None:
+            message = Message()
+        message.message_code = result.error_code
+        message.code_description = result.message
+        message.log = result.messages
+
+        # Insert a little flag into the response status to denote that this thread is done
+        self.response.status = f"DONE,{self.response.status}"
+        return
+
+
     def query_return_message(self,query):
 
         result = self.query(query)
@@ -69,7 +130,7 @@ class ARAXQuery:
         response = Response()
         self.response = response
         #Response.output = 'STDERR'
-        response.info(f"ARAXQuery launching")
+        response.info(f"ARAXQuery launching on incoming Message")
 
         #### Determine a plan for what to do based on the input
         result = self.examine_incoming_query(query)
@@ -77,26 +138,42 @@ class ARAXQuery:
             return response
         query_attributes = result.data
 
+        # #### If we have a query_graph in the input query
+        if "have_query_graph" in query_attributes:
+
+            # Then if there is also a processing plan, assume they go together. Leave the query_graph intact
+            # and then will later execute the processing plan
+            if "have_previous_message_processing_plan" in query_attributes:
+                pass
+            else:
+                response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
+                interpreter = ARAXQueryGraphInterpreter()
+                query['message'] = ARAXMessenger().from_dict(query['message'])
+                result = interpreter.translate_to_araxi(query['message'])
+                response.merge(result)
+                if result.status != 'OK':
+                    return response
+                query['previous_message_processing_plan'] = {}
+                query['previous_message_processing_plan']['processing_actions'] = result.data['araxi_commands']
+                query_attributes['have_previous_message_processing_plan'] = True
+
+            #response.info(f"Found input query_graph. Sending to the QueryGraphReasoner")
+            #qgr = QueryGraphReasoner()
+            #message = qgr.answer(query["message"]["query_graph"], TxltrApiFormat=True)
+            ##self.log_query(query,message,'new')
+            #rtxFeedback = RTXFeedback()
+            #rtxFeedback.connect()
+            #rtxFeedback.addNewMessage(message,query)
+            #rtxFeedback.disconnect()
+            #self.limit_message(message,query)
+            #self.message = message
+            #return response
+
         #### If we have a previous message processing plan, handle that
         if "have_previous_message_processing_plan" in query_attributes:
             response.info(f"Found input processing plan. Sending to the ProcessingPlanExecutor")
             result = self.executeProcessingPlan(query)
             return response
-
-        #### If we have a query_graph, pass this on to the QueryGraphReasoner
-        if "have_query_graph" in query_attributes:
-            response.info(f"Found input query_graph. Sending to the QueryGraphReasoner")
-            qgr = QueryGraphReasoner()
-            message = qgr.answer(query["message"]["query_graph"], TxltrApiFormat=True)
-            #self.log_query(query,message,'new')
-            rtxFeedback = RTXFeedback()
-            rtxFeedback.connect()
-            rtxFeedback.addNewMessage(message,query)
-            rtxFeedback.disconnect()
-            self.limit_message(message,query)
-            self.message = message
-            return response
-
 
         #### Otherwise extract the id and the terms from the incoming parameters
         else:
@@ -250,6 +327,9 @@ class ARAXQuery:
             response.error("No message or previous_message_processing_plan present in Query", error_code="NoQueryMessageOrPreviousMessageProcessingPlan")
             return response
 
+        # #### FIXME Need to do more validation and tidying of the incoming message here or somewhere
+
+
         #### If we got this far, then everything seems to be good enough to proceed
         return response
 
@@ -264,12 +344,18 @@ class ARAXQuery:
 
 
 
-    #### Get a previously stored message for this query from the database
+    #### Given an input query with a processing plan, execute that processing plan on the input
     def executeProcessingPlan(self,inputEnvelope):
         response = self.response
         response.debug(f"Entering executeProcessingPlan")
         messages = []
         message = None
+
+        # If there is already a message (perhaps with a query_graph) already in the query, preserve it
+        if 'message' in inputEnvelope and inputEnvelope['message'] is not None:
+            message = inputEnvelope['message']
+            messages = [ message ]
+
         message_id = None
         query = None
         #### Pull out the main processing plan envelope
@@ -280,7 +366,6 @@ class ARAXQuery:
         rtxFeedback.connect()
 
         #### Create a messenger object for basic message processing
-        from ARAX_messenger import ARAXMessenger
         messenger = ARAXMessenger()
 
         #### If there are URIs provided, try to load them
@@ -471,12 +556,14 @@ class ARAXQuery:
 
             #### If asking for the full message back
             if return_action['parameters']['message'] == 'true':
+                response.info(f"Processing is complete. Transmitting resulting Message back to client.")
                 return response
 
             #### Else just the id is returned
             else:
                 if message_id is None:
                     message_id = 0
+                response.info(f"Processing is complete. Resulting Message id is {message_id} and is available to fetch via /message endpoint.")
                 return( { "status": 200, "message_id": str(message_id), "n_results": message.n_results, "url": "https://arax.rtx.ai/api/rtx/v1/message/"+str(message_id) }, 200)
 
 
@@ -896,6 +983,18 @@ def main():
             "expand(edge_id=e00, kp=ARAX/KG2)",
             "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=https://pharos.nih.gov)",
             "return(message=true, store=false)",
+        ]}}
+    elif params.example_number == 690:  # test issue 690
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:14330, id=n00)",
+            "add_qnode(type=not_a_real_type, is_set=true, id=n01)",
+            "add_qnode(type=chemical_substance, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=molecularly_interacts_with)",
+            "expand(edge_id=[e00,e01], continue_if_no_results=true)",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+            "return(message=true, store=false)"
         ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")

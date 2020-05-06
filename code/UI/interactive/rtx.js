@@ -116,7 +116,120 @@ function reset_vars() {
     UIstate.nodedd = 1;
 }
 
+
+// use fetch and stream
 function sendDSL(e) {
+    reset_vars();
+    var statusdiv = document.getElementById("statusdiv");
+
+    document.getElementById("questionForm").elements["questionText"].value = '-- posted async query via DSL input --';
+    statusdiv.innerHTML = "Posting DSL.  Looking for answer...";
+    statusdiv.appendChild(document.createElement("br"));
+
+    var cmddiv = document.createElement("div");
+    cmddiv.id = "cmdoutput";
+    statusdiv.appendChild(cmddiv);
+    statusdiv.appendChild(document.createElement("br"));
+    sesame('openmax',statusdiv);
+
+    var dslArrayOfLines = document.getElementById("dslText").value.split("\n");
+    var queryObj = { "previous_message_processing_plan": { "processing_actions": dslArrayOfLines}};
+    queryObj.asynchronous = "stream";
+
+    fetch(baseAPI + "api/rtx/v1/query", {
+	method: 'post',
+	body: JSON.stringify(queryObj),
+	headers: { 'Content-type': 'application/json' }
+    }).then(function(response) {
+	var reader = response.body.getReader();
+	var partialMsg = '';
+	var enqueue = false;
+	var decoder = new TextDecoder();
+	var respjson = '';
+
+	function scan() {
+	    return reader.read().then(function(result) {
+		partialMsg += decoder.decode(result.value || new Uint8Array, {
+		    stream: !result.done
+		});
+
+		var completeMsgs = partialMsg.split("\n");
+
+		if (!result.done) {
+		    // Last msg is likely incomplete; hold it for next time
+		    partialMsg = completeMsgs[completeMsgs.length - 1];
+		    // Remove it from our complete msgs
+		    completeMsgs = completeMsgs.slice(0, -1);
+		}
+
+		for (var msg of completeMsgs) {
+		    msg = msg.trim();
+		    if (msg == null) continue;
+
+		    if (enqueue) {
+			respjson += msg;
+		    }
+		    else {
+			var jsonMsg = JSON.parse(msg);
+			if (jsonMsg.code_description) {
+			    enqueue = true;
+			    respjson += msg;
+			}
+			else if (jsonMsg.message) {
+			    cmddiv.appendChild(document.createTextNode(jsonMsg.prefix+'\u00A0'+jsonMsg.message));
+			    cmddiv.appendChild(document.createElement("br"));
+			    cmddiv.scrollTop = cmddiv.scrollHeight;
+			}
+			else {
+			    console.log("bad msg:"+jsonMsg);
+			}
+		    }
+		}
+
+		if (result.done) {
+		    //console.log(respjson);
+		    return respjson;
+		}
+
+		return scan();
+	    })
+	}
+	return scan();
+    })
+        .then(response => {
+	    var data = JSON.parse(response);
+
+	    sesame('openmax',statusdiv);
+
+	    if (data["message_code"] == "QueryGraphZeroNodes") {
+		clear_qg();
+	    }
+	    else if (data["message_code"] == "OK") {
+		input_qg = { "edges": [], "nodes": [] };
+		render_message(data);
+	    }
+	    else if (data["log"]) {
+		process_log(data["log"]);
+	    }
+	    else {
+		statusdiv.innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while parsing the response from the server (no log; code:"+data.message_code+")</SPAN>";
+		document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<BR>"+data;
+		sesame('openmax',statusdiv);
+	    }
+
+	})
+	.catch(function(err) {
+	    statusdiv.innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+err+")</SPAN>";
+	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<BR>"+err;
+	    sesame('openmax',statusdiv);
+	    if (err.log) {
+		process_log(err.log);
+	    }
+	    console.log(err.message);
+	});
+}
+
+function sendDSL_OLD(e) { // REMOVE?
     reset_vars();
     document.getElementById("questionForm").elements["questionText"].value = '-- posted query via DSL input --';
     document.getElementById("statusdiv").innerHTML = "Posting DSL.  Looking for answer...";
@@ -380,6 +493,9 @@ function retrieve_message() {
 
 
 function render_message(respObj) {
+    document.getElementById("statusdiv").appendChild(document.createTextNode("Rendering message..."));
+    sesame('openmax',statusdiv);
+
     message_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
 
     add_to_session(message_id,respObj.restated_question+"?");
@@ -433,6 +549,8 @@ function render_message(respObj) {
     }
 
     add_cyto();
+    document.getElementById("statusdiv").appendChild(document.createTextNode("done."));
+    sesame('openmax',statusdiv);
 }
 
 function process_q_options(q_opts) {
@@ -651,11 +769,10 @@ function process_results(reslist,kg) {
 	    cytodata[num].push(tmpdata);
 	}
 
-
 	for (var eb of reslist[i].edge_bindings) {
 	    if (Array.isArray(eb.kg_id)) {
 		for (var kgid of eb.kg_id) {
-		    var kmne = Object.create(kg.edges.find(item => item.id == kgid));
+                    var kmne = Object.create(kg.edges.find(item => item.id == kgid));
 		    kmne.parentdivnum = num;
 		    //console.log("=================== kmne:"+kmne.id);
 
@@ -759,9 +876,7 @@ function add_result(reslist) {
 function add_cyto() {
 
     for (var i in cytodata) {
-	if (cytodata[i] == null) {
-	    continue;
-	}
+	if (cytodata[i] == null) continue;
 
 	var num = Number(i);// + 1;
 
@@ -771,7 +886,7 @@ function add_cyto() {
 	    style: cytoscape.stylesheet()
 		.selector('node')
 		.css({
-		    'background-color': '#047',
+		    'background-color': function(ele) { return mapNodeColor(ele); } ,
 		    'shape': function(ele) { return mapNodeShape(ele); } ,
 		    'width': '20',
 		    'height': '20',
@@ -780,8 +895,8 @@ function add_cyto() {
 		.selector('edge')
 		.css({
 		    'curve-style' : 'bezier',
-		    'line-color': '#fff',
-		    'target-arrow-color': '#fff',
+		    'line-color': '#aaf',
+		    'target-arrow-color': '#aaf',
 		    'width': function(ele) { if (ele.data().weight) { return ele.data().weight; } return 2; },
                     'content': 'data(name)',
 		    'target-arrow-shape': 'triangle',
@@ -989,6 +1104,21 @@ function mapNodeShape (ele) {
     return "rectangle";
 }
 
+function mapNodeColor (ele) {
+    var ntype = ele.data().type;
+    if (ntype == "microRNA")           { return "orange";}
+    if (ntype == "metabolite")         { return "aqua";}
+    if (ntype == "protein")            { return "black";}
+    if (ntype == "pathway")            { return "gray";}
+    if (ntype == "disease")            { return "red";}
+    if (ntype == "molecular_function") { return "blue";}
+    if (ntype == "cellular_component") { return "purple";}
+    if (ntype == "biological_process") { return "green";}
+    if (ntype == "chemical_substance") { return "yellowgreen";}
+    if (ntype == "anatomical_entity")  { return "violet";}
+    if (ntype == "phenotypic_feature") { return "indigo";}
+    return "#04c";
+}
 
 
 

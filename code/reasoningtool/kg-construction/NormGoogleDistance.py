@@ -69,7 +69,7 @@ class NormGoogleDistance:
             except ValueError:
                 return math.nan
 
-    def get_ngd_for_all_fast(self, curie_id_list: List[str], description_list: List[str]) -> float:
+    def get_ngd_for_all_fast(self, curie_id_list: List[str], description_list: List[str]) -> (float, str):
         assert len(curie_id_list) == len(description_list)
         if self.db_whatever_to_mesh is not None and self.db_mesh_to_pubmed is not None:
             mesh_ids_all = [self.db_whatever_to_mesh.get(curie_id) for curie_id in curie_id_list]
@@ -84,9 +84,9 @@ class NormGoogleDistance:
                             pubmed_ids_for_curie_set |= set(pubmed_ids)
                     pubmed_ids_for_curies.append(list(pubmed_ids_for_curie_set))
                 counts_res = NormGoogleDistance.compute_marginal_and_joint_counts(pubmed_ids_for_curies)
-                return NormGoogleDistance.compute_multiway_ngd_from_counts(*counts_res)
+                return NormGoogleDistance.compute_multiway_ngd_from_counts(*counts_res), "fast"
         #print(f"Going slow: {curie_id_list}")  # for debugging purposes and counting db misses
-        return NormGoogleDistance.get_ngd_for_all(curie_id_list, description_list)
+        return NormGoogleDistance.get_ngd_for_all(curie_id_list, description_list), "slow"
 
     @staticmethod
     @CachedMethods.register
@@ -351,12 +351,14 @@ def test01():
 
 def test02():
     ngd = NormGoogleDistance()
-    assert abs(0.3901010209565451 - ngd.get_ngd_for_all_fast(['DOID:10763', 'DOID:6713'], [None, None])) < 1e-10
+    ngd_value, method_used = ngd.get_ngd_for_all_fast(['DOID:10763', 'DOID:6713'], [None, None])
+    assert abs(0.3901010209565451 - ngd_value) < 1e-10
 
 
 def test03():
     ngd = NormGoogleDistance()
-    assert abs(0.3969190387758672 - ngd.get_ngd_for_all_fast(['DOID:XXX', 'DOID:6713'], ["hypertension", "cerebrovascular disease"])) < 1e-10
+    ngd_value, method_used = ngd.get_ngd_for_all_fast(['DOID:XXX', 'DOID:6713'], ["hypertension", "cerebrovascular disease"])
+    assert abs(0.3969190387758672 - ngd_value) < 1e-10
 
 
 if __name__ == '__main__':

@@ -421,10 +421,12 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         dict_kg = dict()
         dict_kg['nodes'] = dict()
         dict_kg['edges'] = dict()
-        for node in knowledge_graph.nodes:
-            dict_kg['nodes'][node.id] = node
-        for edge in knowledge_graph.edges:
-            dict_kg['edges'][edge.id] = edge
+        if knowledge_graph.nodes is not None:
+            for node in knowledge_graph.nodes:
+                dict_kg['nodes'][node.id] = node
+        if knowledge_graph.edges is not None:
+            for edge in knowledge_graph.edges:
+                dict_kg['edges'][edge.id] = edge
         return dict_kg
 
     def __convert_dict_kg_to_standard_kg(self, dict_kg):
