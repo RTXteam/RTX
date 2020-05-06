@@ -484,7 +484,8 @@ class ARAXQuery:
                         result = messenger.add_qedge(message,action['parameters'])
 
                     elif action['command'] == 'expand':
-                        result = expander.apply(message,action['parameters'])
+                        result = expander.apply(message,action['parameters'], response=response)
+                        skip_merge = True
 
                     elif action['command'] == 'filter':
                         result = filter.apply(message,action['parameters'])

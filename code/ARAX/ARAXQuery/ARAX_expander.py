@@ -52,9 +52,11 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         return description_list
 
     #### Top level decision maker for applying filters
-    def apply(self, input_message, input_parameters):
+    def apply(self, input_message, input_parameters, response=None):
+
         #### Define a default response
-        response = Response()
+        if response is None:
+            response = Response()
         self.response = response
         self.message = input_message
         message = self.message
