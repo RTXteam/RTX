@@ -61,8 +61,27 @@ class ARAXQueryGraphInterpreter:
         if query_graph_template in self.query_graph_templates['template_strings']:
             template = self.query_graph_templates['template_strings'][query_graph_template]
             araxi_commands = self.query_graph_templates['templates'][template]['DSL']
+
+            # Need to remap the theoretical node and edge ids into the actual ones
+            new_araxi_commands = []
+            for command in araxi_commands:
+                node_index = 0
+                new_command = command
+                for node in query_graph_info.node_order:
+                    template_id = f"n{node_index:02}"
+                    new_command = re.sub(template_id,node['id'],new_command)
+                    node_index += 1
+
+                edge_index = 0
+                for edge in query_graph_info.edge_order:
+                    template_id = f"e{edge_index:02}"
+                    new_command = re.sub(template_id,edge['id'],new_command)
+                    edge_index += 1
+
+                new_araxi_commands.append(new_command)
+
             # TODO: Create the restated_question from the template
-            response.data['araxi_commands'] = araxi_commands
+            response.data['araxi_commands'] = new_araxi_commands
 
         else:
             self.response.error("QueryGraphInterpreter cannot interpret this QueryGraph", error_code="QueryGraphInterpreterUnsupportedGraph")
