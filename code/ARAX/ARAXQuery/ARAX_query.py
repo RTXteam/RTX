@@ -20,6 +20,8 @@ from knowledge_graph_info import KnowledgeGraphInfo
 from actions_parser import ActionsParser
 from ARAX_filter import ARAXFilter
 from ARAX_resultify import ARAXResultify
+from ARAX_query_graph_interpreter import ARAXQueryGraphInterpreter
+from ARAX_messenger import ARAXMessenger
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.message import Message
@@ -74,6 +76,8 @@ class ARAXQuery:
                     yield(json.dumps(self.response.messages[i_message])+"\n")
                     i_message += 1
                 time.sleep(0.2)
+
+            self.response.status = re.sub('DONE,','',self.response.status)
 
             yield(json.dumps(ast.literal_eval(repr(self.message))))
 
@@ -135,10 +139,12 @@ class ARAXQuery:
             else:
                 response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
                 interpreter = ARAXQueryGraphInterpreter()
-                result = interpreter.translate_to_araxi(message)
+                query['message'] = ARAXMessenger().from_dict(query['message'])
+                result = interpreter.translate_to_araxi(query['message'])
                 response.merge(result)
                 if result.status != 'OK':
                     return response
+                query['previous_message_processing_plan'] = {}
                 query['previous_message_processing_plan']['processing_actions'] = result.data['araxi_commands']
                 query_attributes['have_previous_message_processing_plan'] = True
 
@@ -312,6 +318,9 @@ class ARAXQuery:
             response.error("No message or previous_message_processing_plan present in Query", error_code="NoQueryMessageOrPreviousMessageProcessingPlan")
             return response
 
+        # #### FIXME Need to do more validation and tidying of the incoming message here or somewhere
+
+
         #### If we got this far, then everything seems to be good enough to proceed
         return response
 
@@ -348,7 +357,6 @@ class ARAXQuery:
         rtxFeedback.connect()
 
         #### Create a messenger object for basic message processing
-        from ARAX_messenger import ARAXMessenger
         messenger = ARAXMessenger()
 
         #### If there are URIs provided, try to load them
