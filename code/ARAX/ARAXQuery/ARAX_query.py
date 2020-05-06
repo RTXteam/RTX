@@ -77,10 +77,19 @@ class ARAXQuery:
                     i_message += 1
                 time.sleep(0.2)
 
+            # #### If there are any more logging messages in the queue, send them first
+            n_messages = len(self.response.messages)
+            while i_message < n_messages:
+                yield(json.dumps(self.response.messages[i_message])+"\n")
+                i_message += 1
+
+            # Remove the little DONE flag the other thread used to signal this thread that it is done
             self.response.status = re.sub('DONE,','',self.response.status)
 
+            # Stream the resulting message back to the client
             yield(json.dumps(ast.literal_eval(repr(self.message))))
 
+        # Wait until both threads rejoin here and the return
         main_query_thread.join()
         return self.message
 
@@ -547,12 +556,14 @@ class ARAXQuery:
 
             #### If asking for the full message back
             if return_action['parameters']['message'] == 'true':
+                response.info(f"Processing is complete. Transmitting resulting Message back to client.")
                 return response
 
             #### Else just the id is returned
             else:
                 if message_id is None:
                     message_id = 0
+                response.info(f"Processing is complete. Resulting Message id is {message_id} and is available to fetch via /message endpoint.")
                 return( { "status": 200, "message_id": str(message_id), "n_results": message.n_results, "url": "https://arax.rtx.ai/api/rtx/v1/message/"+str(message_id) }, 200)
 
 
