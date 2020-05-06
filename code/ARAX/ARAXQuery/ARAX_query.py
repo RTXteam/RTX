@@ -117,7 +117,7 @@ class ARAXQuery:
         response = Response()
         self.response = response
         #Response.output = 'STDERR'
-        response.info(f"ARAXQuery launching")
+        response.info(f"ARAXQuery launching on incoming Message")
 
         #### Determine a plan for what to do based on the input
         result = self.examine_incoming_query(query)
@@ -125,26 +125,40 @@ class ARAXQuery:
             return response
         query_attributes = result.data
 
+        # #### If we have a query_graph in the input query
+        if "have_query_graph" in query_attributes:
+
+            # Then if there is also a processing plan, assume they go together. Leave the query_graph intact
+            # and then will later execute the processing plan
+            if "have_previous_message_processing_plan" in query_attributes:
+                pass
+            else:
+                response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
+                interpreter = ARAXQueryGraphInterpreter()
+                result = interpreter.translate_to_araxi(message)
+                response.merge(result)
+                if result.status != 'OK':
+                    return response
+                query['previous_message_processing_plan']['processing_actions'] = result.data['araxi_commands']
+                query_attributes['have_previous_message_processing_plan'] = True
+
+            #response.info(f"Found input query_graph. Sending to the QueryGraphReasoner")
+            #qgr = QueryGraphReasoner()
+            #message = qgr.answer(query["message"]["query_graph"], TxltrApiFormat=True)
+            ##self.log_query(query,message,'new')
+            #rtxFeedback = RTXFeedback()
+            #rtxFeedback.connect()
+            #rtxFeedback.addNewMessage(message,query)
+            #rtxFeedback.disconnect()
+            #self.limit_message(message,query)
+            #self.message = message
+            #return response
+
         #### If we have a previous message processing plan, handle that
         if "have_previous_message_processing_plan" in query_attributes:
             response.info(f"Found input processing plan. Sending to the ProcessingPlanExecutor")
             result = self.executeProcessingPlan(query)
             return response
-
-        #### If we have a query_graph, pass this on to the QueryGraphReasoner
-        if "have_query_graph" in query_attributes:
-            response.info(f"Found input query_graph. Sending to the QueryGraphReasoner")
-            qgr = QueryGraphReasoner()
-            message = qgr.answer(query["message"]["query_graph"], TxltrApiFormat=True)
-            #self.log_query(query,message,'new')
-            rtxFeedback = RTXFeedback()
-            rtxFeedback.connect()
-            rtxFeedback.addNewMessage(message,query)
-            rtxFeedback.disconnect()
-            self.limit_message(message,query)
-            self.message = message
-            return response
-
 
         #### Otherwise extract the id and the terms from the incoming parameters
         else:
@@ -312,12 +326,18 @@ class ARAXQuery:
 
 
 
-    #### Get a previously stored message for this query from the database
+    #### Given an input query with a processing plan, execute that processing plan on the input
     def executeProcessingPlan(self,inputEnvelope):
         response = self.response
         response.debug(f"Entering executeProcessingPlan")
         messages = []
         message = None
+
+        # If there is already a message (perhaps with a query_graph) already in the query, preserve it
+        if 'message' in inputEnvelope and inputEnvelope['message'] is not None:
+            message = inputEnvelope['message']
+            messages = [ message ]
+
         message_id = None
         query = None
         #### Pull out the main processing plan envelope
