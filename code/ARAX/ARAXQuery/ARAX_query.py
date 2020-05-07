@@ -470,6 +470,7 @@ class ARAXQuery:
             for action in actions:
                 response.info(f"Processing action '{action['command']}' with parameters {action['parameters']}")
                 nonstandard_result = False
+                skip_merge = False
 
                 # Catch a crash
                 try:
@@ -484,7 +485,8 @@ class ARAXQuery:
                         result = messenger.add_qedge(message,action['parameters'])
 
                     elif action['command'] == 'expand':
-                        result = expander.apply(message,action['parameters'])
+                        result = expander.apply(message,action['parameters'], response=response)
+                        skip_merge = True
 
                     elif action['command'] == 'filter':
                         result = filter.apply(message,action['parameters'])
@@ -493,7 +495,8 @@ class ARAXQuery:
                         result = resultifier.apply(message, action['parameters'])
 
                     elif action['command'] == 'overlay':  # recognize the overlay command
-                        result = overlay.apply(message, action['parameters'])
+                        result = overlay.apply(message, action['parameters'], response=response)
+                        skip_merge = True
 
                     elif action['command'] == 'filter_kg':  # recognize the filter_kg command
                         result = filter_kg.apply(message, action['parameters'])
@@ -522,7 +525,8 @@ class ARAXQuery:
 
                 #### Merge down this result and end if we're in an error state
                 if nonstandard_result is False:
-                    response.merge(result)
+                    if not skip_merge:
+                        response.merge(result)
                     if result.status != 'OK':
                         message.message_code = response.error_code
                         message.code_description = response.message

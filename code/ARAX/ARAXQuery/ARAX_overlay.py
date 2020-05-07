@@ -99,10 +99,11 @@ class ARAXOverlay:
 
 
     #### Top level decision maker for applying filters
-    def apply(self, input_message, input_parameters):
+    def apply(self, input_message, input_parameters, response=None):
 
         #### Define a default response
-        response = Response()
+        if response is None:
+            response = Response()
         self.response = response
         self.message = input_message
 
