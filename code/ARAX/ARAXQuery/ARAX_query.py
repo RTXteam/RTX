@@ -87,11 +87,11 @@ class ARAXQuery:
             self.response.status = re.sub('DONE,','',self.response.status)
 
             # Stream the resulting message back to the client
-            yield(json.dumps(ast.literal_eval(repr(self.message))))
+            yield(json.dumps(ast.literal_eval(repr(self.message)))+"\n")
 
         # Wait until both threads rejoin here and the return
         main_query_thread.join()
-        return self.message
+        return { 'DONE': True }
 
 
     def asynchronous_query(self,query):
@@ -462,6 +462,7 @@ class ARAXQuery:
             filter_kg = ARAXFilterKG()
             resultifier = ARAXResultify()
             filter_results = ARAXFilterResults()
+            self.message = message
 
             #### Process each action in order
             action_stats = { }
@@ -552,7 +553,6 @@ class ARAXQuery:
                 response.debug(f"Storing resulting Message")
                 message_id = rtxFeedback.addNewMessage(message,query)
 
-            self.message = message
 
             #### If asking for the full message back
             if return_action['parameters']['message'] == 'true':
