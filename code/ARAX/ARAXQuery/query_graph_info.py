@@ -164,6 +164,8 @@ class QueryGraphInfo:
             #print('==================================================================================')
             #tmp = input()
 
+            if len(edges) == 0:
+                break
             if len(edges) > 1:
                 response.error("Help, two edges at A583. Don't know what to do", error_code="InteralErrorA583")
                 return response
