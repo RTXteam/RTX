@@ -29,11 +29,10 @@ class KGQuerier:
 
     def answer_one_hop_query(self, query_graph):
         """
-        This function answers a query using KG2.
-        :param query_graph: A Translator API standard query graph.
-        :return: An (almost) Translator API standard knowledge graph containing all of the nodes and edges returned from
-        KG2 as results for that query. ('Almost' standard in that kg.edges and kg.nodes are dictionaries rather than
-        lists.)
+        This function answers a one-hop (single-edge) query using either KG1 or KG2.
+        :param query_graph: A Reasoner API standard query graph.
+        :return: An (almost) Reasoner API standard knowledge graph containing all of the nodes and edges returned as
+        results for that query. ('Almost' standard in that kg.edges and kg.nodes are dictionaries rather than lists.)
         """
         self.query_graph = query_graph
         dsl_parameters = self.response.data['parameters']
@@ -45,11 +44,11 @@ class KGQuerier:
             if not self.response.status == 'OK':
                 return self.final_kg
 
-        self.__generate_cypher_to_run(dsl_parameters['enforce_directionality'])
+        self.__convert_query_graph_to_cypher_query(dsl_parameters['enforce_directionality'])
         if not self.response.status == 'OK':
             return self.final_kg
 
-        self.__run_cypher_in_neo4j(kp, dsl_parameters['continue_if_no_results'])
+        self.__answer_query_using_kg_neo4j(kp, dsl_parameters['continue_if_no_results'])
         if not self.response.status == 'OK':
             return self.final_kg
 
@@ -78,60 +77,57 @@ class KGQuerier:
                     self.response.error(f"{kp} does not contain a node with curie {original_curie}", error_code="UnknownCurie")
         return synonym_usages_dict
 
-    def __generate_cypher_to_run(self, enforce_directionality):
-        self.response.debug(f"Generating cypher for edge {self.query_graph.edges[0].id} query graph")
-        try:
-            # Build the match clause
-            edge = self.query_graph.edges[0]  # Currently only single-edge query graphs are sent to kg_querier
-            source_node = self.__get_query_node(edge.source_id)
-            target_node = self.__get_query_node(edge.target_id)
-            edge_cypher = self.__get_cypher_for_query_edge(edge, enforce_directionality)
-            source_node_cypher = self.__get_cypher_for_query_node(source_node)
-            target_node_cypher = self.__get_cypher_for_query_node(target_node)
-            match_clause = f"MATCH {source_node_cypher}{edge_cypher}{target_node_cypher}"
+    def __convert_query_graph_to_cypher_query(self, enforce_directionality):
+        if len(self.query_graph.edges) > 1:
+            self.response.error(f"KGQuerier requires a single-edge query graph", error_code="InvalidQuery")
+        else:
+            self.response.debug(f"Generating cypher for edge {self.query_graph.edges[0].id} query graph")
+            try:
+                # Build the match clause
+                edge = self.query_graph.edges[0]
+                source_node = self.__get_query_node(edge.source_id)
+                target_node = self.__get_query_node(edge.target_id)
+                edge_cypher = self.__get_cypher_for_query_edge(edge, enforce_directionality)
+                source_node_cypher = self.__get_cypher_for_query_node(source_node)
+                target_node_cypher = self.__get_cypher_for_query_node(target_node)
+                match_clause = f"MATCH {source_node_cypher}{edge_cypher}{target_node_cypher}"
 
-            # Build the where clause
-            where_fragments = []
-            for node in [source_node, target_node]:
-                if node.curie:
-                    if type(node.curie) is str:
-                        where_fragment = f"{node.id}.id='{node.curie}'"
-                    else:
-                        where_fragment = f"{node.id}.id in {node.curie}"
-                    where_fragments.append(where_fragment)
-            if len(where_fragments):
-                where_clause = "WHERE "
-                where_clause += " AND ".join(where_fragments)
-            else:
-                where_clause = ""
+                # Build the where clause
+                where_fragments = []
+                for node in [source_node, target_node]:
+                    if node.curie:
+                        if type(node.curie) is str:
+                            where_fragment = f"{node.id}.id='{node.curie}'"
+                        else:
+                            where_fragment = f"{node.id}.id in {node.curie}"
+                        where_fragments.append(where_fragment)
+                if len(where_fragments):
+                    where_clause = "WHERE "
+                    where_clause += " AND ".join(where_fragments)
+                else:
+                    where_clause = ""
 
-            # Build the with clause
-            source_node_col_name = f"nodes_{source_node.id}"
-            target_node_col_name = f"nodes_{target_node.id}"
-            edge_col_name = f"edges_{edge.id}"
-            with_clause = f"WITH collect(distinct {source_node.id}) as {source_node_col_name}, " \
-                          f"collect(distinct {target_node.id}) as {target_node_col_name}, " \
-                          f"collect(distinct {edge.id}) as {edge_col_name}"
+                # Build the with clause
+                source_node_col_name = f"nodes_{source_node.id}"
+                target_node_col_name = f"nodes_{target_node.id}"
+                edge_col_name = f"edges_{edge.id}"
+                with_clause = f"WITH collect(distinct {source_node.id}) as {source_node_col_name}, " \
+                              f"collect(distinct {target_node.id}) as {target_node_col_name}, " \
+                              f"collect(distinct {edge.id}) as {edge_col_name}"
 
-            # Build the return clause
-            return_clause = f"RETURN {source_node_col_name}, {target_node_col_name}, {edge_col_name}"
+                # Build the return clause
+                return_clause = f"RETURN {source_node_col_name}, {target_node_col_name}, {edge_col_name}"
 
-            self.cypher_query = f"{match_clause} {where_clause} {with_clause} {return_clause}"
-        except:
-            tb = traceback.format_exc()
-            error_type, error, _ = sys.exc_info()
-            self.response.error(f"Problem generating cypher for query. {tb}", error_code=error_type.__name__)
+                self.cypher_query = f"{match_clause} {where_clause} {with_clause} {return_clause}"
+            except:
+                tb = traceback.format_exc()
+                error_type, error, _ = sys.exc_info()
+                self.response.error(f"Problem generating cypher for query. {tb}", error_code=error_type.__name__)
 
-    def __run_cypher_in_neo4j(self, kp, continue_if_no_results):
+    def __answer_query_using_kg_neo4j(self, kp, continue_if_no_results):
         self.response.info(f"Sending cypher query for edge {self.query_graph.edges[0].id} to {kp} neo4j")
         try:
-            rtx_config = RTXConfiguration()
-            if kp == "KG2":  # Flip into KG2 mode if that's our KP (rtx config is set to KG1 info by default)
-                rtx_config.live = "KG2"
-            driver = GraphDatabase.driver(rtx_config.neo4j_bolt, auth=(rtx_config.neo4j_username, rtx_config.neo4j_password))
-            with driver.session() as session:
-                self.query_results = session.run(self.cypher_query).data()
-            driver.close()
+            self.query_results = self.__run_cypher_query(self.cypher_query, kp)
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -161,13 +157,7 @@ class KGQuerier:
             if column_name.startswith('nodes'):  # Example column name: 'nodes_n00'
                 qnode_id = column_name.replace("nodes_", "", 1)
                 for node in results_table.get(column_name):
-                    # Create an API object model version of this node
-                    if kp == "KG2":
-                        swagger_node = self.__convert_kg2_node_to_swagger_node(node, qnode_id)
-                    else:
-                        swagger_node = self.__convert_kg1_node_to_swagger_node(node, qnode_id)
-
-                    # Add this swagger node to the KG, depending on how we're handling synonyms
+                    swagger_node = self.__convert_neo4j_node_to_swagger_node(node, qnode_id, kp)
                     if synonym_handling == 'map_back' and qnode_id in synonym_usages_dict:
                         # Only keep the node corresponding to the original curie (discard synonym nodes)
                         original_curie = synonym_usages_dict[qnode_id].get('original_curie')
@@ -179,7 +169,6 @@ class KGQuerier:
             elif column_name.startswith('edges'):  # Example column name: 'edges_e01'
                 qedge_id = column_name.replace("edges_", "", 1)
                 for edge in results_table.get(column_name):
-                    # Create an API object model version of this edge
                     if kp == "KG2":
                         swagger_edge = self.__convert_kg2_edge_to_swagger_edge(edge, qedge_id)
                     else:
@@ -195,6 +184,23 @@ class KGQuerier:
                                 swagger_edge.target_id = synonym_info.get('original_curie')
                                 swagger_edge.id = swagger_edge.source_id + "--" + swagger_edge.type + "--" + swagger_edge.target_id
                     self.final_kg['edges'][swagger_edge.id] = swagger_edge
+
+            # Make sure any original curie that synonyms were used for appears in the answer kg as appropriate
+            if synonym_handling == 'map_back':
+                for qnode_id, synonym_info in synonym_usages_dict.items():
+                    original_curie = synonym_info.get('original_curie')
+                    if not any(node.id == original_curie and node.qnode_id == qnode_id for node in self.final_kg['nodes'].values()):
+                        # Get this node from neo4j and add it to the kg
+                        cypher = f"match (n) where n.id='{original_curie}' return n limit 1"
+                        original_node = self.__run_cypher_query(cypher, kp)[0].get('n')
+                        swagger_node = self.__convert_neo4j_node_to_swagger_node(original_node, qnode_id, kp)
+                        self.final_kg['nodes'][swagger_node.id] = swagger_node
+
+    def __convert_neo4j_node_to_swagger_node(self, neo4j_node, qnode_id, kp):
+        if kp == "KG2":
+            return self.__convert_kg2_node_to_swagger_node(neo4j_node, qnode_id)
+        else:
+            return self.__convert_kg1_node_to_swagger_node(neo4j_node, qnode_id)
 
     def __convert_kg2_node_to_swagger_node(self, neo4j_node, qnode_id):
         swagger_node = Node()
@@ -292,6 +298,16 @@ class KGQuerier:
                 new_attributes.append(swagger_attribute)
 
         return new_attributes
+
+    def __run_cypher_query(self, cypher_query, kp):
+        rtx_config = RTXConfiguration()
+        if kp == "KG2":  # Flip into KG2 mode if that's our KP (rtx config is set to KG1 info by default)
+            rtx_config.live = "KG2"
+        driver = GraphDatabase.driver(rtx_config.neo4j_bolt, auth=(rtx_config.neo4j_username, rtx_config.neo4j_password))
+        with driver.session() as session:
+            query_results = session.run(cypher_query).data()
+        driver.close()
+        return query_results
 
     def __build_node_uuid_to_curie_dict(self, results_table):
         node_uuid_to_curie_dict = dict()

@@ -14,6 +14,7 @@ class Response:
     ERROR = 40
     level_names = { 10: 'DEBUG', 20: 'INFO', 30: 'WARNING', 40: 'ERROR' }
     output = None
+    #output = 'STDERR'
 
     #### Constructor
     def __init__(self, status='OK', logging_level=WARNING, error_code='OK', message='Normal completion'):

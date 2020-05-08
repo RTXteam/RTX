@@ -52,9 +52,11 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         return description_list
 
     #### Top level decision maker for applying filters
-    def apply(self, input_message, input_parameters):
+    def apply(self, input_message, input_parameters, response=None):
+
         #### Define a default response
-        response = Response()
+        if response is None:
+            response = Response()
         self.response = response
         self.message = input_message
         message = self.message
@@ -138,7 +140,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         This function extracts the portion of the original query graph (stored in message.query_graph) that this current
         expand() call will expand, based on the query edge ID(s) specified.
         :param qedge_ids_to_expand: A single qedge_id (str) OR a list of qedge_ids.
-        :return: A query graph, in Translator API standard format.
+        :return: A query graph, in Reasoner API standard format.
         """
         query_graph = self.message.query_graph
         sub_query_graph = QueryGraph()
@@ -192,39 +194,13 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
         return sub_query_graph
 
-    def __get_order_to_expand_edges_in(self, query_graph):
-        edges_remaining = [edge for edge in query_graph.edges]
-        ordered_edges = []
-        while edges_remaining:
-            if not ordered_edges:
-                # Start with an edge that has a node with a curie specified
-                edge_with_curie = self.__get_edge_with_curie_node(query_graph)
-                first_edge = edge_with_curie if edge_with_curie else edges_remaining[0]
-                ordered_edges = [first_edge]
-                edges_remaining.pop(edges_remaining.index(first_edge))
-            else:
-                # Add connected edges in a rightward direction if possible
-                right_end_edge = ordered_edges[-1]
-                edge_connected_to_right_end = self.__find_connected_edge(edges_remaining, right_end_edge)
-                if edge_connected_to_right_end:
-                    ordered_edges.append(edge_connected_to_right_end)
-                    edges_remaining.pop(edges_remaining.index(edge_connected_to_right_end))
-                else:
-                    left_end_edge = ordered_edges[0]
-                    edge_connected_to_left_end = self.__find_connected_edge(edges_remaining, left_end_edge)
-                    if edge_connected_to_left_end:
-                        ordered_edges.insert(0, edge_connected_to_left_end)
-                        edges_remaining.pop(edges_remaining.index(edge_connected_to_left_end))
-        return ordered_edges
-
     def __expand_edge(self, query_graph, kp_to_use):
         """
-        This function answers a query using the specified knowledge provider (KG1 or KG2 for now, with other KPs to be
-        added later on.) If no KP was specified, KG1 is used by default. (Eventually it will be possible to automatically
-        determine which KP to use.)
-        :param query_graph: A Translator API standard query graph.
+        This function answers a single-edge (one-hop) query using the specified knowledge provider. If no KP was
+        specified, KG1 is used by default.
+        :param query_graph: A (single-edge) Reasoner API standard query graph.
         :param kp_to_use: A string representing the knowledge provider to fulfill this query with.
-        :return: An (almost) Translator API standard knowledge graph (dictionary version).
+        :return: An (almost) Reasoner API standard knowledge graph (dictionary version).
         """
         # Make sure we have a valid one-hop query graph
         if len(query_graph.edges) != 1 or len(query_graph.nodes) != 2:
@@ -250,9 +226,10 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
     def __merge_answer_kg_into_message_kg(self, answer_knowledge_graph, edge_query_graph):
         """
-        This function merges a knowledge graph into the overarching knowledge graph (stored in message.knowledge_graph).
-        It prevents duplicate nodes/edges in the merged kg.
-        :param answer_knowledge_graph: An (almost) Translator API standard knowledge graph (dictionary version).
+        This function merges an answer knowledge graph into Message.knowledge_graph. It prevents duplicate nodes/edges
+        in the merged KG.
+        :param answer_knowledge_graph: An (almost) Reasoner API standard knowledge graph (dictionary version).
+        :param edge_query_graph: The single-edge query graph used to generate the answer KG being merged.
         :return: None
         """
         self.response.debug("Merging results into Message.KnowledgeGraph")
@@ -311,6 +288,13 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                 existing_edges[edge_key] = edge
 
     def __prune_dead_ends(self, knowledge_graph, query_sub_graph):
+        """
+        This function removes any 'dead-end' paths from the knowledge graph after expansion is done. (Dead-end paths can
+        occur because edges are expanded one-by-one.)
+        :param knowledge_graph: An (almost) Reasoner API standard knowledge graph (dictionary version).
+        :param query_sub_graph: The query graph that was expanded for the current expand call.
+        :return: None
+        """
         # First figure out our intermediate query nodes and their corresponding query edges
         ordered_qnodes = self.__get_ordered_query_nodes(query_sub_graph)
         qnodes_to_qedges_dict = self.__get_qnode_to_qedge_dict(query_sub_graph)
@@ -345,6 +329,31 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                             knowledge_graph['edges'].pop(left_edge_id)
 
                 index -= 1
+
+    def __get_order_to_expand_edges_in(self, query_graph):
+        edges_remaining = [edge for edge in query_graph.edges]
+        ordered_edges = []
+        while edges_remaining:
+            if not ordered_edges:
+                # Start with an edge that has a node with a curie specified
+                edge_with_curie = self.__get_edge_with_curie_node(query_graph)
+                first_edge = edge_with_curie if edge_with_curie else edges_remaining[0]
+                ordered_edges = [first_edge]
+                edges_remaining.pop(edges_remaining.index(first_edge))
+            else:
+                # Add connected edges in a rightward direction if possible
+                right_end_edge = ordered_edges[-1]
+                edge_connected_to_right_end = self.__find_connected_edge(edges_remaining, right_end_edge)
+                if edge_connected_to_right_end:
+                    ordered_edges.append(edge_connected_to_right_end)
+                    edges_remaining.pop(edges_remaining.index(edge_connected_to_right_end))
+                else:
+                    left_end_edge = ordered_edges[0]
+                    edge_connected_to_left_end = self.__find_connected_edge(edges_remaining, left_end_edge)
+                    if edge_connected_to_left_end:
+                        ordered_edges.insert(0, edge_connected_to_left_end)
+                        edges_remaining.pop(edges_remaining.index(edge_connected_to_left_end))
+        return ordered_edges
 
     def __get_ordered_query_nodes(self, query_graph):
         ordered_edges = self.__get_order_to_expand_edges_in(query_graph)
@@ -421,10 +430,12 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         dict_kg = dict()
         dict_kg['nodes'] = dict()
         dict_kg['edges'] = dict()
-        for node in knowledge_graph.nodes:
-            dict_kg['nodes'][node.id] = node
-        for edge in knowledge_graph.edges:
-            dict_kg['edges'][edge.id] = edge
+        if knowledge_graph.nodes is not None:
+            for node in knowledge_graph.nodes:
+                dict_kg['nodes'][node.id] = node
+        if knowledge_graph.edges is not None:
+            for edge in knowledge_graph.edges:
+                dict_kg['edges'][edge.id] = edge
         return dict_kg
 
     def __convert_dict_kg_to_standard_kg(self, dict_kg):
