@@ -40,7 +40,7 @@ class KGQuerier:
 
         synonym_usages_dict = dict()
         if dsl_parameters['use_synonyms']:
-            synonym_usages_dict = self.__add_curie_synonyms_to_query_graph(kp)
+            synonym_usages_dict = self.__add_curie_synonyms_to_query_nodes(self.query_graph.nodes, kp)
             if not self.response.status == 'OK':
                 return self.final_kg
 
@@ -58,11 +58,34 @@ class KGQuerier:
 
         return self.final_kg
 
-    def __add_curie_synonyms_to_query_graph(self, kp):
+    def answer_single_node_query(self, qnode):
+        if not qnode.curie:
+            self.response.error(f"Cannot expand a single query node if it doesn't have a curie", error_code="InvalidQuery")
+        else:
+            # Gather synonyms as appropriate
+            if self.response.data['parameters'].get('use_synonyms'):
+                synonym_usages_dict = self.__add_curie_synonyms_to_query_nodes([qnode], self.kp)
+                if not self.response.status == 'OK':
+                    return self.final_kg
+
+            # Build and run a cypher query to get this node/nodes
+            where_clause = f"{qnode.id}.id='{qnode.curie}'" if type(qnode.curie) is str else f"{qnode.id}.id in {qnode.curie}"
+            cypher_query = f"MATCH {self.__get_cypher_for_query_node(qnode)} WHERE {where_clause} RETURN {qnode.id}"
+            results = self.__run_cypher_query(cypher_query, self.kp)
+
+            # Process the results and add to our answer knowledge graph
+            for result in results:
+                neo4j_node = result.get(qnode.id)
+                swagger_node = self.__convert_neo4j_node_to_swagger_node(neo4j_node, qnode.id, self.kp)
+                self.final_kg['nodes'][swagger_node.id] = swagger_node
+
+        return self.final_kg
+
+    def __add_curie_synonyms_to_query_nodes(self, query_nodes, kp):
         self.response.debug("Looking for query nodes to use curie synonyms for")
         KGNI = KGNodeIndex()
         synonym_usages_dict = dict()
-        for node in self.query_graph.nodes:
+        for node in query_nodes:
             original_curie = node.curie
             if original_curie and type(original_curie) is str:  # Important because sometimes lists of curies are passed behind the scenes (when expanding one edge at a time)
                 equivalent_curies = KGNI.get_equivalent_curies(original_curie, kg_name=kp)

@@ -115,7 +115,7 @@ def check_for_orphans(kg_in_dict_form):
         for edge_key, edge in edges.items():
             node_ids_used_by_edges.add(edge.source_id)
             node_ids_used_by_edges.add(edge.target_id)
-    assert node_ids == node_ids_used_by_edges  # Means all nodes have an edge and all edges' nodes actually exist!
+    assert node_ids == node_ids_used_by_edges or len(node_ids_used_by_edges) == 0
 
 
 # Actual test cases
@@ -646,6 +646,36 @@ def query_that_doesnt_return_original_curie():
     print_passing_message()
 
 
+def single_node_query():
+    print("Testing a single node query (clopidogrel) using KG2")
+    actions_list = [
+        "create_message",
+        "add_qnode(id=n00, name=clopidogrel)",
+        "expand(node_id=n00, kp=ARAX/KG2)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query(actions_list)
+    conduct_standard_testing(kg_in_dict_form)
+
+    print_passing_message()
+
+
+def query_with_no_edge_or_node_ids():
+    print("Testing query with no edge or node IDs specified")
+    actions_list = [
+        "create_message",
+        "add_qnode(name=CHEMBL.COMPOUND:CHEMBL1276308, id=n00)",
+        "add_qnode(type=protein, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(kp=ARAX/KG2)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query(actions_list)
+    conduct_standard_testing(kg_in_dict_form)
+
+    print_passing_message()
+
+
 def main():
     # Regular tests
     test_kg1_parkinsons_demo_example()
@@ -669,6 +699,8 @@ def main():
     test_two_hop_bte_query()
     test_simple_bidirectional_query()
     query_that_doesnt_return_original_curie()
+    single_node_query()
+    query_with_no_edge_or_node_ids()
 
     # Bug tests
     # ambitious_query_causing_multiple_qnode_ids_error()
