@@ -680,6 +680,21 @@ def single_node_query_add_all():
     print_passing_message()
 
 
+def single_node_query_without_synonyms():
+    print("Testing a single node query without using synonyms")
+    actions_list = [
+        "create_message",
+        "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL1276308)",
+        "expand(kp=ARAX/KG1, use_synonyms=false)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query(actions_list)
+    conduct_standard_testing(kg_in_dict_form)
+    assert len(kg_in_dict_form['nodes']['n00']) == 1
+    assert "CHEMBL.COMPOUND:CHEMBL1276308" in kg_in_dict_form['nodes']['n00']
+    print_passing_message()
+
+
 def query_with_no_edge_or_node_ids():
     print("Testing query with no edge or node IDs specified")
     actions_list = [
@@ -692,6 +707,7 @@ def query_with_no_edge_or_node_ids():
     ]
     kg_in_dict_form = run_query(actions_list)
     conduct_standard_testing(kg_in_dict_form)
+    assert kg_in_dict_form['nodes']['n00'] and kg_in_dict_form['nodes']['n01'] and kg_in_dict_form['edges']['e00']
     print_passing_message()
 
 
@@ -720,6 +736,7 @@ def main():
     query_that_doesnt_return_original_curie()
     single_node_query_map_back()
     single_node_query_add_all()
+    single_node_query_without_synonyms()
     query_with_no_edge_or_node_ids()
 
     # Bug tests

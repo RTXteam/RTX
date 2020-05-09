@@ -65,6 +65,7 @@ class KGQuerier:
             # Gather synonyms as appropriate
             use_synonyms = self.response.data['parameters'].get('use_synonyms')
             synonym_handling = self.response.data['parameters'].get('synonym_handling')
+            synonym_usages_dict = dict()
             if use_synonyms:
                 synonym_usages_dict = self.__add_curie_synonyms_to_query_nodes([qnode], self.kp)
                 if not self.response.status == 'OK':
@@ -79,9 +80,12 @@ class KGQuerier:
             for result in results:
                 neo4j_node = result.get(qnode.id)
                 swagger_node = self.__convert_neo4j_node_to_swagger_node(neo4j_node, qnode.id, self.kp)
-                if use_synonyms:
-                    if synonym_handling == "add_all" or swagger_node.id == synonym_usages_dict[qnode.id].get('original_curie'):
+                if qnode.id in synonym_usages_dict and synonym_handling == "map_back":
+                    # Only add the original curie (discard synonym nodes)
+                    if swagger_node.id == synonym_usages_dict[qnode.id].get('original_curie'):
                         self.final_kg['nodes'][swagger_node.id] = swagger_node
+                else:
+                    self.final_kg['nodes'][swagger_node.id] = swagger_node
 
         return self.final_kg
 
