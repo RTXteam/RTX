@@ -8,6 +8,7 @@ from response import Response
 from actions_parser import ActionsParser
 from ARAX_messenger import ARAXMessenger
 from ARAX_expander import ARAXExpander
+from ARAX_resultify import ARAXResultify
 
 
 # Utility functions
@@ -26,6 +27,7 @@ def run_query(actions_list, num_allowed_retries=2):
 
     messenger = ARAXMessenger()
     expander = ARAXExpander()
+    resultifier = ARAXResultify()
 
     # Run each action
     for action in actions:
@@ -39,6 +41,8 @@ def run_query(actions_list, num_allowed_retries=2):
             result = messenger.add_qedge(message, action['parameters'])
         elif action['command'] == 'expand':
             result = expander.apply(message, action['parameters'])
+        elif action['command'] == 'resultify':
+            result = resultifier.apply(message, action['parameters'])
         elif action['command'] == 'return':
             break
         else:
@@ -646,17 +650,33 @@ def query_that_doesnt_return_original_curie():
     print_passing_message()
 
 
-def single_node_query():
-    print("Testing a single node query (clopidogrel) using KG2")
+def single_node_query_map_back():
+    print("Testing a single node query (clopidogrel) using KG2, with map_back synonym handling")
     actions_list = [
         "create_message",
-        "add_qnode(id=n00, name=clopidogrel)",
-        "expand(node_id=n00, kp=ARAX/KG2)",
+        "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL1771)",
+        "expand(node_id=n00, kp=ARAX/KG2, synonym_handling=map_back)",
         "return(message=true, store=false)"
     ]
     kg_in_dict_form = run_query(actions_list)
     conduct_standard_testing(kg_in_dict_form)
+    assert len(kg_in_dict_form['nodes']['n00']) == 1
+    assert kg_in_dict_form['nodes']['n00'].get("CHEMBL.COMPOUND:CHEMBL1771")
+    print_passing_message()
 
+
+def single_node_query_add_all():
+    print("Testing a single node query (clopidogrel) using KG2, with add_all synonym handling")
+    actions_list = [
+        "create_message",
+        "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL1771)",
+        "expand(node_id=n00, kp=ARAX/KG2, synonym_handling=add_all)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query(actions_list)
+    conduct_standard_testing(kg_in_dict_form)
+    assert len(kg_in_dict_form['nodes']['n00']) > 1
+    assert "CHEMBL.COMPOUND:CHEMBL1771" in kg_in_dict_form['nodes']['n00']
     print_passing_message()
 
 
@@ -672,7 +692,6 @@ def query_with_no_edge_or_node_ids():
     ]
     kg_in_dict_form = run_query(actions_list)
     conduct_standard_testing(kg_in_dict_form)
-
     print_passing_message()
 
 
@@ -699,7 +718,8 @@ def main():
     test_two_hop_bte_query()
     test_simple_bidirectional_query()
     query_that_doesnt_return_original_curie()
-    single_node_query()
+    single_node_query_map_back()
+    single_node_query_add_all()
     query_with_no_edge_or_node_ids()
 
     # Bug tests

@@ -63,7 +63,9 @@ class KGQuerier:
             self.response.error(f"Cannot expand a single query node if it doesn't have a curie", error_code="InvalidQuery")
         else:
             # Gather synonyms as appropriate
-            if self.response.data['parameters'].get('use_synonyms'):
+            use_synonyms = self.response.data['parameters'].get('use_synonyms')
+            synonym_handling = self.response.data['parameters'].get('synonym_handling')
+            if use_synonyms:
                 synonym_usages_dict = self.__add_curie_synonyms_to_query_nodes([qnode], self.kp)
                 if not self.response.status == 'OK':
                     return self.final_kg
@@ -73,11 +75,13 @@ class KGQuerier:
             cypher_query = f"MATCH {self.__get_cypher_for_query_node(qnode)} WHERE {where_clause} RETURN {qnode.id}"
             results = self.__run_cypher_query(cypher_query, self.kp)
 
-            # Process the results and add to our answer knowledge graph
+            # Process the results and add to our answer knowledge graph, handling synonyms as appropriate
             for result in results:
                 neo4j_node = result.get(qnode.id)
                 swagger_node = self.__convert_neo4j_node_to_swagger_node(neo4j_node, qnode.id, self.kp)
-                self.final_kg['nodes'][swagger_node.id] = swagger_node
+                if use_synonyms:
+                    if synonym_handling == "add_all" or swagger_node.id == synonym_usages_dict[qnode.id].get('original_curie'):
+                        self.final_kg['nodes'][swagger_node.id] = swagger_node
 
         return self.final_kg
 
