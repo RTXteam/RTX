@@ -42,7 +42,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         description_list = []
         params_dict = dict()
         params_dict['brief_description'] = brief_description
-        params_dict['edge_id'] = {"a query graph edge ID or list of such id's to expand (optional, default is to expand entire query graph)"}  # this is a workaround due to how self.parameters is utilized in this class
+        params_dict['edge_id'] = {"a query graph edge ID or list of such IDs to expand (optional, default is to expand entire query graph)"}  # this is a workaround due to how self.parameters is utilized in this class
         params_dict['node_id'] = {"a query graph node ID to expand (optional, default is to expand entire query graph)"}
         params_dict['kp'] = {"the knowledge provider to use - current options are `ARAX/KG1`, `ARAX/KG2`, or `BTE` (optional, default is `ARAX/KG1`)"}
         params_dict['enforce_directionality'] = {"whether to obey (vs. ignore) edge directions in query graph - options are `true` or `false` (optional, default is `false`)"}
