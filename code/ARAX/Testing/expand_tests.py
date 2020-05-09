@@ -687,7 +687,7 @@ def query_with_no_edge_or_node_ids():
         "add_qnode(name=CHEMBL.COMPOUND:CHEMBL1276308, id=n00)",
         "add_qnode(type=protein, id=n01)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "expand(kp=ARAX/KG2)",
+        "expand()",
         "return(message=true, store=false)"
     ]
     kg_in_dict_form = run_query(actions_list)
