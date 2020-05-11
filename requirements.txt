@@ -4,8 +4,7 @@ pandas
 neo4j-driver
 numpy
 ipython-cypher
-networkx==2.3
-# Note: biothings explorer currently requires networkx 2.3
+networkx
 pronto
 lxml
 mygene
