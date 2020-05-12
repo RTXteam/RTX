@@ -533,7 +533,6 @@ class ARAXQuery:
                         message.log = response.messages
                         return response
 
-
             #### At the end, process the explicit return() action, or implicitly perform one
             return_action = { 'command': 'return', 'parameters': { 'message': 'true', 'store': 'true' } }
             if action is not None and action['command'] == 'return':
@@ -744,7 +743,7 @@ def main():
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
             "overlay(action=add_node_pmids, max_num=15)",
-            "return(message=true, store=false)"
+            "return(message=true, store=true)"
         ]}}
     elif params.example_number == 14:  # test
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -989,6 +988,17 @@ def main():
             "expand(edge_id=[e00,e01], continue_if_no_results=true)",
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
             "return(message=true, store=false)"
+        ]}}
+    elif params.example_number == 500: ## chunyu testing
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=hypertension, id=n00)",
+            "add_qnode(type=protein, is_set=True, id=n01)",
+            "add_qedge(source_id=n01, target_id=n00, id=e00)",
+            "expand(edge_id=e00)",
+            "overlay(action=compute_ngd)",
+            "resultify(ignore_edge_direction=false)",
+            "return(message=true, store=true)",
         ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
