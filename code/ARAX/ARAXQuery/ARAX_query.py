@@ -104,6 +104,7 @@ class ARAXQuery:
         message = self.message
         if message is None:
             message = Message()
+            self.message = message
         message.message_code = result.error_code
         message.code_description = result.message
         message.log = result.messages
@@ -119,6 +120,7 @@ class ARAXQuery:
         message = self.message
         if message is None:
             message = Message()
+            self.message = message
         message.message_code = result.error_code
         message.code_description = result.message
         message.log = result.messages
