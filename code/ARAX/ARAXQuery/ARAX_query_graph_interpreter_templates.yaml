@@ -112,19 +112,5 @@ templates:
       - expand(edge_id=[e00,e01])
       - resultify()
 
-  one_hop_all_connections:
-    name: One hop question with one curie and one totally generic
-    description: Two nodes, one of which has a curie and the other has no type
-    restated_question: What is n00(name) related to?
-    template:
-      - n00(type)
-      - e00()
-      - n01(type)
-      - e01()
-      - n02(type)
-    DSL:
-      - expand(edge_id=e00)
-
-
 
 
