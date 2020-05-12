@@ -57,6 +57,7 @@ def run_query(actions_list, num_allowed_retries=2):
             if (result.error_code == 'ConnectionResetError' or result.error_code == 'OSError') and num_allowed_retries > 0:
                 return run_query(actions_list, num_allowed_retries - 1)
             else:
+                # print(message.knowledge_graph)
                 print(response.show(level=Response.DEBUG))
                 return None
 
@@ -582,7 +583,7 @@ def simple_bte_cdk2_query():
         "create_message",
         "add_qnode(id=n00, curie=NCBIGene:1017)",
         "add_qnode(id=n01, type=chemical_substance, is_set=True)",
-        "add_qedge(id=e00, source_id=n01, target_id=n00, type=targetedBy)",
+        "add_qedge(id=e00, source_id=n01, target_id=n00)",
         "expand(edge_id=e00, kp=BTE)",
         "return(message=true, store=false)",
     ]
@@ -599,7 +600,7 @@ def test_two_hop_bte_query():
         "add_qnode(id=n00, curie=NCBIGene:1017)",
         "add_qnode(id=n01, type=protein, is_set=True)",
         "add_qnode(id=n02, type=gene)",
-        "add_qedge(id=e00, source_id=n01, target_id=n00)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01)",
         "add_qedge(id=e01, source_id=n01, target_id=n02)",
         "expand(edge_id=[e00, e01], kp=BTE)",
         "return(message=true, store=false)",
@@ -731,7 +732,7 @@ def main():
     test_kg1_property_format()
     simple_bte_acetaminophen_query()
     simple_bte_cdk2_query()
-    test_two_hop_bte_query()
+    # test_two_hop_bte_query()
     test_simple_bidirectional_query()
     query_that_doesnt_return_original_curie()
     single_node_query_map_back()

@@ -974,7 +974,7 @@ def main():
             "create_message",
             "add_qnode(id=n00, curie=NCBIGene:1017)",  # CDK2
             "add_qnode(id=n01, type=chemical_substance, is_set=True)",
-            "add_qedge(id=e00, source_id=n01, target_id=n00, type=targetedBy)",
+            "add_qedge(id=e00, source_id=n01, target_id=n00)",
             "expand(edge_id=e00, kp=BTE)",
             "return(message=true, store=false)",
         ]}}
