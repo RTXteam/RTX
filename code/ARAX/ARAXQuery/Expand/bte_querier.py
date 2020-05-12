@@ -60,9 +60,14 @@ class BTEQuerier:
                 swagger_node.id = node.get('id')
                 swagger_node.name = node.get('name')
                 swagger_node.type = node.get('type')
-                swagger_node.qnode_id = output_qnode_id if kg_to_qg_ids_dict['nodes'].get(swagger_node.id) == "n1" else None
-                if not swagger_node.qnode_id:  # Hack while waiting for fix (node_binding for input node is missing from bte response)
+                # Map the returned BTE qg_ids back to the original qnode_ids in our query graph
+                bte_qg_id = kg_to_qg_ids_dict['nodes'].get(swagger_node.id)
+                if bte_qg_id == "n0":
                     swagger_node.qnode_id = input_qnode_id
+                elif bte_qg_id == "n1":
+                    swagger_node.qnode_id = output_qnode_id
+                else:
+                    self.response.error("Could not map BTE qg_id to ARAX qnode_id", error_code="UnknownQGID")
                 self.final_kg['nodes'][swagger_node.id] = swagger_node
             for edge in reasoner_std_response['knowledge_graph']['edges']:
                 swagger_edge = Edge()
@@ -72,7 +77,12 @@ class BTEQuerier:
                 swagger_edge.target_id = edge.get('target_id')
                 swagger_edge.is_defined_by = "BTE"
                 swagger_edge.provided_by = edge.get('edge_source')
-                swagger_edge.qedge_id = qedge_id
+                # Map the returned BTE qg_id back to the original qedge_id in our query graph
+                bte_qg_id = kg_to_qg_ids_dict['edges'].get(swagger_edge.id)
+                if bte_qg_id == "e1":
+                    swagger_edge.qedge_id = qedge_id
+                else:
+                    self.response.error("Could not map BTE qg_id to ARAX qedge_id", error_code="UnknownQGID")
                 self.final_kg['edges'][swagger_edge.id] = swagger_edge
 
     def __get_counts_by_qg_id(self, knowledge_graph):
