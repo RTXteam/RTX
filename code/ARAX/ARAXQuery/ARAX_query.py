@@ -998,7 +998,7 @@ def main():
             "expand(edge_id=e00)",
             "overlay(action=compute_ngd)",
             "resultify(ignore_edge_direction=false)",
-            "return(message=true, store=true)",
+            "return(message=true, store=false)",
         ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
