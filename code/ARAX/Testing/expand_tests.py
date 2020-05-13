@@ -100,7 +100,7 @@ def print_nodes(kg_in_dict_form):
 def print_edges(kg_in_dict_form):
     for qedge_id, edges in kg_in_dict_form['edges'].items():
         for edge_key, edge in edges.items():
-            print(f"{edge.qedge_id}, {edge.id}")
+            print(f"{edge.qedge_id}, {edge.id}, {edge.source_id}--{edge.type}->{edge.target_id}")
 
 
 def print_passing_message(start_time=0.0):
@@ -712,6 +712,23 @@ def query_with_no_edge_or_node_ids():
     print_passing_message()
 
 
+def query_that_produces_multiple_provided_bys():
+    print("Testing query with multiple provided bys")
+    actions_list = [
+        "create_message",
+        "add_qnode(name=MONDO:0005737, id=n0, type=disease)",
+        "add_qnode(type=protein, id=n1)",
+        "add_qnode(type=disease, id=n2)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "add_qedge(source_id=n1, target_id=n2, id=e1)",
+        "expand(kp=ARAX/KG2)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query(actions_list)
+    conduct_standard_testing(kg_in_dict_form)
+    print_passing_message()
+
+
 def main():
     # Regular tests
     test_kg1_parkinsons_demo_example()
@@ -732,16 +749,18 @@ def main():
     test_kg1_property_format()
     simple_bte_acetaminophen_query()
     simple_bte_cdk2_query()
-    # test_two_hop_bte_query()
     test_simple_bidirectional_query()
     query_that_doesnt_return_original_curie()
     single_node_query_map_back()
     single_node_query_add_all()
     single_node_query_without_synonyms()
     query_with_no_edge_or_node_ids()
+    query_that_produces_multiple_provided_bys()
 
     # Bug tests
     # ambitious_query_causing_multiple_qnode_ids_error()
+    # test_two_hop_bte_query()
+
 
     print(f'\nEVERYTHING PASSED!')
 
