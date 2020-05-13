@@ -104,6 +104,7 @@ class ARAXQuery:
         message = self.message
         if message is None:
             message = Message()
+            self.message = message
         message.message_code = result.error_code
         message.code_description = result.message
         message.log = result.messages
@@ -119,6 +120,7 @@ class ARAXQuery:
         message = self.message
         if message is None:
             message = Message()
+            self.message = message
         message.message_code = result.error_code
         message.code_description = result.message
         message.log = result.messages
@@ -477,6 +479,7 @@ class ARAXQuery:
                     if action['command'] == 'create_message':
                         result = messenger.create_message()
                         message = result.data['message']
+                        self.message = message
 
                     elif action['command'] == 'add_qnode':
                         result = messenger.add_qnode(message,action['parameters'])
@@ -508,6 +511,7 @@ class ARAXQuery:
                         response.info(f"Sending current query_graph to the QueryGraphReasoner")
                         qgr = QueryGraphReasoner()
                         message = qgr.answer(ast.literal_eval(repr(message.query_graph)), TxltrApiFormat=True)
+                        self.message = message
                         nonstandard_result = True
 
                     elif action['command'] == 'return':
@@ -544,7 +548,6 @@ class ARAXQuery:
                 if 'message' not in return_action['parameters']:
                     return_action['parameters']['message'] == 'false'
 
-
             # Fill out the message with data
             message.message_code = response.error_code
             message.code_description = response.message
@@ -558,7 +561,7 @@ class ARAXQuery:
                 response.debug(f"Storing resulting Message")
                 message_id = rtxFeedback.addNewMessage(message,query)
 
-            self.message = message  # chunyu
+
             #### If asking for the full message back
             if return_action['parameters']['message'] == 'true':
                 response.info(f"Processing is complete. Transmitting resulting Message back to client.")
@@ -570,7 +573,6 @@ class ARAXQuery:
                     message_id = 0
                 response.info(f"Processing is complete. Resulting Message id is {message_id} and is available to fetch via /message endpoint.")
                 return( { "status": 200, "message_id": str(message_id), "n_results": message.n_results, "url": "https://arax.rtx.ai/api/rtx/v1/message/"+str(message_id) }, 200)
-
 
 
 
@@ -746,7 +748,7 @@ def main():
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
             "overlay(action=add_node_pmids, max_num=15)",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}}
     elif params.example_number == 14:  # test
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -976,7 +978,7 @@ def main():
             "create_message",
             "add_qnode(id=n00, curie=NCBIGene:1017)",  # CDK2
             "add_qnode(id=n01, type=chemical_substance, is_set=True)",
-            "add_qedge(id=e00, source_id=n01, target_id=n00, type=targetedBy)",
+            "add_qedge(id=e00, source_id=n01, target_id=n00)",
             "expand(edge_id=e00, kp=BTE)",
             "return(message=true, store=false)",
         ]}}
@@ -992,16 +994,16 @@ def main():
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
             "return(message=true, store=false)"
         ]}}
-    elif params.example_number == 500: ## chunyu testing
+    elif params.example_number == 500:  # chunyu testing
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(name=hypertension, id=n00)",
-            "add_qnode(type=protein, is_set=True, id=n01)",
+            "add_qnode(type=protein, id=n01)",
             "add_qedge(source_id=n01, target_id=n00, id=e00)",
             "expand(edge_id=e00)",
             "overlay(action=compute_ngd)",
             "resultify(ignore_edge_direction=false)",
-            "return(message=true, store=false)",
+            "return(message=true, store=true)"
         ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
@@ -1020,7 +1022,6 @@ def main():
 
     #### Retrieve the Translator Message from the result
     message = araxq.message
-    print(araxq.message) #chunyu
 
     #### Print out the message that came back
     #print(response.show(level=Response.DEBUG))
