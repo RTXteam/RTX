@@ -479,6 +479,7 @@ class ARAXQuery:
                     if action['command'] == 'create_message':
                         result = messenger.create_message()
                         message = result.data['message']
+                        self.message = message
 
                     elif action['command'] == 'add_qnode':
                         result = messenger.add_qnode(message,action['parameters'])
@@ -510,6 +511,7 @@ class ARAXQuery:
                         response.info(f"Sending current query_graph to the QueryGraphReasoner")
                         qgr = QueryGraphReasoner()
                         message = qgr.answer(ast.literal_eval(repr(message.query_graph)), TxltrApiFormat=True)
+                        self.message = message
                         nonstandard_result = True
 
                     elif action['command'] == 'return':
