@@ -533,6 +533,7 @@ class ARAXQuery:
                         message.log = response.messages
                         return response
 
+
             #### At the end, process the explicit return() action, or implicitly perform one
             return_action = { 'command': 'return', 'parameters': { 'message': 'true', 'store': 'true' } }
             if action is not None and action['command'] == 'return':
@@ -542,6 +543,7 @@ class ARAXQuery:
                     return_action['parameters']['store'] == 'false'
                 if 'message' not in return_action['parameters']:
                     return_action['parameters']['message'] == 'false'
+
 
             # Fill out the message with data
             message.message_code = response.error_code
@@ -556,7 +558,7 @@ class ARAXQuery:
                 response.debug(f"Storing resulting Message")
                 message_id = rtxFeedback.addNewMessage(message,query)
 
-
+            self.message = message  # chunyu
             #### If asking for the full message back
             if return_action['parameters']['message'] == 'true':
                 response.info(f"Processing is complete. Transmitting resulting Message back to client.")
@@ -568,6 +570,7 @@ class ARAXQuery:
                     message_id = 0
                 response.info(f"Processing is complete. Resulting Message id is {message_id} and is available to fetch via /message endpoint.")
                 return( { "status": 200, "message_id": str(message_id), "n_results": message.n_results, "url": "https://arax.rtx.ai/api/rtx/v1/message/"+str(message_id) }, 200)
+
 
 
 
@@ -1017,6 +1020,7 @@ def main():
 
     #### Retrieve the Translator Message from the result
     message = araxq.message
+    print(araxq.message) #chunyu
 
     #### Print out the message that came back
     #print(response.show(level=Response.DEBUG))
