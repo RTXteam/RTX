@@ -1667,7 +1667,7 @@ def _run_arax_class_tests():
     _test_example1()
     _test_example2()
     _test_issue680()
-#    _test_example3()
+#    _test_example3()  # this has been commented out because the test takes a long time to run
     _test_issue686a()
     _test_issue686b()
     _test_issue686c()
