@@ -457,19 +457,19 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     if len(node_ids_of_kg_that_are_not_mapped_to_qg) > 0:
         raise ValueError("KG nodes that are not mapped to QG: " + str(node_ids_of_kg_that_are_not_mapped_to_qg))
 
-    # --------------------- the source ID and target ID of every edge in KG should be a valid KG node ---------------------
+    # --------------------- checking that the source ID and target ID of every edge in KG is a valid KG node ---------------------
     node_ids_for_edges_that_are_not_valid_nodes = [edge.source_id for edge in kg.edges if kg_nodes_map.get(edge.source_id, None) is None] +\
         [edge.target_id for edge in kg.edges if kg_nodes_map.get(edge.target_id, None) is None]
     if len(node_ids_for_edges_that_are_not_valid_nodes) > 0:
         raise ValueError("KG has edges that refer to the following non-existent nodes: " + str(node_ids_for_edges_that_are_not_valid_nodes))
 
-    # --------------------- the source ID and target ID of every edge in QG should be a valid QG node ---------------------
+    # --------------------- checking that the source ID and target ID of every edge in QG is a valid QG node ---------------------
     node_ids_for_edges_that_are_not_valid_nodes = [edge.source_id for edge in qg.edges if qg_nodes_map.get(edge.source_id, None) is None] +\
         [edge.target_id for edge in qg.edges if qg_nodes_map.get(edge.target_id, None) is None]
     if len(node_ids_for_edges_that_are_not_valid_nodes) > 0:
         raise ValueError("QG has edges that refer to the following non-existent nodes: " + str(node_ids_for_edges_that_are_not_valid_nodes))
 
-    # --------------------- check for consistency of edge-to-node relationships, for all edge bindings -----------
+    # --------------------- checking for consistency of edge-to-node relationships, for all edge bindings -----------
     # check that for each bound KG edge, the QG mappings of the KG edges source and target nodes are also the
     # source and target nodes of the QG edge that corresponds to the bound KG edge
     for kg_edge_id in edge_bindings_map:
@@ -553,14 +553,9 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                         break
                 if not found_neighbor_connected_to_kg_node_id and kg_node_id in node_ids_for_subgraph:
                     node_ids_for_subgraph.remove(kg_node_id)
-        # make sure that this set of nodes covers the QG
         result = _make_result_from_node_set(kg, node_ids_for_subgraph)
-        result_kg = result.result_graph
-        qedge_ids_in_subgraph = set()
-        for kg_edge in result_kg.edges:
-            kg_edge_qedge_id = kg_edge.qedge_id
-            if kg_edge_qedge_id is not None:
-                qedge_ids_in_subgraph.add(kg_edge_qedge_id)
+        # make sure that this set of nodes covers the QG
+        qedge_ids_in_subgraph = {kg_edge.qedge_id for kg_edge in result.result_graph.edges if kg_edge.qedge_id is not None}
         if len(qedge_ids_set - qedge_ids_in_subgraph) > 0:
             continue
         essence_kg_node_id_set = essence_nodes_in_kg & node_ids_for_subgraph
