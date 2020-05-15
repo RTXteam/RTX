@@ -78,8 +78,8 @@ class BTEQuerier:
             return None, None, None
 
         # Convert node types to preferred format and check if they're allowed
-        input_qnode.type = self.__convert_snake_case_to_pascal_case(input_qnode.type)
-        output_qnode.type = self.__convert_snake_case_to_pascal_case(output_qnode.type)
+        input_qnode.type = self.__convert_string_to_pascal_case(input_qnode.type)
+        output_qnode.type = self.__convert_string_to_pascal_case(output_qnode.type)
         for node_type in [input_qnode.type, output_qnode.type]:
             if node_type not in valid_bte_inputs_dict['node_types']:
                 self.response.error(f"BTE does not accept node type '{node_type}'. Valid options are "
@@ -179,21 +179,15 @@ class BTEQuerier:
                 kg_to_qg_ids['edges'][kg_id] = qedge_ids
         return kg_to_qg_ids
 
-    def __convert_snake_case_to_pascal_case(self, snake_string):
-        # Converts a string like 'chemical_substance' to 'ChemicalSubstance'
-        if snake_string:
-            words = snake_string.split('_')
+    def __convert_string_to_pascal_case(self, input_string):
+        # Converts a string like 'chemical_substance' or 'chemicalSubstance' to 'ChemicalSubstance'
+        if "_" in input_string:
+            words = input_string.split('_')
             return "".join([word.capitalize() for word in words])
+        elif len(input_string) > 1:
+            return input_string[0].upper() + input_string[1:]
         else:
-            return ""
-
-    def __convert_snake_case_to_camel_case(self, snake_string):
-        # Converts a string like 'chemical_substance' to 'chemicalSubstance'
-        if snake_string:
-            words = snake_string.split('_')
-            return "".join([words[0]] + [word.capitalize() for word in words[1:]])
-        else:
-            return ""
+            return input_string.capitalize()
 
     def __get_curie_prefix_for_bte(self, curie):
         prefix = curie.split(':')[0]
