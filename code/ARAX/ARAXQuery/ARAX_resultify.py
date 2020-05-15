@@ -28,7 +28,7 @@ from response import Response
 
 __author__ = 'Stephen Ramsey'
 __copyright__ = 'Oregon State University'
-__credits__ = ['Stephen Ramsey', 'David Koslicki', 'Eric Deutsch']
+__credits__ = ['Stephen Ramsey', 'David Koslicki', 'Eric Deutsch', 'Amy Glen']
 __license__ = 'MIT'
 __version__ = '0.1.0'
 __maintainer__ = ''
@@ -38,8 +38,7 @@ __status__ = 'Prototype'
 
 # is there a better way to import swagger_server?  Following SO posting 16981921
 PACKAGE_PARENT = '../../UI/OpenAPI/python-flask-server'
-SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
-sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
+sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
 from swagger_server.models.edge import Edge
 from swagger_server.models.node import Node
 from swagger_server.models.q_edge import QEdge
@@ -388,13 +387,17 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     # make a map of KG edge IDs to QG edge IDs, based on the node binding argument (nb) passed to this function
     edge_bindings_map = {edge.id: edge.qedge_id for edge in kg.edges if edge.qedge_id is not None}
 
+    qedge_ids_set = {edge.id for edge in qg.edges}
+
     # make a map of KG node ID to KG edges, by source:
     kg_adj_map_direc = _make_adj_maps(kg, directed=True, droploops=False)
     kg_node_id_incoming_adjacency_map = kg_adj_map_direc['in']
     kg_node_id_outgoing_adjacency_map = kg_adj_map_direc['out']
 
-    # calling this method just for validation
+    # calling this method just for validation; it will raise a ValueError if the KG has an edge that refers to a node ID that is not in the KG
     _make_adj_maps(kg, directed=False, droploops=True)['both']
+
+    # generate an adjacency map for the query graph
     qg_adj_map = _make_adj_maps(qg, directed=False, droploops=True)['both']  # can the QG have a self-loop?  not sure
 
     # build up maps of node IDs to nodes, for both the KG and QG
@@ -550,7 +553,16 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                         break
                 if not found_neighbor_connected_to_kg_node_id and kg_node_id in node_ids_for_subgraph:
                     node_ids_for_subgraph.remove(kg_node_id)
+        # make sure that this set of nodes covers the QG
         result = _make_result_from_node_set(kg, node_ids_for_subgraph)
+        result_kg = result.result_graph
+        qedge_ids_in_subgraph = set()
+        for kg_edge in result_kg.edges:
+            kg_edge_qedge_id = kg_edge.qedge_id
+            if kg_edge_qedge_id is not None:
+                qedge_ids_in_subgraph.add(kg_edge_qedge_id)
+        if len(qedge_ids_set - qedge_ids_in_subgraph) > 0:
+            continue
         essence_kg_node_id_set = essence_nodes_in_kg & node_ids_for_subgraph
         if len(essence_kg_node_id_set) == 1:
             essence_kg_node_id = next(iter(essence_kg_node_id_set))
@@ -1259,7 +1271,6 @@ def _test08():
         'resultify(ignore_edge_direction=true, debug=true)',
         "return(message=true, store=false)"]}}
     [response, message] = _do_arax_query(query)
-#    print(response.messages_list())
     assert response.status == 'OK'
     assert len(message.results) == 3223
 
@@ -1568,6 +1579,7 @@ def _test_issue727():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
 
+
 def _test_issue731():
     query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
@@ -1579,7 +1591,65 @@ def _test_issue731():
             "expand(edge_id=[e0,e1], kp=ARAX/KG2)",
             "resultify(debug=true)"]}}
     [response, message] = _do_arax_query(query)
-    assert response.status == 'ERROR' and 'MONDO:0005737' in response.messages_list()[0]
+    assert response.status == 'OK'
+    assert len(message.results) >= 81
+
+
+def _test_issue731b():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+            "add_qnode(name=MONDO:0005737, id=n0, type=disease)",
+            "add_qnode(type=protein, id=n1)",
+            "add_qnode(type=disease, id=n2)",
+            "add_qedge(source_id=n0, target_id=n1, id=e0)",
+            "add_qedge(source_id=n1, target_id=n2, id=e1)",
+            "expand(edge_id=[e0,e1], kp=ARAX/KG2)",
+            "resultify(debug=true)"]}}
+    [response, message] = _do_arax_query(query)
+    for result in message.results:
+        result_graph = result.result_graph
+        found_e01 = False
+        for edge in result_graph.edges:
+            if edge.qedge_id == 'e1':
+                found_e01 = True
+                continue
+        assert found_e01
+
+
+def _test_issue731c():
+    qg = QueryGraph(nodes=[QNode(curie='MONDO:0005737',
+                                 id='n0',
+                                 type='disease'),
+                           QNode(id='n1',
+                                 type='protein'),
+                           QNode(id='n2',
+                                 type='disease')],
+                    edges=[QEdge(source_id='n0',
+                                 target_id='n1',
+                                 id='e0'),
+                           QEdge(source_id='n1',
+                                 target_id='n2',
+                                 id='e1')])
+    kg = KnowledgeGraph(nodes=[Node(id='MONDO:0005737',
+                                    type='disease',
+                                    qnode_id='n0'),
+                               Node(id='UniProtKB:Q14943',
+                                    type='protein',
+                                    qnode_id='n1'),
+                               Node(id='DOID:12297',
+                                    type='disease',
+                                    qnode_id='n2'),
+                               Node(id='DOID:11077',
+                                    type='disease',
+                                    qnode_id='n2')],
+                        edges=[Edge(source_id='MONDO:0005737',
+                                    target_id='UniProtKB:Q14943',
+                                    qedge_id='e0'),
+                               Edge(source_id='UniProtKB:Q14943',
+                                    target_id='DOID:12297',
+                                    qedge_id='e1')])
+    results = _get_results_for_kg_by_qg(kg, qg)
+    indexes_results_with_single_edge = [index for index, result in enumerate(results) if len(result.result_graph.edges) == 1]
+    assert len(indexes_results_with_single_edge) == 0
 
 
 def _run_module_level_tests():
@@ -1608,6 +1678,8 @@ def _run_arax_class_tests():
     _test_issue687()
     _test_issue727()
     _test_issue731()
+    _test_issue731b()
+    _test_issue731c()
 
 
 def main():
