@@ -18,7 +18,7 @@ class BTEQuerier:
         self.response = response_object
 
     def answer_one_hop_query(self, query_graph):
-        qedge, input_qnode, output_qnode = self.__validate_and_extract_input_for_bte(query_graph)
+        qedge, input_qnode, output_qnode = self.__validate_and_pre_process_input_for_bte(query_graph)
         if self.response.status != 'OK':
             return None
 
@@ -51,7 +51,7 @@ class BTEQuerier:
                         self.response.error(f"No paths were found in BTE satisfying this query graph. BTE log: {' '.join(seqd.log)}", error_code="NoResults")
                 return answer_kg
 
-    def __validate_and_extract_input_for_bte(self, query_graph):
+    def __validate_and_pre_process_input_for_bte(self, query_graph):
         # Make sure we have a valid one-hop query graph
         if len(query_graph.edges) != 1 or len(query_graph.nodes) != 2:
             self.response.error(f"BTE can only accept one-hop query graphs (your QG has {len(query_graph.nodes)} "
@@ -103,7 +103,7 @@ class BTEQuerier:
                 swagger_node = Node()
                 swagger_node.id = node.get('id')
                 swagger_node.name = node.get('name')
-                swagger_node.type = node.get('type')
+                swagger_node.type = self.__convert_string_to_snake_case(node.get('type'))
                 # Map the returned BTE qg_ids back to the original qnode_ids in our query graph
                 bte_qg_id = kg_to_qg_ids_dict['nodes'].get(swagger_node.id)
                 if bte_qg_id == "n0":
@@ -188,6 +188,18 @@ class BTEQuerier:
             return input_string[0].upper() + input_string[1:]
         else:
             return input_string.capitalize()
+
+    def __convert_string_to_snake_case(self, input_string):
+        # Converts a string like 'ChemicalSubstance' or 'chemicalSubstance' to 'chemical_substance'
+        if len(input_string) > 1:
+            snake_string = input_string[0].lower()
+            for letter in input_string[1:]:
+                if letter.isupper():
+                    snake_string += "_"
+                snake_string += letter.lower()
+            return snake_string
+        else:
+            return input_string.lower()
 
     def __get_curie_prefix_for_bte(self, curie):
         prefix = curie.split(':')[0]
