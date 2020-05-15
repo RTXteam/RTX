@@ -1659,6 +1659,7 @@ def _run_module_level_tests():
     _test04()
     _test_bfs()
     _test_bfs_in_essence_code()
+    _test_issue731c()
 
 
 def _run_arax_class_tests():
@@ -1671,7 +1672,7 @@ def _run_arax_class_tests():
     _test_example1()
     _test_example2()
     _test_issue680()
-    _test_example3()
+#    _test_example3()
     _test_issue686a()
     _test_issue686b()
     _test_issue686c()
@@ -1679,7 +1680,6 @@ def _run_arax_class_tests():
     _test_issue727()
     _test_issue731()
     _test_issue731b()
-    _test_issue731c()
 
 
 def main():
