@@ -25,14 +25,13 @@ class BTEQuerier:
         answer_kg = {'nodes': dict(), 'edges': dict()}
         for curie in input_qnode.curie:
             try:
-                seqd = SingleEdgeQueryDispatcher(input_cls=self.__convert_snake_case_to_pascal_case(input_qnode.type),
-                                                 output_cls=self.__convert_snake_case_to_pascal_case(output_qnode.type),
+                seqd = SingleEdgeQueryDispatcher(input_cls=input_qnode.type,
+                                                 output_cls=output_qnode.type,
                                                  pred=qedge.type,
                                                  input_id=self.__get_curie_prefix_for_bte(curie),
                                                  values=self.__get_curie_local_id(curie))
                 seqd.query()
                 reasoner_std_response = seqd.to_reasoner_std()
-                print(reasoner_std_response)
             except:
                 trace_back = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
@@ -57,25 +56,43 @@ class BTEQuerier:
         if len(query_graph.edges) != 1 or len(query_graph.nodes) != 2:
             self.response.error(f"BTE can only accept one-hop query graphs (your QG has {len(query_graph.nodes)} "
                                 f"nodes and {len(query_graph.edges)} edges)", error_code="InvalidQueryGraph")
-            return None
+            return None, None, None
 
         # Figure out which query node is input vs. output
         input_qnode = [node for node in query_graph.nodes if node.curie]
         if not input_qnode:
             self.response.error(f"One of the input qnodes must have a curie for BTE queries", error_code="InvalidQueryGraph")
-            return None
+            return None, None, None
         input_qnode = input_qnode[0]
         output_qnode = next(node for node in query_graph.nodes if node.id != input_qnode.id)
         qedge = query_graph.edges[0]
 
         valid_bte_inputs_dict = self.__get_valid_bte_inputs_dict()
         if self.response.status != 'OK':
-            return None
+            return None, None, None
 
-        # Make sure predicate is valid
+        # Make sure predicate is allowed
         if qedge.type not in valid_bte_inputs_dict['predicates'] and qedge.type is not None:
             self.response.error(f"BTE does not accept predicate '{qedge.type}'. Valid options are "
                                 f"{valid_bte_inputs_dict['predicates']}", error_code="InvalidInput")
+            return None, None, None
+
+        # Convert node types to preferred format and check if they're allowed
+        input_qnode.type = self.__convert_snake_case_to_pascal_case(input_qnode.type)
+        output_qnode.type = self.__convert_snake_case_to_pascal_case(output_qnode.type)
+        for node_type in [input_qnode.type, output_qnode.type]:
+            if node_type not in valid_bte_inputs_dict['node_types']:
+                self.response.error(f"BTE does not accept node type '{node_type}'. Valid options are "
+                                    f"{valid_bte_inputs_dict['node_types']}", error_code="InvalidInput")
+                return None, None, None
+
+        # Make sure node type pair is allowed
+        if (input_qnode.type, output_qnode.type) not in valid_bte_inputs_dict['node_type_pairs']:
+            self.response.error(f"BTE cannot do {input_qnode.type}->{output_qnode.type} queries.", error_code="InvalidInput")
+            return None, None, None
+
+        # Make sure our input node curies are in list form
+        input_qnode.curie = input_qnode.curie if type(input_qnode.curie) is list else [input_qnode.curie]
 
         return qedge, input_qnode, output_qnode
 
