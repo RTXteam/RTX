@@ -478,10 +478,11 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         kg_target_node_id = kg_edge.target_id
         qg_source_node_id = node_bindings_map[kg_source_node_id]
         qg_target_node_id = node_bindings_map[kg_target_node_id]
-        if qg_edge_key_to_edge_id_map.get(_make_edge_key(qg_source_node_id, qg_target_node_id), None) is None:
-            if not ignore_edge_direction or qg_edge_key_to_edge_id_map.get(_make_edge_key(qg_target_node_id, qg_source_node_id), None) is None:
-                raise ValueError("The two nodes for KG edge " + kg_edge.id + ", " + kg_source_node_id + " and " +
-                                 kg_target_node_id + ", have no corresponding edge in the QG")
+        if qg_source_node_id != qg_target_node_id:
+            if qg_edge_key_to_edge_id_map.get(_make_edge_key(qg_source_node_id, qg_target_node_id), None) is None:
+                if not ignore_edge_direction or qg_edge_key_to_edge_id_map.get(_make_edge_key(qg_target_node_id, qg_source_node_id), None) is None:
+                    raise ValueError("The two nodes for KG edge " + kg_edge.id + ", " + kg_source_node_id + " and " +
+                                     kg_target_node_id + ", have no corresponding edge in the QG")
 
     # ------- check that for every edge in the QG, any KG nodes that are bound to the QG endpoint nodes of the edge are connected in the KG -------
     for qg_edge in qg_edges_map.values():
@@ -584,6 +585,19 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         result.description = "No description available"  # see issue 642
 
     return results
+
+
+def _slim_kg(kg: KnowledgeGraph) -> KnowledgeGraph:
+    slimmed_nodes = [Node(id=node.id,
+                          type=node.type,
+                          name=node.name,
+                          qnode_id=node.qnode_id) for node in kg.nodes]
+    slimmed_edges = [Edge(id=edge.id,
+                          source_id=edge.source_id,
+                          target_id=edge.target_id,
+                          type=edge.type,
+                          qedge_id=edge.qedge_id) for edge in kg.edges]
+    return KnowledgeGraph(nodes=slimmed_nodes, edges=slimmed_edges)
 
 
 def _do_arax_query(query: str) -> List[Union[Response, Message]]:
@@ -1647,6 +1661,17 @@ def _test_issue731c():
     assert len(indexes_results_with_single_edge) == 0
 
 
+def _test_issue740():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+            "add_qnode(name=babesia, id=n00)",
+            "add_qnode(id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00, kp=ARAX/KG2)",
+            "resultify()"]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+
+
 def _run_module_level_tests():
     _test01()
     _test02()
@@ -1675,6 +1700,7 @@ def _run_arax_class_tests():
     _test_issue727()
     _test_issue731()
     _test_issue731b()
+    _test_issue740()
 
 
 def main():
