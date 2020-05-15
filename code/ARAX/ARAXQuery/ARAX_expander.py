@@ -24,8 +24,8 @@ class ARAXExpander:
     def __init__(self):
         self.response = None
         self.message = None
-        self.parameters = {'edge_id': None, 'node_id': None, 'kp': None, 'use_synonyms': None, 'synonym_handling': None,
-                           'continue_if_no_results': None}
+        self.parameters = {'edge_id': None, 'node_id': None, 'kp': None, 'enforce_directionality': None,
+                           'use_synonyms': None, 'synonym_handling': None, 'continue_if_no_results': None}
 
     def describe_me(self):
         """
@@ -69,8 +69,6 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
         #### Define a complete set of allowed parameters and their defaults
         parameters = self.parameters
-        parameters['edge_id'] = [edge.id for edge in self.message.query_graph.edges]
-        parameters['node_id'] = self.__get_orphan_query_node_ids(self.message.query_graph)
         parameters['kp'] = "ARAX/KG1"
         parameters['enforce_directionality'] = False
         parameters['use_synonyms'] = True
@@ -87,6 +85,11 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                 elif type(value) is str and value.lower() == "false":
                     value = False
                 parameters[key] = value
+
+        # Default to expanding the entire query graph if the user didn't specify what to expand
+        if not parameters['edge_id'] and not parameters['node_id']:
+            parameters['edge_id'] = [edge.id for edge in self.message.query_graph.edges]
+            parameters['node_id'] = self.__get_orphan_query_node_ids(self.message.query_graph)
 
         #### Return if any of the parameters generated an error (showing not just the first one)
         if response.status != 'OK':
