@@ -103,6 +103,18 @@ def print_edges(kg_in_dict_form):
             print(f"{edge.qedge_id}, {edge.id}, {edge.source_id}--{edge.type}->{edge.target_id}")
 
 
+def print_node_counts_by_prefix(kg_in_dict_form):
+    nodes_by_prefix = dict()
+    for qnode_id, nodes in kg_in_dict_form['nodes'].items():
+        for node_key, node in nodes.items():
+            prefix = node.id.split(':')[0]
+            if prefix in nodes_by_prefix.keys():
+                nodes_by_prefix[prefix] += 1
+            else:
+                nodes_by_prefix[prefix] = 1
+    print(nodes_by_prefix)
+
+
 def print_passing_message(start_time=0.0):
     if start_time:
         print(f"  ...PASSED! (took {round(time.time() - start_time)} seconds)")
