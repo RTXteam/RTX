@@ -919,55 +919,121 @@ function add_cyto() {
 	}
 
 	cyobj[i].on('tap','node', function() {
-	    var dnum = 'd'+this.data('parentdivnum')+'_div';
+	    var div = document.getElementById('d'+this.data('parentdivnum')+'_div');
+	    div.innerHTML = "";
 
-	    document.getElementById(dnum).innerHTML = "<b>Name:</b> " + this.data('name') + "<br>";
-	    document.getElementById(dnum).innerHTML+= "<b>ID:</b> " + this.data('id') + "<br>";
-	    document.getElementById(dnum).innerHTML+= "<b>URI:</b> <a target='_blank' href='" + this.data('uri') + "'>" + this.data('uri') + "</a><br>";
-	    document.getElementById(dnum).innerHTML+= "<b>Type:</b> " + this.data('type') + "<br>";
+            var fields = [ "name","id","uri","type" ];
+	    if (this.data('description') !== 'UNKNOWN' && this.data('description') !== 'None')
+		fields.push("description");
 
-	    if (this.data('description') !== 'UNKNOWN' && this.data('description') !== 'None') {
-		document.getElementById(dnum).innerHTML+= "<b>Description:</b> " + this.data('description') + "<br>";
+	    for (var field of fields) {
+		if (this.data(field)) {
+		    var span = document.createElement("span");
+		    span.className = "fieldname";
+		    span.appendChild(document.createTextNode(field+": "));
+		    div.appendChild(span);
+		    if (field == "uri") {
+			var link = document.createElement("a");
+			link.href = this.data(field);
+			link.target = "nodeuri";
+			link.appendChild(document.createTextNode(this.data(field)));
+			div.appendChild(link);
+		    }
+		    else {
+			div.appendChild(document.createTextNode(this.data(field)));
+		    }
+		    div.appendChild(document.createElement("br"));
+		}
 	    }
 
-	    show_attributes(dnum, this.data('node_attributes'));
+	    show_attributes(div, this.data('node_attributes'));
 
 	    sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
 	});
 
 	cyobj[i].on('tap','edge', function() {
-	    var dnum = 'd'+this.data('parentdivnum')+'_div';
+            var div = document.getElementById('d'+this.data('parentdivnum')+'_div');
+	    div.innerHTML = "";
 
-	    document.getElementById(dnum).innerHTML = this.data('source');
-	    document.getElementById(dnum).innerHTML+= " <b>" + this.data('type') + "</b> ";
-	    document.getElementById(dnum).innerHTML+= this.data('target') + "<br>";
+            div.appendChild(document.createTextNode(this.data('source')+" "));
+            var span = document.createElement("b");
+	    span.appendChild(document.createTextNode(this.data('type')));
+            div.appendChild(span);
+	    div.appendChild(document.createTextNode(" "+this.data('target')));
+            div.appendChild(document.createElement("br"));
 
-	    if(this.data('provided_by').startsWith("http"))
-            	document.getElementById(dnum).innerHTML+= "<b>Provenance:</b> <a target='_blank' href='" + this.data('provided_by') + "'>" + this.data('provided_by') + "</a><br>";
+	    var tmpArr = [];
+	    if (!(Array.isArray(this.data('provided_by'))))
+		tmpArr.push(this.data('provided_by'));
 	    else
-            	document.getElementById(dnum).innerHTML+= "<b>Provenance:</b> " + this.data('provided_by') + "<br>";
+		tmpArr = this.data('provided_by');
+
+            for (var prov of tmpArr) {
+		if (prov == null) continue;
+
+		span = document.createElement("span");
+		span.className = "fieldname";
+		span.appendChild(document.createTextNode("Provenance: "));
+		div.appendChild(span);
+
+		if (prov.startsWith("http")) {
+		    var provlink = document.createElement("a");
+		    provlink.href = prov;
+		    provlink.target = "prov";
+		    provlink.appendChild(document.createTextNode(prov));
+		    div.appendChild(provlink);
+		}
+		else {
+                    div.appendChild(document.createTextNode(prov));
+		}
+                div.appendChild(document.createElement("br"));
+	    }
 
 
-	    if(this.data('confidence'))
-                document.getElementById(dnum).innerHTML+= "<b>Confidence:</b> " + Number(this.data('confidence')).toPrecision(3) + "<br>";
-
-            if(this.data('weight'))
-                document.getElementById(dnum).innerHTML+= "<b>Weight:</b> " + Number(this.data('weight')).toPrecision(3) + "<br>";
-
-
-	    var fields = [ "evidence_type","qualifiers","negated","relation","is_defined_by","defined_datetime","publications","id","qedge_id" ];
+	    var fields = [ "confidence","weight","evidence_type","qualifiers","negated",
+			   "relation","is_defined_by","defined_datetime","id","qedge_id" ];
 	    for (var field of fields) {
-		if(this.data(field)) {
-		    var span = document.createElement("span");
+		if (this.data(field)) {
+		    span = document.createElement("span");
 		    span.className = "fieldname";
 		    span.appendChild(document.createTextNode(field+": "));
-		    document.getElementById(dnum).appendChild(span);
-		    document.getElementById(dnum).appendChild(document.createTextNode(this.data(field)));
-		    document.getElementById(dnum).appendChild(document.createElement("br"));
+		    div.appendChild(span);
+		    if (field == "confidence" || field == "weight")
+			div.appendChild(document.createTextNode(Number(this.data(field)).toPrecision(3)));
+		    else
+		    	div.appendChild(document.createTextNode(this.data(field)));
+		    div.appendChild(document.createElement("br"));
 		}
 	    }
 
-	    show_attributes(dnum, this.data('edge_attributes'));
+            tmpArr = [];
+	    if (!(Array.isArray(this.data('publications'))))
+		tmpArr.push(this.data('publications'));
+	    else
+		tmpArr = this.data('publications');
+
+	    for (var pub of tmpArr) {
+		if (pub == null) continue;
+
+		span = document.createElement("span");
+		span.className = "fieldname";
+		span.appendChild(document.createTextNode("Publication: "));
+		div.appendChild(span);
+
+		if (pub.startsWith("PMID:")) {
+		    var publink = document.createElement("a");
+		    publink.href = "https://www.ncbi.nlm.nih.gov/pubmed/" + pub.split(":")[1];
+		    publink.target = "pubmed";
+		    publink.appendChild(document.createTextNode(pub));
+		    div.appendChild(publink);
+		}
+		else {
+		    div.appendChild(document.createTextNode(pub));
+		}
+		div.appendChild(document.createElement("br"));
+	    }
+
+	    show_attributes(div, this.data('edge_attributes'));
 
 	    sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
 	});
@@ -976,7 +1042,7 @@ function add_cyto() {
 
 }
 
-function show_attributes(html_id, atts) {
+function show_attributes(html_div, atts) {
     if (atts == null)  { return; }
 
     var linebreak = "<hr>";
@@ -996,12 +1062,13 @@ function show_attributes(html_id, atts) {
 	}
 	if (att.value != null) {
 	    var val = att.value;
-	    if (att.name == "probability_drug_treats" |
-		att.name == "jaccard_index" |
-		att.name == "ngd" |
-		att.name == "paired_concept_freq" |
-		att.name == "observed_expected_ratio" |
-		att.name == "chi_square") {
+	    if (att.name == "probability_drug_treats" ||
+		att.name == "observed_expected_ratio" ||
+		att.name == "paired_concept_freq"     ||
+		att.name == "jaccard_index"           ||
+		att.name == "probability"             ||
+		att.name == "chi_square"              ||
+		att.name == "ngd") {
 		val = Number(val);
 		val = val.toPrecision(3);
 	    }
@@ -1014,7 +1081,7 @@ function show_attributes(html_id, atts) {
 	    snippet += "</a>";
 	}
 
-	document.getElementById(html_id).innerHTML+= snippet;
+	html_div.innerHTML+= snippet;
 	linebreak = "<br>";
     }
 
@@ -1071,9 +1138,6 @@ function mapNodeColor (ele) {
     if (ntype == "phenotypic_feature") { return "indigo";}
     return "#04c";
 }
-
-
-
 
 function edit_qg() {
     cytodata[999] = [];
