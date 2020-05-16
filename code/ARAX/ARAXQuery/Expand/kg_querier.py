@@ -83,9 +83,9 @@ class KGQuerier:
                 if qnode.id in synonym_usages_dict and synonym_handling == "map_back":
                     # Only add the original curie (discard synonym nodes)
                     if swagger_node.id == synonym_usages_dict[qnode.id].get('original_curie'):
-                        self.final_kg['nodes'][swagger_node.id] = swagger_node
+                        self.__add_node_to_kg(swagger_node)
                 else:
-                    self.final_kg['nodes'][swagger_node.id] = swagger_node
+                    self.__add_node_to_kg(swagger_node)
 
         return self.final_kg
 
@@ -193,9 +193,9 @@ class KGQuerier:
                         # Only keep the node corresponding to the original curie (discard synonym nodes)
                         original_curie = synonym_usages_dict[qnode_id].get('original_curie')
                         if swagger_node.id == original_curie:
-                            self.final_kg['nodes'][swagger_node.id] = swagger_node
+                            self.__add_node_to_kg(swagger_node)
                     else:
-                        self.final_kg['nodes'][swagger_node.id] = swagger_node
+                        self.__add_node_to_kg(swagger_node)
             # Load answer edges into our knowledge graph
             elif column_name.startswith('edges'):  # Example column name: 'edges_e01'
                 qedge_id = column_name.replace("edges_", "", 1)
@@ -214,18 +214,18 @@ class KGQuerier:
                             if swagger_edge.target_id in synonym_info.get('synonym_curies'):
                                 swagger_edge.target_id = synonym_info.get('original_curie')
                                 swagger_edge.id = swagger_edge.source_id + "--" + swagger_edge.type + "--" + swagger_edge.target_id
-                    self.final_kg['edges'][swagger_edge.id] = swagger_edge
+                    self.__add_edge_to_kg(swagger_edge)
 
             # Make sure any original curie that synonyms were used for appears in the answer kg as appropriate
             if synonym_handling == 'map_back':
                 for qnode_id, synonym_info in synonym_usages_dict.items():
                     original_curie = synonym_info.get('original_curie')
-                    if not any(node.id == original_curie and node.qnode_id == qnode_id for node in self.final_kg['nodes'].values()):
+                    if qnode_id not in self.final_kg or original_curie not in self.final_kg['nodes'][qnode_id]:
                         # Get this node from neo4j and add it to the kg
                         cypher = f"match (n) where n.id='{original_curie}' return n limit 1"
                         original_node = self.__run_cypher_query(cypher, kp)[0].get('n')
                         swagger_node = self.__convert_neo4j_node_to_swagger_node(original_node, qnode_id, kp)
-                        self.final_kg['nodes'][swagger_node.id] = swagger_node
+                        self.__add_node_to_kg(swagger_node)
 
     def __convert_neo4j_node_to_swagger_node(self, neo4j_node, qnode_id, kp):
         if kp == "KG2":
@@ -375,3 +375,13 @@ class KGQuerier:
                 item = item.replace(unwanted_char, "")
             provided_by_list.append(item)
         return provided_by_list
+
+    def __add_node_to_kg(self, swagger_node):
+        if swagger_node.qnode_id not in self.final_kg['nodes']:
+            self.final_kg['nodes'][swagger_node.qnode_id] = dict()
+        self.final_kg['nodes'][swagger_node.qnode_id][swagger_node.id] = swagger_node
+
+    def __add_edge_to_kg(self, swagger_edge):
+        if swagger_edge.qedge_id not in self.final_kg['edges']:
+            self.final_kg['edges'][swagger_edge.qedge_id] = dict()
+        self.final_kg['edges'][swagger_edge.qedge_id][swagger_edge.id] = swagger_edge

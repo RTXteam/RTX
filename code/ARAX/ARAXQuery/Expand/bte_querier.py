@@ -112,7 +112,7 @@ class BTEQuerier:
                     swagger_node.qnode_id = output_qnode_id
                 else:
                     self.response.error("Could not map BTE qg_id to ARAX qnode_id", error_code="UnknownQGID")
-                answer_kg['nodes'][swagger_node.id] = swagger_node
+                self.__add_node_to_kg(answer_kg, swagger_node)
             for edge in reasoner_std_response['knowledge_graph']['edges']:
                 swagger_edge = Edge()
                 swagger_edge.id = edge.get("id")
@@ -127,7 +127,7 @@ class BTEQuerier:
                     swagger_edge.qedge_id = qedge_id
                 else:
                     self.response.error("Could not map BTE qg_id to ARAX qedge_id", error_code="UnknownQGID")
-                answer_kg['edges'][swagger_edge.id] = swagger_edge
+                self.__add_edge_to_kg(answer_kg, swagger_edge)
         return answer_kg
 
     def __get_valid_bte_inputs_dict(self):
@@ -153,14 +153,10 @@ class BTEQuerier:
 
     def __get_counts_by_qg_id(self, knowledge_graph):
         counts_by_qg_id = dict()
-        for node in knowledge_graph['nodes'].values():
-            if node.qnode_id not in counts_by_qg_id:
-                counts_by_qg_id[node.qnode_id] = 0
-            counts_by_qg_id[node.qnode_id] += 1
-        for edge in knowledge_graph['edges'].values():
-            if edge.qedge_id not in counts_by_qg_id:
-                counts_by_qg_id[edge.qedge_id] = 0
-            counts_by_qg_id[edge.qedge_id] += 1
+        for qnode_id, nodes_dict in knowledge_graph['nodes'].items():
+            counts_by_qg_id[qnode_id] = len(nodes_dict)
+        for qedge_id, edges_dict in knowledge_graph['edges'].items():
+            counts_by_qg_id[qedge_id] = len(edges_dict)
         return counts_by_qg_id
 
     def __build_kg_to_qg_id_dict(self, results):
@@ -211,3 +207,13 @@ class BTEQuerier:
 
     def __get_curie_local_id(self, curie):
         return curie.split(':')[-1]  # Note: Taking last item gets around "PR:PR:000001" situation
+
+    def __add_node_to_kg(self, kg, swagger_node):
+        if swagger_node.qnode_id not in kg['nodes']:
+            kg['nodes'][swagger_node.qnode_id] = dict()
+        kg['nodes'][swagger_node.qnode_id][swagger_node.id] = swagger_node
+
+    def __add_edge_to_kg(self, kg, swagger_edge):
+        if swagger_edge.qedge_id not in kg['edges']:
+            kg['edges'][swagger_edge.qedge_id] = dict()
+        kg['edges'][swagger_edge.qedge_id][swagger_edge.id] = swagger_edge
