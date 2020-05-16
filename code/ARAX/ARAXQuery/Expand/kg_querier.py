@@ -157,14 +157,8 @@ class KGQuerier:
 
     def __answer_query_using_kg_neo4j(self, kp, continue_if_no_results):
         self.response.info(f"Sending cypher query for edge {self.query_graph.edges[0].id} to {kp} neo4j")
-        try:
-            self.query_results = self.__run_cypher_query(self.cypher_query, kp)
-        except:
-            tb = traceback.format_exc()
-            error_type, error, _ = sys.exc_info()
-            self.response.error(f"Encountered an error interacting with {kp} neo4j. {tb}",
-                                error_code=error_type.__name__)
-        else:
+        self.query_results = self.__run_cypher_query(self.cypher_query, kp)
+        if self.response.status == 'OK':
             columns_with_lengths = dict()
             for column in self.query_results[0]:
                 columns_with_lengths[column] = len(self.query_results[0].get(column))
@@ -331,14 +325,20 @@ class KGQuerier:
         return new_attributes
 
     def __run_cypher_query(self, cypher_query, kp):
-        rtx_config = RTXConfiguration()
+        rtxc = RTXConfiguration()
         if kp == "KG2":  # Flip into KG2 mode if that's our KP (rtx config is set to KG1 info by default)
-            rtx_config.live = "KG2"
-        driver = GraphDatabase.driver(rtx_config.neo4j_bolt, auth=(rtx_config.neo4j_username, rtx_config.neo4j_password))
-        with driver.session() as session:
-            query_results = session.run(cypher_query).data()
-        driver.close()
-        return query_results
+            rtxc.live = "KG2"
+        try:
+            driver = GraphDatabase.driver(rtxc.neo4j_bolt, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
+            with driver.session() as session:
+                query_results = session.run(cypher_query).data()
+            driver.close()
+            return query_results
+        except:
+            tb = traceback.format_exc()
+            error_type, error, _ = sys.exc_info()
+            self.response.error(f"Encountered an error interacting with {kp} neo4j. {tb}", error_code=error_type.__name__)
+            return None
 
     def __build_node_uuid_to_curie_dict(self, results_table):
         node_uuid_to_curie_dict = dict()
