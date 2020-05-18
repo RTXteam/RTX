@@ -865,6 +865,8 @@ function add_cyto() {
 		.css({
 		    'background-color': function(ele) { return mapNodeColor(ele); } ,
 		    'shape': function(ele) { return mapNodeShape(ele); } ,
+		    'border-color' : '#000',
+		    'border-width' : '2',
 		    'width': '20',
 		    'height': '20',
 		    'content': 'data(name)'
@@ -872,20 +874,20 @@ function add_cyto() {
 		.selector('edge')
 		.css({
 		    'curve-style' : 'bezier',
-		    'line-color': '#aaf',
-		    'target-arrow-color': '#aaf',
+		    'line-color': function(ele) { return mapEdgeColor(ele); } ,
+		    'target-arrow-color': function(ele) { return mapEdgeColor(ele); } ,
 		    'width': function(ele) { if (ele.data().weight) { return ele.data().weight; } return 2; },
-                    'content': 'data(name)',
 		    'target-arrow-shape': 'triangle',
 		    'opacity': 0.8,
 		    'content': function(ele) { if ((ele.data().parentdivnum > 900) && ele.data().type) { return ele.data().type; } return '';}
 		})
 		.selector(':selected')
 		.css({
-		    'background-color': '#c40',
-		    'line-color': '#c40',
-		    'target-arrow-color': '#c40',
-		    'source-arrow-color': '#c40',
+		    'background-color': '#ff0',
+		    'border-color': '#f80',
+		    'line-color': '#f80',
+		    'target-arrow-color': '#f80',
+		    'source-arrow-color': '#f80',
 		    'opacity': 1
 		})
 		.selector('.faded')
@@ -998,10 +1000,19 @@ function add_cyto() {
 		    span.className = "fieldname";
 		    span.appendChild(document.createTextNode(field+": "));
 		    div.appendChild(span);
-		    if (field == "confidence" || field == "weight")
+		    if (field == "confidence" || field == "weight") {
 			div.appendChild(document.createTextNode(Number(this.data(field)).toPrecision(3)));
-		    else
+		    }
+                    else if (this.data(field).startsWith("http")) {
+			var link = document.createElement("a");
+			link.href = this.data(field);
+			link.target = "nodeuri";
+			link.appendChild(document.createTextNode(this.data(field)));
+			div.appendChild(link);
+		    }
+		    else {
 		    	div.appendChild(document.createTextNode(this.data(field)));
+		    }
 		    div.appendChild(document.createElement("br"));
 		}
 	    }
@@ -1061,7 +1072,6 @@ function show_attributes(html_div, atts) {
 	    snippet += "<a target='rtxext' href='" + att.url + "'>";
 	}
 	if (att.value != null) {
-	    var val = att.value;
 	    if (att.name == "probability_drug_treats" ||
 		att.name == "observed_expected_ratio" ||
 		att.name == "paired_concept_freq"     ||
@@ -1069,10 +1079,10 @@ function show_attributes(html_div, atts) {
 		att.name == "probability"             ||
 		att.name == "chi_square"              ||
 		att.name == "ngd") {
-		val = Number(val);
-		val = val.toPrecision(3);
+		snippet += Number(att.value).toPrecision(3);
 	    }
-	    snippet += val;
+	    else
+		snippet += att.value;
 	}
 	else if (att.url != null) {
 	    snippet += "[ url ]";
@@ -1137,6 +1147,14 @@ function mapNodeColor (ele) {
     if (ntype == "anatomical_entity")  { return "violet";}
     if (ntype == "phenotypic_feature") { return "indigo";}
     return "#04c";
+}
+
+function mapEdgeColor (ele) {
+    var etype = ele.data().type;
+    if (etype == "contraindicated_for")       { return "red";}
+    if (etype == "indicated_for")             { return "green";}
+    if (etype == "physically_interacts_with") { return "green";}
+    return "#aaf";
 }
 
 function edit_qg() {
