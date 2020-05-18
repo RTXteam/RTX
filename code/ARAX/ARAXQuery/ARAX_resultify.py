@@ -1701,7 +1701,8 @@ def _test_issue740():
             "expand(edge_id=e00, kp=ARAX/KG2)",
             "resultify()"]}}
     [response, message] = _do_arax_query(query)
-    assert response.status == 'OK'
+    assert response.status == 'ERROR'
+    assert 'ERROR: Node CUI:C0004572 has been returned as an answer for multiple query graph nodes (n01 and n00)' in response.messages_list()[0]
 
 
 def _test_issue692():
