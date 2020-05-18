@@ -301,6 +301,7 @@ function postQuery(qtype) {
 		document.getElementById("progressBar").innerHTML = "Error\u00A0\u00A0";
 		document.getElementById("finishedSteps").classList.add("menunum");
 		document.getElementById("finishedSteps").classList.add("numnew");
+		there_was_an_error();
 	    }
 	    statusdiv.appendChild(document.createTextNode(data["code_description"]));  // italics?
 	    statusdiv.appendChild(document.createElement("br"));
@@ -331,6 +332,7 @@ function postQuery(qtype) {
 		process_log(err.log);
 	    }
 	    console.log(err.message);
+            there_was_an_error();
 	});
 }
 
@@ -455,11 +457,13 @@ function retrieve_message() {
 	else if ( xhr.status == 404 ) {
 	    document.getElementById("statusdiv").innerHTML += "<BR>The following message id was not found:<SPAN CLASS='error'>"+message_id+"</SPAN>";
 	    sesame('openmax',statusdiv);
+	    there_was_an_error();
 	}
 	else {
 	    document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr.status+")</SPAN>";
 	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<BR>"+xhr.responseText;
 	    sesame('openmax',statusdiv);
+            there_was_an_error();
 	}
     };
 }
@@ -536,6 +540,14 @@ function process_q_options(q_opts) {
 	}
     }
 
+}
+
+function there_was_an_error() {
+    document.getElementById("summary_container").innerHTML += "<H2 class='error'>Error : No results</H2>";
+    document.getElementById("result_container").innerHTML  += "<H2 class='error'>Error : No results</H2>";
+    document.getElementById("menunumresults").innerHTML = "E";
+    document.getElementById("menunumresults").classList.add("numnew");
+    document.getElementById("menunumresults").classList.remove("numold");
 }
 
 function process_log(logarr) {
