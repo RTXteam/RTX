@@ -305,37 +305,19 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
         for qnode_id, nodes_dict in answer_nodes_dict.items():
             for node_key, node in nodes_dict.items():
-                if node_key != node.id:
-                    self.response.error(f"Node key is different from node id in Expand (key: {node_key}, id: {node.id})", error_code="InvalidDataStructure")
-                    return
-                if not node.qnode_id:
-                    self.response.error(f"Node {node_key} in answer is missing its corresponding qnode_id", error_code="MissingProperty")
-                    return
-                # Check if this is a duplicate node
-                existing_version_of_node = existing_nodes.get(node_key)
-                if existing_version_of_node and existing_version_of_node.qnode_id != qnode_id:
-                    self.response.error(f"Node {node_key} has been returned as an answer for multiple query graph nodes"
-                                        f" ({node.qnode_id} and {existing_version_of_node.qnode_id})", error_code="MultipleQGIDs")
-                    return
-                else:
+                is_valid = self.__validate_node(node_key, node, existing_nodes.get(node_key))
+                if is_valid:
                     existing_nodes[node_key] = node
+                else:
+                    return
 
         for qedge_id, edges_dict in answer_edges_dict.items():
             for edge_key, edge in edges_dict.items():
-                if edge_key != edge.id:
-                    self.response.error(f"Edge key is different from edge id in Expand (key: {edge_key}, id: {edge.id})", error_code="InvalidDataStructure")
-                    return
-                if not edge.qedge_id:
-                    self.response.error(f"Edge {edge_key} in answer is missing its corresponding qedge_id", error_code="MissingProperty")
-                    return
-                # Check if this is a duplicate edge
-                existing_version_of_edge = existing_edges.get(edge_key)
-                if existing_version_of_edge and existing_version_of_edge.qedge_id != qedge_id:
-                    self.response.error(f"Edge {edge_key} has been returned as an answer for multiple query graph edges"
-                                        f" ({edge.qedge_id} and {existing_version_of_edge.qedge_id})", error_code="MultipleQGIDs")
-                    return
-                else:
+                is_valid = self.__validate_edge(edge_key, edge, existing_edges.get(edge_key))
+                if is_valid:
                     existing_edges[edge_key] = edge
+                else:
+                    return
 
     def __prune_dead_ends(self, knowledge_graph, query_sub_graph):
         """
@@ -477,6 +459,40 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             return None
         else:
             return matching_nodes[0]
+
+    def __validate_node(self, node_key, node, existing_version_of_node):
+        is_valid = True
+        if node_key != node.id:
+            self.response.error(f"Node key is different from node id in Expand (key: {node_key}, id: {node.id})",
+                                error_code="InvalidDataStructure")
+            is_valid = False
+        if not node.qnode_id:
+            self.response.error(f"Node {node_key} in answer is missing its corresponding qnode_id",
+                                error_code="MissingProperty")
+            is_valid = False
+        if existing_version_of_node and existing_version_of_node.qnode_id != node.qnode_id:
+            self.response.error(f"Node {node_key} has been returned as an answer for multiple query graph nodes"
+                                f" ({node.qnode_id} and {existing_version_of_node.qnode_id})",
+                                error_code="MultipleQGIDs")
+            is_valid = False
+        return is_valid
+
+    def __validate_edge(self, edge_key, edge, existing_version_of_edge):
+        is_valid = True
+        if edge_key != edge.id:
+            self.response.error(f"Edge key is different from edge id in Expand (key: {edge_key}, id: {edge.id})",
+                                error_code="InvalidDataStructure")
+            is_valid = False
+        if not edge.qedge_id:
+            self.response.error(f"Edge {edge_key} in answer is missing its corresponding qedge_id",
+                                error_code="MissingProperty")
+            is_valid = False
+        if existing_version_of_edge and existing_version_of_edge.qedge_id != edge.qedge_id:
+            self.response.error(f"Edge {edge_key} has been returned as an answer for multiple query graph edges"
+                                f" ({edge.qedge_id} and {existing_version_of_edge.qedge_id})",
+                                error_code="MultipleQGIDs")
+            is_valid = False
+        return is_valid
 
     def __convert_standard_kg_to_dict_kg(self, knowledge_graph):
         dict_kg = dict()
