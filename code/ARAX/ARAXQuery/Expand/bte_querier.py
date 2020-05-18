@@ -18,7 +18,7 @@ class BTEQuerier:
         self.response = response_object
 
     def answer_one_hop_query(self, query_graph):
-        qedge, input_qnode, output_qnode = self.__validate_and_extract_input_for_bte(query_graph)
+        qedge, input_qnode, output_qnode = self.__validate_and_pre_process_input_for_bte(query_graph)
         if self.response.status != 'OK':
             return None
 
@@ -51,7 +51,7 @@ class BTEQuerier:
                         self.response.error(f"No paths were found in BTE satisfying this query graph. BTE log: {' '.join(seqd.log)}", error_code="NoResults")
                 return answer_kg
 
-    def __validate_and_extract_input_for_bte(self, query_graph):
+    def __validate_and_pre_process_input_for_bte(self, query_graph):
         # Make sure we have a valid one-hop query graph
         if len(query_graph.edges) != 1 or len(query_graph.nodes) != 2:
             self.response.error(f"BTE can only accept one-hop query graphs (your QG has {len(query_graph.nodes)} "
@@ -78,8 +78,8 @@ class BTEQuerier:
             return None, None, None
 
         # Convert node types to preferred format and check if they're allowed
-        input_qnode.type = self.__convert_snake_case_to_pascal_case(input_qnode.type)
-        output_qnode.type = self.__convert_snake_case_to_pascal_case(output_qnode.type)
+        input_qnode.type = self.__convert_string_to_pascal_case(input_qnode.type)
+        output_qnode.type = self.__convert_string_to_pascal_case(output_qnode.type)
         for node_type in [input_qnode.type, output_qnode.type]:
             if node_type not in valid_bte_inputs_dict['node_types']:
                 self.response.error(f"BTE does not accept node type '{node_type}'. Valid options are "
@@ -103,7 +103,7 @@ class BTEQuerier:
                 swagger_node = Node()
                 swagger_node.id = node.get('id')
                 swagger_node.name = node.get('name')
-                swagger_node.type = node.get('type')
+                swagger_node.type = self.__convert_string_to_snake_case(node.get('type'))
                 # Map the returned BTE qg_ids back to the original qnode_ids in our query graph
                 bte_qg_id = kg_to_qg_ids_dict['nodes'].get(swagger_node.id)
                 if bte_qg_id == "n0":
@@ -112,7 +112,7 @@ class BTEQuerier:
                     swagger_node.qnode_id = output_qnode_id
                 else:
                     self.response.error("Could not map BTE qg_id to ARAX qnode_id", error_code="UnknownQGID")
-                answer_kg['nodes'][swagger_node.id] = swagger_node
+                self.__add_node_to_kg(answer_kg, swagger_node)
             for edge in reasoner_std_response['knowledge_graph']['edges']:
                 swagger_edge = Edge()
                 swagger_edge.id = edge.get("id")
@@ -127,7 +127,7 @@ class BTEQuerier:
                     swagger_edge.qedge_id = qedge_id
                 else:
                     self.response.error("Could not map BTE qg_id to ARAX qedge_id", error_code="UnknownQGID")
-                answer_kg['edges'][swagger_edge.id] = swagger_edge
+                self.__add_edge_to_kg(answer_kg, swagger_edge)
         return answer_kg
 
     def __get_valid_bte_inputs_dict(self):
@@ -153,14 +153,10 @@ class BTEQuerier:
 
     def __get_counts_by_qg_id(self, knowledge_graph):
         counts_by_qg_id = dict()
-        for node in knowledge_graph['nodes'].values():
-            if node.qnode_id not in counts_by_qg_id:
-                counts_by_qg_id[node.qnode_id] = 0
-            counts_by_qg_id[node.qnode_id] += 1
-        for edge in knowledge_graph['edges'].values():
-            if edge.qedge_id not in counts_by_qg_id:
-                counts_by_qg_id[edge.qedge_id] = 0
-            counts_by_qg_id[edge.qedge_id] += 1
+        for qnode_id, nodes_dict in knowledge_graph['nodes'].items():
+            counts_by_qg_id[qnode_id] = len(nodes_dict)
+        for qedge_id, edges_dict in knowledge_graph['edges'].items():
+            counts_by_qg_id[qedge_id] = len(edges_dict)
         return counts_by_qg_id
 
     def __build_kg_to_qg_id_dict(self, results):
@@ -179,21 +175,27 @@ class BTEQuerier:
                 kg_to_qg_ids['edges'][kg_id] = qedge_ids
         return kg_to_qg_ids
 
-    def __convert_snake_case_to_pascal_case(self, snake_string):
-        # Converts a string like 'chemical_substance' to 'ChemicalSubstance'
-        if snake_string:
-            words = snake_string.split('_')
+    def __convert_string_to_pascal_case(self, input_string):
+        # Converts a string like 'chemical_substance' or 'chemicalSubstance' to 'ChemicalSubstance'
+        if "_" in input_string:
+            words = input_string.split('_')
             return "".join([word.capitalize() for word in words])
+        elif len(input_string) > 1:
+            return input_string[0].upper() + input_string[1:]
         else:
-            return ""
+            return input_string.capitalize()
 
-    def __convert_snake_case_to_camel_case(self, snake_string):
-        # Converts a string like 'chemical_substance' to 'chemicalSubstance'
-        if snake_string:
-            words = snake_string.split('_')
-            return "".join([words[0]] + [word.capitalize() for word in words[1:]])
+    def __convert_string_to_snake_case(self, input_string):
+        # Converts a string like 'ChemicalSubstance' or 'chemicalSubstance' to 'chemical_substance'
+        if len(input_string) > 1:
+            snake_string = input_string[0].lower()
+            for letter in input_string[1:]:
+                if letter.isupper():
+                    snake_string += "_"
+                snake_string += letter.lower()
+            return snake_string
         else:
-            return ""
+            return input_string.lower()
 
     def __get_curie_prefix_for_bte(self, curie):
         prefix = curie.split(':')[0]
@@ -205,3 +207,13 @@ class BTEQuerier:
 
     def __get_curie_local_id(self, curie):
         return curie.split(':')[-1]  # Note: Taking last item gets around "PR:PR:000001" situation
+
+    def __add_node_to_kg(self, kg, swagger_node):
+        if swagger_node.qnode_id not in kg['nodes']:
+            kg['nodes'][swagger_node.qnode_id] = dict()
+        kg['nodes'][swagger_node.qnode_id][swagger_node.id] = swagger_node
+
+    def __add_edge_to_kg(self, kg, swagger_edge):
+        if swagger_edge.qedge_id not in kg['edges']:
+            kg['edges'][swagger_edge.qedge_id] = dict()
+        kg['edges'][swagger_edge.qedge_id][swagger_edge.id] = swagger_edge

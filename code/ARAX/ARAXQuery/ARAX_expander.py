@@ -115,30 +115,37 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             if response.status != 'OK':
                 return response
             self.response.debug(f"Query graph to expand is: {query_sub_graph.to_dict()}")
+
             # Expand the query graph edge by edge because it's much faster for neo4j queries
             ordered_edges = self.__get_order_to_expand_edges_in(query_sub_graph)
             for edge in ordered_edges:
                 self.response.info(f"Expanding edge {edge.id} using {kp_to_use}")
                 edge_query_graph = self.__extract_query_subgraph(edge.id)
+
                 answer_knowledge_graph = self.__expand_edge(edge_query_graph, kp_to_use)
                 if response.status != 'OK':
                     return response
+
                 self.__merge_answer_kg_into_message_kg(answer_knowledge_graph, edge_query_graph)
                 if response.status != 'OK':
                     return response
-            # Prune any remaining dead-end paths in our knowledge graph
-            # TODO: Update to work for branched query graphs as well (only works for linear currently)
+
+            # Prune any remaining dead-end paths in our knowledge graph TODO: update to work on branched QGs
             self.__prune_dead_ends(self.message.knowledge_graph, query_sub_graph)
+
         if input_node_id:
             input_node_ids = input_node_id if type(input_node_id) is list else [input_node_id]
             for input_node_id in input_node_ids:
                 self.response.debug(f"Expanding node {input_node_id} using {kp_to_use}")
+
                 query_node = self.__get_query_node(self.message.query_graph, input_node_id)
                 if response.status != 'OK':
                     return response
+
                 answer_knowledge_graph = self.__expand_node(query_node, kp_to_use)
                 if response.status != 'OK':
                     return response
+
                 self.__merge_answer_kg_into_message_kg(answer_knowledge_graph, None)
                 if response.status != 'OK':
                     return response
@@ -264,25 +271,25 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         """
         This function merges an answer knowledge graph into Message.knowledge_graph. It prevents duplicate nodes/edges
         in the merged KG.
-        :param answer_knowledge_graph: An (almost) Reasoner API standard knowledge graph (dictionary version).
+        :param answer_knowledge_graph: An (almost) Reasoner API standard knowledge graph (dictionary version organized by qnode_id).
         :param edge_query_graph: The single-edge query graph used to generate the answer KG being merged.
         :return: None
         """
         self.response.debug("Merging results into Message.KnowledgeGraph")
-        answer_nodes = answer_knowledge_graph.get('nodes')
-        answer_edges = answer_knowledge_graph.get('edges')
+        answer_nodes_dict = answer_knowledge_graph.get('nodes')
+        answer_edges_dict = answer_knowledge_graph.get('edges')
         existing_nodes = self.message.knowledge_graph.get('nodes')
         existing_edges = self.message.knowledge_graph.get('edges')
 
         if edge_query_graph:
             # Prune any dead end intermediate nodes in overarching KG, if this is not the first edge to be expanded
-            if answer_nodes:
+            if answer_nodes_dict:
                 for qnode in edge_query_graph.nodes:
                     qnode_already_fulfilled = any(node.qnode_id == qnode.id for node in existing_nodes.values())
                     if qnode_already_fulfilled and type(qnode.curie) is list:
                         # Figure out which nodes are dead ends
                         existing_nodes_for_this_qnode = [node.id for node in existing_nodes.values() if node.qnode_id == qnode.id]
-                        answer_nodes_for_this_qnode = [node.id for node in answer_nodes.values() if node.qnode_id == qnode.id]
+                        answer_nodes_for_this_qnode = list(answer_nodes_dict[qnode.id].keys())
                         existing_nodes_not_in_answer = set(existing_nodes_for_this_qnode).difference(set(answer_nodes_for_this_qnode))
                         if existing_nodes_not_in_answer:
                             self.response.debug(f"Pruning {len(existing_nodes_not_in_answer)} dead end nodes corresponding to "
@@ -296,33 +303,39 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                             for edge in connected_edges_to_remove:
                                 existing_edges.pop(edge)
 
-        for node_key, node in answer_nodes.items():
-            if not node.qnode_id:
-                self.response.error(f"Node {node_key} in answer is missing its corresponding qnode_id", error_code="MissingProperty")
-                return
-            # Check if this is a duplicate node
-            existing_version_of_node = existing_nodes.get(node_key)
-            if existing_version_of_node:
-                if existing_version_of_node.qnode_id != node.qnode_id:
+        for qnode_id, nodes_dict in answer_nodes_dict.items():
+            for node_key, node in nodes_dict.items():
+                if node_key != node.id:
+                    self.response.error(f"Node key is different from node id in Expand (key: {node_key}, id: {node.id})", error_code="InvalidDataStructure")
+                    return
+                if not node.qnode_id:
+                    self.response.error(f"Node {node_key} in answer is missing its corresponding qnode_id", error_code="MissingProperty")
+                    return
+                # Check if this is a duplicate node
+                existing_version_of_node = existing_nodes.get(node_key)
+                if existing_version_of_node and existing_version_of_node.qnode_id != qnode_id:
                     self.response.error(f"Node {node_key} has been returned as an answer for multiple query graph nodes"
                                         f" ({node.qnode_id} and {existing_version_of_node.qnode_id})", error_code="MultipleQGIDs")
                     return
-            else:
-                existing_nodes[node_key] = node
+                else:
+                    existing_nodes[node_key] = node
 
-        for edge_key, edge in answer_edges.items():
-            if not edge.qedge_id:
-                self.response.error(f"Edge {edge_key} in answer is missing its corresponding qedge_id", error_code="MissingProperty")
-                return
-            # Check if this is a duplicate edge
-            existing_version_of_edge = existing_edges.get(edge_key)
-            if existing_version_of_edge:
-                if existing_version_of_edge.qedge_id != edge.qedge_id:
+        for qedge_id, edges_dict in answer_edges_dict.items():
+            for edge_key, edge in edges_dict.items():
+                if edge_key != edge.id:
+                    self.response.error(f"Edge key is different from edge id in Expand (key: {edge_key}, id: {edge.id})", error_code="InvalidDataStructure")
+                    return
+                if not edge.qedge_id:
+                    self.response.error(f"Edge {edge_key} in answer is missing its corresponding qedge_id", error_code="MissingProperty")
+                    return
+                # Check if this is a duplicate edge
+                existing_version_of_edge = existing_edges.get(edge_key)
+                if existing_version_of_edge and existing_version_of_edge.qedge_id != qedge_id:
                     self.response.error(f"Edge {edge_key} has been returned as an answer for multiple query graph edges"
                                         f" ({edge.qedge_id} and {existing_version_of_edge.qedge_id})", error_code="MultipleQGIDs")
                     return
-            else:
-                existing_edges[edge_key] = edge
+                else:
+                    existing_edges[edge_key] = edge
 
     def __prune_dead_ends(self, knowledge_graph, query_sub_graph):
         """
