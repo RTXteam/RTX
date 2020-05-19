@@ -106,12 +106,11 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         kp_to_use = self.parameters['kp']
 
         # Convert message knowledge graph to dictionary format, for faster processing
-        dict_version_of_kg = self.__convert_standard_kg_to_dict_kg(self.message.knowledge_graph)
-        self.message.knowledge_graph = dict_version_of_kg
+        dict_kg = self.__convert_standard_kg_to_dict_kg(self.message.knowledge_graph)
 
         if input_edge_id:
             self.response.debug("Extracting sub query graph to expand")
-            query_sub_graph = self.__extract_query_subgraph(input_edge_id)
+            query_sub_graph = self.__extract_query_subgraph(input_edge_id, dict_kg)
             if response.status != 'OK':
                 return response
             self.response.debug(f"Query graph to expand is: {query_sub_graph.to_dict()}")
@@ -120,18 +119,23 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             ordered_edges = self.__get_order_to_expand_edges_in(query_sub_graph)
             for edge in ordered_edges:
                 self.response.info(f"Expanding edge {edge.id} using {kp_to_use}")
-                edge_query_graph = self.__extract_query_subgraph(edge.id)
+                edge_query_graph = self.__extract_query_subgraph(edge.id, dict_kg)
 
                 answer_knowledge_graph = self.__expand_edge(edge_query_graph, kp_to_use)
                 if response.status != 'OK':
                     return response
 
-                self.__merge_answer_kg_into_message_kg(answer_knowledge_graph, edge_query_graph)
+                self.__process_and_merge_answer(answer_knowledge_graph, edge_query_graph, dict_kg)
                 if response.status != 'OK':
                     return response
 
             # Prune any remaining dead-end paths in our knowledge graph TODO: update to work on branched QGs
-            self.__prune_dead_ends(self.message.knowledge_graph, query_sub_graph)
+            self.__prune_dead_ends(dict_kg, query_sub_graph)
+
+            # Make sure no node/edge fulfills more than one qg id (until we come up with a way to handle this)
+            self.__check_for_multiple_qg_ids(dict_kg)
+            if self.response.status != 'OK':
+                return response
 
         if input_node_id:
             input_node_ids = input_node_id if type(input_node_id) is list else [input_node_id]
@@ -146,13 +150,12 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                 if response.status != 'OK':
                     return response
 
-                self.__merge_answer_kg_into_message_kg(answer_knowledge_graph, None)
+                self.__process_and_merge_answer(answer_knowledge_graph, None, dict_kg)
                 if response.status != 'OK':
                     return response
 
         # Convert message knowledge graph back to API standard format
-        standard_kg = self.__convert_dict_kg_to_standard_kg(self.message.knowledge_graph)
-        self.message.knowledge_graph = standard_kg
+        self.message.knowledge_graph = self.__convert_dict_kg_to_standard_kg(dict_kg)
 
         #### Return the response and done
         kg = self.message.knowledge_graph
@@ -169,7 +172,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             node_ids.add(node.id)
         return list(node_ids.difference(node_ids_used_by_edges))
 
-    def __extract_query_subgraph(self, qedge_ids_to_expand):
+    def __extract_query_subgraph(self, qedge_ids_to_expand, dict_kg):
         """
         This function extracts the portion of the original query graph (stored in message.query_graph) that this current
         expand() call will expand, based on the query edge ID(s) specified.
@@ -202,10 +205,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                     sub_query_graph.edges.append(new_qedge)
 
                 # Check for (unusual) case in which this edge has already been expanded (e.g., in a prior Expand() call)
-                edge_has_already_been_expanded = False
-                if any(node.qnode_id == qnodes[0].id for node in self.message.knowledge_graph['nodes'].values()) and \
-                        any(node.qnode_id == qnodes[1].id for node in self.message.knowledge_graph['nodes'].values()):
-                    edge_has_already_been_expanded = True
+                edge_has_already_been_expanded = dict_kg['nodes'].get(qnodes[0].id) and dict_kg['nodes'].get(qnodes[1].id)
 
                 # Add (copies of) this edge's two nodes to our new query sub graph
                 for qnode in qnodes:
@@ -213,9 +213,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
                     # Handle case where we need to use nodes found in a prior Expand() as the curie for this qnode
                     if not new_qnode.curie and not edge_has_already_been_expanded:
-                        curies_of_kg_nodes_with_this_qnode_id = [node.id for node in
-                                                                 self.message.knowledge_graph['nodes'].values()
-                                                                 if node.qnode_id == new_qnode.id]
+                        curies_of_kg_nodes_with_this_qnode_id = list(dict_kg['nodes'][qnode.id].keys()) if qnode.id in dict_kg['nodes'] else []
                         if curies_of_kg_nodes_with_this_qnode_id:
                             new_qnode.curie = curies_of_kg_nodes_with_this_qnode_id
 
@@ -242,13 +240,11 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         if kp_to_use == 'BTE':
             from Expand.bte_querier import BTEQuerier
             bte_querier = BTEQuerier(self.response)
-            answer_kg = bte_querier.answer_one_hop_query(query_graph)
-            return answer_kg
+            return bte_querier.answer_one_hop_query(query_graph)
         elif kp_to_use == 'ARAX/KG2' or kp_to_use == 'ARAX/KG1':
             from Expand.kg_querier import KGQuerier
             kg_querier = KGQuerier(self.response, kp_to_use)
-            answer_kg = kg_querier.answer_one_hop_query(query_graph)
-            return answer_kg
+            return kg_querier.answer_one_hop_query(query_graph)
         else:
             self.response.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are ARAX/KG1, ARAX/KG2, or BTE",
                                 error_code="UnknownValue")
@@ -267,63 +263,70 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             self.response.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are ARAX/KG1 or ARAX/KG2")
             return None
 
-    def __merge_answer_kg_into_message_kg(self, answer_knowledge_graph, edge_query_graph):
+    def __process_and_merge_answer(self, answer_dict_kg, edge_query_graph, dict_kg):
         """
         This function merges an answer knowledge graph into Message.knowledge_graph. It prevents duplicate nodes/edges
         in the merged KG.
-        :param answer_knowledge_graph: An (almost) Reasoner API standard knowledge graph (dictionary version organized by qnode_id).
+        :param answer_dict_kg: An (almost) Reasoner API standard knowledge graph (dictionary version organized by qnode_id).
         :param edge_query_graph: The single-edge query graph used to generate the answer KG being merged.
         :return: None
         """
-        self.response.debug("Merging results into Message.KnowledgeGraph")
-        answer_nodes_dict = answer_knowledge_graph.get('nodes')
-        answer_edges_dict = answer_knowledge_graph.get('edges')
-        existing_nodes = self.message.knowledge_graph.get('nodes')
-        existing_edges = self.message.knowledge_graph.get('edges')
+        self.response.debug("Processing answer and merging into Message.KnowledgeGraph")
+        answer_nodes_dict = answer_dict_kg.get('nodes')
+        answer_edges_dict = answer_dict_kg.get('edges')
+        existing_nodes_dict = dict_kg.get('nodes')
+        existing_edges_dict = dict_kg.get('edges')
 
         if edge_query_graph:
             # Prune any dead end intermediate nodes in overarching KG, if this is not the first edge to be expanded
             if answer_nodes_dict:
                 for qnode in edge_query_graph.nodes:
-                    qnode_already_fulfilled = any(node.qnode_id == qnode.id for node in existing_nodes.values())
+                    qnode_already_fulfilled = existing_nodes_dict.get(qnode.id)
                     if qnode_already_fulfilled and type(qnode.curie) is list:
                         # Figure out which nodes are dead ends
-                        existing_nodes_for_this_qnode = [node.id for node in existing_nodes.values() if node.qnode_id == qnode.id]
-                        answer_nodes_for_this_qnode = list(answer_nodes_dict[qnode.id].keys())
-                        existing_nodes_not_in_answer = set(existing_nodes_for_this_qnode).difference(set(answer_nodes_for_this_qnode))
-                        if existing_nodes_not_in_answer:
-                            self.response.debug(f"Pruning {len(existing_nodes_not_in_answer)} dead end nodes corresponding to "
-                                                f"qnode {qnode.id} ({qnode.type})")
+                        existing_node_ids = set(existing_nodes_dict[qnode.id].keys())
+                        answer_node_ids = set(answer_nodes_dict[qnode.id].keys())
+                        existing_node_ids_not_in_answer = existing_node_ids.difference(answer_node_ids)
+                        if existing_node_ids_not_in_answer:
+                            self.response.debug(f"Pruning {len(existing_node_ids_not_in_answer)} dead end nodes "
+                                                f"corresponding to qnode {qnode.id} ({qnode.type})")
 
                         # Remove them and their connected edges
-                        for node_id in existing_nodes_not_in_answer:
-                            existing_nodes.pop(node_id)
-                            connected_edges_to_remove = [edge.id for edge in existing_edges.values() if
-                                                         edge.source_id == node_id or edge.target_id == node_id]
-                            for edge in connected_edges_to_remove:
-                                existing_edges.pop(edge)
+                        for node_id in existing_node_ids_not_in_answer:
+                            existing_nodes_dict[qnode.id].pop(node_id)
+                            connected_edge_ids_to_remove = []
+                            for qedge_id, edges in existing_edges_dict.items():
+                                connected_edge_ids_to_remove += [edge.id for edge in edges.values() if edge.source_id
+                                                                 == node_id or edge.target_id == node_id]
+                            for edge_id in connected_edge_ids_to_remove:
+                                for qedge_id, edges in existing_edges_dict.items():
+                                    edges.pop(edge_id)
 
+        # Make sure answer nodes/edges are valid and add them to Message.knowledge_graph
         for qnode_id, nodes_dict in answer_nodes_dict.items():
             for node_key, node in nodes_dict.items():
-                is_valid = self.__validate_node(node_key, node, existing_nodes.get(node_key))
+                is_valid = self.__validate_node(node_key, node)
                 if is_valid:
-                    existing_nodes[node_key] = node
-                else:
+                    if qnode_id not in existing_nodes_dict:
+                        existing_nodes_dict[qnode_id] = dict()
+                    existing_nodes_dict[qnode_id][node_key] = node
+                elif self.response.status != 'OK':
                     return
-
         for qedge_id, edges_dict in answer_edges_dict.items():
             for edge_key, edge in edges_dict.items():
-                is_valid = self.__validate_edge(edge_key, edge, existing_edges.get(edge_key))
+                is_valid = self.__validate_edge(edge_key, edge)
                 if is_valid:
-                    existing_edges[edge_key] = edge
-                else:
+                    if qedge_id not in existing_edges_dict:
+                        existing_edges_dict[qedge_id] = dict()
+                    existing_edges_dict[qedge_id][edge_key] = edge
+                elif self.response.status != 'OK':
                     return
 
-    def __prune_dead_ends(self, knowledge_graph, query_sub_graph):
+    def __prune_dead_ends(self, dict_kg, query_sub_graph):
         """
         This function removes any 'dead-end' paths from the knowledge graph after expansion is done. (Dead-end paths can
         occur because edges are expanded one-by-one.)
-        :param knowledge_graph: An (almost) Reasoner API standard knowledge graph (dictionary version).
+        :param dict_kg: An (almost) Reasoner API standard knowledge graph (dictionary version, organized by QG IDs).
         :param query_sub_graph: The query graph that was expanded for the current expand call.
         :return: None
         """
@@ -331,7 +334,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         ordered_qnodes = self.__get_ordered_query_nodes(query_sub_graph)
         qnodes_to_qedges_dict = self.__get_qnode_to_qedge_dict(query_sub_graph)
 
-        if len(ordered_qnodes) > 2:
+        if len(ordered_qnodes) > 1:
             # Loop through ordered qnodes (layers) in reverse order (skipping the last)
             index = len(ordered_qnodes) - 2
             while index >= 0:
@@ -340,25 +343,25 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
                 # Start by adding all nodes of this qnode_id to the dict
                 nodes_to_edges_dict = dict()
-                for node in knowledge_graph['nodes'].values():
-                    if node.qnode_id == current_qnode_id:
-                        nodes_to_edges_dict[node.id] = {'left': [], 'right': []}
+                for node_key, node in dict_kg['nodes'][current_qnode_id].items():
+                    nodes_to_edges_dict[node_key] = {'node': node, 'left': [], 'right': []}
 
                 # Fill out the dict, adding edges to their nodes' edge lists
-                for edge in knowledge_graph['edges'].values():
-                    edge_node_ids = [edge.source_id, edge.target_id]
-                    side = 'left' if edge.qedge_id == left_qedge_id else 'right'
-                    for node_id in edge_node_ids:
-                        if node_id in nodes_to_edges_dict:
-                            nodes_to_edges_dict[node_id][side].append(edge.id)
+                for qedge_id, edges in dict_kg['edges'].items():
+                    for edge in edges.values():
+                        edge_node_ids = [edge.source_id, edge.target_id]
+                        side = 'left' if edge.qedge_id == left_qedge_id else 'right'
+                        for node_id in edge_node_ids:
+                            if node_id in nodes_to_edges_dict:
+                                nodes_to_edges_dict[node_id][side].append(edge)
 
                 # Make sure each node has a right-side edge (indicating it's not a dead end)
-                for node_id, edge_dict in nodes_to_edges_dict.items():
-                    if not edge_dict.get('right'):
+                for node_id, info_dict in nodes_to_edges_dict.items():
+                    if not info_dict.get('right'):
                         # If not, remove it and its left edges from the knowledge graph
-                        knowledge_graph['nodes'].pop(node_id)
-                        for left_edge_id in edge_dict.get('left'):
-                            knowledge_graph['edges'].pop(left_edge_id)
+                        dict_kg['nodes'][info_dict['node'].qnode_id].pop(node_id)
+                        for left_edge in info_dict.get('left'):
+                            dict_kg['edges'][left_edge.qedge_id].pop(left_edge.id)
 
                 index -= 1
 
@@ -460,60 +463,86 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         else:
             return matching_nodes[0]
 
-    def __validate_node(self, node_key, node, existing_version_of_node):
+    def __validate_node(self, node_key, node):
         is_valid = True
         if node_key != node.id:
             self.response.error(f"Node key is different from node id in Expand (key: {node_key}, id: {node.id})",
                                 error_code="InvalidDataStructure")
             is_valid = False
-        if not node.qnode_id:
+        elif not node.qnode_id:
             self.response.error(f"Node {node_key} in answer is missing its corresponding qnode_id",
                                 error_code="MissingProperty")
             is_valid = False
-        if existing_version_of_node and existing_version_of_node.qnode_id != node.qnode_id:
-            self.response.error(f"Node {node_key} has been returned as an answer for multiple query graph nodes"
-                                f" ({node.qnode_id} and {existing_version_of_node.qnode_id})",
-                                error_code="MultipleQGIDs")
-            is_valid = False
         return is_valid
 
-    def __validate_edge(self, edge_key, edge, existing_version_of_edge):
+    def __validate_edge(self, edge_key, edge):
         is_valid = True
         if edge_key != edge.id:
             self.response.error(f"Edge key is different from edge id in Expand (key: {edge_key}, id: {edge.id})",
                                 error_code="InvalidDataStructure")
             is_valid = False
-        if not edge.qedge_id:
+        elif not edge.qedge_id:
             self.response.error(f"Edge {edge_key} in answer is missing its corresponding qedge_id",
                                 error_code="MissingProperty")
             is_valid = False
-        if existing_version_of_edge and existing_version_of_edge.qedge_id != edge.qedge_id:
-            self.response.error(f"Edge {edge_key} has been returned as an answer for multiple query graph edges"
-                                f" ({edge.qedge_id} and {existing_version_of_edge.qedge_id})",
-                                error_code="MultipleQGIDs")
+        elif edge.source_id == edge.target_id:  # Throw away any self-edges (prune step will remove any orphaned nodes)
+            self.response.debug(f"Throwing away self-edge {edge.source_id}->{edge.target_id}")
             is_valid = False
         return is_valid
 
+    def __check_for_multiple_qg_ids(self, dict_kg):
+        # Figure out if any nodes are being used to fulfill more than one QNode ID
+        all_node_ids = set()
+        nodes_with_multiple_qg_ids = set()
+        nodes_dict = dict_kg.get('nodes')
+        for qnode_id, nodes in nodes_dict.items():
+            node_ids = set(nodes.keys())
+            nodes_with_multiple_qg_ids = all_node_ids.intersection(node_ids)
+            all_node_ids = all_node_ids.union(node_ids)
+        if nodes_with_multiple_qg_ids:
+            for node_id in nodes_with_multiple_qg_ids:
+                used_qnode_ids = [qnode_id for qnode_id in nodes_dict.keys() if nodes_dict[qnode_id].get(node_id)]
+                self.response.error(f"Node {node_id} has been returned as an answer for multiple query graph nodes"
+                                    f" ({', '.join(used_qnode_ids)})", error_code="MultipleQGIDs")
+
+        # Figure out if any edges are being used to fulfill more than one QEdge ID
+        all_edge_ids = set()
+        edges_with_multiple_qg_ids = set()
+        edges_dict = dict_kg.get('edges')
+        for qedge_id, edges in edges_dict.items():
+            edge_ids = set(edges.keys())
+            edges_with_multiple_qg_ids = all_edge_ids.intersection(edge_ids)
+            all_edge_ids = all_edge_ids.union(edge_ids)
+        if edges_with_multiple_qg_ids:
+            for edge_id in edges_with_multiple_qg_ids:
+                used_qedge_ids = [qedge_id for qedge_id in edges_dict.keys() if edges_dict[qedge_id].get(edge_id)]
+                self.response.warning(f"Edge {edge_id} has been returned as an answer for multiple query graph edges"
+                                    f" ({', '.join(used_qedge_ids)})")
+
     def __convert_standard_kg_to_dict_kg(self, knowledge_graph):
-        dict_kg = dict()
-        dict_kg['nodes'] = dict()
-        dict_kg['edges'] = dict()
+        dict_kg = {'nodes': dict(), 'edges': dict()}
         if knowledge_graph.nodes is not None:
             for node in knowledge_graph.nodes:
-                dict_kg['nodes'][node.id] = node
+                if node.qnode_id not in dict_kg['nodes']:
+                    dict_kg['nodes'][node.qnode_id] = dict()
+                dict_kg['nodes'][node.qnode_id][node.id] = node
         if knowledge_graph.edges is not None:
             for edge in knowledge_graph.edges:
-                dict_kg['edges'][edge.id] = edge
+                if edge.qedge_id not in dict_kg['edges']:
+                    dict_kg['edges'][edge.qedge_id] = dict()
+                dict_kg['edges'][edge.qedge_id][edge.id] = edge
         return dict_kg
 
     def __convert_dict_kg_to_standard_kg(self, dict_kg):
         standard_kg = KnowledgeGraph()
         standard_kg.nodes = []
         standard_kg.edges = []
-        for node_key, node in dict_kg.get('nodes').items():
-            standard_kg.nodes.append(node)
-        for edge_key, edge in dict_kg.get('edges').items():
-            standard_kg.edges.append(edge)
+        for qnode_id, nodes_dict in dict_kg.get('nodes').items():
+            for node in nodes_dict.values():
+                standard_kg.nodes.append(node)
+        for qedge_id, edges_dict in dict_kg.get('edges').items():
+            for edge in edges_dict.values():
+                standard_kg.edges.append(edge)
         return standard_kg
 
     def __copy_qedge(self, old_qedge):

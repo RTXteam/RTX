@@ -674,7 +674,7 @@ def babesia_query_producing_self_edges():
         "add_qnode(name=babesia, id=n00)",
         "add_qnode(id=n01)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "expand(edge_id=e00, kp=ARAX/KG2, use_synonyms=false)",
+        "expand(edge_id=e00, kp=ARAX/KG2)",
         "return(message=true, store=false)"
     ]
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
@@ -707,11 +707,12 @@ def main():
     single_node_query_without_synonyms()
     query_with_no_edge_or_node_ids()
     query_that_produces_multiple_provided_bys()
+    babesia_query_producing_self_edges()
 
     # Bug tests
     # ambitious_query_causing_multiple_qnode_ids_error()
     # test_two_hop_bte_query()
-    # babesia_query_producing_self_edges()
+
 
 
 if __name__ == "__main__":
