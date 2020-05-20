@@ -341,6 +341,7 @@ class KGQuerier:
         for property_name in property_names:
             property_value = neo4j_object.get(property_name)
             if type(property_value) is str:
+                # Extract any lists, dicts, and booleans that are stored within strings
                 if (property_value.startswith('[') and property_value.endswith(']')) or \
                         (property_value.startswith('{') and property_value.endswith('}')) or \
                         property_value.lower() == "true" or property_value.lower() == "false":
@@ -349,7 +350,12 @@ class KGQuerier:
             if property_value is not None and property_value != {} and property_value != []:
                 swagger_attribute = NodeAttribute() if object_type == "node" else EdgeAttribute()
                 swagger_attribute.name = property_name
-                swagger_attribute.value = property_value
+
+                # Figure out whether this is a url and store it appropriately
+                if type(property_value) is str and (property_value.startswith("http:") or property_value.startswith("https:")):
+                    swagger_attribute.url = property_value
+                else:
+                    swagger_attribute.value = property_value
                 new_attributes.append(swagger_attribute)
 
         return new_attributes
