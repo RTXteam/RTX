@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Usage:  python3 ARAX_resultify_testcases.py
+#         python3 ARAX_resultify_testcases.py test_issue692
 
 import os
 import sys
