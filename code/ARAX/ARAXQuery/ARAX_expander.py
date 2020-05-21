@@ -115,22 +115,25 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                 return response
             self.response.debug(f"Query graph to expand is: {query_sub_graph.to_dict()}")
 
-            # Expand the query graph edge by edge because it's much faster for neo4j queries
-            ordered_edges = self.__get_order_to_expand_edges_in(query_sub_graph)
-            for edge in ordered_edges:
-                self.response.info(f"Expanding edge {edge.id} using {kp_to_use}")
-                edge_query_graph = self.__extract_query_subgraph(edge.id, dict_kg)
+            # Expand the query graph edge by edge (much faster for neo4j queries, and allows easy integration with BTE)
+            ordered_qedges = self.__get_order_to_expand_edges_in(query_sub_graph)
+            qedge_ids_already_expanded = []
+            for qedge in ordered_qedges:
+                self.response.info(f"Expanding edge {qedge.id} using {kp_to_use}")
+                qedge_ids_already_expanded.append(qedge.id)
+                current_edge_query_graph = self.__extract_query_subgraph(qedge.id, dict_kg)
 
-                answer_knowledge_graph = self.__expand_edge(edge_query_graph, kp_to_use)
+                answer_kg = self.__expand_edge(current_edge_query_graph, kp_to_use)
                 if response.status != 'OK':
                     return response
 
-                self.__process_and_merge_answer(answer_knowledge_graph, edge_query_graph, dict_kg)
+                self.__process_and_merge_answer(answer_kg, dict_kg)
                 if response.status != 'OK':
                     return response
 
-            # Prune any remaining dead-end paths in our knowledge graph TODO: update to work on branched QGs
-            self.__prune_dead_ends(dict_kg, query_sub_graph)
+                self.__prune_dead_end_paths(dict_kg, qedge_ids_already_expanded, query_sub_graph)
+                if response.status != 'OK':
+                    return response
 
             # Make sure no node/edge fulfills more than one qg id (until we come up with a way to handle this)
             self.__check_for_multiple_qg_ids(dict_kg)
@@ -146,11 +149,11 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                 if response.status != 'OK':
                     return response
 
-                answer_knowledge_graph = self.__expand_node(query_node, kp_to_use)
+                answer_kg = self.__expand_node(query_node, kp_to_use)
                 if response.status != 'OK':
                     return response
 
-                self.__process_and_merge_answer(answer_knowledge_graph, None, dict_kg)
+                self.__process_and_merge_answer(answer_kg, dict_kg)
                 if response.status != 'OK':
                     return response
 
@@ -263,76 +266,44 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             self.response.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are ARAX/KG1 or ARAX/KG2")
             return None
 
-    def __process_and_merge_answer(self, answer_dict_kg, edge_query_graph, dict_kg):
+    def __process_and_merge_answer(self, answer_dict_kg, dict_kg):
         """
-        This function merges an answer knowledge graph into Message.knowledge_graph. It prevents duplicate nodes/edges
-        in the merged KG.
-        :param answer_dict_kg: An (almost) Reasoner API standard knowledge graph (dictionary version organized by qnode_id).
-        :param edge_query_graph: The single-edge query graph used to generate the answer KG being merged.
+        This function merges an answer knowledge graph into Message.knowledge_graph. It does some node/edge validation and
+        prevents duplicate nodes/edges in the merged KG.
+        :param answer_dict_kg: The knowledge graph containing answers for the current edge expansion. (Organized by QG ID.)
+        :param dict_kg: The overarching knowledge graph. (Organized by QG ID.)
         :return: None
         """
         self.response.debug("Processing answer and merging into Message.KnowledgeGraph")
-        answer_nodes_dict = answer_dict_kg.get('nodes')
-        answer_edges_dict = answer_dict_kg.get('edges')
-        existing_nodes_dict = dict_kg.get('nodes')
-        existing_edges_dict = dict_kg.get('edges')
-
-        if edge_query_graph:
-            # Prune any dead end intermediate nodes in overarching KG, if this is not the first edge to be expanded
-            if answer_nodes_dict:
-                for qnode in edge_query_graph.nodes:
-                    qnode_already_fulfilled = existing_nodes_dict.get(qnode.id)
-                    if qnode_already_fulfilled and type(qnode.curie) is list:
-                        # Figure out which nodes are dead ends
-                        existing_node_ids = set(existing_nodes_dict[qnode.id].keys())
-                        answer_node_ids = set(answer_nodes_dict[qnode.id].keys())
-                        existing_node_ids_not_in_answer = existing_node_ids.difference(answer_node_ids)
-                        if existing_node_ids_not_in_answer:
-                            self.response.debug(f"Pruning {len(existing_node_ids_not_in_answer)} dead end nodes "
-                                                f"corresponding to qnode {qnode.id} ({qnode.type})")
-
-                        # Remove them and their connected edges
-                        for node_id in existing_node_ids_not_in_answer:
-                            existing_nodes_dict[qnode.id].pop(node_id)
-                            connected_edge_ids_to_remove = []
-                            for qedge_id, edges in existing_edges_dict.items():
-                                connected_edge_ids_to_remove += [edge.id for edge in edges.values() if edge.source_id
-                                                                 == node_id or edge.target_id == node_id]
-                            for edge_id in connected_edge_ids_to_remove:
-                                for qedge_id, edges in existing_edges_dict.items():
-                                    edges.pop(edge_id)
 
         # Make sure answer nodes/edges are valid and add them to Message.knowledge_graph
-        for qnode_id, nodes_dict in answer_nodes_dict.items():
-            for node_key, node in nodes_dict.items():
+        for qnode_id, nodes in answer_dict_kg['nodes'].items():
+            for node_key, node in nodes.items():
                 is_valid = self.__validate_node(node_key, node)
                 if is_valid:
-                    if qnode_id not in existing_nodes_dict:
-                        existing_nodes_dict[qnode_id] = dict()
-                    existing_nodes_dict[qnode_id][node_key] = node
-                elif self.response.status != 'OK':
+                    self.__add_node_to_message_kg(node, qnode_id, dict_kg)
+                else:
                     return
-        for qedge_id, edges_dict in answer_edges_dict.items():
+        for qedge_id, edges_dict in answer_dict_kg['edges'].items():
             for edge_key, edge in edges_dict.items():
                 is_valid = self.__validate_edge(edge_key, edge)
                 if is_valid:
-                    if qedge_id not in existing_edges_dict:
-                        existing_edges_dict[qedge_id] = dict()
-                    existing_edges_dict[qedge_id][edge_key] = edge
-                elif self.response.status != 'OK':
+                    self.__add_edge_to_message_kg(edge, qedge_id, dict_kg)
+                else:
                     return
 
-    def __prune_dead_ends(self, dict_kg, query_sub_graph):
+    def __prune_dead_end_paths(self, dict_kg, qedge_ids_already_expanded, full_query_graph):
         """
-        This function removes any 'dead-end' paths from the knowledge graph after expansion is done. (Dead-end paths can
-        occur because edges are expanded one-by-one.)
-        :param dict_kg: An (almost) Reasoner API standard knowledge graph (dictionary version, organized by QG IDs).
-        :param query_sub_graph: The query graph that was expanded for the current expand call.
+        This function removes any 'dead-end' paths from the knowledge graph after expansion is done. (Because edges are
+        expanded one-by-one, not all edges found in the last expansion will connect to edges in the current expansion -
+        they become dead-ends.)
+        :param dict_kg: The overarching knowledge graph. (Organized by QG ID.)
+        :param full_query_graph: The entire query graph submitted to this Expand() call.
         :return: None
         """
         # First figure out our intermediate query nodes and their corresponding query edges
-        ordered_qnodes = self.__get_ordered_query_nodes(query_sub_graph)
-        qnodes_to_qedges_dict = self.__get_qnode_to_qedge_dict(query_sub_graph)
+        ordered_qnodes = self.__get_ordered_query_nodes(full_query_graph)
+        qnodes_to_qedges_dict = self.__get_qnode_to_qedge_dict(full_query_graph)
 
         if len(ordered_qnodes) > 1:
             # Loop through ordered qnodes (layers) in reverse order (skipping the last)
@@ -485,9 +456,6 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             self.response.error(f"Edge {edge_key} in answer is missing its corresponding qedge_id",
                                 error_code="MissingProperty")
             is_valid = False
-        elif edge.source_id == edge.target_id:  # Throw away any self-edges (prune step will remove any orphaned nodes)
-            self.response.debug(f"Throwing away self-edge {edge.source_id}->{edge.target_id}")
-            is_valid = False
         return is_valid
 
     def __check_for_multiple_qg_ids(self, dict_kg):
@@ -518,6 +486,16 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                 used_qedge_ids = [qedge_id for qedge_id in edges_dict.keys() if edges_dict[qedge_id].get(edge_id)]
                 self.response.warning(f"Edge {edge_id} has been returned as an answer for multiple query graph edges"
                                     f" ({', '.join(used_qedge_ids)})")
+
+    def __add_node_to_message_kg(self, node, qnode_id, dict_kg):
+        if qnode_id not in dict_kg['nodes']:
+            dict_kg['nodes'][qnode_id] = dict()
+        dict_kg['nodes'][qnode_id][node.id] = node
+
+    def __add_edge_to_message_kg(self, edge, qedge_id, dict_kg):
+        if qedge_id not in dict_kg['edges']:
+            dict_kg['edges'][qedge_id] = dict()
+        dict_kg['edges'][qedge_id][edge.id] = edge
 
     def __convert_standard_kg_to_dict_kg(self, knowledge_graph):
         dict_kg = {'nodes': dict(), 'edges': dict()}
