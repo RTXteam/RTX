@@ -87,11 +87,11 @@ class ARAXQuery:
             self.response.status = re.sub('DONE,','',self.response.status)
 
             # Stream the resulting message back to the client
-            yield(json.dumps(ast.literal_eval(repr(self.message))))
+            yield(json.dumps(ast.literal_eval(repr(self.message)))+"\n")
 
         # Wait until both threads rejoin here and the return
         main_query_thread.join()
-        return self.message
+        return { 'DONE': True }
 
 
     def asynchronous_query(self,query):
@@ -104,6 +104,7 @@ class ARAXQuery:
         message = self.message
         if message is None:
             message = Message()
+            self.message = message
         message.message_code = result.error_code
         message.code_description = result.message
         message.log = result.messages
@@ -119,6 +120,7 @@ class ARAXQuery:
         message = self.message
         if message is None:
             message = Message()
+            self.message = message
         message.message_code = result.error_code
         message.code_description = result.message
         message.log = result.messages
@@ -462,6 +464,7 @@ class ARAXQuery:
             filter_kg = ARAXFilterKG()
             resultifier = ARAXResultify()
             filter_results = ARAXFilterResults()
+            self.message = message
 
             #### Process each action in order
             action_stats = { }
@@ -469,12 +472,14 @@ class ARAXQuery:
             for action in actions:
                 response.info(f"Processing action '{action['command']}' with parameters {action['parameters']}")
                 nonstandard_result = False
+                skip_merge = False
 
                 # Catch a crash
                 try:
                     if action['command'] == 'create_message':
                         result = messenger.create_message()
                         message = result.data['message']
+                        self.message = message
 
                     elif action['command'] == 'add_qnode':
                         result = messenger.add_qnode(message,action['parameters'])
@@ -483,7 +488,8 @@ class ARAXQuery:
                         result = messenger.add_qedge(message,action['parameters'])
 
                     elif action['command'] == 'expand':
-                        result = expander.apply(message,action['parameters'])
+                        result = expander.apply(message,action['parameters'], response=response)
+                        skip_merge = True
 
                     elif action['command'] == 'filter':
                         result = filter.apply(message,action['parameters'])
@@ -492,7 +498,8 @@ class ARAXQuery:
                         result = resultifier.apply(message, action['parameters'])
 
                     elif action['command'] == 'overlay':  # recognize the overlay command
-                        result = overlay.apply(message, action['parameters'])
+                        result = overlay.apply(message, action['parameters'], response=response)
+                        skip_merge = True
 
                     elif action['command'] == 'filter_kg':  # recognize the filter_kg command
                         result = filter_kg.apply(message, action['parameters'])
@@ -504,6 +511,7 @@ class ARAXQuery:
                         response.info(f"Sending current query_graph to the QueryGraphReasoner")
                         qgr = QueryGraphReasoner()
                         message = qgr.answer(ast.literal_eval(repr(message.query_graph)), TxltrApiFormat=True)
+                        self.message = message
                         nonstandard_result = True
 
                     elif action['command'] == 'return':
@@ -521,7 +529,8 @@ class ARAXQuery:
 
                 #### Merge down this result and end if we're in an error state
                 if nonstandard_result is False:
-                    response.merge(result)
+                    if not skip_merge:
+                        response.merge(result)
                     if result.status != 'OK':
                         message.message_code = response.error_code
                         message.code_description = response.message
@@ -552,7 +561,6 @@ class ARAXQuery:
                 response.debug(f"Storing resulting Message")
                 message_id = rtxFeedback.addNewMessage(message,query)
 
-            self.message = message
 
             #### If asking for the full message back
             if return_action['parameters']['message'] == 'true':
@@ -970,7 +978,7 @@ def main():
             "create_message",
             "add_qnode(id=n00, curie=NCBIGene:1017)",  # CDK2
             "add_qnode(id=n01, type=chemical_substance, is_set=True)",
-            "add_qedge(id=e00, source_id=n01, target_id=n00, type=targetedBy)",
+            "add_qedge(id=e00, source_id=n01, target_id=n00)",
             "expand(edge_id=e00, kp=BTE)",
             "return(message=true, store=false)",
         ]}}

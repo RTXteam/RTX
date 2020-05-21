@@ -6,6 +6,9 @@ body {
     font-size: 12px;
     font-family: Arial, sans-serif;
 }
+hr {
+    border: 1px dashed #444;
+}
 
 .banner {
     position: fixed;
@@ -322,6 +325,37 @@ body {
     border-color: #b00;
 }
 
+.progress {
+    display: inline-block;
+    padding: 0;
+    height: 16px;
+    margin-left: 15px;
+    margin-top: 5px;
+    width: 802px;
+    border: 1px solid #000;
+    background-color: #ccd8e2;
+    box-shadow: inset 2px 2px 4px 0 rgba(0,0,0,0.2), inset -2px -2px 4px 0 rgba(0,0,0,0.2);
+}
+.bar {
+    display: inline-block;
+    padding: 0;
+    height: 14px;
+    margin: 0;
+    width: 0px;
+    border: 1px solid #3d6d98;
+    background-color: #5596d0;
+    color: #fff;
+    text-align: right;
+    font-weight: bold;
+    box-shadow: 4px 0px 4px 0 rgba(0,0,0,0.2);
+    transition-duration: 1s;
+}
+.barerror {
+    border: 1px solid #b00;
+    background-color: #b00;
+}
+
+
 .p9, .msgINFO    { background-color: #291; }
 .p7              { background-color: #7b4; }
 .p5              { background-color: #cc5; }
@@ -450,6 +484,11 @@ td {
     width: 80%;
     background-color: #fff;
     box-shadow: inset 0 4px 8px 0 rgba(0,0,0,0.2), inset 0 6px 20px 0 rgba(0,0,0,0.19);
+}
+
+.fieldname {
+    font-weight: bold;
+    text-transform: capitalize;
 }
 
 .questionBox {

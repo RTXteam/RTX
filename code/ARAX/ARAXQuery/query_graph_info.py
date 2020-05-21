@@ -66,7 +66,7 @@ class QueryGraphInfo:
         self.node_type_map = {}
         for qnode in nodes:
             id = qnode.id
-            node_info[id] = { 'id': id, 'has_curie': False, 'type': qnode.type, 'has_type': False, 'is_set': False, 'n_edges': 0, 'is_connected': False, 'edges': [], 'edge_dict': {} }
+            node_info[id] = { 'id': id, 'node_object': qnode, 'has_curie': False, 'type': qnode.type, 'has_type': False, 'is_set': False, 'n_edges': 0, 'is_connected': False, 'edges': [], 'edge_dict': {} }
             if qnode.curie is not None: node_info[id]['has_curie'] = True
             if qnode.type is not None: node_info[id]['has_type'] = True
             #if qnode.is_set is not None: node_info[id]['is_set'] = True
@@ -164,6 +164,8 @@ class QueryGraphInfo:
             #print('==================================================================================')
             #tmp = input()
 
+            if len(edges) == 0:
+                break
             if len(edges) > 1:
                 response.error("Help, two edges at A583. Don't know what to do", error_code="InteralErrorA583")
                 return response
@@ -213,6 +215,20 @@ class QueryGraphInfo:
                 content = 'type'
             template_part = f"{template_id}({content})"
             self.query_graph_template += template_part
+
+            # Since queries with intermediate nodes that are not is_set=true tend to blow up, for now, make them is_set=true unless explicitly set to false
+            if node_index > 0 and node_index < (self.n_nodes - 1 ):
+                if 'is_set' not in node or node['is_set'] is None:
+                    node['node_object'].is_set = True
+                    response.warning(f"Setting unspecified is_set to true for {node['id']} because this will probably lead to a happier result")
+                elif node['is_set'] is True:
+                    response.debug(f"Value for is_set is already true for {node['id']} so that's good")
+                elif node['is_set'] is False:
+                    #response.info(f"Value for is_set is set to false for intermediate node {node['id']}. This could lead to weird results. Consider setting it to true")
+                    response.info(f"Value for is_set is false for intermediate node {node['id']}. Setting to true because this will probably lead to a happier result")
+                    node['node_object'].is_set = True
+                #else:
+                #    response.error(f"Unrecognized value is_set='{node['is_set']}' for {node['id']}. This should be true or false")
 
             node_index += 1
             if node_index < self.n_nodes:
