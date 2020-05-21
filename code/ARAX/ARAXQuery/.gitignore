@@ -1,4 +1,4 @@
 orangeboard.sqlite
-old
-venv
-.mypy_cache
+old/*
+venv/*
+.mypy_cache/*
