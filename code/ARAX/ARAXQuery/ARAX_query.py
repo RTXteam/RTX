@@ -998,8 +998,8 @@ def main():
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(name=hypertension, id=n00)",
-            "add_qnode(type=protein, id=n01)",
-            "add_qedge(source_id=n01, target_id=n00, id=e00)",
+            "add_qnode(type=protein, id=n02)",
+            "add_qedge(source_id=n02, target_id=n00, id=e00)",
             "expand(edge_id=e00)",
             "overlay(action=compute_ngd)",
             "resultify(ignore_edge_direction=false)",
