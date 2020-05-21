@@ -2,11 +2,16 @@ import requests
 import requests_cache
 import hashlib
 import time
+import re
+import os
 
 _DEFAULT_HEADERS = requests.utils.default_headers()
 
-requests_cache.install_cache("orangeboard")
-
+#requests_cache.install_cache("orangeboard")
+# specifiy the path of orangeboard database
+tmppath = re.compile(".*/RTX/")
+dbpath = tmppath.search(os.path.realpath(__file__)).group(0) + 'data/orangeboard'
+requests_cache.install_cache(dbpath)
 
 def get_timestamp(url):
     """

@@ -2,11 +2,16 @@ import requests_cache
 import sys, os
 from QueryDGIdb import QueryDGIdb
 from Neo4jConnection import Neo4jConnection
+import re
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
 from RTXConfiguration import RTXConfiguration
 
-requests_cache.install_cache('orangeboard')
+#requests_cache.install_cache('orangeboard')
+# specifiy the path of orangeboard database
+tmppath = re.compile(".*/RTX/")
+dbpath = tmppath.search(os.path.realpath(__file__)).group(0) + 'data/orangeboard'
+requests_cache.install_cache(dbpath)
 
 rtxConfig = RTXConfiguration()
 
