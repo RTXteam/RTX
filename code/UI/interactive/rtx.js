@@ -24,8 +24,12 @@ function main() {
 
     message_id = getQueryVariable("m") || null;
     if (message_id) {
-	document.getElementById("statusdiv").innerHTML = "You have requested RTX message id = " + message_id;
-	document.getElementById("devdiv").innerHTML =  "requested RTX message id = " + message_id + "<br>";
+	var statusdiv = document.getElementById("statusdiv");
+	statusdiv.innerHTML = '';
+	statusdiv.appendChild(document.createTextNode("You have requested ARAX message id = " + message_id));;
+	statusdiv.appendChild(document.createElement("br"));
+
+	document.getElementById("devdiv").innerHTML =  "Requested ARAX message id = " + message_id + "<br>";
 	retrieve_message();
 	openSection(null,'queryDiv');
     }
@@ -318,15 +322,15 @@ function postQuery(qtype) {
 		process_log(data["log"]);
 	    }
 	    else {
-		statusdiv.innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while parsing the response from the server (no log; code:"+data.message_code+")</SPAN>";
-		document.getElementById("devdiv").innerHTML += "------------------------------------ error with capturing QUERY:<BR>"+data;
+		statusdiv.innerHTML += "<br><span class='error'>An error was encountered while parsing the response from the server (no log; code:"+data.message_code+")</span>";
+		document.getElementById("devdiv").innerHTML += "------------------------------------ error with capturing QUERY:<br>"+data;
 		sesame('openmax',statusdiv);
 	    }
 
 	})
         .catch(function(err) {
-	    statusdiv.innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+err+")</SPAN>";
-	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with parsing QUERY:<BR>"+err;
+	    statusdiv.innerHTML += "<br><span class='error'>An error was encountered while contacting the server ("+err+")</span>";
+	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with parsing QUERY:<br>"+err;
 	    sesame('openmax',statusdiv);
 	    if (err.log) {
 		process_log(err.log);
@@ -375,7 +379,7 @@ function sendQuestion(e) {
 	    add_to_dev_info("Posted to TRANSLATE",jsonObj);
 
 	    if ( jsonObj.query_type_id && jsonObj.terms ) {
-		document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR>Looking for answer...";
+		document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<b>"+jsonObj["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br>Looking for answer...";
 
 		sesame('openmax',statusdiv);
 		var xhr2 = new XMLHttpRequest();
@@ -391,21 +395,21 @@ function sendQuestion(e) {
 		xhr2.onloadend = function() {
 		    if ( xhr2.status == 200 ) {
 			var jsonObj2 = JSON.parse(xhr2.responseText);
-			document.getElementById("devdiv").innerHTML += "<br>================================================================= QUERY::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
+			document.getElementById("devdiv").innerHTML += "<br>================================================================= QUERY::<pre id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</pre>";
 
-			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["code_description"]+"</I>";
+			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<b>"+jsonObj2["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br><br><i>"+jsonObj2["code_description"]+"</i>";
 			sesame('openmax',statusdiv);
 
 			render_message(jsonObj2);
 
 		    }
 		    else if ( jsonObj.message ) { // STILL APPLIES TO 0.9??  TODO
-			document.getElementById("statusdiv").innerHTML += "<BR><BR>An error was encountered:<BR><SPAN CLASS='error'>"+jsonObj.message+"</SPAN>";
+			document.getElementById("statusdiv").innerHTML += "<br><br>An error was encountered:<br><span class='error'>"+jsonObj.message+"</span>";
 			sesame('openmax',statusdiv);
 		    }
 		    else {
-			document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr2.status+")</SPAN>";
-			document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<BR>"+xhr2.responseText;
+			document.getElementById("statusdiv").innerHTML += "<br><span class='error'>An error was encountered while contacting the server ("+xhr2.status+")</span>";
+			document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<br>"+xhr2.responseText;
 			sesame('openmax',statusdiv);
 		    }
 
@@ -426,7 +430,7 @@ function sendQuestion(e) {
 
 	}
 	else { // responseText
-	    document.getElementById("statusdiv").innerHTML += "<BR><BR>An error was encountered:<BR><SPAN CLASS='error'>"+xhr.statusText+" ("+xhr.status+")</SPAN>";
+	    document.getElementById("statusdiv").innerHTML += "<br><br>An error was encountered:<br><span class='error'>"+xhr.statusText+" ("+xhr.status+")</span>";
 	    sesame('openmax',statusdiv);
 	}
     };
@@ -435,9 +439,11 @@ function sendQuestion(e) {
 
 
 function retrieve_message() {
-    document.getElementById("statusdiv").innerHTML = "Retrieving RTX message id = " + message_id + "<hr>";
-
+    var statusdiv = document.getElementById("statusdiv");
+    statusdiv.appendChild(document.createTextNode("Retrieving ARAX message id = " + message_id));
+    statusdiv.appendChild(document.createElement("hr"));
     sesame('openmax',statusdiv);
+
     var xhr = new XMLHttpRequest();
     xhr.open("get",  baseAPI + "api/rtx/v1/message/" + message_id, true);
     xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
@@ -445,23 +451,28 @@ function retrieve_message() {
     xhr.onloadend = function() {
 	if ( xhr.status == 200 ) {
 	    var jsonObj2 = JSON.parse(xhr.responseText);
-	    document.getElementById("devdiv").innerHTML += "<br>================================================================= RESPONSE REQUEST::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
+	    document.getElementById("devdiv").innerHTML += "<br>================================================================= RESPONSE REQUEST::<pre id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</pre>";
 
-	    document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["code_description"]+"</I><br>";
-	    document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question"];
-
+	    if (jsonObj2["restated_question"].length > 2) {
+		statusdiv.innerHTML += "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br>";
+		document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question"];
+	    }
+	    else {
+		document.getElementById("questionForm").elements["questionText"].value = "";
+	    }
+	    statusdiv.innerHTML += "<br><i>"+jsonObj2["code_description"]+"</i><br>";
 	    sesame('openmax',statusdiv);
 
 	    render_message(jsonObj2);
 	}
 	else if ( xhr.status == 404 ) {
-	    document.getElementById("statusdiv").innerHTML += "<BR>The following message id was not found:<SPAN CLASS='error'>"+message_id+"</SPAN>";
+	    statusdiv.innerHTML += "<br>The following message id was not found:<span class='error'>"+message_id+"</span>";
 	    sesame('openmax',statusdiv);
 	    there_was_an_error();
 	}
 	else {
-	    document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr.status+")</SPAN>";
-	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<BR>"+xhr.responseText;
+	    statusdiv.innerHTML += "<br><span class='error'>An error was encountered while contacting the server ("+xhr.status+")</span>";
+	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<br>"+xhr.responseText;
 	    sesame('openmax',statusdiv);
             there_was_an_error();
 	}
@@ -469,23 +480,23 @@ function retrieve_message() {
 }
 
 
-
 function render_message(respObj) {
-    document.getElementById("statusdiv").appendChild(document.createTextNode("Rendering message..."));
+    var statusdiv = document.getElementById("statusdiv");
+    statusdiv.appendChild(document.createTextNode("Rendering message..."));
     sesame('openmax',statusdiv);
 
     message_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
 
     add_to_session(message_id,respObj.restated_question+"?");
 
-    document.title = "RTX-UI ["+message_id+"]: "+respObj.restated_question+"?";
-    history.pushState({ id: 'RTX_UI' }, 'RTX | message='+message_id, "//"+ window.location.hostname + window.location.pathname + '?m='+message_id);
+    document.title = "ARAX-UI ["+message_id+"]: "+respObj.restated_question+"?";
+    history.pushState({ id: 'ARAX_UI' }, 'ARAX | message='+message_id, "//"+ window.location.hostname + window.location.pathname + '?m='+message_id);
 
     if ( respObj["table_column_names"] ) {
 	add_to_summary(respObj["table_column_names"],0);
     }
     if ( respObj["results"] ) {
-        document.getElementById("result_container").innerHTML += "<H2>" + respObj["n_results"] + " results</H2>";
+        document.getElementById("result_container").innerHTML += "<h2>" + respObj["n_results"] + " results</h2>";
         document.getElementById("menunumresults").innerHTML = respObj["n_results"];
         document.getElementById("menunumresults").classList.add("numnew");
 	document.getElementById("menunumresults").classList.remove("numold");
@@ -503,8 +514,8 @@ function render_message(respObj) {
         //sesame(h1_div,a1_div);
     }
     else {
-        document.getElementById("result_container").innerHTML += "<H2>No results...</H2>";
-        document.getElementById("summary_container").innerHTML += "<H2>No results...</H2>";
+        document.getElementById("result_container").innerHTML += "<h2>No results...</h2>";
+        document.getElementById("summary_container").innerHTML += "<h2>No results...</h2>";
     }
 
     if (respObj["query_graph"]) {
@@ -517,6 +528,9 @@ function render_message(respObj) {
     if ( respObj["table_column_names"] ) {
         document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br></div>";
     }
+    else {
+        document.getElementById("summary_container").innerHTML += "<h2>Summary not available for this query</h2>";
+    }
 
     if (respObj["query_options"]) {
 	process_q_options(respObj["query_options"]);
@@ -527,24 +541,24 @@ function render_message(respObj) {
     }
 
     add_cyto();
-    document.getElementById("statusdiv").appendChild(document.createTextNode("done."));
+    statusdiv.appendChild(document.createTextNode("done."));
     sesame('openmax',statusdiv);
 }
 
-function process_q_options(q_opts) {
 
+function process_q_options(q_opts) {
     if (q_opts.processing_actions) {
 	clearDSL();
 	for (var act of q_opts.processing_actions) {
 	    document.getElementById("dslText").value += act + "\n";
 	}
     }
-
 }
 
+
 function there_was_an_error() {
-    document.getElementById("summary_container").innerHTML += "<H2 class='error'>Error : No results</H2>";
-    document.getElementById("result_container").innerHTML  += "<H2 class='error'>Error : No results</H2>";
+    document.getElementById("summary_container").innerHTML += "<h2 class='error'>Error : No results</h2>";
+    document.getElementById("result_container").innerHTML  += "<h2 class='error'>Error : No results</h2>";
     document.getElementById("menunumresults").innerHTML = "E";
     document.getElementById("menunumresults").classList.add("numnew");
     document.getElementById("menunumresults").classList.remove("numold");
@@ -784,7 +798,7 @@ function process_results(reslist,kg) {
 
 
 function add_result(reslist) {
-    document.getElementById("result_container").innerHTML += "<H2>Results:</H2>";
+    document.getElementById("result_container").innerHTML += "<h2>Results:</h2>";
 
     for (var i in reslist) {
 	var num = Number(i) + 1;
@@ -1083,6 +1097,7 @@ function show_attributes(html_div, atts) {
 	if (att.url != null) {
 	    snippet += "<a target='rtxext' href='" + att.url + "'>";
 	}
+
 	if (att.value != null) {
 	    if (att.name == "probability_drug_treats" ||
 		att.name == "observed_expected_ratio" ||
@@ -1097,8 +1112,12 @@ function show_attributes(html_div, atts) {
 		snippet += att.value;
 	}
 	else if (att.url != null) {
-	    snippet += "[ url ]";
+	    snippet += att.url;
 	}
+	else {
+	    snippet += " n/a ";
+	}
+
 	if (att.url != null) {
 	    snippet += "</a>";
 	}
@@ -1176,18 +1195,10 @@ function edit_qg() {
     for (var gnode of input_qg.nodes) {
 	var name = "";
 
-	if (gnode.name) {
-	    name = gnode.name;
-	}
-	else if (gnode.curie) {
-	    name = gnode.curie;
-	}
-	else if (gnode.type) {
-	    name = gnode.type + "s?";
-	}
-	else {
-	    name = "(Any)";
-	}
+	if (gnode.name)       { name = gnode.name;}
+	else if (gnode.curie) { name = gnode.curie;}
+	else if (gnode.type)  { name = gnode.type + "s?";}
+	else                  { name = "(Any)";}
 
         cyobj[999].add( {
 	    "data" : {
@@ -1636,7 +1647,7 @@ function submitFeedback(res_id,res_div_id) {
 
     xhr6.onloadend = function() {
 	var jsonObj6 = JSON.parse(xhr6.responseText);
-	document.getElementById("devdiv").innerHTML += "<br>================================================================= FEEDBACK-POST::<PRE>\nPOST to " +  baseAPI + "api/rtx/v1/result/" + res_id + "/feedback ::<br>" + JSON.stringify(feedback,null,2) + "<br>------<br>" + JSON.stringify(jsonObj6,null,2) + "</PRE>";
+	document.getElementById("devdiv").innerHTML += "<br>================================================================= FEEDBACK-POST::<pre>\nPOST to " +  baseAPI + "api/rtx/v1/result/" + res_id + "/feedback ::<br>" + JSON.stringify(feedback,null,2) + "<br>------<br>" + JSON.stringify(jsonObj6,null,2) + "</pre>";
 
 	if ( xhr6.status == 200 ) {
 	    document.getElementById(fff+"_msgs").innerHTML = "Your feedback has been recorded...";

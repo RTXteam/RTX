@@ -6,6 +6,9 @@ body {
     font-size: 12px;
     font-family: Arial, sans-serif;
 }
+hr {
+    border: 1px dashed #444;
+}
 
 .banner {
     position: fixed;
