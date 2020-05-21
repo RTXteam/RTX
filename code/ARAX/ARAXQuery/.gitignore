@@ -1,0 +1,4 @@
+orangeboard.sqlite
+old/*
+venv/*
+.mypy_cache/*

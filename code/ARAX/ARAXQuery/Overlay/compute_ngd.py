@@ -79,6 +79,7 @@ class ComputeNGD:
                 # create the edge attribute if it can be
                 source_name = curies_to_names[source_curie]
                 target_name = curies_to_names[target_curie]
+                self.response.debug(f"Computing NGD between {source_name} and {target_name}")
                 ngd_value, method_used = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name])
                 ngd_method_counts[method_used] += 1
                 if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default

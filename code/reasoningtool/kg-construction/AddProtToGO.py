@@ -35,9 +35,14 @@ import sys
 from time import time
 from QueryMyGene import QueryMyGene
 import requests_cache
+import re, os
 
 # configure requests package to use the "orangeboard.sqlite" cache
-requests_cache.install_cache('orangeboard')
+#requests_cache.install_cache('orangeboard')
+# specifiy the path of orangeboard database
+tmppath = re.compile(".*/RTX/")
+dbpath = tmppath.search(os.path.realpath(__file__)).group(0) + 'data/orangeboard'
+requests_cache.install_cache(dbpath)
 
 t = time()
 

@@ -24,8 +24,12 @@ function main() {
 
     message_id = getQueryVariable("m") || null;
     if (message_id) {
-	document.getElementById("statusdiv").innerHTML = "You have requested RTX message id = " + message_id;
-	document.getElementById("devdiv").innerHTML =  "requested RTX message id = " + message_id + "<br>";
+	var statusdiv = document.getElementById("statusdiv");
+	statusdiv.innerHTML = '';
+	statusdiv.appendChild(document.createTextNode("You have requested ARAX message id = " + message_id));;
+	statusdiv.appendChild(document.createElement("br"));
+
+	document.getElementById("devdiv").innerHTML =  "Requested ARAX message id = " + message_id + "<br>";
 	retrieve_message();
 	openSection(null,'queryDiv');
     }
@@ -117,25 +121,91 @@ function reset_vars() {
 }
 
 
+
 // use fetch and stream
-function sendDSL(e) {
+function postQuery(qtype) {
+    var queryObj= {};
+    queryObj.asynchronous = "stream";
+
     reset_vars();
     var statusdiv = document.getElementById("statusdiv");
 
-    document.getElementById("questionForm").elements["questionText"].value = '-- posted async query via DSL input --';
-    statusdiv.innerHTML = "Posting DSL.  Looking for answer...";
-    statusdiv.appendChild(document.createElement("br"));
+    // assemble QueryObject
+    if (qtype == "DSL") {
+	document.getElementById("questionForm").elements["questionText"].value = '-- posted async query via DSL input --';
+	statusdiv.innerHTML = "Posting DSL.  Looking for answer...";
+	statusdiv.appendChild(document.createElement("br"));
+
+	var dslArrayOfLines = document.getElementById("dslText").value.split("\n");
+	queryObj["previous_message_processing_plan"] = { "processing_actions": dslArrayOfLines};
+    }
+    else {  // qGraph
+	document.getElementById("questionForm").elements["questionText"].value = '-- posted async query via graph --';
+	statusdiv.innerHTML = "Posting graph.  Looking for answer...";
+        statusdiv.appendChild(document.createElement("br"));
+
+	// ids need to start with a non-numeric character...
+	for (var gnode of input_qg.nodes) {
+	    if (String(gnode.id).match(/^\d/)) {
+		gnode.id = "qg" + gnode.id;
+	    }
+	}
+	for (var gedge of input_qg.edges) {
+	    if (String(gedge.id).match(/^\d/)) {
+		gedge.id = "qg" + gedge.id;
+	    }
+	    if (String(gedge.source_id).match(/^\d/)) {
+		gedge.source_id = "qg" + gedge.source_id;
+	    }
+	    if (String(gedge.target_id).match(/^\d/)) {
+		gedge.target_id = "qg" + gedge.target_id;
+	    }
+	}
+
+	document.getElementById('qg_form').style.visibility = 'hidden';
+	document.getElementById('qg_form').style.maxHeight = null;
+
+	queryObj.message = { "query_graph" :input_qg };
+	//queryObj.bypass_cache = bypass_cache;
+	queryObj.max_results = 100;
+
+	clear_qg();
+    }
 
     var cmddiv = document.createElement("div");
     cmddiv.id = "cmdoutput";
     statusdiv.appendChild(cmddiv);
+//    statusdiv.appendChild(document.createElement("br"));
+
+    statusdiv.appendChild(document.createTextNode("Processing step "));
+    var span = document.createElement("span");
+    span.id = "finishedSteps";
+    span.style.fontWeight= "bold";
+//    span.className = "menunum numnew";
+    span.appendChild(document.createTextNode("0"));
+    statusdiv.appendChild(span);
+    statusdiv.appendChild(document.createTextNode(" of "));
+    span = document.createElement("span");
+    span.id = "totalSteps";
+//    span.className = "menunum";
+    span.appendChild(document.createTextNode("??"));
+    statusdiv.appendChild(span);
+
+    span = document.createElement("span");
+    span.className = "progress";
+
+    var span2 = document.createElement("span");
+    span2.id = "progressBar";
+    span2.className = "bar";
+    span2.appendChild(document.createTextNode("0%"));
+    span.appendChild(span2);
+
+    statusdiv.appendChild(span);
+    statusdiv.appendChild(document.createElement("br"));
     statusdiv.appendChild(document.createElement("br"));
     sesame('openmax',statusdiv);
 
-    var dslArrayOfLines = document.getElementById("dslText").value.split("\n");
-    var queryObj = { "previous_message_processing_plan": { "processing_actions": dslArrayOfLines}};
-    queryObj.asynchronous = "stream";
-
+    add_to_dev_info("Posted to QUERY",queryObj);
     fetch(baseAPI + "api/rtx/v1/query", {
 	method: 'post',
 	body: JSON.stringify(queryObj),
@@ -144,6 +214,9 @@ function sendDSL(e) {
 	var reader = response.body.getReader();
 	var partialMsg = '';
 	var enqueue = false;
+	var countingSteps = false;
+	var totalSteps = 0;
+	var finishedSteps = 0;
 	var decoder = new TextDecoder();
 	var respjson = '';
 
@@ -154,6 +227,8 @@ function sendDSL(e) {
 		});
 
 		var completeMsgs = partialMsg.split("\n");
+		//console.log("================ completeMsgs::");
+		//console.log(completeMsgs);
 
 		if (!result.done) {
 		    // Last msg is likely incomplete; hold it for next time
@@ -166,6 +241,9 @@ function sendDSL(e) {
 		    msg = msg.trim();
 		    if (msg == null) continue;
 
+		    //console.log("================ msg::");
+		    //console.log(msg);
+
 		    if (enqueue) {
 			respjson += msg;
 		    }
@@ -176,6 +254,18 @@ function sendDSL(e) {
 			    respjson += msg;
 			}
 			else if (jsonMsg.message) {
+			    if (jsonMsg.message.match(/^Parsing action: [^\#]\S+/)) {
+				totalSteps++;
+			    }
+			    else if (totalSteps>0) {
+				document.getElementById("totalSteps").innerHTML = totalSteps;
+				if (jsonMsg.message.match(/^Processing action/)) {
+				    document.getElementById("progressBar").style.width = (800*finishedSteps/totalSteps)+"px";
+				    document.getElementById("progressBar").innerHTML = Math.round(99*finishedSteps/totalSteps)+"%\u00A0\u00A0";
+				    finishedSteps++;
+				    document.getElementById("finishedSteps").innerHTML = finishedSteps;
+				}
+			    }
 			    cmddiv.appendChild(document.createTextNode(jsonMsg.prefix+'\u00A0'+jsonMsg.message));
 			    cmddiv.appendChild(document.createElement("br"));
 			    cmddiv.scrollTop = cmddiv.scrollHeight;
@@ -199,6 +289,26 @@ function sendDSL(e) {
         .then(response => {
 	    var data = JSON.parse(response);
 
+	    var dev = document.getElementById("devdiv");
+            dev.appendChild(document.createElement("br"));
+	    dev.appendChild(document.createTextNode('='.repeat(80)+" RESPONSE MESSAGE::"));
+	    var pre = document.createElement("pre");
+	    pre.id = "responseJSON";
+	    pre.appendChild(document.createTextNode(JSON.stringify(data,null,2)));
+	    dev.appendChild(pre);
+
+	    document.getElementById("progressBar").style.width = "800px";
+	    if (data.message_code == "OK")
+		document.getElementById("progressBar").innerHTML = "Finished\u00A0\u00A0";
+	    else {
+		document.getElementById("progressBar").classList.add("barerror");
+		document.getElementById("progressBar").innerHTML = "Error\u00A0\u00A0";
+		document.getElementById("finishedSteps").classList.add("menunum");
+		document.getElementById("finishedSteps").classList.add("numnew");
+		there_was_an_error();
+	    }
+	    statusdiv.appendChild(document.createTextNode(data["code_description"]));  // italics?
+	    statusdiv.appendChild(document.createElement("br"));
 	    sesame('openmax',statusdiv);
 
 	    if (data["message_code"] == "QueryGraphZeroNodes") {
@@ -212,150 +322,24 @@ function sendDSL(e) {
 		process_log(data["log"]);
 	    }
 	    else {
-		statusdiv.innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while parsing the response from the server (no log; code:"+data.message_code+")</SPAN>";
-		document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<BR>"+data;
+		statusdiv.innerHTML += "<br><span class='error'>An error was encountered while parsing the response from the server (no log; code:"+data.message_code+")</span>";
+		document.getElementById("devdiv").innerHTML += "------------------------------------ error with capturing QUERY:<br>"+data;
 		sesame('openmax',statusdiv);
 	    }
 
 	})
-	.catch(function(err) {
-	    statusdiv.innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+err+")</SPAN>";
-	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<BR>"+err;
+        .catch(function(err) {
+	    statusdiv.innerHTML += "<br><span class='error'>An error was encountered while contacting the server ("+err+")</span>";
+	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with parsing QUERY:<br>"+err;
 	    sesame('openmax',statusdiv);
 	    if (err.log) {
 		process_log(err.log);
 	    }
 	    console.log(err.message);
+            there_was_an_error();
 	});
 }
 
-function sendDSL_OLD(e) { // REMOVE?
-    reset_vars();
-    document.getElementById("questionForm").elements["questionText"].value = '-- posted query via DSL input --';
-    document.getElementById("statusdiv").innerHTML = "Posting DSL.  Looking for answer...";
-
-    sesame('openmax',statusdiv);
-    var xhr = new XMLHttpRequest();
-    xhr.open("post",  baseAPI + "api/rtx/v1/query", true);
-    xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-
-    var dslArrayOfLines = document.getElementById("dslText").value.split("\n");
-    var queryObj = { "previous_message_processing_plan": { "processing_actions": dslArrayOfLines}};
-    //queryObj.max_results = 100;
-
-    document.getElementById("devdiv").innerHTML += "<PRE>\nposted to QUERY:\n" + JSON.stringify(queryObj,null,2) + "</PRE>";
-
-    // send the collected data as JSON
-    xhr.send(JSON.stringify(queryObj));
-
-    xhr.onloadend = function() {
-	if ( xhr.status == 200 ) {
-	    var jsonObj = JSON.parse(xhr.responseText);
-	    document.getElementById("devdiv").innerHTML += "<br>================================================================= RESPONSE MESSAGE::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj,null,2) + "</PRE>";
-
-	    document.getElementById("statusdiv").innerHTML += "<br><br><I>"+jsonObj["code_description"]+"</I>";
-	    sesame('openmax',statusdiv);
-
-	    if (jsonObj["message_code"] == "QueryGraphZeroNodes") {
-		clear_qg();
-	    }
-	    else if (jsonObj["message_code"] == "OK") {
-		input_qg = { "edges": [], "nodes": [] };
-		render_message(jsonObj);
-	    }
-	    else if (jsonObj["log"]) {
-		process_log(jsonObj["log"]);
-	    }
-	    else {
-		document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while parsing the response from the server (no log; code:"+jsonObj.message_code+")</SPAN>";
-		document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<BR>"+xhr.responseText;
-		sesame('openmax',statusdiv);
-	    }
-	}
-	else {
-	    document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr.status+")</SPAN>";
-	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<BR>"+xhr.responseText;
-	    sesame('openmax',statusdiv);
-	    if (xhr.log) {
-		process_log(xhr.log);
-	    }
-	}
-    };
-
-}
-
-
-function sendGraph(e) {
-    reset_vars();
-    document.getElementById("questionForm").elements["questionText"].value = '-- posted query via graph --';
-
-    document.getElementById("statusdiv").innerHTML = "Posting graph.  Looking for answer...";
-
-    sesame('openmax',statusdiv);
-    var xhr = new XMLHttpRequest();
-    xhr.open("post",  baseAPI + "api/rtx/v1/query", true);
-    xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-
-
-    // ids need to start with a non-numeric character...
-    for (var gnode in input_qg.nodes) {
-	if (String(input_qg.nodes[gnode].id).match(/^\d/)) {
-	    input_qg.nodes[gnode].id = "qg" + input_qg.nodes[gnode].id;
-	}
-    }
-    for (var gedge in input_qg.edges) {
-	if (String(input_qg.edges[gedge].id).match(/^\d/)) {
-	    input_qg.edges[gedge].id = "qg" + input_qg.edges[gedge].id;
-	}
-	if (String(input_qg.edges[gedge].source_id).match(/^\d/)) {
-	    input_qg.edges[gedge].source_id = "qg" + input_qg.edges[gedge].source_id;
-	}
-        if (String(input_qg.edges[gedge].target_id).match(/^\d/)) {
-	    input_qg.edges[gedge].target_id = "qg" + input_qg.edges[gedge].target_id;
-	}
-    }
-
-
-    document.getElementById('qg_form').style.visibility = 'hidden';
-    document.getElementById('qg_form').style.maxHeight = null;
-
-
-    var queryObj = { "message" : { "query_graph" :input_qg } };
-    //queryObj.bypass_cache = bypass_cache;
-    queryObj.max_results = 100;
-
-    document.getElementById("devdiv").innerHTML += "<PRE>\nposted to QUERY:\n" + JSON.stringify(queryObj,null,2) + "</PRE>";
-
-    clear_qg();
-
-    // send the collected data as JSON
-    xhr.send(JSON.stringify(queryObj));
-
-    xhr.onloadend = function() {
-        if ( xhr.status == 200 ) {
-	    var jsonObj = JSON.parse(xhr.responseText);
-	    document.getElementById("devdiv").innerHTML += "<br>================================================================= REPONSE MESSAGE::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj,null,2) + "</PRE>";
-
-	    document.getElementById("statusdiv").innerHTML += "<br><br><I>"+jsonObj["code_description"]+"</I>";
-	    sesame('openmax',statusdiv);
-
-	    if (jsonObj["message_code"] == "QueryGraphZeroNodes") {
-		clear_qg();
-	    }
-	    else {
-		input_qg = { "edges": [], "nodes": [] };
-		render_message(jsonObj);
-	    }
-	}
-	else {
-	    document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr.status+")</SPAN>";
-	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<BR>"+xhr.responseText;
-	    sesame('openmax',statusdiv);
-	}
-	
-    };
-
-}
 
 function sendQuestion(e) {
     reset_vars();
@@ -392,10 +376,10 @@ function sendQuestion(e) {
     xhr.onloadend = function() {
 	if ( xhr.status == 200 ) {
 	    var jsonObj = JSON.parse(xhr.responseText);
-	    document.getElementById("devdiv").innerHTML += "<PRE>\n" + JSON.stringify(jsonObj,null,2) + "</PRE>";
+	    add_to_dev_info("Posted to TRANSLATE",jsonObj);
 
 	    if ( jsonObj.query_type_id && jsonObj.terms ) {
-		document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR>Looking for answer...";
+		document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<b>"+jsonObj["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br>Looking for answer...";
 
 		sesame('openmax',statusdiv);
 		var xhr2 = new XMLHttpRequest();
@@ -406,30 +390,26 @@ function sendQuestion(e) {
                 queryObj.bypass_cache = bypass_cache;
                 queryObj.max_results = 100;
 
-                document.getElementById("devdiv").innerHTML += "<PRE>\nposted to QUERY:\n" + JSON.stringify(queryObj,null,2) + "</PRE>";
-
-
-		// send the collected data as JSON
+		add_to_dev_info("Posted to QUERY",queryObj);
 		xhr2.send(JSON.stringify(queryObj));
-
 		xhr2.onloadend = function() {
 		    if ( xhr2.status == 200 ) {
 			var jsonObj2 = JSON.parse(xhr2.responseText);
-			document.getElementById("devdiv").innerHTML += "<br>================================================================= QUERY::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
+			document.getElementById("devdiv").innerHTML += "<br>================================================================= QUERY::<pre id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</pre>";
 
-			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["code_description"]+"</I>";
+			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<b>"+jsonObj2["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br><br><i>"+jsonObj2["code_description"]+"</i>";
 			sesame('openmax',statusdiv);
 
 			render_message(jsonObj2);
 
 		    }
 		    else if ( jsonObj.message ) { // STILL APPLIES TO 0.9??  TODO
-			document.getElementById("statusdiv").innerHTML += "<BR><BR>An error was encountered:<BR><SPAN CLASS='error'>"+jsonObj.message+"</SPAN>";
+			document.getElementById("statusdiv").innerHTML += "<br><br>An error was encountered:<br><span class='error'>"+jsonObj.message+"</span>";
 			sesame('openmax',statusdiv);
 		    }
 		    else {
-			document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr2.status+")</SPAN>";
-			document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<BR>"+xhr2.responseText;
+			document.getElementById("statusdiv").innerHTML += "<br><span class='error'>An error was encountered while contacting the server ("+xhr2.status+")</span>";
+			document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<br>"+xhr2.responseText;
 			sesame('openmax',statusdiv);
 		    }
 
@@ -450,7 +430,7 @@ function sendQuestion(e) {
 
 	}
 	else { // responseText
-	    document.getElementById("statusdiv").innerHTML += "<BR><BR>An error was encountered:<BR><SPAN CLASS='error'>"+xhr.statusText+" ("+xhr.status+")</SPAN>";
+	    document.getElementById("statusdiv").innerHTML += "<br><br>An error was encountered:<br><span class='error'>"+xhr.statusText+" ("+xhr.status+")</span>";
 	    sesame('openmax',statusdiv);
 	}
     };
@@ -459,9 +439,11 @@ function sendQuestion(e) {
 
 
 function retrieve_message() {
-    document.getElementById("statusdiv").innerHTML = "Retrieving RTX message id = " + message_id + "<hr>";
-
+    var statusdiv = document.getElementById("statusdiv");
+    statusdiv.appendChild(document.createTextNode("Retrieving ARAX message id = " + message_id));
+    statusdiv.appendChild(document.createElement("hr"));
     sesame('openmax',statusdiv);
+
     var xhr = new XMLHttpRequest();
     xhr.open("get",  baseAPI + "api/rtx/v1/message/" + message_id, true);
     xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
@@ -469,45 +451,52 @@ function retrieve_message() {
     xhr.onloadend = function() {
 	if ( xhr.status == 200 ) {
 	    var jsonObj2 = JSON.parse(xhr.responseText);
-	    document.getElementById("devdiv").innerHTML += "<br>================================================================= RESPONSE REQUEST::<PRE id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</PRE>";
+	    document.getElementById("devdiv").innerHTML += "<br>================================================================= RESPONSE REQUEST::<pre id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</pre>";
 
-	    document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<BR>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</B><BR>Please ensure that this is an accurate restatement of the intended question.<BR><BR><I>"+jsonObj2["code_description"]+"</I>";
-	    document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question"];
-
+	    if (jsonObj2["restated_question"].length > 2) {
+		statusdiv.innerHTML += "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br>";
+		document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question"];
+	    }
+	    else {
+		document.getElementById("questionForm").elements["questionText"].value = "";
+	    }
+	    statusdiv.innerHTML += "<br><i>"+jsonObj2["code_description"]+"</i><br>";
 	    sesame('openmax',statusdiv);
 
 	    render_message(jsonObj2);
 	}
 	else if ( xhr.status == 404 ) {
-	    document.getElementById("statusdiv").innerHTML += "<BR>The following message id was not found:<SPAN CLASS='error'>"+message_id+"</SPAN>";
+	    statusdiv.innerHTML += "<br>The following message id was not found:<span class='error'>"+message_id+"</span>";
 	    sesame('openmax',statusdiv);
+	    there_was_an_error();
 	}
 	else {
-	    document.getElementById("statusdiv").innerHTML += "<BR><SPAN CLASS='error'>An error was encountered while contacting the server ("+xhr.status+")</SPAN>";
-	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<BR>"+xhr.responseText;
+	    statusdiv.innerHTML += "<br><span class='error'>An error was encountered while contacting the server ("+xhr.status+")</span>";
+	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<br>"+xhr.responseText;
 	    sesame('openmax',statusdiv);
+            there_was_an_error();
 	}
     };
 }
 
 
-
 function render_message(respObj) {
-    document.getElementById("statusdiv").appendChild(document.createTextNode("Rendering message..."));
+    var statusdiv = document.getElementById("statusdiv");
+    statusdiv.appendChild(document.createTextNode("Rendering message..."));
     sesame('openmax',statusdiv);
 
     message_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
 
     add_to_session(message_id,respObj.restated_question+"?");
 
-    document.title = "RTX-UI ["+message_id+"]: "+respObj.restated_question+"?";
-    history.pushState({ id: 'RTX_UI' }, 'RTX | message='+message_id, "//"+ window.location.hostname + window.location.pathname + '?m='+message_id);
+    document.title = "ARAX-UI ["+message_id+"]: "+respObj.restated_question+"?";
+    history.pushState({ id: 'ARAX_UI' }, 'ARAX | message='+message_id, "//"+ window.location.hostname + window.location.pathname + '?m='+message_id);
 
     if ( respObj["table_column_names"] ) {
 	add_to_summary(respObj["table_column_names"],0);
     }
     if ( respObj["results"] ) {
-        document.getElementById("result_container").innerHTML += "<H2>" + respObj["n_results"] + " results</H2>";
+        document.getElementById("result_container").innerHTML += "<h2>" + respObj["n_results"] + " results</h2>";
         document.getElementById("menunumresults").innerHTML = respObj["n_results"];
         document.getElementById("menunumresults").classList.add("numnew");
 	document.getElementById("menunumresults").classList.remove("numold");
@@ -525,8 +514,8 @@ function render_message(respObj) {
         //sesame(h1_div,a1_div);
     }
     else {
-        document.getElementById("result_container").innerHTML += "<H2>No results...</H2>";
-        document.getElementById("summary_container").innerHTML += "<H2>No results...</H2>";
+        document.getElementById("result_container").innerHTML += "<h2>No results...</h2>";
+        document.getElementById("summary_container").innerHTML += "<h2>No results...</h2>";
     }
 
     if (respObj["query_graph"]) {
@@ -539,6 +528,9 @@ function render_message(respObj) {
     if ( respObj["table_column_names"] ) {
         document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br></div>";
     }
+    else {
+        document.getElementById("summary_container").innerHTML += "<h2>Summary not available for this query</h2>";
+    }
 
     if (respObj["query_options"]) {
 	process_q_options(respObj["query_options"]);
@@ -549,19 +541,27 @@ function render_message(respObj) {
     }
 
     add_cyto();
-    document.getElementById("statusdiv").appendChild(document.createTextNode("done."));
+    statusdiv.appendChild(document.createTextNode("done."));
     sesame('openmax',statusdiv);
 }
 
-function process_q_options(q_opts) {
 
+function process_q_options(q_opts) {
     if (q_opts.processing_actions) {
 	clearDSL();
 	for (var act of q_opts.processing_actions) {
 	    document.getElementById("dslText").value += act + "\n";
 	}
     }
+}
 
+
+function there_was_an_error() {
+    document.getElementById("summary_container").innerHTML += "<h2 class='error'>Error : No results</h2>";
+    document.getElementById("result_container").innerHTML  += "<h2 class='error'>Error : No results</h2>";
+    document.getElementById("menunumresults").innerHTML = "E";
+    document.getElementById("menunumresults").classList.add("numnew");
+    document.getElementById("menunumresults").classList.remove("numold");
 }
 
 function process_log(logarr) {
@@ -661,61 +661,64 @@ function add_kg_html() {  // was: process_kg(kg) {
 
 function process_graph(gne,gid) {
     cytodata[gid] = [];
-    for (var gnode in gne.nodes) {
-	gne.nodes[gnode].parentdivnum = gid; // helps link node to div when displaying node info on click
-	if (gne.nodes[gnode].node_id) { // deal with QueryGraphNode (QNode)
-	    gne.nodes[gnode].id = gne.nodes[gnode].node_id;
+    for (var gnode of gne.nodes) {
+	gnode.parentdivnum = gid; // helps link node to div when displaying node info on click
+	if (gnode.node_id) { // deal with QueryGraphNode (QNode)
+	    gnode.id = gnode.node_id;
 	}
-	if (gne.nodes[gnode].curie) {
-	    if (gne.nodes[gnode].name) {
-		gne.nodes[gnode].name += " ("+gne.nodes[gnode].curie+")";
+	if (gnode.curie) {
+	    if (gnode.name) {
+		gnode.name += " ("+gnode.curie+")";
 	    }
 	    else {
-		gne.nodes[gnode].name = gne.nodes[gnode].curie;
+		gnode.name = gnode.curie;
 	    }
 	}
-	if (! gne.nodes[gnode].name) {
-            gne.nodes[gnode].name = gne.nodes[gnode].type + "s?";
+	if (!gnode.name) {
+	    if (gnode.type)
+		gnode.name = gnode.type + "s?";
+	    else
+		gnode.name = "(Any)";
 	}
 
-        var tmpdata = { "data" : gne.nodes[gnode] };
+        var tmpdata = { "data" : gnode };
         cytodata[gid].push(tmpdata);
     }
 
-    for (var gedge in gne.edges) {
-	gne.edges[gedge].parentdivnum = gid;
-        gne.edges[gedge].source = gne.edges[gedge].source_id;
-        gne.edges[gedge].target = gne.edges[gedge].target_id;
+    for (var gedge of gne.edges) {
+	gedge.parentdivnum = gid;
+        gedge.source = gedge.source_id;
+        gedge.target = gedge.target_id;
 
-        var tmpdata = { "data" : gne.edges[gedge] }; // already contains id(?)
+        var tmpdata = { "data" : gedge }; // already contains id(?)
         cytodata[gid].push(tmpdata);
     }
 
 
     if (gid == 999) {
-	for (var gnode in gne.nodes) {
-	    qgids.push(gne.nodes[gnode].id);
+	for (var gnode of gne.nodes) {
+	    qgids.push(gnode.id);
 
-	    var tmpdata = { "id"     : gne.nodes[gnode].id,
-			    "is_set" : gne.nodes[gnode].is_set,
-			    "name"   : gne.nodes[gnode].name,
-			    "desc"   : gne.nodes[gnode].description,
-			    "curie"  : gne.nodes[gnode].curie,
-			    "type"   : gne.nodes[gnode].type
+	    var tmpdata = { "id"     : gnode.id,
+			    "is_set" : gnode.is_set,
+			    "name"   : gnode.name,
+			    "desc"   : gnode.description,
+			    "curie"  : gnode.curie,
+			    "type"   : gnode.type
 			  };
 
 	    input_qg.nodes.push(tmpdata);
 	}
 
-	for (var gedge in gne.edges) {
-	    qgids.push(gne.edges[gedge].id);
+	for (var gedge of gne.edges) {
+	    qgids.push(gedge.id);
 
-	    var tmpdata = { "id"       : gne.edges[gedge].id,
+	    var tmpdata = { "id"       : gedge.id,
 			    "negated"  : null,
 			    "relation" : null,
-			    "source_id": gne.edges[gedge].source_id,
-			    "target_id": gne.edges[gedge].target_id,
-			    "type"     : gne.edges[gedge].type
+			    "source_id": gedge.source_id,
+			    "target_id": gedge.target_id,
+			    "type"     : gedge.type
 			  };
 	    input_qg.edges.push(tmpdata);
 	}
@@ -795,7 +798,7 @@ function process_results(reslist,kg) {
 
 
 function add_result(reslist) {
-    document.getElementById("result_container").innerHTML += "<H2>Results:</H2>";
+    document.getElementById("result_container").innerHTML += "<h2>Results:</h2>";
 
     for (var i in reslist) {
 	var num = Number(i) + 1;
@@ -888,6 +891,8 @@ function add_cyto() {
 		.css({
 		    'background-color': function(ele) { return mapNodeColor(ele); } ,
 		    'shape': function(ele) { return mapNodeShape(ele); } ,
+		    'border-color' : '#000',
+		    'border-width' : '2',
 		    'width': '20',
 		    'height': '20',
 		    'content': 'data(name)'
@@ -895,20 +900,20 @@ function add_cyto() {
 		.selector('edge')
 		.css({
 		    'curve-style' : 'bezier',
-		    'line-color': '#aaf',
-		    'target-arrow-color': '#aaf',
+		    'line-color': function(ele) { return mapEdgeColor(ele); } ,
+		    'target-arrow-color': function(ele) { return mapEdgeColor(ele); } ,
 		    'width': function(ele) { if (ele.data().weight) { return ele.data().weight; } return 2; },
-                    'content': 'data(name)',
 		    'target-arrow-shape': 'triangle',
 		    'opacity': 0.8,
 		    'content': function(ele) { if ((ele.data().parentdivnum > 900) && ele.data().type) { return ele.data().type; } return '';}
 		})
 		.selector(':selected')
 		.css({
-		    'background-color': '#c40',
-		    'line-color': '#c40',
-		    'target-arrow-color': '#c40',
-		    'source-arrow-color': '#c40',
+		    'background-color': '#ff0',
+		    'border-color': '#f80',
+		    'line-color': '#f80',
+		    'target-arrow-color': '#f80',
+		    'source-arrow-color': '#f80',
 		    'opacity': 1
 		})
 		.selector('.faded')
@@ -942,80 +947,130 @@ function add_cyto() {
 	}
 
 	cyobj[i].on('tap','node', function() {
-	    var dnum = 'd'+this.data('parentdivnum')+'_div';
+	    var div = document.getElementById('d'+this.data('parentdivnum')+'_div');
+	    div.innerHTML = "";
 
-	    document.getElementById(dnum).innerHTML = "<b>Name:</b> " + this.data('name') + "<br>";
-	    document.getElementById(dnum).innerHTML+= "<b>ID:</b> " + this.data('id') + "<br>";
-	    document.getElementById(dnum).innerHTML+= "<b>URI:</b> <a target='_blank' href='" + this.data('uri') + "'>" + this.data('uri') + "</a><br>";
-	    document.getElementById(dnum).innerHTML+= "<b>Type:</b> " + this.data('type') + "<br>";
+            var fields = [ "name","id","uri","type" ];
+	    if (this.data('description') !== 'UNKNOWN' && this.data('description') !== 'None')
+		fields.push("description");
 
-	    if (this.data('description') !== 'UNKNOWN' && this.data('description') !== 'None') {
-		document.getElementById(dnum).innerHTML+= "<b>Description:</b> " + this.data('description') + "<br>";
+	    for (var field of fields) {
+		if (this.data(field)) {
+		    var span = document.createElement("span");
+		    span.className = "fieldname";
+		    span.appendChild(document.createTextNode(field+": "));
+		    div.appendChild(span);
+		    if (field == "uri") {
+			var link = document.createElement("a");
+			link.href = this.data(field);
+			link.target = "nodeuri";
+			link.appendChild(document.createTextNode(this.data(field)));
+			div.appendChild(link);
+		    }
+		    else {
+			div.appendChild(document.createTextNode(this.data(field)));
+		    }
+		    div.appendChild(document.createElement("br"));
+		}
 	    }
 
-	    show_attributes(dnum, this.data('node_attributes'));
+	    show_attributes(div, this.data('node_attributes'));
 
 	    sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
 	});
 
 	cyobj[i].on('tap','edge', function() {
-	    var dnum = 'd'+this.data('parentdivnum')+'_div';
+            var div = document.getElementById('d'+this.data('parentdivnum')+'_div');
+	    div.innerHTML = "";
 
-	    document.getElementById(dnum).innerHTML = this.data('source');
-	    document.getElementById(dnum).innerHTML+= " <b>" + this.data('type') + "</b> ";
-	    document.getElementById(dnum).innerHTML+= this.data('target') + "<br>";
+            div.appendChild(document.createTextNode(this.data('source')+" "));
+            var span = document.createElement("b");
+	    span.appendChild(document.createTextNode(this.data('type')));
+            div.appendChild(span);
+	    div.appendChild(document.createTextNode(" "+this.data('target')));
+            div.appendChild(document.createElement("br"));
 
-	    if(this.data('provided_by').startsWith("http")) {
-            	document.getElementById(dnum).innerHTML+= "<b>Provenance:</b> <a target='_blank' href='" + this.data('provided_by') + "'>" + this.data('provided_by') + "</a><br>";
-	    }
-	    else {
-            	document.getElementById(dnum).innerHTML+= "<b>Provenance:</b> " + this.data('provided_by') + "<br>";
-	    }
+	    var tmpArr = [];
+	    if (!(Array.isArray(this.data('provided_by'))))
+		tmpArr.push(this.data('provided_by'));
+	    else
+		tmpArr = this.data('provided_by');
 
-            if(this.data('confidence')) {
-                document.getElementById(dnum).innerHTML+= "<b>Confidence:</b> " + Number(this.data('confidence')).toPrecision(3) + "<br>";
-	    }
+            for (var prov of tmpArr) {
+		if (prov == null) continue;
 
-            if(this.data('weight')) {
-                document.getElementById(dnum).innerHTML+= "<b>Weight:</b> " + Number(this.data('weight')).toPrecision(3) + "<br>";
-	    }
+		span = document.createElement("span");
+		span.className = "fieldname";
+		span.appendChild(document.createTextNode("Provenance: "));
+		div.appendChild(span);
 
-	    if(this.data('evidence_type')) {
-                document.getElementById(dnum).innerHTML+= "<b>Evidence Type:</b> " + this.data('evidence_type') + "<br>";
-	    }
-
-            if(this.data('qualifiers')) {
-                document.getElementById(dnum).innerHTML+= "<b>Qualifiers:</b> " + this.data('qualifiers') + "<br>";
-	    }
-
-	    if(this.data('negated')) {
-                document.getElementById(dnum).innerHTML+= "<b>Negated:</b> " + this.data('negated') + "<br>";
-	    }
-
-	    if(this.data('relation')) {
-		document.getElementById(dnum).innerHTML+= "<b>Relation:</b> " + this.data('relation') + "<br>";
-	    }
-
-
-	    if(this.data('is_defined_by')) {
-		document.getElementById(dnum).innerHTML+= "<b>Defined by:</b> " + this.data('is_defined_by') + "<br>";
-	    }
-            if(this.data('defined_datetime')) {
-		document.getElementById(dnum).innerHTML+= "<b>Defined on:</b> " + this.data('defined_datetime') + "<br>";
+		if (prov.startsWith("http")) {
+		    var provlink = document.createElement("a");
+		    provlink.href = prov;
+		    provlink.target = "prov";
+		    provlink.appendChild(document.createTextNode(prov));
+		    div.appendChild(provlink);
+		}
+		else {
+                    div.appendChild(document.createTextNode(prov));
+		}
+                div.appendChild(document.createElement("br"));
 	    }
 
-            if(this.data('publications')) {
-		document.getElementById(dnum).innerHTML+= "<b>Publications:</b> " + this.data('publications') + "<br>";
+
+	    var fields = [ "confidence","weight","evidence_type","qualifiers","negated",
+			   "relation","is_defined_by","defined_datetime","id","qedge_id" ];
+	    for (var field of fields) {
+		if (this.data(field)) {
+		    span = document.createElement("span");
+		    span.className = "fieldname";
+		    span.appendChild(document.createTextNode(field+": "));
+		    div.appendChild(span);
+		    if (field == "confidence" || field == "weight") {
+			div.appendChild(document.createTextNode(Number(this.data(field)).toPrecision(3)));
+		    }
+                    else if (this.data(field).startsWith("http")) {
+			var link = document.createElement("a");
+			link.href = this.data(field);
+			link.target = "nodeuri";
+			link.appendChild(document.createTextNode(this.data(field)));
+			div.appendChild(link);
+		    }
+		    else {
+		    	div.appendChild(document.createTextNode(this.data(field)));
+		    }
+		    div.appendChild(document.createElement("br"));
+		}
 	    }
 
-            if(this.data('id')) {
-		document.getElementById(dnum).innerHTML+= "<b>Id:</b> " + this.data('id') + "<br>";
-	    }
-            if(this.data('qedge_id')) {
-		document.getElementById(dnum).innerHTML+= "<b>Qedge id:</b> " + this.data('qedge_id') + "<br>";
+            tmpArr = [];
+	    if (!(Array.isArray(this.data('publications'))))
+		tmpArr.push(this.data('publications'));
+	    else
+		tmpArr = this.data('publications');
+
+	    for (var pub of tmpArr) {
+		if (pub == null) continue;
+
+		span = document.createElement("span");
+		span.className = "fieldname";
+		span.appendChild(document.createTextNode("Publication: "));
+		div.appendChild(span);
+
+		if (pub.startsWith("PMID:")) {
+		    var publink = document.createElement("a");
+		    publink.href = "https://www.ncbi.nlm.nih.gov/pubmed/" + pub.split(":")[1];
+		    publink.target = "pubmed";
+		    publink.appendChild(document.createTextNode(pub));
+		    div.appendChild(publink);
+		}
+		else {
+		    div.appendChild(document.createTextNode(pub));
+		}
+		div.appendChild(document.createElement("br"));
 	    }
 
-	    show_attributes(dnum, this.data('edge_attributes'));
+	    show_attributes(div, this.data('edge_attributes'));
 
 	    sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
 	});
@@ -1024,7 +1079,7 @@ function add_cyto() {
 
 }
 
-function show_attributes(html_id, atts) {
+function show_attributes(html_div, atts) {
     if (atts == null)  { return; }
 
     var linebreak = "<hr>";
@@ -1042,27 +1097,32 @@ function show_attributes(html_id, atts) {
 	if (att.url != null) {
 	    snippet += "<a target='rtxext' href='" + att.url + "'>";
 	}
+
 	if (att.value != null) {
-	    var val = att.value;
-	    if (att.name == "probability_drug_treats" |
-		att.name == "jaccard_index" |
-		att.name == "ngd" |
-		att.name == "paired_concept_freq" |
-		att.name == "observed_expected_ratio" |
-		att.name == "chi_square") {
-		val = Number(val);
-		val = val.toPrecision(3);
+	    if (att.name == "probability_drug_treats" ||
+		att.name == "observed_expected_ratio" ||
+		att.name == "paired_concept_freq"     ||
+		att.name == "jaccard_index"           ||
+		att.name == "probability"             ||
+		att.name == "chi_square"              ||
+		att.name == "ngd") {
+		snippet += Number(att.value).toPrecision(3);
 	    }
-	    snippet += val;
+	    else
+		snippet += att.value;
 	}
 	else if (att.url != null) {
-	    snippet += "[ url ]";
+	    snippet += att.url;
 	}
+	else {
+	    snippet += " n/a ";
+	}
+
 	if (att.url != null) {
 	    snippet += "</a>";
 	}
 
-	document.getElementById(html_id).innerHTML+= snippet;
+	html_div.innerHTML+= snippet;
 	linebreak = "<br>";
     }
 
@@ -1120,43 +1180,43 @@ function mapNodeColor (ele) {
     return "#04c";
 }
 
-
-
+function mapEdgeColor (ele) {
+    var etype = ele.data().type;
+    if (etype == "contraindicated_for")       { return "red";}
+    if (etype == "indicated_for")             { return "green";}
+    if (etype == "physically_interacts_with") { return "green";}
+    return "#aaf";
+}
 
 function edit_qg() {
     cytodata[999] = [];
     if (cyobj[999]) {cyobj[999].elements().remove();}
 
-    for (var gnode in input_qg.nodes) {
+    for (var gnode of input_qg.nodes) {
 	var name = "";
 
-	if (input_qg.nodes[gnode].name) {
-	    name = input_qg.nodes[gnode].name;
-	}
-	else if (input_qg.nodes[gnode].curie) {
-	    name = input_qg.nodes[gnode].curie;
-	}
-	else {
-	    name = input_qg.nodes[gnode].type + "s?";
-	}
+	if (gnode.name)       { name = gnode.name;}
+	else if (gnode.curie) { name = gnode.curie;}
+	else if (gnode.type)  { name = gnode.type + "s?";}
+	else                  { name = "(Any)";}
 
         cyobj[999].add( {
 	    "data" : {
-		"id"   : input_qg.nodes[gnode].id,
+		"id"   : gnode.id,
 		"name" : name,
-		"type" : input_qg.nodes[gnode].type,
+		"type" : gnode.type,
 		"parentdivnum" : 999 },
 //	    "position" : {x:100*(qgid-nn), y:50+nn*50}
 	} );
     }
 
-    for (var gedge in input_qg.edges) {
+    for (var gedge of input_qg.edges) {
 	cyobj[999].add( {
 	    "data" : {
-		"id"     : input_qg.edges[gedge].id,
-		"source" : input_qg.edges[gedge].source_id,
-		"target" : input_qg.edges[gedge].target_id,
-		"type"   : input_qg.edges[gedge].type,
+		"id"     : gedge.id,
+		"source" : gedge.source_id,
+		"target" : gedge.target_id,
+		"type"   : gedge.type,
 		"parentdivnum" : 999 }
 	} );
     }
@@ -1177,7 +1237,7 @@ function display_query_graph_items() {
 
     input_qg.nodes.forEach(function(result, index) {
 	nitems++;
-        kghtml += "<tr class='hoverable'><td>"+result.id+"</td><td title='"+result.desc+"'>"+(result.name==null?"-":result.name)+"</td><td>"+(result.curie==null?"<i>(any)</i>":result.curie)+"</td><td>"+result.type+"</td><td><a href='javascript:remove_node_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
+        kghtml += "<tr class='hoverable'><td>"+result.id+"</td><td title='"+result.desc+"'>"+(result.name==null?"-":result.name)+"</td><td>"+(result.curie==null?"<i>(any node)</i>":result.curie)+"</td><td>"+(result.type==null?"<i>(any)</i>":result.type)+"</td><td><a href='javascript:remove_node_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
     });
 
     input_qg.edges.forEach(function(result, index) {
@@ -1231,21 +1291,35 @@ function add_edge_to_query_graph() {
 
 
 function update_kg_edge_input() {
+    document.getElementById("qg_edge_n1").innerHTML = '';
+    document.getElementById("qg_edge_n2").innerHTML = '';
 
-    document.getElementById("qg_edge_n1").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Source Node ("+input_qg.nodes.length+")&nbsp;&nbsp;&nbsp;&#8675;</option>";
-    document.getElementById("qg_edge_n2").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Target Node ("+input_qg.nodes.length+")&nbsp;&nbsp;&nbsp;&#8675;</option>";
+    var opt = document.createElement('option');
+    opt.style.borderBottom = "1px solid black";
+    opt.value = '';
+    opt.innerHTML = "Source Node ("+input_qg.nodes.length+")&nbsp;&nbsp;&nbsp;&#8675;";
+    document.getElementById("qg_edge_n1").appendChild(opt);
+
+    opt = document.createElement('option');
+    opt.style.borderBottom = "1px solid black";
+    opt.value = '';
+    opt.innerHTML = "Target Node ("+input_qg.nodes.length+")&nbsp;&nbsp;&nbsp;&#8675;";
+    document.getElementById("qg_edge_n2").appendChild(opt);
 
     if (input_qg.nodes.length < 2) {
-	document.getElementById("qg_edge_n1").innerHTML += "<option value=''>Must have 2 nodes minimum</option>";
-	document.getElementById("qg_edge_n2").innerHTML += "<option value=''>Must have 2 nodes minimum</option>";
+	opt = document.createElement('option');
+	opt.value = '';
+	opt.innerHTML = "Must have 2 nodes minimum";
+	document.getElementById("qg_edge_n1").appendChild(opt);
+	document.getElementById("qg_edge_n2").appendChild(opt.cloneNode(true));
 	return;
     }
 
     input_qg.nodes.forEach(function(qgnode) {
 	for (var x = 1; x <=2; x++) {
-            var opt = document.createElement('option');
+            opt = document.createElement('option');
 	    opt.value = qgnode["id"];
-	    opt.innerHTML = qgnode["curie"] ? qgnode["curie"] : qgnode["type"];
+	    opt.innerHTML = qgnode["curie"] ? qgnode["curie"] : qgnode["type"] ? qgnode["type"] : qgnode["id"];
 	    document.getElementById("qg_edge_n"+x).appendChild(opt);
 	}
     });
@@ -1253,13 +1327,23 @@ function update_kg_edge_input() {
 }
 
 function get_possible_edges() {
-    document.getElementById("qg_edge_type").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Edge Type&nbsp;&nbsp;&nbsp;&#8675;</option>";
+    var qet_node = document.getElementById("qg_edge_type");
+    qet_node.innerHTML = '';
+
+    var opt = document.createElement('option');
+    opt.style.borderBottom = "1px solid black";
+    opt.value = '';
+    opt.innerHTML = "Edge Type&nbsp;&nbsp;&nbsp;&#8675;";
+    qet_node.appendChild(opt);
 
     var edge1 = document.getElementById("qg_edge_n1").value;
     var edge2 = document.getElementById("qg_edge_n2").value;
 
     if (!(edge1 && edge2) || (edge1 == edge2)) {
-        document.getElementById("qg_edge_type").innerHTML += "<option value=''>Please select 2 different nodes</option>";
+	opt = document.createElement('option');
+	opt.value = '';
+	opt.innerHTML = "Please select 2 different nodes";
+	qet_node.appendChild(opt);
 	return;
     }
 
@@ -1270,7 +1354,22 @@ function get_possible_edges() {
 	return node["id"] == edge2;
     });
 
-    document.getElementById("qg_edge_type").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Populating edges...</option>";
+    qet_node.innerHTML = '';
+    opt = document.createElement('option');
+    opt.style.borderBottom = "1px solid black";
+    opt.value = '';
+    opt.innerHTML = "Populating edges...";
+    qet_node.appendChild(opt);
+
+    if (nt1[0].type == null || nt2[0].type == null) {
+	// NONSPECIFIC nodes only get NONSPECIFIC edges...for now
+        qet_node.innerHTML = '';
+        opt = document.createElement('option');
+	opt.value = 'NONSPECIFIC';
+	opt.innerHTML = "Unspecified/Non-specific";
+	qet_node.appendChild(opt);
+	return;
+    }
 
     var relation = "A --> B";
     if (!(nt2[0].type in predicates[nt1[0].type])) {
@@ -1280,28 +1379,40 @@ function get_possible_edges() {
 
     if (nt2[0].type in predicates[nt1[0].type]) {
 	if (predicates[nt1[0].type][nt2[0].type].length == 1) {
-	    document.getElementById("qg_edge_type").innerHTML = "";
-	    var opt = document.createElement('option');
+	    qet_node.innerHTML = '';
+	    opt = document.createElement('option');
 	    opt.value = predicates[nt1[0].type][nt2[0].type][0];
 	    opt.innerHTML = predicates[nt1[0].type][nt2[0].type][0] + " ["+relation+"]";
-	    document.getElementById("qg_edge_type").appendChild(opt);
+	    qet_node.appendChild(opt);
 	}
 	else {
-	    document.getElementById("qg_edge_type").innerHTML  = "<option style='border-bottom:1px solid black;' value=''>Edge Type ["+relation+"]&nbsp; ("+predicates[nt1[0].type][nt2[0].type].length+")&nbsp;&nbsp;&nbsp;&#8675;</option>";
+	    qet_node.innerHTML = '';
+	    opt = document.createElement('option');
+	    opt.style.borderBottom = "1px solid black";
+	    opt.value = '';
+            opt.innerHTML = "Edge Type ["+relation+"]&nbsp; ("+predicates[nt1[0].type][nt2[0].type].length+")&nbsp;&nbsp;&nbsp;&#8675;";
+	    qet_node.appendChild(opt);
 
-            for (var i in predicates[nt1[0].type][nt2[0].type]) {
+	    for (var pred of predicates[nt1[0].type][nt2[0].type]) {
 		var opt = document.createElement('option');
-		opt.value = predicates[nt1[0].type][nt2[0].type][i];
-		opt.innerHTML = predicates[nt1[0].type][nt2[0].type][i];
-		document.getElementById("qg_edge_type").appendChild(opt);
+		opt.value = pred;
+		opt.innerHTML = pred;
+		qet_node.appendChild(opt);
 	    }
 
-	    document.getElementById("qg_edge_type").innerHTML += "<option value='NONSPECIFIC'>Unspecified/Non-specific</option>";
+            opt = document.createElement('option');
+	    opt.value = 'NONSPECIFIC';
+	    opt.innerHTML = "Unspecified/Non-specific";
+	    qet_node.appendChild(opt);
 	}
 
     }
     else {
-        document.getElementById("qg_edge_type").innerHTML = "<option value=''>-- No edge types found --</option>";
+        qet_node.innerHTML = '';
+	opt = document.createElement('option');
+	opt.value = '';
+	opt.innerHTML = "-- No edge types found --";
+	qet_node.appendChild(opt);
     }
 }
 
@@ -1313,22 +1424,25 @@ function add_nodetype_to_query_graph(nodetype) {
     document.getElementById("statusdiv").innerHTML = "<p>Added a node of type <i>"+nodetype+"</i></p>";
     var qgid = get_qg_id();
 
+    var nt = nodetype;
+
     cyobj[999].add( {
         "data" : { "id"   : qgid,
 		   "name" : nodetype+"s",
-		   "type" : nodetype,
+		   "type" : nt,
 		   "parentdivnum" : 999 },
 //        "position" : {x:100*qgid, y:50}
     } );
     cyobj[999].reset();
     cylayout(999,"breadthfirst");
 
+    if (nodetype=='NONSPECIFIC') { nt = null; }
     var tmpdata = { "id"     : qgid,
 		    "is_set" : null,
 		    "name"   : null,
 		    "desc"   : "Generic " + nodetype,
 		    "curie"  : null,
-		    "type"   : nodetype
+		    "type"   : nt
 		  };
 
     input_qg.nodes.push(tmpdata);
@@ -1533,7 +1647,7 @@ function submitFeedback(res_id,res_div_id) {
 
     xhr6.onloadend = function() {
 	var jsonObj6 = JSON.parse(xhr6.responseText);
-	document.getElementById("devdiv").innerHTML += "<br>================================================================= FEEDBACK-POST::<PRE>\nPOST to " +  baseAPI + "api/rtx/v1/result/" + res_id + "/feedback ::<br>" + JSON.stringify(feedback,null,2) + "<br>------<br>" + JSON.stringify(jsonObj6,null,2) + "</PRE>";
+	document.getElementById("devdiv").innerHTML += "<br>================================================================= FEEDBACK-POST::<pre>\nPOST to " +  baseAPI + "api/rtx/v1/result/" + res_id + "/feedback ::<br>" + JSON.stringify(feedback,null,2) + "<br>------<br>" + JSON.stringify(jsonObj6,null,2) + "</pre>";
 
 	if ( xhr6.status == 200 ) {
 	    document.getElementById(fff+"_msgs").innerHTML = "Your feedback has been recorded...";
@@ -1583,7 +1697,7 @@ function add_feedback() {
     xhr3.onloadend = function() {
 	if ( xhr3.status == 200 ) {
 	    var jsonObj3 = JSON.parse(xhr3.responseText);
-	    document.getElementById("devdiv").innerHTML += "<br>================================================================= FEEDBACK::<PRE>\n" + JSON.stringify(jsonObj3,null,2) + "</PRE>";
+            add_to_dev_info("FEEDBACK",jsonObj3);
 
 	    for (var i in jsonObj3) {
 		var fid = "feedback_" + jsonObj3[i].result_id.substr(jsonObj3[i].result_id.lastIndexOf('/') + 1);
@@ -1625,7 +1739,7 @@ function get_feedback_fields() {
     xhr4.onloadend = function() {
 	if ( xhr4.status == 200 ) {
 	    var jsonObj4 = JSON.parse(xhr4.responseText);
-	    document.getElementById("devdiv").innerHTML += "<br>================================================================= FEEDBACK FIELDS::<PRE>\n" + JSON.stringify(jsonObj4,null,2) + "</PRE>";
+	    add_to_dev_info("FEEDBACK FIELDS",jsonObj4);
 
 	    for (var i in jsonObj4.expertise_levels) {
 		fb_explvls[jsonObj4.expertise_levels[i].expertise_level_id] = {};
@@ -1645,7 +1759,7 @@ function get_feedback_fields() {
     xhr5.onloadend = function() {
 	if ( xhr5.status == 200 ) {
 	    var jsonObj5 = JSON.parse(xhr5.responseText);
-	    document.getElementById("devdiv").innerHTML += "================================================================= RATINGS::<PRE>\n" + JSON.stringify(jsonObj5,null,2) + "</PRE>";
+	    add_to_dev_info("RATINGS",jsonObj5);
 
 	    for (var i in jsonObj5.ratings) {
 		fb_ratings[jsonObj5.ratings[i].rating_id] = {};
@@ -1655,7 +1769,6 @@ function get_feedback_fields() {
 	    }
 	}
     };
-
 }
 
 
@@ -1669,17 +1782,20 @@ function get_example_questions() {
 	if ( xhr8.status == 200 ) {
 	    var ex_qs = JSON.parse(xhr8.responseText);
 
-	    document.getElementById("qqq").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Example Questions&nbsp;&nbsp;&nbsp;&#8675;</option>";
+            var opt = document.createElement('option');
+	    opt.value = '';
+	    opt.style.borderBottom = "1px solid black";
+	    opt.innerHTML = "Example Questions&nbsp;&nbsp;&nbsp;&#8675;";
+            document.getElementById("qqq").appendChild(opt);
 
 	    for (var i in ex_qs) {
-		var opt = document.createElement('option');
+		opt = document.createElement('option');
 		opt.value = ex_qs[i].question_text;
 		opt.innerHTML = ex_qs[i].query_type_id+": "+ex_qs[i].question_text;
 		document.getElementById("qqq").appendChild(opt);
 	    }
 	}
     };
-
 }
 
 
@@ -1689,25 +1805,50 @@ function load_nodes_and_predicates() {
     xhr11.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
     xhr11.send(null);
 
+    var allnodes_node = document.getElementById("allnodetypes");
+    allnodes_node.innerHTML = '';
+
     xhr11.onloadend = function() {
         if ( xhr11.status == 200 ) {
             predicates = JSON.parse(xhr11.responseText);
+            add_to_dev_info("PREDICATES",predicates);
 
-	    document.getElementById("devdiv").innerHTML += "<br>================================================================= PREDICATES::<PRE>" + JSON.stringify(predicates,null,2) + "</PRE>";
-	    
-            document.getElementById("allnodetypes").innerHTML = "<option style='border-bottom:1px solid black;' value=''>Add Node by Type&nbsp;&nbsp;&nbsp;&#8675;</option>";
+	    var opt = document.createElement('option');
+	    opt.value = '';
+	    opt.style.borderBottom = "1px solid black";
+	    opt.innerHTML = "Add Node by Type&nbsp;&nbsp;&nbsp;&#8675;";
+	    allnodes_node.appendChild(opt);
 
             for (const p in predicates) {
-		var opt = document.createElement('option');
+		opt = document.createElement('option');
 		opt.value = p;
 		opt.innerHTML = p;
 		document.getElementById("allnodetypes").appendChild(opt);
 	    }
+            var opt = document.createElement('option');
+	    opt.value = 'NONSPECIFIC';
+	    opt.innerHTML = "Unspecified/Non-specific";
+	    document.getElementById("allnodetypes").appendChild(opt);
 	}
 	else {
-            document.getElementById("allnodetypes").innerHTML = "<option style='border-bottom:1px solid black;' value=''>-- Error Loading Node Types --</option>";
+	    var opt = document.createElement('option');
+	    opt.value = '';
+	    opt.style.borderBottom = "1px solid black";
+	    opt.innerHTML = "-- Error Loading Node Types --";
+	    allnodes_node.appendChild(opt);
 	}
     };
+}
+
+
+function add_to_dev_info(title,jobj) {
+    var dev = document.getElementById("devdiv");
+    dev.appendChild(document.createElement("br"));
+    dev.appendChild(document.createTextNode('='.repeat(80)+" "+title+"::"));
+    var pre = document.createElement("pre");
+    //pre.id = "responseJSON";
+    pre.appendChild(document.createTextNode(JSON.stringify(jobj,null,2)));
+    dev.appendChild(pre);
 }
 
 
@@ -1882,11 +2023,9 @@ function check_entities() {
             xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
             xhr.onloadend = function() {
                 var xob = JSON.parse(xhr.responseText);
-	    	var entstr = "";
+		add_to_dev_info("ENTITIES",xob);
 
-        	document.getElementById("devdiv").innerHTML += "<br>================================================================= ENTITIES::"+entity+"<PRE>" + JSON.stringify(xob,null,2) + "</PRE>";
-
-
+		var entstr = "";
                 if ( xhr.status == 200 ) {
 		    var comma = "";
                     for (var i in xob) {
@@ -1926,8 +2065,7 @@ function check_entity(term) {
     xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
     xhr.onloadend = function() {
         var xob = JSON.parse(xhr.responseText);
-
-        document.getElementById("devdiv").innerHTML += "<br>================================================================= ENTITY::"+term+"<PRE>" + JSON.stringify(xob,null,2) + "</PRE>";
+        add_to_dev_info("ENTITY:"+term,xob);
 
         if ( xhr.status == 200 ) {
             for (var i in xob) {
