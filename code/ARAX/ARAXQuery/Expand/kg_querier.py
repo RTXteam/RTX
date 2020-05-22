@@ -57,7 +57,7 @@ class KGQuerier:
         if not self.response.status == 'OK':
             return self.final_kg
 
-        return self.final_kg
+        return self.final_kg, self.edge_to_nodes_map
 
     def answer_single_node_query(self, qnode):
         if not qnode.curie:
@@ -369,12 +369,13 @@ class KGQuerier:
             with driver.session() as session:
                 query_results = session.run(cypher_query).data()
             driver.close()
-            return query_results
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
             self.response.error(f"Encountered an error interacting with {kp} neo4j. {tb}", error_code=error_type.__name__)
-            return None
+            return []
+        else:
+            return query_results
 
     def __build_node_uuid_to_curie_dict(self, results_table):
         node_uuid_to_curie_dict = dict()
