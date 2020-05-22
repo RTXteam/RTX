@@ -680,6 +680,52 @@ def babesia_query_producing_self_edges():
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
 
+def three_hop_query():
+    print("Testing three-hop query")
+    actions_list = [
+        "create_message",
+        "add_qnode(id=n00, curie=DOID:8454)",
+        "add_qnode(id=n01, type=phenotypic_feature)",
+        "add_qnode(id=n02, type=protein)",
+        "add_qnode(id=n03, type=anatomical_entity)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "add_qedge(source_id=n02, target_id=n03, id=e02)",
+        "expand()",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+
+
+def branched_query():
+    print("Testing branched query")
+    actions_list = [
+        "create_message",
+        "add_qnode(id=n00, curie=DOID:14330)",
+        "add_qnode(id=n01, type=protein)",
+        "add_qnode(id=n02, type=chemical_substance)",
+        "add_qedge(source_id=n00, target_id=n02, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "expand()",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+
+
+def add_all_query_with_multiple_synonyms_in_results():
+    print("Testing query with many synonyms, using add_all")
+    actions_list = [
+        "create_message",
+        "add_qnode(id=n00, name=warfarin)",
+        "add_qnode(id=n01, type=disease)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(kp=ARAX/KG2, synonym_handling=add_all)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    assert len(kg_in_dict_form['nodes']['n00']) > 1
+
+
 def main():
     # Regular tests
     test_kg1_parkinsons_demo_example()
@@ -708,6 +754,9 @@ def main():
     query_with_no_edge_or_node_ids()
     query_that_produces_multiple_provided_bys()
     babesia_query_producing_self_edges()
+    three_hop_query()
+    branched_query()
+    add_all_query_with_multiple_synonyms_in_results()
 
     # Bug tests
     # ambitious_query_causing_multiple_qnode_ids_error()
