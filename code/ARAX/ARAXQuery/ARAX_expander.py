@@ -386,55 +386,6 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                         edges_remaining.pop(edges_remaining.index(edge_connected_to_left_end))
         return ordered_edges
 
-    def __get_ordered_query_nodes(self, query_graph):
-        ordered_edges = self.__get_order_to_expand_edges_in(query_graph)
-        ordered_nodes = []
-        # First add intermediate nodes in order
-        if len(ordered_edges) > 1:
-            for num in range(len(ordered_edges) - 1):
-                current_edge = ordered_edges[num]
-                next_edge = ordered_edges[num + 1]
-                current_edge_node_ids = {current_edge.source_id, current_edge.target_id}
-                next_edge_node_ids = {next_edge.source_id, next_edge.target_id}
-                common_node_id = list(current_edge_node_ids.intersection(next_edge_node_ids))[0]  # Note: Only handle linear query graphs
-                ordered_nodes.append(self.__get_query_node(query_graph, common_node_id))
-
-            # Then tack the initial node onto the beginning
-            first_edge = ordered_edges[0]
-            second_edge = ordered_edges[1]
-            first_edge_node_ids = {first_edge.source_id, first_edge.target_id}
-            second_edge_node_ids = {second_edge.source_id, second_edge.target_id}
-            first_node_id = list(first_edge_node_ids.difference(second_edge_node_ids))[0]
-            ordered_nodes.insert(0, self.__get_query_node(query_graph, first_node_id))
-
-            # And tack the last node onto the end
-            last_edge = ordered_edges[-1]
-            second_to_last_edge = ordered_edges[-2]
-            last_edge_node_ids = {last_edge.source_id, last_edge.target_id}
-            second_to_last_edge_node_ids = {second_to_last_edge.source_id, second_to_last_edge.target_id}
-            last_node_id = list(last_edge_node_ids.difference(second_to_last_edge_node_ids))[0]
-            ordered_nodes.append(self.__get_query_node(query_graph, last_node_id))
-        else:
-            # TODO: Pick first node to be one with curie?
-            source_node = self.__get_query_node(query_graph, ordered_edges[0].source_id)
-            target_node = self.__get_query_node(query_graph, ordered_edges[0].target_id)
-            ordered_nodes = [source_node, target_node]
-
-        return ordered_nodes
-
-    def __get_qnode_to_qedge_dict(self, query_graph):
-        ordered_edges = self.__get_order_to_expand_edges_in(query_graph)
-        ordered_nodes = self.__get_ordered_query_nodes(query_graph)
-        qnode_to_qedge_dict = dict()
-        for node in ordered_nodes:
-            node_index = ordered_nodes.index(node)
-            left_edge_index = node_index - 1
-            right_edge_index = node_index
-            left_edge_id = ordered_edges[left_edge_index].id if left_edge_index >= 0 else None
-            right_edge_id = ordered_edges[right_edge_index].id if right_edge_index < len(ordered_edges) else None
-            qnode_to_qedge_dict[node.id] = {'left': left_edge_id, 'right': right_edge_id}
-        return qnode_to_qedge_dict
-
     def __get_edge_with_curie_node(self, query_graph):
         for edge in query_graph.edges:
             source_node = self.__get_query_node(query_graph, edge.source_id)
