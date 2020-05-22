@@ -6,6 +6,7 @@ import numpy as np
 np.warnings.filterwarnings('ignore')
 import cypher
 import os
+import re
 import sys
 from collections import namedtuple
 from neo4j.v1 import GraphDatabase, basic_auth
@@ -45,7 +46,11 @@ QueryEBIOLS = QueryEBIOLS.QueryEBIOLS()
 QueryNCBIeUtils = QueryNCBIeUtils.QueryNCBIeUtils()
 
 
-requests_cache.install_cache('orangeboard')
+#requests_cache.install_cache('orangeboard')
+# specifiy the path of orangeboard database
+tmppath = re.compile(".*/RTX/")
+dbpath = tmppath.search(os.path.realpath(__file__)).group(0) + 'data/orangeboard'
+requests_cache.install_cache(dbpath)
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
 from RTXConfiguration import RTXConfiguration
