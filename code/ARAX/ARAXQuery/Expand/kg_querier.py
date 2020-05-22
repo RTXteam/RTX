@@ -57,7 +57,7 @@ class KGQuerier:
         if not self.response.status == 'OK':
             return self.final_kg
 
-        return self.final_kg
+        return self.final_kg, self.edge_to_nodes_map
 
     def answer_single_node_query(self, qnode):
         if not qnode.curie:

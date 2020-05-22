@@ -117,21 +117,21 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
             # Expand the query graph edge by edge (much faster for neo4j queries, and allows easy integration with BTE)
             ordered_qedges = self.__get_order_to_expand_edges_in(query_sub_graph)
-            qedge_ids_already_expanded = []
+            node_usages_by_edges_map = dict()
             for qedge in ordered_qedges:
                 self.response.info(f"Expanding edge {qedge.id} using {kp_to_use}")
-                qedge_ids_already_expanded.append(qedge.id)
                 current_edge_query_graph = self.__extract_query_subgraph(qedge.id, dict_kg)
 
-                answer_kg = self.__expand_edge(current_edge_query_graph, kp_to_use)
+                answer_kg, edge_node_usage_map = self.__expand_edge(current_edge_query_graph, kp_to_use)
                 if response.status != 'OK':
                     return response
+                node_usages_by_edges_map[qedge.id] = edge_node_usage_map
 
                 self.__process_and_merge_answer(answer_kg, dict_kg)
                 if response.status != 'OK':
                     return response
 
-                self.__prune_dead_end_paths(dict_kg, qedge_ids_already_expanded, query_sub_graph)
+                self.__prune_dead_end_paths(dict_kg, query_sub_graph, node_usages_by_edges_map)
                 if response.status != 'OK':
                     return response
 
@@ -292,7 +292,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                 else:
                     return
 
-    def __prune_dead_end_paths(self, dict_kg, qedge_ids_already_expanded, full_query_graph):
+    def __prune_dead_end_paths(self, dict_kg, full_query_graph, node_usages_by_edges_map):
         """
         This function removes any 'dead-end' paths from the knowledge graph after expansion is done. (Because edges are
         expanded one-by-one, not all edges found in the last expansion will connect to edges in the current expansion -
@@ -301,40 +301,65 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         :param full_query_graph: The entire query graph submitted to this Expand() call.
         :return: None
         """
-        # First figure out our intermediate query nodes and their corresponding query edges
-        ordered_qnodes = self.__get_ordered_query_nodes(full_query_graph)
-        qnodes_to_qedges_dict = self.__get_qnode_to_qedge_dict(full_query_graph)
+        # Create a record of which qnodes each qnode is connected to
+        qnode_to_qnode_mappings = dict()
+        for qnode in full_query_graph.nodes:
+            qnode_to_qnode_mappings[qnode.id] = set()
+            for qedge in full_query_graph.edges:
+                if qedge.source_id == qnode.id or qedge.target_id == qnode.id:
+                    connected_qnode_id = qedge.target_id if qedge.target_id != qnode.id else qedge.source_id
+                    qnode_to_qnode_mappings[qnode.id].add(connected_qnode_id)
 
-        if len(ordered_qnodes) > 1:
-            # Loop through ordered qnodes (layers) in reverse order (skipping the last)
-            index = len(ordered_qnodes) - 2
-            while index >= 0:
-                current_qnode_id = ordered_qnodes[index].id
-                left_qedge_id = qnodes_to_qedges_dict[current_qnode_id].get('left')
+        # Create a record of which nodes each node is connected to (in what roles)
+        # node_usages_by_edges_map = {'e00': {'KG1:111221': {'n00': 'CUI:122', 'n01': 'CUI:124'}}}
+        # node_connections_map = {'CUI:1222': {'n00': {'DOID:122'}, 'n02': {'UniprotKB:22', 'UniProtKB:333'}}}
+        node_connections_map = dict()
+        for qedge_id, edges_to_nodes_dict in node_usages_by_edges_map.items():
+            current_qedge = next(qedge for qedge in full_query_graph.edges if qedge.id == qedge_id)
+            qnode_ids = [current_qedge.source_id, current_qedge.target_id]
+            for edge_id, node_usages_dict in edges_to_nodes_dict.items():
+                for current_qnode_id in [current_qedge.source_id, current_qedge.target_id]:
+                    connected_qnode_id = next(qnode_id for qnode_id in qnode_ids if qnode_id != current_qnode_id)
+                    current_node_id = node_usages_dict[current_qnode_id]
+                    connected_node_id = node_usages_dict[connected_qnode_id]
+                    if current_qnode_id not in node_connections_map:
+                        node_connections_map[current_qnode_id] = dict()
+                    if current_node_id not in node_connections_map[current_qnode_id]:
+                        node_connections_map[current_qnode_id][current_node_id] = dict()
+                    if connected_qnode_id not in node_connections_map[current_qnode_id][current_node_id]:
+                        node_connections_map[current_qnode_id][current_node_id][connected_qnode_id] = set()
+                    node_connections_map[current_qnode_id][current_node_id][connected_qnode_id].add(connected_node_id)
 
-                # Start by adding all nodes of this qnode_id to the dict
-                nodes_to_edges_dict = dict()
-                for node_key, node in dict_kg['nodes'][current_qnode_id].items():
-                    nodes_to_edges_dict[node_key] = {'node': node, 'left': [], 'right': []}
+        qnode_ids_already_expanded = list(node_connections_map.keys())
 
-                # Fill out the dict, adding edges to their nodes' edge lists
-                for qedge_id, edges in dict_kg['edges'].items():
-                    for edge in edges.values():
-                        edge_node_ids = [edge.source_id, edge.target_id]
-                        side = 'left' if edge.qedge_id == left_qedge_id else 'right'
-                        for node_id in edge_node_ids:
-                            if node_id in nodes_to_edges_dict:
-                                nodes_to_edges_dict[node_id][side].append(edge)
+        # Iteratively remove all disconnected nodes until there are none left
+        found_dead_end = True
+        while found_dead_end:
+            found_dead_end = False
+            for qnode_id in qnode_ids_already_expanded:
+                qnode_ids_should_be_connected_to = qnode_to_qnode_mappings[qnode_id].intersection(qnode_ids_already_expanded)
+                # Make sure each node still has connections to nodes in all qnode_ids it's supposed to be connected to
+                for node_id, node_mappings_dict in node_connections_map[qnode_id].items():
+                    # Check if any mappings are even entered for all connected qnode_ids
+                    if set(node_mappings_dict.keys()) != qnode_ids_should_be_connected_to:
+                        if node_id in dict_kg['nodes'][qnode_id]:
+                            dict_kg['nodes'][qnode_id].pop(node_id)
+                            found_dead_end = True
+                    else:
+                        # Verify that at least one of the entered connections still exists (under that qnode_id)
+                        for connected_qnode_id, connected_node_ids in node_mappings_dict.items():
+                            if not connected_node_ids.intersection(set(dict_kg['nodes'][connected_qnode_id].keys())):
+                                if node_id in dict_kg['nodes'][qnode_id]:
+                                    dict_kg['nodes'][qnode_id].pop(node_id)
+                                    found_dead_end = True
 
-                # Make sure each node has a right-side edge (indicating it's not a dead end)
-                for node_id, info_dict in nodes_to_edges_dict.items():
-                    if not info_dict.get('right'):
-                        # If not, remove it and its left edges from the knowledge graph
-                        dict_kg['nodes'][info_dict['node'].qnode_id].pop(node_id)
-                        for left_edge in info_dict.get('left'):
-                            dict_kg['edges'][left_edge.qedge_id].pop(left_edge.id)
-
-                index -= 1
+        # Remove all orphaned edges
+        for qedge_id, edges_dict in node_usages_by_edges_map.items():
+            for edge_key, node_mappings in edges_dict.items():
+                for qnode_id, used_node_id in node_mappings.items():
+                    if used_node_id not in dict_kg['nodes'][qnode_id]:
+                        if edge_key in dict_kg['edges'][qedge_id]:
+                            dict_kg['edges'][qedge_id].pop(edge_key)
 
     def __get_order_to_expand_edges_in(self, query_graph):
         edges_remaining = [edge for edge in query_graph.edges]
