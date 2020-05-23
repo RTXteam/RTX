@@ -997,11 +997,10 @@ def main():
     elif params.example_number == 500:  # chunyu testing
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(name=hypertension, id=n00)",
-            "add_qnode(type=protein, id=n02)",
-            "add_qedge(source_id=n02, target_id=n00, id=e00)",
-            "expand(edge_id=e00)",
-            "overlay(action=compute_ngd)",
+            "add_qnode(name=UniProtKB:P14136, id=n00)",
+            "add_qnode(type=biological_process, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00,kp=ARAX/KG1)",
             "resultify(ignore_edge_direction=false)",
             "return(message=true, store=true)"
         ]}}
