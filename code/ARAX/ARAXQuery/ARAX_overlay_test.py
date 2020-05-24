@@ -502,9 +502,13 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         """
         Computes the significance of connection between a list of nodes with certain type in KG and each of the adjacent nodes with other type by the fisher's exact test.
         Allowable parameters:
-            :param query_node_label: the type label of query nodes in KG e.g. "protein"
-            :param compare_node_label: the type label of adjacent nodes in KG e.g. "biological_process"
-        :return:
+            :param query_node_type: required node type of ALL the node in message KG eg. "protein"
+            :param adjacent_node_type: required target type of adjacent nodes, eg. "biological_process"
+            :param query_edge_type: optional the type of edges associated with query nodes in message KG to consider, eg. "has_phenotype"
+            :param adjacent_edge_type: optional adjacent edge type to consider, eg. "involved_in"
+            :param top_n: optional number of top results to return eg. 10
+            :param cutoff: optional cutoff of p-value to filter adjacent nodes eg. 0.05
+        :return: response
         """
 
         message = self.message
@@ -512,16 +516,32 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         # allowable_parameters = {'action': {'fisher_exact_test'}, 'query_node_label': {...}, 'compare_node_label':{...}}
 
-        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
-            query_node_label = set([node.type[0] for node in message.knowledge_graph.nodes])
-            compare_node_label = set([node.type[0] for node in message.knowledge_graph.nodes])
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and hasattr(message.query_graph, 'edges'):
+            allowable_query_node_type = set([node.type[0] for node in message.knowledge_graph.nodes])
+            allowwable_query_edge_type = set([edge.type for edge in message.knowledge_graph.edges])
+            allowable_adjacent_node_type = [None,'metabolite','biological_process','chemical_substance','microRNA','protein',
+                                 'anatomical_entity','pathway','cellular_component','phenotypic_feature','disease','molecular_function']
+            allowable_adjacent_edge_type = [None,'physically_interacts_with','subclass_of','involved_in','affects','capable_of',
+                                 'contraindicated_for','indicated_for','regulates','expressed_in','gene_associated_with_condition',
+                                 'has_phenotype','gene_mutations_contribute_to','participates_in','has_part']
+
             allowable_parameters = {'action': {'fisher_exact_test'},
-                                    'query_node_label': query_node_label,
-                                    'compare_node_label': compare_node_label}
+                                    'query_node_type': allowable_query_node_type,
+                                    'adjacent_node_type': allowable_adjacent_node_type,
+                                    'query_edge_type': allowwable_query_edge_type,
+                                    'adjacent_edge_type': allowable_adjacent_edge_type,
+                                    'top_n': [None,int()],
+                                    'cutoff': [None,float()]
+                                    }
         else:
             allowable_parameters = {'action': {'fisher_exact_test'},
-                                    'query_node_label': {"any string label (required)"},
-                                    'compare_node_label': {"any string label (required)"}}
+                                    'query_node_type': {"a specific node type in message KG (required)"},
+                                    'adjacent_node_type': {"a specific node type in knowledge provider (required)"},
+                                    'query_edge_type': {"a specific edge type in message KG (optional)"},
+                                    'adjacent_edge_type': {"a specific edge type in knowledge provider (optional)"},
+                                    'top_n': {"an integer (optional)"},
+                                    'cutoff': {"a float (optional)"}
+                                    }
 
         # A little function to describe what this thing does
         if describe:

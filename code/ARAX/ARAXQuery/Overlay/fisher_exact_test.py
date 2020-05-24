@@ -23,54 +23,30 @@ class ComputeFTEST:
         self.message = message
         self.parameters = parameters
 
-    def fisher_exact_test(self, query_node_label, adjacent_node_label, query_edge_type=None, adjacent_edge_type=None, top_n=None, cutoff=None):
+    def fisher_exact_test(self):
         """
-        Iterate over all the adjacent nodes with 'adjacent_node_label' (e.g. "biological_process") type in knowledge provider
-        (e.g KG1) with respect to the nodes with
-        'query_node_label' (e.g. "protein") type in the knowledge graph to compute the p-value and assign it to
-        its node attribute
-        :param query_node_label: node label of ALL the node in message KG eg. "protein"
-        :param adjacent_node_label: target type of adjacent nodes, eg. "biological_process"
-        :param query_edge_type: optional the type of edges associated with query nodes in message KG to consider, eg. "has_phenotype"
-        :param adjacent_edge_type: optional adjacent edge type to consider, eg. "involved_in"
-        :param top_n: optional number of results to return eg. 10
-        :param cutoff: optional cutoff of p-value to filter adjacent nodes eg. 0.05
+        Peform the fisher's exact test
         :return: response
         """
 
         self.response.debug(f"Adding node with attribute 'Fisher Exact Test P-value'")
         self.response.info(f"Adding Fisher Exact Test P-value to node attribute")
 
-        option_node_type_list = ["metabolite", "biological_process" ,"chemical_substance", "microRNA", "protein",
-                                 "anatomical_entity", "pathway", "cellular_component", "phenotypic_feature", "disease",
-                                 "molecular_function"]
-        option_edge_type_list = ["physically_interacts_with", "subclass_of", "involved_in", "affects", "capable_of",
-                                 "contraindicated_for", "indicated_for", "regulates", "expressed_in", "gene_associated_with_condition",
-                                 "has_phenotype", "gene_mutations_contribute_to", "participates_in", "has_part"]
-
-        # check if the input parameters are correct
-        if query_node_label in option_node_type_list:
-            pass
-        else:
-            self.response.error(f"The 'query_node_label' in fisher_exact_test function provided by user doesn't exist")
+        # check the input parameters
+        if 'query_node_type' not in self.parameters:
+            self.response.error(f"The argument 'query_node_type' is required for fisher_exact_test function")
             return self.response
-        if adjacent_node_label in option_node_type_list:
-            pass
         else:
-            self.response.error(f"The 'adjacent_node_label' in fisher_exact_test function provided by user doesn't exist")
+            query_node_type = self.parameters['query_node_type']
+        if 'adjacent_node_type' not in self.parameters:
+            self.response.error(f"The argument 'adjacent_node_type' is required for fisher_exact_test function")
             return self.response
-        if query_edge_type:
-            if query_edge_type in option_edge_type_list:
-                pass
-            else:
-                self.response.error(f"The 'query_edge_type' in fisher_exact_test function provided by user doesn't exist")
-                return self.response
-        if adjacent_edge_type:
-            if adjacent_edge_type in option_edge_type_list:
-                pass
-            else:
-                self.response.error(f"The 'adjacent_edge_type' in fisher_exact_test function provided by user doesn't exist")
-                return self.response
+        else:
+            adjacent_node_type = self.parameters['adjacent_node_type']
+        query_edge_type = self.parameters['query_edge_type'] if 'query_edge_type' in self.parameters else None
+        adjacent_edge_type = self.parameters['adjacent_edge_type'] if 'adjacent_edge_type' in self.parameters else None
+        top_n = int(self.parameters['top_n']) if 'top_n' in self.parameters else None
+        cutoff = float(self.parameters['cutoff']) if 'cutoff' in self.parameters else None
 
         # initialize some variables
         nodes_info = {}
@@ -110,9 +86,9 @@ class ComputeFTEST:
         if query_edge_type:
             for key in edges_info.keys():
                 if edges_info[key]['type'] == query_edge_type:
-                    if nodes_info[edges_info[key]['source_id']]['type'] == query_node_label:
+                    if nodes_info[edges_info[key]['source_id']]['type'] == query_node_type:
                         query_node_list.append(edges_info[key]['source_id'])
-                    elif nodes_info[edges_info[key]['target_id']]['type'] == query_node_label:
+                    elif nodes_info[edges_info[key]['target_id']]['type'] == query_node_type:
                         query_node_list.append(edges_info[key]['target_id'])
                     else:
                         continue
@@ -120,7 +96,7 @@ class ComputeFTEST:
                     continue
         else:
             for key in nodes_info.keys():
-                if nodes_info[key]['type'] == query_node_label:
+                if nodes_info[key]['type'] == query_node_type:
                     query_node_list.append(key)
                 else:
                     continue
@@ -133,8 +109,8 @@ class ComputeFTEST:
             self.response.error(f"No query nodes found in message KG for the FET")
             return self.response
 
-        # find all the nodes adjacent to those in query_node_list with query_node_label in KG
-        parament_list = [(node, adjacent_node_label, list(kp)[0], adjacent_edge_type) for node in query_node_list]
+        # find all the nodes adjacent to those in query_node_list with query_node_type in KG
+        parament_list = [(node, adjacent_node_type, list(kp)[0], adjacent_edge_type) for node in query_node_list]
         with concurrent.futures.ProcessPoolExecutor() as executor:
             res = list(executor.map(self.query_adjacent_node_based_on_edge_type, parament_list))
 
@@ -149,21 +125,10 @@ class ComputeFTEST:
                     else:
                         adjacent_node_dict[adj].append(node)
             else:
-                self.response.warning(f"Node" + node + " can't find the adjacent node with " + adjacent_node_label + " type in " + list(kp)[0])
+                self.response.warning(f"Node" + node + " can't find the adjacent node with " + adjacent_node_type + " type in " + list(kp)[0])
 
-#        for node in query_node_list:
-#            result_list = self.query_adjacent_node_based_on_edge_type(node_id=node, adjacent_type=adjacent_node_label, kp=list(kp)[0], rel_type=rel_type)
-#            if result_list:
-#                for adj in result_list:
-#                    if adj not in adjacent_node_dict:
-#                        adjacent_node_dict[adj] = [node]
-#                    else:
-#                        adjacent_node_dict[adj].append(node)
-#            else:
-#                self.response.warning(f"Node"+node+" can't find the adjacent node with "+adjacent_node_label+" type in "+list(kp)[0])
-
-        # find all nodes with query_node_label associated with adjacent nodes in KG
-        parament_list = [(node, query_node_label, list(kp)[0], adjacent_edge_type) for node in list(adjacent_node_dict.keys())]
+        # find all nodes with query_node_type associated with adjacent nodes in KG
+        parament_list = [(node, query_node_type, list(kp)[0], adjacent_edge_type) for node in list(adjacent_node_dict.keys())]
         with concurrent.futures.ProcessPoolExecutor() as executor:
             res = list(executor.map(self.query_adjacent_node_based_on_edge_type, parament_list))
 
@@ -174,11 +139,11 @@ class ComputeFTEST:
                 size_of_adjacent[node] = len(result_list)
             else:
                 self.response.error(
-                    f"The adjacent node" + node + " can't find the associated nodes with " + query_node_label + " type in " +
+                    f"The adjacent node" + node + " can't find the associated nodes with " + query_node_type + " type in " +
                     list(kp)[0])
                 return self.response
 
-        size_of_total = self.size_of_given_type_in_KP(node_type=query_node_label)
+        size_of_total = self.size_of_given_type_in_KP(node_type=query_node_type)
         size_of_query_sample = len(query_node_list)
 
         output = {}
