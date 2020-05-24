@@ -7,6 +7,7 @@ import scipy.stats as stats
 import traceback
 import sys
 import os
+import concurrent.futures
 from neo4j.v1 import GraphDatabase, basic_auth
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")  # code directory
 from RTXConfiguration import RTXConfiguration
@@ -22,7 +23,7 @@ class ComputeFTEST:
         self.message = message
         self.parameters = parameters
 
-    def fisher_exact_test(self, query_node_label, adjacent_node_label, rel_type=None, top_n=None, cutoff=None):
+    def fisher_exact_test(self, query_node_label, adjacent_node_label, query_edge_type=None, adjacent_edge_type=None, top_n=None, cutoff=None):
         """
         Iterate over all the adjacent nodes with 'adjacent_node_label' (e.g. "biological_process") type in knowledge provider
         (e.g KG1) with respect to the nodes with
@@ -30,7 +31,8 @@ class ComputeFTEST:
         its node attribute
         :param query_node_label: node label of ALL the node in message KG eg. "protein"
         :param adjacent_node_label: target type of adjacent nodes, eg. "biological_process"
-        :param rel_type: optional relationship type to consider, eg. "has_phenotype"
+        :param query_edge_type: optional the type of edges associated with query nodes in message KG to consider, eg. "has_phenotype"
+        :param adjacent_edge_type: optional adjacent edge type to consider, eg. "involved_in"
         :param top_n: optional number of results to return eg. 10
         :param cutoff: optional cutoff of p-value to filter adjacent nodes eg. 0.05
         :return: response
@@ -57,11 +59,18 @@ class ComputeFTEST:
         else:
             self.response.error(f"The 'adjacent_node_label' in fisher_exact_test function provided by user doesn't exist")
             return self.response
-        if rel_type in option_edge_type_list:
-            pass
-        else:
-            self.response.error(f"The 'rel_type' in fisher_exact_test function provided by user doesn't exist")
-            return self.response
+        if query_edge_type:
+            if query_edge_type in option_edge_type_list:
+                pass
+            else:
+                self.response.error(f"The 'query_edge_type' in fisher_exact_test function provided by user doesn't exist")
+                return self.response
+        if adjacent_edge_type:
+            if adjacent_edge_type in option_edge_type_list:
+                pass
+            else:
+                self.response.error(f"The 'adjacent_edge_type' in fisher_exact_test function provided by user doesn't exist")
+                return self.response
 
         # initialize some variables
         nodes_info = {}
@@ -69,6 +78,7 @@ class ComputeFTEST:
         kp = set()
         query_node_list = []
         adjacent_node_dict = {}
+        size_of_adjacent={}
 
         # iterate over KG nodes and edges and collect information
         try:
@@ -97,12 +107,12 @@ class ComputeFTEST:
             return self.response
 
         # collect input node list for the FET based on provided query node type and edge type
-        if rel_type:
+        if query_edge_type:
             for key in edges_info.keys():
-                if edges_info[key]['type'] == rel_type:
-                    if nodes_info[edges_info[key]['source_id']] == query_node_label:
+                if edges_info[key]['type'] == query_edge_type:
+                    if nodes_info[edges_info[key]['source_id']]['type'] == query_node_label:
                         query_node_list.append(edges_info[key]['source_id'])
-                    elif nodes_info[edges_info[key]['target_id']] == query_node_label:
+                    elif nodes_info[edges_info[key]['target_id']]['type'] == query_node_label:
                         query_node_list.append(edges_info[key]['target_id'])
                     else:
                         continue
@@ -116,30 +126,56 @@ class ComputeFTEST:
                     continue
 
         query_node_list = list(set(query_node_list))
+        #print(len(query_node_list))
+        #query_node_list = query_node_list[:3]
 
         if len(query_node_list) == 0:
             self.response.error(f"No query nodes found in message KG for the FET")
             return self.response
 
         # find all the nodes adjacent to those in query_node_list with query_node_label in KG
-        for node in query_node_list:
-            result_list = self.query_adjacent_node_based_on_edge_type(node_id=node, adjacent_type=adjacent_node_label, kp=list(kp)[0], rel_type=rel_type)
+        parament_list = [(node, adjacent_node_label, list(kp)[0], adjacent_edge_type) for node in query_node_list]
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            res = list(executor.map(self.query_adjacent_node_based_on_edge_type, parament_list))
+
+
+        for index in range(len(query_node_list)):
+            node = query_node_list[index]
+            result_list = res[index]
             if result_list:
                 for adj in result_list:
-                    if adj not in adjacent_node_dict:
+                    if adj not in adjacent_node_dict.keys():
                         adjacent_node_dict[adj] = [node]
                     else:
                         adjacent_node_dict[adj].append(node)
             else:
-                return self.response
+                self.response.warning(f"Node" + node + " can't find the adjacent node with " + adjacent_node_label + " type in " + list(kp)[0])
+
+#        for node in query_node_list:
+#            result_list = self.query_adjacent_node_based_on_edge_type(node_id=node, adjacent_type=adjacent_node_label, kp=list(kp)[0], rel_type=rel_type)
+#            if result_list:
+#                for adj in result_list:
+#                    if adj not in adjacent_node_dict:
+#                        adjacent_node_dict[adj] = [node]
+#                    else:
+#                        adjacent_node_dict[adj].append(node)
+#            else:
+#                self.response.warning(f"Node"+node+" can't find the adjacent node with "+adjacent_node_label+" type in "+list(kp)[0])
 
         # find all nodes with query_node_label associated with adjacent nodes in KG
-        size_of_adjacent={}
-        for node in adjacent_node_dict:
-            result_list = self.query_adjacent_node_based_on_edge_type(node_id=node, adjacent_type=query_node_label, kp=list(kp)[0], rel_type=rel_type)
+        parament_list = [(node, query_node_label, list(kp)[0], adjacent_edge_type) for node in list(adjacent_node_dict.keys())]
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            res = list(executor.map(self.query_adjacent_node_based_on_edge_type, parament_list))
+
+        for index in range(len(adjacent_node_dict)):
+            node = list(adjacent_node_dict.keys())[index]
+            result_list = res[index]
             if result_list:
-                size_of_adjacent[node]=len(result_list)
+                size_of_adjacent[node] = len(result_list)
             else:
+                self.response.error(
+                    f"The adjacent node" + node + " can't find the associated nodes with " + query_node_label + " type in " +
+                    list(kp)[0])
                 return self.response
 
         size_of_total = self.size_of_given_type_in_KP(node_type=query_node_label)
@@ -168,12 +204,16 @@ class ComputeFTEST:
                 continue
             else:
                 for node in adjacent_node_dict[adj]:
-                    if 'adjacent' not in nodes_info.keys():
-                        nodes_info[node]['adjacent'] = [output[adj]]
+                    if 'adjacent' not in nodes_info[node].keys():
+                        nodes_info[node]['adjacent'] = dict()
+                        nodes_info[node]['adjacent'][adj] = output[adj]
+#                        nodes_info[node]['adjacent'] = [(adj,output[adj])]
                     else:
-                        nodes_info[node]['adjacent'].append(output[adj])
+                        nodes_info[node]['adjacent'][adj] = output[adj]
+#                        nodes_info[node]['adjacent'].append((adj,output[adj]))
 
-        for node in self.message.knowledge_graph.nodes:
+        for index in range(len(self.message.knowledge_graph.nodes)):
+            node = self.message.knowledge_graph.nodes[index]
             if 'adjacent' not in nodes_info[node.id].keys():
                 pass
             else:
@@ -181,15 +221,27 @@ class ComputeFTEST:
 
         return self.response
 
-    def query_adjacent_node_based_on_edge_type(self, node_id, adjacent_type, kp="ARAX/KG1", rel_type=None):
+    def query_adjacent_node_based_on_edge_type(self, this):
         """
         Query adjacent nodes of a given node based on adjacent node type.
-        :param node_id: the id of query node eg. "UniProtKB:P14136"
-        :param adjacent_type: the type of adjacent node eg. "biological_process"
-        :param kp: the knowledge provider to use eg. "ARAX/KG1"(default)
+        (In order to parallel run this method, the input parameter is a parameter set containing the following four arugments)
+        :param node_id: the id of query node, eg. "UniProtKB:P14136"
+        :param adjacent_type: the type of adjacent node, eg. "biological_process"
+        :param kp: optional the knowledge provider to use, eg. "ARAX/KG1"(default)
         :param rel_type: optional relationship type to consider, eg. "involved_in"
         :return adjacent node ids
         """
+
+        if len(this)==4:
+            # this contains four variables and assign them to different variables
+            node_id, adjacent_type, kp, rel_type = this
+        elif len(this)==3:
+            node_id, adjacent_type, kp = this
+            rel_type = None
+        elif len(this)==2:
+            node_id, adjacent_type = this
+            kp = "ARAX/KG1"
+            rel_type = None
 
         # Initialize variables
         adjacent_node_id = []
@@ -245,7 +297,6 @@ class ComputeFTEST:
             return None
 
         return adjacent_node_id
-
 
 
     def size_of_given_type_in_KP(self,node_type, use_cypher_command=True):
