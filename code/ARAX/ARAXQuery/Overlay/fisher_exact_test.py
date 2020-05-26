@@ -25,94 +25,121 @@ class ComputeFTEST:
 
     def fisher_exact_test(self):
         """
-        Peform the fisher's exact test
+        Peform the fisher's exact test to expand or decorate the knowledge graph
         :return: response
         """
 
-        self.response.debug(f"Adding node with attribute 'Fisher Exact Test P-value'")
-        self.response.info(f"Adding Fisher Exact Test P-value to node attribute")
+        self.response.info(f"Performing Fisher's Exact Test to expand the knowledge graph and adding p-value to edge attribute")
 
         # check the input parameters
-        if 'query_node_type' not in self.parameters:
-            self.response.error(f"The argument 'query_node_type' is required for fisher_exact_test function")
+        if 'query_node_id' not in self.parameters:
+            self.response.error(f"The argument 'query_node_id' is required for fisher_exact_test function")
             return self.response
         else:
-            query_node_type = self.parameters['query_node_type']
+            query_node_id = self.parameters['query_node_id']
         if 'adjacent_node_type' not in self.parameters:
             self.response.error(f"The argument 'adjacent_node_type' is required for fisher_exact_test function")
             return self.response
         else:
             adjacent_node_type = self.parameters['adjacent_node_type']
-        query_edge_type = self.parameters['query_edge_type'] if 'query_edge_type' in self.parameters else None
+        query_edge_id = self.parameters['query_edge_id'] if 'query_edge_id' in self.parameters else None
         adjacent_edge_type = self.parameters['adjacent_edge_type'] if 'adjacent_edge_type' in self.parameters else None
         top_n = int(self.parameters['top_n']) if 'top_n' in self.parameters else None
         cutoff = float(self.parameters['cutoff']) if 'cutoff' in self.parameters else None
 
         # initialize some variables
         nodes_info = {}
-        edges_info = {}
+        edge_id = []
         kp = set()
         query_node_list = []
         adjacent_node_dict = {}
         size_of_adjacent={}
 
-        # iterate over KG nodes and edges and collect information
-        try:
-            for node in self.message.knowledge_graph.nodes:
-                nodes_info[node.id] = {'type': node.type[0], 'edge_index': []}
-        except:
-            tb = traceback.format_exc()
-            error_type, error, _ = sys.exc_info()
-            self.response.error(tb, error_code=error_type.__name__)
-            self.response.error(f"Something went wrong with retrieving nodes in message KG")
-            return self.response
+        # collect input node list for the FET based on provided query node id and edge type
+        if query_edge_id:
+            # iterate over KG nodes and edges and collect information
+            try:
+                count = 0
+                for node in self.message.knowledge_graph.nodes:
+                    nodes_info[node.id] = {'count': count, 'qnode_id': node.qnode_id, 'type': node.type[0],
+                                           'edge_index': []}
+                    count = count + 1
+            except:
+                tb = traceback.format_exc()
+                error_type, error, _ = sys.exc_info()
+                self.response.error(tb, error_code=error_type.__name__)
+                self.response.error(f"Something went wrong with retrieving nodes in message KG")
+                return self.response
 
-        try:
-            count = 0
-            for edge in self.message.knowledge_graph.edges:
-                count = count + 1
-                edges_info[count] = {'source_id': edge.source_id, 'target_id': edge.target_id, 'type': edge.type}
-                kp.update([edge.is_defined_by])
-                nodes_info[edge.source_id]['edge_index'].append(count)
-                nodes_info[edge.target_id]['edge_index'].append(count)
-        except:
-            tb = traceback.format_exc()
-            error_type, error, _ = sys.exc_info()
-            self.response.error(tb, error_code=error_type.__name__)
-            self.response.error(f"Something went wrong with retrieving edges in message KG")
-            return self.response
-
-        # collect input node list for the FET based on provided query node type and edge type
-        if query_edge_type:
-            for key in edges_info.keys():
-                if edges_info[key]['type'] == query_edge_type:
-                    if nodes_info[edges_info[key]['source_id']]['type'] == query_node_type:
-                        query_node_list.append(edges_info[key]['source_id'])
-                    elif nodes_info[edges_info[key]['target_id']]['type'] == query_node_type:
-                        query_node_list.append(edges_info[key]['target_id'])
+            try:
+                count = 0
+                for edge in self.message.knowledge_graph.edges:
+                    # edges_info[count] = {'source_id': edge.source_id, 'target_id': edge.target_id, 'type': edge.type}
+                    if edge.qedge_id == query_edge_id:
+                        if nodes_info[edge.source_id]['qnode_id'] == query_node_id:
+                            query_node_list.append(edge.source_id)
+                        elif nodes_info[edge.target_id]['qnode_id'] == query_node_id:
+                            query_node_list.append(edge.target_id)
+                        else:
+                            continue
                     else:
                         continue
-                else:
-                    continue
+                    edge_id.append(edge.edge_id)
+                    kp.update([edge.is_defined_by])
+                    nodes_info[edge.source_id]['edge_index'].append(count)
+                    nodes_info[edge.target_id]['edge_index'].append(count)
+                    count = count + 1
+            except:
+                tb = traceback.format_exc()
+                error_type, error, _ = sys.exc_info()
+                self.response.error(tb, error_code=error_type.__name__)
+                self.response.error(f"Something went wrong with retrieving edges in message KG")
+                return self.response
         else:
-            for key in nodes_info.keys():
-                if nodes_info[key]['type'] == query_node_type:
-                    query_node_list.append(key)
-                else:
-                    continue
+            # iterate over KG nodes and edges and collect information
+            try:
+                count = 0
+                for node in self.message.knowledge_graph.nodes:
+                    nodes_info[node.id] = {'count': count, 'qnode_id': node.qnode_id, 'type': node.type[0],
+                                           'edge_index': []}
+                    if node.qnode_id == query_node_id:
+                        query_node_list.append(node.id)
+                    else:
+                        continue
+                    count = count + 1
+            except:
+                tb = traceback.format_exc()
+                error_type, error, _ = sys.exc_info()
+                self.response.error(tb, error_code=error_type.__name__)
+                self.response.error(f"Something went wrong with retrieving nodes in message KG")
+                return self.response
+
+            try:
+                count = 0
+                for edge in self.message.knowledge_graph.edges:
+                    edge_id.append(edge.edge_id)
+                    kp.update([edge.is_defined_by])
+                    nodes_info[edge.source_id]['edge_index'].append(count)
+                    nodes_info[edge.target_id]['edge_index'].append(count)
+                    count = count + 1
+            except:
+                tb = traceback.format_exc()
+                error_type, error, _ = sys.exc_info()
+                self.response.error(tb, error_code=error_type.__name__)
+                self.response.error(f"Something went wrong with retrieving edges in message KG")
+                return self.response
 
         query_node_list = list(set(query_node_list))
-        #print(len(query_node_list))
-        #query_node_list = query_node_list[:3]
 
         if len(query_node_list) == 0:
             self.response.error(f"No query nodes found in message KG for the FET")
             return self.response
 
         # find all the nodes adjacent to those in query_node_list with query_node_type in KG
-        parament_list = [(node, adjacent_node_type, list(kp)[0], adjacent_edge_type) for node in query_node_list]
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            res = list(executor.map(self.query_adjacent_node_based_on_edge_type, parament_list))
+        #parament_list = [(node, adjacent_node_type, list(kp)[0], adjacent_edge_type) for node in query_node_list]
+        #with concurrent.futures.ProcessPoolExecutor() as executor:
+        #    res = list(executor.map(self.query_adjacent_node_based_on_edge_type, parament_list))
+
 
 
         for index in range(len(query_node_list)):
@@ -186,27 +213,15 @@ class ComputeFTEST:
 
         return self.response
 
-    def query_adjacent_node_based_on_edge_type(self, this):
+    def query_adjacent_nodes(self, node_id_list, adjacent_type, kp="ARAX/KG1", rel_type=None):
         """
-        Query adjacent nodes of a given node based on adjacent node type.
-        (In order to parallel run this method, the input parameter is a parameter set containing the following four arugments)
-        :param node_id: the id of query node, eg. "UniProtKB:P14136"
-        :param adjacent_type: the type of adjacent node, eg. "biological_process"
-        :param kp: optional the knowledge provider to use, eg. "ARAX/KG1"(default)
-        :param rel_type: optional relationship type to consider, eg. "involved_in"
+        Query adjacent nodes of a given query node based on adjacent node type.
+        :param node_id_list: (required) the curie id list of query nodes, eg. "['UniProtKB:P14136','UniProtKB:P35579','UniProtKB:P02647']"
+        :param adjacent_type: (required) the type of adjacent node, eg. "biological_process"
+        :param kp: (optional) the knowledge provider to use, eg. "ARAX/KG1"(default)
+        :param rel_type: (optional) edge type to consider, eg. "involved_in"
         :return adjacent node ids
         """
-
-        if len(this)==4:
-            # this contains four variables and assign them to different variables
-            node_id, adjacent_type, kp, rel_type = this
-        elif len(this)==3:
-            node_id, adjacent_type, kp = this
-            rel_type = None
-        elif len(this)==2:
-            node_id, adjacent_type = this
-            kp = "ARAX/KG1"
-            rel_type = None
 
         # Initialize variables
         adjacent_node_id = []

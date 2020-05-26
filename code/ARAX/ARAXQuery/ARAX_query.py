@@ -997,11 +997,12 @@ def main():
     elif params.example_number == 500:  # chunyu testing
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(name=UniProtKB:P14136, id=n00)",
-            "add_qnode(type=biological_process, id=n01)",
-            "add_qedge(source_id=n00, target_id=n01, id=e00)",
-            "expand(edge_id=e00,kp=ARAX/KG1)",
-            "resultify(ignore_edge_direction=false)",
+            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521)",
+            "add_qnode(id=n01, type=protein)",
+            "add_qedge(id=e00, source_id=n00, target_id=n01)",
+            "expand(kp=ARAX/KG1, continue_if_no_results=true)",
+            "expand(kp=ARAX/KG2, continue_if_no_results=true)",
+            "resultify()",
             "return(message=true, store=true)"
         ]}}
     else:
