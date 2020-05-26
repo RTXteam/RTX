@@ -2,8 +2,7 @@ import requests
 import requests_cache
 import hashlib
 import time
-import re
-import os
+import re, os
 
 _DEFAULT_HEADERS = requests.utils.default_headers()
 

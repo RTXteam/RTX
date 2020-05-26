@@ -13,7 +13,7 @@ from ARAX_resultify import ARAXResultify
 
 # Utility functions
 
-def run_query(actions_list, num_allowed_retries=2):
+def run_query_and_conduct_standard_testing(actions_list, num_allowed_retries=2):
     response = Response()
     actions_parser = ActionsParser()
 
@@ -48,22 +48,23 @@ def run_query(actions_list, num_allowed_retries=2):
         else:
             response.error(f"Unrecognized command {action['command']}", error_code="UnrecognizedCommand")
             print(response.show(level=Response.DEBUG))
-            return None
+            return None, None
 
         # Merge down this result and end if we're in an error state
         response.merge(result)
         if result.status != 'OK':
             # Try again if we ran into the intermittent neo4j connection issue (#649)
             if (result.error_code == 'ConnectionResetError' or result.error_code == 'OSError') and num_allowed_retries > 0:
-                return run_query(actions_list, num_allowed_retries - 1)
+                return run_query_and_conduct_standard_testing(actions_list, num_allowed_retries - 1)
             else:
                 # print(message.knowledge_graph)
                 print(response.show(level=Response.DEBUG))
-                return None
+                return None, None
 
     # print(response.show(level=Response.DEBUG))
     kg_in_dict_form = convert_list_kg_to_dict_kg(message.knowledge_graph)
     print_counts_by_qgid(kg_in_dict_form)
+    conduct_standard_testing(kg_in_dict_form, message.query_graph)
     return kg_in_dict_form
 
 
@@ -80,8 +81,10 @@ def convert_list_kg_to_dict_kg(knowledge_graph):
     return dict_kg
 
 
-def conduct_standard_testing(kg_in_dict_form):
+def conduct_standard_testing(kg_in_dict_form, query_graph):
     check_for_orphans(kg_in_dict_form)
+    check_all_qg_ids_fulfilled(kg_in_dict_form, query_graph)
+    print("  ...PASSED STANDARD TESTING!")
 
 
 def print_counts_by_qgid(kg_in_dict_form):
@@ -100,14 +103,19 @@ def print_nodes(kg_in_dict_form):
 def print_edges(kg_in_dict_form):
     for qedge_id, edges in kg_in_dict_form['edges'].items():
         for edge_key, edge in edges.items():
-            print(f"{edge.qedge_id}, {edge.id}")
+            print(f"{edge.qedge_id}, {edge.id}, {edge.source_id}--{edge.type}->{edge.target_id}")
 
 
-def print_passing_message(start_time=0.0):
-    if start_time:
-        print(f"  ...PASSED! (took {round(time.time() - start_time)} seconds)")
-    else:
-        print(f"  ...PASSED!")
+def print_node_counts_by_prefix(kg_in_dict_form):
+    nodes_by_prefix = dict()
+    for qnode_id, nodes in kg_in_dict_form['nodes'].items():
+        for node_key, node in nodes.items():
+            prefix = node.id.split(':')[0]
+            if prefix in nodes_by_prefix.keys():
+                nodes_by_prefix[prefix] += 1
+            else:
+                nodes_by_prefix[prefix] = 1
+    print(nodes_by_prefix)
 
 
 def check_for_orphans(kg_in_dict_form):
@@ -121,6 +129,13 @@ def check_for_orphans(kg_in_dict_form):
             node_ids_used_by_edges.add(edge.source_id)
             node_ids_used_by_edges.add(edge.target_id)
     assert node_ids == node_ids_used_by_edges or len(node_ids_used_by_edges) == 0
+
+
+def check_all_qg_ids_fulfilled(kg_in_dict_form, query_graph):
+    for qnode in query_graph.nodes:
+        assert kg_in_dict_form['nodes'].get(qnode.id)
+    for qedge in query_graph.edges:
+        assert kg_in_dict_form['edges'].get(qedge.id)
 
 
 # Actual test cases
@@ -137,8 +152,7 @@ def test_kg1_parkinsons_demo_example():
         "expand(edge_id=[e00,e01], kp=ARAX/KG1, enforce_directionality=true)",
         "return(message=true, store=false)",
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
     # Make sure only one node exists for n00 (the original curie)
     assert len(kg_in_dict_form['nodes']['n00']) == 1
@@ -161,8 +175,6 @@ def test_kg1_parkinsons_demo_example():
             non_cilnidipine_node = edge.source_id if edge.source_id != "CHEMBL.COMPOUND:CHEMBL452076" else edge.target_id
             proteins_connected_to_cilnidipine.add(non_cilnidipine_node)
     assert(len(proteins_connected_to_cilnidipine) >= 4)
-
-    print_passing_message()
 
 
 def test_kg2_parkinsons_demo_example():
@@ -177,8 +189,7 @@ def test_kg2_parkinsons_demo_example():
         "expand(edge_id=[e00,e01], kp=ARAX/KG2, enforce_directionality=true, use_synonyms=false)",
         "return(message=true, store=false)",
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
     # Make sure only one node exists for n00 (the original curie)
     assert len(kg_in_dict_form['nodes']['n00']) == 1
@@ -208,8 +219,6 @@ def test_kg2_parkinsons_demo_example():
     assert len(kg_in_dict_form['edges']['e00']) == 18
     assert len(kg_in_dict_form['edges']['e01']) == 1871
 
-    print_passing_message()
-
 
 def test_kg2_synonym_map_back_parkinsons_proteins():
     print("Testing kg2 synonym map back parkinsons proteins")
@@ -221,8 +230,7 @@ def test_kg2_synonym_map_back_parkinsons_proteins():
         "expand(edge_id=e00, kp=ARAX/KG2)",
         "return(message=true, store=false)",
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
     # Make sure all edges have been remapped to original curie for n00
     for edge_key, edge in kg_in_dict_form['edges']['e00'].items():
@@ -234,8 +242,6 @@ def test_kg2_synonym_map_back_parkinsons_proteins():
     # Take a look at the proteins returned, make sure they're all proteins
     for node_key, node in kg_in_dict_form['nodes']['n01'].items():
         assert "protein" in node.type
-
-    print_passing_message()
 
 
 def test_kg2_synonym_map_back_parkinsons_full_example():
@@ -250,8 +256,7 @@ def test_kg2_synonym_map_back_parkinsons_full_example():
         "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
         "return(message=true, store=false)",
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
     # Make sure only one node exists for n00 (the original curie)
     assert len(kg_in_dict_form['nodes']['n00']) == 1
@@ -263,8 +268,6 @@ def test_kg2_synonym_map_back_parkinsons_full_example():
     # Make sure all drugs returned are as expected
     for node_id, node in kg_in_dict_form['nodes']['n02'].items():
         assert "chemical_substance" in node.type
-
-    print_passing_message()
 
 
 def test_kg2_synonym_add_all_parkinsons_full_example():
@@ -279,14 +282,11 @@ def test_kg2_synonym_add_all_parkinsons_full_example():
         "expand(edge_id=[e00,e01], kp=ARAX/KG2, synonym_handling=add_all)",
         "return(message=true, store=false)",
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
     # Make sure all drugs returned are as expected
     for node_id, node in kg_in_dict_form['nodes']['n02'].items():
         assert "chemical_substance" in node.type
-
-    print_passing_message()
 
 
 def test_demo_example_1_simple():
@@ -299,14 +299,11 @@ def test_demo_example_1_simple():
         "expand(edge_id=e0, use_synonyms=false)",
         "return(message=true, store=false)",
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
     assert len(kg_in_dict_form['nodes']['n0']) >= 1
     assert len(kg_in_dict_form['nodes']['n1']) >= 32
     assert len(kg_in_dict_form['edges']['e0']) >= 64
-
-    print_passing_message()
 
 
 def test_demo_example_2_simple():
@@ -321,16 +318,13 @@ def test_demo_example_2_simple():
         "expand(edge_id=[e00,e01], kp=ARAX/KG1, use_synonyms=false)",
         "return(message=true, store=false)",
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
     assert len(kg_in_dict_form['nodes']['n00']) >= 1
     assert len(kg_in_dict_form['nodes']['n01']) >= 18
     assert len(kg_in_dict_form['nodes']['n02']) >= 1119
     assert len(kg_in_dict_form['edges']['e00']) >= 18
     assert len(kg_in_dict_form['edges']['e01']) >= 1871
-
-    print_passing_message()
 
 
 def test_demo_example_3_simple():
@@ -345,16 +339,13 @@ def test_demo_example_3_simple():
         "expand(edge_id=[e00,e01], use_synonyms=false)",
         "return(message=true, store=false)",
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
     assert len(kg_in_dict_form['nodes']['n00']) >= 1
     assert len(kg_in_dict_form['nodes']['n01']) >= 29
     assert len(kg_in_dict_form['nodes']['n02']) >= 240
     assert len(kg_in_dict_form['edges']['e00']) >= 29
     assert len(kg_in_dict_form['edges']['e01']) >= 1368
-
-    print_passing_message()
 
 
 def test_demo_example_1_with_synonyms():
@@ -367,14 +358,11 @@ def test_demo_example_1_with_synonyms():
         "expand(edge_id=e0)",
         "return(message=true, store=false)",
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
     assert len(kg_in_dict_form['nodes']['n0']) >= 1
     assert len(kg_in_dict_form['nodes']['n1']) >= 32
     assert len(kg_in_dict_form['edges']['e0']) >= 64
-
-    print_passing_message()
 
 
 def test_demo_example_2_with_synonyms():
@@ -389,16 +377,13 @@ def test_demo_example_2_with_synonyms():
         "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
         "return(message=true, store=false)",
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
     assert len(kg_in_dict_form['nodes']['n00']) >= 1
     assert len(kg_in_dict_form['nodes']['n01']) >= 18
     assert len(kg_in_dict_form['nodes']['n02']) >= 1119
     assert len(kg_in_dict_form['edges']['e00']) >= 18
     assert len(kg_in_dict_form['edges']['e01']) >= 1871
-
-    print_passing_message()
 
 
 def test_demo_example_3_with_synonyms():
@@ -413,16 +398,13 @@ def test_demo_example_3_with_synonyms():
         "expand(edge_id=[e00,e01])",
         "return(message=true, store=false)",
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
     assert len(kg_in_dict_form['nodes']['n00']) >= 1
     assert len(kg_in_dict_form['nodes']['n01']) >= 29
     assert len(kg_in_dict_form['nodes']['n02']) >= 240
     assert len(kg_in_dict_form['edges']['e00']) >= 29
     assert len(kg_in_dict_form['edges']['e01']) >= 1368
-
-    print_passing_message()
 
 
 def erics_first_kg1_synonym_test_without_synonyms():
@@ -435,10 +417,7 @@ def erics_first_kg1_synonym_test_without_synonyms():
         "expand(edge_id=e00, kp=ARAX/KG1, use_synonyms=false)",
         "return(message=true, store=false)",
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
-
-    print_passing_message()
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
 
 def erics_first_kg1_synonym_test_with_synonyms():
@@ -451,10 +430,7 @@ def erics_first_kg1_synonym_test_with_synonyms():
         "expand(edge_id=e00, kp=ARAX/KG1)",
         "return(message=true, store=false)",
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
-
-    print_passing_message()
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
 
 def acetaminophen_example_enforcing_directionality():
@@ -467,8 +443,7 @@ def acetaminophen_example_enforcing_directionality():
         "expand(edge_id=e00, use_synonyms=false, enforce_directionality=true)",
         "return(message=true, store=false)",
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
     assert len(kg_in_dict_form['nodes']['n00']) == 1
     assert len(kg_in_dict_form['nodes']['n01']) == 32
@@ -477,8 +452,6 @@ def acetaminophen_example_enforcing_directionality():
     # Make sure the source of every node is acetaminophen
     for node_id in kg_in_dict_form['nodes']['n00'].keys():
         assert node_id == "CHEMBL.COMPOUND:CHEMBL112"
-
-    print_passing_message()
 
 
 def parkinsons_example_enforcing_directionality():
@@ -493,8 +466,7 @@ def parkinsons_example_enforcing_directionality():
         "expand(edge_id=[e00,e01], kp=ARAX/KG1, enforce_directionality=true)",
         "return(message=true, store=false)",
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
     assert len(kg_in_dict_form['nodes']['n00']) == 1
     assert len(kg_in_dict_form['nodes']['n01']) == 18
@@ -502,12 +474,9 @@ def parkinsons_example_enforcing_directionality():
     assert len(kg_in_dict_form['edges']['e00']) == 18
     assert len(kg_in_dict_form['edges']['e01']) == 1871
 
-    print_passing_message()
-
 
 def ambitious_query_causing_multiple_qnode_ids_error():
     print(f"Testing ambitious query causing multiple qnode_ids error (#720)")
-    start = time.time()
     actions_list = [
         "create_message",
         "add_qnode(curie=DOID:14330, id=n00)",
@@ -518,10 +487,7 @@ def ambitious_query_causing_multiple_qnode_ids_error():
         "expand(edge_id=[e00, e01])",
         "return(message=true, store=false)",
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
-
-    print_passing_message(start)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
 
 def test_kg1_property_format():
@@ -536,8 +502,7 @@ def test_kg1_property_format():
         "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
         "return(message=true, store=false)",
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
     for qnode_id, nodes in kg_in_dict_form['nodes'].items():
         for node in nodes.values():
@@ -558,8 +523,6 @@ def test_kg1_property_format():
             if "chembl" in edge.provided_by.lower():
                 assert edge.edge_attributes[0].name == "probability"
 
-    print_passing_message()
-
 
 def simple_bte_acetaminophen_query():
     print(f"Testing simple BTE acetaminophen query")
@@ -571,10 +534,7 @@ def simple_bte_acetaminophen_query():
         "expand(edge_id=e00, kp=BTE)",
         "return(message=true, store=false)",
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
-
-    print_passing_message()
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
 
 def simple_bte_cdk2_query():
@@ -587,10 +547,7 @@ def simple_bte_cdk2_query():
         "expand(edge_id=e00, kp=BTE)",
         "return(message=true, store=false)",
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
-
-    print_passing_message()
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
 
 def test_two_hop_bte_query():
@@ -605,10 +562,7 @@ def test_two_hop_bte_query():
         "expand(edge_id=[e00, e01], kp=BTE)",
         "return(message=true, store=false)",
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
-
-    print_passing_message()
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
 
 def test_simple_bidirectional_query():
@@ -621,10 +575,7 @@ def test_simple_bidirectional_query():
         "expand(edge_id=e00)",
         "return(message=true, store=false)"
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
-
-    print_passing_message()
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
 
 def query_that_doesnt_return_original_curie():
@@ -639,16 +590,13 @@ def query_that_doesnt_return_original_curie():
         "expand(edge_id=[e0,e1], kp=ARAX/KG2)",
         "return(message=true, store=false)"
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
     assert len(kg_in_dict_form['nodes']['n0']) == 1
     assert "MONDO:0005737" in kg_in_dict_form['nodes']['n0']
 
     for edge in kg_in_dict_form['edges']['e0'].values():
         assert edge.source_id == "MONDO:0005737" or edge.target_id == "MONDO:0005737"
-
-    print_passing_message()
 
 
 def single_node_query_map_back():
@@ -659,11 +607,9 @@ def single_node_query_map_back():
         "expand(node_id=n00, kp=ARAX/KG2, synonym_handling=map_back)",
         "return(message=true, store=false)"
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
     assert len(kg_in_dict_form['nodes']['n00']) == 1
     assert kg_in_dict_form['nodes']['n00'].get("CHEMBL.COMPOUND:CHEMBL1771")
-    print_passing_message()
 
 
 def single_node_query_add_all():
@@ -674,11 +620,9 @@ def single_node_query_add_all():
         "expand(node_id=n00, kp=ARAX/KG2, synonym_handling=add_all)",
         "return(message=true, store=false)"
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
     assert len(kg_in_dict_form['nodes']['n00']) > 1
     assert "CHEMBL.COMPOUND:CHEMBL1771" in kg_in_dict_form['nodes']['n00']
-    print_passing_message()
 
 
 def single_node_query_without_synonyms():
@@ -689,11 +633,9 @@ def single_node_query_without_synonyms():
         "expand(kp=ARAX/KG1, use_synonyms=false)",
         "return(message=true, store=false)"
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
     assert len(kg_in_dict_form['nodes']['n00']) == 1
     assert "CHEMBL.COMPOUND:CHEMBL1276308" in kg_in_dict_form['nodes']['n00']
-    print_passing_message()
 
 
 def query_with_no_edge_or_node_ids():
@@ -706,10 +648,98 @@ def query_with_no_edge_or_node_ids():
         "expand()",
         "return(message=true, store=false)"
     ]
-    kg_in_dict_form = run_query(actions_list)
-    conduct_standard_testing(kg_in_dict_form)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
     assert kg_in_dict_form['nodes']['n00'] and kg_in_dict_form['nodes']['n01'] and kg_in_dict_form['edges']['e00']
-    print_passing_message()
+
+
+def query_that_produces_multiple_provided_bys():
+    print("Testing query that produces node with multiple provided bys")
+    actions_list = [
+        "create_message",
+        "add_qnode(name=MONDO:0005737, id=n0, type=disease)",
+        "add_qnode(type=protein, id=n1)",
+        "add_qnode(type=disease, id=n2)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "add_qedge(source_id=n1, target_id=n2, id=e1)",
+        "expand(kp=ARAX/KG2)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+
+
+def babesia_query_producing_self_edges():
+    print("Testing babesia query that produces self edges (causing #742)")
+    actions_list = [
+        "create_message",
+        "add_qnode(name=babesia, id=n00)",
+        "add_qnode(id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(edge_id=e00, kp=ARAX/KG2)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+
+
+def three_hop_query():
+    print("Testing three-hop query")
+    actions_list = [
+        "create_message",
+        "add_qnode(id=n00, curie=DOID:8454)",
+        "add_qnode(id=n01, type=phenotypic_feature)",
+        "add_qnode(id=n02, type=protein)",
+        "add_qnode(id=n03, type=anatomical_entity)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "add_qedge(source_id=n02, target_id=n03, id=e02)",
+        "expand()",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+
+
+def branched_query():
+    print("Testing branched query")
+    actions_list = [
+        "create_message",
+        "add_qnode(id=n00, curie=DOID:14330)",
+        "add_qnode(id=n01, type=protein)",
+        "add_qnode(id=n02, type=chemical_substance)",
+        "add_qedge(source_id=n00, target_id=n02, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "expand()",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+
+
+def add_all_query_with_multiple_synonyms_in_results():
+    print("Testing query with many synonyms, using add_all")
+    actions_list = [
+        "create_message",
+        "add_qnode(id=n00, name=warfarin)",
+        "add_qnode(id=n01, type=disease)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(kp=ARAX/KG2, synonym_handling=add_all)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    assert len(kg_in_dict_form['nodes']['n00']) > 1
+
+
+def query_that_expands_same_edge_twice():
+    print("Testing query that expands the same edge twice, using different KPs")
+    actions_list = [
+        "create_message",
+        "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521)",  # ibuprofen
+        "add_qnode(id=n01, type=protein)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01)",
+        "expand(kp=ARAX/KG1, continue_if_no_results=true)",
+        "expand(kp=ARAX/KG2, continue_if_no_results=true)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    assert any(edge for edge in kg_in_dict_form['edges']['e00'].values() if edge.is_defined_by == "ARAX/KG1")
+    assert any(edge for edge in kg_in_dict_form['edges']['e00'].values() if edge.is_defined_by == "ARAX/KG2")
 
 
 def main():
@@ -732,18 +762,23 @@ def main():
     test_kg1_property_format()
     simple_bte_acetaminophen_query()
     simple_bte_cdk2_query()
-    # test_two_hop_bte_query()
     test_simple_bidirectional_query()
     query_that_doesnt_return_original_curie()
     single_node_query_map_back()
     single_node_query_add_all()
     single_node_query_without_synonyms()
     query_with_no_edge_or_node_ids()
+    query_that_produces_multiple_provided_bys()
+    babesia_query_producing_self_edges()
+    three_hop_query()
+    branched_query()
+    add_all_query_with_multiple_synonyms_in_results()
+    query_that_expands_same_edge_twice()
 
     # Bug tests
     # ambitious_query_causing_multiple_qnode_ids_error()
+    # test_two_hop_bte_query()
 
-    print(f'\nEVERYTHING PASSED!')
 
 
 if __name__ == "__main__":
