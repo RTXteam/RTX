@@ -23,7 +23,8 @@ class ARAXOverlay:
             'overlay_clinical_info',
             'compute_jaccard',
             'add_node_pmids',
-            'predict_drug_treats_disease'
+            'predict_drug_treats_disease',
+            'fisher_exact_test'
         }
         self.report_stats = True
 
@@ -466,6 +467,77 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         response = PDTD.predict_drug_treats_disease()
         return response
 
+    def __fisher_exact_test(self, describe=False):
+        """
+        Computes the significance of connection between a list of nodes with certain type in KG and each of the adjacent nodes with other type by the fisher's exact test.
+        Allowable parameters:
+            :param query_node_id: (required) a specific QNode id (you used in add_qnode() in DSL) of query nodes in message KG eg. "n00" (this might be a bunch of "protein" nodes in message KG)
+            :param adjacent_node_type: (required) a specific node type in knowledge provider. This will specify which node type to consider for calculating the Fisher Exact Test, eg. "biological_process"
+            :param query_edge_id: (optional) a specific QEdge id (you used in add_qedge() in DSL) of query edges in message KG, eg. "e00" (this might be a bunch of 'has_phenotype' edges in message KG)
+            :param adjacent_edge_type: (optional) a specific edge type in knowledge provider. This will specify which edge type to consider for calculating the Fisher Exact Test, eg. "involved_in"
+            :param top_n: (optional) an int indicating the top number of results to return (otherwise all results returned) eg. 10
+            :param cutoff: (optional) a float indicating the maximal p-value you want results returned for (otherwise all results returned) eg. 0.05
+        :return: response
+        """
+
+        message = self.message
+        parameters = self.parameters
+        # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
+        # allowable_parameters = {'action': {'fisher_exact_test'}, 'query_node_label': {...}, 'compare_node_label':{...}}
+
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and hasattr(message.query_graph, 'edges'):
+            allowable_query_node_id = set([node.type[0] for node in message.knowledge_graph.nodes])
+            allowwable_query_edge_id = set([edge.type for edge in message.knowledge_graph.edges])
+            allowable_adjacent_node_type = [None,'metabolite','biological_process','chemical_substance','microRNA','protein',
+                                 'anatomical_entity','pathway','cellular_component','phenotypic_feature','disease','molecular_function']
+            allowable_adjacent_edge_type = [None,'physically_interacts_with','subclass_of','involved_in','affects','capable_of',
+                                 'contraindicated_for','indicated_for','regulates','expressed_in','gene_associated_with_condition',
+                                 'has_phenotype','gene_mutations_contribute_to','participates_in','has_part']
+
+            allowable_parameters = {'action': {'fisher_exact_test'},
+                                    'query_node_id': allowable_query_node_id,
+                                    'adjacent_node_type': allowable_adjacent_node_type,
+                                    'query_edge_id': allowwable_query_edge_id,
+                                    'adjacent_edge_type': allowable_adjacent_edge_type,
+                                    'top_n': [None,int()],
+                                    'cutoff': [None,float()]
+                                    }
+        else:
+            allowable_parameters = {'action': {'fisher_exact_test'},
+                                    'query_node_id': {"a specific QNode id of query nodes in message KG (required), eg. 'n00'"},
+                                    'adjacent_node_type': {"a specific node type in knowledge provider. This will specify which node type to consider for calculating the Fisher Exact Test (required), eg. 'biological_process'"},
+                                    'query_edge_id': {"a specific QEdge id of query edges in message KG (optional, otherwise all edge types are used), eg. 'e00'"},
+                                    'adjacent_edge_type': {"a specific edge type in knowledge provider. This will specify which edge type to consider for calculating the Fisher Exact Test (optional, otherwise all edge types are returned), eg. 'involved_in'"},
+                                    'top_n': {"an int indicating the top number of results to return (optional,otherwise all results returned), eg. 10"},
+                                    'cutoff': {"a float indicating the maximal p-value you want results returned for (optional, otherwise all results returned), eg. 0.05"}
+                                    }
+
+        # A little function to describe what this thing does
+        if describe:
+            brief_description = """
+`fisher_exact_test` computes the significance(p-value) of connection to the adjacent nodes with specified type (e.g. 'biological_process') and expands or decorates the knowledge graph based on the significant connection.
+This p-value is calculated from fisher's exact test based on the contingency table with following format:
+    |                                  | in query node list | not in query node list | row total |
+    | connect to certain adjacent node |         a          |           b            |   a+b     |
+    | not connect to adjacent node     |         c          |           d            |   c+d     |
+    |         column total             |        a+c         |          b+d           |  a+b+c+d  |
+
+"""
+            allowable_parameters['brief_description'] = brief_description
+            return allowable_parameters
+
+        # Make sure only allowable parameters and values have been passed
+        self.check_params(allowable_parameters)
+        # return if bad parameters have been passed
+        if self.response.status != 'OK':
+            return self.response
+
+        # now do the call out to FTEST
+        from Overlay.fisher_exact_test import ComputeFTEST
+        FTEST = ComputeFTEST(self.response, self.message, self.parameters)
+        response = FTEST.fisher_exact_test()
+        return response
+
 ##########################################################################################
 def main():
     print("start ARAX_overlay")
@@ -477,7 +549,7 @@ def main():
     #### Create an ActionsParser object
     from actions_parser import ActionsParser
     actions_parser = ActionsParser()
- 
+
     #### Set a simple list of actions
     #actions_list = [
     #    "overlay(compute_confidence_scores=true)",
