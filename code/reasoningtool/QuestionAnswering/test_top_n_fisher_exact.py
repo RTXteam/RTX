@@ -1,5 +1,9 @@
 import sys
-sys.path.append("/home/dkoslicki/Desktop/RTX/code/reasoningtool/QuestionAnswering")
+pathlist = os.path.realpath(__file__).split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+dbpath = os.path.sep.join([*pathlist[:(RTXindex+1)],'code','reasoningtool','QuestionAnswering'])
+sys.path.append(dbpath)
+
 import ReasoningUtilities as RU  # Note: this is using KG1
 import fisher_exact
 
