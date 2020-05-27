@@ -652,10 +652,18 @@ class ARAXMessenger:
                             buf += f" jaccard={jaccard}, factor={factor}"
                             score *= factor
                 response.debug(f"  - {kg_edge_id}  {buf}")
+
+            # #### If there was a best_probability recorded, then multiply times the running score
             if best_probability > 0.0:
                 score *= best_probability
+
+            # #### Make all scores at least 0.01. This is all way low anyway, but let's not have anything that rounds to zero
             if score < 0.01:
                 score += 0.01
+
+            #### Keep only 3 digits after the decimal 
+            score = int(score * 1000 + 0.5) / 1000.0
+
             response.debug(f"  ---> final score={score}")
             result.confidence = score
             result.row_data = [ score, result.essence, result.essence_type ]
