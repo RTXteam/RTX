@@ -57,9 +57,9 @@ class QueryGraphInfo:
         if self.n_nodes == 1 and self.n_edges > 0:
             response.error("QueryGraph may not have edges if there is only one node", error_code="QueryGraphTooManyEdges")
             return response
-        if self.n_nodes == 2 and self.n_edges > 1:
-            response.error("QueryGraph may not have more than 1 edge if there are only 2 nodes", error_code="QueryGraphTooManyEdges")
-            return response
+        #if self.n_nodes == 2 and self.n_edges > 1:
+        #    response.error("QueryGraph may not have more than 1 edge if there are only 2 nodes", error_code="QueryGraphTooManyEdges")
+        #    return response
 
         #### Loop through nodes computing some stats
         node_info = {}
@@ -88,9 +88,15 @@ class QueryGraphInfo:
         edge_info = {}
         self.edge_type_map = {}
         for qedge in edges:
+
+            #### Ignore special informationational edges for now. FIXME.
+            if qedge.type is not None and ( qedge.relation == 'ngd' or qedge.relation == 'jaccard_index' ):
+                continue
+
             id = qedge.id
             edge_info[id] = { 'id': id, 'has_type': False, 'source_id': qedge.source_id, 'target_id': qedge.target_id, 'type': None }
-            if qnode.type is not None:
+            #if qnode.type is not None:
+            if qedge.type is not None:
                 edge_info[id]['has_type'] = True
                 edge_info[id]['type'] = qnode.type
             if qedge.id is None:
