@@ -494,10 +494,10 @@ else, only remove a single source/target node based on a query node id (via `rem
                 f"Edge attribute must be provided, allowable attributes are: {list(allowable_parameters['edge_attribute'])}",
                 error_code="UnknownValue")
         else:
-            if edge_params['edge_attribute'] in {'ngd', 'chi_square'}:
+            if edge_params['edge_attribute'] in {'ngd', 'chi_square', 'fisher_exact'}:
                 edge_params['direction'] = 'above'
                 edge_params['top'] = False
-            elif edge_params['edge_attribute'] in {'jaccard_index', 'fisher_exact', 'observed_expected_ratio'}:
+            elif edge_params['edge_attribute'] in {'jaccard_index', 'observed_expected_ratio'}:
                 edge_params['direction'] = 'below'
                 edge_params['top'] = True
             else:
