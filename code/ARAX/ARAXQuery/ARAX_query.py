@@ -648,23 +648,21 @@ def main():
         ]}}
     elif params.example_number == 4:
         query = { "previous_message_processing_plan": { "processing_actions": [
-            "create_message",
             "add_qnode(name=hypertension, id=n00)",
-            "add_qnode(type=protein, is_set=True, id=n01)",
-            "add_qedge(source_id=n01, target_id=n00, id=e00)",
+            "add_qnode(type=protein, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
-            "filter(maximum_results=2)",
+            "resultify()",
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 5:  # test overlay with ngd: hypertension->protein
         query = { "previous_message_processing_plan": { "processing_actions": [
-            "create_message",
             "add_qnode(name=hypertension, id=n00)",
-            "add_qnode(type=protein, is_set=True, id=n01)",
-            "add_qedge(source_id=n01, target_id=n00, id=e00)",
+            "add_qnode(type=protein, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
             "overlay(action=compute_ngd)",
-            "filter(maximum_results=2)",
+            "resultify()",
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 6:  # test overlay
