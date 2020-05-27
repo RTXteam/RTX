@@ -7,6 +7,7 @@ import json
 import ast
 import re
 from datetime import datetime
+import numpy as np
 
 from response import Response
 from query_graph_info import QueryGraphInfo
@@ -571,6 +572,94 @@ class ARAXMessenger:
 
         #### Return the response
         return response
+
+
+    #### Early experimental code to re-rank results
+    def rank_results(self, message, response=None):
+
+        #### Define a default response
+        if response is None:
+            if self.response is None:
+                response = Response()
+            else:
+                response = self.response
+        else:
+            self.response = response
+        self.message = message
+
+        #### Determine the query_graph info
+        query_graph_info = QueryGraphInfo()
+        result = query_graph_info.assess(message)
+        #response.merge(result)
+        #if result.status != 'OK':
+        #    print(response.show(level=Response.DEBUG))
+        #    return response
+
+        #### Create an index of edges in the knowledge_graph and collect some min,max stats
+        kg_edges = {}
+        score_stats = {}
+        for edge in message.knowledge_graph.edges:
+            kg_edges[edge.id] = edge
+            if edge.edge_attributes is not None:
+                for edge_attribute in edge.edge_attributes:
+                    for attribute_name in [ 'probability', 'ngd', 'jaccard_index' ]:
+                        if edge_attribute.name == attribute_name:
+                            if attribute_name not in score_stats:
+                                score_stats[attribute_name] = { 'minimum': -9999, 'maximum': -9999 }
+                            value = float(edge_attribute.value)
+                            if np.isinf(value): value = 9999
+                            if score_stats[attribute_name]['minimum'] == -9999 or value < score_stats[attribute_name]['minimum']:
+                                score_stats[attribute_name]['minimum'] = value
+                            if score_stats[attribute_name]['maximum'] == -9999 or value > score_stats[attribute_name]['maximum']:
+                                score_stats[attribute_name]['maximum'] = value
+        response.debug(f"Summary of available edge metrics: {score_stats}")
+
+        # Iterate through the results
+        i_result = 0
+        for result in message.results:
+            response.debug(f"Metrics for result {i_result}  {result.essence}: ")
+            score = 1.0
+            best_probability = 0.0
+            for edge in result.edge_bindings:
+                kg_edge_id = edge.kg_id
+                buf = ''
+                if kg_edges[kg_edge_id].confidence is not None:
+                    buf += f" confidence={kg_edges[kg_edge_id].confidence}"
+                    score *= float(kg_edges[kg_edge_id].confidence)
+                if kg_edges[kg_edge_id].edge_attributes is not None:
+                    for edge_attribute in kg_edges[kg_edge_id].edge_attributes:
+                        value = float(edge_attribute.value)
+                        if edge_attribute.name == 'probability':
+                            buf += f" probability={edge_attribute.value}"
+                            if value > best_probability:
+                                best_probability = value
+                        if edge_attribute.name == 'ngd':
+                            ngd = float(edge_attribute.value)
+                            if np.isinf(ngd): ngd = 10.0
+                            buf += f" ngd={ngd}"
+                            factor = 1 - ( ngd - 0.3) * 0.6
+                            if factor < 0.01: factor = 0.01
+                            if factor > 1: factor = 1.0
+                            buf += f" ngd_factor={factor}"
+                            score *= factor
+                        if edge_attribute.name == 'jaccard_index':
+                            jaccard = float(edge_attribute.value)
+                            if np.isinf(jaccard): jaccard = 0.01
+                            factor = jaccard / score_stats['jaccard_index']['maximum'] * 0.9
+                            buf += f" jaccard={jaccard}, factor={factor}"
+                            score *= factor
+                response.debug(f"  - {kg_edge_id}  {buf}")
+            if best_probability > 0.0:
+                score *= best_probability
+            if score < 0.01:
+                score += 0.01
+            response.debug(f"  ---> final score={score}")
+            result.confidence = score
+            i_result += 1
+
+        #### Re-sort the final results
+        message.results.sort(key=lambda result: result.confidence, reverse=True)
+
 
 
     #### Convert a Message as a dict to a Message as objects
