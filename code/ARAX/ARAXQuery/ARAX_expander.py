@@ -198,7 +198,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                     sub_query_graph.edges.append(new_qedge)
 
                 # Check for (unusual) case in which this edge has already been expanded (e.g., in a prior Expand() call)
-                edge_has_already_been_expanded = dict_kg['nodes'].get(qnodes[0].id) and dict_kg['nodes'].get(qnodes[1].id)
+                edge_has_already_been_expanded = qedge_id in dict_kg['edges']
 
                 # Add (copies of) this edge's two nodes to our new query sub graph
                 for qnode in qnodes:
