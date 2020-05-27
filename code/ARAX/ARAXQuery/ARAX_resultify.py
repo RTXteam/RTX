@@ -261,7 +261,7 @@ def _make_result_from_node_set(kg: KnowledgeGraph,
     result_graph = KnowledgeGraph(nodes=nodes, edges=edges)
     result = Result(node_bindings=node_bindings,
                     edge_bindings=edge_bindings,
-                    result_graph=result_graph)
+                    result_graph=result_graph)   #### FIXME: result_graph is deprecated and should no longer be used except for testing
     return result
 
 

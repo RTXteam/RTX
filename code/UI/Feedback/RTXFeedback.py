@@ -245,16 +245,16 @@ class RTXFeedback:
     if message.results is not None:
       for result in message.results:
         if result.reasoner_id is None:
-          result.reasoner_id = "RTX"
+          result.reasoner_id = "ARAX"
 
     #### Update the message with current information
     rtxConfig = RTXConfiguration()
     if message.tool_version is None:
       message.tool_version = rtxConfig.version
     if message.schema_version is None:
-      message.schema_version = "0.9.0"
+      message.schema_version = "0.9.3"
     if message.reasoner_id is None:
-      message.reasoner_id = "RTX"
+      message.reasoner_id = "ARAX"
     message.n_results = n_results
     message.type = "translator_reasoner_message"
     message.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
@@ -455,7 +455,7 @@ class RTXFeedback:
     except Exception as error:
       return( { "status": 460, "title": "Error storing feedback", "detail": "Your feedback was not stored because of error: "+str(error), "type": "about:blank" }, 460 )
 
-    return( { "status": 200, "title": "Feedback stored", "detail": "Your feedback has been stored by RTX as id="+str(insertResult.result_rating_id), "type": "about:blank" }, 200 )
+    return( { "status": 200, "title": "Feedback stored", "detail": "Your feedback has been stored by ARAX as id="+str(insertResult.result_rating_id), "type": "about:blank" }, 200 )
 
 
   #### Fetch all available feedback
@@ -588,7 +588,7 @@ class RTXFeedback:
         matchResult = re.match( r'http[s]://arax.rtx.ai/.*api/rtx/.+/message/(\d+)',uri,re.M|re.I )
         if matchResult:
           message_id = matchResult.group(1)
-          if debug: eprint("DEBUG: Found local RTX identifier corresponding to respond_id "+message_id)
+          if debug: eprint("DEBUG: Found local ARAX identifier corresponding to message_id "+message_id)
           if debug: eprint("DEBUG: Loading message_id "+message_id)
           message = self.getMessage(message_id)
           #eprint(type(message))
@@ -641,7 +641,7 @@ class RTXFeedback:
         messageToMerge = TxMessage.from_dict(messages[counter])
         if messageToMerge.reasoner_id is None:
           messageToMerge.reasoner_id = "Unknown"
-        if messageToMerge.reasoner_id != "RTX":
+        if messageToMerge.reasoner_id != "ARAX":
           messageToMerge = self.fix_message(query,messageToMerge,messageToMerge.reasoner_id)
 
         finalMessage = self.merge_message(finalMessage,messageToMerge)
@@ -728,7 +728,7 @@ class RTXFeedback:
   ##########################################################################################################################
   def fix_message(self,query,message,reasoner_id):
 
-    if reasoner_id == "RTX":
+    if reasoner_id == "ARAX":
       base_url = "https://arax.rtx.ai/api/rtx/v1"
     elif reasoner_id == "Robokop":
       base_url = "http://robokop.renci.org:6011/api"

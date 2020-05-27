@@ -13,7 +13,7 @@ from ARAX_resultify import ARAXResultify
 
 # Utility functions
 
-def run_query_and_conduct_standard_testing(actions_list, num_allowed_retries=2):
+def run_query_and_conduct_standard_testing(actions_list, num_allowed_retries=2, do_standard_testing=True):
     response = Response()
     actions_parser = ActionsParser()
 
@@ -64,7 +64,8 @@ def run_query_and_conduct_standard_testing(actions_list, num_allowed_retries=2):
     # print(response.show(level=Response.DEBUG))
     kg_in_dict_form = convert_list_kg_to_dict_kg(message.knowledge_graph)
     print_counts_by_qgid(kg_in_dict_form)
-    conduct_standard_testing(kg_in_dict_form, message.query_graph)
+    if do_standard_testing:
+        conduct_standard_testing(kg_in_dict_form, message.query_graph)
     return kg_in_dict_form
 
 
@@ -555,11 +556,11 @@ def test_two_hop_bte_query():
     actions_list = [
         "create_message",
         "add_qnode(id=n00, curie=NCBIGene:1017)",
-        "add_qnode(id=n01, type=protein, is_set=True)",
-        "add_qnode(id=n02, type=gene)",
+        "add_qnode(id=n01, type=disease, is_set=True)",
+        "add_qnode(id=n02, type=chemical_substance)",
         "add_qedge(id=e00, source_id=n00, target_id=n01)",
         "add_qedge(id=e01, source_id=n01, target_id=n02)",
-        "expand(edge_id=[e00, e01], kp=BTE)",
+        "expand(kp=BTE)",
         "return(message=true, store=false)",
     ]
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
@@ -680,6 +681,131 @@ def babesia_query_producing_self_edges():
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
 
+def three_hop_query():
+    print("Testing three-hop query")
+    actions_list = [
+        "create_message",
+        "add_qnode(id=n00, curie=DOID:8454)",
+        "add_qnode(id=n01, type=phenotypic_feature)",
+        "add_qnode(id=n02, type=protein)",
+        "add_qnode(id=n03, type=anatomical_entity)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "add_qedge(source_id=n02, target_id=n03, id=e02)",
+        "expand()",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+
+
+def branched_query():
+    print("Testing branched query")
+    actions_list = [
+        "create_message",
+        "add_qnode(id=n00, curie=DOID:14330)",
+        "add_qnode(id=n01, type=protein)",
+        "add_qnode(id=n02, type=chemical_substance)",
+        "add_qedge(source_id=n00, target_id=n02, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "expand()",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+
+
+def add_all_query_with_multiple_synonyms_in_results():
+    print("Testing query with many synonyms, using add_all")
+    actions_list = [
+        "create_message",
+        "add_qnode(id=n00, name=warfarin)",
+        "add_qnode(id=n01, type=disease)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(kp=ARAX/KG2, synonym_handling=add_all)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    assert len(kg_in_dict_form['nodes']['n00']) > 1
+
+
+def query_that_expands_same_edge_twice():
+    print("Testing query that expands the same edge twice, using different KPs")
+    actions_list = [
+        "create_message",
+        "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521)",  # ibuprofen
+        "add_qnode(id=n01, type=protein)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01)",
+        "expand(kp=ARAX/KG1, continue_if_no_results=true)",
+        "expand(kp=ARAX/KG2, continue_if_no_results=true)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    assert any(edge for edge in kg_in_dict_form['edges']['e00'].values() if edge.is_defined_by == "ARAX/KG1")
+    assert any(edge for edge in kg_in_dict_form['edges']['e00'].values() if edge.is_defined_by == "ARAX/KG2")
+
+
+def angioedema_bte_query_causing_759():
+    print("Testing angioedema BTE query causing #759")
+    actions_list = [
+        "create_message",
+        # "add_qnode(name=Angioedema, id=n1)",  # Original query
+        # "add_qnode(name=vasodilation, id=n2)",
+        # "add_qedge(source_id=n1, target_id=n2, id=e1)",
+        # "expand(edge_id=[e1], kp=BTE)",
+        "add_qnode(name=vasodilation, id=n1)",  # Revised
+        "add_qnode(type=disease, id=n2)",
+        "add_qedge(source_id=n1, target_id=n2, id=e1)",
+        "expand(edge_id=[e1], kp=BTE)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    # for node in kg_in_dict_form['nodes']['n2'].values():
+    #     if node.id == "MESH:D000799" or "angioedema" in node.id.lower():
+    #         print(node)
+
+
+def query_using_continue_if_no_results():
+    print("Testing query with no results using continue_if_no_results #771")
+    actions_list = [
+        "create_message",
+        "add_qnode(curie=UniProtKB:P14136, id=n00)",
+        "add_qnode(curie=UniProtKB:P35579, id=n01)",
+        "add_qnode(type=biological_process, id=n02)",
+        "add_qedge(source_id=n00, target_id=n02, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "expand(edge_id=[e00,e01], kp=ARAX/KG1, continue_if_no_results=true)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list, do_standard_testing=False)
+
+
+def query_using_list_of_curies():
+    print("Testing query using list of curies")
+    actions_list = [
+        "create_message",
+        "add_qnode(curie=[CUI:C0024530, CUI:C0024535, CUI:C0024534, CUI:C0747820], id=n00)",
+        "add_qnode(type=phenotypic_feature, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(kp=ARAX/KG2)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    assert 1 < len(kg_in_dict_form['nodes']['n00']) <= 4
+
+
+def query_with_curies_on_both_ends():
+    print("Testing query with curies on both ends")
+    actions_list = [
+        "create_message",
+        "add_qnode(name=diabetes, id=n00)",
+        "add_qnode(name=ketoacidosis, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(kp=ARAX/KG2)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    assert len(kg_in_dict_form['nodes']['n00']) == 1 and len(kg_in_dict_form['nodes']['n01']) == 1
+
+
 def main():
     # Regular tests
     test_kg1_parkinsons_demo_example()
@@ -698,8 +824,8 @@ def main():
     acetaminophen_example_enforcing_directionality()
     parkinsons_example_enforcing_directionality()
     test_kg1_property_format()
-    simple_bte_acetaminophen_query()
-    simple_bte_cdk2_query()
+    # simple_bte_acetaminophen_query()
+    # simple_bte_cdk2_query()
     test_simple_bidirectional_query()
     query_that_doesnt_return_original_curie()
     single_node_query_map_back()
@@ -708,11 +834,18 @@ def main():
     query_with_no_edge_or_node_ids()
     query_that_produces_multiple_provided_bys()
     babesia_query_producing_self_edges()
+    three_hop_query()
+    branched_query()
+    add_all_query_with_multiple_synonyms_in_results()
+    query_that_expands_same_edge_twice()
+    query_using_continue_if_no_results()
+    query_using_list_of_curies()
+    query_with_curies_on_both_ends()
 
-    # Bug tests
+    # Non-standard tests/bug tests
     # ambitious_query_causing_multiple_qnode_ids_error()
     # test_two_hop_bte_query()
-
+    # angioedema_bte_query_causing_759()
 
 
 if __name__ == "__main__":

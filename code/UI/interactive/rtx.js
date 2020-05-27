@@ -397,7 +397,7 @@ function sendQuestion(e) {
 			var jsonObj2 = JSON.parse(xhr2.responseText);
 			document.getElementById("devdiv").innerHTML += "<br>================================================================= QUERY::<pre id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</pre>";
 
-			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<b>"+jsonObj2["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br><br><i>"+jsonObj2["code_description"]+"</i>";
+			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<b>"+jsonObj2["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br><br><i>"+jsonObj2["code_description"]+"</i><br>";
 			sesame('openmax',statusdiv);
 
 			render_message(jsonObj2);
@@ -466,7 +466,7 @@ function retrieve_message() {
 	    render_message(jsonObj2);
 	}
 	else if ( xhr.status == 404 ) {
-	    statusdiv.innerHTML += "<br>The following message id was not found:<span class='error'>"+message_id+"</span>";
+	    statusdiv.innerHTML += "<br>Message with id=<span class='error'>"+message_id+"</span> was not found.";
 	    sesame('openmax',statusdiv);
 	    there_was_an_error();
 	}
@@ -518,27 +518,27 @@ function render_message(respObj) {
         document.getElementById("summary_container").innerHTML += "<h2>No results...</h2>";
     }
 
-    if (respObj["query_graph"]) {
+
+    if (respObj["query_graph"])
 	process_graph(respObj["query_graph"],999);
-    }
-    else {
+    else
 	cytodata[999] = 'dummy'; // this enables query graph editing
-    }
 
-    if ( respObj["table_column_names"] ) {
+
+    if ( respObj["table_column_names"] )
         document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br></div>";
-    }
-    else {
+    else
         document.getElementById("summary_container").innerHTML += "<h2>Summary not available for this query</h2>";
-    }
 
-    if (respObj["query_options"]) {
+
+    if (respObj["query_options"])
 	process_q_options(respObj["query_options"]);
-    }
 
-    if (respObj["log"]) {
+
+    if (respObj["log"])
 	process_log(respObj["log"]);
-    }
+    else
+        document.getElementById("logdiv").innerHTML = "<h2 style='margin-left:20px;'>No log messages in this response</h2>";
 
     add_cyto();
     statusdiv.appendChild(document.createTextNode("done."));
@@ -1021,26 +1021,26 @@ function add_cyto() {
 	    var fields = [ "confidence","weight","evidence_type","qualifiers","negated",
 			   "relation","is_defined_by","defined_datetime","id","qedge_id" ];
 	    for (var field of fields) {
-		if (this.data(field)) {
-		    span = document.createElement("span");
-		    span.className = "fieldname";
-		    span.appendChild(document.createTextNode(field+": "));
-		    div.appendChild(span);
-		    if (field == "confidence" || field == "weight") {
-			div.appendChild(document.createTextNode(Number(this.data(field)).toPrecision(3)));
-		    }
-                    else if (this.data(field).startsWith("http")) {
-			var link = document.createElement("a");
-			link.href = this.data(field);
-			link.target = "nodeuri";
-			link.appendChild(document.createTextNode(this.data(field)));
-			div.appendChild(link);
-		    }
-		    else {
-		    	div.appendChild(document.createTextNode(this.data(field)));
-		    }
-		    div.appendChild(document.createElement("br"));
+		if (this.data(field) == null) continue;
+
+		span = document.createElement("span");
+		span.className = "fieldname";
+		span.appendChild(document.createTextNode(field+": "));
+		div.appendChild(span);
+		if (field == "confidence" || field == "weight") {
+		    div.appendChild(document.createTextNode(Number(this.data(field)).toPrecision(3)));
 		}
+                else if (this.data(field).toString().startsWith("http")) {
+		    var link = document.createElement("a");
+		    link.href = this.data(field);
+		    link.target = "nodeuri";
+		    link.appendChild(document.createTextNode(this.data(field)));
+		    div.appendChild(link);
+		}
+		else {
+		    div.appendChild(document.createTextNode(this.data(field)));
+		}
+		div.appendChild(document.createElement("br"));
 	    }
 
             tmpArr = [];
@@ -1731,87 +1731,76 @@ function insert_feedback_item(el_id, feed_obj) {
 
 
 function get_feedback_fields() {
-    var xhr4 = new XMLHttpRequest();
-    xhr4.open("get",  baseAPI + "api/rtx/v1/feedback/expertise_levels", true);
-    xhr4.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-    xhr4.send(null);
-
-    xhr4.onloadend = function() {
-	if ( xhr4.status == 200 ) {
-	    var jsonObj4 = JSON.parse(xhr4.responseText);
-	    add_to_dev_info("FEEDBACK FIELDS",jsonObj4);
-
-	    for (var i in jsonObj4.expertise_levels) {
-		fb_explvls[jsonObj4.expertise_levels[i].expertise_level_id] = {};
-		fb_explvls[jsonObj4.expertise_levels[i].expertise_level_id].desc = jsonObj4.expertise_levels[i].description;
-		fb_explvls[jsonObj4.expertise_levels[i].expertise_level_id].name = jsonObj4.expertise_levels[i].name;
-		fb_explvls[jsonObj4.expertise_levels[i].expertise_level_id].tag  = jsonObj4.expertise_levels[i].tag;
+    fetch(baseAPI + "api/rtx/v1/feedback/expertise_levels")
+        .then(response => response.json())
+        .then(data => {
+	    add_to_dev_info("FEEDBACK FIELDS",data);
+            for (var level of data.expertise_levels) {
+		fb_explvls[level.expertise_level_id] = {};
+		fb_explvls[level.expertise_level_id].desc = level.description;
+		fb_explvls[level.expertise_level_id].name = level.name;
+		fb_explvls[level.expertise_level_id].tag  = level.tag;
 	    }
-	}
-    };
+        })
+        .catch(error => { //ignore...
+	});
 
+    fetch(baseAPI + "api/rtx/v1/feedback/ratings")
+        .then(response => response.json())
+        .then(data => {
+            add_to_dev_info("RATINGS",data);
 
-    var xhr5 = new XMLHttpRequest();
-    xhr5.open("get",  baseAPI + "api/rtx/v1/feedback/ratings", true);
-    xhr5.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-    xhr5.send(null);
-
-    xhr5.onloadend = function() {
-	if ( xhr5.status == 200 ) {
-	    var jsonObj5 = JSON.parse(xhr5.responseText);
-	    add_to_dev_info("RATINGS",jsonObj5);
-
-	    for (var i in jsonObj5.ratings) {
-		fb_ratings[jsonObj5.ratings[i].rating_id] = {};
-		fb_ratings[jsonObj5.ratings[i].rating_id].desc = jsonObj5.ratings[i].description;
-		fb_ratings[jsonObj5.ratings[i].rating_id].name = jsonObj5.ratings[i].name;
-		fb_ratings[jsonObj5.ratings[i].rating_id].tag  = jsonObj5.ratings[i].tag;
+	    for (var rat of data.ratings) {
+	        fb_ratings[rat.rating_id] = {};
+	        fb_ratings[rat.rating_id].desc = rat.description;
+	        fb_ratings[rat.rating_id].name = rat.name;
+	        fb_ratings[rat.rating_id].tag  = rat.tag;
 	    }
-	}
-    };
+        })
+        .catch(error => { //ignore...
+	});
 }
 
 
 function get_example_questions() {
-    var xhr8 = new XMLHttpRequest();
-    xhr8.open("get",  baseAPI + "api/rtx/v1/exampleQuestions", true);
-    xhr8.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-    xhr8.send(null);
+    fetch(baseAPI + "api/rtx/v1/exampleQuestions")
+        .then(response => response.json())
+        .then(data => {
+	    add_to_dev_info("EXAMPLE Qs",data);
 
-    xhr8.onloadend = function() {
-	if ( xhr8.status == 200 ) {
-	    var ex_qs = JSON.parse(xhr8.responseText);
+	    var qqq = document.getElementById("qqq");
+	    qqq.innerHTML = '';
 
             var opt = document.createElement('option');
 	    opt.value = '';
 	    opt.style.borderBottom = "1px solid black";
 	    opt.innerHTML = "Example Questions&nbsp;&nbsp;&nbsp;&#8675;";
-            document.getElementById("qqq").appendChild(opt);
+	    qqq.appendChild(opt);
 
-	    for (var i in ex_qs) {
+	    for (var exq of data) {
 		opt = document.createElement('option');
-		opt.value = ex_qs[i].question_text;
-		opt.innerHTML = ex_qs[i].query_type_id+": "+ex_qs[i].question_text;
-		document.getElementById("qqq").appendChild(opt);
+		opt.value = exq.question_text;
+		opt.innerHTML = exq.query_type_id+": "+exq.question_text;
+		qqq.appendChild(opt);
 	    }
-	}
-    };
+	})
+        .catch(error => { //ignore...
+	});
 }
 
 
 function load_nodes_and_predicates() {
-    var xhr11 = new XMLHttpRequest();
-    xhr11.open("get",  baseAPI + "api/rtx/v1/predicates", true);
-    xhr11.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-    xhr11.send(null);
-
     var allnodes_node = document.getElementById("allnodetypes");
     allnodes_node.innerHTML = '';
 
-    xhr11.onloadend = function() {
-        if ( xhr11.status == 200 ) {
-            predicates = JSON.parse(xhr11.responseText);
-            add_to_dev_info("PREDICATES",predicates);
+    fetch(baseAPI + "api/rtx/v1/predicates")
+	.then(response => {
+	    if (response.ok) return response.json();
+	    else throw new Error('Something went wrong');
+	})
+        .then(data => {
+	    add_to_dev_info("PREDICATES",data);
+	    predicates = data;
 
 	    var opt = document.createElement('option');
 	    opt.value = '';
@@ -1823,21 +1812,20 @@ function load_nodes_and_predicates() {
 		opt = document.createElement('option');
 		opt.value = p;
 		opt.innerHTML = p;
-		document.getElementById("allnodetypes").appendChild(opt);
+		allnodes_node.appendChild(opt);
 	    }
-            var opt = document.createElement('option');
+            opt = document.createElement('option');
 	    opt.value = 'NONSPECIFIC';
 	    opt.innerHTML = "Unspecified/Non-specific";
-	    document.getElementById("allnodetypes").appendChild(opt);
-	}
-	else {
+	    allnodes_node.appendChild(opt);
+	})
+        .catch(error => {
 	    var opt = document.createElement('option');
 	    opt.value = '';
 	    opt.style.borderBottom = "1px solid black";
 	    opt.innerHTML = "-- Error Loading Node Types --";
 	    allnodes_node.appendChild(opt);
-	}
-    };
+        });
 }
 
 
@@ -1877,20 +1865,16 @@ function togglecolor(obj,tid) {
 	col = '#047';
     }
     document.getElementById(tid).style.color = col;
-
 }
 
 
-// taken from http://www.activsoftware.com/
+// adapted from http://www.activsoftware.com/
 function getQueryVariable(variable) {
-    var query = window.location.search.substring(1);
-    var vars = query.split("&");
-    for (var i=0;i<vars.length;i++) {
-	var pair = vars[i].split("=");
-	if (decodeURIComponent(pair[0]) == variable) {
+    for (var qsv of window.location.search.substring(1).split("&")) {
+	var pair = qsv.split("=");
+	if (decodeURIComponent(pair[0]) == variable)
 	    return decodeURIComponent(pair[1]);
-	}
-    } 
+    }
     return false;
 }
 
@@ -1952,10 +1936,8 @@ function display_list(listId) {
     listhtml += "<br><br>";
 
     document.getElementById("listdiv"+listId).innerHTML = listhtml;
-//    setTimeout(function() {check_entities();sesame('openmax',document.getElementById("listdiv"+listId));}, 500);
     check_entities();
 }
-
 
 function get_list_as_string(listId) {
     var liststring = '[';
@@ -1969,8 +1951,6 @@ function get_list_as_string(listId) {
     liststring += ']';
     return liststring;
 }
-
-
 
 function add_items_to_list(listId,indx) {
     for (var nitem in columnlist[indx]) {
@@ -2002,56 +1982,53 @@ function add_new_to_list(listId) {
     display_list(listId);
 }
 
-
 function remove_item(listId,item) {
     delete listItems[listId][item];
     display_list(listId);
 }
-
 
 function delete_list(listId) {
     listItems[listId] = {};
     display_list(listId);
 }
 
+
 function check_entities() {
-    for (var entity in entities) {
-	if (entities[entity] == '--') {
+    for (let entity in entities) {
+	if (entities[entity] != '--') continue;
 
-            var xhr = new XMLHttpRequest();
-            xhr.open("get",  baseAPI + "api/rtx/v1/entity/" + entity, false);
-            xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-            xhr.onloadend = function() {
-                var xob = JSON.parse(xhr.responseText);
-		add_to_dev_info("ENTITIES",xob);
+	fetch(baseAPI + "api/rtx/v1/entity/" + entity)
+	    .then(response => response.json())
+	    .then(data => {
+                add_to_dev_info("ENTITIES:"+entity,data);
 
-		var entstr = "";
-                if ( xhr.status == 200 ) {
-		    var comma = "";
-                    for (var i in xob) {
-                        entstr += comma + xob[i].type;
-			document.getElementById("devdiv").innerHTML += comma + xob[i].type;
-			comma = ", ";
-                    }
-	            if (entstr != "") { entstr = "<span class='explevel p9'>&check;</span>&nbsp;" + entstr; }
-                }
-                else {
-		    entstr = "<span class='explevel p0'>&quest;</span>&nbsp;n/a";
-                }
+                var entstr = "";
+		var comma = "";
+		for (var ent of data) {
+		    entstr += comma + ent.type;
+		    document.getElementById("devdiv").innerHTML += comma + ent.type;
+		    comma = ", ";
+		}
 
-	    	if (entstr == "") { entstr = "<span class='explevel p1'>&cross;</span>&nbsp;<span class='error'>unknown</span>"; }
+		// in case of a 404...?? entstr = "<span class='explevel p0'>&quest;</span>&nbsp;n/a";
 
-	    	entities[entity] = entstr;
+		if (entstr)
+		    entities[entity] = "<span class='explevel p9'>&check;</span>&nbsp;" + entstr;
+		else
+		    entities[entity] = "<span class='explevel p1'>&cross;</span>&nbsp;<span class='error'>unknown</span>";
 
-	    	var e = document.querySelectorAll("[id$='_entity_"+entity+"']");
-	    	var i = 0;
-	    	for (i = 0; i < e.length; i++) {
-		    e[i].innerHTML = entities[entity];
-	    	}
-            };
+		for (var elem of document.querySelectorAll("[id$='_entity_"+entity+"']")) {
+		    elem.innerHTML = entities[entity];
+		}
 
-            xhr.send(null);
-	}
+	    })
+	    .catch(error => {
+                add_to_dev_info("ENTITIES(error):"+entity,error);
+		entities[entity] = "<span class='explevel p0'>&quest;</span>&nbsp;n/a";
+                for (var elem of document.querySelectorAll("[id$='_entity_"+entity+"']")) {
+		    elem.innerHTML = entities[entity];
+		}
+	    });
     }
 }
 
@@ -2128,8 +2105,8 @@ function copyJSON() {
 	range.moveToElementText(document.getElementById(containerid));
 	range.select().createTextRange();
 	document.execCommand("copy");
-
-    } else if (window.getSelection) {
+    }
+    else if (window.getSelection) {
 	var range = document.createRange();
 	range.selectNode(document.getElementById(containerid));
         window.getSelection().removeAllRanges();
