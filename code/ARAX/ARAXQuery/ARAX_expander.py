@@ -220,25 +220,23 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         :param kp_to_use: A string representing the knowledge provider to fulfill this query with.
         :return: An (almost) Reasoner API standard knowledge graph (dictionary version).
         """
-        # Make sure we have a valid one-hop query graph
-        if len(query_graph.edges) != 1 or len(query_graph.nodes) != 2:
+        valid_kps = ["ARAX/KG1", "ARAX/KG2", "BTE"]
+        if kp_to_use not in valid_kps:
+            self.response.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(valid_kps)}",
+                                error_code="UnknownValue")
+            return None
+        elif len(query_graph.edges) != 1 or len(query_graph.nodes) != 2:
             self.response.error(f"expand_edge() did not receive a valid one-hop query graph: {query_graph.to_dict()}",
                                 error_code="InvalidInput")
             return None
-
-        # Route this one-hop query to the proper knowledge provider
-        if kp_to_use == 'BTE':
-            from Expand.bte_querier import BTEQuerier
-            bte_querier = BTEQuerier(self.response)
-            return bte_querier.answer_one_hop_query(query_graph)
-        elif kp_to_use == 'ARAX/KG2' or kp_to_use == 'ARAX/KG1':
-            from Expand.kg_querier import KGQuerier
-            kg_querier = KGQuerier(self.response, kp_to_use)
-            return kg_querier.answer_one_hop_query(query_graph)
         else:
-            self.response.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are ARAX/KG1, ARAX/KG2, or BTE",
-                                error_code="UnknownValue")
-            return None
+            if kp_to_use == 'BTE':
+                from Expand.bte_querier import BTEQuerier
+                kp_querier = BTEQuerier(self.response)
+            else:
+                from Expand.kg_querier import KGQuerier
+                kp_querier = KGQuerier(self.response, kp_to_use)
+            return kp_querier.answer_one_hop_query(query_graph)
 
     def __expand_node(self, query_node, kp_to_use):
         if kp_to_use == 'BTE':
