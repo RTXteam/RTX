@@ -539,6 +539,7 @@ class ARAXQuery:
 
                 #### Immediately after resultify, run the experimental ranker
                 if action['command'] == 'resultify':
+                    response.info(f"Running experimental reranker on results")
                     messenger.rank_results(message, response=response)
 
             #### At the end, process the explicit return() action, or implicitly perform one
@@ -750,6 +751,7 @@ def main():
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
             "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",  # can be removed, but shows we can filter by Knowledge provider
+            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_edge_type=P1)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
             "return(message=true, store=false)",
