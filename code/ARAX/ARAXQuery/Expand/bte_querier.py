@@ -20,40 +20,57 @@ class BTEQuerier:
     def answer_one_hop_query(self, query_graph):
         answer_kg = {'nodes': dict(), 'edges': dict()}
         edge_to_nodes_map = dict()
-        qedge, input_qnode, output_qnode = self.__validate_and_pre_process_input_for_bte(query_graph)
+
+        # Format and validate input for BTE
+        valid_bte_inputs_dict = self.__get_valid_bte_inputs_dict()
+        if self.response.status != 'OK':
+            return answer_kg, edge_to_nodes_map
+        qedge, input_qnode, output_qnode = self.__validate_and_pre_process_input(query_graph, valid_bte_inputs_dict)
         if self.response.status != 'OK':
             return answer_kg, edge_to_nodes_map
 
+        # Send this single-edge query to BTE, once per input curie (adding findings to our answer KG as we go)
+        accepted_curies = set()
         for curie in input_qnode.curie:
-            try:
-                seqd = SingleEdgeQueryDispatcher(input_cls=input_qnode.type,
-                                                 output_cls=output_qnode.type,
-                                                 pred=qedge.type,
-                                                 input_id=self.__get_curie_prefix(curie),
-                                                 values=self.__get_curie_local_id(curie))
-                seqd.query()
-                reasoner_std_response = seqd.to_reasoner_std()
-            except:
-                trace_back = traceback.format_exc()
-                error_type, error, _ = sys.exc_info()
-                self.response.error(f"Encountered a problem while using BioThings Explorer. {trace_back}",
-                                    error_code=error_type.__name__)
-                return answer_kg, edge_to_nodes_map
-            else:
-                self.__add_answers_to_kg(answer_kg, reasoner_std_response, input_qnode.id, output_qnode.id, qedge.id)
-                if answer_kg['edges']:
-                    edge_to_nodes_map = self.__create_edge_to_nodes_map(answer_kg, input_qnode.id, output_qnode.id, curie)
-                    counts_by_qg_id = self.__get_counts_by_qg_id(answer_kg)
-                    num_results_string = ", ".join([f"{qg_id}: {count}" for qg_id, count in sorted(counts_by_qg_id.items())])
-                    self.response.info(f"Query for edge {qedge.id} returned results ({num_results_string})")
+            if self.__get_curie_prefix(curie) in valid_bte_inputs_dict['curie_prefixes']:
+                accepted_curies.add(curie)
+                try:
+                    seqd = SingleEdgeQueryDispatcher(input_cls=input_qnode.type,
+                                                     output_cls=output_qnode.type,
+                                                     pred=qedge.type,
+                                                     input_id=self.__get_curie_prefix(curie),
+                                                     values=self.__get_curie_local_id(curie))
+                    seqd.query()
+                    reasoner_std_response = seqd.to_reasoner_std()
+                except:
+                    trace_back = traceback.format_exc()
+                    error_type, error, _ = sys.exc_info()
+                    self.response.error(f"Encountered a problem while using BioThings Explorer. BTE log: "
+                                        f"{' '.join(seqd.log)} {trace_back}", error_code=error_type.__name__)
+                    return answer_kg, edge_to_nodes_map
                 else:
-                    if self.response.data['parameters']['continue_if_no_results']:
-                        self.response.warning(f"No paths were found in BTE satisfying this query graph")
-                    else:
-                        self.response.error(f"No paths were found in BTE satisfying this query graph. BTE log: {' '.join(seqd.log)}", error_code="NoResults")
-                return answer_kg, edge_to_nodes_map
+                    self.__add_answers_to_kg(answer_kg, reasoner_std_response, input_qnode.id, output_qnode.id, qedge.id)
 
-    def __validate_and_pre_process_input_for_bte(self, query_graph):
+        # Report our findings
+        if answer_kg['edges']:
+            edge_to_nodes_map = self.__create_edge_to_nodes_map(answer_kg, input_qnode.id, output_qnode.id)
+            counts_by_qg_id = self.__get_counts_by_qg_id(answer_kg)
+            num_results_string = ", ".join([f"{qg_id}: {count}" for qg_id, count in sorted(counts_by_qg_id.items())])
+            self.response.info(f"Query for edge {qedge.id} returned results ({num_results_string})")
+        elif self.response.data['parameters']['continue_if_no_results']:
+            if not accepted_curies:
+                self.response.warning(f"BTE could not accept any of the input curies. Valid curie prefixes for BTE "
+                                      f"are: {valid_bte_inputs_dict['curie_prefixes']}")
+            self.response.warning(f"No paths were found in BTE satisfying this query graph")
+        else:
+            if not accepted_curies:
+                self.response.error(f"BTE could not accept any of the input curies. Valid curie prefixes for BTE are: "
+                                    f"{valid_bte_inputs_dict['curie_prefixes']}", error_code="InvalidPrefix")
+            self.response.error(f"No paths were found in BTE satisfying this query graph", error_code="NoResults")
+
+        return answer_kg, edge_to_nodes_map
+
+    def __validate_and_pre_process_input(self, query_graph, valid_bte_inputs_dict):
         # Make sure we have a valid one-hop query graph
         if len(query_graph.edges) != 1 or len(query_graph.nodes) != 2:
             self.response.error(f"BTE can only accept one-hop query graphs (your QG has {len(query_graph.nodes)} "
@@ -68,10 +85,6 @@ class BTEQuerier:
         input_qnode = input_qnode[0]
         output_qnode = next(node for node in query_graph.nodes if node.id != input_qnode.id)
         qedge = query_graph.edges[0]
-
-        valid_bte_inputs_dict = self.__get_valid_bte_inputs_dict()
-        if self.response.status != 'OK':
-            return None, None, None
 
         # Make sure predicate is allowed
         if qedge.type not in valid_bte_inputs_dict['predicates'] and qedge.type is not None:
@@ -134,14 +147,12 @@ class BTEQuerier:
                 self.__add_edge_to_kg(answer_kg, swagger_edge)
         return answer_kg
 
-    def __create_edge_to_nodes_map(self, answer_kg, input_qnode_id, output_qnode_id, input_curie):
+    def __create_edge_to_nodes_map(self, answer_kg, input_qnode_id, output_qnode_id):
         edge_to_nodes_map = dict()
         for qedge_id, edges in answer_kg['edges'].items():
             for edge_key, edge in edges.items():
+                # BTE single-edge queries are always directed (meaning, edge.source_id == input qnode ID)
                 edge_to_nodes_map[edge.id] = {input_qnode_id: edge.source_id, output_qnode_id: edge.target_id}
-                if edge.source_id != input_curie:
-                    self.response.warning(f"In BTE results, edge {edge.id} source_id ({edge.source_id}) does not match "
-                                          f"input curie ({input_curie})")
         return edge_to_nodes_map
 
     def __get_valid_bte_inputs_dict(self):
@@ -216,8 +227,6 @@ class BTEQuerier:
         local_id = self.__get_curie_local_id(curie)
         if prefix == "CUI":
             prefix = "UMLS"
-        elif prefix == "SNOMEDCT":
-            prefix = "SNOMED"
         return prefix + ':' + local_id
 
     def __get_curie_prefix(self, curie):

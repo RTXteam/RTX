@@ -507,6 +507,7 @@ td {
     transition-duration: 0.2s;
 }
 .button:hover {
+    cursor: pointer;
     background-color: #9bc;
     color: #333;
 }

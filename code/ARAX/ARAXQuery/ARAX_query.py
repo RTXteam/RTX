@@ -537,6 +537,10 @@ class ARAXQuery:
                         message.log = response.messages
                         return response
 
+                #### Immediately after resultify, run the experimental ranker
+                if action['command'] == 'resultify':
+                    response.info(f"Running experimental reranker on results")
+                    messenger.rank_results(message, response=response)
 
             #### At the end, process the explicit return() action, or implicitly perform one
             return_action = { 'command': 'return', 'parameters': { 'message': 'true', 'store': 'true' } }
@@ -631,25 +635,34 @@ def main():
             "filter_results(action=limit_number_of_results, max_results=10)",
             "return(message=true, store=false)",
         ]}}
+    elif params.example_number == 301:  # Variant of 3 with NGD
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=acetaminophen, id=n0)",
+            "add_qnode(type=protein, id=n1)",
+            "add_qedge(source_id=n0, target_id=n1, id=e0)",
+            "expand(edge_id=e0)",
+            "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n0, target_qnode_id=n1)",
+            "resultify(ignore_edge_direction=true)",
+            "return(message=true, store=false)",
+        ]}}
     elif params.example_number == 4:
         query = { "previous_message_processing_plan": { "processing_actions": [
-            "create_message",
             "add_qnode(name=hypertension, id=n00)",
-            "add_qnode(type=protein, is_set=True, id=n01)",
-            "add_qedge(source_id=n01, target_id=n00, id=e00)",
+            "add_qnode(type=protein, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
-            "filter(maximum_results=2)",
+            "resultify()",
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 5:  # test overlay with ngd: hypertension->protein
         query = { "previous_message_processing_plan": { "processing_actions": [
-            "create_message",
             "add_qnode(name=hypertension, id=n00)",
-            "add_qnode(type=protein, is_set=True, id=n01)",
-            "add_qedge(source_id=n01, target_id=n00, id=e00)",
+            "add_qnode(type=protein, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
             "overlay(action=compute_ngd)",
-            "filter(maximum_results=2)",
+            "resultify()",
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 6:  # test overlay
@@ -736,6 +749,7 @@ def main():
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
             "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",  # can be removed, but shows we can filter by Knowledge provider
+            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_edge_type=P1)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
             "return(message=true, store=false)",
@@ -1029,7 +1043,13 @@ def main():
 
     #print(f"Drugs names in the KG: {[x.name for x in message.knowledge_graph.nodes if 'chemical_substance' in x.type or 'drug' in x.type]}")
 
-    print(f"Essence names in the answers: {[x.essence for x in message.results]}")
+    #print(f"Essence names in the answers: {[x.essence for x in message.results]}")
+    print("Results:")
+    for result in message.results:
+        confidence = result.confidence
+        if confidence is None:
+            confidence = 0.0
+        print("  -" + '{:6.3f}'.format(confidence) + f"\t{result.essence}")
 
     #print(json.dumps(ast.literal_eval(repr(message.results[0])), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.results)), sort_keys=True, indent=2))

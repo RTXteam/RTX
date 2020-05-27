@@ -233,24 +233,25 @@ class KGQuerier:
                     swagger_node = self.__convert_neo4j_node_to_swagger_node(original_node, qnode_id, kp)
                     self.__add_node_to_kg(swagger_node)
 
-        # Remove any self-edges
-        edges_to_remove = []
-        qedge_id = self.query_graph.edges[0]
-        for qedge_id, edges in self.final_kg['edges'].items():
-            for edge_key, edge in edges.items():
-                if edge.source_id == edge.target_id:
-                    edges_to_remove.append(edge_key)
-        for edge_id in edges_to_remove:
-            self.final_kg['edges'][qedge_id].pop(edge_id)
+        if self.final_kg['edges']:
+            # Remove any self-edges
+            edges_to_remove = []
+            qedge_id = self.query_graph.edges[0]
+            for qedge_id, edges in self.final_kg['edges'].items():
+                for edge_key, edge in edges.items():
+                    if edge.source_id == edge.target_id:
+                        edges_to_remove.append(edge_key)
+            for edge_id in edges_to_remove:
+                self.final_kg['edges'][qedge_id].pop(edge_id)
 
-        # Remove any nodes that may have been orphaned
-        for qnode_id in [node.id for node in self.query_graph.nodes]:
-            node_ids_used_by_edges_for_this_qnode_id = set()
-            for edge in self.final_kg['edges'][qedge_id].values():
-                node_ids_used_by_edges_for_this_qnode_id.add(self.edge_to_nodes_map[edge.id][qnode_id])
-            orphan_node_ids_for_this_qnode_id = set(self.final_kg['nodes'][qnode_id].keys()).difference(node_ids_used_by_edges_for_this_qnode_id)
-            for node_id in orphan_node_ids_for_this_qnode_id:
-                self.final_kg['nodes'][qnode_id].pop(node_id)
+            # Remove any nodes that may have been orphaned
+            for qnode_id in [node.id for node in self.query_graph.nodes]:
+                node_ids_used_by_edges_for_this_qnode_id = set()
+                for edge in self.final_kg['edges'][qedge_id].values():
+                    node_ids_used_by_edges_for_this_qnode_id.add(self.edge_to_nodes_map[edge.id][qnode_id])
+                orphan_node_ids_for_this_qnode_id = set(self.final_kg['nodes'][qnode_id].keys()).difference(node_ids_used_by_edges_for_this_qnode_id)
+                for node_id in orphan_node_ids_for_this_qnode_id:
+                    self.final_kg['nodes'][qnode_id].pop(node_id)
 
     def __convert_neo4j_node_to_swagger_node(self, neo4j_node, qnode_id, kp):
         if kp == "KG2":

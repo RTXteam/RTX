@@ -187,31 +187,28 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                 self.response.error(f"An edge with ID '{qedge_id}' does not exist in Message.QueryGraph",
                                     error_code="UnknownValue")
             else:
-                # Grab this query edge and its two nodes
-                qedge_to_expand = next(qedge for qedge in query_graph.edges if qedge.id == qedge_id)
-                qnode_ids = [qedge_to_expand.source_id, qedge_to_expand.target_id]
-                qnodes = [qnode for qnode in query_graph.nodes if qnode.id in qnode_ids]
+                # Grab this qedge and its two qnodes
+                qedge = next(qedge for qedge in query_graph.edges if qedge.id == qedge_id)
+                qnodes = [self.__get_query_node(query_graph, qedge.source_id),
+                          self.__get_query_node(query_graph, qedge.target_id)]
 
-                # Add (a copy of) this edge to our new query sub graph
-                new_qedge = self.__copy_qedge(qedge_to_expand)
-                if not any(qedge.id == new_qedge.id for qedge in sub_query_graph.edges):
-                    sub_query_graph.edges.append(new_qedge)
+                # Add (a copy of) this qedge to our new query sub graph
+                qedge_copy = self.__copy_qedge(qedge)
+                if not any(qedge.id == qedge_copy.id for qedge in sub_query_graph.edges):
+                    sub_query_graph.edges.append(qedge_copy)
 
-                # Check for (unusual) case in which this edge has already been expanded (e.g., in a prior Expand() call)
-                edge_has_already_been_expanded = dict_kg['nodes'].get(qnodes[0].id) and dict_kg['nodes'].get(qnodes[1].id)
-
-                # Add (copies of) this edge's two nodes to our new query sub graph
+                # Add (copies of) this qedge's two qnodes to our new query sub graph
+                qedge_has_already_been_expanded = qedge_id in dict_kg['edges']
                 for qnode in qnodes:
-                    new_qnode = self.__copy_qnode(qnode)
+                    qnode_copy = self.__copy_qnode(qnode)
 
-                    # Handle case where we need to use nodes found in a prior Expand() as the curie for this qnode
-                    if not new_qnode.curie and not edge_has_already_been_expanded:
-                        curies_of_kg_nodes_with_this_qnode_id = list(dict_kg['nodes'][qnode.id].keys()) if qnode.id in dict_kg['nodes'] else []
-                        if curies_of_kg_nodes_with_this_qnode_id:
-                            new_qnode.curie = curies_of_kg_nodes_with_this_qnode_id
+                    # Handle case where we need to feed curies from a prior Expand() step as the curie for this qnode
+                    qnode_already_fulfilled = qnode_copy.id in dict_kg['nodes']
+                    if qnode_already_fulfilled and not qnode_copy.curie and not qedge_has_already_been_expanded:
+                        qnode_copy.curie = list(dict_kg['nodes'][qnode_copy.id].keys())
 
-                    if not any(qnode.id == new_qnode.id for qnode in sub_query_graph.nodes):
-                        sub_query_graph.nodes.append(new_qnode)
+                    if not any(qnode.id == qnode_copy.id for qnode in sub_query_graph.nodes):
+                        sub_query_graph.nodes.append(qnode_copy)
 
         return sub_query_graph
 

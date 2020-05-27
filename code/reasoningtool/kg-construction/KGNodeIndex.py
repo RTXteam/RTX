@@ -489,6 +489,25 @@ class KGNodeIndex:
         return equivalence
 
 
+    def get_total_entity_count(self, type, kg_name='KG1'):
+
+        table_name = 'kg1node'
+        if kg_name.upper() == 'KG2':
+            table_name = 'kg2node'
+
+        count = None
+
+        cursor = self.connection.cursor()
+        cursor.execute( f"SELECT COUNT(DISTINCT reference_curie) FROM {table_name}{TESTSUFFIX} WHERE type = ?", (type,) )
+        rows = cursor.fetchall()
+
+        if len(rows) == 0:
+            return count
+
+        return rows[0][0]
+
+
+
     def test_select(self, name):
 
         cursor = self.connection.cursor()
@@ -628,7 +647,16 @@ def main():
     t1 = timeit.default_timer()
     print("Elapsed time: "+str(t1-t0))
 
-
+    print("==== Get total number of drug nodes and disease nodes ============================")
+    t0 = timeit.default_timer()
+    kg = 'KG1'
+    print(kgNodeIndex.get_total_entity_count('chemical_substance', kg_name=kg))
+    print(kgNodeIndex.get_total_entity_count('disease', kg_name=kg))
+    print(kgNodeIndex.get_total_entity_count('protein', kg_name=kg))
+    print(kgNodeIndex.get_total_entity_count('drug', kg_name=kg))
+    print(kgNodeIndex.get_total_entity_count('cheesecake', kg_name=kg))
+    t1 = timeit.default_timer()
+    print("Elapsed time: "+str(t1-t0))
 
     #print("==== Test SELECT ============================")
     #kgNodeIndex.test_select('phenylketonuria')
