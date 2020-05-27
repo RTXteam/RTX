@@ -638,7 +638,7 @@ def main():
     elif params.example_number == 301:  # Variant of 3 with NGD
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(name=lovastatin, id=n0)",
+            "add_qnode(name=acetaminophen, id=n0)",
             "add_qnode(type=protein, id=n1)",
             "add_qedge(source_id=n0, target_id=n1, id=e0)",
             "expand(edge_id=e0)",
