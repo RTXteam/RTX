@@ -537,6 +537,9 @@ class ARAXQuery:
                         message.log = response.messages
                         return response
 
+                #### Immediately after resultify, run the experimental ranker
+                if action['command'] == 'resultify':
+                    messenger.rank_results(message, response=response)
 
             #### At the end, process the explicit return() action, or implicitly perform one
             return_action = { 'command': 'return', 'parameters': { 'message': 'true', 'store': 'true' } }
@@ -629,6 +632,17 @@ def main():
             "expand(edge_id=e0)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=limit_number_of_results, max_results=10)",
+            "return(message=true, store=false)",
+        ]}}
+    elif params.example_number == 301:  # Variant of 3 with NGD
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=lovastatin, id=n0)",
+            "add_qnode(type=protein, id=n1)",
+            "add_qedge(source_id=n0, target_id=n1, id=e0)",
+            "expand(edge_id=e0)",
+            "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n0, target_qnode_id=n1)",
+            "resultify(ignore_edge_direction=true)",
             "return(message=true, store=false)",
         ]}}
     elif params.example_number == 4:
@@ -1029,7 +1043,13 @@ def main():
 
     #print(f"Drugs names in the KG: {[x.name for x in message.knowledge_graph.nodes if 'chemical_substance' in x.type or 'drug' in x.type]}")
 
-    print(f"Essence names in the answers: {[x.essence for x in message.results]}")
+    #print(f"Essence names in the answers: {[x.essence for x in message.results]}")
+    print("Results:")
+    for result in message.results:
+        confidence = result.confidence
+        if confidence is None:
+            confidence = 0.0
+        print("  -" + '{:6.3f}'.format(confidence) + f"\t{result.essence}")
 
     #print(json.dumps(ast.literal_eval(repr(message.results[0])), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.results)), sort_keys=True, indent=2))
