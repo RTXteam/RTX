@@ -66,7 +66,7 @@ class QueryGraphInfo:
         self.node_type_map = {}
         for qnode in nodes:
             id = qnode.id
-            node_info[id] = { 'id': id, 'node_object': qnode, 'has_curie': False, 'type': qnode.type, 'has_type': False, 'is_set': False, 'n_edges': 0, 'is_connected': False, 'edges': [], 'edge_dict': {} }
+            node_info[id] = { 'id': id, 'node_object': qnode, 'has_curie': False, 'type': qnode.type, 'has_type': False, 'is_set': False, 'n_edges': 0, 'n_links': 0, 'is_connected': False, 'edges': [], 'edge_dict': {} }
             if qnode.curie is not None: node_info[id]['has_curie'] = True
             if qnode.type is not None: node_info[id]['has_type'] = True
             #if qnode.is_set is not None: node_info[id]['is_set'] = True
@@ -87,10 +87,12 @@ class QueryGraphInfo:
         #### Loop through edges computing some stats
         edge_info = {}
         self.edge_type_map = {}
+        unique_links = {}
         for qedge in edges:
 
-            #### Ignore special informationational edges for now. FIXME.
-            if qedge.type is not None and ( qedge.relation == 'ngd' or qedge.relation == 'jaccard_index' ):
+            #### Ignore special informationational edges for now. FIXME. This is not a complete list. Should be extended
+            if qedge.type is not None and ( qedge.relation == 'ngd' or qedge.relation == 'jaccard_index' 
+                or qedge.relation == 'probability_drug_treats' ):
                 continue
 
             id = qedge.id
@@ -102,6 +104,15 @@ class QueryGraphInfo:
             if qedge.id is None:
                 response.error("QueryGraph has a edge with no id. This is not permitted", error_code="QueryGraphEdgeWithNoId")
                 return response
+
+            #### Create a unique node link string
+            link_string = ','.join(sorted([qedge.source_id,qedge.target_id]))
+            if link_string not in unique_links:
+                node_info[qedge.source_id]['n_links'] += 1
+                node_info[qedge.target_id]['n_links'] += 1
+                unique_links[link_string] = 1
+                print(link_string)
+
             node_info[qedge.source_id]['n_edges'] += 1
             node_info[qedge.target_id]['n_edges'] += 1
             node_info[qedge.source_id]['is_connected'] = True
@@ -131,9 +142,9 @@ class QueryGraphInfo:
         #### Loop through the nodes again, trying to identify the start_node and the end_node
         singletons = []
         for node_id,node_data in node_info.items():
-            if node_data['n_edges'] < 2:
+            if node_data['n_links'] < 2:
                 singletons.append(node_data)
-            elif node_data['n_edges'] > 2:
+            elif node_data['n_links'] > 2:
                 self.is_bifurcated_graph = True
                 response.warning("QueryGraph appears to have a fork in it. This might cause trouble")
 
