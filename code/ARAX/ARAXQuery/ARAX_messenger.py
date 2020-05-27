@@ -658,7 +658,11 @@ class ARAXMessenger:
                 score += 0.01
             response.debug(f"  ---> final score={score}")
             result.confidence = score
+            result.row_data = [ score, result.essence, result.essence_type ]
             i_result += 1
+
+        #### Add table columns name
+        message.table_column_names = [ 'confidence', 'essence', 'essence_type' ]
 
         #### Re-sort the final results
         message.results.sort(key=lambda result: result.confidence, reverse=True)
