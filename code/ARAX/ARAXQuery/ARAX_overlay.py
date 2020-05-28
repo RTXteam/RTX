@@ -82,6 +82,10 @@ class ARAXOverlay:
             elif item not in allowable_parameters[key]:
                 if any([type(x) == float for x in allowable_parameters[key]]) or any([type(x) == int for x in allowable_parameters[key]]):  # if it's a float or int, just accept it as it is
                     return
+                elif str(item).upper() in ['TRUE','FALSE']:
+                    return
+                elif key=="virtual_edge_type" and type(item) == str:
+                    return
                 else:  # otherwise, it's really not an allowable parameter
                     self.response.error(
                         f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}",
@@ -469,14 +473,16 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     def __fisher_exact_test(self, describe=False):
         """
-        Computes the significance of connection between a list of nodes with certain type in KG and each of the adjacent nodes with other type by the fisher's exact test.
+        Computes the significance of connection between a list of nodes with certain type in KG and each of its adjacent nodes with other type by the fisher's exact test.
         Allowable parameters:
             :param query_node_id: (required) a specific QNode id (you used in add_qnode() in DSL) of query nodes in message KG eg. "n00" (this might be a bunch of "protein" nodes in message KG)
+            :param virtual_edge_type: (required) any string to label this Fisher's Exact Test call eg. 'FET1'
             :param adjacent_node_type: (required) a specific node type in knowledge provider. This will specify which node type to consider for calculating the Fisher Exact Test, eg. "biological_process"
             :param query_edge_id: (optional) a specific QEdge id (you used in add_qedge() in DSL) of query edges in message KG, eg. "e00" (this might be a bunch of 'has_phenotype' edges in message KG)
             :param adjacent_edge_type: (optional) a specific edge type in knowledge provider. This will specify which edge type to consider for calculating the Fisher Exact Test, eg. "involved_in"
-            :param top_n: (optional) an int indicating the top number of results to return (otherwise all results returned) eg. 10
+            :param top_n: (optional) an int indicating the top number of the most significant adjacent nodes to return (otherwise all results returned) eg. 10
             :param cutoff: (optional) a float indicating the maximal p-value you want results returned for (otherwise all results returned) eg. 0.05
+            :param added_flag: (optional) True or False to add a q_edge the query_graph (default is True)
         :return: response
         """
 
@@ -486,8 +492,8 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         # allowable_parameters = {'action': {'fisher_exact_test'}, 'query_node_label': {...}, 'compare_node_label':{...}}
 
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and hasattr(message.query_graph, 'edges'):
-            allowable_query_node_id = set([node.type[0] for node in message.knowledge_graph.nodes])
-            allowwable_query_edge_id = set([edge.type for edge in message.knowledge_graph.edges])
+            allowable_query_node_id = set([node.qnode_id for node in message.knowledge_graph.nodes])
+            allowwable_query_edge_id = set([edge.qedge_id for edge in message.knowledge_graph.edges])
             allowable_adjacent_node_type = [None,'metabolite','biological_process','chemical_substance','microRNA','protein',
                                  'anatomical_entity','pathway','cellular_component','phenotypic_feature','disease','molecular_function']
             allowable_adjacent_edge_type = [None,'physically_interacts_with','subclass_of','involved_in','affects','capable_of',
@@ -496,26 +502,30 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
             allowable_parameters = {'action': {'fisher_exact_test'},
                                     'query_node_id': allowable_query_node_id,
+                                    'virtual_edge_type': str(),
                                     'adjacent_node_type': allowable_adjacent_node_type,
                                     'query_edge_id': allowwable_query_edge_id,
                                     'adjacent_edge_type': allowable_adjacent_edge_type,
                                     'top_n': [None,int()],
-                                    'cutoff': [None,float()]
+                                    'cutoff': [None,float()],
+                                    'added_flag': ['True', 'False']
                                     }
         else:
             allowable_parameters = {'action': {'fisher_exact_test'},
                                     'query_node_id': {"a specific QNode id of query nodes in message KG (required), eg. 'n00'"},
+                                    'virtual_edge_type': {"any string to label this Fisher's Exact Test call (required) eg. 'FET1'"},
                                     'adjacent_node_type': {"a specific node type in knowledge provider. This will specify which node type to consider for calculating the Fisher Exact Test (required), eg. 'biological_process'"},
                                     'query_edge_id': {"a specific QEdge id of query edges in message KG (optional, otherwise all edge types are used), eg. 'e00'"},
                                     'adjacent_edge_type': {"a specific edge type in knowledge provider. This will specify which edge type to consider for calculating the Fisher Exact Test (optional, otherwise all edge types are returned), eg. 'involved_in'"},
                                     'top_n': {"an int indicating the top number of results to return (optional,otherwise all results returned), eg. 10"},
-                                    'cutoff': {"a float indicating the maximal p-value you want results returned for (optional, otherwise all results returned), eg. 0.05"}
+                                    'cutoff': {"a float indicating the maximal p-value you want results returned for (optional, otherwise all results returned), eg. 0.05"},
+                                    'added_flag': {"True or False to add a q_edge the query_graph (optional, default is True)"}
                                     }
 
         # A little function to describe what this thing does
         if describe:
             brief_description = """
-`fisher_exact_test` computes the significance(p-value) of connection to the adjacent nodes with specified type (e.g. 'biological_process') and expands or decorates the knowledge graph based on the significant connection.
+`fisher_exact_test` computes the significance(p-value) of connection to the adjacent nodes with specified type (e.g. 'biological_process') and adds it as virtual edge attribute to the virtual edge which was added to the knowledge graph.
 This p-value is calculated from fisher's exact test based on the contingency table with following format:
     |                                  | in query node list | not in query node list | row total |
     | connect to certain adjacent node |         a          |           b            |   a+b     |

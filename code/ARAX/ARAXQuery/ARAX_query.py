@@ -1000,8 +1000,8 @@ def main():
             "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521)",
             "add_qnode(id=n01, type=protein)",
             "add_qedge(id=e00, source_id=n00, target_id=n01)",
-            "expand(kp=ARAX/KG1, continue_if_no_results=true)",
-            "expand(kp=ARAX/KG2, continue_if_no_results=true)",
+            "expand(kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test,virtual_edge_type=FET1,query_node_id=n01,adjacent_node_type=biological_process,cutoff=0.05)",
             "resultify()",
             "return(message=true, store=true)"
         ]}}
