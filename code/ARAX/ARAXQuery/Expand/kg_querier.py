@@ -46,19 +46,19 @@ class KGQuerier:
             synonym_usages_dict = self.__add_curie_synonyms_to_query_nodes(self.query_graph.nodes, kp,
                                                                            qnodes_using_curies_from_prior_step)
             if not self.response.status == 'OK':
-                return self.final_kg
+                return self.final_kg, self.edge_to_nodes_map
 
         self.__convert_query_graph_to_cypher_query(dsl_parameters['enforce_directionality'])
         if not self.response.status == 'OK':
-            return self.final_kg
+            return self.final_kg, self.edge_to_nodes_map
 
         self.__answer_query_using_kg_neo4j(kp, dsl_parameters['continue_if_no_results'])
         if not self.response.status == 'OK':
-            return self.final_kg
+            return self.final_kg, self.edge_to_nodes_map
 
         self.__add_answers_to_kg(dsl_parameters['synonym_handling'], synonym_usages_dict, kp, query_graph)
         if not self.response.status == 'OK':
-            return self.final_kg
+            return self.final_kg, self.edge_to_nodes_map
 
         return self.final_kg, self.edge_to_nodes_map
 
