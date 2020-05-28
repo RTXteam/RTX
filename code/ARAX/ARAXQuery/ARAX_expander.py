@@ -104,6 +104,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         input_edge_ids = self.parameters['edge_id']
         input_node_ids = self.parameters['node_id']
         kp_to_use = self.parameters['kp']
+        continue_if_no_results = self.parameters['continue_if_no_results']
 
         # Convert message knowledge graph to dictionary format, for faster processing
         dict_kg = self.__convert_standard_kg_to_dict_kg(self.message.knowledge_graph)
@@ -121,7 +122,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             for qedge in ordered_qedges_to_expand:
                 self.response.info(f"Expanding edge {qedge.id} using {kp_to_use}")
 
-                answer_kg, edge_node_usage_map = self.__expand_edge(qedge, kp_to_use, dict_kg)
+                answer_kg, edge_node_usage_map = self.__expand_edge(qedge, kp_to_use, dict_kg, continue_if_no_results)
                 if response.status != 'OK':
                     return response
                 node_usages_by_edges_map[qedge.id] = edge_node_usage_map
@@ -226,11 +227,10 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
         return edge_query_graph, qnodes_using_curies_from_prior_step
 
-    def __expand_edge(self, qedge, kp_to_use, dict_kg):
+    def __expand_edge(self, qedge, kp_to_use, dict_kg, continue_if_no_results):
         """
         This function answers a single-edge (one-hop) query using the specified knowledge provider. If no KP was
         specified, KG1 is used by default.
-        :param query_graph: A (single-edge) Reasoner API standard query graph.
         :param kp_to_use: A string representing the knowledge provider to fulfill this query with.
         :return: An (almost) Reasoner API standard knowledge graph (dictionary version).
         """
@@ -249,7 +249,20 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                 from Expand.kg_querier import KGQuerier
                 kp_querier = KGQuerier(self.response, kp_to_use)
 
-            return kp_querier.answer_one_hop_query(edge_query_graph, qnodes_using_curies_from_prior_step)
+            answer_kg, edge_node_usage_map = kp_querier.answer_one_hop_query(edge_query_graph, qnodes_using_curies_from_prior_step)
+
+            # Make sure all of the QG IDs in our query have been fulfilled (unless we're continuing if no results)
+            if not continue_if_no_results:
+                for qnode in edge_query_graph.nodes:
+                    if qnode.id not in answer_kg['nodes'] or not len(answer_kg['nodes'][qnode.id]):
+                        self.response.error(f"Returned answer KG does not contain any results for QNode {qnode.id}",
+                                            error_code="UnfulfilledQGID")
+                for qedge in edge_query_graph.edges:
+                    if qedge.id not in answer_kg['edges'] or not len(answer_kg['edges'][qedge.id]):
+                        self.response.error(f"Returned answer KG does not contain any results for QEdge {qedge.id}",
+                                            error_code="UnfulfilledQGID")
+
+            return answer_kg, edge_node_usage_map
 
     def __expand_node(self, query_node, kp_to_use):
         if kp_to_use == 'BTE':
