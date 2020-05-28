@@ -628,8 +628,8 @@ class ARAXMessenger:
                     score *= float(kg_edges[kg_edge_id].confidence)
                 if kg_edges[kg_edge_id].edge_attributes is not None:
                     for edge_attribute in kg_edges[kg_edge_id].edge_attributes:
-                        value = float(edge_attribute.value)
                         if edge_attribute.name == 'probability':
+                            value = float(edge_attribute.value)
                             buf += f" probability={edge_attribute.value}"
                             if value > best_probability:
                                 best_probability = value
