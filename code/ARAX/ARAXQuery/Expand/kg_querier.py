@@ -97,7 +97,7 @@ class KGQuerier:
         self.response.debug("Looking for query nodes to use curie synonyms for")
         if not qnodes_using_curies_from_prior_step:
             qnodes_using_curies_from_prior_step = set()
-        KGNI = KGNodeIndex()
+        kgni = KGNodeIndex()
         synonym_usages_dict = dict()
 
         for qnode in query_nodes:
@@ -106,9 +106,8 @@ class KGQuerier:
                 synonyms = []
                 for curie in curies_to_use_synonyms_for:
                     original_curie = curie
-                    equivalent_curies = KGNI.get_equivalent_curies(original_curie, kg_name=kp)
+                    equivalent_curies = kgni.get_equivalent_curies(original_curie, kg_name=kp)
                     if len(equivalent_curies) > 1:
-                        self.response.info(f"Using equivalent curies for node {original_curie}: {equivalent_curies}")
                         synonyms += equivalent_curies
                         qnode.type = None  # Equivalent curie types may be different than the original, so we clear this
                         if qnode.id not in synonym_usages_dict:
@@ -121,6 +120,7 @@ class KGQuerier:
                         self.response.error(f"{kp} does not contain a node with curie {original_curie}", error_code="UnknownCurie")
                 # Use our new synonyms list only if we actually found any synonyms
                 if synonyms != curies_to_use_synonyms_for:
+                    self.response.info(f"Using equivalent curies for qnode {qnode.id} ({qnode.curie}): {synonyms}")
                     qnode.curie = synonyms
 
         return synonym_usages_dict
