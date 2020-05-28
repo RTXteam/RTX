@@ -28,7 +28,7 @@ class KGQuerier:
         self.edge_to_nodes_map = dict()
         self.final_kg = {'nodes': dict(), 'edges': dict()}
 
-    def answer_one_hop_query(self, query_graph):
+    def answer_one_hop_query(self, query_graph, qnodes_using_curies_from_prior_step):
         """
         This function answers a one-hop (single-edge) query using either KG1 or KG2.
         :param query_graph: A Reasoner API standard query graph.
@@ -41,7 +41,8 @@ class KGQuerier:
 
         synonym_usages_dict = dict()
         if dsl_parameters['use_synonyms']:
-            synonym_usages_dict = self.__add_curie_synonyms_to_query_nodes(self.query_graph.nodes, kp)
+            synonym_usages_dict = self.__add_curie_synonyms_to_query_nodes(self.query_graph.nodes, kp,
+                                                                           qnodes_using_curies_from_prior_step)
             if not self.response.status == 'OK':
                 return self.final_kg
 
@@ -90,23 +91,28 @@ class KGQuerier:
 
         return self.final_kg
 
-    def __add_curie_synonyms_to_query_nodes(self, query_nodes, kp):
+    def __add_curie_synonyms_to_query_nodes(self, query_nodes, kp, qnodes_using_curies_from_prior_step=None):
         self.response.debug("Looking for query nodes to use curie synonyms for")
+        if not qnodes_using_curies_from_prior_step:
+            qnodes_using_curies_from_prior_step = set()
         KGNI = KGNodeIndex()
         synonym_usages_dict = dict()
-        for node in query_nodes:
-            original_curie = node.curie
-            if original_curie and type(original_curie) is str:  # Important because sometimes lists of curies are passed behind the scenes (when expanding one edge at a time)
-                equivalent_curies = KGNI.get_equivalent_curies(original_curie, kg_name=kp)
-                if len(equivalent_curies) > 1:
-                    self.response.info(f"Using equivalent curies for node {original_curie}: {equivalent_curies}")
-                    node.curie = equivalent_curies
-                    node.type = None  # Equivalent curie types may be different than the original, so we clear this
-                    synonym_usages_dict[node.id] = {'original_curie': original_curie, 'synonym_curies': node.curie}
-                elif len(equivalent_curies) == 1:
-                    self.response.info(f"Could not find any equivalent curies in {kp} for {original_curie}")
-                else:
-                    self.response.error(f"{kp} does not contain a node with curie {original_curie}", error_code="UnknownCurie")
+
+        for qnode in query_nodes:
+            if qnode.curie and (qnode.id not in qnodes_using_curies_from_prior_step):
+                if type(qnode.curie) is str:  # TODO: Make this handle lists of curies too!
+                    original_curie = qnode.curie
+                    equivalent_curies = KGNI.get_equivalent_curies(original_curie, kg_name=kp)
+                    if len(equivalent_curies) > 1:
+                        self.response.info(f"Using equivalent curies for node {original_curie}: {equivalent_curies}")
+                        qnode.curie = equivalent_curies
+                        qnode.type = None  # Equivalent curie types may be different than the original, so we clear this
+                        synonym_usages_dict[qnode.id] = {'original_curie': original_curie, 'synonym_curies': qnode.curie}
+                    elif len(equivalent_curies) == 1:
+                        self.response.info(f"Could not find any equivalent curies in {kp} for {original_curie}")
+                    else:
+                        self.response.error(f"{kp} does not contain a node with curie {original_curie}", error_code="UnknownCurie")
+
         return synonym_usages_dict
 
     def __convert_query_graph_to_cypher_query(self, enforce_directionality):

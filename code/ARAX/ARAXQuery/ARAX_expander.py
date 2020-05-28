@@ -101,28 +101,27 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
         #### Do the actual expansion!
         response.debug(f"Applying Expand to Message with parameters {parameters}")
-        input_edge_id = self.parameters['edge_id']
-        input_node_id = self.parameters['node_id']
+        input_edge_ids = self.parameters['edge_id']
+        input_node_ids = self.parameters['node_id']
         kp_to_use = self.parameters['kp']
 
         # Convert message knowledge graph to dictionary format, for faster processing
         dict_kg = self.__convert_standard_kg_to_dict_kg(self.message.knowledge_graph)
 
-        if input_edge_id:
+        if input_edge_ids:
             self.response.debug("Extracting sub query graph to expand")
-            query_sub_graph = self.__extract_query_subgraph(input_edge_id, dict_kg)
+            query_sub_graph = self.__extract_query_subgraph(input_edge_ids, self.message.query_graph)
             if response.status != 'OK':
                 return response
             self.response.debug(f"Query graph to expand is: {query_sub_graph.to_dict()}")
 
             # Expand the query graph edge by edge (much faster for neo4j queries, and allows easy integration with BTE)
-            ordered_qedges = self.__get_order_to_expand_edges_in(query_sub_graph)
+            ordered_qedges_to_expand = self.__get_order_to_expand_edges_in(query_sub_graph)
             node_usages_by_edges_map = dict()
-            for qedge in ordered_qedges:
+            for qedge in ordered_qedges_to_expand:
                 self.response.info(f"Expanding edge {qedge.id} using {kp_to_use}")
-                current_edge_query_graph = self.__extract_query_subgraph(qedge.id, dict_kg)
 
-                answer_kg, edge_node_usage_map = self.__expand_edge(current_edge_query_graph, kp_to_use)
+                answer_kg, edge_node_usage_map = self.__expand_edge(qedge, kp_to_use, dict_kg)
                 if response.status != 'OK':
                     return response
                 node_usages_by_edges_map[qedge.id] = edge_node_usage_map
@@ -140,12 +139,12 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             if self.response.status != 'OK':
                 return response
 
-        if input_node_id:
-            input_node_ids = input_node_id if type(input_node_id) is list else [input_node_id]
-            for input_node_id in input_node_ids:
-                self.response.debug(f"Expanding node {input_node_id} using {kp_to_use}")
+        if input_node_ids:
+            input_node_ids = input_node_ids if type(input_node_ids) is list else [input_node_ids]
+            for input_node_ids in input_node_ids:
+                self.response.debug(f"Expanding node {input_node_ids} using {kp_to_use}")
 
-                query_node = self.__get_query_node(self.message.query_graph, input_node_id)
+                query_node = self.__get_query_node(self.message.query_graph, input_node_ids)
                 if response.status != 'OK':
                     return response
 
@@ -165,17 +164,14 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         response.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges")
         return response
 
-    def __extract_query_subgraph(self, qedge_ids_to_expand, dict_kg):
+    def __extract_query_subgraph(self, qedge_ids_to_expand, message_query_graph):
         """
         This function extracts the portion of the original query graph (stored in message.query_graph) that this current
         expand() call will expand, based on the query edge ID(s) specified.
         :param qedge_ids_to_expand: A single qedge_id (str) OR a list of qedge_ids.
         :return: A query graph, in Reasoner API standard format.
         """
-        query_graph = self.message.query_graph
-        sub_query_graph = QueryGraph()
-        sub_query_graph.nodes = []
-        sub_query_graph.edges = []
+        sub_query_graph = QueryGraph(nodes=[], edges=[])
 
         # Make sure edge ID(s) are stored in a list (can be passed in as a string or a list of strings)
         if type(qedge_ids_to_expand) is not list:
@@ -183,14 +179,14 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
         for qedge_id in qedge_ids_to_expand:
             # Make sure this query edge ID actually exists in the larger query graph
-            if not any(qedge.id == qedge_id for qedge in query_graph.edges):
+            if not any(qedge.id == qedge_id for qedge in message_query_graph.edges):
                 self.response.error(f"An edge with ID '{qedge_id}' does not exist in Message.QueryGraph",
                                     error_code="UnknownValue")
             else:
                 # Grab this qedge and its two qnodes
-                qedge = next(qedge for qedge in query_graph.edges if qedge.id == qedge_id)
-                qnodes = [self.__get_query_node(query_graph, qedge.source_id),
-                          self.__get_query_node(query_graph, qedge.target_id)]
+                qedge = next(qedge for qedge in message_query_graph.edges if qedge.id == qedge_id)
+                qnodes = [self.__get_query_node(message_query_graph, qedge.source_id),
+                          self.__get_query_node(message_query_graph, qedge.target_id)]
 
                 # Add (a copy of) this qedge to our new query sub graph
                 qedge_copy = self.__copy_qedge(qedge)
@@ -198,21 +194,39 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                     sub_query_graph.edges.append(qedge_copy)
 
                 # Add (copies of) this qedge's two qnodes to our new query sub graph
-                qedge_has_already_been_expanded = qedge_id in dict_kg['edges']
                 for qnode in qnodes:
                     qnode_copy = self.__copy_qnode(qnode)
-
-                    # Handle case where we need to feed curies from a prior Expand() step as the curie for this qnode
-                    qnode_already_fulfilled = qnode_copy.id in dict_kg['nodes']
-                    if qnode_already_fulfilled and not qnode_copy.curie and not qedge_has_already_been_expanded:
-                        qnode_copy.curie = list(dict_kg['nodes'][qnode_copy.id].keys())
-
                     if not any(qnode.id == qnode_copy.id for qnode in sub_query_graph.nodes):
                         sub_query_graph.nodes.append(qnode_copy)
 
         return sub_query_graph
 
-    def __expand_edge(self, query_graph, kp_to_use):
+    def __get_query_graph_for_edge(self, qedge, dict_kg):
+        message_query_graph = self.message.query_graph
+        edge_query_graph = QueryGraph(nodes=[], edges=[])
+        qnodes = [self.__get_query_node(message_query_graph, qedge.source_id),
+                  self.__get_query_node(message_query_graph, qedge.target_id)]
+
+        # Add (a copy of) this qedge to our edge query graph
+        edge_query_graph.edges.append(self.__copy_qedge(qedge))
+
+        # Update this qedge's qnodes as appropriate and add (copies of) them to the edge query graph
+        qedge_has_already_been_expanded = qedge.id in dict_kg['edges']
+        qnodes_using_curies_from_prior_step = set()
+        for qnode in qnodes:
+            qnode_copy = self.__copy_qnode(qnode)
+
+            # Handle case where we need to feed curies from a prior Expand() step as the curie for this qnode
+            qnode_already_fulfilled = qnode_copy.id in dict_kg['nodes']
+            if qnode_already_fulfilled and not qnode_copy.curie and not qedge_has_already_been_expanded:
+                qnode_copy.curie = list(dict_kg['nodes'][qnode_copy.id].keys())
+                qnodes_using_curies_from_prior_step.add(qnode_copy.id)
+
+            edge_query_graph.nodes.append(qnode_copy)
+
+        return edge_query_graph, qnodes_using_curies_from_prior_step
+
+    def __expand_edge(self, qedge, kp_to_use, dict_kg):
         """
         This function answers a single-edge (one-hop) query using the specified knowledge provider. If no KP was
         specified, KG1 is used by default.
@@ -220,14 +234,12 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         :param kp_to_use: A string representing the knowledge provider to fulfill this query with.
         :return: An (almost) Reasoner API standard knowledge graph (dictionary version).
         """
+        edge_query_graph, qnodes_using_curies_from_prior_step = self.__get_query_graph_for_edge(qedge, dict_kg)
+
         valid_kps = ["ARAX/KG1", "ARAX/KG2", "BTE"]
         if kp_to_use not in valid_kps:
             self.response.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(valid_kps)}",
                                 error_code="UnknownValue")
-            return None
-        elif len(query_graph.edges) != 1 or len(query_graph.nodes) != 2:
-            self.response.error(f"expand_edge() did not receive a valid one-hop query graph: {query_graph.to_dict()}",
-                                error_code="InvalidInput")
             return None
         else:
             if kp_to_use == 'BTE':
@@ -236,7 +248,8 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             else:
                 from Expand.kg_querier import KGQuerier
                 kp_querier = KGQuerier(self.response, kp_to_use)
-            return kp_querier.answer_one_hop_query(query_graph)
+
+            return kp_querier.answer_one_hop_query(edge_query_graph, qnodes_using_curies_from_prior_step)
 
     def __expand_node(self, query_node, kp_to_use):
         if kp_to_use == 'BTE':
