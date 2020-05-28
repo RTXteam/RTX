@@ -778,8 +778,8 @@ def query_using_continue_if_no_results():
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list, do_standard_testing=False)
 
 
-def query_using_list_of_curies():
-    print("Testing query using list of curies")
+def query_using_list_of_curies_map_back_handling():
+    print("Testing query using list of curies with map_back synonym handling")
     actions_list = [
         "create_message",
         "add_qnode(curie=[CUI:C0024530, CUI:C0024535, CUI:C0024534, CUI:C0747820], id=n00)",
@@ -790,6 +790,38 @@ def query_using_list_of_curies():
     ]
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
     assert 1 < len(kg_in_dict_form['nodes']['n00']) <= 4
+    n00_node_ids = set(kg_in_dict_form['nodes']['n00'].keys())
+    assert n00_node_ids.issubset({"CUI:C0024530", "CUI:C0024535", "CUI:C0024534", "CUI:C0747820"})
+
+
+def query_using_list_of_curies_add_all_handling():
+    print("Testing query using list of curies with add_all synonym handling")
+    actions_list = [
+        "create_message",
+        "add_qnode(curie=[CUI:C0024530, CUI:C0024535, CUI:C0024534, CUI:C0747820], id=n00)",
+        "add_qnode(type=phenotypic_feature, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(kp=ARAX/KG2, synonym_handling=add_all)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    assert len(kg_in_dict_form['nodes']['n00']) > 4
+
+
+def query_using_list_of_curies_without_synonyms():
+    print("Testing query using list of curies without using any synonyms")
+    actions_list = [
+        "create_message",
+        "add_qnode(curie=[CUI:C0024530, CUI:C0024535, CUI:C0024534, CUI:C0747820], id=n00)",
+        "add_qnode(type=phenotypic_feature, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(kp=ARAX/KG2, use_synonyms=false)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    assert 1 < len(kg_in_dict_form['nodes']['n00']) <= 4
+    n00_node_ids = set(kg_in_dict_form['nodes']['n00'].keys())
+    assert n00_node_ids.issubset({"CUI:C0024530", "CUI:C0024535", "CUI:C0024534", "CUI:C0747820"})
 
 
 def query_with_curies_on_both_ends():
@@ -824,8 +856,8 @@ def main():
     acetaminophen_example_enforcing_directionality()
     parkinsons_example_enforcing_directionality()
     test_kg1_property_format()
-    # simple_bte_acetaminophen_query()
-    # simple_bte_cdk2_query()
+    simple_bte_acetaminophen_query()
+    simple_bte_cdk2_query()
     test_simple_bidirectional_query()
     query_that_doesnt_return_original_curie()
     single_node_query_map_back()
@@ -839,8 +871,10 @@ def main():
     add_all_query_with_multiple_synonyms_in_results()
     query_that_expands_same_edge_twice()
     query_using_continue_if_no_results()
-    query_using_list_of_curies()
     query_with_curies_on_both_ends()
+    query_using_list_of_curies_map_back_handling()
+    query_using_list_of_curies_add_all_handling()
+    query_using_list_of_curies_without_synonyms()
 
     # Non-standard tests/bug tests
     # ambitious_query_causing_multiple_qnode_ids_error()
