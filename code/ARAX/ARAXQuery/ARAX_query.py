@@ -540,7 +540,12 @@ class ARAXQuery:
                 #### Immediately after resultify, run the experimental ranker
                 if action['command'] == 'resultify':
                     response.info(f"Running experimental reranker on results")
-                    messenger.rank_results(message, response=response)
+                    try:
+                        messenger.rank_results(message, response=response)
+                    except Exception as error:
+                        exception_type, exception_value, exception_traceback = sys.exc_info()
+                        response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
+                        return response
 
             #### At the end, process the explicit return() action, or implicitly perform one
             return_action = { 'command': 'return', 'parameters': { 'message': 'true', 'store': 'true' } }
