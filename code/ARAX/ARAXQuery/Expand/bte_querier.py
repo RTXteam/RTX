@@ -2,7 +2,6 @@
 import sys
 import os
 import traceback
-import requests
 
 from biothings_explorer.user_query_dispatcher import SingleEdgeQueryDispatcher
 
@@ -17,7 +16,7 @@ class BTEQuerier:
     def __init__(self, response_object):
         self.response = response_object
 
-    def answer_one_hop_query(self, query_graph):
+    def answer_one_hop_query(self, query_graph, qnodes_using_curies_from_prior_step):
         answer_kg = {'nodes': dict(), 'edges': dict()}
         edge_to_nodes_map = dict()
 
@@ -45,8 +44,8 @@ class BTEQuerier:
                 except:
                     trace_back = traceback.format_exc()
                     error_type, error, _ = sys.exc_info()
-                    self.response.error(f"Encountered a problem while using BioThings Explorer. BTE log: "
-                                        f"{' '.join(seqd.log)} {trace_back}", error_code=error_type.__name__)
+                    self.response.error(f"Encountered a problem while using BioThings Explorer. {trace_back}",
+                                        error_code=error_type.__name__)
                     return answer_kg, edge_to_nodes_map
                 else:
                     self.__add_answers_to_kg(answer_kg, reasoner_std_response, input_qnode.id, output_qnode.id, qedge.id)
@@ -93,18 +92,19 @@ class BTEQuerier:
             return None, None, None
 
         # Convert node types to preferred format and check if they're allowed
-        input_qnode.type = self.__convert_string_to_pascal_case(input_qnode.type)
-        output_qnode.type = self.__convert_string_to_pascal_case(output_qnode.type)
+        input_qnode.type = self.__format_node_type_for_bte(input_qnode.type)
+        output_qnode.type = self.__format_node_type_for_bte(output_qnode.type)
         for node_type in [input_qnode.type, output_qnode.type]:
             if node_type not in valid_bte_inputs_dict['node_types']:
                 self.response.error(f"BTE does not accept node type '{node_type}'. Valid options are "
                                     f"{valid_bte_inputs_dict['node_types']}", error_code="InvalidInput")
                 return None, None, None
 
-        # Make sure node type pair is allowed
-        if (input_qnode.type, output_qnode.type) not in valid_bte_inputs_dict['node_type_pairs']:
-            self.response.error(f"BTE cannot do {input_qnode.type}->{output_qnode.type} queries.", error_code="InvalidInput")
-            return None, None, None
+        # TODO: Actually load this info from BTE's meta data
+        # # Make sure node type pair is allowed
+        # if (input_qnode.type, output_qnode.type) not in valid_bte_inputs_dict['node_type_pairs']:
+        #     self.response.error(f"BTE cannot do {input_qnode.type}->{output_qnode.type} queries.", error_code="InvalidInput")
+        #     return None, None, None
 
         # Make sure our input node curies are in list form and use prefixes BTE prefers
         input_qnode.curie = input_qnode.curie if type(input_qnode.curie) is list else [input_qnode.curie]
@@ -156,25 +156,22 @@ class BTEQuerier:
         return edge_to_nodes_map
 
     def __get_valid_bte_inputs_dict(self):
-        valid_values_dict = {'node_types': set(), 'curie_prefixes': set(), 'predicates': set(), 'node_type_pairs': set()}
-        r = requests.get("https://smart-api.info/registry/translator/meta-kg")
-        if r.status_code == 200:
-            bte_associations = r.json()['associations']
-            for bte_association in bte_associations:
-                subject_type = bte_association['subject']['semantic_type']
-                object_type = bte_association['object']['semantic_type']
-                subject_curie_prefix = bte_association['subject']['identifier']
-                object_curie_prefix = bte_association['object']['identifier']
-                predicate = bte_association['predicate']['label']
-                valid_values_dict['node_types'].add(subject_type)
-                valid_values_dict['node_types'].add(object_type)
-                valid_values_dict['curie_prefixes'].add(subject_curie_prefix)
-                valid_values_dict['curie_prefixes'].add(object_curie_prefix)
-                valid_values_dict['predicates'].add(predicate)
-                valid_values_dict['node_type_pairs'].add((subject_type, object_type))
-        else:
-            self.response.error(f"Ran into a problem trying to grab BTE meta-kg page ({r.status_code} error)", error_code="FailedRequest")
-        return valid_values_dict
+        # TODO: Load these using the soon to be built method in ARAX/KnowledgeSources (then will be regularly updated)
+        node_types = {'ChemicalSubstance', 'Transcript', 'AnatomicalEntity', 'Disease', 'GenomicEntity', 'Gene',
+                       'BiologicalProcess', 'Cell', 'SequenceVariant', 'MolecularActivity', 'PhenotypicFeature',
+                       'Protein', 'CellularComponent', 'Pathway'}
+        curie_prefixes = {'ENSEMBL', 'CHEBI', 'HP', 'DRUGBANK', 'MOP', 'MONDO', 'GO', 'HGNC', 'CL', 'DOID', 'MESH',
+                           'OMIM', 'SO', 'SYMBOL', 'Reactome', 'UBERON', 'UNIPROTKB', 'PR', 'NCBIGene', 'UMLS',
+                           'CHEMBL.COMPOUND', 'MGI', 'DBSNP', 'WIKIPATHWAYS', 'MP'}
+        predicates = {'disrupts', 'coexists_with', 'caused_by', 'subclass_of', 'affected_by', 'manifested_by',
+                       'physically_interacts_with', 'prevented_by', 'has_part', 'negatively_regulates',
+                       'functional_association', 'precedes', 'homologous_to', 'negatively_regulated_by',
+                       'positively_regulated_by', 'has_subclass', 'contraindication', 'located_in', 'prevents',
+                       'disrupted_by', 'preceded_by', 'treats', 'produces', 'treated_by', 'derives_from',
+                       'gene_to_transcript_relationship', 'predisposes', 'affects', 'metabolize', 'has_gene_product',
+                       'produced_by', 'derives_info', 'related_to', 'causes', 'contraindicated_by', 'part_of',
+                       'metabolic_processing_affected_by', 'positively_regulates', 'manifestation_of'}
+        return {'node_types': node_types, 'curie_prefixes': curie_prefixes, 'predicates': predicates}
 
     def __get_counts_by_qg_id(self, knowledge_graph):
         counts_by_qg_id = dict()
@@ -200,9 +197,18 @@ class BTEQuerier:
                 kg_to_qg_ids['edges'][kg_id] = qedge_ids
         return kg_to_qg_ids
 
+    def __format_node_type_for_bte(self, input_node_type):
+        formatted_type = self.__convert_string_to_pascal_case(input_node_type)
+        if formatted_type == "Disease" or formatted_type == "PhenotypicFeature":
+            return "DiseaseOrPhenotypicFeature"
+        else:
+            return formatted_type
+
     def __convert_string_to_pascal_case(self, input_string):
         # Converts a string like 'chemical_substance' or 'chemicalSubstance' to 'ChemicalSubstance'
-        if "_" in input_string:
+        if not input_string:
+            return ""
+        elif "_" in input_string:
             words = input_string.split('_')
             return "".join([word.capitalize() for word in words])
         elif len(input_string) > 1:
