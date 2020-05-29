@@ -649,7 +649,7 @@ def main():
 
     print("==== Get total number of drug nodes and disease nodes ============================")
     t0 = timeit.default_timer()
-    kg = 'KG2'
+    kg = 'KG1'
     print(kgNodeIndex.get_total_entity_count('chemical_substance', kg_name=kg))
     print(kgNodeIndex.get_total_entity_count('disease', kg_name=kg))
     print(kgNodeIndex.get_total_entity_count('protein', kg_name=kg))
