@@ -75,20 +75,21 @@ class BTEQuerier:
             self.response.error(f"BTE can only accept one-hop query graphs (your QG has {len(query_graph.nodes)} "
                                 f"nodes and {len(query_graph.edges)} edges)", error_code="InvalidQueryGraph")
             return None, None, None
-
-        # Figure out which query node is input vs. output
-        input_qnode = [node for node in query_graph.nodes if node.curie]
-        if not input_qnode:
-            self.response.error(f"One of the input qnodes must have a curie for BTE queries", error_code="InvalidQueryGraph")
-            return None, None, None
-        input_qnode = input_qnode[0]
-        output_qnode = next(node for node in query_graph.nodes if node.id != input_qnode.id)
         qedge = query_graph.edges[0]
 
-        # Throw an error if both qnodes have a curie specified (BTE can't do curie--curie edges #TODO: hack around this)
-        if input_qnode.curie and output_qnode.curie:
-            self.response.error(f"BTE cannot expand edges for which both nodes have a curie specified (for now)",
-                                error_code="InvalidInput")
+        # Figure out which query node is input vs. output and validate which qnodes have curies
+        qnodes_with_curies = [node for node in query_graph.nodes if node.curie]
+        if len(qnodes_with_curies) != 1:
+            if len(qnodes_with_curies) == 0:
+                self.response.error(f"One of this edge's QNodes must have a curie for BTE queries",
+                                    error_code="InvalidQueryGraph")
+            elif len(qnodes_with_curies) > 1:
+                self.response.error(f"BTE cannot expand edges for which both nodes have a curie specified (for now)",
+                                    error_code="InvalidInput")
+                # TODO: Hack around this limitation to allow curie--curie queries
+            return None, None, None
+        input_qnode = qnodes_with_curies[0]
+        output_qnode = next(node for node in query_graph.nodes if node.id != input_qnode.id)
 
         # Make sure predicate is allowed
         if qedge.type not in valid_bte_inputs_dict['predicates'] and qedge.type is not None:
