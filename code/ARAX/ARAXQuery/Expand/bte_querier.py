@@ -44,8 +44,8 @@ class BTEQuerier:
                 except:
                     trace_back = traceback.format_exc()
                     error_type, error, _ = sys.exc_info()
-                    self.response.error(f"Encountered a problem while using BioThings Explorer. BTE log: "
-                                        f"{' '.join(seqd.log)} {trace_back}", error_code=error_type.__name__)
+                    self.response.error(f"Encountered a problem while using BioThings Explorer. {trace_back}",
+                                        error_code=error_type.__name__)
                     return answer_kg, edge_to_nodes_map
                 else:
                     self.__add_answers_to_kg(answer_kg, reasoner_std_response, input_qnode.id, output_qnode.id, qedge.id)
@@ -92,8 +92,8 @@ class BTEQuerier:
             return None, None, None
 
         # Convert node types to preferred format and check if they're allowed
-        input_qnode.type = self.__convert_string_to_pascal_case(input_qnode.type)
-        output_qnode.type = self.__convert_string_to_pascal_case(output_qnode.type)
+        input_qnode.type = self.__format_node_type_for_bte(input_qnode.type)
+        output_qnode.type = self.__format_node_type_for_bte(output_qnode.type)
         for node_type in [input_qnode.type, output_qnode.type]:
             if node_type not in valid_bte_inputs_dict['node_types']:
                 self.response.error(f"BTE does not accept node type '{node_type}'. Valid options are "
@@ -197,9 +197,18 @@ class BTEQuerier:
                 kg_to_qg_ids['edges'][kg_id] = qedge_ids
         return kg_to_qg_ids
 
+    def __format_node_type_for_bte(self, input_node_type):
+        formatted_type = self.__convert_string_to_pascal_case(input_node_type)
+        if formatted_type == "Disease" or formatted_type == "PhenotypicFeature":
+            return "DiseaseOrPhenotypicFeature"
+        else:
+            return formatted_type
+
     def __convert_string_to_pascal_case(self, input_string):
         # Converts a string like 'chemical_substance' or 'chemicalSubstance' to 'ChemicalSubstance'
-        if "_" in input_string:
+        if not input_string:
+            return ""
+        elif "_" in input_string:
             words = input_string.split('_')
             return "".join([word.capitalize() for word in words])
         elif len(input_string) > 1:

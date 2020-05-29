@@ -539,7 +539,7 @@ def simple_bte_acetaminophen_query():
 
 
 def bte_query_using_list_of_curies():
-    print(f"Testing simple BTE acetaminophen query")
+    print(f"Testing BTE query using list of curies")
     actions_list = [
         "create_message",
         "add_qnode(id=n00, curie=[CHEMBL.COMPOUND:CHEMBL112, CHEMBL.COMPOUND:CHEMBL521])",
