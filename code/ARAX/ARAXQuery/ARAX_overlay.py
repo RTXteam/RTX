@@ -472,6 +472,8 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         return response
 
     def __fisher_exact_test(self, describe=False):
+        # FIXME: change query_node_id to source_node_id (and check to make sure this exists in the QG, throw an error otherwise)
+        #       change adjacent_node_type to target_node_id (and check to make sure this exists in the QG, throw an error otherwise)
         """
         Computes the significance of connection between a list of nodes with certain type in KG and each of its adjacent nodes with other type by the fisher's exact test.
         Allowable parameters:
@@ -494,6 +496,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and hasattr(message.query_graph, 'edges'):
             allowable_query_node_id = set([node.qnode_id for node in message.knowledge_graph.nodes])
             allowwable_query_edge_id = set([edge.qedge_id for edge in message.knowledge_graph.edges])
+            # FIXME: need to generate this from some source as per #780
             allowable_adjacent_node_type = [None,'metabolite','biological_process','chemical_substance','microRNA','protein',
                                  'anatomical_entity','pathway','cellular_component','phenotypic_feature','disease','molecular_function']
             allowable_adjacent_edge_type = [None,'physically_interacts_with','subclass_of','involved_in','affects','capable_of',
@@ -525,7 +528,14 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         # A little function to describe what this thing does
         if describe:
             brief_description = """
-`fisher_exact_test` computes the significance(p-value) of connection to the adjacent nodes with specified type (e.g. 'biological_process') and adds it as virtual edge attribute to the virtual edge which was added to the knowledge graph.
+`fisher_exact_test` computes the significance (p-value) of connection to the adjacent nodes with specified type (e.g. 'biological_process') and adds it as virtual edge attribute to the virtual edge which is added to the knowledge graph.
+
+Use cases include:
+
+* Given an input list (or a single) bioentity, find connected bioentities of a certain type that are most "representative" of the input list of bioentities
+* Find biological pathways that are enriched for an input list of proteins
+* Make long query graph expansions in a targeted fashion to reduce the combinatorial explosion experienced with long query graphs 
+
 This p-value is calculated from fisher's exact test based on the contingency table with following format:
     |                                  | in query node list | not in query node list | row total |
     | connect to certain adjacent node |         a          |           b            |   a+b     |
