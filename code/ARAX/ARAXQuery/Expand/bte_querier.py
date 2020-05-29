@@ -85,6 +85,11 @@ class BTEQuerier:
         output_qnode = next(node for node in query_graph.nodes if node.id != input_qnode.id)
         qedge = query_graph.edges[0]
 
+        # Throw an error if both qnodes have a curie specified (BTE can't do curie--curie edges #TODO: hack around this)
+        if input_qnode.curie and output_qnode.curie:
+            self.response.error(f"BTE cannot expand edges for which both nodes have a curie specified (for now)",
+                                error_code="InvalidInput")
+
         # Make sure predicate is allowed
         if qedge.type not in valid_bte_inputs_dict['predicates'] and qedge.type is not None:
             self.response.error(f"BTE does not accept predicate '{qedge.type}'. Valid options are "
