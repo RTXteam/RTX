@@ -63,13 +63,13 @@ class ComputeFTEST:
             else:
                 added_flag = False
         else:
-            added_flag= True
+            added_flag = True
 
         # initialize some variables
         nodes_info = {}
         kp = set()
         query_node_list = []
-        size_of_adjacent={}
+        size_of_adjacent = {}
         adjacent_graph_list = dict()
         adjacent_node_dict = {}
         query_node_type = set()
@@ -158,6 +158,9 @@ class ComputeFTEST:
         # Update the original Query Graph
         #qnode = QNode(curie=None, id=f"{query_node_id}_n00", is_set=None, type=adjacent_node_type)
         #self.message.query_graph.nodes.append(qnode)
+        # FIXME: This is causing the main issue: the target_id **must** correspond to something in the QG.
+        #      Check if the query_target_id is in the QG, if so, just add the virtual edge to the QG
+        #      If the query_target_id is not in the QG, add the node the QG
         if added_flag:
             qedge = QEdge(id=virtual_edge_type, source_id=query_node_id, target_id=f"{query_node_id}_{virtual_edge_type}", type="FET")
             self.message.query_graph.edges.append(qedge)
@@ -215,6 +218,9 @@ class ComputeFTEST:
             pass
 
         # assign the results as node attribute to message
+        # FIXME: if the KG source_id and target_id are in the KG, just decorate the virtual edge with the FET edge attribute
+        #       if either the KG source_id or the target_id are NOT in the KG, add the appropriate node to the KG (via appending to the message.knowledge_graph.nodes list)
+        #       in this later case, you will need to append the WHOLE node object (not just the CURIE). i.e. only object of the class node.py should be appended to message.knowledge_graph.nodes)
         count = 0
         for adj in adjacent_node_dict:
             if adj not in output.keys():
@@ -225,7 +231,7 @@ class ComputeFTEST:
                         if kg_edge.source_id == adj or kg_edge.target_id == adj:
                             # make the edge, add the attribute
                             id = f"{virtual_edge_type}_{count}"
-                            edge_attribute = EdgeAttribute(type="float",name="Fisher Exact Test P-value",value=str(output[adj]),url=None)
+                            edge_attribute = EdgeAttribute(type="float", name="Fisher Exact Test P-value", value=str(output[adj]), url=None)  # FIXME: will need a url for this
                             now = datetime.now()
                             defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
                             edge_type = 'virtual_edge'
@@ -233,7 +239,7 @@ class ComputeFTEST:
                             relation = kg_edge.relation
                             is_defined_by = kg_edge.is_defined_by
                             provided_by = "ARAX/RTX"
-                            confidence = None
+                            confidence = 1
                             weight = None
                             source_id = kg_edge.source_id
                             target_id = kg_edge.target_id
@@ -253,6 +259,10 @@ class ComputeFTEST:
         return self.response
 
     def query_adjacent_nodes(self, this):
+        # FIXME: doc string does not match function definition.
+        #  Very mysterious and not good coding practice to make the behavior of this method dependant on the length
+        #  of `this` and have no description about what the length of `this` actually means (nor what it is or
+        #  what it is supposed to contain)
         """
         Query adjacent nodes of a given query node based on adjacent node type.
         :param node_curie: (required) the curie id of query node, eg. "UniProtKB:P14136"
@@ -265,7 +275,7 @@ class ComputeFTEST:
         """
 
         if len(this) == 6:
-            # this contains sixe variables and assign them to different variables
+            # this contains six variables and assign them to different variables
             node_curie, id, adjacent_type, kp, rel_type, return_len = this
         elif len(this) == 5:
             node_curie, id, adjacent_type, kp, rel_type = this
@@ -348,6 +358,7 @@ class ComputeFTEST:
         """
         find all nodes of a certain type in KP
         """
+        # TODO: extend this to KG2, BTE, and other KP's we know of
         if use_cypher_command:
             rtxConfig = RTXConfiguration()
             # Connection information for the neo4j server, populated with orangeboard
