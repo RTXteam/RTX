@@ -259,7 +259,10 @@ class ComputeFTEST:
         return self.response
 
     def query_adjacent_nodes(self, this):
-        # FIXME: doc string does not match function definition
+        # FIXME: doc string does not match function definition.
+        #  Very mysterious and not good coding practice to make the behavior of this method dependant on the length
+        #  of `this` and have no description about what the length of `this` actually means (nor what it is or
+        #  what it is supposed to contain)
         """
         Query adjacent nodes of a given query node based on adjacent node type.
         :param node_curie: (required) the curie id of query node, eg. "UniProtKB:P14136"
