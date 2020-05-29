@@ -94,11 +94,16 @@ class BTEQuerier:
         # Convert node types to preferred format and check if they're allowed
         input_qnode.type = self.__convert_string_to_pascal_case(input_qnode.type)
         output_qnode.type = self.__convert_string_to_pascal_case(output_qnode.type)
-        for node_type in [input_qnode.type, output_qnode.type]:
-            if node_type not in valid_bte_inputs_dict['node_types']:
-                self.response.error(f"BTE does not accept node type '{node_type}'. Valid options are "
-                                    f"{valid_bte_inputs_dict['node_types']}", error_code="InvalidInput")
-                return None, None, None
+        qnodes_missing_type = [qnode.id for qnode in [input_qnode, output_qnode] if not qnode.type]
+        if qnodes_missing_type:
+            self.response.error(f"BTE requires every query node to have a type. QNode(s) missing a type: "
+                                f"{', '.join(qnodes_missing_type)}", error_code="InvalidInput")
+            return None, None, None
+        invalid_qnode_types = [qnode.type for qnode in [input_qnode, output_qnode] if qnode.type not in valid_bte_inputs_dict['node_types']]
+        if invalid_qnode_types:
+            self.response.error(f"BTE does not accept QNode type(s): {', '.join(invalid_qnode_types)}. Valid options are"
+                                f" {valid_bte_inputs_dict['node_types']}", error_code="InvalidInput")
+            return None, None, None
 
         # TODO: Actually load this info from BTE's meta data
         # # Make sure node type pair is allowed
