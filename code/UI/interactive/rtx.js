@@ -5,10 +5,11 @@ var cytodata = [];
 var predicates = {};
 var message_id = null;
 var summary_table_html = '';
+var summary_tsv = [];
 var columnlist = [];
 var UIstate = {};
 
-var baseAPI = "";
+var baseAPI = "/devED/";
 //var baseAPI = "http://localhost:5001/devED/";
 
 function main() {
@@ -520,7 +521,7 @@ function render_message(respObj) {
 
 
     if ( respObj["table_column_names"] )
-        document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br></div>";
+        document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br><input type='button' class='json_copy button' name='action' title='Get tab-separated values of this table to paste into Excel etc' value='Copy Summary Table clipboard (TSV)' onclick='copyTSVToClipboard();'><br><br></div>";
     else
         document.getElementById("summary_container").innerHTML += "<h2>Summary not available for this query</h2>";
 
@@ -640,6 +641,8 @@ function add_to_summary(rowdata, num) {
 	summary_table_html += '<'+cell+'>' + rowdata[i] + listlink + '</'+cell+'>';
     }
     summary_table_html += '</tr>';
+
+    summary_tsv.push(rowdata.join("\t"));
 }
 
 
@@ -1817,4 +1820,15 @@ function copyJSON() {
 	document.execCommand("copy");
 	//alert("text copied")
     }
+}
+
+function copyTSVToClipboard() {
+    var dummy = document.createElement("textarea");
+    document.body.appendChild(dummy);
+    dummy.setAttribute("id", "dummy_id");
+    for (var line of summary_tsv)
+	document.getElementById("dummy_id").value+=line+"\n";
+    dummy.select();
+    document.execCommand("copy");
+    document.body.removeChild(dummy);
 }
