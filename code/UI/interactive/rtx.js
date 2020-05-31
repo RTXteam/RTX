@@ -9,7 +9,7 @@ var summary_tsv = [];
 var columnlist = [];
 var UIstate = {};
 
-var baseAPI = "/devED/";
+var baseAPI = "";
 //var baseAPI = "http://localhost:5001/devED/";
 
 function main() {
