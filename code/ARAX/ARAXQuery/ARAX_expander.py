@@ -134,11 +134,6 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                 if response.status != 'OK':
                     return response
 
-            # Make sure no node/edge fulfills more than one qg id (until we come up with a way to handle this)
-            self.__check_for_multiple_qg_ids(dict_kg)
-            if self.response.status != 'OK':
-                return response
-
         # Expand any specified nodes
         if input_node_ids:
             for qnode_id in input_node_ids:
@@ -438,35 +433,6 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                                 error_code="MissingProperty")
             is_valid = False
         return is_valid
-
-    def __check_for_multiple_qg_ids(self, dict_kg):
-        # Figure out if any nodes are being used to fulfill more than one QNode ID
-        all_node_ids = set()
-        nodes_with_multiple_qg_ids = set()
-        nodes_dict = dict_kg.get('nodes')
-        for qnode_id, nodes in nodes_dict.items():
-            node_ids = set(nodes.keys())
-            nodes_with_multiple_qg_ids = all_node_ids.intersection(node_ids)
-            all_node_ids = all_node_ids.union(node_ids)
-        if nodes_with_multiple_qg_ids:
-            for node_id in nodes_with_multiple_qg_ids:
-                used_qnode_ids = [qnode_id for qnode_id in nodes_dict.keys() if nodes_dict[qnode_id].get(node_id)]
-                self.response.error(f"Node {node_id} has been returned as an answer for multiple query graph nodes"
-                                    f" ({', '.join(used_qnode_ids)})", error_code="MultipleQGIDs")
-
-        # Figure out if any edges are being used to fulfill more than one QEdge ID
-        all_edge_ids = set()
-        edges_with_multiple_qg_ids = set()
-        edges_dict = dict_kg.get('edges')
-        for qedge_id, edges in edges_dict.items():
-            edge_ids = set(edges.keys())
-            edges_with_multiple_qg_ids = all_edge_ids.intersection(edge_ids)
-            all_edge_ids = all_edge_ids.union(edge_ids)
-        if edges_with_multiple_qg_ids:
-            for edge_id in edges_with_multiple_qg_ids:
-                used_qedge_ids = [qedge_id for qedge_id in edges_dict.keys() if edges_dict[qedge_id].get(edge_id)]
-                self.response.warning(f"Edge {edge_id} has been returned as an answer for multiple query graph edges"
-                                    f" ({', '.join(used_qedge_ids)})")
 
     def __convert_to_list(self, string_or_list):
         if type(string_or_list) is str:
