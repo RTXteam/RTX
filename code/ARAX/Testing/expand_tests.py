@@ -85,14 +85,16 @@ def convert_list_kg_to_dict_kg(knowledge_graph):
 def conduct_standard_testing(kg_in_dict_form, query_graph):
     check_for_orphans(kg_in_dict_form)
     check_all_qg_ids_fulfilled(kg_in_dict_form, query_graph)
-    print("  ...PASSED STANDARD TESTING!")
 
 
 def print_counts_by_qgid(kg_in_dict_form):
-    for qnode_id, corresponding_nodes in sorted(kg_in_dict_form['nodes'].items()):
-        print(f"  {qnode_id}: {len(corresponding_nodes)}")
-    for qedge_id, corresponding_edges in sorted(kg_in_dict_form['edges'].items()):
-        print(f"  {qedge_id}: {len(corresponding_edges)}")
+    if kg_in_dict_form['nodes'] or kg_in_dict_form['edges']:
+        for qnode_id, corresponding_nodes in sorted(kg_in_dict_form['nodes'].items()):
+            print(f"  {qnode_id}: {len(corresponding_nodes)}")
+        for qedge_id, corresponding_edges in sorted(kg_in_dict_form['edges'].items()):
+            print(f"  {qedge_id}: {len(corresponding_edges)}")
+    else:
+        print("  KG is empty")
 
 
 def print_nodes(kg_in_dict_form):
@@ -868,6 +870,20 @@ def query_with_intermediate_curie_node():
     assert len(kg_in_dict_form['nodes']['n01']) == 1
 
 
+def continue_if_no_results_query_causing_774():
+    print("Testing continue if no results query causing #774")
+    actions_list = [
+        "create_message",
+        "add_qnode(name=acetaminophen, id=n1)",
+        "add_qnode(name=scabies, id=n2)",
+        "add_qedge(source_id=n1, target_id=n2, id=e1)",
+        "expand(edge_id=e1, kp=ARAX/KG2, continue_if_no_results=True)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list, do_standard_testing=False)
+    assert not kg_in_dict_form['nodes'] and not kg_in_dict_form['edges']
+
+
 def main():
     # Regular tests
     test_kg1_parkinsons_demo_example()
@@ -907,6 +923,7 @@ def main():
     query_using_list_of_curies_add_all_handling()
     query_using_list_of_curies_without_synonyms()
     query_with_intermediate_curie_node()
+    continue_if_no_results_query_causing_774()
 
     # Non-standard tests/bug tests
     # ambitious_query_causing_multiple_qnode_ids_error()

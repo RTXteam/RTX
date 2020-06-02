@@ -237,18 +237,18 @@ class KGQuerier:
 
                     self.__add_edge_to_kg(swagger_edge)
 
-        # Make sure any original curie that synonyms were used for appears in the answer kg as appropriate
-        if synonym_handling == 'map_back':
-            for qnode_id, synonym_usage_mappings in synonym_usages_dict.items():
-                for original_curie, synonyms_used in synonym_usage_mappings.items():
-                    if qnode_id not in self.final_kg['nodes'] or original_curie not in self.final_kg['nodes'][qnode_id]:
-                        # Get this node from neo4j and add it to the kg
-                        cypher = f"match (n) where n.id='{original_curie}' return n limit 1"
-                        original_node = self.__run_cypher_query(cypher, kp)[0].get('n')
-                        swagger_node = self.__convert_neo4j_node_to_swagger_node(original_node, qnode_id, kp)
-                        self.__add_node_to_kg(swagger_node)
-
         if self.final_kg['edges']:
+            # Make sure any original curie that synonyms were used for appears in the answer kg as appropriate
+            if synonym_handling == 'map_back':
+                for qnode_id, synonym_usage_mappings in synonym_usages_dict.items():
+                    for original_curie, synonyms_used in synonym_usage_mappings.items():
+                        if qnode_id not in self.final_kg['nodes'] or original_curie not in self.final_kg['nodes'][qnode_id]:
+                            # Get this node from neo4j and add it to the kg
+                            cypher = f"match (n) where n.id='{original_curie}' return n limit 1"
+                            original_node = self.__run_cypher_query(cypher, kp)[0].get('n')
+                            swagger_node = self.__convert_neo4j_node_to_swagger_node(original_node, qnode_id, kp)
+                            self.__add_node_to_kg(swagger_node)
+
             # Remove any self-edges
             edges_to_remove = []
             qedge_id = self.query_graph.edges[0]
