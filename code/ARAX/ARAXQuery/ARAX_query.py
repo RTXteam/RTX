@@ -1022,7 +1022,7 @@ def main():
             "add_qnode(id=n02, type=biological_process)",
             "add_qedge(id=e01, source_id=n01, target_id=n02)",
             "expand(edge_id=[e00, e01], kp=ARAX/KG1)",
-            "overlay(action=fisher_exact_test, virtual_edge_type=FET1, query_node_id=n01, adjacent_node_type=biological_process, cutoff=0.05)",
+            "overlay(action=fisher_exact_test, source_node_id=n01, virtual_edge_type=FET, target_node_id=n02,, cutoff=0.05)",
             "resultify()",
             "return(message=true, store=true)"
         ]}}

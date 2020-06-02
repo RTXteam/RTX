@@ -82,8 +82,6 @@ class ARAXOverlay:
             elif item not in allowable_parameters[key]:
                 if any([type(x) == float for x in allowable_parameters[key]]) or any([type(x) == int for x in allowable_parameters[key]]):  # if it's a float or int, just accept it as it is
                     return
-                elif str(item).upper() in ['TRUE','FALSE']:
-                    return
                 elif key=="virtual_edge_type" and type(item) == str:
                     return
                 else:  # otherwise, it's really not an allowable parameter
@@ -472,19 +470,17 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         return response
 
     def __fisher_exact_test(self, describe=False):
-        # FIXME: change query_node_id to source_node_id (and check to make sure this exists in the QG, throw an error otherwise)
-        #       change adjacent_node_type to target_node_id (and check to make sure this exists in the QG, throw an error otherwise)
+
         """
         Computes the significance of connection between a list of nodes with certain type in KG and each of its adjacent nodes with other type by the fisher's exact test.
         Allowable parameters:
-            :param query_node_id: (required) a specific QNode id (you used in add_qnode() in DSL) of query nodes in message KG eg. "n00" (this might be a bunch of "protein" nodes in message KG)
-            :param virtual_edge_type: (required) any string to label this Fisher's Exact Test call eg. 'FET1'
-            :param adjacent_node_type: (required) a specific node type in knowledge provider. This will specify which node type to consider for calculating the Fisher Exact Test, eg. "biological_process"
-            :param query_edge_id: (optional) a specific QEdge id (you used in add_qedge() in DSL) of query edges in message KG, eg. "e00" (this might be a bunch of 'has_phenotype' edges in message KG)
-            :param adjacent_edge_type: (optional) a specific edge type in knowledge provider. This will specify which edge type to consider for calculating the Fisher Exact Test, eg. "involved_in"
+            :param source_node_id: (required) a specific QNode id (you used in add_qnode() in DSL) of source nodes in message KG eg. "n00"
+            :param virtual_edge_type: (required) any string to label this Fisher's Exact Test call eg. 'FET'
+            :param target_node_id: (required) a specific QNode id (you used in add_qnode() in DSL) of target nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test, eg. "n01"
+            :param relation: (optional) any string to define the relation for the virtual edge (default: 'FET')
+            :param rel_edge_id: (optional) a specific QEdge id (you used in add_qedge() in DSL) of edges connected to both source nodes and target nodes in message KG. eg. "e01"
             :param top_n: (optional) an int indicating the top number of the most significant adjacent nodes to return (otherwise all results returned) eg. 10
             :param cutoff: (optional) a float indicating the maximal p-value you want results returned for (otherwise all results returned) eg. 0.05
-            :param added_flag: (optional) True or False to add a q_edge the query_graph (default is True)
         :return: response
         """
 
@@ -494,35 +490,35 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         # allowable_parameters = {'action': {'fisher_exact_test'}, 'query_node_label': {...}, 'compare_node_label':{...}}
 
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and hasattr(message.query_graph, 'edges'):
-            allowable_query_node_id = set([node.qnode_id for node in message.knowledge_graph.nodes])
-            allowwable_query_edge_id = set([edge.qedge_id for edge in message.knowledge_graph.edges])
-            # FIXME: need to generate this from some source as per #780
-            allowable_adjacent_node_type = [None,'metabolite','biological_process','chemical_substance','microRNA','protein',
-                                 'anatomical_entity','pathway','cellular_component','phenotypic_feature','disease','molecular_function']
-            allowable_adjacent_edge_type = [None,'physically_interacts_with','subclass_of','involved_in','affects','capable_of',
-                                 'contraindicated_for','indicated_for','regulates','expressed_in','gene_associated_with_condition',
-                                 'has_phenotype','gene_mutations_contribute_to','participates_in','has_part']
+            allowable_source_node_id = set([node.qnode_id for node in message.knowledge_graph.nodes])
+            allowable_target_node_id = set([node.qnode_id for node in message.knowledge_graph.nodes])
+            allowwable_rel_edge_id = list(set([edge.qedge_id for edge in message.knowledge_graph.edges]))
+            allowwable_rel_edge_id.append(None)
+            # # FIXME: need to generate this from some source as per #780
+            # allowable_target_node_type = [None,'metabolite','biological_process','chemical_substance','microRNA','protein',
+            #                      'anatomical_entity','pathway','cellular_component','phenotypic_feature','disease','molecular_function']
+            # allowable_target_edge_type = [None,'physically_interacts_with','subclass_of','involved_in','affects','capable_of',
+            #                      'contraindicated_for','indicated_for','regulates','expressed_in','gene_associated_with_condition',
+            #                      'has_phenotype','gene_mutations_contribute_to','participates_in','has_part']
 
             allowable_parameters = {'action': {'fisher_exact_test'},
-                                    'query_node_id': allowable_query_node_id,
+                                    'source_node_id': allowable_source_node_id,
                                     'virtual_edge_type': str(),
-                                    'adjacent_node_type': allowable_adjacent_node_type,
-                                    'query_edge_id': allowwable_query_edge_id,
-                                    'adjacent_edge_type': allowable_adjacent_edge_type,
+                                    'target_node_id': allowable_target_node_id,
+                                    'relation': str(),
+                                    'rel_edge_id': allowwable_rel_edge_id,
                                     'top_n': [None,int()],
-                                    'cutoff': [None,float()],
-                                    'added_flag': ['True', 'False']
+                                    'cutoff': [None,float()]
                                     }
         else:
             allowable_parameters = {'action': {'fisher_exact_test'},
-                                    'query_node_id': {"a specific QNode id of query nodes in message KG (required), eg. 'n00'"},
-                                    'virtual_edge_type': {"any string to label this Fisher's Exact Test call (required) eg. 'FET1'"},
-                                    'adjacent_node_type': {"a specific node type in knowledge provider. This will specify which node type to consider for calculating the Fisher Exact Test (required), eg. 'biological_process'"},
-                                    'query_edge_id': {"a specific QEdge id of query edges in message KG (optional, otherwise all edge types are used), eg. 'e00'"},
-                                    'adjacent_edge_type': {"a specific edge type in knowledge provider. This will specify which edge type to consider for calculating the Fisher Exact Test (optional, otherwise all edge types are returned), eg. 'involved_in'"},
+                                    'source_node_id': {"a specific QNode id of source nodes in message KG (required), eg. 'n00'"},
+                                    'virtual_edge_type': {"any string to label this Fisher's Exact Test call (required) eg. 'FET'"},
+                                    'target_node_id': {"a specific QNode id of target nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test (required), eg. 'n01'"},
+                                    'relation': {"any string to define the relation for the virtual edge (optional, default: 'FET')"},
+                                    'rel_edge_id': {"a specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edge types are considered), eg. 'e01'"},
                                     'top_n': {"an int indicating the top number of results to return (optional,otherwise all results returned), eg. 10"},
-                                    'cutoff': {"a float indicating the maximal p-value you want results returned for (optional, otherwise all results returned), eg. 0.05"},
-                                    'added_flag': {"True or False to add a q_edge the query_graph (optional, default is True)"}
+                                    'cutoff': {"a float indicating the maximal p-value you want results returned for (optional, otherwise all results returned), eg. 0.05"}
                                     }
 
         # A little function to describe what this thing does
