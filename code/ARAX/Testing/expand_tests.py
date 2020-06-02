@@ -13,7 +13,7 @@ from ARAX_resultify import ARAXResultify
 
 # Utility functions
 
-def run_query_and_conduct_standard_testing(actions_list, num_allowed_retries=2, do_standard_testing=True):
+def run_query_and_conduct_standard_testing(actions_list, num_allowed_retries=2, kg_should_be_incomplete=False):
     response = Response()
     actions_parser = ActionsParser()
 
@@ -64,8 +64,7 @@ def run_query_and_conduct_standard_testing(actions_list, num_allowed_retries=2, 
     # print(response.show(level=Response.DEBUG))
     kg_in_dict_form = convert_list_kg_to_dict_kg(message.knowledge_graph)
     print_counts_by_qgid(kg_in_dict_form)
-    if do_standard_testing:
-        conduct_standard_testing(kg_in_dict_form, message.query_graph)
+    conduct_standard_testing(kg_in_dict_form, message.query_graph, kg_should_be_incomplete)
     return kg_in_dict_form
 
 
@@ -84,9 +83,10 @@ def convert_list_kg_to_dict_kg(knowledge_graph):
     return dict_kg
 
 
-def conduct_standard_testing(kg_in_dict_form, query_graph):
+def conduct_standard_testing(kg_in_dict_form, query_graph, kg_should_be_incomplete):
     check_for_orphans(kg_in_dict_form)
-    check_all_qg_ids_fulfilled(kg_in_dict_form, query_graph)
+    check_all_qg_ids_fulfilled(kg_in_dict_form, query_graph, kg_should_be_incomplete)
+    check_property_types(kg_in_dict_form)
 
 
 def print_counts_by_qgid(kg_in_dict_form):
@@ -136,11 +136,21 @@ def check_for_orphans(kg_in_dict_form):
     assert node_ids == node_ids_used_by_edges or len(node_ids_used_by_edges) == 0
 
 
-def check_all_qg_ids_fulfilled(kg_in_dict_form, query_graph):
-    for qnode in query_graph.nodes:
-        assert kg_in_dict_form['nodes'].get(qnode.id)
-    for qedge in query_graph.edges:
-        assert kg_in_dict_form['edges'].get(qedge.id)
+def check_all_qg_ids_fulfilled(kg_in_dict_form, query_graph, kg_should_be_incomplete):
+    if not kg_should_be_incomplete:
+        for qnode in query_graph.nodes:
+            assert kg_in_dict_form['nodes'].get(qnode.id)
+        for qedge in query_graph.edges:
+            assert kg_in_dict_form['edges'].get(qedge.id)
+
+
+def check_property_types(kg_in_dict_form):
+    for qnode_id, nodes in kg_in_dict_form['nodes'].items():
+        for node_key, node in nodes.items():
+            assert type(node.qnode_id) is list
+    for qedge_id, edges in kg_in_dict_form['edges'].items():
+        for edge_key, edge in edges.items():
+            assert type(edge.qedge_id) is list
 
 
 # Actual test cases
@@ -436,6 +446,7 @@ def erics_first_kg1_synonym_test_with_synonyms():
         "return(message=true, store=false)",
     ]
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    assert len(kg_in_dict_form['nodes']['n01']) > 20
 
 
 def acetaminophen_example_enforcing_directionality():
@@ -785,14 +796,16 @@ def query_using_continue_if_no_results():
     actions_list = [
         "create_message",
         "add_qnode(curie=UniProtKB:P14136, id=n00)",
-        "add_qnode(curie=UniProtKB:P35579, id=n01)",
-        "add_qnode(type=biological_process, id=n02)",
-        "add_qedge(source_id=n00, target_id=n02, id=e00)",
-        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "add_qnode(type=biological_process, id=n01)",
+        "add_qnode(curie=UniProtKB:P35579, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n02, target_id=n01, id=e01)",
         "expand(edge_id=[e00,e01], kp=ARAX/KG1, continue_if_no_results=true)",
         "return(message=true, store=false)"
     ]
-    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list, do_standard_testing=False)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list, kg_should_be_incomplete=True)
+    assert 'n02' not in kg_in_dict_form['nodes']
+    assert 'e01' not in kg_in_dict_form['edges']
 
 
 def query_using_list_of_curies_map_back_handling():
@@ -881,7 +894,7 @@ def continue_if_no_results_query_causing_774():
         "expand(edge_id=e1, kp=ARAX/KG2, continue_if_no_results=True)",
         "return(message=true, store=false)"
     ]
-    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list, do_standard_testing=False)
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list, kg_should_be_incomplete=True)
     assert not kg_in_dict_form['nodes'] and not kg_in_dict_form['edges']
 
 
