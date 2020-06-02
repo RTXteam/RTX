@@ -72,13 +72,15 @@ def run_query_and_conduct_standard_testing(actions_list, num_allowed_retries=2, 
 def convert_list_kg_to_dict_kg(knowledge_graph):
     dict_kg = {'nodes': dict(), 'edges': dict()}
     for node in knowledge_graph.nodes:
-        if node.qnode_id not in dict_kg['nodes']:
-            dict_kg['nodes'][node.qnode_id] = dict()
-        dict_kg['nodes'][node.qnode_id][node.id] = node
+        for qnode_id in node.qnode_id:
+            if qnode_id not in dict_kg['nodes']:
+                dict_kg['nodes'][qnode_id] = dict()
+            dict_kg['nodes'][qnode_id][node.id] = node
     for edge in knowledge_graph.edges:
-        if edge.qedge_id not in dict_kg['edges']:
-            dict_kg['edges'][edge.qedge_id] = dict()
-        dict_kg['edges'][edge.qedge_id][edge.id] = edge
+        for qedge_id in edge.qedge_id:
+            if qedge_id not in dict_kg['edges']:
+                dict_kg['edges'][qedge_id] = dict()
+            dict_kg['edges'][qedge_id][edge.id] = edge
     return dict_kg
 
 
@@ -100,7 +102,7 @@ def print_counts_by_qgid(kg_in_dict_form):
 def print_nodes(kg_in_dict_form):
     for qnode_id, nodes in kg_in_dict_form['nodes'].items():
         for node_key, node in nodes.items():
-            print(f"{node.qnode_id}, {node.type}, {node.id}, {node.name}")
+            print(f"{qnode_id}: {node.type}, {node.id}, {node.name}, {node.qnode_id}")
 
 
 def print_edges(kg_in_dict_form):
@@ -512,7 +514,7 @@ def test_kg1_property_format():
             assert type(node.name) is str
             assert type(node.id) is str
             assert ":" in node.id
-            assert type(node.qnode_id) is str
+            assert type(node.qnode_id) is list
             assert type(node.type) is list
             assert type(node.uri) is str
 
@@ -521,7 +523,7 @@ def test_kg1_property_format():
             assert type(edge.id) is str
             assert type(edge.is_defined_by) is str
             assert type(edge.provided_by) is str
-            assert type(edge.qedge_id) is str
+            assert type(edge.qedge_id) is list
             assert type(edge.type) is str
             if "chembl" in edge.provided_by.lower():
                 assert edge.edge_attributes[0].name == "probability"
@@ -608,7 +610,6 @@ def query_that_doesnt_return_original_curie():
         "return(message=true, store=false)"
     ]
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
-
     assert len(kg_in_dict_form['nodes']['n0']) == 1
     assert "MONDO:0005737" in kg_in_dict_form['nodes']['n0']
 
@@ -924,9 +925,9 @@ def main():
     query_using_list_of_curies_without_synonyms()
     query_with_intermediate_curie_node()
     continue_if_no_results_query_causing_774()
+    ambitious_query_causing_multiple_qnode_ids_error()
 
     # Non-standard tests/bug tests
-    # ambitious_query_causing_multiple_qnode_ids_error()
     # test_two_hop_bte_query()
     # angioedema_bte_query_causing_759()
 

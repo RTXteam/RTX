@@ -221,30 +221,30 @@ class KGQuerier:
                     qnode_id_2 = qedge.target_id
                     curie_fulfilling_qnode_id_1 = edge.get(qnode_id_1)
                     curie_fulfilling_qnode_id_2 = edge.get(qnode_id_2)
-                    original_curie_for_qnode_id_1 = None
-                    original_curie_for_qnode_id_2 = None
-                    # Remap edges back to original curies as needed
-                    if synonym_handling == "map_back" and qnode_id in synonym_usages_dict and \
-                            (curie_fulfilling_qnode_id_1 not in synonym_usages_dict[qnode_id] or
-                             curie_fulfilling_qnode_id_2 not in synonym_usages_dict[qnode_id]):
-                        original_curies_for_qnode_id_1 = [original_curie for original_curie, synonyms_used in
-                                                          synonym_usages_dict[qnode_id].items() if
-                                                          curie_fulfilling_qnode_id_1 in synonyms_used]
-                        if original_curies_for_qnode_id_1:
-                            original_curie_for_qnode_id_1 = original_curies_for_qnode_id_1[0]
-                            if swagger_edge.source_id == curie_fulfilling_qnode_id_1:
-                                swagger_edge.source_id = original_curie_for_qnode_id_1
-                            if swagger_edge.target_id == curie_fulfilling_qnode_id_1:
-                                swagger_edge.target_id = original_curie_for_qnode_id_1
-                        original_curies_for_qnode_id_2 = [original_curie for original_curie, synonyms_used in
-                                                          synonym_usages_dict[qnode_id].items() if
-                                                          curie_fulfilling_qnode_id_2 in synonyms_used]
-                        if original_curies_for_qnode_id_2:
-                            original_curie_for_qnode_id_2 = original_curies_for_qnode_id_2[0]
-                            if swagger_edge.source_id == curie_fulfilling_qnode_id_2:
-                                swagger_edge.source_id = original_curie_for_qnode_id_2
-                            if swagger_edge.target_id == curie_fulfilling_qnode_id_2:
-                                swagger_edge.target_id = original_curie_for_qnode_id_2
+                    starting_curie_for_qnode_id_1 = None
+                    starting_curie_for_qnode_id_2 = None
+                    # Remap edges back to original starting curies as needed
+                    if synonym_handling == "map_back":
+                        if qnode_id_1 in synonym_usages_dict:
+                            starting_curies_for_qnode_id_1 = [original_curie for original_curie, synonyms_used in
+                                                             synonym_usages_dict[qnode_id_1].items() if
+                                                             curie_fulfilling_qnode_id_1 in synonyms_used]
+                            if starting_curies_for_qnode_id_1:
+                                starting_curie_for_qnode_id_1 = starting_curies_for_qnode_id_1[0]
+                                if swagger_edge.source_id == curie_fulfilling_qnode_id_1:
+                                    swagger_edge.source_id = starting_curie_for_qnode_id_1
+                                if swagger_edge.target_id == curie_fulfilling_qnode_id_1:
+                                    swagger_edge.target_id = starting_curie_for_qnode_id_1
+                        if qnode_id_2 in synonym_usages_dict:
+                            starting_curies_for_qnode_id_2 = [original_curie for original_curie, synonyms_used in
+                                                             synonym_usages_dict[qnode_id].items() if
+                                                             curie_fulfilling_qnode_id_2 in synonyms_used]
+                            if starting_curies_for_qnode_id_2:
+                                starting_curie_for_qnode_id_2 = starting_curies_for_qnode_id_2[0]
+                                if swagger_edge.source_id == curie_fulfilling_qnode_id_2:
+                                    swagger_edge.source_id = starting_curie_for_qnode_id_2
+                                if swagger_edge.target_id == curie_fulfilling_qnode_id_2:
+                                    swagger_edge.target_id = starting_curie_for_qnode_id_2
 
                         # Update the edge ID so it's accurate (and distinct from equivalent non-mapped-back edges)
                         swagger_edge.id = self.__create_edge_id(swagger_edge)
@@ -252,8 +252,8 @@ class KGQuerier:
                     # Record which of this (mapped or unmapped) edge's nodes correspond to which qnode_id
                     if swagger_edge.id not in self.edge_to_nodes_map:
                         self.edge_to_nodes_map[swagger_edge.id] = dict()
-                    self.edge_to_nodes_map[swagger_edge.id][qnode_id_1] = original_curie_for_qnode_id_1 if original_curie_for_qnode_id_1 else curie_fulfilling_qnode_id_1
-                    self.edge_to_nodes_map[swagger_edge.id][qnode_id_2] = original_curie_for_qnode_id_2 if original_curie_for_qnode_id_2 else curie_fulfilling_qnode_id_2
+                    self.edge_to_nodes_map[swagger_edge.id][qnode_id_1] = starting_curie_for_qnode_id_1 if starting_curie_for_qnode_id_1 else curie_fulfilling_qnode_id_1
+                    self.edge_to_nodes_map[swagger_edge.id][qnode_id_2] = starting_curie_for_qnode_id_2 if starting_curie_for_qnode_id_2 else curie_fulfilling_qnode_id_2
 
                     self.__add_edge_to_kg(swagger_edge, qedge_id)
 
