@@ -416,10 +416,6 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             self.response.error(f"Node key is different from node id in Expand (key: {node_key}, id: {node.id})",
                                 error_code="InvalidDataStructure")
             is_valid = False
-        elif not node.qnode_id:
-            self.response.error(f"Node {node_key} in answer is missing its corresponding qnode_id",
-                                error_code="MissingProperty")
-            is_valid = False
         return is_valid
 
     def __validate_edge(self, edge_key, edge):
@@ -427,10 +423,6 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         if edge_key != edge.id:
             self.response.error(f"Edge key is different from edge id in Expand (key: {edge_key}, id: {edge.id})",
                                 error_code="InvalidDataStructure")
-            is_valid = False
-        elif not edge.qedge_id:
-            self.response.error(f"Edge {edge_key} in answer is missing its corresponding qedge_id",
-                                error_code="MissingProperty")
             is_valid = False
         return is_valid
 
@@ -454,28 +446,41 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
     def __convert_standard_kg_to_dict_kg(self, knowledge_graph):
         dict_kg = {'nodes': dict(), 'edges': dict()}
-        if knowledge_graph.nodes is not None:
+        if knowledge_graph.nodes:
             for node in knowledge_graph.nodes:
-                if node.qnode_id not in dict_kg['nodes']:
-                    dict_kg['nodes'][node.qnode_id] = dict()
-                dict_kg['nodes'][node.qnode_id][node.id] = node
-        if knowledge_graph.edges is not None:
+                for qnode_id in node.qnode_id:
+                    if qnode_id not in dict_kg['nodes']:
+                        dict_kg['nodes'][qnode_id] = dict()
+                    dict_kg['nodes'][qnode_id][node.id] = node
+        if knowledge_graph.edges:
             for edge in knowledge_graph.edges:
-                if edge.qedge_id not in dict_kg['edges']:
-                    dict_kg['edges'][edge.qedge_id] = dict()
-                dict_kg['edges'][edge.qedge_id][edge.id] = edge
+                for qedge_id in edge.qedge_id:
+                    if qedge_id not in dict_kg['edges']:
+                        dict_kg['edges'][qedge_id] = dict()
+                    dict_kg['edges'][qedge_id][edge.id] = edge
         return dict_kg
 
     def __convert_dict_kg_to_standard_kg(self, dict_kg):
-        standard_kg = KnowledgeGraph()
-        standard_kg.nodes = []
-        standard_kg.edges = []
-        for qnode_id, nodes_dict in dict_kg.get('nodes').items():
-            for node in nodes_dict.values():
-                standard_kg.nodes.append(node)
-        for qedge_id, edges_dict in dict_kg.get('edges').items():
-            for edge in edges_dict.values():
-                standard_kg.edges.append(edge)
+        almost_standard_kg = KnowledgeGraph(nodes=dict(), edges=dict())
+        for qnode_id, nodes_for_this_qnode_id in dict_kg.get('nodes').items():
+            for node_key, node in nodes_for_this_qnode_id.items():
+                is_valid = self.__validate_node(node_key, node)
+                if is_valid:
+                    if node_key in almost_standard_kg.nodes:
+                        almost_standard_kg.nodes[node_key].qnode_id.append(qnode_id)
+                    else:
+                        node.qnode_id = [qnode_id]
+                        almost_standard_kg.nodes[node_key] = node
+        for qedge_id, edges_for_this_qedge_id in dict_kg.get('edges').items():
+            for edge_key, edge in edges_for_this_qedge_id.items():
+                is_valid = self.__validate_edge(edge_key, edge)
+                if is_valid:
+                    if edge_key in almost_standard_kg.edges:
+                        almost_standard_kg.edges[edge_key].qedge_id.append(qedge_id)
+                    else:
+                        edge.qedge_id = [qedge_id]
+                        almost_standard_kg.edges[edge_key] = edge
+        standard_kg = KnowledgeGraph(nodes=almost_standard_kg.nodes.values(), edges=almost_standard_kg.edges.values())
         return standard_kg
 
     def __copy_qedge(self, old_qedge):
