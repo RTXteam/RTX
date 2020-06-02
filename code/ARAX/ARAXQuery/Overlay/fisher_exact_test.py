@@ -253,6 +253,7 @@ class ComputeFTEST:
         size_of_total = self.size_of_given_type_in_KP(node_type=source_node_type[0])
         size_of_query_sample = len(source_node_list)
 
+
         output = {}
         self.response.debug(f"Computing Fisher's Exact Test P-value")
         try:
@@ -261,6 +262,9 @@ class ComputeFTEST:
                                      [size_of_query_sample - len(target_node_dict[node]), (size_of_total - size_of_target[node]) - (size_of_query_sample - len(target_node_dict[node]))]]
                 output[node] = stats.fisher_exact(contingency_table)[1]
         except:
+            tb = traceback.format_exc()
+            error_type, error, _ = sys.exc_info()
+            self.response.error(tb, error_code=error_type.__name__)
             self.response.error(f"Something went wrong with calculating FET p-value")
             return self.response
 
@@ -359,7 +363,7 @@ class ComputeFTEST:
             query = {"previous_message_processing_plan": {"processing_actions": [
                 "create_message",
                 f"add_qnode(curie={node_curie}, id={id}_n00)",
-                f"fadd_qnode(type={adjacent_type}, id={id}_n01)",
+                f"add_qnode(type={adjacent_type}, id={id}_n01)",
                 f"add_qedge(source_id={id}_n00, target_id={id}_n01, id={id}_e00, type={rel_type})",
                 f"expand(edge_id={id}_e00,kp={kp})",
                 "resultify()",
