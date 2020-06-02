@@ -71,12 +71,12 @@ def run_query_and_conduct_standard_testing(actions_list, num_allowed_retries=2, 
 def convert_list_kg_to_dict_kg(knowledge_graph):
     dict_kg = {'nodes': dict(), 'edges': dict()}
     for node in knowledge_graph.nodes:
-        for qnode_id in node.qnode_id:
+        for qnode_id in node.qnode_ids:
             if qnode_id not in dict_kg['nodes']:
                 dict_kg['nodes'][qnode_id] = dict()
             dict_kg['nodes'][qnode_id][node.id] = node
     for edge in knowledge_graph.edges:
-        for qedge_id in edge.qedge_id:
+        for qedge_id in edge.qedge_ids:
             if qedge_id not in dict_kg['edges']:
                 dict_kg['edges'][qedge_id] = dict()
             dict_kg['edges'][qedge_id][edge.id] = edge
@@ -102,13 +102,13 @@ def print_counts_by_qgid(kg_in_dict_form):
 def print_nodes(kg_in_dict_form):
     for qnode_id, nodes in kg_in_dict_form['nodes'].items():
         for node_key, node in nodes.items():
-            print(f"{qnode_id}: {node.type}, {node.id}, {node.name}, {node.qnode_id}")
+            print(f"{qnode_id}: {node.type}, {node.id}, {node.name}, {node.qnode_ids}")
 
 
 def print_edges(kg_in_dict_form):
     for qedge_id, edges in kg_in_dict_form['edges'].items():
         for edge_key, edge in edges.items():
-            print(f"{edge.qedge_id}, {edge.id}, {edge.source_id}--{edge.type}->{edge.target_id}")
+            print(f"{qedge_id}: {edge.id}, {edge.source_id}--{edge.type}->{edge.target_id}, {edge.qedge_ids}")
 
 
 def print_node_counts_by_prefix(kg_in_dict_form):
@@ -147,10 +147,10 @@ def check_all_qg_ids_fulfilled(kg_in_dict_form, query_graph, kg_should_be_incomp
 def check_property_types(kg_in_dict_form):
     for qnode_id, nodes in kg_in_dict_form['nodes'].items():
         for node_key, node in nodes.items():
-            assert type(node.qnode_id) is list
+            assert type(node.qnode_ids) is list
     for qedge_id, edges in kg_in_dict_form['edges'].items():
         for edge_key, edge in edges.items():
-            assert type(edge.qedge_id) is list
+            assert type(edge.qedge_ids) is list
 
 
 # Actual test cases
@@ -525,7 +525,7 @@ def test_kg1_property_format():
             assert type(node.name) is str
             assert type(node.id) is str
             assert ":" in node.id
-            assert type(node.qnode_id) is list
+            assert type(node.qnode_ids) is list
             assert type(node.type) is list
             assert type(node.uri) is str
 
@@ -534,7 +534,7 @@ def test_kg1_property_format():
             assert type(edge.id) is str
             assert type(edge.is_defined_by) is str
             assert type(edge.provided_by) is str
-            assert type(edge.qedge_id) is list
+            assert type(edge.qedge_ids) is list
             assert type(edge.type) is str
             if "chembl" in edge.provided_by.lower():
                 assert edge.edge_attributes[0].name == "probability"
