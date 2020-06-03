@@ -212,7 +212,7 @@ function postQuery(qtype) {
 	var reader = response.body.getReader();
 	var partialMsg = '';
 	var enqueue = false;
-	var countingSteps = false;
+	var numCurrMsgs = 0;
 	var totalSteps = 0;
 	var finishedSteps = 0;
 	var decoder = new TextDecoder();
@@ -257,13 +257,21 @@ function postQuery(qtype) {
 			    }
 			    else if (totalSteps>0) {
 				document.getElementById("totalSteps").innerHTML = totalSteps;
+				if (numCurrMsgs < 99)
+				    numCurrMsgs++;
+				if (finishedSteps == totalSteps)
+				    numCurrMsgs = 1;
+
+                                document.getElementById("progressBar").style.width = (800*(finishedSteps+0.5*Math.log10(numCurrMsgs))/totalSteps)+"px";
+				document.getElementById("progressBar").innerHTML = Math.round(99*(finishedSteps+0.5*Math.log10(numCurrMsgs))/totalSteps)+"%\u00A0\u00A0";
+
 				if (jsonMsg.message.match(/^Processing action/)) {
-				    document.getElementById("progressBar").style.width = (800*finishedSteps/totalSteps)+"px";
-				    document.getElementById("progressBar").innerHTML = Math.round(99*finishedSteps/totalSteps)+"%\u00A0\u00A0";
 				    finishedSteps++;
 				    document.getElementById("finishedSteps").innerHTML = finishedSteps;
+				    numCurrMsgs = 0;
 				}
 			    }
+
 			    cmddiv.appendChild(document.createTextNode(jsonMsg.prefix+'\u00A0'+jsonMsg.message));
 			    cmddiv.appendChild(document.createElement("br"));
 			    cmddiv.scrollTop = cmddiv.scrollHeight;
@@ -521,7 +529,7 @@ function render_message(respObj) {
 
 
     if ( respObj["table_column_names"] )
-        document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br><input type='button' class='json_copy button' name='action' title='Get tab-separated values of this table to paste into Excel etc' value='Copy Summary Table clipboard (TSV)' onclick='copyTSVToClipboard();'><br><br></div>";
+        document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br><input type='button' class='questionBox button' name='action' title='Get tab-separated values of this table to paste into Excel etc' value='Copy Summary Table to clipboard (TSV)' onclick='copyTSVToClipboard(this);'><br><br></div>";
     else
         document.getElementById("summary_container").innerHTML += "<h2>Summary not available for this query</h2>";
 
@@ -1135,24 +1143,24 @@ function edit_qg() {
 
 
 function display_query_graph_items() {
-    var kghtml = '';
+    var qghtml = '';
     var nitems = 0;
 
     input_qg.nodes.forEach(function(result, index) {
 	nitems++;
-        kghtml += "<tr class='hoverable'><td>"+result.id+"</td><td title='"+result.desc+"'>"+(result.name==null?"-":result.name)+"</td><td>"+(result.curie==null?"<i>(any node)</i>":result.curie)+"</td><td>"+(result.type==null?"<i>(any)</i>":result.type)+"</td><td><a href='javascript:remove_node_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
+        qghtml += "<tr class='hoverable'><td>"+result.id+"</td><td title='"+result.desc+"'>"+(result.name==null?"-":result.name)+"</td><td>"+(result.curie==null?"<i>(any node)</i>":result.curie)+"</td><td>"+(result.type==null?"<i>(any)</i>":result.type)+"</td><td><a href='javascript:remove_node_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
     });
 
     input_qg.edges.forEach(function(result, index) {
-        kghtml += "<tr class='hoverable'><td>"+result.id+"</td><td>-</td><td>"+result.source_id+"--"+result.target_id+"</td><td>"+(result.type==null?"<i>(any)</i>":result.type)+"</td><td><a href='javascript:remove_edge_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
+        qghtml += "<tr class='hoverable'><td>"+result.id+"</td><td>-</td><td>"+result.source_id+"--"+result.target_id+"</td><td>"+(result.type==null?"<i>(any)</i>":result.type)+"</td><td><a href='javascript:remove_edge_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
     });
 
 
     if (nitems > 0) {
-	kghtml = "<table class='sumtab'><tr><th>Id</th><th>Name</th><th>Item</th><th>Type</th><th>Action</th></tr>" + kghtml + "</table>";
+	qghtml = "<table class='sumtab'><tr><th>Id</th><th>Name</th><th>Item</th><th>Type</th><th>Action</th></tr>" + qghtml + "</table>";
     }
 
-    document.getElementById("qg_items").innerHTML = kghtml;
+    document.getElementById("qg_items").innerHTML = qghtml;
 }
 
 
@@ -1803,7 +1811,7 @@ function display_session() {
 }
 
 
-function copyJSON() {
+function copyJSON(ele) {
     var containerid = "responseJSON";
 
     if (document.selection) {
@@ -1811,6 +1819,7 @@ function copyJSON() {
 	range.moveToElementText(document.getElementById(containerid));
 	range.select().createTextRange();
 	document.execCommand("copy");
+	addCheckBox(ele);
     }
     else if (window.getSelection) {
 	var range = document.createRange();
@@ -1818,11 +1827,12 @@ function copyJSON() {
         window.getSelection().removeAllRanges();
 	window.getSelection().addRange(range);
 	document.execCommand("copy");
+	addCheckBox(ele);
 	//alert("text copied")
     }
 }
 
-function copyTSVToClipboard() {
+function copyTSVToClipboard(ele) {
     var dummy = document.createElement("textarea");
     document.body.appendChild(dummy);
     dummy.setAttribute("id", "dummy_id");
@@ -1831,4 +1841,15 @@ function copyTSVToClipboard() {
     dummy.select();
     document.execCommand("copy");
     document.body.removeChild(dummy);
+
+    addCheckBox(ele);
+}
+
+function addCheckBox(ele) {
+    var check = document.createElement("span");
+    check.className = 'explevel p9';
+    check.innerHTML = '&check;';
+    ele.parentNode.insertBefore(check, ele.nextSibling);
+
+    var timeout = setTimeout(function() { check.remove(); }, 1500 );
 }
