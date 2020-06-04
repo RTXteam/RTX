@@ -480,7 +480,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                     else:
                         edge.qedge_ids = [qedge_id]
                         almost_standard_kg.edges[edge_key] = edge
-        standard_kg = KnowledgeGraph(nodes=almost_standard_kg.nodes.values(), edges=almost_standard_kg.edges.values())
+        standard_kg = KnowledgeGraph(nodes=list(almost_standard_kg.nodes.values()), edges=list(almost_standard_kg.edges.values()))
         return standard_kg
 
     def __copy_qedge(self, old_qedge):
