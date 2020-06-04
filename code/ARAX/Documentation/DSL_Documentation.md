@@ -187,8 +187,6 @@ It can also allow to filter out the user-defined insignificance of connections b
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
 
-Use cases include:
-
 ||||||||
 |----|----|----|-----|-----|-----|-----|
 |_DSL parameters_| source_node_id | target_node_id | virtual_relation_label | rel_edge_id | top_n | cutoff |
