@@ -23,7 +23,8 @@ class ARAXOverlay:
             'overlay_clinical_info',
             'compute_jaccard',
             'add_node_pmids',
-            'predict_drug_treats_disease'
+            'predict_drug_treats_disease',
+            'fisher_exact_test'
         }
         self.report_stats = True
 
@@ -80,6 +81,8 @@ class ARAXOverlay:
                     error_code="UnknownParameter")
             elif item not in allowable_parameters[key]:
                 if any([type(x) == float for x in allowable_parameters[key]]) or any([type(x) == int for x in allowable_parameters[key]]):  # if it's a float or int, just accept it as it is
+                    return
+                elif key=="virtual_relation_label" and type(item) == str:
                     return
                 else:  # otherwise, it's really not an allowable parameter
                     self.response.error(
@@ -466,6 +469,96 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         response = PDTD.predict_drug_treats_disease()
         return response
 
+    def __fisher_exact_test(self, describe=False):
+
+        """
+        Computes the the Fisher's Exact Test p-value of the connection between a list of given nodes with specified query id (source_node_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_node_id 'n02') in message knowledge graph.
+        Allowable parameters:
+            :param source_node_id: (required) a specific QNode id (you used in add_qnode() in DSL) of source nodes in message KG eg. "n00"
+            :param virtual_relation_label: (required) any string to label the relation and query edge id of virtual edge with fisher's exact test p-value eg. 'FET'
+            :param target_node_id: (required) a specific QNode id (you used in add_qnode() in DSL) of target nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test, eg. "n01"
+            :param rel_edge_id: (optional) a specific QEdge id (you used in add_qedge() in DSL) of edges connected to both source nodes and target nodes in message KG. eg. "e01"
+            :param top_n: (optional) an int indicating the top number of the most significant adjacent nodes to return (otherwise all results returned) eg. 10
+            :param cutoff: (optional) a float indicating the p-value cutoff to return the results (otherwise all results returned) eg. 0.05
+        :return: response
+        """
+
+        message = self.message
+        parameters = self.parameters
+        # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
+        # allowable_parameters = {'action': {'fisher_exact_test'}, 'query_node_label': {...}, 'compare_node_label':{...}}
+
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and hasattr(message.query_graph, 'edges'):
+            allowable_source_node_id = set([node.qnode_id for node in message.knowledge_graph.nodes])
+            allowable_target_node_id = set([node.qnode_id for node in message.knowledge_graph.nodes])
+            allowwable_rel_edge_id = list(set([edge.qedge_id for edge in message.knowledge_graph.edges]))
+            allowwable_rel_edge_id.append(None)
+            # # FIXME: need to generate this from some source as per #780
+            # allowable_target_node_type = [None,'metabolite','biological_process','chemical_substance','microRNA','protein',
+            #                      'anatomical_entity','pathway','cellular_component','phenotypic_feature','disease','molecular_function']
+            # allowable_target_edge_type = [None,'physically_interacts_with','subclass_of','involved_in','affects','capable_of',
+            #                      'contraindicated_for','indicated_for','regulates','expressed_in','gene_associated_with_condition',
+            #                      'has_phenotype','gene_mutations_contribute_to','participates_in','has_part']
+
+            allowable_parameters = {'action': {'fisher_exact_test'},
+                                    'source_node_id': allowable_source_node_id,
+                                    'virtual_relation_label': str(),
+                                    'target_node_id': allowable_target_node_id,
+                                    'rel_edge_id': allowwable_rel_edge_id,
+                                    'top_n': [None,int()],
+                                    'cutoff': [None,float()]
+                                    }
+        else:
+            allowable_parameters = {'action': {'fisher_exact_test'},
+                                    'source_node_id': {"a specific QNode id of source nodes in message KG (required), eg. 'n00'"},
+                                    'virtual_relation_label': {"any string to label the relation and query edge id of virtual edge with fisher's exact test p-value (required) eg. 'FET'"},
+                                    'target_node_id': {"a specific QNode id of target nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test (required), eg. 'n01'"},
+                                    'rel_edge_id': {"a specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"},
+                                    'top_n': {"an int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned), eg. 10"},
+                                    'cutoff': {"a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05"}
+                                    }
+
+        # A little function to describe what this thing does
+        if describe:
+            brief_description = """
+`fisher_exact_test` computes the the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_node_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_node_id 'n02') in message knowledge graph. 
+and adds them as the edge attribute of the virtual edge which is then added to the query graph and knowledge graph.
+It can also allow to filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and add their corresponding virtual edge to the knowledge graph.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+
+Use cases include:
+
+* Given an input list (or a single) bioentities with specified query id in message KG, find connected bioentities with certian query id in message KG that are most "representative" of the input list of bioentities
+* Find biological pathways that are enriched for an input list of proteins with specified query id in message KG
+* Make long query graph expansions in a targeted fashion to reduce the combinatorial explosion experienced with long query graphs 
+
+This p-value is calculated from fisher's exact test based on the contingency table with following format:
+    |                                  | in query node list | not in query node list | row total |
+    | connect to certain adjacent node |         a          |           b            |   a+b     |
+    | not connect to adjacent node     |         c          |           d            |   c+d     |
+    |         column total             |        a+c         |          b+d           |  a+b+c+d  |
+    
+The p-value is calculated by applying fisher_exact method of scipy.stats module in scipy package to the contingency table.
+The code is as follows:
+ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
+
+"""
+            allowable_parameters['brief_description'] = brief_description
+            return allowable_parameters
+
+        # Make sure only allowable parameters and values have been passed
+        self.check_params(allowable_parameters)
+        # return if bad parameters have been passed
+        if self.response.status != 'OK':
+            return self.response
+
+        # now do the call out to FTEST
+        from Overlay.fisher_exact_test import ComputeFTEST
+        FTEST = ComputeFTEST(self.response, self.message, self.parameters)
+        response = FTEST.fisher_exact_test()
+        return response
+
 ##########################################################################################
 def main():
     print("start ARAX_overlay")
@@ -477,7 +570,7 @@ def main():
     #### Create an ActionsParser object
     from actions_parser import ActionsParser
     actions_parser = ActionsParser()
- 
+
     #### Set a simple list of actions
     #actions_list = [
     #    "overlay(compute_confidence_scores=true)",

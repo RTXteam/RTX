@@ -14,6 +14,7 @@
     - [`overlay(action=predict_drug_treats_disease)`](#overlayactionpredict_drug_treats_disease)
     - [`overlay(action=add_node_pmids)`](#overlayactionadd_node_pmids)
     - [`overlay(action=overlay_clinical_info)`](#overlayactionoverlay_clinical_info)
+    - [`overlay(action=fisher_exact_test)`](#overlayactionfisher_exact_test)
   - [ARAX_filter_kg](#arax_filter_kg)
     - [`filter_kg(action=remove_orphaned_nodes)`](#filter_kgactionremove_orphaned_nodes)
     - [`filter_kg(action=remove_edges_by_property)`](#filter_kgactionremove_edges_by_property)
@@ -178,6 +179,19 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 |-----|-----|-----|-----|-----|-----|-----|
 |_DSL parameters_| paired_concept_freq | observed_expected_ratio | chi_square | virtual_edge_type | source_qnode_id | target_qnode_id |
 |_DSL arguments_| {'false', 'true'} | {'false', 'true'} | {'false', 'true'} | {'any string label (optional, otherwise applied to all edges)'} | {'a specific source query node id (optional, otherwise applied to all edges)'} | {'a specific target query node id (optional, otherwise applied to all edges)'} |
+
+### `overlay(action=fisher_exact_test)`
+
+`fisher_exact_test` computes the the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_node_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_node_id 'n02') in message knowledge graph and adds them as the edge attribute of the virtual edge which is then added to the query graph and knowledge graph.
+It can also allow to filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and add their corresponding virtual edge to the knowledge graph.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+
+||||||||
+|----|----|----|-----|-----|-----|-----|
+|_DSL parameters_| source_node_id | target_node_id | virtual_relation_label | rel_edge_id | top_n | cutoff |
+|_DSL arguments_| {"A specific QNode id of source nodes in message KG (required), eg. 'n00'"} | {"A specific QNode id of target nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test (required), eg. 'n01'"} | {"Any string to label the relation and query edge id of virtual edge with fisher's exact test p-value (required) eg. 'FET'"} | {"A specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"} | {"An int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned), eg. 10"} | {"A float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05"} |
+
 
 ## ARAX_filter_kg
 ### `filter_kg(action=remove_orphaned_nodes)`
