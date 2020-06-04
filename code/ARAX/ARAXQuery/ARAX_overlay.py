@@ -521,16 +521,16 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         # A little function to describe what this thing does
         if describe:
             brief_description = """
-`fisher_exact_test` computes the the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_node_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_node_id 'n02') in message knowledge graph. 
-and adds them as the edge attribute of the virtual edge which is then added to the query graph and knowledge graph.
-It can also allow to filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and add their corresponding virtual edge to the knowledge graph.
+`fisher_exact_test` computes the the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_node_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_node_id 'n02') in the message knowledge graph. 
+This information is then added as an edge attribute to a virtual edge which is then added to the query graph and knowledge graph.
+It can also allow you filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
 
 Use cases include:
 
-* Given an input list (or a single) bioentities with specified query id in message KG, find connected bioentities with certian query id in message KG that are most "representative" of the input list of bioentities
-* Find biological pathways that are enriched for an input list of proteins with specified query id in message KG
+* Given an input list (or a single) bioentities with specified query id in message KG, find connected bioentities  that are most "representative" of the input list of bioentities
+* Find biological pathways that are enriched for an input list of proteins (specified with a query id)
 * Make long query graph expansions in a targeted fashion to reduce the combinatorial explosion experienced with long query graphs 
 
 This p-value is calculated from fisher's exact test based on the contingency table with following format:
