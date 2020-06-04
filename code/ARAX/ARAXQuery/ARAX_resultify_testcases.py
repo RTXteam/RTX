@@ -827,6 +827,7 @@ class TestARAXResultify(unittest.TestCase):
         assert bfs_dists == {'n01': 1, 'DOID:12345': 0, 'n02': 1}
 
     def test_bfs_in_essence_code(self):
+        # FIXME: This test is currently failing because the KG data is flawed (edges use nodes of the wrong qnode_ids)
         kg_node_info = ({'id': 'UniProtKB:12345',
                          'type': 'protein',
                          'qnode_ids': ['n01']},
@@ -1112,6 +1113,20 @@ class TestARAXResultify(unittest.TestCase):
         resultifier = ARAXResultify()
         response = resultifier.apply(message, {})
         assert 'WARNING: no results returned; empty knowledge graph' in response.messages_list()[0]
+
+    def test_issue720(self):
+        query = {"previous_message_processing_plan": {"processing_actions": [
+                "add_qnode(curie=DOID:14330, id=n00)",
+                "add_qnode(type=protein, curie=[UniProtKB:Q02878, UniProtKB:Q9BXM7], is_set=true, id=n01)",
+                "add_qnode(type=disease, id=n02)",
+                "add_qedge(source_id=n00, target_id=n01, id=e00)",
+                "add_qedge(source_id=n01, target_id=n02, id=e01)",
+                "expand()",
+                "resultify(debug=true)"]}}
+        [response, message] = _do_arax_query(query)
+        n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n02" in node.qnode_ids]
+        assert len(message.results) == len(n02_nodes_in_kg)
+        assert response.status == 'OK'
 
     # ----------- set this up as a test suite at some point? ----------
     # def _run_module_leveltests(self):
