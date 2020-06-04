@@ -49,7 +49,7 @@ def _create_node(node_id: str, node_type: List[str], qnode_ids: List[str], node_
     return node
 
 
-def _create_edge(source_id: str, target_id: str, qedge_ids: List[str], edge_id: str = None, edge_type: str = None) -> Edge:
+def _create_edge(edge_id: str, source_id: str, target_id: str, qedge_ids: List[str], edge_type: str = None) -> Edge:
     edge = Edge(id=edge_id,
                 source_id=source_id,
                 target_id=target_id,
@@ -827,7 +827,7 @@ class TestARAXResultify(unittest.TestCase):
         assert bfs_dists == {'n01': 1, 'DOID:12345': 0, 'n02': 1}
 
     def test_bfs_in_essence_code(self):
-        # FIXME: This test is currently failing because the KG data is flawed (edges use nodes of the wrong qnode_ids)
+        # FIXME: This test is currently erroring because the KG data is flawed (edges use nodes of the wrong qnode_ids)
         kg_node_info = ({'id': 'UniProtKB:12345',
                          'type': 'protein',
                          'qnode_ids': ['n01']},
@@ -911,6 +911,7 @@ class TestARAXResultify(unittest.TestCase):
 
         results_list = ARAX_resultify._get_results_for_kg_by_qg(knowledge_graph,
                                                                 query_graph)
+        print(len(results_list))
         assert len(results_list) == 2
         assert results_list[0].essence is not None
 
@@ -1067,10 +1068,12 @@ class TestARAXResultify(unittest.TestCase):
                         {'id': 'DOID:11077',
                          'type': 'disease',
                          'qnode_ids': ['n2']})
-        kg_edge_info = ({'target_id': 'MONDO:0005737',
+        kg_edge_info = ({'edge_id': 'UniProtKB:Q14943--MONDO:0005737',
+                         'target_id': 'MONDO:0005737',
                          'source_id': 'UniProtKB:Q14943',
                          'qedge_ids': ['e0']},
-                        {'target_id': 'UniProtKB:Q14943',
+                        {'edge_id': 'DOID:12297--UniProtKB:Q14943',
+                         'target_id': 'UniProtKB:Q14943',
                          'source_id': 'DOID:12297',
                          'qedge_ids': ['e1']})
 
@@ -1078,7 +1081,8 @@ class TestARAXResultify(unittest.TestCase):
                                  node_type=[node_info['type']],
                                  qnode_ids=node_info['qnode_ids']) for node_info in kg_node_info]
 
-        kg_edges = [_create_edge(source_id=edge_info['source_id'],
+        kg_edges = [_create_edge(edge_id=edge_info['edge_id'],
+                                 source_id=edge_info['source_id'],
                                  target_id=edge_info['target_id'],
                                  qedge_ids=edge_info['qedge_ids']) for edge_info in kg_edge_info]
 

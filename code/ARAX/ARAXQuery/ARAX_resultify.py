@@ -427,6 +427,8 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     edge_bindings_map = {edge.id: edge.qedge_ids for edge in cast(Iterable[Edge], kg.edges) if edge.qedge_ids}
 
     qedge_ids_set = {edge.id for edge in cast(Iterable[QEdge], qg.edges)}
+    kg_edge_ids_by_qedge_id = {qedge.id: {edge.id for edge in cast(Iterable[Edge], kg.edges) if edge.qedge_ids and qedge.id in edge.qedge_ids} for qedge in qg.edges}
+    kg_node_ids_by_qnode_id = {qnode.id: {node.id for node in cast(Iterable[Node], kg.nodes) if node.qnode_ids and qnode.id in node.qnode_ids} for qnode in qg.nodes}
 
     # make a map of KG node ID to KG edges, by source:
     kg_adj_map_direc = _make_adj_maps(kg, directed=True, droploops=False)
@@ -514,18 +516,25 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     # --------------------- checking for consistency of edge-to-node relationships, for all edge bindings -----------
     # check that for each bound KG edge, the QG mappings of the KG edges source and target nodes are also the
     # source and target nodes of the QG edge that corresponds to the bound KG edge
-    # FIXME: Adjust this check now that qnode_ids is a list...
-    # for kg_edge_id in edge_bindings_map:
-    #     kg_edge = kg_edges_map[kg_edge_id]
-    #     kg_source_node_id = kg_edge.source_id
-    #     kg_target_node_id = kg_edge.target_id
-    #     qg_source_node_id = node_bindings_map[kg_source_node_id]
-    #     qg_target_node_id = node_bindings_map[kg_target_node_id]
-    #     if qg_source_node_id != qg_target_node_id:
-    #         if qg_edge_key_to_edge_id_map.get(_make_edge_key(qg_source_node_id, qg_target_node_id), None) is None:
-    #             if not ignore_edge_direction or qg_edge_key_to_edge_id_map.get(_make_edge_key(qg_target_node_id, qg_source_node_id), None) is None:
-    #                 raise ValueError("The two nodes for KG edge " + kg_edge.id + ", " + kg_source_node_id + " and " +
-    #                                  kg_target_node_id + ", have no corresponding edge in the QG")
+    for qedge_id, kg_edge_ids_for_this_qedge_id in kg_edge_ids_by_qedge_id.items():
+        qg_edge = next(qedge for qedge in qg.edges if qedge.id == qedge_id)
+        qg_source_node_id = qg_edge.source_id
+        qg_target_node_id = qg_edge.target_id
+        for edge_id in kg_edge_ids_for_this_qedge_id:
+            kg_edge = kg_edges_map.get(edge_id)
+            kg_source_node_id = kg_edge.source_id
+            kg_target_node_id = kg_edge.target_id
+            if qg_source_node_id != qg_target_node_id:
+                if not ((kg_source_node_id in kg_node_ids_by_qnode_id[qg_source_node_id] and
+                         kg_target_node_id in kg_node_ids_by_qnode_id[qg_target_node_id]) or
+                        (kg_source_node_id in kg_node_ids_by_qnode_id[qg_target_node_id] and
+                         kg_target_node_id in kg_node_ids_by_qnode_id[qg_source_node_id])):
+                    kg_source_node = kg_nodes_map.get(kg_source_node_id)
+                    kg_target_node = kg_nodes_map.get(kg_target_node_id)
+                    raise ValueError(f"Edge {kg_edge.id} (fulfilling {qg_edge.id}) has node(s) that do not fulfill the "
+                                     f"expected qnodes ({qg_source_node_id} and {qg_target_node_id}). Edge's nodes are "
+                                     f"{kg_source_node_id} (qnode_ids: {kg_source_node.qnode_ids}) and "
+                                     f"{kg_target_node_id} (qnode_ids: {kg_target_node.qnode_ids}).")
 
     # ------- check that for every edge in the QG, any KG nodes that are bound to the QG endpoint nodes of the edge are connected in the KG -------
     for qg_edge in qg_edges_map.values():
@@ -586,7 +595,6 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         return results
 
     dict_kg = KnowledgeGraph(nodes={node.id: node for node in kg.nodes}, edges={edge.id: edge for edge in kg.edges})
-    kg_edge_ids_by_qedge_id = {qedge.id: {edge.id for edge in kg.edges if edge.qedge_ids and qedge.id in edge.qedge_ids} for qedge in qg.edges}
 
     for node_ids_for_subgraph_from_non_set_nodes in itertools.product(*kg_node_id_lists_for_qg_nodes):
         non_set_node_ids_for_subgraph_dict = dict(zip(qnode_id_key_list_for_non_set_nodes, [{node_id} for node_id in node_ids_for_subgraph_from_non_set_nodes]))
