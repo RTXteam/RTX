@@ -772,6 +772,7 @@ class TestARAXResultify(unittest.TestCase):
         assert message.results[0].essence is not None
 
     def test_example2(self):
+        # NOTE: This test is currently failing due to Filter error (#784)
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(curie=DOID:14330, id=n00)",
@@ -913,6 +914,7 @@ class TestARAXResultify(unittest.TestCase):
         assert results_list[0].essence is not None
 
     def test_issue680(self):
+        # NOTE: This test is currently failing due to Filter error (#784)
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(curie=DOID:14330, id=n00)",
@@ -1033,7 +1035,7 @@ class TestARAXResultify(unittest.TestCase):
             result_graph = result.result_graph
             found_e01 = False
             for edge in result_graph.edges:
-                if edge.qedge_id == 'e1':
+                if 'e1' in edge.qedge_ids:
                     found_e01 = True
                     continue
             assert found_e01
@@ -1092,8 +1094,9 @@ class TestARAXResultify(unittest.TestCase):
                 "expand(edge_id=e00, kp=ARAX/KG2)",
                 "resultify()"]}}
         [response, message] = _do_arax_query(query)
-        assert response.status == 'ERROR'
-        assert 'ERROR: Node CUI:C0004572 has been returned as an answer for multiple query graph nodes (n01 and n00)' in response.messages_list()[0]
+        n01_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n01" in node.qnode_ids]
+        assert len(message.results) == len(n01_nodes_in_kg)
+        assert response.status == 'OK'
 
     def test_issue692(self):
         kg = KnowledgeGraph(nodes=[],
