@@ -534,14 +534,20 @@ Use cases include:
 * Make long query graph expansions in a targeted fashion to reduce the combinatorial explosion experienced with long query graphs 
 
 This p-value is calculated from fisher's exact test based on the contingency table with following format:
-    |                                  | in query node list | not in query node list | row total |
-    | connect to certain adjacent node |         a          |           b            |   a+b     |
-    | not connect to adjacent node     |         c          |           d            |   c+d     |
-    |         column total             |        a+c         |          b+d           |  a+b+c+d  |
+
+|||||
+|-----|-----|-----|-----|
+|                                  | in query node list | not in query node list | row total |
+| connect to certain adjacent node |         a          |           b            |   a+b     |
+| not connect to adjacent node     |         c          |           d            |   c+d     |
+|         column total             |        a+c         |          b+d           |  a+b+c+d  |
     
 The p-value is calculated by applying fisher_exact method of scipy.stats module in scipy package to the contingency table.
 The code is as follows:
+
+```
  _, pvalue = stats.fisher_exact([[a, b], [c, d]])
+```
 
 """
             allowable_parameters['brief_description'] = brief_description
