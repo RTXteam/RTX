@@ -32,13 +32,30 @@ def _slim_kg(kg: KnowledgeGraph) -> KnowledgeGraph:
     slimmed_nodes = [Node(id=node.id,
                           type=node.type,
                           name=node.name,
-                          qnode_id=node.qnode_id) for node in kg.nodes]
+                          qnode_ids=node.qnode_ids) for node in kg.nodes]
     slimmed_edges = [Edge(id=edge.id,
                           source_id=edge.source_id,
                           target_id=edge.target_id,
                           type=edge.type,
-                          qedge_id=edge.qedge_id) for edge in kg.edges]
+                          qedge_ids=edge.qedge_ids) for edge in kg.edges]
     return KnowledgeGraph(nodes=slimmed_nodes, edges=slimmed_edges)
+
+
+def _create_node(node_id: str, node_type: List[str], qnode_ids: List[str], node_name: str = None) -> Node:
+    node = Node(id=node_id,
+                type=node_type,
+                name=node_name)
+    node.qnode_ids = qnode_ids  # Must set outside initializer until (if?) qnode_ids is made an actual class attribute
+    return node
+
+
+def _create_edge(source_id: str, target_id: str, qedge_ids: List[str], edge_id: str = None, edge_type: str = None) -> Edge:
+    edge = Edge(id=edge_id,
+                source_id=source_id,
+                target_id=target_id,
+                type=edge_type)
+    edge.qedge_ids = qedge_ids  # Must set outside initializer until (if?) qedge_ids is made an actual class attribute
+    return edge
 
 
 def _do_arax_query(query: str) -> List[Union[Response, Message]]:
@@ -51,56 +68,56 @@ class TestARAXResultify(unittest.TestCase):
     def test01(self):
         kg_node_info = ({'id': 'UniProtKB:12345',
                          'type': 'protein',
-                         'qnode_id': 'n01'},
+                         'qnode_ids': ['n01']},
                         {'id': 'UniProtKB:23456',
                          'type': 'protein',
-                         'qnode_id': 'n01'},
+                         'qnode_ids': ['n01']},
                         {'id': 'DOID:12345',
                          'type': 'disease',
-                         'qnode_id': 'DOID:12345'},
+                         'qnode_ids': ['DOID:12345']},
                         {'id': 'HP:56789',
                          'type': 'phenotypic_feature',
-                         'qnode_id': 'n02'},
+                         'qnode_ids': ['n02']},
                         {'id': 'HP:67890',
                          'type': 'phenotypic_feature',
-                         'qnode_id': 'n02'},
+                         'qnode_ids': ['n02']},
                         {'id': 'HP:34567',
                          'type': 'phenotypic_feature',
-                         'qnode_id': 'n02'})
+                         'qnode_ids': ['n02']})
 
         kg_edge_info = ({'edge_id': 'ke01',
                          'source_id': 'UniProtKB:12345',
                          'target_id': 'DOID:12345',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke02',
                          'source_id': 'UniProtKB:23456',
                          'target_id': 'DOID:12345',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke03',
                          'source_id': 'DOID:12345',
                          'target_id': 'HP:56789',
-                         'qedge_id': 'qe02'},
+                         'qedge_ids': ['qe02']},
                         {'edge_id': 'ke04',
                          'source_id': 'DOID:12345',
                          'target_id': 'HP:67890',
-                         'qedge_id': 'qe02'},
+                         'qedge_ids': ['qe02']},
                         {'edge_id': 'ke05',
                          'source_id': 'DOID:12345',
                          'target_id': 'HP:34567',
-                         'qedge_id': 'qe02'},
+                         'qedge_ids': ['qe02']},
                         {'edge_id': 'ke06',
                          'source_id': 'HP:56789',
                          'target_id': 'HP:67890',
-                         'qedge_id': None})
+                         'qedge_ids': None})
 
-        kg_nodes = [Node(id=node_info['id'],
-                         type=[node_info['type']],
-                         qnode_id=node_info['qnode_id']) for node_info in kg_node_info]
+        kg_nodes = [_create_node(node_id=node_info['id'],
+                                 node_type=[node_info['type']],
+                                 qnode_ids=node_info['qnode_ids']) for node_info in kg_node_info]
 
-        kg_edges = [Edge(id=edge_info['edge_id'],
-                         source_id=edge_info['source_id'],
-                         target_id=edge_info['target_id'],
-                         qedge_id=edge_info['qedge_id']) for edge_info in kg_edge_info]
+        kg_edges = [_create_edge(edge_id=edge_info['edge_id'],
+                                 source_id=edge_info['source_id'],
+                                 target_id=edge_info['target_id'],
+                                 qedge_ids=edge_info['qedge_ids']) for edge_info in kg_edge_info]
 
         knowledge_graph = KnowledgeGraph(kg_nodes, kg_edges)
 
@@ -139,56 +156,56 @@ class TestARAXResultify(unittest.TestCase):
     def test02(self):
         kg_node_info = ({'id': 'UniProtKB:12345',
                          'type': 'protein',
-                         'qnode_id': 'n01'},
+                         'qnode_ids': ['n01']},
                         {'id': 'UniProtKB:23456',
                          'type': 'protein',
-                         'qnode_id': 'n01'},
+                         'qnode_ids': ['n01']},
                         {'id': 'DOID:12345',
                          'type': 'disease',
-                         'qnode_id': 'DOID:12345'},
+                         'qnode_ids': ['DOID:12345']},
                         {'id': 'HP:56789',
                          'type': 'phenotypic_feature',
-                         'qnode_id': 'n02'},
+                         'qnode_ids': ['n02']},
                         {'id': 'HP:67890',
                          'type': 'phenotypic_feature',
-                         'qnode_id': 'n02'},
+                         'qnode_ids': ['n02']},
                         {'id': 'HP:34567',
                          'type': 'phenotypic_feature',
-                         'qnode_id': 'n02'})
+                         'qnode_ids': ['n02']})
 
         kg_edge_info = ({'edge_id': 'ke01',
                          'source_id': 'UniProtKB:12345',
                          'target_id': 'DOID:12345',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke02',
                          'source_id': 'UniProtKB:23456',
                          'target_id': 'DOID:12345',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke03',
                          'source_id': 'DOID:12345',
                          'target_id': 'HP:56789',
-                         'qedge_id': 'qe02'},
+                         'qedge_ids': ['qe02']},
                         {'edge_id': 'ke04',
                          'source_id': 'DOID:12345',
                          'target_id': 'HP:67890',
-                         'qedge_id': 'qe02'},
+                         'qedge_ids': ['qe02']},
                         {'edge_id': 'ke05',
                          'source_id': 'DOID:12345',
                          'target_id': 'HP:34567',
-                         'qedge_id': 'qe02'},
+                         'qedge_ids': ['qe02']},
                         {'edge_id': 'ke06',
                          'source_id': 'HP:56789',
                          'target_id': 'HP:67890',
-                         'qedge_id': None})
+                         'qedge_ids': None})
 
-        kg_nodes = [Node(id=node_info['id'],
-                         type=[node_info['type']],
-                         qnode_id=node_info['qnode_id']) for node_info in kg_node_info]
+        kg_nodes = [_create_node(node_id=node_info['id'],
+                                 node_type=[node_info['type']],
+                                 qnode_ids=node_info['qnode_ids']) for node_info in kg_node_info]
 
-        kg_edges = [Edge(id=edge_info['edge_id'],
-                         source_id=edge_info['source_id'],
-                         target_id=edge_info['target_id'],
-                         qedge_id=edge_info['qedge_id']) for edge_info in kg_edge_info]
+        kg_edges = [_create_edge(edge_id=edge_info['edge_id'],
+                                 source_id=edge_info['source_id'],
+                                 target_id=edge_info['target_id'],
+                                 qedge_ids=edge_info['qedge_ids']) for edge_info in kg_edge_info]
 
         knowledge_graph = KnowledgeGraph(kg_nodes, kg_edges)
 
@@ -226,56 +243,56 @@ class TestARAXResultify(unittest.TestCase):
     def test03(self):
         kg_node_info = ({'id': 'UniProtKB:12345',
                          'type': 'protein',
-                         'qnode_id': 'n01'},
+                         'qnode_ids': ['n01']},
                         {'id': 'UniProtKB:23456',
                          'type': 'protein',
-                         'qnode_id': 'n01'},
+                         'qnode_ids': ['n01']},
                         {'id': 'DOID:12345',
                          'type': 'disease',
-                         'qnode_id': 'DOID:12345'},
+                         'qnode_ids': ['DOID:12345']},
                         {'id': 'HP:56789',
                          'type': 'phenotypic_feature',
-                         'qnode_id': 'n02'},
+                         'qnode_ids': ['n02']},
                         {'id': 'HP:67890',
                          'type': 'phenotypic_feature',
-                         'qnode_id': 'n02'},
+                         'qnode_ids': ['n02']},
                         {'id': 'HP:34567',
                          'type': 'phenotypic_feature',
-                         'qnode_id': 'n02'})
+                         'qnode_ids': ['n02']})
 
         kg_edge_info = ({'edge_id': 'ke01',
                          'source_id': 'DOID:12345',
                          'target_id': 'UniProtKB:12345',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke02',
                          'source_id': 'UniProtKB:23456',
                          'target_id': 'DOID:12345',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke03',
                          'source_id': 'DOID:12345',
                          'target_id': 'HP:56789',
-                         'qedge_id': 'qe02'},
+                         'qedge_ids': ['qe02']},
                         {'edge_id': 'ke04',
                          'source_id': 'DOID:12345',
                          'target_id': 'HP:67890',
-                         'qedge_id': 'qe02'},
+                         'qedge_ids': ['qe02']},
                         {'edge_id': 'ke05',
                          'source_id': 'DOID:12345',
                          'target_id': 'HP:34567',
-                         'qedge_id': 'qe02'},
+                         'qedge_ids': ['qe02']},
                         {'edge_id': 'ke06',
                          'source_id': 'HP:56789',
                          'target_id': 'HP:67890',
-                         'qedge_id': None})
+                         'qedge_ids': None})
 
-        kg_nodes = [Node(id=node_info['id'],
-                         type=[node_info['type']],
-                         qnode_id=node_info['qnode_id']) for node_info in kg_node_info]
+        kg_nodes = [_create_node(node_id=node_info['id'],
+                                 node_type=[node_info['type']],
+                                 qnode_ids=node_info['qnode_ids']) for node_info in kg_node_info]
 
-        kg_edges = [Edge(id=edge_info['edge_id'],
-                         source_id=edge_info['source_id'],
-                         target_id=edge_info['target_id'],
-                         qedge_id=edge_info['qedge_id']) for edge_info in kg_edge_info]
+        kg_edges = [_create_edge(edge_id=edge_info['edge_id'],
+                                 source_id=edge_info['source_id'],
+                                 target_id=edge_info['target_id'],
+                                 qedge_ids=edge_info['qedge_ids']) for edge_info in kg_edge_info]
 
         knowledge_graph = KnowledgeGraph(kg_nodes, kg_edges)
 
@@ -314,60 +331,60 @@ class TestARAXResultify(unittest.TestCase):
     def test04(self):
         kg_node_info = ({'id': 'UniProtKB:12345',
                          'type': 'protein',
-                         'qnode_id': 'n01'},
+                         'qnode_ids': ['n01']},
                         {'id': 'UniProtKB:23456',
                          'type': 'protein',
-                         'qnode_id': 'n01'},
+                         'qnode_ids': ['n01']},
                         {'id': 'DOID:12345',
                          'type': 'disease',
-                         'qnode_id': 'DOID:12345'},
+                         'qnode_ids': ['DOID:12345']},
                         {'id': 'UniProtKB:56789',
                          'type': 'protein',
-                         'qnode_id': 'n01'},
+                         'qnode_ids': ['n01']},
                         {'id': 'ChEMBL.COMPOUND:12345',
                          'type': 'chemical_substance',
-                         'qnode_id': 'n02'},
+                         'qnode_ids': ['n02']},
                         {'id': 'ChEMBL.COMPOUND:23456',
                          'type': 'chemical_substance',
-                         'qnode_id': 'n02'})
+                         'qnode_ids': ['n02']})
 
         kg_edge_info = ({'edge_id': 'ke01',
                          'source_id': 'ChEMBL.COMPOUND:12345',
                          'target_id': 'UniProtKB:12345',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke02',
                          'source_id': 'ChEMBL.COMPOUND:12345',
                          'target_id': 'UniProtKB:23456',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke03',
                          'source_id': 'ChEMBL.COMPOUND:23456',
                          'target_id': 'UniProtKB:12345',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke04',
                          'source_id': 'ChEMBL.COMPOUND:23456',
                          'target_id': 'UniProtKB:23456',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke05',
                          'source_id': 'DOID:12345',
                          'target_id': 'UniProtKB:12345',
-                         'qedge_id': 'qe02'},
+                         'qedge_ids': ['qe02']},
                         {'edge_id': 'ke06',
                          'source_id': 'DOID:12345',
                          'target_id': 'UniProtKB:23456',
-                         'qedge_id': 'qe02'},
+                         'qedge_ids': ['qe02']},
                         {'edge_id': 'ke08',
                          'source_id': 'UniProtKB:12345',
                          'target_id': 'UniProtKB:23456',
-                         'qedge_id': None})
+                         'qedge_ids': None})
 
-        kg_nodes = [Node(id=node_info['id'],
-                         type=[node_info['type']],
-                         qnode_id=node_info['qnode_id']) for node_info in kg_node_info]
+        kg_nodes = [_create_node(node_id=node_info['id'],
+                                 node_type=[node_info['type']],
+                                 qnode_ids=node_info['qnode_ids']) for node_info in kg_node_info]
 
-        kg_edges = [Edge(id=edge_info['edge_id'],
-                         source_id=edge_info['source_id'],
-                         target_id=edge_info['target_id'],
-                         qedge_id=edge_info['qedge_id']) for edge_info in kg_edge_info]
+        kg_edges = [_create_edge(edge_id=edge_info['edge_id'],
+                                 source_id=edge_info['source_id'],
+                                 target_id=edge_info['target_id'],
+                                 qedge_ids=edge_info['qedge_ids']) for edge_info in kg_edge_info]
 
         knowledge_graph = KnowledgeGraph(kg_nodes, kg_edges)
 
@@ -407,60 +424,60 @@ class TestARAXResultify(unittest.TestCase):
     def test05(self):
         kg_node_info = ({'id': 'UniProtKB:12345',
                          'type': 'protein',
-                         'qnode_id': 'n01'},
+                         'qnode_ids': ['n01']},
                         {'id': 'UniProtKB:23456',
                          'type': 'protein',
-                         'qnode_id': 'n01'},
+                         'qnode_ids': ['n01']},
                         {'id': 'DOID:12345',
                          'type': 'disease',
-                         'qnode_id': 'DOID:12345'},
+                         'qnode_ids': ['DOID:12345']},
                         {'id': 'UniProtKB:56789',
                          'type': 'protein',
-                         'qnode_id': 'n01'},
+                         'qnode_ids': ['n01']},
                         {'id': 'ChEMBL.COMPOUND:12345',
                          'type': 'chemical_substance',
-                         'qnode_id': 'n02'},
+                         'qnode_ids': ['n02']},
                         {'id': 'ChEMBL.COMPOUND:23456',
                          'type': 'chemical_substance',
-                         'qnode_id': 'n02'})
+                         'qnode_ids': ['n02']})
 
         kg_edge_info = ({'edge_id': 'ke01',
                          'source_id': 'ChEMBL.COMPOUND:12345',
                          'target_id': 'UniProtKB:12345',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke02',
                          'source_id': 'ChEMBL.COMPOUND:12345',
                          'target_id': 'UniProtKB:23456',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke03',
                          'source_id': 'ChEMBL.COMPOUND:23456',
                          'target_id': 'UniProtKB:12345',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke04',
                          'source_id': 'ChEMBL.COMPOUND:23456',
                          'target_id': 'UniProtKB:23456',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke05',
                          'source_id': 'DOID:12345',
                          'target_id': 'UniProtKB:12345',
-                         'qedge_id': 'qe02'},
+                         'qedge_ids': ['qe02']},
                         {'edge_id': 'ke06',
                          'source_id': 'DOID:12345',
                          'target_id': 'UniProtKB:23456',
-                         'qedge_id': 'qe02'},
+                         'qedge_ids': ['qe02']},
                         {'edge_id': 'ke08',
                          'source_id': 'UniProtKB:12345',
                          'target_id': 'UniProtKB:23456',
-                         'qedge_id': None})
+                         'qedge_ids': None})
 
-        kg_nodes = [Node(id=node_info['id'],
-                         type=[node_info['type']],
-                         qnode_id=node_info['qnode_id']) for node_info in kg_node_info]
+        kg_nodes = [_create_node(node_id=node_info['id'],
+                                 node_type=[node_info['type']],
+                                 qnode_ids=node_info['qnode_ids']) for node_info in kg_node_info]
 
-        kg_edges = [Edge(id=edge_info['edge_id'],
-                         source_id=edge_info['source_id'],
-                         target_id=edge_info['target_id'],
-                         qedge_id=edge_info['qedge_id']) for edge_info in kg_edge_info]
+        kg_edges = [_create_edge(edge_id=edge_info['edge_id'],
+                                 source_id=edge_info['source_id'],
+                                 target_id=edge_info['target_id'],
+                                 qedge_ids=edge_info['qedge_ids']) for edge_info in kg_edge_info]
 
         knowledge_graph = KnowledgeGraph(kg_nodes, kg_edges)
 
@@ -504,60 +521,60 @@ class TestARAXResultify(unittest.TestCase):
     def test06(self):
         kg_node_info = ({'id': 'UniProtKB:12345',
                          'type': 'protein',
-                         'qnode_id': 'n01'},
+                         'qnode_ids': ['n01']},
                         {'id': 'UniProtKB:23456',
                          'type': 'protein',
-                         'qnode_id': 'n01'},
+                         'qnode_ids': ['n01']},
                         {'id': 'DOID:12345',
                          'type': 'disease',
-                         'qnode_id': 'DOID:12345'},
+                         'qnode_ids': ['DOID:12345']},
                         {'id': 'UniProtKB:56789',
                          'type': 'protein',
-                         'qnode_id': 'n01'},
+                         'qnode_ids': ['n01']},
                         {'id': 'ChEMBL.COMPOUND:12345',
                          'type': 'chemical_substance',
-                         'qnode_id': 'n02'},
+                         'qnode_ids': ['n02']},
                         {'id': 'ChEMBL.COMPOUND:23456',
                          'type': 'chemical_substance',
-                         'qnode_id': 'n02'})
+                         'qnode_ids': ['n02']})
 
         kg_edge_info = ({'edge_id': 'ke01',
                          'source_id': 'ChEMBL.COMPOUND:12345',
                          'target_id': 'UniProtKB:12345',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke02',
                          'source_id': 'ChEMBL.COMPOUND:12345',
                          'target_id': 'UniProtKB:23456',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke03',
                          'source_id': 'ChEMBL.COMPOUND:23456',
                          'target_id': 'UniProtKB:12345',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke04',
                          'source_id': 'ChEMBL.COMPOUND:23456',
                          'target_id': 'UniProtKB:23456',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke05',
                          'source_id': 'DOID:12345',
                          'target_id': 'UniProtKB:12345',
-                         'qedge_id': 'qe02'},
+                         'qedge_ids': ['qe02']},
                         {'edge_id': 'ke06',
                          'source_id': 'DOID:12345',
                          'target_id': 'UniProtKB:23456',
-                         'qedge_id': 'qe02'},
+                         'qedge_ids': ['qe02']},
                         {'edge_id': 'ke08',
                          'source_id': 'UniProtKB:12345',
                          'target_id': 'UniProtKB:23456',
-                         'qedge_id': None})
+                         'qedge_ids': None})
 
-        kg_nodes = [Node(id=node_info['id'],
-                         type=[node_info['type']],
-                         qnode_id=node_info['qnode_id']) for node_info in kg_node_info]
+        kg_nodes = [_create_node(node_id=node_info['id'],
+                                 node_type=[node_info['type']],
+                                 qnode_ids=node_info['qnode_ids']) for node_info in kg_node_info]
 
-        kg_edges = [Edge(id=edge_info['edge_id'],
-                         source_id=edge_info['source_id'],
-                         target_id=edge_info['target_id'],
-                         qedge_id=edge_info['qedge_id']) for edge_info in kg_edge_info]
+        kg_edges = [_create_edge(edge_id=edge_info['edge_id'],
+                                 source_id=edge_info['source_id'],
+                                 target_id=edge_info['target_id'],
+                                 qedge_ids=edge_info['qedge_ids']) for edge_info in kg_edge_info]
 
         knowledge_graph = KnowledgeGraph(kg_nodes, kg_edges)
 
@@ -601,60 +618,60 @@ class TestARAXResultify(unittest.TestCase):
     def test07(self):
         kg_node_info = ({'id': 'UniProtKB:12345',
                          'type': 'protein',
-                         'qnode_id': 'n01'},
+                         'qnode_ids': ['n01']},
                         {'id': 'UniProtKB:23456',
                          'type': 'protein',
-                         'qnode_id': 'n01'},
+                         'qnode_ids': ['n01']},
                         {'id': 'DOID:12345',
                          'type': 'disease',
-                         'qnode_id': 'DOID:12345'},
+                         'qnode_ids': ['DOID:12345']},
                         {'id': 'UniProtKB:56789',
                          'type': 'protein',
-                         'qnode_id': 'n01'},
+                         'qnode_ids': ['n01']},
                         {'id': 'ChEMBL.COMPOUND:12345',
                          'type': 'chemical_substance',
-                         'qnode_id': 'n02'},
+                         'qnode_ids': ['n02']},
                         {'id': 'ChEMBL.COMPOUND:23456',
                          'type': 'chemical_substance',
-                         'qnode_id': 'n02'})
+                         'qnode_ids': ['n02']})
 
         kg_edge_info = ({'edge_id': 'ke01',
                          'source_id': 'ChEMBL.COMPOUND:12345',
                          'target_id': 'UniProtKB:12345',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke02',
                          'source_id': 'ChEMBL.COMPOUND:12345',
                          'target_id': 'UniProtKB:23456',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke03',
                          'source_id': 'ChEMBL.COMPOUND:23456',
                          'target_id': 'UniProtKB:12345',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke04',
                          'source_id': 'ChEMBL.COMPOUND:23456',
                          'target_id': 'UniProtKB:23456',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke05',
                          'source_id': 'DOID:12345',
                          'target_id': 'UniProtKB:12345',
-                         'qedge_id': 'qe02'},
+                         'qedge_ids': ['qe02']},
                         {'edge_id': 'ke06',
                          'source_id': 'DOID:12345',
                          'target_id': 'UniProtKB:23456',
-                         'qedge_id': 'qe02'},
+                         'qedge_ids': ['qe02']},
                         {'edge_id': 'ke08',
                          'source_id': 'UniProtKB:12345',
                          'target_id': 'UniProtKB:23456',
-                         'qedge_id': None})
+                         'qedge_ids': None})
 
-        kg_nodes = [Node(id=node_info['id'],
-                         type=[node_info['type']],
-                         qnode_id=node_info['qnode_id']) for node_info in kg_node_info]
+        kg_nodes = [_create_node(node_id=node_info['id'],
+                                 node_type=[node_info['type']],
+                                 qnode_ids=node_info['qnode_ids']) for node_info in kg_node_info]
 
-        kg_edges = [Edge(id=edge_info['edge_id'],
-                         source_id=edge_info['source_id'],
-                         target_id=edge_info['target_id'],
-                         qedge_id=edge_info['qedge_id']) for edge_info in kg_edge_info]
+        kg_edges = [_create_edge(edge_id=edge_info['edge_id'],
+                                 source_id=edge_info['source_id'],
+                                 target_id=edge_info['target_id'],
+                                 qedge_ids=edge_info['qedge_ids']) for edge_info in kg_edge_info]
 
         knowledge_graph = KnowledgeGraph(kg_nodes, kg_edges)
 
@@ -711,7 +728,7 @@ class TestARAXResultify(unittest.TestCase):
             "add_qnode(type=phenotypic_feature, is_set=false, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
-            'resultify(ignore_edge_direction=true, debug=true)',
+            "resultify(ignore_edge_direction=true, debug=true)",
             "return(message=true, store=false)"]}}
         [response, message] = _do_arax_query(query)
         assert response.status == 'OK'
@@ -724,8 +741,8 @@ class TestARAXResultify(unittest.TestCase):
                 "add_qnode(type=phenotypic_feature, is_set=false, id=n01)",
                 "add_qedge(source_id=n00, target_id=n01, id=e00)",
                 "expand(edge_id=e00)",
-                'resultify(ignore_edge_direction=true, debug=true)',
-                'filter_results(action=limit_number_of_results, max_results=100)',
+                "resultify(ignore_edge_direction=true, debug=true)",
+                "filter_results(action=limit_number_of_results, max_results=100)",
                 "return(message=true, store=false)"]}}
         [response, message] = _do_arax_query(query)
         assert response.status == 'OK'
@@ -811,49 +828,49 @@ class TestARAXResultify(unittest.TestCase):
     def test_bfs_in_essence_code(self):
         kg_node_info = ({'id': 'UniProtKB:12345',
                          'type': 'protein',
-                         'qnode_id': 'n01'},
+                         'qnode_ids': ['n01']},
                         {'id': 'UniProtKB:23456',
                          'type': 'protein',
-                         'qnode_id': 'n01'},
+                         'qnode_ids': ['n01']},
                         {'id': 'DOID:12345',
                          'type': 'disease',
-                         'qnode_id': 'DOID:12345'},
+                         'qnode_ids': ['DOID:12345']},
                         {'id': 'HP:56789',
                          'type': 'phenotypic_feature',
-                         'qnode_id': 'HP:56789'},
+                         'qnode_ids': ['HP:56789']},
                         {'id': 'FOO:12345',
                          'type': 'gene',
-                         'qnode_id': 'n02'})
+                         'qnode_ids': ['n02']})
 
         kg_edge_info = ({'edge_id': 'ke01',
                          'target_id': 'UniProtKB:12345',
                          'source_id': 'DOID:12345',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke02',
                          'target_id': 'UniProtKB:23456',
                          'source_id': 'DOID:12345',
-                         'qedge_id': 'qe01'},
+                         'qedge_ids': ['qe01']},
                         {'edge_id': 'ke03',
                          'source_id': 'UniProtKB:12345',
                          'target_id': 'FOO:12345',
-                         'qedge_id': 'qe02'},
+                         'qedge_ids': ['qe02']},
                         {'edge_id': 'ke04',
                          'source_id': 'UniProtKB:23456',
                          'target_id': 'FOO:12345',
-                         'qedge_id': 'qe02'},
+                         'qedge_ids': ['qe02']},
                         {'edge_id': 'ke05',
                          'source_id': 'FOO:12345',
                          'target_id': 'HP:56789',
-                         'qedge_id':  'qe03'})
+                         'qedge_ids': ['qe03']})
 
-        kg_nodes = [Node(id=node_info['id'],
-                         type=[node_info['type']],
-                         qnode_id=node_info['qnode_id']) for node_info in kg_node_info]
+        kg_nodes = [_create_node(node_id=node_info['id'],
+                                 node_type=[node_info['type']],
+                                 qnode_ids=node_info['qnode_ids']) for node_info in kg_node_info]
 
-        kg_edges = [Edge(id=edge_info['edge_id'],
-                         source_id=edge_info['source_id'],
-                         target_id=edge_info['target_id'],
-                         qedge_id=edge_info['qedge_id']) for edge_info in kg_edge_info]
+        kg_edges = [_create_edge(edge_id=edge_info['edge_id'],
+                                 source_id=edge_info['source_id'],
+                                 target_id=edge_info['target_id'],
+                                 qedge_ids=edge_info['qedge_ids']) for edge_info in kg_edge_info]
 
         knowledge_graph = KnowledgeGraph(kg_nodes, kg_edges)
 
@@ -1035,24 +1052,34 @@ class TestARAXResultify(unittest.TestCase):
                                QEdge(source_id='n1',
                                      target_id='n2',
                                      id='e1')])
-        kg = KnowledgeGraph(nodes=[Node(id='MONDO:0005737',
-                                        type='disease',
-                                        qnode_id='n0'),
-                                   Node(id='UniProtKB:Q14943',
-                                        type='protein',
-                                        qnode_id='n1'),
-                                   Node(id='DOID:12297',
-                                        type='disease',
-                                        qnode_id='n2'),
-                                   Node(id='DOID:11077',
-                                        type='disease',
-                                        qnode_id='n2')],
-                            edges=[Edge(source_id='MONDO:0005737',
-                                        target_id='UniProtKB:Q14943',
-                                        qedge_id='e0'),
-                                   Edge(source_id='UniProtKB:Q14943',
-                                        target_id='DOID:12297',
-                                        qedge_id='e1')])
+        kg_node_info = ({'id': 'MONDO:0005737',
+                         'type': 'disease',
+                         'qnode_ids': ['n0']},
+                        {'id': 'UniProtKB:Q14943',
+                         'type': 'protein',
+                         'qnode_ids': ['n1']},
+                        {'id': 'DOID:12297',
+                         'type': 'disease',
+                         'qnode_ids': ['n2']},
+                        {'id': 'DOID:11077',
+                         'type': 'disease',
+                         'qnode_ids': ['n2']})
+        kg_edge_info = ({'target_id': 'MONDO:0005737',
+                         'source_id': 'UniProtKB:Q14943',
+                         'qedge_ids': ['e0']},
+                        {'target_id': 'UniProtKB:Q14943',
+                         'source_id': 'DOID:12297',
+                         'qedge_ids': ['e1']})
+
+        kg_nodes = [_create_node(node_id=node_info['id'],
+                                 node_type=[node_info['type']],
+                                 qnode_ids=node_info['qnode_ids']) for node_info in kg_node_info]
+
+        kg_edges = [_create_edge(source_id=edge_info['source_id'],
+                                 target_id=edge_info['target_id'],
+                                 qedge_ids=edge_info['qedge_ids']) for edge_info in kg_edge_info]
+
+        kg = KnowledgeGraph(nodes=kg_nodes, edges=kg_edges)
         results = ARAX_resultify._get_results_for_kg_by_qg(kg, qg)
         indexes_results_with_single_edge = [index for index, result in enumerate(results) if len(result.result_graph.edges) == 1]
         assert len(indexes_results_with_single_edge) == 0
