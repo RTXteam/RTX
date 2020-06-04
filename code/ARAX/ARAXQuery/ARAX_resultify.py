@@ -244,25 +244,32 @@ def _make_edge_key(node1_id: str,
     return node1_id + '->' + node2_id
 
 
-def _make_result_from_node_set(kg: KnowledgeGraph,
-                               node_ids_by_qnode_id: Dict[str, Set[str]]) -> Result:
+def _make_result_from_node_set(dict_kg: KnowledgeGraph,
+                               result_node_ids_by_qnode_id: Dict[str, Set[str]],
+                               kg_edge_ids_by_qedge_id: Dict[str, Set[str]],
+                               qg: QueryGraph) -> Result:
     node_bindings = []
-    nodes = []
-    node_ids = {node_id for node_id_set in node_ids_by_qnode_id.values() for node_id in node_id_set}
-    for node in cast(Iterable[Node], kg.nodes):
-        if node.id in node_ids:
-            for qnode_id, node_ids_for_this_qnode_id in node_ids_by_qnode_id.items():
-                if node.id in node_ids_for_this_qnode_id:
-                    node_bindings.append(NodeBinding(qg_id=qnode_id, kg_id=node.id))
-            nodes.append(node)
+    result_graph_node_ids = set()
+    for qnode_id, node_ids_for_this_qnode_id in result_node_ids_by_qnode_id.items():
+        for node_id in node_ids_for_this_qnode_id:
+            node_bindings.append(NodeBinding(qg_id=qnode_id, kg_id=node_id))
+            result_graph_node_ids.add(node_id)
+
     edge_bindings = []
-    edges = []
-    for edge in cast(Iterable[Edge], kg.edges):
-        if edge.source_id in node_ids and edge.target_id in node_ids and edge.qedge_ids:
-            for qedge_id in edge.qedge_ids:
+    result_graph_edge_ids = set()
+    for qedge_id, kg_edge_ids_for_this_qedge_id in kg_edge_ids_by_qedge_id.items():
+        qedge = next(qedge for qedge in qg.edges if qedge.id == qedge_id)
+        for edge_id in kg_edge_ids_for_this_qedge_id:
+            edge = dict_kg.edges.get(edge_id)
+            if ((edge.source_id in result_node_ids_by_qnode_id[qedge.source_id] and
+                 edge.target_id in result_node_ids_by_qnode_id[qedge.target_id]) or
+                (edge.source_id in result_node_ids_by_qnode_id[qedge.target_id] and
+                 edge.target_id in result_node_ids_by_qnode_id[qedge.source_id])):
                 edge_bindings.append(EdgeBinding(qg_id=qedge_id, kg_id=edge.id))
-            edges.append(edge)
-    result_graph = KnowledgeGraph(nodes=nodes, edges=edges)
+                result_graph_edge_ids.add(edge_id)
+
+    result_graph = KnowledgeGraph(nodes=[dict_kg.nodes.get(node_id) for node_id in result_graph_node_ids],
+                                  edges=[dict_kg.edges.get(edge_id) for edge_id in result_graph_edge_ids])
     result = Result(node_bindings=node_bindings,
                     edge_bindings=edge_bindings,
                     result_graph=result_graph)   #### FIXME: result_graph is deprecated and should no longer be used except for testing
@@ -578,13 +585,21 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     if len(kg.nodes) == 0:  # issue 692
         return results
 
-    essence_nodes_in_kg = reverse_node_bindings_map.get(cast(str, essence_qnode_id), set())
+    dict_kg = KnowledgeGraph(nodes={node.id: node for node in kg.nodes}, edges={edge.id: edge for edge in kg.edges})
+    kg_edge_ids_by_qedge_id = {qedge.id: {edge.id for edge in kg.edges if edge.qedge_ids and qedge.id in edge.qedge_ids} for qedge in qg.edges}
+
     for node_ids_for_subgraph_from_non_set_nodes in itertools.product(*kg_node_id_lists_for_qg_nodes):
         non_set_node_ids_for_subgraph_dict = dict(zip(qnode_id_key_list_for_non_set_nodes, [{node_id} for node_id in node_ids_for_subgraph_from_non_set_nodes]))
-        node_ids_for_subgraph_dict = {**non_set_node_ids_for_subgraph_dict, **kg_node_ids_with_isset_true_dict}
+        # Merge the set and non-set node IDs into one dictionary (organized by qnode id)
+        node_ids_for_subgraph_by_qnode_id = dict()
+        for qnode_id, non_set_node_ids in non_set_node_ids_for_subgraph_dict.items():
+            node_ids_for_subgraph_by_qnode_id[qnode_id] = non_set_node_ids
+        for qnode_id, kg_node_ids_set in kg_node_ids_with_isset_true_dict.items():
+            node_ids_for_subgraph_by_qnode_id[qnode_id] = kg_node_ids_set.copy()  # Important to use a copy!
+
         # for all KG nodes with isset_true:
-        for qg_node_id, kg_node_id_set in kg_node_ids_with_isset_true_dict.items():
-            for kg_node_id in kg_node_id_set.copy():
+        for qg_node_id, kg_node_ids_set in kg_node_ids_with_isset_true_dict.items():
+            for kg_node_id in kg_node_ids_set:
                 # find all edges of this kg_node_id in the KG
                 qg_neighbor_nodes_set = qg_adj_map[qg_node_id]
                 # for qg_edge_id in nbhd_qg_edge_ids:
@@ -593,18 +608,17 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                     found_neighbor_connected_to_kg_node_id = False
                     for kg_neighbor_node_id in kg_nodes_for_qg_neighbor_node:
                         if _make_edge_key(kg_node_id, kg_neighbor_node_id) in kg_undir_edge_keys_set and \
-                           kg_neighbor_node_id in node_ids_for_subgraph_dict[qg_neighbor_node_id]:
+                           kg_neighbor_node_id in node_ids_for_subgraph_by_qnode_id[qg_neighbor_node_id]:
                             found_neighbor_connected_to_kg_node_id = True
                             break
-                    if not found_neighbor_connected_to_kg_node_id and kg_node_id in node_ids_for_subgraph_dict[qg_node_id]:
-                        node_ids_for_subgraph_dict[qg_node_id].remove(kg_node_id)
-        result = _make_result_from_node_set(kg, node_ids_for_subgraph_dict)
+                    if not found_neighbor_connected_to_kg_node_id and kg_node_id in node_ids_for_subgraph_by_qnode_id[qg_node_id]:
+                        node_ids_for_subgraph_by_qnode_id[qg_node_id].remove(kg_node_id)
+        result = _make_result_from_node_set(dict_kg, node_ids_for_subgraph_by_qnode_id, kg_edge_ids_by_qedge_id, qg)
         # make sure that this set of nodes covers the QG
         qedge_ids_in_subgraph = {qedge_id for kg_edge in cast(KnowledgeGraph, result.result_graph).edges for qedge_id in cast(Iterable[str], kg_edge.qedge_ids) if kg_edge.qedge_ids}
         if len(qedge_ids_set - qedge_ids_in_subgraph) > 0:
             continue
-        node_ids_for_subgraph = {node_id for node_id_set in node_ids_for_subgraph_dict.values() for node_id in node_id_set}
-        essence_kg_node_id_set = essence_nodes_in_kg & node_ids_for_subgraph
+        essence_kg_node_id_set = node_ids_for_subgraph_by_qnode_id.get(essence_qnode_id, set())
         if len(essence_kg_node_id_set) == 1:
             essence_kg_node_id = next(iter(essence_kg_node_id_set))
             essence_kg_node = kg_nodes_map[essence_kg_node_id]
@@ -619,7 +633,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
             result.essence = cast(str, None)
             result.essence_type = cast(str, None)
         else:
-            raise ValueError("there are more than two nodes in the KG that are candidates for the essence: " + str(essence_kg_node_id_set))
+            raise ValueError(f"Result contains more than one node that is a candidate for the essence: {essence_kg_node_id_set}")
         results.append(result)
 
     # Programmatically generating an informative description for each result
