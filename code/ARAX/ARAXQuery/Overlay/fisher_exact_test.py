@@ -42,18 +42,17 @@ class ComputeFTEST:
             return self.response
         else:
             source_node_id = self.parameters['source_node_id']
-        if 'virtual_edge_type' not in self.parameters:
-            self.response.error(f"The argument 'virtual_edge_type' is required for fisher_exact_test function")
+        if 'virtual_relation_label' not in self.parameters:
+            self.response.error(f"The argument 'virtual_relation_label' is required for fisher_exact_test function")
             return self.response
         else:
-            virtual_edge_type = str(self.parameters['virtual_edge_type'])
+            virtual_relation_label = str(self.parameters['virtual_relation_label'])
         if 'target_node_id' not in self.parameters:
             self.response.error(f"The argument 'target_node_id' is required for fisher_exact_test function")
             return self.response
         else:
             target_node_id = self.parameters['target_node_id']
         rel_edge_id = self.parameters['rel_edge_id'] if 'rel_edge_id' in self.parameters else None
-        relation = self.parameters['relation'] if 'relation' in self.parameters else "FET"
         top_n = int(self.parameters['top_n']) if 'top_n' in self.parameters else None
         cutoff = float(self.parameters['cutoff']) if 'cutoff' in self.parameters else None
 
@@ -232,11 +231,11 @@ class ComputeFTEST:
         # find all nodes with the type of 'source_node_id' nodes in specified KP ('ARAX/KG1','ARAX/KG2','BTE') that are adjacent to target nodes
         if rel_edge_id:
             if len(rel_edge_type)==1: # if the edge with rel_edge_id has only type, we use this rel_edge_type to find all source nodes in KP
-                parament_list = [(node, f"{virtual_edge_type}", source_node_type[0], list(kp)[0], list(rel_edge_type)[0], True) for node in list(target_node_dict.keys())]
+                parament_list = [(node, f"{virtual_relation_label}", source_node_type[0], list(kp)[0], list(rel_edge_type)[0], True) for node in list(target_node_dict.keys())]
             else: # if the edge with rel_edge_id has more than one type, we ignore the edge type and use all types to find all source nodes in KP
-                parament_list = [(node, f"{virtual_edge_type}", source_node_type[0], list(kp)[0], None, True) for node in list(target_node_dict.keys())]
+                parament_list = [(node, f"{virtual_relation_label}", source_node_type[0], list(kp)[0], None, True) for node in list(target_node_dict.keys())]
         else: # if no rel_edge_id is specified, we ignore the edge type and use all types to find all source nodes in KP
-            parament_list = [(node, f"{virtual_edge_type}", source_node_type[0], list(kp)[0], None, True) for node in list(target_node_dict.keys())]
+            parament_list = [(node, f"{virtual_relation_label}", source_node_type[0], list(kp)[0], None, True) for node in list(target_node_dict.keys())]
 
         ## get the count of all nodes with the type of 'source_node_id' nodes in KP for each target node in parallel
         with concurrent.futures.ProcessPoolExecutor() as executor:
@@ -288,12 +287,12 @@ class ComputeFTEST:
             else:
                 for node in target_node_dict[adj]:
                     # make the virtual edge, add the FET p-value as an attribute
-                    id = f"{virtual_edge_type}_{count}"
-                    edge_attribute = EdgeAttribute(type="float", name="Fisher Exact Test P-value", value=str(output[adj]), url=None)  # FIXME: will need a url for this
+                    id = f"{virtual_relation_label}_{count}"
+                    edge_attribute = EdgeAttribute(type="data:1669", name="Fisher Exact Test p-value", value=str(output[adj]), url=None)  # FIXME: will need a url for this
                     now = datetime.now()
                     defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
-                    edge_type = 'virtual_FET_edge'
-                    qedge_id = virtual_edge_type
+                    edge_type = 'has_fisher_exact_test_p-value_with'
+                    qedge_id = virtual_relation_label
                     is_defined_by = "ARAX"
                     provided_by = "ARAX"
                     confidence = None
@@ -301,7 +300,7 @@ class ComputeFTEST:
                     source_id = node
                     target_id = adj
 
-                    new_edge = Edge(id=id, type=edge_type, relation=relation, source_id=source_id,
+                    new_edge = Edge(id=id, type=edge_type, relation=virtual_relation_label, source_id=source_id,
                                         target_id=target_id,
                                         is_defined_by=is_defined_by, defined_datetime=defined_datetime,
                                         provided_by=provided_by,
@@ -311,14 +310,16 @@ class ComputeFTEST:
                     self.message.knowledge_graph.edges.append(new_edge)
 
                     count = count + 1
+        self.response.debug(f"{count} new virtual edges were added to message KG")
 
         # add the virtual edge to message QG
         if count > 0:
             self.response.debug(f"Adding virtual edge to message QG")
             edge_type = "virtual_FET_edge"
-            q_edge = QEdge(id=virtual_edge_type, type=edge_type, relation=relation,
+            q_edge = QEdge(id=virtual_relation_label, type=edge_type, relation=virtual_relation_label,
                            source_id=source_node_id, target_id=target_node_id)
             self.message.query_graph.edges.append(q_edge)
+            self.response.debug(f"One virtual edge was added to message QG")
 
         return self.response
 
