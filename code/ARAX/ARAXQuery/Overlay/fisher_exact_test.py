@@ -108,7 +108,7 @@ class ComputeFTEST:
                 for edge in self.message.query_graph.edges:
                     if edge.source_id == source_qnode_id and edge.target_id == target_qnode_id and edge.relation == None:
                         query_edge_id.update([edge.id]) # only actual query edge is added
-                    elif edge.source_id == target_qqnode_id and edge.target_id == source_qnode_id and edge.relation == None:
+                    elif edge.source_id == target_qnode_id and edge.target_id == source_qnode_id and edge.relation == None:
                         query_edge_id.update([edge.id]) # only actual query edge is added
                     else:
                         continue
@@ -315,7 +315,7 @@ class ComputeFTEST:
         # add the virtual edge to message QG
         if count > 0:
             self.response.debug(f"Adding virtual edge to message QG")
-            edge_type = "virtual_FET_edge"
+            edge_type = "has_fisher_exact_test_p-value_with"
             q_edge = QEdge(id=virtual_relation_label, type=edge_type, relation=virtual_relation_label,
                            source_id=source_qnode_id, target_id=target_qnode_id)
             self.message.query_graph.edges.append(q_edge)
