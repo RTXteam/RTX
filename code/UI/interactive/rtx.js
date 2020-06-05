@@ -2,11 +2,10 @@ var input_qg = { "edges": [], "nodes": [] };
 var qgids = [];
 var cyobj = [];
 var cytodata = [];
-var fb_explvls = [];
-var fb_ratings = [];
 var predicates = {};
 var message_id = null;
 var summary_table_html = '';
+var summary_tsv = [];
 var columnlist = [];
 var UIstate = {};
 
@@ -107,7 +106,6 @@ function pasteQuestion(question) {
 function reset_vars() {
     add_status_divs();
     document.getElementById("result_container").innerHTML = "";
-    //    document.getElementById("kg_container").innerHTML = "";
     if (cyobj[0]) {cyobj[0].elements().remove();}
     document.getElementById("summary_container").innerHTML = "";
     document.getElementById("menunummessages").innerHTML = "--";
@@ -214,7 +212,7 @@ function postQuery(qtype) {
 	var reader = response.body.getReader();
 	var partialMsg = '';
 	var enqueue = false;
-	var countingSteps = false;
+	var numCurrMsgs = 0;
 	var totalSteps = 0;
 	var finishedSteps = 0;
 	var decoder = new TextDecoder();
@@ -259,13 +257,21 @@ function postQuery(qtype) {
 			    }
 			    else if (totalSteps>0) {
 				document.getElementById("totalSteps").innerHTML = totalSteps;
+				if (numCurrMsgs < 99)
+				    numCurrMsgs++;
+				if (finishedSteps == totalSteps)
+				    numCurrMsgs = 1;
+
+                                document.getElementById("progressBar").style.width = (800*(finishedSteps+0.5*Math.log10(numCurrMsgs))/totalSteps)+"px";
+				document.getElementById("progressBar").innerHTML = Math.round(99*(finishedSteps+0.5*Math.log10(numCurrMsgs))/totalSteps)+"%\u00A0\u00A0";
+
 				if (jsonMsg.message.match(/^Processing action/)) {
-				    document.getElementById("progressBar").style.width = (800*finishedSteps/totalSteps)+"px";
-				    document.getElementById("progressBar").innerHTML = Math.round(99*finishedSteps/totalSteps)+"%\u00A0\u00A0";
 				    finishedSteps++;
 				    document.getElementById("finishedSteps").innerHTML = finishedSteps;
+				    numCurrMsgs = 0;
 				}
 			    }
+
 			    cmddiv.appendChild(document.createTextNode(jsonMsg.prefix+'\u00A0'+jsonMsg.message));
 			    cmddiv.appendChild(document.createElement("br"));
 			    cmddiv.scrollTop = cmddiv.scrollHeight;
@@ -496,25 +502,22 @@ function render_message(respObj) {
 	add_to_summary(respObj["table_column_names"],0);
     }
     if ( respObj["results"] ) {
-        document.getElementById("result_container").innerHTML += "<h2>" + respObj["n_results"] + " results</h2>";
-        document.getElementById("menunumresults").innerHTML = respObj["n_results"];
-        document.getElementById("menunumresults").classList.add("numnew");
-	document.getElementById("menunumresults").classList.remove("numold");
+	if (!respObj["knowledge_graph"] ) {
+            document.getElementById("result_container").innerHTML  += "<h2 class='error'>Knowledge Graph missing in response; cannot process results.</h2>";
+	    document.getElementById("summary_container").innerHTML += "<h2 class='error'>Knowledge Graph missing in response; cannot process results</h2>";
+	}
+	else {
+            document.getElementById("result_container").innerHTML += "<h2>" + respObj["n_results"] + " results</h2>";
+            document.getElementById("menunumresults").innerHTML = respObj["n_results"];
+            document.getElementById("menunumresults").classList.add("numnew");
+	    document.getElementById("menunumresults").classList.remove("numold");
 
-	if ( respObj["knowledge_graph"] ) {
-//	    process_kg(respObj["knowledge_graph"]);
-//	    add_kg_html();
 	    process_graph(respObj["knowledge_graph"],0);
 	    process_results(respObj["results"],respObj["knowledge_graph"]);
 	}
-	else {  // fallback to old style
-            add_result(respObj["results"]);
-	}
-        add_feedback();
-        //sesame(h1_div,a1_div);
     }
     else {
-        document.getElementById("result_container").innerHTML += "<h2>No results...</h2>";
+        document.getElementById("result_container").innerHTML  += "<h2>No results...</h2>";
         document.getElementById("summary_container").innerHTML += "<h2>No results...</h2>";
     }
 
@@ -526,7 +529,7 @@ function render_message(respObj) {
 
 
     if ( respObj["table_column_names"] )
-        document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br></div>";
+        document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br><input type='button' class='questionBox button' name='action' title='Get tab-separated values of this table to paste into Excel etc' value='Copy Summary Table to clipboard (TSV)' onclick='copyTSVToClipboard(this);'><br><br></div>";
     else
         document.getElementById("summary_container").innerHTML += "<h2>Summary not available for this query</h2>";
 
@@ -636,27 +639,19 @@ function add_to_summary(rowdata, num) {
     for (var i in rowdata) {
 	var listlink = '';
 	if (cell == 'th') {
-	columnlist[i] = [];
-	listlink += "&nbsp;<a href='javascript:add_items_to_list(\"A\",\"" +i+ "\");' title='Add column items to list A'>&nbsp;[+A]&nbsp;</a>";
-	listlink += "&nbsp;<a href='javascript:add_items_to_list(\"B\",\"" +i+ "\");' title='Add column items to list B'>&nbsp;[+B]&nbsp;</a>";
+	    columnlist[i] = [];
+	    listlink += "&nbsp;<a href='javascript:add_items_to_list(\"A\",\"" +i+ "\");' title='Add column items to list A'>&nbsp;[+A]&nbsp;</a>";
+	    listlink += "&nbsp;<a href='javascript:add_items_to_list(\"B\",\"" +i+ "\");' title='Add column items to list B'>&nbsp;[+B]&nbsp;</a>";
 	}
 	else {
-	columnlist[i][rowdata[i]] = 1;
+	    columnlist[i][rowdata[i]] = 1;
 	}
 	summary_table_html += '<'+cell+'>' + rowdata[i] + listlink + '</'+cell+'>';
     }
     summary_table_html += '</tr>';
+
+    summary_tsv.push(rowdata.join("\t"));
 }
-
-
-function add_kg_html() {  // was: process_kg(kg) {
-    // knowledge graph is stored in position zero of cytodata
-    document.getElementById("kg_container").innerHTML += "<div onclick='sesame(this,a0_div);' id='h0_div' title='Click to expand / collapse Knowledge Graph' class='accordion'>KNOWLEDGE GRAPH<span class='r100'><span title='Knowledge Graph' class='qprob'>KG</span></span></div>";
-
-    document.getElementById("kg_container").innerHTML += "<div id='a0_div' class='panel'><table class='t100'><tr><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj[0].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout(0,\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout(0,\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout(0,\"circle\");'>C</a><br><a title='random layout' onclick='cylayout(0,\"random\");'>R</a>  </td><td class='cytograph_kg' style='width:100%;'><div style='height: 100%; width: 100%' id='cy0'></div></td></tr><tr><td></td><td><div id='d0_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
-
-}
-
 
 
 function process_graph(gne,gid) {
@@ -749,15 +744,12 @@ function process_results(reslist,kg) {
 	if (reslist[i].reasoner_id) {
 	    rsrc = reslist[i].reasoner_id;
 	}
-	var rscl = (rsrc=="RTX") ? "srtx" : (rsrc=="Indigo") ? "sind" : (rsrc=="Robokop") ? "srob" : "p0";
+	var rscl = (rsrc=="ARAX") ? "srtx" : (rsrc=="Indigo") ? "sind" : (rsrc=="Robokop") ? "srob" : "p0";
 
-	var rid = reslist[i].id.substr(reslist[i].id.lastIndexOf('/') + 1);
-	var fid = "feedback_" + rid;
-	var fff = "feedback_form_" + rid;
 	
         document.getElementById("result_container").innerHTML += "<div onclick='sesame(this,a"+num+"_div);' id='h"+num+"_div' title='Click to expand / collapse result "+num+"' class='accordion'>Result "+num+" :: <b>"+ess+"</b><span class='r100'><span title='confidence="+cnf+"' class='"+pcl+" qprob'>"+cnf+"</span><span title='source="+rsrc+"' class='"+rscl+" qprob'>"+rsrc+"</span></span></div>";
 
-	document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table class='t100'><tr><td class='textanswer'>"+reslist[i].description+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+num+"].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout("+num+",\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout("+num+",\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout("+num+",\"circle\");'>C</a><br><a title='random layout' onclick='cylayout("+num+",\"random\");'>R</a>	</td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td><span id='"+fid+"'><i>User Feedback</i><hr><span id='"+fff+"'><a href='javascript:add_fefo(\""+rid+"\",\"a"+num+"_div\");'>Add Feedback</a></span><hr></span></td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
+	document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table class='t100'><tr><td class='textanswer'>"+reslist[i].description+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+num+"].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout("+num+",\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout("+num+",\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout("+num+",\"circle\");'>C</a><br><a title='random layout' onclick='cylayout("+num+",\"random\");'>R</a>	</td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td>&nbsp;</td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
 
         cytodata[num] = [];
 
@@ -796,94 +788,13 @@ function process_results(reslist,kg) {
 }
 
 
-
-function add_result(reslist) {
-    document.getElementById("result_container").innerHTML += "<h2>Results:</h2>";
-
-    for (var i in reslist) {
-	var num = Number(i) + 1;
-
-        var ess = '';
-        if (reslist[i].essence) {
-            ess = reslist[i].essence;
-        }
-	var prb = 0;
-	if (Number(reslist[i].confidence)) {
-	    prb = Number(reslist[i].confidence).toFixed(2);
-	}
-	var pcl = (prb>=0.9) ? "p9" : (prb>=0.7) ? "p7" : (prb>=0.5) ? "p5" : (prb>=0.3) ? "p3" : "p1";
-
-	if (reslist[i].result_type == "neighborhood graph") {
-	    prb = "Neighborhood Graph";
-	    pcl = "p0";
-	}
-
-	var rsrc = '';
-	if (reslist[i].reasoner_id) {
-	    rsrc = reslist[i].reasoner_id;
-	}
-	var rscl = (rsrc=="RTX") ? "srtx" : (rsrc=="Indigo") ? "sind" : (rsrc=="Robokop") ? "srob" : "p0";
-
-	var rid = reslist[i].id.substr(reslist[i].id.lastIndexOf('/') + 1);
-	var fid = "feedback_" + rid;
-	var fff = "feedback_form_" + rid;
-
-	document.getElementById("result_container").innerHTML += "<div onclick='sesame(this,a"+num+"_div);' id='h"+num+"_div' title='Click to expand / collapse result "+num+"' class='accordion'>Result "+num+" :: <b>"+ess+"</b><span class='r100'><span title='confidence="+prb+"' class='"+pcl+" qprob'>"+prb+"</span><span title='source="+rsrc+"' class='"+rscl+" qprob'>"+rsrc+"</span></span></div>";
-
-
-	if (reslist[i].result_graph == null) {
-	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><br>"+reslist[i].description+"<br><br><span id='"+fid+"'><i>User Feedback</i></span></div>";
-
-	}
-	else {
-	    document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table class='t100'><tr><td class='textanswer'>"+reslist[i].description+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+i+"].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout("+i+",\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout("+i+",\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout("+i+",\"circle\");'>C</a><br><a title='random layout' onclick='cylayout("+i+",\"random\");'>R</a>	</td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td><span id='"+fid+"'><i>User Feedback</i><hr><span id='"+fff+"'><a href='javascript:add_fefo(\""+rid+"\",\"a"+num+"_div\");'>Add Feedback</a></span><hr></span></td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
-
-
-	    if ( reslist[i].row_data ) {
-		add_to_summary(reslist[i].row_data, num);
-	    }
-
-	    cytodata[i] = [];
-	    var gd = reslist[i].result_graph;
-
-	    for (var node of gd.nodes) {
-		node.parentdivnum = num; // helps link node to div when displaying node info on click
-		var tmpdata = { "data" : node }; // already contains id
-		cytodata[i].push(tmpdata);
-
-		// DEBUG
-		//document.getElementById("cy"+num).innerHTML += "NODE: name="+ node.name + " -- accession=" + node.accession + "<BR>";
-	    }
-
-	    for (var g of gd.edges) {
-		var edge = JSON.parse(JSON.stringify(g)); // cheap and deep copy
-		edge.parentdivnum = num;
-                edge.id     = g.source_id + '--' + g.target_id;
-		edge.source = g.source_id;
-		edge.target = g.target_id;
-		edge.source_id = null;
-		edge.target_id = null;
-
-		var tmpdata = { "data" : edge };
-		cytodata[i].push(tmpdata);
-	    }
-	}
-    }
-
-    // sesame(h1_div,a1_div);
-    // add_cyto();
-}
-
-
-
 function add_cyto() {
-
     for (var i in cytodata) {
 	if (cytodata[i] == null) continue;
 
 	var num = Number(i);// + 1;
 
-//	console.log("---------------cyto i="+i);
+	//console.log("---------------cyto i="+i);
 	cyobj[i] = cytoscape({
 	    container: document.getElementById('cy'+num),
 	    style: cytoscape.stylesheet()
@@ -1232,24 +1143,24 @@ function edit_qg() {
 
 
 function display_query_graph_items() {
-    var kghtml = '';
+    var qghtml = '';
     var nitems = 0;
 
     input_qg.nodes.forEach(function(result, index) {
 	nitems++;
-        kghtml += "<tr class='hoverable'><td>"+result.id+"</td><td title='"+result.desc+"'>"+(result.name==null?"-":result.name)+"</td><td>"+(result.curie==null?"<i>(any node)</i>":result.curie)+"</td><td>"+(result.type==null?"<i>(any)</i>":result.type)+"</td><td><a href='javascript:remove_node_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
+        qghtml += "<tr class='hoverable'><td>"+result.id+"</td><td title='"+result.desc+"'>"+(result.name==null?"-":result.name)+"</td><td>"+(result.curie==null?"<i>(any node)</i>":result.curie)+"</td><td>"+(result.type==null?"<i>(any)</i>":result.type)+"</td><td><a href='javascript:remove_node_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
     });
 
     input_qg.edges.forEach(function(result, index) {
-        kghtml += "<tr class='hoverable'><td>"+result.id+"</td><td>-</td><td>"+result.source_id+"--"+result.target_id+"</td><td>"+(result.type==null?"<i>(any)</i>":result.type)+"</td><td><a href='javascript:remove_edge_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
+        qghtml += "<tr class='hoverable'><td>"+result.id+"</td><td>-</td><td>"+result.source_id+"--"+result.target_id+"</td><td>"+(result.type==null?"<i>(any)</i>":result.type)+"</td><td><a href='javascript:remove_edge_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
     });
 
 
     if (nitems > 0) {
-	kghtml = "<table class='sumtab'><tr><th>Id</th><th>Name</th><th>Item</th><th>Type</th><th>Action</th></tr>" + kghtml + "</table>";
+	qghtml = "<table class='sumtab'><tr><th>Id</th><th>Name</th><th>Item</th><th>Type</th><th>Action</th></tr>" + qghtml + "</table>";
     }
 
-    document.getElementById("qg_items").innerHTML = kghtml;
+    document.getElementById("qg_items").innerHTML = qghtml;
 }
 
 
@@ -1585,183 +1496,6 @@ function get_qg_id() {
 }
 
 
-function rem_fefo(res_id,res_div_id) {
-    var fff = "feedback_form_" + res_id;
-
-    document.getElementById(fff).innerHTML = "<a href='javascript:add_fefo(\""+res_id+"\",\""+res_div_id+"\");'>Add Feedback</a>";
-
-    sesame('openmax',document.getElementById(res_div_id));
-}
-
-function add_fefo(res_id,res_div_id) {
-    var fff = "feedback_form_" + res_id;
-    var uuu = getCookie('RTXuser');
-
-    document.getElementById(fff).innerHTML = "Please provide feedback on this result:<br>";
-
-    document.getElementById(fff).innerHTML+= "<table><tr><td><b>Rating:</b></td><td><span class='ratings'><select id='"+fff+"_rating'><option value=''>Please select a rating&nbsp;&nbsp;&nbsp;&#8675;</option></select></span></td></tr><tr><td><b>Expertise:</b></td><td><span class='ratings'><select id='"+fff+"_expertise'><option value=''>What is your expertise on this subject?&nbsp;&nbsp;&nbsp;&#8675;</option></select></span></td></tr><tr><td><b>Full Name:</b></td><td><input type='text' id='"+fff+"_fullname' value='"+uuu+"' maxlength='60' size='60'></input></td</tr><tr><td><b>Comment:</b></td><td><textarea id='"+fff+"_comment' maxlength='60000' rows='7' cols='60'></textarea></td</tr><tr><td></td><td><input type='button' class='questionBox button' name='action' value='Submit' onClick='javascript:submitFeedback(\""+res_id+"\",\""+res_div_id+"\");'/>&nbsp;&nbsp;&nbsp;&nbsp;<a href='javascript:rem_fefo(\""+res_id+"\",\""+res_div_id+"\");'>Cancel</a></td></tr></table><span id='"+fff+"_msgs' class='error'></span>";
-
-    for (var i in fb_ratings) {
-	var opt = document.createElement('option');
-	opt.value = i;
-	opt.innerHTML = fb_ratings[i].tag+" :: "+fb_ratings[i].desc;
-	document.getElementById(fff+"_rating").appendChild(opt);
-    }
-
-    for (var i in fb_explvls) {
-	var opt = document.createElement('option');
-	opt.value = i;
-	opt.innerHTML = fb_explvls[i].tag+" :: "+fb_explvls[i].desc;
-	document.getElementById(fff+"_expertise").appendChild(opt);
-    } 
-
-    sesame('openmax',document.getElementById(res_div_id));
-}
-
-function submitFeedback(res_id,res_div_id) {
-    var fff = "feedback_form_" + res_id;
-
-    var rat = document.getElementById(fff+"_rating").value;
-    var exp = document.getElementById(fff+"_expertise").value;
-    var nom = document.getElementById(fff+"_fullname").value;
-    var cmt = document.getElementById(fff+"_comment").value;
-
-    if (!rat || !exp || !nom) {
-	document.getElementById(fff+"_msgs").innerHTML = "Please provide a <u>rating</u>, <u>expertise level</u>, and <u>name</u> in your feedback on this result";
-	return;
-    }
-
-    var feedback = {};
-    feedback.rating_id = parseInt(rat);
-    feedback.expertise_level_id = parseInt(exp);
-    feedback.comment = cmt;
-    feedback.commenter_full_name = nom;
-
-    // feedback.commenter_id = 1;
-
-
-    var xhr6 = new XMLHttpRequest();
-    xhr6.open("post",  baseAPI + "api/rtx/v1/result/" + res_id + "/feedback", true);
-    xhr6.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-    xhr6.send(JSON.stringify(feedback));
-
-    xhr6.onloadend = function() {
-	var jsonObj6 = JSON.parse(xhr6.responseText);
-	document.getElementById("devdiv").innerHTML += "<br>================================================================= FEEDBACK-POST::<pre>\nPOST to " +  baseAPI + "api/rtx/v1/result/" + res_id + "/feedback ::<br>" + JSON.stringify(feedback,null,2) + "<br>------<br>" + JSON.stringify(jsonObj6,null,2) + "</pre>";
-
-	if ( xhr6.status == 200 ) {
-	    document.getElementById(fff+"_msgs").innerHTML = "Your feedback has been recorded...";
-	    setRTXUserCookie(nom);
-
-	    var xhr7 = new XMLHttpRequest();
-	    xhr7.open("get",  baseAPI + "api/rtx/v1/result/" + res_id + "/feedback", true);
-	    xhr7.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-	    xhr7.send(null);
-
-	    xhr7.onloadend = function() {
-		var jsonObj7 = JSON.parse(xhr7.responseText);
-		if ( xhr7.status == 200 ) {
-		    var fid = "feedback_" + res_id;
-		    document.getElementById(fid).innerHTML = "<i>User Feedback (updated)</i><hr><span class='error'>Your feedback has been recorded.  Thank you, "+nom+"!</span><hr>";
-
-		    for (var i in jsonObj7) {
-			insert_feedback_item(fid, jsonObj7[i]);
-		    }
-		    sesame('openmax',document.getElementById(res_div_id));
-		}
-		else {
-		    document.getElementById(fff+"_msgs").innerHTML = "There was an error with this ("+jsonObj7.detail+"). Please try again.";
-		}
-	    }
-
-	}
-	else {
-	    document.getElementById(fff+"_msgs").innerHTML = "There was an error with this submission ("+jsonObj6.detail+"). Please try again.";
-	}
-
-    }
-
-}
-
-
-function add_feedback() {
-    if (fb_explvls.length == 0 || fb_ratings.length == 0) {
-	get_feedback_fields();
-    }
-
-    var xhr3 = new XMLHttpRequest();
-    xhr3.open("get",  baseAPI + "api/rtx/v1/message/" + message_id + "/feedback", true);
-    xhr3.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-    xhr3.send(null);
-
-    xhr3.onloadend = function() {
-	if ( xhr3.status == 200 ) {
-	    var jsonObj3 = JSON.parse(xhr3.responseText);
-            add_to_dev_info("FEEDBACK",jsonObj3);
-
-	    for (var i in jsonObj3) {
-		var fid = "feedback_" + jsonObj3[i].result_id.substr(jsonObj3[i].result_id.lastIndexOf('/') + 1);
-
-		if (document.getElementById(fid)) {
-		    insert_feedback_item(fid, jsonObj3[i]);
-		}
-		else {
-		    document.getElementById("devdiv").innerHTML += "[warn] Feedback " + fid + " does not exist in response!<br>";
-		}
-	    }
-
-	}
-	sesame(h1_div,a1_div);
-//	sesame(h0_div,a0_div);
-    };
-
-
-}
-
-
-function insert_feedback_item(el_id, feed_obj) {
-    var prb = feed_obj.rating_id;
-    var pcl = (prb<=2) ? "p9" : (prb<=4) ? "p7" : (prb<=5) ? "p5" : (prb<=6) ? "p3" : (prb<=7) ? "p0" : "p1";
-    var pex = feed_obj.expertise_level_id;
-    var pxl = (pex==1) ? "p9" : (pex==2) ? "p7" : (pex==3) ? "p5" : (pex==4) ? "p3" : "p1";
-
-    document.getElementById(el_id).innerHTML += "<table><tr><td><b>Rating:</b></td><td style='width:100%'><span class='"+pcl+" frating' title='" + fb_ratings[feed_obj.rating_id].desc +  "'>" + fb_ratings[feed_obj.rating_id].tag + "</span>&nbsp;<span class='tiny'>by <b>" + feed_obj.commenter_full_name + "</b> <span class='"+pxl+" explevel' title='" + fb_explvls[feed_obj.expertise_level_id].tag + " :: " + fb_explvls[feed_obj.expertise_level_id].desc + "'>&nbsp;</span></span><i class='tiny' style='float:right'>" + feed_obj.datetime + "</i></td></tr><tr><td><b>Comment:</b></td><td>" + feed_obj.comment + "</td></tr></table><hr>";
-
-}
-
-
-function get_feedback_fields() {
-    fetch(baseAPI + "api/rtx/v1/feedback/expertise_levels")
-        .then(response => response.json())
-        .then(data => {
-	    add_to_dev_info("FEEDBACK FIELDS",data);
-            for (var level of data.expertise_levels) {
-		fb_explvls[level.expertise_level_id] = {};
-		fb_explvls[level.expertise_level_id].desc = level.description;
-		fb_explvls[level.expertise_level_id].name = level.name;
-		fb_explvls[level.expertise_level_id].tag  = level.tag;
-	    }
-        })
-        .catch(error => { //ignore...
-	});
-
-    fetch(baseAPI + "api/rtx/v1/feedback/ratings")
-        .then(response => response.json())
-        .then(data => {
-            add_to_dev_info("RATINGS",data);
-
-	    for (var rat of data.ratings) {
-	        fb_ratings[rat.rating_id] = {};
-	        fb_ratings[rat.rating_id].desc = rat.description;
-	        fb_ratings[rat.rating_id].name = rat.name;
-	        fb_ratings[rat.rating_id].tag  = rat.tag;
-	    }
-        })
-        .catch(error => { //ignore...
-	});
-}
-
-
 function get_example_questions() {
     fetch(baseAPI + "api/rtx/v1/exampleQuestions")
         .then(response => response.json())
@@ -1840,25 +1574,6 @@ function add_to_dev_info(title,jobj) {
 }
 
 
-function setRTXUserCookie(fullname) {
-    var cname = "RTXuser";
-    var exdays = 7;
-    var d = new Date();
-    d.setTime(d.getTime()+(exdays*24*60*60*1000));
-    var expires = "expires="+d.toGMTString();
-    document.cookie = cname+"="+fullname+"; "+expires;
-}
-
-function getCookie(cname) {
-    var name = cname + "=";
-    var ca = document.cookie.split(';');
-    for(var i=0; i<ca.length; i++) {
-	var c = ca[i].trim();
-	if (c.indexOf(name)==0) return c.substring(name.length,c.length);
-    }
-    return "";
-}
-
 function togglecolor(obj,tid) {
     var col = '#888';
     if (obj.checked == true) {
@@ -1916,7 +1631,7 @@ function display_list(listId) {
     document.getElementById("menunumlistitems"+listId).innerHTML = numitems;
 
     if (numitems > 0) {
-	listhtml = "<table class='sumtab'><tr><th>Item</th><th>Entity Type(s)</th><th>Action</th></tr>" + listhtml + "</table>";
+	listhtml = "<table class='sumtab'><tr><th>Item</th><th>Entity Type(s)</th><th>Action</th></tr>" + listhtml + "</table><br><br>";
 	document.getElementById("menunumlistitems"+listId).classList.add("numnew");
 	document.getElementById("menunumlistitems"+listId).classList.remove("numold");
     }
@@ -1929,9 +1644,8 @@ function display_list(listId) {
 
 //    listhtml += "<hr>Enter new list item or items (space and/or comma-separated):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
 
-    if (numitems > 0) {
-    	listhtml += "&nbsp;&nbsp;&nbsp;&nbsp;<a href='javascript:delete_list(\""+listId+"\");'/> Delete List </a>";
-    }
+    if (numitems > 0)
+    	listhtml += "<a style='margin-left:20px;' href='javascript:delete_list(\""+listId+"\");'/> Delete List </a>";
 
     listhtml += "<br><br>";
 
@@ -2097,7 +1811,7 @@ function display_session() {
 }
 
 
-function copyJSON() {
+function copyJSON(ele) {
     var containerid = "responseJSON";
 
     if (document.selection) {
@@ -2105,6 +1819,7 @@ function copyJSON() {
 	range.moveToElementText(document.getElementById(containerid));
 	range.select().createTextRange();
 	document.execCommand("copy");
+	addCheckBox(ele);
     }
     else if (window.getSelection) {
 	var range = document.createRange();
@@ -2112,6 +1827,29 @@ function copyJSON() {
         window.getSelection().removeAllRanges();
 	window.getSelection().addRange(range);
 	document.execCommand("copy");
+	addCheckBox(ele);
 	//alert("text copied")
     }
+}
+
+function copyTSVToClipboard(ele) {
+    var dummy = document.createElement("textarea");
+    document.body.appendChild(dummy);
+    dummy.setAttribute("id", "dummy_id");
+    for (var line of summary_tsv)
+	document.getElementById("dummy_id").value+=line+"\n";
+    dummy.select();
+    document.execCommand("copy");
+    document.body.removeChild(dummy);
+
+    addCheckBox(ele);
+}
+
+function addCheckBox(ele) {
+    var check = document.createElement("span");
+    check.className = 'explevel p9';
+    check.innerHTML = '&check;';
+    ele.parentNode.insertBefore(check, ele.nextSibling);
+
+    var timeout = setTimeout(function() { check.remove(); }, 1500 );
 }

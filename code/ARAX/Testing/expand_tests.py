@@ -85,14 +85,16 @@ def convert_list_kg_to_dict_kg(knowledge_graph):
 def conduct_standard_testing(kg_in_dict_form, query_graph):
     check_for_orphans(kg_in_dict_form)
     check_all_qg_ids_fulfilled(kg_in_dict_form, query_graph)
-    print("  ...PASSED STANDARD TESTING!")
 
 
 def print_counts_by_qgid(kg_in_dict_form):
-    for qnode_id, corresponding_nodes in sorted(kg_in_dict_form['nodes'].items()):
-        print(f"  {qnode_id}: {len(corresponding_nodes)}")
-    for qedge_id, corresponding_edges in sorted(kg_in_dict_form['edges'].items()):
-        print(f"  {qedge_id}: {len(corresponding_edges)}")
+    if kg_in_dict_form['nodes'] or kg_in_dict_form['edges']:
+        for qnode_id, corresponding_nodes in sorted(kg_in_dict_form['nodes'].items()):
+            print(f"  {qnode_id}: {len(corresponding_nodes)}")
+        for qedge_id, corresponding_edges in sorted(kg_in_dict_form['edges'].items()):
+            print(f"  {qedge_id}: {len(corresponding_edges)}")
+    else:
+        print("  KG is empty")
 
 
 def print_nodes(kg_in_dict_form):
@@ -530,7 +532,7 @@ def simple_bte_acetaminophen_query():
     actions_list = [
         "create_message",
         "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",
-        "add_qnode(id=n01, type=protein, is_set=True)",
+        "add_qnode(id=n01, type=protein)",
         "add_qedge(id=e00, source_id=n01, target_id=n00)",
         "expand(edge_id=e00, kp=BTE)",
         "return(message=true, store=false)",
@@ -538,12 +540,26 @@ def simple_bte_acetaminophen_query():
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
 
+def bte_query_using_list_of_curies():
+    print(f"Testing BTE query using list of curies")
+    actions_list = [
+        "create_message",
+        "add_qnode(id=n00, curie=[CHEMBL.COMPOUND:CHEMBL112, CHEMBL.COMPOUND:CHEMBL521])",
+        "add_qnode(id=n01, type=protein)",
+        "add_qedge(id=e00, source_id=n01, target_id=n00)",
+        "expand(kp=BTE)",
+        "return(message=true, store=false)",
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    assert len(kg_in_dict_form['nodes']['n00']) > 1
+
+
 def simple_bte_cdk2_query():
     print(f"Testing simple BTE CDK2 query")
     actions_list = [
         "create_message",
         "add_qnode(id=n00, curie=NCBIGene:1017)",
-        "add_qnode(id=n01, type=chemical_substance, is_set=True)",
+        "add_qnode(id=n01, type=chemical_substance)",
         "add_qedge(id=e00, source_id=n01, target_id=n00)",
         "expand(edge_id=e00, kp=BTE)",
         "return(message=true, store=false)",
@@ -778,8 +794,8 @@ def query_using_continue_if_no_results():
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list, do_standard_testing=False)
 
 
-def query_using_list_of_curies():
-    print("Testing query using list of curies")
+def query_using_list_of_curies_map_back_handling():
+    print("Testing query using list of curies with map_back synonym handling")
     actions_list = [
         "create_message",
         "add_qnode(curie=[CUI:C0024530, CUI:C0024535, CUI:C0024534, CUI:C0747820], id=n00)",
@@ -790,6 +806,38 @@ def query_using_list_of_curies():
     ]
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
     assert 1 < len(kg_in_dict_form['nodes']['n00']) <= 4
+    n00_node_ids = set(kg_in_dict_form['nodes']['n00'].keys())
+    assert n00_node_ids.issubset({"CUI:C0024530", "CUI:C0024535", "CUI:C0024534", "CUI:C0747820"})
+
+
+def query_using_list_of_curies_add_all_handling():
+    print("Testing query using list of curies with add_all synonym handling")
+    actions_list = [
+        "create_message",
+        "add_qnode(curie=[CUI:C0024530, CUI:C0024535, CUI:C0024534, CUI:C0747820], id=n00)",
+        "add_qnode(type=phenotypic_feature, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(kp=ARAX/KG2, synonym_handling=add_all)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    assert len(kg_in_dict_form['nodes']['n00']) > 4
+
+
+def query_using_list_of_curies_without_synonyms():
+    print("Testing query using list of curies without using any synonyms")
+    actions_list = [
+        "create_message",
+        "add_qnode(curie=[CUI:C0024530, CUI:C0024535, CUI:C0024534, CUI:C0747820], id=n00)",
+        "add_qnode(type=phenotypic_feature, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(kp=ARAX/KG2, use_synonyms=false)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    assert 1 < len(kg_in_dict_form['nodes']['n00']) <= 4
+    n00_node_ids = set(kg_in_dict_form['nodes']['n00'].keys())
+    assert n00_node_ids.issubset({"CUI:C0024530", "CUI:C0024535", "CUI:C0024534", "CUI:C0747820"})
 
 
 def query_with_curies_on_both_ends():
@@ -804,6 +852,36 @@ def query_with_curies_on_both_ends():
     ]
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
     assert len(kg_in_dict_form['nodes']['n00']) == 1 and len(kg_in_dict_form['nodes']['n01']) == 1
+
+
+def query_with_intermediate_curie_node():
+    print("Testing query with intermediate curie node")
+    actions_list = [
+        "create_message",
+        "add_qnode(type=protein, id=n00)",
+        "add_qnode(name=atrial fibrillation, id=n01)",
+        "add_qnode(type=chemical_substance, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "expand(kp=ARAX/KG2)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    assert len(kg_in_dict_form['nodes']['n01']) == 1
+
+
+def continue_if_no_results_query_causing_774():
+    print("Testing continue if no results query causing #774")
+    actions_list = [
+        "create_message",
+        "add_qnode(name=acetaminophen, id=n1)",
+        "add_qnode(name=scabies, id=n2)",
+        "add_qedge(source_id=n1, target_id=n2, id=e1)",
+        "expand(edge_id=e1, kp=ARAX/KG2, continue_if_no_results=True)",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list, do_standard_testing=False)
+    assert not kg_in_dict_form['nodes'] and not kg_in_dict_form['edges']
 
 
 def main():
@@ -824,8 +902,9 @@ def main():
     acetaminophen_example_enforcing_directionality()
     parkinsons_example_enforcing_directionality()
     test_kg1_property_format()
-    # simple_bte_acetaminophen_query()
-    # simple_bte_cdk2_query()
+    simple_bte_acetaminophen_query()
+    bte_query_using_list_of_curies()
+    simple_bte_cdk2_query()
     test_simple_bidirectional_query()
     query_that_doesnt_return_original_curie()
     single_node_query_map_back()
@@ -839,8 +918,12 @@ def main():
     add_all_query_with_multiple_synonyms_in_results()
     query_that_expands_same_edge_twice()
     query_using_continue_if_no_results()
-    query_using_list_of_curies()
     query_with_curies_on_both_ends()
+    query_using_list_of_curies_map_back_handling()
+    query_using_list_of_curies_add_all_handling()
+    query_using_list_of_curies_without_synonyms()
+    query_with_intermediate_curie_node()
+    continue_if_no_results_query_causing_774()
 
     # Non-standard tests/bug tests
     # ambitious_query_causing_multiple_qnode_ids_error()

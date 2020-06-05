@@ -612,12 +612,12 @@ class ARAXMessenger:
                                 score_stats[attribute_name]['minimum'] = value
                             if score_stats[attribute_name]['maximum'] == -9999 or value > score_stats[attribute_name]['maximum']:
                                 score_stats[attribute_name]['maximum'] = value
-        response.debug(f"Summary of available edge metrics: {score_stats}")
+        response.info(f"Summary of available edge metrics: {score_stats}")
 
         # Iterate through the results
         i_result = 0
         for result in message.results:
-            response.debug(f"Metrics for result {i_result}  {result.essence}: ")
+            #response.debug(f"Metrics for result {i_result}  {result.essence}: ")
             score = 1.0
             best_probability = 0.0
             for edge in result.edge_bindings:
@@ -628,8 +628,8 @@ class ARAXMessenger:
                     score *= float(kg_edges[kg_edge_id].confidence)
                 if kg_edges[kg_edge_id].edge_attributes is not None:
                     for edge_attribute in kg_edges[kg_edge_id].edge_attributes:
-                        value = float(edge_attribute.value)
                         if edge_attribute.name == 'probability':
+                            value = float(edge_attribute.value)
                             buf += f" probability={edge_attribute.value}"
                             if value > best_probability:
                                 best_probability = value
@@ -651,7 +651,7 @@ class ARAXMessenger:
                             factor = jaccard / score_stats['jaccard_index']['maximum'] * 0.9
                             buf += f" jaccard={jaccard}, factor={factor}"
                             score *= factor
-                response.debug(f"  - {kg_edge_id}  {buf}")
+                #response.debug(f"  - {kg_edge_id}  {buf}")
 
             # #### If there was a best_probability recorded, then multiply times the running score
             if best_probability > 0.0:
@@ -664,7 +664,7 @@ class ARAXMessenger:
             #### Keep only 3 digits after the decimal 
             score = int(score * 1000 + 0.5) / 1000.0
 
-            response.debug(f"  ---> final score={score}")
+            #response.debug(f"  ---> final score={score}")
             result.confidence = score
             result.row_data = [ score, result.essence, result.essence_type ]
             i_result += 1

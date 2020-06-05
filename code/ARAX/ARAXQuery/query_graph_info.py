@@ -111,7 +111,7 @@ class QueryGraphInfo:
                 node_info[qedge.source_id]['n_links'] += 1
                 node_info[qedge.target_id]['n_links'] += 1
                 unique_links[link_string] = 1
-                print(link_string)
+                #print(link_string)
 
             node_info[qedge.source_id]['n_edges'] += 1
             node_info[qedge.target_id]['n_edges'] += 1

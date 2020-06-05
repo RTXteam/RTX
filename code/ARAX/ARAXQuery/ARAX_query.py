@@ -540,7 +540,12 @@ class ARAXQuery:
                 #### Immediately after resultify, run the experimental ranker
                 if action['command'] == 'resultify':
                     response.info(f"Running experimental reranker on results")
-                    messenger.rank_results(message, response=response)
+                    try:
+                        messenger.rank_results(message, response=response)
+                    except Exception as error:
+                        exception_type, exception_value, exception_traceback = sys.exc_info()
+                        response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
+                        return response
 
             #### At the end, process the explicit return() action, or implicitly perform one
             return_action = { 'command': 'return', 'parameters': { 'message': 'true', 'store': 'true' } }
@@ -1033,6 +1038,56 @@ def main():
             "expand(edge_id=[e00,e01], continue_if_no_results=true)",
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
             "return(message=true, store=false)"
+        ]}}
+    elif params.example_number == 6231:  # chunyu testing #623, all nodes already in the KG and QG
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521)",
+            "add_qnode(id=n01, type=protein)",
+            "add_qedge(id=e00, source_id=n00, target_id=n01)",
+            "add_qnode(id=n02, type=biological_process)",
+            "add_qedge(id=e01, source_id=n01, target_id=n02)",
+            "expand(edge_id=[e00, e01], kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_node_id=n01, virtual_relation_label=FET, target_node_id=n02, cutoff=0.05)",
+            "resultify()",
+            "return(message=true, store=true)"
+        ]}}
+    elif params.example_number == 6232:  # chunyu testing #623, this should return the 10 smallest FET p-values
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521)",
+            "add_qnode(id=n01, type=protein)",
+            "add_qedge(id=e00, source_id=n00, target_id=n01)",
+            "add_qnode(id=n02, type=biological_process)",
+            "add_qedge(id=e01, source_id=n01, target_id=n02)",
+            "expand(edge_id=[e00, e01], kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_node_id=n01, virtual_relation_label=FET, target_node_id=n02, top_n=10)",
+            "resultify()",
+            "return(message=false, store=true)"
+        ]}}
+    elif params.example_number == 6233:  # chunyu testing #623, this DSL tests the FET module based on (source id - involved_in - target id)
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521)",
+            "add_qnode(id=n01, type=protein)",
+            "add_qedge(id=e00, source_id=n00, target_id=n01)",
+            "add_qnode(id=n02, type=biological_process)",
+            "add_qedge(id=e01, source_id=n01, target_id=n02, type=involved_in)",
+            "expand(edge_id=[e00, e01], kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_node_id=n01, virtual_relation_label=FET, target_node_id=n02, rel_edge_id=e01, cutoff=0.05)",
+            "resultify()",
+            "return(message=false, store=true)"
+        ]}}
+    elif params.example_number == 6234:  # chunyu testing #623, nodes not in the KG and QG. This should throw an error initially. In the future we might want to add these nodes.
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521)",
+            "add_qnode(id=n01, type=protein)",
+            "add_qedge(id=e00, source_id=n00, target_id=n01)",
+            "expand(edge_id=[e00], kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_node_id=n01, virtual_relation_label=FET, target_node_id=n02, cutoff=0.05)",
+            "resultify()",
+            "return(message=false, store=true)"
         ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
