@@ -781,7 +781,7 @@ class TestARAXResultify(unittest.TestCase):
         assert message.results[0].essence is not None
 
     def test_example2(self):
-        # NOTE: This test is currently failing due to Filter error (#784)
+        # NOTE: This test is currently failing due to changes for #720 not yet being implemented for Overlay/Filter
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(curie=DOID:14330, id=n00)",
@@ -923,7 +923,7 @@ class TestARAXResultify(unittest.TestCase):
         assert results_list[0].essence is not None
 
     def test_issue680(self):
-        # NOTE: This test is currently failing due to Filter error (#784)
+        # NOTE: This test is currently failing due to changes for #720 not yet being implemented for Overlay/Filter
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(curie=DOID:14330, id=n00)",
@@ -1126,6 +1126,7 @@ class TestARAXResultify(unittest.TestCase):
         assert 'WARNING: no results returned; empty knowledge graph' in response.messages_list()[0]
 
     def test_issue720_1(self):
+        # Test when same node fulfills different qnode_ids within same result
         query = {"previous_message_processing_plan": {"processing_actions": [
                 "add_qnode(curie=DOID:14330, id=n00)",
                 "add_qnode(type=protein, curie=[UniProtKB:Q02878, UniProtKB:Q9BXM7], is_set=true, id=n01)",
@@ -1140,6 +1141,7 @@ class TestARAXResultify(unittest.TestCase):
         assert response.status == 'OK'
 
     def test_issue720_2(self):
+        # Test when same node fulfills different qnode_ids within same result
         query = {"previous_message_processing_plan": {"processing_actions": [
                 "add_qnode(curie=CUI:C0158779, type=anatomical_entity, id=n00)",
                 "add_qnode(curie=CUI:C0578454, type=phenotypic_feature, id=n01)",
@@ -1152,6 +1154,32 @@ class TestARAXResultify(unittest.TestCase):
         n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n02" in node.qnode_ids]
         assert len(message.results) == len(n02_nodes_in_kg)
         assert response.status == 'OK'
+
+    def test_issue720_3(self):
+        # Tests when same node fulfills different qnode_ids in different results
+        query = {"previous_message_processing_plan": {"processing_actions": [
+                "add_qnode(id=n00, curie=DOID:14330)",  # parkinson's
+                "add_qnode(id=n01, type=protein)",
+                "add_qnode(id=n02, type=chemical_substance, curie=CHEMBL.COMPOUND:CHEMBL452076)",  # cilnidipine
+                "add_qnode(id=n03, type=protein)",
+                "add_qedge(id=e00, source_id=n00, target_id=n01)",
+                "add_qedge(id=e01, source_id=n01, target_id=n02)",
+                "add_qedge(id=e02, source_id=n02, target_id=n03)",
+                "expand(use_synonyms=false)",
+                "resultify(debug=true)"]}}
+        [response, message] = _do_arax_query(query)
+        assert response.status == 'OK'
+        snca_id = "UniProtKB:P37840"
+        found_result_where_syna_is_n01_and_not_n03 = False
+        found_result_where_syna_is_n03_and_not_n01 = False
+        for result in message.results:
+            syna_as_n01 = any(node_binding for node_binding in result.node_bindings if node_binding.kg_id == snca_id and node_binding.qg_id == 'n01')
+            syna_as_n03 = any(node_binding for node_binding in result.node_bindings if node_binding.kg_id == snca_id and node_binding.qg_id == 'n03')
+            if syna_as_n01 and not syna_as_n03:
+                found_result_where_syna_is_n01_and_not_n03 = True
+            elif syna_as_n03 and not syna_as_n01:
+                found_result_where_syna_is_n03_and_not_n01 = True
+        assert found_result_where_syna_is_n01_and_not_n03 and found_result_where_syna_is_n03_and_not_n01
 
     # ----------- set this up as a test suite at some point? ----------
     # def _run_module_leveltests(self):

@@ -898,6 +898,29 @@ def continue_if_no_results_query_causing_774():
     assert not kg_in_dict_form['nodes'] and not kg_in_dict_form['edges']
 
 
+def multiple_qg_ids_test_for_720():
+    print("Testing multiple QG IDs scenario for #720")
+    actions_list = [
+        "create_message",
+        "add_qnode(id=n00, curie=DOID:14330)",
+        "add_qnode(id=n01, type=protein)",
+        "add_qnode(id=n02, type=chemical_substance)",
+        "add_qnode(id=n03, type=protein)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01)",
+        "add_qedge(id=e01, source_id=n01, target_id=n02)",
+        "add_qedge(id=e02, source_id=n02, target_id=n03)",
+        "expand()",
+        "return(message=true, store=false)"
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    snca_id = "UniProtKB:P37840"
+    assert snca_id in kg_in_dict_form['nodes']['n01'] and snca_id in kg_in_dict_form['nodes']['n03']
+    assert set(kg_in_dict_form['nodes']['n01'][snca_id].qnode_ids) == {'n01', 'n03'}
+    e01_edges_using_snca = {edge.id for edge in kg_in_dict_form['edges']['e01'].values() if edge.source_id == snca_id or edge.target_id == snca_id}
+    e02_edges_using_snca = {edge.id for edge in kg_in_dict_form['edges']['e02'].values() if edge.source_id == snca_id or edge.target_id == snca_id}
+    assert e01_edges_using_snca == e02_edges_using_snca
+
+
 def main():
     # Regular tests
     test_kg1_parkinsons_demo_example()
@@ -939,6 +962,7 @@ def main():
     query_with_intermediate_curie_node()
     continue_if_no_results_query_causing_774()
     ambitious_query_causing_multiple_qnode_ids_error()
+    multiple_qg_ids_test_for_720()
 
     # Non-standard tests/bug tests
     # test_two_hop_bte_query()
