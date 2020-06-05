@@ -146,7 +146,7 @@ class ARAXFilterResults:
             # print(known_attributes)
             allowable_parameters = {'action': {'sort_by_edge_attribute'},
                                     'edge_attribute': known_attributes,
-                                    'edge_relation': set([t for x in self.message.knowledge_graph.edges for t in x.relation]),
+                                    'edge_relation': set([x.relation for x in self.message.knowledge_graph.edges]),
                                     'direction': {'descending', 'd', 'ascending', 'a'},
                                     'max_results': {float()}
                                     }
