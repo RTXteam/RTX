@@ -1063,6 +1063,40 @@ def main():
             "resultify()",
             "return(message=false, store=true)"
         ]}}
+    elif params.example_number == 7680:  # issue 768 test all but jaccard, uncomment any one you want to test
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(curie=DOID:1588, id=n0)",
+            "add_qnode(type=chemical_substance, id=n1)",
+            "add_qedge(source_id=n0, target_id=n1, id=e0)",
+            "expand(edge_id=e0)",
+            #"overlay(action=predict_drug_treats_disease)",
+            "overlay(action=predict_drug_treats_disease, source_qnode_id=n1, target_qnode_id=n0, virtual_relation_label=P1)",
+            #"overlay(action=overlay_clinical_info,paired_concept_frequency=true)",
+            #"overlay(action=overlay_clinical_info,observed_expected_ratio=true)",
+            #"overlay(action=overlay_clinical_info,chi_square=true)",
+            #"overlay(action=overlay_clinical_info,paired_concept_frequency=true, source_qnode_id=n0, target_qnode_id=n1, virtual_relation_label=CP1)",
+            #"overlay(action=overlay_clinical_info,observed_expected_ratio=true, source_qnode_id=n0, target_qnode_id=n1, virtual_relation_label=OE1)",
+            #"overlay(action=overlay_clinical_info,chi_square=true, source_qnode_id=n0, target_qnode_id=n1, virtual_relation_label=C1)",
+            #"overlay(action=fisher_exact_test, source_node_id=n0, target_node_id=n1, virtual_relation_label=FET)",
+            "resultify()",
+            "filter_results(action=limit_number_of_results, max_results=15)",
+            "return(message=true, store=true)",
+        ]}}
+    elif params.example_number == 7681:  # issue 768 with jaccard
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(curie=DOID:14330, id=n00)",  # parkinsons
+            "add_qnode(type=protein, is_set=True, id=n01)",
+            "add_qnode(type=chemical_substance, is_set=False, id=n02)",
+            "add_qedge(source_id=n01, target_id=n00, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01)",
+            "expand(edge_id=[e00,e01])",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
+            "resultify()",
+            "filter_results(action=limit_number_of_results, max_results=15)",
+            "return(message=true, store=true)",
+        ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return
