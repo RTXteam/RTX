@@ -58,6 +58,15 @@ def _create_edge(edge_id: str, source_id: str, target_id: str, qedge_ids: List[s
     return edge
 
 
+def _print_results_for_debug(results: List[Result]):
+    for result in results:
+        print(result.essence)
+        for node_binding in result.node_bindings:
+            print(f"  {node_binding.qg_id}: {node_binding.kg_id}")
+        for edge_binding in result.edge_bindings:
+            print(f"  {edge_binding.qg_id}: {edge_binding.kg_id}")
+
+
 def _do_arax_query(query: str) -> List[Union[Response, Message]]:
     araxq = ARAXQuery()
     response = araxq.query(query)
@@ -1116,7 +1125,7 @@ class TestARAXResultify(unittest.TestCase):
         response = resultifier.apply(message, {})
         assert 'WARNING: no results returned; empty knowledge graph' in response.messages_list()[0]
 
-    def test_issue720(self):
+    def test_issue720_1(self):
         query = {"previous_message_processing_plan": {"processing_actions": [
                 "add_qnode(curie=DOID:14330, id=n00)",
                 "add_qnode(type=protein, curie=[UniProtKB:Q02878, UniProtKB:Q9BXM7], is_set=true, id=n01)",
@@ -1124,6 +1133,20 @@ class TestARAXResultify(unittest.TestCase):
                 "add_qedge(source_id=n00, target_id=n01, id=e00)",
                 "add_qedge(source_id=n01, target_id=n02, id=e01)",
                 "expand()",
+                "resultify(debug=true)"]}}
+        [response, message] = _do_arax_query(query)
+        n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n02" in node.qnode_ids]
+        assert len(message.results) == len(n02_nodes_in_kg)
+        assert response.status == 'OK'
+
+    def test_issue720_2(self):
+        query = {"previous_message_processing_plan": {"processing_actions": [
+                "add_qnode(curie=CUI:C0158779, type=anatomical_entity, id=n00)",
+                "add_qnode(curie=CUI:C0578454, type=phenotypic_feature, id=n01)",
+                "add_qnode(type=anatomical_entity, id=n02)",
+                "add_qedge(source_id=n00, target_id=n01, id=e00)",
+                "add_qedge(source_id=n01, target_id=n02, id=e01)",
+                "expand(use_synonyms=false, kp=ARAX/KG2)",
                 "resultify(debug=true)"]}}
         [response, message] = _do_arax_query(query)
         n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n02" in node.qnode_ids]
