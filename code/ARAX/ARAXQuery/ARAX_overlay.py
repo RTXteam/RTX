@@ -431,12 +431,12 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         parameters = self.parameters
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
-            allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_edge_type': {self.parameters['virtual_edge_type'] if 'virtual_edge_type' in self.parameters else None},
+            allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_edge_type' in self.parameters else None},
                                     'source_qnode_id': set([x.id for x in self.message.query_graph.nodes if x.type == "chemical_substance"]),
                                     'target_qnode_id': set([x.id for x in self.message.query_graph.nodes if (x.type == "disease" or x.type == "phenotypic_feature")])
                                     }
         else:
-            allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_edge_type': {'optional: any string label (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
+            allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {'optional: any string label that identifies the virtual edges added (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
                                     'source_qnode_id': {'optional: a specific source query node id corresponding to a disease query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
                                     'target_qnode_id': {'optional: a specific target query node id corresponding to a disease or phenotypic_feature query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'}
                                     }
@@ -446,12 +446,13 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
             brief_description = """
 `predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substanct treats a disease/phenotypic feature.
 For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
-The drug-disease treatment prediction probability is included as an edge attribute.
-You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified source/target qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). If the later, virtual edges are added with the type specified by `virtual_edge_type`.
+The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
+You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified source/target qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
+If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
 Use cases include:
 
 * Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
-* For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_edge_type=P1)`
+* For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)`
 * Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_drug_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_id=n02)`
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).

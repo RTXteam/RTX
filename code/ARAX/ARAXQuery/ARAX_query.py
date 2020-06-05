@@ -728,7 +728,7 @@ def main():
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
             "overlay(action=predict_drug_treats_disease)",
-            "return(message=true, store=false)",
+            "return(message=true, store=true)",
         ]}}
     elif params.example_number == 11:  # test overlay with overlay_clinical_info, paired_concept_frequency via COHD
         query = { "previous_message_processing_plan": { "processing_actions": [
@@ -1127,7 +1127,8 @@ def main():
         #attribute_of_interest = 'ngd'
         #attribute_of_interest = 'normalized_google_distance'
         #attribute_of_interest = 'chi_square'
-        attribute_of_interest = 'paired_concept_frequency'
+        #attribute_of_interest = 'paired_concept_frequency'
+        attribute_of_interest = 'probability'
         all_attribute_names = set()
         for edge in message.knowledge_graph.edges:
             if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
