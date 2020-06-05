@@ -51,14 +51,14 @@ class ComputeNGD:
 
 
         self.response.warning(f"Utilizing API calls to NCBI eUtils, so this may take a while...")
-        name = "ngd"
-        type = "float"
+        name = "normalized_google_distance"
+        type = "data:2526"
         value = self.parameters['default_value']
         url = "https://arax.rtx.ai/api/rtx/v1/ui/#/PubmedMeshNgd"
         ngd_method_counts = {"fast": 0, "slow": 0}
 
         # if you want to add virtual edges, identify the source/targets, decorate the edges, add them to the KG, and then add one to the QG corresponding to them
-        if 'virtual_edge_type' in parameters:
+        if 'virtual_relation_label' in parameters:
             source_curies_to_decorate = set()
             target_curies_to_decorate = set()
             curies_to_names = dict()
@@ -91,19 +91,19 @@ class ComputeNGD:
 
                     # edge properties
                     now = datetime.now()
-                    edge_type = parameters['virtual_edge_type']
-                    qedge_id = parameters['virtual_edge_type']
-                    relation = name
-                    is_defined_by = "https://arax.rtx.ai/api/rtx/v1/ui/"
+                    edge_type = "has_normalized_google_distance_with"
+                    qedge_id = parameters['virtual_relation_label']
+                    relation = parameters['virtual_relation_label']
+                    is_defined_by = "ARAX"
                     defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
-                    provided_by = "ARAX/RTX"
-                    confidence = 1.0
+                    provided_by = "ARAX"
+                    confidence = None
                     weight = None  # TODO: could make the actual value of the attribute
                     source_id = source_curie
                     target_id = target_curie
 
                     # now actually add the virtual edges in
-                    id = f"{edge_type}_{self.global_iter}"
+                    id = f"{relation}_{self.global_iter}"
                     self.global_iter += 1
                     edge = Edge(id=id, type=edge_type, relation=relation, source_id=source_id,
                                 target_id=target_id,
@@ -114,9 +114,10 @@ class ComputeNGD:
 
             # Now add a q_edge the query_graph since I've added an extra edge to the KG
             if added_flag:
-                edge_type = parameters['virtual_edge_type']
-                relation = name
-                q_edge = QEdge(id=edge_type, type=edge_type, relation=relation,
+                #edge_type = parameters['virtual_edge_type']
+                edge_type = "has_normalized_google_distance_with"
+                relation = parameters['virtual_relation_label']
+                q_edge = QEdge(id=relation, type=edge_type, relation=relation,
                                source_id=parameters['source_qnode_id'], target_id=parameters[
                         'target_qnode_id'])  # TODO: ok to make the id and type the same thing?
                 self.message.query_graph.edges.append(q_edge)

@@ -82,7 +82,7 @@ class ARAXOverlay:
             elif item not in allowable_parameters[key]:
                 if any([type(x) == float for x in allowable_parameters[key]]) or any([type(x) == int for x in allowable_parameters[key]]):  # if it's a float or int, just accept it as it is
                     return
-                elif key=="virtual_relation_label" and type(item) == str:
+                elif key == "virtual_relation_label" and type(item) == str:
                     return
                 else:  # otherwise, it's really not an allowable parameter
                     self.response.error(
@@ -92,9 +92,9 @@ class ARAXOverlay:
     # helper function to check if all virtual edge parameters have been properly provided
     def check_virtual_edge_params(self, allowable_parameters):
         parameters = self.parameters
-        if any([x in ['virtual_edge_type', 'source_qnode_id', 'target_qnode_id'] for x in parameters.keys()]):
-            if not all([x in parameters.keys() for x in ['virtual_edge_type', 'source_qnode_id', 'target_qnode_id']]):
-                self.response.error(f"If any of of the following parameters are provided ['virtual_edge_type', 'source_qnode_id', 'target_qnode_id'], all must be provided. Allowable parameters include: {allowable_parameters}")
+        if any([x in ['virtual_relation_label', 'source_qnode_id', 'target_qnode_id'] for x in parameters.keys()]):
+            if not all([x in parameters.keys() for x in ['virtual_relation_label', 'source_qnode_id', 'target_qnode_id']]):
+                self.response.error(f"If any of of the following parameters are provided ['virtual_relation_label', 'source_qnode_id', 'target_qnode_id'], all must be provided. Allowable parameters include: {allowable_parameters}")
             elif parameters['source_qnode_id'] not in allowable_parameters['source_qnode_id']:
                 self.response.error(f"source_qnode_id value is not valid. Valid values are: {allowable_parameters['source_qnode_id']}")
             elif parameters['target_qnode_id'] not in allowable_parameters['target_qnode_id']:
@@ -164,12 +164,12 @@ class ARAXOverlay:
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         #allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}}
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
-            allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_edge_type': {self.parameters['virtual_edge_type'] if 'virtual_edge_type' in self.parameters else None},
+            allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else None},
                                     'source_qnode_id': set([x.id for x in self.message.query_graph.nodes]),
                                     'target_qnode_id': set([x.id for x in self.message.query_graph.nodes])
                                     }
         else:
-            allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_edge_type': {'any string label (optional, otherwise applied to all edges)'},
+            allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_relation_label': {'any string label identifying the virtual edge label (optional, otherwise applied to all existing edges in the KG)'},
                                     'source_qnode_id': {'a specific source query node id (optional, otherwise applied to all edges)'},
                                     'target_qnode_id': {'a specific target query node id (optional, otherwise applied to all edges)'}
                                     }
@@ -178,8 +178,9 @@ class ARAXOverlay:
         if describe:
             brief_description = """
 `compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
-This information is then included as an edge attribute.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_edge_type`.
+This information is then included as an edge attribute with the name `normalized_google_distance`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
+
 Use cases include:
 
 * focusing in on edges that are well represented in the literature
@@ -228,19 +229,19 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
             allowable_parameters = {'action': {'overlay_clinical_info'},
-                                    'paired_concept_freq': {'true', 'false'},
+                                    'paired_concept_frequency': {'true', 'false'},
                                     'observed_expected_ratio': {'true', 'false'},
                                     'chi_square': {'true', 'false'},
-                                    'virtual_edge_type': {self.parameters['virtual_edge_type'] if 'virtual_edge_type' in self.parameters else None},
+                                    'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else None},
                                     'source_qnode_id': set([x.id for x in self.message.query_graph.nodes]),
                                     'target_qnode_id': set([x.id for x in self.message.query_graph.nodes])
                                     }
         else:
             allowable_parameters = {'action': {'overlay_clinical_info'},
-                                    'paired_concept_freq': {'true', 'false'},
+                                    'paired_concept_frequency': {'true', 'false'},
                                     'observed_expected_ratio': {'true', 'false'},
                                     'chi_square': {'true', 'false'},
-                                    'virtual_edge_type': {'any string label (optional, otherwise applied to all edges)'},
+                                    'virtual_relation_label': {'any string label used to identify the virtual edge (optional, otherwise information is added as an attribute to all existing edges in the KG)'},
                                     'source_qnode_id': {'a specific source query node id (optional, otherwise applied to all edges)'},
                                     'target_qnode_id': {'a specific target query node id (optional, otherwise applied to all edges)'}
                                     }
@@ -249,11 +250,16 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         if describe:
             brief_description = """
 `overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
-This KP has a number of different functionalities, such as `paired_concept_freq`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
+This KP has a number of different functionalities, such as `paired_concept_frequency`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
 All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
 This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
 This information is then included as an edge attribute.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_edge_type`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the relation specified by `virtual_relation_label`.
+These virtual edges have the following types:
+
+* `paired_concept_frequency` has the virtual edge type `has_paired_concept_frequency_with`
+* `observed_expected_ratio` has the virtual edge type `has_observed_expected_ratio_with`
+* `chi_square` has the virtual edge type `has_chi_square_with`
 
 Note that this DSL command has quite a bit of functionality, so a brief description of the DSL parameters is given here:
 
@@ -275,7 +281,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
             return self.response
 
         #check if conflicting parameters have been provided
-        mutually_exclusive_params = {'paired_concept_freq', 'observed_expected_ratio', 'chi_square'}
+        mutually_exclusive_params = {'paired_concept_frequency', 'observed_expected_ratio', 'chi_square'}
         if np.sum([x in mutually_exclusive_params for x in parameters]) > 1:
             self.response.error(f"The parameters {mutually_exclusive_params} are mutually exclusive. Please provide only one for each call to overlay(action=overlay_clinical_info)")
         if self.response.status != 'OK':
@@ -376,21 +382,21 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
                                 'start_node_id': set([x.id for x in self.message.query_graph.nodes]),
                                 'intermediate_node_id': set([x.id for x in self.message.query_graph.nodes]),
                                 'end_node_id': set([x.id for x in self.message.query_graph.nodes]),
-                                'virtual_edge_type': {self.parameters['virtual_edge_type'] if 'virtual_edge_type' in self.parameters else "any_string"}
+                                'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else "any_string"}
                                 }
         else:
             allowable_parameters = {'action': {'compute_jaccard'},
                                     'start_node_id': {"a node id (required)"},
                                     'intermediate_node_id': {"a query node id (required)"},
                                     'end_node_id': {"a query node id (required)"},
-                                    'virtual_edge_type': {"any string label (required)"}
+                                    'virtual_relation_label': {"any string label (required) that will be used to identify the virtual edge added"}
                                     }
         # print(allowable_parameters)
         # A little function to describe what this thing does
         if describe:
             brief_description = """
-`compute_jaccard` creates virtual edges and adds an edge attribute containing the following information:
-The jaccard similarity measures how many `intermediate_node_id`'s are shared in common between each `start_node_id` and `target_qnode_id`.
+`compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
+The jaccard similarity measures how many `intermediate_node_id`'s are shared in common between each `start_node_id` and `target_node_id`.
 This is used for purposes such as "find me all drugs (`start_node_id`) that have many proteins (`intermediate_node_id`) in common with this disease (`end_node_id`)."
 This can be used for downstream filtering to concentrate on relevant bioentities.
 
@@ -425,12 +431,12 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         parameters = self.parameters
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
-            allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_edge_type': {self.parameters['virtual_edge_type'] if 'virtual_edge_type' in self.parameters else None},
+            allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_edge_type' in self.parameters else None},
                                     'source_qnode_id': set([x.id for x in self.message.query_graph.nodes if x.type == "chemical_substance"]),
                                     'target_qnode_id': set([x.id for x in self.message.query_graph.nodes if (x.type == "disease" or x.type == "phenotypic_feature")])
                                     }
         else:
-            allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_edge_type': {'optional: any string label (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
+            allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {'optional: any string label that identifies the virtual edges added (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
                                     'source_qnode_id': {'optional: a specific source query node id corresponding to a disease query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
                                     'target_qnode_id': {'optional: a specific target query node id corresponding to a disease or phenotypic_feature query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'}
                                     }
@@ -440,12 +446,13 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
             brief_description = """
 `predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substanct treats a disease/phenotypic feature.
 For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
-The drug-disease treatment prediction probability is included as an edge attribute.
-You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified source/target qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). If the later, virtual edges are added with the type specified by `virtual_edge_type`.
+The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
+You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified source/target qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
+If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
 Use cases include:
 
 * Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
-* For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_edge_type=P1)`
+* For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)`
 * Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_drug_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_id=n02)`
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
@@ -580,12 +587,12 @@ def main():
     actions_list = [
         #"overlay(action=compute_ngd)",
         #"overlay(action=compute_ngd, virtual_edge_type=NGD1, source_qnode_id=n00, target_qnode_id=n01)",
-        #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
-        # "overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
+        #"overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
+        # "overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
         #"overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
         #"overlay(action=add_node_pmids)",
         #"overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
-        #"overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
+        #"overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
         "overlay(action=predict_drug_treats_disease, source_qnode_id=n01, target_qnode_id=n00, virtual_edge_type=P1)",
         "return(message=true,store=false)"
     ]
