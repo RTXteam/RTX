@@ -229,19 +229,19 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
             allowable_parameters = {'action': {'overlay_clinical_info'},
-                                    'paired_concept_freq': {'true', 'false'},
+                                    'paired_concept_frequency': {'true', 'false'},
                                     'observed_expected_ratio': {'true', 'false'},
                                     'chi_square': {'true', 'false'},
-                                    'virtual_edge_type': {self.parameters['virtual_edge_type'] if 'virtual_edge_type' in self.parameters else None},
+                                    'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else None},
                                     'source_qnode_id': set([x.id for x in self.message.query_graph.nodes]),
                                     'target_qnode_id': set([x.id for x in self.message.query_graph.nodes])
                                     }
         else:
             allowable_parameters = {'action': {'overlay_clinical_info'},
-                                    'paired_concept_freq': {'true', 'false'},
+                                    'paired_concept_frequency': {'true', 'false'},
                                     'observed_expected_ratio': {'true', 'false'},
                                     'chi_square': {'true', 'false'},
-                                    'virtual_edge_type': {'any string label (optional, otherwise applied to all edges)'},
+                                    'virtual_relation_label': {'any string label used to identify the virtual edge (optional, otherwise information is added as an attribute to all existing edges in the KG)'},
                                     'source_qnode_id': {'a specific source query node id (optional, otherwise applied to all edges)'},
                                     'target_qnode_id': {'a specific target query node id (optional, otherwise applied to all edges)'}
                                     }
@@ -250,11 +250,16 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         if describe:
             brief_description = """
 `overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
-This KP has a number of different functionalities, such as `paired_concept_freq`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
+This KP has a number of different functionalities, such as `paired_concept_frequency`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
 All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
 This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
 This information is then included as an edge attribute.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_edge_type`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the relation specified by `virtual_relation_label`.
+These virtual edges have the following types:
+
+* `paired_concept_frequency` has the virtual edge type `has_paired_concept_frequency_with`
+* `observed_expected_ratio` has the virtual edge type `has_observed_expected_ratio_with`
+* `chi_square` has the virtual edge type `has_chi_square_with`
 
 Note that this DSL command has quite a bit of functionality, so a brief description of the DSL parameters is given here:
 
@@ -276,7 +281,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
             return self.response
 
         #check if conflicting parameters have been provided
-        mutually_exclusive_params = {'paired_concept_freq', 'observed_expected_ratio', 'chi_square'}
+        mutually_exclusive_params = {'paired_concept_frequency', 'observed_expected_ratio', 'chi_square'}
         if np.sum([x in mutually_exclusive_params for x in parameters]) > 1:
             self.response.error(f"The parameters {mutually_exclusive_params} are mutually exclusive. Please provide only one for each call to overlay(action=overlay_clinical_info)")
         if self.response.status != 'OK':
@@ -587,12 +592,12 @@ def main():
     actions_list = [
         #"overlay(action=compute_ngd)",
         #"overlay(action=compute_ngd, virtual_edge_type=NGD1, source_qnode_id=n00, target_qnode_id=n01)",
-        #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
-        # "overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
+        #"overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
+        # "overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
         #"overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
         #"overlay(action=add_node_pmids)",
         #"overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
-        #"overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
+        #"overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
         "overlay(action=predict_drug_treats_disease, source_qnode_id=n01, target_qnode_id=n00, virtual_edge_type=P1)",
         "return(message=true,store=false)"
     ]

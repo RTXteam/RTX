@@ -677,10 +677,10 @@ def main():
             "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00, type=has_phenotype)",
             "expand(edge_id=e00)",
-            #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
+            #"overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
             #"overlay(action=overlay_clinical_info, chi_square=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
-            #"overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
-            "overlay(action=compute_ngd, default_value=inf)",
+            "overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
+            #"overlay(action=compute_ngd, default_value=inf)",
             #"overlay(action=compute_ngd, virtual_relation_label=NGD1, source_qnode_id=n00, target_qnode_id=n01)",
             "filter(maximum_results=2)",
             "return(message=true, store=true)",
@@ -730,17 +730,17 @@ def main():
             "overlay(action=predict_drug_treats_disease)",
             "return(message=true, store=false)",
         ]}}
-    elif params.example_number == 11:  # test overlay with overlay_clinical_info, paired_concept_freq via COHD
+    elif params.example_number == 11:  # test overlay with overlay_clinical_info, paired_concept_frequency via COHD
         query = { "previous_message_processing_plan": { "processing_actions": [
             "create_message",
             "add_qnode(curie=DOID:0060227, id=n00)",  # Adam's oliver
             "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00, type=has_phenotype)",
             "expand(edge_id=e00)",
-            "overlay(action=overlay_clinical_info, paired_concept_freq=true)",
-            #"overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_relation_label=COHD1, source_qnode_id=n00, target_qnode_id=n01)",
+            "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
+            #"overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_relation_label=COHD1, source_qnode_id=n00, target_qnode_id=n01)",
             "filter(maximum_results=2)",
-            "return(message=true, store=false)",
+            "return(message=true, store=true)",
             ] } }
     elif params.example_number == 12:  # dry run of example 2 # FIXME NOTE: this is our planned example 2 (so don't fix, it's just so it's highlighted in my IDE)
         query = { "previous_message_processing_plan": { "processing_actions": [
@@ -783,8 +783,8 @@ def main():
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",  # only look at drugs that target lots of phenotypes
             #"filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.06, remove_connected_nodes=t, qnode_id=n02)",  # remove edges and drugs that connect to few phenotypes
             #"filter_kg(action=remove_edges_by_type, edge_type=J1, remove_connected_nodes=f)",
-            ##"overlay(action=overlay_clinical_info, paired_concept_freq=true)",  # overlay with COHD information
-            #"overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n02)",  # overlay drug->disease virtual edges with COHD information
+            ##"overlay(action=overlay_clinical_info, paired_concept_frequency=true)",  # overlay with COHD information
+            #"overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n02)",  # overlay drug->disease virtual edges with COHD information
             #"filter_kg(action=remove_edges_by_attribute, edge_attribute=paired_concept_frequency, direction=below, threshold=0.0000001, remove_connected_nodes=t, qnode_id=n02)",  # remove drugs below COHD threshold
             #"overlay(action=compute_jaccard, start_node_id=n01, intermediate_node_id=n02, end_node_id=n03, virtual_relation_label=J2)",  # look at proteins that share many/any drugs in common with the phenotypes
             #"filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.001, remove_connected_nodes=t, qnode_id=n03)",
@@ -1122,10 +1122,12 @@ def main():
         vals = []
         num_edges_show = 2
         num_edges_shown = 0
-        attribute_of_interest = 'jaccard_index'
+        #attribute_of_interest = 'jaccard_index'
         #attribute_of_interest = 'observed_expected_ratio'
         #attribute_of_interest = 'ngd'
         #attribute_of_interest = 'normalized_google_distance'
+        #attribute_of_interest = 'chi_square'
+        attribute_of_interest = 'paired_concept_frequency'
         all_attribute_names = set()
         for edge in message.knowledge_graph.edges:
             if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
@@ -1138,6 +1140,8 @@ def main():
                         #for attr in edge.edge_attributes:
                         #    vals.append((attr.name, attr.value))
                         vals.append((edge_attribute.name, float(edge_attribute.value)))  # FIXME: some edge_attributes are floats, others are strings, object model weirdness
+                    elif attribute_of_interest == all:
+                        print(json.dumps(ast.literal_eval(repr(edge)), sort_keys=True, indent=2))
         print(f"All edge attribute names: {all_attribute_names}")
         if vals:
             print(f"number of edges with attribute {attribute_of_interest}: {len(vals)}")
