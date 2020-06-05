@@ -150,7 +150,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
 ### `overlay(action=fisher_exact_test)`
 
-`fisher_exact_test` computes the the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_node_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_node_id 'n02') in the message knowledge graph. 
+`fisher_exact_test` computes the the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_qnode_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_qnode_id 'n02') in the message knowledge graph. 
 This information is then added as an edge attribute to a virtual edge which is then added to the query graph and knowledge graph.
 It can also allow you filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
 
@@ -182,7 +182,7 @@ The code is as follows:
 
 ||||||||
 |-----|-----|-----|-----|-----|-----|-----|
-|_DSL parameters_| source_node_id | virtual_relation_label | target_node_id | rel_edge_id | top_n | cutoff |
+|_DSL parameters_| source_qnode_id | virtual_relation_label | target_qnode_id | rel_edge_id | top_n | cutoff |
 |_DSL arguments_| {"a specific QNode id of source nodes in message KG (required), eg. 'n00'"} | {"any string to label the relation and query edge id of virtual edge with fisher's exact test p-value (required) eg. 'FET'"} | {"a specific QNode id of target nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test (required), eg. 'n01'"} | {"a specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"} | {'an int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned), eg. 10'} | {'a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05'} |
 
 ### `overlay(action=add_node_pmids)`

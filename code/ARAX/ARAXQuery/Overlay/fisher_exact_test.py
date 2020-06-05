@@ -37,21 +37,21 @@ class ComputeFTEST:
         self.response.info(f"Performing Fisher's Exact Test to add p-value to edge attribute of virtual edge")
 
         # check the input parameters
-        if 'source_node_id' not in self.parameters:
-            self.response.error(f"The argument 'source_node_id' is required for fisher_exact_test function")
+        if 'source_qnode_id' not in self.parameters:
+            self.response.error(f"The argument 'source_qnode_id' is required for fisher_exact_test function")
             return self.response
         else:
-            source_node_id = self.parameters['source_node_id']
+            source_qnode_id = self.parameters['source_qnode_id']
         if 'virtual_relation_label' not in self.parameters:
             self.response.error(f"The argument 'virtual_relation_label' is required for fisher_exact_test function")
             return self.response
         else:
             virtual_relation_label = str(self.parameters['virtual_relation_label'])
-        if 'target_node_id' not in self.parameters:
-            self.response.error(f"The argument 'target_node_id' is required for fisher_exact_test function")
+        if 'target_qnode_id' not in self.parameters:
+            self.response.error(f"The argument 'target_qnode_id' is required for fisher_exact_test function")
             return self.response
         else:
-            target_node_id = self.parameters['target_node_id']
+            target_qnode_id = self.parameters['target_qnode_id']
         rel_edge_id = self.parameters['rel_edge_id'] if 'rel_edge_id' in self.parameters else None
         top_n = int(self.parameters['top_n']) if 'top_n' in self.parameters else None
         cutoff = float(self.parameters['cutoff']) if 'cutoff' in self.parameters else None
@@ -70,14 +70,14 @@ class ComputeFTEST:
         query_edge_id = set()
         rel_edge_type = set()
 
-        ## Check if source_node_id and target_node_id are in the Query Graph
+        ## Check if source_qnode_id and target_qnode_id are in the Query Graph
         try:
             if len(self.message.query_graph.nodes) != 0:
                 for node in self.message.query_graph.nodes:
-                    if node.id == source_node_id:
+                    if node.id == source_qnode_id:
                         source_node_exist = True
                         source_node_type.append(node.type)
-                    elif node.id == target_node_id:
+                    elif node.id == target_qnode_id:
                         target_node_exist = True
                         target_node_type.append(node.type)
                     else:
@@ -96,19 +96,19 @@ class ComputeFTEST:
             if target_node_exist:
                 pass
             else:
-                self.response.error(f"No query node with target id {target_node_id} detected in QG for Fisher's Exact Test")
+                self.response.error(f"No query node with target id {target_qnode_id} detected in QG for Fisher's Exact Test")
                 return self.response
         else:
-            self.response.error(f"No query node with source id {source_node_id} detected in QG for Fisher's Exact Test")
+            self.response.error(f"No query node with source id {source_qnode_id} detected in QG for Fisher's Exact Test")
             return self.response
 
-        ## Check if there is a query edge connected to both source_node_id and target_node_id in the Query Graph
+        ## Check if there is a query edge connected to both source_qnode_id and target_qnode_id in the Query Graph
         try:
             if len(self.message.query_graph.edges) != 0:
                 for edge in self.message.query_graph.edges:
-                    if edge.source_id == source_node_id and edge.target_id == target_node_id and edge.relation == None:
+                    if edge.source_id == source_qnode_id and edge.target_id == target_qnode_id and edge.relation == None:
                         query_edge_id.update([edge.id]) # only actual query edge is added
-                    elif edge.source_id == target_node_id and edge.target_id == source_node_id and edge.relation == None:
+                    elif edge.source_id == target_qqnode_id and edge.target_id == source_qnode_id and edge.relation == None:
                         query_edge_id.update([edge.id]) # only actual query edge is added
                     else:
                         continue
@@ -127,13 +127,13 @@ class ComputeFTEST:
                 if rel_edge_id in query_edge_id:
                     pass
                 else:
-                    self.response.error(f"No query edge with id {rel_edge_id} connected to both source node with id {source_node_id} and target node with id {target_node_id} detected in QG for Fisher's Exact Test")
+                    self.response.error(f"No query edge with id {rel_edge_id} connected to both source node with id {source_qnode_id} and target node with id {target_qnode_id} detected in QG for Fisher's Exact Test")
                     return self.response
             else:
                 pass
         else:
             self.response.error(
-                f"No query edge connected to both source node with id {source_node_id} and target node with id {target_node_id} detected in QG for Fisher's Exact Test")
+                f"No query edge connected to both source node with id {source_qnode_id} and target node with id {target_qnode_id} detected in QG for Fisher's Exact Test")
             return self.response
 
         ## loop over all nodes in KG and collect their node information
@@ -149,7 +149,7 @@ class ComputeFTEST:
             self.response.error(f"Something went wrong with retrieving nodes in message KG")
             return self.response
 
-        ## loop over all edges in KG and create source node list and target node dict based on source_node_id, target_node_id as well as rel_edge_id (optional, otherwise all edges are considered)
+        ## loop over all edges in KG and create source node list and target node dict based on source_qnode_id, target_qnode_id as well as rel_edge_id (optional, otherwise all edges are considered)
         try:
             count = 0
             for edge in self.message.knowledge_graph.edges:
@@ -160,7 +160,7 @@ class ComputeFTEST:
 
                     if rel_edge_id:
                         if edge.qedge_id == rel_edge_id:
-                            if nodes_info[edge.source_id]['qnode_id'] == source_node_id:
+                            if nodes_info[edge.source_id]['qnode_id'] == source_qnode_id:
                                 kp.update([edge.is_defined_by])
                                 rel_edge_type.update([edge.type])
                                 source_node_list.append(edge.source_id)
@@ -179,8 +179,8 @@ class ComputeFTEST:
                         else:
                             pass
                     else:
-                        if nodes_info[edge.source_id]['qnode_id'] == source_node_id:
-                            if nodes_info[edge.target_id]['qnode_id'] == target_node_id:
+                        if nodes_info[edge.source_id]['qnode_id'] == source_qnode_id:
+                            if nodes_info[edge.target_id]['qnode_id'] == target_qnode_id:
                                 kp.update([edge.is_defined_by])
                                 source_node_list.append(edge.source_id)
                                 if edge.target_id not in target_node_dict.keys():
@@ -190,8 +190,8 @@ class ComputeFTEST:
 
                             else:
                                 pass
-                        elif nodes_info[edge.source_id]['qnode_id'] == target_node_id:
-                            if nodes_info[edge.target_id]['qnode_id'] == source_node_id:
+                        elif nodes_info[edge.source_id]['qnode_id'] == target_qnode_id:
+                            if nodes_info[edge.target_id]['qnode_id'] == source_qnode_id:
                                 kp.update([edge.is_defined_by])
                                 source_node_list.append(edge.target_id)
                                 if edge.source_id not in target_node_dict.keys():
@@ -228,7 +228,7 @@ class ComputeFTEST:
             self.response.error(f"No target node found in message KG for Fisher's Exact Test")
             return self.response
 
-        # find all nodes with the type of 'source_node_id' nodes in specified KP ('ARAX/KG1','ARAX/KG2','BTE') that are adjacent to target nodes
+        # find all nodes with the type of 'source_qnode_id' nodes in specified KP ('ARAX/KG1','ARAX/KG2','BTE') that are adjacent to target nodes
         if rel_edge_id:
             if len(rel_edge_type)==1: # if the edge with rel_edge_id has only type, we use this rel_edge_type to find all source nodes in KP
                 parament_list = [(node, f"{virtual_relation_label}", source_node_type[0], list(kp)[0], list(rel_edge_type)[0], True) for node in list(target_node_dict.keys())]
@@ -237,7 +237,7 @@ class ComputeFTEST:
         else: # if no rel_edge_id is specified, we ignore the edge type and use all types to find all source nodes in KP
             parament_list = [(node, f"{virtual_relation_label}", source_node_type[0], list(kp)[0], None, True) for node in list(target_node_dict.keys())]
 
-        ## get the count of all nodes with the type of 'source_node_id' nodes in KP for each target node in parallel
+        ## get the count of all nodes with the type of 'source_qnode_id' nodes in KP for each target node in parallel
         with concurrent.futures.ProcessPoolExecutor() as executor:
             target_count_res = list(executor.map(self.query_adjacent_nodes, parament_list))
 
@@ -246,7 +246,7 @@ class ComputeFTEST:
             if target_count_res != -1:
                 size_of_target[node] = target_count_res[index]
             else:
-                self.response.error(f"The target node {node} can't find any adjacent nodes with type of {source_node_id} nodes in {list(kp)[0]}")
+                self.response.error(f"The target node {node} can't find any adjacent nodes with type of {source_qnode_id} nodes in {list(kp)[0]}")
                 return self.response
 
         size_of_total = self.size_of_given_type_in_KP(node_type=source_node_type[0])
@@ -288,7 +288,7 @@ class ComputeFTEST:
                 for node in target_node_dict[adj]:
                     # make the virtual edge, add the FET p-value as an attribute
                     id = f"{virtual_relation_label}_{count}"
-                    edge_attribute = EdgeAttribute(type="data:1669", name="Fisher Exact Test p-value", value=str(output[adj]), url=None)  # FIXME: will need a url for this
+                    edge_attribute = EdgeAttribute(type="data:1669", name="fisher_exact_test_p-value", value=str(output[adj]), url=None)  # FIXME: will need a url for this
                     now = datetime.now()
                     defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
                     edge_type = 'has_fisher_exact_test_p-value_with'
@@ -317,7 +317,7 @@ class ComputeFTEST:
             self.response.debug(f"Adding virtual edge to message QG")
             edge_type = "virtual_FET_edge"
             q_edge = QEdge(id=virtual_relation_label, type=edge_type, relation=virtual_relation_label,
-                           source_id=source_node_id, target_id=target_node_id)
+                           source_id=source_qnode_id, target_id=target_qnode_id)
             self.message.query_graph.edges.append(q_edge)
             self.response.debug(f"One virtual edge was added to message QG")
 

@@ -390,7 +390,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         if describe:
             brief_description = """
 `compute_jaccard` creates virtual edges and adds an edge attribute containing the following information:
-The jaccard similarity measures how many `intermediate_node_id`'s are shared in common between each `start_node_id` and `target_node_id`.
+The jaccard similarity measures how many `intermediate_node_id`'s are shared in common between each `start_node_id` and `target_qnode_id`.
 This is used for purposes such as "find me all drugs (`start_node_id`) that have many proteins (`intermediate_node_id`) in common with this disease (`end_node_id`)."
 This can be used for downstream filtering to concentrate on relevant bioentities.
 
@@ -472,11 +472,11 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
     def __fisher_exact_test(self, describe=False):
 
         """
-        Computes the the Fisher's Exact Test p-value of the connection between a list of given nodes with specified query id (source_node_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_node_id 'n02') in message knowledge graph.
+        Computes the the Fisher's Exact Test p-value of the connection between a list of given nodes with specified query id (source_qnode_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_qnode_id 'n02') in message knowledge graph.
         Allowable parameters:
-            :param source_node_id: (required) a specific QNode id (you used in add_qnode() in DSL) of source nodes in message KG eg. "n00"
+            :param source_qnode_id: (required) a specific QNode id (you used in add_qnode() in DSL) of source nodes in message KG eg. "n00"
             :param virtual_relation_label: (required) any string to label the relation and query edge id of virtual edge with fisher's exact test p-value eg. 'FET'
-            :param target_node_id: (required) a specific QNode id (you used in add_qnode() in DSL) of target nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test, eg. "n01"
+            :param target_qnode_id: (required) a specific QNode id (you used in add_qnode() in DSL) of target nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test, eg. "n01"
             :param rel_edge_id: (optional) a specific QEdge id (you used in add_qedge() in DSL) of edges connected to both source nodes and target nodes in message KG. eg. "e01"
             :param top_n: (optional) an int indicating the top number of the most significant adjacent nodes to return (otherwise all results returned) eg. 10
             :param cutoff: (optional) a float indicating the p-value cutoff to return the results (otherwise all results returned) eg. 0.05
@@ -489,8 +489,8 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         # allowable_parameters = {'action': {'fisher_exact_test'}, 'query_node_label': {...}, 'compare_node_label':{...}}
 
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and hasattr(message.query_graph, 'edges'):
-            allowable_source_node_id = set([node.qnode_id for node in message.knowledge_graph.nodes])
-            allowable_target_node_id = set([node.qnode_id for node in message.knowledge_graph.nodes])
+            allowable_source_qnode_id = set([node.qnode_id for node in message.knowledge_graph.nodes])
+            allowable_target_qnode_id = set([node.qnode_id for node in message.knowledge_graph.nodes])
             allowwable_rel_edge_id = list(set([edge.qedge_id for edge in message.knowledge_graph.edges]))
             allowwable_rel_edge_id.append(None)
             # # FIXME: need to generate this from some source as per #780
@@ -501,18 +501,18 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
             #                      'has_phenotype','gene_mutations_contribute_to','participates_in','has_part']
 
             allowable_parameters = {'action': {'fisher_exact_test'},
-                                    'source_node_id': allowable_source_node_id,
+                                    'source_qnode_id': allowable_source_qnode_id,
                                     'virtual_relation_label': str(),
-                                    'target_node_id': allowable_target_node_id,
+                                    'target_qnode_id': allowable_target_qnode_id,
                                     'rel_edge_id': allowwable_rel_edge_id,
                                     'top_n': [None,int()],
                                     'cutoff': [None,float()]
                                     }
         else:
             allowable_parameters = {'action': {'fisher_exact_test'},
-                                    'source_node_id': {"a specific QNode id of source nodes in message KG (required), eg. 'n00'"},
+                                    'source_qnode_id': {"a specific QNode id of source nodes in message KG (required), eg. 'n00'"},
                                     'virtual_relation_label': {"any string to label the relation and query edge id of virtual edge with fisher's exact test p-value (required) eg. 'FET'"},
-                                    'target_node_id': {"a specific QNode id of target nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test (required), eg. 'n01'"},
+                                    'target_qnode_id': {"a specific QNode id of target nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test (required), eg. 'n01'"},
                                     'rel_edge_id': {"a specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"},
                                     'top_n': {"an int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned), eg. 10"},
                                     'cutoff': {"a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05"}
@@ -521,33 +521,27 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         # A little function to describe what this thing does
         if describe:
             brief_description = """
-`fisher_exact_test` computes the the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_node_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_node_id 'n02') in the message knowledge graph. 
-This information is then added as an edge attribute to a virtual edge which is then added to the query graph and knowledge graph.
-It can also allow you filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
+`fisher_exact_test` computes the the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_qnode_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_qnode_id 'n02') in message knowledge graph. 
+and adds them as the edge attribute of the virtual edge which is then added to the query graph and knowledge graph.
+It can also allow to filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and add their corresponding virtual edge to the knowledge graph.
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
 
 Use cases include:
 
-* Given an input list (or a single) bioentities with specified query id in message KG, find connected bioentities  that are most "representative" of the input list of bioentities
-* Find biological pathways that are enriched for an input list of proteins (specified with a query id)
+* Given an input list (or a single) bioentities with specified query id in message KG, find connected bioentities with certian query id in message KG that are most "representative" of the input list of bioentities
+* Find biological pathways that are enriched for an input list of proteins with specified query id in message KG
 * Make long query graph expansions in a targeted fashion to reduce the combinatorial explosion experienced with long query graphs 
 
 This p-value is calculated from fisher's exact test based on the contingency table with following format:
-
-|||||
-|-----|-----|-----|-----|
-|                                  | in query node list | not in query node list | row total |
-| connect to certain adjacent node |         a          |           b            |   a+b     |
-| not connect to adjacent node     |         c          |           d            |   c+d     |
-|         column total             |        a+c         |          b+d           |  a+b+c+d  |
+    |                                  | in query node list | not in query node list | row total |
+    | connect to certain adjacent node |         a          |           b            |   a+b     |
+    | not connect to adjacent node     |         c          |           d            |   c+d     |
+    |         column total             |        a+c         |          b+d           |  a+b+c+d  |
     
 The p-value is calculated by applying fisher_exact method of scipy.stats module in scipy package to the contingency table.
 The code is as follows:
-
-```
  _, pvalue = stats.fisher_exact([[a, b], [c, d]])
-```
 
 """
             allowable_parameters['brief_description'] = brief_description
