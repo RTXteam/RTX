@@ -377,20 +377,20 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
                                 'start_node_id': set([x.id for x in self.message.query_graph.nodes]),
                                 'intermediate_node_id': set([x.id for x in self.message.query_graph.nodes]),
                                 'end_node_id': set([x.id for x in self.message.query_graph.nodes]),
-                                'virtual_edge_type': {self.parameters['virtual_edge_type'] if 'virtual_edge_type' in self.parameters else "any_string"}
+                                'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else "any_string"}
                                 }
         else:
             allowable_parameters = {'action': {'compute_jaccard'},
                                     'start_node_id': {"a node id (required)"},
                                     'intermediate_node_id': {"a query node id (required)"},
                                     'end_node_id': {"a query node id (required)"},
-                                    'virtual_edge_type': {"any string label (required)"}
+                                    'virtual_relation_label': {"any string label (required) that will be used to identify the virtual edge added"}
                                     }
         # print(allowable_parameters)
         # A little function to describe what this thing does
         if describe:
             brief_description = """
-`compute_jaccard` creates virtual edges and adds an edge attribute containing the following information:
+`compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
 The jaccard similarity measures how many `intermediate_node_id`'s are shared in common between each `start_node_id` and `target_node_id`.
 This is used for purposes such as "find me all drugs (`start_node_id`) that have many proteins (`intermediate_node_id`) in common with this disease (`end_node_id`)."
 This can be used for downstream filtering to concentrate on relevant bioentities.
