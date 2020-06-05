@@ -6,11 +6,13 @@ import os
 import json
 import ast
 import re
+import time
 from datetime import datetime
 import subprocess
 import traceback
 from collections import Counter
 import numpy as np
+import threading
 
 from response import Response
 from query_graph_info import QueryGraphInfo
@@ -18,6 +20,8 @@ from knowledge_graph_info import KnowledgeGraphInfo
 from actions_parser import ActionsParser
 from ARAX_filter import ARAXFilter
 from ARAX_resultify import ARAXResultify
+from ARAX_query_graph_interpreter import ARAXQueryGraphInterpreter
+from ARAX_messenger import ARAXMessenger
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.message import Message
@@ -52,12 +56,71 @@ class ARAXQuery:
         self.message = None
 
 
+    def query_return_stream(self,query):
+
+        main_query_thread = threading.Thread(target=self.asynchronous_query, args=(query,))
+        main_query_thread.start()
+
+        if self.response is None or "DONE" not in self.response.status:
+
+            # Sleep until a response object has been created
+            while self.response is None:
+                time.sleep(0.1)
+
+            i_message = 0
+            n_messages = len(self.response.messages)
+
+            while "DONE" not in self.response.status:
+                n_messages = len(self.response.messages)
+                while i_message < n_messages:
+                    yield(json.dumps(self.response.messages[i_message])+"\n")
+                    i_message += 1
+                time.sleep(0.2)
+
+            # #### If there are any more logging messages in the queue, send them first
+            n_messages = len(self.response.messages)
+            while i_message < n_messages:
+                yield(json.dumps(self.response.messages[i_message])+"\n")
+                i_message += 1
+
+            # Remove the little DONE flag the other thread used to signal this thread that it is done
+            self.response.status = re.sub('DONE,','',self.response.status)
+
+            # Stream the resulting message back to the client
+            yield(json.dumps(ast.literal_eval(repr(self.message)))+"\n")
+
+        # Wait until both threads rejoin here and the return
+        main_query_thread.join()
+        return { 'DONE': True }
+
+
+    def asynchronous_query(self,query):
+
+        #### Define a new response object if one does not yet exist
+        if self.response is None:
+            self.response = Response()
+
+        result = self.query(query)
+        message = self.message
+        if message is None:
+            message = Message()
+            self.message = message
+        message.message_code = result.error_code
+        message.code_description = result.message
+        message.log = result.messages
+
+        # Insert a little flag into the response status to denote that this thread is done
+        self.response.status = f"DONE,{self.response.status}"
+        return
+
+
     def query_return_message(self,query):
 
         result = self.query(query)
         message = self.message
         if message is None:
             message = Message()
+            self.message = message
         message.message_code = result.error_code
         message.code_description = result.message
         message.log = result.messages
@@ -69,7 +132,7 @@ class ARAXQuery:
         response = Response()
         self.response = response
         #Response.output = 'STDERR'
-        response.info(f"ARAXQuery launching")
+        response.info(f"ARAXQuery launching on incoming Message")
 
         #### Determine a plan for what to do based on the input
         result = self.examine_incoming_query(query)
@@ -77,26 +140,42 @@ class ARAXQuery:
             return response
         query_attributes = result.data
 
+        # #### If we have a query_graph in the input query
+        if "have_query_graph" in query_attributes:
+
+            # Then if there is also a processing plan, assume they go together. Leave the query_graph intact
+            # and then will later execute the processing plan
+            if "have_previous_message_processing_plan" in query_attributes:
+                pass
+            else:
+                response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
+                interpreter = ARAXQueryGraphInterpreter()
+                query['message'] = ARAXMessenger().from_dict(query['message'])
+                result = interpreter.translate_to_araxi(query['message'])
+                response.merge(result)
+                if result.status != 'OK':
+                    return response
+                query['previous_message_processing_plan'] = {}
+                query['previous_message_processing_plan']['processing_actions'] = result.data['araxi_commands']
+                query_attributes['have_previous_message_processing_plan'] = True
+
+            #response.info(f"Found input query_graph. Sending to the QueryGraphReasoner")
+            #qgr = QueryGraphReasoner()
+            #message = qgr.answer(query["message"]["query_graph"], TxltrApiFormat=True)
+            ##self.log_query(query,message,'new')
+            #rtxFeedback = RTXFeedback()
+            #rtxFeedback.connect()
+            #rtxFeedback.addNewMessage(message,query)
+            #rtxFeedback.disconnect()
+            #self.limit_message(message,query)
+            #self.message = message
+            #return response
+
         #### If we have a previous message processing plan, handle that
         if "have_previous_message_processing_plan" in query_attributes:
             response.info(f"Found input processing plan. Sending to the ProcessingPlanExecutor")
             result = self.executeProcessingPlan(query)
             return response
-
-        #### If we have a query_graph, pass this on to the QueryGraphReasoner
-        if "have_query_graph" in query_attributes:
-            response.info(f"Found input query_graph. Sending to the QueryGraphReasoner")
-            qgr = QueryGraphReasoner()
-            message = qgr.answer(query["message"]["query_graph"], TxltrApiFormat=True)
-            #self.log_query(query,message,'new')
-            rtxFeedback = RTXFeedback()
-            rtxFeedback.connect()
-            rtxFeedback.addNewMessage(message,query)
-            rtxFeedback.disconnect()
-            self.limit_message(message,query)
-            self.message = message
-            return response
-
 
         #### Otherwise extract the id and the terms from the incoming parameters
         else:
@@ -250,6 +329,9 @@ class ARAXQuery:
             response.error("No message or previous_message_processing_plan present in Query", error_code="NoQueryMessageOrPreviousMessageProcessingPlan")
             return response
 
+        # #### FIXME Need to do more validation and tidying of the incoming message here or somewhere
+
+
         #### If we got this far, then everything seems to be good enough to proceed
         return response
 
@@ -264,12 +346,18 @@ class ARAXQuery:
 
 
 
-    #### Get a previously stored message for this query from the database
+    #### Given an input query with a processing plan, execute that processing plan on the input
     def executeProcessingPlan(self,inputEnvelope):
         response = self.response
         response.debug(f"Entering executeProcessingPlan")
         messages = []
         message = None
+
+        # If there is already a message (perhaps with a query_graph) already in the query, preserve it
+        if 'message' in inputEnvelope and inputEnvelope['message'] is not None:
+            message = inputEnvelope['message']
+            messages = [ message ]
+
         message_id = None
         query = None
         #### Pull out the main processing plan envelope
@@ -280,7 +368,6 @@ class ARAXQuery:
         rtxFeedback.connect()
 
         #### Create a messenger object for basic message processing
-        from ARAX_messenger import ARAXMessenger
         messenger = ARAXMessenger()
 
         #### If there are URIs provided, try to load them
@@ -377,6 +464,7 @@ class ARAXQuery:
             filter_kg = ARAXFilterKG()
             resultifier = ARAXResultify()
             filter_results = ARAXFilterResults()
+            self.message = message
 
             #### Process each action in order
             action_stats = { }
@@ -384,12 +472,14 @@ class ARAXQuery:
             for action in actions:
                 response.info(f"Processing action '{action['command']}' with parameters {action['parameters']}")
                 nonstandard_result = False
+                skip_merge = False
 
                 # Catch a crash
                 try:
                     if action['command'] == 'create_message':
                         result = messenger.create_message()
                         message = result.data['message']
+                        self.message = message
 
                     elif action['command'] == 'add_qnode':
                         result = messenger.add_qnode(message,action['parameters'])
@@ -398,7 +488,8 @@ class ARAXQuery:
                         result = messenger.add_qedge(message,action['parameters'])
 
                     elif action['command'] == 'expand':
-                        result = expander.apply(message,action['parameters'])
+                        result = expander.apply(message,action['parameters'], response=response)
+                        skip_merge = True
 
                     elif action['command'] == 'filter':
                         result = filter.apply(message,action['parameters'])
@@ -407,7 +498,8 @@ class ARAXQuery:
                         result = resultifier.apply(message, action['parameters'])
 
                     elif action['command'] == 'overlay':  # recognize the overlay command
-                        result = overlay.apply(message, action['parameters'])
+                        result = overlay.apply(message, action['parameters'], response=response)
+                        skip_merge = True
 
                     elif action['command'] == 'filter_kg':  # recognize the filter_kg command
                         result = filter_kg.apply(message, action['parameters'])
@@ -419,6 +511,7 @@ class ARAXQuery:
                         response.info(f"Sending current query_graph to the QueryGraphReasoner")
                         qgr = QueryGraphReasoner()
                         message = qgr.answer(ast.literal_eval(repr(message.query_graph)), TxltrApiFormat=True)
+                        self.message = message
                         nonstandard_result = True
 
                     elif action['command'] == 'return':
@@ -436,13 +529,23 @@ class ARAXQuery:
 
                 #### Merge down this result and end if we're in an error state
                 if nonstandard_result is False:
-                    response.merge(result)
+                    if not skip_merge:
+                        response.merge(result)
                     if result.status != 'OK':
                         message.message_code = response.error_code
                         message.code_description = response.message
                         message.log = response.messages
                         return response
 
+                #### Immediately after resultify, run the experimental ranker
+                if action['command'] == 'resultify':
+                    response.info(f"Running experimental reranker on results")
+                    try:
+                        messenger.rank_results(message, response=response)
+                    except Exception as error:
+                        exception_type, exception_value, exception_traceback = sys.exc_info()
+                        response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
+                        return response
 
             #### At the end, process the explicit return() action, or implicitly perform one
             return_action = { 'command': 'return', 'parameters': { 'message': 'true', 'store': 'true' } }
@@ -467,16 +570,17 @@ class ARAXQuery:
                 response.debug(f"Storing resulting Message")
                 message_id = rtxFeedback.addNewMessage(message,query)
 
-            self.message = message
 
             #### If asking for the full message back
             if return_action['parameters']['message'] == 'true':
+                response.info(f"Processing is complete. Transmitting resulting Message back to client.")
                 return response
 
             #### Else just the id is returned
             else:
                 if message_id is None:
                     message_id = 0
+                response.info(f"Processing is complete. Resulting Message id is {message_id} and is available to fetch via /message endpoint.")
                 return( { "status": 200, "message_id": str(message_id), "n_results": message.n_results, "url": "https://arax.rtx.ai/api/rtx/v1/message/"+str(message_id) }, 200)
 
 
@@ -536,25 +640,34 @@ def main():
             "filter_results(action=limit_number_of_results, max_results=10)",
             "return(message=true, store=false)",
         ]}}
+    elif params.example_number == 301:  # Variant of 3 with NGD
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=acetaminophen, id=n0)",
+            "add_qnode(type=protein, id=n1)",
+            "add_qedge(source_id=n0, target_id=n1, id=e0)",
+            "expand(edge_id=e0)",
+            "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n0, target_qnode_id=n1)",
+            "resultify(ignore_edge_direction=true)",
+            "return(message=true, store=false)",
+        ]}}
     elif params.example_number == 4:
         query = { "previous_message_processing_plan": { "processing_actions": [
-            "create_message",
             "add_qnode(name=hypertension, id=n00)",
-            "add_qnode(type=protein, is_set=True, id=n01)",
-            "add_qedge(source_id=n01, target_id=n00, id=e00)",
+            "add_qnode(type=protein, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
-            "filter(maximum_results=2)",
+            "resultify()",
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 5:  # test overlay with ngd: hypertension->protein
         query = { "previous_message_processing_plan": { "processing_actions": [
-            "create_message",
             "add_qnode(name=hypertension, id=n00)",
-            "add_qnode(type=protein, is_set=True, id=n01)",
-            "add_qedge(source_id=n01, target_id=n00, id=e00)",
+            "add_qnode(type=protein, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
             "overlay(action=compute_ngd)",
-            "filter(maximum_results=2)",
+            "resultify()",
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 6:  # test overlay
@@ -641,6 +754,7 @@ def main():
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
             "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",  # can be removed, but shows we can filter by Knowledge provider
+            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_edge_type=P1)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
             "return(message=true, store=false)",
@@ -883,7 +997,7 @@ def main():
             "create_message",
             "add_qnode(id=n00, curie=NCBIGene:1017)",  # CDK2
             "add_qnode(id=n01, type=chemical_substance, is_set=True)",
-            "add_qedge(id=e00, source_id=n01, target_id=n00, type=targetedBy)",
+            "add_qedge(id=e00, source_id=n01, target_id=n00)",
             "expand(edge_id=e00, kp=BTE)",
             "return(message=true, store=false)",
         ]}}
@@ -898,6 +1012,56 @@ def main():
             "expand(edge_id=[e00,e01], continue_if_no_results=true)",
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
             "return(message=true, store=false)"
+        ]}}
+    elif params.example_number == 6231:  # chunyu testing #623, all nodes already in the KG and QG
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521)",
+            "add_qnode(id=n01, type=protein)",
+            "add_qedge(id=e00, source_id=n00, target_id=n01)",
+            "add_qnode(id=n02, type=biological_process)",
+            "add_qedge(id=e01, source_id=n01, target_id=n02)",
+            "expand(edge_id=[e00, e01], kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_node_id=n01, virtual_relation_label=FET, target_node_id=n02, cutoff=0.05)",
+            "resultify()",
+            "return(message=true, store=true)"
+        ]}}
+    elif params.example_number == 6232:  # chunyu testing #623, this should return the 10 smallest FET p-values
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521)",
+            "add_qnode(id=n01, type=protein)",
+            "add_qedge(id=e00, source_id=n00, target_id=n01)",
+            "add_qnode(id=n02, type=biological_process)",
+            "add_qedge(id=e01, source_id=n01, target_id=n02)",
+            "expand(edge_id=[e00, e01], kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_node_id=n01, virtual_relation_label=FET, target_node_id=n02, top_n=10)",
+            "resultify()",
+            "return(message=false, store=true)"
+        ]}}
+    elif params.example_number == 6233:  # chunyu testing #623, this DSL tests the FET module based on (source id - involved_in - target id)
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521)",
+            "add_qnode(id=n01, type=protein)",
+            "add_qedge(id=e00, source_id=n00, target_id=n01)",
+            "add_qnode(id=n02, type=biological_process)",
+            "add_qedge(id=e01, source_id=n01, target_id=n02, type=involved_in)",
+            "expand(edge_id=[e00, e01], kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_node_id=n01, virtual_relation_label=FET, target_node_id=n02, rel_edge_id=e01, cutoff=0.05)",
+            "resultify()",
+            "return(message=false, store=true)"
+        ]}}
+    elif params.example_number == 6234:  # chunyu testing #623, nodes not in the KG and QG. This should throw an error initially. In the future we might want to add these nodes.
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521)",
+            "add_qnode(id=n01, type=protein)",
+            "add_qedge(id=e00, source_id=n00, target_id=n01)",
+            "expand(edge_id=[e00], kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_node_id=n01, virtual_relation_label=FET, target_node_id=n02, cutoff=0.05)",
+            "resultify()",
+            "return(message=false, store=true)"
         ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
@@ -934,7 +1098,13 @@ def main():
 
     #print(f"Drugs names in the KG: {[x.name for x in message.knowledge_graph.nodes if 'chemical_substance' in x.type or 'drug' in x.type]}")
 
-    print(f"Essence names in the answers: {[x.essence for x in message.results]}")
+    #print(f"Essence names in the answers: {[x.essence for x in message.results]}")
+    print("Results:")
+    for result in message.results:
+        confidence = result.confidence
+        if confidence is None:
+            confidence = 0.0
+        print("  -" + '{:6.3f}'.format(confidence) + f"\t{result.essence}")
 
     #print(json.dumps(ast.literal_eval(repr(message.results[0])), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.results)), sort_keys=True, indent=2))

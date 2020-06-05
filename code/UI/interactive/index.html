@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html>
 <head>
 <title>ARAX User Interface</title>
@@ -67,7 +66,7 @@
   <div class="inputsection" id="qtext_input">
     <h3 style="display:inline;">Enter question:</h3>
     <div class="sampleqs">
-      <select id="qqq" onchange="javascript:pasteQuestion(this.value);">
+      <select id="qqq" onchange="pasteQuestion(this.value);">
 	<option style="border-bottom:1px solid black;" value="">Example Questions&nbsp;&nbsp;&nbsp;&#8675;</option>
 	<option value="what is lovastatin?">Q0: What is lovastatin?</option>
 	<option value="what genetic conditions might offer protection against malaria?">Q1: What genetic conditions might offer protection against malaria?</option>
@@ -77,12 +76,12 @@
       </select>
     </div>
 
-    <form id="questionForm" name="questionForm" method="post" action="javascript:sendQuestion();">
-      <span title="clear question" class="clq" onclick="javascript:pasteQuestion('');">&#215;</span>
-
+    <form id="questionForm" name="questionForm" method="post" action="sendQuestion();">
       <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="typeInput questionBox" id="questionText" name="questionText" size="100" maxlength="1000"/>
 
-      <input type="button" class="questionBox button" name="action" value="ASK" onClick="javascript:sendQuestion();"/>
+      <input type="button" class="questionBox button" name="action" value="ASK" onClick="sendQuestion();"/>
+      <span title="clear question" class="clq" onclick="pasteQuestion('');">&#9587;</span>
+
       <br>
       <label id="useCacheText" class="tiny blue">
 	<span class="switch">
@@ -97,23 +96,24 @@
 
   <div class="inputsection" id="qgraph_input">
     <h3 style="display:inline;">Query Graph:</h3>
-    <a style="position:relative; left:150px;" href="#" title="remove all elements from query graph" onclick="clear_qg(1);">[ clear ]</a>
-    <a style="position:relative; left:150px;" href="#" title="edit query graph" onclick="edit_qg();">[ edit ]</a>
+    <span style="position:absolute;left:80%;">
+      <span style="position:relative;right:100px;border:1px solid #000;color:#000;" title="edit query graph" class="clq" onclick="edit_qg(1);">&#9998;</span>
+      <span title="remove all elements from query graph" class="clq" onclick="clear_qg(1);">&#9587;</span>
+    </span><br><br>
     <div class="cytograph_q">
       <div style="height: 100%; width: 100%" id="cy999"></div>
     </div>
-
     <div id="qg_items"></div>
 
     <div class="pagesection" id="qg_form">
       Enter new query node:
-      <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="newquerynode" name="newquerynode" onkeydown="enter_node(this);" size="30" maxlength="200"/><input type="button" class="questionBox button" name="action" value="Add" onClick="javascript:add_node_to_query_graph();">
+      <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="newquerynode" name="newquerynode" onkeydown="enter_node(this);" size="30" maxlength="200"/><input type="button" class="questionBox button" name="action" value="Add" onClick="add_node_to_query_graph();">
 
       <!-- input type="text" class="questionBox" id="newquerynode" onkeydown="enter_node(this);" value="" size="30" -->
 
       <b>&nbsp;&nbsp;&nbsp;or&nbsp;&nbsp;&nbsp;</b>
       <span class="qgselect">
-	<select id="allnodetypes" onchange="javascript:add_nodetype_to_query_graph(this.value);">
+	<select id="allnodetypes" onchange="add_nodetype_to_query_graph(this.value);">
 	  <option style="border-bottom:1px solid black;" value="">Add a Node by Type&nbsp;&nbsp;&nbsp;&#8675;</option>
 	  <option>...loading</option>
 	</select>
@@ -121,13 +121,13 @@
       <br>
       Enter new relationship:
       <span class="qgselect">
-	<select id="qg_edge_n1" onchange="javascript:get_possible_edges();">
+	<select id="qg_edge_n1" onchange="get_possible_edges();">
 	  <option style="border-bottom:1px solid black;" value="">Source Node&nbsp;&nbsp;&nbsp;&#8675;</option>
 	  <option>Must have a minimum of 2 nodes</option>
 	</select>
       </span>
       <span class="qgselect">
-	<select id="qg_edge_n2" onchange="javascript:get_possible_edges();">
+	<select id="qg_edge_n2" onchange="get_possible_edges();">
 	  <option style="border-bottom:1px solid black;" value="">Target Node&nbsp;&nbsp;&nbsp;&#8675;</option>
 	  <option>Must have a minimum of 2 nodes</option>
 	</select>
@@ -138,9 +138,9 @@
 	  <option>Must have a minimum of 2 nodes</option>
 	</select>
       </span>
-      <input type="button" class="questionBox button" name="action" value="Add" onClick="javascript:add_edge_to_query_graph();">  
+      <input type="button" class="questionBox button" name="action" value="Add" onClick="add_edge_to_query_graph();">  
       <br/>
-      <input type="button" class="questionBox button" name="action" value="QUERY" onClick="javascript:sendGraph();"/>
+      <input type="button" class="questionBox button" name="action" value="QUERY" onClick="postQuery('qGraph');"/>
     </div>
   </div>
   
@@ -148,11 +148,11 @@
     <h3 style="display:inline;">DSL Input:</h3>
     <span class="tiny" style="position:relative; left:150px;">One line per DSL command, no quotes or commas;
     <a href="https://github.com/RTXteam/RTX/blob/demo/code/ARAX/Documentation/DSL_Documentation.md" target="_new">more info here</a></span>
-    <form id="dslForm" name="dslForm" method="post" action="javascript:sendDSL();">
+    <form id="dslForm" name="dslForm" method="post" action="postQuery('DSL');">
       
-      <textarea class="questionBox" wrap="off" id="dslText"></textarea>&nbsp;<span title="clear DSL input" class="clq" onclick="javascript:clearDSL();">&#215;</span>
+      <textarea class="questionBox" wrap="off" id="dslText"></textarea>&nbsp;<span title="clear DSL input" class="clq" onclick="postQuery('DSL');">&#9587;</span>
       <br/>
-      <input type="button" class="questionBox button" name="action" value="POST" onClick="javascript:sendDSL();">
+      <input type="button" class="questionBox button" name="action" value="POST" onClick="postQuery('DSL');">
     </form>
   </div>
   
@@ -207,7 +207,7 @@
 
 
 <div class="pagesection" id="devDiv">
-  <input type="button" class="json_copy button" name="action" value="Copy Response JSON to clipboard" onClick="javascript:copyJSON();"/>
+  <input type="button" class="questionBox button" name="action" value="Copy Response JSON to clipboard" onClick="copyJSON(this);"/>
   <div id="dev_result_json_container"></div>
 </div>
 
@@ -217,4 +217,3 @@
 <br>
 </body>
 </html>
-

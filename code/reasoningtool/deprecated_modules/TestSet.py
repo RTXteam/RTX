@@ -22,8 +22,15 @@ import sys
 from Orangeboard import Orangeboard
 from BioNetExpander import BioNetExpander
 import pandas
+import os
+import re
 
-requests_cache.install_cache('orangeboard')
+#requests_cache.install_cache('orangeboard')
+# specifiy the path of orangeboard database
+pathlist = os.path.realpath(__file__).split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+dbpath = os.path.sep.join([*pathlist[:(RTXindex+1)],'data','orangeboard'])
+requests_cache.install_cache(dbpath)
 
 ob = Orangeboard(debug=True)
 ob.neo4j_set_url()

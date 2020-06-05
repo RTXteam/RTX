@@ -55,6 +55,7 @@ class ComputeNGD:
         type = "float"
         value = self.parameters['default_value']
         url = "https://arax.rtx.ai/api/rtx/v1/ui/#/PubmedMeshNgd"
+        ngd_method_counts = {"fast": 0, "slow": 0}
 
         # if you want to add virtual edges, identify the source/targets, decorate the edges, add them to the KG, and then add one to the QG corresponding to them
         if 'virtual_edge_type' in parameters:
@@ -78,7 +79,9 @@ class ComputeNGD:
                 # create the edge attribute if it can be
                 source_name = curies_to_names[source_curie]
                 target_name = curies_to_names[target_curie]
-                ngd_value = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name])
+                self.response.debug(f"Computing NGD between {source_name} and {target_name}")
+                ngd_value, method_used = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name])
+                ngd_method_counts[method_used] += 1
                 if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                     value = ngd_value
                 edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the NGD edge attribute
@@ -129,7 +132,8 @@ class ComputeNGD:
                     target_curie = edge.target_id
                     source_name = node_curie_to_name[source_curie]
                     target_name = node_curie_to_name[target_curie]
-                    ngd_value = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name])
+                    ngd_value, method_used = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name])
+                    ngd_method_counts[method_used] += 1
                     if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                         value = ngd_value
                     ngd_edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the NGD edge attribute
@@ -141,5 +145,6 @@ class ComputeNGD:
                 self.response.error(f"Something went wrong adding the NGD edge attributes")
             else:
                 self.response.info(f"NGD values successfully added to edges")
+                self.response.debug(f"Used fast NGD for {ngd_method_counts['fast']} edges, back-up NGD method for {ngd_method_counts['slow']}")
 
             return self.response

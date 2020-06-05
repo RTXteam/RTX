@@ -7,6 +7,7 @@ import json
 import ast
 import re
 from datetime import datetime
+import numpy as np
 
 from response import Response
 from query_graph_info import QueryGraphInfo
@@ -115,7 +116,7 @@ class ARAXMessenger:
         # #### Internal documentation setup
         allowable_parameters = {
             'id': { 'Any string that is unique among all QNode id fields, with recommended format n00, n01, n02, etc.'},
-            'curie': { 'Any compact URI (CURIE) (e.g. DOID:9281, UniProtKB:P12345)'},
+            'curie': { 'Any compact URI (CURIE) (e.g. DOID:9281) (May also be a list like [UniProtKB:P12345,UniProtKB:Q54321])'},
             'name': { 'Any name of a bioentity that will be resolved into a CURIE if possible or result in an error if not (e.g. hypertension, insulin)'},
             'type': { 'Any valid Translator bioentity type (e.g. protein, chemical_substance, disease)'},
             'is_set': { 'If set to true, this QNode represents a set of nodes that are all in common between the two other linked QNodes'},
@@ -176,23 +177,66 @@ class ARAXMessenger:
         #### Set up the KGNodeIndex
         kgNodeIndex = KGNodeIndex()
 
+        # Create the QNode and set the id
+        qnode = QNode()
+        if parameters['id'] is not None:
+            id = parameters['id']
+        else:
+            id = self.__get_next_free_node_id()
+        qnode.id = id
+
+        # Set the is_set parameter to what the user selected
+        if parameters['is_set'] is not None:
+            qnode.is_set = (parameters['is_set'].lower() == 'true')
+
         #### If the CURIE is specified, try to find that
         if parameters['curie'] is not None:
-            response.debug(f"Looking up CURIE {parameters['curie']} in KgNodeIndex")
-            nodes = kgNodeIndex.get_curies_and_types(parameters['curie'], kg_name='KG2')
-            if len(nodes) == 0:
-                response.error(f"A node with CURIE {parameters['curie']} is not in our knowledge graph", error_code="UnknownCURIE")
-                return response
-            qnode = QNode()
-            if parameters['id'] is not None:
-                id = parameters['id']
+
+            # If the curie is a scalar then treat it here as a list of one
+            if isinstance(parameters['curie'], str):
+                curie_list = [ parameters['curie'] ]
+                is_curie_a_list = False
+                if parameters['is_set'] is not None and qnode.is_set is True:
+                    response.error(f"Specified CURIE '{parameters['curie']}' is a scalar, but is_set=true, which doesn't make sense", error_code="CurieScalarButIsSetTrue")
+                    return response
+
+            # Or else set it up as a list
+            elif isinstance(parameters['curie'], list):
+                curie_list = parameters['curie']
+                is_curie_a_list = True
+                qnode.curie = []
+                if parameters['is_set'] is None:
+                    response.warning(f"Specified CURIE '{parameters['curie']}' is a list, but is_set was not set to true. It must be true in this context, so automatically setting to true. Avoid this warning by explictly setting to true.")
+                    qnode.is_set = True
+                else:
+                    if qnode.is_set == False:
+                        response.warning(f"Specified CURIE '{parameters['curie']}' is a list, but is_set=false, which doesn't make sense, so automatically setting to true. Avoid this warning by explictly setting to true.")
+                        qnode.is_set = True
+
+            # Or if it's neither a list or a string, then error out. This cannot be handled at present
             else:
-                id = self.__get_next_free_node_id()
-            qnode.id = id
-            qnode.curie = nodes[0]['curie']
-            qnode.type = nodes[0]['type']
-            if parameters['is_set'] is not None:
-                qnode.is_set = (parameters['is_set'].lower() == 'true')
+                response.error(f"Specified CURIE '{parameters['curie']}' is neither a string nor a list. This cannot to handled", error_code="CurieNotListOrScalar")
+                return response
+
+            # Loop over the available curies and create the list
+            for curie in curie_list:
+                response.debug(f"Looking up CURIE {curie} in KgNodeIndex")
+                nodes = kgNodeIndex.get_curies_and_types(curie, kg_name='KG2')
+
+                # If nothing was found, log an error, but don't bail out yet. Check them all in case there are multiple problems before returning with error
+                if len(nodes) == 0:
+                    response.error(f"A node with CURIE {parameters['curie']} is not in our knowledge graph", error_code="UnknownCURIE")
+                else:
+
+                    # FIXME. This is just always taking the first result. This could cause problems for CURIEs with multiple types. Is that possible?
+                    qnode.type = nodes[0]['type']
+
+                    # Either append or set the found curie
+                    if is_curie_a_list:
+                        qnode.curie.append(nodes[0]['curie'])
+                    else:
+                        qnode.curie = nodes[0]['curie']
+
             message.query_graph.nodes.append(qnode)
             return response
 
@@ -205,42 +249,20 @@ class ARAXMessenger:
                 if len(nodes) == 0:
                     response.error(f"A node with name '{parameters['name']}'' is not in our knowledge graph", error_code="UnknownCURIE")
                     return response
-            qnode = QNode()
-            if parameters['id'] is not None:
-                id = parameters['id']
-            else:
-                id = self.__get_next_free_node_id()
-            qnode.id = id
             qnode.curie = nodes[0]['curie']
             qnode.type = nodes[0]['type']
-            if parameters['is_set'] is not None:
-                qnode.is_set = (parameters['is_set'].lower() == 'true')
             message.query_graph.nodes.append(qnode)
             return response
 
         #### If the type is specified, just add that type. There should be checking that it is legal. FIXME
         if parameters['type'] is not None:
-            qnode = QNode()
-            if parameters['id'] is not None:
-                id = parameters['id']
-            else:
-                id = self.__get_next_free_node_id()
-            qnode.id = id
             qnode.type = parameters['type']
             if parameters['is_set'] is not None:
                 qnode.is_set = (parameters['is_set'].lower() == 'true')
             message.query_graph.nodes.append(qnode)
             return response
 
-        #### If we get here, it means that all three main parameters are null. Just a generic node with no type or anything
-        qnode = QNode()
-        if parameters['id'] is not None:
-            id = parameters['id']
-        else:
-            id = self.__get_next_free_node_id()
-        qnode.id = id
-        if parameters['is_set'] is not None:
-            qnode.is_set = (parameters['is_set'].lower() == 'true')
+        #### If we get here, it means that all three main parameters are null. Just a generic node with no type or anything. This is okay.
         message.query_graph.nodes.append(qnode)
         return response
 
@@ -552,6 +574,109 @@ class ARAXMessenger:
         return response
 
 
+    #### Early experimental code to re-rank results
+    def rank_results(self, message, response=None):
+
+        #### Define a default response
+        if response is None:
+            if self.response is None:
+                response = Response()
+            else:
+                response = self.response
+        else:
+            self.response = response
+        self.message = message
+
+        #### Determine the query_graph info
+        query_graph_info = QueryGraphInfo()
+        result = query_graph_info.assess(message)
+        #response.merge(result)
+        #if result.status != 'OK':
+        #    print(response.show(level=Response.DEBUG))
+        #    return response
+
+        #### Create an index of edges in the knowledge_graph and collect some min,max stats
+        kg_edges = {}
+        score_stats = {}
+        for edge in message.knowledge_graph.edges:
+            kg_edges[edge.id] = edge
+            if edge.edge_attributes is not None:
+                for edge_attribute in edge.edge_attributes:
+                    for attribute_name in [ 'probability', 'ngd', 'jaccard_index', 'probability_drug_treats' ]:
+                        if edge_attribute.name == attribute_name:
+                            if attribute_name not in score_stats:
+                                score_stats[attribute_name] = { 'minimum': -9999, 'maximum': -9999 }
+                            value = float(edge_attribute.value)
+                            if np.isinf(value): value = 9999
+                            if score_stats[attribute_name]['minimum'] == -9999 or value < score_stats[attribute_name]['minimum']:
+                                score_stats[attribute_name]['minimum'] = value
+                            if score_stats[attribute_name]['maximum'] == -9999 or value > score_stats[attribute_name]['maximum']:
+                                score_stats[attribute_name]['maximum'] = value
+        response.info(f"Summary of available edge metrics: {score_stats}")
+
+        # Iterate through the results
+        i_result = 0
+        for result in message.results:
+            #response.debug(f"Metrics for result {i_result}  {result.essence}: ")
+            score = 1.0
+            best_probability = 0.0
+            for edge in result.edge_bindings:
+                kg_edge_id = edge.kg_id
+                buf = ''
+                if kg_edges[kg_edge_id].confidence is not None:
+                    buf += f" confidence={kg_edges[kg_edge_id].confidence}"
+                    score *= float(kg_edges[kg_edge_id].confidence)
+                if kg_edges[kg_edge_id].edge_attributes is not None:
+                    for edge_attribute in kg_edges[kg_edge_id].edge_attributes:
+                        if edge_attribute.name == 'probability':
+                            value = float(edge_attribute.value)
+                            buf += f" probability={edge_attribute.value}"
+                            if value > best_probability:
+                                best_probability = value
+                        #if edge_attribute.name == 'probability_drug_treats':               # this is already put in confidence
+                        #    buf += f" probability_drug_treats={edge_attribute.value}"
+                        #    score *= value
+                        if edge_attribute.name == 'ngd':
+                            ngd = float(edge_attribute.value)
+                            if np.isinf(ngd): ngd = 10.0
+                            buf += f" ngd={ngd}"
+                            factor = 1 - ( ngd - 0.3) * 0.6
+                            if factor < 0.01: factor = 0.01
+                            if factor > 1: factor = 1.0
+                            buf += f" ngd_factor={factor}"
+                            score *= factor
+                        if edge_attribute.name == 'jaccard_index':
+                            jaccard = float(edge_attribute.value)
+                            if np.isinf(jaccard): jaccard = 0.01
+                            factor = jaccard / score_stats['jaccard_index']['maximum'] * 0.9
+                            buf += f" jaccard={jaccard}, factor={factor}"
+                            score *= factor
+                #response.debug(f"  - {kg_edge_id}  {buf}")
+
+            # #### If there was a best_probability recorded, then multiply times the running score
+            if best_probability > 0.0:
+                score *= best_probability
+
+            # #### Make all scores at least 0.01. This is all way low anyway, but let's not have anything that rounds to zero
+            if score < 0.01:
+                score += 0.01
+
+            #### Keep only 3 digits after the decimal 
+            score = int(score * 1000 + 0.5) / 1000.0
+
+            #response.debug(f"  ---> final score={score}")
+            result.confidence = score
+            result.row_data = [ score, result.essence, result.essence_type ]
+            i_result += 1
+
+        #### Add table columns name
+        message.table_column_names = [ 'confidence', 'essence', 'essence_type' ]
+
+        #### Re-sort the final results
+        message.results.sort(key=lambda result: result.confidence, reverse=True)
+
+
+
     #### Convert a Message as a dict to a Message as objects
     def from_dict(self, message):
 
@@ -602,6 +727,8 @@ def main():
         { 'curie': 'NCIT:C198'},
         { 'curie': 'CUI:C4710278'},
         { 'type': 'protein', 'id': 'n10'},
+        { 'curie': ['UniProtKB:P14136','UniProtKB:P35579'] },
+        { 'curie': ['UniProtKB:P14136','UniProtKB:P35579'], 'is_set': 'false' },
     ]
 
     for parameter in parameters_sets:
@@ -626,15 +753,16 @@ def main():
             print(response.show(level=Response.DEBUG))
             return response
 
-    result = messenger.reassign_curies(message, { 'knowledge_provider': 'KG1', 'mismap_result': 'WARNING'} )
-    response.merge(result)
-    if result.status != 'OK':
-        print(response.show(level=Response.DEBUG))
-        return response
+    if 0:
+        result = messenger.reassign_curies(message, { 'knowledge_provider': 'KG1', 'mismap_result': 'WARNING'} )
+        response.merge(result)
+        if result.status != 'OK':
+            print(response.show(level=Response.DEBUG))
+            return response
 
     #### Show the final result
     print(response.show(level=Response.DEBUG))
-    #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
 
 
 if __name__ == "__main__": main()

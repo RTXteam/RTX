@@ -28,6 +28,9 @@ class QueryGraphInfo:
         self.node_type_map = None
         self.edge_type_map = None
 
+        self.query_graph_template = None
+
+
     #### Top level decision maker for applying filters
     def assess(self, message):
 
@@ -54,16 +57,16 @@ class QueryGraphInfo:
         if self.n_nodes == 1 and self.n_edges > 0:
             response.error("QueryGraph may not have edges if there is only one node", error_code="QueryGraphTooManyEdges")
             return response
-        if self.n_nodes == 2 and self.n_edges > 1:
-            response.error("QueryGraph may not have more than 1 edge if there are only 2 nodes", error_code="QueryGraphTooManyEdges")
-            return response
+        #if self.n_nodes == 2 and self.n_edges > 1:
+        #    response.error("QueryGraph may not have more than 1 edge if there are only 2 nodes", error_code="QueryGraphTooManyEdges")
+        #    return response
 
         #### Loop through nodes computing some stats
         node_info = {}
         self.node_type_map = {}
         for qnode in nodes:
             id = qnode.id
-            node_info[id] = { 'id': id, 'has_curie': False, 'type': qnode.type, 'has_type': False, 'is_set': False, 'n_edges': 0, 'is_connected': False, 'edges': [], 'edge_dict': {} }
+            node_info[id] = { 'id': id, 'node_object': qnode, 'has_curie': False, 'type': qnode.type, 'has_type': False, 'is_set': False, 'n_edges': 0, 'n_links': 0, 'is_connected': False, 'edges': [], 'edge_dict': {} }
             if qnode.curie is not None: node_info[id]['has_curie'] = True
             if qnode.type is not None: node_info[id]['has_type'] = True
             #if qnode.is_set is not None: node_info[id]['is_set'] = True
@@ -75,7 +78,7 @@ class QueryGraphInfo:
             warning_counter = 0
             if qnode.type is None:
                 if warning_counter == 0:
-                    response.warning("QueryGraph has nodes with no type. This may cause problems with results inference later")
+                    response.debug("QueryGraph has nodes with no type. This may cause problems with results inference later")
                 warning_counter += 1
                 self.node_type_map['unknown'] = id
             else:
@@ -84,15 +87,32 @@ class QueryGraphInfo:
         #### Loop through edges computing some stats
         edge_info = {}
         self.edge_type_map = {}
+        unique_links = {}
         for qedge in edges:
+
+            #### Ignore special informationational edges for now. FIXME. This is not a complete list. Should be extended
+            if qedge.type is not None and ( qedge.relation == 'ngd' or qedge.relation == 'jaccard_index' 
+                or qedge.relation == 'probability_drug_treats' ):
+                continue
+
             id = qedge.id
             edge_info[id] = { 'id': id, 'has_type': False, 'source_id': qedge.source_id, 'target_id': qedge.target_id, 'type': None }
-            if qnode.type is not None:
+            #if qnode.type is not None:
+            if qedge.type is not None:
                 edge_info[id]['has_type'] = True
                 edge_info[id]['type'] = qnode.type
             if qedge.id is None:
                 response.error("QueryGraph has a edge with no id. This is not permitted", error_code="QueryGraphEdgeWithNoId")
                 return response
+
+            #### Create a unique node link string
+            link_string = ','.join(sorted([qedge.source_id,qedge.target_id]))
+            if link_string not in unique_links:
+                node_info[qedge.source_id]['n_links'] += 1
+                node_info[qedge.target_id]['n_links'] += 1
+                unique_links[link_string] = 1
+                #print(link_string)
+
             node_info[qedge.source_id]['n_edges'] += 1
             node_info[qedge.target_id]['n_edges'] += 1
             node_info[qedge.source_id]['is_connected'] = True
@@ -109,7 +129,7 @@ class QueryGraphInfo:
             edge_type = 'any'
             if qedge.type is None:
                 if warning_counter == 0:
-                    response.warning("QueryGraph has edges with no type. This may cause problems with results inference later")
+                    response.debug("QueryGraph has edges with no type. This may cause problems with results inference later")
                 warning_counter += 1
             else:
                 edge_type = qedge.type
@@ -122,9 +142,9 @@ class QueryGraphInfo:
         #### Loop through the nodes again, trying to identify the start_node and the end_node
         singletons = []
         for node_id,node_data in node_info.items():
-            if node_data['n_edges'] < 2:
+            if node_data['n_links'] < 2:
                 singletons.append(node_data)
-            elif node_data['n_edges'] > 2:
+            elif node_data['n_links'] > 2:
                 self.is_bifurcated_graph = True
                 response.warning("QueryGraph appears to have a fork in it. This might cause trouble")
 
@@ -161,6 +181,8 @@ class QueryGraphInfo:
             #print('==================================================================================')
             #tmp = input()
 
+            if len(edges) == 0:
+                break
             if len(edges) > 1:
                 response.error("Help, two edges at A583. Don't know what to do", error_code="InteralErrorA583")
                 return response
@@ -196,6 +218,41 @@ class QueryGraphInfo:
 
         self.node_order = node_order
         self.edge_order = edge_order
+
+        # Create a text rendering of the QueryGraph geometry for matching against a template
+        self.query_graph_template = ''
+        node_index = 0
+        edge_index = 0
+        for node in node_order:
+            template_id = f"n{node_index:02}"
+            content = ''
+            if node['has_curie']:
+                content = 'curie'
+            elif node['has_type']:
+                content = 'type'
+            template_part = f"{template_id}({content})"
+            self.query_graph_template += template_part
+
+            # Since queries with intermediate nodes that are not is_set=true tend to blow up, for now, make them is_set=true unless explicitly set to false
+            if node_index > 0 and node_index < (self.n_nodes - 1 ):
+                if 'is_set' not in node or node['is_set'] is None:
+                    node['node_object'].is_set = True
+                    response.warning(f"Setting unspecified is_set to true for {node['id']} because this will probably lead to a happier result")
+                elif node['is_set'] is True:
+                    response.debug(f"Value for is_set is already true for {node['id']} so that's good")
+                elif node['is_set'] is False:
+                    #response.info(f"Value for is_set is set to false for intermediate node {node['id']}. This could lead to weird results. Consider setting it to true")
+                    response.info(f"Value for is_set is false for intermediate node {node['id']}. Setting to true because this will probably lead to a happier result")
+                    node['node_object'].is_set = True
+                #else:
+                #    response.error(f"Unrecognized value is_set='{node['is_set']}' for {node['id']}. This should be true or false")
+
+            node_index += 1
+            if node_index < self.n_nodes:
+                self.query_graph_template += f"-e{edge_index:02}()-"
+                edge_index += 1
+
+        response.debug(f"The QueryGraph reference template is: {self.query_graph_template}")
 
         #tmp = { 'node_info': node_info, 'edge_info': edge_info, 'start_node': start_node, 'n_nodes': self.n_nodes, 'n_edges': self.n_edges,
         #    'is_bifurcated_graph': self.is_bifurcated_graph, 'node_order': node_order, 'edge_order': edge_order }
