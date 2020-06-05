@@ -36,13 +36,13 @@ class PredictDrugTreatsDisease:
         self.response.debug(f"Computing drug disease treatment probability based on a machine learning model")
         self.response.info(f"Computing drug disease treatment probability based on a machine learning model: See [this publication](https://doi.org/10.1101/765305) for more details about how this is accomplished.")
 
-        name = "probability_drug_treats"
-        type = "float"
+        attribute_name = "probability_treats"
+        attribute_type = "data:0951"
         value = 0  # this will be the default value. If the model returns 0, or the default is there, don't include that edge
-        url = "https://arax.rtx.ai/api/rtx/v1/ui/"
+        url = "https://doi.org/10.1101/765305"
 
         # if you want to add virtual edges, identify the source/targets, decorate the edges, add them to the KG, and then add one to the QG corresponding to them
-        if 'virtual_edge_type' in parameters:
+        if 'virtual_relation_label' in parameters:
             source_curies_to_decorate = set()
             target_curies_to_decorate = set()
             # identify the nodes that we should be adding virtual edges for
@@ -62,26 +62,26 @@ class PredictDrugTreatsDisease:
                 probability = self.pred.prob_single('ChEMBL:' + source_curie[22:], target_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
                 if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
                     value = probability[0]
-                edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the edge attribute
+                edge_attribute = EdgeAttribute(type=attribute_type, name=attribute_name, value=str(value), url=url)  # populate the edge attribute
                 if edge_attribute and value != 0:
                     added_flag = True
                     # make the edge, add the attribute
 
                     # edge properties
                     now = datetime.now()
-                    edge_type = parameters['virtual_edge_type']
-                    qedge_id = parameters['virtual_edge_type']
-                    relation = name
-                    is_defined_by = "https://arax.rtx.ai/api/rtx/v1/ui/"
+                    edge_type = "probably_treats"
+                    qedge_id = parameters['virtual_relation_label']
+                    relation = parameters['virtual_relation_label']
+                    is_defined_by = "ARAX"
                     defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
-                    provided_by = "ARAX/RTX"
-                    confidence = value
-                    weight = value  # TODO: could make the actual value of the attribute
+                    provided_by = "ARAX"
+                    confidence = None
+                    weight = None  # TODO: could make the actual value of the attribute
                     source_id = source_curie
                     target_id = target_curie
 
                     # now actually add the virtual edges in
-                    id = f"{edge_type}_{self.global_iter}"
+                    id = f"{relation}_{self.global_iter}"
                     self.global_iter += 1
                     edge = Edge(id=id, type=edge_type, relation=relation, source_id=source_id,
                                 target_id=target_id,
@@ -92,9 +92,10 @@ class PredictDrugTreatsDisease:
 
             # Now add a q_edge the query_graph since I've added an extra edge to the KG
             if added_flag:
-                edge_type = parameters['virtual_edge_type']
-                relation = name
-                q_edge = QEdge(id=edge_type, type=edge_type, relation=relation,
+                edge_type = "probably_treats"
+                relation = parameters['virtual_relation_label']
+                qedge_id = parameters['virtual_relation_label']
+                q_edge = QEdge(id=qedge_id, type=edge_type, relation=relation,
                                source_id=parameters['source_qnode_id'], target_id=parameters['target_qnode_id'])  # TODO: ok to make the id and type the same thing?
                 self.message.query_graph.edges.append(q_edge)
             return self.response
@@ -127,7 +128,7 @@ class PredictDrugTreatsDisease:
                     else:
                         continue
                     if value != 0:
-                        edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the attribute
+                        edge_attribute = EdgeAttribute(type=attribute_type, name=attribute_name, value=str(value), url=url)  # populate the attribute
                         edge.edge_attributes.append(edge_attribute)  # append it to the list of attributes
             except:
                 tb = traceback.format_exc()

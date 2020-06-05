@@ -68,13 +68,14 @@ class ComputeJaccard:
             # edge properties
             j_iter = 0
             now = datetime.now()
-            edge_type = parameters['virtual_edge_type']
-            qedge_id = parameters['virtual_edge_type']
-            relation = "jaccard_index"
-            is_defined_by = "https://arax.rtx.ai/api/rtx/v1/ui/"
+            #edge_type = parameters['virtual_edge_type']
+            edge_type = 'has_jaccard_index_with'
+            qedge_id = parameters['virtual_relation_label']
+            relation = parameters['virtual_relation_label']
+            is_defined_by = "ARAX"
             defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
-            provided_by = "ARAX/RTX"
-            confidence = 1.0
+            provided_by = "ARAX"
+            confidence = None
             weight = None  # TODO: could make the jaccard index the weight
             try:
                 source_id = source_node_id
@@ -87,9 +88,9 @@ class ComputeJaccard:
 
             # edge attribute properties
             description = f"Jaccard index based on intermediate query nodes {parameters['intermediate_node_id']}"
-            attribute_type = "float"
+            attribute_type = 'data:1772'
             name = "jaccard_index"
-            url = "https://arax.rtx.ai/api/rtx/v1/ui/"
+            url = None
 
             # now actually add the virtual edges in
             for end_node_id, value in end_node_to_jaccard.items():
@@ -103,7 +104,7 @@ class ComputeJaccard:
                 message.knowledge_graph.edges.append(edge)
 
             # Now add a q_edge the query_graph since I've added an extra edge to the KG
-            q_edge = QEdge(id=edge_type, type=edge_type, relation=relation, source_id=parameters['start_node_id'], target_id=parameters['end_node_id'])  # TODO: ok to make the id and type the same thing?
+            q_edge = QEdge(id=qedge_id, type=edge_type, relation=relation, source_id=parameters['start_node_id'], target_id=parameters['end_node_id'])  # TODO: ok to make the id and type the same thing?
             self.message.query_graph.edges.append(q_edge)
 
             return self.response
