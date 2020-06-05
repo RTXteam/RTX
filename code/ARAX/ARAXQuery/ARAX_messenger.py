@@ -401,7 +401,7 @@ class ARAXMessenger:
                 return response
             qedge.target_id = parameters['target_id']
         else:
-            response.error(f"While trying to add QEdge, source_id is a required parameter", error_code="MissingSourceId")
+            response.error(f"While trying to add QEdge, target_id is a required parameter", error_code="MissingTargetId")
             return response
 
         #### Add the type if any. Need to verify it's an allowed type. FIXME
