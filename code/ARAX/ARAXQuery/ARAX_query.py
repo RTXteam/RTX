@@ -647,9 +647,9 @@ def main():
             "add_qnode(type=protein, id=n1)",
             "add_qedge(source_id=n0, target_id=n1, id=e0)",
             "expand(edge_id=e0)",
-            "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n0, target_qnode_id=n1)",
+            "overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n0, target_qnode_id=n1)",
             "resultify(ignore_edge_direction=true)",
-            "return(message=true, store=false)",
+            "return(message=true, store=true)",
         ]}}
     elif params.example_number == 4:
         query = { "previous_message_processing_plan": { "processing_actions": [
@@ -668,7 +668,7 @@ def main():
             "expand(edge_id=e00)",
             "overlay(action=compute_ngd)",
             "resultify()",
-            "return(message=true, store=false)",
+            "return(message=true, store=true)",
             ] } }
     elif params.example_number == 6:  # test overlay
         query = { "previous_message_processing_plan": { "processing_actions": [
@@ -683,7 +683,7 @@ def main():
             "overlay(action=compute_ngd, default_value=inf)",
             #"overlay(action=compute_ngd, virtual_edge_type=NGD1, source_qnode_id=n00, target_qnode_id=n01)",
             "filter(maximum_results=2)",
-            "return(message=true, store=false)",
+            "return(message=true, store=true)",
             ] } }
     elif params.example_number == 7:  # stub to test out the compute_jaccard feature
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -805,10 +805,10 @@ def main():
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",  # Look in COHD to find which drug are being used to treat this disease based on the log ratio of expected frequency of this drug being used to treat a disease, vs. the observed number of times it’s used to treat this disease
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=3, remove_connected_nodes=t, qnode_id=n01)",   # concentrate only on those drugs that are more likely to be treating this disease than expected
             "filter_kg(action=remove_orphaned_nodes, node_type=protein)",  # remove proteins that got disconnected as a result of this filter action
-            "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n01, target_qnode_id=n02)",   # use normalized google distance to find how frequently the protein and the drug are mentioned in abstracts
-            "filter_kg(action=remove_edges_by_attribute, edge_attribute=ngd, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",   # remove proteins that are not frequently mentioned together in PubMed abstracts
+            "overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n01, target_qnode_id=n02)",   # use normalized google distance to find how frequently the protein and the drug are mentioned in abstracts
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=normalized_google_distance, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",   # remove proteins that are not frequently mentioned together in PubMed abstracts
             "resultify(ignore_edge_direction=true)",
-            "return(message=true, store=false)"
+            "return(message=true, store=true)"
         ]}}
     elif params.example_number == 1515:  # Exact duplicate of ARAX_Example3.ipynb
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -821,8 +821,8 @@ def main():
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=3, remove_connected_nodes=t, qnode_id=n01)",
             "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
-            "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n01, target_qnode_id=n02)",
-            "filter_kg(action=remove_edges_by_attribute, edge_attribute=ngd, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",
+            "overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n01, target_qnode_id=n02)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=normalized_google_distance, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",
             "resultify(ignore_edge_direction=true)",
             "return(message=true, store=true)"
         ]}}
@@ -971,7 +971,7 @@ def main():
             "add_qedge(id=e01, source_id=n01, target_id=n02)",
             "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
-            "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n01, target_qnode_id=n02)",
+            "overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n01, target_qnode_id=n02)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=2, remove_connected_nodes=t, qnode_id=n01)",
             "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
             "return(message=true, store=false)",
@@ -987,7 +987,7 @@ def main():
             "add_qedge(id=e01, source_id=n01, target_id=n02)",
             "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
-            "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n01, target_qnode_id=n02)",
+            "overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n01, target_qnode_id=n02)",
             #"filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=0, remove_connected_nodes=t, qnode_id=n01)",
             #"filter_kg(action=remove_orphaned_nodes, node_type=protein)",
             "return(message=true, store=false)",
@@ -1123,8 +1123,9 @@ def main():
         num_edges_show = 2
         num_edges_shown = 0
         #attribute_of_interest = 'jaccard_index'
-        attribute_of_interest = 'observed_expected_ratio'
+        #attribute_of_interest = 'observed_expected_ratio'
         #attribute_of_interest = 'ngd'
+        attribute_of_interest = 'normalized_google_distance'
         all_attribute_names = set()
         for edge in message.knowledge_graph.edges:
             if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:

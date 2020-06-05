@@ -82,7 +82,7 @@ class ARAXOverlay:
             elif item not in allowable_parameters[key]:
                 if any([type(x) == float for x in allowable_parameters[key]]) or any([type(x) == int for x in allowable_parameters[key]]):  # if it's a float or int, just accept it as it is
                     return
-                elif key=="virtual_relation_label" and type(item) == str:
+                elif key == "virtual_relation_label" and type(item) == str:
                     return
                 else:  # otherwise, it's really not an allowable parameter
                     self.response.error(
@@ -92,9 +92,9 @@ class ARAXOverlay:
     # helper function to check if all virtual edge parameters have been properly provided
     def check_virtual_edge_params(self, allowable_parameters):
         parameters = self.parameters
-        if any([x in ['virtual_edge_type', 'source_qnode_id', 'target_qnode_id'] for x in parameters.keys()]):
-            if not all([x in parameters.keys() for x in ['virtual_edge_type', 'source_qnode_id', 'target_qnode_id']]):
-                self.response.error(f"If any of of the following parameters are provided ['virtual_edge_type', 'source_qnode_id', 'target_qnode_id'], all must be provided. Allowable parameters include: {allowable_parameters}")
+        if any([x in ['virtual_relation_label', 'source_qnode_id', 'target_qnode_id'] for x in parameters.keys()]):
+            if not all([x in parameters.keys() for x in ['virtual_relation_label', 'source_qnode_id', 'target_qnode_id']]):
+                self.response.error(f"If any of of the following parameters are provided ['virtual_relation_label', 'source_qnode_id', 'target_qnode_id'], all must be provided. Allowable parameters include: {allowable_parameters}")
             elif parameters['source_qnode_id'] not in allowable_parameters['source_qnode_id']:
                 self.response.error(f"source_qnode_id value is not valid. Valid values are: {allowable_parameters['source_qnode_id']}")
             elif parameters['target_qnode_id'] not in allowable_parameters['target_qnode_id']:
@@ -164,12 +164,12 @@ class ARAXOverlay:
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         #allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}}
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
-            allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_edge_type': {self.parameters['virtual_edge_type'] if 'virtual_edge_type' in self.parameters else None},
+            allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else None},
                                     'source_qnode_id': set([x.id for x in self.message.query_graph.nodes]),
                                     'target_qnode_id': set([x.id for x in self.message.query_graph.nodes])
                                     }
         else:
-            allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_edge_type': {'any string label (optional, otherwise applied to all edges)'},
+            allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_relation_label': {'any string label identifying the virtual edge label (optional, otherwise applied to all existing edges in the KG)'},
                                     'source_qnode_id': {'a specific source query node id (optional, otherwise applied to all edges)'},
                                     'target_qnode_id': {'a specific target query node id (optional, otherwise applied to all edges)'}
                                     }
@@ -178,8 +178,9 @@ class ARAXOverlay:
         if describe:
             brief_description = """
 `compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
-This information is then included as an edge attribute.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_edge_type`.
+This information is then included as an edge attribute with the name `normalized_google_distance`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
+
 Use cases include:
 
 * focusing in on edges that are well represented in the literature
