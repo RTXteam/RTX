@@ -35,7 +35,7 @@ class BTEQuerier:
             if self.__get_curie_prefix(curie) in valid_bte_inputs_dict['curie_prefixes']:
                 accepted_curies.add(curie)
                 try:
-                    loop = asyncio.get_event_loop()
+                    loop = asyncio.new_event_loop()
                     seqd = SingleEdgeQueryDispatcher(input_cls=input_qnode.type,
                                                      output_cls=output_qnode.type,
                                                      pred=qedge.type,
