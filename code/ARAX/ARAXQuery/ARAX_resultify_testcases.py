@@ -827,22 +827,21 @@ class TestARAXResultify(unittest.TestCase):
         assert bfs_dists == {'n01': 1, 'DOID:12345': 0, 'n02': 1}
 
     def test_bfs_in_essence_code(self):
-        # FIXME: This test is currently erroring because the KG data is flawed (edges use nodes of the wrong qnode_ids)
-        kg_node_info = ({'id': 'UniProtKB:12345',
+        kg_node_info = ({'id': 'DOID:12345',
+                         'type': 'disease',
+                         'qnode_ids': ['n00']},
+                        {'id': 'UniProtKB:12345',
                          'type': 'protein',
                          'qnode_ids': ['n01']},
                         {'id': 'UniProtKB:23456',
                          'type': 'protein',
                          'qnode_ids': ['n01']},
-                        {'id': 'DOID:12345',
-                         'type': 'disease',
-                         'qnode_ids': ['DOID:12345']},
-                        {'id': 'HP:56789',
-                         'type': 'phenotypic_feature',
-                         'qnode_ids': ['HP:56789']},
                         {'id': 'FOO:12345',
                          'type': 'gene',
-                         'qnode_ids': ['n02']})
+                         'qnode_ids': ['n02']},
+                        {'id': 'HP:56789',
+                         'type': 'phenotypic_feature',
+                         'qnode_ids': ['n03']})
 
         kg_edge_info = ({'edge_id': 'ke01',
                          'target_id': 'UniProtKB:12345',
@@ -876,28 +875,28 @@ class TestARAXResultify(unittest.TestCase):
 
         knowledge_graph = KnowledgeGraph(kg_nodes, kg_edges)
 
-        qg_node_info = ({'id': 'n01',
-                         'type': 'protein',
-                         'is_set': False},
-                        {'id': 'DOID:12345',
+        qg_node_info = ({'id': 'n00',  # DOID:12345
                          'type': 'disease',
                          'is_set': False},
-                        {'id': 'HP:56789',
-                         'type': 'phenotypic_feature',
+                        {'id': 'n01',
+                         'type': 'protein',
                          'is_set': False},
                         {'id': 'n02',
                          'type': 'gene',
+                         'is_set': False},
+                        {'id': 'n03',  # HP:56789
+                         'type': 'phenotypic_feature',
                          'is_set': False})
 
         qg_edge_info = ({'edge_id': 'qe01',
-                         'source_id': 'DOID:12345',
+                         'source_id': 'n00',
                          'target_id': 'n01'},
                         {'edge_id': 'qe02',
-                         'source_id': 'n02',
-                         'target_id': 'HP:56789'},
-                        {'edge_id': 'qe03',
                          'source_id': 'n01',
-                         'target_id': 'n02'})
+                         'target_id': 'n02'},
+                        {'edge_id': 'qe03',
+                         'source_id': 'n02',
+                         'target_id': 'n03'})
 
         qg_nodes = [QNode(id=node_info['id'],
                           type=ARAX_resultify.BIOLINK_ENTITY_TYPE_OBJECTS[node_info['type']],
@@ -911,7 +910,6 @@ class TestARAXResultify(unittest.TestCase):
 
         results_list = ARAX_resultify._get_results_for_kg_by_qg(knowledge_graph,
                                                                 query_graph)
-        print(len(results_list))
         assert len(results_list) == 2
         assert results_list[0].essence is not None
 
