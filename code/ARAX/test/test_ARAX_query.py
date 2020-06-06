@@ -16,6 +16,7 @@ def test_query_by_canned_query_Q0():
     query = { 'message': { 'query_type_id': 'Q0', 'terms': { 'term': 'lovastatin' } } }
     araxq = ARAXQuery()
     result = araxq.query(query)
+    print(result.show())
     assert result.status == 'OK'
     message = araxq.message
     assert message.n_results == 1
@@ -32,11 +33,11 @@ def test_query_by_query_graph_2():
             ] } } }
     araxq = ARAXQuery()
     result = araxq.query(query)
+    print(result.show())
     assert result.status == 'OK'
     message = araxq.message
     assert message.n_results == 32
     assert message.schema_version == '0.9.3'
-    assert message.results[0].essence == 'cytochrome P450 family 3 subfamily A member 4 (CP3A4)'
 
 
 if __name__ == "__main__": pytest.main(['-v'])
