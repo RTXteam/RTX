@@ -247,7 +247,8 @@ def _make_edge_key(node1_id: str,
 def _make_result_from_node_set(dict_kg: KnowledgeGraph,
                                result_node_ids_by_qnode_id: Dict[str, Set[str]],
                                kg_edge_ids_by_qedge_id: Dict[str, Set[str]],
-                               qg: QueryGraph) -> Result:
+                               qg: QueryGraph,
+                               ignore_edge_direction: bool) -> Result:
     node_bindings = []
     result_graph_node_ids = set()
     for qnode_id, node_ids_for_this_qnode_id in result_node_ids_by_qnode_id.items():
@@ -261,10 +262,12 @@ def _make_result_from_node_set(dict_kg: KnowledgeGraph,
         qedge = next(qedge for qedge in qg.edges if qedge.id == qedge_id)
         for edge_id in kg_edge_ids_for_this_qedge_id:
             edge = dict_kg.edges.get(edge_id)
-            if ((edge.source_id in result_node_ids_by_qnode_id[qedge.source_id] and
-                 edge.target_id in result_node_ids_by_qnode_id[qedge.target_id]) or
-                (edge.source_id in result_node_ids_by_qnode_id[qedge.target_id] and
-                 edge.target_id in result_node_ids_by_qnode_id[qedge.source_id])):
+            edge_fits_in_same_direction = (edge.source_id in result_node_ids_by_qnode_id[qedge.source_id] and
+                                           edge.target_id in result_node_ids_by_qnode_id[qedge.target_id])
+            edge_fits_in_opposite_direction = (edge.source_id in result_node_ids_by_qnode_id[qedge.target_id] and
+                                               edge.target_id in result_node_ids_by_qnode_id[qedge.source_id])
+            edge_belongs_in_result = (edge_fits_in_same_direction or edge_fits_in_opposite_direction) if ignore_edge_direction else edge_fits_in_same_direction
+            if edge_belongs_in_result:
                 edge_bindings.append(EdgeBinding(qg_id=qedge_id, kg_id=edge.id))
                 result_graph_edge_ids.add(edge_id)
 
@@ -525,10 +528,12 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
             kg_source_node_id = kg_edge.source_id
             kg_target_node_id = kg_edge.target_id
             if qg_source_node_id != qg_target_node_id:
-                if not ((kg_source_node_id in kg_node_ids_by_qnode_id[qg_source_node_id] and
-                         kg_target_node_id in kg_node_ids_by_qnode_id[qg_target_node_id]) or
-                        (kg_source_node_id in kg_node_ids_by_qnode_id[qg_target_node_id] and
-                         kg_target_node_id in kg_node_ids_by_qnode_id[qg_source_node_id])):
+                edge_valid_in_same_direction = (kg_source_node_id in kg_node_ids_by_qnode_id[qg_source_node_id] and
+                                                kg_target_node_id in kg_node_ids_by_qnode_id[qg_target_node_id])
+                edge_valid_in_opposite_direction = (kg_source_node_id in kg_node_ids_by_qnode_id[qg_target_node_id] and
+                                                    kg_target_node_id in kg_node_ids_by_qnode_id[qg_source_node_id])
+                edge_is_valid = (edge_valid_in_same_direction or edge_valid_in_opposite_direction) if ignore_edge_direction else edge_valid_in_same_direction
+                if not edge_is_valid:
                     kg_source_node = kg_nodes_map.get(kg_source_node_id)
                     kg_target_node = kg_nodes_map.get(kg_target_node_id)
                     raise ValueError(f"Edge {kg_edge.id} (fulfilling {qg_edge.id}) has node(s) that do not fulfill the "
@@ -621,7 +626,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                             break
                     if not found_neighbor_connected_to_kg_node_id and kg_node_id in node_ids_for_subgraph_by_qnode_id[qg_node_id]:
                         node_ids_for_subgraph_by_qnode_id[qg_node_id].remove(kg_node_id)
-        result = _make_result_from_node_set(dict_kg, node_ids_for_subgraph_by_qnode_id, kg_edge_ids_by_qedge_id, qg)
+        result = _make_result_from_node_set(dict_kg, node_ids_for_subgraph_by_qnode_id, kg_edge_ids_by_qedge_id, qg, ignore_edge_direction)
         # make sure that this set of nodes covers the QG
         qedge_ids_in_subgraph = {qedge_id for kg_edge in cast(KnowledgeGraph, result.result_graph).edges for qedge_id in cast(Iterable[str], kg_edge.qedge_ids) if kg_edge.qedge_ids}
         if len(qedge_ids_set - qedge_ids_in_subgraph) > 0:
