@@ -221,7 +221,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         if kp_to_use not in valid_kps:
             self.response.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(valid_kps)}",
                                 error_code="UnknownValue")
-            return None
+            return None, None
         else:
             if kp_to_use == 'BTE':
                 from Expand.bte_querier import BTEQuerier

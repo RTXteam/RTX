@@ -2,6 +2,7 @@
 import sys
 import os
 import traceback
+import asyncio
 
 from biothings_explorer.user_query_dispatcher import SingleEdgeQueryDispatcher
 
@@ -34,18 +35,20 @@ class BTEQuerier:
             if self.__get_curie_prefix(curie) in valid_bte_inputs_dict['curie_prefixes']:
                 accepted_curies.add(curie)
                 try:
+                    loop = asyncio.new_event_loop()
                     seqd = SingleEdgeQueryDispatcher(input_cls=input_qnode.type,
                                                      output_cls=output_qnode.type,
                                                      pred=qedge.type,
                                                      input_id=self.__get_curie_prefix(curie),
-                                                     values=self.__get_curie_local_id(curie))
+                                                     values=self.__get_curie_local_id(curie),
+                                                     loop=loop)
                     seqd.query()
                     reasoner_std_response = seqd.to_reasoner_std()
                 except:
                     trace_back = traceback.format_exc()
                     error_type, error, _ = sys.exc_info()
-                    self.response.error(f"Encountered a problem while using BioThings Explorer. BTE log: "
-                                        f"{' '.join(seqd.log)} {trace_back}", error_code=error_type.__name__)
+                    self.response.error(f"Encountered a problem while using BioThings Explorer. {trace_back}",
+                                        error_code=error_type.__name__)
                     return answer_kg, edge_to_nodes_map
                 else:
                     self.__add_answers_to_kg(answer_kg, reasoner_std_response, input_qnode.id, output_qnode.id, qedge.id)
@@ -75,15 +78,21 @@ class BTEQuerier:
             self.response.error(f"BTE can only accept one-hop query graphs (your QG has {len(query_graph.nodes)} "
                                 f"nodes and {len(query_graph.edges)} edges)", error_code="InvalidQueryGraph")
             return None, None, None
-
-        # Figure out which query node is input vs. output
-        input_qnode = [node for node in query_graph.nodes if node.curie]
-        if not input_qnode:
-            self.response.error(f"One of the input qnodes must have a curie for BTE queries", error_code="InvalidQueryGraph")
-            return None, None, None
-        input_qnode = input_qnode[0]
-        output_qnode = next(node for node in query_graph.nodes if node.id != input_qnode.id)
         qedge = query_graph.edges[0]
+
+        # Figure out which query node is input vs. output and validate which qnodes have curies
+        qnodes_with_curies = [node for node in query_graph.nodes if node.curie]
+        if len(qnodes_with_curies) != 1:
+            if len(qnodes_with_curies) == 0:
+                self.response.error(f"One of this edge's QNodes must have a curie for BTE queries",
+                                    error_code="InvalidQueryGraph")
+            elif len(qnodes_with_curies) > 1:
+                self.response.error(f"BTE cannot expand edges for which both nodes have a curie specified (for now)",
+                                    error_code="InvalidInput")
+                # TODO: Hack around this limitation to allow curie--curie queries
+            return None, None, None
+        input_qnode = qnodes_with_curies[0]
+        output_qnode = next(node for node in query_graph.nodes if node.id != input_qnode.id)
 
         # Make sure predicate is allowed
         if qedge.type not in valid_bte_inputs_dict['predicates'] and qedge.type is not None:
@@ -94,11 +103,16 @@ class BTEQuerier:
         # Convert node types to preferred format and check if they're allowed
         input_qnode.type = self.__convert_string_to_pascal_case(input_qnode.type)
         output_qnode.type = self.__convert_string_to_pascal_case(output_qnode.type)
-        for node_type in [input_qnode.type, output_qnode.type]:
-            if node_type not in valid_bte_inputs_dict['node_types']:
-                self.response.error(f"BTE does not accept node type '{node_type}'. Valid options are "
-                                    f"{valid_bte_inputs_dict['node_types']}", error_code="InvalidInput")
-                return None, None, None
+        qnodes_missing_type = [qnode.id for qnode in [input_qnode, output_qnode] if not qnode.type]
+        if qnodes_missing_type:
+            self.response.error(f"BTE requires every query node to have a type. QNode(s) missing a type: "
+                                f"{', '.join(qnodes_missing_type)}", error_code="InvalidInput")
+            return None, None, None
+        invalid_qnode_types = [qnode.type for qnode in [input_qnode, output_qnode] if qnode.type not in valid_bte_inputs_dict['node_types']]
+        if invalid_qnode_types:
+            self.response.error(f"BTE does not accept QNode type(s): {', '.join(invalid_qnode_types)}. Valid options are"
+                                f" {valid_bte_inputs_dict['node_types']}", error_code="InvalidInput")
+            return None, None, None
 
         # TODO: Actually load this info from BTE's meta data
         # # Make sure node type pair is allowed
@@ -199,7 +213,9 @@ class BTEQuerier:
 
     def __convert_string_to_pascal_case(self, input_string):
         # Converts a string like 'chemical_substance' or 'chemicalSubstance' to 'ChemicalSubstance'
-        if "_" in input_string:
+        if not input_string:
+            return ""
+        elif "_" in input_string:
             words = input_string.split('_')
             return "".join([word.capitalize() for word in words])
         elif len(input_string) > 1:

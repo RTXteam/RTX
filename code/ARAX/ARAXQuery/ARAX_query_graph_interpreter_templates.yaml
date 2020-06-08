@@ -40,7 +40,7 @@ templates:
       - n01(type)
     DSL:
       - expand(edge_id=e00)
-      - overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n00, target_qnode_id=n01)
+      - overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n00, target_qnode_id=n01)
       - resultify()
 
   one_hop_two_curie_question:
@@ -81,7 +81,7 @@ templates:
       - n02(type)
     DSL:
       - expand(edge_id=[e00,e01])
-      - overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)
+      - overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)
       - resultify()
 
   two_hop_curie-type-curie_question:
