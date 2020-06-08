@@ -3,6 +3,7 @@ import sys, os
 import re
 from QueryDGIdb import QueryDGIdb
 from Neo4jConnection import Neo4jConnection
+import re
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
 from RTXConfiguration import RTXConfiguration
