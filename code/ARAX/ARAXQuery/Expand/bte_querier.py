@@ -20,12 +20,15 @@ class BTEQuerier:
     def answer_one_hop_query(self, query_graph, qnodes_using_curies_from_prior_step):
         answer_kg = {'nodes': dict(), 'edges': dict()}
         edge_to_nodes_map = dict()
+        enforce_directionality = self.response.data['parameters'].get('enforce_directionality')
 
         # Format and validate input for BTE
         valid_bte_inputs_dict = self.__get_valid_bte_inputs_dict()
         if self.response.status != 'OK':
             return answer_kg, edge_to_nodes_map
-        qedge, input_qnode, output_qnode = self.__validate_and_pre_process_input(query_graph, valid_bte_inputs_dict)
+        qedge, input_qnode, output_qnode = self.__validate_and_pre_process_input(query_graph=query_graph,
+                                                                                 valid_bte_inputs_dict=valid_bte_inputs_dict,
+                                                                                 enforce_directionality=enforce_directionality)
         if self.response.status != 'OK':
             return answer_kg, edge_to_nodes_map
 
@@ -72,7 +75,7 @@ class BTEQuerier:
 
         return answer_kg, edge_to_nodes_map
 
-    def __validate_and_pre_process_input(self, query_graph, valid_bte_inputs_dict):
+    def __validate_and_pre_process_input(self, query_graph, valid_bte_inputs_dict, enforce_directionality):
         # Make sure we have a valid one-hop query graph
         if len(query_graph.edges) != 1 or len(query_graph.nodes) != 2:
             self.response.error(f"BTE can only accept one-hop query graphs (your QG has {len(query_graph.nodes)} "
@@ -81,18 +84,26 @@ class BTEQuerier:
         qedge = query_graph.edges[0]
 
         # Figure out which query node is input vs. output and validate which qnodes have curies
-        qnodes_with_curies = [node for node in query_graph.nodes if node.curie]
-        if len(qnodes_with_curies) != 1:
-            if len(qnodes_with_curies) == 0:
-                self.response.error(f"One of this edge's QNodes must have a curie for BTE queries",
-                                    error_code="InvalidQueryGraph")
-            elif len(qnodes_with_curies) > 1:
-                self.response.error(f"BTE cannot expand edges for which both nodes have a curie specified (for now)",
-                                    error_code="InvalidInput")
-                # TODO: Hack around this limitation to allow curie--curie queries
+        if enforce_directionality:
+            input_qnode = next(qnode for qnode in query_graph.nodes if qnode.id == qedge.source_id)
+            output_qnode = next(qnode for qnode in query_graph.nodes if qnode.id == qedge.target_id)
+        else:
+            qnodes_with_curies = [qnode for qnode in query_graph.nodes if qnode.curie]
+            input_qnode = qnodes_with_curies[0] if qnodes_with_curies else None
+            output_qnode = next(qnode for qnode in query_graph.nodes if qnode.id != input_qnode.id)
+
+        if not input_qnode.curie:
+            self.response.error(f"BTE cannot expand edges with a non-specific (curie-less) source node (source node is:"
+                                f" {input_qnode.to_dict()})", error_code="InvalidInput")
+        elif input_qnode.curie and output_qnode.curie:
+            self.response.error(f"BTE cannot expand edges for which both nodes have a curie specified (for now)",
+                                error_code="InvalidInput")
+            # TODO: Hack around this limitation to allow curie--curie queries
+        elif not enforce_directionality:
+            self.response.warning(f"BTE cannot do bidirectional queries; the query for this edge will be directed, "
+                                  f"going: {input_qnode.id}-->{output_qnode.id}")
+        if self.response.status != 'OK':
             return None, None, None
-        input_qnode = qnodes_with_curies[0]
-        output_qnode = next(node for node in query_graph.nodes if node.id != input_qnode.id)
 
         # Make sure predicate is allowed
         if qedge.type not in valid_bte_inputs_dict['predicates'] and qedge.type is not None:
