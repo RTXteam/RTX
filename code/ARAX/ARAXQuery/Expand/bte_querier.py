@@ -45,6 +45,7 @@ class BTEQuerier:
                                                      input_id=self.__get_curie_prefix(curie),
                                                      values=self.__get_curie_local_id(curie),
                                                      loop=loop)
+                    self.response.debug(f"Sending query to BTE: {curie}-->{output_qnode.type}")
                     seqd.query()
                     reasoner_std_response = seqd.to_reasoner_std()
                 except:
