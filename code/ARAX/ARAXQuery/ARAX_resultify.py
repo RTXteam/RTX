@@ -250,14 +250,11 @@ def _make_result_from_node_set(dict_kg: KnowledgeGraph,
                                qg: QueryGraph,
                                ignore_edge_direction: bool) -> Result:
     node_bindings = []
-    result_graph_node_ids = set()
     for qnode_id, node_ids_for_this_qnode_id in result_node_ids_by_qnode_id.items():
         for node_id in node_ids_for_this_qnode_id:
             node_bindings.append(NodeBinding(qg_id=qnode_id, kg_id=node_id))
-            result_graph_node_ids.add(node_id)
 
     edge_bindings = []
-    result_graph_edge_ids = set()
     for qedge_id, kg_edge_ids_for_this_qedge_id in kg_edge_ids_by_qedge_id.items():
         qedge = next(qedge for qedge in qg.edges if qedge.id == qedge_id)
         for edge_id in kg_edge_ids_for_this_qedge_id:
@@ -269,13 +266,9 @@ def _make_result_from_node_set(dict_kg: KnowledgeGraph,
             edge_belongs_in_result = (edge_fits_in_same_direction or edge_fits_in_opposite_direction) if ignore_edge_direction else edge_fits_in_same_direction
             if edge_belongs_in_result:
                 edge_bindings.append(EdgeBinding(qg_id=qedge_id, kg_id=edge.id))
-                result_graph_edge_ids.add(edge_id)
 
-    result_graph = KnowledgeGraph(nodes=[dict_kg.nodes.get(node_id) for node_id in result_graph_node_ids],
-                                  edges=[dict_kg.edges.get(edge_id) for edge_id in result_graph_edge_ids])
     result = Result(node_bindings=node_bindings,
-                    edge_bindings=edge_bindings,
-                    result_graph=result_graph)   #### FIXME: result_graph is deprecated and should no longer be used except for testing
+                    edge_bindings=edge_bindings)
     return result
 
 
@@ -628,7 +621,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                         node_ids_for_subgraph_by_qnode_id[qg_node_id].remove(kg_node_id)
         result = _make_result_from_node_set(dict_kg, node_ids_for_subgraph_by_qnode_id, kg_edge_ids_by_qedge_id, qg, ignore_edge_direction)
         # make sure that this set of nodes covers the QG
-        qedge_ids_in_subgraph = {qedge_id for kg_edge in cast(KnowledgeGraph, result.result_graph).edges for qedge_id in cast(Iterable[str], kg_edge.qedge_ids) if kg_edge.qedge_ids}
+        qedge_ids_in_subgraph = {edge_binding.qg_id for edge_binding in cast(Iterable[EdgeBinding], result.edge_bindings)}
         if len(qedge_ids_set - qedge_ids_in_subgraph) > 0:
             continue
         essence_kg_node_id_set = node_ids_for_subgraph_by_qnode_id.get(essence_qnode_id, set())

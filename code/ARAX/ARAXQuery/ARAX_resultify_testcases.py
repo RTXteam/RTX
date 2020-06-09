@@ -944,10 +944,11 @@ class TestARAXResultify(unittest.TestCase):
         assert response.status == 'OK'
         assert len(message.results) == 1
         result = message.results[0]
-        resgraph = result.result_graph
         count_drug_prot = 0
         count_disease_prot = 0
-        for edge in resgraph.edges:
+        kg_edges_dict = {edge.id: edge for edge in message.knowledge_graph.edges}
+        result_edges = [kg_edges_dict.get(edge_binding.kg_id) for edge_binding in result]
+        for edge in result_edges:
             if edge.target_id.startswith("CHEMBL.") and edge.source_id.startswith("UniProtKB:"):
                 count_drug_prot += 1
             if edge.target_id.startswith("DOID:") and edge.source_id.startswith("UniProtKB:"):
@@ -1041,12 +1042,7 @@ class TestARAXResultify(unittest.TestCase):
                 "resultify(debug=true)"]}}
         [response, message] = _do_arax_query(query)
         for result in message.results:
-            result_graph = result.result_graph
-            found_e01 = False
-            for edge in result_graph.edges:
-                if 'e1' in edge.qedge_ids:
-                    found_e01 = True
-                    continue
+            found_e01 = any(edge_binding.qg_id == 'e1' for edge_binding in result.edge_bindings)
             assert found_e01
 
     def test_issue731c(self):
@@ -1095,7 +1091,7 @@ class TestARAXResultify(unittest.TestCase):
 
         kg = KnowledgeGraph(nodes=kg_nodes, edges=kg_edges)
         results = ARAX_resultify._get_results_for_kg_by_qg(kg, qg)
-        indexes_results_with_single_edge = [index for index, result in enumerate(results) if len(result.result_graph.edges) == 1]
+        indexes_results_with_single_edge = [index for index, result in enumerate(results) if len(result.edge_bindings) == 1]
         assert len(indexes_results_with_single_edge) == 0
 
     def test_issue740(self):
