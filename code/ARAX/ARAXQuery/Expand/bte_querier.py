@@ -45,7 +45,7 @@ class BTEQuerier:
                                                      input_id=self.__get_curie_prefix(curie),
                                                      values=self.__get_curie_local_id(curie),
                                                      loop=loop)
-                    self.response.debug(f"Sending query to BTE: {curie}-->{output_qnode.type}")
+                    self.response.debug(f"Sending query to BTE: {curie}-{qedge.type if qedge.type else ''}->{output_qnode.type}")
                     seqd.query()
                     reasoner_std_response = seqd.to_reasoner_std()
                 except:
@@ -126,12 +126,6 @@ class BTEQuerier:
                                 f" {valid_bte_inputs_dict['node_types']}", error_code="InvalidInput")
             return None, None, None
 
-        # TODO: Actually load this info from BTE's meta data
-        # # Make sure node type pair is allowed
-        # if (input_qnode.type, output_qnode.type) not in valid_bte_inputs_dict['node_type_pairs']:
-        #     self.response.error(f"BTE cannot do {input_qnode.type}->{output_qnode.type} queries.", error_code="InvalidInput")
-        #     return None, None, None
-
         # Make sure our input node curies are in list form and use prefixes BTE prefers
         input_qnode.curie = input_qnode.curie if type(input_qnode.curie) is list else [input_qnode.curie]
         pre_processed_curies = [self.__convert_curie_to_bte_format(curie) for curie in input_qnode.curie]
@@ -141,14 +135,16 @@ class BTEQuerier:
 
     def __add_answers_to_kg(self, answer_kg, reasoner_std_response, input_qnode_id, output_qnode_id, qedge_id):
         kg_to_qg_ids_dict = self.__build_kg_to_qg_id_dict(reasoner_std_response['results'])
-        if reasoner_std_response['knowledge_graph']['edges']:  # Note: BTE response currently includes some nodes even when no edges found
+        remapped_node_ids = dict()
+        if reasoner_std_response['knowledge_graph']['edges']:
             for node in reasoner_std_response['knowledge_graph']['nodes']:
                 swagger_node = Node()
-                swagger_node.id = node.get('id')
+                original_node_id = node.get('id')
                 swagger_node.name = node.get('name')
                 swagger_node.type = self.__convert_string_to_snake_case(node.get('type'))
+
                 # Map the returned BTE qg_ids back to the original qnode_ids in our query graph
-                bte_qg_id = kg_to_qg_ids_dict['nodes'].get(swagger_node.id)
+                bte_qg_id = kg_to_qg_ids_dict['nodes'].get(original_node_id)
                 if bte_qg_id == "n0":
                     qnode_id = input_qnode_id
                 elif bte_qg_id == "n1":
@@ -156,13 +152,22 @@ class BTEQuerier:
                 else:
                     self.response.error("Could not map BTE qg_id to ARAX qnode_id", error_code="UnknownQGID")
                     return answer_kg
+
+                # Find and use the preferred equivalent identifier for this node
+                if original_node_id in remapped_node_ids:
+                    swagger_node.id = remapped_node_ids.get(original_node_id)
+                else:
+                    swagger_node.id = self.__get_preferred_equivalent_identifier(node)
+                    remapped_node_ids[original_node_id] = swagger_node.id
+
                 self.__add_node_to_kg(answer_kg, swagger_node, qnode_id)
+
             for edge in reasoner_std_response['knowledge_graph']['edges']:
                 swagger_edge = Edge()
                 swagger_edge.id = edge.get("id")
                 swagger_edge.type = edge.get('type')
-                swagger_edge.source_id = edge.get('source_id')
-                swagger_edge.target_id = edge.get('target_id')
+                swagger_edge.source_id = remapped_node_ids.get(edge.get('source_id'))
+                swagger_edge.target_id = remapped_node_ids.get(edge.get('target_id'))
                 swagger_edge.is_defined_by = "BTE"
                 swagger_edge.provided_by = edge.get('edge_source')
                 # Map the returned BTE qg_id back to the original qedge_id in our query graph
@@ -173,7 +178,38 @@ class BTEQuerier:
                 self.__add_edge_to_kg(answer_kg, swagger_edge, qedge_id)
         return answer_kg
 
-    def __create_edge_to_nodes_map(self, answer_kg, input_qnode_id, output_qnode_id):
+    def __get_preferred_equivalent_identifier(self, bte_node):
+        # Prefixes in order of preference for each output node type
+        preferred_node_prefixes_dict = {'ChemicalSubstance': ['CHEMBL.COMPOUND', 'CHEBI', 'UMLS'],
+                                        'Protein': ['UNIPROTKB', 'PR', 'UMLS'],
+                                        'Gene': ['NCBIGENE', 'ENSEMBL', 'HGNC', 'GO'],
+                                        'Disease': ['DOID', 'MONDO', 'OMIM'],
+                                        'PhenotypicFeature': ['HP', 'OMIM', 'UMLS'],
+                                        'AnatomicalEntity': ['UBERON', 'FMA', 'CL', 'UMLS'],
+                                        'Pathway': ['REACTOME'],
+                                        'BiologicalProcess': ['GO', 'UMLS'],
+                                        'CellularComponent': ['GO']}
+
+        preferred_prefixes_for_this_node_type = preferred_node_prefixes_dict.get(bte_node.get('type'), [])
+        equivalent_prefixes = {prefix.upper(): local_ids for prefix, local_ids in bte_node.get('equivalent_identifiers').items()}
+        prefix_case_map = {prefix.upper(): prefix for prefix in bte_node.get('equivalent_identifiers')}
+
+        # Use the equivalent identifier with a prefix earliest in our list of preferred prefixes if possible
+        for prefix in preferred_prefixes_for_this_node_type:
+            if prefix in equivalent_prefixes:
+                return prefix_case_map.get(prefix) + ':' + equivalent_prefixes[prefix][0]
+
+        # Otherwise, just use one with a prefix other than 'name' (which is a sort of pseudo prefix BTE uses internally)
+        non_name_prefixes = [prefix for prefix in equivalent_prefixes if prefix != 'NAME']
+        if non_name_prefixes:
+            prefix = non_name_prefixes[0]
+            return prefix_case_map.get(prefix) + ':' + equivalent_prefixes[prefix][0]
+        else:
+            self.response.warning(f"BTE returned a node with no identifier other than {bte_node.get('id')}")
+            return bte_node.get('id')
+
+    @staticmethod
+    def __create_edge_to_nodes_map(answer_kg, input_qnode_id, output_qnode_id):
         edge_to_nodes_map = dict()
         for qedge_id, edges in answer_kg['edges'].items():
             for edge_key, edge in edges.items():
@@ -181,25 +217,27 @@ class BTEQuerier:
                 edge_to_nodes_map[edge.id] = {input_qnode_id: edge.source_id, output_qnode_id: edge.target_id}
         return edge_to_nodes_map
 
-    def __get_valid_bte_inputs_dict(self):
+    @staticmethod
+    def __get_valid_bte_inputs_dict():
         # TODO: Load these using the soon to be built method in ARAX/KnowledgeSources (then will be regularly updated)
         node_types = {'ChemicalSubstance', 'Transcript', 'AnatomicalEntity', 'Disease', 'GenomicEntity', 'Gene',
-                       'BiologicalProcess', 'Cell', 'SequenceVariant', 'MolecularActivity', 'PhenotypicFeature',
-                       'Protein', 'CellularComponent', 'Pathway'}
+                      'BiologicalProcess', 'Cell', 'SequenceVariant', 'MolecularActivity', 'PhenotypicFeature',
+                      'Protein', 'CellularComponent', 'Pathway'}
         curie_prefixes = {'ENSEMBL', 'CHEBI', 'HP', 'DRUGBANK', 'MOP', 'MONDO', 'GO', 'HGNC', 'CL', 'DOID', 'MESH',
-                           'OMIM', 'SO', 'SYMBOL', 'Reactome', 'UBERON', 'UNIPROTKB', 'PR', 'NCBIGene', 'UMLS',
-                           'CHEMBL.COMPOUND', 'MGI', 'DBSNP', 'WIKIPATHWAYS', 'MP'}
+                          'OMIM', 'SO', 'SYMBOL', 'Reactome', 'UBERON', 'UNIPROTKB', 'PR', 'NCBIGene', 'UMLS',
+                          'CHEMBL.COMPOUND', 'MGI', 'DBSNP', 'WIKIPATHWAYS', 'MP'}
         predicates = {'disrupts', 'coexists_with', 'caused_by', 'subclass_of', 'affected_by', 'manifested_by',
-                       'physically_interacts_with', 'prevented_by', 'has_part', 'negatively_regulates',
-                       'functional_association', 'precedes', 'homologous_to', 'negatively_regulated_by',
-                       'positively_regulated_by', 'has_subclass', 'contraindication', 'located_in', 'prevents',
-                       'disrupted_by', 'preceded_by', 'treats', 'produces', 'treated_by', 'derives_from',
-                       'gene_to_transcript_relationship', 'predisposes', 'affects', 'metabolize', 'has_gene_product',
-                       'produced_by', 'derives_info', 'related_to', 'causes', 'contraindicated_by', 'part_of',
-                       'metabolic_processing_affected_by', 'positively_regulates', 'manifestation_of'}
+                      'physically_interacts_with', 'prevented_by', 'has_part', 'negatively_regulates',
+                      'functional_association', 'precedes', 'homologous_to', 'negatively_regulated_by',
+                      'positively_regulated_by', 'has_subclass', 'contraindication', 'located_in', 'prevents',
+                      'disrupted_by', 'preceded_by', 'treats', 'produces', 'treated_by', 'derives_from',
+                      'gene_to_transcript_relationship', 'predisposes', 'affects', 'metabolize', 'has_gene_product',
+                      'produced_by', 'derives_info', 'related_to', 'causes', 'contraindicated_by', 'part_of',
+                      'metabolic_processing_affected_by', 'positively_regulates', 'manifestation_of'}
         return {'node_types': node_types, 'curie_prefixes': curie_prefixes, 'predicates': predicates}
 
-    def __get_counts_by_qg_id(self, knowledge_graph):
+    @staticmethod
+    def __get_counts_by_qg_id(knowledge_graph):
         counts_by_qg_id = dict()
         for qnode_id, nodes_dict in knowledge_graph['nodes'].items():
             counts_by_qg_id[qnode_id] = len(nodes_dict)
@@ -207,7 +245,8 @@ class BTEQuerier:
             counts_by_qg_id[qedge_id] = len(edges_dict)
         return counts_by_qg_id
 
-    def __build_kg_to_qg_id_dict(self, results):
+    @staticmethod
+    def __build_kg_to_qg_id_dict(results):
         kg_to_qg_ids = {'nodes': dict(), 'edges': dict()}
         for node_binding in results['node_bindings']:
             node_id = node_binding['kg_id']
@@ -220,7 +259,8 @@ class BTEQuerier:
                 kg_to_qg_ids['edges'][kg_id] = qedge_ids
         return kg_to_qg_ids
 
-    def __convert_string_to_pascal_case(self, input_string):
+    @staticmethod
+    def __convert_string_to_pascal_case(input_string):
         # Converts a string like 'chemical_substance' or 'chemicalSubstance' to 'ChemicalSubstance'
         if not input_string:
             return ""
@@ -232,7 +272,8 @@ class BTEQuerier:
         else:
             return input_string.capitalize()
 
-    def __convert_string_to_snake_case(self, input_string):
+    @staticmethod
+    def __convert_string_to_snake_case(input_string):
         # Converts a string like 'ChemicalSubstance' or 'chemicalSubstance' to 'chemical_substance'
         if len(input_string) > 1:
             snake_string = input_string[0].lower()
@@ -251,18 +292,22 @@ class BTEQuerier:
             prefix = "UMLS"
         return prefix + ':' + local_id
 
-    def __get_curie_prefix(self, curie):
+    @staticmethod
+    def __get_curie_prefix(curie):
         return curie.split(':')[0]
 
-    def __get_curie_local_id(self, curie):
+    @staticmethod
+    def __get_curie_local_id(curie):
         return curie.split(':')[-1]  # Note: Taking last item gets around "PR:PR:000001" situation
 
-    def __add_node_to_kg(self, kg, swagger_node, qnode_id):
+    @staticmethod
+    def __add_node_to_kg(kg, swagger_node, qnode_id):
         if qnode_id not in kg['nodes']:
             kg['nodes'][qnode_id] = dict()
         kg['nodes'][qnode_id][swagger_node.id] = swagger_node
 
-    def __add_edge_to_kg(self, kg, swagger_edge, qedge_id):
+    @staticmethod
+    def __add_edge_to_kg(kg, swagger_edge, qedge_id):
         if qedge_id not in kg['edges']:
             kg['edges'][qedge_id] = dict()
         kg['edges'][qedge_id][swagger_edge.id] = swagger_edge

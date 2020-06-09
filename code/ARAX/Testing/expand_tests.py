@@ -546,8 +546,8 @@ def simple_bte_acetaminophen_query():
         "create_message",
         "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",
         "add_qnode(id=n01, type=protein)",
-        "add_qedge(id=e00, source_id=n01, target_id=n00)",
-        "expand(edge_id=e00, kp=BTE)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01)",
+        "expand(edge_id=e00, kp=BTE, enforce_directionality=true)",
         "return(message=true, store=false)",
     ]
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
@@ -573,7 +573,7 @@ def simple_bte_cdk2_query():
         "create_message",
         "add_qnode(id=n00, curie=NCBIGene:1017)",
         "add_qnode(id=n01, type=chemical_substance)",
-        "add_qedge(id=e00, source_id=n01, target_id=n00)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01)",
         "expand(edge_id=e00, kp=BTE)",
         "return(message=true, store=false)",
     ]
