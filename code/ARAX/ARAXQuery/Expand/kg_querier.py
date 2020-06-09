@@ -103,7 +103,7 @@ class KGQuerier:
 
         for qnode in query_nodes:
             if qnode.curie and (qnode.id not in qnodes_using_curies_from_prior_step):
-                curies_to_use_synonyms_for = qnode.curie if type(qnode.curie) is list else [qnode.curie]
+                curies_to_use_synonyms_for = eu.convert_string_or_list_to_list(qnode.curie)
                 synonyms = []
                 for curie in curies_to_use_synonyms_for:
                     original_curie = curie
@@ -134,8 +134,8 @@ class KGQuerier:
             try:
                 # Build the match clause
                 edge = self.query_graph.edges[0]
-                source_node = self.__get_query_node(edge.source_id)
-                target_node = self.__get_query_node(edge.target_id)
+                source_node = eu.get_query_node(self.query_graph, edge.source_id)
+                target_node = eu.get_query_node(self.query_graph, edge.target_id)
                 edge_cypher = self.__get_cypher_for_query_edge(edge, enforce_directionality)
                 source_node_cypher = self.__get_cypher_for_query_node(source_node)
                 target_node_cypher = self.__get_cypher_for_query_node(target_node)
@@ -304,7 +304,7 @@ class KGQuerier:
         swagger_node.node_attributes = []
 
         node_category = neo4j_node.get('category_label')
-        swagger_node.type = node_category if type(node_category) is list else [node_category]
+        swagger_node.type = eu.convert_string_or_list_to_list(node_category)
 
         # Fill out the 'symbol' property (only really relevant for nodes from UniProtKB)
         if swagger_node.symbol is None and swagger_node.id.lower().startswith("uniprot"):
@@ -329,7 +329,7 @@ class KGQuerier:
         swagger_node.node_attributes = []
 
         node_category = neo4j_node.get('category')
-        swagger_node.type = node_category if type(node_category) is list else [node_category]
+        swagger_node.type = eu.convert_string_or_list_to_list(node_category)
 
         return swagger_node
 
@@ -424,12 +424,6 @@ class KGQuerier:
         if swagger_edge.target_id == answer_curie:
             swagger_edge.target_id = starting_curie
         return swagger_edge
-
-    def __get_query_node(self, qnode_id):
-        for node in self.query_graph.nodes:
-            if node.id == qnode_id:
-                return node
-        return None
 
     def __get_cypher_for_query_node(self, node):
         node_type_string = f":{node.type}" if node.type else ""

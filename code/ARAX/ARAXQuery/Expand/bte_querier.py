@@ -128,7 +128,7 @@ class BTEQuerier:
             return None, None, None
 
         # Make sure our input node curies are in list form and use prefixes BTE prefers
-        input_qnode.curie = input_qnode.curie if type(input_qnode.curie) is list else [input_qnode.curie]
+        input_qnode.curie = eu.convert_string_or_list_to_list(input_qnode.curie)
         pre_processed_curies = [self.__convert_curie_to_bte_format(curie) for curie in input_qnode.curie]
         input_qnode.curie = pre_processed_curies
 
@@ -234,7 +234,7 @@ class BTEQuerier:
             qnode_id = node_binding['qg_id']
             kg_to_qg_ids['nodes'][node_id] = qnode_id
         for edge_binding in results['edge_bindings']:
-            edge_ids = edge_binding['kg_id'] if type(edge_binding['kg_id']) is list else [edge_binding['kg_id']]
+            edge_ids = eu.convert_string_or_list_to_list(edge_binding['kg_id'])
             qedge_ids = edge_binding['qg_id']
             for kg_id in edge_ids:
                 kg_to_qg_ids['edges'][kg_id] = qedge_ids
