@@ -9,7 +9,8 @@ from biothings_explorer.user_query_dispatcher import SingleEdgeQueryDispatcher
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
-from swagger_server.models.edge_attribute import EdgeAttribute
+
+import Expand.expand_utilities as eu
 
 
 class BTEQuerier:
@@ -35,15 +36,15 @@ class BTEQuerier:
         # Send this single-edge query to BTE, once per input curie (adding findings to our answer KG as we go)
         accepted_curies = set()
         for curie in input_qnode.curie:
-            if self.__get_curie_prefix(curie) in valid_bte_inputs_dict['curie_prefixes']:
+            if eu.get_curie_prefix(curie) in valid_bte_inputs_dict['curie_prefixes']:
                 accepted_curies.add(curie)
                 try:
                     loop = asyncio.new_event_loop()
                     seqd = SingleEdgeQueryDispatcher(input_cls=input_qnode.type,
                                                      output_cls=output_qnode.type,
                                                      pred=qedge.type,
-                                                     input_id=self.__get_curie_prefix(curie),
-                                                     values=self.__get_curie_local_id(curie),
+                                                     input_id=eu.get_curie_prefix(curie),
+                                                     values=eu.get_curie_local_id(curie),
                                                      loop=loop)
                     self.response.debug(f"Sending query to BTE: {curie}-{qedge.type if qedge.type else ''}->{output_qnode.type}")
                     seqd.query()
@@ -60,7 +61,7 @@ class BTEQuerier:
         # Report our findings
         if answer_kg['edges']:
             edge_to_nodes_map = self.__create_edge_to_nodes_map(answer_kg, input_qnode.id, output_qnode.id)
-            counts_by_qg_id = self.__get_counts_by_qg_id(answer_kg)
+            counts_by_qg_id = eu.get_counts_by_qg_id(answer_kg)
             num_results_string = ", ".join([f"{qg_id}: {count}" for qg_id, count in sorted(counts_by_qg_id.items())])
             self.response.info(f"Query for edge {qedge.id} returned results ({num_results_string})")
         elif self.response.data['parameters']['continue_if_no_results']:
@@ -113,8 +114,8 @@ class BTEQuerier:
             return None, None, None
 
         # Convert node types to preferred format and check if they're allowed
-        input_qnode.type = self.__convert_string_to_pascal_case(input_qnode.type)
-        output_qnode.type = self.__convert_string_to_pascal_case(output_qnode.type)
+        input_qnode.type = eu.convert_string_to_pascal_case(input_qnode.type)
+        output_qnode.type = eu.convert_string_to_pascal_case(output_qnode.type)
         qnodes_missing_type = [qnode.id for qnode in [input_qnode, output_qnode] if not qnode.type]
         if qnodes_missing_type:
             self.response.error(f"BTE requires every query node to have a type. QNode(s) missing a type: "
@@ -141,7 +142,7 @@ class BTEQuerier:
                 swagger_node = Node()
                 original_node_id = node.get('id')
                 swagger_node.name = node.get('name')
-                swagger_node.type = self.__convert_string_to_snake_case(node.get('type'))
+                swagger_node.type = eu.convert_string_to_snake_case(node.get('type'))
 
                 # Map the returned BTE qg_ids back to the original qnode_ids in our query graph
                 bte_qg_id = kg_to_qg_ids_dict['nodes'].get(original_node_id)
@@ -160,7 +161,7 @@ class BTEQuerier:
                     swagger_node.id = self.__get_preferred_equivalent_identifier(node)
                     remapped_node_ids[original_node_id] = swagger_node.id
 
-                self.__add_node_to_kg(answer_kg, swagger_node, qnode_id)
+                eu.add_node_to_kg(answer_kg, swagger_node, qnode_id)
 
             for edge in reasoner_std_response['knowledge_graph']['edges']:
                 swagger_edge = Edge()
@@ -175,22 +176,11 @@ class BTEQuerier:
                 if bte_qg_id != "e1":
                     self.response.error("Could not map BTE qg_id to ARAX qedge_id", error_code="UnknownQGID")
                     return answer_kg
-                self.__add_edge_to_kg(answer_kg, swagger_edge, qedge_id)
+                eu.add_edge_to_kg(answer_kg, swagger_edge, qedge_id)
         return answer_kg
 
     def __get_preferred_equivalent_identifier(self, bte_node):
-        # Prefixes in order of preference for each output node type
-        preferred_node_prefixes_dict = {'ChemicalSubstance': ['CHEMBL.COMPOUND', 'CHEBI', 'UMLS'],
-                                        'Protein': ['UNIPROTKB', 'PR', 'UMLS'],
-                                        'Gene': ['NCBIGENE', 'ENSEMBL', 'HGNC', 'GO'],
-                                        'Disease': ['DOID', 'MONDO', 'OMIM'],
-                                        'PhenotypicFeature': ['HP', 'OMIM', 'UMLS'],
-                                        'AnatomicalEntity': ['UBERON', 'FMA', 'CL', 'UMLS'],
-                                        'Pathway': ['REACTOME'],
-                                        'BiologicalProcess': ['GO', 'UMLS'],
-                                        'CellularComponent': ['GO']}
-
-        preferred_prefixes_for_this_node_type = preferred_node_prefixes_dict.get(bte_node.get('type'), [])
+        preferred_prefixes_for_this_node_type = eu.get_preferred_prefix_for_node_type(bte_node.get('type'))
         equivalent_prefixes = {prefix.upper(): local_ids for prefix, local_ids in bte_node.get('equivalent_identifiers').items()}
         prefix_case_map = {prefix.upper(): prefix for prefix in bte_node.get('equivalent_identifiers')}
 
@@ -199,7 +189,7 @@ class BTEQuerier:
             if prefix in equivalent_prefixes:
                 return prefix_case_map.get(prefix) + ':' + equivalent_prefixes[prefix][0]
 
-        # Otherwise, just use one with a prefix other than 'name' (which is a sort of pseudo prefix BTE uses internally)
+        # Otherwise, just try to use one with a prefix other than 'name' (a sort of pseudo prefix BTE uses internally)
         non_name_prefixes = [prefix for prefix in equivalent_prefixes if prefix != 'NAME']
         if non_name_prefixes:
             prefix = non_name_prefixes[0]
@@ -237,15 +227,6 @@ class BTEQuerier:
         return {'node_types': node_types, 'curie_prefixes': curie_prefixes, 'predicates': predicates}
 
     @staticmethod
-    def __get_counts_by_qg_id(knowledge_graph):
-        counts_by_qg_id = dict()
-        for qnode_id, nodes_dict in knowledge_graph['nodes'].items():
-            counts_by_qg_id[qnode_id] = len(nodes_dict)
-        for qedge_id, edges_dict in knowledge_graph['edges'].items():
-            counts_by_qg_id[qedge_id] = len(edges_dict)
-        return counts_by_qg_id
-
-    @staticmethod
     def __build_kg_to_qg_id_dict(results):
         kg_to_qg_ids = {'nodes': dict(), 'edges': dict()}
         for node_binding in results['node_bindings']:
@@ -260,54 +241,9 @@ class BTEQuerier:
         return kg_to_qg_ids
 
     @staticmethod
-    def __convert_string_to_pascal_case(input_string):
-        # Converts a string like 'chemical_substance' or 'chemicalSubstance' to 'ChemicalSubstance'
-        if not input_string:
-            return ""
-        elif "_" in input_string:
-            words = input_string.split('_')
-            return "".join([word.capitalize() for word in words])
-        elif len(input_string) > 1:
-            return input_string[0].upper() + input_string[1:]
-        else:
-            return input_string.capitalize()
-
-    @staticmethod
-    def __convert_string_to_snake_case(input_string):
-        # Converts a string like 'ChemicalSubstance' or 'chemicalSubstance' to 'chemical_substance'
-        if len(input_string) > 1:
-            snake_string = input_string[0].lower()
-            for letter in input_string[1:]:
-                if letter.isupper():
-                    snake_string += "_"
-                snake_string += letter.lower()
-            return snake_string
-        else:
-            return input_string.lower()
-
-    def __convert_curie_to_bte_format(self, curie):
-        prefix = self.__get_curie_prefix(curie)
-        local_id = self.__get_curie_local_id(curie)
+    def __convert_curie_to_bte_format(curie):
+        prefix = eu.get_curie_prefix(curie)
+        local_id = eu.get_curie_local_id(curie)
         if prefix == "CUI":
             prefix = "UMLS"
         return prefix + ':' + local_id
-
-    @staticmethod
-    def __get_curie_prefix(curie):
-        return curie.split(':')[0]
-
-    @staticmethod
-    def __get_curie_local_id(curie):
-        return curie.split(':')[-1]  # Note: Taking last item gets around "PR:PR:000001" situation
-
-    @staticmethod
-    def __add_node_to_kg(kg, swagger_node, qnode_id):
-        if qnode_id not in kg['nodes']:
-            kg['nodes'][qnode_id] = dict()
-        kg['nodes'][qnode_id][swagger_node.id] = swagger_node
-
-    @staticmethod
-    def __add_edge_to_kg(kg, swagger_edge, qedge_id):
-        if qedge_id not in kg['edges']:
-            kg['edges'][qedge_id] = dict()
-        kg['edges'][qedge_id][swagger_edge.id] = swagger_edge

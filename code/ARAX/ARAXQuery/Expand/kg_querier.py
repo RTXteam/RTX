@@ -5,6 +5,7 @@ import traceback
 import ast
 
 from neo4j import GraphDatabase
+import Expand.expand_utilities as eu
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering/")
 from KGNodeIndex import KGNodeIndex
@@ -87,9 +88,9 @@ class KGQuerier:
                 if qnode.id in synonym_usages_dict and synonym_handling == "map_back":
                     # Only add the original curie (discard synonym nodes)
                     if swagger_node.id in synonym_usages_dict[qnode.id].keys():
-                        self.__add_node_to_kg(swagger_node, qnode.id)
+                        eu.add_node_to_kg(self.final_kg, swagger_node, qnode.id)
                 else:
-                    self.__add_node_to_kg(swagger_node, qnode.id)
+                    eu.add_node_to_kg(self.final_kg, swagger_node, qnode.id)
 
         return self.final_kg
 
@@ -204,9 +205,9 @@ class KGQuerier:
                     # Handle synonyms as appropriate (only keep starting curie, discard synonym nodes)
                     if synonym_handling == 'map_back' and column_qnode_id in synonym_usages_dict:
                         if swagger_node.id in synonym_usages_dict[column_qnode_id].keys():
-                            self.__add_node_to_kg(swagger_node, column_qnode_id)
+                            eu.add_node_to_kg(self.final_kg, swagger_node, column_qnode_id)
                     else:
-                        self.__add_node_to_kg(swagger_node, column_qnode_id)
+                        eu.add_node_to_kg(self.final_kg, swagger_node, column_qnode_id)
             # Load answer edges into our knowledge graph
             elif column_name.startswith('edges'):  # Example column name: 'edges_e01'
                 column_qedge_id = column_name.replace("edges_", "", 1)
@@ -252,7 +253,7 @@ class KGQuerier:
                     self.edge_to_nodes_map[swagger_edge.id][qnode_id_2] = starting_curie_for_qnode_id_2 if starting_curie_for_qnode_id_2 else curie_fulfilling_qnode_id_2
 
                     # Finally add the current edge to our answer knowledge graph
-                    self.__add_edge_to_kg(swagger_edge, column_qedge_id)
+                    eu.add_edge_to_kg(self.final_kg, swagger_edge, column_qedge_id)
 
         self.__do_final_post_processing(synonym_handling, synonym_usages_dict, kp)
 
@@ -267,7 +268,7 @@ class KGQuerier:
                             cypher = f"match (n) where n.id='{original_curie}' return n limit 1"
                             original_node = self.__run_cypher_query(cypher, kp)[0].get('n')
                             swagger_node = self.__convert_neo4j_node_to_swagger_node(original_node, kp)
-                            self.__add_node_to_kg(swagger_node, qnode_id)
+                            eu.add_node_to_kg(self.final_kg, swagger_node, qnode_id)
 
             # Remove any self-edges  #TODO: Later probably allow a few types of self-edges
             edges_to_remove = []
@@ -451,16 +452,6 @@ class KGQuerier:
                 item = item.replace(unwanted_char, "")
             provided_by_list.append(item)
         return provided_by_list
-
-    def __add_node_to_kg(self, swagger_node, qnode_id):
-        if qnode_id not in self.final_kg['nodes']:
-            self.final_kg['nodes'][qnode_id] = dict()
-        self.final_kg['nodes'][qnode_id][swagger_node.id] = swagger_node
-
-    def __add_edge_to_kg(self, swagger_edge, qedge_id):
-        if qedge_id not in self.final_kg['edges']:
-            self.final_kg['edges'][qedge_id] = dict()
-        self.final_kg['edges'][qedge_id][swagger_edge.id] = swagger_edge
 
     def __create_edge_id(self, swagger_edge):
         return f"{swagger_edge.source_id}--{swagger_edge.type}--{swagger_edge.target_id}"
