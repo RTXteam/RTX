@@ -17,23 +17,32 @@ class BTEQuerier:
 
     def __init__(self, response_object):
         self.response = response_object
-        self.input_node_synonym_usages_dict = dict()
 
     def answer_one_hop_query(self, query_graph, qnodes_using_curies_from_prior_step):
         answer_kg = {'nodes': dict(), 'edges': dict()}
         edge_to_nodes_map = dict()
+        synonym_usages_dict = dict()
         enforce_directionality = self.response.data['parameters'].get('enforce_directionality')
         use_synonyms = self.response.data['parameters'].get('use_synonyms')
         synonym_handling = self.response.data['parameters'].get('synonym_handling')
-
-        # Format and validate input for BTE
         valid_bte_inputs_dict = self.__get_valid_bte_inputs_dict()
         if self.response.status != 'OK':
             return answer_kg, edge_to_nodes_map
+
+        # Validate our input to make sure it will work with BTE
         qedge, input_qnode, output_qnode = self.__validate_and_pre_process_input(query_graph=query_graph,
                                                                                  valid_bte_inputs_dict=valid_bte_inputs_dict,
-                                                                                 enforce_directionality=enforce_directionality,
-                                                                                 use_synonyms=use_synonyms)
+                                                                                 enforce_directionality=enforce_directionality)
+        if self.response.status != 'OK':
+            return answer_kg, edge_to_nodes_map
+
+        # Add synonyms to our input query node, if desired
+        if use_synonyms:
+            synonym_usages_dict = eu.add_curie_synonyms_to_query_nodes(qnodes=[input_qnode],
+                                                                       log=self.response,
+                                                                       override_type=False,
+                                                                       format_for_bte=True,
+                                                                       qnodes_using_curies_from_prior_step=qnodes_using_curies_from_prior_step)
         if self.response.status != 'OK':
             return answer_kg, edge_to_nodes_map
 
@@ -65,7 +74,7 @@ class BTEQuerier:
         # Report our findings and do any post-processing after ALL curies in the input qnode have been queried
         if answer_kg['edges']:
             if use_synonyms and synonym_handling == 'map_back':
-                self.__remove_synonyms_for_input_node(answer_kg, input_qnode, qedge)
+                self.__remove_synonyms_for_input_node(answer_kg, input_qnode, qedge, synonym_usages_dict)
                 self.__remove_redundant_edges(answer_kg, qedge.id)
             edge_to_nodes_map = self.__create_edge_to_nodes_map(answer_kg, input_qnode.id, output_qnode.id)
             counts_by_qg_id = eu.get_counts_by_qg_id(answer_kg)
@@ -84,7 +93,7 @@ class BTEQuerier:
 
         return answer_kg, edge_to_nodes_map
 
-    def __validate_and_pre_process_input(self, query_graph, valid_bte_inputs_dict, enforce_directionality, use_synonyms):
+    def __validate_and_pre_process_input(self, query_graph, valid_bte_inputs_dict, enforce_directionality):
         # Make sure we have a valid one-hop query graph
         if len(query_graph.edges) != 1 or len(query_graph.nodes) != 2:
             self.response.error(f"BTE can only accept one-hop query graphs (your QG has {len(query_graph.nodes)} "
@@ -136,14 +145,7 @@ class BTEQuerier:
 
         # Make sure our input node curies are in list form and use prefixes BTE prefers
         input_qnode.curie = eu.convert_string_or_list_to_list(input_qnode.curie)
-        if use_synonyms:
-            all_synonyms_for_input_qnode = []
-            for curie in input_qnode.curie:
-                synonyms_for_this_curie = [self.__convert_curie_to_bte_format(curie) for curie in eu.get_curie_synonyms(curie)]
-                self.input_node_synonym_usages_dict[self.__convert_curie_to_bte_format(curie)] = set(synonyms_for_this_curie)
-                all_synonyms_for_input_qnode += synonyms_for_this_curie
-            input_qnode.curie = list(set(all_synonyms_for_input_qnode))
-        input_qnode.curie = [self.__convert_curie_to_bte_format(curie) for curie in input_qnode.curie]
+        input_qnode.curie = [eu.convert_curie_to_bte_format(curie) for curie in input_qnode.curie]
 
         return qedge, input_qnode, output_qnode
 
@@ -199,10 +201,11 @@ class BTEQuerier:
                 eu.add_edge_to_kg(answer_kg, swagger_edge, qedge_id)
         return answer_kg
 
-    def __remove_synonyms_for_input_node(self, kg, input_qnode, qedge):
+    @staticmethod
+    def __remove_synonyms_for_input_node(kg, input_qnode, qedge, synonym_usages_dict):
         ids_of_input_nodes_in_kg = set(list(kg['nodes'][input_qnode.id].keys()))
 
-        for original_curie, synonyms_used in self.input_node_synonym_usages_dict.items():
+        for original_curie, synonyms_used in synonym_usages_dict[input_qnode.id].items():
             synonyms_used_set = set(synonyms_used).difference({original_curie})
             ids_of_synonym_nodes = synonyms_used_set.intersection(ids_of_input_nodes_in_kg)
 
@@ -282,15 +285,3 @@ class BTEQuerier:
             for kg_id in edge_ids:
                 kg_to_qg_ids['edges'][kg_id] = qedge_ids
         return kg_to_qg_ids
-
-    @staticmethod
-    def __convert_curie_to_bte_format(curie):
-        prefix = eu.get_curie_prefix(curie)
-        local_id = eu.get_curie_local_id(curie)
-        if prefix == "CUI":
-            prefix = "UMLS"
-        elif prefix == "REACT":
-            prefix = "Reactome"
-        elif prefix == "UniProtKB":
-            prefix = prefix.upper()
-        return prefix + ':' + local_id

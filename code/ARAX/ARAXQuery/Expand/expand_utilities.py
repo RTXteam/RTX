@@ -169,16 +169,75 @@ def convert_dict_kg_to_standard_kg(dict_kg):
     return standard_kg
 
 
-def get_curie_synonyms(curie, kg='KG2'):
+def convert_curie_to_kg2_format(curie):
+    prefix = get_curie_prefix(curie)
+    local_id = get_curie_local_id(curie)
+    if prefix == "UMLS":
+        prefix = "CUI"
+    elif prefix == "Reactome":
+        prefix = "REACT"
+    elif prefix == "UNIPROTKB":
+        prefix = "UniProtKB"
+    return prefix + ':' + local_id
+
+
+def convert_curie_to_bte_format(curie):
+    prefix = get_curie_prefix(curie)
+    local_id = get_curie_local_id(curie)
+    if prefix == "CUI":
+        prefix = "UMLS"
+    elif prefix == "REACT":
+        prefix = "Reactome"
+    elif prefix == "UniProtKB":
+        prefix = prefix.upper()
+    return prefix + ':' + local_id
+
+
+def get_curie_synonyms(curie, arax_kg='KG2'):
     curies = convert_string_or_list_to_list(curie)
 
     # Find whatever we can using KG2/KG1
     kgni = KGNodeIndex()
     equivalent_curies_using_arax_kg = set()
     for curie in curies:
-        equivalent_curies = kgni.get_equivalent_curies(curie=curie, kg_name=kg)
+        equivalent_curies = kgni.get_equivalent_curies(curie=convert_curie_to_kg2_format(curie), kg_name=arax_kg)
         equivalent_curies_using_arax_kg = equivalent_curies_using_arax_kg.union(set(equivalent_curies))
 
     # TODO: Use SRI team's node normalizer to find more synonyms
 
     return list(equivalent_curies_using_arax_kg)
+
+
+def add_curie_synonyms_to_query_nodes(qnodes, log, arax_kg='KG2', override_type=True, format_for_bte=False, qnodes_using_curies_from_prior_step=None):
+    log.debug("Looking for query nodes to use curie synonyms for")
+    if not qnodes_using_curies_from_prior_step:
+        qnodes_using_curies_from_prior_step = set()
+    synonym_usages_dict = dict()
+
+    for qnode in qnodes:
+        if qnode.curie and (qnode.id not in qnodes_using_curies_from_prior_step):
+            curies_to_use_synonyms_for = convert_string_or_list_to_list(qnode.curie)
+            synonyms = []
+            for curie in curies_to_use_synonyms_for:
+                original_curie = curie
+                equivalent_curies = get_curie_synonyms(curie=original_curie, arax_kg=arax_kg)
+                if format_for_bte:
+                    equivalent_curies = [convert_curie_to_bte_format(curie) for curie in equivalent_curies]
+                if len(equivalent_curies) > 1:
+                    synonyms += equivalent_curies
+                    if override_type:
+                        qnode.type = None  # Equivalent curie types may be different than the original, so we clear this
+                    if qnode.id not in synonym_usages_dict:
+                        synonym_usages_dict[qnode.id] = dict()
+                    synonym_usages_dict[qnode.id][original_curie] = equivalent_curies
+                elif len(equivalent_curies) <= 1:
+                    log.info(f"Could not find any equivalent curies for {original_curie}")
+                    synonyms += equivalent_curies
+
+            # Use our new synonyms list only if we actually found any synonyms
+            if synonyms != curies_to_use_synonyms_for:
+                log.info(f"Using equivalent curies for qnode {qnode.id} with curie "
+                         f"'{qnode.curie if len(qnode.curie) > 1 else qnode.curie[0]}': {synonyms}")
+                qnode.curie = synonyms
+
+    return synonym_usages_dict
