@@ -17,14 +17,15 @@ class BTEQuerier:
 
     def __init__(self, response_object):
         self.response = response_object
+        self.use_synonyms = response_object.data['parameters'].get('use_synonyms')
+        self.synonym_handling = response_object.data['parameters'].get('synonym_handling')
+        self.enforce_directionality = response_object.data['parameters'].get('enforce_directionality')
+        self.continue_if_no_results = response_object.data['parameters'].get('continue_if_no_results')
 
     def answer_one_hop_query(self, query_graph, qnodes_using_curies_from_prior_step):
         answer_kg = {'nodes': dict(), 'edges': dict()}
         edge_to_nodes_map = dict()
         synonym_usages_dict = dict()
-        enforce_directionality = self.response.data['parameters'].get('enforce_directionality')
-        use_synonyms = self.response.data['parameters'].get('use_synonyms')
-        synonym_handling = self.response.data['parameters'].get('synonym_handling')
         valid_bte_inputs_dict = self.__get_valid_bte_inputs_dict()
         if self.response.status != 'OK':
             return answer_kg, edge_to_nodes_map
@@ -32,12 +33,12 @@ class BTEQuerier:
         # Validate our input to make sure it will work with BTE
         qedge, input_qnode, output_qnode = self.__validate_and_pre_process_input(query_graph=query_graph,
                                                                                  valid_bte_inputs_dict=valid_bte_inputs_dict,
-                                                                                 enforce_directionality=enforce_directionality)
+                                                                                 enforce_directionality=self.enforce_directionality)
         if self.response.status != 'OK':
             return answer_kg, edge_to_nodes_map
 
         # Add synonyms to our input query node, if desired
-        if use_synonyms:
+        if self.use_synonyms:
             synonym_usages_dict = eu.add_curie_synonyms_to_query_nodes(qnodes=[input_qnode],
                                                                        log=self.response,
                                                                        override_type=False,
@@ -73,23 +74,14 @@ class BTEQuerier:
 
         # Report our findings and do any post-processing after ALL curies in the input qnode have been queried
         if answer_kg['edges']:
-            if use_synonyms and synonym_handling == 'map_back':
+            if self.use_synonyms and self.synonym_handling == 'map_back':
                 self.__remove_synonyms_for_input_node(answer_kg, input_qnode, qedge, synonym_usages_dict)
                 self.__remove_redundant_edges(answer_kg, qedge.id)
             edge_to_nodes_map = self.__create_edge_to_nodes_map(answer_kg, input_qnode.id, output_qnode.id)
-            counts_by_qg_id = eu.get_counts_by_qg_id(answer_kg)
-            num_results_string = ", ".join([f"{qg_id}: {count}" for qg_id, count in sorted(counts_by_qg_id.items())])
+            num_results_string = ", ".join([f"{qg_id}: {count}" for qg_id, count in sorted(eu.get_counts_by_qg_id(answer_kg).items())])
             self.response.info(f"Query for edge {qedge.id} returned results ({num_results_string})")
-        elif self.response.data['parameters']['continue_if_no_results']:
-            if not accepted_curies:
-                self.response.warning(f"BTE could not accept any of the input curies. Valid curie prefixes for BTE "
-                                      f"are: {valid_bte_inputs_dict['curie_prefixes']}")
-            self.response.warning(f"No paths were found in BTE satisfying this query graph")
         else:
-            if not accepted_curies:
-                self.response.error(f"BTE could not accept any of the input curies. Valid curie prefixes for BTE are: "
-                                    f"{valid_bte_inputs_dict['curie_prefixes']}", error_code="InvalidPrefix")
-            self.response.error(f"No paths were found in BTE satisfying this query graph", error_code="NoResults")
+            self.__log_proper_no_results_message(accepted_curies, self.continue_if_no_results, valid_bte_inputs_dict['curie_prefixes'])
 
         return answer_kg, edge_to_nodes_map
 
@@ -200,6 +192,18 @@ class BTEQuerier:
                     return answer_kg
                 eu.add_edge_to_kg(answer_kg, swagger_edge, qedge_id)
         return answer_kg
+
+    def __log_proper_no_results_message(self, accepted_curies, continue_if_no_results, valid_prefixes):
+        if continue_if_no_results:
+            if not accepted_curies:
+                self.response.warning(f"BTE could not accept any of the input curies. Valid curie prefixes for BTE are:"
+                                      f" {valid_prefixes}")
+            self.response.warning(f"No paths were found in BTE satisfying this query graph")
+        else:
+            if not accepted_curies:
+                self.response.error(f"BTE could not accept any of the input curies. Valid curie prefixes for BTE are: "
+                                    f"{valid_prefixes}", error_code="InvalidPrefix")
+            self.response.error(f"No paths were found in BTE satisfying this query graph", error_code="NoResults")
 
     @staticmethod
     def __remove_synonyms_for_input_node(kg, input_qnode, qedge, synonym_usages_dict):
