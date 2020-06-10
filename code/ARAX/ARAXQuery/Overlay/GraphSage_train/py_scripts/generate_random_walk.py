@@ -20,7 +20,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--Gjson", type=str, help="The path of G.json file")
 parser.add_argument("-l", "--walk_length", type=int, help="Random walk length", default=300)
 parser.add_argument("-r", "--number_of_walks", type=int, help="Number of random walks per node", default=15)
-parser.add_argument("-b", "--batch_size", type=int, help="Size of batch for each run", default=300000)
+parser.add_argument("-b", "--batch_size", type=int, help="Size of batch for each run", default=100000)
+parser.add_argument("-p", "--process", type=int, help="Number of processes to be used", default=-1)
 parser.add_argument("-o", "--output", type=str, help="The path of output folder", default="/graphsage_input")
 
 args = parser.parse_args()
@@ -63,7 +64,7 @@ if __name__ == "__main__":
         outpath = os.path.realpath(args.output)
 
     #create output directory
-	try:
+    try:
         os.mkdir(outpath)
     except:
         error_type, error, _ = sys.exc_info()
@@ -98,10 +99,15 @@ if __name__ == "__main__":
             print(f'Here is batch{i+1}')
             start = batch[i]
             end = batch[i+1]
-            with concurrent.futures.ProcessPoolExecutor(max_workers=100) as out_executor:
-                out_iters = [(node,args.number_of_walks,args.walk_length) for node in G_nodes[start:end]]
-                out_res = list(chain.from_iterable(out_executor.map(run_random_walks, out_iters)))
-            with open('data-walks.txt', "a") as fp:
+            if args.process == -1:
+                with concurrent.futures.ProcessPoolExecutor() as out_executor:
+                    out_iters = [(node, args.number_of_walks, args.walk_length) for node in G_nodes[start:end]]
+                    out_res = list(chain.from_iterable(out_executor.map(run_random_walks, out_iters)))
+            else:
+                with concurrent.futures.ProcessPoolExecutor(max_workers=args.process) as out_executor:
+                    out_iters = [(node, args.number_of_walks, args.walk_length) for node in G_nodes[start:end]]
+                    out_res = list(chain.from_iterable(out_executor.map(run_random_walks, out_iters)))
+            with open(outpath+'/data-walks.txt', "a") as fp:
                 if i==0:
                     fp.write("\n")
                     fp.write("\n".join([str(p[0]) + "\t" + str(p[1]) for p in out_res]))

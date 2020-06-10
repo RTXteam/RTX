@@ -19,6 +19,7 @@ parser.add_argument("--graph", type=str, help="The filename or path of the graph
 parser.add_argument("--node_class", type=str, help="The filename or path of the node class label file (.txt)", default=None)
 parser.add_argument("-s", "--seed", type=int, help="Random seed (default: 100)", default=100)
 parser.add_argument("-fd", "--feature_dim", type=int, help="The node feature dimension", default=50)
+parser.add_argument("-p", "--process", type=int, help="Number of processes to be used", default=-1)
 parser.add_argument("-vp", "--validation_percent", type=float, help="The percentage of validation data (default: 0.1)", default=0.1)
 parser.add_argument("-o", "--output", type=str, help="The path of output folder", default="/graphsage_input")
 
@@ -60,7 +61,7 @@ if __name__ == "__main__":
         outpath = os.path.realpath(args.output)
 
     #create output directory
-	try:
+    try:
         os.mkdir(outpath)
     except:
         error_type, error, _ = sys.exc_info()
@@ -125,17 +126,31 @@ if __name__ == "__main__":
             "multigraph": False
             }
 
-    with concurrent.futures.ProcessPoolExecutor() as out_executor:
-        out_iters = [(node,True) for node in range(len(nodes))]
-        out_res = list(chain.from_iterable(out_executor.map(initialize_node, out_iters)))
+    if args.process==-1:
+        with concurrent.futures.ProcessPoolExecutor() as out_executor:
+            out_iters = [(node,True) for node in range(len(nodes))]
+            out_res = list(chain.from_iterable(out_executor.map(initialize_node, out_iters)))
 
-    data['nodes'] = out_res
+        data['nodes'] = out_res
+    else:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=args.process) as out_executor:
+            out_iters = [(node, True) for node in range(len(nodes))]
+            out_res = list(chain.from_iterable(out_executor.map(initialize_node, out_iters)))
 
-    with concurrent.futures.ProcessPoolExecutor() as out_executor:
-        out_iters = [node for node in range(graph_data.shape[0])]
-        out_res = list(chain.from_iterable(out_executor.map(initialize_edge, out_iters)))
+        data['nodes'] = out_res
 
-    data['links'] = out_res
+    if args.process == -1:
+        with concurrent.futures.ProcessPoolExecutor() as out_executor:
+            out_iters = [node for node in range(graph_data.shape[0])]
+            out_res = list(chain.from_iterable(out_executor.map(initialize_edge, out_iters)))
+
+        data['links'] = out_res
+    else:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=args.process) as out_executor:
+            out_iters = [node for node in range(graph_data.shape[0])]
+            out_res = list(chain.from_iterable(out_executor.map(initialize_edge, out_iters)))
+
+        data['links'] = out_res
 
     #save graph
     with open(outpath+'/data-G.json','w') as f:
