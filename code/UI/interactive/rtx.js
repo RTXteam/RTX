@@ -113,6 +113,7 @@ function reset_vars() {
     document.getElementById("menunumresults").classList.remove("numnew");
     document.getElementById("menunumresults").classList.add("numold");
     summary_table_html = '';
+    summary_tsv = [];
     cyobj = [];
     cytodata = [];
     UIstate.nodedd = 1;
@@ -528,8 +529,38 @@ function render_message(respObj) {
 	cytodata[999] = 'dummy'; // this enables query graph editing
 
 
-    if ( respObj["table_column_names"] )
-        document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br><input type='button' class='questionBox button' name='action' title='Get tab-separated values of this table to paste into Excel etc' value='Copy Summary Table to clipboard (TSV)' onclick='copyTSVToClipboard(this);'><br><br></div>";
+    if (respObj["table_column_names"]) {
+	var div = document.createElement("div");
+	div.className = 'statushead';
+	div.appendChild(document.createTextNode("Summary"));
+        document.getElementById("summary_container").appendChild(div);
+
+	div = document.createElement("div");
+	div.className = 'status';
+	div.id = 'summarydiv';
+	div.appendChild(document.createElement("br"));
+
+	var button = document.createElement("input");
+	button.className = 'questionBox button';
+	button.type = 'button';
+	button.name = 'action';
+	button.title = 'Get tab-separated values of this table to paste into Excel etc';
+	button.value = 'Copy Summary Table to clipboard (TSV)';
+	button.setAttribute('onclick', 'copyTSVToClipboard(this);');
+        div.appendChild(button);
+
+        div.appendChild(document.createElement("br"));
+	div.appendChild(document.createElement("br"));
+
+	var table = document.createElement("table");
+	table.className = 'sumtab';
+	table.innerHTML = summary_table_html;
+        div.appendChild(table);
+
+	div.appendChild(document.createElement("br"));
+
+	document.getElementById("summary_container").appendChild(div);
+    }
     else
         document.getElementById("summary_container").innerHTML += "<h2>Summary not available for this query</h2>";
 
