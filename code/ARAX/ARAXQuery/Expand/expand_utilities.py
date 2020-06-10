@@ -7,14 +7,22 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI
 from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.q_node import QNode
 from swagger_server.models.q_edge import QEdge
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering/")
+from KGNodeIndex import KGNodeIndex
 
 
 def get_curie_prefix(curie):
-    return curie.split(':')[0]
+    if ':' in curie:
+        return curie.split(':')[0]
+    else:
+        return curie
 
 
 def get_curie_local_id(curie):
-    return curie.split(':')[-1]  # Note: Taking last item gets around "PR:PR:000001" situation
+    if ':' in curie:
+        return curie.split(':')[-1]  # Note: Taking last item gets around "PR:PR:000001" situation
+    else:
+        return curie
 
 
 def add_node_to_kg(kg, swagger_node, qnode_id):
@@ -94,18 +102,30 @@ def get_query_node(query_graph, qnode_id):
     return matching_nodes[0] if matching_nodes else None
 
 
-def get_preferred_prefix_for_node_type(node_type):
+def get_preferred_prefixes_for_node_type(node_type):
     # Curie prefixes in order of preference for different node types
-    preferred_node_prefixes_dict = {'chemical_substance': ['CHEMBL.COMPOUND', 'CHEBI', 'UMLS'],
-                                    'protein': ['UNIPROTKB', 'PR', 'UMLS'],
+    preferred_node_prefixes_dict = {'chemical_substance': ['CHEMBL.COMPOUND', 'CHEBI'],
+                                    'protein': ['UNIPROTKB', 'PR'],
                                     'gene': ['NCBIGENE', 'ENSEMBL', 'HGNC', 'GO'],
-                                    'disease': ['DOID', 'MONDO', 'OMIM'],
-                                    'phenotypic_feature': ['HP', 'OMIM', 'UMLS'],
-                                    'anatomical_entity': ['UBERON', 'FMA', 'CL', 'UMLS'],
-                                    'pathway': ['REACTOME'],
-                                    'biological_process': ['GO', 'UMLS'],
+                                    'disease': ['DOID', 'MONDO', 'OMIM', 'MESH'],
+                                    'phenotypic_feature': ['HP', 'OMIM'],
+                                    'anatomical_entity': ['UBERON', 'FMA', 'CL'],
+                                    'pathway': ['REACT', 'REACTOME'],
+                                    'biological_process': ['GO'],
                                     'cellular_component': ['GO']}
     return preferred_node_prefixes_dict.get(convert_string_to_snake_case(node_type), [])
+
+
+def get_best_equivalent_curie(equivalent_curies, node_type):
+    prefixes_in_order_of_preference = get_preferred_prefixes_for_node_type(node_type)
+    lowest_index = 10000
+    best_curie = equivalent_curies[0]
+    for curie in equivalent_curies:
+        uppercase_prefix = get_curie_prefix(curie).upper()
+        if uppercase_prefix in prefixes_in_order_of_preference:
+            if prefixes_in_order_of_preference.index(uppercase_prefix) < lowest_index:
+                best_curie = curie
+    return best_curie
 
 
 def convert_standard_kg_to_dict_kg(knowledge_graph):
@@ -143,3 +163,18 @@ def convert_dict_kg_to_standard_kg(dict_kg):
                 almost_standard_kg.edges[edge_key] = edge
     standard_kg = KnowledgeGraph(nodes=list(almost_standard_kg.nodes.values()), edges=list(almost_standard_kg.edges.values()))
     return standard_kg
+
+
+def get_curie_synonyms(curie, kg='KG2'):
+    curies = convert_string_or_list_to_list(curie)
+
+    # Find whatever we can using KG2/KG1
+    kgni = KGNodeIndex()
+    equivalent_curies_using_arax_kg = set()
+    for curie in curies:
+        equivalent_curies = kgni.get_equivalent_curies(curie=curie, kg_name=kg)
+        equivalent_curies_using_arax_kg = equivalent_curies_using_arax_kg.union(set(equivalent_curies))
+
+    # TODO: Use SRI team's node normalizer to find more synonyms
+
+    return list(equivalent_curies_using_arax_kg)

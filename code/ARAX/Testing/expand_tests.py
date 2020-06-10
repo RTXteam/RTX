@@ -547,10 +547,25 @@ def simple_bte_acetaminophen_query():
         "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",
         "add_qnode(id=n01, type=protein)",
         "add_qedge(id=e00, source_id=n00, target_id=n01)",
+        "expand(edge_id=e00, kp=BTE, synonym_handling=add_all)",
+        "return(message=true, store=false)",
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    assert len(kg_in_dict_form['nodes']['n00']) > 1
+
+
+def bte_parkinsons_query():
+    print(f"Testing BTE parkinson's query")
+    actions_list = [
+        "create_message",
+        "add_qnode(id=n00, curie=DOID:14330)",
+        "add_qnode(id=n01, type=protein)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01)",
         "expand(edge_id=e00, kp=BTE, enforce_directionality=true)",
         "return(message=true, store=false)",
     ]
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    assert len(kg_in_dict_form['nodes']['n00']) == 1
 
 
 def bte_query_using_list_of_curies():
@@ -578,6 +593,7 @@ def simple_bte_cdk2_query():
         "return(message=true, store=false)",
     ]
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    assert len(kg_in_dict_form['nodes']['n00']) == 1
 
 
 def test_two_hop_bte_query():
@@ -940,6 +956,7 @@ def main():
     parkinsons_example_enforcing_directionality()
     test_kg1_property_format()
     simple_bte_acetaminophen_query()
+    bte_parkinsons_query()
     bte_query_using_list_of_curies()
     simple_bte_cdk2_query()
     test_simple_bidirectional_query()

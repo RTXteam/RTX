@@ -17,11 +17,14 @@ class BTEQuerier:
 
     def __init__(self, response_object):
         self.response = response_object
+        self.input_node_synonym_usages_dict = dict()
 
     def answer_one_hop_query(self, query_graph, qnodes_using_curies_from_prior_step):
         answer_kg = {'nodes': dict(), 'edges': dict()}
         edge_to_nodes_map = dict()
         enforce_directionality = self.response.data['parameters'].get('enforce_directionality')
+        use_synonyms = self.response.data['parameters'].get('use_synonyms')
+        synonym_handling = self.response.data['parameters'].get('synonym_handling')
 
         # Format and validate input for BTE
         valid_bte_inputs_dict = self.__get_valid_bte_inputs_dict()
@@ -29,7 +32,8 @@ class BTEQuerier:
             return answer_kg, edge_to_nodes_map
         qedge, input_qnode, output_qnode = self.__validate_and_pre_process_input(query_graph=query_graph,
                                                                                  valid_bte_inputs_dict=valid_bte_inputs_dict,
-                                                                                 enforce_directionality=enforce_directionality)
+                                                                                 enforce_directionality=enforce_directionality,
+                                                                                 use_synonyms=use_synonyms)
         if self.response.status != 'OK':
             return answer_kg, edge_to_nodes_map
 
@@ -60,6 +64,8 @@ class BTEQuerier:
 
         # Report our findings
         if answer_kg['edges']:
+            if use_synonyms and synonym_handling == 'map_back':
+                self.__remove_duplicate_input_nodes(answer_kg, input_qnode, qedge)
             edge_to_nodes_map = self.__create_edge_to_nodes_map(answer_kg, input_qnode.id, output_qnode.id)
             counts_by_qg_id = eu.get_counts_by_qg_id(answer_kg)
             num_results_string = ", ".join([f"{qg_id}: {count}" for qg_id, count in sorted(counts_by_qg_id.items())])
@@ -77,7 +83,7 @@ class BTEQuerier:
 
         return answer_kg, edge_to_nodes_map
 
-    def __validate_and_pre_process_input(self, query_graph, valid_bte_inputs_dict, enforce_directionality):
+    def __validate_and_pre_process_input(self, query_graph, valid_bte_inputs_dict, enforce_directionality, use_synonyms):
         # Make sure we have a valid one-hop query graph
         if len(query_graph.edges) != 1 or len(query_graph.nodes) != 2:
             self.response.error(f"BTE can only accept one-hop query graphs (your QG has {len(query_graph.nodes)} "
@@ -129,23 +135,31 @@ class BTEQuerier:
 
         # Make sure our input node curies are in list form and use prefixes BTE prefers
         input_qnode.curie = eu.convert_string_or_list_to_list(input_qnode.curie)
-        pre_processed_curies = [self.__convert_curie_to_bte_format(curie) for curie in input_qnode.curie]
-        input_qnode.curie = pre_processed_curies
+        if use_synonyms:
+            all_synonyms_for_input_qnode = []
+            for curie in input_qnode.curie:
+                synonyms_for_this_curie = [self.__convert_curie_to_bte_format(curie) for curie in eu.get_curie_synonyms(curie)]
+                self.input_node_synonym_usages_dict[self.__convert_curie_to_bte_format(curie)] = set(synonyms_for_this_curie)
+                all_synonyms_for_input_qnode += synonyms_for_this_curie
+            input_qnode.curie = list(set(all_synonyms_for_input_qnode))
+        input_qnode.curie = [self.__convert_curie_to_bte_format(curie) for curie in input_qnode.curie]
 
         return qedge, input_qnode, output_qnode
 
     def __add_answers_to_kg(self, answer_kg, reasoner_std_response, input_qnode_id, output_qnode_id, qedge_id):
         kg_to_qg_ids_dict = self.__build_kg_to_qg_id_dict(reasoner_std_response['results'])
-        remapped_node_ids = dict()
         if reasoner_std_response['knowledge_graph']['edges']:
+            remapped_node_ids = dict()
+            self.response.debug(f"Got results back from BTE for this query "
+                                f"({len(reasoner_std_response['knowledge_graph']['edges'])} edges)")
             for node in reasoner_std_response['knowledge_graph']['nodes']:
                 swagger_node = Node()
-                original_node_id = node.get('id')
+                bte_node_id = node.get('id')
                 swagger_node.name = node.get('name')
                 swagger_node.type = eu.convert_string_to_snake_case(node.get('type'))
 
                 # Map the returned BTE qg_ids back to the original qnode_ids in our query graph
-                bte_qg_id = kg_to_qg_ids_dict['nodes'].get(original_node_id)
+                bte_qg_id = kg_to_qg_ids_dict['nodes'].get(bte_node_id)
                 if bte_qg_id == "n0":
                     qnode_id = input_qnode_id
                 elif bte_qg_id == "n1":
@@ -154,12 +168,15 @@ class BTEQuerier:
                     self.response.error("Could not map BTE qg_id to ARAX qnode_id", error_code="UnknownQGID")
                     return answer_kg
 
-                # Find and use the preferred equivalent identifier for this node
-                if original_node_id in remapped_node_ids:
-                    swagger_node.id = remapped_node_ids.get(original_node_id)
+                # Find and use the preferred equivalent identifier for this node (if it's an 'output' node)
+                if qnode_id == output_qnode_id:
+                    if bte_node_id in remapped_node_ids:
+                        swagger_node.id = remapped_node_ids.get(bte_node_id)
+                    else:
+                        swagger_node.id = self.__get_preferred_equivalent_identifier(node)
+                        remapped_node_ids[bte_node_id] = swagger_node.id
                 else:
-                    swagger_node.id = self.__get_preferred_equivalent_identifier(node)
-                    remapped_node_ids[original_node_id] = swagger_node.id
+                    swagger_node.id = bte_node_id
 
                 eu.add_node_to_kg(answer_kg, swagger_node, qnode_id)
 
@@ -167,8 +184,8 @@ class BTEQuerier:
                 swagger_edge = Edge()
                 swagger_edge.id = edge.get("id")
                 swagger_edge.type = edge.get('type')
-                swagger_edge.source_id = remapped_node_ids.get(edge.get('source_id'))
-                swagger_edge.target_id = remapped_node_ids.get(edge.get('target_id'))
+                swagger_edge.source_id = remapped_node_ids.get(edge.get('source_id'), edge.get('source_id'))
+                swagger_edge.target_id = remapped_node_ids.get(edge.get('target_id'), edge.get('target_id'))
                 swagger_edge.is_defined_by = "BTE"
                 swagger_edge.provided_by = edge.get('edge_source')
                 # Map the returned BTE qg_id back to the original qedge_id in our query graph
@@ -179,21 +196,47 @@ class BTEQuerier:
                 eu.add_edge_to_kg(answer_kg, swagger_edge, qedge_id)
         return answer_kg
 
+    def __remove_duplicate_input_nodes(self, kg, input_qnode, qedge):
+        ids_of_input_nodes_in_kg = set(list(kg['nodes'][input_qnode.id].keys()))
+
+        for original_curie, synonyms_used in self.input_node_synonym_usages_dict.items():
+            synonyms_used_set = set(synonyms_used).difference({original_curie})
+            ids_of_synonym_nodes = synonyms_used_set.intersection(ids_of_input_nodes_in_kg)
+
+            # Use the original curie if it's present, otherwise pick the best synonym node
+            if original_curie in ids_of_input_nodes_in_kg:
+                node_id_to_keep = original_curie
+                node_ids_to_remove = ids_of_synonym_nodes
+            else:
+                node_id_to_keep = eu.get_best_equivalent_curie(list(ids_of_synonym_nodes), input_qnode.type)
+                node_ids_to_remove = ids_of_synonym_nodes.difference({node_id_to_keep})
+
+            # Remove the nodes don't want
+            for node_id in node_ids_to_remove:
+                kg['nodes'][input_qnode.id].pop(node_id)
+
+            # And remap their edges to point to the node we kept
+            for edge in kg['edges'][qedge.id].values():
+                if edge.source_id in node_ids_to_remove:
+                    edge.source_id = node_id_to_keep
+                if edge.target_id in node_ids_to_remove:
+                    edge.target_id = node_id_to_keep
+
     def __get_preferred_equivalent_identifier(self, bte_node):
-        preferred_prefixes_for_this_node_type = eu.get_preferred_prefix_for_node_type(bte_node.get('type'))
+        preferred_prefixes_for_this_node_type = eu.get_preferred_prefixes_for_node_type(bte_node.get('type'))
         equivalent_prefixes = {prefix.upper(): local_ids for prefix, local_ids in bte_node.get('equivalent_identifiers').items()}
         prefix_case_map = {prefix.upper(): prefix for prefix in bte_node.get('equivalent_identifiers')}
 
         # Use the equivalent identifier with a prefix earliest in our list of preferred prefixes if possible
         for prefix in preferred_prefixes_for_this_node_type:
             if prefix in equivalent_prefixes:
-                return prefix_case_map.get(prefix) + ':' + equivalent_prefixes[prefix][0]
+                return prefix_case_map.get(prefix) + ':' + eu.get_curie_local_id(equivalent_prefixes[prefix][0])
 
         # Otherwise, just try to use one with a prefix other than 'name' (a sort of pseudo prefix BTE uses internally)
         non_name_prefixes = [prefix for prefix in equivalent_prefixes if prefix != 'NAME']
         if non_name_prefixes:
             prefix = non_name_prefixes[0]
-            return prefix_case_map.get(prefix) + ':' + equivalent_prefixes[prefix][0]
+            return prefix_case_map.get(prefix) + ':' + eu.get_curie_local_id(equivalent_prefixes[prefix][0])
         else:
             self.response.warning(f"BTE returned a node with no identifier other than {bte_node.get('id')}")
             return bte_node.get('id')
@@ -246,4 +289,8 @@ class BTEQuerier:
         local_id = eu.get_curie_local_id(curie)
         if prefix == "CUI":
             prefix = "UMLS"
+        elif prefix == "REACT":
+            prefix = "Reactome"
+        elif prefix == "UniProtKB":
+            prefix = prefix.upper()
         return prefix + ':' + local_id
