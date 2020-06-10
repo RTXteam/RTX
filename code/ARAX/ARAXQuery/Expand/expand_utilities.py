@@ -102,8 +102,8 @@ def get_query_node(query_graph, qnode_id):
     return matching_nodes[0] if matching_nodes else None
 
 
-def get_preferred_prefixes_for_node_type(node_type):
-    # Curie prefixes in order of preference for different node types
+def get_best_equivalent_curie(equivalent_curies, node_type):
+    # Curie prefixes in order of preference for different node types (not all-inclusive)
     preferred_node_prefixes_dict = {'chemical_substance': ['CHEMBL.COMPOUND', 'CHEBI'],
                                     'protein': ['UNIPROTKB', 'PR'],
                                     'gene': ['NCBIGENE', 'ENSEMBL', 'HGNC', 'GO'],
@@ -113,18 +113,22 @@ def get_preferred_prefixes_for_node_type(node_type):
                                     'pathway': ['REACT', 'REACTOME'],
                                     'biological_process': ['GO'],
                                     'cellular_component': ['GO']}
-    return preferred_node_prefixes_dict.get(convert_string_to_snake_case(node_type), [])
+    prefixes_in_order_of_preference = preferred_node_prefixes_dict.get(convert_string_to_snake_case(node_type), [])
 
-
-def get_best_equivalent_curie(equivalent_curies, node_type):
-    prefixes_in_order_of_preference = get_preferred_prefixes_for_node_type(node_type)
-    lowest_index = 10000
-    best_curie = equivalent_curies[0]
+    # Pick the curie that uses the (relatively) most preferred prefix
+    lowest_ranking = 10000
+    best_curie = None
     for curie in equivalent_curies:
         uppercase_prefix = get_curie_prefix(curie).upper()
         if uppercase_prefix in prefixes_in_order_of_preference:
-            if prefixes_in_order_of_preference.index(uppercase_prefix) < lowest_index:
+            ranking = prefixes_in_order_of_preference.index(uppercase_prefix)
+            if ranking < lowest_ranking:
+                lowest_ranking = ranking
                 best_curie = curie
+    # Otherwise, just try to pick one that isn't 'NAME:___'
+    if not best_curie:
+        non_name_curies = [curie for curie in equivalent_curies if get_curie_prefix(curie).upper() != 'NAME']
+        best_curie = non_name_curies[0] if non_name_curies else equivalent_curies[0]
     return best_curie
 
 

@@ -173,7 +173,9 @@ class BTEQuerier:
                     if bte_node_id in remapped_node_ids:
                         swagger_node.id = remapped_node_ids.get(bte_node_id)
                     else:
-                        swagger_node.id = self.__get_preferred_equivalent_identifier(node)
+                        equivalent_curies = [f"{prefix}:{eu.get_curie_local_id(local_id)}" for prefix, local_ids in
+                                             node.get('equivalent_identifiers').items() for local_id in local_ids]
+                        swagger_node.id = eu.get_best_equivalent_curie(equivalent_curies, swagger_node.type)
                         remapped_node_ids[bte_node_id] = swagger_node.id
                 else:
                     swagger_node.id = bte_node_id
@@ -221,25 +223,6 @@ class BTEQuerier:
                     edge.source_id = node_id_to_keep
                 if edge.target_id in node_ids_to_remove:
                     edge.target_id = node_id_to_keep
-
-    def __get_preferred_equivalent_identifier(self, bte_node):
-        preferred_prefixes_for_this_node_type = eu.get_preferred_prefixes_for_node_type(bte_node.get('type'))
-        equivalent_prefixes = {prefix.upper(): local_ids for prefix, local_ids in bte_node.get('equivalent_identifiers').items()}
-        prefix_case_map = {prefix.upper(): prefix for prefix in bte_node.get('equivalent_identifiers')}
-
-        # Use the equivalent identifier with a prefix earliest in our list of preferred prefixes if possible
-        for prefix in preferred_prefixes_for_this_node_type:
-            if prefix in equivalent_prefixes:
-                return prefix_case_map.get(prefix) + ':' + eu.get_curie_local_id(equivalent_prefixes[prefix][0])
-
-        # Otherwise, just try to use one with a prefix other than 'name' (a sort of pseudo prefix BTE uses internally)
-        non_name_prefixes = [prefix for prefix in equivalent_prefixes if prefix != 'NAME']
-        if non_name_prefixes:
-            prefix = non_name_prefixes[0]
-            return prefix_case_map.get(prefix) + ':' + eu.get_curie_local_id(equivalent_prefixes[prefix][0])
-        else:
-            self.response.warning(f"BTE returned a node with no identifier other than {bte_node.get('id')}")
-            return bte_node.get('id')
 
     @staticmethod
     def __create_edge_to_nodes_map(answer_kg, input_qnode_id, output_qnode_id):
