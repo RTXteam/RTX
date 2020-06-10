@@ -62,10 +62,11 @@ class BTEQuerier:
                 else:
                     self.__add_answers_to_kg(answer_kg, reasoner_std_response, input_qnode.id, output_qnode.id, qedge.id)
 
-        # Report our findings
+        # Report our findings and do any post-processing after ALL curies in the input qnode have been queried
         if answer_kg['edges']:
             if use_synonyms and synonym_handling == 'map_back':
-                self.__remove_duplicate_input_nodes(answer_kg, input_qnode, qedge)
+                self.__remove_synonyms_for_input_node(answer_kg, input_qnode, qedge)
+                self.__remove_redundant_edges(answer_kg, qedge.id)
             edge_to_nodes_map = self.__create_edge_to_nodes_map(answer_kg, input_qnode.id, output_qnode.id)
             counts_by_qg_id = eu.get_counts_by_qg_id(answer_kg)
             num_results_string = ", ".join([f"{qg_id}: {count}" for qg_id, count in sorted(counts_by_qg_id.items())])
@@ -198,7 +199,7 @@ class BTEQuerier:
                 eu.add_edge_to_kg(answer_kg, swagger_edge, qedge_id)
         return answer_kg
 
-    def __remove_duplicate_input_nodes(self, kg, input_qnode, qedge):
+    def __remove_synonyms_for_input_node(self, kg, input_qnode, qedge):
         ids_of_input_nodes_in_kg = set(list(kg['nodes'][input_qnode.id].keys()))
 
         for original_curie, synonyms_used in self.input_node_synonym_usages_dict.items():
@@ -223,6 +224,22 @@ class BTEQuerier:
                     edge.source_id = node_id_to_keep
                 if edge.target_id in node_ids_to_remove:
                     edge.target_id = node_id_to_keep
+
+    @staticmethod
+    def __remove_redundant_edges(kg, qedge_id):
+        # Figure out which edges are redundant (can happen due to synonym remapping)
+        edges_already_seen = set()
+        edge_ids_to_remove = set()
+        for edge_id, edge in kg['edges'][qedge_id].items():
+            identifier_tuple_for_edge = (edge.source_id, edge.type, edge.target_id, edge.provided_by)
+            if identifier_tuple_for_edge in edges_already_seen:
+                edge_ids_to_remove.add(edge_id)
+            else:
+                edges_already_seen.add(identifier_tuple_for_edge)
+
+        # Then remove them
+        for edge_id in edge_ids_to_remove:
+            kg['edges'][qedge_id].pop(edge_id)
 
     @staticmethod
     def __create_edge_to_nodes_map(answer_kg, input_qnode_id, output_qnode_id):
