@@ -61,9 +61,36 @@ def test_jaccard():
         assert edge.edge_attributes[0].name == 'jaccard_index'
         assert edge.edge_attributes[0].value >= 0
 
-
-
-
+def test_add_node_pmids():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(name=DOID:384, id=n00)",
+        "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(edge_id=e00)",
+        "overlay(action=add_node_pmids, max_num=15)",
+        "return(message=true, store=false)"
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    # check response status
+    assert response.status == 'OK'
+    # check if there are nodes with attributes
+    nodes_with_attributes = [x for x in message.knowledge_graph.nodes if hasattr(x, 'node_attributes')]
+    assert len(nodes_with_attributes) > 0
+    # check if pmids were added
+    nodes_with_pmids = []
+    for node in nodes_with_attributes:
+        for attr in node.node_attributes:
+            if attr.name == 'pubmed_ids':
+                nodes_with_pmids.append(node)
+    assert len(nodes_with_pmids) > 0
+    # check types
+    for node in nodes_with_pmids:
+        for attr in node.node_attributes:
+            if attr.name == "pubmed_ids":
+                assert attr.type == 'data:0971'
+                assert attr.value.__class__ == list
 
 
 if __name__ == "__main__":
