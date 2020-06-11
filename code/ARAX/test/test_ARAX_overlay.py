@@ -54,7 +54,7 @@ def test_jaccard():
     assert response.status == 'OK'
     edge_types_in_kg = Counter([x.type for x in message.knowledge_graph.edges])
     assert 'has_jaccard_index_with' in edge_types_in_kg
-    jaccard_edges = [x for x in message.knowledge_graph.edges if x.id == "J1"]
+    jaccard_edges = [x for x in message.knowledge_graph.edges if x.relation == "J1"]
     for edge in jaccard_edges:
         assert hasattr(edge, 'edge_attributes')
         assert edge.edge_attributes
@@ -92,6 +92,30 @@ def test_add_node_pmids():
                 assert attr.type == 'data:0971'
                 assert attr.value.__class__ == list
 
+
+def test_compute_ngd_virtual():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(name=DOID:384, id=n00)",
+        "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(edge_id=e00)",
+        "overlay(action=compute_ngd, source_qnode_id=n00, target_qnode_id=n01, virtual_relation_label=N1)",
+        "resultify(ignore_edge_direction=true, debug=true)",
+        "return(message=true, store=false)",
+        ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    edge_types_in_kg = Counter([x.type for x in message.knowledge_graph.edges])
+    assert 'has_normalized_google_distance_with' in edge_types_in_kg
+    ngd_edges = [x for x in message.knowledge_graph.edges if x.relation == "N1"]
+    assert len(ngd_edges) > 0
+    for edge in ngd_edges:
+        assert hasattr(edge, 'edge_attributes')
+        assert edge.edge_attributes
+        assert edge.edge_attributes[0].name == 'normalized_google_distance'
+        assert float(edge.edge_attributes[0].value) >= 0
 
 if __name__ == "__main__":
     pytest.main(['-v'])

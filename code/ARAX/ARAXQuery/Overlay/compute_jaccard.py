@@ -104,7 +104,7 @@ class ComputeJaccard:
                 message.knowledge_graph.edges.append(edge)
 
             # Now add a q_edge the query_graph since I've added an extra edge to the KG
-            q_edge = QEdge(id=qedge_ids[0], type=edge_type, relation=relation, source_id=parameters['start_node_id'], target_id=parameters['end_node_id'])  # TODO: ok to make the id and type the same thing?
+            q_edge = QEdge(id=relation, type=edge_type, relation=relation, source_id=parameters['start_node_id'], target_id=parameters['end_node_id'])  # TODO: ok to make the id and type the same thing?
             self.message.query_graph.edges.append(q_edge)
 
             return self.response
