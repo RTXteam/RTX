@@ -100,14 +100,14 @@ def print_counts_by_qgid(kg_in_dict_form):
 
 
 def print_nodes(kg_in_dict_form):
-    for qnode_id, nodes in kg_in_dict_form['nodes'].items():
-        for node_key, node in nodes.items():
+    for qnode_id, nodes in sorted(kg_in_dict_form['nodes'].items()):
+        for node_key, node in sorted(nodes.items()):
             print(f"{qnode_id}: {node.type}, {node.id}, {node.name}, {node.qnode_ids}")
 
 
 def print_edges(kg_in_dict_form):
-    for qedge_id, edges in kg_in_dict_form['edges'].items():
-        for edge_key, edge in edges.items():
+    for qedge_id, edges in sorted(kg_in_dict_form['edges'].items()):
+        for edge_key, edge in sorted(edges.items()):
             print(f"{qedge_id}: {edge.id}, {edge.source_id}--{edge.type}->{edge.target_id}, {edge.qedge_ids}")
 
 
@@ -776,12 +776,15 @@ def branched_query():
     print("Testing branched query")
     actions_list = [
         "create_message",
-        "add_qnode(id=n00, curie=DOID:14330)",
-        "add_qnode(id=n01, type=protein)",
-        "add_qnode(id=n02, type=chemical_substance)",
-        "add_qedge(source_id=n00, target_id=n02, id=e00)",
-        "add_qedge(source_id=n01, target_id=n02, id=e01)",
-        "expand()",
+        "add_qnode(id=n00, curie=DOID:0060227)",  # Adams-Oliver
+        "add_qnode(id=n01, type=phenotypic_feature, is_set=true)",
+        "add_qnode(id=n02, type=disease)",
+        "add_qnode(id=n03, type=protein, is_set=true)",
+        "add_qedge(source_id=n01, target_id=n00, id=e00)",
+        "add_qedge(source_id=n02, target_id=n00, id=e01)",
+        "add_qedge(source_id=n00, target_id=n03, id=e02)",
+        "expand(kp=ARAX/KG2)",
+        "resultify()",
         "return(message=true, store=false)"
     ]
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
