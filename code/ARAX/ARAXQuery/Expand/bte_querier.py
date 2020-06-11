@@ -39,7 +39,7 @@ class BTEQuerier:
 
         # Add synonyms to our input query node, if desired
         if self.use_synonyms:
-            synonym_usages_dict = eu.add_curie_synonyms_to_query_nodes(qnodes=[input_qnode],
+            synonym_usages_dict = eu.add_curie_synonyms_to_query_nodes(qnodes=[input_qnode, output_qnode],
                                                                        log=self.response,
                                                                        override_node_type=False,
                                                                        format_for_bte=True,
@@ -47,36 +47,24 @@ class BTEQuerier:
         if self.response.status != 'OK':
             return answer_kg, edge_to_nodes_map
 
-        # Send this single-edge query to BTE, once per input curie (adding findings to our answer KG as we go)
-        accepted_curies = set()
-        for curie in input_qnode.curie:
-            if eu.get_curie_prefix(curie) in valid_bte_inputs_dict['curie_prefixes']:
-                accepted_curies.add(curie)
-                try:
-                    loop = asyncio.new_event_loop()
-                    seqd = SingleEdgeQueryDispatcher(input_cls=input_qnode.type,
-                                                     output_cls=output_qnode.type,
-                                                     pred=qedge.type,
-                                                     input_id=eu.get_curie_prefix(curie),
-                                                     values=eu.get_curie_local_id(curie),
-                                                     loop=loop)
-                    self.response.debug(f"Sending query to BTE: {curie}-{qedge.type if qedge.type else ''}->{output_qnode.type}")
-                    seqd.query()
-                    reasoner_std_response = seqd.to_reasoner_std()
-                except:
-                    trace_back = traceback.format_exc()
-                    error_type, error, _ = sys.exc_info()
-                    self.response.error(f"Encountered a problem while using BioThings Explorer. {trace_back}",
-                                        error_code=error_type.__name__)
-                    return answer_kg, edge_to_nodes_map
-                else:
-                    self.__add_answers_to_kg(answer_kg, reasoner_std_response, input_qnode.id, output_qnode.id, qedge.id)
+        # Use BTE to answer the query
+        answer_kg, accepted_curies = self.__answer_query_using_bte(input_qnode=input_qnode,
+                                                                   output_qnode=output_qnode,
+                                                                   qedge=qedge,
+                                                                   answer_kg=answer_kg,
+                                                                   valid_bte_inputs_dict=valid_bte_inputs_dict)
+        if self.response.status != 'OK':
+            return answer_kg, edge_to_nodes_map
 
-        # Report our findings and do any post-processing after ALL curies in the input qnode have been queried
-        if answer_kg['edges']:
-            if self.use_synonyms and self.synonym_handling == 'map_back':
-                self.__remove_synonyms_for_input_node(answer_kg, input_qnode, qedge, synonym_usages_dict)
-                self.__remove_redundant_edges(answer_kg, qedge.id)
+        # Do any post-processing after ALL curies in the input qnode have been queried
+        if eu.qg_is_fulfilled(query_graph, answer_kg) and input_qnode.curie and output_qnode.curie:
+            answer_kg = self.__prune_answers_to_achieve_curie_to_curie_query(answer_kg, output_qnode, qedge)
+        if eu.qg_is_fulfilled(query_graph, answer_kg) and self.use_synonyms and self.synonym_handling == 'map_back':
+            answer_kg = self.__remove_synonym_nodes(answer_kg, input_qnode, output_qnode, qedge, synonym_usages_dict)
+            answer_kg = self.__remove_redundant_edges(answer_kg, qedge.id)
+
+        # Report our findings
+        if eu.qg_is_fulfilled(query_graph, answer_kg):
             edge_to_nodes_map = self.__create_edge_to_nodes_map(answer_kg, input_qnode.id, output_qnode.id)
             num_results_string = ", ".join([f"{qg_id}: {count}" for qg_id, count in sorted(eu.get_counts_by_qg_id(answer_kg).items())])
             self.response.info(f"Query for edge {qedge.id} returned results ({num_results_string})")
@@ -105,10 +93,6 @@ class BTEQuerier:
         if not input_qnode.curie:
             self.response.error(f"BTE cannot expand edges with a non-specific (curie-less) source node (source node is:"
                                 f" {input_qnode.to_dict()})", error_code="InvalidInput")
-        elif input_qnode.curie and output_qnode.curie:
-            self.response.error(f"BTE cannot expand edges for which both nodes have a curie specified (for now)",
-                                error_code="InvalidInput")
-            # TODO: Hack around this limitation to allow curie--curie queries
         elif not enforce_directionality:
             self.response.warning(f"BTE cannot do bidirectional queries; the query for this edge will be directed, "
                                   f"going: {input_qnode.id}-->{output_qnode.id}")
@@ -140,6 +124,34 @@ class BTEQuerier:
         input_qnode.curie = [eu.convert_curie_to_bte_format(curie) for curie in input_qnode.curie]
 
         return qedge, input_qnode, output_qnode
+
+    def __answer_query_using_bte(self, input_qnode, output_qnode, qedge, answer_kg, valid_bte_inputs_dict):
+        accepted_curies = set()
+        # Send this single-edge query to BTE, once per input curie (adding findings to our answer KG as we go)
+        for curie in input_qnode.curie:
+            if eu.get_curie_prefix(curie) in valid_bte_inputs_dict['curie_prefixes']:
+                accepted_curies.add(curie)
+                try:
+                    loop = asyncio.new_event_loop()
+                    seqd = SingleEdgeQueryDispatcher(input_cls=input_qnode.type,
+                                                     output_cls=output_qnode.type,
+                                                     pred=qedge.type,
+                                                     input_id=eu.get_curie_prefix(curie),
+                                                     values=eu.get_curie_local_id(curie),
+                                                     loop=loop)
+                    self.response.debug(f"Sending query to BTE: {curie}-{qedge.type if qedge.type else ''}->{output_qnode.type}")
+                    seqd.query()
+                    reasoner_std_response = seqd.to_reasoner_std()
+                except:
+                    trace_back = traceback.format_exc()
+                    error_type, error, _ = sys.exc_info()
+                    self.response.error(f"Encountered a problem while using BioThings Explorer. {trace_back}",
+                                        error_code=error_type.__name__)
+                    return answer_kg, accepted_curies
+                else:
+                    answer_kg = self.__add_answers_to_kg(answer_kg, reasoner_std_response, input_qnode.id, output_qnode.id, qedge.id)
+
+        return answer_kg, accepted_curies
 
     def __add_answers_to_kg(self, answer_kg, reasoner_std_response, input_qnode_id, output_qnode_id, qedge_id):
         kg_to_qg_ids_dict = self.__build_kg_to_qg_id_dict(reasoner_std_response['results'])
@@ -206,25 +218,26 @@ class BTEQuerier:
             self.response.error(f"No paths were found in BTE satisfying this query graph", error_code="NoResults")
 
     @staticmethod
-    def __remove_synonyms_for_input_node(kg, input_qnode, qedge, synonym_usages_dict):
-        ids_of_input_nodes_in_kg = set(list(kg['nodes'][input_qnode.id].keys()))
+    def __remove_synonym_nodes(kg, input_qnode, output_qnode, qedge, synonym_usages_dict):
+        for qnode_id, synonym_usage_info in synonym_usages_dict.items():
+            ids_of_nodes_in_kg = set(list(kg['nodes'][qnode_id].keys()))
 
-        if input_qnode.id in synonym_usages_dict:
-            for original_curie, synonyms_used in synonym_usages_dict[input_qnode.id].items():
+            for original_curie, synonyms_used in synonym_usage_info.items():
                 synonyms_used_set = set(synonyms_used).difference({original_curie})
-                ids_of_synonym_nodes = synonyms_used_set.intersection(ids_of_input_nodes_in_kg)
+                ids_of_synonym_nodes = synonyms_used_set.intersection(ids_of_nodes_in_kg)
 
                 # Use the original curie if it's present, otherwise pick the best synonym node
-                if original_curie in ids_of_input_nodes_in_kg:
+                if original_curie in ids_of_nodes_in_kg:
                     node_id_to_keep = original_curie
                     node_ids_to_remove = ids_of_synonym_nodes
                 else:
-                    node_id_to_keep = eu.get_best_equivalent_curie(list(ids_of_synonym_nodes), input_qnode.type)
+                    qnode_type = input_qnode.type if qnode_id == input_qnode.id else output_qnode.type
+                    node_id_to_keep = eu.get_best_equivalent_curie(list(ids_of_synonym_nodes), qnode_type)
                     node_ids_to_remove = ids_of_synonym_nodes.difference({node_id_to_keep})
 
                 # Remove the nodes don't want
                 for node_id in node_ids_to_remove:
-                    kg['nodes'][input_qnode.id].pop(node_id)
+                    kg['nodes'][qnode_id].pop(node_id)
 
                 # And remap their edges to point to the node we kept
                 for edge in kg['edges'][qedge.id].values():
@@ -232,6 +245,7 @@ class BTEQuerier:
                         edge.source_id = node_id_to_keep
                     if edge.target_id in node_ids_to_remove:
                         edge.target_id = node_id_to_keep
+        return kg
 
     @staticmethod
     def __remove_redundant_edges(kg, qedge_id):
@@ -248,6 +262,32 @@ class BTEQuerier:
         # Then remove them
         for edge_id in edge_ids_to_remove:
             kg['edges'][qedge_id].pop(edge_id)
+
+        return kg
+
+    @staticmethod
+    def __prune_answers_to_achieve_curie_to_curie_query(kg, output_qnode, qedge):
+        """
+        This is a way of hacking around BTE's limitation where it can only do (node with curie)-->(non-specific node)
+        kinds of queries. We do the non-specific query, and then use this function to remove all of the answer nodes
+        that do not correspond to the curie we wanted for the 'output' node.
+        """
+        # Remove 'output' nodes in the KG that aren't actually the ones we were looking for
+        desired_output_curies = set(eu.convert_string_or_list_to_list(output_qnode.curie))
+        all_output_node_ids = set(list(kg['nodes'][output_qnode.id].keys()))
+        output_node_ids_to_remove = all_output_node_ids.difference(desired_output_curies)
+        for node_id in output_node_ids_to_remove:
+            kg['nodes'][output_qnode.id].pop(node_id)
+
+        # And remove any edges that used them
+        edge_ids_to_remove = set()
+        for edge_id, edge in kg['edges'][qedge.id].items():
+            if edge.target_id in output_node_ids_to_remove:  # Edge target_id always contains output node ID for BTE
+                edge_ids_to_remove.add(edge_id)
+        for edge_id in edge_ids_to_remove:
+            kg['edges'][qedge.id].pop(edge_id)
+
+        return kg
 
     @staticmethod
     def __create_edge_to_nodes_map(answer_kg, input_qnode_id, output_qnode_id):

@@ -241,3 +241,16 @@ def add_curie_synonyms_to_query_nodes(qnodes, log, arax_kg='KG2', override_node_
                 qnode.curie = synonyms
 
     return synonym_usages_dict
+
+
+def qg_is_fulfilled(query_graph, dict_kg):
+    qnode_ids = [qnode.id for qnode in query_graph.nodes]
+    qedge_ids = [qedge.id for qedge in query_graph.edges]
+
+    for qnode_id in qnode_ids:
+        if qnode_id not in dict_kg['nodes'] or not len(dict_kg['nodes'][qnode_id]):
+            return False
+    for qedge_id in qedge_ids:
+        if qedge_id not in dict_kg['edges'] or not len(dict_kg['edges'][qedge_id]):
+            return False
+    return True

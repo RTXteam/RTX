@@ -626,6 +626,21 @@ def test_two_hop_bte_query():
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
 
 
+def curie_to_curie_bte_query():
+    print(f"Testing curie-to-curie BTE query")
+    actions_list = [
+        "create_message",
+        "add_qnode(id=n00, curie=CUI:C0004238)",
+        "add_qnode(id=n01, curie=CHEMBL.COMPOUND:CHEMBL1464)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01)",
+        "expand(kp=BTE)",
+        "return(message=true, store=false)",
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    print_nodes(kg_in_dict_form)
+    print_edges(kg_in_dict_form)
+
+
 def test_simple_bidirectional_query():
     print(f"Testing simple bidirectional query (caused #727)")
     actions_list = [
@@ -802,24 +817,20 @@ def query_that_expands_same_edge_twice():
     assert any(edge for edge in kg_in_dict_form['edges']['e00'].values() if edge.is_defined_by == "ARAX/KG2")
 
 
-def angioedema_bte_query_causing_759():
-    print("Testing angioedema BTE query causing #759")
+def angioedema_vasodilation_bte_query_759():
+    print("Testing angioedema--vasodilation BTE query #759")
     actions_list = [
         "create_message",
-        # "add_qnode(name=Angioedema, id=n1)",  # Original query
-        # "add_qnode(name=vasodilation, id=n2)",
-        # "add_qedge(source_id=n1, target_id=n2, id=e1)",
-        # "expand(edge_id=[e1], kp=BTE)",
-        "add_qnode(name=vasodilation, id=n1)",  # Revised
-        "add_qnode(type=disease, id=n2)",
-        "add_qedge(source_id=n1, target_id=n2, id=e1)",
-        "expand(edge_id=[e1], kp=BTE)",
+        "add_qnode(id=n00, name=acquired angioedema)",
+        "add_qnode(id=n01, type=chemical_substance, is_set=true)",
+        "add_qnode(id=n02, name=vasodilation)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01)",
+        "add_qedge(id=e01, source_id=n01, target_id=n02)",
+        "expand(kp=BTE)",
         "return(message=true, store=false)"
     ]
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
-    # for node in kg_in_dict_form['nodes']['n2'].values():
-    #     if node.id == "MESH:D000799" or "angioedema" in node.id.lower():
-    #         print(node)
+    assert len(kg_in_dict_form['nodes']['n00']) == 1 and len(kg_in_dict_form['nodes']['n02']) == 1
 
 
 def query_using_continue_if_no_results():
@@ -997,9 +1008,13 @@ def main():
     ambitious_query_causing_multiple_qnode_ids_error()
     multiple_qg_ids_test_for_720()
 
-    # Non-standard tests/bug tests
+    # Slow ones
     # test_two_hop_bte_query()
-    # angioedema_bte_query_causing_759()
+    # angioedema_vasodilation_bte_query_759()
+
+    # Only sometimes work
+    # curie_to_curie_bte_query()
+
 
 
 if __name__ == "__main__":
