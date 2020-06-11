@@ -1223,12 +1223,12 @@ def test_example3():
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "add_qedge(source_id=n01, target_id=n02, id=e01)",
         "expand(edge_id=[e00,e01])",
-        "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
+        "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
         ("filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, "
          "direction=below, threshold=3, remove_connected_nodes=t, qnode_id=n01)"),
         "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
-        "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n01, target_qnode_id=n02)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=ngd, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",
+        "overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n01, target_qnode_id=n02)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=normalized_google_distance, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "return(message=true, store=true)"
     ]}}
