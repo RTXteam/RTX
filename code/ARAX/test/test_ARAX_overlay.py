@@ -146,5 +146,32 @@ def test_compute_ngd_attribute():
     assert len(ngd_edges) > 0
 
 
+def test_FET():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521)",
+        "add_qnode(id=n01, type=protein)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01)",
+        "add_qnode(id=n02, type=biological_process)",
+        "add_qedge(id=e01, source_id=n01, target_id=n02)",
+        "expand(edge_id=[e00, e01], kp=ARAX/KG1)",
+        "overlay(action=fisher_exact_test, source_qnode_id=n01, virtual_relation_label=FET, target_qnode_id=n02, cutoff=0.05)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    edge_types_in_kg = Counter([x.type for x in message.knowledge_graph.edges])
+    assert 'has_fisher_exact_test_p-value_with' in edge_types_in_kg
+    FET_edges = [x for x in message.knowledge_graph.edges if x.relation == "FET"]
+    assert len(FET_edges) > 0
+    for edge in FET_edges:
+        assert hasattr(edge, 'edge_attributes')
+        assert edge.edge_attributes
+        assert edge.edge_attributes[0].name == 'fisher_exact_test_p-value'
+        assert float(edge.edge_attributes[0].value) >= 0
+        assert edge.edge_attributes[0].type == 'data:1669'
+
 if __name__ == "__main__":
     pytest.main(['-v'])

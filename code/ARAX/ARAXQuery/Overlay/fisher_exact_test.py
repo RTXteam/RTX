@@ -140,7 +140,7 @@ class ComputeFTEST:
         try:
             count = 0
             for node in self.message.knowledge_graph.nodes:
-                nodes_info[node.id] = {'count': count, 'qnode_id': node.qnode_id, 'type': node.type[0], 'edge_index': []}
+                nodes_info[node.id] = {'count': count, 'qnode_ids': node.qnode_ids, 'type': node.type[0], 'edge_index': []}
                 count = count + 1
         except:
             tb = traceback.format_exc()
@@ -159,8 +159,8 @@ class ComputeFTEST:
                     nodes_info[edge.target_id]['edge_index'].append(count)
 
                     if rel_edge_id:
-                        if edge.qedge_id == rel_edge_id:
-                            if nodes_info[edge.source_id]['qnode_id'] == source_qnode_id:
+                        if rel_edge_id in edge.qedge_ids:
+                            if source_qnode_id in nodes_info[edge.source_id]['qnode_ids']:
                                 kp.update([edge.is_defined_by])
                                 rel_edge_type.update([edge.type])
                                 source_node_list.append(edge.source_id)
@@ -179,8 +179,8 @@ class ComputeFTEST:
                         else:
                             pass
                     else:
-                        if nodes_info[edge.source_id]['qnode_id'] == source_qnode_id:
-                            if nodes_info[edge.target_id]['qnode_id'] == target_qnode_id:
+                        if source_qnode_id in nodes_info[edge.source_id]['qnode_ids']:
+                            if target_qnode_id in nodes_info[edge.target_id]['qnode_ids']:
                                 kp.update([edge.is_defined_by])
                                 source_node_list.append(edge.source_id)
                                 if edge.target_id not in target_node_dict.keys():
@@ -190,8 +190,8 @@ class ComputeFTEST:
 
                             else:
                                 pass
-                        elif nodes_info[edge.source_id]['qnode_id'] == target_qnode_id:
-                            if nodes_info[edge.target_id]['qnode_id'] == source_qnode_id:
+                        elif target_qnode_id in nodes_info[edge.source_id]['qnode_ids']:
+                            if source_qnode_id in nodes_info[edge.target_id]['qnode_ids']:
                                 kp.update([edge.is_defined_by])
                                 source_node_list.append(edge.target_id)
                                 if edge.source_id not in target_node_dict.keys():
@@ -292,7 +292,7 @@ class ComputeFTEST:
                     now = datetime.now()
                     defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
                     edge_type = 'has_fisher_exact_test_p-value_with'
-                    qedge_id = virtual_relation_label
+                    qedge_ids = [virtual_relation_label]
                     is_defined_by = "ARAX"
                     provided_by = "ARAX"
                     confidence = None
@@ -305,7 +305,7 @@ class ComputeFTEST:
                                         is_defined_by=is_defined_by, defined_datetime=defined_datetime,
                                         provided_by=provided_by,
                                         confidence=confidence, weight=weight, edge_attributes=[edge_attribute],
-                                        qedge_id=qedge_id)
+                                        qedge_ids=qedge_ids)
 
                     self.message.knowledge_graph.edges.append(new_edge)
 
