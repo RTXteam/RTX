@@ -47,11 +47,11 @@ class PredictDrugTreatsDisease:
             target_curies_to_decorate = set()
             # identify the nodes that we should be adding virtual edges for
             for node in self.message.knowledge_graph.nodes:
-                if hasattr(node, 'qnode_id'):
-                    if node.qnode_id == parameters['source_qnode_id']:
+                if hasattr(node, 'qnode_ids'):
+                    if parameters['source_qnode_id'] in node.qnode_ids:
                         #if "chemical_substance" in node.type:  # this has already been checked by ARAX_overlay
                         source_curies_to_decorate.add(node.id)
-                    if node.qnode_id == parameters['target_qnode_id']:
+                    if parameters['target_qnode_id'] in node.qnode_ids:
                         #if "disease" in node.type or "phenotypic_feature" in node.type:
                         target_curies_to_decorate.add(node.id)
 
@@ -70,7 +70,7 @@ class PredictDrugTreatsDisease:
                     # edge properties
                     now = datetime.now()
                     edge_type = "probably_treats"
-                    qedge_id = parameters['virtual_relation_label']
+                    qedge_ids = [parameters['virtual_relation_label']]
                     relation = parameters['virtual_relation_label']
                     is_defined_by = "ARAX"
                     defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -87,7 +87,7 @@ class PredictDrugTreatsDisease:
                                 target_id=target_id,
                                 is_defined_by=is_defined_by, defined_datetime=defined_datetime,
                                 provided_by=provided_by,
-                                confidence=confidence, weight=weight, edge_attributes=[edge_attribute], qedge_id=qedge_id)
+                                confidence=confidence, weight=weight, edge_attributes=[edge_attribute], qedge_ids=qedge_ids)
                     self.message.knowledge_graph.edges.append(edge)
 
             # Now add a q_edge the query_graph since I've added an extra edge to the KG
@@ -95,7 +95,7 @@ class PredictDrugTreatsDisease:
                 edge_type = "probably_treats"
                 relation = parameters['virtual_relation_label']
                 qedge_id = parameters['virtual_relation_label']
-                q_edge = QEdge(id=qedge_id, type=edge_type, relation=relation,
+                q_edge = QEdge(id=relation, type=edge_type, relation=relation,
                                source_id=parameters['source_qnode_id'], target_id=parameters['target_qnode_id'])  # TODO: ok to make the id and type the same thing?
                 self.message.query_graph.edges.append(q_edge)
             return self.response
