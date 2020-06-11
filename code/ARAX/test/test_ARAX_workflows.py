@@ -131,4 +131,6 @@ def test_example_3():
     _virtual_tester(message, 'has_normalized_google_distance_with', 'N1', 'normalized_google_distance', 'data:2526', 2)
 
 
+if __name__ == "__main__":
+    pytest.main(['-v'])
 
