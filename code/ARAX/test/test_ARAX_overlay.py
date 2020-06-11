@@ -38,6 +38,52 @@ def _do_arax_query(query: dict) -> List[Union[Response, Message]]:
     return [response, araxq.message]
 
 
+def _attribute_tester(message, attribute_name: str, attribute_type: str, num_different_values=2):
+    """
+    Tests attributes of a message
+    message: returned from _do_arax_query
+    attribute_name: the attribute name to test (eg. 'jaccard_index')
+    attribute_type: the attribute type (eg. 'data:1234')
+    num_different_values: the number of distinct values you wish to see have been added as attributes
+    """
+    edges_of_interest = []
+    values = set()
+    for edge in message.knowledge_graph.edges:
+        if hasattr(edge, 'edge_attributes'):
+            for attr in edge.edge_attributes:
+                if attr.name == attribute_name:
+                    edges_of_interest.append(edge)
+                    assert attr.type == attribute_type
+                    values.add(attr.value)
+    assert len(edges_of_interest) > 0
+    assert len(values) >= num_different_values
+
+
+def _virtual_tester(message: Message, edge_type: str, relation: str, attribute_name: str, attribute_type: str, num_different_values=2):
+    """
+    Tests overlay functions that add virtual edges
+    message: returned from _do_arax_query
+    edge_type: the name of the virtual edge (eg. has_jaccard_index_with)
+    relation: the relation you picked for the virtual_edge_relation (eg. N1)
+    attribute_name: the attribute name to test (eg. 'jaccard_index')
+    attribute_type: the attribute type (eg. 'data:1234')
+    num_different_values: the number of distinct values you wish to see have been added as attributes
+    """
+    edge_types_in_kg = Counter([x.type for x in message.knowledge_graph.edges])
+    assert edge_type in edge_types_in_kg
+    edges_of_interest = [x for x in message.knowledge_graph.edges if x.relation == relation]
+    values = set()
+    assert len(edges_of_interest) > 0
+    for edge in edges_of_interest:
+        assert hasattr(edge, 'edge_attributes')
+        assert edge.edge_attributes
+        assert edge.edge_attributes[0].name == attribute_name
+        values.add(edge.edge_attributes[0].value)
+        assert edge.edge_attributes[0].type == attribute_type
+    # make sure two or more values were added
+    assert len(values) >= num_different_values
+
+
 def test_jaccard():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
@@ -172,6 +218,113 @@ def test_FET():
         assert edge.edge_attributes[0].name == 'fisher_exact_test_p-value'
         assert float(edge.edge_attributes[0].value) >= 0
         assert edge.edge_attributes[0].type == 'data:1669'
+
+
+def test_paired_concept_frequency_virtual():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=DOID:1588, id=n0)",
+        "add_qnode(type=chemical_substance, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "expand(edge_id=e0)",
+        "overlay(action=overlay_clinical_info, paired_concept_frequency=true, source_qnode_id=n0, target_qnode_id=n1, virtual_relation_label=CP1)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    _virtual_tester(message, 'has_paired_concept_frequency_with', 'CP1', 'paired_concept_frequency', 'data:0951', 2)
+
+
+def test_paired_concept_frequency_attribute():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=DOID:1588, id=n0)",
+        "add_qnode(type=chemical_substance, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "expand(edge_id=e0)",
+        "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    _attribute_tester(message, 'paired_concept_frequency', 'data:0951', 2)
+
+
+def test_observed_expected_ratio_virtual():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=DOID:1588, id=n0)",
+        "add_qnode(type=chemical_substance, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "expand(edge_id=e0)",
+        "overlay(action=overlay_clinical_info,observed_expected_ratio=true, source_qnode_id=n0, target_qnode_id=n1, virtual_relation_label=CP1)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    _virtual_tester(message, 'has_observed_expected_ratio_with', 'CP1', 'observed_expected_ratio', 'data:0951', 2)
+
+
+def test_observed_expected_ratio_attribute():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=DOID:1588, id=n0)",
+        "add_qnode(type=chemical_substance, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "expand(edge_id=e0)",
+        "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    _attribute_tester(message, 'observed_expected_ratio', 'data:0951', 2)
+
+
+def test_chi_square_virtual():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=DOID:1588, id=n0)",
+        "add_qnode(type=chemical_substance, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "expand(edge_id=e0)",
+        "overlay(action=overlay_clinical_info, chi_square=true, source_qnode_id=n0, target_qnode_id=n1, virtual_relation_label=CP1)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    _virtual_tester(message, 'has_chi_square_with', 'CP1', 'chi_square', 'data:0951', 2)
+
+
+def test_chi_square_attribute():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=DOID:1588, id=n0)",
+        "add_qnode(type=chemical_substance, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "expand(edge_id=e0)",
+        "overlay(action=overlay_clinical_info, chi_square=true)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    _attribute_tester(message, 'chi_square', 'data:0951', 2)
+
+
+
+
+
 
 if __name__ == "__main__":
     pytest.main(['-v'])
