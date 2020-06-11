@@ -31,10 +31,12 @@ from swagger_server.models.biolink_entity import BiolinkEntity
 from swagger_server.models.result import Result
 from swagger_server.models.message import Message
 
+
 def _do_arax_query(query: dict) -> List[Union[Response, Message]]:
     araxq = ARAXQuery()
     response = araxq.query(query)
     return [response, araxq.message]
+
 
 def test_jaccard():
     query = {"previous_message_processing_plan": {"processing_actions": [
@@ -60,6 +62,7 @@ def test_jaccard():
         assert edge.edge_attributes
         assert edge.edge_attributes[0].name == 'jaccard_index'
         assert edge.edge_attributes[0].value >= 0
+
 
 def test_add_node_pmids():
     query = {"previous_message_processing_plan": {"processing_actions": [
@@ -116,6 +119,32 @@ def test_compute_ngd_virtual():
         assert edge.edge_attributes
         assert edge.edge_attributes[0].name == 'normalized_google_distance'
         assert float(edge.edge_attributes[0].value) >= 0
+
+
+def test_compute_ngd_attribute():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(name=DOID:384, id=n00)",
+        "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(edge_id=e00)",
+        "overlay(action=compute_ngd)",
+        "resultify(ignore_edge_direction=true, debug=true)",
+        "return(message=true, store=false)",
+        ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    ngd_edges = []
+    for edge in message.knowledge_graph.edges:
+        if hasattr(edge, 'edge_attributes'):
+            for attr in edge.edge_attributes:
+                if attr.name == 'normalized_google_distance':
+                    ngd_edges.append(edge)
+                    assert float(attr.value) >= 0
+                    assert attr.type == 'data:2526'
+    assert len(ngd_edges) > 0
+
 
 if __name__ == "__main__":
     pytest.main(['-v'])
