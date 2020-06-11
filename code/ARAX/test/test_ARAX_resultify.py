@@ -783,7 +783,6 @@ class TestARAXResultify(unittest.TestCase):
         assert message.results[0].essence is not None
 
     def test_example2(self):
-        # NOTE: This test is currently failing due to changes for #720 not yet being implemented for Overlay/Filter
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(curie=DOID:14330, id=n00)",
@@ -925,7 +924,6 @@ class TestARAXResultify(unittest.TestCase):
         assert results_list[0].essence is not None
 
     def test_issue680(self):
-        # NOTE: This test is currently failing due to changes for #720 not yet being implemented for Overlay/Filter
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(curie=DOID:14330, id=n00)",
