@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+# Usage:
+# run all: pytest -v test_ARAX_overlay.py
+# run just certain tests: pytest -v test_ARAX_overlay.py -k test_jaccard
+
 import sys
 import os
 import pytest
@@ -45,7 +49,6 @@ def test_jaccard():
         "resultify(ignore_edge_direction=true, debug=true)",
         "return(message=true, store=false)",
         ]}}
-    araxq = ARAXQuery()
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
