@@ -208,7 +208,7 @@ def get_curie_synonyms(curie, arax_kg='KG2'):
     return list(equivalent_curies_using_arax_kg)
 
 
-def add_curie_synonyms_to_query_nodes(qnodes, log, arax_kg='KG2', override_type=True, format_for_bte=False, qnodes_using_curies_from_prior_step=None):
+def add_curie_synonyms_to_query_nodes(qnodes, log, arax_kg='KG2', override_node_type=True, format_for_bte=False, qnodes_using_curies_from_prior_step=None):
     log.debug("Looking for query nodes to use curie synonyms for")
     if not qnodes_using_curies_from_prior_step:
         qnodes_using_curies_from_prior_step = set()
@@ -225,7 +225,7 @@ def add_curie_synonyms_to_query_nodes(qnodes, log, arax_kg='KG2', override_type=
                     equivalent_curies = [convert_curie_to_bte_format(curie) for curie in equivalent_curies]
                 if len(equivalent_curies) > 1:
                     synonyms += equivalent_curies
-                    if override_type:
+                    if override_node_type:
                         qnode.type = None  # Equivalent curie types may be different than the original, so we clear this
                     if qnode.id not in synonym_usages_dict:
                         synonym_usages_dict[qnode.id] = dict()

@@ -41,7 +41,7 @@ class BTEQuerier:
         if self.use_synonyms:
             synonym_usages_dict = eu.add_curie_synonyms_to_query_nodes(qnodes=[input_qnode],
                                                                        log=self.response,
-                                                                       override_type=False,
+                                                                       override_node_type=False,
                                                                        format_for_bte=True,
                                                                        qnodes_using_curies_from_prior_step=qnodes_using_curies_from_prior_step)
         if self.response.status != 'OK':
@@ -209,28 +209,29 @@ class BTEQuerier:
     def __remove_synonyms_for_input_node(kg, input_qnode, qedge, synonym_usages_dict):
         ids_of_input_nodes_in_kg = set(list(kg['nodes'][input_qnode.id].keys()))
 
-        for original_curie, synonyms_used in synonym_usages_dict[input_qnode.id].items():
-            synonyms_used_set = set(synonyms_used).difference({original_curie})
-            ids_of_synonym_nodes = synonyms_used_set.intersection(ids_of_input_nodes_in_kg)
+        if input_qnode.id in synonym_usages_dict:
+            for original_curie, synonyms_used in synonym_usages_dict[input_qnode.id].items():
+                synonyms_used_set = set(synonyms_used).difference({original_curie})
+                ids_of_synonym_nodes = synonyms_used_set.intersection(ids_of_input_nodes_in_kg)
 
-            # Use the original curie if it's present, otherwise pick the best synonym node
-            if original_curie in ids_of_input_nodes_in_kg:
-                node_id_to_keep = original_curie
-                node_ids_to_remove = ids_of_synonym_nodes
-            else:
-                node_id_to_keep = eu.get_best_equivalent_curie(list(ids_of_synonym_nodes), input_qnode.type)
-                node_ids_to_remove = ids_of_synonym_nodes.difference({node_id_to_keep})
+                # Use the original curie if it's present, otherwise pick the best synonym node
+                if original_curie in ids_of_input_nodes_in_kg:
+                    node_id_to_keep = original_curie
+                    node_ids_to_remove = ids_of_synonym_nodes
+                else:
+                    node_id_to_keep = eu.get_best_equivalent_curie(list(ids_of_synonym_nodes), input_qnode.type)
+                    node_ids_to_remove = ids_of_synonym_nodes.difference({node_id_to_keep})
 
-            # Remove the nodes don't want
-            for node_id in node_ids_to_remove:
-                kg['nodes'][input_qnode.id].pop(node_id)
+                # Remove the nodes don't want
+                for node_id in node_ids_to_remove:
+                    kg['nodes'][input_qnode.id].pop(node_id)
 
-            # And remap their edges to point to the node we kept
-            for edge in kg['edges'][qedge.id].values():
-                if edge.source_id in node_ids_to_remove:
-                    edge.source_id = node_id_to_keep
-                if edge.target_id in node_ids_to_remove:
-                    edge.target_id = node_id_to_keep
+                # And remap their edges to point to the node we kept
+                for edge in kg['edges'][qedge.id].values():
+                    if edge.source_id in node_ids_to_remove:
+                        edge.source_id = node_id_to_keep
+                    if edge.target_id in node_ids_to_remove:
+                        edge.target_id = node_id_to_keep
 
     @staticmethod
     def __remove_redundant_edges(kg, qedge_id):
