@@ -25,16 +25,16 @@ def get_curie_local_id(curie):
         return curie
 
 
-def add_node_to_kg(kg, swagger_node, qnode_id):
-    if qnode_id not in kg['nodes']:
-        kg['nodes'][qnode_id] = dict()
-    kg['nodes'][qnode_id][swagger_node.id] = swagger_node
+def add_node_to_kg(dict_kg, node, qnode_id):
+    if qnode_id not in dict_kg['nodes']:
+        dict_kg['nodes'][qnode_id] = dict()
+    dict_kg['nodes'][qnode_id][node.id] = node
 
 
-def add_edge_to_kg(kg, swagger_edge, qedge_id):
-    if qedge_id not in kg['edges']:
-        kg['edges'][qedge_id] = dict()
-    kg['edges'][qedge_id][swagger_edge.id] = swagger_edge
+def add_edge_to_kg(dict_kg, edge, qedge_id):
+    if qedge_id not in dict_kg['edges']:
+        dict_kg['edges'][qedge_id] = dict()
+    dict_kg['edges'][qedge_id][edge.id] = edge
 
 
 def copy_qedge(old_qedge):
@@ -88,11 +88,11 @@ def convert_string_or_list_to_list(string_or_list):
         return []
 
 
-def get_counts_by_qg_id(knowledge_graph):
+def get_counts_by_qg_id(dict_kg):
     counts_by_qg_id = dict()
-    for qnode_id, nodes_dict in knowledge_graph['nodes'].items():
+    for qnode_id, nodes_dict in dict_kg['nodes'].items():
         counts_by_qg_id[qnode_id] = len(nodes_dict)
-    for qedge_id, edges_dict in knowledge_graph['edges'].items():
+    for qedge_id, edges_dict in dict_kg['edges'].items():
         counts_by_qg_id[qedge_id] = len(edges_dict)
     return counts_by_qg_id
 
@@ -169,7 +169,7 @@ def convert_dict_kg_to_standard_kg(dict_kg):
     return standard_kg
 
 
-def convert_curie_to_kg2_format(curie):
+def convert_curie_to_arax_format(curie):
     prefix = get_curie_prefix(curie)
     local_id = get_curie_local_id(curie)
     if prefix == "UMLS":
@@ -200,7 +200,7 @@ def get_curie_synonyms(curie, arax_kg='KG2'):
     kgni = KGNodeIndex()
     equivalent_curies_using_arax_kg = set()
     for curie in curies:
-        equivalent_curies = kgni.get_equivalent_curies(curie=convert_curie_to_kg2_format(curie), kg_name=arax_kg)
+        equivalent_curies = kgni.get_equivalent_curies(curie=convert_curie_to_arax_format(curie), kg_name=arax_kg)
         equivalent_curies_using_arax_kg = equivalent_curies_using_arax_kg.union(set(equivalent_curies))
 
     # TODO: Use SRI team's node normalizer to find more synonyms
@@ -254,3 +254,18 @@ def qg_is_fulfilled(query_graph, dict_kg):
         if qedge_id not in dict_kg['edges'] or not len(dict_kg['edges'][qedge_id]):
             return False
     return True
+
+
+def switch_kg_to_arax_curie_format(dict_kg):
+    converted_kg = {'nodes': {qnode_id: dict() for qnode_id in dict_kg['nodes']},
+                    'edges': {qedge_id: dict() for qedge_id in dict_kg['edges']}}
+    for qnode_id, nodes in dict_kg['nodes'].items():
+        for node_id, node in nodes.items():
+            node.id = convert_curie_to_arax_format(node.id)
+            add_node_to_kg(converted_kg, node, qnode_id)
+    for qedge_id, edges in dict_kg['edges'].items():
+        for edge_id, edge in edges.items():
+            edge.source_id = convert_curie_to_arax_format(edge.source_id)
+            edge.target_id = convert_curie_to_arax_format(edge.target_id)
+            add_edge_to_kg(converted_kg, edge, qedge_id)
+    return converted_kg

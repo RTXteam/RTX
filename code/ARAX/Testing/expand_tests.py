@@ -637,8 +637,6 @@ def curie_to_curie_bte_query():
         "return(message=true, store=false)",
     ]
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
-    print_nodes(kg_in_dict_form)
-    print_edges(kg_in_dict_form)
 
 
 def test_simple_bidirectional_query():
