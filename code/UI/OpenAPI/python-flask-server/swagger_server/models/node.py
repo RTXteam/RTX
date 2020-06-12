@@ -16,7 +16,7 @@ class Node(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, id: str=None, uri: str=None, name: str=None, type: List[str]=None, description: str=None, symbol: str=None, node_attributes: List[NodeAttribute]=None, qnode_id: str=None):  # noqa: E501
+    def __init__(self, id: str=None, uri: str=None, name: str=None, type: List[str]=None, description: str=None, symbol: str=None, node_attributes: List[NodeAttribute]=None, qnode_ids: List[str]=None):  # noqa: E501
         """Node - a model defined in Swagger
 
         :param id: The id of this Node.  # noqa: E501
@@ -33,8 +33,8 @@ class Node(Model):
         :type symbol: str
         :param node_attributes: The node_attributes of this Node.  # noqa: E501
         :type node_attributes: List[NodeAttribute]
-        :param qnode_id: The qnode_id of this Node.  # noqa: E501
-        :type qnode_id: str
+        :param qnode_ids: The qnode_ids of this Node.  # noqa: E501
+        :type qnode_ids: List[str]
         """
         self.swagger_types = {
             'id': str,
@@ -44,7 +44,7 @@ class Node(Model):
             'description': str,
             'symbol': str,
             'node_attributes': List[NodeAttribute],
-            'qnode_id': str
+            'qnode_ids': List[str]
         }
 
         self.attribute_map = {
@@ -55,7 +55,7 @@ class Node(Model):
             'description': 'description',
             'symbol': 'symbol',
             'node_attributes': 'node_attributes',
-            'qnode_id': 'qnode_id'
+            'qnode_ids': 'qnode_ids'
         }
 
         self._id = id
@@ -65,7 +65,7 @@ class Node(Model):
         self._description = description
         self._symbol = symbol
         self._node_attributes = node_attributes
-        self._qnode_id = qnode_id
+        self._qnode_ids = qnode_ids
 
     @classmethod
     def from_dict(cls, dikt) -> 'Node':
@@ -242,24 +242,24 @@ class Node(Model):
         self._node_attributes = node_attributes
 
     @property
-    def qnode_id(self) -> str:
-        """Gets the qnode_id of this Node.
+    def qnode_ids(self) -> List[str]:
+        """Gets the qnode_ids of this Node.
 
-        Identifier (id) of a QueryGraph QNode in this same message that yielded this Node in the KnowledgeGraph  # noqa: E501
+        List of identifiers (ids) of QueryGraph QNodes in this same message that yield this Node in the KnowledgeGraph. Must always be a list, even if a list of one id.  # noqa: E501
 
-        :return: The qnode_id of this Node.
-        :rtype: str
+        :return: The qnode_ids of this Node.
+        :rtype: List[str]
         """
-        return self._qnode_id
+        return self._qnode_ids
 
-    @qnode_id.setter
-    def qnode_id(self, qnode_id: str):
-        """Sets the qnode_id of this Node.
+    @qnode_ids.setter
+    def qnode_ids(self, qnode_ids: List[str]):
+        """Sets the qnode_ids of this Node.
 
-        Identifier (id) of a QueryGraph QNode in this same message that yielded this Node in the KnowledgeGraph  # noqa: E501
+        List of identifiers (ids) of QueryGraph QNodes in this same message that yield this Node in the KnowledgeGraph. Must always be a list, even if a list of one id.  # noqa: E501
 
-        :param qnode_id: The qnode_id of this Node.
-        :type qnode_id: str
+        :param qnode_ids: The qnode_ids of this Node.
+        :type qnode_ids: List[str]
         """
 
-        self._qnode_id = qnode_id
+        self._qnode_ids = qnode_ids

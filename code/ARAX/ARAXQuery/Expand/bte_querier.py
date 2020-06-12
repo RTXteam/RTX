@@ -138,12 +138,13 @@ class BTEQuerier:
                 # Map the returned BTE qg_ids back to the original qnode_ids in our query graph
                 bte_qg_id = kg_to_qg_ids_dict['nodes'].get(swagger_node.id)
                 if bte_qg_id == "n0":
-                    swagger_node.qnode_id = input_qnode_id
+                    qnode_id = input_qnode_id
                 elif bte_qg_id == "n1":
-                    swagger_node.qnode_id = output_qnode_id
+                    qnode_id = output_qnode_id
                 else:
                     self.response.error("Could not map BTE qg_id to ARAX qnode_id", error_code="UnknownQGID")
-                self.__add_node_to_kg(answer_kg, swagger_node)
+                    return answer_kg
+                self.__add_node_to_kg(answer_kg, swagger_node, qnode_id)
             for edge in reasoner_std_response['knowledge_graph']['edges']:
                 swagger_edge = Edge()
                 swagger_edge.id = edge.get("id")
@@ -154,11 +155,10 @@ class BTEQuerier:
                 swagger_edge.provided_by = edge.get('edge_source')
                 # Map the returned BTE qg_id back to the original qedge_id in our query graph
                 bte_qg_id = kg_to_qg_ids_dict['edges'].get(swagger_edge.id)
-                if bte_qg_id == "e1":
-                    swagger_edge.qedge_id = qedge_id
-                else:
+                if bte_qg_id != "e1":
                     self.response.error("Could not map BTE qg_id to ARAX qedge_id", error_code="UnknownQGID")
-                self.__add_edge_to_kg(answer_kg, swagger_edge)
+                    return answer_kg
+                self.__add_edge_to_kg(answer_kg, swagger_edge, qedge_id)
         return answer_kg
 
     def __create_edge_to_nodes_map(self, answer_kg, input_qnode_id, output_qnode_id):
@@ -200,9 +200,6 @@ class BTEQuerier:
         for node_binding in results['node_bindings']:
             node_id = node_binding['kg_id']
             qnode_id = node_binding['qg_id']
-            if node_id in kg_to_qg_ids['nodes'] and kg_to_qg_ids['nodes'][node_id] != qnode_id:
-                self.response.error(f"Node {node_id} has been returned as an answer for multiple query graph nodes"
-                                    f" ({kg_to_qg_ids['nodes'][node_id]} and {qnode_id})", error_code="MultipleQGIDs")
             kg_to_qg_ids['nodes'][node_id] = qnode_id
         for edge_binding in results['edge_bindings']:
             edge_ids = edge_binding['kg_id'] if type(edge_binding['kg_id']) is list else [edge_binding['kg_id']]
@@ -248,12 +245,12 @@ class BTEQuerier:
     def __get_curie_local_id(self, curie):
         return curie.split(':')[-1]  # Note: Taking last item gets around "PR:PR:000001" situation
 
-    def __add_node_to_kg(self, kg, swagger_node):
-        if swagger_node.qnode_id not in kg['nodes']:
-            kg['nodes'][swagger_node.qnode_id] = dict()
-        kg['nodes'][swagger_node.qnode_id][swagger_node.id] = swagger_node
+    def __add_node_to_kg(self, kg, swagger_node, qnode_id):
+        if qnode_id not in kg['nodes']:
+            kg['nodes'][qnode_id] = dict()
+        kg['nodes'][qnode_id][swagger_node.id] = swagger_node
 
-    def __add_edge_to_kg(self, kg, swagger_edge):
-        if swagger_edge.qedge_id not in kg['edges']:
-            kg['edges'][swagger_edge.qedge_id] = dict()
-        kg['edges'][swagger_edge.qedge_id][swagger_edge.id] = swagger_edge
+    def __add_edge_to_kg(self, kg, swagger_edge, qedge_id):
+        if qedge_id not in kg['edges']:
+            kg['edges'][qedge_id] = dict()
+        kg['edges'][qedge_id][swagger_edge.id] = swagger_edge
