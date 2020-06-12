@@ -14,6 +14,9 @@ def _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=Fal
     araxq = ARAXQuery()
     response = araxq.query({"previous_message_processing_plan": {"processing_actions": actions_list}})
     message = araxq.message
+    if response.status != 'OK':
+        print(response.show(level=Response.DEBUG))
+    assert response.status == 'OK'
 
     dict_kg = eu.convert_standard_kg_to_dict_kg(message.knowledge_graph)
     if debug:
