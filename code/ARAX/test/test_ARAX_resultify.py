@@ -5,6 +5,8 @@
 import os
 import sys
 import unittest
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 from response import Response
 from typing import List, Union
 
@@ -781,7 +783,6 @@ class TestARAXResultify(unittest.TestCase):
         assert message.results[0].essence is not None
 
     def test_example2(self):
-        # NOTE: This test is currently failing due to changes for #720 not yet being implemented for Overlay/Filter
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(curie=DOID:14330, id=n00)",
@@ -790,10 +791,10 @@ class TestARAXResultify(unittest.TestCase):
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
             "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
-            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
             "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
-            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_edge_type=P1)",
+            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",
             "resultify(ignore_edge_direction=true, debug=true)",
             "return(message=true, store=false)",
         ]}}
@@ -923,7 +924,6 @@ class TestARAXResultify(unittest.TestCase):
         assert results_list[0].essence is not None
 
     def test_issue680(self):
-        # NOTE: This test is currently failing due to changes for #720 not yet being implemented for Overlay/Filter
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(curie=DOID:14330, id=n00)",
@@ -932,10 +932,10 @@ class TestARAXResultify(unittest.TestCase):
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
             "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
-            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
             "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
-            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_edge_type=P1)",
+            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",
             "resultify(ignore_edge_direction=true, debug=true)",
             "filter_results(action=limit_number_of_results, max_results=1)",
             "return(message=true, store=false)",
@@ -944,11 +944,10 @@ class TestARAXResultify(unittest.TestCase):
         assert response.status == 'OK'
         assert len(message.results) == 1
         result = message.results[0]
+        resgraph = result.result_graph
         count_drug_prot = 0
         count_disease_prot = 0
-        kg_edges_dict = {edge.id: edge for edge in message.knowledge_graph.edges}
-        result_edges = [kg_edges_dict.get(edge_binding.kg_id) for edge_binding in result]
-        for edge in result_edges:
+        for edge in resgraph.edges:
             if edge.target_id.startswith("CHEMBL.") and edge.source_id.startswith("UniProtKB:"):
                 count_drug_prot += 1
             if edge.target_id.startswith("DOID:") and edge.source_id.startswith("UniProtKB:"):
@@ -1042,7 +1041,12 @@ class TestARAXResultify(unittest.TestCase):
                 "resultify(debug=true)"]}}
         [response, message] = _do_arax_query(query)
         for result in message.results:
-            found_e01 = any(edge_binding.qg_id == 'e1' for edge_binding in result.edge_bindings)
+            result_graph = result.result_graph
+            found_e01 = False
+            for edge in result_graph.edges:
+                if 'e1' in edge.qedge_ids:
+                    found_e01 = True
+                    continue
             assert found_e01
 
     def test_issue731c(self):
@@ -1091,7 +1095,7 @@ class TestARAXResultify(unittest.TestCase):
 
         kg = KnowledgeGraph(nodes=kg_nodes, edges=kg_edges)
         results = ARAX_resultify._get_results_for_kg_by_qg(kg, qg)
-        indexes_results_with_single_edge = [index for index, result in enumerate(results) if len(result.edge_bindings) == 1]
+        indexes_results_with_single_edge = [index for index, result in enumerate(results) if len(result.result_graph.edges) == 1]
         assert len(indexes_results_with_single_edge) == 0
 
     def test_issue740(self):

@@ -81,13 +81,13 @@ paths:
         schema:
           $ref: "#/definitions/Question"
       responses:
-        200:
+        "200":
           description: "successful operation"
           schema:
             type: "array"
             items:
               $ref: "#/definitions/Query"
-        400:
+        "400":
           description: "Invalid status value"
       x-swagger-router-controller: "swagger_server.controllers.translate_controller"
   /predicates:
@@ -99,16 +99,16 @@ paths:
       operationId: "predicates"
       parameters: []
       responses:
-        200:
+        "200":
           description: "Predicates by source and target"
           schema:
             type: "object"
+            description: "Source map"
             example:
               chemical_substance:
                 gene:
                 - "directly_interacts_with"
                 - "decreases_activity_of"
-            description: "Source map"
             additionalProperties:
               type: "object"
               description: "Target map"
@@ -137,11 +137,11 @@ paths:
         schema:
           $ref: "#/definitions/Query"
       responses:
-        200:
+        "200":
           description: "successful operation"
           schema:
             $ref: "#/definitions/Message"
-        400:
+        "400":
           description: "Invalid status value"
       x-swagger-router-controller: "swagger_server.controllers.query_controller"
   /entity/{search_string}:
@@ -160,14 +160,14 @@ paths:
         required: true
         type: "string"
       responses:
-        200:
+        "200":
           description: "successful operation"
           schema:
             type: "array"
             items:
               type: "object"
               properties: {}
-        404:
+        "404":
           description: "Entity not found"
       x-swagger-router-controller: "swagger_server.controllers.entity_controller"
   /PubmedMeshNgd/{term1}/{term2}:
@@ -192,11 +192,11 @@ paths:
         required: true
         type: "string"
       responses:
-        200:
+        "200":
           description: "successful operation"
           schema:
             $ref: "#/definitions/MeshNgdResponse"
-        400:
+        "400":
           description: "Invalid terms"
       x-swagger-router-controller: "swagger_server.controllers.pubmed_mesh_ngd_controller"
   /exampleQuestions:
@@ -210,7 +210,7 @@ paths:
       - "application/json"
       parameters: []
       responses:
-        200:
+        "200":
           description: "successful operation"
       x-swagger-router-controller: "swagger_server.controllers.example_questions_controller"
   /feedback/ratings:
@@ -224,7 +224,7 @@ paths:
       - "application/json"
       parameters: []
       responses:
-        200:
+        "200":
           description: "successful operation"
       x-swagger-router-controller: "swagger_server.controllers.feedback_controller"
   /feedback/expertise_levels:
@@ -238,7 +238,7 @@ paths:
       - "application/json"
       parameters: []
       responses:
-        200:
+        "200":
           description: "successful operation"
       x-swagger-router-controller: "swagger_server.controllers.feedback_controller"
   /feedback/all:
@@ -252,7 +252,7 @@ paths:
       - "application/json"
       parameters: []
       responses:
-        200:
+        "200":
           description: "successful operation"
       x-swagger-router-controller: "swagger_server.controllers.feedback_controller"
   /message/{message_id}:
@@ -271,11 +271,11 @@ paths:
         required: true
         type: "integer"
       responses:
-        200:
+        "200":
           description: "successful operation"
           schema:
             $ref: "#/definitions/Message"
-        404:
+        "404":
           description: "Message_id not found"
       x-swagger-router-controller: "swagger_server.controllers.message_controller"
   /message/{message_id}/feedback:
@@ -294,11 +294,11 @@ paths:
         required: true
         type: "integer"
       responses:
-        200:
+        "200":
           description: "successful operation"
           schema:
             $ref: "#/definitions/MessageFeedback"
-        404:
+        "404":
           description: "Message_id not found"
       x-swagger-router-controller: "swagger_server.controllers.message_controller"
   /result/{result_id}:
@@ -317,11 +317,11 @@ paths:
         required: true
         type: "integer"
       responses:
-        200:
+        "200":
           description: "successful operation"
           schema:
             $ref: "#/definitions/Result"
-        404:
+        "404":
           description: "result_id not found"
       x-swagger-router-controller: "swagger_server.controllers.result_controller"
   /result/{result_id}/feedback:
@@ -340,11 +340,11 @@ paths:
         required: true
         type: "integer"
       responses:
-        200:
+        "200":
           description: "successful operation"
           schema:
             $ref: "#/definitions/ResultFeedback"
-        404:
+        "404":
           description: "result_id not found"
       x-swagger-router-controller: "swagger_server.controllers.result_controller"
     post:
@@ -370,9 +370,9 @@ paths:
         schema:
           $ref: "#/definitions/Feedback"
       responses:
-        200:
+        "200":
           description: "successful operation"
-        400:
+        "400":
           description: "Invalid status value"
       x-swagger-router-controller: "swagger_server.controllers.result_controller"
 definitions:
@@ -602,10 +602,19 @@ definitions:
         description: "Connection information for a remote knowledge graph that is\
           \ a substitute for local KnowledgeGraph contained in this Message"
         properties: {}
+      log:
+        type: "array"
+        description: "List of logged information lines from the ARA, e.g. logged INFO,\
+          \ WARNING, and ERROR message lines"
+        items:
+          type: "string"
     example:
       original_question: "what proteins are affected by sickle cell anemia"
       query_options: "{coalesce=True,threshold=0.9}"
       remote_knowledge_graph: "{}"
+      log:
+      - "log"
+      - "log"
       n_results: 42
       restated_question: "Which proteins are affected by sickle cell anemia?"
       code_description: "9 results found"
@@ -688,6 +697,9 @@ definitions:
         score_name: "Jaccard distance"
   Result:
     type: "object"
+    required:
+    - "edge_bindings"
+    - "node_bindings"
     properties:
       id:
         type: "string"
@@ -910,6 +922,8 @@ definitions:
       \ to answer the question. This graph is a representation of a question."
   QNode:
     type: "object"
+    required:
+    - "id"
     properties:
       id:
         type: "string"
@@ -922,6 +936,11 @@ definitions:
         description: "CURIE identifier for this node"
       type:
         $ref: "#/definitions/BiolinkEntity"
+      is_set:
+        type: "boolean"
+        example: true
+        description: "Boolean that if set to true, indicates the QNode represents\
+          \ a set of entities rather than an individual entity"
     description: "A node in the QueryGraph"
   QEdge:
     type: "object"
@@ -992,6 +1011,15 @@ definitions:
         description: "A list of arbitrary attributes for the node"
         items:
           $ref: "#/definitions/NodeAttribute"
+      qnode_ids:
+        type: "array"
+        example:
+        - "n00"
+        description: "List of identifiers (ids) of QueryGraph QNodes in this same\
+          \ message that yield this Node in the KnowledgeGraph. Must always be a list,\
+          \ even if a list of one id."
+        items:
+          type: "string"
     description: "A node in the thought subgraph"
   NodeAttribute:
     type: "object"
@@ -1091,6 +1119,15 @@ definitions:
         description: "A list of additional attributes for this edge"
         items:
           $ref: "#/definitions/EdgeAttribute"
+      qedge_ids:
+        type: "array"
+        example:
+        - "n00"
+        description: "List of identifiers (ids) of QueryGraph QEdges in this same\
+          \ message that yielded this Edge in the KnowledgeGraph. Must be a list,\
+          \ even if only one id."
+        items:
+          type: "string"
     description: "An edge in the thought subgraph linking two nodes"
   EdgeAttribute:
     type: "object"
@@ -1227,6 +1264,7 @@ definitions:
     description: "A relation, i.e. child of related_to (snake_case)"
     example: "affects"
   Message_terms:
+    type: "object"
     properties:
       disease:
         type: "string"

@@ -100,14 +100,14 @@ def print_counts_by_qgid(kg_in_dict_form):
 
 
 def print_nodes(kg_in_dict_form):
-    for qnode_id, nodes in kg_in_dict_form['nodes'].items():
-        for node_key, node in nodes.items():
+    for qnode_id, nodes in sorted(kg_in_dict_form['nodes'].items()):
+        for node_key, node in sorted(nodes.items()):
             print(f"{qnode_id}: {node.type}, {node.id}, {node.name}, {node.qnode_ids}")
 
 
 def print_edges(kg_in_dict_form):
-    for qedge_id, edges in kg_in_dict_form['edges'].items():
-        for edge_key, edge in edges.items():
+    for qedge_id, edges in sorted(kg_in_dict_form['edges'].items()):
+        for edge_key, edge in sorted(edges.items()):
             print(f"{qedge_id}: {edge.id}, {edge.source_id}--{edge.type}->{edge.target_id}, {edge.qedge_ids}")
 
 
@@ -546,11 +546,41 @@ def simple_bte_acetaminophen_query():
         "create_message",
         "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",
         "add_qnode(id=n01, type=protein)",
-        "add_qedge(id=e00, source_id=n01, target_id=n00)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01)",
         "expand(edge_id=e00, kp=BTE)",
         "return(message=true, store=false)",
     ]
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    assert len(kg_in_dict_form['nodes']['n00']) == 1
+    assert len(kg_in_dict_form['nodes']['n01']) == len(kg_in_dict_form['edges']['e00'])
+
+
+def add_all_bte_acetaminophen_query():
+    print(f"Testing BTE acetaminophen query with add_all synonym handling")
+    actions_list = [
+        "create_message",
+        "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",
+        "add_qnode(id=n01, type=protein)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01)",
+        "expand(edge_id=e00, kp=BTE, synonym_handling=add_all)",
+        "return(message=true, store=false)",
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    assert len(kg_in_dict_form['nodes']['n00']) > 1
+
+
+def bte_parkinsons_query():
+    print(f"Testing BTE parkinson's query")
+    actions_list = [
+        "create_message",
+        "add_qnode(id=n00, curie=DOID:14330)",
+        "add_qnode(id=n01, type=protein)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01)",
+        "expand(edge_id=e00, kp=BTE, enforce_directionality=true)",
+        "return(message=true, store=false)",
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    assert len(kg_in_dict_form['nodes']['n00']) == 1
 
 
 def bte_query_using_list_of_curies():
@@ -573,11 +603,12 @@ def simple_bte_cdk2_query():
         "create_message",
         "add_qnode(id=n00, curie=NCBIGene:1017)",
         "add_qnode(id=n01, type=chemical_substance)",
-        "add_qedge(id=e00, source_id=n01, target_id=n00)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01)",
         "expand(edge_id=e00, kp=BTE)",
         "return(message=true, store=false)",
     ]
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+    assert len(kg_in_dict_form['nodes']['n00']) == 1
 
 
 def test_two_hop_bte_query():
@@ -589,6 +620,19 @@ def test_two_hop_bte_query():
         "add_qnode(id=n02, type=chemical_substance)",
         "add_qedge(id=e00, source_id=n00, target_id=n01)",
         "add_qedge(id=e01, source_id=n01, target_id=n02)",
+        "expand(kp=BTE)",
+        "return(message=true, store=false)",
+    ]
+    kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
+
+
+def curie_to_curie_bte_query():
+    print(f"Testing curie-to-curie BTE query")
+    actions_list = [
+        "create_message",
+        "add_qnode(id=n00, curie=CUI:C0004238)",
+        "add_qnode(id=n01, curie=CHEMBL.COMPOUND:CHEMBL1464)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01)",
         "expand(kp=BTE)",
         "return(message=true, store=false)",
     ]
@@ -730,12 +774,15 @@ def branched_query():
     print("Testing branched query")
     actions_list = [
         "create_message",
-        "add_qnode(id=n00, curie=DOID:14330)",
-        "add_qnode(id=n01, type=protein)",
-        "add_qnode(id=n02, type=chemical_substance)",
-        "add_qedge(source_id=n00, target_id=n02, id=e00)",
-        "add_qedge(source_id=n01, target_id=n02, id=e01)",
-        "expand()",
+        "add_qnode(id=n00, curie=DOID:0060227)",  # Adams-Oliver
+        "add_qnode(id=n01, type=phenotypic_feature, is_set=true)",
+        "add_qnode(id=n02, type=disease)",
+        "add_qnode(id=n03, type=protein, is_set=true)",
+        "add_qedge(source_id=n01, target_id=n00, id=e00)",
+        "add_qedge(source_id=n02, target_id=n00, id=e01)",
+        "add_qedge(source_id=n00, target_id=n03, id=e02)",
+        "expand(kp=ARAX/KG2)",
+        "resultify()",
         "return(message=true, store=false)"
     ]
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
@@ -771,24 +818,20 @@ def query_that_expands_same_edge_twice():
     assert any(edge for edge in kg_in_dict_form['edges']['e00'].values() if edge.is_defined_by == "ARAX/KG2")
 
 
-def angioedema_bte_query_causing_759():
-    print("Testing angioedema BTE query causing #759")
+def angioedema_vasodilation_bte_query_759():
+    print("Testing angioedema--vasodilation BTE query #759")
     actions_list = [
         "create_message",
-        # "add_qnode(name=Angioedema, id=n1)",  # Original query
-        # "add_qnode(name=vasodilation, id=n2)",
-        # "add_qedge(source_id=n1, target_id=n2, id=e1)",
-        # "expand(edge_id=[e1], kp=BTE)",
-        "add_qnode(name=vasodilation, id=n1)",  # Revised
-        "add_qnode(type=disease, id=n2)",
-        "add_qedge(source_id=n1, target_id=n2, id=e1)",
-        "expand(edge_id=[e1], kp=BTE)",
+        "add_qnode(id=n00, name=acquired angioedema)",
+        "add_qnode(id=n01, type=chemical_substance, is_set=true)",
+        "add_qnode(id=n02, name=vasodilation)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01)",
+        "add_qedge(id=e01, source_id=n01, target_id=n02)",
+        "expand(kp=BTE)",
         "return(message=true, store=false)"
     ]
     kg_in_dict_form = run_query_and_conduct_standard_testing(actions_list)
-    # for node in kg_in_dict_form['nodes']['n2'].values():
-    #     if node.id == "MESH:D000799" or "angioedema" in node.id.lower():
-    #         print(node)
+    assert len(kg_in_dict_form['nodes']['n00']) == 1 and len(kg_in_dict_form['nodes']['n02']) == 1
 
 
 def query_using_continue_if_no_results():
@@ -940,6 +983,8 @@ def main():
     parkinsons_example_enforcing_directionality()
     test_kg1_property_format()
     simple_bte_acetaminophen_query()
+    add_all_bte_acetaminophen_query()
+    bte_parkinsons_query()
     bte_query_using_list_of_curies()
     simple_bte_cdk2_query()
     test_simple_bidirectional_query()
@@ -964,9 +1009,13 @@ def main():
     ambitious_query_causing_multiple_qnode_ids_error()
     multiple_qg_ids_test_for_720()
 
-    # Non-standard tests/bug tests
+    # Slow ones
     # test_two_hop_bte_query()
-    # angioedema_bte_query_causing_759()
+    # angioedema_vasodilation_bte_query_759()
+
+    # Only sometimes work
+    # curie_to_curie_bte_query()
+
 
 
 if __name__ == "__main__":

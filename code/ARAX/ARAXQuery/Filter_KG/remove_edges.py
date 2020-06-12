@@ -49,8 +49,8 @@ class RemoveEdges:
                 for node in self.message.knowledge_graph.nodes:
                     if node.id in node_ids_to_remove:
                         if 'qnode_id' in edge_params:
-                            if node.qnode_id is not None:
-                                if edge_params['qnode_id'] in node.qnode_id:
+                            if node.qnode_ids is not None:
+                                if edge_params['qnode_id'] in node.qnode_ids:
                                     nodes_to_remove.add(i)
                                 else:
                                     node_ids_to_remove.remove(node.id)
@@ -109,8 +109,8 @@ class RemoveEdges:
                 for node in self.message.knowledge_graph.nodes:
                     if node.id in node_ids_to_remove:
                         if 'qnode_id' in edge_params:
-                            if node.qnode_id is not None:
-                                if edge_params['qnode_id'] in node.qnode_id:
+                            if node.qnode_ids is not None:
+                                if edge_params['qnode_id'] in node.qnode_ids:
                                     nodes_to_remove.add(i)
                                 else:
                                     node_ids_to_remove.remove(node.id)
@@ -179,8 +179,8 @@ class RemoveEdges:
                 for node in self.message.knowledge_graph.nodes:
                     if node.id in node_ids_to_remove:
                         if 'qnode_id' in edge_params:
-                            if node.qnode_id is not None:
-                                if edge_params['qnode_id'] in node.qnode_id:
+                            if node.qnode_ids is not None:
+                                if edge_params['qnode_id'] in node.qnode_ids:
                                     nodes_to_remove.add(i)
                                 else:
                                     node_ids_to_remove.remove(node.id)
