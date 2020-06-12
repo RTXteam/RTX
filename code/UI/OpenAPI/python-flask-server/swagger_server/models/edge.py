@@ -6,9 +6,10 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from swagger_server.models.base_model_ import Model
+from swagger_server import util
+
 from swagger_server.models.biolink_relation import BiolinkRelation  # noqa: F401,E501
 from swagger_server.models.edge_attribute import EdgeAttribute  # noqa: F401,E501
-from swagger_server import util
 
 
 class Edge(Model):
@@ -17,7 +18,7 @@ class Edge(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, id: str=None, type: BiolinkRelation=None, relation: str=None, source_id: str=None, target_id: str=None, is_defined_by: str=None, defined_datetime: str=None, provided_by: str=None, confidence: float=None, weight: float=None, publications: List[str]=None, evidence_type: str=None, qualifiers: str=None, negated: bool=None, edge_attributes: List[EdgeAttribute]=None, qedge_id: str=None):  # noqa: E501
+    def __init__(self, id: str=None, type: BiolinkRelation=None, relation: str=None, source_id: str=None, target_id: str=None, is_defined_by: str=None, defined_datetime: str=None, provided_by: str=None, confidence: float=None, weight: float=None, publications: List[str]=None, evidence_type: str=None, qualifiers: str=None, negated: bool=None, edge_attributes: List[EdgeAttribute]=None, qedge_ids: List[str]=None):  # noqa: E501
         """Edge - a model defined in Swagger
 
         :param id: The id of this Edge.  # noqa: E501
@@ -50,8 +51,8 @@ class Edge(Model):
         :type negated: bool
         :param edge_attributes: The edge_attributes of this Edge.  # noqa: E501
         :type edge_attributes: List[EdgeAttribute]
-        :param qedge_id: The qedge_id of this Edge.  # noqa: E501
-        :type qedge_id: str
+        :param qedge_ids: The qedge_ids of this Edge.  # noqa: E501
+        :type qedge_ids: List[str]
         """
         self.swagger_types = {
             'id': str,
@@ -69,7 +70,7 @@ class Edge(Model):
             'qualifiers': str,
             'negated': bool,
             'edge_attributes': List[EdgeAttribute],
-            'qedge_id': str
+            'qedge_ids': List[str]
         }
 
         self.attribute_map = {
@@ -88,7 +89,7 @@ class Edge(Model):
             'qualifiers': 'qualifiers',
             'negated': 'negated',
             'edge_attributes': 'edge_attributes',
-            'qedge_id': 'qedge_id'
+            'qedge_ids': 'qedge_ids'
         }
 
         self._id = id
@@ -106,7 +107,7 @@ class Edge(Model):
         self._qualifiers = qualifiers
         self._negated = negated
         self._edge_attributes = edge_attributes
-        self._qedge_id = qedge_id
+        self._qedge_ids = qedge_ids
 
     @classmethod
     def from_dict(cls, dikt) -> 'Edge':
@@ -469,24 +470,24 @@ class Edge(Model):
         self._edge_attributes = edge_attributes
 
     @property
-    def qedge_id(self) -> str:
-        """Gets the qedge_id of this Edge.
+    def qedge_ids(self) -> List[str]:
+        """Gets the qedge_ids of this Edge.
 
-        Identifier (id) of a QueryGraph QEdge in this same message that yielded this Edge in the KnowledgeGraph  # noqa: E501
+        List of identifiers (ids) of QueryGraph QEdges in this same message that yielded this Edge in the KnowledgeGraph. Must be a list, even if only one id.  # noqa: E501
 
-        :return: The qedge_id of this Edge.
-        :rtype: str
+        :return: The qedge_ids of this Edge.
+        :rtype: List[str]
         """
-        return self._qedge_id
+        return self._qedge_ids
 
-    @qedge_id.setter
-    def qedge_id(self, qedge_id: str):
-        """Sets the qedge_id of this Edge.
+    @qedge_ids.setter
+    def qedge_ids(self, qedge_ids: List[str]):
+        """Sets the qedge_ids of this Edge.
 
-        Identifier (id) of a QueryGraph QEdge in this same message that yielded this Edge in the KnowledgeGraph  # noqa: E501
+        List of identifiers (ids) of QueryGraph QEdges in this same message that yielded this Edge in the KnowledgeGraph. Must be a list, even if only one id.  # noqa: E501
 
-        :param qedge_id: The qedge_id of this Edge.
-        :type qedge_id: str
+        :param qedge_ids: The qedge_ids of this Edge.
+        :type qedge_ids: List[str]
         """
 
-        self._qedge_id = qedge_id
+        self._qedge_ids = qedge_ids
