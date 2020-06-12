@@ -30,3 +30,4 @@ md-toc
 pickledb
 git+https://github.com/biothings/biothings_explorer#egg=biothings_explorer
 pytest
+joblib
