@@ -5,6 +5,7 @@ import traceback
 import ast
 
 from neo4j import GraphDatabase
+import Expand.expand_utilities as eu
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering/")
 from KGNodeIndex import KGNodeIndex
@@ -43,8 +44,10 @@ class KGQuerier:
 
         synonym_usages_dict = dict()
         if dsl_parameters['use_synonyms']:
-            synonym_usages_dict = self.__add_curie_synonyms_to_query_nodes(self.query_graph.nodes, kp,
-                                                                           qnodes_using_curies_from_prior_step)
+            synonym_usages_dict = eu.add_curie_synonyms_to_query_nodes(qnodes=self.query_graph.nodes,
+                                                                       arax_kg=kp,
+                                                                       log=self.response,
+                                                                       qnodes_using_curies_from_prior_step=qnodes_using_curies_from_prior_step)
             if not self.response.status == 'OK':
                 return self.final_kg, self.edge_to_nodes_map
 
@@ -71,7 +74,9 @@ class KGQuerier:
             synonym_handling = self.response.data['parameters'].get('synonym_handling')
             synonym_usages_dict = dict()
             if use_synonyms:
-                synonym_usages_dict = self.__add_curie_synonyms_to_query_nodes([qnode], self.kp)
+                synonym_usages_dict = eu.add_curie_synonyms_to_query_nodes(qnodes=[qnode],
+                                                                           arax_kg=self.kp,
+                                                                           log=self.response)
                 if not self.response.status == 'OK':
                     return self.final_kg
 
@@ -87,43 +92,11 @@ class KGQuerier:
                 if qnode.id in synonym_usages_dict and synonym_handling == "map_back":
                     # Only add the original curie (discard synonym nodes)
                     if swagger_node.id in synonym_usages_dict[qnode.id].keys():
-                        self.__add_node_to_kg(swagger_node, qnode.id)
+                        eu.add_node_to_kg(self.final_kg, swagger_node, qnode.id)
                 else:
-                    self.__add_node_to_kg(swagger_node, qnode.id)
+                    eu.add_node_to_kg(self.final_kg, swagger_node, qnode.id)
 
         return self.final_kg
-
-    def __add_curie_synonyms_to_query_nodes(self, query_nodes, kp, qnodes_using_curies_from_prior_step=None):
-        self.response.debug("Looking for query nodes to use curie synonyms for")
-        if not qnodes_using_curies_from_prior_step:
-            qnodes_using_curies_from_prior_step = set()
-        kgni = KGNodeIndex()
-        synonym_usages_dict = dict()
-
-        for qnode in query_nodes:
-            if qnode.curie and (qnode.id not in qnodes_using_curies_from_prior_step):
-                curies_to_use_synonyms_for = qnode.curie if type(qnode.curie) is list else [qnode.curie]
-                synonyms = []
-                for curie in curies_to_use_synonyms_for:
-                    original_curie = curie
-                    equivalent_curies = kgni.get_equivalent_curies(original_curie, kg_name=kp)
-                    if len(equivalent_curies) > 1:
-                        synonyms += equivalent_curies
-                        qnode.type = None  # Equivalent curie types may be different than the original, so we clear this
-                        if qnode.id not in synonym_usages_dict:
-                            synonym_usages_dict[qnode.id] = dict()
-                        synonym_usages_dict[qnode.id][original_curie] = equivalent_curies
-                    elif len(equivalent_curies) == 1:
-                        self.response.info(f"Could not find any equivalent curies in {kp} for {original_curie}")
-                        synonyms += equivalent_curies
-                    else:
-                        self.response.error(f"{kp} does not contain a node with curie {original_curie}", error_code="UnknownCurie")
-                # Use our new synonyms list only if we actually found any synonyms
-                if synonyms != curies_to_use_synonyms_for:
-                    self.response.info(f"Using equivalent curies for qnode {qnode.id} ({qnode.curie}): {synonyms}")
-                    qnode.curie = synonyms
-
-        return synonym_usages_dict
 
     def __convert_query_graph_to_cypher_query(self, enforce_directionality):
         if len(self.query_graph.edges) > 1:
@@ -133,8 +106,8 @@ class KGQuerier:
             try:
                 # Build the match clause
                 edge = self.query_graph.edges[0]
-                source_node = self.__get_query_node(edge.source_id)
-                target_node = self.__get_query_node(edge.target_id)
+                source_node = eu.get_query_node(self.query_graph, edge.source_id)
+                target_node = eu.get_query_node(self.query_graph, edge.target_id)
                 edge_cypher = self.__get_cypher_for_query_edge(edge, enforce_directionality)
                 source_node_cypher = self.__get_cypher_for_query_node(source_node)
                 target_node_cypher = self.__get_cypher_for_query_node(target_node)
@@ -204,9 +177,9 @@ class KGQuerier:
                     # Handle synonyms as appropriate (only keep starting curie, discard synonym nodes)
                     if synonym_handling == 'map_back' and column_qnode_id in synonym_usages_dict:
                         if swagger_node.id in synonym_usages_dict[column_qnode_id].keys():
-                            self.__add_node_to_kg(swagger_node, column_qnode_id)
+                            eu.add_node_to_kg(self.final_kg, swagger_node, column_qnode_id)
                     else:
-                        self.__add_node_to_kg(swagger_node, column_qnode_id)
+                        eu.add_node_to_kg(self.final_kg, swagger_node, column_qnode_id)
             # Load answer edges into our knowledge graph
             elif column_name.startswith('edges'):  # Example column name: 'edges_e01'
                 column_qedge_id = column_name.replace("edges_", "", 1)
@@ -252,7 +225,7 @@ class KGQuerier:
                     self.edge_to_nodes_map[swagger_edge.id][qnode_id_2] = starting_curie_for_qnode_id_2 if starting_curie_for_qnode_id_2 else curie_fulfilling_qnode_id_2
 
                     # Finally add the current edge to our answer knowledge graph
-                    self.__add_edge_to_kg(swagger_edge, column_qedge_id)
+                    eu.add_edge_to_kg(self.final_kg, swagger_edge, column_qedge_id)
 
         self.__do_final_post_processing(synonym_handling, synonym_usages_dict, kp)
 
@@ -267,7 +240,7 @@ class KGQuerier:
                             cypher = f"match (n) where n.id='{original_curie}' return n limit 1"
                             original_node = self.__run_cypher_query(cypher, kp)[0].get('n')
                             swagger_node = self.__convert_neo4j_node_to_swagger_node(original_node, kp)
-                            self.__add_node_to_kg(swagger_node, qnode_id)
+                            eu.add_node_to_kg(self.final_kg, swagger_node, qnode_id)
 
             # Remove any self-edges  #TODO: Later probably allow a few types of self-edges
             edges_to_remove = []
@@ -303,7 +276,7 @@ class KGQuerier:
         swagger_node.node_attributes = []
 
         node_category = neo4j_node.get('category_label')
-        swagger_node.type = node_category if type(node_category) is list else [node_category]
+        swagger_node.type = eu.convert_string_or_list_to_list(node_category)
 
         # Fill out the 'symbol' property (only really relevant for nodes from UniProtKB)
         if swagger_node.symbol is None and swagger_node.id.lower().startswith("uniprot"):
@@ -328,7 +301,7 @@ class KGQuerier:
         swagger_node.node_attributes = []
 
         node_category = neo4j_node.get('category')
-        swagger_node.type = node_category if type(node_category) is list else [node_category]
+        swagger_node.type = eu.convert_string_or_list_to_list(node_category)
 
         return swagger_node
 
@@ -424,12 +397,6 @@ class KGQuerier:
             swagger_edge.target_id = starting_curie
         return swagger_edge
 
-    def __get_query_node(self, qnode_id):
-        for node in self.query_graph.nodes:
-            if node.id == qnode_id:
-                return node
-        return None
-
     def __get_cypher_for_query_node(self, node):
         node_type_string = f":{node.type}" if node.type else ""
         final_node_string = f"({node.id}{node_type_string})"
@@ -451,16 +418,6 @@ class KGQuerier:
                 item = item.replace(unwanted_char, "")
             provided_by_list.append(item)
         return provided_by_list
-
-    def __add_node_to_kg(self, swagger_node, qnode_id):
-        if qnode_id not in self.final_kg['nodes']:
-            self.final_kg['nodes'][qnode_id] = dict()
-        self.final_kg['nodes'][qnode_id][swagger_node.id] = swagger_node
-
-    def __add_edge_to_kg(self, swagger_edge, qedge_id):
-        if qedge_id not in self.final_kg['edges']:
-            self.final_kg['edges'][qedge_id] = dict()
-        self.final_kg['edges'][qedge_id][swagger_edge.id] = swagger_edge
 
     def __create_edge_id(self, swagger_edge):
         return f"{swagger_edge.source_id}--{swagger_edge.type}--{swagger_edge.target_id}"
