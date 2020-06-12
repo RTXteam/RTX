@@ -602,7 +602,7 @@ class ARAXMessenger:
             kg_edges[edge.id] = edge
             if edge.edge_attributes is not None:
                 for edge_attribute in edge.edge_attributes:
-                    for attribute_name in [ 'probability', 'ngd', 'jaccard_index', 'probability_drug_treats' ]:
+                    for attribute_name in [ 'probability', 'normalized_google_distance', 'jaccard_index', 'probability_drug_treats' ]:
                         if edge_attribute.name == attribute_name:
                             if attribute_name not in score_stats:
                                 score_stats[attribute_name] = { 'minimum': -9999, 'maximum': -9999 }
@@ -636,7 +636,7 @@ class ARAXMessenger:
                         #if edge_attribute.name == 'probability_drug_treats':               # this is already put in confidence
                         #    buf += f" probability_drug_treats={edge_attribute.value}"
                         #    score *= value
-                        if edge_attribute.name == 'ngd':
+                        if edge_attribute.name == 'normalized_google_distance':
                             ngd = float(edge_attribute.value)
                             if np.isinf(ngd): ngd = 10.0
                             buf += f" ngd={ngd}"

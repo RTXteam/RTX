@@ -647,9 +647,9 @@ def main():
             "add_qnode(type=protein, id=n1)",
             "add_qedge(source_id=n0, target_id=n1, id=e0)",
             "expand(edge_id=e0)",
-            "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n0, target_qnode_id=n1)",
+            "overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n0, target_qnode_id=n1)",
             "resultify(ignore_edge_direction=true)",
-            "return(message=true, store=false)",
+            "return(message=true, store=true)",
         ]}}
     elif params.example_number == 4:
         query = { "previous_message_processing_plan": { "processing_actions": [
@@ -668,7 +668,7 @@ def main():
             "expand(edge_id=e00)",
             "overlay(action=compute_ngd)",
             "resultify()",
-            "return(message=true, store=false)",
+            "return(message=true, store=true)",
             ] } }
     elif params.example_number == 6:  # test overlay
         query = { "previous_message_processing_plan": { "processing_actions": [
@@ -677,13 +677,13 @@ def main():
             "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00, type=has_phenotype)",
             "expand(edge_id=e00)",
-            #"overlay(action=overlay_clinical_info, paired_concept_freq=true)",
-            #"overlay(action=overlay_clinical_info, chi_square=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
-            #"overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
-            "overlay(action=compute_ngd, default_value=inf)",
-            #"overlay(action=compute_ngd, virtual_edge_type=NGD1, source_qnode_id=n00, target_qnode_id=n01)",
+            #"overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
+            #"overlay(action=overlay_clinical_info, chi_square=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
+            "overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
+            #"overlay(action=compute_ngd, default_value=inf)",
+            #"overlay(action=compute_ngd, virtual_relation_label=NGD1, source_qnode_id=n00, target_qnode_id=n01)",
             "filter(maximum_results=2)",
-            "return(message=true, store=false)",
+            "return(message=true, store=true)",
             ] } }
     elif params.example_number == 7:  # stub to test out the compute_jaccard feature
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -694,10 +694,10 @@ def main():
             "add_qedge(source_id=n01, target_id=n00, id=e00)",
             "add_qedge(source_id=n01, target_id=n02, id=e01)",
             "expand(edge_id=[e00,e01])",
-            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
-            "return(message=true, store=false)",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
+            "return(message=true, store=true)",
         ]}}
-    elif params.example_number == 8:  # to test jaccard with known result
+    elif params.example_number == 8:  # to test jaccard with known result  # FIXME:  ERROR: Node DOID:8398 has been returned as an answer for multiple query graph nodes (n00, n02)
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(curie=DOID:8398, id=n00)",  # osteoarthritis
@@ -706,7 +706,7 @@ def main():
             "add_qedge(source_id=n01, target_id=n00, id=e00)",
             "add_qedge(source_id=n01, target_id=n02, id=e01)",
             "expand(edge_id=[e00,e01])",
-            "return(message=true, store=false)",
+            "return(message=true, store=true)",
         ]}}
     elif params.example_number == 9:  # to test jaccard with known result. This check's out by comparing with match p=(s:disease{id:"DOID:1588"})-[]-(r:protein)-[]-(:chemical_substance) return p and manually counting
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -717,8 +717,8 @@ def main():
             "add_qedge(source_id=n01, target_id=n00, id=e00)",
             "add_qedge(source_id=n01, target_id=n02, id=e01)",
             "expand(edge_id=[e00,e01])",
-            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
-            "return(message=true, store=false)",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
+            "return(message=true, store=true)",
         ]}}
     elif params.example_number == 10:  # test case of drug prediction
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -728,19 +728,19 @@ def main():
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
             "overlay(action=predict_drug_treats_disease)",
-            "return(message=true, store=false)",
+            "return(message=true, store=true)",
         ]}}
-    elif params.example_number == 11:  # test overlay with overlay_clinical_info, paired_concept_freq via COHD
+    elif params.example_number == 11:  # test overlay with overlay_clinical_info, paired_concept_frequency via COHD
         query = { "previous_message_processing_plan": { "processing_actions": [
             "create_message",
             "add_qnode(curie=DOID:0060227, id=n00)",  # Adam's oliver
             "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00, type=has_phenotype)",
             "expand(edge_id=e00)",
-            "overlay(action=overlay_clinical_info, paired_concept_freq=true)",
-            #"overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=COHD1, source_qnode_id=n00, target_qnode_id=n01)",
+            "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
+            #"overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_relation_label=COHD1, source_qnode_id=n00, target_qnode_id=n01)",
             "filter(maximum_results=2)",
-            "return(message=true, store=false)",
+            "return(message=true, store=true)",
             ] } }
     elif params.example_number == 12:  # dry run of example 2 # FIXME NOTE: this is our planned example 2 (so don't fix, it's just so it's highlighted in my IDE)
         query = { "previous_message_processing_plan": { "processing_actions": [
@@ -751,13 +751,13 @@ def main():
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
             "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
-            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
             "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",  # can be removed, but shows we can filter by Knowledge provider
-            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_edge_type=P1)",
+            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
-            "return(message=true, store=false)",
+            "return(message=true, store=true)",
             ] } }
     elif params.example_number == 13:  # add pubmed id's
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -780,13 +780,13 @@ def main():
             "add_qedge(source_id=n02, target_id=n01, id=e01, type=indicated_for)",  # only look for drugs that are indicated for those phenotypes
             "add_qedge(source_id=n02, target_id=n03, id=e02)",  # find proteins that interact with those drugs
             "expand(edge_id=[e00, e01, e02])",
-            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",  # only look at drugs that target lots of phenotypes
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",  # only look at drugs that target lots of phenotypes
             #"filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.06, remove_connected_nodes=t, qnode_id=n02)",  # remove edges and drugs that connect to few phenotypes
             #"filter_kg(action=remove_edges_by_type, edge_type=J1, remove_connected_nodes=f)",
-            ##"overlay(action=overlay_clinical_info, paired_concept_freq=true)",  # overlay with COHD information
-            #"overlay(action=overlay_clinical_info, paired_concept_freq=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n02)",  # overlay drug->disease virtual edges with COHD information
+            ##"overlay(action=overlay_clinical_info, paired_concept_frequency=true)",  # overlay with COHD information
+            #"overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n02)",  # overlay drug->disease virtual edges with COHD information
             #"filter_kg(action=remove_edges_by_attribute, edge_attribute=paired_concept_frequency, direction=below, threshold=0.0000001, remove_connected_nodes=t, qnode_id=n02)",  # remove drugs below COHD threshold
-            #"overlay(action=compute_jaccard, start_node_id=n01, intermediate_node_id=n02, end_node_id=n03, virtual_edge_type=J2)",  # look at proteins that share many/any drugs in common with the phenotypes
+            #"overlay(action=compute_jaccard, start_node_id=n01, intermediate_node_id=n02, end_node_id=n03, virtual_relation_label=J2)",  # look at proteins that share many/any drugs in common with the phenotypes
             #"filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.001, remove_connected_nodes=t, qnode_id=n03)",
             #"filter_kg(action=remove_edges_by_type, edge_type=J2, remove_connected_nodes=f)",
             #"filter_kg(action=remove_edges_by_type, edge_type=C1, remove_connected_nodes=f)",
@@ -802,13 +802,13 @@ def main():
             "add_qedge(source_id=n00, target_id=n01, id=e00)",  # get connections
             "add_qedge(source_id=n01, target_id=n02, id=e01)",  # get connections
             "expand(edge_id=[e00,e01])",  # expand the query graph
-            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",  # Look in COHD to find which drug are being used to treat this disease based on the log ratio of expected frequency of this drug being used to treat a disease, vs. the observed number of times it’s used to treat this disease
+            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",  # Look in COHD to find which drug are being used to treat this disease based on the log ratio of expected frequency of this drug being used to treat a disease, vs. the observed number of times it’s used to treat this disease
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=3, remove_connected_nodes=t, qnode_id=n01)",   # concentrate only on those drugs that are more likely to be treating this disease than expected
             "filter_kg(action=remove_orphaned_nodes, node_type=protein)",  # remove proteins that got disconnected as a result of this filter action
-            "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n01, target_qnode_id=n02)",   # use normalized google distance to find how frequently the protein and the drug are mentioned in abstracts
-            "filter_kg(action=remove_edges_by_attribute, edge_attribute=ngd, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",   # remove proteins that are not frequently mentioned together in PubMed abstracts
+            "overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n01, target_qnode_id=n02)",   # use normalized google distance to find how frequently the protein and the drug are mentioned in abstracts
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=normalized_google_distance, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",   # remove proteins that are not frequently mentioned together in PubMed abstracts
             "resultify(ignore_edge_direction=true)",
-            "return(message=true, store=false)"
+            "return(message=true, store=true)"
         ]}}
     elif params.example_number == 1515:  # Exact duplicate of ARAX_Example3.ipynb
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -818,11 +818,11 @@ def main():
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "add_qedge(source_id=n01, target_id=n02, id=e01)",
             "expand(edge_id=[e00,e01])",
-            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
+            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=3, remove_connected_nodes=t, qnode_id=n01)",
             "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
-            "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n01, target_qnode_id=n02)",
-            "filter_kg(action=remove_edges_by_attribute, edge_attribute=ngd, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",
+            "overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n01, target_qnode_id=n02)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=normalized_google_distance, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",
             "resultify(ignore_edge_direction=true)",
             "return(message=true, store=true)"
         ]}}
@@ -885,7 +885,7 @@ def main():
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
             "expand(edge_id=[e00,e01])",
-            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
             "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
             "resultify(ignore_edge_direction=true, force_isset_false=[n02])",
@@ -926,10 +926,10 @@ def main():
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
             "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
-            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
             "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",  # can be removed, but shows we can filter by Knowledge provider
-            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_edge_type=P1)",  # overlay by probability that the drug treats the disease
+            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",  # overlay by probability that the drug treats the disease
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_edge_attribute, edge_attribute=probability_drug_treats, direction=descending, max_results=15)",  # filter by the probability that the drug treats the disease. cilnidipine prob=0.8976650309881645 which is the 9th highest (so top 10)
             "return(message=true, store=false)",
@@ -954,7 +954,7 @@ def main():
             #"add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",  # for KG1
             "expand(edge_id=[e00,e01], kp=ARAX/KG2)",  # for KG2
             #"expand(edge_id=[e00,e01], kp=ARAX/KG1)",  # for KG1
-            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",  # seems to work just fine
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",  # seems to work just fine
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.008, remove_connected_nodes=t, qnode_id=n02)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
@@ -970,8 +970,8 @@ def main():
             "add_qedge(id=e00, source_id=n00, target_id=n01)",
             "add_qedge(id=e01, source_id=n01, target_id=n02)",
             "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
-            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
-            "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n01, target_qnode_id=n02)",
+            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
+            "overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n01, target_qnode_id=n02)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=2, remove_connected_nodes=t, qnode_id=n01)",
             "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
             "return(message=true, store=false)",
@@ -986,8 +986,8 @@ def main():
             "add_qedge(id=e00, source_id=n00, target_id=n01)",
             "add_qedge(id=e01, source_id=n01, target_id=n02)",
             "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
-            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_edge_type=C1, source_qnode_id=n00, target_qnode_id=n01)",
-            "overlay(action=compute_ngd, virtual_edge_type=N1, source_qnode_id=n01, target_qnode_id=n02)",
+            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
+            "overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n01, target_qnode_id=n02)",
             #"filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=0, remove_connected_nodes=t, qnode_id=n01)",
             #"filter_kg(action=remove_orphaned_nodes, node_type=protein)",
             "return(message=true, store=false)",
@@ -1036,7 +1036,7 @@ def main():
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "add_qedge(source_id=n01, target_id=n02, id=e01, type=molecularly_interacts_with)",
             "expand(edge_id=[e00,e01], continue_if_no_results=true)",
-            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
             "return(message=true, store=false)"
         ]}}
     elif params.example_number == 6231:  # chunyu testing #623, all nodes already in the KG and QG
@@ -1048,11 +1048,11 @@ def main():
             "add_qnode(id=n02, type=biological_process)",
             "add_qedge(id=e01, source_id=n01, target_id=n02)",
             "expand(edge_id=[e00, e01], kp=ARAX/KG1)",
-            "overlay(action=fisher_exact_test, source_node_id=n01, virtual_relation_label=FET, target_node_id=n02, cutoff=0.05)",
+            "overlay(action=fisher_exact_test, source_qnode_id=n01, virtual_relation_label=FET, target_qnode_id=n02, cutoff=0.05)",
             "resultify()",
             "return(message=true, store=true)"
         ]}}
-    elif params.example_number == 6232:  # chunyu testing #623, this should return the 10 smallest FET p-values
+    elif params.example_number == 6232:  # chunyu testing #623, this should return the 10 smallest FET p-values and only add the virtual edge with top 10 FET p-values
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521)",
@@ -1061,11 +1061,11 @@ def main():
             "add_qnode(id=n02, type=biological_process)",
             "add_qedge(id=e01, source_id=n01, target_id=n02)",
             "expand(edge_id=[e00, e01], kp=ARAX/KG1)",
-            "overlay(action=fisher_exact_test, source_node_id=n01, virtual_relation_label=FET, target_node_id=n02, top_n=10)",
+            "overlay(action=fisher_exact_test, source_qnode_id=n01, virtual_relation_label=FET, target_qnode_id=n02, top_n=10)",
             "resultify()",
             "return(message=false, store=true)"
         ]}}
-    elif params.example_number == 6233:  # chunyu testing #623, this DSL tests the FET module based on (source id - involved_in - target id)
+    elif params.example_number == 6233:  # chunyu testing #623, this DSL tests the FET module based on (source id - involved_in - target id) and only decorate/add virtual edge with pvalue<0.05
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521)",
@@ -1074,7 +1074,7 @@ def main():
             "add_qnode(id=n02, type=biological_process)",
             "add_qedge(id=e01, source_id=n01, target_id=n02, type=involved_in)",
             "expand(edge_id=[e00, e01], kp=ARAX/KG1)",
-            "overlay(action=fisher_exact_test, source_node_id=n01, virtual_relation_label=FET, target_node_id=n02, rel_edge_id=e01, cutoff=0.05)",
+            "overlay(action=fisher_exact_test, source_qnode_id=n01, virtual_relation_label=FET, target_qnode_id=n02, rel_edge_id=e01, cutoff=0.05)",
             "resultify()",
             "return(message=false, store=true)"
         ]}}
@@ -1085,9 +1085,98 @@ def main():
             "add_qnode(id=n01, type=protein)",
             "add_qedge(id=e00, source_id=n00, target_id=n01)",
             "expand(edge_id=[e00], kp=ARAX/KG1)",
-            "overlay(action=fisher_exact_test, source_node_id=n01, virtual_relation_label=FET, target_node_id=n02, cutoff=0.05)",
+            "overlay(action=fisher_exact_test, source_qnode_id=n01, virtual_relation_label=FET, target_qnode_id=n02, cutoff=0.05)",
             "resultify()",
             "return(message=false, store=true)"
+        ]}}
+    elif params.example_number == 6235:  # chunyu testing #623, this is a two-hop sample. First, find all edges between DOID:14330 and proteins and then filter out the proteins with connection having pvalue>0.001 to DOID:14330. Second, find all edges between proteins and chemical_substances and then filter out the chemical_substances with connection having pvalue>0.005 to proteins
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(curie=DOID:14330, id=n00)",
+            "add_qnode(type=protein, is_set=true, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00, kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_qnode_id=n00, target_qnode_id=n01, virtual_relation_label=FET1)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_id=n01)",
+            "add_qnode(type=chemical_substance, id=n02)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
+            "expand(edge_id=e01, kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_qnode_id=n01, target_qnode_id=n02, virtual_relation_label=FET2)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_id=n02)",
+            "resultify()",
+            "return(message=false, store=true)"
+        ]}}
+    elif params.example_number == 6236:  # chunyu testing #623, this is a three-hop sample: DOID:14330 - protein - (physically_interacts_with) - chemical_substance - phenotypic_feature
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(curie=DOID:14330, id=n00)",
+            "add_qnode(type=protein, is_set=true, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00, kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_qnode_id=n00, target_qnode_id=n01, virtual_relation_label=FET1)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_id=n01)",
+            "add_qnode(type=chemical_substance, id=n02)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
+            "expand(edge_id=e01, kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_qnode_id=n01, target_qnode_id=n02, virtual_relation_label=FET2)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_id=n02)",
+            "add_qnode(type=phenotypic_feature, id=n03)",
+            "add_qedge(source_id=n02, target_id=n03, id=e02)",
+            "expand(edge_id=e02, kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_qnode_id=n02, target_qnode_id=n03, virtual_relation_label=FET3)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.05, remove_connected_nodes=t, qnode_id=n03)",
+            "resultify()",
+            "return(message=false, store=true)"
+        ]}}
+    elif params.example_number == 7680:  # issue 768 test all but jaccard, uncomment any one you want to test
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(curie=DOID:1588, id=n0)",
+            "add_qnode(type=chemical_substance, id=n1)",
+            "add_qedge(source_id=n0, target_id=n1, id=e0)",
+            "expand(edge_id=e0)",
+            #"overlay(action=predict_drug_treats_disease)",
+            #"overlay(action=predict_drug_treats_disease, source_qnode_id=n1, target_qnode_id=n0, virtual_relation_label=P1)",
+            #"overlay(action=overlay_clinical_info,paired_concept_frequency=true)",
+            #"overlay(action=overlay_clinical_info,observed_expected_ratio=true)",
+            #"overlay(action=overlay_clinical_info,chi_square=true)",
+            #"overlay(action=overlay_clinical_info,paired_concept_frequency=true, source_qnode_id=n0, target_qnode_id=n1, virtual_relation_label=CP1)",
+            #"overlay(action=overlay_clinical_info,observed_expected_ratio=true, source_qnode_id=n0, target_qnode_id=n1, virtual_relation_label=OE1)",
+            #"overlay(action=overlay_clinical_info,chi_square=true, source_qnode_id=n0, target_qnode_id=n1, virtual_relation_label=C1)",
+            "overlay(action=fisher_exact_test, source_qnode_id=n0, target_qnode_id=n1, virtual_relation_label=FET)",
+            "resultify()",
+            "filter_results(action=limit_number_of_results, max_results=15)",
+            "return(message=true, store=true)",
+        ]}}
+    elif params.example_number == 7681:  # issue 768 with jaccard
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(curie=DOID:14330, id=n00)",  # parkinsons
+            "add_qnode(type=protein, is_set=True, id=n01)",
+            "add_qnode(type=chemical_substance, is_set=False, id=n02)",
+            "add_qedge(source_id=n01, target_id=n00, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01)",
+            "expand(edge_id=[e00,e01])",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
+            "resultify()",
+            "filter_results(action=limit_number_of_results, max_results=15)",
+            "return(message=true, store=true)",
+        ]}}
+    elif params.example_number == 7200:  # issue 720, example 2
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(curie=DOID:14330, id=n00)",
+            "add_qnode(type=protein, is_set=true, id=n01)",
+            "add_qnode(type=chemical_substance, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
+            "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
+            #"filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
+            #"filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
+            #"overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",
+            "resultify(ignore_edge_direction=true, debug=true)",
+            "return(message=true, store=true)",
         ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
@@ -1149,8 +1238,12 @@ def main():
         num_edges_show = 2
         num_edges_shown = 0
         #attribute_of_interest = 'jaccard_index'
-        attribute_of_interest = 'observed_expected_ratio'
+        #attribute_of_interest = 'observed_expected_ratio'
         #attribute_of_interest = 'ngd'
+        #attribute_of_interest = 'normalized_google_distance'
+        #attribute_of_interest = 'chi_square'
+        #attribute_of_interest = 'paired_concept_frequency'
+        attribute_of_interest = 'probability'
         all_attribute_names = set()
         for edge in message.knowledge_graph.edges:
             if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
@@ -1163,6 +1256,8 @@ def main():
                         #for attr in edge.edge_attributes:
                         #    vals.append((attr.name, attr.value))
                         vals.append((edge_attribute.name, float(edge_attribute.value)))  # FIXME: some edge_attributes are floats, others are strings, object model weirdness
+                    elif attribute_of_interest == all:
+                        print(json.dumps(ast.literal_eval(repr(edge)), sort_keys=True, indent=2))
         print(f"All edge attribute names: {all_attribute_names}")
         if vals:
             print(f"number of edges with attribute {attribute_of_interest}: {len(vals)}")

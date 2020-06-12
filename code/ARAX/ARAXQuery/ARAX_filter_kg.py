@@ -144,7 +144,7 @@ class ARAXFilterKG:
             allowable_parameters = {'action': {'remove_edges_by_type'},
                                     'edge_type': set([x.type for x in self.message.knowledge_graph.edges]),
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_id':set([x.qnode_id for x in self.message.knowledge_graph.nodes])
+                                    'qnode_id': set([t for x in self.message.knowledge_graph.nodes if x.qnode_ids is not None for t in x.qnode_ids])
                                 }
         else:
             allowable_parameters = {'action': {'remove_edges_by_type'},
@@ -229,7 +229,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
                                     'edge_property': set([key for x in self.message.knowledge_graph.edges for key, val in x.to_dict().items() if type(val) == str or type(val) == list]),
                                     'property_value': known_values,
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_id':set([x.qnode_id for x in self.message.knowledge_graph.nodes])
+                                    'qnode_id':set([t for x in self.message.knowledge_graph.nodes if x.qnode_ids is not None for t in x.qnode_ids])
                                 }
         else:
             allowable_parameters = {'action': {'remove_edges_by_property'},
@@ -319,7 +319,7 @@ This can be applied to an arbitrary knowledge graph as possible edge properties 
                                     'direction': {'above', 'below'},
                                     'threshold': {float()},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_id':set([x.qnode_id for x in self.message.knowledge_graph.nodes])
+                                    'qnode_id':set([t for x in self.message.knowledge_graph.nodes if x.qnode_ids is not None for t in x.qnode_ids])
                                     }
         else:
             allowable_parameters = {'action': {'remove_edges_by_attribute'},
