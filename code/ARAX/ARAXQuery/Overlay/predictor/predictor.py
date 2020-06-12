@@ -6,8 +6,8 @@ try:
 except:
     try:
         from sklearn.utils import _joblib as joblib
-    excep:L
-    import joblib
+    except:
+        import joblib
 
 
 class predictor():
