@@ -496,9 +496,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         # allowable_parameters = {'action': {'fisher_exact_test'}, 'query_node_label': {...}, 'compare_node_label':{...}}
 
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and hasattr(message.query_graph, 'edges'):
-            allowable_source_qnode_id = set([node.qnode_id for node in message.knowledge_graph.nodes])
-            allowable_target_qnode_id = set([node.qnode_id for node in message.knowledge_graph.nodes])
-            allowwable_rel_edge_id = list(set([edge.qedge_id for edge in message.knowledge_graph.edges]))
+            allowable_source_qnode_id = set([item for sublist in [node.qnode_ids for node in message.knowledge_graph.nodes] for item in sublist])  # flatten these as they are lists of lists now
+            allowable_target_qnode_id = set([item for sublist in [node.qnode_ids for node in message.knowledge_graph.nodes] for item in sublist])  # flatten these as they are lists of lists now
+            allowwable_rel_edge_id = list(set([item for sublist in [edge.qedge_ids for edge in message.knowledge_graph.edges] for item in sublist]))  # flatten these as they are lists of lists now
             allowwable_rel_edge_id.append(None)
             # # FIXME: need to generate this from some source as per #780
             # allowable_target_node_type = [None,'metabolite','biological_process','chemical_substance','microRNA','protein',
