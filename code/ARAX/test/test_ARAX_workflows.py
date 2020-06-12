@@ -12,6 +12,7 @@ import ast
 from typing import List, Union
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../ARAXQuery")
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 from ARAX_query import ARAXQuery
 from response import Response
 

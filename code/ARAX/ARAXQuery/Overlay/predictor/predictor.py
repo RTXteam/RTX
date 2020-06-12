@@ -1,7 +1,10 @@
 import os
 import pandas as pd
 import numpy as np
-from sklearn.externals import joblib
+try:
+    from sklearn.externals import joblib
+except:
+    from sklearn.utils import _joblib as joblib
 
 
 class predictor():
