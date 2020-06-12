@@ -4,7 +4,10 @@ import numpy as np
 try:
     from sklearn.externals import joblib
 except:
-    from sklearn.utils import _joblib as joblib
+    try:
+        from sklearn.utils import _joblib as joblib
+    excep:L
+    import joblib
 
 
 class predictor():
