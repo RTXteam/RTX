@@ -8,7 +8,7 @@ Usage:
 import sys
 import os
 import pytest
-from typing import List, Dict, Union, Tuple
+from typing import List, Dict, Tuple
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery/")
 from ARAX_query import ARAXQuery
@@ -38,23 +38,23 @@ def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_inc
     if debug:
         _print_nodes(nodes_by_qg_id)
         _print_edges(edges_by_qg_id)
-        _print_counts_by_qgid(dict_kg)
+        _print_counts_by_qgid(nodes_by_qg_id, edges_by_qg_id)
         print(response.show(level=Response.DEBUG))
 
     # Run standard testing (applies to every test case)
     assert eu.qg_is_fulfilled(message.query_graph, dict_kg) or kg_should_be_incomplete
-    _check_for_orphans(dict_kg)
-    _check_property_types(dict_kg)
+    _check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
+    _check_property_types(nodes_by_qg_id, edges_by_qg_id)
 
     return nodes_by_qg_id, edges_by_qg_id
 
 
-def _print_counts_by_qgid(dict_kg: Dict[str, Dict[str, Dict[str, Union[Node, Edge]]]]):
+def _print_counts_by_qgid(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
     print(f"KG counts:")
-    if dict_kg['nodes'] or dict_kg['edges']:
-        for qnode_id, corresponding_nodes in sorted(dict_kg['nodes'].items()):
+    if nodes_by_qg_id or edges_by_qg_id:
+        for qnode_id, corresponding_nodes in sorted(nodes_by_qg_id.items()):
             print(f"  {qnode_id}: {len(corresponding_nodes)}")
-        for qedge_id, corresponding_edges in sorted(dict_kg['edges'].items()):
+        for qedge_id, corresponding_edges in sorted(edges_by_qg_id.items()):
             print(f"  {qedge_id}: {len(corresponding_edges)}")
     else:
         print("  KG is empty")
@@ -84,24 +84,24 @@ def _print_node_counts_by_prefix(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
     print(nodes_by_prefix)
 
 
-def _check_for_orphans(dict_kg: Dict[str, Dict[str, Dict[str, Union[Node, Edge]]]]):
+def _check_for_orphans(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
     node_ids = set()
     node_ids_used_by_edges = set()
-    for qnode_id, nodes in dict_kg['nodes'].items():
+    for qnode_id, nodes in nodes_by_qg_id.items():
         for node_key, node in nodes.items():
             node_ids.add(node_key)
-    for qedge_id, edges in dict_kg['edges'].items():
+    for qedge_id, edges in edges_by_qg_id.items():
         for edge_key, edge in edges.items():
             node_ids_used_by_edges.add(edge.source_id)
             node_ids_used_by_edges.add(edge.target_id)
     assert node_ids == node_ids_used_by_edges or len(node_ids_used_by_edges) == 0
 
 
-def _check_property_types(dict_kg: Dict[str, Dict[str, Dict[str, Union[Node, Edge]]]]):
-    for qnode_id, nodes in dict_kg['nodes'].items():
+def _check_property_types(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
+    for qnode_id, nodes in nodes_by_qg_id.items():
         for node_key, node in nodes.items():
             assert type(node.qnode_ids) is list
-    for qedge_id, edges in dict_kg['edges'].items():
+    for qedge_id, edges in edges_by_qg_id.items():
         for edge_key, edge in edges.items():
             assert type(edge.qedge_ids) is list
 
