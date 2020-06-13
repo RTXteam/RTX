@@ -1102,6 +1102,28 @@ def main():
             "resultify()",
             "return(message=false, store=true)"
         ]}}
+    elif params.example_number == 6237:  # chunyu testing #623 for Amy to test it
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(curie=DOID:14330, id=n00)",
+            "add_qnode(type=protein, is_set=true, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00, kp=ARAX/KG1)",
+            "add_qnode(type=chemical_substance, id=n02)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
+            "expand(edge_id=e01, kp=ARAX/KG1)",
+            "resultify()",
+            "return(message=false, store=true)"
+        ]}}
+    elif params.example_number == 6238:  # chunyu testing #623 for Amy to test it
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "add_qnode(curie=[UniProtKB:P02675,UniProtKB:P01903,UniProtKB:P09601,UniProtKB:Q02878,UniProtKB:P01375,UniProtKB:Q9BXM7,UniProtKB:P05181,UniProtKB:I3WAC9,UniProtKB:P50914,UniProtKB:P62241,UniProtKB:O15217,UniProtKB:P09488,UniProtKB:P15559,UniProtKB:P06213,UniProtKB:Q13330,UniProtKB:P38646,UniProtKB:P05231,UniProtKB:Q9BRL8,UniProtKB:P01344,UniProtKB:Q99683,UniProtKB:P11717,UniProtKB:P01308,UniProtKB:P10635,UniProtKB:P23560,UniProtKB:Q01959,UniProtKB:P21728,UniProtKB:O60260,UniProtKB:Q9NQ11,UniProtKB:P21397,UniProtKB:P10636,UniProtKB:P08183,UniProtKB:P09211,UniProtKB:P04062,UniProtKB:P14416,UniProtKB:Q5S007,UniProtKB:Q99497,UniProtKB:P27338,UniProtKB:P37840,UniProtKB:P08069], is_set=true, id=n00)",
+            "add_qnode(type=chemical_substance, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00, type=physically_interacts_with)",
+            "expand(edge_id=e00,kp=ARAX/KG1)",
+            "resultify()",
+            "return(message=false, store=true)"
+        ]}}
     elif params.example_number == 7680:  # issue 768 test all but jaccard, uncomment any one you want to test
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
