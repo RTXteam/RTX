@@ -673,7 +673,6 @@ def test_branched_query():
         "add_qedge(source_id=n02, target_id=n00, id=e01)",
         "add_qedge(source_id=n00, target_id=n03, id=e02)",
         "expand(kp=ARAX/KG2)",
-        "resultify()",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
