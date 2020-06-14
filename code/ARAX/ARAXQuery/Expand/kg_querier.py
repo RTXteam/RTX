@@ -26,6 +26,7 @@ class KGQuerier:
         self.query_results = None
         self.edge_to_nodes_map = dict()
         self.final_kg = {'nodes': dict(), 'edges': dict()}
+        self.non_synonym_nodes = None
 
     def answer_one_hop_query(self, query_graph, qnodes_using_curies_from_prior_step):
         """
@@ -42,10 +43,11 @@ class KGQuerier:
 
         synonym_usages_dict = dict()
         if dsl_parameters['use_synonyms']:
-            synonym_usages_dict = eu.add_curie_synonyms_to_query_nodes(qnodes=self.query_graph.nodes,
-                                                                       arax_kg=kp,
-                                                                       log=self.response,
-                                                                       qnodes_using_curies_from_prior_step=qnodes_using_curies_from_prior_step)
+            synonym_usages_dict, no_synonym_nodes = eu.add_curie_synonyms_to_query_nodes(qnodes=self.query_graph.nodes,
+                                                                                         arax_kg=kp,
+                                                                                         log=self.response,
+                                                                                         qnodes_using_curies_from_prior_step=qnodes_using_curies_from_prior_step)
+            self.non_synonym_nodes = no_synonym_nodes
             if not self.response.status == 'OK':
                 return self.final_kg, self.edge_to_nodes_map
 
@@ -72,9 +74,10 @@ class KGQuerier:
             synonym_handling = self.response.data['parameters'].get('synonym_handling')
             synonym_usages_dict = dict()
             if use_synonyms:
-                synonym_usages_dict = eu.add_curie_synonyms_to_query_nodes(qnodes=[qnode],
-                                                                           arax_kg=self.kp,
-                                                                           log=self.response)
+                synonym_usages_dict, non_synonym_nodes = eu.add_curie_synonyms_to_query_nodes(qnodes=[qnode],
+                                                                                              arax_kg=self.kp,
+                                                                                              log=self.response)
+                self.non_synonym_nodes = non_synonym_nodes
                 if not self.response.status == 'OK':
                     return self.final_kg
 
@@ -87,7 +90,7 @@ class KGQuerier:
             for result in results:
                 neo4j_node = result.get(qnode.id)
                 swagger_node = self.__convert_neo4j_node_to_swagger_node(neo4j_node, self.kp)
-                if qnode.id in synonym_usages_dict and synonym_handling == "map_back":
+                if qnode.id in synonym_usages_dict and synonym_handling == "map_back" and swagger_node.id not in self.non_synonym_nodes:
                     # Only add the original curie (discard synonym nodes)
                     if swagger_node.id in synonym_usages_dict[qnode.id].keys():
                         eu.add_node_to_kg(self.final_kg, swagger_node, qnode.id)
@@ -173,7 +176,7 @@ class KGQuerier:
                 for node in results_table.get(column_name):
                     swagger_node = self.__convert_neo4j_node_to_swagger_node(node, kp)
                     # Handle synonyms as appropriate (only keep starting curie, discard synonym nodes)
-                    if synonym_handling == 'map_back' and column_qnode_id in synonym_usages_dict:
+                    if synonym_handling == 'map_back' and column_qnode_id in synonym_usages_dict and swagger_node.id not in self.non_synonym_nodes:
                         if swagger_node.id in synonym_usages_dict[column_qnode_id].keys():
                             eu.add_node_to_kg(self.final_kg, swagger_node, column_qnode_id)
                     else:
