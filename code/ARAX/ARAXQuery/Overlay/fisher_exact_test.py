@@ -18,7 +18,9 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/py
 from swagger_server.models.edge_attribute import EdgeAttribute
 from swagger_server.models.edge import Edge
 from swagger_server.models.q_edge import QEdge
-
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
+from KGNodeIndex import KGNodeIndex
+import collections
 
 class ComputeFTEST:
 
@@ -58,15 +60,14 @@ class ComputeFTEST:
 
         # initialize some variables
         nodes_info = {}
-        kp = set()
+        edge_expand_kp = []
         source_node_list = []
         target_node_dict = {}
         size_of_target = {}
-        target_graph_list = dict()
         source_node_exist = False
         target_node_exist = False
-        source_node_type = []
-        target_node_type = []
+        source_node_type = set()
+        target_node_type = set()
         query_edge_id = set()
         rel_edge_type = set()
 
@@ -76,10 +77,10 @@ class ComputeFTEST:
                 for node in self.message.query_graph.nodes:
                     if node.id == source_qnode_id:
                         source_node_exist = True
-                        source_node_type.append(node.type)
+                        source_node_type.update([node.type])
                     elif node.id == target_qnode_id:
                         target_node_exist = True
-                        target_node_type.append(node.type)
+                        target_node_type.update([node.type])
                     else:
                         pass
             else:
@@ -140,7 +141,7 @@ class ComputeFTEST:
         try:
             count = 0
             for node in self.message.knowledge_graph.nodes:
-                nodes_info[node.id] = {'count': count, 'qnode_ids': node.qnode_ids, 'type': node.type[0], 'edge_index': []}
+                nodes_info[node.id] = {'count': count, 'qnode_ids': node.qnode_ids, 'type': node.type, 'edge_index': []}
                 count = count + 1
         except:
             tb = traceback.format_exc()
@@ -161,7 +162,7 @@ class ComputeFTEST:
                     if rel_edge_id:
                         if rel_edge_id in edge.qedge_ids:
                             if source_qnode_id in nodes_info[edge.source_id]['qnode_ids']:
-                                kp.update([edge.is_defined_by])
+                                edge_expand_kp.append(edge.is_defined_by)
                                 rel_edge_type.update([edge.type])
                                 source_node_list.append(edge.source_id)
                                 if edge.target_id not in target_node_dict.keys():
@@ -169,7 +170,7 @@ class ComputeFTEST:
                                 else:
                                     target_node_dict[edge.target_id].update([edge.source_id])
                             else:
-                                kp.update([edge.is_defined_by])
+                                edge_expand_kp.append(edge.is_defined_by)
                                 rel_edge_type.update([edge.type])
                                 source_node_list.append(edge.target_id)
                                 if edge.source_id not in target_node_dict.keys():
@@ -181,7 +182,7 @@ class ComputeFTEST:
                     else:
                         if source_qnode_id in nodes_info[edge.source_id]['qnode_ids']:
                             if target_qnode_id in nodes_info[edge.target_id]['qnode_ids']:
-                                kp.update([edge.is_defined_by])
+                                edge_expand_kp.append(edge.is_defined_by)
                                 source_node_list.append(edge.source_id)
                                 if edge.target_id not in target_node_dict.keys():
                                     target_node_dict[edge.target_id] = set([edge.source_id])
@@ -192,7 +193,7 @@ class ComputeFTEST:
                                 pass
                         elif target_qnode_id in nodes_info[edge.source_id]['qnode_ids']:
                             if source_qnode_id in nodes_info[edge.target_id]['qnode_ids']:
-                                kp.update([edge.is_defined_by])
+                                edge_expand_kp.append(edge.is_defined_by)
                                 source_node_list.append(edge.target_id)
                                 if edge.source_id not in target_node_dict.keys():
                                     target_node_dict[edge.source_id] = set([edge.target_id])
@@ -228,14 +229,24 @@ class ComputeFTEST:
             self.response.error(f"No target node found in message KG for Fisher's Exact Test")
             return self.response
 
+        ##check how many kps were used in message KG. If more than one, the one with the max number of edges connnected to both source nodes and target nodes was used
+        if len(collections.Counter(edge_expand_kp))==1:
+            kp = edge_expand_kp[0]
+        else:
+            occurrences = collections.Counter(edge_expand_kp)
+            max_index = max([(value, index) for index, value in enumerate(occurrences.values())])[1] # if there are more than one kp having the maximum number of edges, then the last one based on alphabetical order will be chosen.
+            kp = list(occurrences.keys())[max_index]
+            self.response.warning(f"More than one knowledge provider was detected to be used for expanding the edges connected to both source node with id {source_qnode_id} and target node with id {target_qnode_id}")
+            self.response.warning(f"The knowledge provider {kp} was used to calculate Fisher's exact test because it has the maximum number of edges both source node with id {source_qnode_id} and target node with id {target_qnode_id}")
+
         # find all nodes with the type of 'source_qnode_id' nodes in specified KP ('ARAX/KG1','ARAX/KG2','BTE') that are adjacent to target nodes
         if rel_edge_id:
             if len(rel_edge_type)==1: # if the edge with rel_edge_id has only type, we use this rel_edge_type to find all source nodes in KP
-                parament_list = [(node, f"{virtual_relation_label}", source_node_type[0], list(kp)[0], list(rel_edge_type)[0], True) for node in list(target_node_dict.keys())]
+                parament_list = [(node, f"{virtual_relation_label}", list(source_node_type)[0], kp, list(rel_edge_type)[0], True) for node in list(target_node_dict.keys())]
             else: # if the edge with rel_edge_id has more than one type, we ignore the edge type and use all types to find all source nodes in KP
-                parament_list = [(node, f"{virtual_relation_label}", source_node_type[0], list(kp)[0], None, True) for node in list(target_node_dict.keys())]
+                parament_list = [(node, f"{virtual_relation_label}", list(source_node_type)[0], kp, None, True) for node in list(target_node_dict.keys())]
         else: # if no rel_edge_id is specified, we ignore the edge type and use all types to find all source nodes in KP
-            parament_list = [(node, f"{virtual_relation_label}", source_node_type[0], list(kp)[0], None, True) for node in list(target_node_dict.keys())]
+            parament_list = [(node, f"{virtual_relation_label}", list(source_node_type)[0], kp, None, True) for node in list(target_node_dict.keys())]
 
         ## get the count of all nodes with the type of 'source_qnode_id' nodes in KP for each target node in parallel
         with concurrent.futures.ProcessPoolExecutor() as executor:
@@ -246,12 +257,47 @@ class ComputeFTEST:
             if target_count_res != -1:
                 size_of_target[node] = target_count_res[index]
             else:
-                self.response.error(f"The target node {node} can't find any adjacent nodes with type of {source_qnode_id} nodes in {list(kp)[0]}")
+                self.response.error(f"The target node {node} can't find any adjacent nodes with type of {source_qnode_id} nodes in {kp}")
                 return self.response
 
-        size_of_total = self.size_of_given_type_in_KP(node_type=source_node_type[0])
-        size_of_query_sample = len(source_node_list)
+        ## Based on KP detected in message KG, find the total number of node with the same type of source node
+        if kp=='ARAX/KG1':
+            size_of_total = self.size_of_given_type_in_KP(node_type=list(source_node_type)[0],use_cypher_command=True, kg='KG1') ## Try cypher query first
+            if size_of_total != 0:
+                pass
+            else:
+                size_of_total = self.size_of_given_type_in_KP(node_type=list(source_node_type)[0], use_cypher_command=False, kg='KG1') ## If cypher query fails, then try kgNodeIndex
+                if size_of_total==0:
+                    self.response.error(f"KG1 has 0 node with the same type of source node with id {source_qnode_id}")
+                    return self.response
+                else:
+                    pass
+        elif kp=='ARAX/KG2':
+            ## check KG1 first as KG2 might have many duplicates. If KG1 is 0, then check KG2
+            size_of_total = self.size_of_given_type_in_KP(node_type=list(source_node_type)[0], use_cypher_command=True, kg='KG1')
+            if size_of_total!=0:
+                self.response.warning(f"Although KG2 was found to have the maximum number of edges connected to both {source_qnode_id} and {target_qnode_id}, KG1 was used to find the total number of nodes with the same type of source node with id {source_qnode_id} as KG2 might have many duplicates")
+                pass
+            else:
+                size_of_total = self.size_of_given_type_in_KP(node_type=list(source_node_type)[0], use_cypher_command=False, kg='KG1')
+                if size_of_total != 0:
+                    self.response.warning(f"Although KG2 was found to have the maximum number of edges connected to both {source_qnode_id} and {target_qnode_id}, KG1 was used to find the total number of nodes with the same type of source node with id {source_qnode_id} as KG2 might have many duplicates")
+                    pass
+                else:
+                    size_of_total = self.size_of_given_type_in_KP(node_type=list(source_node_type)[0], use_cypher_command=False, kg='KG2')
+                    if size_of_total is None:
+                        self.response.error(f'Something wrong with finding total number of node with the same type of source node with id {source_qnode_id}')
+                        return self.response
+                    elif size_of_total==0:
+                        self.response.error(f"KG2 has 0 node with the same type of source node with id {source_qnode_id}")
+                        return self.response
+                    else:
+                        pass
+        else:
+            self.response.error(f"Only KG1 or KG2 is allowable to calculate the Fisher's exact test temporally")
+            return self.response
 
+        size_of_query_sample = len(source_node_list)
 
         output = {}
         self.response.debug(f"Computing Fisher's Exact Test P-value")
@@ -415,23 +461,47 @@ class ComputeFTEST:
             return res
 
 
-    def size_of_given_type_in_KP(self,node_type, use_cypher_command=True):
+    def size_of_given_type_in_KP(self,node_type, use_cypher_command=True, kg='KG1'):
         """
         find all nodes of a certain type in KP
+        :param node_type: the query node type
+        :param use_cypher_command: Bolean (True or False). If True, it used cypher command to query all nodes otherwise used kgNodeIndex
+        :param kg: only allowed for choosing 'KG1' or 'KG2' now. Will extend to BTE later
         """
         # TODO: extend this to KG2, BTE, and other KP's we know of
-        if use_cypher_command:
-            rtxConfig = RTXConfiguration()
-            # Connection information for the neo4j server, populated with orangeboard
-            driver = GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=basic_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
-            session = driver.session()
 
-            query = "MATCH (n:%s) return count(distinct n)" % (node_type)
-            res = session.run(query)
-            size_of_total = res.single()["count(distinct n)"]
+        size_of_total = None
 
-        else:
+        if kg == 'KG1' or kg == 'KG2':
             pass
+        else:
+            self.response.error(f"Only KG1 or KG2 is allowable to calculate the Fisher's exact test temporally")
+            return size_of_total
 
-        return size_of_total
+        if kg == 'KG1':
+            if use_cypher_command:
+                rtxConfig = RTXConfiguration()
+                # Connection information for the neo4j server, populated with orangeboard
+                driver = GraphDatabase.driver(rtxConfig.neo4j_bolt,
+                                              auth=basic_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
+                session = driver.session()
+
+                query = "MATCH (n:%s) return count(distinct n)" % (node_type)
+                res = session.run(query)
+                size_of_total = res.single()["count(distinct n)"]
+                return size_of_total
+            else:
+                kgNodeIndex = KGNodeIndex()
+                size_of_total = kgNodeIndex.get_total_entity_count(node_type, kg_name=kg)
+                return size_of_total
+        else:
+            if use_cypher_command:
+                self.response.error(
+                    f"KG2 is only allowable to use kgNodeIndex to query the total number of node with query type")
+                return size_of_total
+
+            else:
+                kgNodeIndex = KGNodeIndex()
+                size_of_total = kgNodeIndex.get_total_entity_count(node_type, kg_name=kg)
+                return size_of_total
 
