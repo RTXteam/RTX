@@ -18,8 +18,8 @@ from itertools import chain
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--Gjson", type=str, help="The path of G.json file")
-parser.add_argument("-l", "--walk_length", type=int, help="Random walk length", default=300)
-parser.add_argument("-r", "--number_of_walks", type=int, help="Number of random walks per node", default=15)
+parser.add_argument("-l", "--walk_length", type=int, help="Random walk length", default=200)
+parser.add_argument("-r", "--number_of_walks", type=int, help="Number of random walks per node", default=10)
 parser.add_argument("-b", "--batch_size", type=int, help="Size of batch for each run", default=100000)
 parser.add_argument("-p", "--process", type=int, help="Number of processes to be used", default=-1)
 parser.add_argument("-o", "--output", type=str, help="The path of output folder", default="/graphsage_input")
