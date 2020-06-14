@@ -213,6 +213,7 @@ def add_curie_synonyms_to_query_nodes(qnodes, log, arax_kg='KG2', override_node_
     if not qnodes_using_curies_from_prior_step:
         qnodes_using_curies_from_prior_step = set()
     synonym_usages_dict = dict()
+    no_synonym_nodes = set()
 
     for qnode in qnodes:
         if qnode.curie and (qnode.id not in qnodes_using_curies_from_prior_step):
@@ -232,6 +233,7 @@ def add_curie_synonyms_to_query_nodes(qnodes, log, arax_kg='KG2', override_node_
                     synonym_usages_dict[qnode.id][original_curie] = equivalent_curies
                 elif len(equivalent_curies) <= 1:
                     log.info(f"Could not find any equivalent curies for {original_curie}")
+                    no_synonym_nodes.add(original_curie)
                     synonyms += equivalent_curies
 
             # Use our new synonyms list only if we actually found any synonyms
@@ -239,8 +241,12 @@ def add_curie_synonyms_to_query_nodes(qnodes, log, arax_kg='KG2', override_node_
                 log.info(f"Using equivalent curies for qnode {qnode.id} with curie "
                          f"'{qnode.curie if len(qnode.curie) > 1 else qnode.curie[0]}': {synonyms}")
                 qnode.curie = synonyms
+        elif qnode.curie:
+            curies = convert_string_or_list_to_list(qnode.curie)
+            no_synonym_nodes = no_synonym_nodes.union(set(curies))
+            print(no_synonym_nodes)
 
-    return synonym_usages_dict
+    return synonym_usages_dict, no_synonym_nodes
 
 
 def qg_is_fulfilled(query_graph, dict_kg):

@@ -39,11 +39,11 @@ class BTEQuerier:
 
         # Add synonyms to our input query node, if desired
         if self.use_synonyms:
-            synonym_usages_dict = eu.add_curie_synonyms_to_query_nodes(qnodes=[input_qnode, output_qnode],
-                                                                       log=self.response,
-                                                                       override_node_type=False,
-                                                                       format_for_bte=True,
-                                                                       qnodes_using_curies_from_prior_step=qnodes_using_curies_from_prior_step)
+            synonym_usages_dict, no_synonym_nodes = eu.add_curie_synonyms_to_query_nodes(qnodes=[input_qnode, output_qnode],
+                                                                                         log=self.response,
+                                                                                         override_node_type=False,
+                                                                                         format_for_bte=True,
+                                                                                         qnodes_using_curies_from_prior_step=qnodes_using_curies_from_prior_step)
         if self.response.status != 'OK':
             return answer_kg, edge_to_nodes_map
 
