@@ -225,8 +225,8 @@ class ARAXMessenger:
 
                 # If nothing was found, log an error, but don't bail out yet. Check them all in case there are multiple problems before returning with error
                 if len(nodes) == 0:
-                    #response.error(f"A node with CURIE {curie} is not in our knowledge graph", error_code="UnknownCURIE")
-                    response.warning(f"A node with CURIE {curie} is not in our knowledge graph")
+                    response.error(f"A node with CURIE {curie} is not in our knowledge graph", error_code="UnknownCURIE")
+                    #response.warning(f"A node with CURIE {curie} is not in our knowledge graph")
                 else:
 
                     # FIXME. This is just always taking the first result. This could cause problems for CURIEs with multiple types. Is that possible?
