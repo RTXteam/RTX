@@ -7,8 +7,6 @@ import ast
 from neo4j import GraphDatabase
 import Expand.expand_utilities as eu
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering/")
-from KGNodeIndex import KGNodeIndex
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -28,6 +26,7 @@ class KGQuerier:
         self.query_results = None
         self.edge_to_nodes_map = dict()
         self.final_kg = {'nodes': dict(), 'edges': dict()}
+        self.non_synonym_nodes = None
 
     def answer_one_hop_query(self, query_graph, qnodes_using_curies_from_prior_step):
         """
@@ -42,12 +41,12 @@ class KGQuerier:
         dsl_parameters = self.response.data['parameters']
         kp = self.kp
 
-        synonym_usages_dict = dict()
+        curie_map = dict()
         if dsl_parameters['use_synonyms']:
-            synonym_usages_dict = eu.add_curie_synonyms_to_query_nodes(qnodes=self.query_graph.nodes,
-                                                                       arax_kg=kp,
-                                                                       log=self.response,
-                                                                       qnodes_using_curies_from_prior_step=qnodes_using_curies_from_prior_step)
+            curie_map = eu.add_curie_synonyms_to_query_nodes(qnodes=self.query_graph.nodes,
+                                                             arax_kg=kp,
+                                                             log=self.response,
+                                                             qnodes_using_curies_from_prior_step=qnodes_using_curies_from_prior_step)
             if not self.response.status == 'OK':
                 return self.final_kg, self.edge_to_nodes_map
 
@@ -59,7 +58,7 @@ class KGQuerier:
         if not self.response.status == 'OK':
             return self.final_kg, self.edge_to_nodes_map
 
-        self.__add_answers_to_kg(dsl_parameters['synonym_handling'], synonym_usages_dict, kp, query_graph)
+        self.__add_answers_to_kg(dsl_parameters['synonym_handling'], curie_map, kp, query_graph)
         if not self.response.status == 'OK':
             return self.final_kg, self.edge_to_nodes_map
 
@@ -72,11 +71,9 @@ class KGQuerier:
             # Gather synonyms as appropriate
             use_synonyms = self.response.data['parameters'].get('use_synonyms')
             synonym_handling = self.response.data['parameters'].get('synonym_handling')
-            synonym_usages_dict = dict()
+            curie_map = dict()
             if use_synonyms:
-                synonym_usages_dict = eu.add_curie_synonyms_to_query_nodes(qnodes=[qnode],
-                                                                           arax_kg=self.kp,
-                                                                           log=self.response)
+                curie_map = eu.add_curie_synonyms_to_query_nodes(qnodes=[qnode], arax_kg=self.kp, log=self.response)
                 if not self.response.status == 'OK':
                     return self.final_kg
 
@@ -89,9 +86,9 @@ class KGQuerier:
             for result in results:
                 neo4j_node = result.get(qnode.id)
                 swagger_node = self.__convert_neo4j_node_to_swagger_node(neo4j_node, self.kp)
-                if qnode.id in synonym_usages_dict and synonym_handling == "map_back":
-                    # Only add the original curie (discard synonym nodes)
-                    if swagger_node.id in synonym_usages_dict[qnode.id].keys():
+                if synonym_handling == "map_back" and qnode.id in curie_map:
+                    if swagger_node.id in curie_map[qnode.id].keys():
+                        # Only add the original curie (discard synonym nodes)
                         eu.add_node_to_kg(self.final_kg, swagger_node, qnode.id)
                 else:
                     eu.add_node_to_kg(self.final_kg, swagger_node, qnode.id)
@@ -162,7 +159,7 @@ class KGQuerier:
                 num_results_string = ", ".join([f"{column.split('_')[1]}: {value}" for column, value in sorted(columns_with_lengths.items())])
                 self.response.info(f"Query for edge {self.query_graph.edges[0].id} returned results ({num_results_string})")
 
-    def __add_answers_to_kg(self, synonym_handling, synonym_usages_dict, kp, query_graph):
+    def __add_answers_to_kg(self, synonym_handling, curie_map, kp, query_graph):
         self.response.debug(f"Processing query results for edge {self.query_graph.edges[0].id}")
         node_uuid_to_curie_dict = self.__build_node_uuid_to_curie_dict(self.query_results[0]) if kp == "KG1" else dict()
 
@@ -175,8 +172,8 @@ class KGQuerier:
                 for node in results_table.get(column_name):
                     swagger_node = self.__convert_neo4j_node_to_swagger_node(node, kp)
                     # Handle synonyms as appropriate (only keep starting curie, discard synonym nodes)
-                    if synonym_handling == 'map_back' and column_qnode_id in synonym_usages_dict:
-                        if swagger_node.id in synonym_usages_dict[column_qnode_id].keys():
+                    if synonym_handling == 'map_back' and column_qnode_id in curie_map:
+                        if swagger_node.id in curie_map[column_qnode_id].keys():
                             eu.add_node_to_kg(self.final_kg, swagger_node, column_qnode_id)
                     else:
                         eu.add_node_to_kg(self.final_kg, swagger_node, column_qnode_id)
@@ -198,22 +195,24 @@ class KGQuerier:
                     starting_curie_for_qnode_id_1 = None
                     starting_curie_for_qnode_id_2 = None
                     if synonym_handling == "map_back":
-                        if qnode_id_1 in synonym_usages_dict:
-                            starting_curies_for_qnode_id_1 = [original_curie for original_curie, synonyms_used in
-                                                              synonym_usages_dict[qnode_id_1].items() if
-                                                              curie_fulfilling_qnode_id_1 in synonyms_used]
-                            if starting_curies_for_qnode_id_1:
-                                starting_curie_for_qnode_id_1 = starting_curies_for_qnode_id_1[0]
-                                swagger_edge = self.__remap_edge(swagger_edge, curie_fulfilling_qnode_id_1,
-                                                                 starting_curie_for_qnode_id_1)
-                        if qnode_id_2 in synonym_usages_dict:
-                            starting_curies_for_qnode_id_2 = [original_curie for original_curie, synonyms_used in
-                                                              synonym_usages_dict[qnode_id_2].items() if
-                                                              curie_fulfilling_qnode_id_2 in synonyms_used]
-                            if starting_curies_for_qnode_id_2:
-                                starting_curie_for_qnode_id_2 = starting_curies_for_qnode_id_2[0]
-                                swagger_edge = self.__remap_edge(swagger_edge, curie_fulfilling_qnode_id_2,
-                                                                 starting_curie_for_qnode_id_2)
+                        if qnode_id_1 in curie_map:
+                            starting_curie_for_qnode_id_1 = eu.get_original_curie(returned_curie=curie_fulfilling_qnode_id_1,
+                                                                                  qnode_id=qnode_id_1,
+                                                                                  curie_map=curie_map,
+                                                                                  log=self.response)
+                            if self.response.status != 'OK':
+                                return
+                            if starting_curie_for_qnode_id_1 != curie_fulfilling_qnode_id_1:
+                                swagger_edge = self.__remap_edge(swagger_edge, curie_fulfilling_qnode_id_1, starting_curie_for_qnode_id_1)
+                        if qnode_id_2 in curie_map:
+                            starting_curie_for_qnode_id_2 = eu.get_original_curie(returned_curie=curie_fulfilling_qnode_id_2,
+                                                                                  qnode_id=qnode_id_2,
+                                                                                  curie_map=curie_map,
+                                                                                  log=self.response)
+                            if self.response.status != 'OK':
+                                return
+                            if starting_curie_for_qnode_id_2 != curie_fulfilling_qnode_id_2:
+                                swagger_edge = self.__remap_edge(swagger_edge, curie_fulfilling_qnode_id_2, starting_curie_for_qnode_id_2)
 
                         # Update the edge ID so it's accurate and distinct from equivalent non-mapped-back edges
                         swagger_edge.id = self.__create_edge_id(swagger_edge)
@@ -227,20 +226,21 @@ class KGQuerier:
                     # Finally add the current edge to our answer knowledge graph
                     eu.add_edge_to_kg(self.final_kg, swagger_edge, column_qedge_id)
 
-        self.__do_final_post_processing(synonym_handling, synonym_usages_dict, kp)
+        self.__do_final_post_processing(synonym_handling, curie_map, kp, self.edge_to_nodes_map)
 
-    def __do_final_post_processing(self, synonym_handling, synonym_usages_dict, kp):
+    def __do_final_post_processing(self, synonym_handling, curie_map, kp, edge_to_nodes_map):
         if self.final_kg['edges']:
             # Make sure any original curie that synonyms were used for appears in the answer kg as appropriate
             if synonym_handling == 'map_back':
-                for qnode_id, synonym_usage_mappings in synonym_usages_dict.items():
-                    for original_curie, synonyms_used in synonym_usage_mappings.items():
-                        if qnode_id not in self.final_kg['nodes'] or original_curie not in self.final_kg['nodes'][qnode_id]:
-                            # Get this node from neo4j and add it to the kg
-                            cypher = f"match (n) where n.id='{original_curie}' return n limit 1"
-                            original_node = self.__run_cypher_query(cypher, kp)[0].get('n')
-                            swagger_node = self.__convert_neo4j_node_to_swagger_node(original_node, kp)
-                            eu.add_node_to_kg(self.final_kg, swagger_node, qnode_id)
+                for qnode_id, curie_mappings in curie_map.items():
+                    for original_curie in curie_mappings:
+                        if eu.edge_using_node_exists(original_curie, qnode_id, edge_to_nodes_map):
+                            if qnode_id not in self.final_kg['nodes'] or original_curie not in self.final_kg['nodes'][qnode_id]:
+                                # Get this node from neo4j and add it to the kg
+                                cypher = f"match (n) where n.id='{original_curie}' return n limit 1"
+                                original_node = self.__run_cypher_query(cypher, kp)[0].get('n')
+                                swagger_node = self.__convert_neo4j_node_to_swagger_node(original_node, kp)
+                                eu.add_node_to_kg(self.final_kg, swagger_node, qnode_id)
 
             # Remove any self-edges  #TODO: Later probably allow a few types of self-edges
             edges_to_remove = []
@@ -291,7 +291,8 @@ class KGQuerier:
 
         return swagger_node
 
-    def __convert_kg1_node_to_swagger_node(self, neo4j_node):
+    @staticmethod
+    def __convert_kg1_node_to_swagger_node(neo4j_node):
         swagger_node = Node()
         swagger_node.id = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
@@ -341,7 +342,8 @@ class KGQuerier:
             swagger_edge.edge_attributes = self.__create_swagger_attributes("edge", ['probability'], neo4j_edge)
         return swagger_edge
 
-    def __create_swagger_attributes(self, object_type, property_names, neo4j_object):
+    @staticmethod
+    def __create_swagger_attributes(object_type, property_names, neo4j_object):
         new_attributes = []
         for property_name in property_names:
             property_value = neo4j_object.get(property_name)
@@ -382,7 +384,8 @@ class KGQuerier:
         else:
             return query_results
 
-    def __build_node_uuid_to_curie_dict(self, results_table):
+    @staticmethod
+    def __build_node_uuid_to_curie_dict(results_table):
         node_uuid_to_curie_dict = dict()
         nodes_columns = [column_name for column_name in results_table if column_name.startswith('nodes')]
         for column in nodes_columns:
@@ -390,26 +393,30 @@ class KGQuerier:
                 node_uuid_to_curie_dict[node.get('UUID')] = node.get('id')
         return node_uuid_to_curie_dict
 
-    def __remap_edge(self, swagger_edge, answer_curie, starting_curie):
+    @staticmethod
+    def __remap_edge(swagger_edge, answer_curie, starting_curie):
         if swagger_edge.source_id == answer_curie:
             swagger_edge.source_id = starting_curie
         if swagger_edge.target_id == answer_curie:
             swagger_edge.target_id = starting_curie
         return swagger_edge
 
-    def __get_cypher_for_query_node(self, node):
+    @staticmethod
+    def __get_cypher_for_query_node(node):
         node_type_string = f":{node.type}" if node.type else ""
         final_node_string = f"({node.id}{node_type_string})"
         return final_node_string
 
-    def __get_cypher_for_query_edge(self, edge, enforce_directionality):
+    @staticmethod
+    def __get_cypher_for_query_edge(edge, enforce_directionality):
         edge_type_string = f":{edge.type}" if edge.type else ""
         final_edge_string = f"-[{edge.id}{edge_type_string}]-"
         if enforce_directionality:
             final_edge_string += ">"
         return final_edge_string
 
-    def __convert_strange_provided_by_field_to_list(self, provided_by_field):
+    @staticmethod
+    def __convert_strange_provided_by_field_to_list(provided_by_field):
         # Currently looks like: ["['https://identifiers.org/umls/NDFRT'", "'https://skr3.nlm.nih.gov/SemMedDB']"]
         provided_by_list = []
         unwanted_chars = ["[", "]", "'"]
@@ -419,5 +426,6 @@ class KGQuerier:
             provided_by_list.append(item)
         return provided_by_list
 
-    def __create_edge_id(self, swagger_edge):
+    @staticmethod
+    def __create_edge_id(swagger_edge):
         return f"{swagger_edge.source_id}--{swagger_edge.type}--{swagger_edge.target_id}"

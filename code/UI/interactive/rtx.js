@@ -66,16 +66,14 @@ function openSection(obj, sect) {
 	e[0].className = "menuleftitem";
 	obj.className = "menucurrent";
     }
-    e = document.getElementsByClassName("pagesection");
-    for (var i = 0; i < e.length; i++) {
-        e[i].style.maxHeight = null;
-        e[i].style.visibility = 'hidden';
-	//e[i].style.display = "none";
+
+    for (var e of document.getElementsByClassName("pagesection")) {
+        e.style.maxHeight = null;
+        e.style.visibility = 'hidden';
     }
-    document.getElementById(sect).style.maxHeight = "100%";
+    document.getElementById(sect).style.maxHeight = "none";
     document.getElementById(sect).style.visibility = 'visible';
     window.scrollTo(0,0);
-    //document.getElementById(sect).style.display = "block";
 }
 
 // somehow merge with above?  eh...
@@ -118,7 +116,6 @@ function reset_vars() {
     cytodata = [];
     UIstate.nodedd = 1;
 }
-
 
 
 // use fetch and stream
@@ -627,7 +624,6 @@ function process_log(logarr) {
 	document.getElementById("logdiv").appendChild(span);
     }
     document.getElementById("menunummessages").innerHTML = logarr.length;
-
 }
 
 
