@@ -82,6 +82,13 @@ class BTEQuerier:
             return None, None, None
         qedge = query_graph.edges[0]
 
+        # Make sure at least one of our qnodes has a curie
+        qnodes_with_curies = [qnode for qnode in query_graph.nodes if qnode.curie]
+        if not qnodes_with_curies:
+            self.response.error(f"Neither qnode for qedge {qedge.id} has a curie specified. BTE requires that at least"
+                                f" one of them has a curie. Your query graph is: {query_graph.to_dict()}")
+            return None, None, None
+
         # Figure out which query node is input vs. output and validate which qnodes have curies
         if enforce_directionality:
             input_qnode = next(qnode for qnode in query_graph.nodes if qnode.id == qedge.source_id)
