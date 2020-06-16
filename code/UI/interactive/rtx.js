@@ -9,7 +9,7 @@ var summary_tsv = [];
 var columnlist = [];
 var UIstate = {};
 
-var baseAPI = "/devED/";
+var baseAPI = "";
 //var baseAPI = "http://localhost:5001/devED/";
 
 function main() {
@@ -1094,9 +1094,9 @@ function show_attributes(html_div, atts) {
 	    }
 	    snippet += ": ";
 	}
-	if (att.url != null) {
-	    snippet += "<a target='rtxext' href='" + att.url + "'>";
-	}
+	if (att.url != null)
+	    snippet += "<a target='araxext' href='" + att.url + "'>";
+
 
 	if (att.value != null) {
 	    if (att.name == "probability_drug_treats" ||
@@ -1108,19 +1108,21 @@ function show_attributes(html_div, atts) {
 		att.name == "ngd") {
 		snippet += Number(att.value).toPrecision(3);
 	    }
+            else if (Array.isArray(att.value)) {
+		for (var val of att.value) snippet += "<br>"+val;
+	    }
 	    else
 		snippet += att.value;
-	}
-	else if (att.url != null) {
-	    snippet += att.url;
-	}
-	else {
-	    snippet += " n/a ";
-	}
 
-	if (att.url != null) {
-	    snippet += "</a>";
 	}
+	else if (att.url != null)
+	    snippet += att.url;
+	else
+	    snippet += " n/a ";
+
+
+	if (att.url != null)
+	    snippet += "</a>";
 
 	html_div.innerHTML+= snippet;
 	linebreak = "<br>";
