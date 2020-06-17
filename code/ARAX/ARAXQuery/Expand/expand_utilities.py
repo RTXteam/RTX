@@ -7,7 +7,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI
 from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.q_node import QNode
 from swagger_server.models.q_edge import QEdge
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/kg-construction/")
 from KGNodeIndex import KGNodeIndex
 
 
