@@ -549,7 +549,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     # for each node in the query graph:
     for qnode in cast(Iterable[QNode], qg.nodes):
         if qnode.is_set is not None and \
-           qnode.is_set and \
+           qnode.is_set:
             kg_node_ids_with_isset_true_dict[qnode.id] = reverse_node_bindings_map[qnode.id]
         else:
             kg_node_id_lists_for_qg_nodes.append(list(reverse_node_bindings_map[qnode.id]))
