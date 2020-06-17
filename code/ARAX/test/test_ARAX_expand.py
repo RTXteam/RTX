@@ -478,7 +478,7 @@ def test_kg1_property_format():
 def test_simple_bte_acetaminophen_query():
     actions_list = [
         "create_message",
-        "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",
+        "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112, type=chemical_substance)",
         "add_qnode(id=n01, type=protein)",
         "add_qedge(id=e00, source_id=n00, target_id=n01)",
         "expand(edge_id=e00, kp=BTE)",
@@ -531,7 +531,7 @@ def test_bte_query_using_list_of_curies():
 def test_simple_bte_cdk2_query():
     actions_list = [
         "create_message",
-        "add_qnode(id=n00, curie=NCBIGene:1017)",
+        "add_qnode(id=n00, curie=NCBIGene:1017, type=gene)",
         "add_qnode(id=n01, type=chemical_substance)",
         "add_qedge(id=e00, source_id=n00, target_id=n01)",
         "expand(edge_id=e00, kp=BTE)",

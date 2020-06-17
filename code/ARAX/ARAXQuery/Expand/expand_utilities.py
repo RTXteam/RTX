@@ -295,3 +295,28 @@ def get_original_curie(returned_curie, qnode_id, curie_map, log):
         log.error(f"More than 1 possible remapping for returned {qnode_id} node {returned_curie}",
                   error_code="SynonymMappingError")
     return original_curie_matches[0]
+
+
+def guess_qnode_type(qnode_curie, log):
+    kgni = KGNodeIndex()
+    curie_list = convert_string_or_list_to_list(qnode_curie)
+    node_types = set()
+    for curie in curie_list:
+        curie_info = kgni.get_equivalent_entities(curie=curie).get(curie)
+        if curie_info:
+            node_type = curie_info['type'][0] if curie_info['type'] else None
+            if node_type:
+                node_types.add(node_type)
+
+    # Only use this node type if we found the same type for all curies in the list
+    if len(node_types) == 1:
+        node_type = node_types.pop()
+        log.warning(f"No type was specified for qnode with curie {qnode_curie}; using type '{node_type}' found via KGNodeIndex")
+        return node_type
+    elif not node_types:
+        log.warning(f"Could not guess a node type to use for qnode with curie {qnode_curie} (curie is not in KGNodeIndex)")
+        return ""
+    else:
+        log.warning(f"Could not guess a node type to use for qnode with curie {qnode_curie} (more than one possible "
+                    f"node type was found: {', '.join(node_types)})")
+        return ""
