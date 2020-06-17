@@ -1017,7 +1017,7 @@ def main():
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521, type=chemical_substance)",
-            "add_qnode(id=n01, type=protein)",
+            "add_qnode(id=n01, is_set=true, type=protein)",
             "add_qedge(id=e00, source_id=n00, target_id=n01)",
             "add_qnode(id=n02, type=biological_process)",
             "add_qedge(id=e01, source_id=n01, target_id=n02)",
@@ -1030,7 +1030,7 @@ def main():
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521, type=chemical_substance)",
-            "add_qnode(id=n01, type=protein)",
+            "add_qnode(id=n01, is_set=true, type=protein)",
             "add_qedge(id=e00, source_id=n00, target_id=n01)",
             "add_qnode(id=n02, type=biological_process)",
             "add_qedge(id=e01, source_id=n01, target_id=n02)",
@@ -1043,7 +1043,7 @@ def main():
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521, type=chemical_substance)",
-            "add_qnode(id=n01, type=protein)",
+            "add_qnode(id=n01, is_set=true, type=protein)",
             "add_qedge(id=e00, source_id=n00, target_id=n01)",
             "add_qnode(id=n02, type=biological_process)",
             "add_qedge(id=e01, source_id=n01, target_id=n02, type=involved_in)",
@@ -1076,7 +1076,6 @@ def main():
             "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
             "expand(edge_id=e01, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n01, target_qnode_id=n02, virtual_relation_label=FET2)",
-            "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_id=n02)",
             "resultify()",
             "return(message=false, store=true)"
         ]}}
@@ -1089,7 +1088,7 @@ def main():
             "expand(edge_id=e00, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n00, target_qnode_id=n01, virtual_relation_label=FET1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_id=n01)",
-            "add_qnode(type=chemical_substance, id=n02)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n02)",
             "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
             "expand(edge_id=e01, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n01, target_qnode_id=n02, virtual_relation_label=FET2)",
@@ -1098,7 +1097,6 @@ def main():
             "add_qedge(source_id=n02, target_id=n03, id=e02)",
             "expand(edge_id=e02, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n02, target_qnode_id=n03, virtual_relation_label=FET3)",
-            "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.05, remove_connected_nodes=t, qnode_id=n03)",
             "resultify()",
             "return(message=false, store=true)"
         ]}}
@@ -1106,17 +1104,17 @@ def main():
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521, type=chemical_substance)",
-            "add_qnode(id=n01, type=protein)",
+            "add_qnode(id=n01, is_set=true, type=protein)",
             "add_qedge(id=e00, source_id=n00, target_id=n01)",
             "expand(edge_id=e00, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n00, target_qnode_id=n01, virtual_relation_label=FET1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.01, remove_connected_nodes=t, qnode_id=n01)",
-            "add_qnode(type=biological_process, id=n02)",
+            "add_qnode(type=biological_process, is_set=true, id=n02)",
             "add_qedge(source_id=n01, target_id=n02, id=e01)",
             "expand(edge_id=e01, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n01, target_qnode_id=n02, virtual_relation_label=FET2)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.01, remove_connected_nodes=t, qnode_id=n02)",
-            "add_qnode(type=protein, id=n03)",
+            "add_qnode(type=protein, is_set=true, id=n03)",
             "add_qedge(source_id=n02, target_id=n03, id=e02)",
             "expand(edge_id=e02, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n02, target_qnode_id=n03, virtual_relation_label=FET3)",

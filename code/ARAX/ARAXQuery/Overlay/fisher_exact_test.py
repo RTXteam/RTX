@@ -314,7 +314,6 @@ class ComputeFTEST:
                     node = list(target_node_dict.keys())[index]
                     size_of_target[node] = target_count_res[index]
 
-
         ## Based on KP detected in message KG, find the total number of node with the same type of source node
         if kp=='ARAX/KG1':
             size_of_total = self.size_of_given_type_in_KP(node_type=source_node_type,use_cypher_command=True, kg='KG1') ## Try cypher query first
@@ -428,11 +427,9 @@ class ComputeFTEST:
                                   edge_attributes=[EdgeAttribute(type="data:1669", name="fisher_exact_test_p-value", value=str(value[1]), url=None)],
                                   qedge_ids=[value[0]]) for index, value in enumerate([(virtual_relation_label, output[adj], node, adj) for adj in target_node_dict if adj in output.keys() for node in target_node_dict[adj]], 1)]
 
-
         self.message.knowledge_graph.edges.extend(virtual_edge_list)
 
         count = len(virtual_edge_list)
-
 
         # for adj in target_node_dict:
         #     if adj not in output.keys():
