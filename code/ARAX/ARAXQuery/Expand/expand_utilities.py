@@ -80,9 +80,9 @@ def convert_string_to_snake_case(input_string):
 
 
 def convert_string_or_list_to_list(string_or_list):
-    if type(string_or_list) is str:
+    if isinstance(string_or_list, str):
         return [string_or_list]
-    elif type(string_or_list) is list:
+    elif isinstance(string_or_list, list):
         return string_or_list
     else:
         return []
@@ -254,10 +254,10 @@ def qg_is_fulfilled(query_graph, dict_kg):
     qedge_ids = [qedge.id for qedge in query_graph.edges]
 
     for qnode_id in qnode_ids:
-        if qnode_id not in dict_kg['nodes'] or not len(dict_kg['nodes'][qnode_id]):
+        if qnode_id not in dict_kg['nodes'] or not dict_kg['nodes'][qnode_id]:
             return False
     for qedge_id in qedge_ids:
-        if qedge_id not in dict_kg['edges'] or not len(dict_kg['edges'][qedge_id]):
+        if qedge_id not in dict_kg['edges'] or not dict_kg['edges'][qedge_id]:
             return False
     return True
 

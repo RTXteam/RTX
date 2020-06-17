@@ -119,7 +119,7 @@ class KGQuerier:
                         else:
                             where_fragment = f"{node.id}.id in {node.curie}"
                         where_fragments.append(where_fragment)
-                if len(where_fragments):
+                if where_fragments:
                     where_clause = "WHERE "
                     where_clause += " AND ".join(where_fragments)
                 else:

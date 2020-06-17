@@ -225,11 +225,11 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             # Make sure all of the QG IDs in our query have been fulfilled (unless we're continuing if no results)
             if self.response.status == 'OK' and not continue_if_no_results:
                 for qnode in edge_query_graph.nodes:
-                    if qnode.id not in answer_kg['nodes'] or not len(answer_kg['nodes'][qnode.id]):
+                    if qnode.id not in answer_kg['nodes'] or not answer_kg['nodes'][qnode.id]:
                         self.response.error(f"Returned answer KG does not contain any results for QNode {qnode.id}",
                                             error_code="UnfulfilledQGID")
                 for qedge in edge_query_graph.edges:
-                    if qedge.id not in answer_kg['edges'] or not len(answer_kg['edges'][qedge.id]):
+                    if qedge.id not in answer_kg['edges'] or not answer_kg['edges'][qedge.id]:
                         self.response.error(f"Returned answer KG does not contain any results for QEdge {qedge.id}",
                                             error_code="UnfulfilledQGID")
 
@@ -253,7 +253,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
             # Make sure all qnodes have been fulfilled (unless we're continuing if no results)
             if self.response.status == 'OK' and not continue_if_no_results:
-                if query_node.id not in answer_kg['nodes'] or not len(answer_kg['nodes'][query_node.id]):
+                if query_node.id not in answer_kg['nodes'] or not answer_kg['nodes'][query_node.id]:
                     self.response.error(f"Returned answer KG does not contain any results for QNode {query_node.id}",
                                         error_code="UnfulfilledQGID")
             return answer_kg
