@@ -7,8 +7,9 @@ Usage:
 
 import sys
 import os
-import pytest
 from typing import List, Dict, Tuple
+
+import pytest
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery/")
 from ARAX_query import ARAXQuery
