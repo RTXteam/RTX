@@ -58,7 +58,6 @@ class PredictDrugTreatsDisease:
             added_flag = False  # check to see if any edges where added
             # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
             for (source_curie, target_curie) in itertools.product(source_curies_to_decorate, target_curies_to_decorate):
-                print("You are here")
                 # create the edge attribute if it can be
                 probability = self.pred.prob_single('ChEMBL:' + source_curie[22:], target_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
                 if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
