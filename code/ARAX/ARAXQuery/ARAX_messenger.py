@@ -223,19 +223,31 @@ class ARAXMessenger:
                 response.debug(f"Looking up CURIE {curie} in KgNodeIndex")
                 nodes = kgNodeIndex.get_curies_and_types(curie, kg_name='KG2')
 
-                # If nothing was found, log an error, but don't bail out yet. Check them all in case there are multiple problems before returning with error
+                # If nothing was found, we won't bail out, but rather just issue a warning
                 if len(nodes) == 0:
-                    response.error(f"A node with CURIE {parameters['curie']} is not in our knowledge graph", error_code="UnknownCURIE")
+                    response.warning(f"A node with CURIE {curie} is not in our knowledge graph KG2, but will continue")
+                    if is_curie_a_list:
+                        qnode.curie.append(curie)
+                    else:
+                        qnode.curie = curie
+
                 else:
 
                     # FIXME. This is just always taking the first result. This could cause problems for CURIEs with multiple types. Is that possible?
-                    qnode.type = nodes[0]['type']
+                    # In issue #623 on 2020-06-15 we concluded that we should not specify the type here
+                    #qnode.type = nodes[0]['type']
 
                     # Either append or set the found curie
                     if is_curie_a_list:
                         qnode.curie.append(nodes[0]['curie'])
                     else:
                         qnode.curie = nodes[0]['curie']
+
+                if 'type' in parameters and parameters['type'] is not None:
+                    if isinstance(parameters['type'], str):
+                        qnode.type = parameters['type']
+                    else:
+                        qnode.type = parameters['type'][0]
 
             message.query_graph.nodes.append(qnode)
             return response
@@ -602,7 +614,7 @@ class ARAXMessenger:
             kg_edges[edge.id] = edge
             if edge.edge_attributes is not None:
                 for edge_attribute in edge.edge_attributes:
-                    for attribute_name in [ 'probability', 'ngd', 'jaccard_index', 'probability_drug_treats' ]:
+                    for attribute_name in [ 'probability', 'normalized_google_distance', 'jaccard_index', 'probability_drug_treats' ]:
                         if edge_attribute.name == attribute_name:
                             if attribute_name not in score_stats:
                                 score_stats[attribute_name] = { 'minimum': -9999, 'maximum': -9999 }
@@ -636,7 +648,7 @@ class ARAXMessenger:
                         #if edge_attribute.name == 'probability_drug_treats':               # this is already put in confidence
                         #    buf += f" probability_drug_treats={edge_attribute.value}"
                         #    score *= value
-                        if edge_attribute.name == 'ngd':
+                        if edge_attribute.name == 'normalized_google_distance':
                             ngd = float(edge_attribute.value)
                             if np.isinf(ngd): ngd = 10.0
                             buf += f" ngd={ngd}"

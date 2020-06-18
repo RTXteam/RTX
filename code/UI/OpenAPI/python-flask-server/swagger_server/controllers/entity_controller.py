@@ -19,5 +19,5 @@ def get_entity_by_string(search_string):  # noqa: E501
     :rtype: List[object]
     """
     kGNodeIndex = KGNodeIndex()
-    return kGNodeIndex.get_curies_and_types_and_names(search_string)
+    return kGNodeIndex.get_curies_and_types_and_names(search_string, kg_name='KG1')
 

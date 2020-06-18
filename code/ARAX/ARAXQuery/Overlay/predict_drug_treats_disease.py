@@ -49,11 +49,11 @@ class PredictDrugTreatsDisease:
             for node in self.message.knowledge_graph.nodes:
                 if hasattr(node, 'qnode_ids'):
                     if parameters['source_qnode_id'] in node.qnode_ids:
-                        #if "chemical_substance" in node.type:  # this has already been checked by ARAX_overlay
-                        source_curies_to_decorate.add(node.id)
+                        if "chemical_substance" in node.type:  # this is now NOT checked by ARAX_overlay
+                            source_curies_to_decorate.add(node.id)
                     if parameters['target_qnode_id'] in node.qnode_ids:
-                        #if "disease" in node.type or "phenotypic_feature" in node.type:
-                        target_curies_to_decorate.add(node.id)
+                        if "disease" in node.type or "phenotypic_feature" in node.type:  # this is now NOT checked by ARAX_overlay
+                            target_curies_to_decorate.add(node.id)
 
             added_flag = False  # check to see if any edges where added
             # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute

@@ -66,16 +66,14 @@ function openSection(obj, sect) {
 	e[0].className = "menuleftitem";
 	obj.className = "menucurrent";
     }
-    e = document.getElementsByClassName("pagesection");
-    for (var i = 0; i < e.length; i++) {
-        e[i].style.maxHeight = null;
-        e[i].style.visibility = 'hidden';
-	//e[i].style.display = "none";
+
+    for (var e of document.getElementsByClassName("pagesection")) {
+        e.style.maxHeight = null;
+        e.style.visibility = 'hidden';
     }
-    document.getElementById(sect).style.maxHeight = "100%";
+    document.getElementById(sect).style.maxHeight = "none";
     document.getElementById(sect).style.visibility = 'visible';
     window.scrollTo(0,0);
-    //document.getElementById(sect).style.display = "block";
 }
 
 // somehow merge with above?  eh...
@@ -109,16 +107,15 @@ function reset_vars() {
     if (cyobj[0]) {cyobj[0].elements().remove();}
     document.getElementById("summary_container").innerHTML = "";
     document.getElementById("menunummessages").innerHTML = "--";
+    document.getElementById("menunummessages").className = "numold menunum";
     document.getElementById("menunumresults").innerHTML = "--";
-    document.getElementById("menunumresults").classList.remove("numnew");
-    document.getElementById("menunumresults").classList.add("numold");
+    document.getElementById("menunumresults").className = "numold menunum";
     summary_table_html = '';
     summary_tsv = [];
     cyobj = [];
     cytodata = [];
     UIstate.nodedd = 1;
 }
-
 
 
 // use fetch and stream
@@ -310,8 +307,7 @@ function postQuery(qtype) {
 	    else {
 		document.getElementById("progressBar").classList.add("barerror");
 		document.getElementById("progressBar").innerHTML = "Error\u00A0\u00A0";
-		document.getElementById("finishedSteps").classList.add("menunum");
-		document.getElementById("finishedSteps").classList.add("numnew");
+		document.getElementById("finishedSteps").classList.add("menunum","numnew","msgERROR");
 		there_was_an_error();
 	    }
 	    statusdiv.appendChild(document.createTextNode(data["code_description"]));  // italics?
@@ -494,7 +490,10 @@ function render_message(respObj) {
 
     message_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
 
-    add_to_session(message_id,respObj.restated_question+"?");
+    if (respObj.restated_question.length > 2)
+	add_to_session(message_id,respObj.restated_question+"?");
+    else
+	add_to_session(message_id,"message="+message_id);
 
     document.title = "ARAX-UI ["+message_id+"]: "+respObj.restated_question+"?";
     history.pushState({ id: 'ARAX_UI' }, 'ARAX | message='+message_id, "//"+ window.location.hostname + window.location.pathname + '?m='+message_id);
@@ -594,14 +593,17 @@ function there_was_an_error() {
     document.getElementById("summary_container").innerHTML += "<h2 class='error'>Error : No results</h2>";
     document.getElementById("result_container").innerHTML  += "<h2 class='error'>Error : No results</h2>";
     document.getElementById("menunumresults").innerHTML = "E";
-    document.getElementById("menunumresults").classList.add("numnew");
+    document.getElementById("menunumresults").classList.add("numnew","msgERROR");
     document.getElementById("menunumresults").classList.remove("numold");
 }
 
 function process_log(logarr) {
-    var errors = 0;
+    var status = {};
+    for (var s of ["ERROR","WARNING","INFO","DEBUG"]) {
+	status[s] = 0;
+    }
     for (var msg of logarr) {
-	if (msg.level_str == "ERROR") { errors++; }
+	status[msg.level_str]++;
 
 	var span = document.createElement("span");
 	span.className = "hoverable msg " + msg.level_str;
@@ -627,16 +629,72 @@ function process_log(logarr) {
 	document.getElementById("logdiv").appendChild(span);
     }
     document.getElementById("menunummessages").innerHTML = logarr.length;
-
+    if (status.ERROR > 0) document.getElementById("menunummessages").classList.add('numnew','msgERROR');
+    else if (status.WARNING > 0) document.getElementById("menunummessages").classList.add('numnew','msgWARNING');
+    for (var s of ["ERROR","WARNING","INFO","DEBUG"]) {
+	document.getElementById("count_"+s).innerHTML += ": "+status[s];
+    }
 }
 
 
 function add_status_divs() {
-    document.getElementById("status_container").innerHTML = "<div class='statushead'>Status</div><div class='status' id='statusdiv'></div>";
+    // summary
+    document.getElementById("status_container").innerHTML = '';
 
-    document.getElementById("dev_result_json_container").innerHTML = "<div class='statushead'>Dev Info <i style='float:right; font-weight:normal;'>( json responses )</i></div><div class='status' id='devdiv'></div>";
+    var div = document.createElement("div");
+    div.className = 'statushead';
+    div.appendChild(document.createTextNode("Status"));
+    document.getElementById("status_container").appendChild(div);
 
-    document.getElementById("messages_container").innerHTML = "<div class='statushead'>Filter Messages :&nbsp;&nbsp;&nbsp;<span onclick='filtermsgs(this,\"ERROR\")' style='cursor:pointer;' class='qprob msgERROR'>Error</span>&nbsp;&nbsp;&nbsp;<span onclick='filtermsgs(this,\"WARNING\")' style='cursor:pointer;' class='qprob msgWARNING'>Warning</span>&nbsp;&nbsp;&nbsp;<span onclick='filtermsgs(this,\"INFO\")' style='cursor:pointer;' class='qprob msgINFO'>Info</span>&nbsp;&nbsp;&nbsp;<span onclick='filtermsgs(this,\"DEBUG\")' style='cursor:pointer;' class='qprob msgDEBUG hide'>Debug</span></div><div class='status' id='logdiv'></div>";
+    div = document.createElement("div");
+    div.className = 'status';
+    div.id = 'statusdiv';
+    document.getElementById("status_container").appendChild(div);
+
+    // results
+    document.getElementById("dev_result_json_container").innerHTML = '';
+
+    div = document.createElement("div");
+    div.className = 'statushead';
+    div.appendChild(document.createTextNode("Dev Info"));
+    var span = document.createElement("span");
+    span.style.fontStyle = "italic";
+    span.style.fontWeight = 'normal';
+    span.style.float = "right";
+    span.appendChild(document.createTextNode("( json responses )"));
+    div.appendChild(span);
+    document.getElementById("dev_result_json_container").appendChild(div);
+
+    div = document.createElement("div");
+    div.className = 'status';
+    div.id = 'devdiv';
+    document.getElementById("dev_result_json_container").appendChild(div);
+
+    // messages
+    document.getElementById("messages_container").innerHTML = '';
+
+    div = document.createElement("div");
+    div.className = 'statushead';
+    div.appendChild(document.createTextNode("Filter Messages:"));
+
+    for (var status of ["Error","Warning","Info","Debug"]) {
+	span = document.createElement("span");
+	span.id =  'count_'+status.toUpperCase();
+	span.style.marginLeft = "20px";
+	span.style.cursor = "pointer";
+	span.className = 'qprob msg'+status.toUpperCase();
+	if (status == "Debug") span.classList.add('hide');
+	span.setAttribute('onclick', 'filtermsgs(this,\"'+status.toUpperCase()+'\");');
+	span.appendChild(document.createTextNode(status));
+	div.appendChild(span);
+    }
+
+    document.getElementById("messages_container").appendChild(div);
+
+    div = document.createElement("div");
+    div.className = 'status';
+    div.id = 'logdiv';
+    document.getElementById("messages_container").appendChild(div);
 }
 
 function filtermsgs(span, type) {
@@ -1034,11 +1092,11 @@ function show_attributes(html_div, atts) {
 	    if (att.type != null) {
 		snippet += " (" + att.type + ")";
 	    }
-	    snippet += " : ";
+	    snippet += ": ";
 	}
-	if (att.url != null) {
-	    snippet += "<a target='rtxext' href='" + att.url + "'>";
-	}
+	if (att.url != null)
+	    snippet += "<a target='araxext' href='" + att.url + "'>";
+
 
 	if (att.value != null) {
 	    if (att.name == "probability_drug_treats" ||
@@ -1050,19 +1108,21 @@ function show_attributes(html_div, atts) {
 		att.name == "ngd") {
 		snippet += Number(att.value).toPrecision(3);
 	    }
+            else if (Array.isArray(att.value)) {
+		for (var val of att.value) snippet += "<br>"+val;
+	    }
 	    else
 		snippet += att.value;
-	}
-	else if (att.url != null) {
-	    snippet += att.url;
-	}
-	else {
-	    snippet += " n/a ";
-	}
 
-	if (att.url != null) {
-	    snippet += "</a>";
 	}
+	else if (att.url != null)
+	    snippet += att.url;
+	else
+	    snippet += " n/a ";
+
+
+	if (att.url != null)
+	    snippet += "</a>";
 
 	html_div.innerHTML+= snippet;
 	linebreak = "<br>";
@@ -1825,7 +1885,7 @@ function display_session() {
         }
     }
     if (numitems > 0) {
-        listhtml += "<tr><td></td><td></td><td><a href='javascript:delete_list(\""+listId+"\");'/> Delete Session History </a></td></tr>";
+        listhtml += "<tr style='background-color:unset;'><td style='border-bottom:0;'></td><td style='border-bottom:0;'></td><td style='border-bottom:0;'><a href='javascript:delete_list(\""+listId+"\");'/> Delete Session History </a></td></tr>";
     }
 
 
@@ -1833,7 +1893,7 @@ function display_session() {
         listhtml = "<br>Your query history will be displayed here. It can be edited or re-set.<br><br>";
     }
     else {
-        listhtml = "<table class='sumtab'><tr><td></td><th>Query</th><th>Action</th></tr>" + listhtml + "</table>";
+        listhtml = "<table class='sumtab'><tr><th></th><th>Query</th><th>Action</th></tr>" + listhtml + "</table><br><br>";
     }
 
     document.getElementById("numlistitems"+listId).innerHTML = numitems;
