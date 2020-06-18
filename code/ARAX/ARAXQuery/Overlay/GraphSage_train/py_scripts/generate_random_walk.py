@@ -99,11 +99,11 @@ if __name__ == "__main__":
             if args.process == -1:
                 with multiprocessing.Pool() as executor:
                     out_iters = [(node, args.number_of_walks, args.walk_length) for node in G_nodes[start:end]]
-                    out_res = list(chain.from_iterable(executor.map(run_random_walks, out_iters)))
+                    out_res = [elem for elem in chain.from_iterable(executor.map(run_random_walks, out_iters))]
             else:
                 with multiprocessing.Pool(processes=args.process) as executor:
                     out_iters = [(node, args.number_of_walks, args.walk_length) for node in G_nodes[start:end]]
-                    out_res = list(chain.from_iterable(executor.map(run_random_walks, out_iters)))
+                    out_res = [elem for elem in chain.from_iterable(executor.map(run_random_walks, out_iters))]
             with open(outpath+'/data-walks.txt', "a") as fp:
                 if i==0:
                     fp.write("\n".join([str(p[0]) + "\t" + str(p[1]) for p in out_res]))

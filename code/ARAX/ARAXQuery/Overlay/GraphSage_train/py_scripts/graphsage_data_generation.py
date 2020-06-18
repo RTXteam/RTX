@@ -129,26 +129,26 @@ if __name__ == "__main__":
     if args.process==-1:
         with multiprocessing.Pool() as executor:
             out_iters = [(node,True) for node in range(len(nodes))]
-            out_res = list(chain.from_iterable(executor.map(initialize_node, out_iters)))
+            out_res = [elem for elem in chain.from_iterable(executor.map(initialize_node, out_iters))]
 
         data['nodes'] = out_res
     else:
         with multiprocessing.Pool(processes=args.process) as executor:
             out_iters = [(node, True) for node in range(len(nodes))]
-            out_res = list(chain.from_iterable(executor.map(initialize_node, out_iters)))
+            out_res = [elem for elem in chain.from_iterable(executor.map(initialize_node, out_iters))]
 
         data['nodes'] = out_res
 
     if args.process == -1:
         with multiprocessing.Pool() as executor:
             out_iters = [node for node in range(graph_data.shape[0])]
-            out_res = list(chain.from_iterable(executor.map(initialize_edge, out_iters)))
+            out_res = [elem for elem in chain.from_iterable(executor.map(initialize_edge, out_iters))]
 
         data['links'] = out_res
     else:
         with multiprocessing.Pool(processes=args.process) as executor:
             out_iters = [node for node in range(graph_data.shape[0])]
-            out_res = list(chain.from_iterable(executor.map(initialize_edge, out_iters)))
+            out_res = [elem for elem in chain.from_iterable(executor.map(initialize_edge, out_iters))]
 
         data['links'] = out_res
 
