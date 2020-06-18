@@ -325,7 +325,7 @@ def test_chi_square_attribute():
 def test_predict_drug_treats_disease_virtual():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(curie=DOID:1588, id=n0)",
+        "add_qnode(curie=DOID:1588, id=n0, type=disease)",
         "add_qnode(type=chemical_substance, id=n1)",
         "add_qedge(source_id=n0, target_id=n1, id=e0)",
         "expand(edge_id=e0)",
