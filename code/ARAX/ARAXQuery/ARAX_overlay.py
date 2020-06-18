@@ -433,8 +433,10 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
             allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_edge_type' in self.parameters else None},
-                                    'source_qnode_id': set([x.id for x in self.message.query_graph.nodes if x.type == "chemical_substance"]),
-                                    'target_qnode_id': set([x.id for x in self.message.query_graph.nodes if (x.type == "disease" or x.type == "phenotypic_feature")])
+                                    #'source_qnode_id': set([x.id for x in self.message.query_graph.nodes if x.type == "chemical_substance"]),
+                                    'source_qnode_id': set([x.id for x in self.message.query_graph.nodes]),  # allow any query node type, will be handled by predict_drug_treats_disease.py
+                                    #'target_qnode_id': set([x.id for x in self.message.query_graph.nodes if (x.type == "disease" or x.type == "phenotypic_feature")])
+                                    'target_qnode_id': set([x.id for x in self.message.query_graph.nodes])  # allow any query node type, will be handled by predict_drug_treats_disease.py
                                     }
         else:
             allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {'optional: any string label that identifies the virtual edges added (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},

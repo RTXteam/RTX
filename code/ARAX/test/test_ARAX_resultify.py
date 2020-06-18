@@ -928,7 +928,7 @@ class TestARAXResultify(unittest.TestCase):
     def test_issue680(self):
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(curie=DOID:14330, id=n00)",
+            "add_qnode(curie=DOID:14330, id=n00, type=disease)",
             "add_qnode(type=protein, is_set=true, id=n01)",
             "add_qnode(type=chemical_substance, id=n02)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",

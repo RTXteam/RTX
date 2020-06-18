@@ -49,15 +49,16 @@ class PredictDrugTreatsDisease:
             for node in self.message.knowledge_graph.nodes:
                 if hasattr(node, 'qnode_ids'):
                     if parameters['source_qnode_id'] in node.qnode_ids:
-                        #if "chemical_substance" in node.type:  # this has already been checked by ARAX_overlay
-                        source_curies_to_decorate.add(node.id)
+                        if "chemical_substance" in node.type:  # this is now NOT checked by ARAX_overlay
+                            source_curies_to_decorate.add(node.id)
                     if parameters['target_qnode_id'] in node.qnode_ids:
-                        #if "disease" in node.type or "phenotypic_feature" in node.type:
-                        target_curies_to_decorate.add(node.id)
+                        if "disease" in node.type or "phenotypic_feature" in node.type:  # this is now NOT checked by ARAX_overlay
+                            target_curies_to_decorate.add(node.id)
 
             added_flag = False  # check to see if any edges where added
             # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
             for (source_curie, target_curie) in itertools.product(source_curies_to_decorate, target_curies_to_decorate):
+                print("You are here")
                 # create the edge attribute if it can be
                 probability = self.pred.prob_single('ChEMBL:' + source_curie[22:], target_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
                 if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
