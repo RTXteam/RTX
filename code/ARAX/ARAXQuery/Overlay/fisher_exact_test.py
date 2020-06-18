@@ -299,8 +299,15 @@ class ComputeFTEST:
                 parament_list = [(node, f"{virtual_relation_label}", source_node_type, kp, None, True) for node in list(target_node_dict.keys())]
 
             ## get the count of all nodes with the type of 'source_qnode_id' nodes in KP for each target node in parallel
-            with concurrent.futures.ProcessPoolExecutor() as executor:
-                target_count_res = list(executor.map(self.query_adjacent_nodes_parallel, parament_list))
+            try:
+                with concurrent.futures.ProcessPoolExecutor() as executor:
+                    target_count_res = list(executor.map(self.query_adjacent_nodes_parallel, parament_list))
+            except:
+                tb = traceback.format_exc()
+                error_type, error, _ = sys.exc_info()
+                self.response.error(tb, error_code=error_type.__name__)
+                self.response.error(f"Something went wrong with querying adjacent nodes in parallel")
+                return self.response
 
             if any([type(elem) is list for elem in target_count_res]):
                 for msg in [elem2 for elem1 in target_count_res if type(elem1) is list for elem2 in elem1]:
@@ -375,8 +382,15 @@ class ComputeFTEST:
         # calculate FET p-value for each target node in parallel
         parament_list = [(node, len(target_node_dict[node]), size_of_target[node]-len(target_node_dict[node]), size_of_query_sample - len(target_node_dict[node]), (size_of_total - size_of_target[node]) - (size_of_query_sample - len(target_node_dict[node]))) for node in target_node_dict]
 
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            FETpvalue_list = list(executor.map(self.calculate_FET_pvalue_parallel, parament_list))
+        try:
+            with concurrent.futures.ProcessPoolExecutor() as executor:
+                FETpvalue_list = list(executor.map(self.calculate_FET_pvalue_parallel, parament_list))
+        except:
+            tb = traceback.format_exc()
+            error_type, error, _ = sys.exc_info()
+            self.response.error(tb, error_code=error_type.__name__)
+            self.response.error(f"Something went wrong with computing Fisher's Exact Test P-value")
+            return self.response
 
         if any([type(elem) is list for elem in FETpvalue_list]):
             for msg in [elem2 for elem1 in FETpvalue_list if type(elem1) is list for elem2 in elem1]:
