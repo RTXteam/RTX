@@ -500,7 +500,8 @@ class TestARAXResultify(unittest.TestCase):
                          'is_set': False},
                         {'id': 'n02',
                          'type': 'chemical_substance',
-                         'is_set': True})
+                         'is_set': False},
+                         )
 
         qg_edge_info = ({'edge_id': 'qe01',
                          'source_id': 'n02',
@@ -523,8 +524,7 @@ class TestARAXResultify(unittest.TestCase):
                           knowledge_graph=knowledge_graph,
                           results=[])
         resultifier = ARAXResultify()
-        input_parameters = {'ignore_edge_direction': 'true',
-                            'force_isset_false': ['n02']}
+        input_parameters = {'ignore_edge_direction': 'true'}
         resultifier.apply(message, input_parameters)
         assert resultifier.response.status == 'OK'
         assert len(resultifier.message.results) == 2
@@ -620,8 +620,9 @@ class TestARAXResultify(unittest.TestCase):
                           knowledge_graph=knowledge_graph,
                           results=[])
         resultifier = ARAXResultify()
-        input_parameters = {'ignore_edge_direction': 'true',
-                            'force_isset_false': ['n07']}
+        input_parameters = {'ignore_edge_direction': 'true'}
+                            #'force_isset_false': ['n07'],
+
         resultifier.apply(message, input_parameters)
         assert resultifier.response.status != 'OK'
         assert len(resultifier.message.results) == 0
@@ -694,7 +695,7 @@ class TestARAXResultify(unittest.TestCase):
                          'is_set': False},
                         {'id': 'n02',
                          'type': 'chemical_substance',
-                         'is_set': True})
+                         'is_set': False})
 
         qg_edge_info = ({'edge_id': 'qe01',
                          'source_id': 'n02',
@@ -716,7 +717,7 @@ class TestARAXResultify(unittest.TestCase):
         response = Response()
         from actions_parser import ActionsParser
         actions_parser = ActionsParser()
-        actions_list = ['resultify(ignore_edge_direction=true,force_isset_false=[n02])']
+        actions_list = ['resultify(ignore_edge_direction=true)']
         result = actions_parser.parse(actions_list)
         response.merge(result)
         actions = result.data['actions']
@@ -763,7 +764,6 @@ class TestARAXResultify(unittest.TestCase):
         resultifier = ARAXResultify()
         desc = resultifier.describe_me()
         assert 'brief_description' in desc[0]
-        assert 'force_isset_false' in desc[0]
         assert 'ignore_edge_direction' in desc[0]
 
     def test_example1(self):
