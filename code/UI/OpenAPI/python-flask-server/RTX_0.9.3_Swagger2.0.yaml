@@ -835,10 +835,12 @@ definitions:
         description: "A list of arbitrary attributes for the node"
         items:
           $ref: "#/definitions/NodeAttribute"
-      qnode_id:
-        description: "Identifier (id) of a QueryGraph QNode in this same message that yielded this Node in the KnowledgeGraph"
-        type: "string"
-        example: "n00"
+      qnode_ids:
+        description: "List of identifiers (ids) of QueryGraph QNodes in this same message that yield this Node in the KnowledgeGraph. Must always be a list, even if a list of one id."
+        type: array
+        example: [ n00 ]
+        items:
+          type: string
     additionalProperties: true
     required:
       - id
@@ -930,10 +932,12 @@ definitions:
         description: "A list of additional attributes for this edge"
         items:
           $ref: "#/definitions/EdgeAttribute"
-      qedge_id:
-        description: "Identifier (id) of a QueryGraph QEdge in this same message that yielded this Edge in the KnowledgeGraph"
-        type: "string"
-        example: "n00"
+      qedge_ids:
+        description: "List of identifiers (ids) of QueryGraph QEdges in this same message that yielded this Edge in the KnowledgeGraph. Must be a list, even if only one id."
+        type: array
+        example: [ n00 ]
+        items:
+          type: string
     additionalProperties: true
     required:
       - id

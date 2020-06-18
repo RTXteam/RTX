@@ -91,10 +91,11 @@ class QueryGraphInfo:
         for qedge in edges:
 
             #### Ignore special informationational edges for now.
-            virtual_edge_types = { 'has_normalized_google_distance_with': 1, 'has_fisher_exact_test_p-value_with': 1,
-                'has_jaccard_index_with': 1, 'probably_treats': 1, 'has_paired_concept_frequency_with': 1,
-                'has_observed_expected_ratio_with': 1, 'has_chi_square_with': 1 }
-            if qedge.type is not None and qedge.type in virtual_edge_types: 
+            virtual_edge_types = {'has_normalized_google_distance_with': 1, 'has_fisher_exact_test_p-value_with': 1,
+                                  'has_jaccard_index_with': 1, 'probably_treats': 1,
+                                  'has_paired_concept_frequency_with': 1,
+                                  'has_observed_expected_ratio_with': 1, 'has_chi_square_with': 1}
+            if qedge.type is not None and qedge.type in virtual_edge_types:
                 continue
 
             id = qedge.id
