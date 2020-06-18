@@ -35,6 +35,8 @@ from swagger_server.models.message import Message
 def _do_arax_query(query: dict) -> List[Union[Response, Message]]:
     araxq = ARAXQuery()
     response = araxq.query(query)
+    if response.status != 'OK':
+        print(response.show(level=response.DEBUG))
     return [response, araxq.message]
 
 
@@ -354,6 +356,23 @@ def test_predict_drug_treats_disease_attribute():
     print(response.show())
     assert response.status == 'OK'
     _attribute_tester(message, 'probability_treats', 'data:0951', 2)
+
+
+def test_issue_832():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=DOID:1588, id=n0)",
+        "add_qnode(type=chemical_substance, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "expand(edge_id=e0)",
+        "overlay(action=predict_drug_treats_disease, source_qnode_id=n1, target_qnode_id=n0, virtual_relation_label=P1)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    _virtual_tester(message, 'probably_treats', 'P1', 'probability_treats', 'data:0951', 2)
 
 
 if __name__ == "__main__":
