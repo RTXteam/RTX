@@ -301,9 +301,9 @@ hr {
     color: #444;
 }
 .numnew {
-    background-color: #b00;
+    background-color: #291;
     color: #fff;
-    border-color: #b00;
+    border-color: #291;
 }
 
 .progress {
@@ -397,7 +397,7 @@ table.sumtab {
 }
 
 .hoverable:hover {
-    background-color: #9bc;
+    background-color: #ee6 !important;
 }
 
 .sumtab th {
@@ -408,6 +408,9 @@ table.sumtab {
     border-bottom: 1px solid #aaa;
     padding: 5px;
 }
+.sumtab tr:nth-child(even) {
+    background-color: #eee;
+}
 
 
 .msg {
@@ -416,10 +419,10 @@ table.sumtab {
     padding: 4px 3px;
 }
 .DEBUG {
-    color: #ccc;
+    color: #999;
 }
 .INFO {
-    color: #666;
+    color: #333;
 }
 .WARNING {
     color: #750;

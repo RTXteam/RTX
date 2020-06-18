@@ -48,9 +48,9 @@ class OverlayClinicalInfo:
             return self.response
 
         parameters = self.parameters
-        if 'paired_concept_freq' in parameters:
-            if parameters['paired_concept_freq'] == 'true':
-                self.paired_concept_freq()
+        if 'paired_concept_frequency' in parameters:
+            if parameters['paired_concept_frequency'] == 'true':
+                self.paired_concept_frequency()
                 # TODO: should I return the response and merge, or is it passed by reference and just return at the end?
         if 'associated_concept_freq' in parameters:
             if parameters['associated_concept_freq'] == 'true':
@@ -96,7 +96,7 @@ class OverlayClinicalInfo:
         try:
             # edge attributes
             name = name
-            type = "float"
+            type = "data:0951"
             url = "http://cohd.smart-api.info/"
             value = default
 
@@ -125,7 +125,7 @@ class OverlayClinicalInfo:
                 target_OMOPs = list(set(target_OMOPs))
 
                 # Decide how to handle the response from the KP
-                if name == 'paired_concept_freq':
+                if name == 'paired_concept_frequency':
                     # sum up all frequencies  #TODO check with COHD people to see if this is kosher
                     frequency = default
                     for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
@@ -206,12 +206,12 @@ class OverlayClinicalInfo:
         curies_to_names = dict()  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
         # identify the nodes that we should be adding virtual edges for
         for node in self.message.knowledge_graph.nodes:
-            if hasattr(node, 'qnode_id'):
-                if node.qnode_id == parameters['source_qnode_id']:
+            if hasattr(node, 'qnode_ids'):
+                if parameters['source_qnode_id'] in node.qnode_ids:
                     source_curies_to_decorate.add(node.id)
                     curies_to_names[
                         node.id] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
-                if node.qnode_id == parameters['target_qnode_id']:
+                if parameters['target_qnode_id'] in node.qnode_ids:
                     target_curies_to_decorate.add(node.id)
                     curies_to_names[
                         node.id] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
@@ -230,32 +230,33 @@ class OverlayClinicalInfo:
 
                 # edge properties
                 now = datetime.now()
-                edge_type = parameters['virtual_edge_type']
-                qedge_id = parameters['virtual_edge_type']
-                relation = name
-                is_defined_by = "https://arax.rtx.ai/api/rtx/v1/ui/"
+                edge_type = f"has_{name}_with"
+                qedge_ids = [parameters['virtual_relation_label']]
+                relation = parameters['virtual_relation_label']
+                is_defined_by = "ARAX"
                 defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
-                provided_by = "ARAX/RTX"
-                confidence = 1.0
+                provided_by = "ARAX"
+                confidence = None
                 weight = None  # TODO: could make the actual value of the attribute
                 source_id = source_curie
                 target_id = target_curie
 
                 # now actually add the virtual edges in
-                id = f"{edge_type}_{self.global_iter}"
+                id = f"{relation}_{self.global_iter}"
                 self.global_iter += 1
                 edge = Edge(id=id, type=edge_type, relation=relation, source_id=source_id,
                             target_id=target_id,
                             is_defined_by=is_defined_by, defined_datetime=defined_datetime,
                             provided_by=provided_by,
-                            confidence=confidence, weight=weight, edge_attributes=[edge_attribute], qedge_id=qedge_id)
+                            confidence=confidence, weight=weight, edge_attributes=[edge_attribute], qedge_ids=qedge_ids)
                 self.message.knowledge_graph.edges.append(edge)
 
         # Now add a q_edge the query_graph since I've added an extra edge to the KG
         if added_flag:
-            edge_type = parameters['virtual_edge_type']
-            relation = name
-            q_edge = QEdge(id=edge_type, type=edge_type, relation=relation,
+            edge_type = f"has_{name}_with"
+            relation = parameters['virtual_relation_label']
+            qedge_ids = [parameters['virtual_relation_label']]
+            q_edge = QEdge(id=relation, type=edge_type, relation=relation,
                            source_id=parameters['source_qnode_id'], target_id=parameters[
                     'target_qnode_id'])  # TODO: ok to make the id and type the same thing?
             self.message.query_graph.edges.append(q_edge)
@@ -277,7 +278,7 @@ class OverlayClinicalInfo:
             if edge_attribute:  # make sure an edge attribute was actually created
                 edge.edge_attributes.append(edge_attribute)
 
-    def paired_concept_freq(self, default=0):
+    def paired_concept_frequency(self, default=0):
         """
         calulate paired concept frequency.
         Retrieves observed clinical frequencies of a pair of concepts.
@@ -289,10 +290,10 @@ class OverlayClinicalInfo:
 
         # Now add the edges or virtual edges
         try:
-            if 'virtual_edge_type' in parameters:
-                self.add_virtual_edge(name="paired_concept_freq", default=default)
+            if 'virtual_relation_label' in parameters:
+                self.add_virtual_edge(name="paired_concept_frequency", default=default)
             else:  # otherwise, just add to existing edges in the KG
-                self.add_all_edges(name="paired_concept_freq", default=default)
+                self.add_all_edges(name="paired_concept_frequency", default=default)
 
         except:
             tb = traceback.format_exc()
@@ -312,7 +313,7 @@ class OverlayClinicalInfo:
 
         # Now add the edges or virtual edges
         try:
-            if 'virtual_edge_type' in parameters:
+            if 'virtual_relation_label' in parameters:
                 self.add_virtual_edge(name="observed_expected_ratio", default=default)
             else:  # otherwise, just add to existing edges in the KG
                 self.add_all_edges(name="observed_expected_ratio", default=default)
@@ -335,7 +336,7 @@ class OverlayClinicalInfo:
 
         # Now add the edges or virtual edges
         try:
-            if 'virtual_edge_type' in parameters:
+            if 'virtual_relation_label' in parameters:
                 self.add_virtual_edge(name="chi_square", default=default)
             else:  # otherwise, just add to existing edges in the KG
                 self.add_all_edges(name="chi_square", default=default)
