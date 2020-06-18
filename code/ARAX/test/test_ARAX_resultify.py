@@ -72,6 +72,8 @@ def _print_results_for_debug(results: List[Result]):
 def _do_arax_query(query: str) -> List[Union[Response, Message]]:
     araxq = ARAXQuery()
     response = araxq.query(query)
+    if response.status != 'OK':
+        print(response.show(level=response.DEBUG))
     return [response, araxq.message]
 
 
