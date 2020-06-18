@@ -12,8 +12,7 @@ import sys
 import argparse
 from networkx.readwrite import json_graph
 import concurrent.futures
-import time
-import datetime
+from datetime import datetime
 from itertools import chain
 
 parser = argparse.ArgumentParser()
@@ -82,7 +81,7 @@ if __name__ == "__main__":
     G = G.subgraph(G_nodes)
     del G_data ## delete variable to release ram
 
-    start = time.perf_counter()
+    start = datetime.now().replace(microsecond=0)
 
     # set up the batches
     batch =list(range(0,len(G_nodes),args.batch_size))
@@ -109,11 +108,11 @@ if __name__ == "__main__":
                     out_res = list(chain.from_iterable(out_executor.map(run_random_walks, out_iters)))
             with open(outpath+'/data-walks.txt', "a") as fp:
                 if i==0:
-                    fp.write("\n")
                     fp.write("\n".join([str(p[0]) + "\t" + str(p[1]) for p in out_res]))
                 else:
+                    fp.write("\n")
                     fp.write("\n".join([str(p[0]) + "\t" + str(p[1]) for p in out_res]))
 
 
-    finish = time.perf_counter() - start
-    print(f'Random Walk costs {str(datetime.timedelta(seconds=finish))} hours.')
+    total_time = datetime.now().replace(microsecond=0) - start
+    print(f'Random Walk costs {total_time} hours.')
