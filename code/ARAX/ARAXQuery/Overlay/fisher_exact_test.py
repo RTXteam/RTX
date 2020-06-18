@@ -7,7 +7,6 @@ import scipy.stats as stats
 import traceback
 import sys
 import os
-#import concurrent.futures
 import multiprocessing
 from datetime import datetime
 from neo4j.v1 import GraphDatabase, basic_auth
@@ -301,8 +300,6 @@ class ComputeFTEST:
 
             ## get the count of all nodes with the type of 'source_qnode_id' nodes in KP for each target node in parallel
             try:
-                #with concurrent.futures.ProcessPoolExecutor() as executor:
-                #    target_count_res = list(executor.map(self.query_adjacent_nodes_parallel, parameter_list))
                 with multiprocessing.Pool() as executor:
                     target_count_res = list(executor.map(self.query_adjacent_nodes_parallel, parameter_list))
                     executor.close()
@@ -387,8 +384,6 @@ class ComputeFTEST:
         parameter_list = [(node, len(target_node_dict[node]), size_of_target[node]-len(target_node_dict[node]), size_of_query_sample - len(target_node_dict[node]), (size_of_total - size_of_target[node]) - (size_of_query_sample - len(target_node_dict[node]))) for node in target_node_dict]
 
         try:
-            #with concurrent.futures.ProcessPoolExecutor() as executor:
-            #    FETpvalue_list = list(executor.map(self.calculate_FET_pvalue_parallel, parameter_list))
             with multiprocessing.Pool() as executor:
                 FETpvalue_list = list(executor.map(self.calculate_FET_pvalue_parallel, parameter_list))
                 executor.close()
