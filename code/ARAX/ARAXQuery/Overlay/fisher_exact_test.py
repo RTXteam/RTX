@@ -7,7 +7,8 @@ import scipy.stats as stats
 import traceback
 import sys
 import os
-import concurrent.futures
+#import concurrent.futures
+import multiprocessing
 from datetime import datetime
 from neo4j.v1 import GraphDatabase, basic_auth
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")  # code directory
@@ -289,19 +290,22 @@ class ComputeFTEST:
             if rel_edge_id:
                 if len(rel_edge_type) == 1:  # if the edge with rel_edge_id has only type, we use this rel_edge_type to find all source nodes in KP
                     self.response.debug(f"{kp} and edge relation type {list(rel_edge_type)[0]} were used to calculate total adjacent nodes in Fisher's Exact Test")
-                    parament_list = [(node, f"{virtual_relation_label}", source_node_type, kp, list(rel_edge_type)[0], True) for node in list(target_node_dict.keys())]
+                    parameter_list = [(node, f"{virtual_relation_label}", source_node_type, kp, list(rel_edge_type)[0], True) for node in list(target_node_dict.keys())]
                 else:  # if the edge with rel_edge_id has more than one type, we ignore the edge type and use all types to find all source nodes in KP
                     self.response.warning(f"The edges with specified qedge id {rel_edge_id} have more than one type, we ignore the edge type and use all types to calculate Fisher's Exact Test")
                     self.response.debug(f"{kp} was used to calculate total adjacent nodes in Fisher's Exact Test")
-                    parament_list = [(node, f"{virtual_relation_label}", source_node_type, kp, None, True) for node in list(target_node_dict.keys())]
+                    parameter_list = [(node, f"{virtual_relation_label}", source_node_type, kp, None, True) for node in list(target_node_dict.keys())]
             else:  # if no rel_edge_id is specified, we ignore the edge type and use all types to find all source nodes in KP
                 self.response.debug(f"{kp} was used to calculate total adjacent nodes in Fisher's Exact Test")
-                parament_list = [(node, f"{virtual_relation_label}", source_node_type, kp, None, True) for node in list(target_node_dict.keys())]
+                parameter_list = [(node, f"{virtual_relation_label}", source_node_type, kp, None, True) for node in list(target_node_dict.keys())]
 
             ## get the count of all nodes with the type of 'source_qnode_id' nodes in KP for each target node in parallel
             try:
-                with concurrent.futures.ProcessPoolExecutor() as executor:
-                    target_count_res = list(executor.map(self.query_adjacent_nodes_parallel, parament_list))
+                #with concurrent.futures.ProcessPoolExecutor() as executor:
+                #    target_count_res = list(executor.map(self.query_adjacent_nodes_parallel, parameter_list))
+                with multiprocessing.Pool() as executor:
+                    target_count_res = list(executor.map(self.query_adjacent_nodes_parallel, parameter_list))
+                    executor.close()
             except:
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
@@ -380,11 +384,14 @@ class ComputeFTEST:
 
         self.response.debug(f"Computing Fisher's Exact Test P-value")
         # calculate FET p-value for each target node in parallel
-        parament_list = [(node, len(target_node_dict[node]), size_of_target[node]-len(target_node_dict[node]), size_of_query_sample - len(target_node_dict[node]), (size_of_total - size_of_target[node]) - (size_of_query_sample - len(target_node_dict[node]))) for node in target_node_dict]
+        parameter_list = [(node, len(target_node_dict[node]), size_of_target[node]-len(target_node_dict[node]), size_of_query_sample - len(target_node_dict[node]), (size_of_total - size_of_target[node]) - (size_of_query_sample - len(target_node_dict[node]))) for node in target_node_dict]
 
         try:
-            with concurrent.futures.ProcessPoolExecutor() as executor:
-                FETpvalue_list = list(executor.map(self.calculate_FET_pvalue_parallel, parament_list))
+            #with concurrent.futures.ProcessPoolExecutor() as executor:
+            #    FETpvalue_list = list(executor.map(self.calculate_FET_pvalue_parallel, parameter_list))
+            with multiprocessing.Pool() as executor:
+                FETpvalue_list = list(executor.map(self.calculate_FET_pvalue_parallel, parameter_list))
+                executor.close()
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
