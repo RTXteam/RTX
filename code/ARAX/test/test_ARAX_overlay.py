@@ -375,5 +375,24 @@ def test_issue_832():
     _virtual_tester(message, 'probably_treats', 'P1', 'probability_treats', 'data:0951', 2)
 
 
+def test_issue_832_non_drug():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=UniProtKB:Q13627, id=n0)",
+        "add_qnode(type=chemical_substance, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "expand(edge_id=e0)",
+        "overlay(action=predict_drug_treats_disease, source_qnode_id=n1, target_qnode_id=n0, virtual_relation_label=P1)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    # Make sure that no probability_treats were added
+    edge_types_in_kg = Counter([x.type for x in message.knowledge_graph.edges])
+    assert 'probability_treats' not in edge_types_in_kg
+
+
 if __name__ == "__main__":
     pytest.main(['-v'])
