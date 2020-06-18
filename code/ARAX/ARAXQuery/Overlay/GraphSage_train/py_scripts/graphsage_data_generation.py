@@ -10,7 +10,7 @@ import random
 import os
 import sys
 import argparse
-import concurrent.futures
+import multiprocessing
 from itertools import chain
 
 
@@ -127,28 +127,28 @@ if __name__ == "__main__":
             }
 
     if args.process==-1:
-        with concurrent.futures.ProcessPoolExecutor() as out_executor:
+        with multiprocessing.Pool() as executor:
             out_iters = [(node,True) for node in range(len(nodes))]
-            out_res = list(chain.from_iterable(out_executor.map(initialize_node, out_iters)))
+            out_res = list(chain.from_iterable(executor.map(initialize_node, out_iters)))
 
         data['nodes'] = out_res
     else:
-        with concurrent.futures.ProcessPoolExecutor(max_workers=args.process) as out_executor:
+        with multiprocessing.Pool(processes=args.process) as executor:
             out_iters = [(node, True) for node in range(len(nodes))]
-            out_res = list(chain.from_iterable(out_executor.map(initialize_node, out_iters)))
+            out_res = list(chain.from_iterable(executor.map(initialize_node, out_iters)))
 
         data['nodes'] = out_res
 
     if args.process == -1:
-        with concurrent.futures.ProcessPoolExecutor() as out_executor:
+        with multiprocessing.Pool() as executor:
             out_iters = [node for node in range(graph_data.shape[0])]
-            out_res = list(chain.from_iterable(out_executor.map(initialize_edge, out_iters)))
+            out_res = list(chain.from_iterable(executor.map(initialize_edge, out_iters)))
 
         data['links'] = out_res
     else:
-        with concurrent.futures.ProcessPoolExecutor(max_workers=args.process) as out_executor:
+        with multiprocessing.Pool(processes=args.process) as executor:
             out_iters = [node for node in range(graph_data.shape[0])]
-            out_res = list(chain.from_iterable(out_executor.map(initialize_edge, out_iters)))
+            out_res = list(chain.from_iterable(executor.map(initialize_edge, out_iters)))
 
         data['links'] = out_res
 

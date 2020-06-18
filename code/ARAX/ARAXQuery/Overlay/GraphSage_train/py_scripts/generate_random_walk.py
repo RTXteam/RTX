@@ -11,7 +11,7 @@ import os
 import sys
 import argparse
 from networkx.readwrite import json_graph
-import concurrent.futures
+import multiprocessing
 from datetime import datetime
 from itertools import chain
 
@@ -81,8 +81,6 @@ if __name__ == "__main__":
     G = G.subgraph(G_nodes)
     del G_data ## delete variable to release ram
 
-    start = datetime.now().replace(microsecond=0)
-
     # set up the batches
     batch =list(range(0,len(G_nodes),args.batch_size))
     batch.append(len(G_nodes))
@@ -99,13 +97,13 @@ if __name__ == "__main__":
             start = batch[i]
             end = batch[i+1]
             if args.process == -1:
-                with concurrent.futures.ProcessPoolExecutor() as out_executor:
+                with multiprocessing.Pool() as executor:
                     out_iters = [(node, args.number_of_walks, args.walk_length) for node in G_nodes[start:end]]
-                    out_res = list(chain.from_iterable(out_executor.map(run_random_walks, out_iters)))
+                    out_res = list(chain.from_iterable(executor.map(run_random_walks, out_iters)))
             else:
-                with concurrent.futures.ProcessPoolExecutor(max_workers=args.process) as out_executor:
+                with multiprocessing.Pool(processes=args.process) as executor:
                     out_iters = [(node, args.number_of_walks, args.walk_length) for node in G_nodes[start:end]]
-                    out_res = list(chain.from_iterable(out_executor.map(run_random_walks, out_iters)))
+                    out_res = list(chain.from_iterable(executor.map(run_random_walks, out_iters)))
             with open(outpath+'/data-walks.txt', "a") as fp:
                 if i==0:
                     fp.write("\n".join([str(p[0]) + "\t" + str(p[1]) for p in out_res]))
@@ -113,6 +111,3 @@ if __name__ == "__main__":
                     fp.write("\n")
                     fp.write("\n".join([str(p[0]) + "\t" + str(p[1]) for p in out_res]))
 
-
-    total_time = datetime.now().replace(microsecond=0) - start
-    print(f'Random Walk costs {total_time} hours.')
