@@ -7,7 +7,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI
 from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.q_node import QNode
 from swagger_server.models.q_edge import QEdge
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/kg-construction/")
 from KGNodeIndex import KGNodeIndex
 
 
@@ -80,9 +80,9 @@ def convert_string_to_snake_case(input_string):
 
 
 def convert_string_or_list_to_list(string_or_list):
-    if type(string_or_list) is str:
+    if isinstance(string_or_list, str):
         return [string_or_list]
-    elif type(string_or_list) is list:
+    elif isinstance(string_or_list, list):
         return string_or_list
     else:
         return []
@@ -212,41 +212,41 @@ def add_curie_synonyms_to_query_nodes(qnodes, log, arax_kg='KG2', override_node_
     log.debug("Looking for query nodes to use curie synonyms for")
     if not qnodes_using_curies_from_prior_step:
         qnodes_using_curies_from_prior_step = set()
-    synonym_usages_dict = dict()
-    no_synonym_nodes = set()
+    curie_map = dict()
 
     for qnode in qnodes:
         if qnode.curie and (qnode.id not in qnodes_using_curies_from_prior_step):
-            curies_to_use_synonyms_for = convert_string_or_list_to_list(qnode.curie)
-            synonyms = []
-            for curie in curies_to_use_synonyms_for:
+            curie_map[qnode.id] = dict()
+            input_curies = convert_string_or_list_to_list(qnode.curie)
+            final_curie_list = []
+            for curie in input_curies:
                 original_curie = curie
                 equivalent_curies = get_curie_synonyms(curie=original_curie, arax_kg=arax_kg)
                 if format_for_bte:
                     equivalent_curies = [convert_curie_to_bte_format(curie) for curie in equivalent_curies]
                 if len(equivalent_curies) > 1:
-                    synonyms += equivalent_curies
+                    log.debug(f"Found synonyms for curie {original_curie}: {equivalent_curies}")
+                    final_curie_list += equivalent_curies
+                    curie_map[qnode.id][original_curie] = equivalent_curies
                     if override_node_type:
                         qnode.type = None  # Equivalent curie types may be different than the original, so we clear this
-                    if qnode.id not in synonym_usages_dict:
-                        synonym_usages_dict[qnode.id] = dict()
-                    synonym_usages_dict[qnode.id][original_curie] = equivalent_curies
                 elif len(equivalent_curies) <= 1:
-                    log.info(f"Could not find any equivalent curies for {original_curie}")
-                    no_synonym_nodes.add(original_curie)
-                    synonyms += equivalent_curies
+                    log.debug(f"Could not find any synonyms for curie {original_curie}")
+                    final_curie_list.append(original_curie)
+                    curie_map[qnode.id][original_curie] = [original_curie]
 
             # Use our new synonyms list only if we actually found any synonyms
-            if synonyms != curies_to_use_synonyms_for:
-                log.info(f"Using equivalent curies for qnode {qnode.id} with curie "
-                         f"'{qnode.curie if len(qnode.curie) > 1 else qnode.curie[0]}': {synonyms}")
-                qnode.curie = synonyms
-        elif qnode.curie:
-            curies = convert_string_or_list_to_list(qnode.curie)
-            no_synonym_nodes = no_synonym_nodes.union(set(curies))
-            print(no_synonym_nodes)
+            if set(final_curie_list) != set(input_curies):
+                qnode.curie = final_curie_list
 
-    return synonym_usages_dict, no_synonym_nodes
+    # Don't consider curie a synonym for another if it was also an entered curie (maybe a bug in kgnodeindex method?)
+    for qnode_id, curie_mappings in curie_map.items():
+        for original_curie, curies_to_use in curie_mappings.items():
+            curies_to_remove = [curie for curie in curies_to_use if curie in curie_mappings.keys() and curie != original_curie]
+            for curie in curies_to_remove:
+                curie_mappings[original_curie].remove(curie)
+
+    return curie_map
 
 
 def qg_is_fulfilled(query_graph, dict_kg):
@@ -254,12 +254,19 @@ def qg_is_fulfilled(query_graph, dict_kg):
     qedge_ids = [qedge.id for qedge in query_graph.edges]
 
     for qnode_id in qnode_ids:
-        if qnode_id not in dict_kg['nodes'] or not len(dict_kg['nodes'][qnode_id]):
+        if qnode_id not in dict_kg['nodes'] or not dict_kg['nodes'][qnode_id]:
             return False
     for qedge_id in qedge_ids:
-        if qedge_id not in dict_kg['edges'] or not len(dict_kg['edges'][qedge_id]):
+        if qedge_id not in dict_kg['edges'] or not dict_kg['edges'][qedge_id]:
             return False
     return True
+
+
+def edge_using_node_exists(curie, qnode_id, edge_to_nodes_map):
+    for edge_id, node_usages in edge_to_nodes_map.items():
+        if node_usages[qnode_id] == curie:
+            return True
+    return False
 
 
 def switch_kg_to_arax_curie_format(dict_kg):
@@ -275,3 +282,41 @@ def switch_kg_to_arax_curie_format(dict_kg):
             edge.target_id = convert_curie_to_arax_format(edge.target_id)
             add_edge_to_kg(converted_kg, edge, qedge_id)
     return converted_kg
+
+
+def get_original_curie(returned_curie, qnode_id, curie_map, log):
+    original_curie_matches = [original_curie for original_curie, used_curies in curie_map[qnode_id].items() if
+                              returned_curie in used_curies]
+    if not original_curie_matches:
+        log.error(f"Could not find returned {qnode_id} node {returned_curie} in the curie map",
+                  error_code="SynonymMappingError")
+        return None
+    elif len(original_curie_matches) > 1:
+        log.error(f"More than 1 possible remapping for returned {qnode_id} node {returned_curie}",
+                  error_code="SynonymMappingError")
+    return original_curie_matches[0]
+
+
+def guess_qnode_type(qnode_curie, log):
+    kgni = KGNodeIndex()
+    curie_list = convert_string_or_list_to_list(qnode_curie)
+    node_types = set()
+    for curie in curie_list:
+        curie_info = kgni.get_equivalent_entities(curie=curie).get(curie)
+        if curie_info:
+            node_type = curie_info['type'][0] if curie_info['type'] else None
+            if node_type:
+                node_types.add(node_type)
+
+    # Only use this node type if we found the same type for all curies in the list
+    if len(node_types) == 1:
+        node_type = node_types.pop()
+        log.warning(f"No type was specified for qnode with curie {qnode_curie}; using type '{node_type}' found via KGNodeIndex")
+        return node_type
+    elif not node_types:
+        log.warning(f"Could not guess a node type to use for qnode with curie {qnode_curie} (curie is not in KGNodeIndex)")
+        return ""
+    else:
+        log.warning(f"Could not guess a node type to use for qnode with curie {qnode_curie} (more than one possible "
+                    f"node type was found: {', '.join(node_types)})")
+        return ""

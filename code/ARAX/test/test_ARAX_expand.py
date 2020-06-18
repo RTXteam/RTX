@@ -7,8 +7,9 @@ Usage:
 
 import sys
 import os
-import pytest
 from typing import List, Dict, Tuple
+
+import pytest
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery/")
 from ARAX_query import ARAXQuery
@@ -478,7 +479,7 @@ def test_kg1_property_format():
 def test_simple_bte_acetaminophen_query():
     actions_list = [
         "create_message",
-        "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",
+        "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112, type=chemical_substance)",
         "add_qnode(id=n01, type=protein)",
         "add_qedge(id=e00, source_id=n00, target_id=n01)",
         "expand(edge_id=e00, kp=BTE)",
@@ -531,7 +532,7 @@ def test_bte_query_using_list_of_curies():
 def test_simple_bte_cdk2_query():
     actions_list = [
         "create_message",
-        "add_qnode(id=n00, curie=NCBIGene:1017)",
+        "add_qnode(id=n00, curie=NCBIGene:1017, type=gene)",
         "add_qnode(id=n01, type=chemical_substance)",
         "add_qedge(id=e00, source_id=n00, target_id=n01)",
         "expand(edge_id=e00, kp=BTE)",
@@ -854,10 +855,30 @@ def test_curie_list_issue_623_2():
         "add_qnode(type=chemical_substance, id=n01)",
         "add_qedge(source_id=n00, target_id=n01, id=e00, type=physically_interacts_with)",
         "expand(edge_id=e00,kp=ARAX/KG1)",
-        "resultify()",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
+def test_curie_list_issue_623_3():
+    actions_list = [
+        "add_qnode(curie=[UniProtKB:P02675, UniProtKB:P01903, UniProtKB:P09601, UniProtKB:Q02878, UniProtKB:P01375, "
+        "UniProtKB:Q9BXM7, UniProtKB:P05181, UniProtKB:I3WAC9, UniProtKB:P50914, UniProtKB:P62241, UniProtKB:O15217, "
+        "UniProtKB:P09488, UniProtKB:P15559, UniProtKB:P06213, UniProtKB:Q13330, UniProtKB:P38646, UniProtKB:P05231, "
+        "UniProtKB:Q9BRL8, UniProtKB:P01344, UniProtKB:Q99683, UniProtKB:P11717, UniProtKB:P01308, UniProtKB:P10635, "
+        "UniProtKB:P23560, UniProtKB:Q01959, UniProtKB:P21728, UniProtKB:O60260, UniProtKB:Q9NQ11, UniProtKB:P21397, "
+        "UniProtKB:P10636, UniProtKB:P08183, UniProtKB:P09211, UniProtKB:P04062, UniProtKB:P14416, UniProtKB:Q5S007, "
+        "UniProtKB:Q99497, UniProtKB:P27338, UniProtKB:P37840, UniProtKB:P08069], is_set=true, id=n00)",
+        "add_qnode(type=disease, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(edge_id=e00, kp=ARAX/KG1)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    missing_protein = "UniProtKB:Q13330"
+    assert missing_protein in nodes_by_qg_id['n00']
+    edges_using_protein = [edge.id for edge in edges_by_qg_id['e00'].values() if edge.source_id == missing_protein or edge.target_id == missing_protein]
+    assert len(edges_using_protein) == 3
 
 
 if __name__ == "__main__":
