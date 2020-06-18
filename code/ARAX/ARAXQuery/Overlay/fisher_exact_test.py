@@ -301,7 +301,7 @@ class ComputeFTEST:
             ## get the count of all nodes with the type of 'source_qnode_id' nodes in KP for each target node in parallel
             try:
                 with multiprocessing.Pool() as executor:
-                    target_count_res = list(executor.map(self.query_adjacent_nodes_parallel, parameter_list))
+                    target_count_res = [elem for elem in executor.map(self.query_adjacent_nodes_parallel, parameter_list)]
                     executor.close()
             except:
                 tb = traceback.format_exc()
@@ -385,7 +385,7 @@ class ComputeFTEST:
 
         try:
             with multiprocessing.Pool() as executor:
-                FETpvalue_list = list(executor.map(self.calculate_FET_pvalue_parallel, parameter_list))
+                FETpvalue_list = [elem for elem in executor.map(self.calculate_FET_pvalue_parallel, parameter_list)]
                 executor.close()
         except:
             tb = traceback.format_exc()
