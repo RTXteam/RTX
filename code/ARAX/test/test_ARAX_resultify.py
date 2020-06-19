@@ -1179,6 +1179,80 @@ class TestARAXResultify(unittest.TestCase):
                 found_result_where_syna_is_n03_and_not_n01 = True
         assert found_result_where_syna_is_n01_and_not_n03 and found_result_where_syna_is_n03_and_not_n01
 
+    def test_issue833(self):
+        # Test for extraneous intermediate nodes
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521, type=chemical_substance)",
+            "add_qnode(id=n01, is_set=true, type=protein)",
+            "add_qedge(id=e00, source_id=n00, target_id=n01)",
+            "expand(edge_id=e00, kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_qnode_id=n00, target_qnode_id=n01, virtual_relation_label=FET1)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.01, remove_connected_nodes=t, qnode_id=n01)",
+            "add_qnode(type=biological_process, is_set=true, id=n02)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01)",
+            "expand(edge_id=e01, kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_qnode_id=n01, target_qnode_id=n02, virtual_relation_label=FET2)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.01, remove_connected_nodes=t, qnode_id=n02)",
+            "add_qnode(type=protein, is_set=true, id=n03)",
+            "add_qedge(source_id=n02, target_id=n03, id=e02)",
+            "expand(edge_id=e02, kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_qnode_id=n02, target_qnode_id=n03, virtual_relation_label=FET3)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.01, remove_connected_nodes=t, qnode_id=n03)",
+            "add_qnode(type=disease, id=n04, curie=DOID:14067)",
+            "add_qedge(source_id=n03, target_id=n04, id=e03)",
+            "expand(edge_id=e03, kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_qnode_id=n03, target_qnode_id=n04, virtual_relation_label=FET4)",
+            "resultify()",
+            "return(message=true, store=false)"]}}
+        [response, message] = _do_arax_query(query)
+        assert response.status == 'OK'
+        kg_nodes_map = {node.id: node for node in message.knowledge_graph.nodes}
+        kg_edges_map = {edge.id: edge for edge in message.knowledge_graph.edges}
+        for result in message.results:
+            result_nodes_by_qg_id = {
+                qnode.id: {node_binding.kg_id: kg_nodes_map[node_binding.kg_id] for node_binding in result.node_bindings
+                           if
+                           node_binding.qg_id == qnode.id} for qnode in message.query_graph.nodes}
+            result_edges_by_qg_id = {
+                qedge.id: {edge_binding.kg_id: kg_edges_map[edge_binding.kg_id] for edge_binding in result.edge_bindings
+                           if
+                           edge_binding.qg_id == qedge.id} for qedge in message.query_graph.edges}
+            # Make sure all intermediate nodes are connected to at least one (real, not virtual) edge on BOTH sides
+            for n01_node_id in result_nodes_by_qg_id['n01']:
+                assert any(edge for edge in result_edges_by_qg_id['e00'].values() if
+                           edge.source_id == n01_node_id or edge.target_id == n01_node_id)
+                assert any(edge for edge in result_edges_by_qg_id['e01'].values() if
+                           edge.source_id == n01_node_id or edge.target_id == n01_node_id)
+            for n02_node_id in result_nodes_by_qg_id['n02']:
+                assert any(edge for edge in result_edges_by_qg_id['e01'].values() if
+                           edge.source_id == n02_node_id or edge.target_id == n02_node_id)
+                assert any(edge for edge in result_edges_by_qg_id['e02'].values() if
+                           edge.source_id == n02_node_id or edge.target_id == n02_node_id)
+            for n03_node_id in result_nodes_by_qg_id['n03']:
+                assert any(edge for edge in result_edges_by_qg_id['e02'].values() if
+                           edge.source_id == n03_node_id or edge.target_id == n03_node_id)
+                assert any(edge for edge in result_edges_by_qg_id['e03'].values() if
+                           edge.source_id == n03_node_id or edge.target_id == n03_node_id)
+            # Make sure all edges' nodes actually exist in this result (includes virtual and real edges)
+            for qedge_id, edges_map in result_edges_by_qg_id.items():
+                qedge = next(qedge for qedge in message.query_graph.edges if qedge.id == qedge_id)
+                for edge_id, edge in edges_map.items():
+                    assert (edge.source_id in result_nodes_by_qg_id[qedge.source_id] and edge.target_id in
+                            result_nodes_by_qg_id[qedge.target_id]) or \
+                           (edge.target_id in result_nodes_by_qg_id[qedge.source_id] and edge.source_id in
+                            result_nodes_by_qg_id[qedge.target_id])
+
+    def test_single_node(self):
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "add_qnode(name=ibuprofen, id=n00)",
+            "expand(node_id=n00)",
+            "resultify(debug=true)"]}}
+        [response, message] = _do_arax_query(query)
+        assert response.status == 'OK'
+        n00_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n00" in node.qnode_ids]
+        assert len(message.results) == len(n00_nodes_in_kg)
+
     # ----------- set this up as a test suite at some point? ----------
     # def _run_module_leveltests(self):
     #     self.test01()
