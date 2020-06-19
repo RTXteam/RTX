@@ -1243,6 +1243,16 @@ class TestARAXResultify(unittest.TestCase):
                            (edge.target_id in result_nodes_by_qg_id[qedge.source_id] and edge.source_id in
                             result_nodes_by_qg_id[qedge.target_id])
 
+    def test_single_node(self):
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "add_qnode(name=ibuprofen, id=n00)",
+            "expand(node_id=n00)",
+            "resultify(debug=true)"]}}
+        [response, message] = _do_arax_query(query)
+        assert response.status == 'OK'
+        n00_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n00" in node.qnode_ids]
+        assert len(message.results) == len(n00_nodes_in_kg)
+
     # ----------- set this up as a test suite at some point? ----------
     # def _run_module_leveltests(self):
     #     self.test01()
