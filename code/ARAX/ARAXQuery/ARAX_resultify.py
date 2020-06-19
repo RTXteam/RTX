@@ -360,6 +360,90 @@ def _get_essence_node_for_qg(qg: QueryGraph) -> Optional[str]:
     assert False
 
 
+def _prune_dead_ends_from_result(result: Result, query_graph: QueryGraph, kg_edges_map: Dict[str, Edge], qg_adj_map: Dict[str, Set[str]]) -> Result:
+    result_nodes_by_qg_id = {qnode.id: {node_binding.kg_id for node_binding in result.node_bindings if node_binding.qg_id == qnode.id} for qnode in query_graph.nodes}
+    result_edges_by_qg_id = {qedge.id: {edge_binding.kg_id for edge_binding in result.edge_bindings if edge_binding.qg_id == qedge.id} for qedge in query_graph.edges}
+    if not result_edges_by_qg_id:
+        # No pruning needed for edge-less queries
+        return result
+
+    # Create a map of which edges use which nodes in which position (e.g., 'n00') for this result
+    # Example node_usages_by_edges_map: {'e00': {'KG1:111221': {'n00': 'CUI:122', 'n01': 'CUI:124'}}}
+    node_usages_by_edges_map = dict()
+    for qedge in query_graph.edges:
+        node_usages_by_edges_map[qedge.id] = dict()
+        for edge_id in result_edges_by_qg_id[qedge.id]:
+            edge = kg_edges_map.get(edge_id)
+            if edge_id not in node_usages_by_edges_map[qedge.id]:
+                node_usages_by_edges_map[qedge.id][edge_id] = dict()
+                qnode_id_1 = qedge.source_id
+                qnode_id_2 = qedge.target_id
+                if edge.source_id in result_nodes_by_qg_id[qnode_id_1] and edge.target_id in result_nodes_by_qg_id[qnode_id_2]:
+                    node_usages_by_edges_map[qedge.id][edge_id][qnode_id_1] = edge.source_id
+                    node_usages_by_edges_map[qedge.id][edge_id][qnode_id_2] = edge.target_id
+                else:
+                    node_usages_by_edges_map[qedge.id][edge_id][qnode_id_1] = edge.target_id
+                    node_usages_by_edges_map[qedge.id][edge_id][qnode_id_2] = edge.source_id
+
+    # Create a map of which nodes each node is connected to in this result (organized by the qnode_id they're fulfilling)
+    # Example node_connections_map: {'n01': {'CUI:1222': {'n00': {'DOID:122'}, 'n02': {'UniProtKB:22', 'UniProtKB:333'}}}}
+    node_connections_map = dict()
+    for qedge_id, edges_to_nodes_dict in node_usages_by_edges_map.items():
+        current_qedge = next(qedge for qedge in query_graph.edges if qedge.id == qedge_id)
+        qnode_ids = [current_qedge.source_id, current_qedge.target_id]
+        for edge_id, node_usages_dict in edges_to_nodes_dict.items():
+            for current_qnode_id in qnode_ids:
+                connected_qnode_id = next(qnode_id for qnode_id in qnode_ids if qnode_id != current_qnode_id)
+                current_node_id = node_usages_dict[current_qnode_id]
+                connected_node_id = node_usages_dict[connected_qnode_id]
+                if current_qnode_id not in node_connections_map:
+                    node_connections_map[current_qnode_id] = dict()
+                if current_node_id not in node_connections_map[current_qnode_id]:
+                    node_connections_map[current_qnode_id][current_node_id] = dict()
+                if connected_qnode_id not in node_connections_map[current_qnode_id][current_node_id]:
+                    node_connections_map[current_qnode_id][current_node_id][connected_qnode_id] = set()
+                node_connections_map[current_qnode_id][current_node_id][connected_qnode_id].add(connected_node_id)
+
+    # Iteratively remove any nodes that are missing a neighbor until there are no such nodes left
+    found_dead_end = True
+    while found_dead_end:
+        found_dead_end = False
+        for qnode_id in [qnode.id for qnode in query_graph.nodes]:
+            qnode_ids_should_be_connected_to = qg_adj_map[qnode_id]
+            for node_id, node_mappings_dict in node_connections_map[qnode_id].items():
+                # Check if any mappings are even entered for all qnode_ids this node should be connected to
+                if set(node_mappings_dict.keys()) != qnode_ids_should_be_connected_to:
+                    if node_id in result_nodes_by_qg_id[qnode_id]:
+                        result_nodes_by_qg_id[qnode_id].remove(node_id)
+                        found_dead_end = True
+                else:
+                    # Verify that at least one of the entered connections still exists (for each connected qnode_id)
+                    for connected_qnode_id, connected_node_ids in node_mappings_dict.items():
+                        if not connected_node_ids.intersection(result_nodes_by_qg_id[connected_qnode_id]):
+                            if node_id in result_nodes_by_qg_id[qnode_id]:
+                                result_nodes_by_qg_id[qnode_id].remove(node_id)
+                                found_dead_end = True
+
+    # Then remove all orphaned edges (which were created when the dead-end nodes were removed above)
+    for qedge_id, edges_dict in node_usages_by_edges_map.items():
+        for edge_key, node_mappings in edges_dict.items():
+            for qnode_id, used_node_id in node_mappings.items():
+                if used_node_id not in result_nodes_by_qg_id[qnode_id]:
+                    if edge_key in result_edges_by_qg_id[qedge_id]:
+                        result_edges_by_qg_id[qedge_id].remove(edge_key)
+
+    # Then create a new pruned result
+    revised_node_bindings = []
+    for qnode_id, node_ids in result_nodes_by_qg_id.items():
+        for node_id in node_ids:
+            revised_node_bindings.append(NodeBinding(qg_id=qnode_id, kg_id=node_id))
+    revised_edge_bindings = []
+    for qedge_id, edge_ids in result_edges_by_qg_id.items():
+        for edge_id in edge_ids:
+            revised_edge_bindings.append(EdgeBinding(qg_id=qedge_id, kg_id=edge_id))
+    return Result(node_bindings=revised_node_bindings, edge_bindings=revised_edge_bindings)
+
+
 def _parse_boolean_case_insensitive(input_string:  str) -> bool:
     if input_string is None:
         raise ValueError("invalid value for input_string")
@@ -587,11 +671,12 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                             break
                     if not found_neighbor_connected_to_kg_node_id and kg_node_id in node_ids_for_subgraph_by_qnode_id[qg_node_id]:
                         node_ids_for_subgraph_by_qnode_id[qg_node_id].remove(kg_node_id)
-        result = _make_result_from_node_set(dict_kg, node_ids_for_subgraph_by_qnode_id, kg_edge_ids_by_qedge_id, qg, ignore_edge_direction)
+        preliminary_result = _make_result_from_node_set(dict_kg, node_ids_for_subgraph_by_qnode_id, kg_edge_ids_by_qedge_id, qg, ignore_edge_direction)
         # make sure that this set of nodes covers the QG
-        qedge_ids_in_subgraph = {edge_binding.qg_id for edge_binding in cast(Iterable[EdgeBinding], result.edge_bindings)}
+        qedge_ids_in_subgraph = {edge_binding.qg_id for edge_binding in cast(Iterable[EdgeBinding], preliminary_result.edge_bindings)}
         if len(qedge_ids_set - qedge_ids_in_subgraph) > 0:
             continue
+        result = _prune_dead_ends_from_result(preliminary_result, qg, kg_edges_map, qg_adj_map)
         essence_kg_node_id_set = node_ids_for_subgraph_by_qnode_id.get(essence_qnode_id, set())
         if len(essence_kg_node_id_set) == 1:
             essence_kg_node_id = next(iter(essence_kg_node_id_set))

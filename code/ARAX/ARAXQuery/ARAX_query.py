@@ -1024,7 +1024,7 @@ def main():
             "expand(edge_id=[e00, e01], kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n01, virtual_relation_label=FET, target_qnode_id=n02, cutoff=0.05)",
             "resultify()",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}}
     elif params.example_number == 6232:  # chunyu testing #623, this should return the 10 smallest FET p-values and only add the virtual edge with top 10 FET p-values
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -1037,7 +1037,7 @@ def main():
             "expand(edge_id=[e00, e01], kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n01, virtual_relation_label=FET, target_qnode_id=n02, top_n=10)",
             "resultify()",
-            "return(message=false, store=true)"
+            "return(message=true, store=false)"
         ]}}
     elif params.example_number == 6233:  # chunyu testing #623, this DSL tests the FET module based on (source id - involved_in - target id) and only decorate/add virtual edge with pvalue<0.05
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -1050,7 +1050,7 @@ def main():
             "expand(edge_id=[e00, e01], kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n01, virtual_relation_label=FET, target_qnode_id=n02, rel_edge_id=e01, cutoff=0.05)",
             "resultify()",
-            "return(message=false, store=true)"
+            "return(message=true, store=false)"
         ]}}
     elif params.example_number == 6234:  # chunyu testing #623, nodes not in the KG and QG. This should throw an error initially. In the future we might want to add these nodes.
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -1061,7 +1061,7 @@ def main():
             "expand(edge_id=[e00], kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n01, virtual_relation_label=FET, target_qnode_id=n02, cutoff=0.05)",
             "resultify()",
-            "return(message=false, store=true)"
+            "return(message=true, store=false)"
         ]}}
     elif params.example_number == 6235:  # chunyu testing #623, this is a two-hop sample. First, find all edges between DOID:14330 and proteins and then filter out the proteins with connection having pvalue>0.001 to DOID:14330. Second, find all edges between proteins and chemical_substances and then filter out the chemical_substances with connection having pvalue>0.005 to proteins
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -1077,7 +1077,7 @@ def main():
             "expand(edge_id=e01, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n01, target_qnode_id=n02, virtual_relation_label=FET2)",
             "resultify()",
-            "return(message=false, store=true)"
+            "return(message=true, store=false)"
         ]}}
     elif params.example_number == 6236:  # chunyu testing #623, this is a three-hop sample: DOID:14330 - protein - (physically_interacts_with) - chemical_substance - phenotypic_feature
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -1098,7 +1098,7 @@ def main():
             "expand(edge_id=e02, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n02, target_qnode_id=n03, virtual_relation_label=FET3)",
             "resultify()",
-            "return(message=false, store=true)"
+            "return(message=true, store=false)"
         ]}}
     elif params.example_number == 6237:  # chunyu testing #623, this is a four-hop sample: CHEMBL521 - protein - biological_process - protein - disease
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -1124,7 +1124,7 @@ def main():
             "expand(edge_id=e03, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n03, target_qnode_id=n04, virtual_relation_label=FET4)",
             "resultify()",
-            "return(message=false, store=true)"
+            "return(message=true, store=false)"
         ]}}
     elif params.example_number == 7680:  # issue 768 test all but jaccard, uncomment any one you want to test
         query = {"previous_message_processing_plan": {"processing_actions": [
