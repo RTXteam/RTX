@@ -409,7 +409,7 @@ class TestARAXResultify(unittest.TestCase):
                          'is_set': False},
                         {'id': 'n02',
                          'type': 'chemical_substance',
-                         'is_set': True})
+                         'is_set': False})
 
         qg_edge_info = ({'edge_id': 'qe01',
                          'source_id': 'n02',
@@ -430,7 +430,6 @@ class TestARAXResultify(unittest.TestCase):
 
         results_list = ARAX_resultify._get_results_for_kg_by_qg(knowledge_graph,
                                                                 query_graph,
-                                                                qg_nodes_override_treat_is_set_as_false={'n02'},
                                                                 ignore_edge_direction=True)
         assert len(results_list) == 2
 
