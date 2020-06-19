@@ -72,6 +72,8 @@ def _print_results_for_debug(results: List[Result]):
 def _do_arax_query(query: str) -> List[Union[Response, Message]]:
     araxq = ARAXQuery()
     response = araxq.query(query)
+    if response.status != 'OK':
+        print(response.show(level=response.DEBUG))
     return [response, araxq.message]
 
 
@@ -830,7 +832,7 @@ class TestARAXResultify(unittest.TestCase):
     def test_issue680(self):
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(curie=DOID:14330, id=n00)",
+            "add_qnode(curie=DOID:14330, id=n00, type=disease)",
             "add_qnode(type=protein, is_set=true, id=n01)",
             "add_qnode(type=chemical_substance, id=n02)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
