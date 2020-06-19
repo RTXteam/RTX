@@ -383,21 +383,11 @@ def _get_essence_node_for_qg(qg: QueryGraph) -> Optional[str]:
     assert False
 
 
-def _prune_dead_ends_from_result(result: Result, query_graph: QueryGraph, kg_edges_map: Dict[str, Edge]) -> Result:
+def _prune_dead_ends_from_result(result: Result, query_graph: QueryGraph, kg_edges_map: Dict[str, Edge], qg_adj_map: Dict[str, Set[str]]) -> Result:
     result_nodes_by_qg_id = {qnode.id: {node_binding.kg_id for node_binding in result.node_bindings if node_binding.qg_id == qnode.id} for qnode in query_graph.nodes}
     result_edges_by_qg_id = {qedge.id: {edge_binding.kg_id for edge_binding in result.edge_bindings if edge_binding.qg_id == qedge.id} for qedge in query_graph.edges}
 
     if result_edges_by_qg_id:
-        # Create a map of which qnodes are connected to which other qnodes in our query graph
-        # Example qnode_connections_map: {'n00': {'n01'}, 'n01': {'n00', 'n02'}, 'n02': {'n01'}}
-        qnode_connections_map = dict()
-        for qnode in query_graph.nodes:
-            qnode_connections_map[qnode.id] = set()
-            for qedge in query_graph.edges:
-                if qedge.source_id == qnode.id or qedge.target_id == qnode.id:
-                    connected_qnode_id = qedge.target_id if qedge.target_id != qnode.id else qedge.source_id
-                    qnode_connections_map[qnode.id].add(connected_qnode_id)
-
         # Create a map of which edges use which nodes in which position (e.g., 'n00') for this result
         # Example node_usages_by_edges_map: {'e00': {'KG1:111221': {'n00': 'CUI:122', 'n01': 'CUI:124'}}}
         node_usages_by_edges_map = dict()
@@ -440,7 +430,7 @@ def _prune_dead_ends_from_result(result: Result, query_graph: QueryGraph, kg_edg
         while found_dead_end:
             found_dead_end = False
             for qnode_id in [qnode.id for qnode in query_graph.nodes]:
-                qnode_ids_should_be_connected_to = qnode_connections_map[qnode_id]
+                qnode_ids_should_be_connected_to = qg_adj_map[qnode_id]
                 for node_id, node_mappings_dict in node_connections_map[qnode_id].items():
                     # Check if any mappings are even entered for all qnode_ids this node should be connected to
                     if set(node_mappings_dict.keys()) != qnode_ids_should_be_connected_to:
@@ -719,7 +709,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         qedge_ids_in_subgraph = {edge_binding.qg_id for edge_binding in cast(Iterable[EdgeBinding], preliminary_result.edge_bindings)}
         if len(qedge_ids_set - qedge_ids_in_subgraph) > 0:
             continue
-        result = _prune_dead_ends_from_result(preliminary_result, qg, kg_edges_map)
+        result = _prune_dead_ends_from_result(preliminary_result, qg, kg_edges_map, qg_adj_map)
         essence_kg_node_id_set = node_ids_for_subgraph_by_qnode_id.get(essence_qnode_id, set())
         if len(essence_kg_node_id_set) == 1:
             essence_kg_node_id = next(iter(essence_kg_node_id_set))
