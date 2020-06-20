@@ -609,6 +609,26 @@ def test_single_node_query_without_synonyms():
     assert "CHEMBL.COMPOUND:CHEMBL1276308" in nodes_by_qg_id['n00']
 
 
+def test_single_node_query_with_no_results():
+    actions_list = [
+        "add_qnode(id=n00, curie=FAKE:curie)",
+        "expand(kp=ARAX/KG1, continue_if_no_results=true)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
+    assert not nodes_by_qg_id and not edges_by_qg_id
+
+
+def test_single_node_query_with_list():
+    actions_list = [
+        "add_qnode(id=n00, curie=[CHEMBL.COMPOUND:CHEMBL108, CHEMBL.COMPOUND:CHEMBL110])",
+        "expand(kp=ARAX/KG1)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    assert len(nodes_by_qg_id['n00']) == 2
+
+
 def test_query_with_no_edge_or_node_ids():
     actions_list = [
         "create_message",
