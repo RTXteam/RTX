@@ -476,7 +476,7 @@ def test_kg1_property_format():
                 assert edge.edge_attributes[0].name == "probability"
 
 
-def test_simple_bte_acetaminophen_query():
+def test_bte_simple_acetaminophen_query():
     actions_list = [
         "create_message",
         "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112, type=chemical_substance)",
@@ -490,7 +490,7 @@ def test_simple_bte_acetaminophen_query():
     assert len(nodes_by_qg_id['n01']) == len(edges_by_qg_id['e00'])
 
 
-def test_add_all_bte_acetaminophen_query():
+def test_bte_add_all_acetaminophen_query():
     actions_list = [
         "create_message",
         "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",
@@ -529,7 +529,7 @@ def test_bte_query_using_list_of_curies():
     assert len(nodes_by_qg_id['n00']) > 1
 
 
-def test_simple_bte_cdk2_query():
+def test_bte_simple_cdk2_query():
     actions_list = [
         "create_message",
         "add_qnode(id=n00, curie=NCBIGene:1017, type=gene)",
