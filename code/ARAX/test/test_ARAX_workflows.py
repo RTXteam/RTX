@@ -348,6 +348,29 @@ def test_FET_example_4():
         assert query_exge.source_id in query_node_ids
         assert query_exge.target_id in query_node_ids
 
+def test_example_2_kg2():
+    query = {"previous_message_processing_plan": { "processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:14330, id=n00)",
+            "add_qnode(type=protein, is_set=true, id=n01)",
+            "add_qnode(type=chemical_substance, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=molecularly_interacts_with)",
+            "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",  # seems to work just fine
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.008, remove_connected_nodes=t, qnode_id=n02)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
+            "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) == 15 
+    assert message.results[0].essence is not None
+    _virtual_tester(message, 'has_jaccard_index_with', 'J1', 'jaccard_index', 'data:1772', 2)
+
+
+
 
 if __name__ == "__main__":
     pytest.main(['-v'])
