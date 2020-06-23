@@ -208,15 +208,11 @@ def get_curie_synonyms(curie, arax_kg='KG2'):
     return list(equivalent_curies_using_arax_kg)
 
 
-def add_curie_synonyms_to_query_nodes(qnodes, log, arax_kg='KG2', override_node_type=True, format_for_bte=False, qnodes_using_curies_from_prior_step=None):
+def add_curie_synonyms_to_query_nodes(query_graph, log, arax_kg='KG2', override_node_type=True, format_for_bte=False):
     log.debug("Looking for query nodes to use curie synonyms for")
-    if not qnodes_using_curies_from_prior_step:
-        qnodes_using_curies_from_prior_step = set()
-    curie_map = dict()
 
-    for qnode in qnodes:
-        if qnode.curie and (qnode.id not in qnodes_using_curies_from_prior_step):
-            curie_map[qnode.id] = dict()
+    for qnode in query_graph.nodes:
+        if qnode.curie:
             input_curies = convert_string_or_list_to_list(qnode.curie)
             final_curie_list = []
             for curie in input_curies:
@@ -227,26 +223,17 @@ def add_curie_synonyms_to_query_nodes(qnodes, log, arax_kg='KG2', override_node_
                 if len(equivalent_curies) > 1:
                     log.debug(f"Found synonyms for curie {original_curie}: {equivalent_curies}")
                     final_curie_list += equivalent_curies
-                    curie_map[qnode.id][original_curie] = equivalent_curies
                     if override_node_type:
                         qnode.type = None  # Equivalent curie types may be different than the original, so we clear this
                 elif len(equivalent_curies) <= 1:
                     log.debug(f"Could not find any synonyms for curie {original_curie}")
                     final_curie_list.append(original_curie)
-                    curie_map[qnode.id][original_curie] = [original_curie]
 
             # Use our new synonyms list only if we actually found any synonyms
             if set(final_curie_list) != set(input_curies):
                 qnode.curie = final_curie_list
 
-    # Don't consider curie a synonym for another if it was also an entered curie (maybe a bug in kgnodeindex method?)
-    for qnode_id, curie_mappings in curie_map.items():
-        for original_curie, curies_to_use in curie_mappings.items():
-            curies_to_remove = [curie for curie in curies_to_use if curie in curie_mappings.keys() and curie != original_curie]
-            for curie in curies_to_remove:
-                curie_mappings[original_curie].remove(curie)
-
-    return curie_map
+    return query_graph
 
 
 def qg_is_fulfilled(query_graph, dict_kg):

@@ -28,7 +28,7 @@ class KGQuerier:
         self.final_kg = {'nodes': dict(), 'edges': dict()}
         self.non_synonym_nodes = None
 
-    def answer_one_hop_query(self, query_graph, qnodes_using_curies_from_prior_step):
+    def answer_one_hop_query(self, query_graph):
         """
         This function answers a one-hop (single-edge) query using either KG1 or KG2.
         :param query_graph: A Reasoner API standard query graph.

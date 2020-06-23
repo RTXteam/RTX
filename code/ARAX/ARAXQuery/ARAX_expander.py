@@ -175,8 +175,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
         return sub_query_graph
 
-    @staticmethod
-    def _get_query_graph_for_edge(qedge, query_graph, dict_kg):
+    def _get_query_graph_for_edge(self, qedge, query_graph, dict_kg, use_synonyms, kp_to_use):
         # This function creates a query graph for the specified qedge, updating its qnodes' curies as needed
         edge_query_graph = QueryGraph(nodes=[], edges=[])
         qnodes = [eu.get_query_node(query_graph, qedge.source_id),
@@ -187,7 +186,6 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
         # Update this qedge's qnodes as appropriate and add (copies of) them to the edge query graph
         qedge_has_already_been_expanded = qedge.id in dict_kg['edges']
-        qnodes_using_curies_from_prior_step = set()
         for qnode in qnodes:
             qnode_copy = eu.copy_qnode(qnode)
 
@@ -195,17 +193,18 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             qnode_already_fulfilled = qnode_copy.id in dict_kg['nodes']
             if qnode_already_fulfilled and not qnode_copy.curie and not qedge_has_already_been_expanded:
                 qnode_copy.curie = list(dict_kg['nodes'][qnode_copy.id].keys())
-                qnodes_using_curies_from_prior_step.add(qnode_copy.id)
 
             edge_query_graph.nodes.append(qnode_copy)
 
-        return edge_query_graph, qnodes_using_curies_from_prior_step
+        if use_synonyms:
+            edge_query_graph, = eu.add_curie_synonyms_to_query_nodes(qnodes=query_graph.nodes,
+                                                                     arax_kg='KG1' if kp_to_use == 'ARAX/KG1' else 'KG2',
+                                                                     log=self.response)
+        return edge_query_graph
 
-    def _expand_edge(self, qedge, kp_to_use, dict_kg, continue_if_no_results, query_graph):
+    def _expand_edge(self, qedge, kp_to_use, dict_kg, continue_if_no_results, query_graph, use_synonyms, synonym_handling):
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         self.response.info(f"Expanding edge {qedge.id} using {kp_to_use}")
-
-        edge_query_graph, qnodes_using_curies_from_prior_step = self._get_query_graph_for_edge(qedge, query_graph, dict_kg)
 
         valid_kps = ["ARAX/KG1", "ARAX/KG2", "BTE"]
         if kp_to_use not in valid_kps:
@@ -213,14 +212,15 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                                 error_code="UnknownValue")
             return None, None
         else:
+            # Create a query graph for this edge (that uses synonyms and curies found in prior steps) and answer it
+            edge_query_graph = self._get_query_graph_for_edge(qedge, query_graph, dict_kg, use_synonyms, kp_to_use)
             if kp_to_use == 'BTE':
                 from Expand.bte_querier import BTEQuerier
                 kp_querier = BTEQuerier(self.response)
             else:
                 from Expand.kg_querier import KGQuerier
                 kp_querier = KGQuerier(self.response, kp_to_use)
-
-            answer_kg, edge_node_usage_map = kp_querier.answer_one_hop_query(edge_query_graph, qnodes_using_curies_from_prior_step)
+            answer_kg, edge_node_usage_map = kp_querier.answer_one_hop_query(edge_query_graph)
 
             # Make sure all of the QG IDs in our query have been fulfilled (unless we're continuing if no results)
             if self.response.status == 'OK' and not continue_if_no_results:
@@ -232,6 +232,11 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                     if qedge.id not in answer_kg['edges'] or not answer_kg['edges'][qedge.id]:
                         self.response.error(f"Returned answer KG does not contain any results for QEdge {qedge.id}",
                                             error_code="UnfulfilledQGID")
+
+            # Deduplicate our answers as appropriate
+            if use_synonyms and synonym_handling == 'map_back':
+                # TODO: Deduplicate nodes (using preferred curie), remap edges, update edge node usage map
+                pass
 
             return answer_kg, edge_node_usage_map
 
@@ -264,7 +269,6 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
     def _process_and_merge_answer(self, answer_dict_kg, dict_kg):
         # This function merges an answer KG (from the current edge/node expansion) into the overarching KG
         self.response.debug("Merging answer into Message.KnowledgeGraph")
-
         for qnode_id, nodes in answer_dict_kg['nodes'].items():
             for node_key, node in nodes.items():
                 eu.add_node_to_kg(dict_kg, node, qnode_id)
