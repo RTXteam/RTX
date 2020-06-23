@@ -17,15 +17,12 @@ class BTEQuerier:
 
     def __init__(self, response_object):
         self.response = response_object
-        self.use_synonyms = response_object.data['parameters'].get('use_synonyms')
-        self.synonym_handling = response_object.data['parameters'].get('synonym_handling')
         self.enforce_directionality = response_object.data['parameters'].get('enforce_directionality')
         self.continue_if_no_results = response_object.data['parameters'].get('continue_if_no_results')
 
-    def answer_one_hop_query(self, query_graph, qnodes_using_curies_from_prior_step):
+    def answer_one_hop_query(self, query_graph):
         answer_kg = {'nodes': dict(), 'edges': dict()}
         edge_to_nodes_map = dict()
-        curie_map = dict()
         valid_bte_inputs_dict = self._get_valid_bte_inputs_dict()
         if self.response.status != 'OK':
             return answer_kg, edge_to_nodes_map
@@ -34,16 +31,6 @@ class BTEQuerier:
         qedge, input_qnode, output_qnode = self._validate_and_pre_process_input(query_graph=query_graph,
                                                                                 valid_bte_inputs_dict=valid_bte_inputs_dict,
                                                                                 enforce_directionality=self.enforce_directionality)
-        if self.response.status != 'OK':
-            return answer_kg, edge_to_nodes_map
-
-        # Add synonyms to our input query node, if desired
-        if self.use_synonyms:
-            curie_map = eu.add_curie_synonyms_to_query_nodes(qnodes=[input_qnode, output_qnode],
-                                                             log=self.response,
-                                                             override_node_type=False,
-                                                             format_for_bte=True,
-                                                             qnodes_using_curies_from_prior_step=qnodes_using_curies_from_prior_step)
         if self.response.status != 'OK':
             return answer_kg, edge_to_nodes_map
 
@@ -56,12 +43,9 @@ class BTEQuerier:
         if self.response.status != 'OK':
             return answer_kg, edge_to_nodes_map
 
-        # Do any post-processing after ALL curies in the input qnode have been queried
+        # Hack to achieve a curie to curie query, if necessary
         if eu.qg_is_fulfilled(query_graph, answer_kg) and input_qnode.curie and output_qnode.curie:
             answer_kg = self._prune_answers_to_achieve_curie_to_curie_query(answer_kg, output_qnode, qedge)
-        if eu.qg_is_fulfilled(query_graph, answer_kg) and self.use_synonyms and self.synonym_handling == 'map_back':
-            answer_kg = self._remove_synonym_nodes(answer_kg, input_qnode, output_qnode, qedge, curie_map)
-            answer_kg = self._remove_redundant_edges(answer_kg, qedge.id)
 
         # Report our findings
         if eu.qg_is_fulfilled(query_graph, answer_kg):
@@ -186,17 +170,14 @@ class BTEQuerier:
                     self.response.error("Could not map BTE qg_id to ARAX qnode_id", error_code="UnknownQGID")
                     return answer_kg
 
-                # Find and use the preferred equivalent identifier for this node (if it's an 'output' node)
-                if qnode_id == output_qnode_id:
-                    if bte_node_id in remapped_node_ids:
-                        swagger_node.id = remapped_node_ids.get(bte_node_id)
-                    else:
-                        equivalent_curies = [f"{prefix}:{eu.get_curie_local_id(local_id)}" for prefix, local_ids in
-                                             node.get('equivalent_identifiers').items() for local_id in local_ids]
-                        swagger_node.id = eu.get_best_equivalent_curie(equivalent_curies, swagger_node.type)
-                        remapped_node_ids[bte_node_id] = swagger_node.id
+                # Find and use the preferred equivalent identifier for this node
+                if bte_node_id in remapped_node_ids:
+                    swagger_node.id = remapped_node_ids.get(bte_node_id)
                 else:
-                    swagger_node.id = bte_node_id
+                    equivalent_curies = [f"{prefix}:{eu.get_curie_local_id(local_id)}" for prefix, local_ids in
+                                         node.get('equivalent_identifiers').items() for local_id in local_ids]
+                    swagger_node.id = eu.get_best_equivalent_curie(equivalent_curies, swagger_node.type)
+                    remapped_node_ids[bte_node_id] = swagger_node.id
 
                 eu.add_node_to_kg(answer_kg, swagger_node, qnode_id)
 
@@ -227,55 +208,6 @@ class BTEQuerier:
                 self.response.error(f"BTE could not accept any of the input curies. Valid curie prefixes for BTE are: "
                                     f"{valid_prefixes}", error_code="InvalidPrefix")
             self.response.error(f"No paths were found in BTE satisfying this query graph", error_code="NoResults")
-
-    @staticmethod
-    def _remove_synonym_nodes(kg, input_qnode, output_qnode, qedge, curie_map):
-        for qnode_id, curie_mappings in curie_map.items():
-            ids_of_nodes_in_kg = set(list(kg['nodes'][qnode_id].keys()))
-
-            for original_curie, curies_used in curie_mappings.items():
-                synonyms_used_set = set(curies_used).difference({original_curie})
-                ids_of_synonym_nodes = synonyms_used_set.intersection(ids_of_nodes_in_kg)
-
-                if ids_of_synonym_nodes:
-                    # Remap to the original curie if it's present, otherwise pick the best synonym node
-                    if original_curie in ids_of_nodes_in_kg:
-                        node_id_to_keep = original_curie
-                        node_ids_to_remove = ids_of_synonym_nodes
-                    else:
-                        qnode_type = input_qnode.type if qnode_id == input_qnode.id else output_qnode.type
-                        node_id_to_keep = eu.get_best_equivalent_curie(list(ids_of_synonym_nodes), qnode_type)
-                        node_ids_to_remove = ids_of_synonym_nodes.difference({node_id_to_keep})
-
-                    # Remove the nodes we don't want
-                    for node_id in node_ids_to_remove:
-                        kg['nodes'][qnode_id].pop(node_id)
-
-                    # And remap their edges to point to the node we kept
-                    for edge in kg['edges'][qedge.id].values():
-                        if edge.source_id in node_ids_to_remove:
-                            edge.source_id = node_id_to_keep
-                        if edge.target_id in node_ids_to_remove:
-                            edge.target_id = node_id_to_keep
-        return kg
-
-    @staticmethod
-    def _remove_redundant_edges(kg, qedge_id):
-        # Figure out which edges are redundant (can happen due to synonym remapping)
-        edges_already_seen = set()
-        edge_ids_to_remove = set()
-        for edge_id, edge in kg['edges'][qedge_id].items():
-            identifier_tuple_for_edge = (edge.source_id, edge.type, edge.target_id, edge.provided_by)
-            if identifier_tuple_for_edge in edges_already_seen:
-                edge_ids_to_remove.add(edge_id)
-            else:
-                edges_already_seen.add(identifier_tuple_for_edge)
-
-        # Then remove them
-        for edge_id in edge_ids_to_remove:
-            kg['edges'][qedge_id].pop(edge_id)
-
-        return kg
 
     @staticmethod
     def _prune_answers_to_achieve_curie_to_curie_query(kg, output_qnode, qedge):

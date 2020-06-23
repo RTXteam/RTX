@@ -208,10 +208,10 @@ def get_curie_synonyms(curie, arax_kg='KG2'):
     return list(equivalent_curies_using_arax_kg)
 
 
-def add_curie_synonyms_to_query_nodes(query_graph, log, arax_kg='KG2', override_node_type=True, format_for_bte=False):
+def add_curie_synonyms_to_query_nodes(qnodes, log, arax_kg='KG2', override_node_type=True, format_for_bte=False):
     log.debug("Looking for query nodes to use curie synonyms for")
 
-    for qnode in query_graph.nodes:
+    for qnode in qnodes:
         if qnode.curie:
             input_curies = convert_string_or_list_to_list(qnode.curie)
             final_curie_list = []
@@ -232,8 +232,6 @@ def add_curie_synonyms_to_query_nodes(query_graph, log, arax_kg='KG2', override_
             # Use our new synonyms list only if we actually found any synonyms
             if set(final_curie_list) != set(input_curies):
                 qnode.curie = final_curie_list
-
-    return query_graph
 
 
 def qg_is_fulfilled(query_graph, dict_kg):

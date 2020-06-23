@@ -92,6 +92,8 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         input_node_ids = eu.convert_string_or_list_to_list(parameters['node_id'])
         kp_to_use = self.parameters['kp']
         continue_if_no_results = self.parameters['continue_if_no_results']
+        use_synonyms = self.parameters['use_synonyms']
+        synonym_handling = self.parameters['synonym_handling']
 
         # Convert message knowledge graph to dictionary format, for faster processing
         dict_kg = eu.convert_standard_kg_to_dict_kg(self.message.knowledge_graph)
@@ -108,7 +110,8 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             node_usages_by_edges_map = dict()
 
             for qedge in ordered_qedges_to_expand:
-                answer_kg, edge_node_usage_map = self._expand_edge(qedge, kp_to_use, dict_kg, continue_if_no_results, self.message.query_graph)
+                answer_kg, edge_node_usage_map = self._expand_edge(qedge, kp_to_use, dict_kg, continue_if_no_results,
+                                                                   self.message.query_graph, use_synonyms, synonym_handling)
                 if response.status != 'OK':
                     return response
                 node_usages_by_edges_map[qedge.id] = edge_node_usage_map
@@ -124,7 +127,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         # Expand any specified nodes
         if input_node_ids:
             for qnode_id in input_node_ids:
-                answer_kg = self._expand_node(qnode_id, kp_to_use, continue_if_no_results, self.message.query_graph)
+                answer_kg = self._expand_node(qnode_id, kp_to_use, continue_if_no_results, self.message.query_graph, use_synonyms)
                 if response.status != 'OK':
                     return response
 
@@ -197,20 +200,21 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             edge_query_graph.nodes.append(qnode_copy)
 
         if use_synonyms:
-            edge_query_graph, = eu.add_curie_synonyms_to_query_nodes(qnodes=query_graph.nodes,
-                                                                     arax_kg='KG1' if kp_to_use == 'ARAX/KG1' else 'KG2',
-                                                                     log=self.response)
+            eu.add_curie_synonyms_to_query_nodes(qnodes=edge_query_graph.nodes,
+                                                 arax_kg='KG1' if kp_to_use == 'ARAX/KG1' else 'KG2',
+                                                 log=self.response)
         return edge_query_graph
 
     def _expand_edge(self, qedge, kp_to_use, dict_kg, continue_if_no_results, query_graph, use_synonyms, synonym_handling):
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         self.response.info(f"Expanding edge {qedge.id} using {kp_to_use}")
 
-        edge_query_graph, qnodes_using_curies_from_prior_step = self._get_query_graph_for_edge(qedge, query_graph, dict_kg)
+        # Create a query graph for this edge (that uses synonyms as well as curies found in prior steps)
+        edge_query_graph = self._get_query_graph_for_edge(qedge, query_graph, dict_kg, use_synonyms, kp_to_use)
         if not any(qnode for qnode in edge_query_graph.nodes if qnode.curie):
             self.response.error(f"Cannot expand an edge for which neither end has any curies. (Could not find curies to"
                                 f" use from a prior expand step, and neither qnode has a curie specified.)",
-                                error_code="InvalidQueryGraph")
+                                error_code="InvalidQuery")
             return None, None
 
         valid_kps = ["ARAX/KG1", "ARAX/KG2", "BTE"]
@@ -219,8 +223,6 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                                 error_code="UnknownValue")
             return None, None
         else:
-            # Create a query graph for this edge (that uses synonyms and curies found in prior steps) and answer it
-            edge_query_graph = self._get_query_graph_for_edge(qedge, query_graph, dict_kg, use_synonyms, kp_to_use)
             if kp_to_use == 'BTE':
                 from Expand.bte_querier import BTEQuerier
                 kp_querier = BTEQuerier(self.response)
@@ -247,14 +249,22 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
             return answer_kg, edge_node_usage_map
 
-    def _expand_node(self, qnode_id, kp_to_use, continue_if_no_results, query_graph):
+    def _expand_node(self, qnode_id, kp_to_use, continue_if_no_results, query_graph, use_synonyms):
         # This function expands a single node using the specified knowledge provider
         self.response.debug(f"Expanding node {qnode_id} using {kp_to_use}")
-
         query_node = eu.get_query_node(query_graph, qnode_id)
         if self.response.status != 'OK':
             return None
+        if not query_node.curie:
+            self.response.error(f"Cannot expand a single query node if it doesn't have a curie", error_code="InvalidQuery")
+            return None
 
+        if use_synonyms:
+            eu.add_curie_synonyms_to_query_nodes(qnodes=[query_node],
+                                                 arax_kg='KG1' if kp_to_use == 'ARAX/KG1' else 'KG2',
+                                                 log=self.response)
+
+        # Answer the query using the proper KP
         if kp_to_use == 'BTE':
             self.response.error(f"Cannot use BTE to answer single node queries", error_code="InvalidQuery")
             return None
