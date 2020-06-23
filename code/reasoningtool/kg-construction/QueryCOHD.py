@@ -20,6 +20,8 @@ __status__ = 'Prototype'
 # import requests_cache
 import sys
 import urllib.parse
+import unittest
+from tests import NewQueryCOHDTests
 
 from cache_control_helper import CacheControlHelper
 
@@ -53,7 +55,8 @@ class QueryCOHD:
         'get_domain_pair_counts':               'metadata/domainPairCounts',
         'get_patient_count':                    'metadata/patientCount',
         'get_concept_ancestors':                '/omop/conceptAncestors',
-        'get_concept_descendants':              '/omop/conceptDescendants'
+        'get_concept_descendants':              '/omop/conceptDescendants',
+        'get_source_to_target':                 'temporal/sourceToTarget'
     }
 
     @staticmethod
@@ -1066,8 +1069,45 @@ class QueryCOHD:
                 results_list = results
         return results_list
 
+    @staticmethod
+    def get_source_to_target(source_concept_id, target_concept_id, dataset_id=4):
+        """The number of concepts in each domain
 
-# if __name__ == '__main__':
+        Args:
+            source_concept_id(int): An OMOP concept id, e.g., 312327
+            target_concept_id(int): An OMOP concept id, e.g., 312327
+            dataset_id (int): The dataset_id of the dataset to query. Default dataset is the temporal dataset (4).
+
+        Returns:
+            array: Analysis to determine if there's a temporal relationship between the source_concept and the target_concept.
+            Compares the delta distribution between source_concept and target_concept against delta distributions from other concepts to the target_concept. 
+            Find comparable concepts by measuring similarity of the age distributions to the age distribution of the source_concept.
+        """
+        if not isinstance(source_concept_id, int) or not isinstance(target_concept_id, int) or not isinstance(dataset_id, int) or dataset_id <= 0:
+            return []
+        handler = QueryCOHD.HANDLER_MAP['get_source_to_target']
+        url_suffix = 'dataset_id=' + str(dataset_id) + '&source_concept_id=' + str(source_concept_id) + '&target_concept_id=' + str(target_concept_id)
+        res_json = QueryCOHD.__access_api(handler, url_suffix)
+        results_array = []
+        if res_json is not None:
+            results_array = res_json.get('results', [])
+        return results_array
+
+def test_source_to_target():
+    # initialize the test suite
+    loader = unittest.TestLoader()
+    suite  = unittest.TestSuite()
+
+    # add tests to the test suite
+    suite.addTests(loader.loadTestsFromModule(NewQueryCOHDTests))
+
+    # initialize a runner, pass it your suite and run it
+    runner = unittest.TextTestRunner(verbosity=3)
+    runner.run(suite)
+
+
+if __name__ == '__main__':
+    test_source_to_target()
     # print(QueryCOHD.find_concept_ids("cancer", "Condition", 1))
     # print(QueryCOHD.find_concept_ids("cancer", "Condition"))
     # print(QueryCOHD.find_concept_ids("cancer"))
