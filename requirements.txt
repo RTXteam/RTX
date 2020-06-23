@@ -1,32 +1,33 @@
 --index-url https://pypi.python.org/simple/
-requests-cache
-pandas
-neo4j-driver
-numpy
-ipython-cypher
-networkx
-pronto
-lxml
-mygene
-beautifulsoup4
-nltk
+requests-cache==0.5.2
+pandas>=1.0.3,<=1.0.4
+neo4j-driver>=1.7.0,<=1.7.6
+numpy>=1.18.2,<=1.18.5
+ipython-cypher==0.2.6
+networkx==2.4
+pronto==2.1.0
+lxml>=4.5.0,<=4.5.1
+mygene==3.1.0
+beautifulsoup4>=4.9.0,<=4.9.1
+nltk>=3.4.5,<=3.5
+sqlalchemy
+scipy==1.4.1
+scikit-learn==0.22
+connexion>=2.6.0,<=2.7.0
+pymysql
+requests>=2.21.0,<=2.23.0
+CacheControl==0.12.6
+lockfile==0.12.2
+simple-crypt==4.1.7
+tomark==0.1.4
+md-toc>=7.0.1,<=7.0.2
+pickledb==0.9.2
+biothings-explorer @ git+https://github.com/biothings/biothings_explorer@b7be98589ea5e4dfee5a80b9cada88fdac128c81
+pytest>=5.4.1,<=5.4.3
+joblib==0.15.1
+# Other things that you may need to do in python to get required data
 # nltk.download('wordnet')
 # nltk.download('averaged_perceptron_tagger')
 # nltk.download('punkt')
 # nltk.download('stopwords')
-# TODO: I may be missing a few nltk packages
-sqlalchemy
-scipy
-scikit-learn
-connexion
 #'connexion[swagger-ui]'
-pymysql
-requests
-CacheControl
-lockfile
-simple-crypt
-tomark
-md-toc
-pickledb
-git+https://github.com/biothings/biothings_explorer#egg=biothings_explorer
-pytest

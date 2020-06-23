@@ -881,14 +881,14 @@ def main():
             "create_message",
             "add_qnode(name=DOID:14330, id=n00)",
             "add_qnode(type=protein, is_set=true, id=n01)",
-            "add_qnode(type=chemical_substance, is_set=true, id=n02)",
+            "add_qnode(type=chemical_substance, id=n02)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
             "expand(edge_id=[e00,e01])",
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
             "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
-            "resultify(ignore_edge_direction=true, force_isset_false=[n02])",
+            "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=d, max_results=15)",
             #"filter_results(action=sort_by_edge_count, direction=a)",
             #"filter_results(action=limit_number_of_results, max_results=5)",
@@ -898,11 +898,11 @@ def main():
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(name=DOID:1227, id=n00)",
-            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+            "add_qnode(type=chemical_substance, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
             "overlay(action=add_node_pmids, max_num=15)",
-            "resultify(ignore_edge_direction=true, force_isset_false=[n01])",
+            "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
             "return(message=true, store=false)"
         ]}}
@@ -1016,57 +1016,57 @@ def main():
     elif params.example_number == 6231:  # chunyu testing #623, all nodes already in the KG and QG
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521)",
-            "add_qnode(id=n01, type=protein)",
+            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521, type=chemical_substance)",
+            "add_qnode(id=n01, is_set=true, type=protein)",
             "add_qedge(id=e00, source_id=n00, target_id=n01)",
             "add_qnode(id=n02, type=biological_process)",
             "add_qedge(id=e01, source_id=n01, target_id=n02)",
             "expand(edge_id=[e00, e01], kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n01, virtual_relation_label=FET, target_qnode_id=n02, cutoff=0.05)",
             "resultify()",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}}
     elif params.example_number == 6232:  # chunyu testing #623, this should return the 10 smallest FET p-values and only add the virtual edge with top 10 FET p-values
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521)",
-            "add_qnode(id=n01, type=protein)",
+            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521, type=chemical_substance)",
+            "add_qnode(id=n01, is_set=true, type=protein)",
             "add_qedge(id=e00, source_id=n00, target_id=n01)",
             "add_qnode(id=n02, type=biological_process)",
             "add_qedge(id=e01, source_id=n01, target_id=n02)",
             "expand(edge_id=[e00, e01], kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n01, virtual_relation_label=FET, target_qnode_id=n02, top_n=10)",
             "resultify()",
-            "return(message=false, store=true)"
+            "return(message=true, store=false)"
         ]}}
     elif params.example_number == 6233:  # chunyu testing #623, this DSL tests the FET module based on (source id - involved_in - target id) and only decorate/add virtual edge with pvalue<0.05
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521)",
-            "add_qnode(id=n01, type=protein)",
+            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521, type=chemical_substance)",
+            "add_qnode(id=n01, is_set=true, type=protein)",
             "add_qedge(id=e00, source_id=n00, target_id=n01)",
             "add_qnode(id=n02, type=biological_process)",
             "add_qedge(id=e01, source_id=n01, target_id=n02, type=involved_in)",
             "expand(edge_id=[e00, e01], kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n01, virtual_relation_label=FET, target_qnode_id=n02, rel_edge_id=e01, cutoff=0.05)",
             "resultify()",
-            "return(message=false, store=true)"
+            "return(message=true, store=false)"
         ]}}
     elif params.example_number == 6234:  # chunyu testing #623, nodes not in the KG and QG. This should throw an error initially. In the future we might want to add these nodes.
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521)",
+            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521, type=chemical_substance)",
             "add_qnode(id=n01, type=protein)",
             "add_qedge(id=e00, source_id=n00, target_id=n01)",
             "expand(edge_id=[e00], kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n01, virtual_relation_label=FET, target_qnode_id=n02, cutoff=0.05)",
             "resultify()",
-            "return(message=false, store=true)"
+            "return(message=true, store=false)"
         ]}}
     elif params.example_number == 6235:  # chunyu testing #623, this is a two-hop sample. First, find all edges between DOID:14330 and proteins and then filter out the proteins with connection having pvalue>0.001 to DOID:14330. Second, find all edges between proteins and chemical_substances and then filter out the chemical_substances with connection having pvalue>0.005 to proteins
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(curie=DOID:14330, id=n00)",
+            "add_qnode(curie=DOID:14330, id=n00, type=disease)",
             "add_qnode(type=protein, is_set=true, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00, kp=ARAX/KG1)",
@@ -1076,20 +1076,19 @@ def main():
             "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
             "expand(edge_id=e01, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n01, target_qnode_id=n02, virtual_relation_label=FET2)",
-            "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_id=n02)",
             "resultify()",
-            "return(message=false, store=true)"
+            "return(message=true, store=false)"
         ]}}
     elif params.example_number == 6236:  # chunyu testing #623, this is a three-hop sample: DOID:14330 - protein - (physically_interacts_with) - chemical_substance - phenotypic_feature
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(curie=DOID:14330, id=n00)",
+            "add_qnode(curie=DOID:14330, id=n00, type=disease)",
             "add_qnode(type=protein, is_set=true, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n00, target_qnode_id=n01, virtual_relation_label=FET1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_id=n01)",
-            "add_qnode(type=chemical_substance, id=n02)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n02)",
             "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
             "expand(edge_id=e01, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n01, target_qnode_id=n02, virtual_relation_label=FET2)",
@@ -1098,9 +1097,34 @@ def main():
             "add_qedge(source_id=n02, target_id=n03, id=e02)",
             "expand(edge_id=e02, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n02, target_qnode_id=n03, virtual_relation_label=FET3)",
-            "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.05, remove_connected_nodes=t, qnode_id=n03)",
             "resultify()",
-            "return(message=false, store=true)"
+            "return(message=true, store=false)"
+        ]}}
+    elif params.example_number == 6237:  # chunyu testing #623, this is a four-hop sample: CHEMBL521 - protein - biological_process - protein - disease
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521, type=chemical_substance)",
+            "add_qnode(id=n01, is_set=true, type=protein)",
+            "add_qedge(id=e00, source_id=n00, target_id=n01)",
+            "expand(edge_id=e00, kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_qnode_id=n00, target_qnode_id=n01, virtual_relation_label=FET1)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.01, remove_connected_nodes=t, qnode_id=n01)",
+            "add_qnode(type=biological_process, is_set=true, id=n02)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01)",
+            "expand(edge_id=e01, kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_qnode_id=n01, target_qnode_id=n02, virtual_relation_label=FET2)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.01, remove_connected_nodes=t, qnode_id=n02)",
+            "add_qnode(type=protein, is_set=true, id=n03)",
+            "add_qedge(source_id=n02, target_id=n03, id=e02)",
+            "expand(edge_id=e02, kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_qnode_id=n02, target_qnode_id=n03, virtual_relation_label=FET3)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.01, remove_connected_nodes=t, qnode_id=n03)",
+            "add_qnode(type=disease, id=n04)",
+            "add_qedge(source_id=n03, target_id=n04, id=e03)",
+            "expand(edge_id=e03, kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_qnode_id=n03, target_qnode_id=n04, virtual_relation_label=FET4)",
+            "resultify()",
+            "return(message=true, store=false)"
         ]}}
     elif params.example_number == 7680:  # issue 768 test all but jaccard, uncomment any one you want to test
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -1252,7 +1276,7 @@ def main():
     #    print(f"{node.name} {node.type[0]}")
     #     print(node.qnode_id)
 
-    
+
     # if params.example_number == 101:
     #     import math
     #     edge_values = {}
@@ -1311,7 +1335,7 @@ def main():
     #         i+=1
     #     print(value_list)
     #     #print([len(r.node_bindings) for r in message.results])
-    
+
     #print(len(message.knowledge_graph.nodes))
 
     # check number of TP's for example 3

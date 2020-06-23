@@ -305,7 +305,7 @@ class KGNodeIndex:
         rows = cursor.fetchall()
         curies_and_types_and_names = []
         for row in rows:
-            names = self.get_names(row[0])
+            names = self.get_names(row[0],kg_name=kg_name)
             best_name = "?"
             if names is not None:
                 best_name = names[0]
