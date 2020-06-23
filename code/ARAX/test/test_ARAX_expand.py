@@ -21,7 +21,7 @@ from swagger_server.models.node import Node
 from swagger_server.models.query_graph import QueryGraph
 
 
-def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_incomplete=False, debug=False) -> \
+def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_incomplete=False, debug=False, should_throw_error=False) -> \
         Tuple[Dict[str, Dict[str, Node]], Dict[str, Dict[str, Edge]]]:
     # Run the query
     araxq = ARAXQuery()
@@ -29,7 +29,7 @@ def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_inc
     message = araxq.message
     if response.status != 'OK':
         print(response.show(level=Response.DEBUG))
-    assert response.status == 'OK'
+    assert response.status == 'OK' or should_throw_error
 
     # Convert output knowledge graph to a dictionary format for faster processing (organized by QG IDs)
     dict_kg = eu.convert_standard_kg_to_dict_kg(message.knowledge_graph)
@@ -44,7 +44,7 @@ def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_inc
         print(response.show(level=Response.DEBUG))
 
     # Run standard testing (applies to every test case)
-    assert eu.qg_is_fulfilled(message.query_graph, dict_kg) or kg_should_be_incomplete
+    assert eu.qg_is_fulfilled(message.query_graph, dict_kg) or kg_should_be_incomplete or should_throw_error
     _check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
     _check_property_types(nodes_by_qg_id, edges_by_qg_id)
     if any(action for action in actions_list if "synonym_handling=map_back" in action):
@@ -675,6 +675,17 @@ def test_623_2_curie_list_issue():
     assert missing_protein in nodes_by_qg_id['n00']
     edges_using_protein = [edge.id for edge in edges_by_qg_id['e00'].values() if edge.source_id == missing_protein or edge.target_id == missing_protein]
     assert len(edges_using_protein) == 3
+
+
+def test_847_dont_expand_curie_less_edge():
+    actions_list = [
+        "add_qnode(id=n00, type=protein)",
+        "add_qnode(id=n01, type=chemical_substance)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01)",
+        "expand(edge_id=e00, kp=ARAX/KG1)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, should_throw_error=True)
 
 
 if __name__ == "__main__":
