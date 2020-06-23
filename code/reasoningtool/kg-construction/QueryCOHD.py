@@ -30,7 +30,8 @@ from cache_control_helper import CacheControlHelper
 class QueryCOHD:
     TIMEOUT_SEC = 120
     #API_BASE_URL = 'http://cohd.nsides.io/api'
-    API_BASE_URL = 'http://cohd.io/api'
+    # API_BASE_URL = 'http://cohd.io/api'
+    API_BASE_URL = 'http://tr-kp-clinical.ncats.io/api'
     HANDLER_MAP = {
         'find_concept_id':                      'omop/findConceptIDs',
         'get_paired_concept_freq':              'frequencies/pairedConceptFreq',
