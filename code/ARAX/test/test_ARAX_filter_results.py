@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 # Usage:
-# run all: pytest -v test_ARAX_overlay.py
-# run just certain tests: pytest -v test_ARAX_filter_results.py -k test_top_n
+# run all: pytest -v test_ARAX_filter_results.py
+# run just certain tests: pytest -v test_ARAX_filter_results.py -k test_sort
 
 import sys
 import os
@@ -40,6 +40,22 @@ def _do_arax_query(query: dict) -> List[Union[Response, Message]]:
     return [response, araxq.message]
 
 
+def test_sort():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:1227, id=n00)",
+            "add_qnode(type=chemical_substance, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00)",
+            "overlay(action=add_node_pmids, max_num=15)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
+            "return(message=true, store=false)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) == 20
+    # add something to test if the results are assending and the correct numbers
 
 
 if __name__ == "__main__":

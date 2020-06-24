@@ -49,7 +49,7 @@ def test_default_std_dev():
             "expand(edge_id=e00)",
             "overlay(action=predict_drug_treats_disease)",
             "filter_kg(action=remove_edges_by_attribute_default, edge_attribute=probability_treats, type=std, remove_connected_nodes=f)",
-            "return(message=true, store=true)",
+            "return(message=true, store=false)",
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
@@ -66,7 +66,7 @@ def test_default_std_top_n():
             "expand(edge_id=e00)",
             "overlay(action=predict_drug_treats_disease)",
             "filter_kg(action=remove_edges_by_attribute_default, edge_attribute=probability_treats, type=n, remove_connected_nodes=f)",
-            "return(message=true, store=true)",
+            "return(message=true, store=false)",
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
