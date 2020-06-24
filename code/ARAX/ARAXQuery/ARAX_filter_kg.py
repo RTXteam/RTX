@@ -423,7 +423,7 @@ This can be applied to an arbitrary knowledge graph as possible edge attributes 
                                     'edge_attribute': known_attributes,
                                     'type': {'n', 'top_n', 'std', 'top_std'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_id':set([x.qnode_id for x in self.message.knowledge_graph.nodes])
+                                    'qnode_id':set([t for x in self.message.knowledge_graph.nodes if x.qnode_ids is not None for t in x.qnode_ids])
                                     }
         else:
             allowable_parameters = {'action': {'remove_edges_by_attribute_default'},
@@ -496,7 +496,7 @@ else, only remove a single source/target node based on a query node id (via `rem
             if edge_params['edge_attribute'] in {'ngd', 'chi_square', 'fisher_exact'}:
                 edge_params['direction'] = 'above'
                 edge_params['top'] = False
-            elif edge_params['edge_attribute'] in {'jaccard_index', 'observed_expected_ratio'}:
+            elif edge_params['edge_attribute'] in {'jaccard_index', 'observed_expected_ratio', 'probability_treats'}:
                 edge_params['direction'] = 'below'
                 edge_params['top'] = True
             else:

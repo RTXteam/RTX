@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 # Usage:
-# run all: pytest -v test_ARAX_overlay.py
-# run just certain tests: pytest -v test_ARAX_filter_kg.py -k test_remove_by_property
+# run all: pytest -v test_ARAX_filter_kg.py
+# run just certain tests: pytest -v test_ARAX_filter_kg.py -k test_default_std_dev
 
 import sys
 import os
@@ -12,6 +12,7 @@ import copy
 import json
 import ast
 from typing import List, Union
+import numpy as np
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 from ARAX_query import ARAXQuery
@@ -39,7 +40,22 @@ def _do_arax_query(query: dict) -> List[Union[Response, Message]]:
         print(response.show(level=response.DEBUG))
     return [response, araxq.message]
 
-
+def test_default_std_dev():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(curie=DOID:1588, id=n00)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00)",
+            "overlay(action=predict_drug_treats_disease)",
+            "filter_kg(action=remove_edges_by_attribute_default, edge_attribute=probability_treats, type=std, remove_connected_nodes=f)",
+            "return(message=true, store=true)",
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    vals = [float(y.value) for x in message.knowledge_graph.edges for y in x.edge_attributes if y.name == 'probability_treats']
+    assert len(vals) == 21
+    assert np.min(vals) > 0.3381782537885432
 
 
 if __name__ == "__main__":
