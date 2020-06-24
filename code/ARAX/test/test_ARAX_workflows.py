@@ -369,7 +369,29 @@ def test_example_2_kg2():
     assert message.results[0].essence is not None
     _virtual_tester(message, 'has_jaccard_index_with', 'J1', 'jaccard_index', 'data:1772', 2)
 
-
+# Not working yet
+# def test_example_3_kg2():
+#     query = {"previous_message_processing_plan": { "processing_actions": [
+#             "create_message",
+#             #"add_qnode(id=n00, curie=DOID:0050156)",  # idiopathic pulmonary fibrosis
+#             "add_qnode(curie=DOID:9406, id=n00)",  # hypopituitarism, original demo example
+#             "add_qnode(id=n01, type=chemical_substance, is_set=true)",
+#             "add_qnode(id=n02, type=protein)",
+#             "add_qedge(id=e00, source_id=n00, target_id=n01)",
+#             "add_qedge(id=e01, source_id=n01, target_id=n02)",
+#             "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
+#             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
+#             "overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n01, target_qnode_id=n02)",
+#             "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=2, remove_connected_nodes=t, qnode_id=n01)",
+#             "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
+#             "return(message=true, store=false)"
+#     ]}}
+#     [response, message] = _do_arax_query(query)
+#     assert response.status == 'OK'
+#     #assert len(message.results) == ?
+#     assert message.results[0].essence is not None
+#     _virtual_tester(message, 'has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'data:0951', 2)
+#     _virtual_tester(message, 'has_normalized_google_distance_with', 'N1', 'normalized_google_distance', 'data:2526', 2)
 
 
 if __name__ == "__main__":
