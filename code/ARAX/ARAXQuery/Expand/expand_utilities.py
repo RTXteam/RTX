@@ -208,9 +208,8 @@ def get_curie_synonyms(curie, arax_kg='KG2'):
     return list(equivalent_curies_using_arax_kg)
 
 
-def add_curie_synonyms_to_query_nodes(qnodes, log, arax_kg='KG2', override_node_type=True, format_for_bte=False):
+def add_curie_synonyms_to_query_nodes(qnodes, log, arax_kg='KG2', override_node_type=False):
     log.debug("Looking for query nodes to use curie synonyms for")
-
     for qnode in qnodes:
         if qnode.curie:
             input_curies = convert_string_or_list_to_list(qnode.curie)
@@ -218,8 +217,6 @@ def add_curie_synonyms_to_query_nodes(qnodes, log, arax_kg='KG2', override_node_
             for curie in input_curies:
                 original_curie = curie
                 equivalent_curies = get_curie_synonyms(curie=original_curie, arax_kg=arax_kg)
-                if format_for_bte:
-                    equivalent_curies = [convert_curie_to_bte_format(curie) for curie in equivalent_curies]
                 if len(equivalent_curies) > 1:
                     log.debug(f"Found synonyms for curie {original_curie}: {equivalent_curies}")
                     final_curie_list += equivalent_curies
@@ -282,9 +279,9 @@ def get_original_curie(returned_curie, qnode_id, curie_map, log):
     return original_curie_matches[0]
 
 
-def guess_qnode_type(qnode_curie, log):
+def guess_qnode_type(qnode, log):
     kgni = KGNodeIndex()
-    curie_list = convert_string_or_list_to_list(qnode_curie)
+    curie_list = convert_string_or_list_to_list(qnode.curie)
     node_types = set()
     for curie in curie_list:
         curie_info = kgni.get_equivalent_entities(curie=curie).get(curie)
@@ -296,12 +293,12 @@ def guess_qnode_type(qnode_curie, log):
     # Only use this node type if we found the same type for all curies in the list
     if len(node_types) == 1:
         node_type = node_types.pop()
-        log.warning(f"No type was specified for qnode with curie {qnode_curie}; using type '{node_type}' found via KGNodeIndex")
+        log.warning(f"No type was specified for qnode {qnode.id}; using type '{node_type}' found via KGNodeIndex")
         return node_type
     elif not node_types:
-        log.warning(f"Could not guess a node type to use for qnode with curie {qnode_curie} (curie is not in KGNodeIndex)")
+        log.warning(f"Could not guess a node type to use for qnode {qnode.id} (curie is not in KGNodeIndex)")
         return ""
     else:
-        log.warning(f"Could not guess a node type to use for qnode with curie {qnode_curie} (more than one possible "
-                    f"node type was found: {', '.join(node_types)})")
+        log.warning(f"Could not guess a node type to use for qnode {qnode.id} (more than one possible node type was "
+                    f"found: {', '.join(node_types)})")
         return ""

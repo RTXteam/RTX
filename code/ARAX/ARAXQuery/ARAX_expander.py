@@ -94,16 +94,18 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         continue_if_no_results = self.parameters['continue_if_no_results']
         use_synonyms = self.parameters['use_synonyms']
         synonym_handling = self.parameters['synonym_handling']
+        query_graph = self.message.query_graph
+        log = self.response
 
         # Convert message knowledge graph to dictionary format, for faster processing
         dict_kg = eu.convert_standard_kg_to_dict_kg(self.message.knowledge_graph)
 
         # Expand any specified edges
         if input_edge_ids:
-            query_sub_graph = self._extract_query_subgraph(input_edge_ids, self.message.query_graph)
-            if response.status != 'OK':
+            query_sub_graph = self._extract_query_subgraph(input_edge_ids, query_graph, log)
+            if log.status != 'OK':
                 return response
-            self.response.debug(f"Query graph for this Expand() call is: {query_sub_graph.to_dict()}")
+            log.debug(f"Query graph for this Expand() call is: {query_sub_graph.to_dict()}")
 
             # Expand the query graph edge by edge (much faster for neo4j queries, and allows easy integration with BTE)
             ordered_qedges_to_expand = self._get_order_to_expand_edges_in(query_sub_graph)
@@ -111,28 +113,28 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
             for qedge in ordered_qedges_to_expand:
                 answer_kg, edge_node_usage_map = self._expand_edge(qedge, kp_to_use, dict_kg, continue_if_no_results,
-                                                                   self.message.query_graph, use_synonyms, synonym_handling)
-                if response.status != 'OK':
+                                                                   query_graph, use_synonyms, synonym_handling, log)
+                if log.status != 'OK':
                     return response
                 node_usages_by_edges_map[qedge.id] = edge_node_usage_map
 
-                self._process_and_merge_answer(answer_kg, dict_kg)
-                if response.status != 'OK':
+                self._process_and_merge_answer(answer_kg, dict_kg, log)
+                if log.status != 'OK':
                     return response
 
-                self._prune_dead_end_paths(dict_kg, query_sub_graph, node_usages_by_edges_map)
-                if response.status != 'OK':
+                self._prune_dead_end_paths(dict_kg, query_sub_graph, node_usages_by_edges_map, log)
+                if log.status != 'OK':
                     return response
 
         # Expand any specified nodes
         if input_node_ids:
             for qnode_id in input_node_ids:
-                answer_kg = self._expand_node(qnode_id, kp_to_use, continue_if_no_results, self.message.query_graph, use_synonyms)
-                if response.status != 'OK':
+                answer_kg = self._expand_node(qnode_id, kp_to_use, continue_if_no_results, query_graph, use_synonyms)
+                if log.status != 'OK':
                     return response
 
-                self._process_and_merge_answer(answer_kg, dict_kg)
-                if response.status != 'OK':
+                self._process_and_merge_answer(answer_kg, dict_kg, log)
+                if log.status != 'OK':
                     return response
 
         # Convert message knowledge graph back to API standard format
@@ -140,30 +142,108 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
         # Return the response and done
         kg = self.message.knowledge_graph
-        response.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges")
+        log.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges")
         return response
 
-    def _extract_query_subgraph(self, qedge_ids_to_expand, query_graph):
+    def _expand_edge(self, qedge, kp_to_use, dict_kg, continue_if_no_results, query_graph, use_synonyms, synonym_handling, log):
+        # This function answers a single-edge (one-hop) query using the specified knowledge provider
+        log.info(f"Expanding edge {qedge.id} using {kp_to_use}")
+
+        # Create a query graph for this edge (that uses synonyms as well as curies found in prior steps)
+        edge_query_graph = self._get_query_graph_for_edge(qedge, query_graph, dict_kg, use_synonyms, kp_to_use, log)
+        if not any(qnode for qnode in edge_query_graph.nodes if qnode.curie):
+            log.error(f"Cannot expand an edge for which neither end has any curies. (Could not find curies to use from "
+                      f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
+            return None, None
+
+        valid_kps = ["ARAX/KG1", "ARAX/KG2", "BTE"]
+        if kp_to_use not in valid_kps:
+            log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(valid_kps)}",
+                      error_code="UnknownValue")
+            return None, None
+        else:
+            if kp_to_use == 'BTE':
+                from Expand.bte_querier import BTEQuerier
+                kp_querier = BTEQuerier(log)
+            else:
+                from Expand.kg_querier import KGQuerier
+                kp_querier = KGQuerier(log, kp_to_use)
+            answer_kg, edge_node_usage_map = kp_querier.answer_one_hop_query(edge_query_graph)
+
+            # Make sure all of the QG IDs in our query have been fulfilled (unless we're continuing if no results)
+            if self.response.status == 'OK' and not continue_if_no_results:
+                for qnode in edge_query_graph.nodes:
+                    if qnode.id not in answer_kg['nodes'] or not answer_kg['nodes'][qnode.id]:
+                        log.error(f"Returned answer KG does not contain any results for QNode {qnode.id}",
+                                  error_code="UnfulfilledQGID")
+                for qedge in edge_query_graph.edges:
+                    if qedge.id not in answer_kg['edges'] or not answer_kg['edges'][qedge.id]:
+                        log.error(f"Returned answer KG does not contain any results for QEdge {qedge.id}",
+                                  error_code="UnfulfilledQGID")
+
+            # Deduplicate our answers as appropriate
+            if use_synonyms and synonym_handling == 'map_back':
+                # TODO: Deduplicate nodes (using preferred curie), remap edges, update edge node usage map
+                pass
+
+            return answer_kg, edge_node_usage_map
+
+    @staticmethod
+    def _expand_node(qnode_id, kp_to_use, continue_if_no_results, query_graph, use_synonyms, log):
+        # This function expands a single node using the specified knowledge provider
+        log.debug(f"Expanding node {qnode_id} using {kp_to_use}")
+        query_node = eu.get_query_node(query_graph, qnode_id)
+        if log.status != 'OK':
+            return None
+        if not query_node.curie:
+            log.error(f"Cannot expand a single query node if it doesn't have a curie", error_code="InvalidQuery")
+            return None
+        if use_synonyms:
+            eu.add_curie_synonyms_to_query_nodes(qnodes=[query_node],
+                                                 arax_kg='KG1' if kp_to_use == 'ARAX/KG1' else 'KG2',
+                                                 log=log)
+
+        # Answer the query using the proper KP
+        if kp_to_use == 'BTE':
+            log.error(f"Cannot use BTE to answer single node queries", error_code="InvalidQuery")
+            return None
+        elif kp_to_use == 'ARAX/KG2' or kp_to_use == 'ARAX/KG1':
+            from Expand.kg_querier import KGQuerier
+            kg_querier = KGQuerier(log, kp_to_use)
+            answer_kg = kg_querier.answer_single_node_query(query_node)
+
+            # Make sure all qnodes have been fulfilled (unless we're continuing if no results)
+            if log.status == 'OK' and not continue_if_no_results:
+                if query_node.id not in answer_kg['nodes'] or not answer_kg['nodes'][query_node.id]:
+                    log.error(f"Returned answer KG does not contain any results for QNode {query_node.id}",
+                              error_code="UnfulfilledQGID")
+            return answer_kg
+        else:
+            log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are ARAX/KG1 or ARAX/KG2")
+            return None
+
+    @staticmethod
+    def _extract_query_subgraph(qedge_ids_to_expand, query_graph, log):
         # This function extracts a sub-query graph containing the provided qedge IDs from a larger query graph
         sub_query_graph = QueryGraph(nodes=[], edges=[])
 
         for qedge_id in qedge_ids_to_expand:
             # Make sure this query edge actually exists in the query graph
             if not any(qedge.id == qedge_id for qedge in query_graph.edges):
-                self.response.error(f"An edge with ID '{qedge_id}' does not exist in Message.QueryGraph",
-                                    error_code="UnknownValue")
-                return sub_query_graph
+                log.error(f"An edge with ID '{qedge_id}' does not exist in Message.QueryGraph",
+                          error_code="UnknownValue")
+                return None
             qedge = next(qedge for qedge in query_graph.edges if qedge.id == qedge_id)
 
             # Make sure this qedge's qnodes actually exist in the query graph
             if not eu.get_query_node(query_graph, qedge.source_id):
-                self.response.error(f"Qedge {qedge.id}'s source_id refers to a qnode that does not exist in the query "
-                                    f"graph: {qedge.source_id}", error_code="InvalidQEdge")
-                return sub_query_graph
+                log.error(f"Qedge {qedge.id}'s source_id refers to a qnode that does not exist in the query graph: "
+                          f"{qedge.source_id}", error_code="InvalidQEdge")
+                return None
             if not eu.get_query_node(query_graph, qedge.target_id):
-                self.response.error(f"Qedge {qedge.id}'s target_id refers to a qnode that does not exist in the query "
-                                    f"graph: {qedge.target_id}", error_code="InvalidQEdge")
-                return sub_query_graph
+                log.error(f"Qedge {qedge.id}'s target_id refers to a qnode that does not exist in the query graph: "
+                          f"{qedge.target_id}", error_code="InvalidQEdge")
+                return None
             qnodes = [eu.get_query_node(query_graph, qedge.source_id),
                       eu.get_query_node(query_graph, qedge.target_id)]
 
@@ -178,7 +258,8 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
         return sub_query_graph
 
-    def _get_query_graph_for_edge(self, qedge, query_graph, dict_kg, use_synonyms, kp_to_use):
+    @staticmethod
+    def _get_query_graph_for_edge(qedge, query_graph, dict_kg, use_synonyms, kp_to_use, log):
         # This function creates a query graph for the specified qedge, updating its qnodes' curies as needed
         edge_query_graph = QueryGraph(nodes=[], edges=[])
         qnodes = [eu.get_query_node(query_graph, qedge.source_id),
@@ -202,90 +283,13 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         if use_synonyms:
             eu.add_curie_synonyms_to_query_nodes(qnodes=edge_query_graph.nodes,
                                                  arax_kg='KG1' if kp_to_use == 'ARAX/KG1' else 'KG2',
-                                                 log=self.response)
+                                                 log=log)
         return edge_query_graph
 
-    def _expand_edge(self, qedge, kp_to_use, dict_kg, continue_if_no_results, query_graph, use_synonyms, synonym_handling):
-        # This function answers a single-edge (one-hop) query using the specified knowledge provider
-        self.response.info(f"Expanding edge {qedge.id} using {kp_to_use}")
-
-        # Create a query graph for this edge (that uses synonyms as well as curies found in prior steps)
-        edge_query_graph = self._get_query_graph_for_edge(qedge, query_graph, dict_kg, use_synonyms, kp_to_use)
-        if not any(qnode for qnode in edge_query_graph.nodes if qnode.curie):
-            self.response.error(f"Cannot expand an edge for which neither end has any curies. (Could not find curies to"
-                                f" use from a prior expand step, and neither qnode has a curie specified.)",
-                                error_code="InvalidQuery")
-            return None, None
-
-        valid_kps = ["ARAX/KG1", "ARAX/KG2", "BTE"]
-        if kp_to_use not in valid_kps:
-            self.response.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(valid_kps)}",
-                                error_code="UnknownValue")
-            return None, None
-        else:
-            if kp_to_use == 'BTE':
-                from Expand.bte_querier import BTEQuerier
-                kp_querier = BTEQuerier(self.response)
-            else:
-                from Expand.kg_querier import KGQuerier
-                kp_querier = KGQuerier(self.response, kp_to_use)
-            answer_kg, edge_node_usage_map = kp_querier.answer_one_hop_query(edge_query_graph)
-
-            # Make sure all of the QG IDs in our query have been fulfilled (unless we're continuing if no results)
-            if self.response.status == 'OK' and not continue_if_no_results:
-                for qnode in edge_query_graph.nodes:
-                    if qnode.id not in answer_kg['nodes'] or not answer_kg['nodes'][qnode.id]:
-                        self.response.error(f"Returned answer KG does not contain any results for QNode {qnode.id}",
-                                            error_code="UnfulfilledQGID")
-                for qedge in edge_query_graph.edges:
-                    if qedge.id not in answer_kg['edges'] or not answer_kg['edges'][qedge.id]:
-                        self.response.error(f"Returned answer KG does not contain any results for QEdge {qedge.id}",
-                                            error_code="UnfulfilledQGID")
-
-            # Deduplicate our answers as appropriate
-            if use_synonyms and synonym_handling == 'map_back':
-                # TODO: Deduplicate nodes (using preferred curie), remap edges, update edge node usage map
-                pass
-
-            return answer_kg, edge_node_usage_map
-
-    def _expand_node(self, qnode_id, kp_to_use, continue_if_no_results, query_graph, use_synonyms):
-        # This function expands a single node using the specified knowledge provider
-        self.response.debug(f"Expanding node {qnode_id} using {kp_to_use}")
-        query_node = eu.get_query_node(query_graph, qnode_id)
-        if self.response.status != 'OK':
-            return None
-        if not query_node.curie:
-            self.response.error(f"Cannot expand a single query node if it doesn't have a curie", error_code="InvalidQuery")
-            return None
-
-        if use_synonyms:
-            eu.add_curie_synonyms_to_query_nodes(qnodes=[query_node],
-                                                 arax_kg='KG1' if kp_to_use == 'ARAX/KG1' else 'KG2',
-                                                 log=self.response)
-
-        # Answer the query using the proper KP
-        if kp_to_use == 'BTE':
-            self.response.error(f"Cannot use BTE to answer single node queries", error_code="InvalidQuery")
-            return None
-        elif kp_to_use == 'ARAX/KG2' or kp_to_use == 'ARAX/KG1':
-            from Expand.kg_querier import KGQuerier
-            kg_querier = KGQuerier(self.response, kp_to_use)
-            answer_kg = kg_querier.answer_single_node_query(query_node)
-
-            # Make sure all qnodes have been fulfilled (unless we're continuing if no results)
-            if self.response.status == 'OK' and not continue_if_no_results:
-                if query_node.id not in answer_kg['nodes'] or not answer_kg['nodes'][query_node.id]:
-                    self.response.error(f"Returned answer KG does not contain any results for QNode {query_node.id}",
-                                        error_code="UnfulfilledQGID")
-            return answer_kg
-        else:
-            self.response.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are ARAX/KG1 or ARAX/KG2")
-            return None
-
-    def _process_and_merge_answer(self, answer_dict_kg, dict_kg):
+    @staticmethod
+    def _process_and_merge_answer(answer_dict_kg, dict_kg, log):
         # This function merges an answer KG (from the current edge/node expansion) into the overarching KG
-        self.response.debug("Merging answer into Message.KnowledgeGraph")
+        log.debug("Merging answer into Message.KnowledgeGraph")
         for qnode_id, nodes in answer_dict_kg['nodes'].items():
             for node_key, node in nodes.items():
                 eu.add_node_to_kg(dict_kg, node, qnode_id)
@@ -293,10 +297,11 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             for edge_key, edge in edges_dict.items():
                 eu.add_edge_to_kg(dict_kg, edge, qedge_id)
 
-    def _prune_dead_end_paths(self, dict_kg, full_query_graph, node_usages_by_edges_map):
+    @staticmethod
+    def _prune_dead_end_paths(dict_kg, full_query_graph, node_usages_by_edges_map, log):
         # This function removes any 'dead-end' paths from the KG. (Because edges are expanded one-by-one, not all edges
         # found in the last expansion will connect to edges in the next one)
-        self.response.debug(f"Pruning any paths that are now dead ends")
+        log.debug(f"Pruning any paths that are now dead ends")
 
         # Create a map of which qnodes are connected to which other qnodes
         # Example qnode_connections_map: {'n00': {'n01'}, 'n01': {'n00', 'n02'}, 'n02': {'n01'}}
