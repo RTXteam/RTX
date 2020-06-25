@@ -206,6 +206,11 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         self.response.info(f"Expanding edge {qedge.id} using {kp_to_use}")
 
         edge_query_graph, qnodes_using_curies_from_prior_step = self._get_query_graph_for_edge(qedge, query_graph, dict_kg)
+        if not any(qnode for qnode in edge_query_graph.nodes if qnode.curie):
+            self.response.error(f"Cannot expand an edge for which neither end has any curies. (Could not find curies to"
+                                f" use from a prior expand step, and neither qnode has a curie specified.)",
+                                error_code="InvalidQueryGraph")
+            return None, None
 
         valid_kps = ["ARAX/KG1", "ARAX/KG2", "BTE"]
         if kp_to_use not in valid_kps:

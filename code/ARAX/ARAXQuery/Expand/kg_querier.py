@@ -80,9 +80,16 @@ class KGQuerier:
             # Build and run a cypher query to get this node/nodes
             where_clause = f"{qnode.id}.id='{qnode.curie}'" if type(qnode.curie) is str else f"{qnode.id}.id in {qnode.curie}"
             cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode)} WHERE {where_clause} RETURN {qnode.id}"
+            self.response.info(f"Sending cypher query for node {qnode.id} to {self.kp} neo4j")
             results = self._run_cypher_query(cypher_query, self.kp)
 
             # Process the results and add to our answer knowledge graph, handling synonyms as appropriate
+            if not results:
+                continue_if_no_results = self.response.data['parameters'].get('continue_if_no_results')
+                if continue_if_no_results:
+                    self.response.warning(f"No paths were found in {self.kp} satisfying this query graph")
+                else:
+                    self.response.error(f"No paths were found in {self.kp} satisfying this query graph", error_code="NoResults")
             for result in results:
                 neo4j_node = result.get(qnode.id)
                 swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, self.kp)
