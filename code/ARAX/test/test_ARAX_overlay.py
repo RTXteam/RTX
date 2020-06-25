@@ -450,5 +450,76 @@ def test_issue_832_non_drug():
     assert 'probability_treats' not in edge_types_in_kg
 
 
+def test_issue_840():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=DOID:1588, id=n0)",
+        "add_qnode(type=chemical_substance, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "expand(edge_id=e0)",
+        "overlay(action=overlay_clinical_info, paired_concept_frequency=true, source_qnode_id=n1, target_qnode_id=n0, virtual_relation_label=V1)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    _virtual_tester(message, 'has_paired_concept_frequency_with', 'V1', 'paired_concept_frequency', 'data:0951', 2)
+
+    # And for the non-virtual test
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=DOID:1588, id=n0)",
+        "add_qnode(type=chemical_substance, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "expand(edge_id=e0)",
+        "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    _attribute_tester(message, 'paired_concept_frequency', 'data:0951', 2)
+
+
+def test_issue_840_non_drug():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=UniProtKB:Q13627, id=n0)",
+        "add_qnode(type=chemical_substance, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "expand(edge_id=e0)",
+        "overlay(action=overlay_clinical_info, paired_concept_frequency=true, source_qnode_id=n1, target_qnode_id=n0, virtual_relation_label=V1)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    # Make sure that no probability_treats were added
+    edge_types_in_kg = Counter([x.type for x in message.knowledge_graph.edges])
+    assert 'paired_concept_frequency' not in edge_types_in_kg
+
+    # Now for the non-virtual test
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=UniProtKB:Q13627, id=n0)",
+        "add_qnode(type=chemical_substance, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "expand(edge_id=e0)",
+        "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    # Make sure that no probability_treats were added
+    for edge in message.knowledge_graph.edges:
+        for attribute in edge.edge_attributes:
+            assert attribute.name != 'paired_concept_frequency'
+
+
 if __name__ == "__main__":
     pytest.main(['-v'])

@@ -348,6 +348,51 @@ def test_FET_example_4():
         assert query_exge.source_id in query_node_ids
         assert query_exge.target_id in query_node_ids
 
+def test_example_2_kg2():
+    query = {"previous_message_processing_plan": { "processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:14330, id=n00)",
+            "add_qnode(type=protein, is_set=true, id=n01)",
+            "add_qnode(type=chemical_substance, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=molecularly_interacts_with)",
+            "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",  # seems to work just fine
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.008, remove_connected_nodes=t, qnode_id=n02)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
+            "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) == 15 
+    assert message.results[0].essence is not None
+    _virtual_tester(message, 'has_jaccard_index_with', 'J1', 'jaccard_index', 'data:1772', 2)
+
+# Not working yet
+# def test_example_3_kg2():
+#     query = {"previous_message_processing_plan": { "processing_actions": [
+#             "create_message",
+#             #"add_qnode(id=n00, curie=DOID:0050156)",  # idiopathic pulmonary fibrosis
+#             "add_qnode(curie=DOID:9406, id=n00)",  # hypopituitarism, original demo example
+#             "add_qnode(id=n01, type=chemical_substance, is_set=true)",
+#             "add_qnode(id=n02, type=protein)",
+#             "add_qedge(id=e00, source_id=n00, target_id=n01)",
+#             "add_qedge(id=e01, source_id=n01, target_id=n02)",
+#             "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
+#             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
+#             "overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n01, target_qnode_id=n02)",
+#             "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=2, remove_connected_nodes=t, qnode_id=n01)",
+#             "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
+#             "return(message=true, store=false)"
+#     ]}}
+#     [response, message] = _do_arax_query(query)
+#     assert response.status == 'OK'
+#     #assert len(message.results) == ?
+#     assert message.results[0].essence is not None
+#     _virtual_tester(message, 'has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'data:0951', 2)
+#     _virtual_tester(message, 'has_normalized_google_distance_with', 'N1', 'normalized_google_distance', 'data:2526', 2)
+
 
 if __name__ == "__main__":
     pytest.main(['-v'])
