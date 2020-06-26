@@ -92,13 +92,18 @@ def convert_string_or_list_to_list(string_or_list: Union[str, List[str]]) -> Lis
         return []
 
 
-def get_counts_by_qg_id(dict_kg):
+def get_counts_by_qg_id(dict_kg) -> Dict[str, int]:
     counts_by_qg_id = dict()
     for qnode_id, nodes_dict in dict_kg['nodes'].items():
         counts_by_qg_id[qnode_id] = len(nodes_dict)
     for qedge_id, edges_dict in dict_kg['edges'].items():
         counts_by_qg_id[qedge_id] = len(edges_dict)
     return counts_by_qg_id
+
+
+def get_printable_counts_by_qg_id(dict_kg) -> str:
+    counts_by_qg_id = get_counts_by_qg_id(dict_kg)
+    return ", ".join([f"{qg_id}: {counts_by_qg_id[qg_id]}" for qg_id in sorted(counts_by_qg_id)])
 
 
 def get_query_node(query_graph: QueryGraph, qnode_id: str) -> QNode:
