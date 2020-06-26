@@ -241,7 +241,7 @@ class RemoveEdges:
                                 values.append((i,float(attribute.value), edge.source_id, edge.target_id))
                 i += 1
             if len(values) > 0:
-                print(edge_params)
+                #print(edge_params)
                 if edge_params['stat'] == 'n':
                     #vals = [x[1] for x in values]
                     #print(np.min(vals),np.max(vals))
