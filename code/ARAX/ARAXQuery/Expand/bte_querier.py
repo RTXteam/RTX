@@ -32,7 +32,7 @@ class BTEQuerier:
                                                                                 enforce_directionality=enforce_directionality,
                                                                                 log=log)
         if log.status != 'OK':
-            return None, None
+            return answer_kg, edge_to_nodes_map
 
         # Use BTE to answer the query
         answer_kg, accepted_curies = self._answer_query_using_bte(input_qnode=input_qnode,
@@ -42,7 +42,7 @@ class BTEQuerier:
                                                                   valid_bte_inputs_dict=valid_bte_inputs_dict,
                                                                   log=log)
         if log.status != 'OK':
-            return None, None
+            return answer_kg, edge_to_nodes_map
 
         # Hack to achieve a curie-to-curie query, if necessary
         if eu.qg_is_fulfilled(query_graph, answer_kg) and input_qnode.curie and output_qnode.curie:
@@ -81,7 +81,7 @@ class BTEQuerier:
                     error_type, error, _ = sys.exc_info()
                     log.error(f"Encountered a problem while using BioThings Explorer. {trace_back}",
                               error_code=error_type.__name__)
-                    return None, None
+                    return answer_kg, accepted_curies
                 else:
                     answer_kg = self._add_answers_to_kg(answer_kg, reasoner_std_response, input_qnode.id, output_qnode.id, qedge.id, log)
 
@@ -108,7 +108,7 @@ class BTEQuerier:
                     qnode_id = output_qnode_id
                 else:
                     log.error("Could not map BTE qg_id to ARAX qnode_id", error_code="UnknownQGID")
-                    return None
+                    return answer_kg
 
                 # Find and use the preferred equivalent identifier for this node
                 if bte_node_id in remapped_node_ids:
@@ -133,7 +133,7 @@ class BTEQuerier:
                 bte_qg_id = kg_to_qg_ids_dict['edges'].get(swagger_edge.id)
                 if bte_qg_id != "e1":
                     log.error("Could not map BTE qg_id to ARAX qedge_id", error_code="UnknownQGID")
-                    return None
+                    return answer_kg
                 eu.add_edge_to_kg(answer_kg, swagger_edge, qedge_id)
 
         return answer_kg

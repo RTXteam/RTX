@@ -33,28 +33,30 @@ class KGQuerier:
         enforce_directionality = self.response.data['parameters']['enforce_directionality']
         continue_if_no_results = self.response.data['parameters']['continue_if_no_results']
         kp = self.kp
+        final_kg = {'nodes': dict(), 'edges': dict()}
+        edge_to_nodes_map = dict()
 
         # Verify this is a valid one-hop query graph
         if len(query_graph.edges) != 1:
             log.error(f"KGQuerier.answer_one_hop_query() was passed a query graph that is not one-hop: "
                       f"{query_graph.to_dict()}", error_code="InvalidQuery")
-            return None, None
+            return final_kg, edge_to_nodes_map
         if len(query_graph.nodes) != 2:
             log.error(f"KGQuerier.answer_one_hop_query() was passed a query graph with more than two nodes: "
                       f"{query_graph.to_dict()}", error_code="InvalidQuery")
-            return None, None
+            return final_kg, edge_to_nodes_map
         qedge_id = query_graph.edges[0].id
 
         # Run the actual query and process results
         cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, enforce_directionality, log)
         if log.status != 'OK':
-            return None, None
+            return final_kg, edge_to_nodes_map
         neo4j_results = self._answer_one_hop_query_using_neo4j(cypher_query, qedge_id, kp, continue_if_no_results)
         if log.status != 'OK':
-            return None, None
+            return final_kg, edge_to_nodes_map
         final_kg, edge_to_nodes_map = self._load_answers_into_kg(neo4j_results, kp, query_graph)
         if log.status != 'OK':
-            return None, None
+            return final_kg, edge_to_nodes_map
 
         return final_kg, edge_to_nodes_map
 
@@ -69,6 +71,7 @@ class KGQuerier:
         cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode)} WHERE {where_clause} RETURN {qnode.id}"
         log.info(f"Sending cypher query for node {qnode.id} to {kp} neo4j")
         results = self._run_cypher_query(cypher_query, kp)
+        log.debug(f"Got back {len(results)} results for {qnode.id} from neo4j")
 
         # Load the results into swagger object model and add to our answer knowledge graph
         if not results:
@@ -122,7 +125,9 @@ class KGQuerier:
             # Build the return clause
             return_clause = f"RETURN {source_node_col_name}, {target_node_col_name}, {edge_col_name}"
 
-            return f"{match_clause} {where_clause} {with_clause} {return_clause}"
+            cypher_query = f"{match_clause} {where_clause} {with_clause} {return_clause}"
+            return cypher_query
+
         except Exception:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -147,7 +152,7 @@ class KGQuerier:
         return results_from_neo4j
 
     def _load_answers_into_kg(self, neo4j_results, kp, query_graph):
-        self.response.debug(f"Processing query results for edge {query_graph.edges[0]}")
+        self.response.debug(f"Processing query results for edge {query_graph.edges[0].id}")
         final_kg = {'nodes': dict(), 'edges': dict()}
         edge_to_nodes_map = dict()
         node_uuid_to_curie_dict = self._build_node_uuid_to_curie_dict(neo4j_results[0]) if kp == "KG1" else dict()
@@ -179,29 +184,7 @@ class KGQuerier:
                     # Finally add the current edge to our answer knowledge graph
                     eu.add_edge_to_kg(final_kg, swagger_edge, column_qedge_id)
 
-        self._remove_self_edges(final_kg, edge_to_nodes_map, query_graph)
         return final_kg, edge_to_nodes_map
-
-    @staticmethod
-    def _remove_self_edges(kg, edge_to_nodes_map, query_graph):
-        qedge_id = query_graph.edges[0].id
-
-        # Remove any self-edges
-        edges_to_remove = []
-        for edge_key, edge in kg['edges'][qedge_id].items():
-            if edge.source_id == edge.target_id:
-                edges_to_remove.append(edge_key)
-        for edge_id in edges_to_remove:
-            kg['edges'][qedge_id].pop(edge_id)
-
-        # Remove any nodes that may have been orphaned as a result of removing self-edges
-        for qnode_id in [qnode.id for qnode in query_graph.nodes]:
-            node_ids_used_by_edges_for_this_qnode_id = set()
-            for edge in kg['edges'][qedge_id].values():
-                node_ids_used_by_edges_for_this_qnode_id.add(edge_to_nodes_map[edge.id][qnode_id])
-            orphan_node_ids_for_this_qnode_id = set(kg['nodes'][qnode_id].keys()).difference(node_ids_used_by_edges_for_this_qnode_id)
-            for node_id in orphan_node_ids_for_this_qnode_id:
-                kg['nodes'][qnode_id].pop(node_id)
 
     def _convert_neo4j_node_to_swagger_node(self, neo4j_node, kp):
         if kp == "KG2":
