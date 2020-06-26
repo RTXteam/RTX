@@ -117,7 +117,7 @@ class BTEQuerier:
                     else:
                         equivalent_curies = [f"{prefix}:{eu.get_curie_local_id(local_id)}" for prefix, local_ids in
                                              node.get('equivalent_identifiers').items() for local_id in local_ids]
-                        swagger_node.id = eu.get_best_equivalent_curie(equivalent_curies, swagger_node.type)
+                        swagger_node.id = self._get_best_equivalent_bte_curie(equivalent_curies, swagger_node.type)
                         remapped_node_ids[bte_node_id] = swagger_node.id
                 else:
                     swagger_node.id = bte_node_id
@@ -281,3 +281,36 @@ class BTEQuerier:
             for kg_id in edge_ids:
                 kg_to_qg_ids['edges'][kg_id] = qedge_ids
         return kg_to_qg_ids
+
+    @staticmethod
+    def _get_best_equivalent_bte_curie(equivalent_curies, node_type):
+        # Curie prefixes in order of preference for different node types (not all-inclusive)
+        preferred_node_prefixes_dict = {'chemical_substance': ['CHEMBL.COMPOUND', 'CHEBI'],
+                                        'protein': ['UNIPROTKB', 'PR'],
+                                        'gene': ['NCBIGENE', 'ENSEMBL', 'HGNC', 'GO'],
+                                        'disease': ['DOID', 'MONDO', 'OMIM', 'MESH'],
+                                        'phenotypic_feature': ['HP', 'OMIM'],
+                                        'anatomical_entity': ['UBERON', 'FMA', 'CL'],
+                                        'pathway': ['REACT', 'REACTOME'],
+                                        'biological_process': ['GO'],
+                                        'cellular_component': ['GO']}
+        prefixes_in_order_of_preference = preferred_node_prefixes_dict.get(eu.convert_string_to_snake_case(node_type), [])
+        equivalent_curies.sort()
+
+        # Pick the curie that uses the (relatively) most preferred prefix
+        lowest_ranking = 10000
+        best_curie = None
+        for curie in equivalent_curies:
+            uppercase_prefix = eu.get_curie_prefix(curie).upper()
+            if uppercase_prefix in prefixes_in_order_of_preference:
+                ranking = prefixes_in_order_of_preference.index(uppercase_prefix)
+                if ranking < lowest_ranking:
+                    lowest_ranking = ranking
+                    best_curie = curie
+
+        # Otherwise, just try to pick one that isn't 'NAME:___'
+        if not best_curie:
+            non_name_curies = [curie for curie in equivalent_curies if eu.get_curie_prefix(curie).upper() != 'NAME']
+            best_curie = non_name_curies[0] if non_name_curies else equivalent_curies[0]
+
+        return best_curie

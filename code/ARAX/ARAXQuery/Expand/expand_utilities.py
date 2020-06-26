@@ -104,37 +104,6 @@ def get_query_node(query_graph: QueryGraph, qnode_id: str) -> QNode:
     return matching_nodes[0] if matching_nodes else None
 
 
-def get_best_equivalent_curie(equivalent_curies: List[str], node_type: str) -> str:
-    # Curie prefixes in order of preference for different node types (not all-inclusive)
-    preferred_node_prefixes_dict = {'chemical_substance': ['CHEMBL.COMPOUND', 'CHEBI'],
-                                    'protein': ['UNIPROTKB', 'PR'],
-                                    'gene': ['NCBIGENE', 'ENSEMBL', 'HGNC', 'GO'],
-                                    'disease': ['DOID', 'MONDO', 'OMIM', 'MESH'],
-                                    'phenotypic_feature': ['HP', 'OMIM'],
-                                    'anatomical_entity': ['UBERON', 'FMA', 'CL'],
-                                    'pathway': ['REACT', 'REACTOME'],
-                                    'biological_process': ['GO'],
-                                    'cellular_component': ['GO']}
-    prefixes_in_order_of_preference = preferred_node_prefixes_dict.get(convert_string_to_snake_case(node_type), [])
-    equivalent_curies.sort()
-
-    # Pick the curie that uses the (relatively) most preferred prefix
-    lowest_ranking = 10000
-    best_curie = None
-    for curie in equivalent_curies:
-        uppercase_prefix = get_curie_prefix(curie).upper()
-        if uppercase_prefix in prefixes_in_order_of_preference:
-            ranking = prefixes_in_order_of_preference.index(uppercase_prefix)
-            if ranking < lowest_ranking:
-                lowest_ranking = ranking
-                best_curie = curie
-    # Otherwise, just try to pick one that isn't 'NAME:___'
-    if not best_curie:
-        non_name_curies = [curie for curie in equivalent_curies if get_curie_prefix(curie).upper() != 'NAME']
-        best_curie = non_name_curies[0] if non_name_curies else equivalent_curies[0]
-    return best_curie
-
-
 def get_preferred_curie(curie: str) -> str:
     # Curie prefixes in order of preference for different node types (not all-inclusive)
     prefixes_in_order_of_preference = ['DOID', 'CHEMBL.COMPOUND', 'UNIPROTKB', 'NCBIGENE', 'CHEBI', 'HP', 'MONDO',
