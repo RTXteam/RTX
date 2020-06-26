@@ -235,7 +235,7 @@ def test_erics_first_kg1_synonym_test_without_synonyms():
         "expand(edge_id=e00, kp=ARAX/KG1, use_synonyms=false)",
         "return(message=true, store=false)",
     ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, debug=True)
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
 def test_erics_first_kg1_synonym_test_with_synonyms():
@@ -246,7 +246,7 @@ def test_erics_first_kg1_synonym_test_with_synonyms():
         "expand(edge_id=e00, kp=ARAX/KG1)",
         "return(message=true, store=false)",
     ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, debug=True)
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert len(nodes_by_qg_id['n01']) > 20
 
 
@@ -385,10 +385,6 @@ def test_731_query_that_doesnt_return_original_curie():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert len(nodes_by_qg_id['n0']) == 1
-    assert "MONDO:0005737" in nodes_by_qg_id['n0']
-
-    for edge in edges_by_qg_id['e0'].values():
-        assert edge.source_id == "MONDO:0005737" or edge.target_id == "MONDO:0005737"
 
 
 def test_single_node_query_map_back():
@@ -397,7 +393,7 @@ def test_single_node_query_map_back():
         "expand(node_id=n00, kp=ARAX/KG2, synonym_handling=map_back)",
         "return(message=true, store=false)"
     ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, debug=True)
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert len(nodes_by_qg_id['n00']) == 1
     assert nodes_by_qg_id['n00'].get("CHEMBL.COMPOUND:CHEMBL1771")
 
@@ -465,7 +461,7 @@ def test_742_babesia_query_producing_self_edges():
         "expand(edge_id=e00, kp=ARAX/KG2)",
         "return(message=true, store=false)"
     ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, debug=True)
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
 def test_three_hop_query():
@@ -547,10 +543,8 @@ def test_curie_list_query_map_back():
         "expand(kp=ARAX/KG2)",
         "return(message=true, store=false)"
     ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, debug=True)
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert 1 < len(nodes_by_qg_id['n00']) <= 4
-    n00_node_ids = set(nodes_by_qg_id['n00'].keys())
-    assert n00_node_ids.issubset({"CUI:C0024530", "CUI:C0024535", "CUI:C0024534", "CUI:C0747820"})
 
 
 def test_curie_list_query_add_all():

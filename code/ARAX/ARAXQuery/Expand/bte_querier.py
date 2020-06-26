@@ -110,14 +110,17 @@ class BTEQuerier:
                     log.error("Could not map BTE qg_id to ARAX qnode_id", error_code="UnknownQGID")
                     return answer_kg
 
-                # Find and use the preferred equivalent identifier for this node
-                if bte_node_id in remapped_node_ids:
-                    swagger_node.id = remapped_node_ids.get(bte_node_id)
+                # Find and use the preferred equivalent identifier for this node (if it's an output node)
+                if qnode_id == output_qnode_id:
+                    if bte_node_id in remapped_node_ids:
+                        swagger_node.id = remapped_node_ids.get(bte_node_id)
+                    else:
+                        equivalent_curies = [f"{prefix}:{eu.get_curie_local_id(local_id)}" for prefix, local_ids in
+                                             node.get('equivalent_identifiers').items() for local_id in local_ids]
+                        swagger_node.id = eu.get_best_equivalent_curie(equivalent_curies, swagger_node.type)
+                        remapped_node_ids[bte_node_id] = swagger_node.id
                 else:
-                    equivalent_curies = [f"{prefix}:{eu.get_curie_local_id(local_id)}" for prefix, local_ids in
-                                         node.get('equivalent_identifiers').items() for local_id in local_ids]
-                    swagger_node.id = eu.get_best_equivalent_curie(equivalent_curies, swagger_node.type)
-                    remapped_node_ids[bte_node_id] = swagger_node.id
+                    swagger_node.id = bte_node_id
 
                 eu.add_node_to_kg(answer_kg, swagger_node, qnode_id)
 
