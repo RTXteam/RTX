@@ -179,11 +179,7 @@ class BTEQuerier:
                       f"{valid_bte_inputs_dict['predicates']}", error_code="InvalidInput")
             return None, None, None
 
-        # Process qnode types (guess one if none provided, convert to preferred format, make sure allowed)
-        if not input_qnode.type:
-            input_qnode.type = eu.guess_qnode_type(input_qnode, log)
-        if not output_qnode.type:
-            output_qnode.type = eu.guess_qnode_type(output_qnode, log)
+        # Process qnode types (convert to preferred format, make sure allowed)
         input_qnode.type = eu.convert_string_to_pascal_case(input_qnode.type)
         output_qnode.type = eu.convert_string_to_pascal_case(output_qnode.type)
         qnodes_missing_type = [qnode.id for qnode in [input_qnode, output_qnode] if not qnode.type]

@@ -9,37 +9,39 @@ from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.query_graph import QueryGraph
 from swagger_server.models.q_node import QNode
 from swagger_server.models.q_edge import QEdge
+from swagger_server.models.node import Node
+from swagger_server.models.edge import Edge
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/kg-construction/")
 from KGNodeIndex import KGNodeIndex
 
 
-def get_curie_prefix(curie):
+def get_curie_prefix(curie: str) -> str:
     if ':' in curie:
         return curie.split(':')[0]
     else:
         return curie
 
 
-def get_curie_local_id(curie):
+def get_curie_local_id(curie: str) -> str:
     if ':' in curie:
         return curie.split(':')[-1]  # Note: Taking last item gets around "PR:PR:000001" situation
     else:
         return curie
 
 
-def add_node_to_kg(dict_kg, node, qnode_id):
+def add_node_to_kg(dict_kg, node: Node, qnode_id: str):
     if qnode_id not in dict_kg['nodes']:
         dict_kg['nodes'][qnode_id] = dict()
     dict_kg['nodes'][qnode_id][node.id] = node
 
 
-def add_edge_to_kg(dict_kg, edge, qedge_id):
+def add_edge_to_kg(dict_kg, edge: Edge, qedge_id: str):
     if qedge_id not in dict_kg['edges']:
         dict_kg['edges'][qedge_id] = dict()
     dict_kg['edges'][qedge_id][edge.id] = edge
 
 
-def copy_qedge(old_qedge):
+def copy_qedge(old_qedge: QEdge) -> QEdge:
     new_qedge = QEdge()
     for edge_property in new_qedge.to_dict():
         value = getattr(old_qedge, edge_property)
@@ -47,7 +49,7 @@ def copy_qedge(old_qedge):
     return new_qedge
 
 
-def copy_qnode(old_qnode):
+def copy_qnode(old_qnode: QNode) -> QNode:
     new_qnode = QNode()
     for node_property in new_qnode.to_dict():
         value = getattr(old_qnode, node_property)
@@ -55,7 +57,7 @@ def copy_qnode(old_qnode):
     return new_qnode
 
 
-def convert_string_to_pascal_case(input_string):
+def convert_string_to_pascal_case(input_string: str) -> str:
     # Converts a string like 'chemical_substance' or 'chemicalSubstance' to 'ChemicalSubstance'
     if not input_string:
         return ""
@@ -68,7 +70,7 @@ def convert_string_to_pascal_case(input_string):
         return input_string.capitalize()
 
 
-def convert_string_to_snake_case(input_string):
+def convert_string_to_snake_case(input_string: str) -> str:
     # Converts a string like 'ChemicalSubstance' or 'chemicalSubstance' to 'chemical_substance'
     if len(input_string) > 1:
         snake_string = input_string[0].lower()
@@ -81,7 +83,7 @@ def convert_string_to_snake_case(input_string):
         return input_string.lower()
 
 
-def convert_string_or_list_to_list(string_or_list: Union[str, List[str]]):
+def convert_string_or_list_to_list(string_or_list: Union[str, List[str]]) -> List[str]:
     if isinstance(string_or_list, str):
         return [string_or_list]
     elif isinstance(string_or_list, list):
@@ -126,7 +128,7 @@ def get_preferred_curie(curie: str) -> str:
     return best_curie
 
 
-def convert_standard_kg_to_dict_kg(knowledge_graph):
+def convert_standard_kg_to_dict_kg(knowledge_graph: KnowledgeGraph):
     dict_kg = {'nodes': dict(), 'edges': dict()}
     if knowledge_graph.nodes:
         for node in knowledge_graph.nodes:
@@ -143,7 +145,7 @@ def convert_standard_kg_to_dict_kg(knowledge_graph):
     return dict_kg
 
 
-def convert_dict_kg_to_standard_kg(dict_kg):
+def convert_dict_kg_to_standard_kg(dict_kg) -> KnowledgeGraph:
     almost_standard_kg = KnowledgeGraph(nodes=dict(), edges=dict())
     for qnode_id, nodes_for_this_qnode_id in dict_kg.get('nodes').items():
         for node_key, node in nodes_for_this_qnode_id.items():
@@ -202,30 +204,7 @@ def get_curie_synonyms(curie: str, arax_kg='KG2') -> List[str]:
     return list(equivalent_curies_using_arax_kg)
 
 
-def add_curie_synonyms_to_query_nodes(qnodes, log, arax_kg='KG2', override_node_type=False):
-    log.debug("Looking for query nodes to use curie synonyms for")
-    for qnode in qnodes:
-        if qnode.curie:
-            input_curies = convert_string_or_list_to_list(qnode.curie)
-            final_curie_list = []
-            for curie in input_curies:
-                original_curie = curie
-                equivalent_curies = get_curie_synonyms(curie=original_curie, arax_kg=arax_kg)
-                if len(equivalent_curies) > 1:
-                    log.debug(f"Found synonyms for curie {original_curie}: {equivalent_curies}")
-                    final_curie_list += equivalent_curies
-                    if override_node_type:
-                        qnode.type = None  # Equivalent curie types may be different than the original, so we clear this
-                elif len(equivalent_curies) <= 1:
-                    log.debug(f"Could not find any synonyms for curie {original_curie}")
-                    final_curie_list.append(original_curie)
-
-            # Use our new synonyms list only if we actually found any synonyms
-            if set(final_curie_list) != set(input_curies):
-                qnode.curie = final_curie_list
-
-
-def qg_is_fulfilled(query_graph, dict_kg):
+def qg_is_fulfilled(query_graph: QueryGraph, dict_kg) -> bool:
     qnode_ids = [qnode.id for qnode in query_graph.nodes]
     qedge_ids = [qedge.id for qedge in query_graph.edges]
 
@@ -236,13 +215,6 @@ def qg_is_fulfilled(query_graph, dict_kg):
         if qedge_id not in dict_kg['edges'] or not dict_kg['edges'][qedge_id]:
             return False
     return True
-
-
-def edge_using_node_exists(curie, qnode_id, edge_to_nodes_map):
-    for edge_id, node_usages in edge_to_nodes_map.items():
-        if node_usages[qnode_id] == curie:
-            return True
-    return False
 
 
 def switch_kg_to_arax_curie_format(dict_kg):
@@ -258,41 +230,3 @@ def switch_kg_to_arax_curie_format(dict_kg):
             edge.target_id = convert_curie_to_arax_format(edge.target_id)
             add_edge_to_kg(converted_kg, edge, qedge_id)
     return converted_kg
-
-
-def get_original_curie(returned_curie, qnode_id, curie_map, log):
-    original_curie_matches = [original_curie for original_curie, used_curies in curie_map[qnode_id].items() if
-                              returned_curie in used_curies]
-    if not original_curie_matches:
-        log.error(f"Could not find returned {qnode_id} node {returned_curie} in the curie map",
-                  error_code="SynonymMappingError")
-        return None
-    elif len(original_curie_matches) > 1:
-        log.error(f"More than 1 possible remapping for returned {qnode_id} node {returned_curie}",
-                  error_code="SynonymMappingError")
-    return original_curie_matches[0]
-
-
-def guess_qnode_type(qnode, log):
-    kgni = KGNodeIndex()
-    curie_list = convert_string_or_list_to_list(qnode.curie)
-    node_types = set()
-    for curie in curie_list:
-        curie_info = kgni.get_equivalent_entities(curie=curie).get(curie)
-        if curie_info:
-            node_type = curie_info['type'][0] if curie_info['type'] else None
-            if node_type:
-                node_types.add(node_type)
-
-    # Only use this node type if we found the same type for all curies in the list
-    if len(node_types) == 1:
-        node_type = node_types.pop()
-        log.warning(f"No type was specified for qnode {qnode.id}; using type '{node_type}' found via KGNodeIndex")
-        return node_type
-    elif not node_types:
-        log.warning(f"Could not guess a node type to use for qnode {qnode.id} (curie is not in KGNodeIndex)")
-        return ""
-    else:
-        log.warning(f"Could not guess a node type to use for qnode {qnode.id} (more than one possible node type was "
-                    f"found: {', '.join(node_types)})")
-        return ""

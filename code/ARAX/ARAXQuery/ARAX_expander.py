@@ -197,11 +197,10 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             log.error(f"Cannot expand a single query node if it doesn't have a curie", error_code="InvalidQuery")
             return answer_kg
 
-        user_specified_curies = set(eu.convert_string_or_list_to_list(query_node.curie))
         if use_synonyms:
-            eu.add_curie_synonyms_to_query_nodes(qnodes=[query_node],
-                                                 arax_kg='KG1' if kp_to_use == 'ARAX/KG1' else 'KG2',
-                                                 log=log)
+            self._add_curie_synonyms_to_query_nodes(qnodes=[query_node],
+                                                    arax_kg='KG1' if kp_to_use == 'ARAX/KG1' else 'KG2',
+                                                    log=log)
 
         # Answer the query using the proper KP
         if kp_to_use == 'BTE':
@@ -261,8 +260,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
         return sub_query_graph
 
-    @staticmethod
-    def _get_query_graph_for_edge(qedge, query_graph, dict_kg, use_synonyms, kp_to_use, log):
+    def _get_query_graph_for_edge(self, qedge, query_graph, dict_kg, use_synonyms, kp_to_use, log):
         # This function creates a query graph for the specified qedge, updating its qnodes' curies as needed
         edge_query_graph = QueryGraph(nodes=[], edges=[])
         qnodes = [eu.get_query_node(query_graph, qedge.source_id),
@@ -284,9 +282,9 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             edge_query_graph.nodes.append(qnode_copy)
 
         if use_synonyms:
-            eu.add_curie_synonyms_to_query_nodes(qnodes=edge_query_graph.nodes,
-                                                 arax_kg='KG1' if kp_to_use == 'ARAX/KG1' else 'KG2',
-                                                 log=log)
+            self._add_curie_synonyms_to_query_nodes(qnodes=edge_query_graph.nodes,
+                                                    arax_kg='KG1' if kp_to_use == 'ARAX/KG1' else 'KG2',
+                                                    log=log)
         return edge_query_graph
 
     @staticmethod
@@ -447,6 +445,29 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                 kg['nodes'][qnode.id].pop(node_id)
 
         return kg
+
+    @staticmethod
+    def _add_curie_synonyms_to_query_nodes(qnodes, log, arax_kg='KG2', override_node_type=False):
+        log.debug("Looking for query nodes to use curie synonyms for")
+        for qnode in qnodes:
+            if qnode.curie:
+                input_curies = eu.convert_string_or_list_to_list(qnode.curie)
+                final_curie_list = []
+                for curie in input_curies:
+                    original_curie = curie
+                    equivalent_curies = eu.get_curie_synonyms(curie=original_curie, arax_kg=arax_kg)
+                    if len(equivalent_curies) > 1:
+                        log.debug(f"Found synonyms for curie {original_curie}: {equivalent_curies}")
+                        final_curie_list += equivalent_curies
+                        if override_node_type:
+                            qnode.type = None  # Equivalent curie types may be different than the original, so we clear this
+                    elif len(equivalent_curies) <= 1:
+                        log.debug(f"Could not find any synonyms for curie {original_curie}")
+                        final_curie_list.append(original_curie)
+
+                # Use our new synonyms list only if we actually found any synonyms
+                if set(final_curie_list) != set(input_curies):
+                    qnode.curie = final_curie_list
 
     @staticmethod
     def _get_orphan_query_node_ids(query_graph):
