@@ -157,6 +157,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             log.error(f"Cannot expand an edge for which neither end has any curies. (Could not find curies to use from "
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, edge_to_nodes_map
+        log.debug(f"Modified QG for this edge is: {edge_query_graph.to_dict()}")
 
         valid_kps = ["ARAX/KG1", "ARAX/KG2", "BTE"]
         if kp_to_use not in valid_kps:
@@ -171,10 +172,12 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                 from Expand.kg_querier import KGQuerier
                 kp_querier = KGQuerier(log, kp_to_use)
             answer_kg, edge_to_nodes_map = kp_querier.answer_one_hop_query(edge_query_graph)
+            if log.status != 'OK':
+                return answer_kg, edge_to_nodes_map
             log.info(f"Query for edge {qedge.id} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
             # Make sure our query has been fulfilled (unless we're continuing if no results)
-            if self.response.status == 'OK' and not continue_if_no_results:
+            if not continue_if_no_results:
                 if not eu.qg_is_fulfilled(edge_query_graph, answer_kg):
                     log.error(f"Returned answer KG does not fulfill the query graph", error_code="UnfulfilledQGID")
                     return answer_kg, edge_to_nodes_map
@@ -204,6 +207,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             self._add_curie_synonyms_to_query_nodes(qnodes=[copy_of_qnode],
                                                     arax_kg='KG1' if kp_to_use == 'ARAX/KG1' else 'KG2',
                                                     log=log)
+        log.debug(f"Modified query node is: {copy_of_qnode.to_dict()}")
 
         # Answer the query using the proper KP
         if kp_to_use == 'BTE':
@@ -472,12 +476,10 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                     original_curie = curie
                     equivalent_curies = eu.get_curie_synonyms(curie=original_curie, arax_kg=arax_kg)
                     if len(equivalent_curies) > 1:
-                        log.debug(f"Found synonyms for curie {original_curie}: {equivalent_curies}")
                         final_curie_list += equivalent_curies
                         if override_node_type:
                             qnode.type = None  # Equivalent curie types may be different than the original, so we clear this
                     elif len(equivalent_curies) <= 1:
-                        log.debug(f"Could not find any synonyms for curie {original_curie}")
                         final_curie_list.append(original_curie)
 
                 # Use our new synonyms list only if we actually found any synonyms
