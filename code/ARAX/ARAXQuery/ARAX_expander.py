@@ -118,7 +118,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                     return response
                 node_usages_by_edges_map[qedge.id] = edge_node_usage_map
 
-                self._process_and_merge_answer(answer_kg, dict_kg, log)
+                self._merge_answer_into_message_kg(answer_kg, dict_kg, log)
                 if log.status != 'OK':
                     return response
 
@@ -133,7 +133,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                 if log.status != 'OK':
                     return response
 
-                self._process_and_merge_answer(answer_kg, dict_kg, log)
+                self._merge_answer_into_message_kg(answer_kg, dict_kg, log)
                 if log.status != 'OK':
                     return response
 
@@ -171,6 +171,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                 from Expand.kg_querier import KGQuerier
                 kp_querier = KGQuerier(log, kp_to_use)
             answer_kg, edge_to_nodes_map = kp_querier.answer_one_hop_query(edge_query_graph)
+            log.info(f"Query for edge {qedge.id} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
             # Make sure our query has been fulfilled (unless we're continuing if no results)
             if self.response.status == 'OK' and not continue_if_no_results:
@@ -182,7 +183,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             if use_synonyms and synonym_handling == 'map_back':
                 answer_kg, edge_to_nodes_map = self._deduplicate_nodes(answer_kg, edge_to_nodes_map, log)
             if eu.qg_is_fulfilled(edge_query_graph, answer_kg):
-                answer_kg = self._remove_self_edges(answer_kg, edge_to_nodes_map, qedge.id, edge_query_graph.nodes)
+                answer_kg = self._remove_self_edges(answer_kg, edge_to_nodes_map, qedge.id, edge_query_graph.nodes, log)
 
             return answer_kg, edge_to_nodes_map
 
@@ -210,12 +211,14 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             from Expand.kg_querier import KGQuerier
             kg_querier = KGQuerier(log, kp_to_use)
             answer_kg = kg_querier.answer_single_node_query(query_node)
+            log.info(f"Query for node {query_node.id} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
             # Make sure all qnodes have been fulfilled (unless we're continuing if no results)
             if log.status == 'OK' and not continue_if_no_results:
                 if query_node.id not in answer_kg['nodes'] or not answer_kg['nodes'][query_node.id]:
                     log.error(f"Returned answer KG does not contain any results for QNode {query_node.id}",
                               error_code="UnfulfilledQGID")
+                    return answer_kg
 
             if use_synonyms and synonym_handling == 'map_back':
                 answer_kg, edge_node_usage_map = self._deduplicate_nodes(answer_kg, {}, log)
@@ -318,12 +321,11 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                 for qnode_id, corresponding_node_id in edge_to_nodes_map[edge_id].items():
                     updated_edge_to_nodes_map[edge_id][qnode_id] = curie_map.get(corresponding_node_id)
 
+        log.debug(f"After deduplication, answer KG counts are: {eu.get_printable_counts_by_qg_id(deduplicated_kg)}")
         return deduplicated_kg, updated_edge_to_nodes_map
 
     @staticmethod
-    def _process_and_merge_answer(answer_dict_kg, dict_kg, log):
-
-
+    def _merge_answer_into_message_kg(answer_dict_kg, dict_kg, log):
         # This function merges an answer KG (from the current edge/node expansion) into the overarching KG
         log.debug("Merging answer into Message.KnowledgeGraph")
         for qnode_id, nodes in answer_dict_kg['nodes'].items():
@@ -426,7 +428,8 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         return ordered_edges
 
     @staticmethod
-    def _remove_self_edges(kg, edge_to_nodes_map, qedge_id, qnodes):
+    def _remove_self_edges(kg, edge_to_nodes_map, qedge_id, qnodes, log):
+        log.debug(f"Removing any self-edges from the answer KG")
         # Remove any self-edges
         edges_to_remove = []
         for edge_key, edge in kg['edges'][qedge_id].items():

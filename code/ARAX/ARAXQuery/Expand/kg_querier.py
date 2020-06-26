@@ -51,10 +51,10 @@ class KGQuerier:
         cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, enforce_directionality, log)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
-        neo4j_results = self._answer_one_hop_query_using_neo4j(cypher_query, qedge_id, kp, continue_if_no_results)
+        neo4j_results = self._answer_one_hop_query_using_neo4j(cypher_query, qedge_id, kp, continue_if_no_results, log)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
-        final_kg, edge_to_nodes_map = self._load_answers_into_kg(neo4j_results, kp, query_graph)
+        final_kg, edge_to_nodes_map = self._load_answers_into_kg(neo4j_results, kp, query_graph, log)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
 
@@ -70,8 +70,7 @@ class KGQuerier:
         where_clause = f"{qnode.id}.id='{qnode.curie}'" if type(qnode.curie) is str else f"{qnode.id}.id in {qnode.curie}"
         cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode)} WHERE {where_clause} RETURN {qnode.id}"
         log.info(f"Sending cypher query for node {qnode.id} to {kp} neo4j")
-        results = self._run_cypher_query(cypher_query, kp)
-        log.debug(f"Got back {len(results)} results for {qnode.id} from neo4j")
+        results = self._run_cypher_query(cypher_query, kp, log)
 
         # Load the results into swagger object model and add to our answer knowledge graph
         if not results:
@@ -134,25 +133,22 @@ class KGQuerier:
             log.error(f"Problem generating cypher for query. {tb}", error_code=error_type.__name__)
             return None
 
-    def _answer_one_hop_query_using_neo4j(self, cypher_query, qedge_id, kp, continue_if_no_results):
-        self.response.info(f"Sending cypher query for edge {qedge_id} to {kp} neo4j")
-        results_from_neo4j = self._run_cypher_query(cypher_query, kp)
-        if self.response.status == 'OK':
+    def _answer_one_hop_query_using_neo4j(self, cypher_query, qedge_id, kp, continue_if_no_results, log):
+        log.info(f"Sending cypher query for edge {qedge_id} to {kp} neo4j")
+        results_from_neo4j = self._run_cypher_query(cypher_query, kp, log)
+        if log.status == 'OK':
             columns_with_lengths = dict()
             for column in results_from_neo4j[0]:
                 columns_with_lengths[column] = len(results_from_neo4j[0].get(column))
             if any(length == 0 for length in columns_with_lengths.values()):
                 if continue_if_no_results:
-                    self.response.warning(f"No paths were found in {kp} satisfying this query graph")
+                    log.warning(f"No paths were found in {kp} satisfying this query graph")
                 else:
-                    self.response.error(f"No paths were found in {kp} satisfying this query graph", error_code="NoResults")
-            else:
-                num_results_string = ", ".join([f"{column.split('_')[1]}: {value}" for column, value in sorted(columns_with_lengths.items())])
-                self.response.info(f"Query for edge {qedge_id} returned results ({num_results_string})")
+                    log.error(f"No paths were found in {kp} satisfying this query graph", error_code="NoResults")
         return results_from_neo4j
 
-    def _load_answers_into_kg(self, neo4j_results, kp, query_graph):
-        self.response.debug(f"Processing query results for edge {query_graph.edges[0].id}")
+    def _load_answers_into_kg(self, neo4j_results, kp, query_graph, log):
+        log.debug(f"Processing query results for edge {query_graph.edges[0].id}")
         final_kg = {'nodes': dict(), 'edges': dict()}
         edge_to_nodes_map = dict()
         node_uuid_to_curie_dict = self._build_node_uuid_to_curie_dict(neo4j_results[0]) if kp == "KG1" else dict()
@@ -292,7 +288,7 @@ class KGQuerier:
 
         return new_attributes
 
-    def _run_cypher_query(self, cypher_query, kp):
+    def _run_cypher_query(self, cypher_query, kp, log):
         rtxc = RTXConfiguration()
         if kp == "KG2":  # Flip into KG2 mode if that's our KP (rtx config is set to KG1 info by default)
             rtxc.live = "KG2"
@@ -304,7 +300,7 @@ class KGQuerier:
         except Exception:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
-            self.response.error(f"Encountered an error interacting with {kp} neo4j. {tb}", error_code=error_type.__name__)
+            log.error(f"Encountered an error interacting with {kp} neo4j. {tb}", error_code=error_type.__name__)
             return []
         else:
             return query_results

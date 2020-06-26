@@ -52,7 +52,6 @@ class BTEQuerier:
         if eu.qg_is_fulfilled(query_graph, answer_kg):
             answer_kg = eu.switch_kg_to_arax_curie_format(answer_kg)
             edge_to_nodes_map = self._create_edge_to_nodes_map(answer_kg, input_qnode.id, output_qnode.id)
-            log.info(f"Query for edge {qedge.id} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
         else:
             self._log_proper_no_results_message(accepted_curies, continue_if_no_results, valid_bte_inputs_dict['curie_prefixes'])
 
