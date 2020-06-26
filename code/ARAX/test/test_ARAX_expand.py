@@ -47,7 +47,7 @@ def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_inc
     assert eu.qg_is_fulfilled(message.query_graph, dict_kg) or kg_should_be_incomplete or should_throw_error
     _check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
     _check_property_types(nodes_by_qg_id, edges_by_qg_id)
-    if any(action for action in actions_list if "synonym_handling=map_back" in action):
+    if not any(action for action in actions_list if "synonym_handling=add_all" in action):
         _check_synonym_mapping(nodes_by_qg_id, message.query_graph)
 
     return nodes_by_qg_id, edges_by_qg_id
@@ -115,6 +115,13 @@ def _check_synonym_mapping(nodes_by_qg_id: Dict[str, Dict[str, Node]], query_gra
     for qnode in qnodes_with_single_curie:
         if qnode.id in nodes_by_qg_id:
             assert len(nodes_by_qg_id[qnode.id]) == 1
+            assert list(nodes_by_qg_id[qnode.id].keys())[0] == qnode.curie
+
+    qnodes_with_curie_list = [qnode for qnode in query_graph.nodes if qnode.curie and isinstance(qnode.curie, list)]
+    for qnode in qnodes_with_curie_list:
+        if qnode.id in nodes_by_qg_id:
+            assert 1 <= len(nodes_by_qg_id[qnode.id]) <= len(qnode.curie)
+            assert set(nodes_by_qg_id[qnode.id].keys()).issubset(set(qnode.curie))
 
 
 def test_kg1_parkinsons_demo_example():
@@ -124,13 +131,10 @@ def test_kg1_parkinsons_demo_example():
         "add_qnode(id=n02, type=chemical_substance)",
         "add_qedge(id=e00, source_id=n01, target_id=n00)",
         "add_qedge(id=e01, source_id=n01, target_id=n02, type=physically_interacts_with)",
-        "expand(edge_id=[e00,e01], kp=ARAX/KG1, enforce_directionality=true)",
+        "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
         "return(message=true, store=false)",
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-    # Make sure only one node exists for n00 (the original curie)
-    assert len(nodes_by_qg_id['n00']) == 1
 
     # Make sure all e00 edges map to Parkinson's curie for n00
     for edge_id, edge in edges_by_qg_id['e00'].items():
@@ -159,13 +163,10 @@ def test_kg2_parkinsons_demo_example():
         "add_qnode(id=n02, type=chemical_substance)",
         "add_qedge(id=e00, source_id=n01, target_id=n00)",
         "add_qedge(id=e01, source_id=n01, target_id=n02, type=molecularly_interacts_with)",
-        "expand(edge_id=[e00,e01], kp=ARAX/KG2, enforce_directionality=true, use_synonyms=false)",
-        "return(message=true, store=false)",
+        "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
+        "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-    # Make sure only one node exists for n00 (the original curie)
-    assert len(nodes_by_qg_id['n00']) == 1
 
     # Make sure all e00 edges map to Parkinson's curie for n00
     for edge_id, edge in edges_by_qg_id['e00'].items():
@@ -185,12 +186,6 @@ def test_kg2_parkinsons_demo_example():
             non_cilnidipine_node = edge.source_id if edge.source_id != "CHEMBL.COMPOUND:CHEMBL452076" else edge.target_id
             proteins_connected_to_cilnidipine.add(non_cilnidipine_node)
     assert(len(proteins_connected_to_cilnidipine) >= 4)
-
-    assert len(nodes_by_qg_id['n00']) == 1
-    assert len(nodes_by_qg_id['n01']) == 18
-    assert len(nodes_by_qg_id['n02']) == 1119
-    assert len(edges_by_qg_id['e00']) == 18
-    assert len(edges_by_qg_id['e01']) == 1871
 
 
 def test_demo_example_1_simple():
@@ -394,8 +389,6 @@ def test_single_node_query_map_back():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert len(nodes_by_qg_id['n00']) == 1
-    assert nodes_by_qg_id['n00'].get("CHEMBL.COMPOUND:CHEMBL1771")
 
 
 def test_single_node_query_add_all():
@@ -568,9 +561,6 @@ def test_curie_list_query_without_synonyms():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert 1 < len(nodes_by_qg_id['n00']) <= 4
-    n00_node_ids = set(nodes_by_qg_id['n00'].keys())
-    assert n00_node_ids.issubset({"CUI:C0024530", "CUI:C0024535", "CUI:C0024534", "CUI:C0747820"})
 
 
 def test_query_with_curies_on_both_ends():
