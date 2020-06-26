@@ -1102,7 +1102,7 @@ class TestARAXResultify(unittest.TestCase):
             "expand(edge_id=e02, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n02, target_qnode_id=n03, virtual_relation_label=FET3)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.01, remove_connected_nodes=t, qnode_id=n03)",
-            "add_qnode(type=disease, id=n04, curie=DOID:14067)",
+            "add_qnode(type=disease, id=n04)",
             "add_qedge(source_id=n03, target_id=n04, id=e03)",
             "expand(edge_id=e03, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, source_qnode_id=n03, target_qnode_id=n04, virtual_relation_label=FET4)",
