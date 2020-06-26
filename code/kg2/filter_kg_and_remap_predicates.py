@@ -155,9 +155,8 @@ if __name__ == '__main__':
     build_info = {
         "name" : "KG2:Build",
         "date" : datetime.now().strftime("%m-%d-%Y"),
-        "version" : "1.0",
         "nodes" : len(graph["nodes"]),
         "edges" : len(graph["edges"]),
     }
-    graph["nodes"].append(build_info)
+    graph["build"] = build_info
     kg2_util.save_json(graph, output_file_name, test_mode)
