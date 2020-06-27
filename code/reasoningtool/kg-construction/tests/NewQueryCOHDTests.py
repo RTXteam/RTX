@@ -3,10 +3,7 @@ import unittest
 import json
 import sys
 import os
-try:
-    from QueryCOHD import QueryCOHD
-except ImportError:
-	sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from QueryCOHD import QueryCOHD
 
 class NewQueryCOHDTestCases(TestCase):
     def test_get_source_to_target_input(self):
