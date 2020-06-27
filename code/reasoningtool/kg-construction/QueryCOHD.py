@@ -21,7 +21,8 @@ __status__ = 'Prototype'
 import sys
 import urllib.parse
 import unittest
-from tests import NewQueryCOHDTests
+if __name__ == '__main__':
+    from tests import NewQueryCOHDTests
 
 from cache_control_helper import CacheControlHelper
 
