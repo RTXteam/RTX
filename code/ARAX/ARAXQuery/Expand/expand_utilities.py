@@ -112,7 +112,7 @@ def get_query_node(query_graph: QueryGraph, qnode_id: str) -> QNode:
 
 
 def get_preferred_curie(curie: str) -> str:
-    # NOTE: This function is temporary; to be supplanted by future method in KGNodeIndex
+    # NOTE: This function is temporary; to be supplanted by future method in KGNodeIndex (which uses NodeNormalizer)
     prefixes_in_order_of_preference = ['DOID', 'UNIPROTKB', 'CHEMBL.COMPOUND', 'NCBIGENE', 'CHEBI', 'MONDO', 'OMIM',
                                        'HP', 'ENSEMBL', 'HGNC', 'GO', 'REACT', 'REACTOME', 'FMA', 'CL', 'MESH']
     synonym_group = sorted(get_curie_synonyms(curie))

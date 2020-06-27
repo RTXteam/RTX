@@ -96,7 +96,7 @@ class BTEQuerier:
                 swagger_node = Node()
                 bte_node_id = node.get('id')
                 swagger_node.name = node.get('name')
-                swagger_node.type = eu.convert_string_to_snake_case(node.get('type'))
+                swagger_node.type = eu.convert_string_or_list_to_list(eu.convert_string_to_snake_case(node.get('type')))
 
                 # Map the returned BTE qg_ids back to the original qnode_ids in our query graph
                 bte_qg_id = kg_to_qg_ids_dict['nodes'].get(bte_node_id)
@@ -115,7 +115,7 @@ class BTEQuerier:
                     else:
                         equivalent_curies = [f"{prefix}:{eu.get_curie_local_id(local_id)}" for prefix, local_ids in
                                              node.get('equivalent_identifiers').items() for local_id in local_ids]
-                        swagger_node.id = self._get_best_equivalent_bte_curie(equivalent_curies, swagger_node.type)
+                        swagger_node.id = self._get_best_equivalent_bte_curie(equivalent_curies, swagger_node.type[0])
                         remapped_node_ids[bte_node_id] = swagger_node.id
                 else:
                     swagger_node.id = bte_node_id

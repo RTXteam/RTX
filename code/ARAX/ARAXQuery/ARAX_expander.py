@@ -184,8 +184,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
             # Do some post-processing (deduplicate nodes, remove self-edges..)
             if synonym_handling != 'add_all':
-                user_specified_curies = {curie for qnode in query_graph.nodes if qnode.curie for curie in eu.convert_string_or_list_to_list(qnode.curie)}
-                answer_kg, edge_to_nodes_map = self._deduplicate_nodes(answer_kg, edge_to_nodes_map, user_specified_curies, log)
+                answer_kg, edge_to_nodes_map = self._deduplicate_nodes(answer_kg, edge_to_nodes_map, log)
             if eu.qg_is_fulfilled(edge_query_graph, answer_kg):
                 answer_kg = self._remove_self_edges(answer_kg, edge_to_nodes_map, qedge.id, edge_query_graph.nodes, log)
 
@@ -229,7 +228,6 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             if use_synonyms and synonym_handling == 'map_back':
                 answer_kg, edge_node_usage_map = self._deduplicate_nodes(dict_kg=answer_kg,
                                                                          edge_to_nodes_map={},
-                                                                         user_specified_curies=set(eu.convert_string_or_list_to_list(query_node.curie)),
                                                                          log=log)
             return answer_kg
         else:
@@ -300,7 +298,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         return edge_query_graph
 
     @staticmethod
-    def _deduplicate_nodes(dict_kg, edge_to_nodes_map, user_specified_curies, log):
+    def _deduplicate_nodes(dict_kg, edge_to_nodes_map, log):
         log.debug(f"Deduplicating nodes")
         deduplicated_kg = {'nodes': {node_id: dict() for node_id in dict_kg['nodes']},
                            'edges': {edge_id: dict() for edge_id in dict_kg['edges']}}
@@ -310,17 +308,17 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         # First deduplicate the nodes
         for qnode_id, nodes in dict_kg['nodes'].items():
             for node_id, node in nodes.items():
-                # Use the user's original input curie (rather than 'preferred curie') if this is such a node
-                preferred_curie_override = None
-                user_input_curie_matches = [input_curie for input_curie in user_specified_curies if node_id in eu.get_curie_synonyms(input_curie)]
-                if user_input_curie_matches:
-                    preferred_curie_override = user_input_curie_matches[0]
-
-                preferred_curie = eu.get_preferred_curie(node_id)
-                curie_to_use = preferred_curie_override if preferred_curie_override else preferred_curie
-                curie_map[node.id] = curie_to_use  # Record the remapping we did for easier access later
-                if curie_to_use not in deduplicated_kg['nodes'][qnode_id]:
-                    node.id = curie_to_use
+                preferred_curie = curie_map.get(node_id) if node_id in curie_map else eu.get_preferred_curie(node_id)
+                # Record the remappings we're doing for easier access later
+                for synonym in eu.get_curie_synonyms(node_id):
+                    curie_map[synonym] = preferred_curie
+                if preferred_curie in deduplicated_kg['nodes'][qnode_id]:
+                    # TODO: Better handle 'merging'/remapping of duplicate nodes
+                    kept_node = deduplicated_kg['nodes'][qnode_id][preferred_curie]
+                    kept_node.type = list(set(kept_node.type + node.type))
+                    kept_node.name = kept_node.name if len(kept_node.name) < len(node.name) else node.name
+                else:
+                    node.id = preferred_curie
                     eu.add_node_to_kg(deduplicated_kg, node, qnode_id)
 
         # Then update the edges to reflect changes made to the nodes

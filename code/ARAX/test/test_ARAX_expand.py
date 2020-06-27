@@ -115,13 +115,10 @@ def _check_synonym_mapping(nodes_by_qg_id: Dict[str, Dict[str, Node]], query_gra
     for qnode in qnodes_with_single_curie:
         if qnode.id in nodes_by_qg_id:
             assert len(nodes_by_qg_id[qnode.id]) == 1
-            assert list(nodes_by_qg_id[qnode.id].keys())[0] == qnode.curie
-
     qnodes_with_curie_list = [qnode for qnode in query_graph.nodes if qnode.curie and isinstance(qnode.curie, list)]
     for qnode in qnodes_with_curie_list:
         if qnode.id in nodes_by_qg_id:
             assert 1 <= len(nodes_by_qg_id[qnode.id]) <= len(qnode.curie)
-            assert set(nodes_by_qg_id[qnode.id].keys()).issubset(set(qnode.curie))
 
 
 def test_kg1_parkinsons_demo_example():
@@ -198,7 +195,7 @@ def test_demo_example_1_simple():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
-    assert len(nodes_by_qg_id['n0']) >= 1
+    assert len(nodes_by_qg_id['n0']) == 1
     assert len(nodes_by_qg_id['n1']) >= 32
     assert len(edges_by_qg_id['e0']) >= 64
 
@@ -215,7 +212,7 @@ def test_demo_example_3_simple():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
-    assert len(nodes_by_qg_id['n00']) >= 1
+    assert len(nodes_by_qg_id['n00']) == 1
     assert len(nodes_by_qg_id['n01']) >= 29
     assert len(nodes_by_qg_id['n02']) >= 240
     assert len(edges_by_qg_id['e00']) >= 29
@@ -318,7 +315,6 @@ def test_bte_simple_acetaminophen_query():
         "return(message=true, store=false)",
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert len(nodes_by_qg_id['n00']) == 1
 
 
 def test_bte_add_all_acetaminophen_query():
@@ -342,7 +338,6 @@ def test_bte_parkinsons_query():
         "return(message=true, store=false)",
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert len(nodes_by_qg_id['n00']) == 1
 
 
 def test_bte_query_using_list_of_curies():
@@ -379,7 +374,6 @@ def test_731_query_that_doesnt_return_original_curie():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert len(nodes_by_qg_id['n0']) == 1
 
 
 def test_single_node_query_map_back():
@@ -572,7 +566,6 @@ def test_query_with_curies_on_both_ends():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert len(nodes_by_qg_id['n00']) == 1 and len(nodes_by_qg_id['n01']) == 1
 
 
 def test_query_with_intermediate_curie_node():
@@ -586,7 +579,6 @@ def test_query_with_intermediate_curie_node():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert len(nodes_by_qg_id['n01']) == 1
 
 
 def test_774_continue_if_no_results_query():
