@@ -1,7 +1,12 @@
 from unittest import TestCase
 import unittest
 import json
-from QueryCOHD import QueryCOHD
+import sys
+import os
+try:
+    from QueryCOHD import QueryCOHD
+except ImportError:
+	sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 class NewQueryCOHDTestCases(TestCase):
     def test_get_source_to_target_input(self):
@@ -33,7 +38,7 @@ class NewQueryCOHDTestCases(TestCase):
 
         # check if correct result is returned
         result = queryCOHD.get_source_to_target(312327, 313217)
-        self.assertEqual(result, test_data)
+        self.assertListEqual(result, test_data)
 
 if __name__ == '__main__':
     unittest.main()
