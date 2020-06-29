@@ -155,7 +155,7 @@ if __name__ == '__main__':
     build_info = {
         "name" : "KG2:Build",
         "creation date" : datetime.now().strftime("%m-%d-%Y"),
-        "category label" : " ",
+        "category label" : "information content entity",
     }
     graph["build"] = build_info
     graph["nodes"].append(build_info)
