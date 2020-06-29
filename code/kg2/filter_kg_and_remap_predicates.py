@@ -154,9 +154,8 @@ if __name__ == '__main__':
         print('could not get IRI for relation curie: ' + relation_curie)
     build_info = {
         "name" : "KG2:Build",
-        "date" : datetime.now().strftime("%m-%d-%Y"),
-        "nodes" : len(graph["nodes"]),
-        "edges" : len(graph["edges"]),
+        "creation date" : datetime.now().strftime("%m-%d-%Y"),
+        "category label" : " ",
     }
     graph["build"] = build_info
     graph["nodes"].append(build_info)
