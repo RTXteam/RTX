@@ -138,9 +138,9 @@ def count_types_of_pairs_of_curies_for_equivs(edges: list):
 
 
 if __name__ == '__main__':
- args = make_arg_parser().parse_args()
-  input_file_name = args.inputFile
-   if not input_file_name.endswith('.gz'):
+    args = make_arg_parser().parse_args()
+    input_file_name = args.inputFile
+    if not input_file_name.endswith('.gz'):
         input_file = open(input_file_name, 'r')
         graph = json.load(input_file)
     else:
@@ -153,7 +153,7 @@ if __name__ == '__main__':
     nodes = graph.get('nodes', [])
     for n in nodes[::-1]:  # search for build info node starting at end
         if n["name"] == "KG2:Build":  # should be the first node accessed
-            nodes.remove(i) # remove it so stats aren't reported
+            nodes.remove(n) # remove it so stats aren't reported
             break
     if 'edges' not in graph:
         print("WARNING: 'edges' property is missing from the input JSON.", file=sys.stderr)
