@@ -34,6 +34,8 @@ from swagger_server.models.message import Message
 def _do_arax_query(query: dict) -> List[Union[Response, Message]]:
     araxq = ARAXQuery()
     response = araxq.query(query)
+    if response.status != 'OK':
+        print(response.show(level=response.DEBUG))
     return [response, araxq.message]
 
 
@@ -368,6 +370,67 @@ def test_example_2_kg2():
     assert len(message.results) == 15 
     assert message.results[0].essence is not None
     _virtual_tester(message, 'has_jaccard_index_with', 'J1', 'jaccard_index', 'data:1772', 2)
+
+
+def test_clinical_overlay_example():
+    """
+    Gives an example of a KG that does not have edges that COHD can decorate, but does have pairs of nodes that COHD
+    could decorate (eg here is drug and chemical_substance), so add the info in as a virtual edge.
+    """
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(name=DOID:11830, id=n00)",
+        "add_qnode(type=protein, is_set=true, id=n01)",
+        "add_qnode(type=chemical_substance, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01, type=molecularly_interacts_with)",
+        "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
+        # overlay a bunch of clinical info
+        "overlay(action=overlay_clinical_info, paired_concept_frequency=true, source_qnode_id=n00, target_qnode_id=n02, virtual_relation_label=C1)",
+        "overlay(action=overlay_clinical_info, observed_expected_ratio=true, source_qnode_id=n00, target_qnode_id=n02, virtual_relation_label=C2)",
+        "overlay(action=overlay_clinical_info, chi_square=true, source_qnode_id=n00, target_qnode_id=n02, virtual_relation_label=C3)",
+        # filter some stuff out for the fun of it
+        "filter_kg(action=remove_edges_by_attribute_default, edge_attribute=paired_concept_frequency, type=std, remove_connected_nodes=F)",
+        "filter_kg(action=remove_edges_by_attribute_default, edge_attribute=observed_expected_ratio, type=std, remove_connected_nodes=F)",
+        "filter_kg(action=remove_edges_by_attribute_default, edge_attribute=chi_square, type=std, remove_connected_nodes=F)",
+        # return results
+        "resultify(ignore_edge_direction=true)",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    _virtual_tester(message, 'has_paired_concept_frequency_with', 'C1', 'paired_concept_frequency', 'data:0951', 2)
+    _virtual_tester(message, 'has_observed_expected_ratio_with', 'C2', 'observed_expected_ratio', 'data:0951', 2)
+    _virtual_tester(message, 'has_chi_square_with', 'C3', 'chi_square', 'data:0951', 2)
+
+
+def test_clinical_overlay_example2():
+    """
+    Gives an example of overlaying (and filtering) clinical attributes when there exist edges in the KG that COHD can decorate
+    """
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(name=DOID:11830, id=n00)",
+        "add_qnode(type=chemical_substance, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(edge_id=e00, kp=ARAX/KG2)",
+        # overlay a bunch of clinical info
+        "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
+        "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
+        "overlay(action=overlay_clinical_info, chi_square=true)",
+        # filter some stuff out for the fun of it
+        "filter_kg(action=remove_edges_by_attribute_default, edge_attribute=paired_concept_frequency, type=std, remove_connected_nodes=F)",
+        "filter_kg(action=remove_edges_by_attribute_default, edge_attribute=observed_expected_ratio, type=std, remove_connected_nodes=F)",
+        "filter_kg(action=remove_edges_by_attribute_default, edge_attribute=chi_square, type=std, remove_connected_nodes=F)",
+        # return results
+        "resultify(ignore_edge_direction=true)",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    _attribute_tester(message, 'paired_concept_frequency', 'data:0951', 1)
+    _attribute_tester(message, 'observed_expected_ratio', 'data:0951', 1)
+    _attribute_tester(message, 'chi_square', 'data:0951', 1)
 
 # Not working yet
 # def test_example_3_kg2():
