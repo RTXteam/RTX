@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 '''Filters the RTX "KG2" second-generation knowledge graph, simplifying predicates and removing redundant edges.
 
-   Usage: filter_kg.py <predicate-remap.yaml> <kg-input.json> <kg-output.json>
+   Usage: filter_kg_and_remap_predicates.py <predicate-remap.yaml> <kg-input.json> <kg-output.json>
 '''
 
 __author__ = 'Stephen Ramsey'
@@ -159,4 +159,5 @@ if __name__ == '__main__':
         "edges" : len(graph["edges"]),
     }
     graph["build"] = build_info
+    graph["nodes"].append(build_info)
     kg2_util.save_json(graph, output_file_name, test_mode)
