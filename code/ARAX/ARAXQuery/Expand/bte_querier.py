@@ -3,23 +3,27 @@ import sys
 import os
 import traceback
 import asyncio
+from typing import List, Dict, Tuple, Set
 
 from biothings_explorer.user_query_dispatcher import SingleEdgeQueryDispatcher
 
+from Expand.expand_utilities import DictKnowledgeGraph
+import Expand.expand_utilities as eu
+from response import Response
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
-
-from Expand.expand_utilities import DictKnowledgeGraph
-import Expand.expand_utilities as eu
+from swagger_server.models.q_node import QNode
+from swagger_server.models.q_edge import QEdge
+from swagger_server.models.query_graph import QueryGraph
 
 
 class BTEQuerier:
 
-    def __init__(self, response_object):
+    def __init__(self, response_object: Response):
         self.response = response_object
 
-    def answer_one_hop_query(self, query_graph):
+    def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         enforce_directionality = self.response.data['parameters'].get('enforce_directionality')
         continue_if_no_results = self.response.data['parameters'].get('continue_if_no_results')
         log = self.response
@@ -58,7 +62,9 @@ class BTEQuerier:
 
         return answer_kg, edge_to_nodes_map
 
-    def _answer_query_using_bte(self, input_qnode, output_qnode, qedge, answer_kg, valid_bte_inputs_dict, log):
+    def _answer_query_using_bte(self, input_qnode: QNode, output_qnode: QNode, qedge: QEdge,
+                                answer_kg: DictKnowledgeGraph, valid_bte_inputs_dict: Dict[str, Set[str]],
+                                log: Response) -> Tuple[DictKnowledgeGraph, Set[str]]:
         accepted_curies = set()
         # Send this single-edge query to BTE, once per input curie (adding findings to our answer KG as we go)
         for curie in input_qnode.curie:
@@ -86,7 +92,8 @@ class BTEQuerier:
 
         return answer_kg, accepted_curies
 
-    def _add_answers_to_kg(self, answer_kg, reasoner_std_response, input_qnode_id, output_qnode_id, qedge_id, log):
+    def _add_answers_to_kg(self, answer_kg: DictKnowledgeGraph, reasoner_std_response: Dict[str, any],
+                           input_qnode_id: str, output_qnode_id: str, qedge_id: str, log: Response) -> DictKnowledgeGraph:
         kg_to_qg_ids_dict = self._build_kg_to_qg_id_dict(reasoner_std_response['results'])
         if reasoner_std_response['knowledge_graph']['edges']:
             remapped_node_ids = dict()
@@ -141,7 +148,8 @@ class BTEQuerier:
         return answer_kg
 
     @staticmethod
-    def _validate_and_pre_process_input(query_graph, valid_bte_inputs_dict, enforce_directionality, log):
+    def _validate_and_pre_process_input(query_graph: QueryGraph, valid_bte_inputs_dict: Dict[str, Set[str]],
+                                        enforce_directionality: bool, log: Response) -> Tuple[QEdge, QNode, QNode]:
         # Make sure we have a valid one-hop query graph
         if len(query_graph.edges) != 1 or len(query_graph.nodes) != 2:
             log.error(f"BTE can only accept one-hop query graphs (your QG has {len(query_graph.nodes)} nodes and "
@@ -199,7 +207,8 @@ class BTEQuerier:
         return qedge, input_qnode, output_qnode
 
     @staticmethod
-    def _log_proper_no_results_message(accepted_curies, continue_if_no_results, valid_prefixes, log):
+    def _log_proper_no_results_message(accepted_curies: Set[str], continue_if_no_results: bool,
+                                       valid_prefixes: Set[str], log: Response):
         if continue_if_no_results:
             if not accepted_curies:
                 log.warning(f"BTE could not accept any of the input curies. Valid curie prefixes for BTE are: "
@@ -212,7 +221,7 @@ class BTEQuerier:
             log.error(f"No paths were found in BTE satisfying this query graph", error_code="NoResults")
 
     @staticmethod
-    def _prune_answers_to_achieve_curie_to_curie_query(kg, output_qnode, qedge):
+    def _prune_answers_to_achieve_curie_to_curie_query(kg: DictKnowledgeGraph, output_qnode: QNode, qedge: QEdge) -> DictKnowledgeGraph:
         """
         This is a way of hacking around BTE's limitation where it can only do (node with curie)-->(non-specific node)
         kinds of queries. We do the non-specific query, and then use this function to remove all of the answer nodes
@@ -236,7 +245,7 @@ class BTEQuerier:
         return kg
 
     @staticmethod
-    def _create_edge_to_nodes_map(kg, input_qnode_id, output_qnode_id):
+    def _create_edge_to_nodes_map(kg: DictKnowledgeGraph, input_qnode_id: str, output_qnode_id: str) -> Dict[str, Dict[str, str]]:
         edge_to_nodes_map = dict()
         for qedge_id, edges in kg.edges_by_qg_id.items():
             for edge_key, edge in edges.items():
@@ -245,7 +254,7 @@ class BTEQuerier:
         return edge_to_nodes_map
 
     @staticmethod
-    def _get_valid_bte_inputs_dict():
+    def _get_valid_bte_inputs_dict() -> Dict[str, Set[str]]:
         # TODO: Load these using the soon to be built method in ARAX/KnowledgeSources (then will be regularly updated)
         node_types = {'ChemicalSubstance', 'Transcript', 'AnatomicalEntity', 'Disease', 'GenomicEntity', 'Gene',
                       'BiologicalProcess', 'Cell', 'SequenceVariant', 'MolecularActivity', 'PhenotypicFeature',
@@ -264,7 +273,7 @@ class BTEQuerier:
         return {'node_types': node_types, 'curie_prefixes': curie_prefixes, 'predicates': predicates}
 
     @staticmethod
-    def _build_kg_to_qg_id_dict(results):
+    def _build_kg_to_qg_id_dict(results: Dict[str, any]) -> Dict[str, Dict[str, List[str]]]:
         kg_to_qg_ids = {'nodes': dict(), 'edges': dict()}
         for node_binding in results['node_bindings']:
             node_id = node_binding['kg_id']
@@ -278,7 +287,7 @@ class BTEQuerier:
         return kg_to_qg_ids
 
     @staticmethod
-    def _get_best_equivalent_bte_curie(equivalent_curies, node_type):
+    def _get_best_equivalent_bte_curie(equivalent_curies: List[str], node_type: str) -> str:
         # Curie prefixes in order of preference for different node types (not all-inclusive)
         preferred_node_prefixes_dict = {'chemical_substance': ['CHEMBL.COMPOUND', 'CHEBI'],
                                         'protein': ['UNIPROTKB', 'PR'],

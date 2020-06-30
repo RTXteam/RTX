@@ -3,10 +3,12 @@ import sys
 import os
 import traceback
 import ast
+from typing import List, Dict, Tuple
 
 from neo4j import GraphDatabase
 import Expand.expand_utilities as eu
 from Expand.expand_utilities import DictKnowledgeGraph
+from response import Response
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
 from RTXConfiguration import RTXConfiguration
@@ -15,15 +17,17 @@ from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
 from swagger_server.models.node_attribute import NodeAttribute
 from swagger_server.models.edge_attribute import EdgeAttribute
+from swagger_server.models.query_graph import QueryGraph
+from swagger_server.models.q_node import QNode
 
 
 class KGQuerier:
 
-    def __init__(self, response_object, kp_to_use):
+    def __init__(self, response_object: Response, kp_to_use: str):
         self.response = response_object
         self.kp = "KG2" if kp_to_use == "ARAX/KG2" else "KG1"
 
-    def answer_one_hop_query(self, query_graph):
+    def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         """
         This function answers a one-hop (single-edge) query using either KG1 or KG2.
         :param query_graph: A Reasoner API standard query graph.
@@ -61,7 +65,7 @@ class KGQuerier:
 
         return final_kg, edge_to_nodes_map
 
-    def answer_single_node_query(self, qnode):
+    def answer_single_node_query(self, qnode: QNode) -> DictKnowledgeGraph:
         continue_if_no_results = self.response.data['parameters']['continue_if_no_results']
         kp = self.kp
         log = self.response
@@ -86,7 +90,8 @@ class KGQuerier:
 
         return final_kg
 
-    def _convert_one_hop_query_graph_to_cypher_query(self, query_graph, enforce_directionality, log):
+    def _convert_one_hop_query_graph_to_cypher_query(self, query_graph: QueryGraph, enforce_directionality: bool,
+                                                     log: Response) -> str:
         log.debug(f"Generating cypher for edge {query_graph.edges[0].id} query graph")
         try:
             # Build the match clause
@@ -133,7 +138,8 @@ class KGQuerier:
             log.error(f"Problem generating cypher for query. {tb}", error_code=error_type.__name__)
             return None
 
-    def _answer_one_hop_query_using_neo4j(self, cypher_query, qedge_id, kp, continue_if_no_results, log):
+    def _answer_one_hop_query_using_neo4j(self, cypher_query: str, qedge_id: str, kp: str, continue_if_no_results: bool,
+                                          log: Response) -> List[Dict[str, List[Dict[str, any]]]]:
         log.info(f"Sending cypher query for edge {qedge_id} to {kp} neo4j")
         results_from_neo4j = self._run_cypher_query(cypher_query, kp, log)
         if log.status == 'OK':
@@ -147,7 +153,8 @@ class KGQuerier:
                     log.error(f"No paths were found in {kp} satisfying this query graph", error_code="NoResults")
         return results_from_neo4j
 
-    def _load_answers_into_kg(self, neo4j_results, kp, query_graph, log):
+    def _load_answers_into_kg(self, neo4j_results: List[Dict[str, List[Dict[str, any]]]], kp: str,  query_graph: QueryGraph,
+                              log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         log.debug(f"Processing query results for edge {query_graph.edges[0].id}")
         final_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
@@ -182,13 +189,13 @@ class KGQuerier:
 
         return final_kg, edge_to_nodes_map
 
-    def _convert_neo4j_node_to_swagger_node(self, neo4j_node, kp):
+    def _convert_neo4j_node_to_swagger_node(self, neo4j_node: Dict[str, any], kp: str) -> Node:
         if kp == "KG2":
             return self._convert_kg2_node_to_swagger_node(neo4j_node)
         else:
             return self._convert_kg1_node_to_swagger_node(neo4j_node)
 
-    def _convert_kg2_node_to_swagger_node(self, neo4j_node):
+    def _convert_kg2_node_to_swagger_node(self, neo4j_node: Dict[str, any]) -> Node:
         swagger_node = Node()
         swagger_node.id = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
@@ -213,7 +220,7 @@ class KGQuerier:
         return swagger_node
 
     @staticmethod
-    def _convert_kg1_node_to_swagger_node(neo4j_node):
+    def _convert_kg1_node_to_swagger_node(neo4j_node: Dict[str, any]) -> Node:
         swagger_node = Node()
         swagger_node.id = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
@@ -227,7 +234,7 @@ class KGQuerier:
 
         return swagger_node
 
-    def _convert_kg2_edge_to_swagger_edge(self, neo4j_edge):
+    def _convert_kg2_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any]) -> Edge:
         swagger_edge = Edge()
         swagger_edge.id = f"KG2:{neo4j_edge.get('id')}"
         swagger_edge.type = neo4j_edge.get("simplified_edge_label")
@@ -249,7 +256,7 @@ class KGQuerier:
 
         return swagger_edge
 
-    def _convert_kg1_edge_to_swagger_edge(self, neo4j_edge, node_uuid_to_curie_dict):
+    def _convert_kg1_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str]) -> Edge:
         swagger_edge = Edge()
         swagger_edge.type = neo4j_edge.get("predicate")
         swagger_edge.source_id = node_uuid_to_curie_dict[neo4j_edge.get("source_node_uuid")]
@@ -264,7 +271,7 @@ class KGQuerier:
         return swagger_edge
 
     @staticmethod
-    def _create_swagger_attributes(object_type, property_names, neo4j_object):
+    def _create_swagger_attributes(object_type: str, property_names: List[str], neo4j_object: Dict[str, any]):
         new_attributes = []
         for property_name in property_names:
             property_value = neo4j_object.get(property_name)
@@ -289,7 +296,7 @@ class KGQuerier:
         return new_attributes
 
     @staticmethod
-    def _run_cypher_query(cypher_query, kp, log):
+    def _run_cypher_query(cypher_query: str, kp: str, log: Response) -> List[Dict[str, any]]:
         rtxc = RTXConfiguration()
         if kp == "KG2":  # Flip into KG2 mode if that's our KP (rtx config is set to KG1 info by default)
             rtxc.live = "KG2"
@@ -307,7 +314,7 @@ class KGQuerier:
             return query_results
 
     @staticmethod
-    def _build_node_uuid_to_curie_dict(results_table):
+    def _build_node_uuid_to_curie_dict(results_table: Dict[str, List[Dict[str, any]]]) -> Dict[str, str]:
         node_uuid_to_curie_dict = dict()
         nodes_columns = [column_name for column_name in results_table if column_name.startswith('nodes')]
         for column in nodes_columns:
@@ -316,7 +323,7 @@ class KGQuerier:
         return node_uuid_to_curie_dict
 
     @staticmethod
-    def _remap_edge(edge, new_curie, old_curie):
+    def _remap_edge(edge: Edge, new_curie: str, old_curie: str) -> Edge:
         if edge.source_id == new_curie:
             edge.source_id = old_curie
         if edge.target_id == new_curie:
@@ -324,13 +331,13 @@ class KGQuerier:
         return edge
 
     @staticmethod
-    def _get_cypher_for_query_node(node):
+    def _get_cypher_for_query_node(node: Node) -> str:
         node_type_string = f":{node.type}" if node.type else ""
         final_node_string = f"({node.id}{node_type_string})"
         return final_node_string
 
     @staticmethod
-    def _get_cypher_for_query_edge(edge, enforce_directionality):
+    def _get_cypher_for_query_edge(edge: Edge, enforce_directionality: bool) -> str:
         edge_type_string = f":{edge.type}" if edge.type else ""
         final_edge_string = f"-[{edge.id}{edge_type_string}]-"
         if enforce_directionality:
@@ -338,7 +345,7 @@ class KGQuerier:
         return final_edge_string
 
     @staticmethod
-    def _convert_strange_provided_by_field_to_list(provided_by_field):
+    def _convert_strange_provided_by_field_to_list(provided_by_field: List[str]) -> List[str]:
         # Currently looks like: ["['https://identifiers.org/umls/NDFRT'", "'https://skr3.nlm.nih.gov/SemMedDB']"]
         provided_by_list = []
         unwanted_chars = ["[", "]", "'"]
@@ -347,7 +354,3 @@ class KGQuerier:
                 item = item.replace(unwanted_char, "")
             provided_by_list.append(item)
         return provided_by_list
-
-    @staticmethod
-    def _create_edge_id(swagger_edge):
-        return f"{swagger_edge.source_id}--{swagger_edge.type}--{swagger_edge.target_id}"

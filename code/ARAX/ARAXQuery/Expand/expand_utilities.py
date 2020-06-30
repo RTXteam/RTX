@@ -2,7 +2,7 @@
 # This file contains utilities/helper functions for general use within the Expand module
 import sys
 import os
-from typing import List, Dict, Tuple, Union
+from typing import List, Dict, Union
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.knowledge_graph import KnowledgeGraph

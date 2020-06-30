@@ -1,6 +1,7 @@
 #!/bin/env python3
 import sys
 import os
+from typing import List, Dict, Union, Tuple
 
 from response import Response
 from Expand.expand_utilities import DictKnowledgeGraph
@@ -8,6 +9,8 @@ import Expand.expand_utilities as eu
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.query_graph import QueryGraph
+from swagger_server.models.q_edge import QEdge
+from swagger_server.models.q_node import QNode
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -147,7 +150,9 @@ class ARAXExpander:
         log.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges")
         return response
 
-    def _expand_edge(self, qedge, kp_to_use, dict_kg, continue_if_no_results, query_graph, use_synonyms, synonym_handling, log):
+    def _expand_edge(self, qedge: QEdge, kp_to_use: str, dict_kg: DictKnowledgeGraph, continue_if_no_results: bool,
+                     query_graph: QueryGraph, use_synonyms: bool, synonym_handling: str,
+                     log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         log.info(f"Expanding edge {qedge.id} using {kp_to_use}")
         answer_kg = DictKnowledgeGraph()
@@ -192,7 +197,8 @@ class ARAXExpander:
 
             return answer_kg, edge_to_nodes_map
 
-    def _expand_node(self, qnode_id, kp_to_use, continue_if_no_results, query_graph, use_synonyms, synonym_handling, log):
+    def _expand_node(self, qnode_id: str, kp_to_use: str, continue_if_no_results: bool, query_graph: QueryGraph,
+                     use_synonyms: bool, synonym_handling: str, log: Response) -> DictKnowledgeGraph:
         # This function expands a single node using the specified knowledge provider
         log.debug(f"Expanding node {qnode_id} using {kp_to_use}")
         query_node = eu.get_query_node(query_graph, qnode_id)
@@ -236,7 +242,8 @@ class ARAXExpander:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are ARAX/KG1 or ARAX/KG2")
             return answer_kg
 
-    def _get_query_graph_for_edge(self, qedge, query_graph, dict_kg, use_synonyms, kp_to_use, log):
+    def _get_query_graph_for_edge(self, qedge: QEdge, query_graph: QueryGraph, dict_kg: DictKnowledgeGraph,
+                                  use_synonyms: bool, kp_to_use: str, log: Response) -> QueryGraph:
         # This function creates a query graph for the specified qedge, updating its qnodes' curies as needed
         edge_query_graph = QueryGraph(nodes=[], edges=[])
         qnodes = [eu.get_query_node(query_graph, qedge.source_id),
@@ -264,7 +271,8 @@ class ARAXExpander:
         return edge_query_graph
 
     @staticmethod
-    def _deduplicate_nodes(dict_kg, edge_to_nodes_map, log):
+    def _deduplicate_nodes(dict_kg: DictKnowledgeGraph, edge_to_nodes_map: Dict[str, Dict[str, str]],
+                           log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         log.debug(f"Deduplicating nodes")
         deduplicated_kg = DictKnowledgeGraph(nodes={qnode_id: dict() for qnode_id in dict_kg.nodes_by_qg_id},
                                              edges={qedge_id: dict() for qedge_id in dict_kg.edges_by_qg_id})
@@ -305,7 +313,7 @@ class ARAXExpander:
         return deduplicated_kg, updated_edge_to_nodes_map
 
     @staticmethod
-    def _extract_query_subgraph(qedge_ids_to_expand, query_graph, log):
+    def _extract_query_subgraph(qedge_ids_to_expand: List[str], query_graph: QueryGraph, log: Response) -> QueryGraph:
         # This function extracts a sub-query graph containing the provided qedge IDs from a larger query graph
         sub_query_graph = QueryGraph(nodes=[], edges=[])
 
@@ -341,7 +349,7 @@ class ARAXExpander:
         return sub_query_graph
 
     @staticmethod
-    def _merge_answer_into_message_kg(answer_dict_kg, dict_kg, log):
+    def _merge_answer_into_message_kg(answer_dict_kg: DictKnowledgeGraph, dict_kg: DictKnowledgeGraph, log: Response):
         # This function merges an answer KG (from the current edge/node expansion) into the overarching KG
         log.debug("Merging answer into Message.KnowledgeGraph")
         for qnode_id, nodes in answer_dict_kg.nodes_by_qg_id.items():
@@ -352,7 +360,8 @@ class ARAXExpander:
                 dict_kg.add_edge(edge, qedge_id)
 
     @staticmethod
-    def _prune_dead_end_paths(dict_kg, full_query_graph, node_usages_by_edges_map, log):
+    def _prune_dead_end_paths(dict_kg: DictKnowledgeGraph, full_query_graph: QueryGraph,
+                              node_usages_by_edges_map: Dict[str, Dict[str, Dict[str, str]]], log: Response):
         # This function removes any 'dead-end' paths from the KG. (Because edges are expanded one-by-one, not all edges
         # found in the last expansion will connect to edges in the next one)
         log.debug(f"Pruning any paths that are now dead ends")
@@ -416,7 +425,7 @@ class ARAXExpander:
                         if edge_key in dict_kg.edges_by_qg_id[qedge_id]:
                             dict_kg.edges_by_qg_id[qedge_id].pop(edge_key)
 
-    def _get_order_to_expand_edges_in(self, query_graph):
+    def _get_order_to_expand_edges_in(self, query_graph: QueryGraph) -> List[QEdge]:
         # This function determines what order to expand the edges in a query graph in; it attempts to start with
         # qedges that have a qnode with a specific curie, and move out from there.
         edges_remaining = [edge for edge in query_graph.edges]
@@ -431,20 +440,21 @@ class ARAXExpander:
             else:
                 # Add connected edges in a rightward (target) direction if possible
                 right_end_edge = ordered_edges[-1]
-                edge_connected_to_right_end = self._find_connected_edge(edges_remaining, right_end_edge)
+                edge_connected_to_right_end = self._find_connected_qedge(edges_remaining, right_end_edge)
                 if edge_connected_to_right_end:
                     ordered_edges.append(edge_connected_to_right_end)
                     edges_remaining.pop(edges_remaining.index(edge_connected_to_right_end))
                 else:
                     left_end_edge = ordered_edges[0]
-                    edge_connected_to_left_end = self._find_connected_edge(edges_remaining, left_end_edge)
+                    edge_connected_to_left_end = self._find_connected_qedge(edges_remaining, left_end_edge)
                     if edge_connected_to_left_end:
                         ordered_edges.insert(0, edge_connected_to_left_end)
                         edges_remaining.pop(edges_remaining.index(edge_connected_to_left_end))
         return ordered_edges
 
     @staticmethod
-    def _remove_self_edges(kg, edge_to_nodes_map, qedge_id, qnodes, log):
+    def _remove_self_edges(kg: DictKnowledgeGraph, edge_to_nodes_map: Dict[str, Dict[str, str]], qedge_id: QEdge,
+                           qnodes: List[QNode], log: Response) -> DictKnowledgeGraph:
         log.debug(f"Removing any self-edges from the answer KG")
         # Remove any self-edges
         edges_to_remove = []
@@ -466,7 +476,7 @@ class ARAXExpander:
         return kg
 
     @staticmethod
-    def _add_curie_synonyms_to_query_nodes(qnodes, log, kp='KG2'):
+    def _add_curie_synonyms_to_query_nodes(qnodes: List[QNode], log: Response, kp='KG2'):
         log.debug("Looking for query nodes to use curie synonyms for")
         for qnode in qnodes:
             if qnode.curie:
@@ -485,7 +495,7 @@ class ARAXExpander:
                     qnode.curie = final_curie_list
 
     @staticmethod
-    def _get_orphan_query_node_ids(query_graph):
+    def _get_orphan_query_node_ids(query_graph: QueryGraph):
         node_ids_used_by_edges = set()
         node_ids = set()
         for edge in query_graph.edges:
@@ -496,7 +506,7 @@ class ARAXExpander:
         return list(node_ids.difference(node_ids_used_by_edges))
 
     @staticmethod
-    def _get_edge_with_curie_node(query_graph):
+    def _get_edge_with_curie_node(query_graph: QueryGraph):
         for edge in query_graph.edges:
             source_qnode = eu.get_query_node(query_graph, edge.source_id)
             target_qnode = eu.get_query_node(query_graph, edge.target_id)
@@ -505,7 +515,7 @@ class ARAXExpander:
         return None
 
     @staticmethod
-    def _find_connected_edge(edge_list, edge):
+    def _find_connected_qedge(edge_list: List[QEdge], edge: QEdge) -> QEdge:
         edge_node_ids = {edge.source_id, edge.target_id}
         for potential_connected_edge in edge_list:
             potential_connected_edge_node_ids = {potential_connected_edge.source_id, potential_connected_edge.target_id}
