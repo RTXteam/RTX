@@ -80,9 +80,8 @@ class ARAXFilterKG:
                 if any([type(x) == float for x in allowable_parameters[key]]):  # if it's a float, just accept it as it is
                     return
                 else:  # otherwise, it's really not an allowable parameter
-                    self.response.error(
-                        f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}",
-                        error_code="UnknownValue")
+                    self.response.warning(
+                        f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}")
 
     #### Top level decision maker for applying filters
     def apply(self, input_message, input_parameters):
