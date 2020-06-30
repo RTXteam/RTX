@@ -10,6 +10,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/py
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
 
+from Expand.expand_utilities import DictKnowledgeGraph
 import Expand.expand_utilities as eu
 
 
@@ -22,7 +23,7 @@ class BTEQuerier:
         enforce_directionality = self.response.data['parameters'].get('enforce_directionality')
         continue_if_no_results = self.response.data['parameters'].get('continue_if_no_results')
         log = self.response
-        answer_kg = {'nodes': dict(), 'edges': dict()}
+        answer_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
         valid_bte_inputs_dict = self._get_valid_bte_inputs_dict()
 
@@ -120,7 +121,7 @@ class BTEQuerier:
                 else:
                     swagger_node.id = bte_node_id
 
-                eu.add_node_to_kg(answer_kg, swagger_node, qnode_id)
+                answer_kg.add_node(swagger_node, qnode_id)
 
             for edge in reasoner_std_response['knowledge_graph']['edges']:
                 swagger_edge = Edge()
@@ -135,7 +136,7 @@ class BTEQuerier:
                 if bte_qg_id != "e1":
                     log.error("Could not map BTE qg_id to ARAX qedge_id", error_code="UnknownQGID")
                     return answer_kg
-                eu.add_edge_to_kg(answer_kg, swagger_edge, qedge_id)
+                answer_kg.add_edge(swagger_edge, qedge_id)
 
         return answer_kg
 
@@ -219,25 +220,25 @@ class BTEQuerier:
         """
         # Remove 'output' nodes in the KG that aren't actually the ones we were looking for
         desired_output_curies = set(eu.convert_string_or_list_to_list(output_qnode.curie))
-        all_output_node_ids = set(list(kg['nodes'][output_qnode.id].keys()))
+        all_output_node_ids = set(list(kg.nodes_by_qg_id[output_qnode.id].keys()))
         output_node_ids_to_remove = all_output_node_ids.difference(desired_output_curies)
         for node_id in output_node_ids_to_remove:
-            kg['nodes'][output_qnode.id].pop(node_id)
+            kg.nodes_by_qg_id[output_qnode.id].pop(node_id)
 
         # And remove any edges that used them
         edge_ids_to_remove = set()
-        for edge_id, edge in kg['edges'][qedge.id].items():
+        for edge_id, edge in kg.edges_by_qg_id[qedge.id].items():
             if edge.target_id in output_node_ids_to_remove:  # Edge target_id always contains output node ID for BTE
                 edge_ids_to_remove.add(edge_id)
         for edge_id in edge_ids_to_remove:
-            kg['edges'][qedge.id].pop(edge_id)
+            kg.edges_by_qg_id[qedge.id].pop(edge_id)
 
         return kg
 
     @staticmethod
     def _create_edge_to_nodes_map(kg, input_qnode_id, output_qnode_id):
         edge_to_nodes_map = dict()
-        for qedge_id, edges in kg['edges'].items():
+        for qedge_id, edges in kg.edges_by_qg_id.items():
             for edge_key, edge in edges.items():
                 # BTE single-edge queries are always directed (meaning, edge.source_id == input qnode ID)
                 edge_to_nodes_map[edge.id] = {input_qnode_id: edge.source_id, output_qnode_id: edge.target_id}

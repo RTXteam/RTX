@@ -6,6 +6,7 @@ import ast
 
 from neo4j import GraphDatabase
 import Expand.expand_utilities as eu
+from Expand.expand_utilities import DictKnowledgeGraph
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
 from RTXConfiguration import RTXConfiguration
@@ -33,7 +34,7 @@ class KGQuerier:
         enforce_directionality = self.response.data['parameters']['enforce_directionality']
         continue_if_no_results = self.response.data['parameters']['continue_if_no_results']
         kp = self.kp
-        final_kg = {'nodes': dict(), 'edges': dict()}
+        final_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
 
         # Verify this is a valid one-hop query graph
@@ -64,7 +65,7 @@ class KGQuerier:
         continue_if_no_results = self.response.data['parameters']['continue_if_no_results']
         kp = self.kp
         log = self.response
-        final_kg = {'nodes': dict(), 'edges': dict()}
+        final_kg = DictKnowledgeGraph()
 
         # Build and run a cypher query to get this node/nodes
         where_clause = f"{qnode.id}.id='{qnode.curie}'" if type(qnode.curie) is str else f"{qnode.id}.id in {qnode.curie}"
@@ -81,7 +82,7 @@ class KGQuerier:
         for result in results:
             neo4j_node = result.get(qnode.id)
             swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, kp)
-            eu.add_node_to_kg(final_kg, swagger_node, qnode.id)
+            final_kg.add_node(swagger_node, qnode.id)
 
         return final_kg
 
@@ -148,7 +149,7 @@ class KGQuerier:
 
     def _load_answers_into_kg(self, neo4j_results, kp, query_graph, log):
         log.debug(f"Processing query results for edge {query_graph.edges[0].id}")
-        final_kg = {'nodes': dict(), 'edges': dict()}
+        final_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
         node_uuid_to_curie_dict = self._build_node_uuid_to_curie_dict(neo4j_results[0]) if kp == "KG1" else dict()
 
@@ -160,7 +161,7 @@ class KGQuerier:
                 column_qnode_id = column_name.replace("nodes_", "", 1)
                 for neo4j_node in results_table.get(column_name):
                     swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, kp)
-                    eu.add_node_to_kg(final_kg, swagger_node, column_qnode_id)
+                    final_kg.add_node(swagger_node, column_qnode_id)
             # Load answer edges into our knowledge graph
             elif column_name.startswith('edges'):  # Example column name: 'edges_e01'
                 column_qedge_id = column_name.replace("edges_", "", 1)
@@ -177,7 +178,7 @@ class KGQuerier:
                         edge_to_nodes_map[swagger_edge.id][qnode.id] = neo4j_edge.get(qnode.id)
 
                     # Finally add the current edge to our answer knowledge graph
-                    eu.add_edge_to_kg(final_kg, swagger_edge, column_qedge_id)
+                    final_kg.add_edge(swagger_edge, column_qedge_id)
 
         return final_kg, edge_to_nodes_map
 

@@ -14,6 +14,7 @@ import pytest
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery/")
 from ARAX_query import ARAXQuery
 from response import Response
+from Expand.expand_utilities import DictKnowledgeGraph
 import Expand.expand_utilities as eu
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.edge import Edge
@@ -33,8 +34,8 @@ def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_inc
 
     # Convert output knowledge graph to a dictionary format for faster processing (organized by QG IDs)
     dict_kg = eu.convert_standard_kg_to_dict_kg(message.knowledge_graph)
-    nodes_by_qg_id = dict_kg['nodes']
-    edges_by_qg_id = dict_kg['edges']
+    nodes_by_qg_id = dict_kg.nodes_by_qg_id
+    edges_by_qg_id = dict_kg.edges_by_qg_id
 
     # Optionally print more detail
     if debug:

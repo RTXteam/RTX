@@ -15,6 +15,22 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningt
 from KGNodeIndex import KGNodeIndex
 
 
+class DictKnowledgeGraph:
+    def __init__(self, nodes: Dict[str, Dict[str, Node]] = None, edges: Dict[str, Dict[str, Edge]] = None):
+        self.nodes_by_qg_id = nodes if nodes else dict()
+        self.edges_by_qg_id = edges if edges else dict()
+
+    def add_node(self, node: Node, qnode_id: str):
+        if qnode_id not in self.nodes_by_qg_id:
+            self.nodes_by_qg_id[qnode_id] = dict()
+        self.nodes_by_qg_id[qnode_id][node.id] = node
+
+    def add_edge(self, edge: Edge, qedge_id: str):
+        if qedge_id not in self.edges_by_qg_id:
+            self.edges_by_qg_id[qedge_id] = dict()
+        self.edges_by_qg_id[qedge_id][edge.id] = edge
+
+
 def get_curie_prefix(curie: str) -> str:
     if ':' in curie:
         return curie.split(':')[0]
@@ -27,18 +43,6 @@ def get_curie_local_id(curie: str) -> str:
         return curie.split(':')[-1]  # Note: Taking last item gets around "PR:PR:000001" situation
     else:
         return curie
-
-
-def add_node_to_kg(dict_kg, node: Node, qnode_id: str):
-    if qnode_id not in dict_kg['nodes']:
-        dict_kg['nodes'][qnode_id] = dict()
-    dict_kg['nodes'][qnode_id][node.id] = node
-
-
-def add_edge_to_kg(dict_kg, edge: Edge, qedge_id: str):
-    if qedge_id not in dict_kg['edges']:
-        dict_kg['edges'][qedge_id] = dict()
-    dict_kg['edges'][qedge_id][edge.id] = edge
 
 
 def copy_qedge(old_qedge: QEdge) -> QEdge:
@@ -92,16 +96,16 @@ def convert_string_or_list_to_list(string_or_list: Union[str, List[str]]) -> Lis
         return []
 
 
-def get_counts_by_qg_id(dict_kg) -> Dict[str, int]:
+def get_counts_by_qg_id(dict_kg: DictKnowledgeGraph) -> Dict[str, int]:
     counts_by_qg_id = dict()
-    for qnode_id, nodes_dict in dict_kg['nodes'].items():
+    for qnode_id, nodes_dict in dict_kg.nodes_by_qg_id.items():
         counts_by_qg_id[qnode_id] = len(nodes_dict)
-    for qedge_id, edges_dict in dict_kg['edges'].items():
+    for qedge_id, edges_dict in dict_kg.edges_by_qg_id.items():
         counts_by_qg_id[qedge_id] = len(edges_dict)
     return counts_by_qg_id
 
 
-def get_printable_counts_by_qg_id(dict_kg) -> str:
+def get_printable_counts_by_qg_id(dict_kg: DictKnowledgeGraph) -> str:
     counts_by_qg_id = get_counts_by_qg_id(dict_kg)
     return ", ".join([f"{qg_id}: {counts_by_qg_id[qg_id]}" for qg_id in sorted(counts_by_qg_id)])
 
@@ -133,33 +137,33 @@ def get_preferred_curie(curie: str) -> str:
     return best_curie
 
 
-def convert_standard_kg_to_dict_kg(knowledge_graph: KnowledgeGraph):
-    dict_kg = {'nodes': dict(), 'edges': dict()}
+def convert_standard_kg_to_dict_kg(knowledge_graph: KnowledgeGraph) -> DictKnowledgeGraph:
+    dict_kg = DictKnowledgeGraph()
     if knowledge_graph.nodes:
         for node in knowledge_graph.nodes:
             for qnode_id in node.qnode_ids:
-                if qnode_id not in dict_kg['nodes']:
-                    dict_kg['nodes'][qnode_id] = dict()
-                dict_kg['nodes'][qnode_id][node.id] = node
+                if qnode_id not in dict_kg.nodes_by_qg_id:
+                    dict_kg.nodes_by_qg_id[qnode_id] = dict()
+                dict_kg.nodes_by_qg_id[qnode_id][node.id] = node
     if knowledge_graph.edges:
         for edge in knowledge_graph.edges:
             for qedge_id in edge.qedge_ids:
-                if qedge_id not in dict_kg['edges']:
-                    dict_kg['edges'][qedge_id] = dict()
-                dict_kg['edges'][qedge_id][edge.id] = edge
+                if qedge_id not in dict_kg.edges_by_qg_id:
+                    dict_kg.edges_by_qg_id[qedge_id] = dict()
+                dict_kg.edges_by_qg_id[qedge_id][edge.id] = edge
     return dict_kg
 
 
-def convert_dict_kg_to_standard_kg(dict_kg) -> KnowledgeGraph:
+def convert_dict_kg_to_standard_kg(dict_kg: DictKnowledgeGraph) -> KnowledgeGraph:
     almost_standard_kg = KnowledgeGraph(nodes=dict(), edges=dict())
-    for qnode_id, nodes_for_this_qnode_id in dict_kg.get('nodes').items():
+    for qnode_id, nodes_for_this_qnode_id in dict_kg.nodes_by_qg_id.items():
         for node_key, node in nodes_for_this_qnode_id.items():
             if node_key in almost_standard_kg.nodes:
                 almost_standard_kg.nodes[node_key].qnode_ids.append(qnode_id)
             else:
                 node.qnode_ids = [qnode_id]
                 almost_standard_kg.nodes[node_key] = node
-    for qedge_id, edges_for_this_qedge_id in dict_kg.get('edges').items():
+    for qedge_id, edges_for_this_qedge_id in dict_kg.edges_by_qg_id.items():
         for edge_key, edge in edges_for_this_qedge_id.items():
             if edge_key in almost_standard_kg.edges:
                 almost_standard_kg.edges[edge_key].qedge_ids.append(qedge_id)
@@ -210,29 +214,29 @@ def get_curie_synonyms(curie: Union[str, List[str]], kp='KG2') -> List[str]:
     return list(equivalent_curies_using_arax_kg)
 
 
-def qg_is_fulfilled(query_graph: QueryGraph, dict_kg) -> bool:
+def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: DictKnowledgeGraph) -> bool:
     qnode_ids = [qnode.id for qnode in query_graph.nodes]
     qedge_ids = [qedge.id for qedge in query_graph.edges]
 
     for qnode_id in qnode_ids:
-        if qnode_id not in dict_kg['nodes'] or not dict_kg['nodes'][qnode_id]:
+        if qnode_id not in dict_kg.nodes_by_qg_id or not dict_kg.nodes_by_qg_id[qnode_id]:
             return False
     for qedge_id in qedge_ids:
-        if qedge_id not in dict_kg['edges'] or not dict_kg['edges'][qedge_id]:
+        if qedge_id not in dict_kg.edges_by_qg_id or not dict_kg.edges_by_qg_id[qedge_id]:
             return False
     return True
 
 
-def switch_kg_to_arax_curie_format(dict_kg):
-    converted_kg = {'nodes': {qnode_id: dict() for qnode_id in dict_kg['nodes']},
-                    'edges': {qedge_id: dict() for qedge_id in dict_kg['edges']}}
-    for qnode_id, nodes in dict_kg['nodes'].items():
+def switch_kg_to_arax_curie_format(dict_kg: DictKnowledgeGraph) -> DictKnowledgeGraph:
+    converted_kg = DictKnowledgeGraph(nodes={qnode_id: dict() for qnode_id in dict_kg.nodes_by_qg_id},
+                                      edges={qedge_id: dict() for qedge_id in dict_kg.edges_by_qg_id})
+    for qnode_id, nodes in dict_kg.nodes_by_qg_id.items():
         for node_id, node in nodes.items():
             node.id = convert_curie_to_arax_format(node.id)
-            add_node_to_kg(converted_kg, node, qnode_id)
-    for qedge_id, edges in dict_kg['edges'].items():
+            converted_kg.add_node(node, qnode_id)
+    for qedge_id, edges in dict_kg.edges_by_qg_id.items():
         for edge_id, edge in edges.items():
             edge.source_id = convert_curie_to_arax_format(edge.source_id)
             edge.target_id = convert_curie_to_arax_format(edge.target_id)
-            add_edge_to_kg(converted_kg, edge, qedge_id)
+            converted_kg.add_edge(edge, qedge_id)
     return converted_kg

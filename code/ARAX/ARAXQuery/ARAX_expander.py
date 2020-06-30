@@ -3,6 +3,7 @@ import sys
 import os
 
 from response import Response
+from Expand.expand_utilities import DictKnowledgeGraph
 import Expand.expand_utilities as eu
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -29,9 +30,10 @@ class ARAXExpander:
         # this is quite different than the `describe_me` in ARAX_overlay and ARAX_filter_kg due to expander being less
         # of a dispatcher (like overlay and filter_kg) and more of a single self contained class
         brief_description = """
-`expand` effectively takes a query graph (QG) and reaches out to various knowledge providers (KP's) to find all bioentity subgraphs
-that satisfy that QG and augments the knowledge graph (KG) with them. As currently implemented, `expand` can utilize the ARA Expander
-team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, with functionality built in to reach out to other KP's as they are rolled out.
+        `expand` effectively takes a query graph (QG) and reaches out to various knowledge providers (KP's) to find 
+        all bioentity subgraphs that satisfy that QG and augments the knowledge graph (KG) with them. As currently 
+        implemented, `expand` can utilize the ARA Expander team KG1 and KG2 Neo4j instances as well as BioThings 
+        Explorer to fulfill QG's, with functionality built in to reach out to other KP's as they are rolled out.
         """
         description_list = []
         params_dict = dict()
@@ -65,7 +67,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         parameters['use_synonyms'] = True
         parameters['synonym_handling'] = 'map_back'
         parameters['continue_if_no_results'] = False
-        for key,value in input_parameters.items():
+        for key, value in input_parameters.items():
             if key and key not in parameters:
                 response.error(f"Supplied parameter {key} is not permitted", error_code="UnknownParameter")
             else:
@@ -148,7 +150,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
     def _expand_edge(self, qedge, kp_to_use, dict_kg, continue_if_no_results, query_graph, use_synonyms, synonym_handling, log):
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         log.info(f"Expanding edge {qedge.id} using {kp_to_use}")
-        answer_kg = {'nodes': dict(), 'edges': dict()}
+        answer_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
 
         # Create a query graph for this edge (that uses synonyms as well as curies found in prior steps)
@@ -194,7 +196,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         # This function expands a single node using the specified knowledge provider
         log.debug(f"Expanding node {qnode_id} using {kp_to_use}")
         query_node = eu.get_query_node(query_graph, qnode_id)
-        answer_kg = {'nodes': dict(), 'edges': dict()}
+        answer_kg = DictKnowledgeGraph()
         if log.status != 'OK':
             return answer_kg
         if not query_node.curie:
@@ -220,7 +222,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
             # Make sure all qnodes have been fulfilled (unless we're continuing if no results)
             if log.status == 'OK' and not continue_if_no_results:
-                if copy_of_qnode.id not in answer_kg['nodes'] or not answer_kg['nodes'][copy_of_qnode.id]:
+                if copy_of_qnode.id not in answer_kg.nodes_by_qg_id or not answer_kg.nodes_by_qg_id[copy_of_qnode.id]:
                     log.error(f"Returned answer KG does not contain any results for QNode {copy_of_qnode.id}",
                               error_code="UnfulfilledQGID")
                     return answer_kg
@@ -244,14 +246,14 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         edge_query_graph.edges.append(eu.copy_qedge(qedge))
 
         # Update this qedge's qnodes as appropriate and add (copies of) them to the edge query graph
-        qedge_has_already_been_expanded = qedge.id in dict_kg['edges']
+        qedge_has_already_been_expanded = qedge.id in dict_kg.edges_by_qg_id
         for qnode in qnodes:
             qnode_copy = eu.copy_qnode(qnode)
 
             # Feed in curies from a prior Expand() step as the curie for this qnode as necessary
-            qnode_already_fulfilled = qnode_copy.id in dict_kg['nodes']
+            qnode_already_fulfilled = qnode_copy.id in dict_kg.nodes_by_qg_id
             if qnode_already_fulfilled and not qnode_copy.curie and not qedge_has_already_been_expanded:
-                qnode_copy.curie = list(dict_kg['nodes'][qnode_copy.id].keys())
+                qnode_copy.curie = list(dict_kg.nodes_by_qg_id[qnode_copy.id].keys())
 
             edge_query_graph.nodes.append(qnode_copy)
 
@@ -264,36 +266,36 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
     @staticmethod
     def _deduplicate_nodes(dict_kg, edge_to_nodes_map, log):
         log.debug(f"Deduplicating nodes")
-        deduplicated_kg = {'nodes': {node_id: dict() for node_id in dict_kg['nodes']},
-                           'edges': {edge_id: dict() for edge_id in dict_kg['edges']}}
+        deduplicated_kg = DictKnowledgeGraph(nodes={qnode_id: dict() for qnode_id in dict_kg.nodes_by_qg_id},
+                                             edges={qedge_id: dict() for qedge_id in dict_kg.edges_by_qg_id})
         updated_edge_to_nodes_map = {edge_id: dict() for edge_id in edge_to_nodes_map}
         curie_map = dict()
 
         # First deduplicate the nodes
-        for qnode_id, nodes in dict_kg['nodes'].items():
+        for qnode_id, nodes in dict_kg.nodes_by_qg_id.items():
             for node_id, node in nodes.items():
                 preferred_curie = curie_map.get(node_id) if node_id in curie_map else eu.get_preferred_curie(node_id)
                 # Record the remappings we're doing for easier access later
                 for synonym in eu.get_curie_synonyms(node_id):
                     curie_map[synonym] = preferred_curie
-                if preferred_curie in deduplicated_kg['nodes'][qnode_id]:
+                if preferred_curie in deduplicated_kg.nodes_by_qg_id[qnode_id]:
                     # TODO: Better handle 'merging'/remapping of duplicate nodes
-                    kept_node = deduplicated_kg['nodes'][qnode_id][preferred_curie]
+                    kept_node = deduplicated_kg.nodes_by_qg_id[qnode_id][preferred_curie]
                     kept_node.type = list(set(kept_node.type + node.type))
                     kept_node.name = kept_node.name if len(kept_node.name) < len(node.name) else node.name
                 else:
                     node.id = preferred_curie
-                    eu.add_node_to_kg(deduplicated_kg, node, qnode_id)
+                    deduplicated_kg.add_node(node, qnode_id)
 
         # Then update the edges to reflect changes made to the nodes
-        for qedge_id, edges in dict_kg['edges'].items():
+        for qedge_id, edges in dict_kg.edges_by_qg_id.items():
             for edge_id, edge in edges.items():
                 edge.source_id = curie_map.get(edge.source_id)
                 edge.target_id = curie_map.get(edge.target_id)
                 if not edge.source_id or not edge.target_id:
                     log.error(f"Could not determine proper curies to use for edge {edge_id}'s nodes")
                     return deduplicated_kg, updated_edge_to_nodes_map
-                eu.add_edge_to_kg(deduplicated_kg, edge, qedge_id)
+                deduplicated_kg.add_edge(edge, qedge_id)
 
                 # Update the edge-to-node map for this edge (used down the line for pruning)
                 for qnode_id, corresponding_node_id in edge_to_nodes_map[edge_id].items():
@@ -342,12 +344,12 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
     def _merge_answer_into_message_kg(answer_dict_kg, dict_kg, log):
         # This function merges an answer KG (from the current edge/node expansion) into the overarching KG
         log.debug("Merging answer into Message.KnowledgeGraph")
-        for qnode_id, nodes in answer_dict_kg['nodes'].items():
+        for qnode_id, nodes in answer_dict_kg.nodes_by_qg_id.items():
             for node_key, node in nodes.items():
-                eu.add_node_to_kg(dict_kg, node, qnode_id)
-        for qedge_id, edges_dict in answer_dict_kg['edges'].items():
+                dict_kg.add_node(node, qnode_id)
+        for qedge_id, edges_dict in answer_dict_kg.edges_by_qg_id.items():
             for edge_key, edge in edges_dict.items():
-                eu.add_edge_to_kg(dict_kg, edge, qedge_id)
+                dict_kg.add_edge(edge, qedge_id)
 
     @staticmethod
     def _prune_dead_end_paths(dict_kg, full_query_graph, node_usages_by_edges_map, log):
@@ -395,24 +397,24 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                 for node_id, node_mappings_dict in node_connections_map[qnode_id].items():
                     # Check if any mappings are even entered for all qnode_ids this node should be connected to
                     if set(node_mappings_dict.keys()) != qnode_ids_should_be_connected_to:
-                        if node_id in dict_kg['nodes'][qnode_id]:
-                            dict_kg['nodes'][qnode_id].pop(node_id)
+                        if node_id in dict_kg.nodes_by_qg_id[qnode_id]:
+                            dict_kg.nodes_by_qg_id[qnode_id].pop(node_id)
                             found_dead_end = True
                     else:
                         # Verify that at least one of the entered connections still exists (for each connected qnode_id)
                         for connected_qnode_id, connected_node_ids in node_mappings_dict.items():
-                            if not connected_node_ids.intersection(set(dict_kg['nodes'][connected_qnode_id].keys())):
-                                if node_id in dict_kg['nodes'][qnode_id]:
-                                    dict_kg['nodes'][qnode_id].pop(node_id)
+                            if not connected_node_ids.intersection(set(dict_kg.nodes_by_qg_id[connected_qnode_id].keys())):
+                                if node_id in dict_kg.nodes_by_qg_id[qnode_id]:
+                                    dict_kg.nodes_by_qg_id[qnode_id].pop(node_id)
                                     found_dead_end = True
 
         # Then remove all orphaned edges
         for qedge_id, edges_dict in node_usages_by_edges_map.items():
             for edge_key, node_mappings in edges_dict.items():
                 for qnode_id, used_node_id in node_mappings.items():
-                    if used_node_id not in dict_kg['nodes'][qnode_id]:
-                        if edge_key in dict_kg['edges'][qedge_id]:
-                            dict_kg['edges'][qedge_id].pop(edge_key)
+                    if used_node_id not in dict_kg.nodes_by_qg_id[qnode_id]:
+                        if edge_key in dict_kg.edges_by_qg_id[qedge_id]:
+                            dict_kg.edges_by_qg_id[qedge_id].pop(edge_key)
 
     def _get_order_to_expand_edges_in(self, query_graph):
         # This function determines what order to expand the edges in a query graph in; it attempts to start with
@@ -446,20 +448,20 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         log.debug(f"Removing any self-edges from the answer KG")
         # Remove any self-edges
         edges_to_remove = []
-        for edge_key, edge in kg['edges'][qedge_id].items():
+        for edge_key, edge in kg.edges_by_qg_id[qedge_id].items():
             if edge.source_id == edge.target_id:
                 edges_to_remove.append(edge_key)
         for edge_id in edges_to_remove:
-            kg['edges'][qedge_id].pop(edge_id)
+            kg.edges_by_qg_id[qedge_id].pop(edge_id)
 
         # Remove any nodes that may have been orphaned as a result of removing self-edges
         for qnode in qnodes:
             node_ids_used_by_edges_for_this_qnode_id = set()
-            for edge in kg['edges'][qedge_id].values():
+            for edge in kg.edges_by_qg_id[qedge_id].values():
                 node_ids_used_by_edges_for_this_qnode_id.add(edge_to_nodes_map[edge.id][qnode.id])
-            orphan_node_ids_for_this_qnode_id = set(kg['nodes'][qnode.id].keys()).difference(node_ids_used_by_edges_for_this_qnode_id)
+            orphan_node_ids_for_this_qnode_id = set(kg.nodes_by_qg_id[qnode.id].keys()).difference(node_ids_used_by_edges_for_this_qnode_id)
             for node_id in orphan_node_ids_for_this_qnode_id:
-                kg['nodes'][qnode.id].pop(node_id)
+                kg.nodes_by_qg_id[qnode.id].pop(node_id)
 
         return kg
 
@@ -513,7 +515,6 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
 
 def main():
-
     # Note that most of this is just manually doing what ARAXQuery() would normally do for you
     response = Response()
     from actions_parser import ActionsParser
@@ -544,11 +545,11 @@ def main():
             message = result.data['message']
             response.data = result.data
         elif action['command'] == 'add_qnode':
-            result = messenger.add_qnode(message,action['parameters'])
+            result = messenger.add_qnode(message, action['parameters'])
         elif action['command'] == 'add_qedge':
-            result = messenger.add_qedge(message,action['parameters'])
+            result = messenger.add_qedge(message, action['parameters'])
         elif action['command'] == 'expand':
-            result = expander.apply(message,action['parameters'])
+            result = expander.apply(message, action['parameters'])
         elif action['command'] == 'return':
             break
         else:
