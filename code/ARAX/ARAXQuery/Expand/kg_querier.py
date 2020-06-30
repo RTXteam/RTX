@@ -126,7 +126,6 @@ class KGQuerier:
 
             cypher_query = f"{match_clause} {where_clause} {with_clause} {return_clause}"
             return cypher_query
-
         except Exception:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -288,7 +287,8 @@ class KGQuerier:
 
         return new_attributes
 
-    def _run_cypher_query(self, cypher_query, kp, log):
+    @staticmethod
+    def _run_cypher_query(cypher_query, kp, log):
         rtxc = RTXConfiguration()
         if kp == "KG2":  # Flip into KG2 mode if that's our KP (rtx config is set to KG1 info by default)
             rtxc.live = "KG2"

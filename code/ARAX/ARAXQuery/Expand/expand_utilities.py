@@ -194,17 +194,18 @@ def convert_curie_to_bte_format(curie: str) -> str:
     return prefix + ':' + local_id
 
 
-def get_curie_synonyms(curie: str, arax_kg='KG2') -> List[str]:
+def get_curie_synonyms(curie: Union[str, List[str]], kp='KG2') -> List[str]:
     curies = convert_string_or_list_to_list(curie)
+    kg_to_use = 'KG1' if 'KG1' in kp else 'KG2'
 
     # Find whatever we can using KG2/KG1
     kgni = KGNodeIndex()
     equivalent_curies_using_arax_kg = set()
     for curie in curies:
-        equivalent_curies = kgni.get_equivalent_curies(curie=convert_curie_to_arax_format(curie), kg_name=arax_kg)
+        equivalent_curies = kgni.get_equivalent_curies(curie=convert_curie_to_arax_format(curie), kg_name=kg_to_use)
         equivalent_curies_using_arax_kg = equivalent_curies_using_arax_kg.union(set(equivalent_curies))
 
-    # TODO: Use SRI team's node normalizer to find more synonyms
+    # TODO: Use new KGNodeIndex synonym method(s) once ready
 
     return list(equivalent_curies_using_arax_kg)
 

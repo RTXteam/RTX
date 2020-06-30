@@ -285,7 +285,7 @@ class BTEQuerier:
                                         'disease': ['DOID', 'MONDO', 'OMIM', 'MESH'],
                                         'phenotypic_feature': ['HP', 'OMIM'],
                                         'anatomical_entity': ['UBERON', 'FMA', 'CL'],
-                                        'pathway': ['REACT', 'REACTOME'],
+                                        'pathway': ['REACTOME'],
                                         'biological_process': ['GO'],
                                         'cellular_component': ['GO']}
         prefixes_in_order_of_preference = preferred_node_prefixes_dict.get(eu.convert_string_to_snake_case(node_type), [])

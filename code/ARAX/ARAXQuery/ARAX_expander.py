@@ -204,7 +204,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
         if use_synonyms:
             self._add_curie_synonyms_to_query_nodes(qnodes=[copy_of_qnode],
-                                                    arax_kg='KG1' if kp_to_use == 'ARAX/KG1' else 'KG2',
+                                                    kp=kp_to_use,
                                                     log=log)
         log.debug(f"Modified query node is: {copy_of_qnode.to_dict()}")
 
@@ -234,42 +234,6 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are ARAX/KG1 or ARAX/KG2")
             return answer_kg
 
-    @staticmethod
-    def _extract_query_subgraph(qedge_ids_to_expand, query_graph, log):
-        # This function extracts a sub-query graph containing the provided qedge IDs from a larger query graph
-        sub_query_graph = QueryGraph(nodes=[], edges=[])
-
-        for qedge_id in qedge_ids_to_expand:
-            # Make sure this query edge actually exists in the query graph
-            if not any(qedge.id == qedge_id for qedge in query_graph.edges):
-                log.error(f"An edge with ID '{qedge_id}' does not exist in Message.QueryGraph",
-                          error_code="UnknownValue")
-                return None
-            qedge = next(qedge for qedge in query_graph.edges if qedge.id == qedge_id)
-
-            # Make sure this qedge's qnodes actually exist in the query graph
-            if not eu.get_query_node(query_graph, qedge.source_id):
-                log.error(f"Qedge {qedge.id}'s source_id refers to a qnode that does not exist in the query graph: "
-                          f"{qedge.source_id}", error_code="InvalidQEdge")
-                return None
-            if not eu.get_query_node(query_graph, qedge.target_id):
-                log.error(f"Qedge {qedge.id}'s target_id refers to a qnode that does not exist in the query graph: "
-                          f"{qedge.target_id}", error_code="InvalidQEdge")
-                return None
-            qnodes = [eu.get_query_node(query_graph, qedge.source_id),
-                      eu.get_query_node(query_graph, qedge.target_id)]
-
-            # Add (copies of) this qedge and its two qnodes to our new query sub graph
-            qedge_copy = eu.copy_qedge(qedge)
-            if not any(qedge.id == qedge_copy.id for qedge in sub_query_graph.edges):
-                sub_query_graph.edges.append(qedge_copy)
-            for qnode in qnodes:
-                qnode_copy = eu.copy_qnode(qnode)
-                if not any(qnode.id == qnode_copy.id for qnode in sub_query_graph.nodes):
-                    sub_query_graph.nodes.append(qnode_copy)
-
-        return sub_query_graph
-
     def _get_query_graph_for_edge(self, qedge, query_graph, dict_kg, use_synonyms, kp_to_use, log):
         # This function creates a query graph for the specified qedge, updating its qnodes' curies as needed
         edge_query_graph = QueryGraph(nodes=[], edges=[])
@@ -293,7 +257,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
         if use_synonyms:
             self._add_curie_synonyms_to_query_nodes(qnodes=edge_query_graph.nodes,
-                                                    arax_kg='KG1' if kp_to_use == 'ARAX/KG1' else 'KG2',
+                                                    kp=kp_to_use,
                                                     log=log)
         return edge_query_graph
 
@@ -337,6 +301,42 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
 
         log.debug(f"After deduplication, answer KG counts are: {eu.get_printable_counts_by_qg_id(deduplicated_kg)}")
         return deduplicated_kg, updated_edge_to_nodes_map
+
+    @staticmethod
+    def _extract_query_subgraph(qedge_ids_to_expand, query_graph, log):
+        # This function extracts a sub-query graph containing the provided qedge IDs from a larger query graph
+        sub_query_graph = QueryGraph(nodes=[], edges=[])
+
+        for qedge_id in qedge_ids_to_expand:
+            # Make sure this query edge actually exists in the query graph
+            if not any(qedge.id == qedge_id for qedge in query_graph.edges):
+                log.error(f"An edge with ID '{qedge_id}' does not exist in Message.QueryGraph",
+                          error_code="UnknownValue")
+                return None
+            qedge = next(qedge for qedge in query_graph.edges if qedge.id == qedge_id)
+
+            # Make sure this qedge's qnodes actually exist in the query graph
+            if not eu.get_query_node(query_graph, qedge.source_id):
+                log.error(f"Qedge {qedge.id}'s source_id refers to a qnode that does not exist in the query graph: "
+                          f"{qedge.source_id}", error_code="InvalidQEdge")
+                return None
+            if not eu.get_query_node(query_graph, qedge.target_id):
+                log.error(f"Qedge {qedge.id}'s target_id refers to a qnode that does not exist in the query graph: "
+                          f"{qedge.target_id}", error_code="InvalidQEdge")
+                return None
+            qnodes = [eu.get_query_node(query_graph, qedge.source_id),
+                      eu.get_query_node(query_graph, qedge.target_id)]
+
+            # Add (copies of) this qedge and its two qnodes to our new query sub graph
+            qedge_copy = eu.copy_qedge(qedge)
+            if not any(qedge.id == qedge_copy.id for qedge in sub_query_graph.edges):
+                sub_query_graph.edges.append(qedge_copy)
+            for qnode in qnodes:
+                qnode_copy = eu.copy_qnode(qnode)
+                if not any(qnode.id == qnode_copy.id for qnode in sub_query_graph.nodes):
+                    sub_query_graph.nodes.append(qnode_copy)
+
+        return sub_query_graph
 
     @staticmethod
     def _merge_answer_into_message_kg(answer_dict_kg, dict_kg, log):
@@ -464,7 +464,7 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
         return kg
 
     @staticmethod
-    def _add_curie_synonyms_to_query_nodes(qnodes, log, arax_kg='KG2', override_node_type=False):
+    def _add_curie_synonyms_to_query_nodes(qnodes, log, kp='KG2'):
         log.debug("Looking for query nodes to use curie synonyms for")
         for qnode in qnodes:
             if qnode.curie:
@@ -472,11 +472,9 @@ team KG1 and KG2 Neo4j instances as well as BioThings Explorer to fulfill QG's, 
                 final_curie_list = []
                 for curie in input_curies:
                     original_curie = curie
-                    equivalent_curies = eu.get_curie_synonyms(curie=original_curie, arax_kg=arax_kg)
+                    equivalent_curies = eu.get_curie_synonyms(curie=original_curie, kp=kp)
                     if len(equivalent_curies) > 1:
                         final_curie_list += equivalent_curies
-                        if override_node_type:
-                            qnode.type = None  # Equivalent curie types may be different than the original, so we clear this
                     elif len(equivalent_curies) <= 1:
                         final_curie_list.append(original_curie)
 

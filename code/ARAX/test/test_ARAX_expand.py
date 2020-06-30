@@ -48,7 +48,7 @@ def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_inc
     _check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
     _check_property_types(nodes_by_qg_id, edges_by_qg_id)
     if not any(action for action in actions_list if "synonym_handling=add_all" in action):
-        _check_synonym_mapping(nodes_by_qg_id, message.query_graph)
+        _check_counts_of_curie_qnodes(nodes_by_qg_id, message.query_graph)
 
     return nodes_by_qg_id, edges_by_qg_id
 
@@ -77,15 +77,15 @@ def _print_edges(edges_by_qg_id: Dict[str, Dict[str, Edge]]):
 
 
 def _print_node_counts_by_prefix(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
-    nodes_by_prefix = dict()
+    node_counts_by_prefix = dict()
     for qnode_id, nodes in nodes_by_qg_id.items():
         for node_key, node in nodes.items():
             prefix = node.id.split(':')[0]
-            if prefix in nodes_by_prefix.keys():
-                nodes_by_prefix[prefix] += 1
+            if prefix in node_counts_by_prefix.keys():
+                node_counts_by_prefix[prefix] += 1
             else:
-                nodes_by_prefix[prefix] = 1
-    print(nodes_by_prefix)
+                node_counts_by_prefix[prefix] = 1
+    print(node_counts_by_prefix)
 
 
 def _check_for_orphans(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
@@ -110,7 +110,7 @@ def _check_property_types(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_q
             assert type(edge.qedge_ids) is list
 
 
-def _check_synonym_mapping(nodes_by_qg_id: Dict[str, Dict[str, Node]], query_graph: QueryGraph):
+def _check_counts_of_curie_qnodes(nodes_by_qg_id: Dict[str, Dict[str, Node]], query_graph: QueryGraph):
     qnodes_with_single_curie = [qnode for qnode in query_graph.nodes if qnode.curie and isinstance(qnode.curie, str)]
     for qnode in qnodes_with_single_curie:
         if qnode.id in nodes_by_qg_id:
@@ -195,10 +195,6 @@ def test_demo_example_1_simple():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
-    assert len(nodes_by_qg_id['n0']) == 1
-    assert len(nodes_by_qg_id['n1']) >= 32
-    assert len(edges_by_qg_id['e0']) >= 64
-
 
 def test_demo_example_3_simple():
     actions_list = [
@@ -211,12 +207,6 @@ def test_demo_example_3_simple():
         "return(message=true, store=false)",
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-    assert len(nodes_by_qg_id['n00']) == 1
-    assert len(nodes_by_qg_id['n01']) >= 29
-    assert len(nodes_by_qg_id['n02']) >= 240
-    assert len(edges_by_qg_id['e00']) >= 29
-    assert len(edges_by_qg_id['e01']) >= 1368
 
 
 def test_erics_first_kg1_synonym_test_without_synonyms():
@@ -251,10 +241,6 @@ def test_acetaminophen_example_enforcing_directionality():
         "return(message=true, store=false)",
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-    assert len(nodes_by_qg_id['n00']) == 1
-    assert len(nodes_by_qg_id['n01']) == 32
-    assert len(edges_by_qg_id['e00']) == 32
 
     # Make sure the source of every edge is acetaminophen
     for edge in edges_by_qg_id['e00'].values():
