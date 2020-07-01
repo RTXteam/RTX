@@ -25,7 +25,8 @@ class ARAXOverlay:
             'compute_jaccard',
             'add_node_pmids',
             'predict_drug_treats_disease',
-            'fisher_exact_test'
+            'fisher_exact_test',
+            'overlay_exposures_data'
         }
         self.report_stats = True
 
@@ -574,6 +575,47 @@ The code is as follows:
         FTEST = ComputeFTEST(self.response, self.message, self.parameters)
         response = FTEST.fisher_exact_test()
         return response
+
+    def __overlay_exposures_data(self, describe=False):
+        """
+        This function applies the action overlay_exposures_data.
+        Allowable parameters are:
+        :return: a response
+        """
+        message = self.message
+        parameters = self.parameters
+        response = self.response
+
+        # Make a list of the allowable parameters and their possible values
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
+            allowable_parameters = {'action': {'overlay_exposures_data'},
+                                    'virtual_relation_label': {parameters.get('virtual_relation_label', None)}}
+        else:
+            allowable_parameters = {'action': {'overlay_exposures_data'},
+                                    'virtual_relation_label': {'any string label used to identify the virtual edge (optional, otherwise information is added as an attribute to existing edges in the KG)'}}
+
+        # A little function to describe what this thing does
+        if describe:
+            brief_description = """
+            TODO """
+            allowable_parameters['brief_description'] = brief_description
+            return allowable_parameters
+
+        # Make sure only allowable parameters and values have been passed
+        self.check_params(allowable_parameters)
+        if response.status != 'OK':
+            return response
+
+        # Check if all virtual edge params have been provided properly
+        self.check_virtual_edge_params(allowable_parameters)
+        if response.status != 'OK':
+            return response
+
+        from Overlay.overlay_exposures_data import OverlayExposuresData
+        oed = OverlayExposuresData(response, message, parameters)
+        response = oed.decorate()
+        return response
+
 
 ##########################################################################################
 def main():

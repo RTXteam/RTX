@@ -521,5 +521,20 @@ def test_issue_840_non_drug():
             assert attribute.name != 'paired_concept_frequency'
 
 
+def test_icees_1():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=DOID:14330, id=n0)",
+        "add_qnode(type=chemical_substance, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "expand()",
+        "overlay(action=overlay_exposures_data)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+
+
 if __name__ == "__main__":
     pytest.main(['-v'])
