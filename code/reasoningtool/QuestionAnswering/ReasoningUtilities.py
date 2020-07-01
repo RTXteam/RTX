@@ -8,6 +8,7 @@ import cypher
 import os
 import re
 import sys
+import re
 import time
 import warnings
 from collections import namedtuple
@@ -50,7 +51,6 @@ QueryEBIOLS = QueryEBIOLS.QueryEBIOLS()
 QueryNCBIeUtils = QueryNCBIeUtils.QueryNCBIeUtils()
 
 import fisher_exact
-
 
 #requests_cache.install_cache('orangeboard')
 # specifiy the path of orangeboard database

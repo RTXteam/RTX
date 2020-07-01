@@ -66,16 +66,14 @@ function openSection(obj, sect) {
 	e[0].className = "menuleftitem";
 	obj.className = "menucurrent";
     }
-    e = document.getElementsByClassName("pagesection");
-    for (var i = 0; i < e.length; i++) {
-        e[i].style.maxHeight = null;
-        e[i].style.visibility = 'hidden';
-	//e[i].style.display = "none";
+
+    for (var e of document.getElementsByClassName("pagesection")) {
+        e.style.maxHeight = null;
+        e.style.visibility = 'hidden';
     }
-    document.getElementById(sect).style.maxHeight = "100%";
+    document.getElementById(sect).style.maxHeight = "none";
     document.getElementById(sect).style.visibility = 'visible';
     window.scrollTo(0,0);
-    //document.getElementById(sect).style.display = "block";
 }
 
 // somehow merge with above?  eh...
@@ -109,15 +107,15 @@ function reset_vars() {
     if (cyobj[0]) {cyobj[0].elements().remove();}
     document.getElementById("summary_container").innerHTML = "";
     document.getElementById("menunummessages").innerHTML = "--";
+    document.getElementById("menunummessages").className = "numold menunum";
     document.getElementById("menunumresults").innerHTML = "--";
-    document.getElementById("menunumresults").classList.remove("numnew");
-    document.getElementById("menunumresults").classList.add("numold");
+    document.getElementById("menunumresults").className = "numold menunum";
     summary_table_html = '';
+    summary_tsv = [];
     cyobj = [];
     cytodata = [];
     UIstate.nodedd = 1;
 }
-
 
 
 // use fetch and stream
@@ -212,7 +210,7 @@ function postQuery(qtype) {
 	var reader = response.body.getReader();
 	var partialMsg = '';
 	var enqueue = false;
-	var countingSteps = false;
+	var numCurrMsgs = 0;
 	var totalSteps = 0;
 	var finishedSteps = 0;
 	var decoder = new TextDecoder();
@@ -257,13 +255,21 @@ function postQuery(qtype) {
 			    }
 			    else if (totalSteps>0) {
 				document.getElementById("totalSteps").innerHTML = totalSteps;
+				if (numCurrMsgs < 99)
+				    numCurrMsgs++;
+				if (finishedSteps == totalSteps)
+				    numCurrMsgs = 1;
+
+                                document.getElementById("progressBar").style.width = (800*(finishedSteps+0.5*Math.log10(numCurrMsgs))/totalSteps)+"px";
+				document.getElementById("progressBar").innerHTML = Math.round(99*(finishedSteps+0.5*Math.log10(numCurrMsgs))/totalSteps)+"%\u00A0\u00A0";
+
 				if (jsonMsg.message.match(/^Processing action/)) {
-				    document.getElementById("progressBar").style.width = (800*finishedSteps/totalSteps)+"px";
-				    document.getElementById("progressBar").innerHTML = Math.round(99*finishedSteps/totalSteps)+"%\u00A0\u00A0";
 				    finishedSteps++;
 				    document.getElementById("finishedSteps").innerHTML = finishedSteps;
+				    numCurrMsgs = 0;
 				}
 			    }
+
 			    cmddiv.appendChild(document.createTextNode(jsonMsg.prefix+'\u00A0'+jsonMsg.message));
 			    cmddiv.appendChild(document.createElement("br"));
 			    cmddiv.scrollTop = cmddiv.scrollHeight;
@@ -301,8 +307,7 @@ function postQuery(qtype) {
 	    else {
 		document.getElementById("progressBar").classList.add("barerror");
 		document.getElementById("progressBar").innerHTML = "Error\u00A0\u00A0";
-		document.getElementById("finishedSteps").classList.add("menunum");
-		document.getElementById("finishedSteps").classList.add("numnew");
+		document.getElementById("finishedSteps").classList.add("menunum","numnew","msgERROR");
 		there_was_an_error();
 	    }
 	    statusdiv.appendChild(document.createTextNode(data["code_description"]));  // italics?
@@ -485,7 +490,10 @@ function render_message(respObj) {
 
     message_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
 
-    add_to_session(message_id,respObj.restated_question+"?");
+    if (respObj.restated_question.length > 2)
+	add_to_session(message_id,respObj.restated_question+"?");
+    else
+	add_to_session(message_id,"message="+message_id);
 
     document.title = "ARAX-UI ["+message_id+"]: "+respObj.restated_question+"?";
     history.pushState({ id: 'ARAX_UI' }, 'ARAX | message='+message_id, "//"+ window.location.hostname + window.location.pathname + '?m='+message_id);
@@ -520,8 +528,38 @@ function render_message(respObj) {
 	cytodata[999] = 'dummy'; // this enables query graph editing
 
 
-    if ( respObj["table_column_names"] )
-        document.getElementById("summary_container").innerHTML = "<div onclick='sesame(null,summarydiv);' class='statushead'>Summary</div><div class='status' id='summarydiv'><br><table class='sumtab'>" + summary_table_html + "</table><br><input type='button' class='json_copy button' name='action' title='Get tab-separated values of this table to paste into Excel etc' value='Copy Summary Table clipboard (TSV)' onclick='copyTSVToClipboard();'><br><br></div>";
+    if (respObj["table_column_names"]) {
+	var div = document.createElement("div");
+	div.className = 'statushead';
+	div.appendChild(document.createTextNode("Summary"));
+        document.getElementById("summary_container").appendChild(div);
+
+	div = document.createElement("div");
+	div.className = 'status';
+	div.id = 'summarydiv';
+	div.appendChild(document.createElement("br"));
+
+	var button = document.createElement("input");
+	button.className = 'questionBox button';
+	button.type = 'button';
+	button.name = 'action';
+	button.title = 'Get tab-separated values of this table to paste into Excel etc';
+	button.value = 'Copy Summary Table to clipboard (TSV)';
+	button.setAttribute('onclick', 'copyTSVToClipboard(this);');
+        div.appendChild(button);
+
+        div.appendChild(document.createElement("br"));
+	div.appendChild(document.createElement("br"));
+
+	var table = document.createElement("table");
+	table.className = 'sumtab';
+	table.innerHTML = summary_table_html;
+        div.appendChild(table);
+
+	div.appendChild(document.createElement("br"));
+
+	document.getElementById("summary_container").appendChild(div);
+    }
     else
         document.getElementById("summary_container").innerHTML += "<h2>Summary not available for this query</h2>";
 
@@ -555,14 +593,17 @@ function there_was_an_error() {
     document.getElementById("summary_container").innerHTML += "<h2 class='error'>Error : No results</h2>";
     document.getElementById("result_container").innerHTML  += "<h2 class='error'>Error : No results</h2>";
     document.getElementById("menunumresults").innerHTML = "E";
-    document.getElementById("menunumresults").classList.add("numnew");
+    document.getElementById("menunumresults").classList.add("numnew","msgERROR");
     document.getElementById("menunumresults").classList.remove("numold");
 }
 
 function process_log(logarr) {
-    var errors = 0;
+    var status = {};
+    for (var s of ["ERROR","WARNING","INFO","DEBUG"]) {
+	status[s] = 0;
+    }
     for (var msg of logarr) {
-	if (msg.level_str == "ERROR") { errors++; }
+	status[msg.level_str]++;
 
 	var span = document.createElement("span");
 	span.className = "hoverable msg " + msg.level_str;
@@ -588,16 +629,72 @@ function process_log(logarr) {
 	document.getElementById("logdiv").appendChild(span);
     }
     document.getElementById("menunummessages").innerHTML = logarr.length;
-
+    if (status.ERROR > 0) document.getElementById("menunummessages").classList.add('numnew','msgERROR');
+    else if (status.WARNING > 0) document.getElementById("menunummessages").classList.add('numnew','msgWARNING');
+    for (var s of ["ERROR","WARNING","INFO","DEBUG"]) {
+	document.getElementById("count_"+s).innerHTML += ": "+status[s];
+    }
 }
 
 
 function add_status_divs() {
-    document.getElementById("status_container").innerHTML = "<div class='statushead'>Status</div><div class='status' id='statusdiv'></div>";
+    // summary
+    document.getElementById("status_container").innerHTML = '';
 
-    document.getElementById("dev_result_json_container").innerHTML = "<div class='statushead'>Dev Info <i style='float:right; font-weight:normal;'>( json responses )</i></div><div class='status' id='devdiv'></div>";
+    var div = document.createElement("div");
+    div.className = 'statushead';
+    div.appendChild(document.createTextNode("Status"));
+    document.getElementById("status_container").appendChild(div);
 
-    document.getElementById("messages_container").innerHTML = "<div class='statushead'>Filter Messages :&nbsp;&nbsp;&nbsp;<span onclick='filtermsgs(this,\"ERROR\")' style='cursor:pointer;' class='qprob msgERROR'>Error</span>&nbsp;&nbsp;&nbsp;<span onclick='filtermsgs(this,\"WARNING\")' style='cursor:pointer;' class='qprob msgWARNING'>Warning</span>&nbsp;&nbsp;&nbsp;<span onclick='filtermsgs(this,\"INFO\")' style='cursor:pointer;' class='qprob msgINFO'>Info</span>&nbsp;&nbsp;&nbsp;<span onclick='filtermsgs(this,\"DEBUG\")' style='cursor:pointer;' class='qprob msgDEBUG hide'>Debug</span></div><div class='status' id='logdiv'></div>";
+    div = document.createElement("div");
+    div.className = 'status';
+    div.id = 'statusdiv';
+    document.getElementById("status_container").appendChild(div);
+
+    // results
+    document.getElementById("dev_result_json_container").innerHTML = '';
+
+    div = document.createElement("div");
+    div.className = 'statushead';
+    div.appendChild(document.createTextNode("Dev Info"));
+    var span = document.createElement("span");
+    span.style.fontStyle = "italic";
+    span.style.fontWeight = 'normal';
+    span.style.float = "right";
+    span.appendChild(document.createTextNode("( json responses )"));
+    div.appendChild(span);
+    document.getElementById("dev_result_json_container").appendChild(div);
+
+    div = document.createElement("div");
+    div.className = 'status';
+    div.id = 'devdiv';
+    document.getElementById("dev_result_json_container").appendChild(div);
+
+    // messages
+    document.getElementById("messages_container").innerHTML = '';
+
+    div = document.createElement("div");
+    div.className = 'statushead';
+    div.appendChild(document.createTextNode("Filter Messages:"));
+
+    for (var status of ["Error","Warning","Info","Debug"]) {
+	span = document.createElement("span");
+	span.id =  'count_'+status.toUpperCase();
+	span.style.marginLeft = "20px";
+	span.style.cursor = "pointer";
+	span.className = 'qprob msg'+status.toUpperCase();
+	if (status == "Debug") span.classList.add('hide');
+	span.setAttribute('onclick', 'filtermsgs(this,\"'+status.toUpperCase()+'\");');
+	span.appendChild(document.createTextNode(status));
+	div.appendChild(span);
+    }
+
+    document.getElementById("messages_container").appendChild(div);
+
+    div = document.createElement("div");
+    div.className = 'status';
+    div.id = 'logdiv';
+    document.getElementById("messages_container").appendChild(div);
 }
 
 function filtermsgs(span, type) {
@@ -995,11 +1092,11 @@ function show_attributes(html_div, atts) {
 	    if (att.type != null) {
 		snippet += " (" + att.type + ")";
 	    }
-	    snippet += " : ";
+	    snippet += ": ";
 	}
-	if (att.url != null) {
-	    snippet += "<a target='rtxext' href='" + att.url + "'>";
-	}
+	if (att.url != null)
+	    snippet += "<a target='araxext' href='" + att.url + "'>";
+
 
 	if (att.value != null) {
 	    if (att.name == "probability_drug_treats" ||
@@ -1011,19 +1108,21 @@ function show_attributes(html_div, atts) {
 		att.name == "ngd") {
 		snippet += Number(att.value).toPrecision(3);
 	    }
+            else if (Array.isArray(att.value)) {
+		for (var val of att.value) snippet += "<br>"+val;
+	    }
 	    else
 		snippet += att.value;
-	}
-	else if (att.url != null) {
-	    snippet += att.url;
-	}
-	else {
-	    snippet += " n/a ";
-	}
 
-	if (att.url != null) {
-	    snippet += "</a>";
 	}
+	else if (att.url != null)
+	    snippet += att.url;
+	else
+	    snippet += " n/a ";
+
+
+	if (att.url != null)
+	    snippet += "</a>";
 
 	html_div.innerHTML+= snippet;
 	linebreak = "<br>";
@@ -1135,24 +1234,24 @@ function edit_qg() {
 
 
 function display_query_graph_items() {
-    var kghtml = '';
+    var qghtml = '';
     var nitems = 0;
 
     input_qg.nodes.forEach(function(result, index) {
 	nitems++;
-        kghtml += "<tr class='hoverable'><td>"+result.id+"</td><td title='"+result.desc+"'>"+(result.name==null?"-":result.name)+"</td><td>"+(result.curie==null?"<i>(any node)</i>":result.curie)+"</td><td>"+(result.type==null?"<i>(any)</i>":result.type)+"</td><td><a href='javascript:remove_node_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
+        qghtml += "<tr class='hoverable'><td>"+result.id+"</td><td title='"+result.desc+"'>"+(result.name==null?"-":result.name)+"</td><td>"+(result.curie==null?"<i>(any node)</i>":result.curie)+"</td><td>"+(result.type==null?"<i>(any)</i>":result.type)+"</td><td><a href='javascript:remove_node_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
     });
 
     input_qg.edges.forEach(function(result, index) {
-        kghtml += "<tr class='hoverable'><td>"+result.id+"</td><td>-</td><td>"+result.source_id+"--"+result.target_id+"</td><td>"+(result.type==null?"<i>(any)</i>":result.type)+"</td><td><a href='javascript:remove_edge_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
+        qghtml += "<tr class='hoverable'><td>"+result.id+"</td><td>-</td><td>"+result.source_id+"--"+result.target_id+"</td><td>"+(result.type==null?"<i>(any)</i>":result.type)+"</td><td><a href='javascript:remove_edge_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
     });
 
 
     if (nitems > 0) {
-	kghtml = "<table class='sumtab'><tr><th>Id</th><th>Name</th><th>Item</th><th>Type</th><th>Action</th></tr>" + kghtml + "</table>";
+	qghtml = "<table class='sumtab'><tr><th>Id</th><th>Name</th><th>Item</th><th>Type</th><th>Action</th></tr>" + qghtml + "</table>";
     }
 
-    document.getElementById("qg_items").innerHTML = kghtml;
+    document.getElementById("qg_items").innerHTML = qghtml;
 }
 
 
@@ -1786,7 +1885,7 @@ function display_session() {
         }
     }
     if (numitems > 0) {
-        listhtml += "<tr><td></td><td></td><td><a href='javascript:delete_list(\""+listId+"\");'/> Delete Session History </a></td></tr>";
+        listhtml += "<tr style='background-color:unset;'><td style='border-bottom:0;'></td><td style='border-bottom:0;'></td><td style='border-bottom:0;'><a href='javascript:delete_list(\""+listId+"\");'/> Delete Session History </a></td></tr>";
     }
 
 
@@ -1794,7 +1893,7 @@ function display_session() {
         listhtml = "<br>Your query history will be displayed here. It can be edited or re-set.<br><br>";
     }
     else {
-        listhtml = "<table class='sumtab'><tr><td></td><th>Query</th><th>Action</th></tr>" + listhtml + "</table>";
+        listhtml = "<table class='sumtab'><tr><th></th><th>Query</th><th>Action</th></tr>" + listhtml + "</table><br><br>";
     }
 
     document.getElementById("numlistitems"+listId).innerHTML = numitems;
@@ -1803,7 +1902,7 @@ function display_session() {
 }
 
 
-function copyJSON() {
+function copyJSON(ele) {
     var containerid = "responseJSON";
 
     if (document.selection) {
@@ -1811,6 +1910,7 @@ function copyJSON() {
 	range.moveToElementText(document.getElementById(containerid));
 	range.select().createTextRange();
 	document.execCommand("copy");
+	addCheckBox(ele);
     }
     else if (window.getSelection) {
 	var range = document.createRange();
@@ -1818,11 +1918,12 @@ function copyJSON() {
         window.getSelection().removeAllRanges();
 	window.getSelection().addRange(range);
 	document.execCommand("copy");
+	addCheckBox(ele);
 	//alert("text copied")
     }
 }
 
-function copyTSVToClipboard() {
+function copyTSVToClipboard(ele) {
     var dummy = document.createElement("textarea");
     document.body.appendChild(dummy);
     dummy.setAttribute("id", "dummy_id");
@@ -1831,4 +1932,15 @@ function copyTSVToClipboard() {
     dummy.select();
     document.execCommand("copy");
     document.body.removeChild(dummy);
+
+    addCheckBox(ele);
+}
+
+function addCheckBox(ele) {
+    var check = document.createElement("span");
+    check.className = 'explevel p9';
+    check.innerHTML = '&check;';
+    ele.parentNode.insertBefore(check, ele.nextSibling);
+
+    var timeout = setTimeout(function() { check.remove(); }, 1500 );
 }
