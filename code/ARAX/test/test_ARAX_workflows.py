@@ -432,6 +432,44 @@ def test_clinical_overlay_example2():
     _attribute_tester(message, 'observed_expected_ratio', 'data:0951', 1)
     _attribute_tester(message, 'chi_square', 'data:0951', 1)
 
+def test_two_hop_based_on_types_1():
+    """
+    Example DSL for a two hop question that is based on types
+    """
+    #doid_list = {"DOID:11830", "DOID:5612", "DOID:2411", "DOID:8501", "DOID:174"}
+    doid_list = {"DOID:11830"}
+    for doid in doid_list:
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            f"add_qnode(name={doid}, id=n00, type=disease)",
+            "add_qnode(type=protein, is_set=true, id=n01)",
+            "add_qnode(type=chemical_substance, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01)",
+            "expand(edge_id=e00, kp=ARAX/KG2)",
+            "expand(edge_id=e00, kp=BTE)",
+            "expand(edge_id=e01, kp=ARAX/KG2)",
+            # overlay a bunch of clinical info
+            "overlay(action=overlay_clinical_info, paired_concept_frequency=true, source_qnode_id=n00, target_qnode_id=n02, virtual_relation_label=C1)",
+            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, source_qnode_id=n00, target_qnode_id=n02, virtual_relation_label=C2)",
+            "overlay(action=overlay_clinical_info, chi_square=true, source_qnode_id=n00, target_qnode_id=n02, virtual_relation_label=C3)",
+            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",
+            # filter some stuff out for the fun of it
+            #"filter_kg(action=remove_edges_by_attribute_default, edge_attribute=paired_concept_frequency, type=std, remove_connected_nodes=T, qnode_id=n02)",
+            #"filter_kg(action=remove_edges_by_attribute_default, edge_attribute=observed_expected_ratio, type=std, remove_connected_nodes=T, qnode_id=n02)",
+            #"filter_kg(action=remove_edges_by_attribute_default, edge_attribute=chi_square, type=std, remove_connected_nodes=T, qnode_id=n02)",
+            # return results
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=limit_number_of_results, max_results=10)",
+            "return(message=true, store=true)",
+        ]}}
+        [response, message] = _do_arax_query(query)
+        print(message.id)
+        assert response.status == 'OK'
+        _virtual_tester(message, 'has_paired_concept_frequency_with', 'C1', 'paired_concept_frequency', 'data:0951', 1)
+        _virtual_tester(message, 'has_observed_expected_ratio_with', 'C2', 'observed_expected_ratio', 'data:0951', 1)
+        _virtual_tester(message, 'has_chi_square_with', 'C3', 'chi_square', 'data:0951', 1)
+
 
 # Not working yet
 # def test_example_3_kg2():
