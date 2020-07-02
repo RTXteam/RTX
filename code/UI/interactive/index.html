@@ -147,7 +147,7 @@
   
   <div class="inputsection" id="qjson_input">
     <h3 style="display:inline;">JSON Input:</h3>
-    <span class="tiny" style="position:relative; left:150px;">Enter the value of the <b>"query_graph"</b> element</span>
+    <span class="tiny" style="position:relative; left:150px;">Enter the value of the <b>"query_graph"</b> element<a href="javascript:pasteExample('JSON');" style="position:relative; left:100px;">Example</a></span>
     <form id="jsonForm" name="jsonForm" method="post" action="postQuery('JSON');">
             <textarea class="questionBox" wrap="off" id="jsonText"></textarea>&nbsp;<span title="clear JSON input" class="clq" onclick="clearJSON();">&#9587;</span>
 	    <br/>
@@ -158,9 +158,8 @@
   <div class="inputsection" id="qdsl_input">
     <h3 style="display:inline;">DSL Input:</h3>
     <span class="tiny" style="position:relative; left:150px;">One line per DSL command, no quotes or commas;
-    <a href="https://github.com/RTXteam/RTX/blob/demo/code/ARAX/Documentation/DSL_Documentation.md" target="_new">more info here</a></span>
+    <a href="https://github.com/RTXteam/RTX/blob/demo/code/ARAX/Documentation/DSL_Documentation.md" target="_new">more info here</a><a href="javascript:pasteExample('DSL');" style="position:relative; left:100px;">Example</a></span>
     <form id="dslForm" name="dslForm" method="post" action="postQuery('DSL');">
-      
       <textarea class="questionBox" wrap="off" id="dslText"></textarea>&nbsp;<span title="clear DSL input" class="clq" onclick="clearDSL();">&#9587;</span>
       <br/>
       <input type="button" class="questionBox button" name="action" value="POST" onClick="postQuery('DSL');">
