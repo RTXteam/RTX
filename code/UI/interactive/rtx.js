@@ -82,7 +82,7 @@ function selectInput (obj, input_id) {
     if (e[0]) { e[0].classList.remove("slink_on"); }
     obj.classList.add("slink_on");
 
-    for (var s of ['qtext_input','qgraph_input','qdsl_input']) {
+    for (var s of ['qtext_input','qgraph_input','qjson_input','qdsl_input']) {
 	document.getElementById(s).style.maxHeight = null;
 	document.getElementById(s).style.visibility = 'hidden';
     }
@@ -91,6 +91,9 @@ function selectInput (obj, input_id) {
 }
 
 
+function clearJSON() {
+    document.getElementById("jsonText").value = '';
+}
 function clearDSL() {
     document.getElementById("dslText").value = '';
 }
@@ -134,6 +137,30 @@ function postQuery(qtype) {
 
 	var dslArrayOfLines = document.getElementById("dslText").value.split("\n");
 	queryObj["previous_message_processing_plan"] = { "processing_actions": dslArrayOfLines};
+    }
+    else if (qtype == "JSON") {
+	document.getElementById("questionForm").elements["questionText"].value = '-- posted async query via direct JSON input --';
+	statusdiv.innerHTML = "Posting JSON.  Looking for answer...";
+	statusdiv.appendChild(document.createElement("br"));
+
+        var jsonInput;
+	try {
+	    jsonInput = JSON.parse(document.getElementById("jsonText").value);
+	}
+	catch(e) {
+            statusdiv.appendChild(document.createElement("br"));
+	    if (e.name == "SyntaxError")
+		statusdiv.innerHTML += "<b>Error</b> parsing JSON input. Please correct errors and resubmit: ";
+	    else
+		statusdiv.innerHTML += "<b>Error</b> processing input. Please correct errors and resubmit: ";
+            statusdiv.appendChild(document.createElement("br"));
+	    statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
+	    return;
+	}
+	queryObj.message = { "query_graph" :jsonInput };
+	queryObj.max_results = 100;
+
+	clear_qg();
     }
     else {  // qGraph
 	document.getElementById("questionForm").elements["questionText"].value = '-- posted async query via graph --';
@@ -488,15 +515,20 @@ function render_message(respObj) {
     statusdiv.appendChild(document.createTextNode("Rendering message..."));
     sesame('openmax',statusdiv);
 
-    message_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
+    if (respObj.id) {
+	message_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
 
-    if (respObj.restated_question.length > 2)
-	add_to_session(message_id,respObj.restated_question+"?");
-    else
-	add_to_session(message_id,"message="+message_id);
+	if (respObj.restated_question.length > 2)
+	    add_to_session(message_id,respObj.restated_question+"?");
+	else
+	    add_to_session(message_id,"message="+message_id);
 
-    document.title = "ARAX-UI ["+message_id+"]: "+respObj.restated_question+"?";
-    history.pushState({ id: 'ARAX_UI' }, 'ARAX | message='+message_id, "//"+ window.location.hostname + window.location.pathname + '?m='+message_id);
+	document.title = "ARAX-UI ["+message_id+"]: "+respObj.restated_question+"?";
+	history.pushState({ id: 'ARAX_UI' }, 'ARAX | message='+message_id, "//"+ window.location.hostname + window.location.pathname + '?m='+message_id);
+    }
+    else {
+        document.title = "ARAX-UI [no message_id]: "+respObj.restated_question+"?";
+    }
 
     if ( respObj["table_column_names"] ) {
 	add_to_summary(respObj["table_column_names"],0);
