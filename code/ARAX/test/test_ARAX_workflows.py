@@ -432,6 +432,7 @@ def test_clinical_overlay_example2():
     _attribute_tester(message, 'observed_expected_ratio', 'data:0951', 1)
     _attribute_tester(message, 'chi_square', 'data:0951', 1)
 
+
 # Not working yet
 # def test_example_3_kg2():
 #     query = {"previous_message_processing_plan": { "processing_actions": [
