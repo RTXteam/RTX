@@ -484,7 +484,7 @@ class ARAXExpander:
                 final_curie_list = []
                 for curie in input_curies:
                     original_curie = curie
-                    equivalent_curies = eu.get_curie_synonyms(curie=original_curie, kp=kp)
+                    equivalent_curies = eu.get_curie_synonyms(curie=original_curie)
                     if len(equivalent_curies) > 1:
                         final_curie_list += equivalent_curies
                     elif len(equivalent_curies) <= 1:
