@@ -363,8 +363,8 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     if len(kg_node_ids_without_qnode_id) > 0:
         raise ValueError("these node IDs do not have qnode_ids set: " + str(kg_node_ids_without_qnode_id))
 
-    kg_edge_ids_by_qg_id = {qedge.id: {edge.id for edge in cast(Iterable[Edge], kg.edges) if edge.qedge_ids and qedge.id in edge.qedge_ids} for qedge in qg.edges}
-    kg_node_ids_by_qg_id = {qnode.id: {node.id for node in cast(Iterable[Node], kg.nodes) if node.qnode_ids and qnode.id in node.qnode_ids} for qnode in qg.nodes}
+    kg_edge_ids_by_qg_id = _get_kg_edge_ids_by_qg_id(kg)
+    kg_node_ids_by_qg_id = _get_kg_node_ids_by_qg_id(kg)
 
     # build up maps of node IDs to nodes, for both the KG and QG
     kg_nodes_map = {node.id: node for node in cast(Iterable[Node], kg.nodes)}
@@ -386,18 +386,13 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     if len(qedge_ids_mapped_that_are_not_in_qg) > 0:
         raise ValueError("An edge in the KG has a qedge_id that does not exist in the QueryGraph: " + str(qedge_ids_mapped_that_are_not_in_qg))
 
-    # --------------------- checking that every KG node is bound to a QG node --------------
-    node_ids_of_kg_that_are_not_mapped_to_qg = [node.id for node in cast(Iterable[Node], kg.nodes) if node.id not in kg_nodes_map]
-    if len(node_ids_of_kg_that_are_not_mapped_to_qg) > 0:
-        raise ValueError("KG nodes that are not mapped to QG: " + str(node_ids_of_kg_that_are_not_mapped_to_qg))
-
     # --------------------- checking that the source ID and target ID of every edge in KG is a valid KG node ---------------------
     node_ids_for_edges_that_are_not_valid_nodes = [edge.source_id for edge in cast(Iterable[Edge], kg.edges) if not
                                                    kg_nodes_map.get(edge.source_id)] + \
                                                   [edge.target_id for edge in cast(Iterable[Edge], kg.edges) if not
                                                    kg_nodes_map.get(edge.target_id)]
     if len(node_ids_for_edges_that_are_not_valid_nodes) > 0:
-        raise ValueError("KG has edges that refer to the following non-existent nodes: " + str(node_ids_for_edges_that_are_not_valid_nodes))
+        raise ValueError("KG has Edges that refer to the following non-existent Nodes: " + str(node_ids_for_edges_that_are_not_valid_nodes))
 
     # --------------------- checking that the source ID and target ID of every edge in QG is a valid QG node ---------------------
     invalid_qnode_ids_used_by_qedges = [edge.source_id for edge in cast(Iterable[QEdge], qg.edges) if not
@@ -405,7 +400,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                                        [edge.target_id for edge in cast(Iterable[QEdge], qg.edges) if not
                                         qg_nodes_map.get(edge.target_id)]
     if len(invalid_qnode_ids_used_by_qedges) > 0:
-        raise ValueError("QG has edges that refer to the following non-existent nodes: " + str(invalid_qnode_ids_used_by_qedges))
+        raise ValueError("QG has QEdges that refer to the following non-existent QNodes: " + str(invalid_qnode_ids_used_by_qedges))
 
     # --------------------- checking for consistency of edge-to-node relationships, for all edge bindings -----------
     # check that for each bound KG edge, the QG mappings of the KG edges source and target nodes are also the
@@ -543,6 +538,17 @@ def _get_kg_node_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[
                     node_ids_by_qg_id[qnode_id] = set()
                 node_ids_by_qg_id[qnode_id].add(node.id)
     return node_ids_by_qg_id
+
+
+def _get_kg_edge_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]]:
+    edge_ids_by_qg_id = dict()
+    for edge in knowledge_graph.edges:
+        if edge.qedge_ids:
+            for qedge_id in edge.qedge_ids:
+                if qedge_id not in edge_ids_by_qg_id:
+                    edge_ids_by_qg_id[qedge_id] = set()
+                edge_ids_by_qg_id[qedge_id].add(edge.id)
+    return edge_ids_by_qg_id
 
 
 def _get_connected_qnode_ids(qnode_id: str, query_graph: QueryGraph) -> Set[str]:
