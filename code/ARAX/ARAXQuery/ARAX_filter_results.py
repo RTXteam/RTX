@@ -79,9 +79,10 @@ class ARAXFilterResults:
                 if any([type(x) == float for x in allowable_parameters[key]]):  # if it's a float, just accept it as it is
                     return
                 else:  # otherwise, it's really not an allowable parameter
-                    self.response.error(
+                    self.response.warning(
                         f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}",
                         error_code="UnknownValue")
+                    return -1
 
     #### Top level decision maker for applying filters
     def apply(self, input_message, input_parameters):
@@ -191,9 +192,9 @@ Also, you have the option of limiting the number of results returned (e.g. via `
                 return self.response
 
         # Make sure only allowable parameters and values have been passed
-        self.check_params(allowable_parameters)
+        resp = self.check_params(allowable_parameters)
         # return if bad parameters have been passed
-        if self.response.status != 'OK':
+        if self.response.status != 'OK' or resp == -1:
             return self.response
 
         if 'direction' not in edge_params:
@@ -286,9 +287,9 @@ Also, you have the option of limiting the number of results returned (e.g. via `
                 return self.response
 
         # Make sure only allowable parameters and values have been passed
-        self.check_params(allowable_parameters)
+        resp = self.check_params(allowable_parameters)
         # return if bad parameters have been passed
-        if self.response.status != 'OK':
+        if self.response.status != 'OK' or resp == -1:
             return self.response
 
         if 'direction' not in node_params:
@@ -354,9 +355,9 @@ Use cases include:
 
 
         # Make sure only allowable parameters and values have been passed
-        self.check_params(allowable_parameters)
+        resp = self.check_params(allowable_parameters)
         # return if bad parameters have been passed
-        if self.response.status != 'OK':
+        if self.response.status != 'OK' or resp == -1:
             return self.response
 
         # try to convert the max results to an int
@@ -439,9 +440,9 @@ Also, you have the option of limiting the number of results returned (e.g. via `
                 return self.response
 
         # Make sure only allowable parameters and values have been passed
-        self.check_params(allowable_parameters)
+        resp = self.check_params(allowable_parameters)
         # return if bad parameters have been passed
-        if self.response.status != 'OK':
+        if self.response.status != 'OK' or resp == -1:
             return self.response
 
         if 'direction' not in edge_params:
@@ -518,9 +519,9 @@ Also, you have the option of limiting the number of results returned (e.g. via `
                 return self.response
 
         # Make sure only allowable parameters and values have been passed
-        self.check_params(allowable_parameters)
+        resp = self.check_params(allowable_parameters)
         # return if bad parameters have been passed
-        if self.response.status != 'OK':
+        if self.response.status != 'OK' or resp == -1:
             return self.response
 
         if 'direction' not in node_params:
