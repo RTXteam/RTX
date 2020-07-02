@@ -80,8 +80,7 @@ class ARAXFilterResults:
                     return
                 else:  # otherwise, it's really not an allowable parameter
                     self.response.warning(
-                        f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}",
-                        error_code="UnknownValue")
+                        f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}")
                     return -1
 
     #### Top level decision maker for applying filters
