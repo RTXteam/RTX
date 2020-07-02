@@ -20,6 +20,7 @@ class ARAXFilterKG:
         self.allowable_actions = {
             'remove_edges_by_type',
             'remove_edges_by_attribute',
+            'remove_edges_by_attribute_default',
             'remove_edges_by_property',
             'remove_nodes_by_type',
             'remove_nodes_by_property',
@@ -220,8 +221,12 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
                         value = edge.to_dict()[parameters['edge_property']]
                         if type(value) == str:
                             known_values.add(value)
+                        elif type(value) == list:
+                            for x in value:
+                                if type(x) == str:
+                                    known_values.add(x)
             allowable_parameters = {'action': {'remove_edges_by_property'},
-                                    'edge_property': set([key for x in self.message.knowledge_graph.edges for key, val in x.to_dict().items() if type(val) == str]),
+                                    'edge_property': set([key for x in self.message.knowledge_graph.edges for key, val in x.to_dict().items() if type(val) == str or type(val) == list]),
                                     'property_value': known_values,
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'qnode_id':set([t for x in self.message.knowledge_graph.nodes if x.qnode_ids is not None for t in x.qnode_ids])
@@ -393,6 +398,117 @@ This can be applied to an arbitrary knowledge graph as possible edge attributes 
         from Filter_KG.remove_edges import RemoveEdges
         RE = RemoveEdges(self.response, self.message, edge_params)
         response = RE.remove_edges_by_attribute()
+        return response
+
+    def __remove_edges_by_attribute_default(self, describe=False):
+        """
+        Removes edges from the KG.
+        Allowable parameters: {'edge_type': str, 
+                                'edge_attribute': str,
+                                'direction': {'above', 'below'}}
+        :return:
+        """
+        message = self.message
+        parameters = self.parameters
+        # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
+        if message and parameters and hasattr(message, 'knowledge_graph') and hasattr(message.knowledge_graph, 'edges'):
+            known_attributes = set()
+            for edge in message.knowledge_graph.edges:
+                if hasattr(edge, 'edge_attributes'):
+                    if edge.edge_attributes:
+                        for attribute in edge.edge_attributes:
+                            known_attributes.add(attribute.name)
+            # print(known_attributes)
+            allowable_parameters = {'action': {'remove_edges_by_attribute_default'},
+                                    'edge_attribute': known_attributes,
+                                    'type': {'n', 'top_n', 'std', 'top_std'},
+                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'qnode_id':set([t for x in self.message.knowledge_graph.nodes if x.qnode_ids is not None for t in x.qnode_ids])
+                                    }
+        else:
+            allowable_parameters = {'action': {'remove_edges_by_attribute_default'},
+                                    'edge_attribute': {'an edge attribute name'},
+                                    'type': {'n', 'top_n', 'std', 'top_std'},
+                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'qnode_id':{'a specific query node id to remove'}
+                                    }
+
+        # A little function to describe what this thing does
+        if describe:
+            brief_description = """
+`remove_edges_by_attribute_default` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
+Edge attributes are a list of additional attributes for an edge.
+This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
+there are two heuristic options: `n` for removing all but the top 50 results or `std` for removing all but 
+the top results more than 1 standard deviation from the mean. (if not supplied this defaults to `top_n`)
+Use cases include:
+
+* removing all edges with normalized google distance scores but the top 50 `edge_attribute=ngd, type=n` (i.e. remove edges that aren't represented well in the literature)
+* removing all edges that Jaccard index leass than 1 standard deviation above the mean. `edge_attribute=jaccard_index, type=std` (i.e. all edges that have less than 20% of intermediate nodes in common)
+* etc. etc.
+                
+You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
+else, only remove a single source/target node based on a query node id (via `remove_connected_nodes=t, qnode_id=<a query node id.>`
+"""
+            allowable_parameters['brief_description'] = brief_description
+            return allowable_parameters
+
+        edge_params = self.parameters
+
+        # try to convert the threshold to a float
+        if self.response.status != 'OK':
+            return self.response
+
+        # Make sure only allowable parameters and values have been passed
+        self.check_params(allowable_parameters)
+        # return if bad parameters have been passed
+        if self.response.status != 'OK':
+            return self.response
+
+        if 'remove_connected_nodes' in edge_params:
+            value = edge_params['remove_connected_nodes']
+            if value in {'true', 'True', 't', 'T'}:
+                edge_params['remove_connected_nodes'] = True
+            elif value in {'false', 'False', 'f', 'F'}:
+                edge_params['remove_connected_nodes'] = False
+            else:
+                self.response.error(
+                    f"Supplied value {value} is not permitted. In parameter remove_connected_nodes, allowable values are: {list(allowable_parameters['remove_connected_nodes'])}",
+                    error_code="UnknownValue")
+        else:
+            edge_params['remove_connected_nodes'] = False
+
+        if 'type' in edge_params:
+            if edge_params['type'] in {'n', 'top_n'}:
+                edge_params['stat'] = 'n'
+                edge_params['threshold']= 50
+            elif edge_params['type'] in {'std', 'top_std'}:
+                edge_params['stat'] = 'std'
+                edge_params['threshold'] = 1
+        else:
+            edge_params['stat'] = 'n'
+            edge_params['threshold']= 50
+        if 'edge_attribute' not in edge_params:
+            self.response.error(
+                f"Edge attribute must be provided, allowable attributes are: {list(allowable_parameters['edge_attribute'])}",
+                error_code="UnknownValue")
+        else:
+            if edge_params['edge_attribute'] in {'ngd', 'chi_square', 'fisher_exact'}:
+                edge_params['direction'] = 'above'
+                edge_params['top'] = False
+            elif edge_params['edge_attribute'] in {'jaccard_index', 'observed_expected_ratio', 'probability_treats'}:
+                edge_params['direction'] = 'below'
+                edge_params['top'] = True
+            else:
+                edge_params['direction'] = 'below'
+                edge_params['top'] = True
+        if self.response.status != 'OK':
+            return self.response
+
+        # now do the call out to NGD
+        from Filter_KG.remove_edges import RemoveEdges
+        RE = RemoveEdges(self.response, self.message, edge_params)
+        response = RE.remove_edges_by_stats()
         return response
 
     def __remove_nodes_by_type(self, describe=False):

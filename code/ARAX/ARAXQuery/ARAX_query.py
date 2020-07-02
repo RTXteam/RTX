@@ -881,14 +881,14 @@ def main():
             "create_message",
             "add_qnode(name=DOID:14330, id=n00)",
             "add_qnode(type=protein, is_set=true, id=n01)",
-            "add_qnode(type=chemical_substance, is_set=true, id=n02)",
+            "add_qnode(type=chemical_substance, id=n02)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
             "expand(edge_id=[e00,e01])",
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
             "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
-            "resultify(ignore_edge_direction=true, force_isset_false=[n02])",
+            "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=d, max_results=15)",
             #"filter_results(action=sort_by_edge_count, direction=a)",
             #"filter_results(action=limit_number_of_results, max_results=5)",
@@ -898,11 +898,11 @@ def main():
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(name=DOID:1227, id=n00)",
-            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+            "add_qnode(type=chemical_substance, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
             "overlay(action=add_node_pmids, max_num=15)",
-            "resultify(ignore_edge_direction=true, force_isset_false=[n01])",
+            "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
             "return(message=true, store=false)"
         ]}}
@@ -999,6 +999,32 @@ def main():
             "add_qnode(id=n01, type=chemical_substance, is_set=True)",
             "add_qedge(id=e00, source_id=n01, target_id=n00)",
             "expand(edge_id=e00, kp=BTE)",
+            "return(message=true, store=false)",
+        ]}}
+    elif params.example_number == 233:  # KG2 version of demo example 1 (acetaminophen)
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
+            "add_qnode(id=n01, type=protein, is_set=true)",
+            "add_qedge(id=e00, source_id=n00, target_id=n01)",
+            "expand(edge_id=e00, kp=ARAX/KG2)",
+            "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=https://pharos.nih.gov)",
+            "return(message=true, store=false)",
+        ]}}
+    elif params.example_number == 300:  # KG2 version of demo example 1 (acetaminophen)
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:14330, id=n00)",
+            "add_qnode(type=protein, is_set=true, id=n01)",
+            "add_qnode(type=chemical_substance, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
+            "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+            "filter_kg(action=remove_edges_by_attribute_default, edge_attribute=jaccard_index, type=std, remove_connected_nodes=t, qnode_id=n02)",
+            #"filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",  # can be removed, but shows we can filter by Knowledge provider
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
             "return(message=true, store=false)",
         ]}}
     elif params.example_number == 690:  # test issue 690
@@ -1276,7 +1302,7 @@ def main():
     #    print(f"{node.name} {node.type[0]}")
     #     print(node.qnode_id)
 
-    
+
     # if params.example_number == 101:
     #     import math
     #     edge_values = {}
@@ -1335,7 +1361,7 @@ def main():
     #         i+=1
     #     print(value_list)
     #     #print([len(r.node_bindings) for r in message.results])
-    
+
     #print(len(message.knowledge_graph.nodes))
 
     # check number of TP's for example 3
@@ -1401,7 +1427,7 @@ def main():
     try:
         print(f"Number of KnowledgeProviders in KG: {Counter([x.provided_by for x in message.knowledge_graph.edges])}")
     except:
-        print(f"Number of KnowledgeProviders in KG: {Counter([x.provided_by[0] for x in message.knowledge_graph.edges])}")
+        print(f"Number of KnowledgeProviders in KG: {Counter([y for x in message.knowledge_graph.edges for y in x.provided_by])}")
 
 # print the message id at the bottom for convenience too:
     print(f"message id: {json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2)}")

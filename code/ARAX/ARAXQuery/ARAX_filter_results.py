@@ -146,14 +146,14 @@ class ARAXFilterResults:
             # print(known_attributes)
             allowable_parameters = {'action': {'sort_by_edge_attribute'},
                                     'edge_attribute': known_attributes,
-                                    'edge_type': set([t for x in self.message.knowledge_graph.edges for t in x.type]),
+                                    'edge_relation': set([x.relation for x in self.message.knowledge_graph.edges]),
                                     'direction': {'descending', 'd', 'ascending', 'a'},
                                     'max_results': {float()}
                                     }
         else:
             allowable_parameters = {'action': {'sort_by_edge_attribute'},
                                     'edge_attribute': {'an edge attribute'},
-                                    'edge_type': {'an edge type'},
+                                    'edge_relation': {'an edge relation'},
                                     'direction': {'descending', 'd', 'ascending', 'a'},
                                     'max_results': {'the maximum number of results to return'}
                                     }
@@ -169,7 +169,7 @@ Use cases include:
 * sorting the results by the value of the jaccard index and take the top ten `filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=d, max_results=10)`
 * etc. etc.
                 
-You have the option to specify the edge type (e.g. via `edge_type=<an edge type>`)
+You have the option to specify the edge type (e.g. via `edge_relation=<an edge relation>`)
 Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
 """
             allowable_parameters['brief_description'] = brief_description
