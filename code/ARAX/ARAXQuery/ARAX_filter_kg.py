@@ -82,6 +82,7 @@ class ARAXFilterKG:
                 else:  # otherwise, it's really not an allowable parameter
                     self.response.warning(
                         f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}")
+                    return -1
 
     #### Top level decision maker for applying filters
     def apply(self, input_message, input_parameters):
@@ -171,9 +172,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
             return allowable_parameters
 
         # Make sure only allowable parameters and values have been passed
-        self.check_params(allowable_parameters)
+        resp = self.check_params(allowable_parameters)
         # return if bad parameters have been passed
-        if self.response.status != 'OK':
+        if self.response.status != 'OK' or resp == -1:
             return self.response
 
         edge_params = self.parameters
@@ -259,9 +260,9 @@ This can be applied to an arbitrary knowledge graph as possible edge properties 
             return allowable_parameters
 
         # Make sure only allowable parameters and values have been passed
-        self.check_params(allowable_parameters)
+        resp = self.check_params(allowable_parameters)
         # return if bad parameters have been passed
-        if self.response.status != 'OK':
+        if self.response.status != 'OK' or resp == -1:
             return self.response
 
         edge_params = self.parameters
@@ -364,9 +365,9 @@ This can be applied to an arbitrary knowledge graph as possible edge attributes 
             return self.response
 
         # Make sure only allowable parameters and values have been passed
-        self.check_params(allowable_parameters)
+        resp = self.check_params(allowable_parameters)
         # return if bad parameters have been passed
-        if self.response.status != 'OK':
+        if self.response.status != 'OK' or resp == -1:
             return self.response
 
         if 'remove_connected_nodes' in edge_params:
@@ -459,9 +460,9 @@ else, only remove a single source/target node based on a query node id (via `rem
             return self.response
 
         # Make sure only allowable parameters and values have been passed
-        self.check_params(allowable_parameters)
+        resp = self.check_params(allowable_parameters)
         # return if bad parameters have been passed
-        if self.response.status != 'OK':
+        if self.response.status != 'OK' or resp == -1:
             return self.response
 
         if 'remove_connected_nodes' in edge_params:
@@ -543,9 +544,9 @@ This can be applied to an arbitrary knowledge graph as possible node types are c
             return allowable_parameters
 
         # Make sure only allowable parameters and values have been passed
-        self.check_params(allowable_parameters)
+        resp = self.check_params(allowable_parameters)
         # return if bad parameters have been passed
-        if self.response.status != 'OK':
+        if self.response.status != 'OK' or resp == -1:
             return self.response
 
         node_params = self.parameters
@@ -607,9 +608,9 @@ This can be applied to an arbitrary knowledge graph as possible node properties 
             return allowable_parameters
 
         # Make sure only allowable parameters and values have been passed
-        self.check_params(allowable_parameters)
+        resp = self.check_params(allowable_parameters)
         # return if bad parameters have been passed
-        if self.response.status != 'OK':
+        if self.response.status != 'OK' or resp == -1:
             return self.response
 
         node_params = self.parameters
@@ -661,9 +662,9 @@ This can be applied to an arbitrary knowledge graph as possible node types are c
             return allowable_parameters
 
         # Make sure only allowable parameters and values have been passed
-        self.check_params(allowable_parameters)
+        resp = self.check_params(allowable_parameters)
         # return if bad parameters have been passed
-        if self.response.status != 'OK':
+        if self.response.status != 'OK' or resp == -1:
             return self.response
 
         node_params = self.parameters
