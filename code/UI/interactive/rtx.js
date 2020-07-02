@@ -488,15 +488,20 @@ function render_message(respObj) {
     statusdiv.appendChild(document.createTextNode("Rendering message..."));
     sesame('openmax',statusdiv);
 
-    message_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
+    if (respObj.id) {
+	message_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
 
-    if (respObj.restated_question.length > 2)
-	add_to_session(message_id,respObj.restated_question+"?");
-    else
-	add_to_session(message_id,"message="+message_id);
+	if (respObj.restated_question.length > 2)
+	    add_to_session(message_id,respObj.restated_question+"?");
+	else
+	    add_to_session(message_id,"message="+message_id);
 
-    document.title = "ARAX-UI ["+message_id+"]: "+respObj.restated_question+"?";
-    history.pushState({ id: 'ARAX_UI' }, 'ARAX | message='+message_id, "//"+ window.location.hostname + window.location.pathname + '?m='+message_id);
+	document.title = "ARAX-UI ["+message_id+"]: "+respObj.restated_question+"?";
+	history.pushState({ id: 'ARAX_UI' }, 'ARAX | message='+message_id, "//"+ window.location.hostname + window.location.pathname + '?m='+message_id);
+    }
+    else {
+        document.title = "ARAX-UI [no message_id]: "+respObj.restated_question+"?";
+    }
 
     if ( respObj["table_column_names"] ) {
 	add_to_summary(respObj["table_column_names"],0);
