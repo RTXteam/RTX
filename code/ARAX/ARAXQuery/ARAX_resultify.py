@@ -23,12 +23,12 @@ import sys
 from typing import List, Dict, Set, Union, Iterable, cast, Optional
 from response import Response
 
-__author__ = 'Stephen Ramsey'
+__author__ = 'Stephen Ramsey and Amy Glen'
 __copyright__ = 'Oregon State University'
-__credits__ = ['Stephen Ramsey', 'David Koslicki', 'Eric Deutsch', 'Amy Glen']
+__credits__ = ['Stephen Ramsey', 'Amy Glen', 'David Koslicki', 'Eric Deutsch']
 __license__ = 'MIT'
 __version__ = '0.1.0'
-__maintainer__ = ''
+__maintainer__ = 'Amy Glen'
 __email__ = ''
 __status__ = 'Prototype'
 
