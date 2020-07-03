@@ -1,0 +1,116 @@
+
+Summary of build process:
+
+cd code/ARAX/KGNodeIndex
+python3 sri_normalizer.py --build
+python3 KGNodeIndex.py --build --both
+
+
+Do to:
+- When coalescing concepts, transfer the normalizer information!
+
+
+
+Notes developing the new KGNodeIndex
+
+2020-06-19
+
+Data structures (Database tables are singular and don't have uc_ prefixes):
+
+kg_nodes{uc_curie}:		- Every node has a unique curie and an entry here. Upper case index dict key
+0- uc_curie			- Every node has a unique curie and an entry here. Upper case
+1- curie			- Every node has a unique curie and an entry here. Original case
+2- original_name		- Original/current name of the node in the database
+3- adjusted_name		- Final/potentially prettified name of the node
+4- type				- Type of the node in the database
+5- uc_unique_concept_curie		- Curie of the unique concept coalescing this node
+6- kg_presence			- Which KGs is it in: "KG1", "KG2", "KG1,KG2"
+
+kg_unique_concepts{uc_curie}:	- Curie identifying the unique concept coalescing many equivalent curies or nodes. Upper case index dict key
+0- uc_curie			- Curie identifying the unique concept coalescing many equivalent curies or nodes. Upper case
+1- curie			- Curie identifying the unique concept coalescing many equivalent curies or nodes. Original case
+2- remapped_curie		- Final best curie for this concept. May be different than the original unique concept curie
+3- kg1_best_curie		- Best curie for KG1
+4- kg2_best_curie		- Best curie for KG2
+5- name				- Final best name of the concept
+6- type				- Final best type of the concept
+7- normalizer_curie		- Best curie from this entry in the normalizer
+8- normalizer_name		- Best name from this entry in the normalizer
+9- normalizer_type		- Best type from this entry in the normalizer
+ * normalizer_type_list	- List of types returned by the normalizer
+ * all_uc_curies{}		- A map of all curies for this concept
+ * all_lc_names{}			- A map of all names for this concept (probably expendable. Useful for debugging)
+
+kg_curies{uc_curie}:		- Complete catalog of all curies, both in the KGs and in SRI normalizer, or even elsewhere. Upper case index dict key
+0- uc_curie			- Complete catalog of all curies, both in the KGs and in SRI normalizer, or even elsewhere. Upper case
+1- curie			- Complete catalog of all curies, both in the KGs and in SRI normalizer, or even elsewhere. Original case
+2- uc_unique_concept_curie	- Curie of the unique concept associated with this curie (may not be "final" best curie)
+3- type				- Type of this curie
+4- source			- Source of this curie: KG1, KG2, SRI
+
+kg_synonyms{lc_synonym}		- All synonym names lower cased, not curies. Lower case index dict key
+0- lc_name			- All synonym names lower cased, not curies. Lower case
+1- name				- Original non-lower-case synonym
+2- uc_unique_concept_curie	- Curie of the unique concept coalescing this node
+3- source			- Source of this name: KG1, KG2, SRI
+ * uc_unique_concept_curies	- Dict of curies with this name if not coalesced
+
+=====================================================
+
+Good tests:
+
+# This one shows how to differentiate between a disease and a phenotypic feature of the same name
+python KGNodeIndex.py --lookup=rickets --kg=KG1
+python KGNodeIndex.py --lookup=DOID:384 --kg=KG1
+python KGNodeIndex.py --lookup=COR1a --kg=KG1
+python KGNodeIndex.py --lookup=insulin --kg=KG1
+python KGNodeIndex.py --lookup=OMIM:261600 --kg=KG1
+python KGNodeIndex.py --lookup=acetaminophen --kg=KG1
+python KGNodeIndex.py --lookup=cementum --kg=KG1
+
+python KGNodeIndex.py --kg_name KG2 --lookup DOID:14330
+
+
+=====================================================
+
+2020-06-12
+
+Existing tables:
+
+kg1_node:
+- curie (UK)
+- name
+- type
+- unique_concept_curie
+
+kg1_unique_concept
+- node_curie (UK)
+- name
+- type
+- normalizer_curie
+- normalizer_name
+
+kg1_synonym
+- lc_synonym (not UK)
+- synonym
+- synonym_is_curie ( 0 or 1 )
+- node_curie
+- type
+
+================
+
+Quick test:
+
+mv KGNodeIndex.sqlite KGNodeIndex.sqlite-save
+mv KGNodeIndex.KG2_map_state.pickle KGNodeIndex.KG2_map_state.pickle-save
+
+egrep "CUI:C1413622|HGNC:2252|NCBIGene:11151|ENSEMBL:ENSG00000102879|UniProtKB:P31146|CUI:C3809383|OMIM:605000|Orphanet:179462" NodeNamesDescriptions_KG2.tsv
+
+python KGNodeIndex --build --kg_name KG2
+
+python KGNodeIndex.py --kg_name KG2 --lookup UniProtKB:P31146
+
+
+
+
+
