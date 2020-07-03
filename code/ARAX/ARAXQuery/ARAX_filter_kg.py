@@ -447,7 +447,7 @@ Use cases include:
 * removing all edges that Jaccard index leass than 1 standard deviation above the mean. `edge_attribute=jaccard_index, type=std` (i.e. all edges that have less than 20% of intermediate nodes in common)
 * etc. etc.
                 
-You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
+You have the option (this defaults to false) to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
 else, only remove a single source/target node based on a query node id (via `remove_connected_nodes=t, qnode_id=<a query node id.>`
 """
             allowable_parameters['brief_description'] = brief_description
