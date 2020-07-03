@@ -40,6 +40,23 @@ def _do_arax_query(query: dict) -> List[Union[Response, Message]]:
         print(response.show(level=response.DEBUG))
     return [response, araxq.message]
 
+def test_warning():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:1227, id=n00)",
+            "add_qnode(type=chemical_substance, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=asdfghjkl, direction=below, threshold=.2)",
+            "overlay(action=add_node_pmids, max_num=15)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
+            "return(message=true, store=false)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) == 20
+
 def test_default_std_dev():
     query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
