@@ -718,7 +718,7 @@ class ARAXMessenger:
                                     factor = 1 - (chi_square / (score_stats['chi_square']['maximum'] + eps))  # lower is better
                             score *= factor
                             buf += f" chi_square={chi_square}, factor={factor}"
-                        print(score_stats)
+                        #print(score_stats)
                         #print(score)
                         #print(buf)
 
@@ -735,7 +735,6 @@ class ARAXMessenger:
 
             #### Keep only 3 digits after the decimal 
             score = int(score * 1000 + 0.5) / 1000.0
-            print(score)
 
             #response.debug(f"  ---> final score={score}")
             result.confidence = score

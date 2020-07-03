@@ -447,20 +447,15 @@ def test_two_hop_based_on_types_1():
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "add_qedge(source_id=n01, target_id=n02, id=e01)",
             "expand(edge_id=e00, kp=ARAX/KG2)",
-            "expand(edge_id=e00, kp=BTE)",
+            #"expand(edge_id=e00, kp=BTE)",
             "expand(edge_id=e01, kp=ARAX/KG2)",
-            # overlay a bunch of clinical info
             "overlay(action=overlay_clinical_info, paired_concept_frequency=true, source_qnode_id=n00, target_qnode_id=n02, virtual_relation_label=C1)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, source_qnode_id=n00, target_qnode_id=n02, virtual_relation_label=C2)",
             "overlay(action=overlay_clinical_info, chi_square=true, source_qnode_id=n00, target_qnode_id=n02, virtual_relation_label=C3)",
             "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",
-            # filter some stuff out for the fun of it
-            #"filter_kg(action=remove_edges_by_attribute_default, edge_attribute=paired_concept_frequency, type=std, remove_connected_nodes=T, qnode_id=n02)",
-            #"filter_kg(action=remove_edges_by_attribute_default, edge_attribute=observed_expected_ratio, type=std, remove_connected_nodes=T, qnode_id=n02)",
-            #"filter_kg(action=remove_edges_by_attribute_default, edge_attribute=chi_square, type=std, remove_connected_nodes=T, qnode_id=n02)",
-            # return results
+            "overlay(action=compute_ngd)",
             "resultify(ignore_edge_direction=true)",
-            "filter_results(action=limit_number_of_results, max_results=10)",
+            "filter_results(action=limit_number_of_results, max_results=50)",
             "return(message=true, store=true)",
         ]}}
         [response, message] = _do_arax_query(query)
