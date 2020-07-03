@@ -154,7 +154,7 @@ if __name__ == '__main__':
         print('could not get IRI for relation curie: ' + relation_curie)
     build_info = {
         "name" : "KG2:Build",
-        "creation date" : datetime.now().strftime("%m-%d-%Y"),
+        "creation date" : datetime.now().strftime("%Y-%m-%d %H:%M"),
         "category label" : "information content entity",
     }
     graph["build"] = build_info
