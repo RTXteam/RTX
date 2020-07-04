@@ -1219,7 +1219,7 @@ class NodeSynonymizer:
             types = {}
             for row in rows:
                 curies.append( {'identifier': row[1], 'type': row[3], 'source': row[4] } )  # FIXME would be nice to know the original name here. Store it!!
-                types[rows[3]] = 1
+                types[row[3]] = 1
 
             # Get the list of synonyms that link to this concept
             cursor = self.connection.cursor()
