@@ -202,7 +202,9 @@ def get_preferred_curies(curie: Union[str, List[str]], log: Response) -> Dict[st
     curies = convert_string_or_list_to_list(curie)
     try:
         node_synonymizer = NodeSynonymizer()
+        log.debug(f"Sending NodeSynonymizer a list of {len(curies)} curies")
         normalizer_results = node_synonymizer.get_normalizer_results(curies, kg_name="KG2")
+        log.debug(f"Got results back from NodeSynonymizer for {len(normalizer_results)} curies")
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
