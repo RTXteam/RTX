@@ -22,8 +22,8 @@ from swagger_server.models.node import Node
 from swagger_server.models.query_graph import QueryGraph
 
 
-def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_incomplete=False, debug=False, should_throw_error=False) -> \
-        Tuple[Dict[str, Dict[str, Node]], Dict[str, Dict[str, Edge]]]:
+def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_incomplete=False, debug=False,
+                                       should_throw_error=False) -> Tuple[Dict[str, Dict[str, Node]], Dict[str, Dict[str, Edge]]]:
     # Run the query
     araxq = ARAXQuery()
     response = araxq.query({"previous_message_processing_plan": {"processing_actions": actions_list}})
@@ -134,24 +134,8 @@ def test_kg1_parkinsons_demo_example():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
-    # Make sure all e00 edges map to Parkinson's curie for n00
-    for edge_id, edge in edges_by_qg_id['e00'].items():
-        assert edge.source_id == "DOID:14330" or edge.target_id == "DOID:14330"
-
-    # Make sure all drugs returned are as expected
-    for node_id, node in nodes_by_qg_id['n02'].items():
-        assert "chemical_substance" in node.type
-
     # Make sure drugs include cilnidipine
-    assert any(node.name.lower() == 'cilnidipine' for node in nodes_by_qg_id['n02'].values())
-
-    # Make sure there are four proteins connecting to cilnidipine
-    proteins_connected_to_cilnidipine = set()
-    for edge_id, edge in edges_by_qg_id['e01'].items():
-        if edge.source_id == "CHEMBL.COMPOUND:CHEMBL452076" or edge.target_id == "CHEMBL.COMPOUND:CHEMBL452076":
-            non_cilnidipine_node = edge.source_id if edge.source_id != "CHEMBL.COMPOUND:CHEMBL452076" else edge.target_id
-            proteins_connected_to_cilnidipine.add(non_cilnidipine_node)
-    assert(len(proteins_connected_to_cilnidipine) >= 4)
+    assert any(node.name.lower() == "cilnidipine" for node in nodes_by_qg_id['n02'].values())
 
 
 def test_kg2_parkinsons_demo_example():
@@ -166,24 +150,8 @@ def test_kg2_parkinsons_demo_example():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
-    # Make sure all e00 edges map to Parkinson's curie for n00
-    for edge_id, edge in edges_by_qg_id['e00'].items():
-        assert edge.source_id == "DOID:14330" or edge.target_id == "DOID:14330"
-
-    # Make sure all drugs returned are as expected
-    for node_id, node in nodes_by_qg_id['n02'].items():
-        assert "chemical_substance" in node.type
-
     # Make sure drugs include cilnidipine
     assert any(node.name.lower() == 'cilnidipine' for node in nodes_by_qg_id['n02'].values())
-
-    # Make sure there are four proteins connecting to cilnidipine
-    proteins_connected_to_cilnidipine = set()
-    for edge_id, edge in edges_by_qg_id['e01'].items():
-        if edge.source_id == "CHEMBL.COMPOUND:CHEMBL452076" or edge.target_id == "CHEMBL.COMPOUND:CHEMBL452076":
-            non_cilnidipine_node = edge.source_id if edge.source_id != "CHEMBL.COMPOUND:CHEMBL452076" else edge.target_id
-            proteins_connected_to_cilnidipine.add(non_cilnidipine_node)
-    assert(len(proteins_connected_to_cilnidipine) >= 4)
 
 
 def test_demo_example_1_simple():
@@ -242,10 +210,6 @@ def test_acetaminophen_example_enforcing_directionality():
         "return(message=true, store=false)",
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-    # Make sure the source of every edge is acetaminophen
-    for edge in edges_by_qg_id['e00'].values():
-        assert edge.source_id == "CHEMBL.COMPOUND:CHEMBL112"
 
 
 def test_720_ambitious_query_causing_multiple_qnode_ids_error():
@@ -618,27 +582,6 @@ def test_623_1_curie_list_issue():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
-def test_623_2_curie_list_issue():
-    actions_list = [
-        "add_qnode(curie=[UniProtKB:P02675, UniProtKB:P01903, UniProtKB:P09601, UniProtKB:Q02878, UniProtKB:P01375, "
-        "UniProtKB:Q9BXM7, UniProtKB:P05181, UniProtKB:I3WAC9, UniProtKB:P50914, UniProtKB:P62241, UniProtKB:O15217, "
-        "UniProtKB:P09488, UniProtKB:P15559, UniProtKB:P06213, UniProtKB:Q13330, UniProtKB:P38646, UniProtKB:P05231, "
-        "UniProtKB:Q9BRL8, UniProtKB:P01344, UniProtKB:Q99683, UniProtKB:P11717, UniProtKB:P01308, UniProtKB:P10635, "
-        "UniProtKB:P23560, UniProtKB:Q01959, UniProtKB:P21728, UniProtKB:O60260, UniProtKB:Q9NQ11, UniProtKB:P21397, "
-        "UniProtKB:P10636, UniProtKB:P08183, UniProtKB:P09211, UniProtKB:P04062, UniProtKB:P14416, UniProtKB:Q5S007, "
-        "UniProtKB:Q99497, UniProtKB:P27338, UniProtKB:P37840, UniProtKB:P08069], is_set=true, id=n00)",
-        "add_qnode(type=disease, id=n01)",
-        "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "expand(edge_id=e00, kp=ARAX/KG1)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    missing_protein = "UniProtKB:Q13330"
-    assert missing_protein in nodes_by_qg_id['n00']
-    edges_using_protein = [edge.id for edge in edges_by_qg_id['e00'].values() if edge.source_id == missing_protein or edge.target_id == missing_protein]
-    assert len(edges_using_protein) == 3
-
-
 def test_847_dont_expand_curie_less_edge():
     actions_list = [
         "add_qnode(id=n00, type=protein)",
@@ -648,6 +591,22 @@ def test_847_dont_expand_curie_less_edge():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, should_throw_error=True)
+
+
+def test_deduplication():
+    actions_list = [
+        "add_qnode(curie=CUI:C0004572, id=n00)",  # Babesia
+        "add_qnode(id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(edge_id=e00, kp=ARAX/KG2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    all_node_ids = {node.id for nodes in nodes_by_qg_id.values() for node in nodes.values()}
+    babesia_curies = {"CUI:C0004572", "CHV:0000001647", "LNC:LP19999-9", "MEDDRA:10003963", "MESH:D001403",
+                      "NCIT:C122040", "NCI_CDISC:C122040", "SNOMEDCT:35029001"}
+    babesia_curies_in_answer = all_node_ids.intersection(babesia_curies)
+    assert len(babesia_curies_in_answer) <= 1
 
 
 if __name__ == "__main__":

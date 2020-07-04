@@ -2,7 +2,11 @@
 # This file contains utilities/helper functions for general use within the Expand module
 import sys
 import os
-from typing import List, Dict, Union
+import time
+import traceback
+from typing import List, Dict, Union, Tuple
+
+from response import Response
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.knowledge_graph import KnowledgeGraph
@@ -13,6 +17,8 @@ from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/kg-construction/")
 from KGNodeIndex import KGNodeIndex
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
+from node_synonymizer import NodeSynonymizer
 
 
 class DictKnowledgeGraph:
@@ -115,28 +121,6 @@ def get_query_node(query_graph: QueryGraph, qnode_id: str) -> QNode:
     return matching_nodes[0] if matching_nodes else None
 
 
-def get_preferred_curie(curie: str) -> str:
-    # NOTE: This function is temporary; to be supplanted by future method in KGNodeIndex (which uses NodeNormalizer)
-    prefixes_in_order_of_preference = ['DOID', 'UNIPROTKB', 'CHEMBL.COMPOUND', 'NCBIGENE', 'CHEBI', 'MONDO', 'OMIM',
-                                       'HP', 'ENSEMBL', 'HGNC', 'GO', 'REACT', 'REACTOME', 'FMA', 'CL', 'MESH']
-    synonym_group = sorted(get_curie_synonyms(curie))
-
-    # Pick the curie that uses the (relatively) most preferred prefix
-    lowest_ranking = 10000
-    best_curie = None
-    for curie in synonym_group:
-        uppercase_prefix = get_curie_prefix(curie).upper()
-        if uppercase_prefix in prefixes_in_order_of_preference:
-            ranking = prefixes_in_order_of_preference.index(uppercase_prefix)
-            if ranking < lowest_ranking:
-                lowest_ranking = ranking
-                best_curie = curie
-
-    if not best_curie:
-        best_curie = synonym_group[0] if synonym_group else curie
-    return best_curie
-
-
 def convert_standard_kg_to_dict_kg(knowledge_graph: KnowledgeGraph) -> DictKnowledgeGraph:
     dict_kg = DictKnowledgeGraph()
     if knowledge_graph.nodes:
@@ -198,20 +182,46 @@ def convert_curie_to_bte_format(curie: str) -> str:
     return prefix + ':' + local_id
 
 
-def get_curie_synonyms(curie: Union[str, List[str]], kp='KG2') -> List[str]:
+def get_curie_synonyms(curie: Union[str, List[str]], log: Response) -> List[str]:
     curies = convert_string_or_list_to_list(curie)
-    kg_to_use = 'KG1' if 'KG1' in kp else 'KG2'
+    try:
+        node_synonymizer = NodeSynonymizer()
+        normalizer_results = node_synonymizer.get_normalizer_results(curies, kg_name="KG2")
+    except Exception:
+        tb = traceback.format_exc()
+        error_type, error, _ = sys.exc_info()
+        log.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
+        return []
+    else:
+        equivalent_curies = {equivalent_identifier_dict['identifier'] for curie_info_dict in normalizer_results.values()
+                             for equivalent_identifier_dict in curie_info_dict['equivalent_identifiers']}
+        return sorted(list(equivalent_curies))
 
-    # Find whatever we can using KG2/KG1
-    kgni = KGNodeIndex()
-    equivalent_curies_using_arax_kg = set()
-    for curie in curies:
-        equivalent_curies = kgni.get_equivalent_curies(curie=convert_curie_to_arax_format(curie), kg_name=kg_to_use)
-        equivalent_curies_using_arax_kg = equivalent_curies_using_arax_kg.union(set(equivalent_curies))
 
-    # TODO: Use new KGNodeIndex synonym method(s) once ready
-
-    return list(equivalent_curies_using_arax_kg)
+def get_preferred_curies(curie: Union[str, List[str]], log: Response) -> Dict[str, Dict[str, str]]:
+    curies = convert_string_or_list_to_list(curie)
+    try:
+        node_synonymizer = NodeSynonymizer()
+        normalizer_results = node_synonymizer.get_normalizer_results(curies, kg_name="KG2")
+    except Exception:
+        tb = traceback.format_exc()
+        error_type, error, _ = sys.exc_info()
+        log.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
+        return {}
+    else:
+        preferred_curies_dict = dict()
+        missing_curies = set(curies).difference(set(list(normalizer_results.keys())))
+        if missing_curies:
+            log.warning(f"NodeSynonymizer did not return results for: {missing_curies}")
+        else:
+            for input_curie, normalization_info in normalizer_results.items():
+                kg2_preferred_curie = normalization_info["id"].get("kg2_best_curie")
+                sri_preferred_curie = normalization_info["id"].get("SRI_normalizer_curie")
+                preferred_curie = kg2_preferred_curie if kg2_preferred_curie else sri_preferred_curie
+                sri_preferred_name = normalization_info["id"].get("SRI_normalizer_name")
+                preferred_name = sri_preferred_name if sri_preferred_name else normalization_info["id"].get("label")
+                preferred_curies_dict[input_curie] = {'preferred_curie': preferred_curie, 'preferred_name': preferred_name}
+        return preferred_curies_dict
 
 
 def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: DictKnowledgeGraph) -> bool:
