@@ -1174,7 +1174,10 @@ class NodeSynonymizer:
             if kg_name == 'SRI':
                 normalizer = SriNodeNormalizer()
                 result = normalizer.get_node_normalizer_results(entity)
-                results[entity] = result[entity]
+                if result is None:
+                    results[entity] = None
+                else:
+                    results[entity] = result[entity]
                 continue
 
             # Otherwise for KG1 and KG2
@@ -1192,6 +1195,7 @@ class NodeSynonymizer:
 
             # If there are still no rows, then just move on
             if len(rows) == 0:
+                results[entity] = None
                 continue
 
             # If multiple rows come back, this is probably an error in the database
