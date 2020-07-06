@@ -1069,42 +1069,57 @@ class NodeSynonymizer:
 
 
     # ############################################################################################
-    def get_equivalent_curies(self, curie, kg_name='KG2'):
+    def get_equivalent_curies(self, curies, kg_name='KG2'):
 
-        # Determine the table prefix for the knowledge graph selected
-        if kg_name.upper() == 'KG1' or kg_name.upper() == 'KG2':
-            kg_prefix = kg_name.lower()
-        else:
+        # If no entity was passed, then nothing to do
+        if curies is None:
+            return None
+
+        # Verify that kg_name is an allowed value
+        if kg_name.upper() != 'KG1' and kg_name.upper() != 'KG2':
             print("ERROR: kg_name must be either 'KG1' or 'KG2'")
             return None
 
-        # Set up the return list
-        curies = []
+        # The table prefix is always kg2 now
+        kg_prefix = 'kg2'
+
+        # If the provided value is just a string, turn it into a list
+        if isinstance(curies,str):
+            curies = [ curies ]
+
+        # If the provided value is just a string, turn it into a list
+        if len(curies) > 5000:
+            print("ERROR: Maximum number of curies is currently 5000. Maybe the limit could be extended")
+            return None
+
+        # Make a comma-separated list
+        uc_curies = []
+        results = {}
+        for curie in curies:
+            uc_curies.append(curie.upper())
+            results[curie] = None
+        entities_str = "','".join(uc_curies)
 
         # Search the curie table for the provided curie
         cursor = self.connection.cursor()
-        cursor.execute( f"SELECT unique_concept_curie FROM {kg_prefix}_curie{TESTSUFFIX} WHERE uc_curie = ?", (curie.upper(),) )    # FIXME: need to make curie upper()?
+        cursor.execute( f"""
+            SELECT C.curie,C.unique_concept_curie,N.curie,N.kg_presence FROM {kg_prefix}_curie{TESTSUFFIX} AS C
+             INNER JOIN {kg_prefix}_node{TESTSUFFIX} AS N ON C.unique_concept_curie == N.unique_concept_curie
+             WHERE C.uc_curie in ( '{entities_str}' )""" )
         rows = cursor.fetchall()
 
         # If there are still no rows, then just return an empty list
         if len(rows) == 0:
-            return curies
+            return results
 
-        # If multiple rows come back, this is probably an error in the database
-        if len(rows) > 1:
-            print(f"WARNING: Search in NodeSynonymizer for '{curie}' turned up more than entry. This shouldn't be.")
-
-        # Extract the CURIE for the unique concept
-        unique_concept_curie = rows[0][0]
-
-        # Get the list of nodes that link to this concept
-        cursor = self.connection.cursor()
-        cursor.execute( f"SELECT * FROM {kg_prefix}_curie{TESTSUFFIX} WHERE unique_concept_curie = ?", (unique_concept_curie,) )
-        rows = cursor.fetchall()
+        # Loop through all rows, building the list
         for row in rows:
-            curies.append(row[1])
-        return curies
-        #return list(curies.keys())
+            if kg_name in row[3]:
+                if results[row[0]] is None:
+                    results[row[0]] = []
+                results[row[0]].append(row[2])
+
+        return results
 
 
     def get_equivalent_entities(self, curie, kg_name='KG2'):
@@ -1152,6 +1167,7 @@ class NodeSynonymizer:
         return equivalence
 
 
+    # ############################################################################################
     # Return results in the Node Normalizer format, either from SRI or KG1 or KG2
     def get_normalizer_results(self, entities=None, kg_name='SRI'):
 
@@ -1311,6 +1327,11 @@ class NodeSynonymizer:
         #cursor.execute( f"SELECT * FROM {kg_prefix}_curie{TESTSUFFIX} LIMIT 100 ")
         cursor.execute( f"SELECT * FROM {kg_prefix}_node{TESTSUFFIX} LIMIT 100 ")
         #cursor.execute( f"SELECT * FROM {kg_prefix}_unique_concept{TESTSUFFIX} LIMIT 100 ")
+        cursor.execute( f"""
+            SELECT C.curie,C.unique_concept_curie,N.curie,N.kg_presence FROM {kg_prefix}_curie{TESTSUFFIX} AS C
+             INNER JOIN {kg_prefix}_node{TESTSUFFIX} AS N ON C.unique_concept_curie == N.unique_concept_curie
+             WHERE C.uc_curie in ( 'DOID:384','DOID:13636' )""" )
+
         rows = cursor.fetchall()
         for row in rows:
             print(row)
@@ -1502,9 +1523,11 @@ def main():
                         help="If set to a curie or name, then use the NodeSynonymizer (or SRI normalizer) to lookup the equivalence information for the curie or name", default=None)
     parser.add_argument('-q', '--query', action="store_true",
                         help="If set perform the test query and return", default=None)
+    parser.add_argument('-g', '--get', action="store",
+                        help="Get nodes for the specified list in the specified kg_name", default=None)
     args = parser.parse_args()
 
-    if not args.build and not args.test and not args.recollate and not args.lookup and not args.query:
+    if not args.build and not args.test and not args.recollate and not args.lookup and not args.query and not args.get:
         parser.print_help()
         sys.exit(2)
 
@@ -1513,6 +1536,16 @@ def main():
     # If the user asks to perform the SELECT statement, do it
     if args.query:
         synonymizer.test_select()
+        return
+
+    # If the user asks to perform the SELECT statement, do it
+    if args.get:
+        t0 = timeit.default_timer()
+        curies = args.get.split(',')
+        results = synonymizer.get_equivalent_curies(curies,kg_name=args.kg_name)
+        t1 = timeit.default_timer()
+        print(json.dumps(results, indent=2, sort_keys=True))
+        print(f"INFO: Information retrieved in {t1-t0} sec")
         return
 
     # If the --lookup option is provided, this takes precedence, perform the lookup and return
