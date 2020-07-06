@@ -1159,7 +1159,12 @@ class NodeSynonymizer:
         if entities is None:
             return None
 
-        # Determine the table prefix for the knowledge graph selected
+        # Verify that kg_name is an allowed value
+        if kg_name.upper() != 'KG1' and kg_name.upper() != 'KG2' and kg_name.upper() != 'SRI':
+            print("ERROR: kg_name must be either 'KG1' or 'KG2' or 'SRI'")
+            return None
+
+        # The table prefix is always kg2 now
         kg_prefix = 'kg2'
 
         # If the provided value is just a string, turn it into a list
