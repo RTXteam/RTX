@@ -38,7 +38,6 @@ class PredictDrugTreatsDisease:
         Takes an input curie from the KG, uses the synonymizer, and then returns something that the map.csv can handle
         """
         curies_in_model = set()
-        print(input_curie)
         normalizer_result = self.synonymizer.get_normalizer_results(input_curie, kg_name='ARAX')  # TODO: Figure out if this is the right kg_name to be using
         equivalent_curies = [x['identifier'] for x in normalizer_result[input_curie]['equivalent_identifiers']]
         for curie in equivalent_curies:

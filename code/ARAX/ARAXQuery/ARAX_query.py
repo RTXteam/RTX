@@ -724,10 +724,11 @@ def main():
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(curie=DOID:1588, id=n00)",
-            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+            "add_qnode(type=chemical_substance, is_set=false, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
             "overlay(action=predict_drug_treats_disease)",
+            "resultify(ignore_edge_direction=True)",
             "return(message=true, store=true)",
         ]}}
     elif params.example_number == 11:  # test overlay with overlay_clinical_info, paired_concept_frequency via COHD
