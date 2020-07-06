@@ -18,13 +18,19 @@ import re
 import json
 import sys
 import urllib.parse
+import unittest
 
 #from cache_control_helper import CacheControlHelper
 
-# json file input
-with open('Input.json') as f:
-    input_data = json.load(f)
-#print(input_data)    
+# input json file
+with open('Input.json') as f1:
+    input_data = json.load(f1)
+#print(input_data)
+
+# response json file
+with open('response_1593100927743.json') as f2:
+    output_data = json.load(f2)
+   
 
 #main class 
 class Query_ICEES:
@@ -174,7 +180,14 @@ class Query_ICEES:
         Query_ICEES.__access_api(handler, url_suffix, body)
 
 
+# Class to test the query output 
+class test_query(unittest.TestCase):
+    def test(self):
+        self.assertEqual(Query_ICEES.post_knowledge_graph_overlay(input_data), output_data)
+
+
 if __name__ == '__main__':
     print(Query_ICEES.post_knowledge_graph_overlay(input_data))
+    unittest.main()
 
             
