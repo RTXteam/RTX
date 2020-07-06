@@ -649,7 +649,8 @@ class TestARAXResultify(unittest.TestCase):
             "return(message=true, store=false)"]}}
         [response, message] = _do_arax_query(query)
         assert response.status == 'OK'
-        assert len(message.results) == 3223
+        n01_nodes = {node.id for node in message.knowledge_graph.nodes if "n01" in node.qnode_ids}
+        assert len(message.results) == len(n01_nodes)
 
     def test09(self):
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -1127,10 +1128,9 @@ class TestARAXResultify(unittest.TestCase):
                 qnode.id: {node_binding.kg_id: kg_nodes_map[node_binding.kg_id] for node_binding in result.node_bindings
                            if
                            node_binding.qg_id == qnode.id} for qnode in message.query_graph.nodes}
-            result_edges_by_qg_id = {
-                qedge.id: {edge_binding.kg_id: kg_edges_map[edge_binding.kg_id] for edge_binding in result.edge_bindings
-                           if
-                           edge_binding.qg_id == qedge.id} for qedge in message.query_graph.edges}
+            result_edges_by_qg_id = {qedge.id: {edge_binding.kg_id: kg_edges_map[edge_binding.kg_id] for edge_binding
+                                                in result.edge_bindings if edge_binding.qg_id == qedge.id}
+                                     for qedge in message.query_graph.edges}
             # Make sure all intermediate nodes are connected to at least one (real, not virtual) edge on BOTH sides
             for n01_node_id in result_nodes_by_qg_id['n01']:
                 assert any(edge for edge in result_edges_by_qg_id['e00'].values() if
