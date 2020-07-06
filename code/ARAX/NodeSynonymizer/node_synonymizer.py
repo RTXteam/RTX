@@ -1152,7 +1152,7 @@ class NodeSynonymizer:
         return equivalence
 
 
-    # Return results in the Node Normalizer format, either from SRI or ARAX
+    # Return results in the Node Normalizer format, either from SRI or KG1 or KG2
     def get_normalizer_results(self, entities=None, kg_name='SRI'):
 
         # If no entity was passed, then nothing to do
@@ -1486,7 +1486,7 @@ def main():
     parser.add_argument('-b', '--build', action="store_true",
                         help="If set, (re)build the index from scratch", default=False)
     parser.add_argument('-k', '--kg_name', action="store",
-                        help="Specify the KG to read from if --build is set [KG1 or KG1] (default is KG1)", default='KG1')
+                        help="Specify the KG to access (KG2 or KG1 or SRI) (default is KG1)", default='KG1')
     parser.add_argument('-s', '--save_state', action="store_true",
                         help="If set, save the state of the build hashes when done reading source data (useful for subsequent --recollate)", default=False)
     parser.add_argument('-r', '--recollate', action="store_true",
