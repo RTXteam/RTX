@@ -215,14 +215,14 @@ def get_preferred_curies(curie: Union[str, List[str]], log: Response) -> Dict[st
         missing_curies = set(curies).difference(set(list(normalizer_results.keys())))
         if missing_curies:
             log.warning(f"NodeSynonymizer did not return results for: {missing_curies}")
-        else:
-            for input_curie, normalization_info in normalizer_results.items():
-                kg2_preferred_curie = normalization_info["id"].get("kg2_best_curie")
-                sri_preferred_curie = normalization_info["id"].get("SRI_normalizer_curie")
-                preferred_curie = kg2_preferred_curie if kg2_preferred_curie else sri_preferred_curie
-                sri_preferred_name = normalization_info["id"].get("SRI_normalizer_name")
-                preferred_name = sri_preferred_name if sri_preferred_name else normalization_info["id"].get("label")
-                preferred_curies_dict[input_curie] = {'preferred_curie': preferred_curie, 'preferred_name': preferred_name}
+        for input_curie, normalization_info in normalizer_results.items():
+            kg2_preferred_curie = normalization_info["id"].get("kg2_best_curie")
+            sri_preferred_curie = normalization_info["id"].get("SRI_normalizer_curie")
+            preferred_curie = kg2_preferred_curie if kg2_preferred_curie else sri_preferred_curie
+            sri_preferred_name = normalization_info["id"].get("SRI_normalizer_name")
+            preferred_name = sri_preferred_name if sri_preferred_name else normalization_info["id"].get("label")
+            preferred_curies_dict[input_curie] = {'preferred_curie': preferred_curie,
+                                                  'preferred_name': preferred_name}
         return preferred_curies_dict
 
 
