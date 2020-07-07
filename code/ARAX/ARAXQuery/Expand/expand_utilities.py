@@ -193,8 +193,9 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: Response) -> List[str]
         log.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
         return []
     else:
-        equivalent_curies = {equivalent_identifier_dict['identifier'] for curie_info_dict in normalizer_results.values()
-                             for equivalent_identifier_dict in curie_info_dict['equivalent_identifiers']}
+        curie_info_dicts = [normalization_info for normalization_info in normalizer_results.values() if normalization_info]
+        equivalent_curies = {equivalent_identifier_dict['identifier'] for normalization_info in curie_info_dicts
+                             for equivalent_identifier_dict in normalization_info.get('equivalent_identifiers', [])}
         return sorted(list(equivalent_curies))
 
 
