@@ -185,26 +185,28 @@ def convert_curie_to_bte_format(curie: str) -> str:
 def get_curie_synonyms(curie: Union[str, List[str]], log: Response) -> List[str]:
     curies = convert_string_or_list_to_list(curie)
     try:
-        node_synonymizer = NodeSynonymizer()
-        normalizer_results = node_synonymizer.get_normalizer_results(curies, kg_name="KG2")
+        synonymizer = NodeSynonymizer()
+        equivalent_curies_dict = synonymizer.get_equivalent_curies(curies, kg_name="KG2")
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
         log.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
         return []
     else:
-        curie_info_dicts = [normalization_info for normalization_info in normalizer_results.values() if normalization_info]
-        equivalent_curies = {equivalent_identifier_dict['identifier'] for normalization_info in curie_info_dicts
-                             for equivalent_identifier_dict in normalization_info.get('equivalent_identifiers', [])}
-        return sorted(list(equivalent_curies))
+        equivalent_curies = {curie for curie_list in equivalent_curies_dict.values() if curie_list for curie in
+                             curie_list}
+        if equivalent_curies:
+            return sorted(list(equivalent_curies))
+        else:
+            return curies
 
 
 def get_preferred_curies(curie: Union[str, List[str]], log: Response) -> Dict[str, Dict[str, str]]:
     curies = convert_string_or_list_to_list(curie)
     try:
-        node_synonymizer = NodeSynonymizer()
+        synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer a list of {len(curies)} curies")
-        normalizer_results = node_synonymizer.get_normalizer_results(curies, kg_name="KG2")
+        normalizer_results = synonymizer.get_normalizer_results(curies, kg_name="KG2")
         log.debug(f"Got results back from NodeSynonymizer")
     except Exception:
         tb = traceback.format_exc()
