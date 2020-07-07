@@ -182,7 +182,7 @@ class ARAXExpander:
             answer_kg, edge_to_nodes_map = kp_querier.answer_one_hop_query(edge_query_graph)
             if log.status != 'OK':
                 return answer_kg, edge_to_nodes_map
-            log.info(f"Query for edge {qedge.id} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
+            log.debug(f"Query for edge {qedge.id} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
             # Make sure our query has been fulfilled (unless we're continuing if no results)
             if not continue_if_no_results:
@@ -326,7 +326,7 @@ class ARAXExpander:
                 for qnode_id, corresponding_node_id in edge_to_nodes_map[edge_id].items():
                     updated_edge_to_nodes_map[edge_id][qnode_id] = curie_map.get(corresponding_node_id)
 
-        log.debug(f"After deduplication, answer KG counts are: {eu.get_printable_counts_by_qg_id(deduplicated_kg)}")
+        log.info(f"After deduplication, answer KG counts are: {eu.get_printable_counts_by_qg_id(deduplicated_kg)}")
         return deduplicated_kg, updated_edge_to_nodes_map
 
     @staticmethod
@@ -498,9 +498,8 @@ class ARAXExpander:
         for qnode in qnodes:
             if qnode.curie:
                 log.debug(f"Getting curie synonyms for qnode {qnode.id} using the NodeSynonymizer")
-                log.debug(f"Sending NodeSynonymizer a list of {len(qnode.curie)} curies")
                 synonymized_curies = eu.get_curie_synonyms(qnode.curie, log)
-                log.debug(f"Got {len(synonymized_curies)} equivalent curies back from NodeSynonymizer")
+                log.debug(f"Using {len(synonymized_curies)} equivalent curies for qnode {qnode.id}")
                 qnode.curie = synonymized_curies
                 if "BTE" not in kp:
                     qnode.type = None  # Important to clear when using synonyms; otherwise we're limited #889

@@ -186,7 +186,9 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: Response) -> List[str]
     curies = convert_string_or_list_to_list(curie)
     try:
         synonymizer = NodeSynonymizer()
+        log.debug(f"Sending NodeSynonymizer.get_equivalent_curies() a list of {len(curies)} curies")
         equivalent_curies_dict = synonymizer.get_equivalent_curies(curies, kg_name="KG2")
+        log.debug(f"Got results back from NodeSynonymizer for {len(curies)} curies")
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
@@ -198,19 +200,17 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: Response) -> List[str]
             log.warning(f"NodeSynonymizer did not find any equivalent curies for: {curies_missing_info}")
         equivalent_curies = {curie for curie_list in equivalent_curies_dict.values() if curie_list for curie in
                              curie_list}
-        if equivalent_curies:
-            return sorted(list(equivalent_curies.union(set(curies))))  # Make sure all input curies are included
-        else:
-            return curies
+        all_curies = equivalent_curies.union(set(curies))  # Make sure even curies without results are included
+        return sorted(list(all_curies))
 
 
 def get_preferred_curies(curie: Union[str, List[str]], log: Response) -> Dict[str, Dict[str, str]]:
     curies = convert_string_or_list_to_list(curie)
     try:
         synonymizer = NodeSynonymizer()
-        log.debug(f"Sending NodeSynonymizer a list of {len(curies)} curies")
+        log.debug(f"Sending NodeSynonymizer.get_normalizer_results() a list of {len(curies)} curies")
         normalizer_results = synonymizer.get_normalizer_results(curies, kg_name="KG2")
-        log.debug(f"Got results back from NodeSynonymizer")
+        log.debug(f"Got results back from NodeSynonymizer for {len(curies)} curies")
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
