@@ -455,8 +455,7 @@ def main():
         return
 
     if args.build:
-        print("INFO: Beginning SRI Node Normalizer cache building process for both KG1 and KG2. Make sure you have a good network connection.")
-        print("This might also be a nice time to go get a cup of coffee. This will take a while.")
+        print("INFO: Beginning SRI Node Normalizer cache building process for both KG1 and KG2. Make sure you have a good network connection as this will download ~500 MB of data.")
         normalizer.fill_cache(kg_name='KG2')
         normalizer.fill_cache(kg_name='KG1')
         normalizer.store_cache()
