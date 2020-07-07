@@ -212,7 +212,7 @@ class ARAXExpander:
         copy_of_qnode = eu.copy_qnode(query_node)
 
         if use_synonyms:
-            self._add_curie_synonyms_to_query_nodes(qnodes=[copy_of_qnode], log=log)
+            self._add_curie_synonyms_to_query_nodes(qnodes=[copy_of_qnode], log=log, kp=kp_to_use)
         log.debug(f"Modified query node is: {copy_of_qnode.to_dict()}")
 
         # Answer the query using the proper KP
@@ -264,7 +264,7 @@ class ARAXExpander:
             edge_query_graph.nodes.append(qnode_copy)
 
         if use_synonyms:
-            self._add_curie_synonyms_to_query_nodes(qnodes=edge_query_graph.nodes, log=log)
+            self._add_curie_synonyms_to_query_nodes(qnodes=edge_query_graph.nodes, log=log, kp=kp_to_use)
         return edge_query_graph
 
     @staticmethod
@@ -493,7 +493,7 @@ class ARAXExpander:
         return kg
 
     @staticmethod
-    def _add_curie_synonyms_to_query_nodes(qnodes: List[QNode], log: Response):
+    def _add_curie_synonyms_to_query_nodes(qnodes: List[QNode], log: Response, kp: str):
         log.debug("Looking for query nodes to use curie synonyms for")
         for qnode in qnodes:
             if qnode.curie:
@@ -502,7 +502,8 @@ class ARAXExpander:
                 synonymized_curies = eu.get_curie_synonyms(qnode.curie, log)
                 log.debug(f"Got {len(synonymized_curies)} equivalent curies back from NodeSynonymizer")
                 qnode.curie = synonymized_curies
-                qnode.type = None  # Important to clear when using synonyms; otherwise we're limited #889
+                if "BTE" not in kp:
+                    qnode.type = None  # Important to clear when using synonyms; otherwise we're limited #889
 
     @staticmethod
     def _get_orphan_query_node_ids(query_graph: QueryGraph):
