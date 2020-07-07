@@ -617,9 +617,8 @@ def test_889_missing_curies():
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "add_qedge(source_id=n01, target_id=n02, id=e01, type=molecularly_interacts_with)",
         "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
-        "resultify(ignore_edge_direction=true)",
         "return(message=true, store=false)",
-]
+    ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, debug=True)
     assert len(nodes_by_qg_id['n02']) > 30
 
