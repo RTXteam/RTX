@@ -465,6 +465,60 @@ def test_two_hop_based_on_types_1():
         _virtual_tester(message, 'has_observed_expected_ratio_with', 'C2', 'observed_expected_ratio', 'data:0951', 1)
         _virtual_tester(message, 'has_chi_square_with', 'C3', 'chi_square', 'data:0951', 1)
 
+def test_one_hop_kitchen_sink_BTE_1():
+    """
+    Example of throwing everything at a simple BTE query
+    """
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=DOID:11830, id=n0, type=disease)",
+        "add_qnode(type=chemical_substance, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e1)",
+        #"expand(edge_id=e00, kp=ARAX/KG2)",
+        "expand(edge_id=e1, kp=BTE)",
+        "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
+        "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
+        "overlay(action=overlay_clinical_info, chi_square=true)",
+        "overlay(action=predict_drug_treats_disease)",
+        "overlay(action=compute_ngd)",
+        "resultify(ignore_edge_direction=true)",
+        "filter_results(action=limit_number_of_results, max_results=50)",
+        "return(message=true, store=true)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(message.id)
+    assert response.status == 'OK'
+    _attribute_tester(message, 'paired_concept_frequency', 'data:0951', 1)
+    _attribute_tester(message, 'observed_expected_ratio', 'data:0951', 1)
+    _attribute_tester(message, 'chi_square', 'data:0951', 1)
+
+def test_one_hop_kitchen_sink_BTE_2():
+    """
+    Example of throwing everything at a simple BTE query, but with node types that aren't appropriate for some reasoning capabilities
+    """
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=DOID:11830, id=n0, type=disease)",
+        "add_qnode(type=gene, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e1)",
+        #"expand(edge_id=e00, kp=ARAX/KG2)",
+        "expand(edge_id=e1, kp=BTE)",
+        "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
+        "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
+        "overlay(action=overlay_clinical_info, chi_square=true)",
+        "overlay(action=predict_drug_treats_disease)",
+        "overlay(action=compute_ngd)",
+        "resultify(ignore_edge_direction=true)",
+        "filter_results(action=limit_number_of_results, max_results=50)",
+        "return(message=true, store=true)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(message.id)
+    assert response.status == 'OK'
+    _attribute_tester(message, 'paired_concept_frequency', 'data:0951', 1)
+    _attribute_tester(message, 'observed_expected_ratio', 'data:0951', 1)
+    _attribute_tester(message, 'chi_square', 'data:0951', 1)
+
 
 # Not working yet
 # def test_example_3_kg2():
