@@ -270,7 +270,13 @@ class RemoveEdges:
                         values = [x for x in values if x[1]<val]
                     #vals = [x[1] for x in values]
                     #print(np.min(vals),np.max(vals))
-
+                elif edge_params['stat'] == 'percentile':
+                    vals = [x[1] for x in values]
+                    val = np.percentile(vals, edge_params['threshold'], interpolation='linear')
+                    if edge_params['direction'] == 'above':
+                        values = [x for x in values if x[1]>val]
+                    elif edge_params['direction'] == 'below':
+                        values = [x for x in values if x[1]<val]
 
             for edge in values:
                 edges_to_remove.add(edge[0])  # mark it to be removed

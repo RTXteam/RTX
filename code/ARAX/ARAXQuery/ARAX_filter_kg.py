@@ -20,7 +20,7 @@ class ARAXFilterKG:
         self.allowable_actions = {
             'remove_edges_by_type',
             'remove_edges_by_attribute',
-            'remove_edges_by_attribute_default',
+            'remove_edges_by_stats',
             'remove_edges_by_property',
             'remove_nodes_by_type',
             'remove_nodes_by_property',
@@ -400,7 +400,7 @@ This can be applied to an arbitrary knowledge graph as possible edge attributes 
         response = RE.remove_edges_by_attribute()
         return response
 
-    def __remove_edges_by_attribute_default(self, describe=False):
+    def __remove_edges_by_stats(self, describe=False):
         """
         Removes edges from the KG.
         Allowable parameters: {'edge_type': str, 
@@ -419,16 +419,20 @@ This can be applied to an arbitrary knowledge graph as possible edge attributes 
                         for attribute in edge.edge_attributes:
                             known_attributes.add(attribute.name)
             # print(known_attributes)
-            allowable_parameters = {'action': {'remove_edges_by_attribute_default'},
+            allowable_parameters = {'action': {'remove_edges_by_stats'},
                                     'edge_attribute': known_attributes,
-                                    'type': {'n', 'top_n', 'std', 'top_std'},
+                                    'type': {'n', 'std', 'std_dev', 'percentile', 'p'},
+                                    'direction': {'above', 'below'},
+                                    'threshold': {float()},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'qnode_id':set([t for x in self.message.knowledge_graph.nodes if x.qnode_ids is not None for t in x.qnode_ids])
                                     }
         else:
-            allowable_parameters = {'action': {'remove_edges_by_attribute_default'},
+            allowable_parameters = {'action': {'remove_edges_by_stats'},
                                     'edge_attribute': {'an edge attribute name'},
                                     'type': {'n', 'top_n', 'std', 'top_std'},
+                                    'direction': {'above', 'below'},
+                                    'threshold': {'a floating point number'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'qnode_id':{'a specific query node id to remove'}
                                     }
@@ -436,7 +440,7 @@ This can be applied to an arbitrary knowledge graph as possible edge attributes 
         # A little function to describe what this thing does
         if describe:
             brief_description = """
-`remove_edges_by_attribute_default` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
+`remove_edges_by_stats` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
 Edge attributes are a list of additional attributes for an edge.
 This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
 there are two heuristic options: `n` for removing all but the top 50 results or `std` for removing all but 
@@ -465,6 +469,11 @@ else, only remove a single source/target node based on a query node id (via `rem
         if self.response.status != 'OK' or resp == -1:
             return self.response
 
+        if 'threshold' in edge_params:
+            supplied_threshhold = edge_params['threshold']
+        if 'direction' in edge_params:
+            supplied_direction = edge_params['direction']
+
         if 'remove_connected_nodes' in edge_params:
             value = edge_params['remove_connected_nodes']
             if value in {'true', 'True', 't', 'T'}:
@@ -479,12 +488,20 @@ else, only remove a single source/target node based on a query node id (via `rem
             edge_params['remove_connected_nodes'] = False
 
         if 'type' in edge_params:
-            if edge_params['type'] in {'n', 'top_n'}:
+            if edge_params['type'] in {'n'}:
                 edge_params['stat'] = 'n'
                 edge_params['threshold']= 50
-            elif edge_params['type'] in {'std', 'top_std'}:
+            elif edge_params['type'] in {'std', 'std_dev'}:
                 edge_params['stat'] = 'std'
                 edge_params['threshold'] = 1
+            elif edge_params['type'] in {'percentile', 'p'}:
+                edge_params['stat'] = 'percentile'
+                edge_params['threshold'] = 95
+                if supplied_threshhold is not None:
+                    if supplied_threshhold > 100 or supplied_threshhold < 0:
+                        self.response.error(
+                            f"Supplied value {supplied_threshhold} is not permitted. In parameter threshold, when using the percentile type allowable values are real numbers between 0 and 100.",
+                            error_code="UnknownValue")
         else:
             edge_params['stat'] = 'n'
             edge_params['threshold']= 50
@@ -496,12 +513,20 @@ else, only remove a single source/target node based on a query node id (via `rem
             if edge_params['edge_attribute'] in {'ngd', 'chi_square', 'fisher_exact'}:
                 edge_params['direction'] = 'above'
                 edge_params['top'] = False
+                if edge_params['stat'] == 'percentile':
+                    edge_params['threshold'] = 1-edge_params['threshold']
             elif edge_params['edge_attribute'] in {'jaccard_index', 'observed_expected_ratio', 'probability_treats'}:
                 edge_params['direction'] = 'below'
                 edge_params['top'] = True
             else:
                 edge_params['direction'] = 'below'
                 edge_params['top'] = True
+        
+        if supplied_threshhold is not None:
+            edge_params['threshold'] = supplied_threshhold
+        if supplied_direction is not None:
+            edge_params['direction'] = supplied_direction
+
         if self.response.status != 'OK':
             return self.response
 
