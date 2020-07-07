@@ -436,8 +436,8 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     for qg_edge in qg_edges_map.values():
         source_id_qg = qg_edge.source_id
         target_id_qg = qg_edge.target_id
-        source_node_ids_kg = kg_node_ids_by_qg_id[source_id_qg]
-        target_node_ids_kg = kg_node_ids_by_qg_id[target_id_qg]
+        source_node_ids_kg = kg_node_ids_by_qg_id.get(source_id_qg, set())
+        target_node_ids_kg = kg_node_ids_by_qg_id.get(target_id_qg, set())
         # for each source node ID, there should be an edge in KG from this source node to one of the nodes in target_node_ids_kg:
         for source_node_id_kg in source_node_ids_kg:
             if len(kg_node_id_outgoing_adjacency_map[source_node_id_kg] | target_node_ids_kg) == 0:
