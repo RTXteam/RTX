@@ -278,7 +278,7 @@ class ARAXExpander:
         for qnode_id, nodes in dict_kg.nodes_by_qg_id.items():
             # Load preferred curie info from NodeSynonymizer for nodes we haven't seen before
             unmapped_node_ids = set(list(nodes.keys())).difference(set((curie_map.keys())))
-            log.debug(f"Getting preferred curies for {qnode_id} nodes returned in this step via the NodeSynonymizer")
+            log.debug(f"Getting preferred curies for {qnode_id} nodes returned in this step")
             unmapped_curie_info = eu.get_preferred_curies(list(unmapped_node_ids), log) if unmapped_node_ids else dict()
             if log.status != 'OK':
                 return deduplicated_kg, updated_edge_to_nodes_map
