@@ -181,7 +181,7 @@ class MapCurieToOMOP:
                 with multiprocessing.Pool(processes=20) as executor:
                     curie_OMOP_list = [OMOP_list for OMOP_list in executor.map(self._get_OMOP_id, curie_list)]
                 curie_OMOP_dict = dict()
-                for index, curie, _ in curie_list:
+                for index, curie, _, _ in curie_list:
                     curie_OMOP_dict[curie] = {'name': self.kpdata_dict[curie]['name'],
                                               'type': self.kpdata_dict[curie]['type'],
                                               'OMOP_list': curie_OMOP_list[index]}
@@ -203,7 +203,7 @@ class MapCurieToOMOP:
             with multiprocessing.Pool(processes=20) as executor:
                 curie_OMOP_list = [OMOP_list for OMOP_list in executor.map(self._get_OMOP_id, curie_list)]
             curie_OMOP_dict = dict()
-            for index, curie, _ in curie_list:
+            for index, curie, _, _ in curie_list:
                 curie_OMOP_dict[curie] = {'name': self.kpdata_dict[curie]['name'],
                                           'type': self.kpdata_dict[curie]['type'],
                                           'OMOP_list': curie_OMOP_list[index]}
