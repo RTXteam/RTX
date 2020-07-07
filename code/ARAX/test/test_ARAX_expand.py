@@ -609,5 +609,20 @@ def test_deduplication():
     assert len(babesia_curies_in_answer) <= 1
 
 
+def test_889_missing_curies():
+    actions_list = [
+        "add_qnode(name=DOID:11830, id=n00)",
+        "add_qnode(type=protein, is_set=true, id=n01)",
+        "add_qnode(type=chemical_substance, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01, type=molecularly_interacts_with)",
+        "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
+        "resultify(ignore_edge_direction=true)",
+        "return(message=true, store=false)",
+]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, debug=True)
+    assert len(nodes_by_qg_id['n02']) > 30
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])

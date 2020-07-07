@@ -193,10 +193,13 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: Response) -> List[str]
         log.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
         return []
     else:
+        curies_missing_info = {curie for curie in equivalent_curies_dict if not equivalent_curies_dict.get(curie)}
+        if curies_missing_info:
+            log.warning(f"NodeSynonymizer did not find any equivalent curies for: {curies_missing_info}")
         equivalent_curies = {curie for curie_list in equivalent_curies_dict.values() if curie_list for curie in
                              curie_list}
         if equivalent_curies:
-            return sorted(list(equivalent_curies))
+            return sorted(list(equivalent_curies.union(set(curies))))  # Make sure all input curies are included
         else:
             return curies
 

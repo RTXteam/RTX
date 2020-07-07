@@ -160,6 +160,8 @@ class ARAXExpander:
 
         # Create a query graph for this edge (that uses synonyms as well as curies found in prior steps)
         edge_query_graph = self._get_query_graph_for_edge(qedge, query_graph, dict_kg, use_synonyms, kp_to_use, log)
+        if log.status != 'OK':
+            return answer_kg, edge_to_nodes_map
         if not any(qnode for qnode in edge_query_graph.nodes if qnode.curie):
             log.error(f"Cannot expand an edge for which neither end has any curies. (Could not find curies to use from "
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
@@ -496,8 +498,11 @@ class ARAXExpander:
         for qnode in qnodes:
             if qnode.curie:
                 log.debug(f"Getting curie synonyms for qnode {qnode.id} using the NodeSynonymizer")
+                log.debug(f"Sending NodeSynonymizer a list of {len(qnode.curie)} curies")
                 synonymized_curies = eu.get_curie_synonyms(qnode.curie, log)
+                log.debug(f"Got {len(synonymized_curies)} equivalent curies back from NodeSynonymizer")
                 qnode.curie = synonymized_curies
+                qnode.type = None  # Important to clear when using synonyms; otherwise we're limited #889
 
     @staticmethod
     def _get_orphan_query_node_ids(query_graph: QueryGraph):
