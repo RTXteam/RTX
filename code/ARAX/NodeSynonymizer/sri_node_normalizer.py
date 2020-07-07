@@ -94,7 +94,7 @@ class SriNodeNormalizer:
 
         # Loop over each line in the file
         for line in fh:
-            bytes_read += len(line) + 1
+            bytes_read += len(line)
             match = re.match(r'^\s*$',line)
             if match:
                 continue
