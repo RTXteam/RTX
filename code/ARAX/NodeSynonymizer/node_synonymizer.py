@@ -1095,8 +1095,11 @@ class NodeSynonymizer:
         # Make a comma-separated list
         uc_curies = []
         results = {}
+        curie_map = {}
         for curie in curies:
-            uc_curies.append(curie.upper())
+            uc_curie = curie.upper()
+            curie_map[uc_curie] = curie
+            uc_curies.append(uc_curie)
             results[curie] = None
         entities_str = "','".join(uc_curies)
 
@@ -1114,10 +1117,18 @@ class NodeSynonymizer:
 
         # Loop through all rows, building the list
         for row in rows:
+            #print(row)
             if kg_name in row[3]:
-                if results[row[0]] is None:
-                    results[row[0]] = []
-                results[row[0]].append(row[2])
+                curie = row[0]
+                if curie not in results:
+                    if curie.upper() in curie_map:
+                        curie = curie_map[curie.upper()]
+                if curie not in results:
+                    print(f"ERROR: Unable to find curie {curie}")
+                else:
+                    if results[curie] is None:
+                        results[curie] = []
+                    results[curie].append(row[2])
 
         return results
 
