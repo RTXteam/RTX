@@ -10,6 +10,7 @@ import argparse
 import sqlite3
 import json
 import pickle
+import platform
 
 #sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 #sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../QuestionAnswering")
@@ -168,10 +169,14 @@ class NodeSynonymizer:
         kg_curies = self.kg_map['kg_curies']
         kg_synonyms = self.kg_map['kg_synonyms']
 
+        # Correction for Windows line endings
+        extra_bytes = 0
+        if platform.system() == 'Windows':
+            extra_bytes = 1
 
         # Loop over each line in the file
         for line in fh:
-            bytes_read += len(line) + 1
+            bytes_read += len(line) + extra_bytes
             match = re.match(r'^\s*$',line)
             if match:
                 continue

@@ -11,6 +11,7 @@ import ast
 import time
 import pickle
 import re
+import platform
 
 import requests
 import requests_cache
@@ -92,9 +93,14 @@ class SriNodeNormalizer:
         # Create dicts to hold all the information
         batch = []
 
+        # Correction for Windows line endings
+        extra_bytes = 0
+        if platform.system() == 'Windows':
+            extra_bytes = 1
+
         # Loop over each line in the file
         for line in fh:
-            bytes_read += len(line)
+            bytes_read += len(line) + extra_bytes
             match = re.match(r'^\s*$',line)
             if match:
                 continue
@@ -463,6 +469,8 @@ def main():
     curie = 'UniProtKB:P01308'
     if args.curie:
         curie = args.curie
+
+    #print(platform.system())
 
     print("==========================================================")
     print("Native SRI Node Normalizer results:")
