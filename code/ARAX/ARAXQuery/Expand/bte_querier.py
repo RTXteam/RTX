@@ -58,7 +58,7 @@ class BTEQuerier:
             answer_kg = eu.switch_kg_to_arax_curie_format(answer_kg)
             edge_to_nodes_map = self._create_edge_to_nodes_map(answer_kg, input_qnode.id, output_qnode.id)
         else:
-            self._log_proper_no_results_message(accepted_curies, continue_if_no_results, valid_bte_inputs_dict['curie_prefixes'])
+            self._log_proper_no_results_message(accepted_curies, continue_if_no_results, valid_bte_inputs_dict['curie_prefixes'], log)
 
         return answer_kg, edge_to_nodes_map
 
