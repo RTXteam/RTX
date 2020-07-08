@@ -1,13 +1,16 @@
 
 Summary of build process:
 
-cd code/ARAX/KGNodeIndex
-python3 sri_normalizer.py --build
-python3 KGNodeIndex.py --build --both
+cd code/ARAX/NodeSynonymizer
+python3 sri_node_normalizer.py --build
+python3 node_synonymizer.py --build --kg_name=both
+python3 node_synonymizer.py --lookup=rickets --kg_name=KG1
 
 
 Do to:
 - When coalescing concepts, transfer the normalizer information!
+- Need the + 1 for Windows byte count only
+- Dispense with the coffee
 
 
 
