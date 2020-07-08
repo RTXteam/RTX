@@ -44,7 +44,7 @@ def _attribute_tester(message, attribute_name: str, attribute_type: str, num_dif
     Tests attributes of a message
     message: returned from _do_arax_query
     attribute_name: the attribute name to test (eg. 'jaccard_index')
-    attribute_type: the attribute type (eg. 'data:1234')
+    attribute_type: the attribute type (eg. 'EDAM:data_1234')
     num_different_values: the number of distinct values you wish to see have been added as attributes
     """
     edges_of_interest = []
@@ -67,7 +67,7 @@ def _virtual_tester(message: Message, edge_type: str, relation: str, attribute_n
     edge_type: the name of the virtual edge (eg. has_jaccard_index_with)
     relation: the relation you picked for the virtual_edge_relation (eg. N1)
     attribute_name: the attribute name to test (eg. 'jaccard_index')
-    attribute_type: the attribute type (eg. 'data:1234')
+    attribute_type: the attribute type (eg. 'EDAM:data_1234')
     num_different_values: the number of distinct values you wish to see have been added as attributes
     """
     edge_types_in_kg = Counter([x.type for x in message.knowledge_graph.edges])
@@ -106,8 +106,8 @@ def test_example_2():
     assert response.status == 'OK'
     assert len(message.results) == 15  # :BUG: sometimes the workflow returns 47 results, sometimes 48 (!?)
     assert message.results[0].essence is not None
-    _virtual_tester(message, 'probably_treats', 'P1', 'probability_treats', 'data:0951', 2)
-    _virtual_tester(message, 'has_jaccard_index_with', 'J1', 'jaccard_index', 'data:1772', 2)
+    _virtual_tester(message, 'probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'has_jaccard_index_with', 'J1', 'jaccard_index', 'EDAM:data_1772', 2)
 
 
 def test_example_3():
@@ -130,8 +130,8 @@ def test_example_3():
     assert response.status == 'OK'
     assert len(message.results) in [47, 48]  # :BUG: sometimes the workflow returns 47 results, sometimes 48 (!?)
     assert message.results[0].essence is not None
-    _virtual_tester(message, 'has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'data:0951', 2)
-    _virtual_tester(message, 'has_normalized_google_distance_with', 'N1', 'normalized_google_distance', 'data:2526', 2)
+    _virtual_tester(message, 'has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'has_normalized_google_distance_with', 'N1', 'normalized_google_distance', 'EDAM:data_2526', 2)
 
 def test_FET_example_1():
     # This a FET 3-top example: try to find the phenotypes of drugs connected to proteins connected to DOID:14330
@@ -168,7 +168,7 @@ def test_FET_example_1():
         assert edge.edge_attributes
         assert edge.edge_attributes[0].name == 'fisher_exact_test_p-value'
         assert 0 <= float(edge.edge_attributes[0].value) < 0.001
-        assert edge.edge_attributes[0].type == 'data:1669'
+        assert edge.edge_attributes[0].type == 'EDAM:data_1669'
         assert edge.is_defined_by == 'ARAX'
         assert edge.provided_by == 'ARAX'
     FET_query_edges = [edge for edge in message.query_graph.edges if edge.id.find("FET") != -1]
@@ -222,7 +222,7 @@ def test_FET_example_2():
         assert edge.edge_attributes
         assert edge.edge_attributes[0].name == 'fisher_exact_test_p-value'
         assert 0 <= float(edge.edge_attributes[0].value) < 0.01
-        assert edge.edge_attributes[0].type == 'data:1669'
+        assert edge.edge_attributes[0].type == 'EDAM:data_1669'
         assert edge.is_defined_by == 'ARAX'
         assert edge.provided_by == 'ARAX'
     FET_query_edges = [edge for edge in message.query_graph.edges if edge.id.find("FET") != -1]
@@ -287,7 +287,7 @@ def test_FET_example_3():
         assert edge.edge_attributes
         assert edge.edge_attributes[0].name == 'fisher_exact_test_p-value'
         assert 0 <= float(edge.edge_attributes[0].value) < 0.001
-        assert edge.edge_attributes[0].type == 'data:1669'
+        assert edge.edge_attributes[0].type == 'EDAM:data_1669'
         assert edge.is_defined_by == 'ARAX'
         assert edge.provided_by == 'ARAX'
     FET_query_edges = [edge for edge in message.query_graph.edges if edge.id.find("FET") != -1]
@@ -336,7 +336,7 @@ def test_FET_example_4():
             assert 0 <= float(edge.edge_attributes[0].value) < 0.001
         else:
             assert float(edge.edge_attributes[0].value) >= 0
-        assert edge.edge_attributes[0].type == 'data:1669'
+        assert edge.edge_attributes[0].type == 'EDAM:data_1669'
         assert edge.is_defined_by == 'ARAX'
         assert edge.provided_by == 'ARAX'
     FET_query_edges = [edge for edge in message.query_graph.edges if edge.id.find("FET") != -1]
@@ -369,7 +369,7 @@ def test_example_2_kg2():
     assert response.status == 'OK'
     assert len(message.results) == 15 
     assert message.results[0].essence is not None
-    _virtual_tester(message, 'has_jaccard_index_with', 'J1', 'jaccard_index', 'data:1772', 2)
+    _virtual_tester(message, 'has_jaccard_index_with', 'J1', 'jaccard_index', 'EDAM:data_1772', 2)
 
 
 def test_clinical_overlay_example():
@@ -399,9 +399,9 @@ def test_clinical_overlay_example():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    _virtual_tester(message, 'has_paired_concept_frequency_with', 'C1', 'paired_concept_frequency', 'data:0951', 2)
-    _virtual_tester(message, 'has_observed_expected_ratio_with', 'C2', 'observed_expected_ratio', 'data:0951', 2)
-    _virtual_tester(message, 'has_chi_square_with', 'C3', 'chi_square', 'data:0951', 2)
+    _virtual_tester(message, 'has_paired_concept_frequency_with', 'C1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'has_observed_expected_ratio_with', 'C2', 'observed_expected_ratio', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'has_chi_square_with', 'C3', 'chi_square', 'EDAM:data_0951', 2)
 
 
 def test_clinical_overlay_example2():
@@ -428,9 +428,9 @@ def test_clinical_overlay_example2():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    _attribute_tester(message, 'paired_concept_frequency', 'data:0951', 1)
-    _attribute_tester(message, 'observed_expected_ratio', 'data:0951', 1)
-    _attribute_tester(message, 'chi_square', 'data:0951', 1)
+    _attribute_tester(message, 'paired_concept_frequency', 'EDAM:data_0951', 1)
+    _attribute_tester(message, 'observed_expected_ratio', 'EDAM:data_0951', 1)
+    _attribute_tester(message, 'chi_square', 'EDAM:data_0951', 1)
 
 # Not working yet
 # def test_example_3_kg2():
@@ -453,8 +453,8 @@ def test_clinical_overlay_example2():
 #     assert response.status == 'OK'
 #     #assert len(message.results) == ?
 #     assert message.results[0].essence is not None
-#     _virtual_tester(message, 'has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'data:0951', 2)
-#     _virtual_tester(message, 'has_normalized_google_distance_with', 'N1', 'normalized_google_distance', 'data:2526', 2)
+#     _virtual_tester(message, 'has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
+#     _virtual_tester(message, 'has_normalized_google_distance_with', 'N1', 'normalized_google_distance', 'EDAM:data_2526', 2)
 
 
 if __name__ == "__main__":

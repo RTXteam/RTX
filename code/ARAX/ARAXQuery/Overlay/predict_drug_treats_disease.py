@@ -37,7 +37,7 @@ class PredictDrugTreatsDisease:
         self.response.info(f"Computing drug disease treatment probability based on a machine learning model: See [this publication](https://doi.org/10.1101/765305) for more details about how this is accomplished.")
 
         attribute_name = "probability_treats"
-        attribute_type = "data:0951"
+        attribute_type = "EDAM:data_0951"
         value = 0  # this will be the default value. If the model returns 0, or the default is there, don't include that edge
         url = "https://doi.org/10.1101/765305"
 
