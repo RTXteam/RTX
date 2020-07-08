@@ -111,15 +111,23 @@ class OverlayClinicalInfo:
                     KP_to_use = KP
             if KP_to_use == 'COHD':
                 # convert CURIE to OMOP identifiers
-                source_OMOPs = [str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(source_curie, 1)]
-                target_OMOPs = [str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(target_curie, 1)]
+                ##################################################
+                # TODO: This is the greedy aproach: go off of names and look for everything and anything that could be a match
+                #    i.e. use curies AND names, and then just take the best result from amongst that set. Slower, but more complete
+                source_OMOPs = set([str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(source_curie, 1)])
+                target_OMOPs = set([str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(target_curie, 1)])
+                for domain in ["Condition", "Drug", "Procedure"]:
+                    source_OMOPs.update([str(x['concept_id']) for x in COHD.find_concept_ids(source_name, domain=domain, dataset_id=3)])
+                    target_OMOPs.update([str(x['concept_id']) for x in COHD.find_concept_ids(target_name, domain=domain, dataset_id=3)])
+                #################################################
+                # FIXME: this was the old way
                 # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
-                if source_curie.split('.')[0] == 'CHEMBL':
-                    source_OMOPs = [str(x['concept_id']) for x in
-                                    COHD.find_concept_ids(source_name, domain="Drug", dataset_id=3)]
-                if target_curie.split('.')[0] == 'CHEMBL':
-                    target_OMOPs = [str(x['concept_id']) for x in
-                                    COHD.find_concept_ids(target_name, domain="Drug", dataset_id=3)]
+                #if source_curie.split('.')[0] == 'CHEMBL':
+                #    source_OMOPs = [str(x['concept_id']) for x in
+                #                    COHD.find_concept_ids(source_name, domain="Drug", dataset_id=3)]
+                #if target_curie.split('.')[0] == 'CHEMBL':
+                #    target_OMOPs = [str(x['concept_id']) for x in
+                #                    COHD.find_concept_ids(target_name, domain="Drug", dataset_id=3)]
                 # uniquify everything
                 source_OMOPs = list(set(source_OMOPs))
                 target_OMOPs = list(set(target_OMOPs))
