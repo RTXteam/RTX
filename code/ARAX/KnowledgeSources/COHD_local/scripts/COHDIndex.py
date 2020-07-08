@@ -24,9 +24,12 @@ class COHDIndex:
         self.lookup_table = {}
 
         self.databaseName = "COHDIndex.sqlite"
-        self.engine_type = "sqlite"
 
         self.success_con = self.connect()
+
+    # Destructor
+    def __del__(self):
+        self.disconnect()
 
     # Create and store a database connection
     def connect(self):
@@ -63,6 +66,7 @@ class COHDIndex:
             self.success_con = False
         else:
             print("Info: No database was connected! So skip disconnecting from database.")
+            return
 
 
     # Delete and create the tables
@@ -96,26 +100,29 @@ class COHDIndex:
 
         for file_name in COHD_database_files:
 
+            current_table_name = file_name.replace('.txt', '').upper()
+            print(f"INFO: Populating table {current_table_name}")
             with open(f"{self.databaseLocation}/{file_name}",'r') as file:
                 content_list = file.readlines()
                 col_name = content_list.pop(0)
-                file_content = [tuple(line.strip().split("\t")) for line in content_list]
-                current_table_name = file_name.replace('.txt', '').upper()
-                print(f"INFO: Populating table {current_table_name}")
                 insert_command1 = f"INSERT INTO {current_table_name}("
                 insert_command2 = f" values ("
                 for col in col_name.strip().split("\t"):
-                    insert_command1 = insert_command1+f"{col},"
-                    insert_command2 = insert_command2+f"?,"
+                    insert_command1 = insert_command1 + f"{col},"
+                    insert_command2 = insert_command2 + f"?,"
 
-                insert_command = insert_command1+")"+insert_command2+")"
+                insert_command = insert_command1 + ")" + insert_command2 + ")"
                 insert_command = insert_command.replace(',)', ')')
 
                 if DEBUG:
                     print(insert_command)
-                    print(file_content[:10])
+                    print(tuple(content_list[0].strip().split("\t")))
 
-                self.connection.executemany(insert_command, file_content)
+                for line in content_list:
+                    line = tuple(line.strip().split("\t"))
+                    self.connection.execute(insert_command, line)
+
+                self.connection.commit()
 
 
 ####################################################################################################
