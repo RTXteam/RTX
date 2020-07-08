@@ -462,9 +462,9 @@ def test_two_hop_based_on_types_1():
         [response, message] = _do_arax_query(query)
         print(message.id)
         assert response.status == 'OK'
-        _virtual_tester(message, 'has_paired_concept_frequency_with', 'C1', 'paired_concept_frequency', 'data:0951', 1)
-        _virtual_tester(message, 'has_observed_expected_ratio_with', 'C2', 'observed_expected_ratio', 'data:0951', 1)
-        _virtual_tester(message, 'has_chi_square_with', 'C3', 'chi_square', 'data:0951', 1)
+        _virtual_tester(message, 'has_paired_concept_frequency_with', 'C1', 'paired_concept_frequency', 'EDAM:data_0951', 1)
+        _virtual_tester(message, 'has_observed_expected_ratio_with', 'C2', 'observed_expected_ratio', 'EDAM:data_0951', 1)
+        _virtual_tester(message, 'has_chi_square_with', 'C3', 'chi_square', 'EDAM:data_0951', 1)
 
 
 @pytest.mark.skip(reason="Work in progress (and takes a very long time)")
@@ -491,9 +491,9 @@ def test_one_hop_kitchen_sink_BTE_1():
     [response, message] = _do_arax_query(query)
     print(message.id)
     assert response.status == 'OK'
-    _attribute_tester(message, 'paired_concept_frequency', 'data:0951', 1)
-    _attribute_tester(message, 'observed_expected_ratio', 'data:0951', 1)
-    _attribute_tester(message, 'chi_square', 'data:0951', 1)
+    _attribute_tester(message, 'paired_concept_frequency', 'EDAM:data_0951', 1)
+    _attribute_tester(message, 'observed_expected_ratio', 'EDAM:data_0951', 1)
+    _attribute_tester(message, 'chi_square', 'EDAM:data_0951', 1)
 
 @pytest.mark.skip(reason="Work in progress (and takes a very long time)")
 def test_one_hop_kitchen_sink_BTE_2():
@@ -519,9 +519,9 @@ def test_one_hop_kitchen_sink_BTE_2():
     [response, message] = _do_arax_query(query)
     print(message.id)
     assert response.status == 'OK'
-    _attribute_tester(message, 'paired_concept_frequency', 'data:0951', 1)
-    _attribute_tester(message, 'observed_expected_ratio', 'data:0951', 1)
-    _attribute_tester(message, 'chi_square', 'data:0951', 1)
+    _attribute_tester(message, 'paired_concept_frequency', 'EDAM:data_0951', 1)
+    _attribute_tester(message, 'observed_expected_ratio', 'EDAM:data_0951', 1)
+    _attribute_tester(message, 'chi_square', 'EDAM:data_0951', 1)
 
 
 # Not working yet
