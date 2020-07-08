@@ -39,7 +39,11 @@ class PredictDrugTreatsDisease:
         """
         curies_in_model = set()
         normalizer_result = self.synonymizer.get_normalizer_results(input_curie, kg_name='KG1')  # TODO: Figure out if this is the right kg_name to be using
-        equivalent_curies = [x['identifier'] for x in normalizer_result[input_curie]['equivalent_identifiers']]
+        equivalent_curies = []  # start with empty equivalent_curies
+        try:
+            equivalent_curies = [x['identifier'] for x in normalizer_result[input_curie]['equivalent_identifiers']]
+        except:
+            self.response.warning(f"NodeSynonmizer could not find curies for {input_curie}, skipping this one.")
         for curie in equivalent_curies:
             curie_prefix = curie.split(':')[0]
             # FIXME: fix this when re-training the ML model, as when this was originally trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123

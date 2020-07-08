@@ -520,6 +520,23 @@ def test_issue_840_non_drug():
         for attribute in edge.edge_attributes:
             assert attribute.name != 'paired_concept_frequency'
 
+def test_issue_892():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "add_qnode(curie=DOID:11830, type=disease, id=n00)",
+        "add_qnode(type=gene, curie=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, id=n01)",
+        "add_qnode(type=chemical_substance, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "expand(kp=BTE)",
+        "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",
+        "resultify(ignore_edge_direction=true)",
+        "return(message=true, store=true)"
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    _virtual_tester(message, 'probably_treats', 'P1', 'probability_treats', 'data:0951', 10)
+
 
 if __name__ == "__main__":
     pytest.main(['-v'])

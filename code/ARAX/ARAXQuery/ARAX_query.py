@@ -1236,6 +1236,31 @@ def main():
             "resultify(ignore_edge_direction=true)",
             "return(message=true, store=true)"
         ]}}
+    elif params.example_number == 892:  # drug disease prediction with BTE
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "add_qnode(curie=DOID:11830, type=disease, id=n00)",
+            "add_qnode(type=gene, curie=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, id=n01)",
+            "add_qnode(type=chemical_substance, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01)",
+            "expand(kp=BTE)",
+            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",
+            "resultify(ignore_edge_direction=true)",
+            "return(message=true, store=true)"
+        ]}}
+    elif params.example_number == 8922:  # drug disease prediction with BTE and KG2, currently doesn't work due to these genes not existing in KG2
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "add_qnode(curie=DOID:11830, type=disease, id=n00)",
+            "add_qnode(type=gene, curie=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, id=n01)",
+            "add_qnode(type=chemical_substance, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01)",
+            "expand(kp=BTE)",
+            "expand(kp=ARAX/KG2)",
+            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",
+            "resultify(ignore_edge_direction=true)",
+            "return(message=true, store=true)"
+        ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return
@@ -1301,7 +1326,8 @@ def main():
         #attribute_of_interest = 'normalized_google_distance'
         #attribute_of_interest = 'chi_square'
         #attribute_of_interest = 'paired_concept_frequency'
-        attribute_of_interest = 'probability'
+        #attribute_of_interest = 'probability'
+        attribute_of_interest = 'probability_treats'
         all_attribute_names = set()
         for edge in message.knowledge_graph.edges:
             if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
