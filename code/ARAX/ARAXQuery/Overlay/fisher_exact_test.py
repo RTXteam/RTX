@@ -432,7 +432,7 @@ class ComputeFTEST:
                                   provided_by="ARAX",
                                   confidence=None,
                                   weight=None,
-                                  edge_attributes=[EdgeAttribute(type="data:1669", name="fisher_exact_test_p-value", value=str(value[1]), url=None)],
+                                  edge_attributes=[EdgeAttribute(type="EDAM:data_1669", name="fisher_exact_test_p-value", value=str(value[1]), url=None)],
                                   qedge_ids=[value[0]]) for index, value in enumerate([(virtual_relation_label, output[adj], node, adj) for adj in target_node_dict if adj in output.keys() for node in target_node_dict[adj]], 1)]
 
         self.message.knowledge_graph.edges.extend(virtual_edge_list)
