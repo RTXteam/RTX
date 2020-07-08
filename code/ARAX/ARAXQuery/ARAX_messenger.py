@@ -617,7 +617,7 @@ class ARAXMessenger:
             if edge.edge_attributes is not None:
                 for edge_attribute in edge.edge_attributes:
                     for attribute_name in [ 'probability', 'normalized_google_distance', 'jaccard_index',
-                                            'probability_drug_treats', 'paired_concept_frequency',
+                                            'probability_treats', 'paired_concept_frequency',
                                             'observed_expected_ratio', 'chi_square']:
                         if edge_attribute.name == attribute_name:
                             if attribute_name not in score_stats:
@@ -680,7 +680,7 @@ class ARAXMessenger:
                             factor = jaccard / score_stats['jaccard_index']['maximum'] * 0.9
                             buf += f" jaccard={jaccard}, factor={factor}"
                             score *= factor
-                        if edge_attribute.name == "probability_drug_treats":
+                        if edge_attribute.name == "probability_treats":
                             prob_treats = float(edge_attribute.value)
                             factor = prob_treats
                             score *= factor  # already a number between 0 and 1, so just multiply

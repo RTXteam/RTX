@@ -1248,17 +1248,20 @@ def main():
             "resultify(ignore_edge_direction=true)",
             "return(message=true, store=true)"
         ]}}
-    elif params.example_number == 8922:  # drug disease prediction with BTE and KG2, currently doesn't work due to these genes not existing in KG2
+    elif params.example_number == 8922:  # drug disease prediction with BTE and KG2
         query = {"previous_message_processing_plan": {"processing_actions": [
-            "add_qnode(curie=DOID:11830, type=disease, id=n00)",
-            "add_qnode(type=gene, curie=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, id=n01)",
-            "add_qnode(type=chemical_substance, id=n02)",
-            "add_qedge(source_id=n00, target_id=n01, id=e00)",
-            "add_qedge(source_id=n01, target_id=n02, id=e01)",
-            "expand(kp=BTE)",
-            "expand(kp=ARAX/KG2)",
-            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",
+            "add_qnode(curie=DOID:11830, id=n0, type=disease)",
+            "add_qnode(type=chemical_substance, id=n1)",
+            "add_qedge(source_id=n0, target_id=n1, id=e1)",
+            "expand(edge_id=e1, kp=ARAX/KG2)",
+            "expand(edge_id=e1, kp=BTE)",
+            #"overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
+            #"overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
+            #"overlay(action=overlay_clinical_info, chi_square=true)",
+            "overlay(action=predict_drug_treats_disease)",
+            #"overlay(action=compute_ngd)",
             "resultify(ignore_edge_direction=true)",
+            #"filter_results(action=limit_number_of_results, max_results=50)",
             "return(message=true, store=true)"
         ]}}
     else:
