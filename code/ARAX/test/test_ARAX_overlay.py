@@ -535,7 +535,7 @@ def test_issue_892():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'probably_treats', 'P1', 'probability_treats', 'data:0951', 10)
+    _virtual_tester(message, 'probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 10)
 
 
 if __name__ == "__main__":
