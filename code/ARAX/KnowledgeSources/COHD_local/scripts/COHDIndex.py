@@ -40,7 +40,7 @@ class COHDIndex:
         else:
             required_files = ['single_concept_counts.txt', 'patient_count.txt', 'domain_pair_concept_counts.txt',
                               'paired_concept_counts_associations.txt', 'domain_concept_counts.txt', 'concepts.txt',
-                              'dataset.txt', 'KG1_OMOP_mapping.pkl']
+                              'dataset.txt'] #'KG1_OMOP_mapping.pkl']
             has_files = [f for f in os.listdir(self.databaseLocation) if os.path.isfile(os.path.join(self.databaseLocation, f))]
             for file in required_files:
                 if file in has_files:
@@ -72,19 +72,19 @@ class COHDIndex:
             #self.connection.execute(f"DROP TABLE IF EXISTS KG1_OMOP_MAPPING")
             #self.connection.execute(f"CREATE TABLE KG1_OMOP_MAPPING( curie VARCHAR(255) PRIMARY KEY, name VARCHAR(255) NOT NULL, type VARCHAR(255) NOT NULL, OMOP_id VARCHAR(255) )")
             self.connection.execute(f"DROP TABLE IF EXISTS SINGLE_CONCEPT_COUNTS")
-            self.connection.execute(f"CREATE TABLE SINGLE_CONCEPT_COUNTS( dataset_id INT, concept_id, concept_count NUMERIC, concept_prevalence NUMERIC )")
+            self.connection.execute(f"CREATE TABLE SINGLE_CONCEPT_COUNTS( dataset_id TINYINT, concept_id INT, concept_count INT, concept_prevalence FLOAT )")
             self.connection.execute(f"DROP TABLE IF EXISTS CONCEPTS")
-            self.connection.execute(f"CREATE TABLE CONCEPTS( concept_id INTEGER PRIMARY KEY, concept_name TEXT, domain_id VARCHAR(255), vocabulary_id VARCHAR(255), concept_class_id VARCHAR(255), concept_code NUMERIC )")
+            self.connection.execute(f"CREATE TABLE CONCEPTS( concept_id INT PRIMARY KEY, concept_name VARCHAR(255), domain_id VARCHAR(255), vocabulary_id VARCHAR(255), concept_class_id VARCHAR(255), concept_code VARCHAR(255) )")
             self.connection.execute(f"DROP TABLE IF EXISTS PATIENT_COUNT")
-            self.connection.execute(f"CREATE TABLE PATIENT_COUNT( dataset_id INT PRIMARY KEY, count NUMERIC)")
+            self.connection.execute(f"CREATE TABLE PATIENT_COUNT( dataset_id TINYINT PRIMARY KEY, count INT)")
             self.connection.execute(f"DROP TABLE IF EXISTS DATASET")
-            self.connection.execute(f"CREATE TABLE DATASET( dataset_id INT PRIMARY KEY, dataset_name VARCHAR(255), dataset_description TEXT)")
+            self.connection.execute(f"CREATE TABLE DATASET( dataset_id TINYINT PRIMARY KEY, dataset_name VARCHAR(255), dataset_description VARCHAR(255))")
             self.connection.execute(f"DROP TABLE IF EXISTS DOMAIN_CONCEPT_COUNTS")
-            self.connection.execute(f"CREATE TABLE DOMAIN_CONCEPT_COUNTS( dataset_id NUMERIC, domain_id VARCHAR(255), count NUMERIC)")
+            self.connection.execute(f"CREATE TABLE DOMAIN_CONCEPT_COUNTS( dataset_id TINYINT, domain_id VARCHAR(255), count INT)")
             self.connection.execute(f"DROP TABLE IF EXISTS DOMAIN_PAIR_CONCEPT_COUNTS")
-            self.connection.execute(f"CREATE TABLE DOMAIN_PAIR_CONCEPT_COUNTS( dataset_id NUMERIC, domain_id_1 VARCHAR(255), domain_id_2 VARCHAR(255), count NUMERIC)")
+            self.connection.execute(f"CREATE TABLE DOMAIN_PAIR_CONCEPT_COUNTS( dataset_id TINYINT, domain_id_1 VARCHAR(255), domain_id_2 VARCHAR(255), count INT)")
             self.connection.execute(f"DROP TABLE IF EXISTS PAIRED_CONCEPT_COUNTS_ASSOCIATIONS")
-            self.connection.execute(f"CREATE TABLE PAIRED_CONCEPT_COUNTS_ASSOCIATIONS( dataset_id INT, concept_id_1 NUMERIC, concept_id_2 NUMERIC, concept_count NUMERIC, concept_prevalence NUMERIC, chi_square_t NUMERIC, chi_square_p NUMERIC, expected_count NUMERIC, ln_ratio NUMERIC, rel_freq_1 NUMERIC, rel_freq_2 NUMERIC)")
+            self.connection.execute(f"CREATE TABLE PAIRED_CONCEPT_COUNTS_ASSOCIATIONS( dataset_id TINYINT, concept_id_1 INT, concept_id_2 INT, concept_count INT, concept_prevalence FLOAT, chi_square_t FLOAT, chi_square_p FLOAT, expected_count FLOAT, ln_ratio FLOAT, rel_freq_1 FLOAT, rel_freq_2 FLOAT)")
 
     # Populate the tables
     def populate_table(self):

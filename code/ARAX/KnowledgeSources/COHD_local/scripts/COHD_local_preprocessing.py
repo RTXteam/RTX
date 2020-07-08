@@ -72,7 +72,7 @@ class MapCurieToOMOP:
 
         print(f"{index} {curie}", flush=True)
 
-        if curie.split('.')[0] not in ['EFO', 'DOID', 'OMIM', 'MESH', 'UBERON', 'HP']:
+        if curie.split(':')[0] not in ['EFO', 'DOID', 'OMIM', 'MESH', 'UBERON', 'HP']:
             if len(self.kpdata_dict[curie]['name']) == 0:
                 OMOP_list = []
             elif len(self.kpdata_dict[curie]['name']) == 1 and list(self.kpdata_dict[curie]['name'])[0]!="":
@@ -269,7 +269,6 @@ def main():
         #                 for curie in curie_list:
         #                     OMOP_list = list(set(itertools.chain.from_iterable([[str(x['concept_id']) for name in res[curie]['name'] if name!="" for x in QueryCOHD.find_concept_ids(name, domain="Drug", dataset_id=3)]])))
         #                     res[curie]['OMOP_list'] = OMOP_list
-
 
             # with open(outfolder + '/KG1_OMOP_mapping.pkl', 'wb') as file:
             #     pickle.dump(res, file)
