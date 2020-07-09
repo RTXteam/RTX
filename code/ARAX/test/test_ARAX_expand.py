@@ -267,12 +267,12 @@ def test_bte_simple_acetaminophen_query():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
-def test_bte_add_all_acetaminophen_query():
+def test_bte_add_all_query():
     actions_list = [
-        "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112, type=chemical_substance)",
-        "add_qnode(id=n01, type=biological_process)",
-        "add_qedge(id=e00, source_id=n00, target_id=n01)",
-        "expand(edge_id=e00, kp=BTE, synonym_handling=add_all)",
+        "add_qnode(curie=UniProtKB:P16471, type=protein, id=n00)",
+        "add_qnode(type=cell, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(kp=BTE, synonym_handling=add_all)",
         "return(message=true, store=false)",
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -290,7 +290,7 @@ def test_bte_parkinsons_query():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
-def test_bte_query_using_list_of_curies():
+def test_bte_using_list_of_curies():
     actions_list = [
         "add_qnode(id=n00, curie=[CHEMBL.COMPOUND:CHEMBL112, CHEMBL.COMPOUND:CHEMBL521], type=chemical_substance)",
         "add_qnode(id=n01, type=disease)",
@@ -624,7 +624,7 @@ def test_889_missing_curies():
 
 def test_873_consider_both_gene_and_protein():
     actions_list_protein = [
-        "add_qnode(name=DOID:9452, id=n00)",
+        "add_qnode(curie=DOID:9452, id=n00)",
         "add_qnode(type=protein, id=n01)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "expand(kp=ARAX/KG2)",
@@ -632,7 +632,7 @@ def test_873_consider_both_gene_and_protein():
     ]
     nodes_by_qg_id_protein, edges_by_qg_id_protein = _run_query_and_do_standard_testing(actions_list_protein)
     actions_list_gene = [
-        "add_qnode(name=DOID:9452, id=n00)",
+        "add_qnode(curie=DOID:9452, id=n00)",
         "add_qnode(type=gene, id=n01)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "expand(kp=ARAX/KG2)",
