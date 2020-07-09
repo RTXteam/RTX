@@ -79,9 +79,9 @@ class ARAXFilterResults:
                 if any([type(x) == float for x in allowable_parameters[key]]):  # if it's a float, just accept it as it is
                     return
                 else:  # otherwise, it's really not an allowable parameter
-                    self.response.error(
-                        f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}",
-                        error_code="UnknownValue")
+                    self.response.warning(
+                        f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}")
+                    return -1
 
     #### Top level decision maker for applying filters
     def apply(self, input_message, input_parameters):
@@ -146,14 +146,14 @@ class ARAXFilterResults:
             # print(known_attributes)
             allowable_parameters = {'action': {'sort_by_edge_attribute'},
                                     'edge_attribute': known_attributes,
-                                    'edge_type': set([t for x in self.message.knowledge_graph.edges for t in x.type]),
+                                    'edge_relation': set([x.relation for x in self.message.knowledge_graph.edges]),
                                     'direction': {'descending', 'd', 'ascending', 'a'},
                                     'max_results': {float()}
                                     }
         else:
             allowable_parameters = {'action': {'sort_by_edge_attribute'},
                                     'edge_attribute': {'an edge attribute'},
-                                    'edge_type': {'an edge type'},
+                                    'edge_relation': {'an edge relation'},
                                     'direction': {'descending', 'd', 'ascending', 'a'},
                                     'max_results': {'the maximum number of results to return'}
                                     }
@@ -169,7 +169,7 @@ Use cases include:
 * sorting the results by the value of the jaccard index and take the top ten `filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=d, max_results=10)`
 * etc. etc.
                 
-You have the option to specify the edge type (e.g. via `edge_type=<an edge type>`)
+You have the option to specify the edge type (e.g. via `edge_relation=<an edge relation>`)
 Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
 """
             allowable_parameters['brief_description'] = brief_description
@@ -191,9 +191,9 @@ Also, you have the option of limiting the number of results returned (e.g. via `
                 return self.response
 
         # Make sure only allowable parameters and values have been passed
-        self.check_params(allowable_parameters)
+        resp = self.check_params(allowable_parameters)
         # return if bad parameters have been passed
-        if self.response.status != 'OK':
+        if self.response.status != 'OK' or resp == -1:
             return self.response
 
         if 'direction' not in edge_params:
@@ -286,9 +286,9 @@ Also, you have the option of limiting the number of results returned (e.g. via `
                 return self.response
 
         # Make sure only allowable parameters and values have been passed
-        self.check_params(allowable_parameters)
+        resp = self.check_params(allowable_parameters)
         # return if bad parameters have been passed
-        if self.response.status != 'OK':
+        if self.response.status != 'OK' or resp == -1:
             return self.response
 
         if 'direction' not in node_params:
@@ -354,9 +354,9 @@ Use cases include:
 
 
         # Make sure only allowable parameters and values have been passed
-        self.check_params(allowable_parameters)
+        resp = self.check_params(allowable_parameters)
         # return if bad parameters have been passed
-        if self.response.status != 'OK':
+        if self.response.status != 'OK' or resp == -1:
             return self.response
 
         # try to convert the max results to an int
@@ -439,9 +439,9 @@ Also, you have the option of limiting the number of results returned (e.g. via `
                 return self.response
 
         # Make sure only allowable parameters and values have been passed
-        self.check_params(allowable_parameters)
+        resp = self.check_params(allowable_parameters)
         # return if bad parameters have been passed
-        if self.response.status != 'OK':
+        if self.response.status != 'OK' or resp == -1:
             return self.response
 
         if 'direction' not in edge_params:
@@ -518,9 +518,9 @@ Also, you have the option of limiting the number of results returned (e.g. via `
                 return self.response
 
         # Make sure only allowable parameters and values have been passed
-        self.check_params(allowable_parameters)
+        resp = self.check_params(allowable_parameters)
         # return if bad parameters have been passed
-        if self.response.status != 'OK':
+        if self.response.status != 'OK' or resp == -1:
             return self.response
 
         if 'direction' not in node_params:

@@ -148,7 +148,7 @@ hr {
     background-color: #c40;
 }
 
-#dslText {
+#dslText, #jsonText {
     width: 80%;
     height: 20em;
     overflow:scroll;

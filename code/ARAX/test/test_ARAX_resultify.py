@@ -5,10 +5,11 @@
 import os
 import sys
 import unittest
+import pytest
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 from response import Response
-from typing import List, Union
+from typing import List, Union, Dict
 
 import ARAX_resultify
 from ARAX_resultify import ARAXResultify
@@ -69,9 +70,21 @@ def _print_results_for_debug(results: List[Result]):
             print(f"  {edge_binding.qg_id}: {edge_binding.kg_id}")
 
 
+def _get_result_nodes_by_qg_id(result: Result, kg_nodes_map: Dict[str, Node], qg: QueryGraph) -> Dict[str, Dict[str, Node]]:
+    return {qnode.id: {node_binding.kg_id: kg_nodes_map[node_binding.kg_id] for node_binding in result.node_bindings
+                       if node_binding.qg_id == qnode.id} for qnode in qg.nodes}
+
+
+def _get_result_edges_by_qg_id(result: Result, kg_edges_map: Dict[str, Edge], qg: QueryGraph) -> Dict[str, Dict[str, Edge]]:
+    return {qedge.id: {edge_binding.kg_id: kg_edges_map[edge_binding.kg_id] for edge_binding in result.edge_bindings
+                       if edge_binding.qg_id == qedge.id} for qedge in qg.edges}
+
+
 def _do_arax_query(query: str) -> List[Union[Response, Message]]:
     araxq = ARAXQuery()
     response = araxq.query(query)
+    if response.status != 'OK':
+        print(response.show(level=response.DEBUG))
     return [response, araxq.message]
 
 
@@ -115,11 +128,7 @@ class TestARAXResultify(unittest.TestCase):
                         {'edge_id': 'ke05',
                          'source_id': 'DOID:12345',
                          'target_id': 'HP:34567',
-                         'qedge_ids': ['qe02']},
-                        {'edge_id': 'ke06',
-                         'source_id': 'HP:56789',
-                         'target_id': 'HP:67890',
-                         'qedge_ids': None})
+                         'qedge_ids': ['qe02']})
 
         kg_nodes = [_create_node(node_id=node_info['id'],
                                  node_type=[node_info['type']],
@@ -203,11 +212,7 @@ class TestARAXResultify(unittest.TestCase):
                         {'edge_id': 'ke05',
                          'source_id': 'DOID:12345',
                          'target_id': 'HP:34567',
-                         'qedge_ids': ['qe02']},
-                        {'edge_id': 'ke06',
-                         'source_id': 'HP:56789',
-                         'target_id': 'HP:67890',
-                         'qedge_ids': None})
+                         'qedge_ids': ['qe02']})
 
         kg_nodes = [_create_node(node_id=node_info['id'],
                                  node_type=[node_info['type']],
@@ -290,11 +295,7 @@ class TestARAXResultify(unittest.TestCase):
                         {'edge_id': 'ke05',
                          'source_id': 'DOID:12345',
                          'target_id': 'HP:34567',
-                         'qedge_ids': ['qe02']},
-                        {'edge_id': 'ke06',
-                         'source_id': 'HP:56789',
-                         'target_id': 'HP:67890',
-                         'qedge_ids': None})
+                         'qedge_ids': ['qe02']})
 
         kg_nodes = [_create_node(node_id=node_info['id'],
                                  node_type=[node_info['type']],
@@ -382,11 +383,7 @@ class TestARAXResultify(unittest.TestCase):
                         {'edge_id': 'ke06',
                          'source_id': 'DOID:12345',
                          'target_id': 'UniProtKB:23456',
-                         'qedge_ids': ['qe02']},
-                        {'edge_id': 'ke08',
-                         'source_id': 'UniProtKB:12345',
-                         'target_id': 'UniProtKB:23456',
-                         'qedge_ids': None})
+                         'qedge_ids': ['qe02']})
 
         kg_nodes = [_create_node(node_id=node_info['id'],
                                  node_type=[node_info['type']],
@@ -407,7 +404,7 @@ class TestARAXResultify(unittest.TestCase):
                          'is_set': False},
                         {'id': 'n02',
                          'type': 'chemical_substance',
-                         'is_set': True})
+                         'is_set': False})
 
         qg_edge_info = ({'edge_id': 'qe01',
                          'source_id': 'n02',
@@ -428,7 +425,6 @@ class TestARAXResultify(unittest.TestCase):
 
         results_list = ARAX_resultify._get_results_for_kg_by_qg(knowledge_graph,
                                                                 query_graph,
-                                                                qg_nodes_override_treat_is_set_as_false={'n02'},
                                                                 ignore_edge_direction=True)
         assert len(results_list) == 2
 
@@ -475,11 +471,7 @@ class TestARAXResultify(unittest.TestCase):
                         {'edge_id': 'ke06',
                          'source_id': 'DOID:12345',
                          'target_id': 'UniProtKB:23456',
-                         'qedge_ids': ['qe02']},
-                        {'edge_id': 'ke08',
-                         'source_id': 'UniProtKB:12345',
-                         'target_id': 'UniProtKB:23456',
-                         'qedge_ids': None})
+                         'qedge_ids': ['qe02']})
 
         kg_nodes = [_create_node(node_id=node_info['id'],
                                  node_type=[node_info['type']],
@@ -500,7 +492,8 @@ class TestARAXResultify(unittest.TestCase):
                          'is_set': False},
                         {'id': 'n02',
                          'type': 'chemical_substance',
-                         'is_set': True})
+                         'is_set': False},
+                         )
 
         qg_edge_info = ({'edge_id': 'qe01',
                          'source_id': 'n02',
@@ -523,108 +516,12 @@ class TestARAXResultify(unittest.TestCase):
                           knowledge_graph=knowledge_graph,
                           results=[])
         resultifier = ARAXResultify()
-        input_parameters = {'ignore_edge_direction': 'true',
-                            'force_isset_false': ['n02']}
+        input_parameters = {'ignore_edge_direction': 'true'}
         resultifier.apply(message, input_parameters)
         assert resultifier.response.status == 'OK'
         assert len(resultifier.message.results) == 2
 
-    def test06(self):
-        kg_node_info = ({'id': 'UniProtKB:12345',
-                         'type': 'protein',
-                         'qnode_ids': ['n01']},
-                        {'id': 'UniProtKB:23456',
-                         'type': 'protein',
-                         'qnode_ids': ['n01']},
-                        {'id': 'DOID:12345',
-                         'type': 'disease',
-                         'qnode_ids': ['DOID:12345']},
-                        {'id': 'UniProtKB:56789',
-                         'type': 'protein',
-                         'qnode_ids': ['n01']},
-                        {'id': 'ChEMBL.COMPOUND:12345',
-                         'type': 'chemical_substance',
-                         'qnode_ids': ['n02']},
-                        {'id': 'ChEMBL.COMPOUND:23456',
-                         'type': 'chemical_substance',
-                         'qnode_ids': ['n02']})
-
-        kg_edge_info = ({'edge_id': 'ke01',
-                         'source_id': 'ChEMBL.COMPOUND:12345',
-                         'target_id': 'UniProtKB:12345',
-                         'qedge_ids': ['qe01']},
-                        {'edge_id': 'ke02',
-                         'source_id': 'ChEMBL.COMPOUND:12345',
-                         'target_id': 'UniProtKB:23456',
-                         'qedge_ids': ['qe01']},
-                        {'edge_id': 'ke03',
-                         'source_id': 'ChEMBL.COMPOUND:23456',
-                         'target_id': 'UniProtKB:12345',
-                         'qedge_ids': ['qe01']},
-                        {'edge_id': 'ke04',
-                         'source_id': 'ChEMBL.COMPOUND:23456',
-                         'target_id': 'UniProtKB:23456',
-                         'qedge_ids': ['qe01']},
-                        {'edge_id': 'ke05',
-                         'source_id': 'DOID:12345',
-                         'target_id': 'UniProtKB:12345',
-                         'qedge_ids': ['qe02']},
-                        {'edge_id': 'ke06',
-                         'source_id': 'DOID:12345',
-                         'target_id': 'UniProtKB:23456',
-                         'qedge_ids': ['qe02']},
-                        {'edge_id': 'ke08',
-                         'source_id': 'UniProtKB:12345',
-                         'target_id': 'UniProtKB:23456',
-                         'qedge_ids': None})
-
-        kg_nodes = [_create_node(node_id=node_info['id'],
-                                 node_type=[node_info['type']],
-                                 qnode_ids=node_info['qnode_ids']) for node_info in kg_node_info]
-
-        kg_edges = [_create_edge(edge_id=edge_info['edge_id'],
-                                 source_id=edge_info['source_id'],
-                                 target_id=edge_info['target_id'],
-                                 qedge_ids=edge_info['qedge_ids']) for edge_info in kg_edge_info]
-
-        knowledge_graph = KnowledgeGraph(kg_nodes, kg_edges)
-
-        qg_node_info = ({'id': 'n01',
-                         'type': 'protein',
-                         'is_set': True},
-                        {'id': 'DOID:12345',
-                         'type': 'disease',
-                         'is_set': False},
-                        {'id': 'n02',
-                         'type': 'chemical_substance',
-                         'is_set': True})
-
-        qg_edge_info = ({'edge_id': 'qe01',
-                         'source_id': 'n02',
-                         'target_id': 'n01'},
-                        {'edge_id': 'qe02',
-                         'source_id': 'DOID:12345',
-                         'target_id': 'n01'})
-
-        qg_nodes = [QNode(id=node_info['id'],
-                          type=ARAX_resultify.BIOLINK_ENTITY_TYPE_OBJECTS[node_info['type']],
-                          is_set=node_info['is_set']) for node_info in qg_node_info]
-
-        qg_edges = [QEdge(id=edge_info['edge_id'],
-                          source_id=edge_info['source_id'],
-                          target_id=edge_info['target_id']) for edge_info in qg_edge_info]
-
-        query_graph = QueryGraph(qg_nodes, qg_edges)
-
-        message = Message(query_graph=query_graph,
-                          knowledge_graph=knowledge_graph,
-                          results=[])
-        resultifier = ARAXResultify()
-        input_parameters = {'ignore_edge_direction': 'true',
-                            'force_isset_false': ['n07']}
-        resultifier.apply(message, input_parameters)
-        assert resultifier.response.status != 'OK'
-        assert len(resultifier.message.results) == 0
+        #test06 no longer needed after resultify force_isset_false is removed
 
     def test07(self):
         kg_node_info = ({'id': 'UniProtKB:12345',
@@ -669,11 +566,7 @@ class TestARAXResultify(unittest.TestCase):
                         {'edge_id': 'ke06',
                          'source_id': 'DOID:12345',
                          'target_id': 'UniProtKB:23456',
-                         'qedge_ids': ['qe02']},
-                        {'edge_id': 'ke08',
-                         'source_id': 'UniProtKB:12345',
-                         'target_id': 'UniProtKB:23456',
-                         'qedge_ids': None})
+                         'qedge_ids': ['qe02']})
 
         kg_nodes = [_create_node(node_id=node_info['id'],
                                  node_type=[node_info['type']],
@@ -694,7 +587,7 @@ class TestARAXResultify(unittest.TestCase):
                          'is_set': False},
                         {'id': 'n02',
                          'type': 'chemical_substance',
-                         'is_set': True})
+                         'is_set': False})
 
         qg_edge_info = ({'edge_id': 'qe01',
                          'source_id': 'n02',
@@ -716,7 +609,7 @@ class TestARAXResultify(unittest.TestCase):
         response = Response()
         from actions_parser import ActionsParser
         actions_parser = ActionsParser()
-        actions_list = ['resultify(ignore_edge_direction=true,force_isset_false=[n02])']
+        actions_list = ['resultify(ignore_edge_direction=true)']
         result = actions_parser.parse(actions_list)
         response.merge(result)
         actions = result.data['actions']
@@ -743,7 +636,8 @@ class TestARAXResultify(unittest.TestCase):
             "return(message=true, store=false)"]}}
         [response, message] = _do_arax_query(query)
         assert response.status == 'OK'
-        assert len(message.results) == 3223
+        n01_nodes = {node.id for node in message.knowledge_graph.nodes if "n01" in node.qnode_ids}
+        assert len(message.results) == len(n01_nodes)
 
     def test09(self):
         query = {"previous_message_processing_plan": {"processing_actions": [
@@ -763,7 +657,6 @@ class TestARAXResultify(unittest.TestCase):
         resultifier = ARAXResultify()
         desc = resultifier.describe_me()
         assert 'brief_description' in desc[0]
-        assert 'force_isset_false' in desc[0]
         assert 'ignore_edge_direction' in desc[0]
 
     def test_example1(self):
@@ -775,7 +668,7 @@ class TestARAXResultify(unittest.TestCase):
                                                           'expand(edge_id=qe0)',
                                                           'resultify(ignore_edge_direction=true, debug=true)',
                                                           "filter_results(action=limit_number_of_results, max_results=10)",
-                                                          "return(message=true, store=true)",
+                                                          "return(message=true, store=false)",
                                                       ]}}
         [response, message] = _do_arax_query(query)
         assert response.status == 'OK'
@@ -926,7 +819,7 @@ class TestARAXResultify(unittest.TestCase):
     def test_issue680(self):
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(curie=DOID:14330, id=n00)",
+            "add_qnode(curie=DOID:14330, id=n00, type=disease)",
             "add_qnode(type=protein, is_set=true, id=n01)",
             "add_qnode(type=chemical_substance, id=n02)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
@@ -963,7 +856,8 @@ class TestARAXResultify(unittest.TestCase):
             'add_qnode(id=qg1, type=protein)',
             'add_qedge(source_id=qg1, target_id=qg0, id=qe0)',
             'expand(edge_id=qe0)',
-            'resultify(ignore_edge_direction=true, INVALID_PARAMETER_NAME=true)'
+            'resultify(ignore_edge_direction=true, INVALID_PARAMETER_NAME=true)',
+            "return(message=true, store=false)"
         ]}}
         [response, message] = _do_arax_query(query)
         assert 'INVALID_PARAMETER_NAME' in response.show()
@@ -976,7 +870,8 @@ class TestARAXResultify(unittest.TestCase):
             'add_qedge(source_id=qg1, target_id=qg0, id=qe0)',
             'add_qedge(source_id=qg0, target_id=qg1, id=qe0)',
             'expand(edge_id=qe0)',
-            'resultify()'
+            'resultify()',
+            "return(message=true, store=false)"
         ]}}
         [response, message] = _do_arax_query(query)
         assert response.status == 'OK'
@@ -989,7 +884,8 @@ class TestARAXResultify(unittest.TestCase):
             'add_qedge(source_id=qg1, target_id=qg0, id=qe0)',
             'add_qedge(source_id=qg0, target_id=qg1, id=qe0)',
             'expand(edge_id=qe0)',
-            'resultify(ignore_edge_direction=foo)'
+            'resultify(ignore_edge_direction=foo)',
+            "return(message=true, store=false)"
         ]}}
         [response, message] = _do_arax_query(query)
         assert response.status != 'OK' and 'foo' in response.show()
@@ -1003,7 +899,7 @@ class TestARAXResultify(unittest.TestCase):
             'add_qedge(source_id=qg0, target_id=qg1, id=qe1)',
             'expand(edge_id=qe0)',
             'resultify(debug=true)',
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}}
         _do_arax_query(query)
 
@@ -1013,7 +909,8 @@ class TestARAXResultify(unittest.TestCase):
             "add_qnode(type=protein, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
-            "resultify()"]}}
+            "resultify()",
+            "return(message=true, store=false)"]}}
         [response, message] = _do_arax_query(query)
         assert response.status == 'OK'
 
@@ -1026,7 +923,8 @@ class TestARAXResultify(unittest.TestCase):
                 "add_qedge(source_id=n0, target_id=n1, id=e0)",
                 "add_qedge(source_id=n1, target_id=n2, id=e1)",
                 "expand(edge_id=[e0,e1], kp=ARAX/KG2)",
-                "resultify(debug=true)"]}}
+                "resultify(debug=true)",
+                "return(message=true, store=false)"]}}
         [response, message] = _do_arax_query(query)
         assert response.status == 'OK'
         assert len(message.results) >= 81
@@ -1039,7 +937,8 @@ class TestARAXResultify(unittest.TestCase):
                 "add_qedge(source_id=n0, target_id=n1, id=e0)",
                 "add_qedge(source_id=n1, target_id=n2, id=e1)",
                 "expand(edge_id=[e0,e1], kp=ARAX/KG2)",
-                "resultify(debug=true)"]}}
+                "resultify(debug=true)",
+                "return(message=true, store=false)"]}}
         [response, message] = _do_arax_query(query)
         for result in message.results:
             found_e01 = any(edge_binding.qg_id == 'e1' for edge_binding in result.edge_bindings)
@@ -1100,7 +999,8 @@ class TestARAXResultify(unittest.TestCase):
                 "add_qnode(id=n01)",
                 "add_qedge(source_id=n00, target_id=n01, id=e00)",
                 "expand(edge_id=e00, kp=ARAX/KG2)",
-                "resultify()"]}}
+                "resultify()",
+                "return(message=true, store=false)"]}}
         [response, message] = _do_arax_query(query)
         n01_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n01" in node.qnode_ids]
         assert len(message.results) == len(n01_nodes_in_kg)
@@ -1130,7 +1030,8 @@ class TestARAXResultify(unittest.TestCase):
                 "add_qedge(source_id=n00, target_id=n01, id=e00)",
                 "add_qedge(source_id=n01, target_id=n02, id=e01)",
                 "expand()",
-                "resultify(debug=true)"]}}
+                "resultify(debug=true)",
+                "return(message=true, store=false)"]}}
         [response, message] = _do_arax_query(query)
         n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n02" in node.qnode_ids]
         assert len(message.results) == len(n02_nodes_in_kg)
@@ -1145,7 +1046,8 @@ class TestARAXResultify(unittest.TestCase):
                 "add_qedge(source_id=n00, target_id=n01, id=e00)",
                 "add_qedge(source_id=n01, target_id=n02, id=e01)",
                 "expand(use_synonyms=false, kp=ARAX/KG2)",
-                "resultify(debug=true)"]}}
+                "resultify(debug=true)",
+                "return(message=true, store=false)"]}}
         [response, message] = _do_arax_query(query)
         n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n02" in node.qnode_ids]
         assert len(message.results) == len(n02_nodes_in_kg)
@@ -1162,7 +1064,8 @@ class TestARAXResultify(unittest.TestCase):
                 "add_qedge(id=e01, source_id=n01, target_id=n02)",
                 "add_qedge(id=e02, source_id=n02, target_id=n03)",
                 "expand(use_synonyms=false)",
-                "resultify(debug=true)"]}}
+                "resultify(debug=true)",
+                "return(message=true, store=false)"]}}
         [response, message] = _do_arax_query(query)
         assert response.status == 'OK'
         snca_id = "UniProtKB:P37840"
@@ -1177,38 +1080,50 @@ class TestARAXResultify(unittest.TestCase):
                 found_result_where_syna_is_n03_and_not_n01 = True
         assert found_result_where_syna_is_n01_and_not_n03 and found_result_where_syna_is_n03_and_not_n01
 
-    # ----------- set this up as a test suite at some point? ----------
-    # def _run_module_leveltests(self):
-    #     self.test01()
-    #     self.test02()
-    #     self.test03()
-    #     self.test04()
-    #     self.test_bfs()
-    #     self.test_bfs_in_essence_code()
-    #     self.test_issue731c()
-    #     self.test_issue692()
-    #     self.test_issue692b()
+    def test_issue833(self):
+        # Test for extraneous intermediate nodes
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "add_qnode(id=n00, type=disease, curie=DOID:1056)",
+            "add_qnode(id=n01, type=protein, is_set=true)",
+            "add_qnode(id=n02, type=chemical_substance)",
+            "add_qedge(id=e00, source_id=n00, target_id=n01)",
+            "add_qedge(id=e01, source_id=n01, target_id=n02)",
+            "expand(kp=ARAX/KG1)",
+            "expand(edge_id=e00, kp=ARAX/KG2)",  # Creates some dead-end n01 nodes
+            "resultify()",
+            "return(message=true, store=false)"]}}
+        [response, message] = _do_arax_query(query)
+        assert response.status == 'OK'
+        kg_nodes_map = {node.id: node for node in message.knowledge_graph.nodes}
+        kg_edges_map = {edge.id: edge for edge in message.knowledge_graph.edges}
+        for result in message.results:
+            result_nodes_by_qg_id = _get_result_nodes_by_qg_id(result, kg_nodes_map, message.query_graph)
+            result_edges_by_qg_id = _get_result_edges_by_qg_id(result, kg_edges_map, message.query_graph)
+            # Make sure all intermediate nodes are connected to at least one (real, not virtual) edge on BOTH sides
+            for n01_node_id in result_nodes_by_qg_id['n01']:
+                assert any(edge for edge in result_edges_by_qg_id['e00'].values() if
+                           edge.source_id == n01_node_id or edge.target_id == n01_node_id)
+                assert any(edge for edge in result_edges_by_qg_id['e01'].values() if
+                           edge.source_id == n01_node_id or edge.target_id == n01_node_id)
+            # Make sure all edges' nodes actually exist in this result (includes virtual and real edges)
+            for qedge_id, edges_map in result_edges_by_qg_id.items():
+                qedge = next(qedge for qedge in message.query_graph.edges if qedge.id == qedge_id)
+                for edge_id, edge in edges_map.items():
+                    assert (edge.source_id in result_nodes_by_qg_id[qedge.source_id] and edge.target_id in
+                            result_nodes_by_qg_id[qedge.target_id]) or \
+                           (edge.target_id in result_nodes_by_qg_id[qedge.source_id] and edge.source_id in
+                            result_nodes_by_qg_id[qedge.target_id])
 
-    # ----------- set this up as a test suite at some point? ----------
-    # def _run_arax_classtests(self):
-    #     self.test05()
-    #     self.test06()
-    #     self.test07()
-    #     self.test08()
-    #     self.test09()
-    #     self.test10()
-    #     self.test_example1()
-    #     self.test_example2()
-    #     self.test_issue680()
-    # #   self.test_example3()  # this has been commented out because the test takes a long time to run
-    #     self.test_issue686a()
-    #     self.test_issue686b()
-    #     self.test_issue686c()
-    #     self.test_issue687()
-    #     self.test_issue727()
-    #     self.test_issue731()
-    #     self.test_issue731b()
-    #     self.test_issue740()
+    def test_single_node(self):
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "add_qnode(name=ibuprofen, id=n00)",
+            "expand(node_id=n00)",
+            "resultify(debug=true)",
+            "return(message=true, store=false)"]}}
+        [response, message] = _do_arax_query(query)
+        assert response.status == 'OK'
+        n00_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n00" in node.qnode_ids]
+        assert len(message.results) == len(n00_nodes_in_kg)
 
 
 def test_example3():
@@ -1229,8 +1144,34 @@ def test_example3():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert len(message.results) in [47, 48]  # :BUG: sometimes the workflow returns 47 results, sometimes 48 (!?)
+    #assert len(message.results) in [46, 47, 48]  # :BUG: sometimes the workflow returns 47 results, sometimes 48 (!?)
+    assert len(message.results) in range(47, 58)
     assert message.results[0].essence is not None
+
+
+def test_parallel_edges_between_nodes():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "add_qnode(curie=DOID:11830, type=disease, id=n00)",
+        "add_qnode(type=gene, curie=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, id=n01)",
+        "add_qnode(type=chemical_substance, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "expand(kp=BTE)",
+        "overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n01, target_qnode_id=n02)",
+        "resultify()",
+        "return(message=true, store=false)"]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    kg_nodes_map = {node.id: node for node in message.knowledge_graph.nodes}
+    kg_edges_map = {edge.id: edge for edge in message.knowledge_graph.edges}
+    n02_nodes = {node_id for node_id, node in kg_nodes_map.items() if "n02" in node.qnode_ids}
+    assert len(message.results) == len(n02_nodes)
+    for result in message.results:
+        result_nodes_by_qg_id = _get_result_nodes_by_qg_id(result, kg_nodes_map, message.query_graph)
+        result_edges_by_qg_id = _get_result_edges_by_qg_id(result, kg_edges_map, message.query_graph)
+        node_ids_used_by_e01_edges = {edge.source_id for edge in result_edges_by_qg_id['e01'].values()}.union({edge.target_id for edge in result_edges_by_qg_id['e01'].values()})
+        for node_id in result_nodes_by_qg_id['n01']:
+            assert node_id in node_ids_used_by_e01_edges
 
 
 def main():
