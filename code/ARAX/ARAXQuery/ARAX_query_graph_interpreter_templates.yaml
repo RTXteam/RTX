@@ -6,6 +6,13 @@ ARAX_QG_DSL_mapping: 0.1
 #   n00(type=protein)         - a node with a specific type (such as a protein) specified
 #   n00(curie)                - a node with a specific curie specified
 #   n00(curie,type=protein)   - a node with a specific curie of the specified type.
+# Edge templates should have the following format:
+#   e00()                     - an edge with no specification
+#
+# NOTE: Node order should always start with the most specific node (e.g. curie)
+# NOTE: The first node should always be n00 and increment from there. And the first edge e00.
+#       In order that incoming QNodes are properly remapped, these templates need to follow this n00, e00, n01, ... convention
+
 
 templates:
 
