@@ -53,7 +53,7 @@ class Query_ICEES:
         #requests = CacheControlHelper()
         #url = Query_ICEES.API_BASE_URL + handler + '?' + url_suffix
         try:
-            url = 'https://icees.renci.org:16340/apidocs/#/default/post_knowledge_graph_overlay'
+            url = 'https://icees.renci.org:16340/knowledge_graph_overlay'
             #requests.get(url, verify='/path/to/certfile')
             response_content = requests.post(url, json=query, headers={'accept': 'application/json'}, verify=False)
         
@@ -63,11 +63,9 @@ class Query_ICEES:
             else:
                 print(f"Response returned with status {status_code}")
          
-        #TODO(FIX): Identify reason for error 405.
             response_dict = response_content.json()
-            for message in response_dict['log']:
-                if message['level'] >= 20:
-                    print(message['prefix']+message['message'])
+            print(response_content.json())
+            
                 
             output_json = json.dumps(response_dict)
             return response_dict
