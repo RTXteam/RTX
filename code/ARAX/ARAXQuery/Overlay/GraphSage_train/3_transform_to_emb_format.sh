@@ -1,2 +1,2 @@
 ## Transform the GraphSage results to .emb format which is the node2vec output format
-time python ./py_scripts/transform_format.py --input ~/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/unsup-graphsage_input/graphsage_mean_big_0.001000 --output ~/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/graphsage_out/graph.emb
+python ./py_scripts/transform_format.py --input ~/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/graphsage_results/graphsage_mean_big_0.001000_l100_r8_512dim_70training_2layer_512batch_96neighbor --output ~/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/graphsage_out/graph_l100_r8_512dim_70training_2layer_512batch_96neighbor.emb
