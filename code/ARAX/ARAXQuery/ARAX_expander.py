@@ -213,6 +213,8 @@ class ARAXExpander:
 
         if use_synonyms:
             self._add_curie_synonyms_to_query_nodes(qnodes=[copy_of_qnode], log=log, kp=kp_to_use)
+        if copy_of_qnode.type in ["protein", "gene"]:
+            copy_of_qnode.type = ["protein", "gene"]
         log.debug(f"Modified query node is: {copy_of_qnode.to_dict()}")
 
         # Answer the query using the proper KP
@@ -265,6 +267,10 @@ class ARAXExpander:
 
         if use_synonyms:
             self._add_curie_synonyms_to_query_nodes(qnodes=edge_query_graph.nodes, log=log, kp=kp_to_use)
+        # Consider both protein and gene if qnode's type is one of those (since KP's handle these differently)
+        for qnode in edge_query_graph.nodes:
+            if qnode.type in ['protein', 'gene']:
+                qnode.type = ['protein', 'gene']
         return edge_query_graph
 
     @staticmethod
@@ -274,49 +280,44 @@ class ARAXExpander:
         deduplicated_kg = DictKnowledgeGraph(nodes={qnode_id: dict() for qnode_id in dict_kg.nodes_by_qg_id},
                                              edges={qedge_id: dict() for qedge_id in dict_kg.edges_by_qg_id})
         updated_edge_to_nodes_map = {edge_id: dict() for edge_id in edge_to_nodes_map}
-        curie_map = dict()
+        curie_mappings = dict()
 
         # First deduplicate the nodes
         for qnode_id, nodes in dict_kg.nodes_by_qg_id.items():
             # Load preferred curie info from NodeSynonymizer for nodes we haven't seen before
-            unmapped_node_ids = set(list(nodes.keys())).difference(set((curie_map.keys())))
+            unmapped_node_ids = set(list(nodes.keys())).difference(set((curie_mappings.keys())))
             log.debug(f"Getting preferred curies for {qnode_id} nodes returned in this step")
-            unmapped_curie_info = eu.get_preferred_curies(list(unmapped_node_ids), log) if unmapped_node_ids else dict()
+            preferred_curie_info_for_unmapped_nodes = eu.get_preferred_curies(list(unmapped_node_ids), log) if unmapped_node_ids else dict()
             if log.status != 'OK':
                 return deduplicated_kg, updated_edge_to_nodes_map
 
-            for node_id, node in nodes.items():
+            for node_id in unmapped_node_ids:
+                node = nodes.get(node_id)
                 # Figure out the preferred curie/name for this node
-                if node_id in curie_map:
-                    preferred_curie = curie_map.get(node_id)
-                    preferred_name = node.name
-                elif node_id in unmapped_curie_info:
-                    normalizer_preferred_curie = unmapped_curie_info[node_id].get('preferred_curie')
-                    normalizer_preferred_name = unmapped_curie_info[node_id].get('preferred_name')
-                    preferred_curie = normalizer_preferred_curie if normalizer_preferred_curie else node_id
-                    preferred_name = normalizer_preferred_name if normalizer_preferred_name else node.name
-                    curie_map[node_id] = preferred_curie
+                if node_id in preferred_curie_info_for_unmapped_nodes:
+                    preferred_curie = preferred_curie_info_for_unmapped_nodes[node_id].get('preferred_curie', node_id)
+                    preferred_name = preferred_curie_info_for_unmapped_nodes[node_id].get('preferred_name', node.name)
+                    preferred_type = preferred_curie_info_for_unmapped_nodes[node_id].get('types', node.type)
+                    curie_mappings[node_id] = preferred_curie
                 else:
-                    # This case means the NodeSynonymizer couldn't find any results for this curie
+                    # Means the NodeSynonymizer couldn't find any results for this curie
                     preferred_curie = node_id
                     preferred_name = node.name
-                    curie_map[node_id] = preferred_curie
+                    preferred_type = node.type
+                    curie_mappings[node_id] = preferred_curie
 
-                # Add/merge this node into our deduplicated KG as necessary
-                if preferred_curie in deduplicated_kg.nodes_by_qg_id[qnode_id]:
-                    # TODO: Better handle 'merging'/remapping of duplicate nodes
-                    preexisting_node = deduplicated_kg.nodes_by_qg_id[qnode_id][preferred_curie]
-                    preexisting_node.type = list(set(preexisting_node.type + node.type))
-                else:
+                # Add this node into our deduplicated KG as necessary # TODO: merge certain fields, like uri?
+                if preferred_curie not in deduplicated_kg.nodes_by_qg_id[qnode_id]:
                     node.id = preferred_curie
                     node.name = preferred_name
+                    node.type = preferred_type
                     deduplicated_kg.add_node(node, qnode_id)
 
         # Then update the edges to reflect changes made to the nodes
         for qedge_id, edges in dict_kg.edges_by_qg_id.items():
             for edge_id, edge in edges.items():
-                edge.source_id = curie_map.get(edge.source_id)
-                edge.target_id = curie_map.get(edge.target_id)
+                edge.source_id = curie_mappings.get(edge.source_id)
+                edge.target_id = curie_mappings.get(edge.target_id)
                 if not edge.source_id or not edge.target_id:
                     log.error(f"Could not find preferred curie mappings for edge {edge_id}'s node(s)")
                     return deduplicated_kg, updated_edge_to_nodes_map
@@ -324,7 +325,7 @@ class ARAXExpander:
 
                 # Update the edge-to-node map for this edge (used down the line for pruning)
                 for qnode_id, corresponding_node_id in edge_to_nodes_map[edge_id].items():
-                    updated_edge_to_nodes_map[edge_id][qnode_id] = curie_map.get(corresponding_node_id)
+                    updated_edge_to_nodes_map[edge_id][qnode_id] = curie_mappings.get(corresponding_node_id)
 
         log.info(f"After deduplication, answer KG counts are: {eu.get_printable_counts_by_qg_id(deduplicated_kg)}")
         return deduplicated_kg, updated_edge_to_nodes_map
