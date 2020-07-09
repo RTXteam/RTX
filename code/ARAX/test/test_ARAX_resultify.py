@@ -1084,7 +1084,7 @@ class TestARAXResultify(unittest.TestCase):
         # Test for extraneous intermediate nodes
         query = {"previous_message_processing_plan": {"processing_actions": [
             "add_qnode(id=n00, type=disease, curie=DOID:1056)",
-            "add_qnode(id=n01, type=protein)",
+            "add_qnode(id=n01, type=protein, is_set=true)",
             "add_qnode(id=n02, type=chemical_substance)",
             "add_qedge(id=e00, source_id=n00, target_id=n01)",
             "add_qedge(id=e01, source_id=n01, target_id=n02)",
