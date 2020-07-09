@@ -270,10 +270,6 @@ class ComputeFTEST:
         # find all nodes with the same type of 'source_qnode_id' nodes in specified KP ('ARAX/KG1','ARAX/KG2','BTE') that are adjacent to target nodes
         use_parallel = False
 
-        print(list(target_node_dict.keys()))
-        print(source_node_type)
-        print(kp)
-
         if not use_parallel:
             # query adjacent node in one DSL command by providing a list of query nodes to add_qnode()
             if rel_edge_id:
