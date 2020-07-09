@@ -178,7 +178,7 @@ class MapCurieToOMOP:
                 sub_kpdata = self.kpdata.loc[self.kpdata['type']==curie_type,:].reset_index().drop(columns=['index'])
                 curie_list = list(set(sub_kpdata['curie']))
                 curie_list = list(zip(range(len(curie_list)), curie_list, itertools.cycle([best_dataset_id]), itertools.cycle([domain])))
-                with multiprocessing.Pool(processes=20) as executor:
+                with multiprocessing.Pool(processes=30) as executor:
                     curie_OMOP_list = [OMOP_list for OMOP_list in executor.map(self._get_OMOP_id, curie_list)]
                 curie_OMOP_dict = dict()
                 for index, curie, _, _ in curie_list:
@@ -196,11 +196,17 @@ class MapCurieToOMOP:
                     curie_to_domain[type] = domain[index]
                     pass
 
-            sub_kpdata = self.kpdata.loc[[self.kpdata.loc[x,'type'] in curie_type for x in range(self.kpdata.shape[0])], :].reset_index().drop(columns=['index'])
+            print("here1", flush=True)
+            sub_kpdata = self.kpdata.loc[[self.kpdata.loc[x,'type'] in curie_type for x in range(self.kpdata.shape[0])],:].reset_index().drop(columns=['index'])
+            print("here2", flush=True)
             curie_list = list(set(sub_kpdata['curie']))
-            domain_list = [curie_to_domain[list(sub_kpdata['type'][sub_kpdata['curie']==elem])[0]] for elem in curie_list]
+            sub_kpdata = sub_kpdata.set_index('curie')
+            type_list = list(sub_kpdata.loc[curie_list, 'type'])
+            print("here3", flush=True)
+            domain_list = [curie_to_domain[elem] for elem in type_list]
             curie_list = list(zip(range(len(curie_list)), curie_list, itertools.cycle([best_dataset_id]), domain_list))
-            with multiprocessing.Pool(processes=20) as executor:
+            print("here4", flush=True)
+            with multiprocessing.Pool(processes=30) as executor:
                 curie_OMOP_list = [OMOP_list for OMOP_list in executor.map(self._get_OMOP_id, curie_list)]
             curie_OMOP_dict = dict()
             for index, curie, _, _ in curie_list:
@@ -224,13 +230,21 @@ def main():
     else:
         print("============= Testing mapping of curies to OMOP =============", flush=True)
         if DEBUG:
-            print('processing KG1', flush=True)
-        kg1_CtoM = MapCurieToOMOP(kg="KG1")
+            print('processing KG2', flush=True)
+        kg2_CtoM = MapCurieToOMOP(kg="KG2")
         outfolder = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
-        with open('./error_kg1.log', 'w') as stderr, redirect_stderr(stderr):
-            res = kg1_CtoM.map_curies_with_specified_type_to_OMOP(curie_type=["disease", "phenotypic_feature", "chemical_substance"], domain=['Condition','Condition','Drug'], best_dataset_id=3)
-            with open(outfolder + '/KG1_OMOP_mapping.pkl', 'wb') as file:
+        with open('./error_kg2.log', 'w') as stderr, redirect_stderr(stderr):
+            res = kg2_CtoM.map_curies_with_specified_type_to_OMOP(curie_type=["disease", "phenotypic_feature", "chemical_substance", "drug"], domain=['Condition', 'Condition', 'Drug', 'Drug'], best_dataset_id=3)
+            with open(outfolder + '/KG2_OMOP_mapping.pkl', 'wb') as file:
                 pickle.dump(res, file)
+        # if DEBUG:
+        #     print('processing KG1', flush=True)
+        # kg1_CtoM = MapCurieToOMOP(kg="KG1")
+        # outfolder = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
+        # with open('./error_kg1.log', 'w') as stderr, redirect_stderr(stderr):
+        #     res = kg1_CtoM.map_curies_with_specified_type_to_OMOP(curie_type=["disease", "phenotypic_feature", "chemical_substance"], domain=['Condition','Condition','Drug'], best_dataset_id=3)
+        #     with open(outfolder + '/KG1_OMOP_mapping.pkl', 'wb') as file:
+        #         pickle.dump(res, file)
 
         ## Check if there are any requests failed. If so, re-request.
         # error_file_stat = os.stat(outfolder + '/error.log')
@@ -272,15 +286,15 @@ def main():
 
             # with open(outfolder + '/KG1_OMOP_mapping.pkl', 'wb') as file:
             #     pickle.dump(res, file)
-
-        if DEBUG:
-            print('processing KG2', flush=True)
-        kg2_CtoM = MapCurieToOMOP(kg="KG2")
-        outfolder = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
-        with open('./error_kg2.log', 'w') as stderr, redirect_stderr(stderr):
-            res = kg2_CtoM.map_curies_with_specified_type_to_OMOP(curie_type=["disease", "phenotypic_feature", "chemical_substance", "drug"], domain=['Condition','Condition','Drug','Drug'], best_dataset_id=3)
-            with open(outfolder + '/KG2_OMOP_mapping.pkl', 'wb') as file:
-                pickle.dump(res, file)
+        #
+        # if DEBUG:
+        #     print('processing KG2', flush=True)
+        # kg2_CtoM = MapCurieToOMOP(kg="KG2")
+        # outfolder = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
+        # with open('./error_kg2.log', 'w') as stderr, redirect_stderr(stderr):
+        #     res = kg2_CtoM.map_curies_with_specified_type_to_OMOP(curie_type=["disease", "phenotypic_feature", "chemical_substance", "drug"], domain=['Condition','Condition','Drug','Drug'], best_dataset_id=3)
+        #     with open(outfolder + '/KG2_OMOP_mapping.pkl', 'wb') as file:
+        #         pickle.dump(res, file)
         # kg2_CtoM = MapCurieToOMOP(kg="KG2")
         # res = kg2_CtoM.map_curies_with_specified_type_to_OMOP(curie_type=["disease", "phenotypic_feature", "chemical_substance", "drug"])
         # with open('/home/ubuntu/work/RTX/code/ARAX/KnowledgeSources/COHD_local/data/KG2_OMOP_mapping.pkl', 'wb') as file:
