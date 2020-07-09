@@ -1281,6 +1281,22 @@ def main():
             "filter_results(action=limit_number_of_results, max_results=50)",
             "return(message=true, store=true)",
         ]}}
+    elif params.example_number == 8672:  # test_one_hop_based_on_types_1
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:11830, id=n00, type=disease)",
+            "add_qnode(type=chemical_substance, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00, kp=ARAX/KG2)",
+            "expand(edge_id=e00, kp=BTE)",
+            "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
+            "overlay(action=predict_drug_treats_disease)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_id=n01)",
+            "overlay(action=compute_ngd)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=limit_number_of_results, max_results=50)",
+            "return(message=true, store=true)",
+        ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return

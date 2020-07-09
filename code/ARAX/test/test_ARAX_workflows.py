@@ -465,6 +465,35 @@ def test_two_hop_based_on_types_1():
         _virtual_tester(message, 'has_paired_concept_frequency_with', 'C1', 'paired_concept_frequency', 'EDAM:data_0951', 1)
         _virtual_tester(message, 'has_observed_expected_ratio_with', 'C2', 'observed_expected_ratio', 'EDAM:data_0951', 1)
         _virtual_tester(message, 'has_chi_square_with', 'C3', 'chi_square', 'EDAM:data_0951', 1)
+        assert len(message.results) > 1
+
+
+def test_one_hop_based_on_types_1():
+    """
+    Example DSL for a one hop question that is based on types
+    """
+    #doid_list = {"DOID:11830", "DOID:5612", "DOID:2411", "DOID:8501", "DOID:174"}
+    doid_list = {"DOID:11830"}
+    for doid in doid_list:
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            f"add_qnode(name={doid}, id=n00, type=disease)",
+            "add_qnode(type=chemical_substance, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00, kp=ARAX/KG2)",
+            "expand(edge_id=e00, kp=BTE)",
+            "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
+            "overlay(action=predict_drug_treats_disease)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_id=n01)",
+            "overlay(action=compute_ngd)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=limit_number_of_results, max_results=50)",
+            "return(message=true, store=true)",
+        ]}}
+        [response, message] = _do_arax_query(query)
+        print(message.id)
+        assert response.status == 'OK'
+        assert len(message.results) > 1
 
 
 @pytest.mark.skip(reason="Work in progress (and takes a very long time)")
