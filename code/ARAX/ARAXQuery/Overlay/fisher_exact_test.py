@@ -578,7 +578,6 @@ class ComputeFTEST:
                 ]}}
 
             try:
-                print(query)
                 result = araxq.query(query)
                 if result.status != 'OK':
                     self.response.error(f"Fail to query adjacent nodes from {kp} for {node_curie}")
