@@ -4,10 +4,10 @@
 graphsage_folder=~/work/Graphsage/GraphSAGE
 
 ## set your working path
-work_path=/home/cqm5886/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage
+work_path=~/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage
 
 ## set python path (Please use python 2.7 to run graphsage as graphsage was written by python2.7)
-ppath=/home/cqm5886/anaconda3/envs/graphsage_p2.7env/bin/python
+ppath=~/anaconda3/envs/graphsage_p2.7env/bin/python
 
 ## set model name
 model='graphsage_mean'
