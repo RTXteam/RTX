@@ -557,6 +557,20 @@ class COHDIndex:
                                                   'expected_count': expected_count,
                                                   'ln_ratio': ln_ratio,
                                                   'observed_count': observed_count})
+
+                    cursor.execute(f"select concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS WHERE concept_id_2={concept_id_1}")
+                    res = cursor.fetchall()
+                    if len(res) == 0:
+                        pass
+                    else:
+                        for row in res:
+                            if row[2] == dataset_id:
+                                results_array.append({'concept_id_1': row[1],
+                                                      'concept_id_2': row[0],
+                                                      'dataset_id': row[2],
+                                                      'expected_count': row[3],
+                                                      'ln_ratio': row[4],
+                                                      'observed_count': row[5]})
             else:
                 cursor.execute(f"select p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  WHERE p.concept_id_1={concept_id_1} and c.domain_id='{domain}'")
                 res = cursor.fetchall()
@@ -585,6 +599,19 @@ class COHDIndex:
                                                   'ln_ratio': ln_ratio,
                                                   'observed_count': observed_count})
 
+                    cursor.execute(f"select p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  WHERE p.concept_id_2={concept_id_1} and c.domain_id='{domain}'")
+                    res = cursor.fetchall()
+                    if len(res) == 0:
+                        pass
+                    else:
+                        for row in res:
+                            if row[2] == dataset_id:
+                                results_array.append({'concept_id_1': row[1],
+                                                      'concept_id_2': row[0],
+                                                      'dataset_id': row[2],
+                                                      'expected_count': row[3],
+                                                      'ln_ratio': row[4],
+                                                      'observed_count': row[5]})
         else:
             if domain == "":
                 cursor.execute(f"select concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS WHERE concept_id_1={concept_id_1} and concept_id_2={concept_id_2}")
@@ -721,6 +748,19 @@ class COHDIndex:
                                                   'concept_id_2': concept_id_2,
                                                   'dataset_id': dataset_id_row,
                                                   'p-value': pvalue})
+
+                    cursor.execute(f"select chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS WHERE concept_id_2={concept_id_1}")
+                    res = cursor.fetchall()
+                    if len(res) == 0:
+                        pass
+                    else:
+                        for row in res:
+                            if row[3] == dataset_id:
+                                results_array.append({'chi_square': row[0],
+                                                      'concept_id_1': row[2],
+                                                      'concept_id_2': row[1],
+                                                      'dataset_id': row[3],
+                                                      'p-value': row[4]})
             else:
                 cursor.execute(f"select p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  WHERE p.concept_id_1={concept_id_1} and c.domain_id='{domain}'")
                 res = cursor.fetchall()
@@ -746,6 +786,19 @@ class COHDIndex:
                                                   'concept_id_2': concept_id_2,
                                                   'dataset_id': dataset_id_row,
                                                   'p-value': pvalue})
+
+                    cursor.execute(f"select p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  WHERE p.concept_id_2={concept_id_1} and c.domain_id='{domain}'")
+                    res = cursor.fetchall()
+                    if len(res) == 0:
+                        pass
+                    else:
+                        for row in res:
+                            if row[3] == dataset_id:
+                                results_array.append({'chi_square': row[0],
+                                                      'concept_id_1': row[2],
+                                                      'concept_id_2': row[1],
+                                                      'dataset_id': row[3],
+                                                      'p-value': row[4]})
 
         else:
             if domain == "":
