@@ -275,14 +275,14 @@ class ComputeFTEST:
             if rel_edge_id:
                 if len(rel_edge_type) == 1:  # if the edge with rel_edge_id has only type, we use this rel_edge_type to find all source nodes in KP
                     self.response.debug(f"{kp} and edge relation type {list(rel_edge_type)[0]} were used to calculate total adjacent nodes in Fisher's Exact Test")
-                    result = self.query_size_of_adjacent_nodes(node_curie=list(target_node_dict.keys()), adjacent_type=source_node_type, kp = kp, rel_type=list(rel_edge_type)[0], use_cypher_command=False)
+                    result = self.query_size_of_adjacent_nodes(node_curie=list(target_node_dict.keys()), source_type=target_node_type, adjacent_type=source_node_type, kp = kp, rel_type=list(rel_edge_type)[0], use_cypher_command=False)
                 else:  # if the edge with rel_edge_id has more than one type, we ignore the edge type and use all types to find all source nodes in KP
                     self.response.warning(f"The edges with specified qedge id {rel_edge_id} have more than one type, we ignore the edge type and use all types to calculate Fisher's Exact Test")
                     self.response.debug(f"{kp} was used to calculate total adjacent nodes in Fisher's Exact Test")
-                    result = self.query_size_of_adjacent_nodes(node_curie=list(target_node_dict.keys()), adjacent_type=source_node_type, kp=kp, rel_type=None, use_cypher_command=False)
+                    result = self.query_size_of_adjacent_nodes(node_curie=list(target_node_dict.keys()), source_type=target_node_type, adjacent_type=source_node_type, kp=kp, rel_type=None, use_cypher_command=False)
             else:  # if no rel_edge_id is specified, we ignore the edge type and use all types to find all source nodes in KP
                 self.response.debug(f"{kp} was used to calculate total adjacent nodes in Fisher's Exact Test")
-                result = self.query_size_of_adjacent_nodes(node_curie=list(target_node_dict.keys()), adjacent_type=source_node_type, kp=kp, rel_type=None, use_cypher_command=False)
+                result = self.query_size_of_adjacent_nodes(node_curie=list(target_node_dict.keys()), source_type=target_node_type, adjacent_type=source_node_type, kp=kp, rel_type=None, use_cypher_command=False)
 
             if result is None:
                 return self.response ## Something wrong happened for querying the adjacent nodes
@@ -293,14 +293,14 @@ class ComputeFTEST:
             if rel_edge_id:
                 if len(rel_edge_type) == 1:  # if the edge with rel_edge_id has only type, we use this rel_edge_type to find all source nodes in KP
                     self.response.debug(f"{kp} and edge relation type {list(rel_edge_type)[0]} were used to calculate total adjacent nodes in Fisher's Exact Test")
-                    parameter_list = [(node, source_node_type, kp, list(rel_edge_type)[0]) for node in list(target_node_dict.keys())]
+                    parameter_list = [(node, target_node_type, source_node_type, kp, list(rel_edge_type)[0]) for node in list(target_node_dict.keys())]
                 else:  # if the edge with rel_edge_id has more than one type, we ignore the edge type and use all types to find all source nodes in KP
                     self.response.warning(f"The edges with specified qedge id {rel_edge_id} have more than one type, we ignore the edge type and use all types to calculate Fisher's Exact Test")
                     self.response.debug(f"{kp} was used to calculate total adjacent nodes in Fisher's Exact Test")
-                    parameter_list = [(node, source_node_type, kp, None) for node in list(target_node_dict.keys())]
+                    parameter_list = [(node, target_node_type, source_node_type, kp, None) for node in list(target_node_dict.keys())]
             else:  # if no rel_edge_id is specified, we ignore the edge type and use all types to find all source nodes in KP
                 self.response.debug(f"{kp} was used to calculate total adjacent nodes in Fisher's Exact Test")
-                parameter_list = [(node, source_node_type, kp, None) for node in list(target_node_dict.keys())]
+                parameter_list = [(node, target_node_type, source_node_type, kp, None) for node in list(target_node_dict.keys())]
 
             ## get the count of all nodes with the type of 'source_qnode_id' nodes in KP for each target node in parallel
             try:
@@ -453,10 +453,11 @@ class ComputeFTEST:
         return self.response
 
 
-    def query_size_of_adjacent_nodes(self, node_curie, adjacent_type, kp="ARAX/KG1", rel_type=None, use_cypher_command=True):
+    def query_size_of_adjacent_nodes(self, node_curie, source_type, adjacent_type, kp="ARAX/KG1", rel_type=None, use_cypher_command=True):
         """
         Query adjacent nodes of a given source node based on adjacent node type.
         :param node_curie: (required) the curie id of query node. It accepts both single curie id or curie id list eg. "UniProtKB:P14136" or ['UniProtKB:P02675', 'UniProtKB:P01903', 'UniProtKB:P09601', 'UniProtKB:Q02878']
+        :param source_type: (required) the type of source node, eg. "gene"
         :param adjacent_type: (required) the type of adjacent node, eg. "biological_process"
         :param kp: (optional) the knowledge provider to use, eg. "ARAX/KG1"(default)
         :param rel_type: (optional) edge type to consider, eg. "involved_in"
@@ -477,7 +478,7 @@ class ComputeFTEST:
                 rtxConfig.live = "KG2"
                 driver = GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=basic_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
             else:
-                self.response.error(f"The 'kp' argument of 'query_size_of_adjacent_nodes' method within FET only accepts 'ARAX/KG1' or 'ARAX/KG2' right now")
+                self.response.error(f"The 'kp' argument of 'query_size_of_adjacent_nodes' method within FET only accepts 'ARAX/KG1' or 'ARAX/KG2' for cypher query right now")
                 return res
 
             session = driver.session()
@@ -558,7 +559,7 @@ class ComputeFTEST:
             if rel_type:
                 query = {"previous_message_processing_plan": {"processing_actions": [
                     "create_message",
-                    f"add_qnode(curie={query_node_curie}, id=FET_n00)",
+                    f"add_qnode(curie={query_node_curie}, type={source_type}, id=FET_n00)",
                     f"add_qnode(type={adjacent_type}, id=FET_n01)",
                     f"add_qedge(source_id=FET_n00, target_id=FET_n01, id=FET_e00, type={rel_type})",
                     f"expand(edge_id=FET_e00,kp={kp})",
@@ -568,7 +569,7 @@ class ComputeFTEST:
             else:
                 query = {"previous_message_processing_plan": {"processing_actions": [
                     "create_message",
-                    f"add_qnode(curie={query_node_curie}, id=FET_n00)",
+                    f"add_qnode(curie={query_node_curie}, type={source_type}, id=FET_n00)",
                     f"add_qnode(type={adjacent_type}, id=FET_n01)",
                     f"add_qedge(source_id=FET_n00, target_id=FET_n01, id=FET_e00)",
                     f"expand(edge_id=FET_e00,kp={kp})",
@@ -577,6 +578,7 @@ class ComputeFTEST:
                 ]}}
 
             try:
+                print(query)
                 result = araxq.query(query)
                 if result.status != 'OK':
                     self.response.error(f"Fail to query adjacent nodes from {kp} for {node_curie}")
@@ -615,23 +617,24 @@ class ComputeFTEST:
         # This method is expected to be run within this class
         """
         Query the size of adjacent nodes of a given source node based on adjacent node type in parallel.
-        :param this is a list containing four sub-arguments below since this function is exectued in parallel.
+        :param this is a list containing five sub-arguments below since this function is exectued in parallel.
         :return the number of adjacent nodes for the query node
         """
         #:sub-argument node_curie: (required) the curie id of query node, eg. "UniProtKB:P14136"
+        #:sub-argument source_type: (required) the type of source node, eg. "gene"
         #:sub-argument adjacent_type: (required) the type of adjacent node, eg. "biological_process"
         #:sub-argument kp: (optional) the knowledge provider to use, eg. "ARAX/KG1"(default)
         #:sub-argument rel_type: (optional) edge type to consider, eg. "involved_in"
 
         error_message = []
-        if len(this) == 4:
+        if len(this) == 5:
             # this contains four arguments and assign them to different variables
-            node_curie, adjacent_type, kp, rel_type = this
-        elif len(this) == 3:
-            node_curie, adjacent_type, kp = this
+            node_curie, source_type, adjacent_type, kp, rel_type = this
+        elif len(this) == 4:
+            node_curie, source_type, adjacent_type, kp = this
             rel_type = None
-        elif len(this) == 2:
-            node_curie, adjacent_type = this
+        elif len(this) == 3:
+            node_curie, source_type, adjacent_type = this
             kp = "ARAX/KG1"
             rel_type = None
         else:
@@ -653,7 +656,7 @@ class ComputeFTEST:
         if rel_type:
             query = {"previous_message_processing_plan": {"processing_actions": [
                 "create_message",
-                f"add_qnode(curie={node_curie}, id=FET_n00)",
+                f"add_qnode(curie={node_curie}, tyep={source_type}, id=FET_n00)",
                 f"add_qnode(type={adjacent_type}, id=FET_n01)",
                 f"add_qedge(source_id=FET_n00, target_id=FET_n01, id=FET_e00, type={rel_type})",
                 f"expand(edge_id=FET_e00,kp={kp})",
@@ -663,7 +666,7 @@ class ComputeFTEST:
         else:
             query = {"previous_message_processing_plan": {"processing_actions": [
                 "create_message",
-                f"add_qnode(curie={node_curie}, id=FET_n00)",
+                f"add_qnode(curie={node_curie}, tyep={source_type}, id=FET_n00)",
                 f"add_qnode(type={adjacent_type}, id=FET_n01)",
                 f"add_qedge(source_id=FET_n00, target_id=FET_n01, id=FET_e00)",
                 f"expand(edge_id=FET_e00,kp={kp})",
