@@ -14,7 +14,6 @@ import pytest
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery/")
 from ARAX_query import ARAXQuery
 from response import Response
-from Expand.expand_utilities import DictKnowledgeGraph
 import Expand.expand_utilities as eu
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.edge import Edge
@@ -260,7 +259,7 @@ def test_kg1_property_format():
 def test_bte_simple_acetaminophen_query():
     actions_list = [
         "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112, type=chemical_substance)",
-        "add_qnode(id=n01, type=protein)",
+        "add_qnode(id=n01, type=disease)",
         "add_qedge(id=e00, source_id=n00, target_id=n01)",
         "expand(edge_id=e00, kp=BTE)",
         "return(message=true, store=false)",
@@ -271,7 +270,7 @@ def test_bte_simple_acetaminophen_query():
 def test_bte_add_all_acetaminophen_query():
     actions_list = [
         "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112, type=chemical_substance)",
-        "add_qnode(id=n01, type=protein)",
+        "add_qnode(id=n01, type=biological_process)",
         "add_qedge(id=e00, source_id=n00, target_id=n01)",
         "expand(edge_id=e00, kp=BTE, synonym_handling=add_all)",
         "return(message=true, store=false)",
@@ -294,7 +293,7 @@ def test_bte_parkinsons_query():
 def test_bte_query_using_list_of_curies():
     actions_list = [
         "add_qnode(id=n00, curie=[CHEMBL.COMPOUND:CHEMBL112, CHEMBL.COMPOUND:CHEMBL521], type=chemical_substance)",
-        "add_qnode(id=n01, type=protein)",
+        "add_qnode(id=n01, type=disease)",
         "add_qedge(id=e00, source_id=n01, target_id=n00)",
         "expand(kp=BTE)",
         "return(message=true, store=false)",
@@ -619,8 +618,28 @@ def test_889_missing_curies():
         "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
         "return(message=true, store=false)",
     ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, debug=True)
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert len(nodes_by_qg_id['n02']) > 30
+
+
+def test_873_consider_both_gene_and_protein():
+    actions_list_protein = [
+        "add_qnode(name=DOID:9452, id=n00)",
+        "add_qnode(type=protein, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(kp=ARAX/KG2)",
+        "return(message=true, store=false)",
+    ]
+    nodes_by_qg_id_protein, edges_by_qg_id_protein = _run_query_and_do_standard_testing(actions_list_protein)
+    actions_list_gene = [
+        "add_qnode(name=DOID:9452, id=n00)",
+        "add_qnode(type=gene, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(kp=ARAX/KG2)",
+        "return(message=true, store=false)",
+    ]
+    nodes_by_qg_id_gene, edges_by_qg_id_gene = _run_query_and_do_standard_testing(actions_list_gene)
+    assert set(nodes_by_qg_id_protein['n01']) == set(nodes_by_qg_id_gene['n01'])
 
 
 if __name__ == "__main__":

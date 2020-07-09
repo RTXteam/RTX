@@ -188,7 +188,7 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: Response) -> List[str]
         synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer.get_equivalent_curies() a list of {len(curies)} curies")
         equivalent_curies_dict = synonymizer.get_equivalent_curies(curies, kg_name="KG2")
-        log.debug(f"Got results back from NodeSynonymizer for {len(curies)} curies")
+        log.debug(f"Got results back from NodeSynonymizer")
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
@@ -210,7 +210,7 @@ def get_preferred_curies(curie: Union[str, List[str]], log: Response) -> Dict[st
         synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer.get_normalizer_results() a list of {len(curies)} curies")
         normalizer_results = synonymizer.get_normalizer_results(curies, kg_name="KG2")
-        log.debug(f"Got results back from NodeSynonymizer for {len(curies)} curies")
+        log.debug(f"Got results back from NodeSynonymizer")
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
@@ -223,13 +223,15 @@ def get_preferred_curies(curie: Union[str, List[str]], log: Response) -> Dict[st
             log.warning(f"NodeSynonymizer did not return info for: {missing_curies}")
         preferred_curies_dict = dict()
         for input_curie in curies_with_results:
-            kg2_preferred_curie = normalizer_results[input_curie]["id"].get("kg2_best_curie")
-            sri_preferred_curie = normalizer_results[input_curie]["id"].get("SRI_normalizer_curie")
+            kg2_preferred_curie = normalizer_results[input_curie]['id'].get('kg2_best_curie')
+            sri_preferred_curie = normalizer_results[input_curie]['id'].get('SRI_normalizer_curie')
             preferred_curie = kg2_preferred_curie if kg2_preferred_curie else sri_preferred_curie
-            sri_preferred_name = normalizer_results[input_curie]["id"].get("SRI_normalizer_name")
-            preferred_name = sri_preferred_name if sri_preferred_name else normalizer_results[input_curie]["id"].get("label")
+            sri_preferred_name = normalizer_results[input_curie]['id'].get('SRI_normalizer_name')
+            preferred_name = sri_preferred_name if sri_preferred_name else normalizer_results[input_curie]['id'].get('label')
+            node_types = normalizer_results[input_curie]['type']
             preferred_curies_dict[input_curie] = {'preferred_curie': preferred_curie,
-                                                  'preferred_name': preferred_name}
+                                                  'preferred_name': preferred_name,
+                                                  'types': node_types}
         return preferred_curies_dict
 
 

@@ -53,7 +53,7 @@ class KGQuerier:
         qedge_id = query_graph.edges[0].id
 
         # Run the actual query and process results
-        cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, enforce_directionality, log)
+        cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, enforce_directionality, kp, log)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
         neo4j_results = self._answer_one_hop_query_using_neo4j(cypher_query, qedge_id, kp, continue_if_no_results, log)
@@ -91,7 +91,7 @@ class KGQuerier:
         return final_kg
 
     def _convert_one_hop_query_graph_to_cypher_query(self, query_graph: QueryGraph, enforce_directionality: bool,
-                                                     log: Response) -> str:
+                                                     kp: str, log: Response) -> str:
         log.debug(f"Generating cypher for edge {query_graph.edges[0].id} query graph")
         try:
             # Build the match clause
@@ -112,6 +112,12 @@ class KGQuerier:
                     else:
                         where_fragment = f"{node.id}.id in {node.curie}"
                     where_fragments.append(where_fragment)
+                if isinstance(node.type, list):
+                    if "KG2" in kp:
+                        node_type_property = "category_label"
+                    else:
+                        node_type_property = "category"
+                    where_fragments.append(f"{node.id}.{node_type_property} in {node.type}")
             if where_fragments:
                 where_clause = "WHERE "
                 where_clause += " AND ".join(where_fragments)
@@ -136,7 +142,7 @@ class KGQuerier:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
             log.error(f"Problem generating cypher for query. {tb}", error_code=error_type.__name__)
-            return None
+            return ""
 
     def _answer_one_hop_query_using_neo4j(self, cypher_query: str, qedge_id: str, kp: str, continue_if_no_results: bool,
                                           log: Response) -> List[Dict[str, List[Dict[str, any]]]]:
@@ -332,7 +338,7 @@ class KGQuerier:
 
     @staticmethod
     def _get_cypher_for_query_node(node: Node) -> str:
-        node_type_string = f":{node.type}" if node.type else ""
+        node_type_string = f":{node.type}" if node.type and isinstance(node.type, str) else ""
         final_node_string = f"({node.id}{node_type_string})"
         return final_node_string
 
