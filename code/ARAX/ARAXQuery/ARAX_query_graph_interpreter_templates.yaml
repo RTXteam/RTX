@@ -105,8 +105,8 @@ templates:
       - e00()
       - n01(type=chemical_substance)
     DSL:
-      - expand(edge_id=e00, kp=ARAX/KG2)
-      - expand(edge_id=e00, kp=BTE)
+      - expand(edge_id=e00, kp=ARAX/KG2, continue_if_no_results=true)
+      - expand(edge_id=e00, kp=BTE, continue_if_no_results=true)
       - overlay(action=overlay_clinical_info, observed_expected_ratio=true)
       - overlay(action=predict_drug_treats_disease)
       - filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_id=n01)
