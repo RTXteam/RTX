@@ -34,7 +34,7 @@ with open('response_1593100927743.json') as f2:
 
 #main class 
 class Query_ICEES:
-    API_BASE_URL = 'http://icees.renci.org:16340/'
+    API_BASE_URL = 'https://icees.renci.org:16340/'
 
     HANDLER_MAP = {
         'get_feature_identifiers':               '/{table}/{feature}/identifiers',
@@ -52,24 +52,33 @@ class Query_ICEES:
         
         #requests = CacheControlHelper()
         #url = Query_ICEES.API_BASE_URL + handler + '?' + url_suffix
-        url = 'http://icees.renci.org:16340/apidocs/#/default/post_knowledge_graph_overlay'
-        requests.get(url, verify='/path/to/certfile')
-        response_content = requests.post(url, json=query, headers={'accept': 'application/json'})
+        try:
+            url = 'https://icees.renci.org:16340/apidocs/#/default/post_knowledge_graph_overlay'
+            #requests.get(url, verify='/path/to/certfile')
+            response_content = requests.post(url, json=query, headers={'accept': 'application/json'}, verify=False)
         
-        status_code = response_content.status_code
-        if status_code != 200:
-            print("Error returned with status "+str(status_code))
-        else:
-            print(f"Response returned with status {status_code}")
+            status_code = response_content.status_code
+            if status_code != 200:
+                print("Error returned with status "+str(status_code))
+            else:
+                print(f"Response returned with status {status_code}")
          
-        #TODO(FIX): Identify reason for error 400.
-        response_dict = response_content.json()
-        for message in response_dict['log']:
-            if message['level'] >= 20:
-                print(message['prefix']+message['message'])
+        #TODO(FIX): Identify reason for error 405.
+            response_dict = response_content.json()
+            for message in response_dict['log']:
+                if message['level'] >= 20:
+                    print(message['prefix']+message['message'])
                 
-        output_json = json.dumps(response_dict)
-        return response_dict
+            output_json = json.dumps(response_dict)
+            return response_dict
+        except requests.exceptions.HTTPError as httpErr: 
+            print ("Http Error:",httpErr) 
+        except requests.exceptions.ConnectionError as connErr: 
+            print ("Error Connecting:",connErr) 
+        except requests.exceptions.Timeout as timeOutErr: 
+            print ("Timeout Error:",timeOutErr) 
+        except requests.exceptions.RequestException as reqErr: 
+            print ("Something Else:",reqErr)
         
     @staticmethod
     def get_feature_identifiers(table, feature):
