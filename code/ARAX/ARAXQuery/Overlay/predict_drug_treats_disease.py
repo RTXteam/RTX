@@ -13,6 +13,8 @@ from swagger_server.models.q_edge import QEdge
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from Overlay.predictor.predictor import predictor
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer/")
+from node_synonymizer import NodeSynonymizer
 
 class PredictDrugTreatsDisease:
 
@@ -25,6 +27,33 @@ class PredictDrugTreatsDisease:
         self.pred = predictor(model_file=os.path.dirname(os.path.abspath(__file__))+'/predictor/LogModel.pkl')
         self.pred.import_file(None, graph_file=os.path.dirname(os.path.abspath(__file__))+'/predictor/rel_max.emb.gz',
                               map_file=os.path.dirname(os.path.abspath(__file__))+'/predictor/map.csv')
+        self.known_curies = set()
+        with open(os.path.dirname(os.path.abspath(__file__))+'/predictor/map.csv', 'r') as map_file:
+            for line in map_file.readlines():
+                self.known_curies.add(line.strip().split(',')[0])
+        self.synonymizer = NodeSynonymizer()
+
+    def convert_to_trained_curies(self, input_curie):
+        """
+        Takes an input curie from the KG, uses the synonymizer, and then returns something that the map.csv can handle
+        """
+        curies_in_model = set()
+        normalizer_result = self.synonymizer.get_normalizer_results(input_curie, kg_name='KG1')  # TODO: Figure out if this is the right kg_name to be using
+        equivalent_curies = []  # start with empty equivalent_curies
+        try:
+            equivalent_curies = [x['identifier'] for x in normalizer_result[input_curie]['equivalent_identifiers']]
+        except:
+            self.response.warning(f"NodeSynonmizer could not find curies for {input_curie}, skipping this one.")
+        for curie in equivalent_curies:
+            curie_prefix = curie.split(':')[0]
+            # FIXME: fix this when re-training the ML model, as when this was originally trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
+            if curie_prefix == "CHEMBL.COMPOUND":
+                chembl_fix = 'ChEMBL:' + curie[22:]
+                if chembl_fix in self.known_curies:
+                    curies_in_model.add(chembl_fix)
+            elif curie in self.known_curies:
+                curies_in_model.add(curie)
+        return curies_in_model
 
     def predict_drug_treats_disease(self):
         """
@@ -59,9 +88,18 @@ class PredictDrugTreatsDisease:
             # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
             for (source_curie, target_curie) in itertools.product(source_curies_to_decorate, target_curies_to_decorate):
                 # create the edge attribute if it can be
-                probability = self.pred.prob_single('ChEMBL:' + source_curie[22:], target_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
-                if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
-                    value = probability[0]
+                # loop over all equivalent curies and take the highest probability
+                temp_value = 0
+                for equiv_source_curie in self.convert_to_trained_curies(source_curie):
+                    for equiv_target_curie in self.convert_to_trained_curies(target_curie):
+                        probability = self.pred.prob_single(equiv_source_curie, equiv_target_curie)
+                        if probability and np.isfinite(probability):
+                            if probability[0] > temp_value:
+                                temp_value = probability[0]
+                value = temp_value
+                #probability = self.pred.prob_single('ChEMBL:' + source_curie[22:], target_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
+                #if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
+                #    value = probability[0]
                 edge_attribute = EdgeAttribute(type=attribute_type, name=attribute_name, value=str(value), url=url)  # populate the edge attribute
                 if edge_attribute and value != 0:
                     added_flag = True
@@ -118,13 +156,31 @@ class PredictDrugTreatsDisease:
                     source_types = curie_to_type[source_curie]
                     target_types = curie_to_type[target_curie]
                     if "chemical_substance" in source_types and (("disease" in target_types) or ("phenotypic_feature" in target_types)):
-                        probability = self.pred.prob_single('ChEMBL:' + source_curie[22:], target_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
-                        if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
-                            value = probability[0]
+                        temp_value = 0
+                        # loop over all pairs of equivalent curies and take the highest probability
+                        for equiv_source_curie in self.convert_to_trained_curies(source_curie):
+                            for equiv_target_curie in self.convert_to_trained_curies(target_curie):
+                                probability = self.pred.prob_single(equiv_source_curie, equiv_target_curie)
+                                if probability and np.isfinite(probability):
+                                    if probability[0] > temp_value:
+                                        temp_value = probability[0]
+                        value = temp_value
+                        #probability = self.pred.prob_single('ChEMBL:' + source_curie[22:], target_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
+                        #if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
+                        #    value = probability[0]
                     elif "chemical_substance" in target_types and (("disease" in source_types) or ("phenotypic_feature" in source_types)):
-                        probability = self.pred.prob_single('ChEMBL:' + target_curie[22:], source_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
-                        if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
-                            value = probability[0]
+                        #probability = self.pred.prob_single('ChEMBL:' + target_curie[22:], source_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
+                        #if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
+                        #    value = probability[0]
+                        temp_value = 0
+                        # loop over all pairs of equivalent curies and take the highest probability
+                        for equiv_source_curie in self.convert_to_trained_curies(target_curie):
+                            for equiv_target_curie in self.convert_to_trained_curies(source_curie):
+                                probability = self.pred.prob_single(equiv_source_curie, equiv_target_curie)
+                                if probability and np.isfinite(probability):
+                                    if probability[0] > temp_value:
+                                        temp_value = probability[0]
+                        value = temp_value
                     else:
                         continue
                     if value != 0:

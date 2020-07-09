@@ -268,19 +268,21 @@ class ComputeFTEST:
 
 
         # find all nodes with the same type of 'source_qnode_id' nodes in specified KP ('ARAX/KG1','ARAX/KG2','BTE') that are adjacent to target nodes
-        if kp == "ARAX/KG1":
+        use_parallel = False
+
+        if not use_parallel:
             # query adjacent node in one DSL command by providing a list of query nodes to add_qnode()
             if rel_edge_id:
                 if len(rel_edge_type) == 1:  # if the edge with rel_edge_id has only type, we use this rel_edge_type to find all source nodes in KP
                     self.response.debug(f"{kp} and edge relation type {list(rel_edge_type)[0]} were used to calculate total adjacent nodes in Fisher's Exact Test")
-                    result = self.query_size_of_adjacent_nodes(node_curie=list(target_node_dict.keys()), adjacent_type=source_node_type, kp = kp, rel_type=list(rel_edge_type)[0], use_cypher_command=True)
+                    result = self.query_size_of_adjacent_nodes(node_curie=list(target_node_dict.keys()), adjacent_type=source_node_type, kp = kp, rel_type=list(rel_edge_type)[0], use_cypher_command=False)
                 else:  # if the edge with rel_edge_id has more than one type, we ignore the edge type and use all types to find all source nodes in KP
                     self.response.warning(f"The edges with specified qedge id {rel_edge_id} have more than one type, we ignore the edge type and use all types to calculate Fisher's Exact Test")
                     self.response.debug(f"{kp} was used to calculate total adjacent nodes in Fisher's Exact Test")
-                    result = self.query_size_of_adjacent_nodes(node_curie=list(target_node_dict.keys()), adjacent_type=source_node_type, kp=kp, rel_type=None, use_cypher_command=True)
+                    result = self.query_size_of_adjacent_nodes(node_curie=list(target_node_dict.keys()), adjacent_type=source_node_type, kp=kp, rel_type=None, use_cypher_command=False)
             else:  # if no rel_edge_id is specified, we ignore the edge type and use all types to find all source nodes in KP
                 self.response.debug(f"{kp} was used to calculate total adjacent nodes in Fisher's Exact Test")
-                result = self.query_size_of_adjacent_nodes(node_curie=list(target_node_dict.keys()), adjacent_type=source_node_type, kp=kp, rel_type=None, use_cypher_command=True)
+                result = self.query_size_of_adjacent_nodes(node_curie=list(target_node_dict.keys()), adjacent_type=source_node_type, kp=kp, rel_type=None, use_cypher_command=False)
 
             if result is None:
                 return self.response ## Something wrong happened for querying the adjacent nodes
@@ -560,7 +562,7 @@ class ComputeFTEST:
                     f"add_qnode(type={adjacent_type}, id=FET_n01)",
                     f"add_qedge(source_id=FET_n00, target_id=FET_n01, id=FET_e00, type={rel_type})",
                     f"expand(edge_id=FET_e00,kp={kp})",
-                    "resultify()",
+                    #"resultify()",
                     "return(message=true, store=false)"
                 ]}}
             else:
@@ -570,7 +572,7 @@ class ComputeFTEST:
                     f"add_qnode(type={adjacent_type}, id=FET_n01)",
                     f"add_qedge(source_id=FET_n00, target_id=FET_n01, id=FET_e00)",
                     f"expand(edge_id=FET_e00,kp={kp})",
-                    "resultify()",
+                    #"resultify()",
                     "return(message=true, store=false)"
                 ]}}
 
@@ -655,7 +657,7 @@ class ComputeFTEST:
                 f"add_qnode(type={adjacent_type}, id=FET_n01)",
                 f"add_qedge(source_id=FET_n00, target_id=FET_n01, id=FET_e00, type={rel_type})",
                 f"expand(edge_id=FET_e00,kp={kp})",
-                "resultify()",
+                #"resultify()",
                 "return(message=true, store=false)"
             ]}}
         else:
@@ -665,7 +667,7 @@ class ComputeFTEST:
                 f"add_qnode(type={adjacent_type}, id=FET_n01)",
                 f"add_qedge(source_id=FET_n00, target_id=FET_n01, id=FET_e00)",
                 f"expand(edge_id=FET_e00,kp={kp})",
-                "resultify()",
+                #"resultify()",
                 "return(message=true, store=false)"
             ]}}
 

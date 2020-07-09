@@ -724,10 +724,11 @@ def main():
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(curie=DOID:1588, id=n00)",
-            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+            "add_qnode(type=chemical_substance, is_set=false, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
             "expand(edge_id=e00)",
             "overlay(action=predict_drug_treats_disease)",
+            "resultify(ignore_edge_direction=True)",
             "return(message=true, store=true)",
         ]}}
     elif params.example_number == 11:  # test overlay with overlay_clinical_info, paired_concept_frequency via COHD
@@ -1202,6 +1203,100 @@ def main():
             "resultify(ignore_edge_direction=true, debug=true)",
             "return(message=true, store=true)",
         ]}}
+    elif params.example_number == 885:
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:11830, id=n00)",
+            "add_qnode(type=protein, is_set=true, id=n01)",
+            "add_qnode(type=chemical_substance, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=molecularly_interacts_with)",
+            "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
+            # overlay a bunch of clinical info
+            "overlay(action=overlay_clinical_info, paired_concept_frequency=true, source_qnode_id=n00, target_qnode_id=n02, virtual_relation_label=C1)",
+            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, source_qnode_id=n00, target_qnode_id=n02, virtual_relation_label=C2)",
+            "overlay(action=overlay_clinical_info, chi_square=true, source_qnode_id=n00, target_qnode_id=n02, virtual_relation_label=C3)",
+            # return results
+            "resultify(ignore_edge_direction=true)",
+            "return(message=true, store=true)",
+        ]}}
+    elif params.example_number == 887:
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "add_qnode(name=DOID:9406, id=n00)",
+            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
+            "add_qnode(type=protein, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01)",
+            "expand(edge_id=[e00,e01])",
+            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=3, remove_connected_nodes=t, qnode_id=n01)",
+            "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
+            "overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n01, target_qnode_id=n02)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=normalized_google_distance, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",
+            "resultify(ignore_edge_direction=true)",
+            "return(message=true, store=true)"
+        ]}}
+    elif params.example_number == 892:  # drug disease prediction with BTE
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "add_qnode(curie=DOID:11830, type=disease, id=n00)",
+            "add_qnode(type=gene, curie=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, id=n01)",
+            "add_qnode(type=chemical_substance, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01)",
+            "expand(kp=BTE)",
+            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",
+            "resultify(ignore_edge_direction=true)",
+            "return(message=true, store=true)"
+        ]}}
+    elif params.example_number == 8922:  # drug disease prediction with BTE and KG2
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "add_qnode(curie=DOID:11830, id=n0, type=disease)",
+            "add_qnode(type=chemical_substance, id=n1)",
+            "add_qedge(source_id=n0, target_id=n1, id=e1)",
+            "expand(edge_id=e1, kp=ARAX/KG2)",
+            "expand(edge_id=e1, kp=BTE)",
+            #"overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
+            #"overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
+            #"overlay(action=overlay_clinical_info, chi_square=true)",
+            "overlay(action=predict_drug_treats_disease)",
+            #"overlay(action=compute_ngd)",
+            "resultify(ignore_edge_direction=true)",
+            #"filter_results(action=limit_number_of_results, max_results=50)",
+            "return(message=true, store=true)"
+        ]}}
+    elif params.example_number == 8671:  # test_one_hop_kitchen_sink_BTE_1
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(curie=DOID:11830, id=n0, type=disease)",
+            "add_qnode(type=chemical_substance, id=n1)",
+            "add_qedge(source_id=n0, target_id=n1, id=e1)",
+            # "expand(edge_id=e00, kp=ARAX/KG2)",
+            "expand(edge_id=e1, kp=BTE)",
+            "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
+            "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
+            "overlay(action=overlay_clinical_info, chi_square=true)",
+            "overlay(action=predict_drug_treats_disease)",
+            "overlay(action=compute_ngd)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=limit_number_of_results, max_results=50)",
+            "return(message=true, store=true)",
+        ]}}
+    elif params.example_number == 8672:  # test_one_hop_based_on_types_1
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:11830, id=n00, type=disease)",
+            "add_qnode(type=chemical_substance, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00, kp=ARAX/KG2)",
+            "expand(edge_id=e00, kp=BTE)",
+            "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
+            "overlay(action=predict_drug_treats_disease)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_id=n01)",
+            "overlay(action=compute_ngd)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=limit_number_of_results, max_results=50)",
+            "return(message=true, store=true)",
+        ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return
@@ -1267,7 +1362,8 @@ def main():
         #attribute_of_interest = 'normalized_google_distance'
         #attribute_of_interest = 'chi_square'
         #attribute_of_interest = 'paired_concept_frequency'
-        attribute_of_interest = 'probability'
+        #attribute_of_interest = 'probability'
+        attribute_of_interest = 'probability_treats'
         all_attribute_names = set()
         for edge in message.knowledge_graph.edges:
             if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:

@@ -363,6 +363,10 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     if len(kg_node_ids_without_qnode_id) > 0:
         raise ValueError("these node IDs do not have qnode_ids set: " + str(kg_node_ids_without_qnode_id))
 
+    kg_edge_ids_without_qedge_id = [edge.id for edge in cast(Iterable[Edge], kg.edges) if not edge.qedge_ids]
+    if len(kg_edge_ids_without_qedge_id) > 0:
+        raise ValueError("these edges do not have qedge_ids set: " + str(kg_edge_ids_without_qedge_id))
+
     kg_edge_ids_by_qg_id = _get_kg_edge_ids_by_qg_id(kg)
     kg_node_ids_by_qg_id = _get_kg_node_ids_by_qg_id(kg)
 
@@ -571,28 +575,49 @@ def _copy_result_graph(result_graph: Dict[str, Dict[str, Set[str]]]) -> Dict[str
     return result_graph_copy
 
 
+def _get_edge_node_pair_key(edge: Edge) -> str:
+    return "--".join(sorted([edge.source_id, edge.target_id]))
+
+
+def _get_parallel_qedge_ids(input_qedge: QEdge, query_graph: QueryGraph) -> Set[str]:
+    input_qedge_node_ids = {input_qedge.source_id, input_qedge.target_id}
+    parallel_qedge_ids = {qedge.id for qedge in query_graph.edges if {qedge.source_id, qedge.target_id} == input_qedge_node_ids}
+    return parallel_qedge_ids
+
+
 def _get_kg_node_adj_map_by_qg_id(kg_node_ids_by_qg_id: Dict[str, Set[str]], knowledge_graph: KnowledgeGraph, query_graph: QueryGraph) -> Dict[str, Dict[str, Dict[str, Set[str]]]]:
     # Returned dict looks like {'n00': {'CUI:11234': {'n01': {UniProtKB:122}}}}
     # First initiate the overall structure of our (QG-organized) adjacency map
-    kg_node_adj_map_by_qg_id = {qnode_id: dict() for qnode_id in kg_node_ids_by_qg_id}
+    kg_node_to_node_map = {qnode_id: dict() for qnode_id in kg_node_ids_by_qg_id}
     for qnode_id, node_ids_set in kg_node_ids_by_qg_id.items():
         connected_qnode_ids = _get_connected_qnode_ids(qnode_id, query_graph)
         for node_id in node_ids_set:
-            kg_node_adj_map_by_qg_id[qnode_id][node_id] = {connected_qnode_id: set() for connected_qnode_id in connected_qnode_ids}
-    # Then actually fill out the node connections
+            kg_node_to_node_map[qnode_id][node_id] = {connected_qnode_id: set() for connected_qnode_id in connected_qnode_ids}
+
+    # Create a record of which qedge IDs are fulfilled between which node pairs
+    node_pair_to_qedge_id_map = dict()
     for edge in knowledge_graph.edges:
-        if edge.qedge_ids:
-            for qedge_id in edge.qedge_ids:
-                qedge = _get_query_edge(qedge_id, query_graph)
+        node_pair_key = _get_edge_node_pair_key(edge)
+        if node_pair_key not in node_pair_to_qedge_id_map:
+            node_pair_to_qedge_id_map[node_pair_key] = set()
+        node_pair_to_qedge_id_map[node_pair_key] = node_pair_to_qedge_id_map[node_pair_key].union(set(edge.qedge_ids))
+
+    # Fill out which KG nodes are connected to which
+    for edge in knowledge_graph.edges:
+        for qedge_id in edge.qedge_ids:
+            qedge = _get_query_edge(qedge_id, query_graph)
+            # Make sure ALL qedges between these two nodes have been fulfilled before marking them as 'connected'
+            parallel_qedge_ids = _get_parallel_qedge_ids(qedge, query_graph)
+            if parallel_qedge_ids.issubset(node_pair_to_qedge_id_map[_get_edge_node_pair_key(edge)]):
                 qnode_id_1 = qedge.source_id
                 qnode_id_2 = qedge.target_id
                 if edge.source_id in kg_node_ids_by_qg_id[qnode_id_1] and edge.target_id in kg_node_ids_by_qg_id[qnode_id_2]:
-                    kg_node_adj_map_by_qg_id[qnode_id_1][edge.source_id][qnode_id_2].add(edge.target_id)
-                    kg_node_adj_map_by_qg_id[qnode_id_2][edge.target_id][qnode_id_1].add(edge.source_id)
+                    kg_node_to_node_map[qnode_id_1][edge.source_id][qnode_id_2].add(edge.target_id)
+                    kg_node_to_node_map[qnode_id_2][edge.target_id][qnode_id_1].add(edge.source_id)
                 if edge.source_id in kg_node_ids_by_qg_id[qnode_id_2] and edge.target_id in kg_node_ids_by_qg_id[qnode_id_1]:
-                    kg_node_adj_map_by_qg_id[qnode_id_2][edge.source_id][qnode_id_1].add(edge.target_id)
-                    kg_node_adj_map_by_qg_id[qnode_id_1][edge.target_id][qnode_id_2].add(edge.source_id)
-    return kg_node_adj_map_by_qg_id
+                    kg_node_to_node_map[qnode_id_2][edge.source_id][qnode_id_1].add(edge.target_id)
+                    kg_node_to_node_map[qnode_id_1][edge.target_id][qnode_id_2].add(edge.source_id)
+    return kg_node_to_node_map
 
 
 def _result_graph_is_fulfilled(result_graph: Dict[str, Dict[str, Set[str]]], query_graph: QueryGraph) -> bool:
