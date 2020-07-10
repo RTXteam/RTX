@@ -32,10 +32,11 @@
 <H1>Interactive Interface</H1>
 <P>The <a target="_blank" href="index.html">interactive interface is a simple Javascript-enhanced web page</a> with input boxes to define queries and a results section. A few example questions are provided on the page to simplify testing.</P>
 
-<P>There are three different ways to present queries to ARAX:<BR>
+<P>There are four different ways to present queries to ARAX:<BR>
   <ol>
     <li> The original RTX <b>canned-question</b> mechanism whereby an English language question is parsed and matched to one of the template questions and then answered if possible</li>
     <li> A <b>query graph-based</b> mechanism by which an interactive tool helps the user build a query graph, which is sent to the server for answering</li>
+    <li> A JSON <b>query_graph</b> snippet can be pasted into a text window. The actual "query_graph": tag should NOT be included in the paste, but rather just: { "nodes": [...], "edges": [...] }</li>
     <li> A powerful domain specific language (DSL) mechanism called <b>ARAXi</b> that allows power users direct access to all ARAX modular components individually or in series to create new or operate on existing Translator Messages</li>
   </ol>
   Response Messages are stored on the server and can be easily recalled via their URI.</P>
