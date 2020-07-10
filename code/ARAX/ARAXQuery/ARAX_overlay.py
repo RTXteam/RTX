@@ -10,6 +10,7 @@ import numpy as np
 from response import Response
 from collections import Counter
 import traceback
+import itertools
 
 class ARAXOverlay:
 
@@ -431,9 +432,11 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         parameters = self.parameters
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
-            allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_edge_type' in self.parameters else None},
-                                    'source_qnode_id': set([x.id for x in self.message.query_graph.nodes if x.type == "chemical_substance"]),
-                                    'target_qnode_id': set([x.id for x in self.message.query_graph.nodes if (x.type == "disease" or x.type == "phenotypic_feature")])
+            allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else None},
+                                    #'source_qnode_id': set([x.id for x in self.message.query_graph.nodes if x.type == "chemical_substance"]),
+                                    'source_qnode_id': set([x.id for x in self.message.query_graph.nodes]),  # allow any query node type, will be handled by predict_drug_treats_disease.py
+                                    #'target_qnode_id': set([x.id for x in self.message.query_graph.nodes if (x.type == "disease" or x.type == "phenotypic_feature")])
+                                    'target_qnode_id': set([x.id for x in self.message.query_graph.nodes])  # allow any query node type, will be handled by predict_drug_treats_disease.py
                                     }
         else:
             allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {'optional: any string label that identifies the virtual edges added (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
@@ -496,9 +499,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         # allowable_parameters = {'action': {'fisher_exact_test'}, 'query_node_label': {...}, 'compare_node_label':{...}}
 
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and hasattr(message.query_graph, 'edges'):
-            allowable_source_qnode_id = set([item for sublist in [node.qnode_ids for node in message.knowledge_graph.nodes] for item in sublist])  # flatten these as they are lists of lists now
-            allowable_target_qnode_id = set([item for sublist in [node.qnode_ids for node in message.knowledge_graph.nodes] for item in sublist])  # flatten these as they are lists of lists now
-            allowwable_rel_edge_id = list(set([item for sublist in [edge.qedge_ids for edge in message.knowledge_graph.edges] for item in sublist]))  # flatten these as they are lists of lists now
+            allowable_source_qnode_id = list(set(itertools.chain.from_iterable([node.qnode_ids for node in message.knowledge_graph.nodes])))  # flatten these as they are lists of lists now
+            allowable_target_qnode_id = list(set(itertools.chain.from_iterable([node.qnode_ids for node in message.knowledge_graph.nodes])))  # flatten these as they are lists of lists now
+            allowwable_rel_edge_id = list(set(itertools.chain.from_iterable([edge.qedge_ids for edge in message.knowledge_graph.edges])))  # flatten these as they are lists of lists now
             allowwable_rel_edge_id.append(None)
             # # FIXME: need to generate this from some source as per #780
             # allowable_target_node_type = [None,'metabolite','biological_process','chemical_substance','microRNA','protein',

@@ -82,7 +82,7 @@ function selectInput (obj, input_id) {
     if (e[0]) { e[0].classList.remove("slink_on"); }
     obj.classList.add("slink_on");
 
-    for (var s of ['qtext_input','qgraph_input','qdsl_input']) {
+    for (var s of ['qtext_input','qgraph_input','qjson_input','qdsl_input']) {
 	document.getElementById(s).style.maxHeight = null;
 	document.getElementById(s).style.visibility = 'hidden';
     }
@@ -91,6 +91,9 @@ function selectInput (obj, input_id) {
 }
 
 
+function clearJSON() {
+    document.getElementById("jsonText").value = '';
+}
 function clearDSL() {
     document.getElementById("dslText").value = '';
 }
@@ -100,6 +103,14 @@ function pasteQuestion(question) {
     document.getElementById("qqq").value = '';
     document.getElementById("qqq").blur();
 }
+function pasteExample(type) {
+    if (type == "DSL") {
+	document.getElementById("dslText").value = 'add_qnode(name=acetaminophen, id=n0)\nadd_qnode(type=protein, id=n1)\nadd_qedge(source_id=n0, target_id=n1, id=e0)\nexpand(edge_id=e0)\noverlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n0, target_qnode_id=n1)\nresultify()';
+    }
+    else {
+	document.getElementById("jsonText").value = '{\n   "edges": [\n      {\n         "id": "qg2",\n         "source_id": "qg1",\n         "target_id": "qg0"\n      }\n   ],\n   "nodes": [\n      {\n         "id": "qg0",\n         "curie": "CHEMBL.COMPOUND:CHEMBL112"\n      },\n      {\n         "id": "qg1",\n         "type": "protein"\n      }\n   ]\n}';
+    }
+}
 
 function reset_vars() {
     add_status_divs();
@@ -107,9 +118,9 @@ function reset_vars() {
     if (cyobj[0]) {cyobj[0].elements().remove();}
     document.getElementById("summary_container").innerHTML = "";
     document.getElementById("menunummessages").innerHTML = "--";
+    document.getElementById("menunummessages").className = "numold menunum";
     document.getElementById("menunumresults").innerHTML = "--";
-    document.getElementById("menunumresults").classList.remove("numnew");
-    document.getElementById("menunumresults").classList.add("numold");
+    document.getElementById("menunumresults").className = "numold menunum";
     summary_table_html = '';
     summary_tsv = [];
     cyobj = [];
@@ -134,6 +145,30 @@ function postQuery(qtype) {
 
 	var dslArrayOfLines = document.getElementById("dslText").value.split("\n");
 	queryObj["previous_message_processing_plan"] = { "processing_actions": dslArrayOfLines};
+    }
+    else if (qtype == "JSON") {
+	document.getElementById("questionForm").elements["questionText"].value = '-- posted async query via direct JSON input --';
+	statusdiv.innerHTML = "Posting JSON.  Looking for answer...";
+	statusdiv.appendChild(document.createElement("br"));
+
+        var jsonInput;
+	try {
+	    jsonInput = JSON.parse(document.getElementById("jsonText").value);
+	}
+	catch(e) {
+            statusdiv.appendChild(document.createElement("br"));
+	    if (e.name == "SyntaxError")
+		statusdiv.innerHTML += "<b>Error</b> parsing JSON input. Please correct errors and resubmit: ";
+	    else
+		statusdiv.innerHTML += "<b>Error</b> processing input. Please correct errors and resubmit: ";
+            statusdiv.appendChild(document.createElement("br"));
+	    statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
+	    return;
+	}
+	queryObj.message = { "query_graph" :jsonInput };
+	queryObj.max_results = 100;
+
+	clear_qg();
     }
     else {  // qGraph
 	document.getElementById("questionForm").elements["questionText"].value = '-- posted async query via graph --';
@@ -307,8 +342,7 @@ function postQuery(qtype) {
 	    else {
 		document.getElementById("progressBar").classList.add("barerror");
 		document.getElementById("progressBar").innerHTML = "Error\u00A0\u00A0";
-		document.getElementById("finishedSteps").classList.add("menunum");
-		document.getElementById("finishedSteps").classList.add("numnew");
+		document.getElementById("finishedSteps").classList.add("menunum","numnew","msgERROR");
 		there_was_an_error();
 	    }
 	    statusdiv.appendChild(document.createTextNode(data["code_description"]));  // italics?
@@ -489,12 +523,20 @@ function render_message(respObj) {
     statusdiv.appendChild(document.createTextNode("Rendering message..."));
     sesame('openmax',statusdiv);
 
-    message_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
+    if (respObj.id) {
+	message_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
 
-    add_to_session(message_id,respObj.restated_question+"?");
+	if (respObj.restated_question.length > 2)
+	    add_to_session(message_id,respObj.restated_question+"?");
+	else
+	    add_to_session(message_id,"message="+message_id);
 
-    document.title = "ARAX-UI ["+message_id+"]: "+respObj.restated_question+"?";
-    history.pushState({ id: 'ARAX_UI' }, 'ARAX | message='+message_id, "//"+ window.location.hostname + window.location.pathname + '?m='+message_id);
+	document.title = "ARAX-UI ["+message_id+"]: "+respObj.restated_question+"?";
+	history.pushState({ id: 'ARAX_UI' }, 'ARAX | message='+message_id, "//"+ window.location.hostname + window.location.pathname + '?m='+message_id);
+    }
+    else {
+        document.title = "ARAX-UI [no message_id]: "+respObj.restated_question+"?";
+    }
 
     if ( respObj["table_column_names"] ) {
 	add_to_summary(respObj["table_column_names"],0);
@@ -591,14 +633,17 @@ function there_was_an_error() {
     document.getElementById("summary_container").innerHTML += "<h2 class='error'>Error : No results</h2>";
     document.getElementById("result_container").innerHTML  += "<h2 class='error'>Error : No results</h2>";
     document.getElementById("menunumresults").innerHTML = "E";
-    document.getElementById("menunumresults").classList.add("numnew");
+    document.getElementById("menunumresults").classList.add("numnew","msgERROR");
     document.getElementById("menunumresults").classList.remove("numold");
 }
 
 function process_log(logarr) {
-    var errors = 0;
+    var status = {};
+    for (var s of ["ERROR","WARNING","INFO","DEBUG"]) {
+	status[s] = 0;
+    }
     for (var msg of logarr) {
-	if (msg.level_str == "ERROR") { errors++; }
+	status[msg.level_str]++;
 
 	var span = document.createElement("span");
 	span.className = "hoverable msg " + msg.level_str;
@@ -624,15 +669,72 @@ function process_log(logarr) {
 	document.getElementById("logdiv").appendChild(span);
     }
     document.getElementById("menunummessages").innerHTML = logarr.length;
+    if (status.ERROR > 0) document.getElementById("menunummessages").classList.add('numnew','msgERROR');
+    else if (status.WARNING > 0) document.getElementById("menunummessages").classList.add('numnew','msgWARNING');
+    for (var s of ["ERROR","WARNING","INFO","DEBUG"]) {
+	document.getElementById("count_"+s).innerHTML += ": "+status[s];
+    }
 }
 
 
 function add_status_divs() {
-    document.getElementById("status_container").innerHTML = "<div class='statushead'>Status</div><div class='status' id='statusdiv'></div>";
+    // summary
+    document.getElementById("status_container").innerHTML = '';
 
-    document.getElementById("dev_result_json_container").innerHTML = "<div class='statushead'>Dev Info <i style='float:right; font-weight:normal;'>( json responses )</i></div><div class='status' id='devdiv'></div>";
+    var div = document.createElement("div");
+    div.className = 'statushead';
+    div.appendChild(document.createTextNode("Status"));
+    document.getElementById("status_container").appendChild(div);
 
-    document.getElementById("messages_container").innerHTML = "<div class='statushead'>Filter Messages :&nbsp;&nbsp;&nbsp;<span onclick='filtermsgs(this,\"ERROR\")' style='cursor:pointer;' class='qprob msgERROR'>Error</span>&nbsp;&nbsp;&nbsp;<span onclick='filtermsgs(this,\"WARNING\")' style='cursor:pointer;' class='qprob msgWARNING'>Warning</span>&nbsp;&nbsp;&nbsp;<span onclick='filtermsgs(this,\"INFO\")' style='cursor:pointer;' class='qprob msgINFO'>Info</span>&nbsp;&nbsp;&nbsp;<span onclick='filtermsgs(this,\"DEBUG\")' style='cursor:pointer;' class='qprob msgDEBUG hide'>Debug</span></div><div class='status' id='logdiv'></div>";
+    div = document.createElement("div");
+    div.className = 'status';
+    div.id = 'statusdiv';
+    document.getElementById("status_container").appendChild(div);
+
+    // results
+    document.getElementById("dev_result_json_container").innerHTML = '';
+
+    div = document.createElement("div");
+    div.className = 'statushead';
+    div.appendChild(document.createTextNode("Dev Info"));
+    var span = document.createElement("span");
+    span.style.fontStyle = "italic";
+    span.style.fontWeight = 'normal';
+    span.style.float = "right";
+    span.appendChild(document.createTextNode("( json responses )"));
+    div.appendChild(span);
+    document.getElementById("dev_result_json_container").appendChild(div);
+
+    div = document.createElement("div");
+    div.className = 'status';
+    div.id = 'devdiv';
+    document.getElementById("dev_result_json_container").appendChild(div);
+
+    // messages
+    document.getElementById("messages_container").innerHTML = '';
+
+    div = document.createElement("div");
+    div.className = 'statushead';
+    div.appendChild(document.createTextNode("Filter Messages:"));
+
+    for (var status of ["Error","Warning","Info","Debug"]) {
+	span = document.createElement("span");
+	span.id =  'count_'+status.toUpperCase();
+	span.style.marginLeft = "20px";
+	span.style.cursor = "pointer";
+	span.className = 'qprob msg'+status.toUpperCase();
+	if (status == "Debug") span.classList.add('hide');
+	span.setAttribute('onclick', 'filtermsgs(this,\"'+status.toUpperCase()+'\");');
+	span.appendChild(document.createTextNode(status));
+	div.appendChild(span);
+    }
+
+    document.getElementById("messages_container").appendChild(div);
+
+    div = document.createElement("div");
+    div.className = 'status';
+    div.id = 'logdiv';
+    document.getElementById("messages_container").appendChild(div);
 }
 
 function filtermsgs(span, type) {
@@ -1030,11 +1132,11 @@ function show_attributes(html_div, atts) {
 	    if (att.type != null) {
 		snippet += " (" + att.type + ")";
 	    }
-	    snippet += " : ";
+	    snippet += ": ";
 	}
-	if (att.url != null) {
-	    snippet += "<a target='rtxext' href='" + att.url + "'>";
-	}
+	if (att.url != null)
+	    snippet += "<a target='araxext' href='" + att.url + "'>";
+
 
 	if (att.value != null) {
 	    if (att.name == "probability_drug_treats" ||
@@ -1046,19 +1148,21 @@ function show_attributes(html_div, atts) {
 		att.name == "ngd") {
 		snippet += Number(att.value).toPrecision(3);
 	    }
+            else if (Array.isArray(att.value)) {
+		for (var val of att.value) snippet += "<br>"+val;
+	    }
 	    else
 		snippet += att.value;
-	}
-	else if (att.url != null) {
-	    snippet += att.url;
-	}
-	else {
-	    snippet += " n/a ";
-	}
 
-	if (att.url != null) {
-	    snippet += "</a>";
 	}
+	else if (att.url != null)
+	    snippet += att.url;
+	else
+	    snippet += " n/a ";
+
+
+	if (att.url != null)
+	    snippet += "</a>";
 
 	html_div.innerHTML+= snippet;
 	linebreak = "<br>";
@@ -1821,7 +1925,7 @@ function display_session() {
         }
     }
     if (numitems > 0) {
-        listhtml += "<tr><td></td><td></td><td><a href='javascript:delete_list(\""+listId+"\");'/> Delete Session History </a></td></tr>";
+        listhtml += "<tr style='background-color:unset;'><td style='border-bottom:0;'></td><td style='border-bottom:0;'></td><td style='border-bottom:0;'><a href='javascript:delete_list(\""+listId+"\");'/> Delete Session History </a></td></tr>";
     }
 
 
@@ -1829,7 +1933,7 @@ function display_session() {
         listhtml = "<br>Your query history will be displayed here. It can be edited or re-set.<br><br>";
     }
     else {
-        listhtml = "<table class='sumtab'><tr><td></td><th>Query</th><th>Action</th></tr>" + listhtml + "</table>";
+        listhtml = "<table class='sumtab'><tr><th></th><th>Query</th><th>Action</th></tr>" + listhtml + "</table><br><br>";
     }
 
     document.getElementById("numlistitems"+listId).innerHTML = numitems;

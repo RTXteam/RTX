@@ -148,7 +148,7 @@ hr {
     background-color: #c40;
 }
 
-#dslText {
+#dslText, #jsonText {
     width: 80%;
     height: 20em;
     overflow:scroll;
@@ -301,9 +301,9 @@ hr {
     color: #444;
 }
 .numnew {
-    background-color: #b00;
+    background-color: #291;
     color: #fff;
-    border-color: #b00;
+    border-color: #291;
 }
 
 .progress {

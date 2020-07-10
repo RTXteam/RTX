@@ -1,4 +1,19 @@
 ARAX_QG_DSL_mapping: 0.1
+
+# Node templates should have one of the following formats:
+#   n00()                     - a node with no curie or type specified
+#   n00(type)                 - a node with only a type of any kind specified
+#   n00(type=protein)         - a node with a specific type (such as a protein) specified
+#   n00(curie)                - a node with a specific curie specified
+#   n00(curie,type=protein)   - a node with a specific curie of the specified type.
+# Edge templates should have the following format:
+#   e00()                     - an edge with no specification
+#
+# NOTE: Node order should always start with the most specific node (e.g. curie)
+# NOTE: The first node should always be n00 and increment from there. And the first edge e00.
+#       In order that incoming QNodes are properly remapped, these templates need to follow this n00, e00, n01, ... convention
+
+
 templates:
 
   #### One node questions
@@ -30,6 +45,20 @@ templates:
 
   ####################################################################################################
   #### Two node, one-hop questions
+  one_hop_classic_question_curie2chemical_substance:
+    name: One hop question with one curie and one typed node of type chemical_substance
+    description: Two nodes, one of which has a curie and the other has a type chemical_substance
+    comment: This is current just for testing. The DSL is the same as the next one
+    restated_question: Which n01(type)s are related to n00(name)?
+    template:
+      - n00(curie)
+      - e00()
+      - n01(type=chemical_substance)
+    DSL:
+      - expand(edge_id=e00)
+      - overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n00, target_qnode_id=n01)
+      - resultify()
+
   one_hop_classic_question:
     name: One hop question with one curie and one typed node
     description: Two nodes, one of which has a curie and the other has a type
@@ -66,6 +95,24 @@ templates:
     DSL:
       - expand(edge_id=e00)
       - resultify()
+
+  one_hop_drug_disease:
+    name: one hop with start node drug, end node disease
+    description: Two nodes, start has a specific curie, end node has type specified as chemical_substance (or drug?!)
+    restated_question: What n01(type)s may treat n00(name)?
+    template:
+      - n00(curie,type=disease)
+      - e00()
+      - n01(type=chemical_substance)
+    DSL:
+      - expand(edge_id=e00, kp=ARAX/KG2, continue_if_no_results=true)
+      - expand(edge_id=e00, kp=BTE, continue_if_no_results=true)
+      - overlay(action=overlay_clinical_info, observed_expected_ratio=true)
+      - overlay(action=predict_drug_treats_disease)
+      - filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_id=n01)
+      - overlay(action=compute_ngd)
+      - resultify(ignore_edge_direction=true)
+      - filter_results(action=limit_number_of_results, max_results=50)
 
   ####################################################################################################
   #### Three node, two-hop questions

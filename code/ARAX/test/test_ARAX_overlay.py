@@ -35,6 +35,8 @@ from swagger_server.models.message import Message
 def _do_arax_query(query: dict) -> List[Union[Response, Message]]:
     araxq = ARAXQuery()
     response = araxq.query(query)
+    if response.status != 'OK':
+        print(response.show(level=response.DEBUG))
     return [response, araxq.message]
 
 
@@ -43,7 +45,7 @@ def _attribute_tester(message, attribute_name: str, attribute_type: str, num_dif
     Tests attributes of a message
     message: returned from _do_arax_query
     attribute_name: the attribute name to test (eg. 'jaccard_index')
-    attribute_type: the attribute type (eg. 'data:1234')
+    attribute_type: the attribute type (eg. 'EDAM:data_1234')
     num_different_values: the number of distinct values you wish to see have been added as attributes
     """
     edges_of_interest = []
@@ -66,7 +68,7 @@ def _virtual_tester(message: Message, edge_type: str, relation: str, attribute_n
     edge_type: the name of the virtual edge (eg. has_jaccard_index_with)
     relation: the relation you picked for the virtual_edge_relation (eg. N1)
     attribute_name: the attribute name to test (eg. 'jaccard_index')
-    attribute_type: the attribute type (eg. 'data:1234')
+    attribute_type: the attribute type (eg. 'EDAM:data_1234')
     num_different_values: the number of distinct values you wish to see have been added as attributes
     """
     edge_types_in_kg = Counter([x.type for x in message.knowledge_graph.edges])
@@ -138,7 +140,7 @@ def test_add_node_pmids():
     for node in nodes_with_pmids:
         for attr in node.node_attributes:
             if attr.name == "pubmed_ids":
-                assert attr.type == 'data:0971'
+                assert attr.type == 'EDAM:data_0971'
                 assert attr.value.__class__ == list
 
 
@@ -188,20 +190,23 @@ def test_compute_ngd_attribute():
                 if attr.name == 'normalized_google_distance':
                     ngd_edges.append(edge)
                     assert float(attr.value) >= 0
-                    assert attr.type == 'data:2526'
+                    assert attr.type == 'EDAM:data_2526'
     assert len(ngd_edges) > 0
 
 
-def test_FET():
+def test_FET_ex1():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521)",
-        "add_qnode(id=n01, type=protein)",
-        "add_qedge(id=e00, source_id=n00, target_id=n01)",
-        "add_qnode(id=n02, type=biological_process)",
-        "add_qedge(id=e01, source_id=n01, target_id=n02)",
-        "expand(edge_id=[e00, e01], kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, source_qnode_id=n01, virtual_relation_label=FET, target_qnode_id=n02, cutoff=0.05)",
+        "add_qnode(curie=DOID:14330, id=n00, type=disease)",
+        "add_qnode(type=protein, is_set=true, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01,id=e00)",
+        "expand(edge_id=e00, kp=ARAX/KG1)",
+        "overlay(action=fisher_exact_test, source_qnode_id=n00, target_qnode_id=n01, virtual_relation_label=FET1, rel_edge_id=e00)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_id=n01)",
+        "add_qnode(type=chemical_substance, is_set=true, id=n02)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
+        "expand(edge_id=e01, kp=ARAX/KG1)",
+        "overlay(action=fisher_exact_test, source_qnode_id=n01, target_qnode_id=n02, virtual_relation_label=FET2, rel_edge_id=e01, cutoff=0.05)",
         "resultify()",
         "return(message=true, store=false)"
     ]}}
@@ -210,15 +215,68 @@ def test_FET():
     assert response.status == 'OK'
     edge_types_in_kg = Counter([x.type for x in message.knowledge_graph.edges])
     assert 'has_fisher_exact_test_p-value_with' in edge_types_in_kg
-    FET_edges = [x for x in message.knowledge_graph.edges if x.relation == "FET"]
-    assert len(FET_edges) > 0
+    FET_edges = [x for x in message.knowledge_graph.edges if x.relation.find("FET") != -1]
+    FET_edge_labels = set([edge.relation for edge in FET_edges])
+    assert len(FET_edge_labels) == 2
     for edge in FET_edges:
         assert hasattr(edge, 'edge_attributes')
         assert edge.edge_attributes
         assert edge.edge_attributes[0].name == 'fisher_exact_test_p-value'
-        assert float(edge.edge_attributes[0].value) >= 0
-        assert edge.edge_attributes[0].type == 'data:1669'
+        if edge.relation == 'FET1':
+            assert 0 <= float(edge.edge_attributes[0].value) < 0.001
+        else:
+            assert 0 <= float(edge.edge_attributes[0].value) < 0.05
+        assert edge.edge_attributes[0].type == 'EDAM:data_1669'
+        assert edge.is_defined_by == 'ARAX'
+        assert edge.provided_by == 'ARAX'
+    FET_query_edges = [edge for edge in message.query_graph.edges if edge.id.find("FET") != -1]
+    assert len(FET_query_edges) == 2
+    query_node_ids = [node.id for node in message.query_graph.nodes]
+    assert len(query_node_ids) == 3
+    for query_exge in FET_query_edges:
+        assert hasattr(query_exge, 'type')
+        assert query_exge.type == 'has_fisher_exact_test_p-value_with'
+        assert query_exge.id == query_exge.relation
+        assert query_exge.source_id in query_node_ids
+        assert query_exge.target_id in query_node_ids
 
+def test_FET_ex2():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=DOID:14330, id=n00, type=disease)",
+        "add_qnode(type=protein, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(edge_id=e00, kp=ARAX/KG1)",
+        "overlay(action=fisher_exact_test, source_qnode_id=n00, virtual_relation_label=FET, target_qnode_id=n01, rel_edge_id=e00, top_n=20)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    edge_types_in_kg = Counter([x.type for x in message.knowledge_graph.edges])
+    assert 'has_fisher_exact_test_p-value_with' in edge_types_in_kg
+    FET_edges = [x for x in message.knowledge_graph.edges if x.relation.find("FET") != -1]
+    assert len(FET_edges) == 20
+    FET_edge_labels = set([edge.relation for edge in FET_edges])
+    assert len(FET_edge_labels) == 1
+    for edge in FET_edges:
+        assert hasattr(edge, 'edge_attributes')
+        assert edge.edge_attributes
+        assert edge.edge_attributes[0].name == 'fisher_exact_test_p-value'
+        assert edge.edge_attributes[0].type == 'EDAM:data_1669'
+        assert edge.is_defined_by == 'ARAX'
+        assert edge.provided_by == 'ARAX'
+    FET_query_edges = [edge for edge in message.query_graph.edges if edge.id.find("FET") != -1]
+    assert len(FET_query_edges) == 1
+    query_node_ids = [node.id for node in message.query_graph.nodes]
+    assert len(query_node_ids) == 2
+    for query_exge in FET_query_edges:
+        assert hasattr(query_exge, 'type')
+        assert query_exge.type == 'has_fisher_exact_test_p-value_with'
+        assert query_exge.id == query_exge.relation
+        assert query_exge.source_id in query_node_ids
+        assert query_exge.target_id in query_node_ids
 
 def test_paired_concept_frequency_virtual():
     query = {"previous_message_processing_plan": {"processing_actions": [
@@ -234,7 +292,7 @@ def test_paired_concept_frequency_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'has_paired_concept_frequency_with', 'CP1', 'paired_concept_frequency', 'data:0951', 2)
+    _virtual_tester(message, 'has_paired_concept_frequency_with', 'CP1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
 
 
 def test_paired_concept_frequency_attribute():
@@ -251,7 +309,7 @@ def test_paired_concept_frequency_attribute():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _attribute_tester(message, 'paired_concept_frequency', 'data:0951', 2)
+    _attribute_tester(message, 'paired_concept_frequency', 'EDAM:data_0951', 2)
 
 
 def test_observed_expected_ratio_virtual():
@@ -268,7 +326,7 @@ def test_observed_expected_ratio_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'has_observed_expected_ratio_with', 'CP1', 'observed_expected_ratio', 'data:0951', 2)
+    _virtual_tester(message, 'has_observed_expected_ratio_with', 'CP1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
 
 
 def test_observed_expected_ratio_attribute():
@@ -285,7 +343,7 @@ def test_observed_expected_ratio_attribute():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _attribute_tester(message, 'observed_expected_ratio', 'data:0951', 2)
+    _attribute_tester(message, 'observed_expected_ratio', 'EDAM:data_0951', 2)
 
 
 def test_chi_square_virtual():
@@ -302,7 +360,7 @@ def test_chi_square_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'has_chi_square_with', 'CP1', 'chi_square', 'data:0951', 2)
+    _virtual_tester(message, 'has_chi_square_with', 'CP1', 'chi_square', 'EDAM:data_0951', 2)
 
 
 def test_chi_square_attribute():
@@ -319,13 +377,13 @@ def test_chi_square_attribute():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _attribute_tester(message, 'chi_square', 'data:0951', 2)
+    _attribute_tester(message, 'chi_square', 'EDAM:data_0951', 2)
 
 
 def test_predict_drug_treats_disease_virtual():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(curie=DOID:1588, id=n0)",
+        "add_qnode(curie=DOID:1588, id=n0, type=disease)",
         "add_qnode(type=chemical_substance, id=n1)",
         "add_qedge(source_id=n0, target_id=n1, id=e0)",
         "expand(edge_id=e0)",
@@ -336,7 +394,7 @@ def test_predict_drug_treats_disease_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'probably_treats', 'P1', 'probability_treats', 'data:0951', 2)
+    _virtual_tester(message, 'probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 2)
 
 
 def test_predict_drug_treats_disease_attribute():
@@ -353,7 +411,131 @@ def test_predict_drug_treats_disease_attribute():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _attribute_tester(message, 'probability_treats', 'data:0951', 2)
+    _attribute_tester(message, 'probability_treats', 'EDAM:data_0951', 2)
+
+
+def test_issue_832():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=DOID:1588, id=n0)",
+        "add_qnode(type=chemical_substance, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "expand(edge_id=e0)",
+        "overlay(action=predict_drug_treats_disease, source_qnode_id=n1, target_qnode_id=n0, virtual_relation_label=P1)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    _virtual_tester(message, 'probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 2)
+
+
+def test_issue_832_non_drug():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=UniProtKB:Q13627, id=n0)",
+        "add_qnode(type=chemical_substance, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "expand(edge_id=e0)",
+        "overlay(action=predict_drug_treats_disease, source_qnode_id=n1, target_qnode_id=n0, virtual_relation_label=P1)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    # Make sure that no probability_treats were added
+    edge_types_in_kg = Counter([x.type for x in message.knowledge_graph.edges])
+    assert 'probability_treats' not in edge_types_in_kg
+
+
+def test_issue_840():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=DOID:1588, id=n0)",
+        "add_qnode(type=chemical_substance, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "expand(edge_id=e0)",
+        "overlay(action=overlay_clinical_info, paired_concept_frequency=true, source_qnode_id=n1, target_qnode_id=n0, virtual_relation_label=V1)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    _virtual_tester(message, 'has_paired_concept_frequency_with', 'V1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
+
+    # And for the non-virtual test
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=DOID:1588, id=n0)",
+        "add_qnode(type=chemical_substance, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "expand(edge_id=e0)",
+        "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    _attribute_tester(message, 'paired_concept_frequency', 'EDAM:data_0951', 2)
+
+
+def test_issue_840_non_drug():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=UniProtKB:Q13627, id=n0)",
+        "add_qnode(type=chemical_substance, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "expand(edge_id=e0)",
+        "overlay(action=overlay_clinical_info, paired_concept_frequency=true, source_qnode_id=n1, target_qnode_id=n0, virtual_relation_label=V1)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    # Make sure that no probability_treats were added
+    edge_types_in_kg = Counter([x.type for x in message.knowledge_graph.edges])
+    assert 'paired_concept_frequency' not in edge_types_in_kg
+
+    # Now for the non-virtual test
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=UniProtKB:Q13627, id=n0)",
+        "add_qnode(type=chemical_substance, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "expand(edge_id=e0)",
+        "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    # Make sure that no probability_treats were added
+    for edge in message.knowledge_graph.edges:
+        for attribute in edge.edge_attributes:
+            assert attribute.name != 'paired_concept_frequency'
+
+def test_issue_892():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "add_qnode(curie=DOID:11830, type=disease, id=n00)",
+        "add_qnode(type=gene, curie=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, id=n01)",
+        "add_qnode(type=chemical_substance, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "expand(kp=BTE)",
+        "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",
+        "resultify(ignore_edge_direction=true)",
+        "return(message=true, store=true)"
+    ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    _virtual_tester(message, 'probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 10)
 
 
 if __name__ == "__main__":
