@@ -241,6 +241,7 @@ def test_FET_ex1():
         assert query_exge.target_id in query_node_ids
 
 
+@pytest.mark.slow
 def test_FET_ex2():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
