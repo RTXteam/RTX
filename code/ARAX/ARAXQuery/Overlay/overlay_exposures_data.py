@@ -27,9 +27,13 @@ class OverlayExposuresData:
     def decorate(self):
         knowledge_graph = self.message.knowledge_graph
         nodes_by_qg_id = {node.id: node for node in self.message.knowledge_graph.nodes}
+        log = self.response
 
         # Figure out all the different edges we should query ICEES for
         edges_to_query = [edge for edge in knowledge_graph.edges if self._is_relevant_edge(edge, nodes_by_qg_id)]
+        if not edges_to_query:
+            log.warning(f"Could not find any edges appropriate to query ICEES+ for")
+            return self.response
 
         # Craft and send a query graph for each such edge
         num_edges_obtained_icees_data_for = 0
@@ -40,9 +44,10 @@ class OverlayExposuresData:
             edge_query_graph = QueryGraph(nodes=[QNode(id=source_node.id, curie=source_node.id, type=source_node.type),
                                                  QNode(id=target_node.id, curie=target_node.id, type=target_node.type)],
                                           edges=[QEdge(id=f"icees_{edge.id}", source_id=edge.source_id, target_id=edge.target_id)])
-            self.response.debug(f"Sending query to ICEES+ for edge: {edge.source_id}--{edge.target_id}")
+            log.debug(f"Sending query to ICEES+ for edge: {edge.source_id}--{edge.target_id}")
             returned_kg = self._get_exposures_data(edge_query_graph)
             if returned_kg:
+                log.debug(f"Got exposures data back from ICEES+ for edge {edge.source_id}--{edge.target_id}")
                 num_edges_obtained_icees_data_for += 1
                 for returned_edge in returned_kg.edges:
                     # TODO: They provide edges in both directions (seem to have identical p-values)... should we only keep one direction?
@@ -50,13 +55,11 @@ class OverlayExposuresData:
                         # Add the data as a new EdgeAttribute on the current edge
                         if edge.edge_attributes:
                             edge.edge_attributes += returned_edge.edge_attributes
-            else:
-                self.response.debug(f"ICEES+ had no data for edge {edge.id} ({edge.source_id}--{edge.target_id})")
 
         if num_edges_obtained_icees_data_for:
-            self.response.info(f"Overlayed {num_edges_obtained_icees_data_for} edges with exposures data from ICEES+")
+            log.info(f"Overlayed {num_edges_obtained_icees_data_for} edges with exposures data from ICEES+")
         else:
-            self.response.warning(f"Could not find ICEES+ exposures data for any edges in the KG")
+            log.warning(f"Could not find ICEES+ exposures data for any edges in the KG")
 
         return self.response
 
@@ -93,6 +96,7 @@ class OverlayExposuresData:
 
     @staticmethod
     def _is_relevant_edge(edge, nodes_by_qg_id):
+        # TODO: Does every edge need to involve a drug/chemical_substance?
         exposures_node_types = {'chemical_substance', 'drug', 'disease', 'phenotypic_feature'}
         source_node = nodes_by_qg_id.get(edge.source_id)
         target_node = nodes_by_qg_id.get(edge.target_id)
