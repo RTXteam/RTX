@@ -89,7 +89,7 @@ def _virtual_tester(message: Message, edge_type: str, relation: str, attribute_n
 def test_jaccard():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(curie=DOID:14330, id=n00)",
+        "add_qnode(curie=DOID:14717, id=n00)",
         "add_qnode(type=protein, is_set=true, id=n01)",
         "add_qnode(type=chemical_substance, id=n02)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
@@ -391,10 +391,10 @@ def test_chi_square_attribute():
 def test_predict_drug_treats_disease_virtual():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(curie=DOID:1588, id=n0, type=disease)",
+        "add_qnode(curie=DOID:9008, id=n0, type=disease)",
         "add_qnode(type=chemical_substance, id=n1)",
         "add_qedge(source_id=n0, target_id=n1, id=e0)",
-        "expand(edge_id=e0)",
+        "expand(edge_id=e0, kp=ARAX/KG1)",
         "overlay(action=predict_drug_treats_disease, source_qnode_id=n1, target_qnode_id=n0, virtual_relation_label=P1)",
         "resultify()",
         "return(message=true, store=false)",
@@ -408,10 +408,10 @@ def test_predict_drug_treats_disease_virtual():
 def test_predict_drug_treats_disease_attribute():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(curie=DOID:1588, id=n0)",
+        "add_qnode(curie=DOID:9008, id=n0)",
         "add_qnode(type=chemical_substance, id=n1)",
         "add_qedge(source_id=n0, target_id=n1, id=e0)",
-        "expand(edge_id=e0)",
+        "expand(edge_id=e0, kp=ARAX/KG1)",
         "overlay(action=predict_drug_treats_disease)",
         "resultify()",
         "return(message=true, store=false)",
@@ -425,7 +425,7 @@ def test_predict_drug_treats_disease_attribute():
 def test_issue_832():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(curie=DOID:1588, id=n0)",
+        "add_qnode(curie=DOID:9008, id=n0)",
         "add_qnode(type=chemical_substance, id=n1)",
         "add_qedge(source_id=n0, target_id=n1, id=e0)",
         "expand(edge_id=e0)",
