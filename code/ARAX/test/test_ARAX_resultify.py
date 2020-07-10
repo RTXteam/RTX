@@ -667,33 +667,11 @@ class TestARAXResultify(unittest.TestCase):
                                                           'add_qedge(source_id=qg1, target_id=qg0, id=qe0)',
                                                           'expand(edge_id=qe0)',
                                                           'resultify(ignore_edge_direction=true, debug=true)',
-                                                          "filter_results(action=limit_number_of_results, max_results=10)",
                                                           "return(message=true, store=false)",
                                                       ]}}
         [response, message] = _do_arax_query(query)
         assert response.status == 'OK'
-        assert len(message.results) == 10
-        assert message.results[0].essence is not None
-
-    def test_example2(self):
-        query = {"previous_message_processing_plan": {"processing_actions": [
-            "create_message",
-            "add_qnode(curie=DOID:14330, id=n00)",
-            "add_qnode(type=protein, is_set=true, id=n01)",
-            "add_qnode(type=chemical_substance, id=n02)",
-            "add_qedge(source_id=n00, target_id=n01, id=e00)",
-            "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
-            "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
-            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
-            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
-            "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
-            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",
-            "resultify(ignore_edge_direction=true, debug=true)",
-            "return(message=true, store=false)",
-        ]}}
-        [response, message] = _do_arax_query(query)
-        assert response.status == 'OK'
-        assert len(message.results) == 38
+        assert len(message.results) == len({node.id for node in message.knowledge_graph.nodes if "qg1" in node.qnode_ids})
         assert message.results[0].essence is not None
 
     def test_bfs(self):
@@ -1124,29 +1102,6 @@ class TestARAXResultify(unittest.TestCase):
         assert response.status == 'OK'
         n00_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n00" in node.qnode_ids]
         assert len(message.results) == len(n00_nodes_in_kg)
-
-
-def test_example3():
-    query = {"previous_message_processing_plan": {"processing_actions": [
-        "add_qnode(name=DOID:9406, id=n00)",
-        "add_qnode(type=chemical_substance, is_set=true, id=n01)",
-        "add_qnode(type=protein, id=n02)",
-        "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "add_qedge(source_id=n01, target_id=n02, id=e01)",
-        "expand(edge_id=[e00,e01])",
-        "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=3, remove_connected_nodes=t, qnode_id=n01)",
-        "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
-        "overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n01, target_qnode_id=n02)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=normalized_google_distance, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",
-        "resultify(ignore_edge_direction=true, debug=true)",
-        "return(message=true, store=false)"
-    ]}}
-    [response, message] = _do_arax_query(query)
-    assert response.status == 'OK'
-    #assert len(message.results) in [46, 47, 48]  # :BUG: sometimes the workflow returns 47 results, sometimes 48 (!?)
-    assert len(message.results) in range(47, 58)
-    assert message.results[0].essence is not None
 
 
 def test_parallel_edges_between_nodes():
