@@ -9,3 +9,5 @@ Note: Tests marked with `@pytest.mark.slow` are automatically skipped.
 * To run only slow tests, use `--runonlyslow`
 
 Example: `pytest -v --runslow`
+
+Note 2: Can also list the top, say, 10 slowest tests by adding the flag `--durations=10`
