@@ -578,9 +578,9 @@ The code is as follows:
 
     def __overlay_exposures_data(self, describe=False):
         """
-        This function applies the action overlay_exposures_data.
-        Allowable parameters are:
-        :return: a response
+        This function applies the action overlay_exposures_data. It decorates edges in the knowledge graph with data
+        from ICEES+, stored in EdgeAttributes.
+        return: a response.
         """
         message = self.message
         parameters = self.parameters
@@ -588,11 +588,9 @@ The code is as follows:
 
         # Make a list of the allowable parameters and their possible values
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
-            allowable_parameters = {'action': {'overlay_exposures_data'},
-                                    'virtual_relation_label': {parameters.get('virtual_relation_label', None)}}
+            allowable_parameters = {'action': {'overlay_exposures_data'}}
         else:
-            allowable_parameters = {'action': {'overlay_exposures_data'},
-                                    'virtual_relation_label': {'any string label used to identify the virtual edge (optional, otherwise information is added as an attribute to existing edges in the KG)'}}
+            allowable_parameters = {'action': {'overlay_exposures_data'}}
 
         # A little function to describe what this thing does
         if describe:
@@ -603,11 +601,6 @@ The code is as follows:
 
         # Make sure only allowable parameters and values have been passed
         self.check_params(allowable_parameters)
-        if response.status != 'OK':
-            return response
-
-        # Check if all virtual edge params have been provided properly
-        self.check_virtual_edge_params(allowable_parameters)
         if response.status != 'OK':
             return response
 
