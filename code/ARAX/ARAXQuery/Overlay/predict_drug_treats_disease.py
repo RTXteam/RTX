@@ -24,13 +24,47 @@ class PredictDrugTreatsDisease:
         self.message = message
         self.parameters = parameters
         self.global_iter = 0
-        self.pred = predictor(model_file=os.path.dirname(os.path.abspath(__file__))+'/predictor/LogModel.pkl')
-        self.pred.import_file(None, graph_file=os.path.dirname(os.path.abspath(__file__))+'/predictor/rel_max.emb.gz',
-                              map_file=os.path.dirname(os.path.abspath(__file__))+'/predictor/map.csv')
+        ## check if the new model files exists in /predictor/retrain_data. If not, scp it from arax.rtx.ai
+        pathlist = os.path.realpath(__file__).split(os.path.sep)
+        RTXindex = pathlist.index("RTX")
+        filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'predictor','retrain_data'])
+
+        ## check if there is LogModel.pkl
+        pkl_file = f"{filepath}/LogModel.pkl"
+        if os.path.exists(pkl_file):
+            pass
+        else:
+            os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/LogModel.pkl " + pkl_file)
+
+        ## check if there is rel_max.emb.gz
+        emb_file = f"{filepath}/rel_max.emb.gz"
+        if os.path.exists(emb_file):
+            pass
+        else:
+            os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/rel_max.emb.gz " + emb_file)
+
+        ## check if there is map.txt
+        map_file = f"{filepath}/map.txt"
+        if os.path.exists(map_file):
+            pass
+        else:
+            os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/map.txt " + map_file)
+
+        self.pred = predictor(model_file=pkl_file)
+        self.pred.import_file(None, graph_file=emb_file, map_file=map_file)
         self.known_curies = set()
-        with open(os.path.dirname(os.path.abspath(__file__))+'/predictor/map.csv', 'r') as map_file:
-            for line in map_file.readlines():
-                self.known_curies.add(line.strip().split(',')[0])
+        with open(map_file, 'r') as infile:
+            map_file_content = infile.readlines()
+            map_file_content.pop(0) ## remove title
+            for line in map_file_content:
+                self.known_curies.add(line.strip().split('\t')[0])
+
+        #self.pred = predictor(model_file=os.path.dirname(os.path.abspath(__file__))+'/predictor/LogModel.pkl')
+        #self.pred.import_file(None, graph_file=os.path.dirname(os.path.abspath(__file__))+'/predictor/rel_max.emb.gz', map_file=os.path.dirname(os.path.abspath(__file__))+'/predictor/map.csv')
+        # self.known_curies = set()
+        # with open(os.path.dirname(os.path.abspath(__file__))+'/predictor/map.csv', 'r') as map_file:
+        #     for line in map_file.readlines():
+        #         self.known_curies.add(line.strip().split(',')[0])
         self.synonymizer = NodeSynonymizer()
 
     def convert_to_trained_curies(self, input_curie):

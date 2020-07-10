@@ -33,17 +33,17 @@ class predictor():
         """
         return self.model.predict(X)
 
-    def import_file(self, file, graph_file=os.path.dirname(os.path.abspath(__file__))+'rel_max.emb.gz', map_file=os.path.dirname(os.path.abspath(__file__))+'map.csv'):
+    def import_file(self, file, graph_file=os.path.dirname(os.path.abspath(__file__))+'rel_max.emb.gz', map_file=os.path.dirname(os.path.abspath(__file__))+'map.txt'):
         """
         Imports all necisary files to take curie ids and extract their feature vectors.
 
         :param file: A string containing the filename or path of a csv containing the source and target curie ids to make predictions on (If set to None will just import the graph and map files)
         :param graph_file: A string containing the filename or path of the emb file containing the feature vectors for each node
-        :param map_file: A string containing the filename or path of the csv mapping the curie ids to the integer ids used in emb generation
+        :param map_file: A string containing the filename or path of the txt mapping the curie ids to the integer ids used in emb generation
         """
         graph = pd.read_csv(graph_file, sep=' ', skiprows=1, header=None, index_col=None)
         self.graph = graph.sort_values(0).reset_index(drop=True)
-        self.map_df = pd.read_csv(map_file, index_col=None)
+        self.map_df = pd.read_csv(map_file, sep='\t',index_col=None)
 
         if file is not None:
             data = pd.read_csv(file, index_col=None)
@@ -57,7 +57,8 @@ class predictor():
                 if len(source_id) > 0 and len(target_id) > 0:
                     source_id = source_id.iloc[0]
                     target_id = target_id.iloc[0]
-                    X_list += [list(self.graph.iloc[source_id, 1:]) + list(self.graph.iloc[target_id, 1:])]
+                    X_list += [[a * b for a, b in zip(list(self.graph.iloc[source_id, 1:]), list(self.graph.iloc[target_id,1:]))]]  # use 'Hadamard product' method instead of 'Concatenate' method
+                    #X_list += [list(self.graph.iloc[source_id, 1:]) + list(self.graph.iloc[target_id, 1:])]
                 else:
                     drop_list += [row]
 
@@ -123,7 +124,8 @@ class predictor():
         if len(source_id) > 0 and len(target_id) > 0:
             source_id = source_id.iloc[0]
             target_id = target_id.iloc[0]
-            X = np.array([list(self.graph.iloc[source_id, 1:]) + list(self.graph.iloc[target_id, 1:])])
+            X = np.array([[a*b for a,b in zip(list(self.graph.iloc[source_id, 1:]),list(self.graph.iloc[target_id, 1:]))]]) # use 'Hadamard product' method instead of 'Concatenate' method
+            #X = np.array([list(self.graph.iloc[source_id, 1:]) + list(self.graph.iloc[target_id, 1:])])
             return self.predict(X)
         elif len(source_id) > 0:
             pass
@@ -150,7 +152,8 @@ class predictor():
         if len(source_id) > 0 and len(target_id) > 0:
             source_id = source_id.iloc[0]
             target_id = target_id.iloc[0]
-            X = np.array([list(self.graph.iloc[source_id, 1:]) + list(self.graph.iloc[target_id, 1:])])
+            X = np.array([[a * b for a, b in zip(list(self.graph.iloc[source_id, 1:]), list(self.graph.iloc[target_id, 1:]))]])  # use 'Hadamard product' method instead of 'Concatenate' method
+            #X = np.array([list(self.graph.iloc[source_id, 1:]) + list(self.graph.iloc[target_id, 1:])])
             return self.prob(X)[:, 1]
         elif len(source_id) > 0:
             # print(target_curie + ' was not in the largest connected component of graph.')
