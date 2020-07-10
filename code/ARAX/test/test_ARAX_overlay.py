@@ -240,6 +240,7 @@ def test_FET_ex1():
         assert query_exge.source_id in query_node_ids
         assert query_exge.target_id in query_node_ids
 
+
 def test_FET_ex2():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
@@ -278,6 +279,8 @@ def test_FET_ex2():
         assert query_exge.source_id in query_node_ids
         assert query_exge.target_id in query_node_ids
 
+
+@pytest.mark.slow
 def test_paired_concept_frequency_virtual():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
@@ -295,6 +298,7 @@ def test_paired_concept_frequency_virtual():
     _virtual_tester(message, 'has_paired_concept_frequency_with', 'CP1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
 
 
+@pytest.mark.slow
 def test_paired_concept_frequency_attribute():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
@@ -312,6 +316,7 @@ def test_paired_concept_frequency_attribute():
     _attribute_tester(message, 'paired_concept_frequency', 'EDAM:data_0951', 2)
 
 
+@pytest.mark.slow
 def test_observed_expected_ratio_virtual():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
@@ -329,6 +334,7 @@ def test_observed_expected_ratio_virtual():
     _virtual_tester(message, 'has_observed_expected_ratio_with', 'CP1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
 
 
+@pytest.mark.slow
 def test_observed_expected_ratio_attribute():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
@@ -346,6 +352,7 @@ def test_observed_expected_ratio_attribute():
     _attribute_tester(message, 'observed_expected_ratio', 'EDAM:data_0951', 2)
 
 
+@pytest.mark.slow
 def test_chi_square_virtual():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
@@ -363,6 +370,7 @@ def test_chi_square_virtual():
     _virtual_tester(message, 'has_chi_square_with', 'CP1', 'chi_square', 'EDAM:data_0951', 2)
 
 
+@pytest.mark.slow
 def test_chi_square_attribute():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
@@ -450,6 +458,7 @@ def test_issue_832_non_drug():
     assert 'probability_treats' not in edge_types_in_kg
 
 
+@pytest.mark.slow
 def test_issue_840():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
@@ -483,6 +492,7 @@ def test_issue_840():
     _attribute_tester(message, 'paired_concept_frequency', 'EDAM:data_0951', 2)
 
 
+@pytest.mark.slow
 def test_issue_840_non_drug():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
@@ -520,6 +530,8 @@ def test_issue_840_non_drug():
         for attribute in edge.edge_attributes:
             assert attribute.name != 'paired_concept_frequency'
 
+
+@pytest.mark.slow
 def test_issue_892():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "add_qnode(curie=DOID:11830, type=disease, id=n00)",

@@ -85,6 +85,7 @@ def _virtual_tester(message: Message, edge_type: str, relation: str, attribute_n
     assert len(values) >= num_different_values
 
 
+@pytest.mark.slow
 def test_example_2():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
@@ -134,6 +135,8 @@ def test_example_3():
     _virtual_tester(message, 'has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
     _virtual_tester(message, 'has_normalized_google_distance_with', 'N1', 'normalized_google_distance', 'EDAM:data_2526', 2)
 
+
+@pytest.mark.slow
 def test_FET_example_1():
     # This a FET 3-top example: try to find the phenotypes of drugs connected to proteins connected to DOID:14330
     query = {"previous_message_processing_plan": {"processing_actions": [
@@ -183,6 +186,8 @@ def test_FET_example_1():
         assert query_exge.source_id in query_node_ids
         assert query_exge.target_id in query_node_ids
 
+
+@pytest.mark.slow
 def test_FET_example_2():
     # This a FET 4-top example: try to find the diseases connected to proteins connected to biological_process connected to protein connected to CHEMBL.COMPOUND:CHEMBL521
     query = {"previous_message_processing_plan": {"processing_actions": [
@@ -236,6 +241,7 @@ def test_FET_example_2():
         assert query_exge.id == query_exge.relation
         assert query_exge.source_id in query_node_ids
         assert query_exge.target_id in query_node_ids
+
 
 @pytest.mark.skip(reason="need issue#846 to be solved")
 def test_FET_example_3():
@@ -303,6 +309,7 @@ def test_FET_example_3():
         assert query_exge.target_id in query_node_ids
 
 
+@pytest.mark.slow
 def test_FET_example_4():
     # This a FET 2-top example collecting nodes and edges from both KG1 and KG2: try to find the disease connected to proteins connected to DOID:14330
     query = {"previous_message_processing_plan": {"processing_actions": [
@@ -351,6 +358,8 @@ def test_FET_example_4():
         assert query_exge.source_id in query_node_ids
         assert query_exge.target_id in query_node_ids
 
+
+@pytest.mark.slow
 def test_example_2_kg2():
     query = {"previous_message_processing_plan": { "processing_actions": [
             "create_message",
@@ -373,6 +382,7 @@ def test_example_2_kg2():
     _virtual_tester(message, 'has_jaccard_index_with', 'J1', 'jaccard_index', 'EDAM:data_1772', 2)
 
 
+@pytest.mark.slow
 def test_clinical_overlay_example():
     """
     Gives an example of a KG that does not have edges that COHD can decorate, but does have pairs of nodes that COHD
@@ -405,6 +415,7 @@ def test_clinical_overlay_example():
     _virtual_tester(message, 'has_chi_square_with', 'C3', 'chi_square', 'EDAM:data_0951', 2)
 
 
+@pytest.mark.skip(reason="redundant if the test_clinical_overlay_example() passes and test_ARAX_overlay passes")
 def test_clinical_overlay_example2():
     """
     Gives an example of overlaying (and filtering) clinical attributes when there exist edges in the KG that COHD can decorate
@@ -433,6 +444,8 @@ def test_clinical_overlay_example2():
     _attribute_tester(message, 'observed_expected_ratio', 'EDAM:data_0951', 1)
     _attribute_tester(message, 'chi_square', 'EDAM:data_0951', 1)
 
+
+@pytest.mark.skip(reason="redundant if test_one_hop_based_on_types_1() and test_ARAX_overlay() passes")
 def test_two_hop_based_on_types_1():
     """
     Example DSL for a two hop question that is based on types
@@ -468,6 +481,7 @@ def test_two_hop_based_on_types_1():
         assert len(message.results) > 1
 
 
+@pytest.mark.slow
 def test_one_hop_based_on_types_1():
     """
     Example DSL for a one hop question that is based on types
@@ -523,6 +537,7 @@ def test_one_hop_kitchen_sink_BTE_1():
     _attribute_tester(message, 'paired_concept_frequency', 'EDAM:data_0951', 1)
     _attribute_tester(message, 'observed_expected_ratio', 'EDAM:data_0951', 1)
     _attribute_tester(message, 'chi_square', 'EDAM:data_0951', 1)
+
 
 @pytest.mark.skip(reason="Work in progress (and takes a very long time)")
 def test_one_hop_kitchen_sink_BTE_2():
