@@ -197,7 +197,7 @@ def test_compute_ngd_attribute():
 def test_FET_ex1():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(curie=DOID:14330, id=n00, type=disease)",
+        "add_qnode(curie=DOID:12889, id=n00, type=disease)",
         "add_qnode(type=protein, is_set=true, id=n01)",
         "add_qedge(source_id=n00, target_id=n01,id=e00)",
         "expand(edge_id=e00, kp=ARAX/KG1)",
@@ -244,7 +244,7 @@ def test_FET_ex1():
 def test_FET_ex2():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(curie=DOID:14330, id=n00, type=disease)",
+        "add_qnode(curie=DOID:12889, id=n00, type=disease)",
         "add_qnode(type=protein, id=n01)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "expand(edge_id=e00, kp=ARAX/KG1)",
@@ -258,7 +258,7 @@ def test_FET_ex2():
     edge_types_in_kg = Counter([x.type for x in message.knowledge_graph.edges])
     assert 'has_fisher_exact_test_p-value_with' in edge_types_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges if x.relation.find("FET") != -1]
-    assert len(FET_edges) == 20
+    assert len(FET_edges) >= 2
     FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 1
     for edge in FET_edges:
