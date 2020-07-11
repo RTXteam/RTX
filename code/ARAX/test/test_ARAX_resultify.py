@@ -85,11 +85,14 @@ def _do_arax_query(query: str) -> List[Union[Response, Message]]:
     return [response, araxq.message]
 
 
-def _run_resultify_directly(query_graph: QueryGraph, knowledge_graph: KnowledgeGraph, debug=False) -> Tuple[Response, Message]:
+def _run_resultify_directly(query_graph: QueryGraph,
+                            knowledge_graph: KnowledgeGraph,
+                            ignore_edge_direction=True,
+                            debug=False) -> Tuple[Response, Message]:
     response = Response()
     from actions_parser import ActionsParser
     actions_parser = ActionsParser()
-    actions_list = ['resultify(ignore_edge_direction=true)']
+    actions_list = [f"resultify(ignore_edge_direction={ignore_edge_direction})"]
     result = actions_parser.parse(actions_list)
     response.merge(result)
     actions = result.data['actions']
