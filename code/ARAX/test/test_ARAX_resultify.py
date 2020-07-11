@@ -77,12 +77,15 @@ def _get_result_edges_by_qg_id(result: Result, kg_edges_map: Dict[str, Edge], qg
                        if edge_binding.qg_id == qedge.id} for qedge in qg.edges}
 
 
-def _do_arax_query(query: str) -> List[Union[Response, Message]]:
+def _do_arax_query(actions_list: List[str], debug=False) -> Tuple[Response, Message]:
+    query = {"previous_message_processing_plan": {"processing_actions": actions_list}}
     araxq = ARAXQuery()
     response = araxq.query(query)
-    if response.status != 'OK':
+    message = araxq.message
+    if response.status != 'OK' or debug:
+        _print_results_for_debug(message.results)
         print(response.show(level=response.DEBUG))
-    return [response, araxq.message]
+    return response, message
 
 
 def _run_resultify_directly(query_graph: QueryGraph,
@@ -106,8 +109,8 @@ def _run_resultify_directly(query_graph: QueryGraph,
     result = resultifier.apply(message, parameters)
     response.merge(result)
     if response.status != 'OK' or debug:
-        print(response.show(level=response.DEBUG))
         _print_results_for_debug(message.results)
+        print(response.show(level=response.DEBUG))
     return response, message
 
 
@@ -693,16 +696,16 @@ def test08():
 
 @pytest.mark.slow
 def test09():
-    query = {"previous_message_processing_plan": {"processing_actions": [
-            "create_message",
-            "add_qnode(name=DOID:731, id=n00, type=disease, is_set=false)",
-            "add_qnode(type=phenotypic_feature, is_set=false, id=n01)",
-            "add_qedge(source_id=n00, target_id=n01, id=e00)",
-            "expand(edge_id=e00)",
-            "resultify(ignore_edge_direction=true, debug=true)",
-            "filter_results(action=limit_number_of_results, max_results=100)",
-            "return(message=true, store=false)"]}}
-    [response, message] = _do_arax_query(query)
+    actions = [
+        "add_qnode(name=DOID:731, id=n00, type=disease, is_set=false)",
+        "add_qnode(type=phenotypic_feature, is_set=false, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(edge_id=e00)",
+        "resultify(ignore_edge_direction=true, debug=true)",
+        "filter_results(action=limit_number_of_results, max_results=100)",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
     assert response.status == 'OK'
     assert len(message.results) == 100
 
@@ -716,16 +719,15 @@ def test10():
 
 @pytest.mark.slow
 def test_example1():
-    query = {"previous_message_processing_plan": {"processing_actions": [
-                                                      'create_message',
-                                                      'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
-                                                      'add_qnode(id=qg1, type=protein)',
-                                                      'add_qedge(source_id=qg1, target_id=qg0, id=qe0)',
-                                                      'expand(edge_id=qe0)',
-                                                      'resultify(ignore_edge_direction=true, debug=true)',
-                                                      "return(message=true, store=false)",
-                                                  ]}}
-    [response, message] = _do_arax_query(query)
+    actions = [
+        "add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)",
+        "add_qnode(id=qg1, type=protein)",
+        "add_qedge(source_id=qg1, target_id=qg0, id=qe0)",
+        "expand(edge_id=qe0)",
+        "resultify(ignore_edge_direction=true, debug=true)",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
     assert response.status == 'OK'
     assert len(message.results) == len({node.id for node in message.knowledge_graph.nodes if "qg1" in node.qnode_ids})
     assert message.results[0].essence is not None
@@ -855,8 +857,7 @@ def test_bfs_in_essence_code():
 
 @pytest.mark.slow
 def test_issue680():
-    query = {"previous_message_processing_plan": {"processing_actions": [
-        "create_message",
+    actions = [
         "add_qnode(curie=DOID:14330, id=n00, type=disease)",
         "add_qnode(type=protein, is_set=true, id=n01)",
         "add_qnode(type=chemical_substance, id=n02)",
@@ -870,8 +871,8 @@ def test_issue680():
         "resultify(ignore_edge_direction=true, debug=true)",
         "filter_results(action=limit_number_of_results, max_results=1)",
         "return(message=true, store=false)",
-    ]}}
-    [response, message] = _do_arax_query(query)
+    ]
+    response, message = _do_arax_query(actions)
     assert response.status == 'OK'
     assert len(message.results) == 1
     result = message.results[0]
@@ -890,53 +891,51 @@ def test_issue680():
 
 def test_issue686a():
     # Tests that an error is thrown when an invalid parameter is passed to resultify
-    query = {"previous_message_processing_plan": {"processing_actions": [
-        'create_message',
+    actions = [
         'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
         'expand()',
         'resultify(ignore_edge_direction=true, INVALID_PARAMETER_NAME=true)',
         "return(message=true, store=false)"
-    ]}}
-    [response, message] = _do_arax_query(query)
+    ]
+    response, message = _do_arax_query(actions)
     assert 'INVALID_PARAMETER_NAME' in response.show()
 
 
 def test_issue686b():
     # Tests that resultify can be called with no parameters passed in
-    query = {"previous_message_processing_plan": {"processing_actions": [
-        'create_message',
+    actions = [
         'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
         'expand()',
         'resultify()',
         "return(message=true, store=false)"
-    ]}}
-    [response, message] = _do_arax_query(query)
+    ]
+    response, message = _do_arax_query(actions)
     assert response.status == 'OK'
 
 
 def test_issue686c():
     # Tests that setting ignore_edge_direction to an invalid value results in an error
-    query = {"previous_message_processing_plan": {"processing_actions": [
-        'create_message',
+    actions = [
         'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
         'expand()',
         'resultify(ignore_edge_direction=foo)',
         "return(message=true, store=false)"
-    ]}}
-    [response, message] = _do_arax_query(query)
+    ]
+    response, message = _do_arax_query(actions)
     assert response.status != 'OK' and 'foo' in response.show()
 
 
 def test_issue687():
     # Tests that ignore_edge_direction need not be specified
-    query = {"previous_message_processing_plan": {"processing_actions": [
-        'create_message',
+    actions = [
         'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
         'expand()',
         'resultify(debug=true)',
         "return(message=true, store=false)"
-    ]}}
-    _do_arax_query(query)
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert len(message.results) == len(message.knowledge_graph.nodes)
 
 
 def test_issue727():
@@ -975,16 +974,18 @@ def test_issue731():
 
 @pytest.mark.slow
 def test_issue731b():
-    query = {"previous_message_processing_plan": {"processing_actions": [
-            "add_qnode(name=MONDO:0005737, id=n0, type=disease)",
-            "add_qnode(type=protein, id=n1)",
-            "add_qnode(type=disease, id=n2)",
-            "add_qedge(source_id=n0, target_id=n1, id=e0)",
-            "add_qedge(source_id=n1, target_id=n2, id=e1)",
-            "expand(edge_id=[e0,e1], kp=ARAX/KG2)",
-            "resultify(debug=true)",
-            "return(message=true, store=false)"]}}
-    [response, message] = _do_arax_query(query)
+    actions = [
+        "add_qnode(name=MONDO:0005737, id=n0, type=disease)",
+        "add_qnode(type=protein, id=n1)",
+        "add_qnode(type=disease, id=n2)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "add_qedge(source_id=n1, target_id=n2, id=e1)",
+        "expand(edge_id=[e0,e1], kp=ARAX/KG2)",
+        "resultify(debug=true)",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
     for result in message.results:
         found_e01 = any(edge_binding.qg_id == 'e1' for edge_binding in result.edge_bindings)
         assert found_e01
@@ -1074,16 +1075,17 @@ def test_issue692b():
 
 def test_issue720_1():
     # Test when same node fulfills different qnode_ids within same result
-    query = {"previous_message_processing_plan": {"processing_actions": [
-            "add_qnode(curie=DOID:14330, id=n00)",
-            "add_qnode(type=protein, curie=[UniProtKB:Q02878, UniProtKB:Q9BXM7], is_set=true, id=n01)",
-            "add_qnode(type=disease, id=n02)",
-            "add_qedge(source_id=n00, target_id=n01, id=e00)",
-            "add_qedge(source_id=n01, target_id=n02, id=e01)",
-            "expand()",
-            "resultify(debug=true)",
-            "return(message=true, store=false)"]}}
-    [response, message] = _do_arax_query(query)
+    actions = [
+        "add_qnode(curie=DOID:14330, id=n00)",
+        "add_qnode(type=protein, curie=[UniProtKB:Q02878, UniProtKB:Q9BXM7], is_set=true, id=n01)",
+        "add_qnode(type=disease, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "expand()",
+        "resultify(debug=true)",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
     n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n02" in node.qnode_ids]
     assert len(message.results) == len(n02_nodes_in_kg)
     assert response.status == 'OK'
@@ -1091,16 +1093,17 @@ def test_issue720_1():
 
 def test_issue720_2():
     # Test when same node fulfills different qnode_ids within same result
-    query = {"previous_message_processing_plan": {"processing_actions": [
-            "add_qnode(curie=CUI:C0158779, type=anatomical_entity, id=n00)",
-            "add_qnode(curie=CUI:C0578454, type=phenotypic_feature, id=n01)",
-            "add_qnode(type=anatomical_entity, id=n02)",
-            "add_qedge(source_id=n00, target_id=n01, id=e00)",
-            "add_qedge(source_id=n01, target_id=n02, id=e01)",
-            "expand(use_synonyms=false, kp=ARAX/KG2)",
-            "resultify(debug=true)",
-            "return(message=true, store=false)"]}}
-    [response, message] = _do_arax_query(query)
+    actions = [
+        "add_qnode(curie=CUI:C0158779, type=anatomical_entity, id=n00)",
+        "add_qnode(curie=CUI:C0578454, type=phenotypic_feature, id=n01)",
+        "add_qnode(type=anatomical_entity, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "expand(use_synonyms=false, kp=ARAX/KG2)",
+        "resultify(debug=true)",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
     n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n02" in node.qnode_ids]
     assert len(message.results) == len(n02_nodes_in_kg)
     assert response.status == 'OK'
@@ -1108,18 +1111,19 @@ def test_issue720_2():
 
 def test_issue720_3():
     # Tests when same node fulfills different qnode_ids in different results
-    query = {"previous_message_processing_plan": {"processing_actions": [
-            "add_qnode(id=n00, curie=DOID:14330)",  # parkinson's
-            "add_qnode(id=n01, type=protein)",
-            "add_qnode(id=n02, type=chemical_substance, curie=CHEMBL.COMPOUND:CHEMBL452076)",  # cilnidipine
-            "add_qnode(id=n03, type=protein)",
-            "add_qedge(id=e00, source_id=n00, target_id=n01)",
-            "add_qedge(id=e01, source_id=n01, target_id=n02)",
-            "add_qedge(id=e02, source_id=n02, target_id=n03)",
-            "expand(use_synonyms=false)",
-            "resultify(debug=true)",
-            "return(message=true, store=false)"]}}
-    [response, message] = _do_arax_query(query)
+    actions = [
+        "add_qnode(id=n00, curie=DOID:14330)",  # parkinson's
+        "add_qnode(id=n01, type=protein)",
+        "add_qnode(id=n02, type=chemical_substance, curie=CHEMBL.COMPOUND:CHEMBL452076)",  # cilnidipine
+        "add_qnode(id=n03, type=protein)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01)",
+        "add_qedge(id=e01, source_id=n01, target_id=n02)",
+        "add_qedge(id=e02, source_id=n02, target_id=n03)",
+        "expand(use_synonyms=false)",
+        "resultify(debug=true)",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
     assert response.status == 'OK'
     snca_id = "UniProtKB:P37840"
     found_result_where_syna_is_n01_and_not_n03 = False
@@ -1177,12 +1181,13 @@ def test_issue833():
 
 
 def test_single_node():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    actions = [
         "add_qnode(name=ibuprofen, id=n00)",
         "expand(node_id=n00)",
         "resultify(debug=true)",
-        "return(message=true, store=false)"]}}
-    [response, message] = _do_arax_query(query)
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
     assert response.status == 'OK'
     n00_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n00" in node.qnode_ids]
     assert len(message.results) == len(n00_nodes_in_kg)
