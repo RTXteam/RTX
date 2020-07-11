@@ -8,7 +8,7 @@ import pytest
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 from response import Response
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Tuple
 
 import ARAX_resultify
 from ARAX_resultify import ARAXResultify
@@ -58,6 +58,7 @@ def _create_edge(edge_id: str, source_id: str, target_id: str, qedge_ids: List[s
 
 
 def _print_results_for_debug(results: List[Result]):
+    print()
     for result in results:
         print(result.essence)
         for node_binding in result.node_bindings:
@@ -82,6 +83,53 @@ def _do_arax_query(query: str) -> List[Union[Response, Message]]:
     if response.status != 'OK':
         print(response.show(level=response.DEBUG))
     return [response, araxq.message]
+
+
+def _run_resultify_directly(query_graph: QueryGraph, knowledge_graph: KnowledgeGraph) -> Tuple[Response, Message]:
+    response = Response()
+    from actions_parser import ActionsParser
+    actions_parser = ActionsParser()
+    actions_list = ['resultify(ignore_edge_direction=true)']
+    result = actions_parser.parse(actions_list)
+    response.merge(result)
+    actions = result.data['actions']
+    assert result.status == 'OK'
+    resultifier = ARAXResultify()
+    message = Message(query_graph=query_graph,
+                      knowledge_graph=knowledge_graph,
+                      results=[])
+    parameters = actions[0]['parameters']
+    parameters['debug'] = 'true'
+    result = resultifier.apply(message, parameters)
+    response.merge(result)
+    if response.status != 'OK':
+        print(response.show(level=response.DEBUG))
+        _print_results_for_debug(message.results)
+    return response, message
+
+
+def _convert_shorthand_to_qg(shorthand_qnodes: Dict[str, str], shorthand_qedges: Dict[str, str]) -> QueryGraph:
+    return QueryGraph(nodes=[QNode(id=qnode_id, is_set=is_set) for qnode_id, is_set in shorthand_qnodes.items()],
+                      edges=[QEdge(id=qedge_id, source_id=qnodes.split("--")[0], target_id=qnodes.split("--")[1])
+                             for qedge_id, qnodes in shorthand_qedges.items()])
+
+
+def _convert_shorthand_to_kg(shorthand_nodes: Dict[str, List[str]], shorthand_edges: Dict[str, List[str]]) -> KnowledgeGraph:
+    nodes_dict = dict()
+    for qnode_id, nodes_list in shorthand_nodes.items():
+        for node_id in nodes_list:
+            node = nodes_dict.get(node_id, Node(id=node_id, qnode_ids=[]))
+            node.qnode_ids.append(qnode_id)
+            nodes_dict[node_id] = node
+    edges_dict = dict()
+    for qedge_id, edges_list in shorthand_edges.items():
+        for edge_key in edges_list:
+            source_node_id = edge_key.split("--")[0]
+            target_node_id = edge_key.split("--")[1]
+            edge = edges_dict.get(edge_key, Edge(id=edge_key, source_id=source_node_id, target_id=target_node_id, qedge_ids=[]))
+            edge.qedge_ids.append(qedge_id)
+            edges_dict[f"{qedge_id}:{edge_key}"] = edge
+    return KnowledgeGraph(nodes=list(nodes_dict.values()), edges=list(edges_dict.values()))
 
 
 def test01():
@@ -625,20 +673,21 @@ def test07():
 
 
 def test08():
-    query = {"previous_message_processing_plan": {"processing_actions": [
-        "create_message",
-        "add_qnode(type=disease, curie=DOID:731, id=n00)",
-        "add_qnode(type=phenotypic_feature, is_set=false, id=n01)",
-        "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "expand(edge_id=e00)",
-        "resultify(ignore_edge_direction=true, debug=true)",
-        "return(message=true, store=false)"]}}
-    [response, message] = _do_arax_query(query)
+    shorthand_qnodes = {"n00": "",
+                        "n01": ""}
+    shorthand_qedges = {"e00": "n00--n01"}
+    query_graph = _convert_shorthand_to_qg(shorthand_qnodes, shorthand_qedges)
+    shorthand_kg_nodes = {"n00": ["DOID:731"],
+                          "n01": ["HP:01", "HP:02", "HP:03", "HP:04"]}
+    shorthand_kg_edges = {"e00": ["DOID:731--HP:01", "DOID:731--HP:02", "DOID:731--HP:03", "DOID:731--HP:04"]}
+    knowledge_graph = _convert_shorthand_to_kg(shorthand_kg_nodes, shorthand_kg_edges)
+    response, message = _run_resultify_directly(query_graph, knowledge_graph)
     assert response.status == 'OK'
     n01_nodes = {node.id for node in message.knowledge_graph.nodes if "n01" in node.qnode_ids}
     assert len(message.results) == len(n01_nodes)
 
 
+@pytest.mark.slow
 def test09():
     query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
@@ -661,6 +710,7 @@ def test10():
     assert 'ignore_edge_direction' in desc[0]
 
 
+@pytest.mark.slow
 def test_example1():
     query = {"previous_message_processing_plan": {"processing_actions": [
                                                       'create_message',
@@ -799,6 +849,7 @@ def test_bfs_in_essence_code():
     assert results_list[0].essence is not None
 
 
+@pytest.mark.slow
 def test_issue680():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
@@ -834,12 +885,11 @@ def test_issue680():
 
 
 def test_issue686a():
+    # Tests that an error is thrown when an invalid parameter is passed to resultify
     query = {"previous_message_processing_plan": {"processing_actions": [
         'create_message',
         'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
-        'add_qnode(id=qg1, type=protein)',
-        'add_qedge(source_id=qg1, target_id=qg0, id=qe0)',
-        'expand(edge_id=qe0)',
+        'expand()',
         'resultify(ignore_edge_direction=true, INVALID_PARAMETER_NAME=true)',
         "return(message=true, store=false)"
     ]}}
@@ -848,13 +898,11 @@ def test_issue686a():
 
 
 def test_issue686b():
+    # Tests that resultify can be called with no parameters passed in
     query = {"previous_message_processing_plan": {"processing_actions": [
         'create_message',
         'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
-        'add_qnode(id=qg1, type=protein)',
-        'add_qedge(source_id=qg1, target_id=qg0, id=qe0)',
-        'add_qedge(source_id=qg0, target_id=qg1, id=qe0)',
-        'expand(edge_id=qe0)',
+        'expand()',
         'resultify()',
         "return(message=true, store=false)"
     ]}}
@@ -863,13 +911,11 @@ def test_issue686b():
 
 
 def test_issue686c():
+    # Tests that setting ignore_edge_direction to an invalid value results in an error
     query = {"previous_message_processing_plan": {"processing_actions": [
         'create_message',
         'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
-        'add_qnode(id=qg1, type=protein)',
-        'add_qedge(source_id=qg1, target_id=qg0, id=qe0)',
-        'add_qedge(source_id=qg0, target_id=qg1, id=qe0)',
-        'expand(edge_id=qe0)',
+        'expand()',
         'resultify(ignore_edge_direction=foo)',
         "return(message=true, store=false)"
     ]}}
@@ -878,13 +924,11 @@ def test_issue686c():
 
 
 def test_issue687():
+    # Tests that ignore_edge_direction need not be specified
     query = {"previous_message_processing_plan": {"processing_actions": [
         'create_message',
         'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
-        'add_qnode(id=qg1, type=protein)',
-        'add_qedge(source_id=qg1, target_id=qg0, id=qe0)',
-        'add_qedge(source_id=qg0, target_id=qg1, id=qe1)',
-        'expand(edge_id=qe0)',
+        'expand()',
         'resultify(debug=true)',
         "return(message=true, store=false)"
     ]}}
@@ -892,33 +936,40 @@ def test_issue687():
 
 
 def test_issue727():
-    query = {"previous_message_processing_plan": {"processing_actions": [
-        "add_qnode(name=CHEMBL.COMPOUND:CHEMBL1276308, id=n00)",
-        "add_qnode(type=protein, id=n01)",
-        "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "expand(edge_id=e00)",
-        "resultify()",
-        "return(message=true, store=false)"]}}
-    [response, message] = _do_arax_query(query)
+    # Check resultify ignores edge direction appropriately
+    shorthand_qnodes = {"n00": "",
+                        "n01": ""}
+    shorthand_qedges = {"e00": "n00--n01"}
+    query_graph = _convert_shorthand_to_qg(shorthand_qnodes, shorthand_qedges)
+    shorthand_kg_nodes = {"n00": ["DOID:111"],
+                          "n01": ["PR:01", "PR:02"]}
+    shorthand_kg_edges = {"e00": ["PR:01--DOID:111", "PR:02--DOID:111"]}  # Edges are reverse direction of QG
+    knowledge_graph = _convert_shorthand_to_kg(shorthand_kg_nodes, shorthand_kg_edges)
+    response, message = _run_resultify_directly(query_graph, knowledge_graph)
     assert response.status == 'OK'
+    assert len(message.results) == 2
 
 
 def test_issue731():
-    query = {"previous_message_processing_plan": {"processing_actions": [
-            "create_message",
-            "add_qnode(name=MONDO:0005737, id=n0, type=disease)",
-            "add_qnode(type=protein, id=n1)",
-            "add_qnode(type=disease, id=n2)",
-            "add_qedge(source_id=n0, target_id=n1, id=e0)",
-            "add_qedge(source_id=n1, target_id=n2, id=e1)",
-            "expand(edge_id=[e0,e1], kp=ARAX/KG2)",
-            "resultify(debug=true)",
-            "return(message=true, store=false)"]}}
-    [response, message] = _do_arax_query(query)
+    # Return no results if QG is unfulfilled
+    shorthand_qnodes = {"n0": "",
+                        "n1": "is_set",
+                        "n2": ""}
+    shorthand_qedges = {"e0": "n0--n1",
+                        "e1": "n1--n2"}
+    query_graph = _convert_shorthand_to_qg(shorthand_qnodes, shorthand_qedges)
+    shorthand_kg_nodes = {"n0": [],
+                          "n1": ["UniProtKB:123", "UniProtKB:124"],
+                          "n2": ["DOID:122"]}
+    shorthand_kg_edges = {"e0": [],
+                          "e1": ["UniProtKB:123--DOID:122", "UniProtKB:124--DOID:122"]}
+    knowledge_graph = _convert_shorthand_to_kg(shorthand_kg_nodes, shorthand_kg_edges)
+    response, message = _run_resultify_directly(query_graph, knowledge_graph)
     assert response.status == 'OK'
-    assert len(message.results) >= 81
+    assert len(message.results) == 0
 
 
+@pytest.mark.slow
 def test_issue731b():
     query = {"previous_message_processing_plan": {"processing_actions": [
             "add_qnode(name=MONDO:0005737, id=n0, type=disease)",
@@ -986,17 +1037,17 @@ def test_issue731c():
 
 
 def test_issue740():
-    query = {"previous_message_processing_plan": {"processing_actions": [
-            "add_qnode(name=babesia, id=n00)",
-            "add_qnode(id=n01)",
-            "add_qedge(source_id=n00, target_id=n01, id=e00)",
-            "expand(edge_id=e00, kp=ARAX/KG2)",
-            "resultify()",
-            "return(message=true, store=false)"]}}
-    [response, message] = _do_arax_query(query)
-    n01_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n01" in node.qnode_ids]
-    assert len(message.results) == len(n01_nodes_in_kg)
+    shorthand_qnodes = {"n00": "",
+                        "n01": ""}
+    shorthand_qedges = {"e00": "n00--n01"}
+    query_graph = _convert_shorthand_to_qg(shorthand_qnodes, shorthand_qedges)
+    shorthand_kg_nodes = {"n00": ["CUI:C0004572"],  # Babesia
+                          "n01": ["HP:01", "HP:02", "CUI:C0004572"]}
+    shorthand_kg_edges = {"e00": ["CUI:C0004572--HP:01", "CUI:C0004572--HP:02", "CUI:C0004572--CUI:C0004572"]}  # Self-edge
+    knowledge_graph = _convert_shorthand_to_kg(shorthand_kg_nodes, shorthand_kg_edges)
+    response, message = _run_resultify_directly(query_graph, knowledge_graph)
     assert response.status == 'OK'
+    assert len(message.results) == 3
 
 
 def test_issue692():
@@ -1013,7 +1064,7 @@ def test_issue692b():
                       knowledge_graph=KnowledgeGraph(nodes=[], edges=[]))
     resultifier = ARAXResultify()
     response = resultifier.apply(message, {})
-    assert 'WARNING: no results returned; empty knowledge graph' in response.messages_list()[0]
+    assert 'WARNING: no results returned (QG is unfulfilled); empty knowledge graph' in response.messages_list()[0]
 
 
 def test_issue720_1():
@@ -1080,20 +1131,27 @@ def test_issue720_3():
 
 def test_issue833():
     # Test for extraneous intermediate nodes
-    query = {"previous_message_processing_plan": {"processing_actions": [
-        "add_qnode(id=n00, type=disease, curie=DOID:1056)",
-        "add_qnode(id=n01, type=protein, is_set=true)",
-        "add_qnode(id=n02, type=chemical_substance)",
-        "add_qedge(id=e00, source_id=n00, target_id=n01)",
-        "add_qedge(id=e01, source_id=n01, target_id=n02)",
-        "expand(kp=ARAX/KG1)",
-        "expand(edge_id=e00, kp=ARAX/KG2)",  # Creates some dead-end n01 nodes
-        "resultify()",
-        "return(message=true, store=false)"]}}
-    [response, message] = _do_arax_query(query)
+    shorthand_qnodes = {"n00": "",
+                        "n01": "is_set",
+                        "n02": "is_set",
+                        "n03": ""}
+    shorthand_qedges = {"e00": "n00--n01",
+                        "e01": "n01--n02",
+                        "e02": "n02--n03"}
+    query_graph = _convert_shorthand_to_qg(shorthand_qnodes, shorthand_qedges)
+    shorthand_kg_nodes = {"n00": ["DOID:1056"],
+                          "n01": ["UniProtKB:111", "UniProtKB:222"],
+                          "n02": ["MONDO:111", "MONDO:222"],  # Last one is dead-end
+                          "n03": ["CHEBI:111"]}
+    shorthand_kg_edges = {"e00": ["DOID:1056--UniProtKB:111", "DOID:1056--UniProtKB:222"],
+                          "e01": ["UniProtKB:111--MONDO:111", "UniProtKB:222--MONDO:222"],
+                          "e02": ["MONDO:111--CHEBI:111"]}
+    knowledge_graph = _convert_shorthand_to_kg(shorthand_kg_nodes, shorthand_kg_edges)
+    response, message = _run_resultify_directly(query_graph, knowledge_graph)
     assert response.status == 'OK'
     kg_nodes_map = {node.id: node for node in message.knowledge_graph.nodes}
     kg_edges_map = {edge.id: edge for edge in message.knowledge_graph.edges}
+    assert len(message.results) == 1
     for result in message.results:
         result_nodes_by_qg_id = _get_result_nodes_by_qg_id(result, kg_nodes_map, message.query_graph)
         result_edges_by_qg_id = _get_result_edges_by_qg_id(result, kg_edges_map, message.query_graph)
@@ -1126,17 +1184,21 @@ def test_single_node():
 
 
 def test_parallel_edges_between_nodes():
-    query = {"previous_message_processing_plan": {"processing_actions": [
-        "add_qnode(curie=DOID:11830, type=disease, id=n00)",
-        "add_qnode(type=gene, curie=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, id=n01)",
-        "add_qnode(type=chemical_substance, id=n02)",
-        "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "add_qedge(source_id=n01, target_id=n02, id=e01)",
-        "expand(kp=BTE)",
-        "overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n01, target_qnode_id=n02)",
-        "resultify()",
-        "return(message=true, store=false)"]}}
-    [response, message] = _do_arax_query(query)
+    shorthand_qnodes = {"n00": "",
+                        "n01": "is_set",
+                        "n02": ""}
+    shorthand_qedges = {"e00": "n00--n01",
+                        "e01": "n01--n02",
+                        "parallel01": "n01--n02"}
+    query_graph = _convert_shorthand_to_qg(shorthand_qnodes, shorthand_qedges)
+    shorthand_kg_nodes = {"n00": ["DOID:11830"],
+                          "n01": ["UniProtKB:P39060", "UniProtKB:P20849"],
+                          "n02": ["CHEBI:85164", "CHEBI:29057"]}
+    shorthand_kg_edges = {"e00": ["DOID:11830--UniProtKB:P39060", "DOID:11830--UniProtKB:P20849"],
+                          "e01": ["UniProtKB:P39060--CHEBI:85164", "UniProtKB:P20849--CHEBI:29057", "UniProtKB:P39060--CHEBI:29057"],
+                          "parallel01": ["UniProtKB:P39060--CHEBI:85164", "UniProtKB:P20849--CHEBI:29057", "UniProtKB:P39060--CHEBI:29057"]}
+    knowledge_graph = _convert_shorthand_to_kg(shorthand_kg_nodes, shorthand_kg_edges)
+    response, message = _run_resultify_directly(query_graph, knowledge_graph)
     assert response.status == 'OK'
     kg_nodes_map = {node.id: node for node in message.knowledge_graph.nodes}
     kg_edges_map = {edge.id: edge for edge in message.knowledge_graph.edges}
@@ -1146,8 +1208,10 @@ def test_parallel_edges_between_nodes():
         result_nodes_by_qg_id = _get_result_nodes_by_qg_id(result, kg_nodes_map, message.query_graph)
         result_edges_by_qg_id = _get_result_edges_by_qg_id(result, kg_edges_map, message.query_graph)
         node_ids_used_by_e01_edges = {edge.source_id for edge in result_edges_by_qg_id['e01'].values()}.union({edge.target_id for edge in result_edges_by_qg_id['e01'].values()})
+        node_ids_used_by_parallel01_edges = {edge.source_id for edge in result_edges_by_qg_id['parallel01'].values()}.union({edge.target_id for edge in result_edges_by_qg_id['parallel01'].values()})
         for node_id in result_nodes_by_qg_id['n01']:
             assert node_id in node_ids_used_by_e01_edges
+            assert node_id in node_ids_used_by_parallel01_edges
 
 
 if __name__ == '__main__':
