@@ -85,7 +85,7 @@ def _do_arax_query(query: str) -> List[Union[Response, Message]]:
     return [response, araxq.message]
 
 
-def _run_resultify_directly(query_graph: QueryGraph, knowledge_graph: KnowledgeGraph) -> Tuple[Response, Message]:
+def _run_resultify_directly(query_graph: QueryGraph, knowledge_graph: KnowledgeGraph, debug=False) -> Tuple[Response, Message]:
     response = Response()
     from actions_parser import ActionsParser
     actions_parser = ActionsParser()
@@ -102,14 +102,15 @@ def _run_resultify_directly(query_graph: QueryGraph, knowledge_graph: KnowledgeG
     parameters['debug'] = 'true'
     result = resultifier.apply(message, parameters)
     response.merge(result)
-    if response.status != 'OK':
+    if response.status != 'OK' or debug:
         print(response.show(level=response.DEBUG))
         _print_results_for_debug(message.results)
     return response, message
 
 
 def _convert_shorthand_to_qg(shorthand_qnodes: Dict[str, str], shorthand_qedges: Dict[str, str]) -> QueryGraph:
-    return QueryGraph(nodes=[QNode(id=qnode_id, is_set=is_set) for qnode_id, is_set in shorthand_qnodes.items()],
+    return QueryGraph(nodes=[QNode(id=qnode_id, is_set=bool(is_set))
+                             for qnode_id, is_set in shorthand_qnodes.items()],
                       edges=[QEdge(id=qedge_id, source_id=qnodes.split("--")[0], target_id=qnodes.split("--")[1])
                              for qedge_id, qnodes in shorthand_qedges.items()])
 
@@ -1037,13 +1038,14 @@ def test_issue731c():
 
 
 def test_issue740():
+    # Tests that self-edges are handled properly
     shorthand_qnodes = {"n00": "",
                         "n01": ""}
     shorthand_qedges = {"e00": "n00--n01"}
     query_graph = _convert_shorthand_to_qg(shorthand_qnodes, shorthand_qedges)
     shorthand_kg_nodes = {"n00": ["CUI:C0004572"],  # Babesia
                           "n01": ["HP:01", "HP:02", "CUI:C0004572"]}
-    shorthand_kg_edges = {"e00": ["CUI:C0004572--HP:01", "CUI:C0004572--HP:02", "CUI:C0004572--CUI:C0004572"]}  # Self-edge
+    shorthand_kg_edges = {"e00": ["CUI:C0004572--HP:01", "CUI:C0004572--HP:02", "CUI:C0004572--CUI:C0004572"]}
     knowledge_graph = _convert_shorthand_to_kg(shorthand_kg_nodes, shorthand_kg_edges)
     response, message = _run_resultify_directly(query_graph, knowledge_graph)
     assert response.status == 'OK'
@@ -1184,26 +1186,27 @@ def test_single_node():
 
 
 def test_parallel_edges_between_nodes():
-    shorthand_qnodes = {"n00": "",
-                        "n01": "is_set",
-                        "n02": ""}
-    shorthand_qedges = {"e00": "n00--n01",
-                        "e01": "n01--n02",
-                        "parallel01": "n01--n02"}
-    query_graph = _convert_shorthand_to_qg(shorthand_qnodes, shorthand_qedges)
-    shorthand_kg_nodes = {"n00": ["DOID:11830"],
-                          "n01": ["UniProtKB:P39060", "UniProtKB:P20849"],
-                          "n02": ["CHEBI:85164", "CHEBI:29057"]}
-    shorthand_kg_edges = {"e00": ["DOID:11830--UniProtKB:P39060", "DOID:11830--UniProtKB:P20849"],
-                          "e01": ["UniProtKB:P39060--CHEBI:85164", "UniProtKB:P20849--CHEBI:29057", "UniProtKB:P39060--CHEBI:29057"],
-                          "parallel01": ["UniProtKB:P39060--CHEBI:85164", "UniProtKB:P20849--CHEBI:29057", "UniProtKB:P39060--CHEBI:29057"]}
-    knowledge_graph = _convert_shorthand_to_kg(shorthand_kg_nodes, shorthand_kg_edges)
+    qg_nodes = {"n00": "",
+                "n01": "is_set",
+                "n02": ""}
+    qg_edges = {"e00": "n00--n01",
+                "e01": "n01--n02",
+                "parallel01": "n01--n02"}
+    query_graph = _convert_shorthand_to_qg(qg_nodes, qg_edges)
+    kg_nodes = {"n00": ["DOID:11830"],
+                "n01": ["UniProtKB:P39060", "UniProtKB:P20849"],
+                "n02": ["CHEBI:85164", "CHEBI:29057"]}
+    kg_edges = {"e00": ["DOID:11830--UniProtKB:P39060", "DOID:11830--UniProtKB:P20849"],
+                "e01": ["UniProtKB:P39060--CHEBI:85164", "UniProtKB:P20849--CHEBI:29057"],
+                "parallel01": ["UniProtKB:P39060--CHEBI:85164", "UniProtKB:P20849--CHEBI:29057", "UniProtKB:P39060--CHEBI:29057"]}
+    knowledge_graph = _convert_shorthand_to_kg(kg_nodes, kg_edges)
     response, message = _run_resultify_directly(query_graph, knowledge_graph)
     assert response.status == 'OK'
     kg_nodes_map = {node.id: node for node in message.knowledge_graph.nodes}
     kg_edges_map = {edge.id: edge for edge in message.knowledge_graph.edges}
     n02_nodes = {node_id for node_id, node in kg_nodes_map.items() if "n02" in node.qnode_ids}
     assert len(message.results) == len(n02_nodes)
+    # Make sure every n01 node is connected to both an e01 edge and a parallel01 edge in each result
     for result in message.results:
         result_nodes_by_qg_id = _get_result_nodes_by_qg_id(result, kg_nodes_map, message.query_graph)
         result_edges_by_qg_id = _get_result_edges_by_qg_id(result, kg_edges_map, message.query_graph)
