@@ -89,7 +89,7 @@ def _virtual_tester(message: Message, edge_type: str, relation: str, attribute_n
 def test_jaccard():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(curie=DOID:14330, id=n00)",
+        "add_qnode(curie=DOID:14717, id=n00)",
         "add_qnode(type=protein, is_set=true, id=n01)",
         "add_qnode(type=chemical_substance, id=n02)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
@@ -197,7 +197,7 @@ def test_compute_ngd_attribute():
 def test_FET_ex1():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(curie=DOID:14330, id=n00, type=disease)",
+        "add_qnode(curie=DOID:12889, id=n00, type=disease)",
         "add_qnode(type=protein, is_set=true, id=n01)",
         "add_qedge(source_id=n00, target_id=n01,id=e00)",
         "expand(edge_id=e00, kp=ARAX/KG1)",
@@ -240,10 +240,12 @@ def test_FET_ex1():
         assert query_exge.source_id in query_node_ids
         assert query_exge.target_id in query_node_ids
 
+
+@pytest.mark.slow
 def test_FET_ex2():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(curie=DOID:14330, id=n00, type=disease)",
+        "add_qnode(curie=DOID:12889, id=n00, type=disease)",
         "add_qnode(type=protein, id=n01)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "expand(edge_id=e00, kp=ARAX/KG1)",
@@ -257,7 +259,7 @@ def test_FET_ex2():
     edge_types_in_kg = Counter([x.type for x in message.knowledge_graph.edges])
     assert 'has_fisher_exact_test_p-value_with' in edge_types_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges if x.relation.find("FET") != -1]
-    assert len(FET_edges) == 20
+    assert len(FET_edges) >= 2
     FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 1
     for edge in FET_edges:
@@ -278,6 +280,8 @@ def test_FET_ex2():
         assert query_exge.source_id in query_node_ids
         assert query_exge.target_id in query_node_ids
 
+
+@pytest.mark.slow
 def test_paired_concept_frequency_virtual():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
@@ -295,6 +299,7 @@ def test_paired_concept_frequency_virtual():
     _virtual_tester(message, 'has_paired_concept_frequency_with', 'CP1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
 
 
+@pytest.mark.slow
 def test_paired_concept_frequency_attribute():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
@@ -312,6 +317,7 @@ def test_paired_concept_frequency_attribute():
     _attribute_tester(message, 'paired_concept_frequency', 'EDAM:data_0951', 2)
 
 
+@pytest.mark.slow
 def test_observed_expected_ratio_virtual():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
@@ -329,6 +335,7 @@ def test_observed_expected_ratio_virtual():
     _virtual_tester(message, 'has_observed_expected_ratio_with', 'CP1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
 
 
+@pytest.mark.slow
 def test_observed_expected_ratio_attribute():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
@@ -346,6 +353,7 @@ def test_observed_expected_ratio_attribute():
     _attribute_tester(message, 'observed_expected_ratio', 'EDAM:data_0951', 2)
 
 
+@pytest.mark.slow
 def test_chi_square_virtual():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
@@ -363,6 +371,7 @@ def test_chi_square_virtual():
     _virtual_tester(message, 'has_chi_square_with', 'CP1', 'chi_square', 'EDAM:data_0951', 2)
 
 
+@pytest.mark.slow
 def test_chi_square_attribute():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
@@ -383,10 +392,10 @@ def test_chi_square_attribute():
 def test_predict_drug_treats_disease_virtual():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(curie=DOID:1588, id=n0, type=disease)",
+        "add_qnode(curie=DOID:9008, id=n0, type=disease)",
         "add_qnode(type=chemical_substance, id=n1)",
         "add_qedge(source_id=n0, target_id=n1, id=e0)",
-        "expand(edge_id=e0)",
+        "expand(edge_id=e0, kp=ARAX/KG1)",
         "overlay(action=predict_drug_treats_disease, source_qnode_id=n1, target_qnode_id=n0, virtual_relation_label=P1)",
         "resultify()",
         "return(message=true, store=false)",
@@ -400,10 +409,10 @@ def test_predict_drug_treats_disease_virtual():
 def test_predict_drug_treats_disease_attribute():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(curie=DOID:1588, id=n0)",
+        "add_qnode(curie=DOID:9008, id=n0)",
         "add_qnode(type=chemical_substance, id=n1)",
         "add_qedge(source_id=n0, target_id=n1, id=e0)",
-        "expand(edge_id=e0)",
+        "expand(edge_id=e0, kp=ARAX/KG1)",
         "overlay(action=predict_drug_treats_disease)",
         "resultify()",
         "return(message=true, store=false)",
@@ -417,7 +426,7 @@ def test_predict_drug_treats_disease_attribute():
 def test_issue_832():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(curie=DOID:1588, id=n0)",
+        "add_qnode(curie=DOID:9008, id=n0)",
         "add_qnode(type=chemical_substance, id=n1)",
         "add_qedge(source_id=n0, target_id=n1, id=e0)",
         "expand(edge_id=e0)",
@@ -450,6 +459,7 @@ def test_issue_832_non_drug():
     assert 'probability_treats' not in edge_types_in_kg
 
 
+@pytest.mark.slow
 def test_issue_840():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
@@ -483,6 +493,7 @@ def test_issue_840():
     _attribute_tester(message, 'paired_concept_frequency', 'EDAM:data_0951', 2)
 
 
+@pytest.mark.slow
 def test_issue_840_non_drug():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
@@ -520,6 +531,8 @@ def test_issue_840_non_drug():
         for attribute in edge.edge_attributes:
             assert attribute.name != 'paired_concept_frequency'
 
+
+@pytest.mark.slow
 def test_issue_892():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "add_qnode(curie=DOID:11830, type=disease, id=n00)",
