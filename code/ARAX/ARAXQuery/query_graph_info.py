@@ -28,7 +28,7 @@ class QueryGraphInfo:
         self.node_type_map = None
         self.edge_type_map = None
 
-        self.query_graph_template = None
+        self.query_graph_templates = None
 
 
     #### Top level decision maker for applying filters
@@ -223,18 +223,24 @@ class QueryGraphInfo:
         self.edge_order = edge_order
 
         # Create a text rendering of the QueryGraph geometry for matching against a template
-        self.query_graph_template = ''
+        self.query_graph_templates = { 'simple': '', 'detailed': { 'n_nodes': len(node_order), 'components': [] } }
         node_index = 0
         edge_index = 0
+        #print(json.dumps(ast.literal_eval(repr(node_order)),sort_keys=True,indent=2))
         for node in node_order:
-            template_id = f"n{node_index:02}"
+            component_id = f"n{node_index:02}"
             content = ''
+            component = { 'component_type': 'node', 'component_id': component_id, 'has_curie': node['has_curie'], 'has_type': node['has_type'], 'type_value': None }
+            self.query_graph_templates['detailed']['components'].append(component)
             if node['has_curie']:
                 content = 'curie'
+            if node['has_type'] and node['node_object'].type is not None:
+                content = f"type={node['node_object'].type}"
+                component['type_value'] = node['node_object'].type
             elif node['has_type']:
                 content = 'type'
-            template_part = f"{template_id}({content})"
-            self.query_graph_template += template_part
+            template_part = f"{component_id}({content})"
+            self.query_graph_templates['simple'] += template_part
 
             # Since queries with intermediate nodes that are not is_set=true tend to blow up, for now, make them is_set=true unless explicitly set to false
             if node_index > 0 and node_index < (self.n_nodes - 1 ):
@@ -252,10 +258,14 @@ class QueryGraphInfo:
 
             node_index += 1
             if node_index < self.n_nodes:
-                self.query_graph_template += f"-e{edge_index:02}()-"
+                component_id = f"e{edge_index:02}"
+                template_part = f"-{component_id}()-"
+                self.query_graph_templates['simple'] += template_part
+                component = { 'component_type': 'edge', 'component_id': component_id, 'has_curie': False, 'has_type': False }
+                self.query_graph_templates['detailed']['components'].append(component)
                 edge_index += 1
 
-        response.debug(f"The QueryGraph reference template is: {self.query_graph_template}")
+        response.debug(f"The QueryGraph reference template is: {self.query_graph_templates['simple']}")
 
         #tmp = { 'node_info': node_info, 'edge_info': edge_info, 'start_node': start_node, 'n_nodes': self.n_nodes, 'n_edges': self.n_edges,
         #    'is_bifurcated_graph': self.is_bifurcated_graph, 'node_order': node_order, 'edge_order': edge_order }

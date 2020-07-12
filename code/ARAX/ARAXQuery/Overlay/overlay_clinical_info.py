@@ -99,7 +99,7 @@ class OverlayClinicalInfo:
         try:
             # edge attributes
             name = name
-            type = "data:0951"
+            type = "EDAM:data_0951"
             url = "http://cohd.smart-api.info/"
             value = default
 
@@ -126,6 +126,11 @@ class OverlayClinicalInfo:
                     target_OMOPs = [str(omop_id) for omop_id in res['OMOP concepts']]
                 else:
                     target_OMOPs = []
+                # for domain in ["Condition", "Drug", "Procedure"]:
+                #     source_OMOPs.update([str(x['concept_id']) for x in COHD.find_concept_ids(source_name, domain=domain, dataset_id=3)])
+                #     target_OMOPs.update([str(x['concept_id']) for x in COHD.find_concept_ids(target_name, domain=domain, dataset_id=3)])
+                #################################################
+                # FIXME: this was the old way
                 # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
                 # if source_curie.split('.')[0] == 'CHEMBL':
                 #     source_OMOPs = [str(x['concept_id']) for x in
@@ -133,6 +138,7 @@ class OverlayClinicalInfo:
                 # if target_curie.split('.')[0] == 'CHEMBL':
                 #     target_OMOPs = [str(x['concept_id']) for x in
                 #                     COHD.find_concept_ids(target_name, domain="Drug", dataset_id=3)]
+
                 # uniquify everything
                 source_OMOPs = list(set(source_OMOPs))
                 target_OMOPs = list(set(target_OMOPs))
@@ -222,12 +228,10 @@ class OverlayClinicalInfo:
             if hasattr(node, 'qnode_ids'):
                 if parameters['source_qnode_id'] in node.qnode_ids:
                     source_curies_to_decorate.add(node.id)
-                    curies_to_names[
-                        node.id] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
+                    curies_to_names[node.id] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
                 if parameters['target_qnode_id'] in node.qnode_ids:
                     target_curies_to_decorate.add(node.id)
-                    curies_to_names[
-                        node.id] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
+                    curies_to_names[node.id] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
         added_flag = False  # check to see if any edges where added
         # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
         for (source_curie, target_curie) in itertools.product(source_curies_to_decorate, target_curies_to_decorate):
