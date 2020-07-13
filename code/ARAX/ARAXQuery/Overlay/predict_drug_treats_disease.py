@@ -52,12 +52,10 @@ class PredictDrugTreatsDisease:
 
         self.pred = predictor(model_file=pkl_file)
         self.pred.import_file(None, graph_file=emb_file, map_file=map_file)
-        self.known_curies = set()
         with open(map_file, 'r') as infile:
             map_file_content = infile.readlines()
             map_file_content.pop(0) ## remove title
-            for line in map_file_content:
-                self.known_curies.add(line.strip().split('\t')[0])
+            self.known_curies = set(line.strip().split('\t')[0] for line in map_file_content)
 
         #self.pred = predictor(model_file=os.path.dirname(os.path.abspath(__file__))+'/predictor/LogModel.pkl')
         #self.pred.import_file(None, graph_file=os.path.dirname(os.path.abspath(__file__))+'/predictor/rel_max.emb.gz', map_file=os.path.dirname(os.path.abspath(__file__))+'/predictor/map.csv')
@@ -120,6 +118,7 @@ class PredictDrugTreatsDisease:
 
             added_flag = False  # check to see if any edges where added
             # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
+
             for (source_curie, target_curie) in itertools.product(source_curies_to_decorate, target_curies_to_decorate):
                 # create the edge attribute if it can be
                 # loop over all equivalent curies and take the highest probability
@@ -130,6 +129,7 @@ class PredictDrugTreatsDisease:
                         if probability and np.isfinite(probability):
                             if probability[0] > temp_value:
                                 temp_value = probability[0]
+
                 value = temp_value
                 #probability = self.pred.prob_single('ChEMBL:' + source_curie[22:], target_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
                 #if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
