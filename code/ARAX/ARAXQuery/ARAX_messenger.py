@@ -610,20 +610,39 @@ class ARAXMessenger:
         #### Create an index of edges in the knowledge_graph and collect some min,max stats
         kg_edges = {}
         score_stats = {}
+
+        #FIXME: This need to be refactored so that:
+        #    1. The attribute names are dynamically mapped to functions that handle their weightings (for ease of renaming attribute names)
+        #    2. Weighting of individual attributes (eg. "probability" should be trusted MUCH less than "probability_treats")
+        #    3. Auto-handling of normalizing scores to be in [0,1] (eg. observed_expected ration \in (-inf, inf) while probability \in (0,1)
+        #    4. Auto-thresholding of values (eg. if chi_square <0.05, penalize the most, if probability_treats < 0.8, penalize the most, etc.)
+        #    5. Allow for ranked answers (eg. observed_expected can have a single, huge value, skewing the rest of them
+
+        # Collect all edge attributes and keep track of their mins and maxes
         for edge in message.knowledge_graph.edges:
             kg_edges[edge.id] = edge
             if edge.edge_attributes is not None:
                 for edge_attribute in edge.edge_attributes:
-                    for attribute_name in [ 'probability', 'normalized_google_distance', 'jaccard_index', 'probability_drug_treats' ]:
+                    for attribute_name in [ 'probability', 'normalized_google_distance', 'jaccard_index',
+                                            'probability_treats', 'paired_concept_frequency',
+                                            'observed_expected_ratio', 'chi_square']:
                         if edge_attribute.name == attribute_name:
                             if attribute_name not in score_stats:
-                                score_stats[attribute_name] = { 'minimum': -9999, 'maximum': -9999 }
+                                score_stats[attribute_name] = {'minimum': None, 'maximum': None}  # FIXME: doesn't handle the case when all values are inf or NaN
                             value = float(edge_attribute.value)
-                            if np.isinf(value): value = 9999
-                            if score_stats[attribute_name]['minimum'] == -9999 or value < score_stats[attribute_name]['minimum']:
-                                score_stats[attribute_name]['minimum'] = value
-                            if score_stats[attribute_name]['maximum'] == -9999 or value > score_stats[attribute_name]['maximum']:
-                                score_stats[attribute_name]['maximum'] = value
+                            # TODO: don't set to max here, since returning inf for some edge attributes means "I have no data"
+                            #if np.isinf(value):
+                            #    value = 9999
+                            # initialize if not None already
+                            if not np.isinf(value) and not np.isinf(-value) and not np.isnan(value):  # Ignore inf, -inf, and nan
+                                if not score_stats[attribute_name]['minimum']:
+                                    score_stats[attribute_name]['minimum'] = value
+                                if not score_stats[attribute_name]['maximum']:
+                                    score_stats[attribute_name]['maximum'] = value
+                                if value > score_stats[attribute_name]['maximum']:
+                                    score_stats[attribute_name]['maximum'] = value
+                                if value < score_stats[attribute_name]['minimum']:
+                                    score_stats[attribute_name]['minimum'] = value
         response.info(f"Summary of available edge metrics: {score_stats}")
 
         # Iterate through the results
@@ -632,6 +651,8 @@ class ARAXMessenger:
             #response.debug(f"Metrics for result {i_result}  {result.essence}: ")
             score = 1.0
             best_probability = 0.0
+            eps = np.finfo(np.float).eps  # to avoid division by 0
+            penalize_factor = 0.7  # multiplicative factor to penalize by if the KS/KP return NaN or Inf indicating they haven't seen it before
             for edge in result.edge_bindings:
                 kg_edge_id = edge.kg_id
                 buf = ''
@@ -640,34 +661,84 @@ class ARAXMessenger:
                     score *= float(kg_edges[kg_edge_id].confidence)
                 if kg_edges[kg_edge_id].edge_attributes is not None:
                     for edge_attribute in kg_edges[kg_edge_id].edge_attributes:
+                        # FIXME: These are chemical_substance->protein binding probabilities, may not want be treating them like this....
                         if edge_attribute.name == 'probability':
                             value = float(edge_attribute.value)
                             buf += f" probability={edge_attribute.value}"
                             if value > best_probability:
                                 best_probability = value
-                        #if edge_attribute.name == 'probability_drug_treats':               # this is already put in confidence
-                        #    buf += f" probability_drug_treats={edge_attribute.value}"
-                        #    score *= value
                         if edge_attribute.name == 'normalized_google_distance':
                             ngd = float(edge_attribute.value)
-                            if np.isinf(ngd): ngd = 10.0
+                            if np.isinf(ngd):
+                                ngd = 10.0
                             buf += f" ngd={ngd}"
-                            factor = 1 - ( ngd - 0.3) * 0.6
-                            if factor < 0.01: factor = 0.01
-                            if factor > 1: factor = 1.0
+                            factor = 1 - (ngd - 0.3) * 0.6  # FIXME: What is this mystical formula?
+                            if factor < 0.01:
+                                factor = 0.01
+                            if factor > 1:
+                                factor = 1.0
                             buf += f" ngd_factor={factor}"
                             score *= factor
                         if edge_attribute.name == 'jaccard_index':
                             jaccard = float(edge_attribute.value)
-                            if np.isinf(jaccard): jaccard = 0.01
+                            if np.isinf(jaccard):
+                                jaccard = 0.01
                             factor = jaccard / score_stats['jaccard_index']['maximum'] * 0.9
                             buf += f" jaccard={jaccard}, factor={factor}"
                             score *= factor
+                        if edge_attribute.name == "probability_treats":
+                            prob_treats = float(edge_attribute.value)
+                            # Don't treat as a good prediction if the ML model returns a low value
+                            if prob_treats < penalize_factor:
+                                factor = penalize_factor
+                            else:
+                                factor = prob_treats
+                            score *= factor  # already a number between 0 and 1, so just multiply
+
+                        if edge_attribute.name == "paired_concept_frequency":
+                            paired_concept_freq = float(edge_attribute.value)
+                            if np.isinf(paired_concept_freq) or np.isnan(paired_concept_freq):
+                                factor = penalize_factor
+                            else:
+                                try:
+                                    factor = paired_concept_freq / score_stats['paired_concept_frequency']['maximum']
+                                except:
+                                    factor = paired_concept_freq / (score_stats['paired_concept_frequency']['maximum'] + eps)
+                            score *= factor
+                            buf += f" paired_concept_frequency={paired_concept_freq}, factor={factor}"
+                        if edge_attribute.name == 'observed_expected_ratio':
+                            obs_exp_ratio = float(edge_attribute.value)
+                            if np.isinf(obs_exp_ratio) or np.isnan(obs_exp_ratio):
+                                factor = penalize_factor  # Penalize for missing info
+                            # Would love to throw this into a sigmoid like function customized by the max value observed
+                            # for now, just throw into a sigmoid and see what happens
+                            factor = 1 / float(1 + np.exp(-4*obs_exp_ratio))
+                            score *= factor
+                            buf += f" observed_expected_ratio={obs_exp_ratio}, factor={factor}"
+                        if edge_attribute.name == 'chi_square':
+                            chi_square = float(edge_attribute.value)
+                            if np.isinf(chi_square) or np.isnan(chi_square):
+                                factor = penalize_factor
+                            else:
+                                try:
+                                    factor = 1 - (chi_square / score_stats['chi_square']['maximum'])  # lower is better
+                                except:
+                                    factor = 1 - (chi_square / (score_stats['chi_square']['maximum'] + eps))  # lower is better
+                            score *= factor
+                            buf += f" chi_square={chi_square}, factor={factor}"
+                        #print(score_stats)
+                        #print(score)
+                        #print(buf)
+
+
                 #response.debug(f"  - {kg_edge_id}  {buf}")
 
             # #### If there was a best_probability recorded, then multiply times the running score
-            if best_probability > 0.0:
-                score *= best_probability
+            #if best_probability > 0.0:
+            #    score *= best_probability
+            # FIXME: hack to get around low probabilities, will be fixed after ranker re-factor
+            if score < 0.5:
+                score += 0.5
 
             # #### Make all scores at least 0.01. This is all way low anyway, but let's not have anything that rounds to zero
             if score < 0.01:
