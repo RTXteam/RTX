@@ -1,7 +1,5 @@
 '''This module defines the class Query_ICEES to
-communicate with the ICEES API(3.0.0) to obtain drug - chemical-substance association
-between PUBCHEM:2083 and PUBCHEM:281.
-
+communicate with the ICEES API(3.0.0).
 '''
 
 __author__ = 'Mayank Murali'
@@ -17,19 +15,9 @@ import requests
 import re
 import json
 import sys
-import urllib.parse
 import unittest
 
 #from cache_control_helper import CacheControlHelper
-
-# input json file
-with open('Input.json') as f1:
-    input_data = json.load(f1)
-#print(input_data)
-
-# response json file
-with open('response_1593100927743.json') as f2:
-    output_data = json.load(f2)
    
 
 #main class 
@@ -37,38 +25,39 @@ class Query_ICEES:
     API_BASE_URL = 'https://icees.renci.org:16340/'
 
     HANDLER_MAP = {
-        'get_feature_identifiers':               '/{table}/{feature}/identifiers',
-        'get_cohort_definition':                 '/{table}/{year}/cohort/{cohort_id}',
-        'get_cohort_based_feature_profile':      '/{table}/{year}/cohort/{cohort_id}/features',
-        'get_cohort_dictionary':                 '/{table}/{year}/cohort/dictionary',
-        'get_cohort_id_from_name':               '/{table}/name/{name}',
-        'post_knowledge_graph_overlay':          '/knowledge_graph_overlay',
-        'query_ICEES_kg_schema':                 '/knowledge_graph/schema',
+        'get_feature_identifiers':               '{table}/{feature}/identifiers',
+        'get_cohort_definition':                 '{table}/{year}/cohort/{cohort_id}',
+        'get_cohort_based_feature_profile':      '{table}/{year}/cohort/{cohort_id}/features',
+        'get_cohort_dictionary':                 '{table}/{year}/cohort/dictionary',
+        'get_cohort_id_from_name':               '{table}/name/{name}',
+        'post_knowledge_graph_overlay':          'knowledge_graph_overlay',
+        'query_ICEES_kg_schema':                 'knowledge_graph/schema',
     }
  
     
     @staticmethod
     def __access_api(handler, url_suffix, query):
         
-        #requests = CacheControlHelper()
-        #url = Query_ICEES.API_BASE_URL + handler + '?' + url_suffix
         try:
-            url = 'https://icees.renci.org:16340/knowledge_graph_overlay'
-            #requests.get(url, verify='/path/to/certfile')
+            #requests = CacheControlHelper()
+            url = Query_ICEES.API_BASE_URL + handler+ url_suffix
             response_content = requests.post(url, json=query, headers={'accept': 'application/json'}, verify=False)
-        
+            print(f"Executing query at {url}\nPlease wait...")
+            
             status_code = response_content.status_code
             if status_code != 200:
-                print("Error returned with status "+str(status_code))
+                print("Error returned with status \n"+str(status_code))
             else:
-                print(f"Response returned with status {status_code}")
+                print(f"Response returned with status\n"+str(status_code))
          
             response_dict = response_content.json()
-            print(response_content.json())
-            
-                
-            output_json = json.dumps(response_dict)
+        
+            #output_json = json.dumps(response_dict)    
+            print(json.dumps(response_dict, indent=2, sort_keys=True))
             return response_dict
+                
+            
+
         except requests.exceptions.HTTPError as httpErr: 
             print ("Http Error:",httpErr) 
         except requests.exceptions.ConnectionError as connErr: 
@@ -84,16 +73,10 @@ class Query_ICEES:
         if not isinstance(table, str) or not isinstance(feature, str):
             return []
         handler = Query_ICEES.HANDLER_MAP['get_feature_identifiers']
-
-        # TODO: Add handler and url_suffix
+        url_suffix = ''
 
         res_json = Query_ICEES.__access_api(handler, url_suffix)
-        results_list = []
-        if res_json is not None:
-            results = res_json.get('results', None)
-            if results is not None and type(results) == list:
-                results_list = results
-        return results_list
+        return res_json
        
 
     @staticmethod
@@ -102,16 +85,10 @@ class Query_ICEES:
         if not isinstance(table, str) or not isinstance(year, int) or not isinstance(cohort_id, str):
             return []
         handler = Query_ICEES.HANDLER_MAP['get_cohort_definition']
-
-        # TODO: Add handler and url_suffix
+        url_suffix = ''
 
         res_json = Query_ICEES.__access_api(handler, url_suffix)
-        results_list = []
-        if res_json is not None:
-            results = res_json.get('results', None)
-            if results is not None and type(results) == list:
-                results_list = results
-        return results_list
+        return res_json
 
     @staticmethod
     def get_cohort_based_feature_profile( cohort_id, table, year):
@@ -119,16 +96,10 @@ class Query_ICEES:
         if not isinstance(table, str) or not isinstance(year, int) or not isinstance(cohort_id, str):
             return []
         handler = Query_ICEES.HANDLER_MAP['get_cohort_based_feature_profile']
-
-        # TODO: Add handler and url_suffix
+        url_suffix = ''
 
         res_json = Query_ICEES.__access_api(handler, url_suffix)
-        results_list = []
-        if res_json is not None:
-            results = res_json.get('results', None)
-            if results is not None and type(results) == list:
-                results_list = results
-        return results_list
+        return res_json
 
     @staticmethod
     def get_cohort_dictionary(table, year):
@@ -136,16 +107,10 @@ class Query_ICEES:
         if not isinstance(table, str) or not isinstance(year, int):
             return []
         handler = Query_ICEES.HANDLER_MAP['get_cohort_dictionary']
-
-        # TODO: Add handler and url_suffix
+        url_suffix = ''
 
         res_json = Query_ICEES.__access_api(handler, url_suffix)
-        results_list = []
-        if res_json is not None:
-            results = res_json.get('results', None)
-            if results is not None and type(results) == list:
-                results_list = results
-        return results_list
+        return res_json
 
     @staticmethod
     def get_cohort_id_from_name(name, table):
@@ -153,39 +118,58 @@ class Query_ICEES:
         if not isinstance(table, str) or not isinstance(name, str):
             return []
         handler = Query_ICEES.HANDLER_MAP['get_cohort_id_from_name']
-
-        # TODO: Add handler and url_suffix
+        url_suffix = ''
 
         res_json = Query_ICEES.__access_api(handler, url_suffix)
-        results_list = []
-        if res_json is not None:
-            results = res_json.get('results', None)
-            if results is not None and type(results) == list:
-                results_list = results
-        return results_list
+        return res_json
 
     @staticmethod
     def query_ICEES_kg_schema():
                         
         handler = Query_ICEES.HANDLER_MAP['query_ICEES_kg_schema']
-        handler = 'apidocs/#/default'
-        url_suffix = 'get_knowledge_graph_schema'
+        url_suffix = ''
 
         res_json = Query_ICEES.__access_api(handler, url_suffix)
-        results_list = []
-        if res_json is not None:
-            results = res_json.get('results', None)
-            if results is not None and type(results) == list:
-                results_list = results
-        return results_list
+        return res_json
 
     @staticmethod
-    def post_knowledge_graph_overlay(body):
-                        
+    def post_knowledge_graph_overlay(query):
+        
+        '''
+        ICEES compatible query looks like this
+        
+        query =     {
+                        "message": {
+                            "knowledge_graph": {
+                                "nodes": [
+                                    {
+                                        "node_id": "n00",
+                                        "curie": "PUBCHEM:2083",
+                                        "type": "drug"
+                                    },
+                                    {
+                                        "node_id": "n01",
+                                        "curie": "PUBCHEM:281",
+                                        "type": "chemical_substance"
+                                    }  
+                                ],
+                                "edges": [
+                                    {
+                                        "id": "e00",
+                                        "type": "association",
+                                        "source_id": "n00",
+                                        "target_id": "n01"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+        '''
+        
         handler = Query_ICEES.HANDLER_MAP['post_knowledge_graph_overlay']
         url_suffix = ''
-        Query_ICEES.__access_api(handler, url_suffix, body)
-
+        res_json = Query_ICEES.__access_api(handler, url_suffix, query)
+        return res_json
 
 # Class to test the query output 
 class test_query(unittest.TestCase):
@@ -194,7 +178,11 @@ class test_query(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    print(Query_ICEES.post_knowledge_graph_overlay(input_data))
-    unittest.main()
+    Query_ICEES.post_knowledge_graph_overlay(query)
+    
+   
+    
+    #Testing the query 
+    #unittest.main()
 
             
