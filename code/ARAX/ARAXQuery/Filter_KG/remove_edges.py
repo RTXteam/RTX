@@ -259,9 +259,9 @@ class RemoveEdges:
                     #print(mean)
                     #print(std)
                     if edge_params['top']:
-                        i = 1
+                        i = 1 * edge_params['threshold']
                     else:
-                        i = -1
+                        i = -1 * edge_params['threshold']
                     val = mean + i*std
                     #print(val)
                     if edge_params['direction'] == 'above':

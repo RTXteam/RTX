@@ -424,6 +424,7 @@ This can be applied to an arbitrary knowledge graph as possible edge attributes 
                                     'type': {'n', 'std', 'std_dev', 'percentile', 'p'},
                                     'direction': {'above', 'below'},
                                     'threshold': {float()},
+                                    'top': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'qnode_id':set([t for x in self.message.knowledge_graph.nodes if x.qnode_ids is not None for t in x.qnode_ids])
                                     }
@@ -433,6 +434,7 @@ This can be applied to an arbitrary knowledge graph as possible edge attributes 
                                     'type': {'n', 'top_n', 'std', 'top_std'},
                                     'direction': {'above', 'below'},
                                     'threshold': {'a floating point number'},
+                                    'top': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'qnode_id':{'a specific query node id to remove'}
                                     }
@@ -469,10 +471,28 @@ else, only remove a single source/target node based on a query node id (via `rem
         if self.response.status != 'OK' or resp == -1:
             return self.response
 
+        supplied_threshhold = None
+        supplied_direction = None
+        supplied_top = None
+
         if 'threshold' in edge_params:
+            try:
+                edge_params['threshold'] = float(edge_params['threshold'])
+            except:
+                tb = traceback.format_exc()
+                error_type, error, _ = sys.exc_info()
+                self.response.error(tb, error_code=error_type.__name__)
+                self.response.error(f"parameter 'threshold' must be a float")
+            if self.response.status != 'OK':
+                return self.response
             supplied_threshhold = edge_params['threshold']
         if 'direction' in edge_params:
             supplied_direction = edge_params['direction']
+        if 'top' in edge_params:
+            if edge_params['top'] in {'true', 'True', 't', 'T'}:
+                supplied_top = True
+            elif edge_params['top'] in {'false', 'False', 'f', 'F'}:
+                supplied_top = False
 
         if 'remove_connected_nodes' in edge_params:
             value = edge_params['remove_connected_nodes']
@@ -526,6 +546,8 @@ else, only remove a single source/target node based on a query node id (via `rem
             edge_params['threshold'] = supplied_threshhold
         if supplied_direction is not None:
             edge_params['direction'] = supplied_direction
+        if supplied_top is not None:
+            edge_params['top'] = supplied_top
 
         if self.response.status != 'OK':
             return self.response
