@@ -20,6 +20,19 @@ class RemoveEdges:
         self.message = message
         self.edge_parameters = edge_params
 
+    def check_kg_nodes(self):
+        qids = {}
+        for node in self.message.query_graph.nodes:
+            qids[node.id] = 0
+        for node in self.message.knowledge_graph.nodes:
+            if node.qnode_ids is not None:
+                for qid in node.qnode_ids:
+                    qids[qid] += 1
+        for k, v in qids.items():
+            if v == 0:
+                self.response.error(f"Fiter removed all of the nodes in the knowledge graph with the qnode id {k}", error_code="RemovedQueryNode")
+
+
     def remove_edges_by_type(self):
         """
         Iterate over all the edges in the knowledge graph, remove any edges matching the discription provided.
@@ -67,6 +80,7 @@ class RemoveEdges:
                     if edge.source_id in node_ids_to_remove or edge.target_id in node_ids_to_remove:
                         edges_to_remove.add(i)
                     i += 1
+                self.check_kg_nodes()
             # remove edges
             self.message.knowledge_graph.edges = [val for idx,val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]
         except:
@@ -134,6 +148,7 @@ class RemoveEdges:
                     if edge.source_id in node_ids_to_remove or edge.target_id in node_ids_to_remove:
                         edges_to_remove.add(i)
                     i += 1
+                self.check_kg_nodes()
             # remove edges
             self.message.knowledge_graph.edges = [val for idx,val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]
         except:
@@ -207,6 +222,7 @@ class RemoveEdges:
                     else:
                         c += 1
                     i += 1
+                self.check_kg_nodes()
             # remove edges
             self.message.knowledge_graph.edges = [val for idx,val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]
         except:
@@ -314,6 +330,7 @@ class RemoveEdges:
                     else:
                         c += 1
                     i += 1
+                self.check_kg_nodes()
             # remove edges
             self.message.knowledge_graph.edges = [val for idx,val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]
         except:
