@@ -182,7 +182,7 @@ class predictor():
                     continue
 
             X = np.array(X_list)
-            return self.predict(X)
+            return list(self.predict(X))
         else:
 
             return None
