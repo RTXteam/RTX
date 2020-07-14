@@ -119,9 +119,10 @@ class PredictDrugTreatsDisease:
 
                 max_probability = 0
                 res = list(itertools.product(self.convert_to_trained_curies(source_curie), self.convert_to_trained_curies(target_curie)))
-                all_probabilities = self.pred.prob_all(res)
-                if isinstance(all_probabilities, list):
-                    max_probability = max([value for value in all_probabilities if np.isfinite(value)])
+                if len(res) != 0:
+                    all_probabilities = self.pred.prob_all(res)
+                    if isinstance(all_probabilities, list):
+                        max_probability = max([value for value in all_probabilities if np.isfinite(value)])
 
                 value = max_probability
 
@@ -189,9 +190,10 @@ class PredictDrugTreatsDisease:
 
                         max_probability = 0
                         res = list(itertools.product(self.convert_to_trained_curies(source_curie), self.convert_to_trained_curies(target_curie)))
-                        all_probabilities = self.pred.prob_all(res)
-                        if isinstance(all_probabilities, list):
-                            max_probability = max([value for value in all_probabilities if np.isfinite(value)])
+                        if len(res) != 0:
+                            all_probabilities = self.pred.prob_all(res)
+                            if isinstance(all_probabilities, list):
+                                max_probability = max([value for value in all_probabilities if np.isfinite(value)])
 
                         value = max_probability
 
@@ -205,9 +207,10 @@ class PredictDrugTreatsDisease:
 
                         max_probability = 0
                         res = list(itertools.product(self.convert_to_trained_curies(source_curie), self.convert_to_trained_curies(target_curie)))
-                        all_probabilities = self.pred.prob_all(res)
-                        if isinstance(all_probabilities, list):
-                            max_probability = max([value for value in all_probabilities if np.isfinite(value)])
+                        if len(res) != 0:
+                            all_probabilities = self.pred.prob_all(res)
+                            if isinstance(all_probabilities, list):
+                                max_probability = max([value for value in all_probabilities if np.isfinite(value)])
 
                         value = max_probability
 
