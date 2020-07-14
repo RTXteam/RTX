@@ -57,6 +57,7 @@ def test_warning():
     assert response.status == 'OK'
     assert len(message.results) == 20
 
+@pytest.mark.slow
 def test_default_std_dev():
     query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
@@ -88,6 +89,7 @@ def test_default_std_dev():
     assert len(vals) == comp_len
     assert np.min(vals) >= comp_val
 
+@pytest.mark.slow
 def test_std_dev():
     query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
