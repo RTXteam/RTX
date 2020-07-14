@@ -37,11 +37,11 @@ class PredictDrugTreatsDisease:
             os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/LogModel.pkl " + pkl_file)
 
         ## check if there is rel_max.emb.gz
-        emb_file = f"{filepath}/rel_max.emb.gz"
-        if os.path.exists(emb_file):
+        db_file = f"{filepath}/GRAPH.sqlite"
+        if os.path.exists(db_file):
             pass
         else:
-            os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/rel_max.emb.gz " + emb_file)
+            os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/GRAPH.sqlite " + db_file)
 
         ## check if there is map.txt
         map_file = f"{filepath}/map.txt"
@@ -51,18 +51,12 @@ class PredictDrugTreatsDisease:
             os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/map.txt " + map_file)
 
         self.pred = predictor(model_file=pkl_file)
-        self.pred.import_file(None, graph_file=emb_file, map_file=map_file)
+        self.pred.import_file(None, graph_database=db_file)
         with open(map_file, 'r') as infile:
             map_file_content = infile.readlines()
             map_file_content.pop(0) ## remove title
             self.known_curies = set(line.strip().split('\t')[0] for line in map_file_content)
 
-        #self.pred = predictor(model_file=os.path.dirname(os.path.abspath(__file__))+'/predictor/LogModel.pkl')
-        #self.pred.import_file(None, graph_file=os.path.dirname(os.path.abspath(__file__))+'/predictor/rel_max.emb.gz', map_file=os.path.dirname(os.path.abspath(__file__))+'/predictor/map.csv')
-        # self.known_curies = set()
-        # with open(os.path.dirname(os.path.abspath(__file__))+'/predictor/map.csv', 'r') as map_file:
-        #     for line in map_file.readlines():
-        #         self.known_curies.add(line.strip().split(',')[0])
         self.synonymizer = NodeSynonymizer()
 
     def convert_to_trained_curies(self, input_curie):
@@ -122,15 +116,15 @@ class PredictDrugTreatsDisease:
             for (source_curie, target_curie) in itertools.product(source_curies_to_decorate, target_curies_to_decorate):
                 # create the edge attribute if it can be
                 # loop over all equivalent curies and take the highest probability
-                temp_value = 0
-                for equiv_source_curie in self.convert_to_trained_curies(source_curie):
-                    for equiv_target_curie in self.convert_to_trained_curies(target_curie):
-                        probability = self.pred.prob_single(equiv_source_curie, equiv_target_curie)
-                        if probability and np.isfinite(probability):
-                            if probability[0] > temp_value:
-                                temp_value = probability[0]
 
-                value = temp_value
+                max_probability = 0
+                res = list(itertools.product(self.convert_to_trained_curies(source_curie), self.convert_to_trained_curies(target_curie)))
+                all_probabilities = self.pred.prob_all(res)
+                if isinstance(all_probabilities, list):
+                    max_probability = max([value for value in all_probabilities if np.isfinite(value)])
+
+                value = max_probability
+
                 #probability = self.pred.prob_single('ChEMBL:' + source_curie[22:], target_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
                 #if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
                 #    value = probability[0]
@@ -192,13 +186,15 @@ class PredictDrugTreatsDisease:
                     if "chemical_substance" in source_types and (("disease" in target_types) or ("phenotypic_feature" in target_types)):
                         temp_value = 0
                         # loop over all pairs of equivalent curies and take the highest probability
-                        for equiv_source_curie in self.convert_to_trained_curies(source_curie):
-                            for equiv_target_curie in self.convert_to_trained_curies(target_curie):
-                                probability = self.pred.prob_single(equiv_source_curie, equiv_target_curie)
-                                if probability and np.isfinite(probability):
-                                    if probability[0] > temp_value:
-                                        temp_value = probability[0]
-                        value = temp_value
+
+                        max_probability = 0
+                        res = list(itertools.product(self.convert_to_trained_curies(source_curie), self.convert_to_trained_curies(target_curie)))
+                        all_probabilities = self.pred.prob_all(res)
+                        if isinstance(all_probabilities, list):
+                            max_probability = max([value for value in all_probabilities if np.isfinite(value)])
+
+                        value = max_probability
+
                         #probability = self.pred.prob_single('ChEMBL:' + source_curie[22:], target_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
                         #if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
                         #    value = probability[0]
@@ -206,15 +202,15 @@ class PredictDrugTreatsDisease:
                         #probability = self.pred.prob_single('ChEMBL:' + target_curie[22:], source_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
                         #if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
                         #    value = probability[0]
-                        temp_value = 0
-                        # loop over all pairs of equivalent curies and take the highest probability
-                        for equiv_source_curie in self.convert_to_trained_curies(target_curie):
-                            for equiv_target_curie in self.convert_to_trained_curies(source_curie):
-                                probability = self.pred.prob_single(equiv_source_curie, equiv_target_curie)
-                                if probability and np.isfinite(probability):
-                                    if probability[0] > temp_value:
-                                        temp_value = probability[0]
-                        value = temp_value
+
+                        max_probability = 0
+                        res = list(itertools.product(self.convert_to_trained_curies(source_curie), self.convert_to_trained_curies(target_curie)))
+                        all_probabilities = self.pred.prob_all(res)
+                        if isinstance(all_probabilities, list):
+                            max_probability = max([value for value in all_probabilities if np.isfinite(value)])
+
+                        value = max_probability
+
                     else:
                         continue
                     if value != 0:
