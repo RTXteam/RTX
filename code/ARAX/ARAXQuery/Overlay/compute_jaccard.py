@@ -88,7 +88,7 @@ class ComputeJaccard:
 
             # edge attribute properties
             description = f"Jaccard index based on intermediate query nodes {parameters['intermediate_node_id']}"
-            attribute_type = 'data:1772'
+            attribute_type = 'EDAM:data_1772'
             name = "jaccard_index"
             url = None
 

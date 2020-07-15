@@ -52,7 +52,7 @@ class ComputeNGD:
 
         self.response.warning(f"Utilizing API calls to NCBI eUtils, so this may take a while...")
         name = "normalized_google_distance"
-        type = "data:2526"
+        type = "EDAM:data_2526"
         value = self.parameters['default_value']
         url = "https://arax.rtx.ai/api/rtx/v1/ui/#/PubmedMeshNgd"
         ngd_method_counts = {"fast": 0, "slow": 0}
