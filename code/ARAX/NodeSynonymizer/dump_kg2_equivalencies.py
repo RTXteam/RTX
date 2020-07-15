@@ -1,7 +1,7 @@
 #!/bin/env python3
 """
-This script creates a TSV of node pairs linked by an 'equivalent_to' relationship in KG2. The TSV file is created in
-the same directory the script is run from. Example of rows in the output file:
+This script creates a TSV of node pairs linked by an 'equivalent_to'/'same_as' relationship in KG2. The TSV file is
+created in the same directory the script is run from. Example of rows in the output file:
 CUI:C0027358	CUI:C0014563
 CUI:C0878440	CUI:C0014563
 Usage: python dump_kg2_equivalencies.py
@@ -40,9 +40,8 @@ def _run_cypher_query(cypher_query: str, kg="KG2") -> List[Dict[str, any]]:
 
 
 def dump_kg2_equivalencies():
-    # This function creates a TSV file of node pairs linked by an 'equivalent_to' relationship in KG2
-    equivalency_predicate = "equivalent_to"  # NOTE: This will change to "same_as" with new KG2 build, I think...
-    cypher_query = f"match (n1)-[:{equivalency_predicate}]->(n2) return distinct n1.id, n2.id"
+    # This function creates a TSV file of node pairs linked by an 'equivalent_to' or 'same_as' relationship in KG2
+    cypher_query = f"match (n1)-[:equivalent_to|:same_as]->(n2) return distinct n1.id, n2.id"
     equivalent_node_pairs = _run_cypher_query(cypher_query)
     if equivalent_node_pairs:
         column_headers = equivalent_node_pairs[0].keys()
