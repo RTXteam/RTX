@@ -43,19 +43,20 @@ class PredictDrugTreatsDisease:
         else:
             os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/GRAPH.sqlite " + db_file)
 
+        ## we don't need the 'map.txt' file because we can use synonymizer
         ## check if there is map.txt
-        map_file = f"{filepath}/map.txt"
-        if os.path.exists(map_file):
-            pass
-        else:
-            os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/map.txt " + map_file)
+        # map_file = f"{filepath}/map.txt"
+        # if os.path.exists(map_file):
+        #     pass
+        # else:
+        #     os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/map.txt " + map_file)
 
         self.pred = predictor(model_file=pkl_file)
         self.pred.import_file(None, graph_database=db_file)
-        with open(map_file, 'r') as infile:
-            map_file_content = infile.readlines()
-            map_file_content.pop(0) ## remove title
-            self.known_curies = set(line.strip().split('\t')[0] for line in map_file_content)
+        # with open(map_file, 'r') as infile:
+        #     map_file_content = infile.readlines()
+        #     map_file_content.pop(0) ## remove title
+        #     self.known_curies = set(line.strip().split('\t')[0] for line in map_file_content)
 
         self.synonymizer = NodeSynonymizer()
 
@@ -63,22 +64,22 @@ class PredictDrugTreatsDisease:
         """
         Takes an input curie from the KG, uses the synonymizer, and then returns something that the map.csv can handle
         """
-        curies_in_model = set()
-        normalizer_result = self.synonymizer.get_normalizer_results(input_curie, kg_name='KG1')  # TODO: Figure out if this is the right kg_name to be using
-        equivalent_curies = []  # start with empty equivalent_curies
-        try:
-            equivalent_curies = [x['identifier'] for x in normalizer_result[input_curie]['equivalent_identifiers']]
-        except:
-            self.response.warning(f"NodeSynonmizer could not find curies for {input_curie}, skipping this one.")
-        for curie in equivalent_curies:
-            curie_prefix = curie.split(':')[0]
-            # FIXME: fix this when re-training the ML model, as when this was originally trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
-            if curie_prefix == "CHEMBL.COMPOUND":
-                chembl_fix = 'ChEMBL:' + curie[22:]
-                if chembl_fix in self.known_curies:
-                    curies_in_model.add(chembl_fix)
-            elif curie in self.known_curies:
-                curies_in_model.add(curie)
+        normalizer_result = self.synonymizer.get_equivalent_nodes(input_curie, kg_name='KG2')
+        curies_in_model = normalizer_result[input_curie]
+        # equivalent_curies = []  # start with empty equivalent_curies
+        # try:
+        #     equivalent_curies = [x['identifier'] for x in normalizer_result[input_curie]['equivalent_identifiers']]
+        # except:
+        #     self.response.warning(f"NodeSynonmizer could not find curies for {input_curie}, skipping this one.")
+        # for curie in equivalent_curies:
+        #     curie_prefix = curie.split(':')[0]
+        #     # FIXME: fix this when re-training the ML model, as when this was originally trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
+        #     if curie_prefix == "CHEMBL.COMPOUND":
+        #         chembl_fix = 'ChEMBL:' + curie[22:]
+        #         if chembl_fix in self.known_curies:
+        #             curies_in_model.add(chembl_fix)
+        #     elif curie in self.known_curies:
+        #         curies_in_model.add(curie)
         return curies_in_model
 
     def predict_drug_treats_disease(self):
