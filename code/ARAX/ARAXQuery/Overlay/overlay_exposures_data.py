@@ -3,6 +3,7 @@
 This class overlays the knowledge graph with clinical exposures data from ICEES+. It currently adds the data in
 EdgeAttributes tacked onto existing edges.
 """
+import itertools
 import json
 import sys
 import os
@@ -15,6 +16,8 @@ from swagger_server.models.edge import Edge
 from swagger_server.models.node import Node
 from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.edge_attribute import EdgeAttribute
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer/")
+from node_synonymizer import NodeSynonymizer
 
 
 class OverlayExposuresData:
@@ -36,6 +39,7 @@ class OverlayExposuresData:
         else:
             log.warning(f"Could not find any edges appropriate to query ICEES+ for")
             return self.response
+        # TODO: Adjust to query node pairs... (otherwise duplicating effort for parallel edges..)
 
         # Grab our synonyms in one up front batch
         node_ids_used_by_edges = {edge.source_id for edge in relevant_edges}.union(edge.target_id for edge in relevant_edges)
@@ -45,41 +49,38 @@ class OverlayExposuresData:
         # Query ICEES for each edge in the knowledge graph that might have exposures data
         num_edges_obtained_icees_data_for = 0
         for edge in relevant_edges:
-            source_node = nodes_map.get(edge.source_id)
-            target_node = nodes_map.get(edge.target_id)
-
             # Try to find a curie of the type (prefix) ICEES likes
-            source_synonyms = synonyms_dict.get(source_node.id, [source_node.id])
-            target_synonyms = synonyms_dict.get(target_node.id, [target_node.id])
+            source_synonyms = synonyms_dict.get(edge.source_id, [edge.source_id])
+            target_synonyms = synonyms_dict.get(edge.target_id, [edge.target_id])
             formatted_source_synonyms = [self._convert_curie_to_icees_preferred_format(curie) for curie in source_synonyms]
             formatted_target_synonyms = [self._convert_curie_to_icees_preferred_format(curie) for curie in target_synonyms]
             accepted_source_synonyms = [curie for curie in formatted_source_synonyms if self._has_accepted_prefix(curie)]
             accepted_target_synonyms = [curie for curie in formatted_target_synonyms if self._has_accepted_prefix(curie)]
             if not accepted_source_synonyms or not accepted_target_synonyms:
-                log.warning(f"Could not find synonyms that ICEES accepts for edge {edge.source_id}--{edge.target_id}")
+                log.warning(f"Could not find curies that ICEES accepts for edge {edge.source_id}--{edge.target_id}")
                 return self.response
 
-            # Create a query graph to send to ICEES
-            source_curie_to_use = accepted_source_synonyms[0]
-            target_curie_to_use = accepted_target_synonyms[0]
-            edge_query_graph = QueryGraph(nodes=[QNode(id=source_node.id, curie=source_curie_to_use),
-                                                 QNode(id=target_node.id, curie=target_curie_to_use)],
-                                          edges=[QEdge(id=f"icees_{edge.id}", source_id=source_curie_to_use, target_id=target_curie_to_use)])
-            log.debug(f"Sending query to ICEES+ for edge {edge.source_id}--{edge.target_id}")
+            for source_curie_to_try, target_curie_to_try in itertools.product(accepted_source_synonyms, accepted_target_synonyms):
+                # Create a query graph to send to ICEES (note: they currently accept a sort of hybrid of a QG and a KG)
+                edge_query_graph = QueryGraph(nodes=[QNode(id=source_curie_to_try, curie=source_curie_to_try),
+                                                     QNode(id=target_curie_to_try, curie=target_curie_to_try)],
+                                              edges=[QEdge(id=f"icees_{edge.id}", source_id=source_curie_to_try, target_id=target_curie_to_try)])
 
-            # Send the query to ICEES and process results
-            returned_kg = self._get_exposures_data(edge_query_graph)
-            if returned_kg:
-                log.debug(f"Got exposures data back from ICEES+ for edge {edge.source_id}--{edge.target_id}")
-                num_edges_obtained_icees_data_for += 1
-                for returned_edge in returned_kg.edges:
-                    # TODO: They provide edges in both directions (seem to have identical p-values)... should we only keep one direction?
-                    if not returned_edge.source_id == returned_edge.target_id:  # Exclude self-edges
-                        # Add the data as a new EdgeAttribute on the current edge
-                        if edge.edge_attributes:
+                # Send the query to ICEES and process results
+                log.debug(f"Sending query to ICEES+ for {source_curie_to_try}--{target_curie_to_try}")
+                returned_kg = self._get_exposures_data_for_edge(edge_query_graph)
+                if returned_kg:
+                    num_edges_obtained_icees_data_for += 1
+                    log.debug(f"Got data back from ICEES+ for this edge")
+                    for returned_edge in returned_kg.edges:
+                        # TODO: They provide edges in both directions (seem to have identical p-values)... should we only keep one direction?
+                        if not returned_edge.source_id == returned_edge.target_id:  # Exclude self-edges
+                            # Add the data as a new EdgeAttribute on the current edge
+                            if not edge.edge_attributes:
+                                edge.edge_attributes = []
                             edge.edge_attributes += returned_edge.edge_attributes
-                        else:
-                            edge.edge_attributes = returned_edge.edge_attributes
+                    # Don't worry about checking remaining synonym combos if we got results
+                    break
 
         if num_edges_obtained_icees_data_for:
             log.info(f"Overlayed {num_edges_obtained_icees_data_for} edges with exposures data from ICEES+")
@@ -89,7 +90,7 @@ class OverlayExposuresData:
         return self.response
 
     @staticmethod
-    def _get_exposures_data(query_graph):
+    def _get_exposures_data_for_edge(query_graph):
         # Note: ICEES doesn't quite accept ReasonerStdAPI, so we transform to what works
         edges = [edge.to_dict() for edge in query_graph.edges]
         nodes = [{"node_id": node.id, "curie": node.curie, "type": node.type} for node in query_graph.nodes]
