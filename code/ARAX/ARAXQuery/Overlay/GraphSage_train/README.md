@@ -1,4 +1,4 @@
-# How to run GraphSage to train drug re-purposing ML model
+# How to run GraphSage to train drug re-purposing ML model?
 
 To run GraphSage, I recommend to use conda to set up the environment first. Since GraphSage was written by python v2.7, we need to set up two python environment separately for python v2.7 and python v3.7. I prepared two conda environment files (eg. environment_p2.7.yml and environment_p3.7.yml) that I used to set up the conda environment for running GraphSage. You can use the following commands to set up the conda environment
 
