@@ -26,25 +26,48 @@ class OverlayExposuresData:
 
     def decorate(self):
         knowledge_graph = self.message.knowledge_graph
-        nodes_by_qg_id = {node.id: node for node in self.message.knowledge_graph.nodes}
+        nodes_map = {node.id: node for node in self.message.knowledge_graph.nodes}
         log = self.response
 
         # Figure out all the different edges we should query ICEES for
-        edges_to_query = [edge for edge in knowledge_graph.edges if self._is_relevant_edge(edge, nodes_by_qg_id)]
-        if not edges_to_query:
+        relevant_edges = [edge for edge in knowledge_graph.edges if self._is_relevant_edge(edge, nodes_map)]
+        if relevant_edges:
+            log.debug(f"Found {len(relevant_edges)} edges to attempt to get exposures data for")
+        else:
             log.warning(f"Could not find any edges appropriate to query ICEES+ for")
             return self.response
 
-        # Craft and send a query graph for each such edge
+        # Grab our synonyms in one up front batch
+        node_ids_used_by_edges = {edge.source_id for edge in relevant_edges}.union(edge.target_id for edge in relevant_edges)
+        synonymizer = NodeSynonymizer()
+        synonyms_dict = synonymizer.get_equivalent_nodes(list(node_ids_used_by_edges), kg_name='KG2')
+
+        # Query ICEES for each edge in the knowledge graph that might have exposures data
         num_edges_obtained_icees_data_for = 0
-        for edge in edges_to_query:
-            # TODO: Utilize NodeSynonymizer to try to grab curies ICEES likes better...
-            source_node = nodes_by_qg_id.get(edge.source_id)
-            target_node = nodes_by_qg_id.get(edge.target_id)
-            edge_query_graph = QueryGraph(nodes=[QNode(id=source_node.id, curie=source_node.id, type=source_node.type),
-                                                 QNode(id=target_node.id, curie=target_node.id, type=target_node.type)],
-                                          edges=[QEdge(id=f"icees_{edge.id}", source_id=edge.source_id, target_id=edge.target_id)])
-            log.debug(f"Sending query to ICEES+ for edge: {edge.source_id}--{edge.target_id}")
+        for edge in relevant_edges:
+            source_node = nodes_map.get(edge.source_id)
+            target_node = nodes_map.get(edge.target_id)
+
+            # Try to find a curie of the type (prefix) ICEES likes
+            source_synonyms = synonyms_dict.get(source_node.id, [source_node.id])
+            target_synonyms = synonyms_dict.get(target_node.id, [target_node.id])
+            formatted_source_synonyms = [self._convert_curie_to_icees_preferred_format(curie) for curie in source_synonyms]
+            formatted_target_synonyms = [self._convert_curie_to_icees_preferred_format(curie) for curie in target_synonyms]
+            accepted_source_synonyms = [curie for curie in formatted_source_synonyms if self._has_accepted_prefix(curie)]
+            accepted_target_synonyms = [curie for curie in formatted_target_synonyms if self._has_accepted_prefix(curie)]
+            if not accepted_source_synonyms or not accepted_target_synonyms:
+                log.warning(f"Could not find synonyms that ICEES accepts for edge {edge.source_id}--{edge.target_id}")
+                return self.response
+
+            # Create a query graph to send to ICEES
+            source_curie_to_use = accepted_source_synonyms[0]
+            target_curie_to_use = accepted_target_synonyms[0]
+            edge_query_graph = QueryGraph(nodes=[QNode(id=source_node.id, curie=source_curie_to_use),
+                                                 QNode(id=target_node.id, curie=target_curie_to_use)],
+                                          edges=[QEdge(id=f"icees_{edge.id}", source_id=source_curie_to_use, target_id=target_curie_to_use)])
+            log.debug(f"Sending query to ICEES+ for edge {edge.source_id}--{edge.target_id}")
+
+            # Send the query to ICEES and process results
             returned_kg = self._get_exposures_data(edge_query_graph)
             if returned_kg:
                 log.debug(f"Got exposures data back from ICEES+ for edge {edge.source_id}--{edge.target_id}")
@@ -55,6 +78,8 @@ class OverlayExposuresData:
                         # Add the data as a new EdgeAttribute on the current edge
                         if edge.edge_attributes:
                             edge.edge_attributes += returned_edge.edge_attributes
+                        else:
+                            edge.edge_attributes = returned_edge.edge_attributes
 
         if num_edges_obtained_icees_data_for:
             log.info(f"Overlayed {num_edges_obtained_icees_data_for} edges with exposures data from ICEES+")
@@ -65,12 +90,14 @@ class OverlayExposuresData:
 
     @staticmethod
     def _get_exposures_data(query_graph):
-        # Note: ICEES doesn't quite accept ReasonerStdAPI query graphs, so we transform to what works
+        # Note: ICEES doesn't quite accept ReasonerStdAPI, so we transform to what works
         edges = [edge.to_dict() for edge in query_graph.edges]
         nodes = [{"node_id": node.id, "curie": node.curie, "type": node.type} for node in query_graph.nodes]
-        icees_compatible_json = json.dumps({"message": {"knowledge_graph": {"edges": edges,
-                                                                            "nodes": nodes}}})
+        icees_compatible_query = {"message": {"knowledge_graph": {"edges": edges,
+                                                                  "nodes": nodes}}}
         # TODO: Actually run the query using Query_ICEES.py, and load results into API model
+        # icees_querier = Query_ICEES()
+        # response = icees_querier.post_knowledge_graph_overlay(icees_compatible_query)
         # TODO: Figure out how to represent their EdgeAttributes... they look like: "edge_attributes": [
         #             {
         #               "src_feature": "AlopeciaDx",
@@ -93,6 +120,25 @@ class OverlayExposuresData:
                                           type="association",
                                           edge_attributes=[EdgeAttribute(name="AvgDailyAcetaldehydeExposure_2",
                                                                          value=0)])])
+
+    @staticmethod
+    def _has_accepted_prefix(curie):
+        # Note: These are extracted from ICEES' identifiers.yaml file; may change when they start using node normalizer
+        icees_prefixes = {"CHEBI", "PUBCHEM", "MESH", "NCIT", "umlscui", "CAS", "CHEMBL", "rxcui", "SCTID", "MONDO",
+                          "HP", "ENVO", "SMILES", "LOINC"}
+        prefix = curie.split(':')[0]
+        return prefix in icees_prefixes
+
+    @staticmethod
+    def _convert_curie_to_icees_preferred_format(curie):
+        prefix = curie.split(':')[0]
+        local_id = curie.split(':')[-1]
+        if prefix == "CUI" or prefix == "UMLS":
+            return f"umlscui:{local_id}"
+        elif prefix == "CHEMBL.COMPOUND":
+            return f"CHEMBL:{local_id}"
+        else:
+            return curie
 
     @staticmethod
     def _is_relevant_edge(edge, nodes_by_qg_id):
