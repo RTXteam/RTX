@@ -1102,9 +1102,10 @@ class NodeSynonymizer:
         if isinstance(curies,str):
             curies = [ curies ]
 
-        # For now enforce a limit of 5000 in the batch
-        if len(curies) > 5000:
-            print("ERROR: Maximum number of curies is currently 5000. Maybe the limit could be extended")
+        # For now enforce a limit of 40000 in the batch. At some point, the dynamically created SQL
+        # will overrun the default 1 MB SQL buffer. Not til 60,000, though, given average curie size.
+        if len(curies) > 40000:
+            print("ERROR: Maximum number of curies is currently 40000. Maybe the limit could be extended")
             return None
 
         # Make a comma-separated list string
