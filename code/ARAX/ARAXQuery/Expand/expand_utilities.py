@@ -195,7 +195,7 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: Response) -> List[str]
         log.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
         return []
     else:
-        if equivalent_curies_dict:
+        if equivalent_curies_dict is not None:
             curies_missing_info = {curie for curie in equivalent_curies_dict if not equivalent_curies_dict.get(curie)}
             if curies_missing_info:
                 log.warning(f"NodeSynonymizer did not find any equivalent curies for: {curies_missing_info}")
@@ -204,7 +204,7 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: Response) -> List[str]
             all_curies = equivalent_curies.union(set(curies))  # Make sure even curies without results are included
             return sorted(list(all_curies))
         else:
-            log.error(f"NodeSynonymizer didn't return anything", error_code="NodeNormalizationIssue")
+            log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
             return []
 
 
@@ -221,13 +221,13 @@ def get_preferred_curies(curie: Union[str, List[str]], log: Response) -> Dict[st
         log.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
         return {}
     else:
-        if canonical_curies_dict:
+        if canonical_curies_dict is not None:
             unrecognized_curies = {input_curie for input_curie in canonical_curies_dict if not canonical_curies_dict.get(input_curie)}
             if unrecognized_curies:
                 log.warning(f"NodeSynonymizer did not return canonical info for: {unrecognized_curies}")
             return canonical_curies_dict
         else:
-            log.error(f"NodeSynonymizer didn't return anything", error_code="NodeNormalizationIssue")
+            log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
             return {}
 
 
