@@ -109,7 +109,7 @@ class MapCurieToOMOP:
                 vocabulary_id, concept_code = synonym.split(':')
             except ValueError:
                 vocabulary_id, concept_code = synonym.split(':')[1:]
-            if vocabulary_id not in ['ATC', 'CVX', 'HCPCS', 'ICD10', 'ICD-10', 'ICD10CM', 'ICD-9', 'MESH', 'NDFRT', 'RXNORM', 'SNOMEDCT', 'SNOMEDCT_VET']:
+            if vocabulary_id not in ['ATC', 'CVX', 'HCPCS', 'ICD10', 'ICD-10', 'ICD10CM', 'ICD-9', 'MESH', 'NDFRT', 'RXNORM', 'SNOMEDCT', 'SNOMEDCT_VET', 'MEDDRA']:
                 return []
             else:
                 if vocabulary_id == "ICD-10":
@@ -124,6 +124,8 @@ class MapCurieToOMOP:
                     synonym = synonym.replace('SNOMEDCT', 'SNOMED')
                 elif vocabulary_id == "SNOMEDCT_VET":
                     synonym = synonym.replace('SNOMEDCT_VET', 'SNOMED')
+                elif vocabulary_id == "MEDDRA":
+                    synonym = synonym.replace('MEDDRA', 'MedDRA')
                 else:
                     pass
 
@@ -134,7 +136,7 @@ class MapCurieToOMOP:
                 vocabulary_id, concept_code = synonym.split(':')
             except ValueError:
                 vocabulary_id, concept_code = synonym.split(':')[1:]
-            if vocabulary_id not in ['ATC', 'CVX', 'HCPCS', 'ICD10', 'ICD-10', 'ICD10CM', 'ICD-9', 'MESH', 'NDFRT', 'RXNORM', 'SNOMEDCT', 'SNOMEDCT_VET']:
+            if vocabulary_id not in ['ATC', 'CVX', 'HCPCS', 'ICD10', 'ICD-10', 'ICD10CM', 'ICD-9', 'MESH', 'NDFRT', 'RXNORM', 'SNOMEDCT', 'SNOMEDCT_VET', 'MEDDRA']:
                 return []
             else:
                 if vocabulary_id == "ICD-10":
@@ -149,6 +151,8 @@ class MapCurieToOMOP:
                     synonym = synonym.replace('SNOMEDCT', 'SNOMED')
                 elif vocabulary_id == "SNOMEDCT_VET":
                     synonym = synonym.replace('SNOMEDCT_VET', 'SNOMED')
+                elif vocabulary_id == "MEDDRA":
+                    synonym = synonym.replace('MEDDRA', 'MedDRA')
                 else:
                     pass
 
@@ -195,9 +199,9 @@ class MapCurieToOMOP:
             return {}
 
         if self.kg == "KG1":
-            select = ['ATC', 'MeSH', 'ICD10', 'ICD10CM', 'ICD9CM', 'RxNorm', 'SNOMED']
+            select = ['ATC', 'MeSH', 'ICD10', 'ICD10CM', 'ICD9CM', 'RxNorm', 'SNOMED', 'MedDRA']
         else:
-            select = ['ATC', 'CVX', 'HCPCS', 'ICD10', 'ICD10CM', 'ICD9CM', 'MeSH', 'NDFRT', 'RxNorm', 'SNOMED']
+            select = ['ATC', 'CVX', 'HCPCS', 'ICD10', 'ICD10CM', 'ICD9CM', 'MeSH', 'NDFRT', 'RxNorm', 'SNOMED', 'MedDRA']
 
         concepts_table_select = concepts_table.loc[[concepts_table.loc[index, 'vocabulary_id'] in select for index in range(concepts_table.shape[0])], ['concept_id', 'vocabulary_id', 'concept_code']]
         concepts_table_select['curie_name'] = concepts_table_select[['vocabulary_id', 'concept_code']].apply(lambda x: str(x[0]) + ":" + str(x[1]), axis=1)
@@ -212,19 +216,19 @@ class MapCurieToOMOP:
 
 
 def main():
-    # print(f"Processing KG1",flush=True)
-    # kg1_CtoM = MapCurieToOMOP(kg="KG1")
-    # kg1_CtoM.get_synonyms(curie_type=["disease", "phenotypic_feature", "chemical_substance"])
-    # res = kg1_CtoM.synonyms_dict
-    # print(f"Total curies: {len(res)}")
-    # outfolder = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
-    # with open(outfolder + "/synonyms_kg1.pkl", 'wb') as file:
-    #     pickle.dump(res, file)
-    # kg1_CtoM.map_curie_to_OMOP()
-    # res = kg1_CtoM.synonyms_dict
-    # outfolder = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
-    # with open(outfolder + '/synonyms_kg1_with_concepts.pkl', 'wb') as file:
-    #     pickle.dump(res, file)
+    print(f"Processing KG1",flush=True)
+    kg1_CtoM = MapCurieToOMOP(kg="KG1")
+    kg1_CtoM.get_synonyms(curie_type=["disease", "phenotypic_feature", "chemical_substance"])
+    res = kg1_CtoM.synonyms_dict
+    print(f"Total curies: {len(res)}")
+    outfolder = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
+    with open(outfolder + "/synonyms_kg1.pkl", 'wb') as file:
+        pickle.dump(res, file)
+    kg1_CtoM.map_curie_to_OMOP()
+    res = kg1_CtoM.synonyms_dict
+    outfolder = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
+    with open(outfolder + '/synonyms_kg1_with_concepts.pkl', 'wb') as file:
+        pickle.dump(res, file)
     # with open("synonyms_kg1.pkl", 'wb') as file:
     #     pickle.dump(res, file)
     # vocabulary_id = set([identifier.split(":")[0] for identifier in set(itertools.chain.from_iterable([res[curie]['synonyms'] for curie in res]))])
@@ -232,17 +236,17 @@ def main():
 
     print(f"Processing KG2",flush=True)
     kg2_CtoM = MapCurieToOMOP(kg="KG2")
-    # kg2_CtoM.get_synonyms(curie_type=["disease", "phenotypic_feature", "chemical_substance", "drug"])
-    # res = kg2_CtoM.synonyms_dict
-    # print(f"Total curies: {len(res)}")
-    # outfolder = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
-    # with open(outfolder + "/synonyms_kg2.pkl", 'wb') as file:
-    #     pickle.dump(res, file)
-    # kg2_CtoM.map_curie_to_OMOP()
-    infolder = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
-    with open(infolder + "/synonyms_kg2.pkl", 'rb') as file:
-        data_dict = pickle.load(file)
-    kg2_CtoM.map_curie_to_OMOP(pre_run_dict=data_dict)
+    kg2_CtoM.get_synonyms(curie_type=["disease", "phenotypic_feature", "chemical_substance", "drug"])
+    res = kg2_CtoM.synonyms_dict
+    print(f"Total curies: {len(res)}")
+    outfolder = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
+    with open(outfolder + "/synonyms_kg2.pkl", 'wb') as file:
+        pickle.dump(res, file)
+    kg2_CtoM.map_curie_to_OMOP()
+    # infolder = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
+    # with open(infolder + "/synonyms_kg2.pkl", 'rb') as file:
+    #     data_dict = pickle.load(file)
+    # kg2_CtoM.map_curie_to_OMOP(pre_run_dict=data_dict)
     res = kg2_CtoM.synonyms_dict
     outfolder = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
     with open(outfolder + '/synonyms_kg2_with_concepts.pkl', 'wb') as file:
