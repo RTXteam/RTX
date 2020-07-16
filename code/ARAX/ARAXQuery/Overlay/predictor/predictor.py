@@ -181,8 +181,11 @@ class predictor():
                 else:
                     continue
 
-            X = np.array(X_list)
-            return list(self.predict(X))
+            if len(X_list) != 0:
+                X = np.array(X_list)
+                return list(self.predict(X))
+            else:
+                return None
         else:
 
             return None
@@ -236,9 +239,11 @@ class predictor():
                     X_list += [[a * b for a, b in zip(source_feature, target_feature)]]
                 else:
                     continue
-
-            X = np.array(X_list)
-            return list(self.prob(X)[:, 1])
+            if len(X_list)!=0:
+                X = np.array(X_list)
+                return list(self.prob(X)[:, 1])
+            else:
+                return None
         else:
             return None
 

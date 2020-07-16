@@ -43,19 +43,20 @@ class PredictDrugTreatsDisease:
         else:
             os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/GRAPH.sqlite " + db_file)
 
+        # use NodeSynonymizer to replace map.txt
         # check if there is map.txt
-        map_file = f"{filepath}/map.txt"
-        if os.path.exists(map_file):
-            pass
-        else:
-            os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/map.txt " + map_file)
+        # map_file = f"{filepath}/map.txt"
+        # if os.path.exists(map_file):
+        #     pass
+        # else:
+        #     os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/map.txt " + map_file)
 
         self.pred = predictor(model_file=pkl_file)
         self.pred.import_file(None, graph_database=db_file)
-        with open(map_file, 'r') as infile:
-            map_file_content = infile.readlines()
-            map_file_content.pop(0) ## remove title
-            self.known_curies = set(line.strip().split('\t')[0] for line in map_file_content)
+        # with open(map_file, 'r') as infile:
+        #     map_file_content = infile.readlines()
+        #     map_file_content.pop(0) ## remove title
+        #     self.known_curies = set(line.strip().split('\t')[0] for line in map_file_content)
 
         self.synonymizer = NodeSynonymizer()
 
@@ -65,7 +66,7 @@ class PredictDrugTreatsDisease:
         """
         normalizer_result = self.synonymizer.get_equivalent_nodes(input_curie, kg_name='KG2')
         curies_in_model = normalizer_result[input_curie]
-        curies_in_model = [curie for curie in curies_in_model if curie in self.known_curies]
+        # curies_in_model = [curie for curie in curies_in_model if curie in self.known_curies]
         # equivalent_curies = []  # start with empty equivalent_curies
         # try:
         #     equivalent_curies = [x['identifier'] for x in normalizer_result[input_curie]['equivalent_identifiers']]
