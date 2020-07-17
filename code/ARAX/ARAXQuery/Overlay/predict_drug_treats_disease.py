@@ -36,7 +36,7 @@ class PredictDrugTreatsDisease:
         else:
             os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/LogModel.pkl " + pkl_file)
 
-        ## check if there is rel_max.emb.gz
+        ## check if there is GRAPH.sqlite
         db_file = f"{filepath}/GRAPH.sqlite"
         if os.path.exists(db_file):
             pass
@@ -106,7 +106,7 @@ class PredictDrugTreatsDisease:
             for node in self.message.knowledge_graph.nodes:
                 if hasattr(node, 'qnode_ids'):
                     if parameters['source_qnode_id'] in node.qnode_ids:
-                        if "chemical_substance" in node.type:  # this is now NOT checked by ARAX_overlay
+                        if "drug" in node.type or "chemical_substance" in node.type:  # this is now NOT checked by ARAX_overlay
                             source_curies_to_decorate.add(node.id)
                     if parameters['target_qnode_id'] in node.qnode_ids:
                         if "disease" in node.type or "phenotypic_feature" in node.type:  # this is now NOT checked by ARAX_overlay
@@ -186,7 +186,7 @@ class PredictDrugTreatsDisease:
                     target_curie = edge.target_id
                     source_types = curie_to_type[source_curie]
                     target_types = curie_to_type[target_curie]
-                    if "chemical_substance" in source_types and (("disease" in target_types) or ("phenotypic_feature" in target_types)):
+                    if (("drug" in source_types) or ("chemical_substance" in source_types)) and (("disease" in target_types) or ("phenotypic_feature" in target_types)):
                         temp_value = 0
                         # loop over all pairs of equivalent curies and take the highest probability
 
@@ -202,13 +202,13 @@ class PredictDrugTreatsDisease:
                         #probability = self.pred.prob_single('ChEMBL:' + source_curie[22:], target_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
                         #if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
                         #    value = probability[0]
-                    elif "chemical_substance" in target_types and (("disease" in source_types) or ("phenotypic_feature" in source_types)):
+                    elif (("drug" in target_types) or ("chemical_substance" in target_types)) and (("disease" in source_types) or ("phenotypic_feature" in source_types)):
                         #probability = self.pred.prob_single('ChEMBL:' + target_curie[22:], source_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
                         #if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
                         #    value = probability[0]
 
                         max_probability = 0
-                        res = list(itertools.product(self.convert_to_trained_curies(source_curie), self.convert_to_trained_curies(target_curie)))
+                        res = list(itertools.product(self.convert_to_trained_curies(target_curie), self.convert_to_trained_curies(source_curie)))
                         if len(res) != 0:
                             all_probabilities = self.pred.prob_all(res)
                             if isinstance(all_probabilities, list):
