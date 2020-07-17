@@ -1153,75 +1153,97 @@ class NodeSynonymizer:
 
 
     # ############################################################################################
-    def get_canonical_curies(self, curies, kg_name='KG2'):
+    def get_canonical_curies(self, curies=None, names=None):
 
-        # If no entity was passed, then nothing to do
-        if curies is None:
-            return None
-
-        # Verify that kg_name is an allowed value
-        if kg_name.upper() != 'KG1' and kg_name.upper() != 'KG2':
-            print("ERROR: kg_name must be either 'KG1' or 'KG2'")
-            return None
-
-        # The table prefix is always kg2 now
-        kg_prefix = 'kg2'
-
-        # If the provided value is just a string, turn it into a list
+        # If the provided curies or names is just a string, turn it into a list
         if isinstance(curies,str):
             curies = [ curies ]
+        if isinstance(names,str):
+            names = [ names ]
 
-        # For now enforce a limit of 500 in the batch
-        if len(curies) > 5000:
-            print("ERROR: Maximum number of curies is currently 5000. Maybe the limit could be extended")
-            return None
-
-        # Make a comma-separated list string
-        uc_curies = []
+        # Set up containers for the batches and results
+        batches = []
         results = {}
+
+        # Make sets of comma-separated list strings for the curies and set up the results dict with all the input values
+        uc_curies = []
         curie_map = {}
-        unique_concept_curies = {}
-        for curie in curies:
-            uc_curie = curie.upper()
-            curie_map[uc_curie] = curie
-            uc_curies.append(uc_curie)
-            results[curie] = None
-        entities_str = "','".join(uc_curies)
+        batch_size = 0
+        if curies is not None:
+            for curie in curies:
+                results[curie] = None
+                uc_curie = curie.upper()
+                curie_map[uc_curie] = curie
+                uc_curies.append(uc_curie)
+                batch_size += 1
+                if batch_size > 5000:
+                    batches.append( { 'batch_type': 'curies', 'batch_str': "','".join(uc_curies) } )
+                    uc_curies = []
+                    batch_size = 0
+            if batch_size > 0:
+                batches.append( { 'batch_type': 'curies', 'batch_str': "','".join(uc_curies) } )
+
+        # Make sets of comma-separated list strings for the names
+        lc_names = []
+        name_map = {}
+        batch_size = 0
+        if names is not None:
+            for name in names:
+                results[name] = None
+                lc_name = name.lower()
+                name_map[lc_name] = name
+                lc_names.append(lc_name)
+                batch_size += 1
+                if batch_size > 5000:
+                    batches.append( { 'batch_type': 'names', 'batch_str': "','".join(lc_names) } )
+                    lc_names = []
+                    batch_size = 0
+            if batch_size > 0:
+                batches.append( { 'batch_type': 'names', 'batch_str': "','".join(lc_names) } )
 
         # Search the curie table for the provided curie
-        cursor = self.connection.cursor()
-        sql = f"""
-            SELECT C.curie,C.unique_concept_curie,U.kg2_best_curie,U.name,U.type FROM {kg_prefix}_curie{TESTSUFFIX} AS C
-             INNER JOIN {kg_prefix}_unique_concept{TESTSUFFIX} AS U ON C.unique_concept_curie == U.uc_curie
-             WHERE C.uc_curie in ( '{entities_str}' )"""
-        #print(sql)
-        cursor.execute( sql )
-        rows = cursor.fetchall()
+        kg_prefix = 'kg2'
 
-        # If there are still no rows, then just return the results as the input list with all null values
-        if len(rows) == 0:
-            return results
-
-        # Loop through all rows, building the list
-        for row in rows:
-
-            # If the curie is not found in results, try to use the curie_map{} to resolve capitalization issues
-            curie = row[0]
-            if curie not in results:
-                if curie.upper() in curie_map:
-                    curie = curie_map[curie.upper()]
-
-            unique_concept_curies[row[1]] = 1
-
-            # Now store this curie in the list
-            if curie in results:
-                results[curie] = {
-                    'preferred_curie': row[2],
-                    'preferred_name': row[3],
-                    'preferred_type': row[4]
-                }
+        for batch in batches:
+            cursor = self.connection.cursor()
+            if batch['batch_type'] == 'curies':
+                sql = f"""
+                    SELECT C.curie,C.unique_concept_curie,U.kg2_best_curie,U.name,U.type
+                      FROM {kg_prefix}_curie{TESTSUFFIX} AS C
+                     INNER JOIN {kg_prefix}_unique_concept{TESTSUFFIX} AS U ON C.unique_concept_curie == U.uc_curie
+                     WHERE C.uc_curie in ( '{batch['batch_str']}' )"""
             else:
-                print(f"ERROR: Unable to find curie {curie}")
+                sql = f"""
+                    SELECT S.name,S.unique_concept_curie,U.kg2_best_curie,U.name,U.type
+                      FROM {kg_prefix}_synonym{TESTSUFFIX} AS S
+                     INNER JOIN {kg_prefix}_unique_concept{TESTSUFFIX} AS U ON S.unique_concept_curie == U.uc_curie
+                     WHERE S.lc_name in ( '{batch['batch_str']}' )"""
+            #print(f"INFO: Processing {batch['batch_type']} batch: {batch['batch_str']}")
+            cursor.execute( sql )
+            rows = cursor.fetchall()
+
+            # Loop through all rows, building the list
+            for row in rows:
+
+                # If the curie or name is not found in results, try to use the curie_map{}/name_map{} to resolve capitalization issues
+                entity = row[0]
+                if entity not in results:
+                    if batch['batch_type'] == 'curies':
+                        if entity.upper() in curie_map:
+                            entity = curie_map[entity.upper()]
+                    else:
+                        if entity.lower() in name_map:
+                            entity = name_map[entity.lower()]
+
+                # Now store this curie in the list
+                if entity in results:
+                    results[entity] = {
+                        'preferred_curie': row[2],
+                        'preferred_name': row[3],
+                        'preferred_type': row[4]
+                    }
+                else:
+                    print(f"ERROR: Unable to find entity {entity}")
 
 
         return results
@@ -1560,13 +1582,22 @@ def run_example_9():
     synonymizer = NodeSynonymizer()
 
     print("==== Get canonical curies for a set of input curies ============================")
-    curies = [ "DOID:14330", "CUI:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281" ]
+    curies = [ "DOID:14330", "CUI:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281xxxxx" ]
+    names = [ "phenylketonuria", "ibuprofen", "P06865", "HEXA", "fanconi anemia", "supernova" ]
 
     t0 = timeit.default_timer()
-    canonical_curies = synonymizer.get_canonical_curies(curies)
+    canonical_curies = synonymizer.get_canonical_curies(curies=curies)
     t1 = timeit.default_timer()
+    canonical_curies2 = synonymizer.get_canonical_curies(names=names)
+    t2 = timeit.default_timer()
+    canonical_curies3 = synonymizer.get_canonical_curies(curies=curies,names=names)
+    t3 = timeit.default_timer()
     print(json.dumps(canonical_curies,sort_keys=True,indent=2))
     print("Elapsed time: "+str(t1-t0))
+    print(json.dumps(canonical_curies2,sort_keys=True,indent=2))
+    print("Elapsed time: "+str(t2-t1))
+    print(json.dumps(canonical_curies3,sort_keys=True,indent=2))
+    print("Elapsed time: "+str(t3-t2))
 
 
 # ############################################################################################
