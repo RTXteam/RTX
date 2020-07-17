@@ -1171,9 +1171,9 @@ class NodeSynonymizer:
         if isinstance(curies,str):
             curies = [ curies ]
 
-        # For now enforce a limit of 500 in the batch
-        if len(curies) > 5000:
-            print("ERROR: Maximum number of curies is currently 5000. Maybe the limit could be extended")
+        # For now enforce a limit of 40000 in the batch
+        if len(curies) > 40000:
+            print("ERROR: Maximum number of curies is currently 40000. Maybe the limit could be extended")
             return None
 
         # Make a comma-separated list string
