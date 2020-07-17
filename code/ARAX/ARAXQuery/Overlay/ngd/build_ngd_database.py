@@ -33,31 +33,32 @@ class NGDDatabaseBuilder:
         pubmed_directory = os.fsencode(self.pubmed_directory_path)
         keyword_to_pmid_map = dict()
         # Go through all the downloaded pubmed files and build our dictionary of mappings
-        for file in os.listdir(pubmed_directory):
-            file_name = os.fsdecode(file)
-            if file_name.startswith("pubmed") and file_name.endswith(".xml.gz"):
-                print(f"  Starting to process file '{file_name}'...")
-                file_start_time = time.time()
-                pubmed_file = gzip.open(self.pubmed_directory_path + "/" + file_name, 'r')
-                file_contents = pubmed_file.read()
-                pubmed_file.close()
-                parsed_file_contents = etree.fromstring(file_contents)
-                pubmed_articles = parsed_file_contents.xpath('//PubmedArticle')
+        file_names = [os.fsdecode(file) for file in os.listdir(pubmed_directory)]
+        pubmed_file_names = [file_name for file_name in file_names if file_name.startswith("pubmed") and
+                             file_name.endswith(".xml.gz")]
+        for file_name in pubmed_file_names:
+            print(f"  Starting to process file '{file_name}'... ({pubmed_file_names.index(file_name) + 1} of {len(file_names)})")
+            file_start_time = time.time()
+            pubmed_file = gzip.open(self.pubmed_directory_path + "/" + file_name, 'r')
+            file_contents = pubmed_file.read()
+            pubmed_file.close()
+            parsed_file_contents = etree.fromstring(file_contents)
+            pubmed_articles = parsed_file_contents.xpath('//PubmedArticle')
 
-                # Record keyword/mesh term name -> PMID mappings found in each article in this file
-                for article in pubmed_articles:
-                    current_pmid = article.xpath(".//MedlineCitation/PMID/text()")[0]
-                    mesh_heading_names = article.xpath(".//MedlineCitation/MeshHeadingList/MeshHeading/DescriptorName/text()")
-                    for name in mesh_heading_names:
-                        if name not in keyword_to_pmid_map:
-                            keyword_to_pmid_map[name] = []
-                        keyword_to_pmid_map[name].append(self._create_pmid_string(current_pmid))
-                    keywords = article.xpath(".//MedlineCitation/KeywordList/Keyword/text()")
-                    for keyword in keywords:
-                        if keyword not in keyword_to_pmid_map:
-                            keyword_to_pmid_map[keyword] = []
-                        keyword_to_pmid_map[keyword].append(self._create_pmid_string(current_pmid))
-                print(f"    took {round((time.time() - file_start_time) / 60, 2)} minutes")
+            # Record keyword/mesh term name -> PMID mappings found in each article in this file
+            for article in pubmed_articles:
+                current_pmid = article.xpath(".//MedlineCitation/PMID/text()")[0]
+                mesh_heading_names = article.xpath(".//MedlineCitation/MeshHeadingList/MeshHeading/DescriptorName/text()")
+                for name in mesh_heading_names:
+                    if name not in keyword_to_pmid_map:
+                        keyword_to_pmid_map[name] = []
+                    keyword_to_pmid_map[name].append(self._create_pmid_string(current_pmid))
+                keywords = article.xpath(".//MedlineCitation/KeywordList/Keyword/text()")
+                for keyword in keywords:
+                    if keyword not in keyword_to_pmid_map:
+                        keyword_to_pmid_map[keyword] = []
+                    keyword_to_pmid_map[keyword].append(self._create_pmid_string(current_pmid))
+            print(f"    took {round((time.time() - file_start_time) / 60, 2)} minutes")
 
         # Save the data to the PickleDB after we're done
         print("Loading keyword->PMID dictionary into PickleDB...")
@@ -65,7 +66,7 @@ class NGDDatabaseBuilder:
             self.keyword_to_pmid_db.set(keyword, list(set(pmid_list)))
         print("Saving PickleDB file...")
         self.keyword_to_pmid_db.dump()
-        print(f"Done! Building the keyword->PMID db took {round((time.time() - start) / 60)} minutes")
+        print(f"Done! Building the keyword->PMID database took {round((time.time() - start) / 60)} minutes")
 
     @staticmethod
     def _create_pmid_string(pmid):
