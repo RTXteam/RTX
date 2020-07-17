@@ -52,7 +52,7 @@ class NGDDatabaseBuilder:
                         self._add_mapping(name, self._create_pmid_string(current_pmid), keyword_to_pmid_map)
                     for keyword in keywords:
                         self._add_mapping(keyword, self._create_pmid_string(current_pmid), keyword_to_pmid_map)
-                self._destroy_tree(file_contents_tree)
+                self._destroy_etree(file_contents_tree)
                 print(f"    took {round((time.time() - file_start_time) / 60, 2)} minutes")
 
             # Save the data to the PickleDB after we're done
@@ -61,7 +61,17 @@ class NGDDatabaseBuilder:
                 self.keyword_to_pmid_db.set(keyword, list(set(pmid_list)))
             print("Saving PickleDB file...")
             self.keyword_to_pmid_db.dump()
-            print(f"Done! Building the keyword/meshname->PMID database took {round((time.time() - start) / 60)} minutes")
+            print(f"Done! Building the keyword/meshname->PMID database took {round(((time.time() - start) / 60) / 60, 3)} hours")
+
+    def build_curie_to_pmid_db(self):
+        # Loop through all keys in keyword_to_pmid_db and send them to the NodeSynonymizer
+        # For any curies we get back for each keyword, add a connection from each curie to that keyword in a temp dict
+        # Once we have the entire curie->keywords dict, go through each curie, grab each keyword, and in turn grab
+        # their PMIDs from the keyword_to_pmid_db; coallesce and add that curie->pmidlist info to another temp dict
+        # Then dump to our final pickledb (or periodically dump)
+        print(f"Still need to implement the second half of the build process!")
+
+    # Helper methods
 
     @staticmethod
     def _add_mapping(keyword, value_to_append, mappings_dict):
@@ -73,25 +83,21 @@ class NGDDatabaseBuilder:
     def _create_pmid_string(pmid):
         return f"PMID:{pmid}"
 
-    def build_curie_to_pmid_db(self):
-        # TODO
-        print(f"Still need to implement the second half of the build process!")
-
     @staticmethod
-    def _destroy_tree(tree):
-        # Thanks https://stackoverflow.com/questions/22380990/how-do-i-free-up-the-memory-used-by-an-lxml-etree
-        root = tree.getroot()
-        node_tracker = {root: [0, None]}
-        for node in root.iterdescendants():
-            parent = node.getparent()
-            node_tracker[node] = [node_tracker[parent][0] + 1, parent]
-        node_tracker = sorted([(depth, parent, child) for child, (depth, parent)
-                               in node_tracker.items()], key=lambda x: x[0], reverse=True)
-        for _, parent, child in node_tracker:
+    def _destroy_etree(file_contents_tree):
+        # Thank you to https://stackoverflow.com/a/49139904 for this method; important to prevent memory blow-up
+        root = file_contents_tree.getroot()
+        element_tracker = {root: [0, None]}
+        for element in root.iterdescendants():
+            parent = element.getparent()
+            element_tracker[element] = [element_tracker[parent][0] + 1, parent]
+        element_tracker = sorted([(depth, parent, child) for child, (depth, parent)
+                                  in element_tracker.items()], key=lambda x: x[0], reverse=True)
+        for _, parent, child in element_tracker:
             if parent is None:
                 break
             parent.remove(child)
-        del tree
+        del file_contents_tree
 
 
 def main():
