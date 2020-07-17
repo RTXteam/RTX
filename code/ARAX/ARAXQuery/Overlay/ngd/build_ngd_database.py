@@ -64,6 +64,8 @@ class NGDDatabaseBuilder:
                 self._add_mapping(name, self._create_pmid_string(current_pmid), keyword_to_pmid_map)
             for keyword in keywords:
                 self._add_mapping(keyword, self._create_pmid_string(current_pmid), keyword_to_pmid_map)
+        root = parsed_file_contents.getroot()
+        root.clear()
 
     @staticmethod
     def _add_mapping(keyword, value_to_append, mappings_dict):
