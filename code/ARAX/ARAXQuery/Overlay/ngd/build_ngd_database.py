@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """
-This class builds a PickleDB that maps curies (from KG1/KG2/SRI Node Normalizer) to PubMed articles (PMIDs). There are
-two halves to the process:
+This class builds a PickleDB that maps (canonicalized) curies from the NodeSynonymizer to PubMed articles (PMIDs).
+There are two halves to the (full) build process:
 1. Creates an intermediary file called "keyword_to_pmid.db"
-     - Contains mappings from MESH term names and pubmed article "keywords" to the list of articles (PMIDs) they appear in
-     - These mappings are obtained by scraping all of the PubMed XML files
+     - Contains mappings from MESH term names and article "keywords" to the list of articles (PMIDs) they appear in
+     - These mappings are obtained by scraping ALL of the PubMed XML files
+     - This file needs updating very infrequently (i.e., only with new PubMed releases)
 2. Creates the final file called "curie_to_pmid.db"
-     - Contains mappings from curies (in KG1/KG2/SRI node normalizer) to their list of associated articles (PMIDs)
+     - Contains mappings from canonicalized curies in the NodeSynonymizer to their list of associated articles (PMIDs)
      - The NodeSynonymizer is used to link curies to keywords/MESH term names (which were linked to PMIDs in step 1)
-Usage: python build_ngd_database.py <path to directory containing PubMed xml files>
-       Two optional flags allow you to do partial builds:
-         * --keywordToPMIDOnly    - performs only step 1 above
-         * --curieToKeywordOnly   - performs only step 2 above (utilizes the existing keyword_to_pmid.db to do so)
+Usage: python build_ngd_database.py <path to directory containing PubMed xml files> [--full]
+       By default, only step 2 above will be performed. To do a "full" build, use the --full flag.
 """
 import argparse
 import os
@@ -28,7 +27,7 @@ class NGDDatabaseBuilder:
         self.pubmed_directory_path = pubmed_directory_path
 
     def build_keyword_to_pmid_db(self):
-        print("Extracting keyword->PMID mappings from pubmed files...")
+        print("Extracting keyword/meshname->PMID mappings from pubmed files...")
         start = time.time()
         pubmed_directory = os.fsencode(self.pubmed_directory_path)
         keyword_to_pmid_map = dict()
@@ -61,33 +60,34 @@ class NGDDatabaseBuilder:
             print(f"    took {round((time.time() - file_start_time) / 60, 2)} minutes")
 
         # Save the data to the PickleDB after we're done
-        print("Loading keyword->PMID dictionary into PickleDB...")
+        print("Loading keyword/meshname->PMID dictionary into PickleDB...")
         for keyword, pmid_list in keyword_to_pmid_map.items():
             self.keyword_to_pmid_db.set(keyword, list(set(pmid_list)))
         print("Saving PickleDB file...")
         self.keyword_to_pmid_db.dump()
-        print(f"Done! Building the keyword->PMID database took {round((time.time() - start) / 60)} minutes")
+        print(f"Done! Building the keyword/meshname->PMID database took {round((time.time() - start) / 60)} minutes")
 
     @staticmethod
     def _create_pmid_string(pmid):
         return f"PMID:{pmid}"
+
+    def build_curie_to_pmid_db(self):
+        # TODO
+        print(f"Still need to implement the second half of the build process!")
 
 
 def main():
     # Load command-line arguments
     arg_parser = argparse.ArgumentParser(description="Builds pickle database of curie->PMID mappings needed for NGD")
     arg_parser.add_argument("pubmedDirectory", type=str)
-    arg_parser.add_argument("--keywordToPMIDOnly", dest="keywordToPMIDOnly", action="store_true", default=False)
-    arg_parser.add_argument("--curieToKeywordOnly", dest="curieToKeywordOnly", action="store_true", default=False)
+    arg_parser.add_argument("--full", dest="full", action="store_true", default=False)
     args = arg_parser.parse_args()
 
     # Build the database(s)
     database_builder = NGDDatabaseBuilder(args.pubmedDirectory)
-    if not args.curieToKeywordOnly:
+    if args.full:
         database_builder.build_keyword_to_pmid_db()
-    if not args.keywordToPMIDOnly:
-        # database_builder.build_curie_to_pmid_db()
-        pass
+    database_builder.build_curie_to_pmid_db()
 
 
 if __name__ == '__main__':
