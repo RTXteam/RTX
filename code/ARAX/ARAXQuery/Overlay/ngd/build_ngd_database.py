@@ -40,7 +40,19 @@ class NGDDatabaseBuilder:
             for file_name in pubmed_file_names:
                 print(f"  Starting to process file '{file_name}'... ({pubmed_file_names.index(file_name) + 1} of {len(pubmed_file_names)})")
                 file_start_time = time.time()
-                self._extract_mappings_from_pubmed_file(file_name, keyword_to_pmid_map)
+                with gzip.open(f"{self.pubmed_directory_path}/{file_name}") as pubmed_file:
+                    file_contents_tree = etree.parse(pubmed_file)
+                pubmed_articles = file_contents_tree.xpath('//PubmedArticle')
+                for article in pubmed_articles:
+                    # Link each keyword/mesh term name to the PMID of this article
+                    current_pmid = article.xpath(".//MedlineCitation/PMID/text()")[0]
+                    mesh_names = article.xpath(".//MedlineCitation/MeshHeadingList/MeshHeading/DescriptorName/text()")
+                    keywords = article.xpath(".//MedlineCitation/KeywordList/Keyword/text()")
+                    for name in mesh_names:
+                        self._add_mapping(name, self._create_pmid_string(current_pmid), keyword_to_pmid_map)
+                    for keyword in keywords:
+                        self._add_mapping(keyword, self._create_pmid_string(current_pmid), keyword_to_pmid_map)
+                self._destroy_tree(file_contents_tree)
                 print(f"    took {round((time.time() - file_start_time) / 60, 2)} minutes")
 
             # Save the data to the PickleDB after we're done
@@ -50,22 +62,6 @@ class NGDDatabaseBuilder:
             print("Saving PickleDB file...")
             self.keyword_to_pmid_db.dump()
             print(f"Done! Building the keyword/meshname->PMID database took {round((time.time() - start) / 60)} minutes")
-
-    def _extract_mappings_from_pubmed_file(self, file_name, keyword_to_pmid_map):
-        with gzip.open(f"{self.pubmed_directory_path}/{file_name}") as pubmed_file:
-            parsed_file_contents = etree.parse(pubmed_file)
-        pubmed_articles = parsed_file_contents.xpath('//PubmedArticle')
-        for article in pubmed_articles:
-            # Link each keyword/mesh term name to the PMID of this article
-            current_pmid = article.xpath(".//MedlineCitation/PMID/text()")[0]
-            mesh_names = article.xpath(".//MedlineCitation/MeshHeadingList/MeshHeading/DescriptorName/text()")
-            keywords = article.xpath(".//MedlineCitation/KeywordList/Keyword/text()")
-            for name in mesh_names:
-                self._add_mapping(name, self._create_pmid_string(current_pmid), keyword_to_pmid_map)
-            for keyword in keywords:
-                self._add_mapping(keyword, self._create_pmid_string(current_pmid), keyword_to_pmid_map)
-        root = parsed_file_contents.getroot()
-        root.clear()
 
     @staticmethod
     def _add_mapping(keyword, value_to_append, mappings_dict):
@@ -80,6 +76,22 @@ class NGDDatabaseBuilder:
     def build_curie_to_pmid_db(self):
         # TODO
         print(f"Still need to implement the second half of the build process!")
+
+    @staticmethod
+    def _destroy_tree(tree):
+        # Thanks https://stackoverflow.com/questions/22380990/how-do-i-free-up-the-memory-used-by-an-lxml-etree
+        root = tree.getroot()
+        node_tracker = {root: [0, None]}
+        for node in root.iterdescendants():
+            parent = node.getparent()
+            node_tracker[node] = [node_tracker[parent][0] + 1, parent]
+        node_tracker = sorted([(depth, parent, child) for child, (depth, parent)
+                               in node_tracker.items()], key=lambda x: x[0], reverse=True)
+        for _, parent, child in node_tracker:
+            if parent is None:
+                break
+            parent.remove(child)
+        del tree
 
 
 def main():
