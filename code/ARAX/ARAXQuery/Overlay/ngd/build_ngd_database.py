@@ -40,18 +40,18 @@ class NGDDatabaseBuilder:
             for file_name in pubmed_file_names:
                 print(f"  Starting to process file '{file_name}'... ({pubmed_file_names.index(file_name) + 1} of {len(pubmed_file_names)})")
                 file_start_time = time.time()
-                with gzip.open(f"{self.pubmed_directory_path}/{file_name}", 'rb') as pubmed_file:
+                with gzip.open(f"{self.pubmed_directory_path}/{file_name}") as pubmed_file:
                     parsed_file_contents = etree.parse(pubmed_file)
-                    pubmed_articles = parsed_file_contents.xpath('//PubmedArticle')
-                    for article in pubmed_articles:
-                        # Link each keyword/mesh term name to the PMID of this article
-                        current_pmid = article.xpath(".//MedlineCitation/PMID/text()")[0]
-                        mesh_names = article.xpath(".//MedlineCitation/MeshHeadingList/MeshHeading/DescriptorName/text()")
-                        keywords = article.xpath(".//MedlineCitation/KeywordList/Keyword/text()")
-                        for name in mesh_names:
-                            self._add_mapping(name, self._create_pmid_string(current_pmid), keyword_to_pmid_map)
-                        for keyword in keywords:
-                            self._add_mapping(keyword, self._create_pmid_string(current_pmid), keyword_to_pmid_map)
+                pubmed_articles = parsed_file_contents.xpath('//PubmedArticle')
+                for article in pubmed_articles:
+                    # Link each keyword/mesh term name to the PMID of this article
+                    current_pmid = article.xpath(".//MedlineCitation/PMID/text()")[0]
+                    mesh_names = article.xpath(".//MedlineCitation/MeshHeadingList/MeshHeading/DescriptorName/text()")
+                    keywords = article.xpath(".//MedlineCitation/KeywordList/Keyword/text()")
+                    for name in mesh_names:
+                        self._add_mapping(name, self._create_pmid_string(current_pmid), keyword_to_pmid_map)
+                    for keyword in keywords:
+                        self._add_mapping(keyword, self._create_pmid_string(current_pmid), keyword_to_pmid_map)
                 print(f"    took {round((time.time() - file_start_time) / 60, 2)} minutes")
 
             # Save the data to the PickleDB after we're done
