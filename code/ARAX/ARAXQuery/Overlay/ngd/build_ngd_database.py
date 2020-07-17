@@ -31,32 +31,28 @@ class NGDDatabaseBuilder:
         start = time.time()
         pubmed_directory = os.fsencode(self.pubmed_directory_path)
         keyword_to_pmid_map = dict()
+        all_file_names = [os.fsdecode(file) for file in os.listdir(pubmed_directory)]
+        pubmed_file_names = [file_name for file_name in all_file_names if file_name.startswith("pubmed") and file_name.endswith(".xml.gz")]
+
         # Go through all the downloaded pubmed files and build our dictionary of mappings
-        file_names = [os.fsdecode(file) for file in os.listdir(pubmed_directory)]
-        pubmed_file_names = [file_name for file_name in file_names if file_name.startswith("pubmed") and
-                             file_name.endswith(".xml.gz")]
         for file_name in pubmed_file_names:
-            print(f"  Starting to process file '{file_name}'... ({pubmed_file_names.index(file_name) + 1} of {len(file_names)})")
+            print(f"  Starting to process file '{file_name}'... ({pubmed_file_names.index(file_name) + 1} of {len(pubmed_file_names)})")
             file_start_time = time.time()
-            pubmed_file = gzip.open(self.pubmed_directory_path + "/" + file_name, 'r')
-            file_contents = pubmed_file.read()
-            pubmed_file.close()
+            # Load/parse the file's contents
+            with gzip.open(f"{self.pubmed_directory_path}/{file_name}", 'r') as pubmed_file:
+                file_contents = pubmed_file.read()
             parsed_file_contents = etree.fromstring(file_contents)
             pubmed_articles = parsed_file_contents.xpath('//PubmedArticle')
 
-            # Record keyword/mesh term name -> PMID mappings found in each article in this file
+            # Link each keyword/mesh term name to the PMID of this article
             for article in pubmed_articles:
                 current_pmid = article.xpath(".//MedlineCitation/PMID/text()")[0]
                 mesh_heading_names = article.xpath(".//MedlineCitation/MeshHeadingList/MeshHeading/DescriptorName/text()")
                 for name in mesh_heading_names:
-                    if name not in keyword_to_pmid_map:
-                        keyword_to_pmid_map[name] = []
-                    keyword_to_pmid_map[name].append(self._create_pmid_string(current_pmid))
+                    self._add_mapping(name, current_pmid, keyword_to_pmid_map)
                 keywords = article.xpath(".//MedlineCitation/KeywordList/Keyword/text()")
                 for keyword in keywords:
-                    if keyword not in keyword_to_pmid_map:
-                        keyword_to_pmid_map[keyword] = []
-                    keyword_to_pmid_map[keyword].append(self._create_pmid_string(current_pmid))
+                    self._add_mapping(keyword, current_pmid, keyword_to_pmid_map)
             print(f"    took {round((time.time() - file_start_time) / 60, 2)} minutes")
 
         # Save the data to the PickleDB after we're done
@@ -66,6 +62,11 @@ class NGDDatabaseBuilder:
         print("Saving PickleDB file...")
         self.keyword_to_pmid_db.dump()
         print(f"Done! Building the keyword/meshname->PMID database took {round((time.time() - start) / 60)} minutes")
+
+    def _add_mapping(self, keyword, pmid, mappings_dict):
+        if keyword not in mappings_dict:
+            mappings_dict[keyword] = []
+        mappings_dict[keyword].append(self._create_pmid_string(pmid))
 
     @staticmethod
     def _create_pmid_string(pmid):
