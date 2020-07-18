@@ -50,8 +50,9 @@ class NGDDatabaseBuilder:
                     descriptor_names = article.xpath(".//MedlineCitation/MeshHeadingList/MeshHeading/DescriptorName/text()")
                     qualifier_names = article.xpath(".//MedlineCitation/MeshHeadingList/MeshHeading/QualifierName/text()")
                     chemical_names = article.xpath(".//MedlineCitation/ChemicalList/Chemical/NameOfSubstance/text()")
+                    gene_symbols = article.xpath(".//MedlineCitation/GeneSymbolList/GeneSymbol/text()")
                     keywords = article.xpath(".//MedlineCitation/KeywordList/Keyword/text()")
-                    all_concept_names = descriptor_names + qualifier_names + chemical_names + keywords
+                    all_concept_names = descriptor_names + qualifier_names + chemical_names + gene_symbols + keywords
                     unique_concept_names = {concept_name for concept_name in all_concept_names if concept_name}
                     for concept_name in unique_concept_names:
                         self._add_mapping(concept_name, current_pmid, conceptname_to_pmids_map)
