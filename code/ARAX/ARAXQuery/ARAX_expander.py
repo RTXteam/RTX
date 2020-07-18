@@ -147,7 +147,10 @@ class ARAXExpander:
 
         # Return the response and done
         kg = self.message.knowledge_graph
-        log.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges")
+        if not kg.nodes and not continue_if_no_results:
+            log.error(f"No paths were found in {kp_to_use} satisfying this query graph", error_code="NoResults")
+        else:
+            log.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges")
         return response
 
     def _expand_edge(self, qedge: QEdge, kp_to_use: str, dict_kg: DictKnowledgeGraph, continue_if_no_results: bool,
