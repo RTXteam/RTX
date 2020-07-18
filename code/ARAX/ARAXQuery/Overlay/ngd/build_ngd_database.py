@@ -15,10 +15,15 @@ Usage: python build_ngd_database.py <path to directory containing PubMed xml fil
 """
 import argparse
 import os
-import pickledb
+import sys
 import gzip
 import time
+
 from lxml import etree
+import pickledb
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../NodeSynonymizer/")
+from node_synonymizer import NodeSynonymizer
 
 
 class NGDDatabaseBuilder:
@@ -28,7 +33,7 @@ class NGDDatabaseBuilder:
         self.pubmed_directory_path = pubmed_directory_path
 
     def build_conceptname_to_pmids_db(self):
-        print("Extracting conceptname->PMIDs mappings from pubmed files...")
+        print("Extracting conceptname->PMIDs mappings from pubmed files..")
         start = time.time()
         pubmed_directory = os.fsencode(self.pubmed_directory_path)
         all_file_names = [os.fsdecode(file) for file in os.listdir(pubmed_directory)]
@@ -39,11 +44,12 @@ class NGDDatabaseBuilder:
             conceptname_to_pmids_map = dict()
             # Go through each downloaded pubmed file and build our dictionary of mappings
             for file_name in pubmed_file_names:
-                print(f"  Starting to process file '{file_name}'... ({pubmed_file_names.index(file_name) + 1} of {len(pubmed_file_names)})")
+                print(f"  Starting to process file '{file_name}'.. ({pubmed_file_names.index(file_name) + 1} of {len(pubmed_file_names)})")
                 file_start_time = time.time()
                 with gzip.open(f"{self.pubmed_directory_path}/{file_name}") as pubmed_file:
                     file_contents_tree = etree.parse(pubmed_file)
                 pubmed_articles = file_contents_tree.xpath('//PubmedArticle')
+
                 for article in pubmed_articles:
                     # Link each concept name to the PMID of this article
                     current_pmid = article.xpath(".//MedlineCitation/PMID/text()")[0]
@@ -57,24 +63,48 @@ class NGDDatabaseBuilder:
                     for concept_name in unique_concept_names:
                         self._add_mapping(concept_name, current_pmid, conceptname_to_pmids_map)
 
-                self._destroy_etree(file_contents_tree)
+                self._destroy_etree(file_contents_tree)  # Hack around lxml memory leak
                 print(f"    took {round((time.time() - file_start_time) / 60, 2)} minutes")
 
             # Save the data to the PickleDB after we're done
-            print("Loading conceptname->PMIDs dictionary into PickleDB...")
+            print("Loading conceptname->PMIDs dictionary into PickleDB..")
             for concept_name, pmid_list in conceptname_to_pmids_map.items():
                 self.conceptname_to_pmids_db.set(concept_name, list({self._create_pmid_string(pmid) for pmid in pmid_list}))
-            print("Saving PickleDB file...")
+            print("Saving PickleDB file..")
             self.conceptname_to_pmids_db.dump()
             print(f"Done! Building the conceptname->PMIDs database took {round(((time.time() - start) / 60) / 60, 3)} hours")
 
     def build_curie_to_pmids_db(self):
-        # Loop through all keys in conceptname_to_pmid_db and send them to the NodeSynonymizer
-        # If we get a canonical curie back for a concept name, add the concept name to the curie's list in a temp dict
-        # Once we have the entire curie->conceptnames dict, go through each curie, grab each name, and in turn grab
-        # their PMIDs from the conceptname_to_pmid_db; coallesce and add that curie->pmidlist info to another temp dict
-        # Then dump to our final pickledb (or periodically dump)
-        print(f"Still need to implement the second half of the build process!")
+        start = time.time()
+        # Get canonical curies for all of the concept names in our big pickle DB using the NodeSynonymizer
+        concept_names = self.conceptname_to_pmids_db.getall()
+        synonymizer = NodeSynonymizer()
+        print(f"Sending NodeSynonymizer.get_canonical_curies() a list of {len(concept_names)} concept names..")
+        canonical_curies_dict = synonymizer.get_canonical_curies(name=concept_names)
+        print(f"Got results back from NodeSynonymizer! (Returned dict contains {len(canonical_curies_dict)} keys.)")
+        curie_to_pmids_map = dict()
+        concept_names_synonymizer_didnt_know = 0
+        if canonical_curies_dict:
+            # Map the canonical curie for each concept to the concept's PMID list, if the concept was recognized
+            print(f"Mapping canonical curies to PMIDs..")
+            for concept_name in concept_names:
+                canonical_curie = canonical_curies_dict.get(concept_name)
+                if canonical_curie:
+                    pmids_for_this_concept = self.conceptname_to_pmids_db.get(concept_name)
+                    self._add_mapping(canonical_curie, pmids_for_this_concept, curie_to_pmids_map)
+                else:
+                    concept_names_synonymizer_didnt_know += 1
+
+            # Save the data to our final pickleDB
+            print("Loading curie->PMIDs dictionary into PickleDB..")
+            for curie, pmid_list in curie_to_pmids_map.items():
+                self.curie_to_pmids_db.set(curie, list({self._create_pmid_string(pmid) for pmid in pmid_list}))
+            print("Saving PickleDB file..")
+            self.curie_to_pmids_db.dump()
+            print(f"Done! Building the curie->PMIDs database took {round((time.time() - start) / 60)} minutes.")
+            print(f"Final database contains {len(curie_to_pmids_map)} keys (canonical curies).")
+        else:
+            print(f"ERROR: Node synonymizer didn't return anything!")
 
     # Helper methods
 
@@ -82,7 +112,10 @@ class NGDDatabaseBuilder:
     def _add_mapping(key, value_to_append, mappings_dict):
         if key not in mappings_dict:
             mappings_dict[key] = []
-        mappings_dict[key].append(value_to_append)
+        if isinstance(value_to_append, list):
+            mappings_dict[key] += value_to_append
+        else:
+            mappings_dict[key].append(value_to_append)
 
     @staticmethod
     def _create_pmid_string(pmid):
