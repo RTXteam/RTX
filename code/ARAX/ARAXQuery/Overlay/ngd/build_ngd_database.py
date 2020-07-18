@@ -4,7 +4,7 @@ This class builds a PickleDB that maps (canonicalized) curies from the NodeSynon
 There are two halves to the (full) build process:
 1. Creates an intermediary file called "conceptname_to_pmids.db"
      - Contains mappings from "concept names" to the list of articles (PMIDs) they appear in (where "concept names"
-       include MESH descriptor names, article "keywords", and chemical names)
+       include MESH Descriptor/Qualifier names, Keywords, and Chemical names)
      - These mappings are obtained by scraping ALL of the PubMed XML files
      - This file needs updating very infrequently (i.e., only with new PubMed releases)
 2. Creates the final file called "curie_to_pmids.db"
