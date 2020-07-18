@@ -2,12 +2,12 @@
 """
 This class builds a PickleDB that maps (canonicalized) curies from the NodeSynonymizer to PubMed articles (PMIDs).
 There are two halves to the (full) build process:
-1. Creates an intermediary file called "conceptname_to_pmid.db"
+1. Creates an intermediary file called "conceptname_to_pmids.db"
      - Contains mappings from "concept names" to the list of articles (PMIDs) they appear in (where "concept names"
        include MESH descriptor names, article "keywords", and chemical names)
      - These mappings are obtained by scraping ALL of the PubMed XML files
      - This file needs updating very infrequently (i.e., only with new PubMed releases)
-2. Creates the final file called "curie_to_pmid.db"
+2. Creates the final file called "curie_to_pmids.db"
      - Contains mappings from canonicalized curies in the NodeSynonymizer to their list of associated articles (PMIDs)
      - The NodeSynonymizer is used to link curies to concept names (which were linked to PMIDs in step 1)
 Usage: python build_ngd_database.py <path to directory containing PubMed xml files> [--full]
@@ -23,12 +23,12 @@ from lxml import etree
 
 class NGDDatabaseBuilder:
     def __init__(self, pubmed_directory_path):
-        self.conceptname_to_pmid_db = pickledb.load("conceptname_to_pmid.db", False)
-        self.curie_to_pmid_db = pickledb.load("curie_to_pmid.db", False)
+        self.conceptname_to_pmids_db = pickledb.load("conceptname_to_pmids.db", False)
+        self.curie_to_pmids_db = pickledb.load("curie_to_pmids.db", False)
         self.pubmed_directory_path = pubmed_directory_path
 
-    def build_conceptname_to_pmid_db(self):
-        print("Extracting conceptname->PMID mappings from pubmed files...")
+    def build_conceptname_to_pmids_db(self):
+        print("Extracting conceptname->PMIDs mappings from pubmed files...")
         start = time.time()
         pubmed_directory = os.fsencode(self.pubmed_directory_path)
         all_file_names = [os.fsdecode(file) for file in os.listdir(pubmed_directory)]
@@ -36,7 +36,7 @@ class NGDDatabaseBuilder:
         if not pubmed_file_names:
             print(f"Sorry, couldn't find any PubMed XML files to scrape.")
         else:
-            conceptname_to_pmid_map = dict()
+            conceptname_to_pmids_map = dict()
             # Go through each downloaded pubmed file and build our dictionary of mappings
             for file_name in pubmed_file_names:
                 print(f"  Starting to process file '{file_name}'... ({pubmed_file_names.index(file_name) + 1} of {len(pubmed_file_names)})")
@@ -47,25 +47,27 @@ class NGDDatabaseBuilder:
                 for article in pubmed_articles:
                     # Link each concept name to the PMID of this article
                     current_pmid = article.xpath(".//MedlineCitation/PMID/text()")[0]
-                    mesh_names = article.xpath(".//MedlineCitation/MeshHeadingList/MeshHeading/DescriptorName/text()")
-                    keywords = article.xpath(".//MedlineCitation/KeywordList/Keyword/text()")
+                    descriptor_names = article.xpath(".//MedlineCitation/MeshHeadingList/MeshHeading/DescriptorName/text()")
+                    qualifier_names = article.xpath(".//MedlineCitation/MeshHeadingList/MeshHeading/QualifierName/text()")
                     chemical_names = article.xpath(".//MedlineCitation/ChemicalList/Chemical/NameOfSubstance/text()")
-                    unique_concept_names = set(mesh_names + keywords + chemical_names)
-                    for concept in unique_concept_names:
-                        self._add_mapping(concept, current_pmid, conceptname_to_pmid_map)
+                    keywords = article.xpath(".//MedlineCitation/KeywordList/Keyword/text()")
+                    all_concept_names = descriptor_names + qualifier_names + chemical_names + keywords
+                    unique_concept_names = {concept_name for concept_name in all_concept_names if concept_name}
+                    for concept_name in unique_concept_names:
+                        self._add_mapping(concept_name, current_pmid, conceptname_to_pmids_map)
 
                 self._destroy_etree(file_contents_tree)
                 print(f"    took {round((time.time() - file_start_time) / 60, 2)} minutes")
 
             # Save the data to the PickleDB after we're done
-            print("Loading conceptname->PMID dictionary into PickleDB...")
-            for concept_name, pmid_list in conceptname_to_pmid_map.items():
-                self.conceptname_to_pmid_db.set(concept_name, list({self._create_pmid_string(pmid) for pmid in pmid_list}))
+            print("Loading conceptname->PMIDs dictionary into PickleDB...")
+            for concept_name, pmid_list in conceptname_to_pmids_map.items():
+                self.conceptname_to_pmids_db.set(concept_name, list({self._create_pmid_string(pmid) for pmid in pmid_list}))
             print("Saving PickleDB file...")
-            self.conceptname_to_pmid_db.dump()
-            print(f"Done! Building the conceptname->PMID database took {round(((time.time() - start) / 60) / 60, 3)} hours")
+            self.conceptname_to_pmids_db.dump()
+            print(f"Done! Building the conceptname->PMIDs database took {round(((time.time() - start) / 60) / 60, 3)} hours")
 
-    def build_curie_to_pmid_db(self):
+    def build_curie_to_pmids_db(self):
         # Loop through all keys in conceptname_to_pmid_db and send them to the NodeSynonymizer
         # If we get a canonical curie back for a concept name, add the concept name to the curie's list in a temp dict
         # Once we have the entire curie->conceptnames dict, go through each curie, grab each name, and in turn grab
@@ -112,8 +114,8 @@ def main():
     # Build the database(s)
     database_builder = NGDDatabaseBuilder(args.pubmedDirectory)
     if args.full:
-        database_builder.build_conceptname_to_pmid_db()
-    database_builder.build_curie_to_pmid_db()
+        database_builder.build_conceptname_to_pmids_db()
+    database_builder.build_curie_to_pmids_db()
 
 
 if __name__ == '__main__':
