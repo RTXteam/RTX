@@ -232,7 +232,7 @@ class BTEQuerier:
         """
         # Remove 'output' nodes in the KG that aren't actually the ones we were looking for
         desired_output_curies = set(eu.convert_string_or_list_to_list(output_qnode.curie))
-        all_output_node_ids = set(list(kg.nodes_by_qg_id[output_qnode.id].keys()))
+        all_output_node_ids = set(kg.nodes_by_qg_id[output_qnode.id])
         output_node_ids_to_remove = all_output_node_ids.difference(desired_output_curies)
         for node_id in output_node_ids_to_remove:
             kg.nodes_by_qg_id[output_qnode.id].pop(node_id)

@@ -104,10 +104,19 @@ def _check_for_orphans(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_i
 def _check_property_types(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
     for qnode_id, nodes in nodes_by_qg_id.items():
         for node_key, node in nodes.items():
-            assert type(node.qnode_ids) is list
+            assert isinstance(node.id, str)
+            assert isinstance(node.name, str) or node.name is None
+            assert isinstance(node.qnode_ids, list)
+            assert isinstance(node.type, list)
     for qedge_id, edges in edges_by_qg_id.items():
         for edge_key, edge in edges.items():
-            assert type(edge.qedge_ids) is list
+            assert isinstance(edge.id, str)
+            assert isinstance(edge.qedge_ids, list)
+            assert isinstance(edge.type, str)
+            assert isinstance(edge.source_id, str)
+            assert isinstance(edge.target_id, str)
+            assert isinstance(edge.provided_by, str) or isinstance(edge.provided_by, list)
+            assert isinstance(edge.is_defined_by, str)
 
 
 def _check_counts_of_curie_qnodes(nodes_by_qg_id: Dict[str, Dict[str, Node]], query_graph: QueryGraph):

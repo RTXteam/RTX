@@ -147,7 +147,10 @@ class ARAXExpander:
 
         # Return the response and done
         kg = self.message.knowledge_graph
-        log.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges")
+        if not kg.nodes and not continue_if_no_results:
+            log.error(f"No paths were found in {kp_to_use} satisfying this query graph", error_code="NoResults")
+        else:
+            log.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges")
         return response
 
     def _expand_edge(self, qedge: QEdge, kp_to_use: str, dict_kg: DictKnowledgeGraph, continue_if_no_results: bool,
@@ -285,22 +288,23 @@ class ARAXExpander:
         # First deduplicate the nodes
         for qnode_id, nodes in dict_kg.nodes_by_qg_id.items():
             # Load preferred curie info from NodeSynonymizer for nodes we haven't seen before
-            unmapped_node_ids = set(list(nodes.keys())).difference(set((curie_mappings.keys())))
+            unmapped_node_ids = set(nodes).difference(set(curie_mappings))
             log.debug(f"Getting preferred curies for {qnode_id} nodes returned in this step")
-            preferred_curie_info_for_unmapped_nodes = eu.get_preferred_curies(list(unmapped_node_ids), log) if unmapped_node_ids else dict()
+            canonicalized_nodes = eu.get_preferred_curies(list(unmapped_node_ids), log) if unmapped_node_ids else dict()
             if log.status != 'OK':
                 return deduplicated_kg, updated_edge_to_nodes_map
 
             for node_id in unmapped_node_ids:
-                node = nodes.get(node_id)
                 # Figure out the preferred curie/name for this node
-                if node_id in preferred_curie_info_for_unmapped_nodes:
-                    preferred_curie = preferred_curie_info_for_unmapped_nodes[node_id].get('preferred_curie', node_id)
-                    preferred_name = preferred_curie_info_for_unmapped_nodes[node_id].get('preferred_name', node.name)
-                    preferred_type = preferred_curie_info_for_unmapped_nodes[node_id].get('types', node.type)
+                node = nodes.get(node_id)
+                canonicalized_node = canonicalized_nodes.get(node_id)
+                if canonicalized_node:
+                    preferred_curie = canonicalized_node.get('preferred_curie', node_id)
+                    preferred_name = canonicalized_node.get('preferred_name', node.name)
+                    preferred_type = eu.convert_string_or_list_to_list(canonicalized_node.get('preferred_type', node.type))
                     curie_mappings[node_id] = preferred_curie
                 else:
-                    # Means the NodeSynonymizer couldn't find any results for this curie
+                    # Means the NodeSynonymizer didn't recognize this curie
                     preferred_curie = node_id
                     preferred_name = node.name
                     preferred_type = node.type

@@ -175,7 +175,7 @@ function postQuery(qtype) {
 	statusdiv.innerHTML = "Posting graph.  Looking for answer...";
         statusdiv.appendChild(document.createElement("br"));
 
-	// ids need to start with a non-numeric character...
+	// ids need to start with a non-numeric character
 	for (var gnode of input_qg.nodes) {
 	    if (String(gnode.id).match(/^\d/)) {
 		gnode.id = "qg" + gnode.id;
@@ -200,6 +200,7 @@ function postQuery(qtype) {
 	//queryObj.bypass_cache = bypass_cache;
 	queryObj.max_results = 100;
 
+	document.getElementById("jsonText").value = JSON.stringify(input_qg,null,2);
 	clear_qg();
     }
 
@@ -354,7 +355,7 @@ function postQuery(qtype) {
 	    }
 	    else if (data["message_code"] == "OK") {
 		input_qg = { "edges": [], "nodes": [] };
-		render_message(data);
+		render_message(data,qtype == "DSL");
 	    }
 	    else if (data["log"]) {
 		process_log(data["log"]);
@@ -438,8 +439,7 @@ function sendQuestion(e) {
 			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<b>"+jsonObj2["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br><br><i>"+jsonObj2["code_description"]+"</i><br>";
 			sesame('openmax',statusdiv);
 
-			render_message(jsonObj2);
-
+			render_message(jsonObj2,true);
 		    }
 		    else if ( jsonObj.message ) { // STILL APPLIES TO 0.9??  TODO
 			document.getElementById("statusdiv").innerHTML += "<br><br>An error was encountered:<br><span class='error'>"+jsonObj.message+"</span>";
@@ -501,7 +501,7 @@ function retrieve_message() {
 	    statusdiv.innerHTML += "<br><i>"+jsonObj2["code_description"]+"</i><br>";
 	    sesame('openmax',statusdiv);
 
-	    render_message(jsonObj2);
+	    render_message(jsonObj2,true);
 	}
 	else if ( xhr.status == 404 ) {
 	    statusdiv.innerHTML += "<br>Message with id=<span class='error'>"+message_id+"</span> was not found.";
@@ -518,7 +518,7 @@ function retrieve_message() {
 }
 
 
-function render_message(respObj) {
+function render_message(respObj,dispjson) {
     var statusdiv = document.getElementById("statusdiv");
     statusdiv.appendChild(document.createTextNode("Rendering message..."));
     sesame('openmax',statusdiv);
@@ -562,8 +562,22 @@ function render_message(respObj) {
     }
 
 
-    if (respObj["query_graph"])
+    if (respObj["query_graph"]) {
+	if (dispjson) {
+	    for (var gnode of respObj["query_graph"].nodes)
+		for (var att in gnode)
+		    if (gnode.hasOwnProperty(att))
+			if (gnode[att] == null)
+			    delete gnode[att];
+            for (var gedge of respObj["query_graph"].edges)
+		for (var att in gedge)
+		    if (gedge.hasOwnProperty(att))
+			if (gedge[att] == null)
+			    delete gedge[att];
+	    document.getElementById("jsonText").value = JSON.stringify(respObj["query_graph"],null,2);
+	}
 	process_graph(respObj["query_graph"],999);
+    }
     else
 	cytodata[999] = 'dummy'; // this enables query graph editing
 
@@ -769,8 +783,10 @@ function add_to_summary(rowdata, num) {
 	var listlink = '';
 	if (cell == 'th') {
 	    columnlist[i] = [];
-	    listlink += "&nbsp;<a href='javascript:add_items_to_list(\"A\",\"" +i+ "\");' title='Add column items to list A'>&nbsp;[+A]&nbsp;</a>";
-	    listlink += "&nbsp;<a href='javascript:add_items_to_list(\"B\",\"" +i+ "\");' title='Add column items to list B'>&nbsp;[+B]&nbsp;</a>";
+	    if (rowdata[i] != 'confidence') {
+		listlink += "&nbsp;<a href='javascript:add_items_to_list(\"A\",\"" +i+ "\");' title='Add column items to list A'>&nbsp;[+A]&nbsp;</a>";
+		listlink += "&nbsp;<a href='javascript:add_items_to_list(\"B\",\"" +i+ "\");' title='Add column items to list B'>&nbsp;[+B]&nbsp;</a>";
+	    }
 	}
 	else {
 	    columnlist[i][rowdata[i]] = 1;

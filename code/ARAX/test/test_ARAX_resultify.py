@@ -1138,7 +1138,7 @@ def test_issue720_3():
     assert found_result_where_syna_is_n01_and_not_n03 and found_result_where_syna_is_n03_and_not_n01
 
 
-def test_issue833():
+def test_issue833_extraneous_intermediate_nodes():
     # Test for extraneous intermediate nodes
     shorthand_qnodes = {"n00": "",
                         "n01": "is_set",
@@ -1223,6 +1223,29 @@ def test_parallel_edges_between_nodes():
         for node_id in result_nodes_by_qg_id['n01']:
             assert node_id in node_ids_used_by_e01_edges
             assert node_id in node_ids_used_by_parallel01_edges
+
+
+def test_issue912_clean_up_kg():
+    # Tests that the returned knowledge graph contains only nodes used in the results
+    qg_nodes = {"n00": "",
+                "n01": "is_set",
+                "n02": ""}
+    qg_edges = {"e00": "n00--n01",
+                "e01": "n01--n02"}
+    query_graph = _convert_shorthand_to_qg(qg_nodes, qg_edges)
+    kg_nodes = {"n00": ["DOID:11", "DOID:NotConnected"],
+                "n01": ["PR:110", "PR:111", "PR:DeadEnd"],
+                "n02": ["CHEBI:11", "CHEBI:NotConnected"]}
+    kg_edges = {"e00": ["DOID:11--PR:110", "DOID:11--PR:111", "DOID:11--PR:DeadEnd"],
+                "e01": ["PR:110--CHEBI:11", "PR:111--CHEBI:11"]}
+    knowledge_graph = _convert_shorthand_to_kg(kg_nodes, kg_edges)
+    response, message = _run_resultify_directly(query_graph, knowledge_graph)
+    assert response.status == 'OK'
+    assert len(message.results) == 1
+    returned_kg_node_ids = {node.id for node in message.knowledge_graph.nodes}
+    assert returned_kg_node_ids == {"DOID:11", "PR:110", "PR:111", "CHEBI:11"}
+    orphan_edges = {edge.id for edge in message.knowledge_graph.edges if not {edge.source_id, edge.target_id}.issubset(returned_kg_node_ids)}
+    assert not orphan_edges
 
 
 if __name__ == '__main__':

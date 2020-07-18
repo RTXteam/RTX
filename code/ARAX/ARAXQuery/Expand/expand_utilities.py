@@ -186,53 +186,49 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: Response) -> List[str]
     curies = convert_string_or_list_to_list(curie)
     try:
         synonymizer = NodeSynonymizer()
-        log.debug(f"Sending NodeSynonymizer.get_equivalent_curies() a list of {len(curies)} curies")
-        equivalent_curies_dict = synonymizer.get_equivalent_curies(curies, kg_name="KG2")
-        log.debug(f"Got results back from NodeSynonymizer")
+        log.debug(f"Sending NodeSynonymizer.get_equivalent_nodes() a list of {len(curies)} curies")
+        equivalent_curies_dict = synonymizer.get_equivalent_nodes(curies, kg_name="KG2")
+        log.debug(f"Got response back from NodeSynonymizer")
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
         log.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
         return []
     else:
-        curies_missing_info = {curie for curie in equivalent_curies_dict if not equivalent_curies_dict.get(curie)}
-        if curies_missing_info:
-            log.warning(f"NodeSynonymizer did not find any equivalent curies for: {curies_missing_info}")
-        equivalent_curies = {curie for curie_list in equivalent_curies_dict.values() if curie_list for curie in
-                             curie_list}
-        all_curies = equivalent_curies.union(set(curies))  # Make sure even curies without results are included
-        return sorted(list(all_curies))
+        if equivalent_curies_dict is not None:
+            curies_missing_info = {curie for curie in equivalent_curies_dict if not equivalent_curies_dict.get(curie)}
+            if curies_missing_info:
+                log.warning(f"NodeSynonymizer did not find any equivalent curies for: {curies_missing_info}")
+            equivalent_curies = {curie for curie_list in equivalent_curies_dict.values() if curie_list for curie in
+                                 curie_list}
+            all_curies = equivalent_curies.union(set(curies))  # Make sure even curies without results are included
+            return sorted(list(all_curies))
+        else:
+            log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+            return []
 
 
 def get_preferred_curies(curie: Union[str, List[str]], log: Response) -> Dict[str, Dict[str, str]]:
     curies = convert_string_or_list_to_list(curie)
     try:
         synonymizer = NodeSynonymizer()
-        log.debug(f"Sending NodeSynonymizer.get_normalizer_results() a list of {len(curies)} curies")
-        normalizer_results = synonymizer.get_normalizer_results(curies, kg_name="KG2")
-        log.debug(f"Got results back from NodeSynonymizer")
+        log.debug(f"Sending NodeSynonymizer.get_canonical_curies() a list of {len(curies)} curies")
+        canonical_curies_dict = synonymizer.get_canonical_curies(curies)
+        log.debug(f"Got response back from NodeSynonymizer")
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
         log.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
         return {}
     else:
-        curies_with_results = {input_curie for input_curie, normalization_info in normalizer_results.items() if normalization_info}
-        missing_curies = set(curies).difference(curies_with_results)
-        if missing_curies:
-            log.warning(f"NodeSynonymizer did not return info for: {missing_curies}")
-        preferred_curies_dict = dict()
-        for input_curie in curies_with_results:
-            kg2_preferred_curie = normalizer_results[input_curie]['id'].get('kg2_best_curie')
-            sri_preferred_curie = normalizer_results[input_curie]['id'].get('SRI_normalizer_curie')
-            preferred_curie = kg2_preferred_curie if kg2_preferred_curie else sri_preferred_curie
-            sri_preferred_name = normalizer_results[input_curie]['id'].get('SRI_normalizer_name')
-            preferred_name = sri_preferred_name if sri_preferred_name else normalizer_results[input_curie]['id'].get('label')
-            node_types = normalizer_results[input_curie]['type']
-            preferred_curies_dict[input_curie] = {'preferred_curie': preferred_curie,
-                                                  'preferred_name': preferred_name,
-                                                  'types': node_types}
-        return preferred_curies_dict
+        if canonical_curies_dict is not None:
+            unrecognized_curies = {input_curie for input_curie in canonical_curies_dict if not canonical_curies_dict.get(input_curie)}
+            if unrecognized_curies:
+                log.warning(f"NodeSynonymizer did not return canonical info for: {unrecognized_curies}")
+            return canonical_curies_dict
+        else:
+            log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+            return {}
 
 
 def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: DictKnowledgeGraph) -> bool:
