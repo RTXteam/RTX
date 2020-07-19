@@ -22,33 +22,38 @@ import time
 from lxml import etree
 import pickledb
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../NodeSynonymizer/")
+sys.path.append(f"{os.path.dirname(os.path.abspath(__file__))}/../../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
+
+CONCEPTNAME_TO_PMIDS_DB_FILE_NAME = "conceptname_to_pmids.db"
+CURIE_TO_PMIDS_DB_FILE_NAME = "curie_to_pmids.db"
 
 
 class NGDDatabaseBuilder:
     def __init__(self, pubmed_directory_path):
-        self.conceptname_to_pmids_db = pickledb.load("conceptname_to_pmids.db", False)
-        self.curie_to_pmids_db = pickledb.load("curie_to_pmids.db", False)
+        self.conceptname_to_pmids_db = pickledb.load(CONCEPTNAME_TO_PMIDS_DB_FILE_NAME, False)
+        self.curie_to_pmids_db = pickledb.load(CURIE_TO_PMIDS_DB_FILE_NAME, False)
         self.pubmed_directory_path = pubmed_directory_path
 
     def build_conceptname_to_pmids_db(self):
-        print("Extracting conceptname->PMIDs mappings from pubmed files..")
+        print(f"Starting to build {CONCEPTNAME_TO_PMIDS_DB_FILE_NAME} from pubmed files..")
         start = time.time()
         pubmed_directory = os.fsencode(self.pubmed_directory_path)
         all_file_names = [os.fsdecode(file) for file in os.listdir(pubmed_directory)]
-        pubmed_file_names = [file_name for file_name in all_file_names if file_name.startswith("pubmed") and file_name.endswith(".xml.gz")]
+        pubmed_file_names = [file_name for file_name in all_file_names if file_name.startswith('pubmed') and
+                             file_name.endswith('.xml.gz')]
         if not pubmed_file_names:
-            print(f"Sorry, couldn't find any PubMed XML files to scrape.")
+            print(f"ERROR: Couldn't find any PubMed XML files to scrape.")
         else:
             conceptname_to_pmids_map = dict()
             # Go through each downloaded pubmed file and build our dictionary of mappings
             for file_name in pubmed_file_names:
-                print(f"  Starting to process file '{file_name}'.. ({pubmed_file_names.index(file_name) + 1} of {len(pubmed_file_names)})")
+                print(f"  Starting to process file '{file_name}'.. ({pubmed_file_names.index(file_name) + 1} of "
+                      f"{len(pubmed_file_names)})")
                 file_start_time = time.time()
                 with gzip.open(f"{self.pubmed_directory_path}/{file_name}") as pubmed_file:
                     file_contents_tree = etree.parse(pubmed_file)
-                pubmed_articles = file_contents_tree.xpath('//PubmedArticle')
+                pubmed_articles = file_contents_tree.xpath("//PubmedArticle")
 
                 for article in pubmed_articles:
                     # Link each concept name to the PMID of this article
@@ -67,44 +72,51 @@ class NGDDatabaseBuilder:
                 print(f"    took {round((time.time() - file_start_time) / 60, 2)} minutes")
 
             # Save the data to the PickleDB after we're done
-            print("Loading conceptname->PMIDs dictionary into PickleDB..")
+            print("  Loading data into PickleDB..")
             for concept_name, pmid_list in conceptname_to_pmids_map.items():
                 self.conceptname_to_pmids_db.set(concept_name, list({self._create_pmid_string(pmid) for pmid in pmid_list}))
-            print("Saving PickleDB file..")
+            print("  Saving PickleDB file..")
             self.conceptname_to_pmids_db.dump()
-            print(f"Done! Building the conceptname->PMIDs database took {round(((time.time() - start) / 60) / 60, 3)} hours")
+            print(f"Done! Building {CONCEPTNAME_TO_PMIDS_DB_FILE_NAME} took {round(((time.time() - start) / 60) / 60, 3)} hours")
 
     def build_curie_to_pmids_db(self):
+        print(f"Starting to build {CURIE_TO_PMIDS_DB_FILE_NAME}..")
         start = time.time()
-        # Get canonical curies for all of the concept names in our big pickle DB using the NodeSynonymizer
+        # Get canonical curies for all of the concept names in our big pubmed pickleDB using the NodeSynonymizer
         concept_names = self.conceptname_to_pmids_db.getall()
         synonymizer = NodeSynonymizer()
-        print(f"Sending NodeSynonymizer.get_canonical_curies() a list of {len(concept_names)} concept names..")
-        canonical_curies_dict = synonymizer.get_canonical_curies(name=concept_names)
-        print(f"Got results back from NodeSynonymizer! (Returned dict contains {len(canonical_curies_dict)} keys.)")
+        print(f"  Sending NodeSynonymizer.get_canonical_curies() a list of {len(concept_names)} concept names..")
+        canonical_curies_dict = synonymizer.get_canonical_curies(names=concept_names)
+        print(f"  Got results back from NodeSynonymizer. (Returned dict contains {len(canonical_curies_dict)} keys.)")
+
         curie_to_pmids_map = dict()
-        concept_names_synonymizer_didnt_know = 0
         if canonical_curies_dict:
-            # Map the canonical curie for each concept to the concept's PMID list, if the concept was recognized
-            print(f"Mapping canonical curies to PMIDs..")
-            for concept_name in concept_names:
-                canonical_curie = canonical_curies_dict.get(concept_name)
-                if canonical_curie:
-                    pmids_for_this_concept = self.conceptname_to_pmids_db.get(concept_name)
-                    self._add_mapping(canonical_curie, pmids_for_this_concept, curie_to_pmids_map)
-                else:
-                    concept_names_synonymizer_didnt_know += 1
+            recognized_concepts = {concept for concept in canonical_curies_dict if canonical_curies_dict.get(concept)}
+            print(f"  NodeSynonymizer recognized {round((len(recognized_concepts) / len(concept_names)) * 100)}% of "
+                  f"concept names scraped from pubmed.")
+            # Store which concept names the NodeSynonymizer didn't know about, for learning purposes
+            unrecognized_concepts = set(canonical_curies_dict).difference(recognized_concepts)
+            with open('unrecognized_pubmed_concept_names.txt', 'w+') as unrecognized_concepts_file:
+                unrecognized_concepts_file.write(f"{unrecognized_concepts}")
+            print(f"  Unrecognized concept names were written to 'unrecognized_pubmed_concept_names.txt'.")
+
+            # Map the canonical curie for each recognized concept to the concept's PMID list
+            print(f"  Mapping canonical curies to PMIDs..")
+            for concept_name in recognized_concepts:
+                canonical_curie = canonical_curies_dict[concept_name].get('preferred_curie')
+                pmids_for_this_concept = self.conceptname_to_pmids_db.get(concept_name)
+                self._add_mapping(canonical_curie, pmids_for_this_concept, curie_to_pmids_map)
+            print(f"  In total, mapped {len(curie_to_pmids_map)} canonical curies to PMIDs.")
 
             # Save the data to our final pickleDB
-            print("Loading curie->PMIDs dictionary into PickleDB..")
+            print("  Loading data into PickleDB..")
             for curie, pmid_list in curie_to_pmids_map.items():
-                self.curie_to_pmids_db.set(curie, list({self._create_pmid_string(pmid) for pmid in pmid_list}))
-            print("Saving PickleDB file..")
+                self.curie_to_pmids_db.set(curie, list(set(pmid_list)))
+            print("  Saving PickleDB file..")
             self.curie_to_pmids_db.dump()
-            print(f"Done! Building the curie->PMIDs database took {round((time.time() - start) / 60)} minutes.")
-            print(f"Final database contains {len(curie_to_pmids_map)} keys (canonical curies).")
+            print(f"Done! Building {CURIE_TO_PMIDS_DB_FILE_NAME} took {round((time.time() - start) / 60)} minutes.")
         else:
-            print(f"ERROR: Node synonymizer didn't return anything!")
+            print(f"ERROR: NodeSynonymizer didn't return anything!")
 
     # Helper methods
 
