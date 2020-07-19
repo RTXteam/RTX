@@ -83,7 +83,7 @@ class NGDDatabaseBuilder:
         print(f"Starting to build {CURIE_TO_PMIDS_DB_FILE_NAME}..")
         start = time.time()
         # Get canonical curies for all of the concept names in our big pubmed pickleDB using the NodeSynonymizer
-        concept_names = self.conceptname_to_pmids_db.getall()
+        concept_names = list(self.conceptname_to_pmids_db.getall())
         synonymizer = NodeSynonymizer()
         print(f"  Sending NodeSynonymizer.get_canonical_curies() a list of {len(concept_names)} concept names..")
         canonical_curies_dict = synonymizer.get_canonical_curies(names=concept_names)
