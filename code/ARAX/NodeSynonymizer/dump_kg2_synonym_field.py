@@ -43,7 +43,7 @@ def _run_cypher_query(cypher_query: str, kg='KG2') -> List[Dict[str, any]]:
         return query_results
 
 
-def dump_kg2_synonym_field():   
+def dump_kg2_synonym_field():
     # This function creates a JSON file of KG2 nodes and their synonyms as listed in the node "synonym" property
     cypher_query = f"match (n) where n.synonym is not null and n.synonym <> '[]' return n.id, n.synonym"
     results = _run_cypher_query(cypher_query)
