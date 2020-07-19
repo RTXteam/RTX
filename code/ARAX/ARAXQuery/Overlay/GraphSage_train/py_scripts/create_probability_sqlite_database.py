@@ -88,7 +88,15 @@ for curie in disease_curie_list:
     test2 = graph.loc[drug_curie_list, :].to_numpy()
     X = np.multiply(test1, test2)
     all_prob = list(pred.prob(X)[:, 1])
-    rows = list(zip(itertools.cycle([curie]),drug_curie_list,all_prob))
+    bool_list = [True if prob >= 0.8 else False for prob in all_prob]
+    all_prob_threshold = list(itertools.compress(all_prob, bool_list))
+    drug_curie_list_selected = list(itertools.compress(drug_curie_list, bool_list))
+    if len(all_prob_threshold)>1:
+        rows = list(zip(itertools.cycle([curie]), drug_curie_list_selected, all_prob_threshold))
+    elif len(all_prob_threshold)==1:
+        rows = list(zip([curie], drug_curie_list_selected, all_prob_threshold))
+    else:
+        continue
     conn.executemany("INSERT INTO PROBABILITY VALUES (?, ?, ?)", rows)
     conn.commit()
 
