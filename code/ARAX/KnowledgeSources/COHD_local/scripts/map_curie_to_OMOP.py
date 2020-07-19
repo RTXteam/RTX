@@ -104,60 +104,32 @@ class MapCurieToOMOP:
 
     def _parallel_get_OMOP(self, synonym):
 
-        if self.kg == "KG1":
-            try:
-                vocabulary_id, concept_code = synonym.split(':')
-            except ValueError:
-                vocabulary_id, concept_code = synonym.split(':')[1:]
-            if vocabulary_id not in ['ATC', 'CVX', 'HCPCS', 'ICD10', 'ICD-10', 'ICD10CM', 'ICD-9', 'MESH', 'NDFRT', 'RXNORM', 'SNOMEDCT', 'SNOMEDCT_VET', 'MEDDRA']:
-                return []
-            else:
-                if vocabulary_id == "ICD-10":
-                    synonym = synonym.replace('ICD-10', 'ICD10')
-                elif vocabulary_id == "ICD-9":
-                    synonym = synonym.replace('ICD-9', 'ICD9CM')
-                elif vocabulary_id == "MESH":
-                    synonym = synonym.replace('MESH', 'MeSH')
-                elif vocabulary_id == "RXNORM":
-                    synonym = synonym.replace('RXNORM', 'RxNorm')
-                elif vocabulary_id == "SNOMEDCT":
-                    synonym = synonym.replace('SNOMEDCT', 'SNOMED')
-                elif vocabulary_id == "SNOMEDCT_VET":
-                    synonym = synonym.replace('SNOMEDCT_VET', 'SNOMED')
-                elif vocabulary_id == "MEDDRA":
-                    synonym = synonym.replace('MEDDRA', 'MedDRA')
-                else:
-                    pass
-
-                concept_id = self.concepts_table_select.loc[self.concepts_table_select['curie_name'] == synonym, 'concept_id']
-                return list(concept_id)
+        try:
+            vocabulary_id, concept_code = synonym.split(':')
+        except ValueError:
+            vocabulary_id, concept_code = synonym.split(':')[1:]
+        if vocabulary_id not in ['ATC', 'CVX', 'HCPCS', 'ICD10', 'ICD-10', 'ICD10CM', 'ICD-9', 'MESH', 'NDFRT', 'RXNORM', 'SNOMEDCT', 'SNOMEDCT_VET', 'MEDDRA']:
+            return []
         else:
-            try:
-                vocabulary_id, concept_code = synonym.split(':')
-            except ValueError:
-                vocabulary_id, concept_code = synonym.split(':')[1:]
-            if vocabulary_id not in ['ATC', 'CVX', 'HCPCS', 'ICD10', 'ICD-10', 'ICD10CM', 'ICD-9', 'MESH', 'NDFRT', 'RXNORM', 'SNOMEDCT', 'SNOMEDCT_VET', 'MEDDRA']:
-                return []
+            if vocabulary_id == "ICD-10":
+                synonym = synonym.replace('ICD-10', 'ICD10')
+            elif vocabulary_id == "ICD-9":
+                synonym = synonym.replace('ICD-9', 'ICD9CM')
+            elif vocabulary_id == "MESH":
+                synonym = synonym.replace('MESH', 'MeSH')
+            elif vocabulary_id == "RXNORM":
+                synonym = synonym.replace('RXNORM', 'RxNorm')
+            elif vocabulary_id == "SNOMEDCT":
+                synonym = synonym.replace('SNOMEDCT', 'SNOMED')
+            elif vocabulary_id == "SNOMEDCT_VET":
+                synonym = synonym.replace('SNOMEDCT_VET', 'SNOMED')
+            elif vocabulary_id == "MEDDRA":
+                synonym = synonym.replace('MEDDRA', 'MedDRA')
             else:
-                if vocabulary_id == "ICD-10":
-                    synonym = synonym.replace('ICD-10', 'ICD10')
-                elif vocabulary_id == "ICD-9":
-                    synonym = synonym.replace('ICD-9', 'ICD9CM')
-                elif vocabulary_id == "MESH":
-                    synonym = synonym.replace('MESH', 'MeSH')
-                elif vocabulary_id == "RXNORM":
-                    synonym = synonym.replace('RXNORM', 'RxNorm')
-                elif vocabulary_id == "SNOMEDCT":
-                    synonym = synonym.replace('SNOMEDCT', 'SNOMED')
-                elif vocabulary_id == "SNOMEDCT_VET":
-                    synonym = synonym.replace('SNOMEDCT_VET', 'SNOMED')
-                elif vocabulary_id == "MEDDRA":
-                    synonym = synonym.replace('MEDDRA', 'MedDRA')
-                else:
-                    pass
+                pass
 
-                concept_id = self.concepts_table_select.loc[self.concepts_table_select['curie_name'] == synonym, 'concept_id']
-                return list(concept_id)
+            concept_id = self.concepts_table_select.loc[self.concepts_table_select['curie_name'] == synonym, 'concept_id']
+            return list(concept_id)
 
 
 
@@ -188,20 +160,22 @@ class MapCurieToOMOP:
 
         infolder = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
         try:
-            if self.kg == "KG1":
-                infile_path = infolder + '/Athena_tables/CONCEPT_KG1.txt'
-                concepts_table = pd.read_csv(infile_path, sep='\t', index_col=None)
-            else:
-                infile_path = infolder + '/Athena_tables/CONCEPT_KG2.txt'
-                concepts_table = pd.read_csv(infile_path, sep='\t', index_col=None)
+            # if self.kg == "KG1":
+            #     infile_path = infolder + '/Athena_tables/CONCEPT_KG1.txt'
+            #     concepts_table = pd.read_csv(infile_path, sep='\t', index_col=None)
+            # else:
+            #     infile_path = infolder + '/Athena_tables/CONCEPT_KG2.txt'
+            #     concepts_table = pd.read_csv(infile_path, sep='\t', index_col=None)
+            infile_path = infolder + '/Athena_tables/ALL_CONCEPT_filtered.txt'
+            concepts_table = pd.read_csv(infile_path, sep='\t', index_col=None)
         except FileNotFoundError:
             print(f"Can't find {infile_path}")
             return {}
 
-        if self.kg == "KG1":
-            select = ['ATC', 'MeSH', 'ICD10', 'ICD10CM', 'ICD9CM', 'RxNorm', 'SNOMED', 'MedDRA']
-        else:
-            select = ['ATC', 'CVX', 'HCPCS', 'ICD10', 'ICD10CM', 'ICD9CM', 'MeSH', 'NDFRT', 'RxNorm', 'SNOMED', 'MedDRA']
+        # if self.kg == "KG1":
+        #     select = ['ATC', 'MeSH', 'ICD10', 'ICD10CM', 'ICD9CM', 'RxNorm', 'SNOMED', 'MedDRA']
+        # else:
+        select = ['ATC', 'CVX', 'HCPCS', 'ICD10', 'ICD10CM', 'ICD9CM', 'MeSH', 'NDFRT', 'RxNorm', 'SNOMED', 'MedDRA']
 
         concepts_table_select = concepts_table.loc[[concepts_table.loc[index, 'vocabulary_id'] in select for index in range(concepts_table.shape[0])], ['concept_id', 'vocabulary_id', 'concept_code']]
         concepts_table_select['curie_name'] = concepts_table_select[['vocabulary_id', 'concept_code']].apply(lambda x: str(x[0]) + ":" + str(x[1]), axis=1)
@@ -258,3 +232,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
