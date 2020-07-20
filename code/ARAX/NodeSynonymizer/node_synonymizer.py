@@ -1192,6 +1192,7 @@ class NodeSynonymizer:
                 results[name] = None
                 lc_name = name.lower()
                 name_map[lc_name] = name
+                lc_name = re.sub(r"'","''",lc_name)   # Replace embedded ' characters with ''
                 lc_names.append(lc_name)
                 batch_size += 1
                 if batch_size > 5000:
@@ -1583,7 +1584,7 @@ def run_example_9():
 
     print("==== Get canonical curies for a set of input curies ============================")
     curies = [ "DOID:14330", "CUI:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281xxxxx" ]
-    names = [ "phenylketonuria", "ibuprofen", "P06865", "HEXA", "fanconi anemia", "supernova" ]
+    names = [ "phenylketonuria", "ibuprofen", "P06865", "HEXA", "Parkinson's disease", 'supernovas', "Bob's Uncle", 'double "quotes"' ]
 
     t0 = timeit.default_timer()
     canonical_curies = synonymizer.get_canonical_curies(curies=curies)
