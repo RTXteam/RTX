@@ -34,6 +34,7 @@ class NGDDatabaseBuilder:
         self.conceptname_to_pmids_db = pickledb.load(CONCEPTNAME_TO_PMIDS_DB_FILE_NAME, False)
         self.curie_to_pmids_db = pickledb.load(CURIE_TO_PMIDS_DB_FILE_NAME, False)
         self.pubmed_directory_path = pubmed_directory_path
+        self.status = 'OK'
 
     def build_conceptname_to_pmids_db(self):
         print(f"Starting to build {CONCEPTNAME_TO_PMIDS_DB_FILE_NAME} from pubmed files..")
@@ -43,7 +44,9 @@ class NGDDatabaseBuilder:
         pubmed_file_names = [file_name for file_name in all_file_names if file_name.startswith('pubmed') and
                              file_name.endswith('.xml.gz')]
         if not pubmed_file_names:
-            print(f"ERROR: Couldn't find any PubMed XML files to scrape.")
+            print(f"ERROR: Couldn't find any PubMed XML files to scrape. Provide the path to the directory "
+                  f"containing your PubMed download as a command line argument.")
+            self.status = 'ERROR'
         else:
             conceptname_to_pmids_map = dict()
             # Go through each downloaded pubmed file and build our dictionary of mappings
@@ -85,6 +88,7 @@ class NGDDatabaseBuilder:
         if not self.conceptname_to_pmids_db.getall():
             print(f"ERROR: {CONCEPTNAME_TO_PMIDS_DB_FILE_NAME} must exist to do a partial build. Use --full or locate "
                   f"that file.")
+            self.status = 'ERROR'
             return
 
         # Get canonical curies for all of the concept names in our big pubmed pickleDB using the NodeSynonymizer
@@ -122,6 +126,7 @@ class NGDDatabaseBuilder:
             print(f"Done! Building {CURIE_TO_PMIDS_DB_FILE_NAME} took {round((time.time() - start) / 60)} minutes.")
         else:
             print(f"ERROR: NodeSynonymizer didn't return anything!")
+            self.status = 'ERROR'
 
     # Helper methods
 
@@ -158,7 +163,7 @@ class NGDDatabaseBuilder:
 def main():
     # Load command-line arguments
     arg_parser = argparse.ArgumentParser(description="Builds pickle database of curie->PMID mappings needed for NGD")
-    arg_parser.add_argument("pubmedDirectory", type=str)
+    arg_parser.add_argument("pubmedDirectory", type=str, nargs='?', default=os.getcwd())
     arg_parser.add_argument("--full", dest="full", action="store_true", default=False)
     args = arg_parser.parse_args()
 
@@ -166,7 +171,8 @@ def main():
     database_builder = NGDDatabaseBuilder(args.pubmedDirectory)
     if args.full:
         database_builder.build_conceptname_to_pmids_db()
-    database_builder.build_curie_to_pmids_db()
+    if database_builder.status == 'OK':
+        database_builder.build_curie_to_pmids_db()
 
 
 if __name__ == '__main__':
