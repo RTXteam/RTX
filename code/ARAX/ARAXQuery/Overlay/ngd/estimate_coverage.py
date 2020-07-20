@@ -7,9 +7,10 @@ Note: The pickle DB "curie_to_pmids.db" must exist in the directory this script 
 """
 import os
 import sys
+import time
 import traceback
 
-from typing import Set
+from typing import Set, List, Dict
 
 from neo4j import GraphDatabase
 import pickledb
@@ -18,11 +19,11 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../NodeSynony
 from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../")  # code directory
 from RTXConfiguration import RTXConfiguration
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../reasoningtool/kg-construction/")
+from NormGoogleDistance import NormGoogleDistance
 
 
-def _get_random_node_ids(batch_size: int, kg='KG2') -> Set[str]:
-    print(f"    Getting random selection of node IDs from {kg} neo4j")
-    cypher_query = f"match (a) return a.id, rand() as r order by r limit {batch_size}"
+def _run_cypher_query(cypher_query: str, kg='KG2') -> List[Dict[str, any]]:
     rtxc = RTXConfiguration()
     if kg == 'KG2':
         rtxc.live = "KG2"
@@ -35,9 +36,16 @@ def _get_random_node_ids(batch_size: int, kg='KG2') -> Set[str]:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
         print(f"Encountered an error interacting with {kg} neo4j. {tb}")
-        return set()
+        return []
     else:
-        return {result['a.id'] for result in query_results}
+        return query_results
+
+
+def _get_random_node_ids(batch_size: int, kg='KG2') -> Set[str]:
+    print(f"    Getting random selection of node IDs from {kg} neo4j")
+    cypher_query = f"match (a) return a.id, rand() as r order by r limit {batch_size}"
+    results = _run_cypher_query(cypher_query, kg)
+    return {result['a.id'] for result in results} if results else set()
 
 
 def estimate_percent_nodes_with_mesh_mapping_via_synonymizer(kg: str):
@@ -62,9 +70,50 @@ def estimate_percent_nodes_with_mesh_mapping_via_synonymizer(kg: str):
         percentage_with_mesh = (num_curies_with_mesh_term / len(random_node_ids)) * 100
         print(f"    {percentage_with_mesh}% of nodes had a synonym MESH term in this batch.")
         percentages_with_mesh.append(percentage_with_mesh)
+
     print(f"  Percentages for all batches: {percentages_with_mesh}.")
     average = sum(percentages_with_mesh) / len(percentages_with_mesh)
     print(f"Final estimate of {kg} nodes mappable to a MESH term via NodeSynonymizer: {round(average)}%")
+
+
+def estimate_percent_nodes_covered_by_backup_method(kg: str):
+    print(f"Estimating the percent of {kg} nodes mappable by the 'backup' NGD method (uses eUtils)")
+    percentages_mapped = []
+    num_batches = 10
+    batch_size = 100
+    for number in range(num_batches):
+        print(f"  Batch {number + 1}")
+        # Get random selection of nodes from the KG
+        query = f"match (a) return a.id, a.name, rand() as r order by r limit {batch_size}"
+        results = _run_cypher_query(query, kg)
+
+        # Use the back-up NGD method to try to grab PMIDs for each
+        num_with_pmids = 0
+        for result in results:
+            # Try to map this to a MESH term using the backup method (the chokepoint)
+            backup_ngd = NormGoogleDistance()
+            node_id = result['a.id']
+            node_name = result['a.name']
+            try:
+                pmids = backup_ngd.get_pmids_for_all([node_id], [node_name])
+            except Exception:
+                tb = traceback.format_exc()
+                error_type, error, _ = sys.exc_info()
+                print(f"Error using back-up method: {tb}")
+            else:
+                if len(pmids) and ([pmid_list for pmid_list in pmids if pmid_list]):
+                    num_with_pmids += 1
+                    print(f"    Found {len(pmids[0])} PMIDs for {node_id}, {node_name}.")
+                else:
+                    print(f"    Not found. ({node_id}, {node_name})")
+            time.sleep(3)  # Getting throttled...
+        percentage_with_pmids = (num_with_pmids / batch_size) * 100
+        print(f"    {percentage_with_pmids}% of nodes were mapped to PMIDs using backup method.")
+        percentages_mapped.append(percentage_with_pmids)
+
+    print(f"  Percentages for all batches: {percentages_mapped}.")
+    average = sum(percentages_mapped) / len(percentages_mapped)
+    print(f"Final estimate of backup method's coverage of {kg} nodes: {round(average)}%")
 
 
 def estimate_percent_nodes_covered_by_ultrafast_ngd(kg: str):
@@ -100,4 +149,5 @@ def estimate_percent_nodes_covered_by_ultrafast_ngd(kg: str):
 
 
 if __name__ == "__main__":
-    estimate_percent_nodes_covered_by_ultrafast_ngd('KG2')
+    # estimate_percent_nodes_covered_by_ultrafast_ngd('KG2')
+    estimate_percent_nodes_covered_by_backup_method('KG2')
