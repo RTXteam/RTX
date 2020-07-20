@@ -5,7 +5,10 @@ import itertools
 import sys
 import time
 import numpy as np
+import multiprocessing
+
 pathlist = os.path.realpath(__file__).split(os.path.sep)
+#pathlist = ['', 'home', 'cqm5886', 'work', 'RTX', 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'predictor', 'retrain_data', 'test.py']
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery']))
 from Overlay.predictor.predictor import predictor
@@ -40,11 +43,6 @@ if os.path.exists(map_file):
 else:
     os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/map.txt " + map_file)
 
-# with open(map_file, 'r') as infile:
-#     map_file_content = infile.readlines()
-#     map_file_content.pop(0) ## remove title
-#     known_curies = set(line.strip().split('\t')[0] for line in map_file_content)
-
 graph = pd.read_csv(emb_file, sep=' ', skiprows=1, header=None, index_col=None)
 graph = graph.sort_values(0).reset_index(drop=True)
 map_df = pd.read_csv(map_file, sep='\t',index_col=None)
@@ -75,30 +73,84 @@ conn.execute(f"DROP TABLE IF EXISTs PROBABILITY")
 insert_command1 = f"CREATE TABLE PROBABILITY(disease VARCHAR(255), drug VARCHAR(255), probability INT)"
 conn.execute(insert_command1)
 
-start_time = time.time()
+def create_array(curie):
 
-print("start")
+    print(curie, flush=True)
+    test1 = graph.loc[[curie for _ in range(len(drug_curie_list))], :].to_numpy()
+    test2 = graph.loc[drug_curie_list, :].to_numpy()
+    return np.multiply(test1, test2)
+
+start_time = time.time()
 
 print(f"INFO: Populating table PROBABILITY",flush=True)
 print(f"Total diseases: {len(disease_curie_list)}")
-for curie in disease_curie_list:
 
-    print(curie,flush=True)
-    test1 = graph.loc[[curie for _ in range(len(drug_curie_list))], :].to_numpy()
-    test2 = graph.loc[drug_curie_list, :].to_numpy()
-    X = np.multiply(test1, test2)
-    all_prob = list(pred.prob(X)[:, 1])
-    bool_list = [True if prob >= 0.8 else False for prob in all_prob]
-    all_prob_threshold = list(itertools.compress(all_prob, bool_list))
-    drug_curie_list_selected = list(itertools.compress(drug_curie_list, bool_list))
-    if len(all_prob_threshold)>1:
-        rows = list(zip(itertools.cycle([curie]), drug_curie_list_selected, all_prob_threshold))
-    elif len(all_prob_threshold)==1:
-        rows = list(zip([curie], drug_curie_list_selected, all_prob_threshold))
-    else:
-        continue
-    conn.executemany("INSERT INTO PROBABILITY VALUES (?, ?, ?)", rows)
-    conn.commit()
+print(f"Insert data into database", flush=True)
+
+batch =list(range(0,len(disease_curie_list), 100))
+batch.append(len(disease_curie_list))
+print(f'Total batches: {len(batch)-1}', flush=True)
+
+for i in range(len(batch)):
+    if (i + 1) < len(batch):
+        print(f'Here is batch{i + 1}', flush=True)
+        start = batch[i]
+        end = batch[i + 1]
+        disease_curie_sublist = disease_curie_list[start:end]
+        disease_col = list(itertools.chain.from_iterable(itertools.repeat(x, len(drug_curie_list)) for x in disease_curie_sublist))
+        drug_col = drug_curie_list*len(disease_curie_sublist)
+        with multiprocessing.Pool(processes=50) as executor:
+            array_list = [elem for elem in executor.map(create_array, disease_curie_sublist)]
+        X = np.concatenate(array_list)
+        all_prob = list(pred.prob(X)[:, 1])
+        batch_df = pd.DataFrame(list(zip(disease_col, drug_col, all_prob)), columns=['Disease', 'Drug', 'Prob'])
+        batch_df = batch_df.loc[batch_df["Prob"] >= 0.8, :]
+        records = batch_df.to_records(index=False)
+        rows = list(records)
+        if len(rows)!=0:
+            conn.executemany("INSERT INTO PROBABILITY VALUES (?, ?, ?)", rows)
+            conn.commit()
+
+# batch_X = np.array([])
+# count = 0
+# batch_df = pd.DataFrame({'Disease': [], 'Drug': []})
+#
+# for curie in disease_curie_list[:100]:
+#
+#     print(curie, flush=True)
+#     count = count + 1
+#     dftmp = pd.DataFrame(list(zip(itertools.cycle([curie]), drug_curie_list)), columns=['Disease', 'Drug'])
+#     if len(batch_df) == 0:
+#         batch_df = pd.DataFrame(list(zip(itertools.cycle([curie]), drug_curie_list)), columns=['Disease', 'Drug'])
+#     else:
+#         batch_df = pd.concat([batch_df, dftmp]).reset_index(drop=True)
+#     test1 = graph.loc[[curie for _ in range(len(drug_curie_list))], :].to_numpy()
+#     test2 = graph.loc[drug_curie_list, :].to_numpy()
+#     Xtmp = np.multiply(test1, test2)
+#     if len(batch_X) == 0:
+#         batch_X = Xtmp
+#     else:
+#         batch_X = np.append(batch_X, Xtmp, axis=0)
+#
+#     if count % 1000 == 0:
+#         all_prob = list(pred.prob(batch_X)[:, 1])
+#         batch_df["prob"] = all_prob
+#         batch_df = batch_df.loc[batch_df["prob"] >= 0.8, :]
+#         records = batch_df.to_records(index=False)
+#         rows = list(records)
+#         conn.executemany("INSERT INTO PROBABILITY VALUES (?, ?, ?)", rows)
+#         conn.commit()
+#
+#         batch_X = np.array([])
+#         batch_df = pd.DataFrame({'Disease': [], 'Drug': []})
+#
+# all_prob = list(pred.prob(batch_X)[:, 1])
+# batch_df["prob"] = all_prob
+# batch_df = batch_df.loc[batch_df["prob"] >= 0.8, :]
+# records = batch_df.to_records(index=False)
+# rows = list(records)
+# conn.executemany("INSERT INTO PROBABILITY VALUES (?, ?, ?)", rows)
+# conn.commit()
 
 print(f"INFO: Creating INDEXes on PROBABILITY", flush=True)
 conn.execute(f"CREATE INDEX idx_PROBABILITY_disease ON PROBABILITY(disease)")
