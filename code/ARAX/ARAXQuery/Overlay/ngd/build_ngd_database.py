@@ -82,6 +82,11 @@ class NGDDatabaseBuilder:
     def build_curie_to_pmids_db(self):
         print(f"Starting to build {CURIE_TO_PMIDS_DB_FILE_NAME}..")
         start = time.time()
+        if not self.conceptname_to_pmids_db.getall():
+            print(f"ERROR: {CONCEPTNAME_TO_PMIDS_DB_FILE_NAME} must exist to do a partial build. Use --full or locate "
+                  f"that file.")
+            return
+
         # Get canonical curies for all of the concept names in our big pubmed pickleDB using the NodeSynonymizer
         concept_names = list(self.conceptname_to_pmids_db.getall())
         synonymizer = NodeSynonymizer()
