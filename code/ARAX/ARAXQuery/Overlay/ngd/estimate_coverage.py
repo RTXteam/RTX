@@ -42,7 +42,6 @@ def _run_cypher_query(cypher_query: str, kg='KG2') -> List[Dict[str, any]]:
 
 
 def _get_random_node_ids(batch_size: int, kg='KG2') -> Set[str]:
-    print(f"    Getting random selection of node IDs from {kg} neo4j")
     cypher_query = f"match (a) return a.id, rand() as r order by r limit {batch_size}"
     results = _run_cypher_query(cypher_query, kg)
     return {result['a.id'] for result in results} if results else set()
@@ -116,18 +115,17 @@ def estimate_percent_nodes_covered_by_backup_method(kg: str):
 
 
 def estimate_percent_nodes_covered_by_ultrafast_ngd(kg: str):
-    print(f"Estimating the percent of {kg} nodes covered by the ultrafast NGD system")
+    print(f"Estimating the percent of {kg} nodes covered by the local NGD system..")
     curie_to_pmid_db = SqliteDict(f"./curie_to_pmids.sqlite")
     percentages_mapped = []
     num_batches = 20
     batch_size = 4000
+    all_nodes_mapped_by_type = dict()
     for number in range(num_batches):
-        print(f"  Batch {number + 1}")
         # Get random selection of node IDs from the KG
         random_node_ids = _get_random_node_ids(batch_size, kg)
 
-        # Use synonymizer to get their canonical curies
-        print(f"    Getting canonical curies for those random node IDs..")
+        # Use synonymizer to get their canonicalized info
         synonymizer = NodeSynonymizer()
         canonical_curie_info = synonymizer.get_canonical_curies(list(random_node_ids))
         recognized_curies = {input_curie for input_curie in canonical_curie_info if canonical_curie_info.get(input_curie)}
@@ -136,15 +134,27 @@ def estimate_percent_nodes_covered_by_ultrafast_ngd(kg: str):
         num_mapped_to_pmids = 0
         for input_curie in recognized_curies:
             canonical_curie = canonical_curie_info[input_curie].get('preferred_curie')
+            preferred_type = canonical_curie_info[input_curie].get('preferred_type')
+            if preferred_type not in all_nodes_mapped_by_type:
+                all_nodes_mapped_by_type[preferred_type] = {'covered': 0, 'not_covered': 0}
             if canonical_curie and canonical_curie in curie_to_pmid_db:
                 num_mapped_to_pmids += 1
+                all_nodes_mapped_by_type[preferred_type]['covered'] += 1
+            else:
+                all_nodes_mapped_by_type[preferred_type]['not_covered'] += 1
         percentage_mapped = (num_mapped_to_pmids / len(random_node_ids)) * 100
-        print(f"    {percentage_mapped}% of nodes were covered by ultrafastNGD in this batch.")
         percentages_mapped.append(percentage_mapped)
 
-    print(f"  Percentages for all batches: {percentages_mapped}.")
     average = sum(percentages_mapped) / len(percentages_mapped)
-    print(f"Final estimate of ultrafastNGD's coverage of {kg} nodes: {round(average)}%")
+    print(f"Estimated coverage of {kg} nodes: {round(average)}%.")
+    node_type_percentages_dict = dict()
+    for node_type, coverage_info in all_nodes_mapped_by_type.items():
+        num_covered = coverage_info['covered']
+        num_total = coverage_info['covered'] + coverage_info['not_covered']
+        percentage = round((num_covered / num_total) * 100)
+        node_type_percentages_dict[node_type] = percentage
+    for node_type, percentage in sorted(node_type_percentages_dict.items(), key=lambda item: item[1], reverse=True):
+        print(f"  {node_type}: {percentage}%")
 
 
 if __name__ == "__main__":
