@@ -20,7 +20,7 @@ import sys
 import gzip
 import time
 import traceback
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Union
 
 from lxml import etree
 import pickledb
@@ -75,7 +75,7 @@ class NGDDatabaseBuilder:
                     all_concept_names = descriptor_names + qualifier_names + chemical_names + gene_symbols + keywords
                     unique_concept_names = {concept_name for concept_name in all_concept_names if concept_name}
                     for concept_name in unique_concept_names:
-                        self._add_mapping(concept_name, current_pmid, conceptname_to_pmids_map)
+                        self._add_pmids_mapping(concept_name, current_pmid, conceptname_to_pmids_map)
 
                 self._destroy_etree(file_contents_tree)  # Hack around lxml memory leak
                 print(f"    took {round((time.time() - file_start_time) / 60, 2)} minutes")
@@ -125,9 +125,7 @@ class NGDDatabaseBuilder:
             for concept_name in recognized_concepts:
                 canonical_curie = canonical_curies_dict[concept_name].get('preferred_curie')
                 pmids_for_this_concept = conceptname_to_pmids_db.get(concept_name)
-                if canonical_curie not in curie_to_pmids_map:
-                    curie_to_pmids_map[canonical_curie] = set()
-                curie_to_pmids_map[canonical_curie] = curie_to_pmids_map[canonical_curie].union(pmids_for_this_concept)
+                self._add_pmids_mapping(canonical_curie, pmids_for_this_concept, curie_to_pmids_map)
             print(f"  In total, mapped {len(curie_to_pmids_map)} canonical curies to PMIDs.")
         else:
             print(f"ERROR: NodeSynonymizer didn't return anything!")
@@ -136,31 +134,27 @@ class NGDDatabaseBuilder:
 
         # Grab even more PMIDs from edges/nodes in KG2 neo4j
         print(f"  Getting PMIDs from edges in KG2 neo4j..")
-        edge_query = f"match (n)-[e]->(m) where e.publications is not null and e.publications <> '[]' return n.id, m.id, e.publications"
+        edge_query = f"match (n)-[e]->(m) where e.publications is not null and e.publications <> '[]' return distinct n.id, m.id, e.publications"
         edge_results = self._run_cypher_query(edge_query, 'KG2')
         print(f"  Processing results..")
         node_ids = {result['n.id'] for result in edge_results}.union(result['m.id'] for result in edge_results)
-        canonicalized_curies_dict = self._get_canonicalized_curies_dict(node_ids)
+        canonicalized_curies_dict = self._get_canonicalized_curies_dict(list(node_ids))
         for result in edge_results:
             canonicalized_node_ids = {canonicalized_curies_dict[result['n.id']],
                                       canonicalized_curies_dict[result['m.id']]}
             pmids = self._extract_and_format_pmids(result['e.publications'])
             for canonical_curie in canonicalized_node_ids:
-                if canonical_curie not in curie_to_pmids_map:
-                    curie_to_pmids_map[canonical_curie] = set()
-                curie_to_pmids_map[canonical_curie] = curie_to_pmids_map[canonical_curie].union(pmids)
+                self._add_pmids_mapping(canonical_curie, pmids, curie_to_pmids_map)
         print(f"  Getting PMIDs from nodes in KG2 neo4j..")
-        node_query = f"match (n) where n.publications is not null and n.publications <> '[]' return n.id, n.publications"
+        node_query = f"match (n) where n.publications is not null and n.publications <> '[]' return distinct n.id, n.publications"
         node_results = self._run_cypher_query(node_query, 'KG2')
         print(f"  Processing results..")
         node_ids = {result['n.id'] for result in node_results}
-        canonicalized_curies_dict = self._get_canonicalized_curies_dict(node_ids)
+        canonicalized_curies_dict = self._get_canonicalized_curies_dict(list(node_ids))
         for result in node_results:
             canonical_curie = canonicalized_curies_dict[result['n.id']]
             pmids = self._extract_and_format_pmids(result['n.publications'])
-            if canonical_curie not in curie_to_pmids_map:
-                curie_to_pmids_map[canonical_curie] = set()
-            curie_to_pmids_map[canonical_curie] = curie_to_pmids_map[canonical_curie].union(pmids)
+            self._add_pmids_mapping(canonical_curie, pmids, curie_to_pmids_map)
 
         print("  Saving data..")
         # Remove any preexisting version of this database
@@ -168,39 +162,42 @@ class NGDDatabaseBuilder:
             os.remove(CURIE_TO_PMIDS_DB_FILE_NAME)
         # Load our curie->PMIDs dictionary into the database
         curie_to_pmids_db = SqliteDict(f"./{CURIE_TO_PMIDS_DB_FILE_NAME}")
-        for curie, pmid_set in curie_to_pmids_map.items():
-            curie_to_pmids_db[curie] = list(pmid_set)
+        for curie, pmids in curie_to_pmids_map.items():
+            curie_to_pmids_db[curie] = list(set(pmids))
+        print(f"  Final {CURIE_TO_PMIDS_DB_FILE_NAME} contains {len(list(curie_to_pmids_db.keys()))} "
+              f"canonical curies (keys).")
         curie_to_pmids_db.commit()
         curie_to_pmids_db.close()
         print(f"Done! Building {CURIE_TO_PMIDS_DB_FILE_NAME} took {round((time.time() - start) / 60)} minutes.")
 
     # Helper methods
 
-    def _get_canonicalized_curies_dict(self, curie_set: Set[str]) -> Dict[str, str]:
-        print(f"  Sending a batch of {len(curie_set)} curies to NodeSynonymizer.get_canonical_curies()")
-        canonicalized_nodes_info = self.synonymizer.get_canonical_curies(list(curie_set))
+    def _get_canonicalized_curies_dict(self, curies: List[str]) -> Dict[str, str]:
+        print(f"  Sending a batch of {len(curies)} curies to NodeSynonymizer.get_canonical_curies()")
+        canonicalized_nodes_info = self.synonymizer.get_canonical_curies(curies)
         canonicalized_curies_dict = dict()
         for input_curie, preferred_info_dict in canonicalized_nodes_info.items():
             if preferred_info_dict:
                 canonicalized_curies_dict[input_curie] = preferred_info_dict.get('preferred_curie', input_curie)
             else:
                 canonicalized_curies_dict[input_curie] = input_curie
+        print(f"  Got results back from synonymizer")
         return canonicalized_curies_dict
 
-    def _extract_and_format_pmids(self, kg2_publications_field: str) -> Set[str]:
+    def _extract_and_format_pmids(self, kg2_publications_field: str) -> List[str]:
         try:
             publications = ast.literal_eval(kg2_publications_field)
         except Exception:
             print(f"WARNING: Error parsing publications property on an edge.")
-            return set()
+            return []
         else:
             pmids = {publication_id for publication_id in publications if publication_id.startswith('PMID')}
             # Make sure all PMIDs are given in same format (e.g., PMID:18299583 rather than PMID18299583)
-            formatted_pmids = {self._create_pmid_string(pmid.replace('PMID', '').replace(':', '')) for pmid in pmids}
+            formatted_pmids = [self._create_pmid_string(pmid.replace('PMID', '').replace(':', '')) for pmid in pmids]
             return formatted_pmids
 
     @staticmethod
-    def _add_mapping(key, value_to_append, mappings_dict):
+    def _add_pmids_mapping(key: str, value_to_append: Union[str, List[str]], mappings_dict: Dict[str, List[str]]):
         if key not in mappings_dict:
             mappings_dict[key] = []
         if isinstance(value_to_append, list):
