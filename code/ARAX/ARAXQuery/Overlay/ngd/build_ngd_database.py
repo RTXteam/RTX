@@ -32,7 +32,6 @@ CURIE_TO_PMIDS_DB_FILE_NAME = "curie_to_pmids.sqlite"
 
 class NGDDatabaseBuilder:
     def __init__(self, pubmed_directory_path):
-        self.conceptname_to_pmids_db = pickledb.load(CONCEPTNAME_TO_PMIDS_DB_FILE_NAME, False)
         self.pubmed_directory_path = pubmed_directory_path
         self.status = 'OK'
 
@@ -76,30 +75,33 @@ class NGDDatabaseBuilder:
 
             # Save the data to the PickleDB after we're done
             print("  Loading data into PickleDB..")
+            conceptname_to_pmids_db = pickledb.load(CONCEPTNAME_TO_PMIDS_DB_FILE_NAME, False)
             for concept_name, pmid_list in conceptname_to_pmids_map.items():
-                self.conceptname_to_pmids_db.set(concept_name, list({self._create_pmid_string(pmid) for pmid in pmid_list}))
+                conceptname_to_pmids_db.set(concept_name, list({self._create_pmid_string(pmid) for pmid in pmid_list}))
             print("  Saving PickleDB file..")
-            self.conceptname_to_pmids_db.dump()
+            conceptname_to_pmids_db.dump()
             print(f"Done! Building {CONCEPTNAME_TO_PMIDS_DB_FILE_NAME} took {round(((time.time() - start) / 60) / 60, 3)} hours")
 
     def build_curie_to_pmids_db(self):
         print(f"Starting to build {CURIE_TO_PMIDS_DB_FILE_NAME}..")
         start = time.time()
-        curie_to_pmids_db = SqliteDict(f"./{CURIE_TO_PMIDS_DB_FILE_NAME}")
-
-        if not self.conceptname_to_pmids_db.getall():
+        # Load the data from the first half of the build process (scraping pubmed)
+        conceptname_to_pmids_db = pickledb.load(CONCEPTNAME_TO_PMIDS_DB_FILE_NAME, False)
+        if not conceptname_to_pmids_db.getall():
             print(f"ERROR: {CONCEPTNAME_TO_PMIDS_DB_FILE_NAME} must exist to do a partial build. Use --full or locate "
                   f"that file.")
             self.status = 'ERROR'
             return
 
         # Get canonical curies for all of the concept names in our big pubmed pickleDB using the NodeSynonymizer
-        concept_names = list(self.conceptname_to_pmids_db.getall())
+        concept_names = list(conceptname_to_pmids_db.getall())
         synonymizer = NodeSynonymizer()
         print(f"  Sending NodeSynonymizer.get_canonical_curies() a list of {len(concept_names)} concept names..")
         canonical_curies_dict = synonymizer.get_canonical_curies(names=concept_names)
         print(f"  Got results back from NodeSynonymizer. (Returned dict contains {len(canonical_curies_dict)} keys.)")
 
+        # Build our final database of curies to PMIDs
+        curie_to_pmids_db = SqliteDict(f"./{CURIE_TO_PMIDS_DB_FILE_NAME}")
         if canonical_curies_dict:
             recognized_concepts = {concept for concept in canonical_curies_dict if canonical_curies_dict.get(concept)}
             print(f"  NodeSynonymizer recognized {round((len(recognized_concepts) / len(concept_names)) * 100)}% of "
@@ -114,7 +116,7 @@ class NGDDatabaseBuilder:
             print(f"  Mapping canonical curies to PMIDs..")
             for concept_name in recognized_concepts:
                 canonical_curie = canonical_curies_dict[concept_name].get('preferred_curie')
-                pmids_for_this_concept = self.conceptname_to_pmids_db.get(concept_name)
+                pmids_for_this_concept = conceptname_to_pmids_db.get(concept_name)
                 if canonical_curie not in curie_to_pmids_db:
                     curie_to_pmids_db[canonical_curie] = set()
                 curie_to_pmids_db[canonical_curie] = curie_to_pmids_db[canonical_curie].union(pmids_for_this_concept)

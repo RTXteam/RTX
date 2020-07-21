@@ -14,6 +14,8 @@ from swagger_server.models.edge import Edge
 from swagger_server.models.q_edge import QEdge
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
 import NormGoogleDistance
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer/")
+from node_synonymizer import NodeSynonymizer
 
 
 class ComputeNGD:
@@ -71,6 +73,10 @@ class ComputeNGD:
                     if parameters['target_qnode_id'] in node.qnode_ids:
                         target_curies_to_decorate.add(node.id)
                         curies_to_names[node.id] = node.name
+
+            # Convert these curies to their canonicalized curies (needed for the local NGD system)
+            canonicalized_curie_map = self._get_canonical_curies_map(list(source_curies_to_decorate.union(target_curies_to_decorate)))
+
             added_flag = False  # check to see if any edges where added
             # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
             for (source_curie, target_curie) in itertools.product(source_curies_to_decorate, target_curies_to_decorate):
@@ -78,7 +84,7 @@ class ComputeNGD:
                 source_name = curies_to_names[source_curie]
                 target_name = curies_to_names[target_curie]
                 self.response.debug(f"Computing NGD between {source_name} and {target_name}")
-                ngd_value, method_used = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name])
+                ngd_value, method_used = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name], canonicalized_curie_map)
                 ngd_method_counts[method_used] += 1
                 if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                     value = ngd_value
@@ -119,9 +125,15 @@ class ComputeNGD:
                                source_id=parameters['source_qnode_id'], target_id=parameters[
                         'target_qnode_id'])
                 self.message.query_graph.edges.append(q_edge)
+
+            self.response.info(f"NGD values successfully added to edges")
+            self.response.debug(f"Used fast NGD for {ngd_method_counts['fast']} edges, back-up NGD method for {ngd_method_counts['slow']}")
         else:  # you want to add it for each edge in the KG
             # iterate over KG edges, add the information
             try:
+                # Map all nodes to their canonicalized curies in one batch (need canonical IDs for the local NGD system)
+                canonicalized_curie_map = self._get_canonical_curies_map([node.id for node in self.message.knowledge_graph.nodes])
+
                 for edge in self.message.knowledge_graph.edges:
                     # Make sure the edge_attributes are not None
                     if not edge.edge_attributes:
@@ -131,7 +143,7 @@ class ComputeNGD:
                     target_curie = edge.target_id
                     source_name = node_curie_to_name[source_curie]
                     target_name = node_curie_to_name[target_curie]
-                    ngd_value, method_used = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name])
+                    ngd_value, method_used = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name], canonicalized_curie_map)
                     ngd_method_counts[method_used] += 1
                     if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                         value = ngd_value
@@ -147,3 +159,16 @@ class ComputeNGD:
                 self.response.debug(f"Used fast NGD for {ngd_method_counts['fast']} edges, back-up NGD method for {ngd_method_counts['slow']}")
 
             return self.response
+
+    def _get_canonical_curies_map(self, curies):
+        synonymizer = NodeSynonymizer()
+        try:
+            canonicalized_node_info = synonymizer.get_canonical_curies(curies)
+        except Exception:
+            tb = traceback.format_exc()
+            error_type, error, _ = sys.exc_info()
+            self.response.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
+            return {}
+        else:
+            return {input_curie: node_info.get('preferred_curie', input_curie) for input_curie, node_info in
+                    canonicalized_node_info.items() if node_info}
