@@ -92,7 +92,10 @@ class NGDDatabaseBuilder:
     def build_curie_to_pmids_db(self):
         print(f"Starting to build {CURIE_TO_PMIDS_DB_FILE_NAME}..")
         start = time.time()
+        curie_to_pmids_map = dict()
+
         # Load the data from the first half of the build process (scraping pubmed)
+        print(f"  Loading pickle DB containing pubmed scrapings ({CONCEPTNAME_TO_PMIDS_DB_FILE_NAME})..")
         conceptname_to_pmids_db = pickledb.load(CONCEPTNAME_TO_PMIDS_DB_FILE_NAME, False)
         if not conceptname_to_pmids_db.getall():
             print(f"ERROR: {CONCEPTNAME_TO_PMIDS_DB_FILE_NAME} must exist to do a partial build. Use --full or locate "
@@ -107,7 +110,6 @@ class NGDDatabaseBuilder:
         print(f"  Got results back from NodeSynonymizer. (Returned dict contains {len(canonical_curies_dict)} keys.)")
 
         # Map all of the concept names scraped from pubmed to curies
-        curie_to_pmids_db = SqliteDict(f"./{CURIE_TO_PMIDS_DB_FILE_NAME}")
         if canonical_curies_dict:
             recognized_concepts = {concept for concept in canonical_curies_dict if canonical_curies_dict.get(concept)}
             print(f"  NodeSynonymizer recognized {round((len(recognized_concepts) / len(concept_names)) * 100)}% of "
@@ -123,10 +125,10 @@ class NGDDatabaseBuilder:
             for concept_name in recognized_concepts:
                 canonical_curie = canonical_curies_dict[concept_name].get('preferred_curie')
                 pmids_for_this_concept = conceptname_to_pmids_db.get(concept_name)
-                if canonical_curie not in curie_to_pmids_db:
-                    curie_to_pmids_db[canonical_curie] = set()
-                curie_to_pmids_db[canonical_curie] = curie_to_pmids_db[canonical_curie].union(pmids_for_this_concept)
-            print(f"  In total, mapped {len(curie_to_pmids_db)} canonical curies to PMIDs.")
+                if canonical_curie not in curie_to_pmids_map:
+                    curie_to_pmids_map[canonical_curie] = set()
+                curie_to_pmids_map[canonical_curie] = curie_to_pmids_map[canonical_curie].union(pmids_for_this_concept)
+            print(f"  In total, mapped {len(curie_to_pmids_map)} canonical curies to PMIDs.")
         else:
             print(f"ERROR: NodeSynonymizer didn't return anything!")
             self.status = 'ERROR'
@@ -144,9 +146,9 @@ class NGDDatabaseBuilder:
                                       canonicalized_curies_dict[result['m.id']]}
             pmids = self._extract_and_format_pmids(result['e.publications'])
             for canonical_curie in canonicalized_node_ids:
-                if canonical_curie not in curie_to_pmids_db:
-                    curie_to_pmids_db[canonical_curie] = set()
-                curie_to_pmids_db[canonical_curie] = curie_to_pmids_db[canonical_curie].union(pmids)
+                if canonical_curie not in curie_to_pmids_map:
+                    curie_to_pmids_map[canonical_curie] = set()
+                curie_to_pmids_map[canonical_curie] = curie_to_pmids_map[canonical_curie].union(pmids)
         print(f"  Getting PMIDs from nodes in KG2 neo4j..")
         node_query = f"match (n) where n.publications is not null and n.publications <> '[]' return n.id, n.publications"
         node_results = self._run_cypher_query(node_query, 'KG2')
@@ -156,15 +158,21 @@ class NGDDatabaseBuilder:
         for result in node_results:
             canonical_curie = canonicalized_curies_dict[result['n.id']]
             pmids = self._extract_and_format_pmids(result['n.publications'])
-            if canonical_curie not in curie_to_pmids_db:
-                curie_to_pmids_db[canonical_curie] = set()
-            curie_to_pmids_db[canonical_curie] = curie_to_pmids_db[canonical_curie].union(pmids)
+            if canonical_curie not in curie_to_pmids_map:
+                curie_to_pmids_map[canonical_curie] = set()
+            curie_to_pmids_map[canonical_curie] = curie_to_pmids_map[canonical_curie].union(pmids)
 
-        # Save the data
         print("  Saving data..")
+        # Remove any preexisting version of this database
+        if os.path.exists(CURIE_TO_PMIDS_DB_FILE_NAME):
+            os.remove(CURIE_TO_PMIDS_DB_FILE_NAME)
+        # Load our curie->PMIDs dictionary into the database
+        curie_to_pmids_db = SqliteDict(f"./{CURIE_TO_PMIDS_DB_FILE_NAME}")
+        for curie, pmid_set in curie_to_pmids_map.items():
+            curie_to_pmids_db[curie] = list(pmid_set)
         curie_to_pmids_db.commit()
-        print(f"Done! Building {CURIE_TO_PMIDS_DB_FILE_NAME} took {round((time.time() - start) / 60)} minutes.")
         curie_to_pmids_db.close()
+        print(f"Done! Building {CURIE_TO_PMIDS_DB_FILE_NAME} took {round((time.time() - start) / 60)} minutes.")
 
     # Helper methods
 
