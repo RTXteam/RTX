@@ -5,6 +5,7 @@ system (meaning, they can be mapped to a list of PMIDs).
 Usage: python estimate_coverage.py
 Note: The pickle DB "curie_to_pmids.db" must exist in the directory this script is run from.
 """
+import argparse
 import os
 import sys
 import time
@@ -77,35 +78,39 @@ def estimate_percent_nodes_with_mesh_mapping_via_synonymizer(kg: str):
 
 def estimate_percent_nodes_covered_by_backup_method(kg: str):
     print(f"Estimating the percent of {kg} nodes mappable by the 'backup' NGD method (uses eUtils)")
+    backup_ngd = NormGoogleDistance()
+    synonymizer = NodeSynonymizer()
     percentages_mapped = []
     num_batches = 10
-    batch_size = 50
+    batch_size = 10
     for number in range(num_batches):
         print(f"  Batch {number + 1}")
         # Get random selection of nodes from the KG
         query = f"match (a) return a.id, a.name, rand() as r order by r limit {batch_size}"
         results = _run_cypher_query(query, kg)
+        canonical_curie_info = synonymizer.get_canonical_curies([result['a.id'] for result in results])
+        recognized_curies = {input_curie for input_curie in canonical_curie_info if canonical_curie_info.get(input_curie)}
 
         # Use the back-up NGD method to try to grab PMIDs for each
         num_with_pmids = 0
-        for result in results:
+        for curie in recognized_curies:
             # Try to map this to a MESH term using the backup method (the chokepoint)
-            backup_ngd = NormGoogleDistance()
-            node_id = result['a.id']
-            node_name = result['a.name']
+            node_id = canonical_curie_info[curie].get('preferred_curie')
+            node_name = canonical_curie_info[curie].get('preferred_name')
+            node_type = canonical_curie_info[curie].get('preferred_type')
             try:
                 pmids = backup_ngd.get_pmids_for_all([node_id], [node_name])
             except Exception:
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
-                print(f"Error using back-up method: {tb}")
+                print(f"ERROR using back-up method: {tb}")
             else:
                 if len(pmids) and ([pmid_list for pmid_list in pmids if pmid_list]):
                     num_with_pmids += 1
                     print(f"    Found {len(pmids[0])} PMIDs for {node_id}, {node_name}.")
                 else:
                     print(f"    Not found. ({node_id}, {node_name})")
-        percentage_with_pmids = (num_with_pmids / batch_size) * 100
+        percentage_with_pmids = (num_with_pmids / len(recognized_curies)) * 100
         print(f"    {percentage_with_pmids}% of nodes were mapped to PMIDs using backup method.")
         percentages_mapped.append(percentage_with_pmids)
 
@@ -158,5 +163,15 @@ def estimate_percent_nodes_covered_by_ultrafast_ngd(kg: str):
 
 
 if __name__ == "__main__":
-    estimate_percent_nodes_covered_by_ultrafast_ngd('KG1')
-    estimate_percent_nodes_covered_by_ultrafast_ngd('KG2')
+    # Load command-line arguments
+    arg_parser = argparse.ArgumentParser(description="Estimate coverage of various NGD methods")
+    arg_parser.add_argument("--local", dest="local", action="store_true", default=False)
+    arg_parser.add_argument("--backup", dest="backup", action="store_true", default=False)
+    arg_parser.add_argument("--all", dest="all", action="store_true", default=False)
+    args = arg_parser.parse_args()
+
+    if args.local or args.all:
+        estimate_percent_nodes_covered_by_ultrafast_ngd('KG1')
+        estimate_percent_nodes_covered_by_ultrafast_ngd('KG2')
+    if args.backup or args.all:
+        estimate_percent_nodes_covered_by_backup_method('KG2')
