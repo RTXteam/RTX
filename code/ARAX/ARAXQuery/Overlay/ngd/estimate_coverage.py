@@ -13,7 +13,7 @@ import traceback
 from typing import Set, List, Dict
 
 from neo4j import GraphDatabase
-import pickledb
+from sqlitedict import SqliteDict
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
@@ -80,7 +80,7 @@ def estimate_percent_nodes_covered_by_backup_method(kg: str):
     print(f"Estimating the percent of {kg} nodes mappable by the 'backup' NGD method (uses eUtils)")
     percentages_mapped = []
     num_batches = 10
-    batch_size = 100
+    batch_size = 50
     for number in range(num_batches):
         print(f"  Batch {number + 1}")
         # Get random selection of nodes from the KG
@@ -106,7 +106,6 @@ def estimate_percent_nodes_covered_by_backup_method(kg: str):
                     print(f"    Found {len(pmids[0])} PMIDs for {node_id}, {node_name}.")
                 else:
                     print(f"    Not found. ({node_id}, {node_name})")
-            time.sleep(3)  # Getting throttled...
         percentage_with_pmids = (num_with_pmids / batch_size) * 100
         print(f"    {percentage_with_pmids}% of nodes were mapped to PMIDs using backup method.")
         percentages_mapped.append(percentage_with_pmids)
@@ -118,7 +117,7 @@ def estimate_percent_nodes_covered_by_backup_method(kg: str):
 
 def estimate_percent_nodes_covered_by_ultrafast_ngd(kg: str):
     print(f"Estimating the percent of {kg} nodes covered by the ultrafast NGD system")
-    pickle_db = pickledb.load("curie_to_pmids.db", False)
+    curie_to_pmid_db = SqliteDict(f"./curie_to_pmids.sqlite")
     percentages_mapped = []
     num_batches = 20
     batch_size = 4000
@@ -137,7 +136,7 @@ def estimate_percent_nodes_covered_by_ultrafast_ngd(kg: str):
         num_mapped_to_pmids = 0
         for input_curie in recognized_curies:
             canonical_curie = canonical_curie_info[input_curie].get('preferred_curie')
-            if canonical_curie and pickle_db.get(canonical_curie):
+            if canonical_curie and canonical_curie in curie_to_pmid_db:
                 num_mapped_to_pmids += 1
         percentage_mapped = (num_mapped_to_pmids / len(random_node_ids)) * 100
         print(f"    {percentage_mapped}% of nodes were covered by ultrafastNGD in this batch.")
@@ -149,4 +148,5 @@ def estimate_percent_nodes_covered_by_ultrafast_ngd(kg: str):
 
 
 if __name__ == "__main__":
+    estimate_percent_nodes_covered_by_backup_method('KG1')
     estimate_percent_nodes_covered_by_ultrafast_ngd('KG2')

@@ -18,10 +18,10 @@ import os
 import sys
 import gzip
 import time
-from sqlitedict import SqliteDict
 
 from lxml import etree
 import pickledb
+from sqlitedict import SqliteDict
 
 sys.path.append(f"{os.path.dirname(os.path.abspath(__file__))}/../../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
