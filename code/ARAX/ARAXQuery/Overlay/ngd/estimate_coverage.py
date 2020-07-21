@@ -1,14 +1,11 @@
 #!/bin/env python3
-"""
-This script provides a way to estimate the percentage of nodes in KG2/KG1 that are "covered" by our ultrafast NGD
-system (meaning, they can be mapped to a list of PMIDs).
-Usage: python estimate_coverage.py
-Note: The pickle DB "curie_to_pmids.db" must exist in the directory this script is run from.
+""" Estimates different NGD methods' (local 'fast' or backup eUtils methods) coverage of KG1/KG2 nodes
+Usage: python estimate_coverage.py [--local] [--backup] [--all]
+Note: The database "curie_to_pmids.sqlite" must exist in the directory this script is run from.
 """
 import argparse
 import os
 import sys
-import time
 import traceback
 
 from typing import Set, List, Dict
@@ -135,7 +132,7 @@ def estimate_percent_nodes_covered_by_ultrafast_ngd(kg: str):
         canonical_curie_info = synonymizer.get_canonical_curies(list(random_node_ids))
         recognized_curies = {input_curie for input_curie in canonical_curie_info if canonical_curie_info.get(input_curie)}
 
-        # See if those canonical curies are in our pickledb
+        # See if those canonical curies are in our local database
         num_mapped_to_pmids = 0
         for input_curie in recognized_curies:
             canonical_curie = canonical_curie_info[input_curie].get('preferred_curie')
