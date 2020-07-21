@@ -14,17 +14,23 @@ Usage: python build_ngd_database.py <path to directory containing PubMed xml fil
        By default, only step 2 above will be performed. To do a "full" build, use the --full flag.
 """
 import argparse
+import ast
 import os
 import sys
 import gzip
 import time
+import traceback
+from typing import List, Dict, Set
 
 from lxml import etree
 import pickledb
 from sqlitedict import SqliteDict
+from neo4j import GraphDatabase
 
 sys.path.append(f"{os.path.dirname(os.path.abspath(__file__))}/../../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../")  # code directory
+from RTXConfiguration import RTXConfiguration
 
 CONCEPTNAME_TO_PMIDS_DB_FILE_NAME = "conceptname_to_pmids.db"
 CURIE_TO_PMIDS_DB_FILE_NAME = "curie_to_pmids.sqlite"
@@ -34,6 +40,7 @@ class NGDDatabaseBuilder:
     def __init__(self, pubmed_directory_path):
         self.pubmed_directory_path = pubmed_directory_path
         self.status = 'OK'
+        self.synonymizer = NodeSynonymizer()
 
     def build_conceptname_to_pmids_db(self):
         print(f"Starting to build {CONCEPTNAME_TO_PMIDS_DB_FILE_NAME} from pubmed files..")
@@ -95,12 +102,11 @@ class NGDDatabaseBuilder:
 
         # Get canonical curies for all of the concept names in our big pubmed pickleDB using the NodeSynonymizer
         concept_names = list(conceptname_to_pmids_db.getall())
-        synonymizer = NodeSynonymizer()
         print(f"  Sending NodeSynonymizer.get_canonical_curies() a list of {len(concept_names)} concept names..")
-        canonical_curies_dict = synonymizer.get_canonical_curies(names=concept_names)
+        canonical_curies_dict = self.synonymizer.get_canonical_curies(names=concept_names)
         print(f"  Got results back from NodeSynonymizer. (Returned dict contains {len(canonical_curies_dict)} keys.)")
 
-        # Build our final database of curies to PMIDs
+        # Map all of the concept names scraped from pubmed to curies
         curie_to_pmids_db = SqliteDict(f"./{CURIE_TO_PMIDS_DB_FILE_NAME}")
         if canonical_curies_dict:
             recognized_concepts = {concept for concept in canonical_curies_dict if canonical_curies_dict.get(concept)}
@@ -121,18 +127,69 @@ class NGDDatabaseBuilder:
                     curie_to_pmids_db[canonical_curie] = set()
                 curie_to_pmids_db[canonical_curie] = curie_to_pmids_db[canonical_curie].union(pmids_for_this_concept)
             print(f"  In total, mapped {len(curie_to_pmids_db)} canonical curies to PMIDs.")
-
-            # Save the data
-            print("  Saving data..")
-            curie_to_pmids_db.commit()
-            print(f"Done! Building {CURIE_TO_PMIDS_DB_FILE_NAME} took {round((time.time() - start) / 60)} minutes.")
         else:
             print(f"ERROR: NodeSynonymizer didn't return anything!")
             self.status = 'ERROR'
+            return
 
+        # Grab even more PMIDs from edges/nodes in KG2 neo4j
+        print(f"  Getting PMIDs from edges in KG2 neo4j..")
+        edge_query = f"match (n)-[e]->(m) where e.publications is not null and e.publications <> '[]' return n.id, m.id, e.publications"
+        edge_results = self._run_cypher_query(edge_query, 'KG2')
+        print(f"  Processing results..")
+        node_ids = {result['n.id'] for result in edge_results}.union(result['m.id'] for result in edge_results)
+        canonicalized_curies_dict = self._get_canonicalized_curies_dict(node_ids)
+        for result in edge_results:
+            canonicalized_node_ids = {canonicalized_curies_dict[result['n.id']],
+                                      canonicalized_curies_dict[result['m.id']]}
+            pmids = self._extract_and_format_pmids(result['e.publications'])
+            for canonical_curie in canonicalized_node_ids:
+                if canonical_curie not in curie_to_pmids_db:
+                    curie_to_pmids_db[canonical_curie] = set()
+                curie_to_pmids_db[canonical_curie] = curie_to_pmids_db[canonical_curie].union(pmids)
+        print(f"  Getting PMIDs from nodes in KG2 neo4j..")
+        node_query = f"match (n) where n.publications is not null and n.publications <> '[]' return n.id, n.publications"
+        node_results = self._run_cypher_query(node_query, 'KG2')
+        print(f"  Processing results..")
+        node_ids = {result['n.id'] for result in node_results}
+        canonicalized_curies_dict = self._get_canonicalized_curies_dict(node_ids)
+        for result in node_results:
+            canonical_curie = canonicalized_curies_dict[result['n.id']]
+            pmids = self._extract_and_format_pmids(result['n.publications'])
+            if canonical_curie not in curie_to_pmids_db:
+                curie_to_pmids_db[canonical_curie] = set()
+            curie_to_pmids_db[canonical_curie] = curie_to_pmids_db[canonical_curie].union(pmids)
+
+        # Save the data
+        print("  Saving data..")
+        curie_to_pmids_db.commit()
+        print(f"Done! Building {CURIE_TO_PMIDS_DB_FILE_NAME} took {round((time.time() - start) / 60)} minutes.")
         curie_to_pmids_db.close()
 
     # Helper methods
+
+    def _get_canonicalized_curies_dict(self, curie_set: Set[str]) -> Dict[str, str]:
+        print(f"  Sending a batch of {len(curie_set)} curies to NodeSynonymizer.get_canonical_curies()")
+        canonicalized_nodes_info = self.synonymizer.get_canonical_curies(list(curie_set))
+        canonicalized_curies_dict = dict()
+        for input_curie, preferred_info_dict in canonicalized_nodes_info.items():
+            if preferred_info_dict:
+                canonicalized_curies_dict[input_curie] = preferred_info_dict.get('preferred_curie', input_curie)
+            else:
+                canonicalized_curies_dict[input_curie] = input_curie
+        return canonicalized_curies_dict
+
+    def _extract_and_format_pmids(self, kg2_publications_field: str) -> Set[str]:
+        try:
+            publications = ast.literal_eval(kg2_publications_field)
+        except Exception:
+            print(f"WARNING: Error parsing publications property on an edge.")
+            return set()
+        else:
+            pmids = {publication_id for publication_id in publications if publication_id.startswith('PMID')}
+            # Make sure all PMIDs are given in same format (e.g., PMID:18299583 rather than PMID18299583)
+            formatted_pmids = {self._create_pmid_string(pmid.replace('PMID', '').replace(':', '')) for pmid in pmids}
+            return formatted_pmids
 
     @staticmethod
     def _add_mapping(key, value_to_append, mappings_dict):
@@ -162,6 +219,24 @@ class NGDDatabaseBuilder:
                 break
             parent.remove(child)
         del file_contents_tree
+
+    @staticmethod
+    def _run_cypher_query(cypher_query: str, kg='KG2') -> List[Dict[str, any]]:
+        rtxc = RTXConfiguration()
+        if kg == 'KG2':
+            rtxc.live = "KG2"
+        try:
+            driver = GraphDatabase.driver(rtxc.neo4j_bolt, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
+            with driver.session() as session:
+                query_results = session.run(cypher_query).data()
+            driver.close()
+        except Exception:
+            tb = traceback.format_exc()
+            error_type, error, _ = sys.exc_info()
+            print(f"Encountered an error interacting with {kg} neo4j. {tb}")
+            return []
+        else:
+            return query_results
 
 
 def main():
