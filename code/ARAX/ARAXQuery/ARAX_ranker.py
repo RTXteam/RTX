@@ -49,7 +49,7 @@ class ARAXRanker:
         #    print(response.show(level=Response.DEBUG))
         #    return response
 
-        #FIXME: This need to be refactored so that:
+        # DMK FIXME: This need to be refactored so that:
         #    1. The attribute names are dynamically mapped to functions that handle their weightings (for ease of renaming attribute names)
         #    2. Weighting of individual attributes (eg. "probability" should be trusted MUCH less than "probability_treats")
         #    3. Auto-handling of normalizing scores to be in [0,1] (eg. observed_expected ration \in (-inf, inf) while probability \in (0,1)
@@ -65,6 +65,9 @@ class ARAXRanker:
             kg_edges[edge.id] = edge
             if edge.edge_attributes is not None:
                 for edge_attribute in edge.edge_attributes:
+                    # FIXME: DMK: We should probably have some some way to dynamically get the attribute names since they appear to be constantly changing
+                    # DMK: Crazy idea: have the individual ARAXi commands pass along their attribute names along with what they think of is a good way to handle them
+                    # DMK: eg. "higher is better" or "my range of [0, inf]" or "my value is a probability", etc.
                     for attribute_name in [ 'probability', 'normalized_google_distance', 'jaccard_index',
                                             'probability_treats', 'paired_concept_frequency',
                                             'observed_expected_ratio', 'chi_square']:
@@ -81,9 +84,9 @@ class ARAXRanker:
                                     score_stats[attribute_name]['minimum'] = value
                                 if not score_stats[attribute_name]['maximum']:
                                     score_stats[attribute_name]['maximum'] = value
-                                if value > score_stats[attribute_name]['maximum']:
+                                if value > score_stats[attribute_name]['maximum']:  # DMK FIXME: expected type 'float', got 'None' instead
                                     score_stats[attribute_name]['maximum'] = value
-                                if value < score_stats[attribute_name]['minimum']:
+                                if value < score_stats[attribute_name]['minimum']:  # DMK FIXME: expected type 'float', got 'None' instead
                                     score_stats[attribute_name]['minimum'] = value
         response.info(f"Summary of available edge metrics: {score_stats}")
 
@@ -97,7 +100,7 @@ class ARAXRanker:
 
             # #### There are often many edges associated with a result[]. Some are great, some are terrible.
             # #### For now, the score will be based on the best one. Maybe combining probabilities in quadrature would be better
-            best_probability = 0.0
+            best_probability = 0.0  # TODO: What's this? the best probability of what?
 
             eps = np.finfo(np.float).eps  # epsilon to avoid division by 0
             penalize_factor = 0.7  # multiplicative factor to penalize by if the KS/KP return NaN or Inf indicating they haven't seen it before
@@ -122,6 +125,7 @@ class ARAXRanker:
                         #### EWD: Vlado has suggested that any of these links with chemical_substance->protein binding probabilities are 
                         #### EWD: mostly junk. very low probablility of being correct. His opinion seemed to be that they shouldn't be in the KG
                         #### EWD: If we keep them, maybe their probabilities should be knocked down even further, in half, in quarter..
+                        # DMK: I agree: hence why I said we should probably not be treating them like this (and not trusting them a lot)
 
                         # #### If the edge_attribute is named 'probability', then for now use it to record the best probability only
                         if edge_attribute.name == 'probability':
@@ -136,10 +140,12 @@ class ARAXRanker:
                         #if edge_attribute.name == 'probability_drug_treats':               # this is already put in confidence
                         #    buf += f" probability_drug_treats={edge_attribute.value}"
                         #    score *= value
+                        # DMK FIXME: Do we actually have 'probability_drug_treats' attributes?, the probability_drug_treats is *not* put in the confidence see: confidence = None in `predict_drug_treats_disease.py`
+                        # DMK: also note the edge type is: edge_type = "probably_treats"
 
                         # If the edge_attribute is named 'probability_treats', use the value more or less as a probability
                         #### EWD says: but note that when I last worked on this, the probability_treats was repeated in an edge attribute
-                        #### EWD says: as well as in the edge confidence score, so I commented out this section (see immediately above)
+                        #### EWD says: as well as in the edge confidence score, so I commented out this section (see immediately above) DMK (same re: comment above :) )
                         #### EWD says: so that it wouldn't be counted twice. But that may have changed in the mean time.
                         if edge_attribute.name == "probability_treats":
                             prob_treats = float(edge_attribute.value)
@@ -231,6 +237,7 @@ class ARAXRanker:
             #### EWD: This was commented out by DMK? I don't know why. I think it should be here             FIXME
             #if best_probability > 0.0:
             #    score *= best_probability
+            # DMK: for some reason, this was causing my scores to be ridiculously low, so I commented it out and confidences went up "quite a bit"
 
             # #### Make all scores at least 0.01. This is all way low anyway, but let's not have anything that rounds to zero
             # #### This is a little bad in that 0.005 becomes better than 0.011, but this is all way low, so who cares
