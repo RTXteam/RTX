@@ -148,5 +148,5 @@ def estimate_percent_nodes_covered_by_ultrafast_ngd(kg: str):
 
 
 if __name__ == "__main__":
-    estimate_percent_nodes_covered_by_backup_method('KG1')
+    estimate_percent_nodes_covered_by_ultrafast_ngd('KG1')
     estimate_percent_nodes_covered_by_ultrafast_ngd('KG2')
