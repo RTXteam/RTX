@@ -18,6 +18,7 @@ import os
 import sys
 import gzip
 import time
+from sqlitedict import SqliteDict
 
 from lxml import etree
 import pickledb
@@ -26,13 +27,12 @@ sys.path.append(f"{os.path.dirname(os.path.abspath(__file__))}/../../../NodeSyno
 from node_synonymizer import NodeSynonymizer
 
 CONCEPTNAME_TO_PMIDS_DB_FILE_NAME = "conceptname_to_pmids.db"
-CURIE_TO_PMIDS_DB_FILE_NAME = "curie_to_pmids.db"
+CURIE_TO_PMIDS_DB_FILE_NAME = "curie_to_pmids.sqlite"
 
 
 class NGDDatabaseBuilder:
     def __init__(self, pubmed_directory_path):
         self.conceptname_to_pmids_db = pickledb.load(CONCEPTNAME_TO_PMIDS_DB_FILE_NAME, False)
-        self.curie_to_pmids_db = pickledb.load(CURIE_TO_PMIDS_DB_FILE_NAME, False)
         self.pubmed_directory_path = pubmed_directory_path
         self.status = 'OK'
 
@@ -85,6 +85,8 @@ class NGDDatabaseBuilder:
     def build_curie_to_pmids_db(self):
         print(f"Starting to build {CURIE_TO_PMIDS_DB_FILE_NAME}..")
         start = time.time()
+        curie_to_pmids_db = SqliteDict(f"./{CURIE_TO_PMIDS_DB_FILE_NAME}")
+
         if not self.conceptname_to_pmids_db.getall():
             print(f"ERROR: {CONCEPTNAME_TO_PMIDS_DB_FILE_NAME} must exist to do a partial build. Use --full or locate "
                   f"that file.")
@@ -98,7 +100,6 @@ class NGDDatabaseBuilder:
         canonical_curies_dict = synonymizer.get_canonical_curies(names=concept_names)
         print(f"  Got results back from NodeSynonymizer. (Returned dict contains {len(canonical_curies_dict)} keys.)")
 
-        curie_to_pmids_map = dict()
         if canonical_curies_dict:
             recognized_concepts = {concept for concept in canonical_curies_dict if canonical_curies_dict.get(concept)}
             print(f"  NodeSynonymizer recognized {round((len(recognized_concepts) / len(concept_names)) * 100)}% of "
@@ -114,19 +115,20 @@ class NGDDatabaseBuilder:
             for concept_name in recognized_concepts:
                 canonical_curie = canonical_curies_dict[concept_name].get('preferred_curie')
                 pmids_for_this_concept = self.conceptname_to_pmids_db.get(concept_name)
-                self._add_mapping(canonical_curie, pmids_for_this_concept, curie_to_pmids_map)
-            print(f"  In total, mapped {len(curie_to_pmids_map)} canonical curies to PMIDs.")
+                if canonical_curie not in curie_to_pmids_db:
+                    curie_to_pmids_db[canonical_curie] = set()
+                curie_to_pmids_db[canonical_curie] = curie_to_pmids_db[canonical_curie].union(pmids_for_this_concept)
+            print(f"  In total, mapped {len(curie_to_pmids_db)} canonical curies to PMIDs.")
 
-            # Save the data to our final pickleDB
-            print("  Loading data into PickleDB..")
-            for curie, pmid_list in curie_to_pmids_map.items():
-                self.curie_to_pmids_db.set(curie, list(set(pmid_list)))
-            print("  Saving PickleDB file..")
-            self.curie_to_pmids_db.dump()
+            # Save the data
+            print("  Saving data..")
+            curie_to_pmids_db.commit()
             print(f"Done! Building {CURIE_TO_PMIDS_DB_FILE_NAME} took {round((time.time() - start) / 60)} minutes.")
         else:
             print(f"ERROR: NodeSynonymizer didn't return anything!")
             self.status = 'ERROR'
+
+        curie_to_pmids_db.close()
 
     # Helper methods
 
