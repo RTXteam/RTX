@@ -182,9 +182,13 @@ def report_on_curies_missed_by_local_ngd(kg: str):
     percent_missed = round((len(misses) / len(recognized_curies)) * 100)
     print(f"Local ngd missed {len(misses)} of {len(recognized_curies)} curies ({percent_missed}%)")
 
-    # Try eUtils each of the curies local ngd missed
+    # Try eUtils for each of the curies local ngd missed
     num_eutils_found = 0
-    found_dict = dict()
+    try:
+        with open('misses_found_by_eutils.json', 'r') as file_to_add_to:
+            found_dict = json.load(file_to_add_to)
+    except Exception:
+        found_dict = dict()
     for missed_curie in misses:
         # Try eUtils for this node
         node_id = canonical_curie_info[missed_curie].get('preferred_curie')
