@@ -126,7 +126,7 @@ class NGDDatabaseBuilder:
                 canonical_curie = canonical_curies_dict[concept_name].get('preferred_curie')
                 pmids_for_this_concept = conceptname_to_pmids_db.get(concept_name)
                 self._add_pmids_mapping(canonical_curie, pmids_for_this_concept, curie_to_pmids_map)
-            print(f"  In total, mapped {len(curie_to_pmids_map)} canonical curies to PMIDs.")
+            print(f"  Mapped {len(curie_to_pmids_map)} canonical curies to PMIDs based on pubmed scrapings.")
         else:
             print(f"ERROR: NodeSynonymizer didn't return anything!")
             self.status = 'ERROR'

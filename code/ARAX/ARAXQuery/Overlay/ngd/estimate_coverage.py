@@ -4,6 +4,8 @@ Usage: python estimate_coverage.py [--local] [--backup] [--all]
 Note: The database "curie_to_pmids.sqlite" must exist in the directory this script is run from.
 """
 import argparse
+import collections
+import json
 import os
 import sys
 import traceback
@@ -159,16 +161,72 @@ def estimate_percent_nodes_covered_by_ultrafast_ngd(kg: str):
         print(f"  {node_type}: {percentage}%")
 
 
+def report_on_curies_missed_by_local_ngd(kg: str):
+    backup_ngd = NormGoogleDistance()
+    synonymizer = NodeSynonymizer()
+    curie_to_pmid_db = SqliteDict(f"./curie_to_pmids.sqlite")
+    batch_size = 50
+
+    # Get random selection of nodes from the KG
+    query = f"match (a) return a.id, a.name, rand() as r order by r limit {batch_size}"
+    results = _run_cypher_query(query, kg)
+    canonical_curie_info = synonymizer.get_canonical_curies([result['a.id'] for result in results])
+    recognized_curies = {input_curie for input_curie in canonical_curie_info if canonical_curie_info.get(input_curie)}
+
+    # Figure out which of these local ngd misses
+    misses = set()
+    for curie in recognized_curies:
+        canonical_curie = canonical_curie_info[curie].get('preferred_curie')
+        if canonical_curie not in curie_to_pmid_db:
+            misses.add(curie)
+    percent_missed = round((len(misses) / len(recognized_curies)) * 100)
+    print(f"Local ngd missed {len(misses)} of {len(recognized_curies)} curies ({percent_missed}%)")
+
+    # Try eUtils each of the curies local ngd missed
+    num_eutils_found = 0
+    found_dict = dict()
+    for missed_curie in misses:
+        # Try eUtils for this node
+        node_id = canonical_curie_info[missed_curie].get('preferred_curie')
+        node_name = canonical_curie_info[missed_curie].get('preferred_name')
+        node_type = canonical_curie_info[missed_curie].get('preferred_type')
+        try:
+            pmids = backup_ngd.get_pmids_for_all([node_id], [node_name])
+        except Exception:
+            tb = traceback.format_exc()
+            error_type, error, _ = sys.exc_info()
+            print(f"ERROR using back-up method: {tb}")
+        else:
+            if len(pmids) and ([pmid_list for pmid_list in pmids if pmid_list]):
+                num_eutils_found += 1
+                print(f"    Found {len(pmids[0])} PMIDs for {node_id}, {node_name}.")
+                found_dict[node_id] = {'name': node_name, 'type': node_type}
+            else:
+                print(f"    Not found. ({node_id}, {node_name})")
+
+    # Report some findings
+    percent_found_by_eutils = round((num_eutils_found / len(misses)) * 100)
+    print(f"Eutils found {num_eutils_found} out of {len(misses)} curies that local ngd missed ({percent_found_by_eutils}%)")
+    found_types = [node_info['type'] for node_id, node_info in found_dict.items()]
+    counter = collections.Counter(found_types)
+    print(counter)
+
+    # Save the data to a JSON file for access later
+    with open('misses_found_by_eutils.json', 'w+') as output_file:
+        json.dump(found_dict, output_file)
+
+
 if __name__ == "__main__":
     # Load command-line arguments
     arg_parser = argparse.ArgumentParser(description="Estimate coverage of various NGD methods")
-    arg_parser.add_argument("--local", dest="local", action="store_true", default=False)
     arg_parser.add_argument("--backup", dest="backup", action="store_true", default=False)
-    arg_parser.add_argument("--all", dest="all", action="store_true", default=False)
+    arg_parser.add_argument("--misses", dest="misses", action="store_true", default=False)
     args = arg_parser.parse_args()
 
-    if args.local or args.all:
+    if args.backup:
+        estimate_percent_nodes_covered_by_backup_method('KG2')
+    elif args.misses:
+        report_on_curies_missed_by_local_ngd('KG2')
+    else:
         estimate_percent_nodes_covered_by_ultrafast_ngd('KG1')
         estimate_percent_nodes_covered_by_ultrafast_ngd('KG2')
-    if args.backup or args.all:
-        estimate_percent_nodes_covered_by_backup_method('KG2')
