@@ -1174,6 +1174,7 @@ class NodeSynonymizer:
                 results[curie] = None
                 uc_curie = curie.upper()
                 curie_map[uc_curie] = curie
+                uc_curie = re.sub(r"'","''",uc_curie)   # Replace embedded ' characters with ''
                 uc_curies.append(uc_curie)
                 batch_size += 1
                 if batch_size > 5000:
@@ -1602,8 +1603,22 @@ def run_example_9():
 
 
 # ############################################################################################
+def run_example_10():
+    synonymizer = NodeSynonymizer()
+
+    print("==== Complex name query ============================")
+    node_ids = ['CHEMBL.MECHANISM:potassium_channel,_inwardly_rectifying,_subfamily_j,_member_11_opener', 'CHEMBL.MECHANISM:potassium_channel,_inwardly_rectifying,_subfamily_j,_member_8_opener', 'CHEMBL.MECHANISM:endothelin_receptor,_et-a/et-b_antagonist', 'CHEMBL.MECHANISM:amylin_receptor_amy1,_calcr/ramp1_agonist', 'CHEMBL.MECHANISM:sulfonylurea_receptor_2,_kir6.2_opener', 'CHEMBL.MECHANISM:sulfonylurea_receptor_1,_kir6.2_blocker', 'CHEMBL.MECHANISM:amiloride-sensitive_sodium_channel,_enac_blocker', 'CHEMBL.MECHANISM:hepatitis_c_virus_serine_protease,_ns3/ns4a_inhibitor', 'CHEMBL.MECHANISM:1,3-beta-glucan_synthase_inhibitor', "CHEMBL.MECHANISM:3',5'-cyclic_phosphodiesterase_inhibitor", 'CHEMBL.MECHANISM:dna_topoisomerase_i,_mitochondrial_inhibitor', 'CHEMBL.MECHANISM:carbamoyl-phosphate_synthase_[ammonia],_mitochondrial_positive_allosteric_modulator', 'CHEMBL.MECHANISM:parp_1,_2_and_3_inhibitor', 'CHEMBL.MECHANISM:c-jun_n-terminal_kinase,_jnk_inhibitor', 'CHEMBL.MECHANISM:voltage-gated_potassium_channel,_kqt;_kcnq2(kv7.2)/kcnq3(kv7.3)_activator', 'CHEMBL.MECHANISM:hla_class_ii_histocompatibility_antigen,_drb1-10_beta_chain_other', 'CHEMBL.MECHANISM:hla_class_ii_histocompatibility_antigen,_drb1-15_beta_chain_modulator', 'CHEMBL.MECHANISM:indoleamine_2,3-dioxygenase_inhibitor', 'CHEMBL.MECHANISM:5,6-dihydroxyindole-2-carboxylic_acid_oxidase_other', 'CHEMBL.MECHANISM:amine_oxidase,_copper_containing_inhibitor', 'CHEMBL.MECHANISM:carnitine_o-palmitoyltransferase_1,_muscle_isoform_inhibitor', 'CHEMBL.MECHANISM:troponin,_cardiac_muscle_positive_modulator', 'CHEMBL.MECHANISM:isocitrate_dehydrogenase_[nadp],_mitochondrial_inhibitor']
+
+    t0 = timeit.default_timer()
+    canonical_curies = synonymizer.get_canonical_curies(node_ids)
+    t1 = timeit.default_timer()
+    print(json.dumps(canonical_curies,sort_keys=True,indent=2))
+    print("Elapsed time: "+str(t1-t0))
+
+
+# ############################################################################################
 def run_examples():
-    run_example_9()
+    run_example_10()
     return
     run_example_1()
     run_example_2()
@@ -1612,6 +1627,8 @@ def run_examples():
     run_example_5()
     run_example_6()
     run_example_7()
+    run_example_8()
+    run_example_9()
 
 
 ####################################################################################################
