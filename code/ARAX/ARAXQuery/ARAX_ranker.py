@@ -244,12 +244,6 @@ class ARAXRanker:
             if score < 0.01:
                 score += 0.01
 
-            # FIXME: hack to get around low probabilities, will be fixed after ranker re-factor
-            #### EWD: This seems alarming. 0.49 becomes 0.99 and better than 0.51 ??
-            #### EWD: I copied this over from previous code in Messenger, but seems bad to me. What's wrong with low probabilities? FIXME
-            if score < 0.5:
-                score += 0.5
-
             #### Round to reasonable precision. Keep only 3 digits after the decimal 
             score = int(score * 1000 + 0.5) / 1000.0
 
