@@ -246,7 +246,8 @@ class SriNodeNormalizer:
                 return
             for item in entity['curie_prefix']:
                 for curie_prefix in item:
-                    supported_prefixes[curie_prefix] = 1
+                    if str(item[curie_prefix]) != 'Not Found':
+                        supported_prefixes[curie_prefix] = 1
 
         # Save this for future use
         self.supported_prefixes = supported_prefixes
