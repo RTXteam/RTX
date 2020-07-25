@@ -1586,13 +1586,15 @@ def run_example_9():
     print("==== Get canonical curies for a set of input curies ============================")
     curies = [ "DOID:14330", "CUI:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281xxxxx" ]
     names = [ "phenylketonuria", "ibuprofen", "P06865", "HEXA", "Parkinson's disease", 'supernovas', "Bob's Uncle", 'double "quotes"' ]
+    combined_list = curies
+    combined_list.extend(names)
 
     t0 = timeit.default_timer()
     canonical_curies = synonymizer.get_canonical_curies(curies=curies)
     t1 = timeit.default_timer()
     canonical_curies2 = synonymizer.get_canonical_curies(names=names)
     t2 = timeit.default_timer()
-    canonical_curies3 = synonymizer.get_canonical_curies(curies=curies,names=names)
+    canonical_curies3 = synonymizer.get_canonical_curies(curies=combined_list,names=combined_list)
     t3 = timeit.default_timer()
     print(json.dumps(canonical_curies,sort_keys=True,indent=2))
     print("Elapsed time: "+str(t1-t0))
@@ -1618,7 +1620,7 @@ def run_example_10():
 
 # ############################################################################################
 def run_examples():
-    run_example_10()
+    run_example_9()
     return
     run_example_1()
     run_example_2()
@@ -1629,6 +1631,7 @@ def run_examples():
     run_example_7()
     run_example_8()
     run_example_9()
+    run_example_10()
 
 
 ####################################################################################################
