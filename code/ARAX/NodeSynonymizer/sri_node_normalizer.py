@@ -244,10 +244,9 @@ class SriNodeNormalizer:
             if 'curie_prefix' not in entity:
                 eprint(f"ERROR Did not find expected 'curie_prefix'")
                 return
-            for item in entity['curie_prefix']:
-                for curie_prefix in item:
-                    if str(item[curie_prefix]) != 'Not Found':
-                        supported_prefixes[curie_prefix] = 1
+            for curie_prefix,count in entity['curie_prefix'].items():
+                if str(count) != 'Not found':
+                    supported_prefixes[curie_prefix] = count
 
         # Save this for future use
         self.supported_prefixes = supported_prefixes
