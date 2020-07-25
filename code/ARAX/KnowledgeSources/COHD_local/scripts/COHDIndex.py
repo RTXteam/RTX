@@ -66,6 +66,7 @@ class COHDIndex:
     def disconnect(self):
 
         if self.success_con is True:
+            self.connection.commit()
             self.connection.close()
             print("INFO: Disconnecting from database",flush=True)
             self.success_con = False
@@ -145,23 +146,24 @@ class COHDIndex:
 
     ## create indexes for the tables
     def create_indexes(self):
+        
+        if self.success_con is True:
+            print(f"INFO: Creating INDEXes on KG1_OMOP_MAPPING", flush=True)
+            self.connection.execute(f"CREATE INDEX idx_KG1_OMOP_MAPPING_curie ON KG1_OMOP_MAPPING(curie)")
+            self.connection.execute(f"CREATE INDEX idx_KG1_OMOP_MAPPING_name ON KG1_OMOP_MAPPING(name)")
+            self.connection.execute(f"CREATE INDEX idx_KG1_OMOP_MAPPING_OMOP_id ON KG1_OMOP_MAPPING(OMOP_id)")
 
-        print(f"INFO: Creating INDEXes on KG1_OMOP_MAPPING", flush=True)
-        self.connection.execute(f"CREATE INDEX idx_KG1_OMOP_MAPPING_curie ON KG1_OMOP_MAPPING(curie)")
-        self.connection.execute(f"CREATE INDEX idx_KG1_OMOP_MAPPING_name ON KG1_OMOP_MAPPING(name)")
-        self.connection.execute(f"CREATE INDEX idx_KG1_OMOP_MAPPING_OMOP_id ON KG1_OMOP_MAPPING(OMOP_id)")
+            print(f"INFO: Creating INDEXes on SINGLE_CONCEPT_COUNTS", flush=True)
+            self.connection.execute(f"CREATE INDEX idx_SINGLE_CONCEPT_COUNTS_dataset_id ON SINGLE_CONCEPT_COUNTS(dataset_id)")
+            self.connection.execute(f"CREATE INDEX idx_SINGLE_CONCEPT_COUNTS_concept_id ON SINGLE_CONCEPT_COUNTS(concept_id)")
 
-        print(f"INFO: Creating INDEXes on SINGLE_CONCEPT_COUNTS", flush=True)
-        self.connection.execute(f"CREATE INDEX idx_SINGLE_CONCEPT_COUNTS_dataset_id ON SINGLE_CONCEPT_COUNTS(dataset_id)")
-        self.connection.execute(f"CREATE INDEX idx_SINGLE_CONCEPT_COUNTS_concept_id ON SINGLE_CONCEPT_COUNTS(concept_id)")
+            print(f"INFO: Creating INDEXes on CONCEPTS", flush=True)
+            self.connection.execute(f"CREATE INDEX idx_CONCEPTS_concept_id ON CONCEPTS(concept_id)")
 
-        print(f"INFO: Creating INDEXes on CONCEPTS", flush=True)
-        self.connection.execute(f"CREATE INDEX idx_CONCEPTS_concept_id ON CONCEPTS(concept_id)")
-
-        print(f"INFO: Creating INDEXes on PAIRED_CONCEPT_COUNTS_ASSOCIATIONS", flush=True)
-        self.connection.execute(f"CREATE INDEX idx_PAIRED_CONCEPT_COUNTS_ASSOCIATIONS_dataset_id ON PAIRED_CONCEPT_COUNTS_ASSOCIATIONS(dataset_id)")
-        self.connection.execute(f"CREATE INDEX idx_PAIRED_CONCEPT_COUNTS_ASSOCIATIONS_concept_id_1 ON PAIRED_CONCEPT_COUNTS_ASSOCIATIONS(concept_id_1)")
-        self.connection.execute(f"CREATE INDEX idx_PAIRED_CONCEPT_COUNTS_ASSOCIATIONS_concept_id_2 ON PAIRED_CONCEPT_COUNTS_ASSOCIATIONS(concept_id_2)")
+            print(f"INFO: Creating INDEXes on PAIRED_CONCEPT_COUNTS_ASSOCIATIONS", flush=True)
+            self.connection.execute(f"CREATE INDEX idx_PAIRED_CONCEPT_COUNTS_ASSOCIATIONS_dataset_id ON PAIRED_CONCEPT_COUNTS_ASSOCIATIONS(dataset_id)")
+            self.connection.execute(f"CREATE INDEX idx_PAIRED_CONCEPT_COUNTS_ASSOCIATIONS_concept_id_1 ON PAIRED_CONCEPT_COUNTS_ASSOCIATIONS(concept_id_1)")
+            self.connection.execute(f"CREATE INDEX idx_PAIRED_CONCEPT_COUNTS_ASSOCIATIONS_concept_id_2 ON PAIRED_CONCEPT_COUNTS_ASSOCIATIONS(concept_id_2)")
 
     def get_concept_ids(self, curie, kg_name='kg1'):
         """search for OMOP concepts by curie id
