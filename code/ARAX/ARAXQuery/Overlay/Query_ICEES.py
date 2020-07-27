@@ -15,10 +15,14 @@ import requests
 import re
 import json
 import sys
-import unittest
-
+#import unittest
+from collections import OrderedDict
 #from cache_control_helper import CacheControlHelper
-   
+from deepdiff import DeepDiff  # For Deep Difference of 2 objects
+#from deepdiff import grep, DeepSearch  # For finding if item exists in an object
+#from deepdiff import DeepHash  # For hashing objects based on their contents   
+#import jsondiff 
+#from recursive_diff import recursive_eq    
 
 #main class 
 class Query_ICEES:
@@ -30,6 +34,7 @@ class Query_ICEES:
         'get_cohort_based_feature_profile':      '{table}/{year}/cohort/{cohort_id}/features',
         'get_cohort_dictionary':                 '{table}/{year}/cohort/dictionary',
         'get_cohort_id_from_name':               '{table}/name/{name}',
+        'post_knowledge_graph_one_hop':          'knowledge_graph_one_hop',
         'post_knowledge_graph_overlay':          'knowledge_graph_overlay',
         'query_ICEES_kg_schema':                 'knowledge_graph/schema',
     }
@@ -50,13 +55,14 @@ class Query_ICEES:
             else:
                 print(f"Response returned with status\n"+str(status_code))
          
-            response_dict = response_content.json()
+            response_json = response_content.json()
         
-            #output_json = json.dumps(response_dict)    
-            print(json.dumps(response_dict, indent=2, sort_keys=True))
-            return response_dict
-                
+            #output_json = json.dumps(response_json)    
+            #print(json.dumps(response_json, indent=2, sort_keys=True))
+            #print(json.dumps(OrderedDict(response_json)))
+            #res = jsondiff.diff(json.dumps(OrderedDict(expected_json), indent=2, sort_keys=True), json.dumps(OrderedDict(response_json), indent=2, sort_keys=True))
             
+            return response_json    
 
         except requests.exceptions.HTTPError as httpErr: 
             print ("Http Error:",httpErr) 
@@ -133,6 +139,15 @@ class Query_ICEES:
         return res_json
 
     @staticmethod
+    def post_knowledge_graph_one_hop():
+
+        handler = Query_ICEES.HANDLER_MAP['post_knowledge_graph_one_hop']
+        url_suffix = ''
+        res_json = Query_ICEES.__access_api(handler, url_suffix, query)
+        return res_json
+
+
+    @staticmethod
     def post_knowledge_graph_overlay(query):
         
         '''
@@ -165,24 +180,33 @@ class Query_ICEES:
                         }
                     }
         '''
-        
+
         handler = Query_ICEES.HANDLER_MAP['post_knowledge_graph_overlay']
         url_suffix = ''
         res_json = Query_ICEES.__access_api(handler, url_suffix, query)
         return res_json
 
 # Class to test the query output 
-class test_query(unittest.TestCase):
-    def test(self):
-        self.assertEqual(Query_ICEES.post_knowledge_graph_overlay(input_data), output_data)
+class test_query():
+    
+    def test(expected_json, response_json):
+        '''
+        Args:
+            query:          input JSON query 
+            expected_json:  expected JSON result
+        '''
+        #Compares the query outout and expected JSON printing the difference from the 
+        ddiff = DeepDiff(expected_json, response_json, ignore_order=True, report_repetition=True, exclude_paths={"root['terms and conditions']"})
+        print(ddiff)
+        
+        #self.assertAlmostEqual(str(Query_ICEES.post_knowledge_graph_overlay()), str(expected_json), places = None, msg = None, delta = 900000)
+        #self.assertEqual(Query_ICEES.post_knowledge_graph_overlay(), expected_json)
+    
+        #recursive_eq(Query_ICEES.post_knowledge_graph_overlay(), expected_json, abs_tol=.1)
 
 
 if __name__ == '__main__':
-    Query_ICEES.post_knowledge_graph_overlay(query)
-    
-   
-    
-    #Testing the query 
-    #unittest.main()
+    res_json = Query_ICEES.post_knowledge_graph_overlay(query)
 
-            
+    #Testing the query (pass exptected JSON here)
+    test_query.test(expected_json, res_json)
