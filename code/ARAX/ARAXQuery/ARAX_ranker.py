@@ -30,7 +30,7 @@ class ARAXRanker:
                                             'observed_expected_ratio', 'chi_square'}
 
 
-    def score_normalizer(self, edge_attribute_name: str, edge_attribute_value) -> float:
+    def score_normalizer(self, edge_attribute_name: str, edge_attribute_value, score_stats=None) -> float:
         """
         Takes an input edge attribute and value, dispatches it to the appropriate method that translates the value into
         something in the interval [0,1] where 0 is worse and 1 is better
@@ -48,32 +48,24 @@ class ARAXRanker:
                 return 0.
             # else it's all good to proceed
             else:
-                return getattr(self, '_' + self.__class__.__name__ + '__normalize_' + edge_attribute_name)(value=edge_attribute_value)
+                return getattr(self, '_' + self.__class__.__name__ + '__normalize_' + edge_attribute_name)(value=edge_attribute_value, score_stats=score_stats)
 
 
-    def __normalize_normalized_google_distance(self, value):
+    def __normalize_normalized_google_distance(self, value, score_stats=None):
         """
         Normalize the "normalized_google_distance
         """
-        worst_value = 10.0
-        # If the distance is infinite, then set it to 10, a very large number in this context
-        if np.isinf(value) or not value:
-            ngd = worst_value
-        # #### Apply a somewhat arbitrary transformation such that:
-        # #### NGD = 0.3 leads to a factor of 1.0. That's *really* close
-        # #### NGD = 0.5 leads to a factor of 0.88. That still a close NGD
-        # #### NGD = 0.7 leads to a factor of 0.76. Same ballpark
-        # #### NGD = 0.9 this is pretty far away. Still the factor is 0.64. Distantly related
-        # #### NGD = 1.0 is very far. Still, factor is 0.58. Grade inflation is rampant.
-        normalized_value = 1 - (value - 0.3) * 0.6
-        # put bounds on this linear function of ngd
-        if normalized_value < 0.01:
-            normalized_value = 0.01
-        if normalized_value > 1:
-            normalized_value = 1.0
-        return normalized_value
+        worst_value = 0
+        if np.isnan(value) or (not value):
+            return worst_value
+        else:
+            max_value = 1
+            curve_steepness = -9
+            logistic_midpoint = 0.60
+            normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
+            return normalized_value
 
-    def __normalize_probability_treats(self, value):
+    def __normalize_probability_treats(self, value, score_stats=None):
         """
         Normalize the probability drug treats disease value.
         Empirically we've found that values greater than ~0.75 are "good" and <~0.75 are "bad" predictions of "treats"
@@ -84,6 +76,15 @@ class ARAXRanker:
         k = 15;  (*steepness of the logistic curve*)
         x0 = 0.60;  (*mid point of the logistic curve*)
         Plot[L/(1 + Exp[-k (x - x0)]), {x, 0, 1}, PlotRange -> All, AxesOrigin -> {0, 0}]
+        or
+        import matplotlib.pyplot as plt
+        max_value = 1
+        curve_steepness = 15
+        logistic_midpoint = 0.60
+        x = np.linspace(0,1,200)
+        y = [max_value / float(1+np.exp(-curve_steepness*(value - logistic_midpoint))) for value in x]
+        plt.plot(x,y)
+        plt.show()
         """
         worst_value = 0
         if np.isnan(value) or (not value):
@@ -93,8 +94,32 @@ class ARAXRanker:
             curve_steepness = 15
             logistic_midpoint = 0.60
             normalized_value = max_value / float(1+np.exp(-curve_steepness*(value - logistic_midpoint)))
-            print(f"input: {value}, output: {normalized_value}")
             return normalized_value
+
+    def __normalize_probability(self, value, score_stats=None):
+        """
+        These (as of 7/28/2020 in KG1 and KG2 only "drug->protein binding probabilities"
+        As Vlado suggested, the lower ones are more rubbish, so again throw into a logistic function, but even steeper.
+        see __normalize_probability_treats for how to visualize this
+        """
+        worst_value = 0
+        if np.isnan(value) or (not value):
+            return worst_value
+        else:
+            max_value = 1
+            curve_steepness = 20
+            logistic_midpoint = 0.8
+            normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
+            return normalized_value
+
+    def __normalize_jaccard_index(self, value, score_stats=None):
+        jaccard = float(value)
+        # If the jaccard index is infinite, set to some arbitrarily bad score
+        if np.isinf(jaccard):
+            jaccard = 0.01
+        # #### Set the confidence factor so that the best value of all results here becomes 0.95
+        # #### Why not 1.0? Seems like in scenarios where we're computing a Jaccard index, nothing is really certain
+        factor = jaccard / score_stats['jaccard_index']['maximum'] * 0.95
 
     def aggregate_scores_dmk(self, message, response=None):
 
@@ -196,10 +221,8 @@ class ARAXRanker:
 
                         # #### If the edge_attribute is named 'probability', then for now use it to record the best probability only
                         if edge_attribute.name == 'probability':
-                            value = float(edge_attribute.value)
-                            buf += f" probability={edge_attribute.value}"
-                            if value > best_probability:
-                                best_probability = value
+                            factor = self.score_normalizer(edge_attribute.name, edge_attribute.value)
+                            score *= factor
 
                         # #### If the edge_attribute is named 'probability_drug_treats', then for now we won't do anything
                         # #### because this value also seems to be copied into the edge confidence field, so is already
@@ -592,7 +615,9 @@ def main():
     messenger = ARAXMessenger()
     print("INFO: Fetching message to work on from arax.rtx.ai",flush=True)
     #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2614')  # acetaminophen - > protein, just NGD as virtual edge
-    message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2687')  # neutropenia -> drug
+    #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2687')  # neutropenia -> drug, predict_drug_treats_disease and ngd
+    #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2701') # observed_expected_ratio and ngd
+    message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2703')  # a huge one with jaccard
     if message is None:
         print("ERROR: Unable to fetch message")
         return
