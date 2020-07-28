@@ -836,6 +836,8 @@ def main():
             "add_qnode(type=phenotypic_feature, is_set=true, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, type=has_phenotype, id=e00)",
             "expand(edge_id=e00)",
+            "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
+            "resultify()",
             "return(message=true, store=true)"
         ]}}
     elif params.example_number == 17:  # Test resultify #FIXME: this returns a single result instead of a list (one for each disease/phenotype found)

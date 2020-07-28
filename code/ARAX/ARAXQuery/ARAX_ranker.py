@@ -100,9 +100,25 @@ class ARAXRanker:
         return normalized_value
 
     def __normalize_jaccard_index(self, value, score_stats=None):
-        # #### Set the confidence factor so that the best value of all results here becomes 0.95
-        # #### Why not 1.0? Seems like in scenarios where we're computing a Jaccard index, nothing is really certain
-        normalized_value = value / score_stats['jaccard_index']['maximum'] * 1
+        """
+        The jaccard index is all relative to other results, so there is no reason to use a logistic here.
+        Just compare the value to the maximum value
+        """
+        normalized_value = value / score_stats['jaccard_index']['maximum']
+        #print(f"value: {value}, normalized: {normalized_value}")
+        return normalized_value
+
+    def __normalize_paired_concept_frequency(self, value, score_stats=None):
+        """
+        Again, these are _somewhat_ relative values. In actuality, a logistic here would make sense,
+        but I don't know the distribution of frequencies in COHD, so just go the relative route
+        """
+        # check to make sure we don't divide by zero
+        try:
+            normalized_value = value / score_stats['paired_concept_frequency']['maximum']
+        except:
+            normalized_value = value / (score_stats['paired_concept_frequency']['maximum'] + np.finfo(float).eps)
+        print(f"value: {value}, normalized: {normalized_value}")
         return normalized_value
 
     def aggregate_scores_dmk(self, message, response=None):
@@ -237,16 +253,8 @@ class ARAXRanker:
 
                         # If the edge_attribute is named 'paired_concept_frequency', then ...
                         if edge_attribute.name == "paired_concept_frequency":
-                            paired_concept_freq = float(edge_attribute.value)
-                            if np.isinf(paired_concept_freq) or np.isnan(paired_concept_freq):
-                                factor = penalize_factor
-                            else:
-                                try:
-                                    factor = paired_concept_freq / score_stats['paired_concept_frequency']['maximum']
-                                except:
-                                    factor = paired_concept_freq / (score_stats['paired_concept_frequency']['maximum'] + eps)
+                            factor = self.score_normalizer(edge_attribute.name, edge_attribute.value, score_stats=score_stats)
                             score *= factor
-                            buf += f" paired_concept_frequency={paired_concept_freq}, factor={factor}"
 
                         # If the edge_attribute is named 'observed_expected_ratio', then ...
                         if edge_attribute.name == 'observed_expected_ratio':
@@ -596,7 +604,10 @@ def main():
     #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2614')  # acetaminophen - > protein, just NGD as virtual edge
     #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2687')  # neutropenia -> drug, predict_drug_treats_disease and ngd
     #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2701') # observed_expected_ratio and ngd
-    message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2703')  # a huge one with jaccard
+    #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2703')  # a huge one with jaccard
+    #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2706')  # small one with paired concept frequency
+    message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2709')  # bigger one with paired concept frequency
+    message = messenger.fetch_message('file:///home/dkoslicki/Desktop/RTX/code/UI/interactive/index.html?m=294')  # trying a local version of the above
     if message is None:
         print("ERROR: Unable to fetch message")
         return

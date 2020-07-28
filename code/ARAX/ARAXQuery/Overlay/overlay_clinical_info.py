@@ -110,6 +110,7 @@ class OverlayClinicalInfo:
                 if self.in_common(source_type, self.who_knows_about_what[KP]) and self.in_common(target_type, self.who_knows_about_what[KP]):
                     KP_to_use = KP
             if KP_to_use == 'COHD':
+                self.response.debug(f"Querying Columbia Open Health data for info about {source_name} and {target_name}")
                 # convert CURIE to OMOP identifiers
                 ##################################################
                 # TODO: This is the greedy aproach: go off of names and look for everything and anything that could be a match
@@ -139,7 +140,9 @@ class OverlayClinicalInfo:
                     for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
                         freq_data = COHD.get_paired_concept_freq(omop1, omop2, 3)  # use the hierarchical dataset
                         if freq_data and 'concept_frequency' in freq_data:
-                            frequency += freq_data['concept_frequency']
+                            temp_value = freq_data['concept_frequency']
+                            if temp_value > frequency:
+                                frequency = temp_value
                     # decorate the edges
                     value = frequency
                 elif name == 'observed_expected_ratio':
