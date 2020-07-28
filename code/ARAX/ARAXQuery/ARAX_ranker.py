@@ -594,20 +594,37 @@ def main():
     import requests_cache
     requests_cache.install_cache('ARAX_ranker_testing_cache')
 
+    import argparse
+    argparser = argparse.ArgumentParser(description='Ranker system')
+    argparser.add_argument('--local', action='store_true', help='If set, use local RTXFeedback database to fetch messages')
+    params = argparser.parse_args()
+
     #### Create a response object
     response = Response()
     ranker = ARAXRanker()
 
     #### Get a Message to work on
+    from ARAX_messenger import ARAXMessenger
     messenger = ARAXMessenger()
-    print("INFO: Fetching message to work on from arax.rtx.ai",flush=True)
-    #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2614')  # acetaminophen - > protein, just NGD as virtual edge
-    #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2687')  # neutropenia -> drug, predict_drug_treats_disease and ngd
-    #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2701') # observed_expected_ratio and ngd
-    #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2703')  # a huge one with jaccard
-    #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2706')  # small one with paired concept frequency
-    message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2709')  # bigger one with paired concept frequency
-    message = messenger.fetch_message('file:///home/dkoslicki/Desktop/RTX/code/UI/interactive/index.html?m=294')  # trying a local version of the above
+    if not params.local:
+        print("INFO: Fetching message to work on from arax.rtx.ai",flush=True)
+        #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2614')  # acetaminophen - > protein, just NGD as virtual edge
+        #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2687')  # neutropenia -> drug, predict_drug_treats_disease and ngd
+        #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2701') # observed_expected_ratio and ngd
+        #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2703')  # a huge one with jaccard
+        #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2706')  # small one with paired concept frequency
+        #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2709')  # bigger one with paired concept frequency
+
+
+    # For local messages due to local changes in code not rolled out to production:
+    if params.local:
+        sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/Feedback")
+        from RTXFeedback import RTXFeedback
+        araxdb = RTXFeedback()
+        message_dict = araxdb.getMessage(294)  # local version of 2709 but with updates to COHD
+        from ARAX_messenger import ARAXMessenger
+        message = ARAXMessenger().from_dict(message_dict)
+
     if message is None:
         print("ERROR: Unable to fetch message")
         return
