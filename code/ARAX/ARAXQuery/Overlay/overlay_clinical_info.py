@@ -117,13 +117,19 @@ class OverlayClinicalInfo:
                 # source_OMOPs = [str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(source_curie, 1)]
                 res = self.cohdIndex.get_concept_ids(source_curie)
                 if len(res) != 0:
-                    source_OMOPs = [str(omop_id) for omop_id in res[source_curie]['OMOP concepts'] if omop_id is not None]
+                    if res[source_curie]['OMOP concepts'] is not None:
+                        source_OMOPs = [str(omop_id) for omop_id in res[source_curie]['OMOP concepts']]
+                    else:
+                        source_OMOPs = []
                 else:
                     source_OMOPs = []
                 # target_OMOPs = [str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(target_curie, 1)]
                 res = self.cohdIndex.get_concept_ids(target_curie)
                 if len(res) != 0:
-                    target_OMOPs = [str(omop_id) for omop_id in res[target_curie]['OMOP concepts'] if omop_id is not None]
+                    if res[target_curie]['OMOP concepts'] is not None:
+                        target_OMOPs = [str(omop_id) for omop_id in res[target_curie]['OMOP concepts']]
+                    else:
+                        target_OMOPs = []
                 else:
                     target_OMOPs = []
                 # for domain in ["Condition", "Drug", "Procedure"]:
@@ -140,8 +146,8 @@ class OverlayClinicalInfo:
                 #                     COHD.find_concept_ids(target_name, domain="Drug", dataset_id=3)]
 
                 # uniquify everything
-                source_OMOPs = list(set(source_OMOPs))
-                target_OMOPs = list(set(target_OMOPs))
+                # source_OMOPs = list(set(source_OMOPs))
+                # target_OMOPs = list(set(target_OMOPs))
 
                 # Decide how to handle the response from the KP
                 if name == 'paired_concept_frequency':
