@@ -75,6 +75,7 @@ class ARAXRanker:
         curve_steepness = 15
         logistic_midpoint = 0.60
         normalized_value = max_value / float(1+np.exp(-curve_steepness*(value - logistic_midpoint)))
+        # TODO: if "near" to the min value, set to zero (maybe one std dev from the min value of the logistic curve?)
         return normalized_value
 
     def __normalize_normalized_google_distance(self, value, score_stats=None):
@@ -85,6 +86,7 @@ class ARAXRanker:
         curve_steepness = -9
         logistic_midpoint = 0.60
         normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
+        # TODO: if "near" to the min value, set to zero (maybe one std dev from the min value of the logistic curve?)
         return normalized_value
 
     def __normalize_probability(self, value, score_stats=None):
@@ -97,6 +99,7 @@ class ARAXRanker:
         curve_steepness = 20
         logistic_midpoint = 0.8
         normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
+        # TODO: if "near" to the min value, set to zero (maybe one std dev from the min value of the logistic curve?)
         return normalized_value
 
     def __normalize_jaccard_index(self, value, score_stats=None):
@@ -125,8 +128,23 @@ class ARAXRanker:
         curve_steepness = 2000  # really steep since the max values I've ever seen are quite small (eg .03)
         logistic_midpoint = 0.002  # seems like an ok mid point, but....
         normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
+        # TODO: if "near" to the min value, set to zero (maybe one std dev from the min value of the logistic curve?)
         #print(f"value: {value}, normalized: {normalized_value}")
         return normalized_value
+
+    def __normalize_observed_expected_ratio(self, value, score_stats=None):
+        """
+        These are log ratios so should be interpreted as Exp[value] times more likely than chance
+        """
+        max_value = 1
+        curve_steepness = 4  # Todo: need to fiddle with this as it's not quite weighting things enough
+        logistic_midpoint = 1  # 2.71828 more likely than chance
+        normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
+        # TODO: if "near" to the min value, set to zero (maybe one std dev from the min value of the logistic curve?)
+        print(f"value: {value}, normalized: {normalized_value}")
+        return normalized_value
+
+
 
     def aggregate_scores_dmk(self, message, response=None):
 
@@ -260,19 +278,13 @@ class ARAXRanker:
 
                         # If the edge_attribute is named 'paired_concept_frequency', then ...
                         if edge_attribute.name == "paired_concept_frequency":
-                            factor = self.score_normalizer(edge_attribute.name, edge_attribute.value, score_stats=score_stats)
+                            factor = self.score_normalizer(edge_attribute.name, edge_attribute.value)
                             score *= factor
 
                         # If the edge_attribute is named 'observed_expected_ratio', then ...
                         if edge_attribute.name == 'observed_expected_ratio':
-                            obs_exp_ratio = float(edge_attribute.value)
-                            if np.isinf(obs_exp_ratio) or np.isnan(obs_exp_ratio):
-                                factor = penalize_factor  # Penalize for missing info
-                            # Would love to throw this into a sigmoid like function customized by the max value observed
-                            # for now, just throw into a sigmoid and see what happens
-                            factor = 1 / float(1 + np.exp(-4*obs_exp_ratio))
+                            factor = self.score_normalizer(edge_attribute.name, edge_attribute.value)
                             score *= factor
-                            buf += f" observed_expected_ratio={obs_exp_ratio}, factor={factor}"
 
                         # If the edge_attribute is named 'chi_square', then compute a factor based on the chisq and the max chisq
                         if edge_attribute.name == 'chi_square':
@@ -629,7 +641,8 @@ def main():
         from RTXFeedback import RTXFeedback
         araxdb = RTXFeedback()
         #message_dict = araxdb.getMessage(294)  # local version of 2709 but with updates to COHD
-        message_dict = araxdb.getMessage(297)
+        #message_dict = araxdb.getMessage(297)
+        message_dict = araxdb.getMessage(298)
         from ARAX_messenger import ARAXMessenger
         message = ARAXMessenger().from_dict(message_dict)
 
