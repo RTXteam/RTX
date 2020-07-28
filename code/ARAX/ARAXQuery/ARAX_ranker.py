@@ -120,6 +120,7 @@ class ARAXRanker:
         #    normalized_value = value / (score_stats['paired_concept_frequency']['maximum'] + np.finfo(float).eps)
 
         # Give logistic a try
+        # TODO: see if we can adjust these params based on the scores stats (or see if that's even a good idea)
         max_value = 1
         curve_steepness = 2000  # really steep since the max values I've ever seen are quite small (eg .03)
         logistic_midpoint = 0.002  # seems like an ok mid point, but....
