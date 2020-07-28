@@ -1174,6 +1174,7 @@ class NodeSynonymizer:
                 results[curie] = None
                 uc_curie = curie.upper()
                 curie_map[uc_curie] = curie
+                uc_curie = re.sub(r"'","''",uc_curie)   # Replace embedded ' characters with ''
                 uc_curies.append(uc_curie)
                 batch_size += 1
                 if batch_size > 5000:
@@ -1192,6 +1193,7 @@ class NodeSynonymizer:
                 results[name] = None
                 lc_name = name.lower()
                 name_map[lc_name] = name
+                lc_name = re.sub(r"'","''",lc_name)   # Replace embedded ' characters with ''
                 lc_names.append(lc_name)
                 batch_size += 1
                 if batch_size > 5000:
@@ -1583,14 +1585,16 @@ def run_example_9():
 
     print("==== Get canonical curies for a set of input curies ============================")
     curies = [ "DOID:14330", "CUI:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281xxxxx" ]
-    names = [ "phenylketonuria", "ibuprofen", "P06865", "HEXA", "fanconi anemia", "supernova" ]
+    names = [ "phenylketonuria", "ibuprofen", "P06865", "HEXA", "Parkinson's disease", 'supernovas', "Bob's Uncle", 'double "quotes"' ]
+    combined_list = curies
+    combined_list.extend(names)
 
     t0 = timeit.default_timer()
     canonical_curies = synonymizer.get_canonical_curies(curies=curies)
     t1 = timeit.default_timer()
     canonical_curies2 = synonymizer.get_canonical_curies(names=names)
     t2 = timeit.default_timer()
-    canonical_curies3 = synonymizer.get_canonical_curies(curies=curies,names=names)
+    canonical_curies3 = synonymizer.get_canonical_curies(curies=combined_list,names=combined_list)
     t3 = timeit.default_timer()
     print(json.dumps(canonical_curies,sort_keys=True,indent=2))
     print("Elapsed time: "+str(t1-t0))
@@ -1598,6 +1602,20 @@ def run_example_9():
     print("Elapsed time: "+str(t2-t1))
     print(json.dumps(canonical_curies3,sort_keys=True,indent=2))
     print("Elapsed time: "+str(t3-t2))
+
+
+# ############################################################################################
+def run_example_10():
+    synonymizer = NodeSynonymizer()
+
+    print("==== Complex name query ============================")
+    node_ids = ['CHEMBL.MECHANISM:potassium_channel,_inwardly_rectifying,_subfamily_j,_member_11_opener', 'CHEMBL.MECHANISM:potassium_channel,_inwardly_rectifying,_subfamily_j,_member_8_opener', 'CHEMBL.MECHANISM:endothelin_receptor,_et-a/et-b_antagonist', 'CHEMBL.MECHANISM:amylin_receptor_amy1,_calcr/ramp1_agonist', 'CHEMBL.MECHANISM:sulfonylurea_receptor_2,_kir6.2_opener', 'CHEMBL.MECHANISM:sulfonylurea_receptor_1,_kir6.2_blocker', 'CHEMBL.MECHANISM:amiloride-sensitive_sodium_channel,_enac_blocker', 'CHEMBL.MECHANISM:hepatitis_c_virus_serine_protease,_ns3/ns4a_inhibitor', 'CHEMBL.MECHANISM:1,3-beta-glucan_synthase_inhibitor', "CHEMBL.MECHANISM:3',5'-cyclic_phosphodiesterase_inhibitor", 'CHEMBL.MECHANISM:dna_topoisomerase_i,_mitochondrial_inhibitor', 'CHEMBL.MECHANISM:carbamoyl-phosphate_synthase_[ammonia],_mitochondrial_positive_allosteric_modulator', 'CHEMBL.MECHANISM:parp_1,_2_and_3_inhibitor', 'CHEMBL.MECHANISM:c-jun_n-terminal_kinase,_jnk_inhibitor', 'CHEMBL.MECHANISM:voltage-gated_potassium_channel,_kqt;_kcnq2(kv7.2)/kcnq3(kv7.3)_activator', 'CHEMBL.MECHANISM:hla_class_ii_histocompatibility_antigen,_drb1-10_beta_chain_other', 'CHEMBL.MECHANISM:hla_class_ii_histocompatibility_antigen,_drb1-15_beta_chain_modulator', 'CHEMBL.MECHANISM:indoleamine_2,3-dioxygenase_inhibitor', 'CHEMBL.MECHANISM:5,6-dihydroxyindole-2-carboxylic_acid_oxidase_other', 'CHEMBL.MECHANISM:amine_oxidase,_copper_containing_inhibitor', 'CHEMBL.MECHANISM:carnitine_o-palmitoyltransferase_1,_muscle_isoform_inhibitor', 'CHEMBL.MECHANISM:troponin,_cardiac_muscle_positive_modulator', 'CHEMBL.MECHANISM:isocitrate_dehydrogenase_[nadp],_mitochondrial_inhibitor']
+
+    t0 = timeit.default_timer()
+    canonical_curies = synonymizer.get_canonical_curies(node_ids)
+    t1 = timeit.default_timer()
+    print(json.dumps(canonical_curies,sort_keys=True,indent=2))
+    print("Elapsed time: "+str(t1-t0))
 
 
 # ############################################################################################
@@ -1611,6 +1629,9 @@ def run_examples():
     run_example_5()
     run_example_6()
     run_example_7()
+    run_example_8()
+    run_example_9()
+    run_example_10()
 
 
 ####################################################################################################

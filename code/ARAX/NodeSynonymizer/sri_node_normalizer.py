@@ -224,65 +224,11 @@ class SriNodeNormalizer:
         # If we've already done this before, return the cached result
         if self.supported_prefixes is not None:
             return self.supported_prefixes
-
-        node_types = self.get_supported_types()
         supported_prefixes = {}
-        types_to_skip = { 'named_thing', 'macromolecular_machine', 'genomic_entity', 'organismal_entity', 'disease_or_phenotypic_feature',
-            'gene_or_gene_product', 'biological_process_or_activity', 'biological_entity', 'molecular_entity', 'ontology_class' }
-
-        for node_type in node_types:
-
-            if node_type in types_to_skip:
-                continue
-
-            # Build the URL and fetch the result
-            #print(f"INFO: Get prefixes for {node_type}")
-            url = f"https://nodenormalization-sri.renci.org/get_curie_prefixes?semantictype={node_type}"
-            response_content = requests.get(url, headers={'accept': 'application/json'})
-            status_code = response_content.status_code
-
-            # Check for a returned error
-            if status_code != 200:
-                eprint(f"ERROR returned with status {status_code} while retrieving supported types")
-                eprint(response_content)
-                return
-
-            # Unpack the response into a dict and return it
-            response_dict = response_content.json()
-            for entity_name,entity in response_dict.items():
-                if 'curie_prefix' not in entity:
-                    eprint(f"ERROR Did not find expected 'curie_prefix'")
-                    return
-                for item in entity['curie_prefix']:
-                    for curie_prefix in item:
-                        supported_prefixes[curie_prefix] = 1
-
-        # Save this for future use
-        self.supported_prefixes = supported_prefixes
-
-        return supported_prefixes
-
-
-    # ############################################################################################
-    # Retrieve the dict of supported curie prefixes
-    # This function might replace the one above if the SRI Node Normalizer fixes their API
-    def get_supported_prefixesXXXXXXXXXXXXXXXXXXXXXXXXXXX(self):
-
-        # If we've already done this before, return the cached result
-        if self.supported_prefixes is not None:
-            return self.supported_prefixes
-
-        node_types = self.get_supported_types()
-        node_types_string = "&semantictype=".join(node_types.keys())
-
-        supported_prefixes = {}
-
-
 
         # Build the URL and fetch the result
         #print(f"INFO: Get prefixes for {node_type}")
-        url = f"https://nodenormalization-sri.renci.org/get_curie_prefixes?semantictype={node_types_string}"
-        print(url)
+        url = f"https://nodenormalization-sri.renci.org/get_curie_prefixes"
         response_content = requests.get(url, headers={'accept': 'application/json'})
         status_code = response_content.status_code
 
@@ -294,20 +240,16 @@ class SriNodeNormalizer:
 
         # Unpack the response into a dict and return it
         response_dict = response_content.json()
-        print(json.dumps(response_dict, indent=2, sort_keys=True))
-        #### FIXME ################################################################################
-        sys.exit(1)
         for entity_name,entity in response_dict.items():
             if 'curie_prefix' not in entity:
                 eprint(f"ERROR Did not find expected 'curie_prefix'")
                 return
-            for item in entity['curie_prefix']:
-                for curie_prefix in item:
-                    supported_prefixes[curie_prefix] = 1
+            for curie_prefix,count in entity['curie_prefix'].items():
+                if str(count) != 'Not found':
+                    supported_prefixes[curie_prefix] = count
 
         # Save this for future use
         self.supported_prefixes = supported_prefixes
-
         return supported_prefixes
 
 

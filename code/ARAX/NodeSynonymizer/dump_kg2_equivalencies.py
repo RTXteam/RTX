@@ -47,7 +47,6 @@ def dump_kg2_equivalencies():
         column_headers = equivalent_node_pairs[0].keys()
         file_name = "kg2_equivalencies.tsv"
         with open(file_name, "w+") as output_file:
-            output_file.truncate()  # Clear any preexisting data
             dict_writer = csv.DictWriter(output_file, column_headers, delimiter='\t')
             dict_writer.writeheader()
             dict_writer.writerows(equivalent_node_pairs)
