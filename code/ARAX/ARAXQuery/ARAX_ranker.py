@@ -39,7 +39,7 @@ class ARAXRanker:
             return 0.  # TODO: might want to change this
         else:
             try:
-                # check to see if it's convertible to a float
+                # check to see if it's convertible to a float (will catch None's as well)
                 edge_attribute_value = float(edge_attribute_value)
             except TypeError:
                 return 0.
@@ -49,21 +49,6 @@ class ARAXRanker:
             # else it's all good to proceed
             else:
                 return getattr(self, '_' + self.__class__.__name__ + '__normalize_' + edge_attribute_name)(value=edge_attribute_value, score_stats=score_stats)
-
-
-    def __normalize_normalized_google_distance(self, value, score_stats=None):
-        """
-        Normalize the "normalized_google_distance
-        """
-        worst_value = 0
-        if np.isnan(value) or (not value):
-            return worst_value
-        else:
-            max_value = 1
-            curve_steepness = -9
-            logistic_midpoint = 0.60
-            normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
-            return normalized_value
 
     def __normalize_probability_treats(self, value, score_stats=None):
         """
@@ -86,15 +71,21 @@ class ARAXRanker:
         plt.plot(x,y)
         plt.show()
         """
-        worst_value = 0
-        if np.isnan(value) or (not value):
-            return worst_value
-        else:
-            max_value = 1
-            curve_steepness = 15
-            logistic_midpoint = 0.60
-            normalized_value = max_value / float(1+np.exp(-curve_steepness*(value - logistic_midpoint)))
-            return normalized_value
+        max_value = 1
+        curve_steepness = 15
+        logistic_midpoint = 0.60
+        normalized_value = max_value / float(1+np.exp(-curve_steepness*(value - logistic_midpoint)))
+        return normalized_value
+
+    def __normalize_normalized_google_distance(self, value, score_stats=None):
+        """
+        Normalize the "normalized_google_distance
+        """
+        max_value = 1
+        curve_steepness = -9
+        logistic_midpoint = 0.60
+        normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
+        return normalized_value
 
     def __normalize_probability(self, value, score_stats=None):
         """
@@ -102,24 +93,17 @@ class ARAXRanker:
         As Vlado suggested, the lower ones are more rubbish, so again throw into a logistic function, but even steeper.
         see __normalize_probability_treats for how to visualize this
         """
-        worst_value = 0
-        if np.isnan(value) or (not value):
-            return worst_value
-        else:
-            max_value = 1
-            curve_steepness = 20
-            logistic_midpoint = 0.8
-            normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
-            return normalized_value
+        max_value = 1
+        curve_steepness = 20
+        logistic_midpoint = 0.8
+        normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
+        return normalized_value
 
     def __normalize_jaccard_index(self, value, score_stats=None):
-        jaccard = float(value)
-        # If the jaccard index is infinite, set to some arbitrarily bad score
-        if np.isinf(jaccard):
-            jaccard = 0.01
         # #### Set the confidence factor so that the best value of all results here becomes 0.95
         # #### Why not 1.0? Seems like in scenarios where we're computing a Jaccard index, nothing is really certain
-        factor = jaccard / score_stats['jaccard_index']['maximum'] * 0.95
+        normalized_value = value / score_stats['jaccard_index']['maximum'] * 1
+        return normalized_value
 
     def aggregate_scores_dmk(self, message, response=None):
 
@@ -248,15 +232,7 @@ class ARAXRanker:
 
                         # #### If the edge_attribute is named 'jaccard_index', then use some hocus pocus to convert to a confidence
                         if edge_attribute.name == 'jaccard_index':
-                            jaccard = float(edge_attribute.value)
-                            # If the jaccard index is infinite, set to some arbitrarily bad score
-                            if np.isinf(jaccard):
-                                jaccard = 0.01
-
-                            # #### Set the confidence factor so that the best value of all results here becomes 0.95
-                            # #### Why not 1.0? Seems like in scenarios where we're computing a Jaccard index, nothing is really certain
-                            factor = jaccard / score_stats['jaccard_index']['maximum'] * 0.95
-                            buf += f" jaccard={jaccard}, factor={factor}"
+                            factor = self.score_normalizer(edge_attribute.name, edge_attribute.value, score_stats=score_stats)
                             score *= factor
 
                         # If the edge_attribute is named 'paired_concept_frequency', then ...
@@ -606,6 +582,9 @@ class ARAXRanker:
 
 ##########################################################################################
 def main():
+    # For faster testing, cache the testing messages locally
+    import requests_cache
+    requests_cache.install_cache('ARAX_ranker_testing_cache')
 
     #### Create a response object
     response = Response()
