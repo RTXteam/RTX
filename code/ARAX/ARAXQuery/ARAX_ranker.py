@@ -114,11 +114,17 @@ class ARAXRanker:
         but I don't know the distribution of frequencies in COHD, so just go the relative route
         """
         # check to make sure we don't divide by zero
-        try:
-            normalized_value = value / score_stats['paired_concept_frequency']['maximum']
-        except:
-            normalized_value = value / (score_stats['paired_concept_frequency']['maximum'] + np.finfo(float).eps)
-        print(f"value: {value}, normalized: {normalized_value}")
+        #try:
+        #    normalized_value = value / score_stats['paired_concept_frequency']['maximum']
+        #except:
+        #    normalized_value = value / (score_stats['paired_concept_frequency']['maximum'] + np.finfo(float).eps)
+
+        # Give logistic a try
+        max_value = 1
+        curve_steepness = 2000  # really steep since the max values I've ever seen are quite small (eg .03)
+        logistic_midpoint = 0.002  # seems like an ok mid point, but....
+        normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
+        #print(f"value: {value}, normalized: {normalized_value}")
         return normalized_value
 
     def aggregate_scores_dmk(self, message, response=None):
@@ -621,7 +627,8 @@ def main():
         sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/Feedback")
         from RTXFeedback import RTXFeedback
         araxdb = RTXFeedback()
-        message_dict = araxdb.getMessage(294)  # local version of 2709 but with updates to COHD
+        #message_dict = araxdb.getMessage(294)  # local version of 2709 but with updates to COHD
+        message_dict = araxdb.getMessage(297)
         from ARAX_messenger import ARAXMessenger
         message = ARAXMessenger().from_dict(message_dict)
 
