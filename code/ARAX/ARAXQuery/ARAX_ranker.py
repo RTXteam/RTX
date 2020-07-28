@@ -92,7 +92,8 @@ class ARAXRanker:
             max_value = 1
             curve_steepness = 15
             logistic_midpoint = 0.60
-            normalized_value = np.exp(max_value / float(1+np.exp(-curve_steepness*(value - logistic_midpoint))))
+            normalized_value = max_value / float(1+np.exp(-curve_steepness*(value - logistic_midpoint)))
+            print(f"input: {value}, output: {normalized_value}")
             return normalized_value
 
     def aggregate_scores_dmk(self, message, response=None):
@@ -214,13 +215,8 @@ class ARAXRanker:
                         #### EWD says: as well as in the edge confidence score, so I commented out this section (see immediately above) DMK (same re: comment above :) )
                         #### EWD says: so that it wouldn't be counted twice. But that may have changed in the mean time.
                         if edge_attribute.name == "probability_treats":
-                            prob_treats = float(edge_attribute.value)
-                            # Don't treat as a good prediction if the ML model returns a low value
-                            if prob_treats < penalize_factor:
-                                factor = penalize_factor
-                            else:
-                                factor = prob_treats
-                            score *= factor  # already a number between 0 and 1, so just multiply
+                            factor = self.score_normalizer(edge_attribute.name, edge_attribute.value)
+                            score *= factor
 
                         # #### If the edge_attribute is named 'ngd', then use some hocus pocus to convert to a confidence
                         if edge_attribute.name == 'normalized_google_distance':
@@ -595,8 +591,8 @@ def main():
     #### Get a Message to work on
     messenger = ARAXMessenger()
     print("INFO: Fetching message to work on from arax.rtx.ai",flush=True)
-    message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2614')  # acetaminophen - > protein, just NGD as virtual edge
-    #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2687')  # neutropenia -> drug
+    #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2614')  # acetaminophen - > protein, just NGD as virtual edge
+    message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2687')  # neutropenia -> drug
     if message is None:
         print("ERROR: Unable to fetch message")
         return
