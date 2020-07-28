@@ -114,16 +114,16 @@ class OverlayClinicalInfo:
                     KP_to_use = KP
             if KP_to_use == 'COHD':
                 # convert CURIE to OMOP identifiers
-                #source_OMOPs = [str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(source_curie, 1)]
-                res = self.cohdIndex.get_concept_ids(source_curie, kg_name='kg1')
-                if len(res)!=0:
-                    source_OMOPs = [str(omop_id) for omop_id in res['OMOP concepts']]
+                # source_OMOPs = [str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(source_curie, 1)]
+                res = self.cohdIndex.get_concept_ids(source_curie)
+                if len(res) != 0:
+                    source_OMOPs = [str(omop_id) for omop_id in res[source_curie]['OMOP concepts'] if omop_id is not None]
                 else:
                     source_OMOPs = []
-                #target_OMOPs = [str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(target_curie, 1)]
-                res = self.cohdIndex.get_concept_ids(target_curie, kg_name='kg1')
+                # target_OMOPs = [str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(target_curie, 1)]
+                res = self.cohdIndex.get_concept_ids(target_curie)
                 if len(res) != 0:
-                    target_OMOPs = [str(omop_id) for omop_id in res['OMOP concepts']]
+                    target_OMOPs = [str(omop_id) for omop_id in res[target_curie]['OMOP concepts'] if omop_id is not None]
                 else:
                     target_OMOPs = []
                 # for domain in ["Condition", "Drug", "Procedure"]:
