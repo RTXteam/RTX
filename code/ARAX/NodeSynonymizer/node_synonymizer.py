@@ -220,7 +220,11 @@ class NodeSynonymizer:
 
                 # Check to see if this is a supported prefix or in the translation table
                 if curie_prefix in normalizer.curie_prefix_tx_arax2sri or curie_prefix in normalizer_supported_prefixes:
-                    equivalence = normalizer.get_curie_equivalence(node_curie)
+                    t0 = timeit.default_timer()
+                    equivalence = normalizer.get_curie_equivalence(node_curie, cache_only=True)
+                    t1 = timeit.default_timer()
+                    if t1 - t0 > 0.1:
+                        print(f"\n  PROGRESS: Took {str(t1-t0)} to retrieve SRI data for {node_curie}")
                     if debug_flag:
                         print("DEBUG: SRI normalizer returned: ", json.dumps(equivalence, indent=2, sort_keys=True))
 
