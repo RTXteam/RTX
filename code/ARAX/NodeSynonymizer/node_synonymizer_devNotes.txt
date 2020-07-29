@@ -1,14 +1,37 @@
 
 Summary of build process:
 
-cd code/ARAX/KGNodeIndex
-python3 sri_normalizer.py --build
-python3 KGNodeIndex.py --build --both
+cd $RTX/code/ARAX/NodeSynonymizer
+python3 sri_node_normalizer.py --build
+python3 node_synonymizer.py --build --kg_name=both
+python3 node_synonymizer.py --lookup=rickets --kg_name=KG1
 
 
 Do to:
+- Add a term to unique_concept: preferred_curie with some rules. Usually kg2_best_curie, but maybe not always
 - When coalescing concepts, transfer the normalizer information!
 
+========================================================================
+
+Access method notes:
+get_curies_and_types			- need to update
+get_curies_and_types_and_names		- Calls previous and then tries to get the description as well from neo4j
+get_names				- old
+get_curies				- old
+is_curie_present			- old
+get_KG1_curies				- delete
+convert_curie				- old. but probably useful
+get_equivalent_nodes			- FIXED. GOOD				(renamed from get_equivalent_curies)
+get_equivalent_entities			- ? obsolete
+get_normalizer_results			- needs to be updated for batching
+get_total_entity_count			- FIXED. GOOD.
+
+
+preferred curie/name/type for an input curie
+
+
+
+========================================================================
 
 
 Notes developing the new KGNodeIndex

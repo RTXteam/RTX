@@ -1,4 +1,5 @@
 #!/bin/env python3
+import itertools
 import sys
 import os
 import traceback
@@ -58,7 +59,7 @@ class BTEQuerier:
             answer_kg = eu.switch_kg_to_arax_curie_format(answer_kg)
             edge_to_nodes_map = self._create_edge_to_nodes_map(answer_kg, input_qnode.id, output_qnode.id)
         else:
-            self._log_proper_no_results_message(accepted_curies, continue_if_no_results, valid_bte_inputs_dict['curie_prefixes'])
+            self._log_proper_no_results_message(accepted_curies, continue_if_no_results, valid_bte_inputs_dict['curie_prefixes'], log)
 
         return answer_kg, edge_to_nodes_map
 
@@ -66,30 +67,31 @@ class BTEQuerier:
                                 answer_kg: DictKnowledgeGraph, valid_bte_inputs_dict: Dict[str, Set[str]],
                                 log: Response) -> Tuple[DictKnowledgeGraph, Set[str]]:
         accepted_curies = set()
-        # Send this single-edge query to BTE, once per input curie (adding findings to our answer KG as we go)
+        # Send this single-edge query to BTE, input curie by input curie (adding findings to our answer KG as we go)
         for curie in input_qnode.curie:
-            if eu.get_curie_prefix(curie) in valid_bte_inputs_dict['curie_prefixes']:
-                accepted_curies.add(curie)
-                try:
-                    loop = asyncio.new_event_loop()
-                    seqd = SingleEdgeQueryDispatcher(input_cls=input_qnode.type,
-                                                     output_cls=output_qnode.type,
-                                                     pred=qedge.type,
-                                                     input_id=eu.get_curie_prefix(curie),
-                                                     values=eu.get_curie_local_id(curie),
-                                                     loop=loop)
-                    log.debug(f"Sending query to BTE: {curie}-{qedge.type if qedge.type else ''}->{output_qnode.type}")
-                    seqd.query()
-                    reasoner_std_response = seqd.to_reasoner_std()
-                except Exception:
-                    trace_back = traceback.format_exc()
-                    error_type, error, _ = sys.exc_info()
-                    log.error(f"Encountered a problem while using BioThings Explorer. {trace_back}",
-                              error_code=error_type.__name__)
-                    return answer_kg, accepted_curies
-                else:
-                    answer_kg = self._add_answers_to_kg(answer_kg, reasoner_std_response, input_qnode.id, output_qnode.id, qedge.id, log)
-
+            # Consider all different combinations of qnode types (can be multiple if gene/protein)
+            for input_qnode_type, output_qnode_type in itertools.product(input_qnode.type, output_qnode.type):
+                if eu.get_curie_prefix(curie) in valid_bte_inputs_dict['curie_prefixes']:
+                    accepted_curies.add(curie)
+                    try:
+                        loop = asyncio.new_event_loop()
+                        seqd = SingleEdgeQueryDispatcher(input_cls=input_qnode_type,
+                                                         output_cls=output_qnode_type,
+                                                         pred=qedge.type,
+                                                         input_id=eu.get_curie_prefix(curie),
+                                                         values=eu.get_curie_local_id(curie),
+                                                         loop=loop)
+                        log.debug(f"Sending query to BTE: {curie}-{qedge.type if qedge.type else ''}->{output_qnode_type}")
+                        seqd.query()
+                        reasoner_std_response = seqd.to_reasoner_std()
+                    except Exception:
+                        trace_back = traceback.format_exc()
+                        error_type, error, _ = sys.exc_info()
+                        log.error(f"Encountered a problem while using BioThings Explorer. {trace_back}",
+                                  error_code=error_type.__name__)
+                        return answer_kg, accepted_curies
+                    else:
+                        answer_kg = self._add_answers_to_kg(answer_kg, reasoner_std_response, input_qnode.id, output_qnode.id, qedge.id, log)
         return answer_kg, accepted_curies
 
     def _add_answers_to_kg(self, answer_kg: DictKnowledgeGraph, reasoner_std_response: Dict[str, any],
@@ -187,14 +189,15 @@ class BTEQuerier:
             return None, None, None
 
         # Process qnode types (convert to preferred format, make sure allowed)
-        input_qnode.type = eu.convert_string_to_pascal_case(input_qnode.type)
-        output_qnode.type = eu.convert_string_to_pascal_case(output_qnode.type)
+        input_qnode.type = [eu.convert_string_to_pascal_case(node_type) for node_type in eu.convert_string_or_list_to_list(input_qnode.type)]
+        output_qnode.type = [eu.convert_string_to_pascal_case(node_type) for node_type in eu.convert_string_or_list_to_list(output_qnode.type)]
         qnodes_missing_type = [qnode.id for qnode in [input_qnode, output_qnode] if not qnode.type]
         if qnodes_missing_type:
             log.error(f"BTE requires every query node to have a type. QNode(s) missing a type: "
                       f"{', '.join(qnodes_missing_type)}", error_code="InvalidInput")
             return None, None, None
-        invalid_qnode_types = [qnode.type for qnode in [input_qnode, output_qnode] if qnode.type not in valid_bte_inputs_dict['node_types']]
+        invalid_qnode_types = [node_type for qnode in [input_qnode, output_qnode] for node_type in qnode.type
+                               if node_type not in valid_bte_inputs_dict['node_types']]
         if invalid_qnode_types:
             log.error(f"BTE does not accept QNode type(s): {', '.join(invalid_qnode_types)}. Valid options are "
                       f"{valid_bte_inputs_dict['node_types']}", error_code="InvalidInput")
@@ -229,7 +232,7 @@ class BTEQuerier:
         """
         # Remove 'output' nodes in the KG that aren't actually the ones we were looking for
         desired_output_curies = set(eu.convert_string_or_list_to_list(output_qnode.curie))
-        all_output_node_ids = set(list(kg.nodes_by_qg_id[output_qnode.id].keys()))
+        all_output_node_ids = set(kg.nodes_by_qg_id[output_qnode.id])
         output_node_ids_to_remove = all_output_node_ids.difference(desired_output_curies)
         for node_id in output_node_ids_to_remove:
             kg.nodes_by_qg_id[output_qnode.id].pop(node_id)

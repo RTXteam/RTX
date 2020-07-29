@@ -8,6 +8,7 @@ from Expand.expand_utilities import DictKnowledgeGraph
 import Expand.expand_utilities as eu
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.query_graph import QueryGraph
 from swagger_server.models.q_edge import QEdge
 from swagger_server.models.q_node import QNode
@@ -145,9 +146,15 @@ class ARAXExpander:
         # Convert message knowledge graph back to API standard format
         self.message.knowledge_graph = eu.convert_dict_kg_to_standard_kg(dict_kg)
 
+        # Override node types so that they match what was asked for in the query graph (where applicable) #987
+        self._override_node_types(self.message.knowledge_graph, self.message.query_graph)
+
         # Return the response and done
         kg = self.message.knowledge_graph
-        log.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges")
+        if not kg.nodes and not continue_if_no_results:
+            log.error(f"No paths were found in {kp_to_use} satisfying this query graph", error_code="NoResults")
+        else:
+            log.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges")
         return response
 
     def _expand_edge(self, qedge: QEdge, kp_to_use: str, dict_kg: DictKnowledgeGraph, continue_if_no_results: bool,
@@ -160,11 +167,12 @@ class ARAXExpander:
 
         # Create a query graph for this edge (that uses synonyms as well as curies found in prior steps)
         edge_query_graph = self._get_query_graph_for_edge(qedge, query_graph, dict_kg, use_synonyms, kp_to_use, log)
+        if log.status != 'OK':
+            return answer_kg, edge_to_nodes_map
         if not any(qnode for qnode in edge_query_graph.nodes if qnode.curie):
             log.error(f"Cannot expand an edge for which neither end has any curies. (Could not find curies to use from "
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, edge_to_nodes_map
-        log.debug(f"Modified QG for this edge is: {edge_query_graph.to_dict()}")
 
         valid_kps = ["ARAX/KG1", "ARAX/KG2", "BTE"]
         if kp_to_use not in valid_kps:
@@ -181,7 +189,7 @@ class ARAXExpander:
             answer_kg, edge_to_nodes_map = kp_querier.answer_one_hop_query(edge_query_graph)
             if log.status != 'OK':
                 return answer_kg, edge_to_nodes_map
-            log.info(f"Query for edge {qedge.id} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
+            log.debug(f"Query for edge {qedge.id} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
             # Make sure our query has been fulfilled (unless we're continuing if no results)
             if not continue_if_no_results:
@@ -211,9 +219,9 @@ class ARAXExpander:
         copy_of_qnode = eu.copy_qnode(query_node)
 
         if use_synonyms:
-            self._add_curie_synonyms_to_query_nodes(qnodes=[copy_of_qnode],
-                                                    kp=kp_to_use,
-                                                    log=log)
+            self._add_curie_synonyms_to_query_nodes(qnodes=[copy_of_qnode], log=log, kp=kp_to_use)
+        if copy_of_qnode.type in ["protein", "gene"]:
+            copy_of_qnode.type = ["protein", "gene"]
         log.debug(f"Modified query node is: {copy_of_qnode.to_dict()}")
 
         # Answer the query using the proper KP
@@ -233,7 +241,7 @@ class ARAXExpander:
                               error_code="UnfulfilledQGID")
                     return answer_kg
 
-            if use_synonyms and synonym_handling == 'map_back':
+            if synonym_handling != 'add_all':
                 answer_kg, edge_node_usage_map = self._deduplicate_nodes(dict_kg=answer_kg,
                                                                          edge_to_nodes_map={},
                                                                          log=log)
@@ -265,9 +273,11 @@ class ARAXExpander:
             edge_query_graph.nodes.append(qnode_copy)
 
         if use_synonyms:
-            self._add_curie_synonyms_to_query_nodes(qnodes=edge_query_graph.nodes,
-                                                    kp=kp_to_use,
-                                                    log=log)
+            self._add_curie_synonyms_to_query_nodes(qnodes=edge_query_graph.nodes, log=log, kp=kp_to_use)
+        # Consider both protein and gene if qnode's type is one of those (since KP's handle these differently)
+        for qnode in edge_query_graph.nodes:
+            if qnode.type in ['protein', 'gene']:
+                qnode.type = ['protein', 'gene']
         return edge_query_graph
 
     @staticmethod
@@ -277,39 +287,55 @@ class ARAXExpander:
         deduplicated_kg = DictKnowledgeGraph(nodes={qnode_id: dict() for qnode_id in dict_kg.nodes_by_qg_id},
                                              edges={qedge_id: dict() for qedge_id in dict_kg.edges_by_qg_id})
         updated_edge_to_nodes_map = {edge_id: dict() for edge_id in edge_to_nodes_map}
-        curie_map = dict()
+        curie_mappings = dict()
 
         # First deduplicate the nodes
         for qnode_id, nodes in dict_kg.nodes_by_qg_id.items():
-            for node_id, node in nodes.items():
-                preferred_curie = curie_map.get(node_id) if node_id in curie_map else eu.get_preferred_curie(node_id)
-                # Record the remappings we're doing for easier access later
-                for synonym in eu.get_curie_synonyms(node_id):
-                    curie_map[synonym] = preferred_curie
-                if preferred_curie in deduplicated_kg.nodes_by_qg_id[qnode_id]:
-                    # TODO: Better handle 'merging'/remapping of duplicate nodes
-                    kept_node = deduplicated_kg.nodes_by_qg_id[qnode_id][preferred_curie]
-                    kept_node.type = list(set(kept_node.type + node.type))
-                    kept_node.name = kept_node.name if len(kept_node.name) < len(node.name) else node.name
+            # Load preferred curie info from NodeSynonymizer for nodes we haven't seen before
+            unmapped_node_ids = set(nodes).difference(set(curie_mappings))
+            log.debug(f"Getting preferred curies for {qnode_id} nodes returned in this step")
+            canonicalized_nodes = eu.get_preferred_curies(list(unmapped_node_ids), log) if unmapped_node_ids else dict()
+            if log.status != 'OK':
+                return deduplicated_kg, updated_edge_to_nodes_map
+
+            for node_id in unmapped_node_ids:
+                # Figure out the preferred curie/name for this node
+                node = nodes.get(node_id)
+                canonicalized_node = canonicalized_nodes.get(node_id)
+                if canonicalized_node:
+                    preferred_curie = canonicalized_node.get('preferred_curie', node_id)
+                    preferred_name = canonicalized_node.get('preferred_name', node.name)
+                    preferred_type = eu.convert_string_or_list_to_list(canonicalized_node.get('preferred_type', node.type))
+                    curie_mappings[node_id] = preferred_curie
                 else:
+                    # Means the NodeSynonymizer didn't recognize this curie
+                    preferred_curie = node_id
+                    preferred_name = node.name
+                    preferred_type = node.type
+                    curie_mappings[node_id] = preferred_curie
+
+                # Add this node into our deduplicated KG as necessary # TODO: merge certain fields, like uri?
+                if preferred_curie not in deduplicated_kg.nodes_by_qg_id[qnode_id]:
                     node.id = preferred_curie
+                    node.name = preferred_name
+                    node.type = preferred_type
                     deduplicated_kg.add_node(node, qnode_id)
 
         # Then update the edges to reflect changes made to the nodes
         for qedge_id, edges in dict_kg.edges_by_qg_id.items():
             for edge_id, edge in edges.items():
-                edge.source_id = curie_map.get(edge.source_id)
-                edge.target_id = curie_map.get(edge.target_id)
+                edge.source_id = curie_mappings.get(edge.source_id)
+                edge.target_id = curie_mappings.get(edge.target_id)
                 if not edge.source_id or not edge.target_id:
-                    log.error(f"Could not determine proper curies to use for edge {edge_id}'s nodes")
+                    log.error(f"Could not find preferred curie mappings for edge {edge_id}'s node(s)")
                     return deduplicated_kg, updated_edge_to_nodes_map
                 deduplicated_kg.add_edge(edge, qedge_id)
 
                 # Update the edge-to-node map for this edge (used down the line for pruning)
                 for qnode_id, corresponding_node_id in edge_to_nodes_map[edge_id].items():
-                    updated_edge_to_nodes_map[edge_id][qnode_id] = curie_map.get(corresponding_node_id)
+                    updated_edge_to_nodes_map[edge_id][qnode_id] = curie_mappings.get(corresponding_node_id)
 
-        log.debug(f"After deduplication, answer KG counts are: {eu.get_printable_counts_by_qg_id(deduplicated_kg)}")
+        log.info(f"After deduplication, answer KG counts are: {eu.get_printable_counts_by_qg_id(deduplicated_kg)}")
         return deduplicated_kg, updated_edge_to_nodes_map
 
     @staticmethod
@@ -476,23 +502,26 @@ class ARAXExpander:
         return kg
 
     @staticmethod
-    def _add_curie_synonyms_to_query_nodes(qnodes: List[QNode], log: Response, kp='KG2'):
+    def _override_node_types(kg: KnowledgeGraph, qg: QueryGraph):
+        # This method overrides KG nodes' types to match those requested in the QG, where possible (issue #987)
+        qnode_id_to_type_map = {qnode.id: qnode.type for qnode in qg.nodes}
+        for node in kg.nodes:
+            corresponding_qnode_types = {qnode_id_to_type_map.get(qnode_id) for qnode_id in node.qnode_ids}
+            non_none_types = [node_type for node_type in corresponding_qnode_types if node_type]
+            if non_none_types:
+                node.type = non_none_types
+
+    @staticmethod
+    def _add_curie_synonyms_to_query_nodes(qnodes: List[QNode], log: Response, kp: str):
         log.debug("Looking for query nodes to use curie synonyms for")
         for qnode in qnodes:
             if qnode.curie:
-                input_curies = eu.convert_string_or_list_to_list(qnode.curie)
-                final_curie_list = []
-                for curie in input_curies:
-                    original_curie = curie
-                    equivalent_curies = eu.get_curie_synonyms(curie=original_curie)
-                    if len(equivalent_curies) > 1:
-                        final_curie_list += equivalent_curies
-                    elif len(equivalent_curies) <= 1:
-                        final_curie_list.append(original_curie)
-
-                # Use our new synonyms list only if we actually found any synonyms
-                if set(final_curie_list) != set(input_curies):
-                    qnode.curie = final_curie_list
+                log.debug(f"Getting curie synonyms for qnode {qnode.id} using the NodeSynonymizer")
+                synonymized_curies = eu.get_curie_synonyms(qnode.curie, log)
+                log.debug(f"Using {len(synonymized_curies)} equivalent curies for qnode {qnode.id}")
+                qnode.curie = synonymized_curies
+                if "BTE" not in kp:
+                    qnode.type = None  # Important to clear when using synonyms; otherwise we're limited #889
 
     @staticmethod
     def _get_orphan_query_node_ids(query_graph: QueryGraph):

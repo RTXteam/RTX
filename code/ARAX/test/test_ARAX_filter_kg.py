@@ -59,37 +59,61 @@ def test_warning():
 
 def test_default_std_dev():
     query = {"previous_message_processing_plan": {"processing_actions": [
-            "create_message",
-            "add_qnode(curie=DOID:1588, id=n00)",
-            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
-            "add_qedge(source_id=n00, target_id=n01, id=e00)",
-            "expand(edge_id=e00)",
-            "overlay(action=predict_drug_treats_disease)",
-            "filter_kg(action=remove_edges_by_attribute_default, edge_attribute=probability_treats, type=std, remove_connected_nodes=f)",
-            "return(message=true, store=false)",
+        "create_message",
+        "add_qnode(curie=DOID:5199, id=n00)",
+        "add_qnode(type=protein, is_set=true, id=n01)",
+        "add_qnode(type=chemical_substance, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
+        "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
+        "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J2)",
+        "resultify(ignore_edge_direction=true, debug=true)",
+        "return(message=true, store=false)",
+        ]}}
+    [response, message] = _do_arax_query(query)
+    all_vals = [float(y.value) for x in message.knowledge_graph.edges if x.edge_attributes is not None for y in x.edge_attributes if y.name == 'jaccard_index']
+    comp_val = np.mean(all_vals) + np.std(all_vals)
+    comp_len = len([x for x in all_vals if x > comp_val])
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "create_message",
+        "add_qnode(curie=DOID:5199, id=n00)",
+        "add_qnode(type=protein, is_set=true, id=n01)",
+        "add_qnode(type=chemical_substance, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
+        "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
+        "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J2)",
+        "filter_kg(action=remove_edges_by_attribute_default, edge_attribute=jaccard_index, type=std, remove_connected_nodes=f)",
+        "return(message=true, store=false)",
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    vals = [float(y.value) for x in message.knowledge_graph.edges for y in x.edge_attributes if y.name == 'probability_treats']
-    assert len(vals) == 21
-    assert np.min(vals) > 0.3381782537885432
+    vals = [float(y.value) for x in message.knowledge_graph.edges if x.edge_attributes is not None for y in x.edge_attributes if y.name == 'jaccard_index']
+    assert len(vals) == comp_len
+    assert np.min(vals) > comp_val
 
 def test_default_std_top_n():
     query = {"previous_message_processing_plan": {"processing_actions": [
-            "create_message",
-            "add_qnode(curie=DOID:1588, id=n00)",
-            "add_qnode(type=chemical_substance, is_set=true, id=n01)",
-            "add_qedge(source_id=n00, target_id=n01, id=e00)",
-            "expand(edge_id=e00)",
-            "overlay(action=predict_drug_treats_disease)",
-            "filter_kg(action=remove_edges_by_attribute_default, edge_attribute=probability_treats, type=n, remove_connected_nodes=f)",
-            "return(message=true, store=false)",
+        "create_message",
+        "add_qnode(curie=DOID:5199, id=n00)",
+        "add_qnode(type=protein, is_set=true, id=n01)",
+        "add_qnode(type=chemical_substance, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
+        "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
+        "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J2)",
+        "filter_kg(action=remove_edges_by_attribute_default, edge_attribute=jaccard_index, type=n, remove_connected_nodes=f)",
+        "return(message=true, store=false)",
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    vals = [float(y.value) for x in message.knowledge_graph.edges for y in x.edge_attributes if y.name == 'probability_treats']
+    vals = [float(y.value) for x in message.knowledge_graph.edges if x.edge_attributes is not None for y in x.edge_attributes if y.name == 'jaccard_index']
     assert len(vals) == 50
-    assert np.min(vals) > 0.2587258724407653
+    assert sum([x == 1 for x in vals]) == 8
+
 
 if __name__ == "__main__":
     pytest.main(['-v'])

@@ -19,6 +19,7 @@ from swagger_server.models.node_attribute import NodeAttribute
 from swagger_server.models.edge_attribute import EdgeAttribute
 from swagger_server.models.query_graph import QueryGraph
 from swagger_server.models.q_node import QNode
+from swagger_server.models.q_edge import QEdge
 
 
 class KGQuerier:
@@ -53,7 +54,7 @@ class KGQuerier:
         qedge_id = query_graph.edges[0].id
 
         # Run the actual query and process results
-        cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, enforce_directionality, log)
+        cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, enforce_directionality, kp, log)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
         neo4j_results = self._answer_one_hop_query_using_neo4j(cypher_query, qedge_id, kp, continue_if_no_results, log)
@@ -91,44 +92,50 @@ class KGQuerier:
         return final_kg
 
     def _convert_one_hop_query_graph_to_cypher_query(self, query_graph: QueryGraph, enforce_directionality: bool,
-                                                     log: Response) -> str:
+                                                     kp: str, log: Response) -> str:
         log.debug(f"Generating cypher for edge {query_graph.edges[0].id} query graph")
         try:
             # Build the match clause
-            edge = query_graph.edges[0]
-            source_node = eu.get_query_node(query_graph, edge.source_id)
-            target_node = eu.get_query_node(query_graph, edge.target_id)
-            edge_cypher = self._get_cypher_for_query_edge(edge, enforce_directionality)
-            source_node_cypher = self._get_cypher_for_query_node(source_node)
-            target_node_cypher = self._get_cypher_for_query_node(target_node)
-            match_clause = f"MATCH {source_node_cypher}{edge_cypher}{target_node_cypher}"
+            qedge = query_graph.edges[0]
+            source_qnode = eu.get_query_node(query_graph, qedge.source_id)
+            target_qnode = eu.get_query_node(query_graph, qedge.target_id)
+            qedge_cypher = self._get_cypher_for_query_edge(qedge, enforce_directionality)
+            source_qnode_cypher = self._get_cypher_for_query_node(source_qnode)
+            target_qnode_cypher = self._get_cypher_for_query_node(target_qnode)
+            match_clause = f"MATCH {source_qnode_cypher}{qedge_cypher}{target_qnode_cypher}"
 
             # Build the where clause
             where_fragments = []
-            for node in [source_node, target_node]:
-                if node.curie:
-                    if type(node.curie) is str:
-                        where_fragment = f"{node.id}.id='{node.curie}'"
+            for qnode in [source_qnode, target_qnode]:
+                if qnode.curie:
+                    if type(qnode.curie) is str:
+                        node_id_where_fragment = f"{qnode.id}.id='{qnode.curie}'"
                     else:
-                        where_fragment = f"{node.id}.id in {node.curie}"
-                    where_fragments.append(where_fragment)
+                        node_id_where_fragment = f"{qnode.id}.id in {qnode.curie}"
+                    where_fragments.append(node_id_where_fragment)
+                if qnode.type and isinstance(qnode.type, list):
+                    if "KG2" in kp:
+                        node_type_property = "category_label"
+                    else:
+                        node_type_property = "category"
+                    where_fragments.append(f"{qnode.id}.{node_type_property} in {qnode.type}")
             if where_fragments:
-                where_clause = "WHERE "
-                where_clause += " AND ".join(where_fragments)
+                where_clause = f"WHERE {' AND '.join(where_fragments)}"
             else:
                 where_clause = ""
 
             # Build the with clause
-            source_node_col_name = f"nodes_{source_node.id}"
-            target_node_col_name = f"nodes_{target_node.id}"
-            edge_col_name = f"edges_{edge.id}"
-            extra_edge_properties = "{.*, " + f"id:ID({edge.id}), {source_node.id}:{source_node.id}.id, {target_node.id}:{target_node.id}.id" + "}"
-            with_clause = f"WITH collect(distinct {source_node.id}) as {source_node_col_name}, " \
-                          f"collect(distinct {target_node.id}) as {target_node_col_name}, " \
-                          f"collect(distinct {edge.id}{extra_edge_properties}) as {edge_col_name}"
+            source_qnode_col_name = f"nodes_{source_qnode.id}"
+            target_qnode_col_name = f"nodes_{target_qnode.id}"
+            qedge_col_name = f"edges_{qedge.id}"
+            # This line grabs the edge's ID and a record of which of its nodes correspond to which qnode ID
+            extra_edge_properties = "{.*, " + f"id:ID({qedge.id}), {source_qnode.id}:{source_qnode.id}.id, {target_qnode.id}:{target_qnode.id}.id" + "}"
+            with_clause = f"WITH collect(distinct {source_qnode.id}) as {source_qnode_col_name}, " \
+                          f"collect(distinct {target_qnode.id}) as {target_qnode_col_name}, " \
+                          f"collect(distinct {qedge.id}{extra_edge_properties}) as {qedge_col_name}"
 
             # Build the return clause
-            return_clause = f"RETURN {source_node_col_name}, {target_node_col_name}, {edge_col_name}"
+            return_clause = f"RETURN {source_qnode_col_name}, {target_qnode_col_name}, {qedge_col_name}"
 
             cypher_query = f"{match_clause} {where_clause} {with_clause} {return_clause}"
             return cypher_query
@@ -136,7 +143,7 @@ class KGQuerier:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
             log.error(f"Problem generating cypher for query. {tb}", error_code=error_type.__name__)
-            return None
+            return ""
 
     def _answer_one_hop_query_using_neo4j(self, cypher_query: str, qedge_id: str, kp: str, continue_if_no_results: bool,
                                           log: Response) -> List[Dict[str, List[Dict[str, any]]]]:
@@ -331,18 +338,18 @@ class KGQuerier:
         return edge
 
     @staticmethod
-    def _get_cypher_for_query_node(node: Node) -> str:
-        node_type_string = f":{node.type}" if node.type else ""
-        final_node_string = f"({node.id}{node_type_string})"
-        return final_node_string
+    def _get_cypher_for_query_node(qnode: QNode) -> str:
+        qnode_type_cypher = f":{qnode.type}" if qnode.type and isinstance(qnode.type, str) else ""
+        full_qnode_cypher = f"({qnode.id}{qnode_type_cypher})"
+        return full_qnode_cypher
 
     @staticmethod
-    def _get_cypher_for_query_edge(edge: Edge, enforce_directionality: bool) -> str:
-        edge_type_string = f":{edge.type}" if edge.type else ""
-        final_edge_string = f"-[{edge.id}{edge_type_string}]-"
+    def _get_cypher_for_query_edge(qedge: QEdge, enforce_directionality: bool) -> str:
+        qedge_type_cypher = f":{qedge.type}" if qedge.type else ""
+        full_qedge_cypher = f"-[{qedge.id}{qedge_type_cypher}]-"
         if enforce_directionality:
-            final_edge_string += ">"
-        return final_edge_string
+            full_qedge_cypher += ">"
+        return full_qedge_cypher
 
     @staticmethod
     def _convert_strange_provided_by_field_to_list(provided_by_field: List[str]) -> List[str]:

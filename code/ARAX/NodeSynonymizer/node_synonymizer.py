@@ -10,6 +10,7 @@ import argparse
 import sqlite3
 import json
 import pickle
+import platform
 
 #sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 #sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../QuestionAnswering")
@@ -168,10 +169,14 @@ class NodeSynonymizer:
         kg_curies = self.kg_map['kg_curies']
         kg_synonyms = self.kg_map['kg_synonyms']
 
+        # Correction for Windows line endings
+        extra_bytes = 0
+        if platform.system() == 'Windows':
+            extra_bytes = 1
 
         # Loop over each line in the file
         for line in fh:
-            bytes_read += len(line) + 1
+            bytes_read += len(line) + extra_bytes
             match = re.match(r'^\s*$',line)
             if match:
                 continue
@@ -215,7 +220,11 @@ class NodeSynonymizer:
 
                 # Check to see if this is a supported prefix or in the translation table
                 if curie_prefix in normalizer.curie_prefix_tx_arax2sri or curie_prefix in normalizer_supported_prefixes:
-                    equivalence = normalizer.get_curie_equivalence(node_curie)
+                    t0 = timeit.default_timer()
+                    equivalence = normalizer.get_curie_equivalence(node_curie, cache_only=True)
+                    t1 = timeit.default_timer()
+                    if t1 - t0 > 0.1:
+                        print(f"\n  PROGRESS: Took {str(t1-t0)} to retrieve SRI data for {node_curie}")
                     if debug_flag:
                         print("DEBUG: SRI normalizer returned: ", json.dumps(equivalence, indent=2, sort_keys=True))
 
@@ -901,6 +910,10 @@ class NodeSynonymizer:
 
 
     # ############################################################################################
+
+    # Access methods
+
+    # ############################################################################################
     def get_curies_and_types(self, name, kg_name='KG2'):
 
         # Determine the table prefix for the knowledge graph selected
@@ -1069,97 +1082,193 @@ class NodeSynonymizer:
 
 
     # ############################################################################################
-    def get_equivalent_curies(self, curie, kg_name='KG2'):
+    def get_equivalent_curies(self, curies, kg_name='KG2'):
 
-        # Determine the table prefix for the knowledge graph selected
-        if kg_name.upper() == 'KG1' or kg_name.upper() == 'KG2':
-            kg_prefix = kg_name.lower()
-        else:
+        return self.get_equivalent_nodes(curies, kg_name)
+
+
+    # ############################################################################################
+    def get_equivalent_nodes(self, curies, kg_name='KG2'):
+
+        # If no entity was passed, then nothing to do
+        if curies is None:
+            return None
+
+        # Verify that kg_name is an allowed value
+        if kg_name.upper() != 'KG1' and kg_name.upper() != 'KG2':
             print("ERROR: kg_name must be either 'KG1' or 'KG2'")
             return None
 
-        # Set up the return list
-        curies = []
+        # The table prefix is always kg2 now
+        kg_prefix = 'kg2'
+
+        # If the provided value is just a string, turn it into a list
+        if isinstance(curies,str):
+            curies = [ curies ]
+
+        # For now enforce a limit of 40000 in the batch. At some point, the dynamically created SQL
+        # will overrun the default 1 MB SQL buffer. Not til 60,000, though, given average curie size.
+        if len(curies) > 40000:
+            print("ERROR: Maximum number of curies is currently 40000. Maybe the limit could be extended")
+            return None
+
+        # Make a comma-separated list string
+        uc_curies = []
+        results = {}
+        curie_map = {}
+        for curie in curies:
+            uc_curie = curie.upper()
+            curie_map[uc_curie] = curie
+            uc_curies.append(uc_curie)
+            results[curie] = []
+        entities_str = "','".join(uc_curies)
 
         # Search the curie table for the provided curie
         cursor = self.connection.cursor()
-        cursor.execute( f"SELECT unique_concept_curie FROM {kg_prefix}_curie{TESTSUFFIX} WHERE uc_curie = ?", (curie.upper(),) )    # FIXME: need to make curie upper()?
+        cursor.execute( f"""
+            SELECT C.curie,C.unique_concept_curie,N.curie,N.kg_presence FROM {kg_prefix}_curie{TESTSUFFIX} AS C
+             INNER JOIN {kg_prefix}_node{TESTSUFFIX} AS N ON C.unique_concept_curie == N.unique_concept_curie
+             WHERE C.uc_curie in ( '{entities_str}' )""" )
         rows = cursor.fetchall()
 
-        # If there are still no rows, then just return an empty list
+        # If there are still no rows, then just return the results as the input list with all null values
         if len(rows) == 0:
-            return curies
+            return results
 
-        # If multiple rows come back, this is probably an error in the database
-        if len(rows) > 1:
-            print(f"WARNING: Search in NodeSynonymizer for '{curie}' turned up more than entry. This shouldn't be.")
-
-        # Extract the CURIE for the unique concept
-        unique_concept_curie = rows[0][0]
-
-        # Get the list of nodes that link to this concept
-        cursor = self.connection.cursor()
-        cursor.execute( f"SELECT * FROM {kg_prefix}_curie{TESTSUFFIX} WHERE unique_concept_curie = ?", (unique_concept_curie,) )
-        rows = cursor.fetchall()
+        # Loop through all rows, building the list
         for row in rows:
-            curies.append(row[1])
-        return curies
-        #return list(curies.keys())
+
+            # Only if the requested kg_name is in this row do we record a value
+            if kg_name in row[3]:
+
+                # If the curie is not found in results, try to use the curie_map{} to resolve capitalization issues
+                curie = row[0]
+                if curie not in results:
+                    if curie.upper() in curie_map:
+                        curie = curie_map[curie.upper()]
+
+                # Now store this curie in the list
+                if curie in results:
+                    results[curie].append(row[2])
+                else:
+                    print(f"ERROR: Unable to find curie {curie}")
+
+        return results
 
 
-    def get_equivalent_entities(self, curie, kg_name='KG2'):
+    # ############################################################################################
+    def get_canonical_curies(self, curies=None, names=None):
 
-        # Determine the table prefix for the knowledge graph selected
-        if kg_name.upper() == 'KG1' or kg_name.upper() == 'KG2':
-            kg_prefix = kg_name.lower()
-        else:
-            print("ERROR: kg_name must be either 'KG1' or 'KG2'")
-            return None
+        # If the provided curies or names is just a string, turn it into a list
+        if isinstance(curies,str):
+            curies = [ curies ]
+        if isinstance(names,str):
+            names = [ names ]
 
-        # Set up the return list
+        # Set up containers for the batches and results
+        batches = []
+        results = {}
 
-        equivalence = { curie: { } }
+        # Make sets of comma-separated list strings for the curies and set up the results dict with all the input values
+        uc_curies = []
+        curie_map = {}
+        batch_size = 0
+        if curies is not None:
+            for curie in curies:
+                results[curie] = None
+                uc_curie = curie.upper()
+                curie_map[uc_curie] = curie
+                uc_curie = re.sub(r"'","''",uc_curie)   # Replace embedded ' characters with ''
+                uc_curies.append(uc_curie)
+                batch_size += 1
+                if batch_size > 5000:
+                    batches.append( { 'batch_type': 'curies', 'batch_str': "','".join(uc_curies) } )
+                    uc_curies = []
+                    batch_size = 0
+            if batch_size > 0:
+                batches.append( { 'batch_type': 'curies', 'batch_str': "','".join(uc_curies) } )
 
-        cursor = self.connection.cursor()
-        cursor.execute( f"SELECT * FROM {table_name}{TESTSUFFIX} WHERE curie = ?", (curie,) )
-        rows = cursor.fetchall()
+        # Make sets of comma-separated list strings for the names
+        lc_names = []
+        name_map = {}
+        batch_size = 0
+        if names is not None:
+            for name in names:
+                results[name] = None
+                lc_name = name.lower()
+                name_map[lc_name] = name
+                lc_name = re.sub(r"'","''",lc_name)   # Replace embedded ' characters with ''
+                lc_names.append(lc_name)
+                batch_size += 1
+                if batch_size > 5000:
+                    batches.append( { 'batch_type': 'names', 'batch_str': "','".join(lc_names) } )
+                    lc_names = []
+                    batch_size = 0
+            if batch_size > 0:
+                batches.append( { 'batch_type': 'names', 'batch_str': "','".join(lc_names) } )
 
-        if len(rows) == 0: return equivalence
+        # Search the curie table for the provided curie
+        kg_prefix = 'kg2'
 
-        reference_curie = rows[0][3]
-        equivalence[curie]['id'] = { 'identifier': reference_curie }
-        equivalence[curie]['equivalent_identifiers'] = []
-        equivalence[curie]['type'] = [ rows[0][2]]
+        for batch in batches:
+            cursor = self.connection.cursor()
+            if batch['batch_type'] == 'curies':
+                sql = f"""
+                    SELECT C.curie,C.unique_concept_curie,U.kg2_best_curie,U.name,U.type
+                      FROM {kg_prefix}_curie{TESTSUFFIX} AS C
+                     INNER JOIN {kg_prefix}_unique_concept{TESTSUFFIX} AS U ON C.unique_concept_curie == U.uc_curie
+                     WHERE C.uc_curie in ( '{batch['batch_str']}' )"""
+            else:
+                sql = f"""
+                    SELECT S.name,S.unique_concept_curie,U.kg2_best_curie,U.name,U.type
+                      FROM {kg_prefix}_synonym{TESTSUFFIX} AS S
+                     INNER JOIN {kg_prefix}_unique_concept{TESTSUFFIX} AS U ON S.unique_concept_curie == U.uc_curie
+                     WHERE S.lc_name in ( '{batch['batch_str']}' )"""
+            #print(f"INFO: Processing {batch['batch_type']} batch: {batch['batch_str']}")
+            cursor.execute( sql )
+            rows = cursor.fetchall()
 
-        # What if there are multiple rows returned, this is not handled. FIXME
-        #reference_curies = {}
-        #for row in rows:
-        #    reference_curies[row[3]] = 1
+            # Loop through all rows, building the list
+            for row in rows:
 
-        cursor = self.connection.cursor()
-        cursor.execute( f"SELECT * FROM {table_name}{TESTSUFFIX} WHERE reference_curie = ?", (reference_curie,) )
-        rows = cursor.fetchall()
+                # If the curie or name is not found in results, try to use the curie_map{}/name_map{} to resolve capitalization issues
+                entity = row[0]
+                if entity not in results:
+                    if batch['batch_type'] == 'curies':
+                        if entity.upper() in curie_map:
+                            entity = curie_map[entity.upper()]
+                    else:
+                        if entity.lower() in name_map:
+                            entity = name_map[entity.lower()]
 
-        curies = {}
-        for row in rows:
-            row_curie = row[0]
-            if row_curie not in curies:
-                equivalence[curie]['equivalent_identifiers'].append( { 'identifier': row_curie, 'label': row[1] } )
-                if row_curie == curie:
-                    equivalence[curie]['id']['label'] = row[1]
-                curies[row_curie] = 1
+                # Now store this curie in the list
+                if entity in results:
+                    results[entity] = {
+                        'preferred_curie': row[2],
+                        'preferred_name': row[3],
+                        'preferred_type': row[4]
+                    }
+                else:
+                    print(f"ERROR: Unable to find entity {entity}")
 
-        return equivalence
+
+        return results
 
 
-    # Return results in the Node Normalizer format, either from SRI or ARAX
+    # ############################################################################################
+    # Return results in the Node Normalizer format, either from SRI or KG1 or KG2
     def get_normalizer_results(self, entities=None, kg_name='SRI'):
 
         # If no entity was passed, then nothing to do
         if entities is None:
             return None
 
-        # Determine the table prefix for the knowledge graph selected
+        # Verify that kg_name is an allowed value
+        if kg_name.upper() != 'KG1' and kg_name.upper() != 'KG2' and kg_name.upper() != 'SRI':
+            print("ERROR: kg_name must be either 'KG1' or 'KG2' or 'SRI'")
+            return None
+
+        # The table prefix is always kg2 now
         kg_prefix = 'kg2'
 
         # If the provided value is just a string, turn it into a list
@@ -1174,7 +1283,10 @@ class NodeSynonymizer:
             if kg_name == 'SRI':
                 normalizer = SriNodeNormalizer()
                 result = normalizer.get_node_normalizer_results(entity)
-                results[entity] = result[entity]
+                if result is None:
+                    results[entity] = None
+                else:
+                    results[entity] = result[entity]
                 continue
 
             # Otherwise for KG1 and KG2
@@ -1192,6 +1304,7 @@ class NodeSynonymizer:
 
             # If there are still no rows, then just move on
             if len(rows) == 0:
+                results[entity] = None
                 continue
 
             # If multiple rows come back, this is probably an error in the database
@@ -1277,18 +1390,22 @@ class NodeSynonymizer:
     # ############################################################################################
     def get_total_entity_count(self, node_type, kg_name='KG1'):
 
-        # Determine the table prefix for the knowledge graph selected
-        if kg_name.upper() == 'KG1' or kg_name.upper() == 'KG2':
-            kg_prefix = kg_name.lower()
+        # Verify the kg_name and set constraints
+        if kg_name.upper() == 'KG1':
+            additional_constraint = 'kg1_best_curie IS NOT NULL AND '
+        elif kg_name.upper() == 'KG2':
+            additional_constraint = ''
         else:
             print("ERROR: kg_name must be either 'KG1' or 'KG2'")
             return None
+        kg_prefix = 'kg2'
 
+        # Just get a count of all unique_concepts 
         cursor = self.connection.cursor()
-        cursor.execute( f"SELECT COUNT(*) FROM {kg_prefix}_unique_concept{TESTSUFFIX} WHERE type = ?", (node_type,) )
-        #cursor.execute( f"SELECT COUNT(*) FROM {kg_prefix}_node{TESTSUFFIX} WHERE type = ?", (node_type,) )
+        cursor.execute( f"SELECT COUNT(*) FROM {kg_prefix}_unique_concept{TESTSUFFIX} WHERE {additional_constraint} type = ?", (node_type,) )
         rows = cursor.fetchall()
 
+        # Return the count value
         return rows[0][0]
 
 
@@ -1300,8 +1417,13 @@ class NodeSynonymizer:
         #cursor.execute( f"SELECT TOP 10 * FROM {kg_prefix}_synonym{TESTSUFFIX} WHERE synonym = ?", (name.upper(),) )
         #cursor.execute( f"SELECT * FROM {kg_prefix}_synonym{TESTSUFFIX} LIMIT 100 ")
         #cursor.execute( f"SELECT * FROM {kg_prefix}_curie{TESTSUFFIX} LIMIT 100 ")
-        cursor.execute( f"SELECT * FROM {kg_prefix}_node{TESTSUFFIX} LIMIT 100 ")
-        #cursor.execute( f"SELECT * FROM {kg_prefix}_unique_concept{TESTSUFFIX} LIMIT 100 ")
+        #cursor.execute( f"SELECT * FROM {kg_prefix}_node{TESTSUFFIX} LIMIT 100 ")
+        cursor.execute( f"SELECT * FROM {kg_prefix}_unique_concept{TESTSUFFIX} WHERE kg2_best_curie IS NULL LIMIT 100 ")
+        #cursor.execute( f"""
+        #    SELECT C.curie,C.unique_concept_curie,N.curie,N.kg_presence FROM {kg_prefix}_curie{TESTSUFFIX} AS C
+        #     INNER JOIN {kg_prefix}_node{TESTSUFFIX} AS N ON C.unique_concept_curie == N.unique_concept_curie
+        #     WHERE C.uc_curie in ( 'DOID:384','DOID:13636' )""" )
+
         rows = cursor.fetchall()
         for row in rows:
             print(row)
@@ -1419,20 +1541,20 @@ def run_example_6():
 def run_example_6():
     synonymizer = NodeSynonymizer()
 
-    print("==== Get all known synonyms of a CURIE using KG2 index ============================")
+    print("==== Get all equivalent nodes in a KG for an input curie ============================")
     tests = [ "DOID:14330", "CUI:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281" ]
     #tests = [ "DOID:9281" ]
 
     t0 = timeit.default_timer()
     for test in tests:
-        curies = synonymizer.get_equivalent_curies(test,kg_name='KG2')
-        print(f"{test} = " + str(curies))
-        #curies = synonymizer.get_equivalent_curies(test,kg_name='KG2')
-        #print(f"{test} = " + str(curies))
-        #equivalence_mapping = synonymizer.get_equivalent_entities(test,kg_name='KG1')
-        #print(json.dumps(equivalence_mapping,sort_keys=True,indent=2))
-        #equivalence_mapping = synonymizer.get_equivalent_entities(test,kg_name='KG2')
-        #print(json.dumps(equivalence_mapping,sort_keys=True,indent=2))
+        print("--- KG1 ---")
+        nodes = synonymizer.get_equivalent_nodes(test,kg_name='KG1')
+        print(f"{test} = " + str(nodes))
+        print("--- KG2 ---")
+        nodes = synonymizer.get_equivalent_nodes(test,kg_name='KG2')
+        print(f"{test} = " + str(nodes))
+        print()
+        #print(json.dumps(nodes,sort_keys=True,indent=2))
     t1 = timeit.default_timer()
     print("Elapsed time: "+str(t1-t0))
 
@@ -1441,13 +1563,13 @@ def run_example_6():
 def run_example_7():
     synonymizer = NodeSynonymizer()
 
-    print("==== Get total number of concepts for several types ============================")
-    t0 = timeit.default_timer()
-    kg = 'KG2'
-    for entity_type in [ 'chemical_substance', 'drug', 'disease', 'protein', 'gene', 'cheesecake' ]:
-        print(f"count({entity_type}) = {synonymizer.get_total_entity_count(entity_type, kg_name=kg)}")
-    t1 = timeit.default_timer()
-    print("Elapsed time: "+str(t1-t0))
+    for kg_name in [ 'KG1', 'KG2' ]:
+        print(f"==== Get total number of concepts for several types for {kg_name} ============================")
+        t0 = timeit.default_timer()
+        for entity_type in [ 'chemical_substance', 'drug', 'disease', 'protein', 'gene', 'cheesecake' ]:
+            print(f"count({entity_type}) = {synonymizer.get_total_entity_count(entity_type, kg_name=kg_name)}")
+        t1 = timeit.default_timer()
+        print("Elapsed time: "+str(t1-t0))
 
 
 # ############################################################################################
@@ -1462,7 +1584,48 @@ def run_example_8():
 
 
 # ############################################################################################
+def run_example_9():
+    synonymizer = NodeSynonymizer()
+
+    print("==== Get canonical curies for a set of input curies ============================")
+    curies = [ "DOID:14330", "CUI:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281xxxxx" ]
+    names = [ "phenylketonuria", "ibuprofen", "P06865", "HEXA", "Parkinson's disease", 'supernovas', "Bob's Uncle", 'double "quotes"' ]
+    combined_list = curies
+    combined_list.extend(names)
+
+    t0 = timeit.default_timer()
+    canonical_curies = synonymizer.get_canonical_curies(curies=curies)
+    t1 = timeit.default_timer()
+    canonical_curies2 = synonymizer.get_canonical_curies(names=names)
+    t2 = timeit.default_timer()
+    canonical_curies3 = synonymizer.get_canonical_curies(curies=combined_list,names=combined_list)
+    t3 = timeit.default_timer()
+    print(json.dumps(canonical_curies,sort_keys=True,indent=2))
+    print("Elapsed time: "+str(t1-t0))
+    print(json.dumps(canonical_curies2,sort_keys=True,indent=2))
+    print("Elapsed time: "+str(t2-t1))
+    print(json.dumps(canonical_curies3,sort_keys=True,indent=2))
+    print("Elapsed time: "+str(t3-t2))
+
+
+# ############################################################################################
+def run_example_10():
+    synonymizer = NodeSynonymizer()
+
+    print("==== Complex name query ============================")
+    node_ids = ['CHEMBL.MECHANISM:potassium_channel,_inwardly_rectifying,_subfamily_j,_member_11_opener', 'CHEMBL.MECHANISM:potassium_channel,_inwardly_rectifying,_subfamily_j,_member_8_opener', 'CHEMBL.MECHANISM:endothelin_receptor,_et-a/et-b_antagonist', 'CHEMBL.MECHANISM:amylin_receptor_amy1,_calcr/ramp1_agonist', 'CHEMBL.MECHANISM:sulfonylurea_receptor_2,_kir6.2_opener', 'CHEMBL.MECHANISM:sulfonylurea_receptor_1,_kir6.2_blocker', 'CHEMBL.MECHANISM:amiloride-sensitive_sodium_channel,_enac_blocker', 'CHEMBL.MECHANISM:hepatitis_c_virus_serine_protease,_ns3/ns4a_inhibitor', 'CHEMBL.MECHANISM:1,3-beta-glucan_synthase_inhibitor', "CHEMBL.MECHANISM:3',5'-cyclic_phosphodiesterase_inhibitor", 'CHEMBL.MECHANISM:dna_topoisomerase_i,_mitochondrial_inhibitor', 'CHEMBL.MECHANISM:carbamoyl-phosphate_synthase_[ammonia],_mitochondrial_positive_allosteric_modulator', 'CHEMBL.MECHANISM:parp_1,_2_and_3_inhibitor', 'CHEMBL.MECHANISM:c-jun_n-terminal_kinase,_jnk_inhibitor', 'CHEMBL.MECHANISM:voltage-gated_potassium_channel,_kqt;_kcnq2(kv7.2)/kcnq3(kv7.3)_activator', 'CHEMBL.MECHANISM:hla_class_ii_histocompatibility_antigen,_drb1-10_beta_chain_other', 'CHEMBL.MECHANISM:hla_class_ii_histocompatibility_antigen,_drb1-15_beta_chain_modulator', 'CHEMBL.MECHANISM:indoleamine_2,3-dioxygenase_inhibitor', 'CHEMBL.MECHANISM:5,6-dihydroxyindole-2-carboxylic_acid_oxidase_other', 'CHEMBL.MECHANISM:amine_oxidase,_copper_containing_inhibitor', 'CHEMBL.MECHANISM:carnitine_o-palmitoyltransferase_1,_muscle_isoform_inhibitor', 'CHEMBL.MECHANISM:troponin,_cardiac_muscle_positive_modulator', 'CHEMBL.MECHANISM:isocitrate_dehydrogenase_[nadp],_mitochondrial_inhibitor']
+
+    t0 = timeit.default_timer()
+    canonical_curies = synonymizer.get_canonical_curies(node_ids)
+    t1 = timeit.default_timer()
+    print(json.dumps(canonical_curies,sort_keys=True,indent=2))
+    print("Elapsed time: "+str(t1-t0))
+
+
+# ############################################################################################
 def run_examples():
+    run_example_9()
+    return
     run_example_1()
     run_example_2()
     run_example_3()
@@ -1470,6 +1633,9 @@ def run_examples():
     run_example_5()
     run_example_6()
     run_example_7()
+    run_example_8()
+    run_example_9()
+    run_example_10()
 
 
 ####################################################################################################
@@ -1482,7 +1648,7 @@ def main():
     parser.add_argument('-b', '--build', action="store_true",
                         help="If set, (re)build the index from scratch", default=False)
     parser.add_argument('-k', '--kg_name', action="store",
-                        help="Specify the KG to read from if --build is set [KG1 or KG1] (default is KG1)", default='KG1')
+                        help="Specify the KG to access (KG2 or KG1 or SRI) (default is KG1)", default='KG1')
     parser.add_argument('-s', '--save_state', action="store_true",
                         help="If set, save the state of the build hashes when done reading source data (useful for subsequent --recollate)", default=False)
     parser.add_argument('-r', '--recollate', action="store_true",
@@ -1493,9 +1659,11 @@ def main():
                         help="If set to a curie or name, then use the NodeSynonymizer (or SRI normalizer) to lookup the equivalence information for the curie or name", default=None)
     parser.add_argument('-q', '--query', action="store_true",
                         help="If set perform the test query and return", default=None)
+    parser.add_argument('-g', '--get', action="store",
+                        help="Get nodes for the specified list in the specified kg_name", default=None)
     args = parser.parse_args()
 
-    if not args.build and not args.test and not args.recollate and not args.lookup and not args.query:
+    if not args.build and not args.test and not args.recollate and not args.lookup and not args.query and not args.get:
         parser.print_help()
         sys.exit(2)
 
@@ -1506,10 +1674,21 @@ def main():
         synonymizer.test_select()
         return
 
+    # If the user asks to perform the SELECT statement, do it
+    if args.get:
+        t0 = timeit.default_timer()
+        curies = args.get.split(',')
+        results = synonymizer.get_equivalent_nodes(curies,kg_name=args.kg_name)
+        t1 = timeit.default_timer()
+        print(json.dumps(results, indent=2, sort_keys=True))
+        print(f"INFO: Information retrieved in {t1-t0} sec")
+        return
+
     # If the --lookup option is provided, this takes precedence, perform the lookup and return
     if args.lookup is not None:
         t0 = timeit.default_timer()
-        equivalence = synonymizer.get_normalizer_results(args.lookup, kg_name=args.kg_name)
+        entities = args.lookup.split(',')
+        equivalence = synonymizer.get_normalizer_results(entities, kg_name=args.kg_name)
         t1 = timeit.default_timer()
         print(json.dumps(equivalence, indent=2, sort_keys=True))
         print(f"INFO: Information retrieved in {t1-t0} sec")
