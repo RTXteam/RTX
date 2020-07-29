@@ -222,12 +222,12 @@ class COHDIndex:
         results_dict = {}
         cursor = self.connection.cursor()
         if isinstance(curie, str):
-            cursor.execute(f"select distinct curie, concept_id from CURIE_TO_OMOP_MAPPING where curie='{curie}';")
+            cursor.execute(f"select distinct t1.curie, t1.concept_id from CURIE_TO_OMOP_MAPPING t1 inner join CONCEPTS t2 on t1.concept_id = t2.concept_id where curie='{curie}';")
         else:
             if len(curie) == 1:
-                cursor.execute(f"select distinct curie, concept_id from CURIE_TO_OMOP_MAPPING where curie='{curie[0]}';")
+                cursor.execute(f"select distinct t1.curie, t1.concept_id from CURIE_TO_OMOP_MAPPING t1 inner join CONCEPTS t2 on t1.concept_id = t2.concept_id where curie='{curie[0]}';")
             else:
-                cursor.execute(f"select distinct curie, concept_id from CURIE_TO_OMOP_MAPPING where curie in {tuple(curie)};")
+                cursor.execute(f"select distinct t1.curie, t1.concept_id from CURIE_TO_OMOP_MAPPING t1 inner join CONCEPTS t2 on t1.concept_id = t2.concept_id where curie in {tuple(curie)};")
         res = cursor.fetchall()
         if len(res) == 0:
             pass
