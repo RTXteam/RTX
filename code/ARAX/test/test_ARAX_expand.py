@@ -46,7 +46,8 @@ def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_inc
     # Run standard testing (applies to every test case)
     assert eu.qg_is_fulfilled(message.query_graph, dict_kg) or kg_should_be_incomplete or should_throw_error
     _check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
-    _check_property_types(nodes_by_qg_id, edges_by_qg_id)
+    _check_property_format(nodes_by_qg_id, edges_by_qg_id)
+    _check_node_types(message.knowledge_graph.nodes, message.query_graph)
     if not any(action for action in actions_list if "synonym_handling=add_all" in action):
         _check_counts_of_curie_qnodes(nodes_by_qg_id, message.query_graph)
 
@@ -101,22 +102,31 @@ def _check_for_orphans(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_i
     assert node_ids == node_ids_used_by_edges or len(node_ids_used_by_edges) == 0
 
 
-def _check_property_types(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
+def _check_property_format(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
     for qnode_id, nodes in nodes_by_qg_id.items():
         for node_key, node in nodes.items():
-            assert isinstance(node.id, str)
+            assert node.id and isinstance(node.id, str)
             assert isinstance(node.name, str) or node.name is None
-            assert isinstance(node.qnode_ids, list)
-            assert isinstance(node.type, list)
+            assert node.qnode_ids and isinstance(node.qnode_ids, list)
+            assert node.type and isinstance(node.type, list)
     for qedge_id, edges in edges_by_qg_id.items():
         for edge_key, edge in edges.items():
-            assert isinstance(edge.id, str)
-            assert isinstance(edge.qedge_ids, list)
-            assert isinstance(edge.type, str)
-            assert isinstance(edge.source_id, str)
-            assert isinstance(edge.target_id, str)
+            assert edge.id and isinstance(edge.id, str)
+            assert edge.qedge_ids and isinstance(edge.qedge_ids, list)
+            assert edge.type and isinstance(edge.type, str)
+            assert edge.source_id and isinstance(edge.source_id, str)
+            assert edge.target_id and isinstance(edge.target_id, str)
             assert isinstance(edge.provided_by, str) or isinstance(edge.provided_by, list)
-            assert isinstance(edge.is_defined_by, str)
+            assert edge.is_defined_by and isinstance(edge.is_defined_by, str)
+
+
+def _check_node_types(nodes: List[Node], query_graph: QueryGraph):
+    qnode_id_to_type_map = {qnode.id: qnode.type for qnode in query_graph.nodes}
+    for node in nodes:
+        for qnode_id in node.qnode_ids:
+            corresponding_qnode_type = qnode_id_to_type_map.get(qnode_id)
+            if corresponding_qnode_type:
+                assert corresponding_qnode_type in node.type  # Could have additional types if it has multiple qnode ids
 
 
 def _check_counts_of_curie_qnodes(nodes_by_qg_id: Dict[str, Dict[str, Node]], query_graph: QueryGraph):
@@ -528,6 +538,18 @@ def test_873_consider_both_gene_and_protein():
     ]
     nodes_by_qg_id_gene, edges_by_qg_id_gene = _run_query_and_do_standard_testing(actions_list_gene)
     assert set(nodes_by_qg_id_protein['n01']) == set(nodes_by_qg_id_gene['n01'])
+
+
+def test_987_override_node_types():
+    actions_list = [
+        "add_qnode(name=DOID:8398, id=n00)",
+        "add_qnode(type=phenotypic_feature, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, type=has_phenotype, id=e00)",
+        "expand(edge_id=e00)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    assert all('phenotypic_feature' in node.type for node in nodes_by_qg_id['n01'].values())
 
 
 if __name__ == "__main__":
