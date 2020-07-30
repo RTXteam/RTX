@@ -50,14 +50,14 @@ class ARAXRanker:
         edge_confidence = 1
         if edge.edge_attributes is not None:
             for edge_attribute in edge.edge_attributes:
-                normalized_score = self.score_normalizer(edge_attribute.name, edge_attribute.value)
+                normalized_score = self.edge_attribute_score_normalizer(edge_attribute.name, edge_attribute.value)
                 if normalized_score == -1:  # this means we have no current normalization of this kind of attribute,
                     continue  # so don't do anything to the score since we don't know what to do with it yet
                 else:  # we have a way to normalize it, so multiply away
                     edge_confidence *= normalized_score
         return edge_confidence
 
-    def score_normalizer(self, edge_attribute_name: str, edge_attribute_value, score_stats=None) -> float:
+    def edge_attribute_score_normalizer(self, edge_attribute_name: str, edge_attribute_value, score_stats=None) -> float:
         """
         Takes an input edge attribute and value, dispatches it to the appropriate method that translates the value into
         something in the interval [0,1] where 0 is worse and 1 is better
@@ -288,6 +288,7 @@ class ARAXRanker:
                 result_confidence *= kg_edges[kg_edge_id].confidence
             result.confidence = result_confidence
         ###################################
+
             # Make all scores at least 0.001. This is all way low anyway, but let's not have anything that rounds to zero
             # This is a little bad in that 0.0005 becomes better than 0.0011, but this is all way low, so who cares
             if result.confidence < 0.001:
