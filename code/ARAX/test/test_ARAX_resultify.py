@@ -1047,9 +1047,9 @@ def test_issue740():
                         "n01": ""}
     shorthand_qedges = {"e00": "n00--n01"}
     query_graph = _convert_shorthand_to_qg(shorthand_qnodes, shorthand_qedges)
-    shorthand_kg_nodes = {"n00": ["CUI:C0004572"],  # Babesia
-                          "n01": ["HP:01", "HP:02", "CUI:C0004572"]}
-    shorthand_kg_edges = {"e00": ["CUI:C0004572--HP:01", "CUI:C0004572--HP:02", "CUI:C0004572--CUI:C0004572"]}
+    shorthand_kg_nodes = {"n00": ["UMLS:C0004572"],  # Babesia
+                          "n01": ["HP:01", "HP:02", "UMLS:C0004572"]}
+    shorthand_kg_edges = {"e00": ["UMLS:C0004572--HP:01", "UMLS:C0004572--HP:02", "UMLS:C0004572--UMLS:C0004572"]}
     knowledge_graph = _convert_shorthand_to_kg(shorthand_kg_nodes, shorthand_kg_edges)
     response, message = _run_resultify_directly(query_graph, knowledge_graph)
     assert response.status == 'OK'
@@ -1094,8 +1094,8 @@ def test_issue720_1():
 def test_issue720_2():
     # Test when same node fulfills different qnode_ids within same result
     actions = [
-        "add_qnode(curie=CUI:C0158779, type=anatomical_entity, id=n00)",
-        "add_qnode(curie=CUI:C0578454, type=phenotypic_feature, id=n01)",
+        "add_qnode(curie=UMLS:C0158779, type=anatomical_entity, id=n00)",
+        "add_qnode(curie=UMLS:C0578454, type=phenotypic_feature, id=n01)",
         "add_qnode(type=anatomical_entity, id=n02)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "add_qedge(source_id=n01, target_id=n02, id=e01)",
