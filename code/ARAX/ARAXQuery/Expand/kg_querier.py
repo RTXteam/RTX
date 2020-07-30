@@ -249,7 +249,7 @@ class KGQuerier:
         swagger_edge.target_id = neo4j_edge.get("object")
         swagger_edge.relation = neo4j_edge.get("relation")
         swagger_edge.publications = ast.literal_eval(neo4j_edge.get("publications"))
-        swagger_edge.provided_by = self._convert_strange_provided_by_field_to_list(neo4j_edge.get("provided_by"))  # Temporary hack until provided_by is fixed in KG2
+        swagger_edge.provided_by = neo4j_edge.get("provided_by")
         swagger_edge.negated = ast.literal_eval(neo4j_edge.get("negated"))
         swagger_edge.is_defined_by = "ARAX/KG2"
         swagger_edge.edge_attributes = []
@@ -350,14 +350,3 @@ class KGQuerier:
         if enforce_directionality:
             full_qedge_cypher += ">"
         return full_qedge_cypher
-
-    @staticmethod
-    def _convert_strange_provided_by_field_to_list(provided_by_field: List[str]) -> List[str]:
-        # Currently looks like: ["['https://identifiers.org/umls/NDFRT'", "'https://skr3.nlm.nih.gov/SemMedDB']"]
-        provided_by_list = []
-        unwanted_chars = ["[", "]", "'"]
-        for item in provided_by_field:
-            for unwanted_char in unwanted_chars:
-                item = item.replace(unwanted_char, "")
-            provided_by_list.append(item)
-        return provided_by_list
