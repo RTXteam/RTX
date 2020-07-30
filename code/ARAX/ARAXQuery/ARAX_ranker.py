@@ -25,10 +25,37 @@ class ARAXRanker:
         self.response = None
         self.message = None
         self.parameters = None
+        # edge attributes we know about
         self.known_attributes = {'probability', 'normalized_google_distance', 'jaccard_index',
                                             'probability_treats', 'paired_concept_frequency',
                                             'observed_expected_ratio', 'chi_square'}
+        # how much we trust each of the edge attributes
+        self.known_attributes_to_trust = {'probability': 0.5,
+                                          'normalized_google_distance': 0.8,
+                                          'jaccard_index': 0.5,
+                                          'probability_treats': 1,
+                                          'paired_concept_frequency': 0.5,
+                                          'observed_expected_ratio': 0.8,
+                                          'chi_square': 0.8
+                                          }
 
+    def edge_attribute_score_combiner(self, edge):
+        """
+        This function takes a single edge and decides how to combine its attribute scores into a single confidence
+        Eventually we will want
+        1. To weight different attributes by different amounts
+        2. Figure out what to do with edges that have no attributes
+        """
+        # Currently a dead simple "just multiply them all together"
+        edge_confidence = 1
+        if edge.edge_attributes is not None:
+            for edge_attribute in edge.edge_attributes:
+                normalized_score = self.score_normalizer(edge_attribute.name, edge_attribute.value)
+                if normalized_score == -1:  # this means we have no current normalization of this kind of attribute,
+                    continue  # so don't do anything to the score since we don't know what to do with it yet
+                else:  # we have a way to normalize it, so multiply away
+                    edge_confidence *= normalized_score
+        return edge_confidence
 
     def score_normalizer(self, edge_attribute_name: str, edge_attribute_value, score_stats=None) -> float:
         """
@@ -48,6 +75,7 @@ class ARAXRanker:
                 return 0.
             # else it's all good to proceed
             else:
+                # then dispatch to the appropriate function that does the score normalizing to get it to be in [0, 1] with 1 better
                 return getattr(self, '_' + self.__class__.__name__ + '__normalize_' + edge_attribute_name)(value=edge_attribute_value, score_stats=score_stats)
 
     def __normalize_probability_treats(self, value, score_stats=None):
@@ -153,7 +181,7 @@ class ARAXRanker:
         """
         From COHD: Note that due to large sample sizes, the chi-square can become very large.
         Hence the p-values will be very, very small... Hard to use logistic function, so instead, take the
-        -log(p_value) and use that (taking a page from the geneticist's handbook)
+        -log(p_value) approach and use that (taking a page from the geneticist's handbook)
         """
         # Taking value as is:
         #max_value = 1
@@ -165,15 +193,21 @@ class ARAXRanker:
         value = -np.log(value)
         max_value = 1
         curve_steepness = 0.03
-        logistic_midpoint = 700#200
+        logistic_midpoint = 200
         normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
         # TODO: if "near" to the min value, set to zero (maybe one std dev from the min value of the logistic curve?)
         # TODO: make sure max value can be obtained
-        print(f"value: {value}, normalized: {normalized_value}")
+        #print(f"value: {value}, normalized: {normalized_value}")
         return normalized_value
 
-
     def aggregate_scores_dmk(self, message, response=None):
+        """
+        Take in a message,
+        decorate all edges with confidences,
+        take each result and use edge confidences and other info to populate result confidences,
+        populate the result.row_data and message.table_column_names
+        Does everything in place (no result returned)
+        """
 
         # #### Set up the response object if one is not already available
         if response is None:
@@ -226,56 +260,48 @@ class ARAXRanker:
                                     score_stats[attribute_name]['minimum'] = value
         response.info(f"Summary of available edge metrics: {score_stats}")
 
-        # #### Loop through the results[] in order to compute aggregated scores
-        i_result = 0
-        for result in message.results:
-            # Begin with a default score of 1.0 for everything
-            score = 1.0
 
-            # Loop through each edge in the result
+        # Loop over the entire KG and normalize and combine the score of each edge, place that information in the confidence attribute of the edge
+        for edge in message.knowledge_graph.edges:
+            if edge.confidence is not None:
+                # don't touch the confidence, since apparently someone already knows what the confidence should be
+                continue
+            else:
+                confidence = self.edge_attribute_score_combiner(edge)
+                edge.confidence = confidence
+
+        # Now that each edge has a confidence attached to it based on it's attributes, we can now:
+        # 1. consider edge types of the results
+        # 2. number of edges in the results
+        # 3. possibly conflicting information, etc.
+
+        ###################################
+        # TODO: Replace this with a more "intelligent" separate function
+        # now we can loop over all the results, and combine their edge confidences (now populated)
+        for result in message.results:
+            result_confidence = 1  # everybody gets to start with a confidence of 1
             for edge in result.edge_bindings:
                 kg_edge_id = edge.kg_id
+                # TODO: replace this with the more intelligent function
+                # here we are just multiplying the edge confidences
+                #### # to see what info is going into each result: print(f"{result.essence}: {kg_edges[kg_edge_id].type}, {kg_edges[kg_edge_id].confidence}")
+                result_confidence *= kg_edges[kg_edge_id].confidence
+            result.confidence = result_confidence
+        ###################################
+            # Make all scores at least 0.001. This is all way low anyway, but let's not have anything that rounds to zero
+            # This is a little bad in that 0.0005 becomes better than 0.0011, but this is all way low, so who cares
+            if result.confidence < 0.001:
+                result.confidence += 0.001
 
-                # #### Set up a string buffer to keep some debugging information that could be printed
-                buf = ''
+            # Round to reasonable precision. Keep only 3 digits after the decimal
+            score = int(result.confidence * 1000 + 0.5) / 1000.0
 
-                # #### If the edge has a confidence value, then multiply that into the final score
-                if kg_edges[kg_edge_id].confidence is not None:
-                    buf += f" confidence={kg_edges[kg_edge_id].confidence}"
-                    score *= float(kg_edges[kg_edge_id].confidence)
+            result.row_data = [score, result.essence, result.essence_type]
 
-                # #### If the edge has attributes, loop through those looking for scores that we know how to handle
-                if kg_edges[kg_edge_id].edge_attributes is not None:
-                    for edge_attribute in kg_edges[kg_edge_id].edge_attributes:
-                        factor = self.score_normalizer(edge_attribute.name, edge_attribute.value)
-                        buf += f" {edge_attribute.name}_normalized_factor={factor} (orig value: {edge_attribute.value})"
-                        if factor == -1:  # this means we have no current normalization of this kind of attribute,
-                            continue  # so don't do anything to the score since we don't know what to do with it yet
-                        else:  # we have a way to normalize it, so multiply away
-                            score *= factor
+        # Add table columns name
+        message.table_column_names = ['confidence', 'essence', 'essence_type']
 
-
-
-                # When debugging, log the edge_id and the accumulated information in the buffer
-                #response.debug(f"  - {kg_edge_id}  {buf}")
-
-            # #### Make all scores at least 0.001. This is all way low anyway, but let's not have anything that rounds to zero
-            # #### This is a little bad in that 0.0005 becomes better than 0.0011, but this is all way low, so who cares
-            if score < 0.001:
-                score += 0.001
-
-            #### Round to reasonable precision. Keep only 3 digits after the decimal
-            score = int(score * 1000 + 0.5) / 1000.0
-
-            #response.debug(f"  ---> final score={score}")
-            result.confidence = score
-            result.row_data = [ score, result.essence, result.essence_type ]
-            i_result += 1
-
-        #### Add table columns name
-        message.table_column_names = [ 'confidence', 'essence', 'essence_type' ]
-
-        #### Re-sort the final results
+        # Re-sort the final results
         message.results.sort(key=lambda result: result.confidence, reverse=True)
 
 
@@ -511,52 +537,6 @@ class ARAXRanker:
         message.results.sort(key=lambda result: result.confidence, reverse=True)
 
 
-    # #### ############################################################################################
-    # #### For each result[], aggregate all available confidence metrics and other scores to compute a final score
-    def sort_results_by_confidence(self, message, response=None):
-
-        # #### Set up the response object if one is not already available
-        if response is None:
-            if self.response is None:
-                response = Response()
-            else:
-                response = self.response
-        else:
-            self.response = response
-        self.message = message
-
-        response.info("Re-sorting results by overal confidence metrics")
-
-        #### Dead-simple sort, probably not very robust
-        message.results.sort(key=lambda result: result.confidence, reverse=True)
-
-
-    # #### ############################################################################################
-    # #### For each result[], create a simple tabular entry of the essence values and confidence
-    def create_tabular_results(self, message, response=None):
-
-        # #### Set up the response object if one is not already available
-        if response is None:
-            if self.response is None:
-                response = Response()
-            else:
-                response = self.response
-        else:
-            self.response = response
-        self.message = message
-
-        response.info(f"Add simple tabular results to the Message")
-
-        # #### Loop through the results[] adding row_data for that result
-        for result in message.results:
-
-            # #### For now, just the confidence, essence, and essence_type
-            result.row_data = [ result.confidence, result.essence, result.essence_type ]
-
-        #### Add table columns name
-        message.table_column_names = [ 'confidence', 'essence', 'essence_type' ]
-
-
 
 ##########################################################################################
 def main():
@@ -577,7 +557,7 @@ def main():
     from ARAX_messenger import ARAXMessenger
     messenger = ARAXMessenger()
     if not params.local:
-        print("INFO: Fetching message to work on from arax.rtx.ai",flush=True)
+        print("INFO: Fetching message to work on from arax.rtx.ai", flush=True)
         #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2614')  # acetaminophen - > protein, just NGD as virtual edge
         #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2687')  # neutropenia -> drug, predict_drug_treats_disease and ngd
         #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2701') # observed_expected_ratio and ngd
@@ -598,7 +578,9 @@ def main():
         #message_dict = araxdb.getMessage(300)  # chi_square
         #message_dict = araxdb.getMessage(302)  # chi_square, different disease
         #message_dict = araxdb.getMessage(304)  # all clinical info, osteoarthritis
-        message_dict = araxdb.getMessage(305)  # all clinical info, neurtropenia
+        #message_dict = araxdb.getMessage(305)  # all clinical info, neurtropenia
+        #message_dict = araxdb.getMessage(306)  # all clinical info, neurtropenia, but with virtual edges
+        message_dict = araxdb.getMessage(307)  # all clinical info, osteoarthritis, but with virtual edges
         from ARAX_messenger import ARAXMessenger
         message = ARAXMessenger().from_dict(message_dict)
 
@@ -620,4 +602,5 @@ def main():
     #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
 
 
-if __name__ == "__main__": main()
+if __name__ == "__main__":
+    main()
