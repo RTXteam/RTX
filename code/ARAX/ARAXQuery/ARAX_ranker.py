@@ -36,7 +36,7 @@ class ARAXRanker:
         something in the interval [0,1] where 0 is worse and 1 is better
         """
         if edge_attribute_name not in self.known_attributes:
-            return 0.  # TODO: might want to change this
+            return -1  # TODO: might want to change this
         else:
             try:
                 # check to see if it's convertible to a float (will catch None's as well)
@@ -76,6 +76,7 @@ class ARAXRanker:
         logistic_midpoint = 0.60
         normalized_value = max_value / float(1+np.exp(-curve_steepness*(value - logistic_midpoint)))
         # TODO: if "near" to the min value, set to zero (maybe one std dev from the min value of the logistic curve?)
+        # TODO: make sure max value can be obtained
         return normalized_value
 
     def __normalize_normalized_google_distance(self, value, score_stats=None):
@@ -87,6 +88,7 @@ class ARAXRanker:
         logistic_midpoint = 0.60
         normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
         # TODO: if "near" to the min value, set to zero (maybe one std dev from the min value of the logistic curve?)
+        # TODO: make sure max value can be obtained
         return normalized_value
 
     def __normalize_probability(self, value, score_stats=None):
@@ -100,6 +102,7 @@ class ARAXRanker:
         logistic_midpoint = 0.8
         normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
         # TODO: if "near" to the min value, set to zero (maybe one std dev from the min value of the logistic curve?)
+        # TODO: make sure max value can be obtained
         return normalized_value
 
     def __normalize_jaccard_index(self, value, score_stats=None):
@@ -129,6 +132,7 @@ class ARAXRanker:
         logistic_midpoint = 0.002  # seems like an ok mid point, but....
         normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
         # TODO: if "near" to the min value, set to zero (maybe one std dev from the min value of the logistic curve?)
+        # TODO: make sure max value can be obtained
         #print(f"value: {value}, normalized: {normalized_value}")
         return normalized_value
 
@@ -141,9 +145,32 @@ class ARAXRanker:
         logistic_midpoint = 2  # Exp[2] more likely than chance
         normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
         # TODO: if "near" to the min value, set to zero (maybe one std dev from the min value of the logistic curve?)
-        print(f"value: {value}, normalized: {normalized_value}")
+        # TODO: make sure max value can be obtained
+        #print(f"value: {value}, normalized: {normalized_value}")
         return normalized_value
 
+    def __normalize_chi_square(self, value, score_stats=None):
+        """
+        From COHD: Note that due to large sample sizes, the chi-square can become very large.
+        Hence the p-values will be very, very small... Hard to use logistic function, so instead, take the
+        -log(p_value) and use that (taking a page from the geneticist's handbook)
+        """
+        # Taking value as is:
+        #max_value = 1
+        #curve_steepness = -100
+        #logistic_midpoint = 0.05
+        #normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
+
+        # -Log[p_value] approach
+        value = -np.log(value)
+        max_value = 1
+        curve_steepness = 0.03
+        logistic_midpoint = 700#200
+        normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
+        # TODO: if "near" to the min value, set to zero (maybe one std dev from the min value of the logistic curve?)
+        # TODO: make sure max value can be obtained
+        print(f"value: {value}, normalized: {normalized_value}")
+        return normalized_value
 
 
     def aggregate_scores_dmk(self, message, response=None):
@@ -182,47 +209,30 @@ class ARAXRanker:
             kg_edges[edge.id] = edge
             if edge.edge_attributes is not None:
                 for edge_attribute in edge.edge_attributes:
-                    # FIXME: DMK: We should probably have some some way to dynamically get the attribute names since they appear to be constantly changing
-                    # DMK: Crazy idea: have the individual ARAXi commands pass along their attribute names along with what they think of is a good way to handle them
-                    # DMK: eg. "higher is better" or "my range of [0, inf]" or "my value is a probability", etc.
-                    for attribute_name in [ 'probability', 'normalized_google_distance', 'jaccard_index',
-                                            'probability_treats', 'paired_concept_frequency',
-                                            'observed_expected_ratio', 'chi_square']:
+                    for attribute_name in self.known_attributes:
                         if edge_attribute.name == attribute_name:
                             if attribute_name not in score_stats:
                                 score_stats[attribute_name] = {'minimum': None, 'maximum': None}  # FIXME: doesn't handle the case when all values are inf or NaN
                             value = float(edge_attribute.value)
-                            # TODO: don't set to max here, since returning inf for some edge attributes means "I have no data"
-                            #if np.isinf(value):
-                            #    value = 9999
                             # initialize if not None already
                             if not np.isinf(value) and not np.isinf(-value) and not np.isnan(value):  # Ignore inf, -inf, and nan
                                 if not score_stats[attribute_name]['minimum']:
                                     score_stats[attribute_name]['minimum'] = value
                                 if not score_stats[attribute_name]['maximum']:
                                     score_stats[attribute_name]['maximum'] = value
-                                if value > score_stats[attribute_name]['maximum']:  # DMK FIXME: expected type 'float', got 'None' instead
+                                if value > score_stats[attribute_name]['maximum']:
                                     score_stats[attribute_name]['maximum'] = value
-                                if value < score_stats[attribute_name]['minimum']:  # DMK FIXME: expected type 'float', got 'None' instead
+                                if value < score_stats[attribute_name]['minimum']:
                                     score_stats[attribute_name]['minimum'] = value
         response.info(f"Summary of available edge metrics: {score_stats}")
 
         # #### Loop through the results[] in order to compute aggregated scores
         i_result = 0
         for result in message.results:
-            #response.debug(f"Metrics for result {i_result}  {result.essence}: ")
-
-            # #### Begin with a default score of 1.0 for everything
+            # Begin with a default score of 1.0 for everything
             score = 1.0
 
-            # #### There are often many edges associated with a result[]. Some are great, some are terrible.
-            # #### For now, the score will be based on the best one. Maybe combining probabilities in quadrature would be better
-            best_probability = 0.0  # TODO: What's this? the best probability of what?
-
-            eps = np.finfo(np.float).eps  # epsilon to avoid division by 0
-            penalize_factor = 0.7  # multiplicative factor to penalize by if the KS/KP return NaN or Inf indicating they haven't seen it before
-
-            # #### Loop through each edge in the result
+            # Loop through each edge in the result
             for edge in result.edge_bindings:
                 kg_edge_id = edge.kg_id
 
@@ -237,84 +247,25 @@ class ARAXRanker:
                 # #### If the edge has attributes, loop through those looking for scores that we know how to handle
                 if kg_edges[kg_edge_id].edge_attributes is not None:
                     for edge_attribute in kg_edges[kg_edge_id].edge_attributes:
-
-                        # FIXME: These are chemical_substance->protein binding probabilities, may not want be treating them like this....
-                        #### EWD: Vlado has suggested that any of these links with chemical_substance->protein binding probabilities are
-                        #### EWD: mostly junk. very low probablility of being correct. His opinion seemed to be that they shouldn't be in the KG
-                        #### EWD: If we keep them, maybe their probabilities should be knocked down even further, in half, in quarter..
-                        # DMK: I agree: hence why I said we should probably not be treating them like this (and not trusting them a lot)
-
-                        # #### If the edge_attribute is named 'probability', then for now use it to record the best probability only
-                        if edge_attribute.name == 'probability':
-                            factor = self.score_normalizer(edge_attribute.name, edge_attribute.value)
+                        factor = self.score_normalizer(edge_attribute.name, edge_attribute.value)
+                        buf += f" {edge_attribute.name}_normalized_factor={factor} (orig value: {edge_attribute.value})"
+                        if factor == -1:  # this means we have no current normalization of this kind of attribute,
+                            continue  # so don't do anything to the score since we don't know what to do with it yet
+                        else:  # we have a way to normalize it, so multiply away
                             score *= factor
 
-                        # #### If the edge_attribute is named 'probability_drug_treats', then for now we won't do anything
-                        # #### because this value also seems to be copied into the edge confidence field, so is already
-                        # #### taken into account
-                        #if edge_attribute.name == 'probability_drug_treats':               # this is already put in confidence
-                        #    buf += f" probability_drug_treats={edge_attribute.value}"
-                        #    score *= value
-                        # DMK FIXME: Do we actually have 'probability_drug_treats' attributes?, the probability_drug_treats is *not* put in the confidence see: confidence = None in `predict_drug_treats_disease.py`
-                        # DMK: also note the edge type is: edge_type = "probably_treats"
 
-                        # If the edge_attribute is named 'probability_treats', use the value more or less as a probability
-                        #### EWD says: but note that when I last worked on this, the probability_treats was repeated in an edge attribute
-                        #### EWD says: as well as in the edge confidence score, so I commented out this section (see immediately above) DMK (same re: comment above :) )
-                        #### EWD says: so that it wouldn't be counted twice. But that may have changed in the mean time.
-                        if edge_attribute.name == "probability_treats":
-                            factor = self.score_normalizer(edge_attribute.name, edge_attribute.value)
-                            score *= factor
 
-                        # #### If the edge_attribute is named 'ngd', then use some hocus pocus to convert to a confidence
-                        if edge_attribute.name == 'normalized_google_distance':
-                            factor = self.score_normalizer(edge_attribute.name, edge_attribute.value)
-                            score *= factor
-
-                        # #### If the edge_attribute is named 'jaccard_index', then use some hocus pocus to convert to a confidence
-                        if edge_attribute.name == 'jaccard_index':
-                            factor = self.score_normalizer(edge_attribute.name, edge_attribute.value, score_stats=score_stats)
-                            score *= factor
-
-                        # If the edge_attribute is named 'paired_concept_frequency', then ...
-                        if edge_attribute.name == "paired_concept_frequency":
-                            factor = self.score_normalizer(edge_attribute.name, edge_attribute.value)
-                            score *= factor
-
-                        # If the edge_attribute is named 'observed_expected_ratio', then ...
-                        if edge_attribute.name == 'observed_expected_ratio':
-                            factor = self.score_normalizer(edge_attribute.name, edge_attribute.value)
-                            score *= factor
-
-                        # If the edge_attribute is named 'chi_square', then compute a factor based on the chisq and the max chisq
-                        if edge_attribute.name == 'chi_square':
-                            chi_square = float(edge_attribute.value)
-                            if np.isinf(chi_square) or np.isnan(chi_square):
-                                factor = penalize_factor
-                            else:
-                                try:
-                                    factor = 1 - (chi_square / score_stats['chi_square']['maximum'])  # lower is better
-                                except:
-                                    factor = 1 - (chi_square / (score_stats['chi_square']['maximum'] + eps))  # lower is better
-                            score *= factor
-                            buf += f" chi_square={chi_square}, factor={factor}"
-
-                # #### When debugging, log the edge_id and the accumulated information in the buffer
+                # When debugging, log the edge_id and the accumulated information in the buffer
                 #response.debug(f"  - {kg_edge_id}  {buf}")
 
-            # #### If there was a best_probability recorded, then multiply into the running score
-            #### EWD: This was commented out by DMK? I don't know why. I think it should be here             FIXME
-            #if best_probability > 0.0:
-            #    score *= best_probability
-            # DMK: for some reason, this was causing my scores to be ridiculously low, so I commented it out and confidences went up "quite a bit"
-
-            # #### Make all scores at least 0.01. This is all way low anyway, but let's not have anything that rounds to zero
-            # #### This is a little bad in that 0.005 becomes better than 0.011, but this is all way low, so who cares
-            if score < 0.01:
-                score += 0.01
+            # #### Make all scores at least 0.001. This is all way low anyway, but let's not have anything that rounds to zero
+            # #### This is a little bad in that 0.0005 becomes better than 0.0011, but this is all way low, so who cares
+            if score < 0.001:
+                score += 0.001
 
             #### Round to reasonable precision. Keep only 3 digits after the decimal
-            #score = int(score * 1000 + 0.5) / 1000.0
+            score = int(score * 1000 + 0.5) / 1000.0
 
             #response.debug(f"  ---> final score={score}")
             result.confidence = score
@@ -643,7 +594,11 @@ def main():
         #message_dict = araxdb.getMessage(294)  # local version of 2709 but with updates to COHD
         #message_dict = araxdb.getMessage(297)
         #message_dict = araxdb.getMessage(298)
-        message_dict = araxdb.getMessage(299)  # observed_expected_ratio different disease
+        #message_dict = araxdb.getMessage(299)  # observed_expected_ratio different disease
+        #message_dict = araxdb.getMessage(300)  # chi_square
+        #message_dict = araxdb.getMessage(302)  # chi_square, different disease
+        #message_dict = araxdb.getMessage(304)  # all clinical info, osteoarthritis
+        message_dict = araxdb.getMessage(305)  # all clinical info, neurtropenia
         from ARAX_messenger import ARAXMessenger
         message = ARAXMessenger().from_dict(message_dict)
 
