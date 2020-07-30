@@ -632,7 +632,7 @@ def main():
         #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2701') # observed_expected_ratio and ngd
         #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2703')  # a huge one with jaccard
         #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2706')  # small one with paired concept frequency
-        #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2709')  # bigger one with paired concept frequency
+        message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2709')  # bigger one with paired concept frequency
 
 
     # For local messages due to local changes in code not rolled out to production:
@@ -642,7 +642,8 @@ def main():
         araxdb = RTXFeedback()
         #message_dict = araxdb.getMessage(294)  # local version of 2709 but with updates to COHD
         #message_dict = araxdb.getMessage(297)
-        message_dict = araxdb.getMessage(298)
+        #message_dict = araxdb.getMessage(298)
+        message_dict = araxdb.getMessage(299)  # observed_expected_ratio different disease
         from ARAX_messenger import ARAXMessenger
         message = ARAXMessenger().from_dict(message_dict)
 
