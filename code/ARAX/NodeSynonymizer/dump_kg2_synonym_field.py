@@ -3,7 +3,7 @@
 This script creates a JSON file containing curies in KG2 and their corresponding text synonyms (as they appear in the
 "synonym" property on nodes in KG2). The JSON file is created in the same directory the script is run from.
 Example of entry in output:
-   "CUI:C0035923":[
+   "UMLS:C0035923":[
       "RUBELLA VIRUS VACCINE,LIVE",
       "Rubella Vaccine"
    ]
