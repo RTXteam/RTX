@@ -137,8 +137,8 @@ class ARAXRanker:
         These are log ratios so should be interpreted as Exp[value] times more likely than chance
         """
         max_value = 1
-        curve_steepness = 4  # Todo: need to fiddle with this as it's not quite weighting things enough
-        logistic_midpoint = 1  # 2.71828 more likely than chance
+        curve_steepness = 2  # Todo: need to fiddle with this as it's not quite weighting things enough
+        logistic_midpoint = 2  # Exp[2] more likely than chance
         normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
         # TODO: if "near" to the min value, set to zero (maybe one std dev from the min value of the logistic curve?)
         print(f"value: {value}, normalized: {normalized_value}")
@@ -314,7 +314,7 @@ class ARAXRanker:
                 score += 0.01
 
             #### Round to reasonable precision. Keep only 3 digits after the decimal
-            score = int(score * 1000 + 0.5) / 1000.0
+            #score = int(score * 1000 + 0.5) / 1000.0
 
             #response.debug(f"  ---> final score={score}")
             result.confidence = score
