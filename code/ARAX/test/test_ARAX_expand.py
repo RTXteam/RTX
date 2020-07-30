@@ -449,7 +449,7 @@ def test_curie_list_query_without_synonyms():
 @pytest.mark.slow
 def test_query_with_curies_on_both_ends():
     actions_list = [
-        "add_qnode(curie=CHV:0000003834, id=n00)",  # diabetes
+        "add_qnode(curie=DOID:9351, id=n00)",  # diabetes
         "add_qnode(curie=HP:0001993, id=n01)",  # ketoacidosis
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "expand(kp=ARAX/KG2)",
@@ -486,7 +486,7 @@ def test_847_dont_expand_curie_less_edge():
 @pytest.mark.slow
 def test_deduplication_and_self_edges():
     actions_list = [
-        "add_qnode(curie=CUI:C0004572, id=n00)",  # Babesia
+        "add_qnode(curie=UMLS:C0004572, id=n00)",  # Babesia
         "add_qnode(id=n01)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "expand(edge_id=e00, kp=ARAX/KG2)",
@@ -495,7 +495,7 @@ def test_deduplication_and_self_edges():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     # Check that deduplication worked appropriately
     all_node_ids = {node.id for nodes in nodes_by_qg_id.values() for node in nodes.values()}
-    babesia_curies = {"CUI:C0004572", "CHV:0000001647", "LNC:LP19999-9", "MEDDRA:10003963", "MESH:D001403",
+    babesia_curies = {"UMLS:C0004572", "CHV:0000001647", "LNC:LP19999-9", "MEDDRA:10003963", "MESH:D001403",
                       "NCIT:C122040", "NCI_CDISC:C122040", "SNOMEDCT:35029001"}
     babesia_curies_in_answer = all_node_ids.intersection(babesia_curies)
     assert len(babesia_curies_in_answer) <= 1
