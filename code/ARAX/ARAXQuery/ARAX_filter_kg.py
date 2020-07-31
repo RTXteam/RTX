@@ -445,8 +445,9 @@ This can be applied to an arbitrary knowledge graph as possible edge attributes 
 `remove_edges_by_stats` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
 Edge attributes are a list of additional attributes for an edge.
 This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
-there are two heuristic options: `n` for removing all but the top 50 results or `std` for removing all but 
-the top results more than 1 standard deviation from the mean. (if not supplied this defaults to `top_n`)
+there are two heuristic options: `n` for removing all but the 50 best results, `std`/`std_dev` for removing all but 
+the best results more than 1 standard deviation from the mean, or `percentile` to remove all but the best 
+5% of results. (if not supplied this defaults to `n`)
 Use cases include:
 
 * removing all edges with normalized google distance scores but the top 50 `edge_attribute=ngd, type=n` (i.e. remove edges that aren't represented well in the literature)
@@ -455,6 +456,13 @@ Use cases include:
                 
 You have the option (this defaults to false) to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
 else, only remove a single source/target node based on a query node id (via `remove_connected_nodes=t, qnode_id=<a query node id.>`
+
+You also have the option of specifying the direction to remove and location of the split by using the options 
+* `direction` with options `above`,`below`
+* `threshold` specified by a floating point number
+* `top` which is boolean specified by `t`, `true`, `T`, `True` and `f`, `false`, `F`, `False`
+e.g. to remove all the edges with jaccard_index values greater than 0.25 standard deviations below the mean you can run the following:
+`filter_kg(action=remove_edges_by_stats, edge_attribute=jaccard_index, type=std, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)`
 """
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
