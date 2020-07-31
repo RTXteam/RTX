@@ -449,16 +449,24 @@ class NodeSynonymizer:
         fh.close()
         print("")
 
-        #### Save the current state of the dicts
-        if 'save_state' in self.options and self.options['save_state'] is True:
-            filename = f"node_synonymizer.{kg_name}_map_state.pickle"
-            print(f"INFO: Writing the state to {filename}")
-            print("Ack. NO.")
-            sys.exit(1)
+        print(f"INFO: Reading of {self.options['kg_name']} node files complete")
+
+
+    # ############################################################################################
+    def save_state(self):
+
+        kg_name = self.options['kg_name']
+        kg_prefix = kg_name.lower()
+        filename = f"node_synonymizer.{kg_name}_map_state.pickle"
+        print(f"INFO: Writing the state to {filename}")
+
+        try:
             with open(filename, "wb") as outfile:
                 pickle.dump(self.kg_map, outfile)
-
-        print(f"INFO: Reading of {self.options['kg_name']} node files complete")
+            return True
+        except:
+            print(f"ERROR: Unable to save state to {filename}")
+            return None
 
 
     # ############################################################################################
@@ -907,6 +915,84 @@ class NodeSynonymizer:
         print(f"INFO: Creating INDEXes on {kg_prefix}_synonym{TESTSUFFIX}")
         self.connection.execute(f"CREATE INDEX idx_{kg_prefix}_synonym{TESTSUFFIX}_lc_name ON {kg_prefix}_synonym{TESTSUFFIX}(lc_name)")
         self.connection.execute(f"CREATE INDEX idx_{kg_prefix}_synonym{TESTSUFFIX}_unique_concept_curie ON {kg_prefix}_synonym{TESTSUFFIX}(unique_concept_curie)")
+
+
+    # ############################################################################################
+    def import_equivalencies(self):
+
+        filename = 'kg2_equivalencies.tsv'
+        if not os.path.exists(filename):
+            print(f"WARNING: Did not find equivalencies file {filename}. Skipping import")
+            return
+        print(f"INFO: Reading equivalencies from {filename}")
+
+        kg_nodes = self.kg_map['kg_nodes']
+
+        stats = { 'already equivalent': 0, 'need to link': 0 }
+
+        iline = 0
+        with open(filename) as infile:
+            for line in infile:
+                line = line.strip()
+                if "n1.id" in line:
+                    continue
+                match = re.match(r'^\s*$',line)
+                if match:
+                    continue
+                iline += 1
+                #print(f"line={line}")
+                columns = line.split("\t")
+                node1_curie = columns[0]
+                node2_curie = columns[1]
+                #print(f"{node1_curie}  -  {node2_curie}")
+
+                uc_node1_curie = node1_curie.upper()
+                uc_node2_curie = node2_curie.upper()
+
+                if uc_node1_curie not in kg_nodes:
+                    print(f"ERROR: Curie {node1_curie} ({uc_node1_curie}) not in kg_nodes at line {iline+1}")
+                    continue
+                if uc_node2_curie not in kg_nodes:
+                    print(f"ERROR: Curie {node2_curie} ({uc_node2_curie}) not in kg_nodes at line {iline+1}")
+                    continue
+
+                uc_node1_unique_concept_curie = kg_nodes[uc_node1_curie]['uc_unique_concept_curie']
+                uc_node2_unique_concept_curie = kg_nodes[uc_node2_curie]['uc_unique_concept_curie']
+
+                if uc_node1_unique_concept_curie == uc_node2_unique_concept_curie:
+                    stats['already equivalent'] += 1
+                else:
+                    stats['need to link'] += 1
+
+                #if iline > 10:
+                #    return
+
+        print(f"INFO: Read {iline} equivalencies from {filename}")
+        for stat_name,stat in stats.items():
+            print(f"{stat_name}: {stat}")
+        return
+
+
+    # ############################################################################################
+    def import_synonyms(self):
+
+        filename = 'kg2_synonyms.json'
+        if not os.path.exists(filename):
+            print(f"WARNING: Did not find synonyms file {filename}. Skipping import")
+            return
+        print(f"INFO: Reading synonyms from {filename}")
+
+        with open(filename) as infile:
+            node_synonyms = json.load(infile)
+            inode = 0
+            for node,node_data in node_synonyms.items():
+                print(f"{node} has synonyms {node_data}")
+                inode += 1
+                if inode > 10:
+                    return
+
+        print(f"INFO: Read {iline} equivalencies from {filename}")
+        return
 
 
     # ############################################################################################
@@ -1588,7 +1674,7 @@ def run_example_9():
     synonymizer = NodeSynonymizer()
 
     print("==== Get canonical curies for a set of input curies ============================")
-    curies = [ "DOID:14330", "CUI:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281xxxxx" ]
+    curies = [ "DOID:14330", "CUI:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281xxxxx", "MONDO:0005520" ]
     names = [ "phenylketonuria", "ibuprofen", "P06865", "HEXA", "Parkinson's disease", 'supernovas', "Bob's Uncle", 'double "quotes"' ]
     combined_list = curies
     combined_list.extend(names)
@@ -1729,9 +1815,20 @@ def main():
         synonymizer.remap_unique_concepts()
         if args.kg_name == 'both':
             synonymizer.options['kg_name'] = 'KG2'
-        synonymizer.create_tables()
-        synonymizer.store_kg_map()
-        synonymizer.create_indexes()
+
+        # If the flag is set, save our state here
+        if 'save_state' in synonymizer.options and synonymizer.options['save_state'] is not None:
+            if not synonymizer.save_state():
+                return
+
+        # Import synonyms and equivalencies
+        synonymizer.import_synonyms()
+
+        # Skip writing for the moment while we test
+        #synonymizer.create_tables()
+        #synonymizer.store_kg_map()
+        #synonymizer.create_indexes()
+
         print(f"INFO: Created NodeSynonymizer with\n  {len(synonymizer.kg_map['kg_nodes'])} nodes\n  {len(synonymizer.kg_map['kg_unique_concepts'])} unique concepts\n" +
             f"  {len(synonymizer.kg_map['kg_curies'])} curies\n  {len(synonymizer.kg_map['kg_synonyms'])} names and abbreviations")
         print(f"INFO: Processing complete")
