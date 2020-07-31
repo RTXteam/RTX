@@ -59,22 +59,22 @@ class SortResults:
             edge_values = {}
             # iterate over the edges find the attribute values
             for edge in self.message.knowledge_graph.edges:  # iterate over the edges
-                edge_values[str(edge.id)] = {'value': None, 'type': edge.type}
+                edge_values[str(edge.id)] = {'value': None, 'relation': edge.relation}
                 if hasattr(edge, 'edge_attributes'):  # check if they have attributes
                     if edge.edge_attributes:  # if there are any edge attributes
                         for attribute in edge.edge_attributes:  # for each attribute
                             if attribute.name == params['edge_attribute']:  # check if it's the desired one
-                                edge_values[str(edge.id)] = {'value': attribute.value, 'type': edge.type}
+                                edge_values[str(edge.id)] = {'value': attribute.value, 'relation': edge.relation}
             if params['descending']:
                 value_list=[-math.inf]*len(self.message.results)
             else:
                 value_list=[math.inf]*len(self.message.results)
             i = 0
-            type_flag = 'edge_type' in params
+            type_flag = 'edge_relation' in params
             for result in self.message.results:
                 for binding in result.edge_bindings:
                     if edge_values[binding.kg_id]['value'] is not None:
-                        if not type_flag or (type_flag and params['edge_type'] == edge_values[binding.kg_id]['type']):
+                        if not type_flag or (type_flag and params['edge_relation'] == edge_values[binding.kg_id]['relation']):
                             if abs(value_list[i]) == math.inf:
                                 value_list[i] = edge_values[binding.kg_id]['value']
                             else:

@@ -82,7 +82,7 @@ function selectInput (obj, input_id) {
     if (e[0]) { e[0].classList.remove("slink_on"); }
     obj.classList.add("slink_on");
 
-    for (var s of ['qtext_input','qgraph_input','qdsl_input']) {
+    for (var s of ['qtext_input','qgraph_input','qjson_input','qdsl_input']) {
 	document.getElementById(s).style.maxHeight = null;
 	document.getElementById(s).style.visibility = 'hidden';
     }
@@ -91,6 +91,9 @@ function selectInput (obj, input_id) {
 }
 
 
+function clearJSON() {
+    document.getElementById("jsonText").value = '';
+}
 function clearDSL() {
     document.getElementById("dslText").value = '';
 }
@@ -99,6 +102,14 @@ function pasteQuestion(question) {
     document.getElementById("questionForm").elements["questionText"].value = question;
     document.getElementById("qqq").value = '';
     document.getElementById("qqq").blur();
+}
+function pasteExample(type) {
+    if (type == "DSL") {
+	document.getElementById("dslText").value = 'add_qnode(name=acetaminophen, id=n0)\nadd_qnode(type=protein, id=n1)\nadd_qedge(source_id=n0, target_id=n1, id=e0)\nexpand(edge_id=e0)\noverlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n0, target_qnode_id=n1)\nresultify()';
+    }
+    else {
+	document.getElementById("jsonText").value = '{\n   "edges": [\n      {\n         "id": "qg2",\n         "source_id": "qg1",\n         "target_id": "qg0"\n      }\n   ],\n   "nodes": [\n      {\n         "id": "qg0",\n         "curie": "CHEMBL.COMPOUND:CHEMBL112"\n      },\n      {\n         "id": "qg1",\n         "type": "protein"\n      }\n   ]\n}';
+    }
 }
 
 function reset_vars() {
@@ -135,12 +146,36 @@ function postQuery(qtype) {
 	var dslArrayOfLines = document.getElementById("dslText").value.split("\n");
 	queryObj["previous_message_processing_plan"] = { "processing_actions": dslArrayOfLines};
     }
+    else if (qtype == "JSON") {
+	document.getElementById("questionForm").elements["questionText"].value = '-- posted async query via direct JSON input --';
+	statusdiv.innerHTML = "Posting JSON.  Looking for answer...";
+	statusdiv.appendChild(document.createElement("br"));
+
+        var jsonInput;
+	try {
+	    jsonInput = JSON.parse(document.getElementById("jsonText").value);
+	}
+	catch(e) {
+            statusdiv.appendChild(document.createElement("br"));
+	    if (e.name == "SyntaxError")
+		statusdiv.innerHTML += "<b>Error</b> parsing JSON input. Please correct errors and resubmit: ";
+	    else
+		statusdiv.innerHTML += "<b>Error</b> processing input. Please correct errors and resubmit: ";
+            statusdiv.appendChild(document.createElement("br"));
+	    statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
+	    return;
+	}
+	queryObj.message = { "query_graph" :jsonInput };
+	queryObj.max_results = 100;
+
+	clear_qg();
+    }
     else {  // qGraph
 	document.getElementById("questionForm").elements["questionText"].value = '-- posted async query via graph --';
 	statusdiv.innerHTML = "Posting graph.  Looking for answer...";
         statusdiv.appendChild(document.createElement("br"));
 
-	// ids need to start with a non-numeric character...
+	// ids need to start with a non-numeric character
 	for (var gnode of input_qg.nodes) {
 	    if (String(gnode.id).match(/^\d/)) {
 		gnode.id = "qg" + gnode.id;
@@ -165,6 +200,7 @@ function postQuery(qtype) {
 	//queryObj.bypass_cache = bypass_cache;
 	queryObj.max_results = 100;
 
+	document.getElementById("jsonText").value = JSON.stringify(input_qg,null,2);
 	clear_qg();
     }
 
@@ -319,7 +355,7 @@ function postQuery(qtype) {
 	    }
 	    else if (data["message_code"] == "OK") {
 		input_qg = { "edges": [], "nodes": [] };
-		render_message(data);
+		render_message(data,qtype == "DSL");
 	    }
 	    else if (data["log"]) {
 		process_log(data["log"]);
@@ -403,8 +439,7 @@ function sendQuestion(e) {
 			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<b>"+jsonObj2["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br><br><i>"+jsonObj2["code_description"]+"</i><br>";
 			sesame('openmax',statusdiv);
 
-			render_message(jsonObj2);
-
+			render_message(jsonObj2,true);
 		    }
 		    else if ( jsonObj.message ) { // STILL APPLIES TO 0.9??  TODO
 			document.getElementById("statusdiv").innerHTML += "<br><br>An error was encountered:<br><span class='error'>"+jsonObj.message+"</span>";
@@ -466,7 +501,7 @@ function retrieve_message() {
 	    statusdiv.innerHTML += "<br><i>"+jsonObj2["code_description"]+"</i><br>";
 	    sesame('openmax',statusdiv);
 
-	    render_message(jsonObj2);
+	    render_message(jsonObj2,true);
 	}
 	else if ( xhr.status == 404 ) {
 	    statusdiv.innerHTML += "<br>Message with id=<span class='error'>"+message_id+"</span> was not found.";
@@ -483,20 +518,25 @@ function retrieve_message() {
 }
 
 
-function render_message(respObj) {
+function render_message(respObj,dispjson) {
     var statusdiv = document.getElementById("statusdiv");
     statusdiv.appendChild(document.createTextNode("Rendering message..."));
     sesame('openmax',statusdiv);
 
-    message_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
+    if (respObj.id) {
+	message_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
 
-    if (respObj.restated_question.length > 2)
-	add_to_session(message_id,respObj.restated_question+"?");
-    else
-	add_to_session(message_id,"message="+message_id);
+	if (respObj.restated_question.length > 2)
+	    add_to_session(message_id,respObj.restated_question+"?");
+	else
+	    add_to_session(message_id,"message="+message_id);
 
-    document.title = "ARAX-UI ["+message_id+"]: "+respObj.restated_question+"?";
-    history.pushState({ id: 'ARAX_UI' }, 'ARAX | message='+message_id, "//"+ window.location.hostname + window.location.pathname + '?m='+message_id);
+	document.title = "ARAX-UI ["+message_id+"]: "+respObj.restated_question+"?";
+	history.pushState({ id: 'ARAX_UI' }, 'ARAX | message='+message_id, "//"+ window.location.hostname + window.location.pathname + '?m='+message_id);
+    }
+    else {
+        document.title = "ARAX-UI [no message_id]: "+respObj.restated_question+"?";
+    }
 
     if ( respObj["table_column_names"] ) {
 	add_to_summary(respObj["table_column_names"],0);
@@ -522,8 +562,22 @@ function render_message(respObj) {
     }
 
 
-    if (respObj["query_graph"])
+    if (respObj["query_graph"]) {
+	if (dispjson) {
+	    for (var gnode of respObj["query_graph"].nodes)
+		for (var att in gnode)
+		    if (gnode.hasOwnProperty(att))
+			if (gnode[att] == null)
+			    delete gnode[att];
+            for (var gedge of respObj["query_graph"].edges)
+		for (var att in gedge)
+		    if (gedge.hasOwnProperty(att))
+			if (gedge[att] == null)
+			    delete gedge[att];
+	    document.getElementById("jsonText").value = JSON.stringify(respObj["query_graph"],null,2);
+	}
 	process_graph(respObj["query_graph"],999);
+    }
     else
 	cytodata[999] = 'dummy'; // this enables query graph editing
 
@@ -729,8 +783,10 @@ function add_to_summary(rowdata, num) {
 	var listlink = '';
 	if (cell == 'th') {
 	    columnlist[i] = [];
-	    listlink += "&nbsp;<a href='javascript:add_items_to_list(\"A\",\"" +i+ "\");' title='Add column items to list A'>&nbsp;[+A]&nbsp;</a>";
-	    listlink += "&nbsp;<a href='javascript:add_items_to_list(\"B\",\"" +i+ "\");' title='Add column items to list B'>&nbsp;[+B]&nbsp;</a>";
+	    if (rowdata[i] != 'confidence') {
+		listlink += "&nbsp;<a href='javascript:add_items_to_list(\"A\",\"" +i+ "\");' title='Add column items to list A'>&nbsp;[+A]&nbsp;</a>";
+		listlink += "&nbsp;<a href='javascript:add_items_to_list(\"B\",\"" +i+ "\");' title='Add column items to list B'>&nbsp;[+B]&nbsp;</a>";
+	    }
 	}
 	else {
 	    columnlist[i][rowdata[i]] = 1;
