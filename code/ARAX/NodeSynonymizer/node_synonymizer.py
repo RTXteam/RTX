@@ -476,6 +476,7 @@ class NodeSynonymizer:
         kg_name = self.options['kg_name']
         kg_prefix = kg_name.lower()
         filename = f"node_synonymizer.{kg_name}_map_state.pickle"
+        print(f"INFO: Loading previous data structure state from {filename}")
 
         try:
             with open(filename, "rb") as infile:
@@ -484,6 +485,8 @@ class NodeSynonymizer:
         except:
             print(f"ERROR: Unable to reload previous state from {filename}")
             return None
+
+        print(f"INFO: Finished loading previous data structure state from {filename}. Have {len(self.kg_map[kg_nodes])} kg_nodes.")
 
 
     # ############################################################################################
@@ -927,9 +930,9 @@ class NodeSynonymizer:
             return
         print(f"INFO: Reading equivalencies from {filename}")
 
-        kg_nodes = self.kg_map['kg_nodes']
+        kg_curies = self.kg_map['kg_curies']
 
-        stats = { 'already equivalent': 0, 'need to link': 0 }
+        stats = { 'already equivalent': 0, 'need to add new link': 0, 'neither curie found': 0, 'association conflict': 0 }
 
         iline = 0
         with open(filename) as infile:
@@ -950,27 +953,43 @@ class NodeSynonymizer:
                 uc_node1_curie = node1_curie.upper()
                 uc_node2_curie = node2_curie.upper()
 
-                if uc_node1_curie not in kg_nodes:
-                    print(f"ERROR: Curie {node1_curie} ({uc_node1_curie}) not in kg_nodes at line {iline+1}")
-                    continue
-                if uc_node2_curie not in kg_nodes:
-                    print(f"ERROR: Curie {node2_curie} ({uc_node2_curie}) not in kg_nodes at line {iline+1}")
-                    continue
+                linking_curie = None
+                uc_linking_curie = None
+                if uc_node1_curie in kg_curies:
+                    linking_curie = node1_curie
+                    uc_linking_curie = linking_curie.upper()
+                    second_curie = node2_curie
+                    uc_second_curie = second_curie.upper()
 
-                uc_node1_unique_concept_curie = kg_nodes[uc_node1_curie]['uc_unique_concept_curie']
-                uc_node2_unique_concept_curie = kg_nodes[uc_node2_curie]['uc_unique_concept_curie']
+                elif uc_node2_curie in kg_curies:
+                    linking_curie = node2_curie
+                    uc_linking_curie = linking_curie.upper()
+                    second_curie = node1_curie
+                    uc_second_curie = second_curie.upper()
 
-                if uc_node1_unique_concept_curie == uc_node2_unique_concept_curie:
-                    stats['already equivalent'] += 1
                 else:
-                    stats['need to link'] += 1
+                    print(f"ERROR: Niether {uc_node1_curie} nor {uc_node2_curie} found in kg_curies at line {iline+1}")
+                    stats['neither curie found'] += 1
+                    continue
+
+                if uc_second_curie in kg_curies:
+                    uc_linking_unique_concept_curie = kg_curies[uc_linking_curie]['uc_unique_concept_curie']
+                    uc_second_unique_concept_curie = kg_curies[uc_second_curie]['uc_unique_concept_curie']
+
+                    if uc_linking_unique_concept_curie == uc_second_unique_concept_curie:
+                        stats['already equivalent'] += 1
+                    else:
+                        stats['association conflict'] += 1
+
+                else:
+                    stats['need to add new link'] += 1
 
                 #if iline > 10:
                 #    return
 
         print(f"INFO: Read {iline} equivalencies from {filename}")
         for stat_name,stat in stats.items():
-            print(f"{stat_name}: {stat}")
+            print(f"      - {stat_name}: {stat}")
         return
 
 
@@ -1798,6 +1817,7 @@ def main():
 
     # If the recollate option is selected, try to load the previous state
     if args.recollate:
+        synonymizer.options['kg_name'] = 'KG2'
         if not synonymizer.reload_state():
             return
 
@@ -1820,12 +1840,12 @@ def main():
             synonymizer.options['kg_name'] = 'KG2'
 
         # If the flag is set, save our state here
-        if 'save_state' in synonymizer.options and synonymizer.options['save_state'] is not None:
+        if 'save_state' in synonymizer.options and synonymizer.options['save_state'] is not None and synonymizer.options['save_state']:
             if not synonymizer.save_state():
                 return
 
         # Import synonyms and equivalencies
-        synonymizer.import_synonyms()
+        synonymizer.import_equivalencies()
 
         # Skip writing for the moment while we test
         #synonymizer.create_tables()
