@@ -11,6 +11,7 @@ import sqlite3
 import json
 import pickle
 import platform
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 #sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 #sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../QuestionAnswering")
@@ -1125,10 +1126,12 @@ class NodeSynonymizer:
 
         # Search the curie table for the provided curie
         cursor = self.connection.cursor()
-        cursor.execute( f"""
+        sql = f"""
             SELECT C.curie,C.unique_concept_curie,N.curie,N.kg_presence FROM {kg_prefix}_curie{TESTSUFFIX} AS C
              INNER JOIN {kg_prefix}_node{TESTSUFFIX} AS N ON C.unique_concept_curie == N.unique_concept_curie
-             WHERE C.uc_curie in ( '{entities_str}' )""" )
+             WHERE C.uc_curie in ( '{entities_str}' )"""
+        #eprint(sql)
+        cursor.execute(sql)
         rows = cursor.fetchall()
 
         # If there are still no rows, then just return the results as the input list with all null values
