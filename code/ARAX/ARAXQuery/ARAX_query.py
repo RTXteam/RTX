@@ -22,6 +22,7 @@ from ARAX_filter import ARAXFilter
 from ARAX_resultify import ARAXResultify
 from ARAX_query_graph_interpreter import ARAXQueryGraphInterpreter
 from ARAX_messenger import ARAXMessenger
+from ARAX_ranker import ARAXRanker
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.message import Message
@@ -541,7 +542,8 @@ class ARAXQuery:
                 if action['command'] == 'resultify':
                     response.info(f"Running experimental reranker on results")
                     try:
-                        messenger.rank_results(message, response=response)
+                        ranker = ARAXRanker()
+                        ranker.aggregate_scores(message, response=response)
                     except Exception as error:
                         exception_type, exception_value, exception_traceback = sys.exc_info()
                         response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")

@@ -8,6 +8,7 @@ import ast
 import re
 from datetime import datetime
 import numpy as np
+import requests
 
 from response import Response
 from query_graph_info import QueryGraphInfo
@@ -586,178 +587,24 @@ class ARAXMessenger:
         return response
 
 
-    #### Early experimental code to re-rank results
-    def rank_results(self, message, response=None):
+    #### Fetch a message by its URI
+    def fetch_message(self, message_uri):
 
-        #### Define a default response
-        if response is None:
-            if self.response is None:
-                response = Response()
-            else:
-                response = self.response
-        else:
-            self.response = response
-        self.message = message
+        response_content = requests.get(message_uri, headers={'accept': 'application/json'})
+        status_code = response_content.status_code
+        if status_code == 302:
+            print(response_content)
+            return None
 
-        #### Determine the query_graph info
-        query_graph_info = QueryGraphInfo()
-        result = query_graph_info.assess(message)
-        #response.merge(result)
-        #if result.status != 'OK':
-        #    print(response.show(level=Response.DEBUG))
-        #    return response
+        elif status_code != 200:
+            print("ERROR returned with status "+str(status_code))
+            print(response_content.json())
+            return None
 
-        #### Create an index of edges in the knowledge_graph and collect some min,max stats
-        kg_edges = {}
-        score_stats = {}
-
-        #FIXME: This need to be refactored so that:
-        #    1. The attribute names are dynamically mapped to functions that handle their weightings (for ease of renaming attribute names)
-        #    2. Weighting of individual attributes (eg. "probability" should be trusted MUCH less than "probability_treats")
-        #    3. Auto-handling of normalizing scores to be in [0,1] (eg. observed_expected ration \in (-inf, inf) while probability \in (0,1)
-        #    4. Auto-thresholding of values (eg. if chi_square <0.05, penalize the most, if probability_treats < 0.8, penalize the most, etc.)
-        #    5. Allow for ranked answers (eg. observed_expected can have a single, huge value, skewing the rest of them
-
-        # Collect all edge attributes and keep track of their mins and maxes
-        for edge in message.knowledge_graph.edges:
-            kg_edges[edge.id] = edge
-            if edge.edge_attributes is not None:
-                for edge_attribute in edge.edge_attributes:
-                    for attribute_name in [ 'probability', 'normalized_google_distance', 'jaccard_index',
-                                            'probability_treats', 'paired_concept_frequency',
-                                            'observed_expected_ratio', 'chi_square']:
-                        if edge_attribute.name == attribute_name:
-                            if attribute_name not in score_stats:
-                                score_stats[attribute_name] = {'minimum': None, 'maximum': None}  # FIXME: doesn't handle the case when all values are inf or NaN
-                            value = float(edge_attribute.value)
-                            # TODO: don't set to max here, since returning inf for some edge attributes means "I have no data"
-                            #if np.isinf(value):
-                            #    value = 9999
-                            # initialize if not None already
-                            if not np.isinf(value) and not np.isinf(-value) and not np.isnan(value):  # Ignore inf, -inf, and nan
-                                if not score_stats[attribute_name]['minimum']:
-                                    score_stats[attribute_name]['minimum'] = value
-                                if not score_stats[attribute_name]['maximum']:
-                                    score_stats[attribute_name]['maximum'] = value
-                                if value > score_stats[attribute_name]['maximum']:
-                                    score_stats[attribute_name]['maximum'] = value
-                                if value < score_stats[attribute_name]['minimum']:
-                                    score_stats[attribute_name]['minimum'] = value
-        response.info(f"Summary of available edge metrics: {score_stats}")
-
-        # Iterate through the results
-        i_result = 0
-        for result in message.results:
-            #response.debug(f"Metrics for result {i_result}  {result.essence}: ")
-            score = 1.0
-            best_probability = 0.0
-            eps = np.finfo(np.float).eps  # to avoid division by 0
-            penalize_factor = 0.7  # multiplicative factor to penalize by if the KS/KP return NaN or Inf indicating they haven't seen it before
-            for edge in result.edge_bindings:
-                kg_edge_id = edge.kg_id
-                buf = ''
-                if kg_edges[kg_edge_id].confidence is not None:
-                    buf += f" confidence={kg_edges[kg_edge_id].confidence}"
-                    score *= float(kg_edges[kg_edge_id].confidence)
-                if kg_edges[kg_edge_id].edge_attributes is not None:
-                    for edge_attribute in kg_edges[kg_edge_id].edge_attributes:
-                        # FIXME: These are chemical_substance->protein binding probabilities, may not want be treating them like this....
-                        if edge_attribute.name == 'probability':
-                            value = float(edge_attribute.value)
-                            buf += f" probability={edge_attribute.value}"
-                            if value > best_probability:
-                                best_probability = value
-                        if edge_attribute.name == 'normalized_google_distance':
-                            ngd = float(edge_attribute.value)
-                            if np.isinf(ngd):
-                                ngd = 10.0
-                            buf += f" ngd={ngd}"
-                            factor = 1 - (ngd - 0.3) * 0.6  # FIXME: What is this mystical formula?
-                            if factor < 0.01:
-                                factor = 0.01
-                            if factor > 1:
-                                factor = 1.0
-                            buf += f" ngd_factor={factor}"
-                            score *= factor
-                        if edge_attribute.name == 'jaccard_index':
-                            jaccard = float(edge_attribute.value)
-                            if np.isinf(jaccard):
-                                jaccard = 0.01
-                            factor = jaccard / score_stats['jaccard_index']['maximum'] * 0.9
-                            buf += f" jaccard={jaccard}, factor={factor}"
-                            score *= factor
-                        if edge_attribute.name == "probability_treats":
-                            prob_treats = float(edge_attribute.value)
-                            # Don't treat as a good prediction if the ML model returns a low value
-                            if prob_treats < penalize_factor:
-                                factor = penalize_factor
-                            else:
-                                factor = prob_treats
-                            score *= factor  # already a number between 0 and 1, so just multiply
-
-                        if edge_attribute.name == "paired_concept_frequency":
-                            paired_concept_freq = float(edge_attribute.value)
-                            if np.isinf(paired_concept_freq) or np.isnan(paired_concept_freq):
-                                factor = penalize_factor
-                            else:
-                                try:
-                                    factor = paired_concept_freq / score_stats['paired_concept_frequency']['maximum']
-                                except:
-                                    factor = paired_concept_freq / (score_stats['paired_concept_frequency']['maximum'] + eps)
-                            score *= factor
-                            buf += f" paired_concept_frequency={paired_concept_freq}, factor={factor}"
-                        if edge_attribute.name == 'observed_expected_ratio':
-                            obs_exp_ratio = float(edge_attribute.value)
-                            if np.isinf(obs_exp_ratio) or np.isnan(obs_exp_ratio):
-                                factor = penalize_factor  # Penalize for missing info
-                            # Would love to throw this into a sigmoid like function customized by the max value observed
-                            # for now, just throw into a sigmoid and see what happens
-                            factor = 1 / float(1 + np.exp(-4*obs_exp_ratio))
-                            score *= factor
-                            buf += f" observed_expected_ratio={obs_exp_ratio}, factor={factor}"
-                        if edge_attribute.name == 'chi_square':
-                            chi_square = float(edge_attribute.value)
-                            if np.isinf(chi_square) or np.isnan(chi_square):
-                                factor = penalize_factor
-                            else:
-                                try:
-                                    factor = 1 - (chi_square / score_stats['chi_square']['maximum'])  # lower is better
-                                except:
-                                    factor = 1 - (chi_square / (score_stats['chi_square']['maximum'] + eps))  # lower is better
-                            score *= factor
-                            buf += f" chi_square={chi_square}, factor={factor}"
-                        #print(score_stats)
-                        #print(score)
-                        #print(buf)
-
-
-                #response.debug(f"  - {kg_edge_id}  {buf}")
-
-            # #### If there was a best_probability recorded, then multiply times the running score
-            #if best_probability > 0.0:
-            #    score *= best_probability
-            # FIXME: hack to get around low probabilities, will be fixed after ranker re-factor
-            if score < 0.5:
-                score += 0.5
-
-            # #### Make all scores at least 0.01. This is all way low anyway, but let's not have anything that rounds to zero
-            if score < 0.01:
-                score += 0.01
-
-            #### Keep only 3 digits after the decimal 
-            score = int(score * 1000 + 0.5) / 1000.0
-
-            #response.debug(f"  ---> final score={score}")
-            result.confidence = score
-            result.row_data = [ score, result.essence, result.essence_type ]
-            i_result += 1
-
-        #### Add table columns name
-        message.table_column_names = [ 'confidence', 'essence', 'essence_type' ]
-
-        #### Re-sort the final results
-        message.results.sort(key=lambda result: result.confidence, reverse=True)
-
+        #### Unpack the response content into a dict and dump
+        response_dict = response_content.json()
+        message = self.from_dict(response_dict)
+        return message
 
 
     #### Convert a Message as a dict to a Message as objects
@@ -767,6 +614,20 @@ class ARAXMessenger:
             message = Message().from_dict(message)
         message.query_graph = QueryGraph().from_dict(message.query_graph)
         message.knowledge_graph = KnowledgeGraph().from_dict(message.knowledge_graph)
+
+        #### This is an unfortunate hack that fixes qnode.curie entries
+        #### Officially a curie can be a str or a list. But Swagger 2.0 only permits one type and we set it to str
+        #### so when it gets converted from_dict, the list gets converted to a str because that's its type
+        #### Here we force it back. This should no longer be needed when we are properly on OpenAPI 3.0
+        if message.query_graph is not None and message.query_graph.nodes is not None:
+            for qnode in message.query_graph.nodes:
+                if qnode.curie is not None and isinstance(qnode.curie,str):
+                    if qnode.curie[0:2] == "['":
+                        try:
+                            qnode.curie = ast.literal_eval(qnode.curie)
+                        except:
+                            pass
+
         #new_nodes = []
         #for qnode in message.query_graph.nodes:
         #    print(type(qnode))
