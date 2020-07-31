@@ -177,7 +177,7 @@ class ARAXExpander:
         valid_kps = ["ARAX/KG1", "ARAX/KG2", "BTE"]
         if kp_to_use not in valid_kps:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(valid_kps)}",
-                      error_code="UnknownValue")
+                      error_code="InvalidKP")
             return answer_kg, edge_to_nodes_map
         else:
             if kp_to_use == 'BTE':
@@ -225,10 +225,8 @@ class ARAXExpander:
         log.debug(f"Modified query node is: {copy_of_qnode.to_dict()}")
 
         # Answer the query using the proper KP
-        if kp_to_use == 'BTE':
-            log.error(f"Cannot use BTE to answer single node queries", error_code="InvalidQuery")
-            return answer_kg
-        elif kp_to_use == 'ARAX/KG2' or kp_to_use == 'ARAX/KG1':
+        valid_kps_for_single_node_queries = ["ARAX/KG1", "ARAX/KG2"]
+        if kp_to_use in valid_kps_for_single_node_queries:
             from Expand.kg_querier import KGQuerier
             kg_querier = KGQuerier(log, kp_to_use)
             answer_kg = kg_querier.answer_single_node_query(copy_of_qnode)
@@ -247,7 +245,8 @@ class ARAXExpander:
                                                                          log=log)
             return answer_kg
         else:
-            log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are ARAX/KG1 or ARAX/KG2")
+            log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options for single-node queries are "
+                      f"{', '.join(valid_kps_for_single_node_queries)}", error_code="InvalidKP")
             return answer_kg
 
     def _get_query_graph_for_edge(self, qedge: QEdge, query_graph: QueryGraph, dict_kg: DictKnowledgeGraph,
