@@ -1265,7 +1265,7 @@ class NodeSynonymizer:
 
 
     # ############################################################################################
-    def get_canonical_curies(self, curies=None, names=None):
+    def get_canonical_curies(self, curies=None, names=None, return_all_types=False):
 
         # If the provided curies or names is just a string, turn it into a list
         if isinstance(curies,str):
@@ -1319,7 +1319,6 @@ class NodeSynonymizer:
         kg_prefix = 'kg2'
 
         for batch in batches:
-            cursor = self.connection.cursor()
             if batch['batch_type'] == 'curies':
                 sql = f"""
                     SELECT C.curie,C.unique_concept_curie,U.kg2_best_curie,U.name,U.type
@@ -1333,10 +1332,12 @@ class NodeSynonymizer:
                      INNER JOIN {kg_prefix}_unique_concept{TESTSUFFIX} AS U ON S.unique_concept_curie == U.uc_curie
                      WHERE S.lc_name in ( '{batch['batch_str']}' )"""
             #print(f"INFO: Processing {batch['batch_type']} batch: {batch['batch_str']}")
+            cursor = self.connection.cursor()
             cursor.execute( sql )
             rows = cursor.fetchall()
 
             # Loop through all rows, building the list
+            batch_curie_map = {}
             for row in rows:
 
                 # If the curie or name is not found in results, try to use the curie_map{}/name_map{} to resolve capitalization issues
@@ -1351,6 +1352,7 @@ class NodeSynonymizer:
 
                 # Now store this curie in the list
                 if entity in results:
+                    batch_curie_map[row[1]] = entity
                     results[entity] = {
                         'preferred_curie': row[2],
                         'preferred_name': row[3],
@@ -1358,6 +1360,46 @@ class NodeSynonymizer:
                     }
                 else:
                     print(f"ERROR: Unable to find entity {entity}")
+
+            # If all_types were requested, do another query for those
+            if return_all_types:
+
+                # Create the SQL IN list
+                uc_curies_list = []
+                for uc_curie in batch_curie_map:
+                    uc_curie = re.sub(r"'","''",uc_curie)   # Replace embedded ' characters with ''
+                    uc_curies_list.append(uc_curie)
+                curies_list_str = "','".join(uc_curies_list)
+
+                # Get all the curies for these concepts and their types
+                sql = f"""
+                    SELECT curie,unique_concept_curie,type
+                      FROM {kg_prefix}_curie{TESTSUFFIX}
+                     WHERE unique_concept_curie IN ( '{curies_list_str}' )"""
+                cursor = self.connection.cursor()
+                cursor.execute( sql )
+                rows = cursor.fetchall()
+
+                entity_all_types = {}
+                for row in rows:
+
+                    uc_unique_concept_curie = row[1]
+                    entity = batch_curie_map[uc_unique_concept_curie]
+                    node_type = row[2]
+
+                    # Now store this type in the list
+                    if entity in results:
+                        if entity not in entity_all_types:
+                            entity_all_types[entity] = {}
+                        if node_type not in entity_all_types[entity]:
+                            entity_all_types[entity][node_type] = 0
+                        entity_all_types[entity][node_type] +=1
+                    else:
+                        print(f"ERROR: Unable to find entity {entity}")
+
+                # Now store the final list of types into the list
+                for entity,all_types in entity_all_types.items():
+                    results[entity]['all_types'] = all_types
 
 
         return results
@@ -1694,19 +1736,20 @@ def run_example_8():
 # ############################################################################################
 def run_example_9():
     synonymizer = NodeSynonymizer()
+    import copy
 
     print("==== Get canonical curies for a set of input curies ============================")
     curies = [ "DOID:14330", "CUI:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281xxxxx", "MONDO:0005520" ]
     names = [ "phenylketonuria", "ibuprofen", "P06865", "HEXA", "Parkinson's disease", 'supernovas', "Bob's Uncle", 'double "quotes"' ]
-    combined_list = curies
+    combined_list = copy.copy(curies)
     combined_list.extend(names)
 
     t0 = timeit.default_timer()
-    canonical_curies = synonymizer.get_canonical_curies(curies=curies)
+    canonical_curies = synonymizer.get_canonical_curies(curies=curies, return_all_types=True)
     t1 = timeit.default_timer()
-    canonical_curies2 = synonymizer.get_canonical_curies(names=names)
+    canonical_curies2 = synonymizer.get_canonical_curies(names=names, return_all_types=True)
     t2 = timeit.default_timer()
-    canonical_curies3 = synonymizer.get_canonical_curies(curies=combined_list,names=combined_list)
+    canonical_curies3 = synonymizer.get_canonical_curies(curies=combined_list,names=combined_list, return_all_types=True)
     t3 = timeit.default_timer()
     print(json.dumps(canonical_curies,sort_keys=True,indent=2))
     print("Elapsed time: "+str(t1-t0))
