@@ -1352,7 +1352,9 @@ class NodeSynonymizer:
 
                 # Now store this curie in the list
                 if entity in results:
-                    batch_curie_map[row[1]] = entity
+                    if row[1] not in batch_curie_map:
+                        batch_curie_map[row[1]] = {}
+                    batch_curie_map[row[1]][entity] = 1
                     results[entity] = {
                         'preferred_curie': row[2],
                         'preferred_name': row[3],
@@ -1384,18 +1386,19 @@ class NodeSynonymizer:
                 for row in rows:
 
                     uc_unique_concept_curie = row[1]
-                    entity = batch_curie_map[uc_unique_concept_curie]
                     node_type = row[2]
+                    entities = batch_curie_map[uc_unique_concept_curie]
 
-                    # Now store this type in the list
-                    if entity in results:
-                        if entity not in entity_all_types:
-                            entity_all_types[entity] = {}
-                        if node_type not in entity_all_types[entity]:
-                            entity_all_types[entity][node_type] = 0
-                        entity_all_types[entity][node_type] +=1
-                    else:
-                        print(f"ERROR: Unable to find entity {entity}")
+                    for entity in entities:
+                        # Now store this type in the list
+                        if entity in results:
+                            if entity not in entity_all_types:
+                                entity_all_types[entity] = {}
+                            if node_type not in entity_all_types[entity]:
+                                entity_all_types[entity][node_type] = 0
+                            entity_all_types[entity][node_type] +=1
+                        else:
+                            print(f"ERROR: Unable to find entity {entity}")
 
                 # Now store the final list of types into the list
                 for entity,all_types in entity_all_types.items():
@@ -1741,6 +1744,8 @@ def run_example_9():
     print("==== Get canonical curies for a set of input curies ============================")
     curies = [ "DOID:14330", "CUI:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281xxxxx", "MONDO:0005520" ]
     names = [ "phenylketonuria", "ibuprofen", "P06865", "HEXA", "Parkinson's disease", 'supernovas', "Bob's Uncle", 'double "quotes"' ]
+    curies = [ "CUI:C0002371", "CUI:C0889200" ]
+    
     combined_list = copy.copy(curies)
     combined_list.extend(names)
 
@@ -1753,10 +1758,10 @@ def run_example_9():
     t3 = timeit.default_timer()
     print(json.dumps(canonical_curies,sort_keys=True,indent=2))
     print("Elapsed time: "+str(t1-t0))
-    print(json.dumps(canonical_curies2,sort_keys=True,indent=2))
-    print("Elapsed time: "+str(t2-t1))
-    print(json.dumps(canonical_curies3,sort_keys=True,indent=2))
-    print("Elapsed time: "+str(t3-t2))
+    #print(json.dumps(canonical_curies2,sort_keys=True,indent=2))
+    #print("Elapsed time: "+str(t2-t1))
+    #print(json.dumps(canonical_curies3,sort_keys=True,indent=2))
+    #print("Elapsed time: "+str(t3-t2))
 
 
 # ############################################################################################
