@@ -582,6 +582,7 @@ class NodeSynonymizer:
                 if percentage > previous_percentage:
                     previous_percentage = percentage
                     print(str(percentage)+"%..", end='', flush=True)
+        print("")
 
 
     # ############################################################################################
@@ -984,6 +985,9 @@ class NodeSynonymizer:
                         stats['association conflict'] += 1
                         print(f"WARNING: Association conflict: {linking_curie}->{uc_linking_unique_concept_curie} and {second_curie}->{uc_second_unique_concept_curie}")
                         kg_unique_concepts[uc_linking_unique_concept_curie]['all_uc_curies'][uc_second_curie] = 1
+                        kg_unique_concepts[uc_linking_unique_concept_curie]['all_uc_curies'][uc_second_unique_concept_curie] = 1
+                        kg_unique_concepts[uc_second_unique_concept_curie]['all_uc_curies'][uc_linking_curie] = 1
+                        kg_unique_concepts[uc_second_unique_concept_curie]['all_uc_curies'][uc_linking_unique_concept_curie] = 1
 
                 else:
                     stats['add new linked curie'] += 1
