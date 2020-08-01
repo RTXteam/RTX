@@ -931,8 +931,9 @@ class NodeSynonymizer:
         print(f"INFO: Reading equivalencies from {filename}")
 
         kg_curies = self.kg_map['kg_curies']
+        kg_unique_concepts = self.kg_map['kg_unique_concepts']
 
-        stats = { 'already equivalent': 0, 'need to add new link': 0, 'neither curie found': 0, 'association conflict': 0 }
+        stats = { 'already equivalent': 0, 'add new linked curie': 0, 'neither curie found': 0, 'association conflict': 0 }
 
         iline = 0
         with open(filename) as infile:
@@ -974,15 +975,23 @@ class NodeSynonymizer:
 
                 if uc_second_curie in kg_curies:
                     uc_linking_unique_concept_curie = kg_curies[uc_linking_curie]['uc_unique_concept_curie']
+                    linking_type = kg_curies[uc_linking_curie]['type']
                     uc_second_unique_concept_curie = kg_curies[uc_second_curie]['uc_unique_concept_curie']
 
                     if uc_linking_unique_concept_curie == uc_second_unique_concept_curie:
                         stats['already equivalent'] += 1
                     else:
                         stats['association conflict'] += 1
+                        print(f"WARNING: Association conflict: {linking_curie}->{uc_linking_unique_concept_curie} and {second_curie}->{uc_second_unique_concept_curie}")
 
                 else:
-                    stats['need to add new link'] += 1
+                    stats['add new linked curie'] += 1
+                    kg_curies[uc_second_curie] = { 
+                        'curie': second_curie, 
+                        'uc_unique_concept_curie': uc_linking_unique_concept_curie, 
+                        'type': linking_type,
+                        'source': 'KG2eq' }
+                    kg_unique_concepts[uc_linking_unique_concept_curie]['all_uc_curies'][uc_second_curie] = 1
 
                 #if iline > 10:
                 #    return
