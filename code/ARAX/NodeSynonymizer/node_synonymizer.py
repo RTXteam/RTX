@@ -983,6 +983,7 @@ class NodeSynonymizer:
                     else:
                         stats['association conflict'] += 1
                         print(f"WARNING: Association conflict: {linking_curie}->{uc_linking_unique_concept_curie} and {second_curie}->{uc_second_unique_concept_curie}")
+                        kg_unique_concepts[uc_linking_unique_concept_curie]['all_uc_curies'][uc_second_curie] = 1
 
                 else:
                     stats['add new linked curie'] += 1
@@ -1903,11 +1904,13 @@ def main():
 
         # Import synonyms and equivalencies
         synonymizer.import_equivalencies()
+        synonymizer.coalesce_duplicates()
+        synonymizer.remap_unique_concepts()
 
         # Skip writing for the moment while we test
-        #synonymizer.create_tables()
-        #synonymizer.store_kg_map()
-        #synonymizer.create_indexes()
+        synonymizer.create_tables()
+        synonymizer.store_kg_map()
+        synonymizer.create_indexes()
 
         print(f"INFO: Created NodeSynonymizer with\n  {len(synonymizer.kg_map['kg_nodes'])} nodes\n  {len(synonymizer.kg_map['kg_unique_concepts'])} unique concepts\n" +
             f"  {len(synonymizer.kg_map['kg_curies'])} curies\n  {len(synonymizer.kg_map['kg_synonyms'])} names and abbreviations")
