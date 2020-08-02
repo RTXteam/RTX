@@ -891,7 +891,7 @@ class COHDIndex:
                                                         'concept_id_2': row[0],
                                                         'dataset_id': row[2],
                                                         'expected_count': row[3],
-                                                        'ln_ratio': row[4],
+                                                        'ln_ratio': float(row[4]),
                                                         'observed_count': row[5]})
                 else:
                     for row in res:
@@ -901,7 +901,7 @@ class COHDIndex:
                                                     'concept_id_2': concept_id_2,
                                                     'dataset_id': dataset_id_row,
                                                     'expected_count': expected_count,
-                                                    'ln_ratio': ln_ratio,
+                                                    'ln_ratio': float(ln_ratio),
                                                     'observed_count': observed_count})
 
                     cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1};")
@@ -915,7 +915,7 @@ class COHDIndex:
                                                         'concept_id_2': row[0],
                                                         'dataset_id': row[2],
                                                         'expected_count': row[3],
-                                                        'ln_ratio': row[4],
+                                                        'ln_ratio': float(row[4]),
                                                         'observed_count': row[5]})
             else:
                 cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  where p.concept_id_1={concept_id_1} and c.domain_id='{domain}';")
@@ -932,7 +932,7 @@ class COHDIndex:
                                                         'concept_id_2': row[0],
                                                         'dataset_id': row[2],
                                                         'expected_count': row[3],
-                                                        'ln_ratio': row[4],
+                                                        'ln_ratio': float(row[4]),
                                                         'observed_count': row[5]})
                 else:
                     for row in res:
@@ -942,7 +942,7 @@ class COHDIndex:
                                                     'concept_id_2': concept_id_2,
                                                     'dataset_id': dataset_id_row,
                                                     'expected_count': expected_count,
-                                                    'ln_ratio': ln_ratio,
+                                                    'ln_ratio': float(ln_ratio),
                                                     'observed_count': observed_count})
 
                     cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_2={concept_id_1} and c.domain_id='{domain}';")
@@ -956,7 +956,7 @@ class COHDIndex:
                                                         'concept_id_2': row[0],
                                                         'dataset_id': row[2],
                                                         'expected_count': row[3],
-                                                        'ln_ratio': row[4],
+                                                        'ln_ratio': float(row[4]),
                                                         'observed_count': row[5]})
         else:
             if domain == "":
@@ -974,7 +974,7 @@ class COHDIndex:
                                                         'concept_id_2': row[0],
                                                         'dataset_id': row[2],
                                                         'expected_count': row[3],
-                                                        'ln_ratio': row[4],
+                                                        'ln_ratio': float(row[4]),
                                                         'observed_count': row[5]})
                 else:
                     for row in res:
@@ -983,7 +983,7 @@ class COHDIndex:
                                                     'concept_id_2': row[1],
                                                     'dataset_id': row[2],
                                                     'expected_count': row[3],
-                                                    'ln_ratio': row[4],
+                                                    'ln_ratio': float(row[4]),
                                                     'observed_count': row[5]})
 
                     cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_2} and concept_id_2={concept_id_1};")
@@ -997,7 +997,7 @@ class COHDIndex:
                                                         'concept_id_2': row[0],
                                                         'dataset_id': row[2],
                                                         'expected_count': row[3],
-                                                        'ln_ratio': row[4],
+                                                        'ln_ratio': float(row[4]),
                                                         'observed_count': row[5]})
 
             else:
@@ -1015,7 +1015,7 @@ class COHDIndex:
                                                         'concept_id_2': row[0],
                                                         'dataset_id': row[2],
                                                         'expected_count': row[3],
-                                                        'ln_ratio': row[4],
+                                                        'ln_ratio': float(row[4]),
                                                         'observed_count': row[5]})
                 else:
                     for row in res:
@@ -1024,7 +1024,7 @@ class COHDIndex:
                                                     'concept_id_2': row[1],
                                                     'dataset_id': row[2],
                                                     'expected_count': row[3],
-                                                    'ln_ratio': row[4],
+                                                    'ln_ratio': float(row[4]),
                                                     'observed_count': row[5]})
 
                     cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  where p.concept_id_1={concept_id_2} and p.concept_id_2={concept_id_1} and c.domain_id='{domain}';")
@@ -1038,7 +1038,7 @@ class COHDIndex:
                                                         'concept_id_2': row[0],
                                                         'dataset_id': row[2],
                                                         'expected_count': row[3],
-                                                        'ln_ratio': row[4],
+                                                        'ln_ratio': float(row[4]),
                                                         'observed_count': row[5]})
 
         if len(results_array) != 0:
