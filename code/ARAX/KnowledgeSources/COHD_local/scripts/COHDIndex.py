@@ -253,18 +253,18 @@ class COHDIndex:
 
         return results_dict
 
-    def get_paired_concept_freq(self, concept_id1, concept_id2, dataset_id=1):
+    def get_paired_concept_freq(self, concept_id_1, concept_id_2="", dataset_id=1):
         """Retrieve observed clinical frequencies of a pair of concepts.
 
         Args:
-            concept_id1 (required, str): an OMOP id, e.g., "192855"
-            concept_id2 (required, str): an OMOP id, e.g., "2008271"
+            concept_id_1 (required, str): an OMOP id, e.g., "192855"
+            concept_id_2 (required, str): an OMOP id, e.g., "2008271"
             dataset_id (optional, int): The dataset_id of the dataset to query. Default dataset is the 5-year dataset e.g. 1,2,3
 
         Returns:
-            dictionary: a dictionary which contains a numeric frequency and a numeric concept count, or None if no
-            frequency data could be obtained for the given pair of concept IDs
+            array: an array of dictionaries which contains a numeric frequency and a numeric concept count
             example:
+            [
                 {
                     "concept_count": 10,
                     "concept_frequency": 0.000005585247351056813,
@@ -272,52 +272,101 @@ class COHDIndex:
                     "concept_id_2": 2008271,
                     "dataset_id": 1
                 }
+            ]
         """
-        if not isinstance(concept_id1, str):
-            print("The 'concept_id1' in get_paired_concept_freq should be a str", flush=True)
+        if not isinstance(concept_id_1, str):
+            print("The 'concept_id_1' in get_paired_concept_freq should be a str", flush=True)
             return {}
 
-        if not isinstance(concept_id2, str):
-            print("The 'concept_id2' in get_paired_concept_freq should be a str", flush=True)
+        if not isinstance(concept_id_2, str):
+            print("The 'concept_id_2' in get_paired_concept_freq should be a str", flush=True)
             return {}
 
         if not isinstance(dataset_id, int):
             print("The 'dataset_id' in get_paired_concept_freq should be a int", flush=True)
             return {}
 
-        results_dict = {}
+        results_array = []
         cursor = self.connection.cursor()
-        cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={int(concept_id1)} and concept_id_2={int(concept_id2)};")
-        res = cursor.fetchall()
-        if len(res) == 0:
-            cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={int(concept_id2)} and concept_id_2={int(concept_id1)};")
+        if concept_id_2 == "":
+            cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={int(concept_id_1)};")
             res = cursor.fetchall()
             if len(res) == 0:
-                pass
-            else:
-                for row in res:
-                    if row[0] != dataset_id:
-                        pass
-                    else:
-                        dataset_id, concept_id_1, concept_id_2, concept_count, concept_frequency = row
-                        results_dict["dataset_id"] = dataset_id
-                        results_dict["concept_id_1"] = concept_id_1
-                        results_dict["concept_id_2"] = concept_id_2
-                        results_dict["concept_count"] = concept_count
-                        results_dict["concept_frequency"] = concept_frequency
-        else:
-            for row in res:
-                if row[0] != dataset_id:
+                cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={int(concept_id_1)};")
+                res = cursor.fetchall()
+                if len(res) == 0:
                     pass
                 else:
-                    dataset_id, concept_id_1, concept_id_2, concept_count, concept_frequency = row
-                    results_dict["dataset_id"] = dataset_id
-                    results_dict["concept_id_1"] = concept_id_1
-                    results_dict["concept_id_2"] = concept_id_2
-                    results_dict["concept_count"] = concept_count
-                    results_dict["concept_frequency"] = concept_frequency
+                    for row in res:
+                        if row[0] == dataset_id:
+                            results_array.append({'dataset_id': row[0],
+                                                    'concept_id_1': row[1],
+                                                    'concept_id_2': row[2],
+                                                    'concept_count': row[3],
+                                                    'concept_frequency': row[4]})
+            else:
+                for row in res:
+                    if row[0] == dataset_id:
+                        results_array.append({'dataset_id': row[0],
+                                                'concept_id_1': row[1],
+                                                'concept_id_2': row[2],
+                                                'concept_count': row[3],
+                                                'concept_frequency': row[4]})
 
-        return results_dict
+                cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={int(concept_id_1)};")
+                res = cursor.fetchall()
+                if len(res) == 0:
+                    pass
+                else:
+                    for row in res:
+                        if row[0] == dataset_id:
+                            results_array.append({'dataset_id': row[0],
+                                                    'concept_id_1': row[1],
+                                                    'concept_id_2': row[2],
+                                                    'concept_count': row[3],
+                                                    'concept_frequency': row[4]})
+        else:
+            cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={int(concept_id_1)} and concept_id_2={int(concept_id_2)};")
+            res = cursor.fetchall()
+            if len(res) == 0:
+                cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={int(concept_id_1)} and concept_id_1={int(concept_id_2)};")
+                res = cursor.fetchall()
+                if len(res) == 0:
+                    pass
+                else:
+                    for row in res:
+                        if row[0] == dataset_id:
+                            results_array.append({'dataset_id': row[0],
+                                                    'concept_id_1': row[1],
+                                                    'concept_id_2': row[2],
+                                                    'concept_count': row[3],
+                                                    'concept_frequency': row[4]})
+            else:
+                for row in res:
+                    if row[0] == dataset_id:
+                        results_array.append({'dataset_id': row[0],
+                                                'concept_id_1': row[1],
+                                                'concept_id_2': row[2],
+                                                'concept_count': row[3],
+                                                'concept_frequency': row[4]})
+
+                cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={int(concept_id_1)} and concept_id_1={int(concept_id_2)};")
+                res = cursor.fetchall()
+                if len(res) == 0:
+                    pass
+                else:
+                    for row in res:
+                        if row[0] == dataset_id:
+                            results_array.append({'dataset_id': row[0],
+                                                    'concept_id_1': row[1],
+                                                    'concept_id_2': row[2],
+                                                    'concept_count': row[3],
+                                                    'concept_frequency': row[4]})
+
+        if len(results_array) != 0:
+            results_array = sorted(results_array, key=lambda x: x['concept_frequency'], reverse=True)
+
+        return results_array
 
     def get_individual_concept_freq(self, concept_id, dataset_id=1):
         """Retrieve observed clinical frequencies of individual concepts.
@@ -358,11 +407,10 @@ class COHDIndex:
         if len(res) == 0:
             pass
         else:
-            dataset_id, concept_id, concept_count, concept_frequency = res
-            results_dict["dataset_id"] = dataset_id
-            results_dict["concept_id"] = concept_id
-            results_dict["concept_count"] = concept_count
-            results_dict["concept_frequency"] = concept_frequency
+            results_dict["dataset_id"] = res[0]
+            results_dict["concept_id"] = res[1]
+            results_dict["concept_count"] = res[2]
+            results_dict["concept_frequency"] = res[3]
 
         return results_dict
 
@@ -427,20 +475,13 @@ class COHDIndex:
                     pass
                 else:
                     for row in all_assoct:
-                        associated_concept_id = row[1]
-                        associated_concept_name = row[5]
-                        associated_domain_id = row[6]
-                        concept_count = row[3]
-                        concept_frequency = row[4]
-                        concept_id = row[2]
-                        dataset_id = row[0]
-                        results_array.append({'associated_concept_id': associated_concept_id,
-                                                'associated_concept_name': associated_concept_name,
-                                                'associated_domain_id': associated_domain_id,
-                                                'concept_count': concept_count,
-                                                'concept_frequency': concept_frequency,
-                                                'concept_id': concept_id,
-                                                'dataset_id': dataset_id})
+                        results_array.append({'associated_concept_id': row[1],
+                                                'associated_concept_name': row[5],
+                                                'associated_domain_id': row[6],
+                                                'concept_count': row[3],
+                                                'concept_frequency': row[4],
+                                                'concept_id': row[2],
+                                                'dataset_id': row[0]})
         else:
             all_assoct = [row for row in res if row[0] == dataset_id]
             if len(all_assoct) == 0:
@@ -454,36 +495,22 @@ class COHDIndex:
                         pass
                     else:
                         for row in all_assoct:
-                            associated_concept_id = row[1]
-                            associated_concept_name = row[5]
-                            associated_domain_id = row[6]
-                            concept_count = row[3]
-                            concept_frequency = row[4]
-                            concept_id = row[2]
-                            dataset_id = row[0]
-                            results_array.append({'associated_concept_id': associated_concept_id,
-                                                    'associated_concept_name': associated_concept_name,
-                                                    'associated_domain_id': associated_domain_id,
-                                                    'concept_count': concept_count,
-                                                    'concept_frequency': concept_frequency,
-                                                    'concept_id': concept_id,
-                                                    'dataset_id': dataset_id})
+                            results_array.append({'associated_concept_id': row[1],
+                                                    'associated_concept_name': row[5],
+                                                    'associated_domain_id': row[6],
+                                                    'concept_count': row[3],
+                                                    'concept_frequency': row[4],
+                                                    'concept_id': row[2],
+                                                    'dataset_id': row[0]})
             else:
                 for row in all_assoct:
-                    associated_concept_id = row[2]
-                    associated_concept_name = row[5]
-                    associated_domain_id = row[6]
-                    concept_count = row[3]
-                    concept_frequency = row[4]
-                    concept_id = row[1]
-                    dataset_id = row[0]
-                    results_array.append({'associated_concept_id': associated_concept_id,
-                                            'associated_concept_name': associated_concept_name,
-                                            'associated_domain_id': associated_domain_id,
-                                            'concept_count': concept_count,
-                                            'concept_frequency': concept_frequency,
-                                            'concept_id': concept_id,
-                                            'dataset_id': dataset_id})
+                    results_array.append({'associated_concept_id': row[2],
+                                            'associated_concept_name': row[5],
+                                            'associated_domain_id': row[6],
+                                            'concept_count': row[3],
+                                            'concept_frequency': row[4],
+                                            'concept_id': row[1],
+                                            'dataset_id': row[0]})
 
                 cursor.execute(f"select distinct p.dataset_id,p.concept_id_1,p.concept_id_2,p.concept_count,p.concept_prevalence,c.concept_name,c.domain_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id where p.concept_id_2 = {concept_id} and c.domain_id = '{domain}';")
                 res = cursor.fetchall()
@@ -495,20 +522,13 @@ class COHDIndex:
                         pass
                     else:
                         for row in all_assoct:
-                            associated_concept_id = row[1]
-                            associated_concept_name = row[5]
-                            associated_domain_id = row[6]
-                            concept_count = row[3]
-                            concept_frequency = row[4]
-                            concept_id = row[2]
-                            dataset_id = row[0]
-                            results_array.append({'associated_concept_id': associated_concept_id,
-                                                    'associated_concept_name': associated_concept_name,
-                                                    'associated_domain_id': associated_domain_id,
-                                                    'concept_count': concept_count,
-                                                    'concept_frequency': concept_frequency,
-                                                    'concept_id': concept_id,
-                                                    'dataset_id': dataset_id})
+                            results_array.append({'associated_concept_id': row[1],
+                                                    'associated_concept_name': row[5],
+                                                    'associated_domain_id': row[6],
+                                                    'concept_count': row[3],
+                                                    'concept_frequency': row[4],
+                                                    'concept_id': row[2],
+                                                    'dataset_id': row[0]})
 
         return results_array
 
@@ -559,25 +579,23 @@ class COHDIndex:
             cursor.execute(f"select distinct * from CONCEPTS where concept_id={concept_ids};")
             res = cursor.fetchone()
             if len(res) != 0:
-                concept_id, concept_name, domain_id, vocabulary_id, concept_class_id, concept_code = res
-                results_array.append({'concept_class_id': concept_class_id,
-                                        'concept_code': concept_code,
-                                        'concept_id': concept_id,
-                                        'concept_name': concept_name,
-                                        'domain_id': domain_id,
-                                        'vocabulary_id': vocabulary_id})
+                results_array.append({'concept_class_id': res[4],
+                                        'concept_code': res[5],
+                                        'concept_id': res[0],
+                                        'concept_name': res[1],
+                                        'domain_id': res[2],
+                                        'vocabulary_id': res[3]})
         else:
             cursor.execute(f"select distinct * from CONCEPTS where concept_id in {tuple(set(concept_ids))};")
             res = cursor.fetchall()
             if len(res) != 0:
                 for row in res:
-                    concept_id, concept_name, domain_id, vocabulary_id, concept_class_id, concept_code = row
-                    results_array.append({'concept_class_id': concept_class_id,
-                                            'concept_code': concept_code,
-                                            'concept_id': concept_id,
-                                            'concept_name': concept_name,
-                                            'domain_id': domain_id,
-                                            'vocabulary_id': vocabulary_id})
+                    results_array.append({'concept_class_id': row[4],
+                                            'concept_code': row[5],
+                                            'concept_id': row[0],
+                                            'concept_name': row[1],
+                                            'domain_id': row[2],
+                                            'vocabulary_id': row[3]})
 
         return results_array
 
@@ -651,20 +669,13 @@ class COHDIndex:
                     pass
                 else:
                     for row in all_assoct:
-                        associated_concept_id = row[1]
-                        associated_concept_name = row[5]
-                        associated_domain_id = row[6]
-                        concept_count = row[3]
-                        concept_frequency = row[4]
-                        concept_id = row[2]
-                        dataset_id = row[0]
-                        results_array.append({'associated_concept_id': associated_concept_id,
-                                                'associated_concept_name': associated_concept_name,
-                                                'associated_domain_id': associated_domain_id,
-                                                'concept_count': concept_count,
-                                                'concept_frequency': concept_frequency,
-                                                'concept_id': concept_id,
-                                                'dataset_id': dataset_id})
+                        results_array.append({'associated_concept_id': row[1],
+                                                'associated_concept_name': row[5],
+                                                'associated_domain_id': row[6],
+                                                'concept_count': row[3],
+                                                'concept_frequency': row[4],
+                                                'concept_id': row[2],
+                                                'dataset_id': row[0]})
         else:
             all_assoct = [row for row in res if row[0] == dataset_id]
             if len(all_assoct) == 0:
@@ -678,36 +689,22 @@ class COHDIndex:
                         pass
                     else:
                         for row in all_assoct:
-                            associated_concept_id = row[1]
-                            associated_concept_name = row[5]
-                            associated_domain_id = row[6]
-                            concept_count = row[3]
-                            concept_frequency = row[4]
-                            concept_id = row[2]
-                            dataset_id = row[0]
-                            results_array.append({'associated_concept_id': associated_concept_id,
-                                                    'associated_concept_name': associated_concept_name,
-                                                    'associated_domain_id': associated_domain_id,
-                                                    'concept_count': concept_count,
-                                                    'concept_frequency': concept_frequency,
-                                                    'concept_id': concept_id,
-                                                    'dataset_id': dataset_id})
+                            results_array.append({'associated_concept_id': row[1],
+                                                    'associated_concept_name': row[5],
+                                                    'associated_domain_id': row[6],
+                                                    'concept_count': row[3],
+                                                    'concept_frequency': row[4],
+                                                    'concept_id': row[2],
+                                                    'dataset_id': row[0]})
             else:
                 for row in all_assoct:
-                    associated_concept_id = row[2]
-                    associated_concept_name = row[5]
-                    associated_domain_id = row[6]
-                    concept_count = row[3]
-                    concept_frequency = row[4]
-                    concept_id = row[1]
-                    dataset_id = row[0]
-                    results_array.append({'associated_concept_id': associated_concept_id,
-                                            'associated_concept_name': associated_concept_name,
-                                            'associated_domain_id': associated_domain_id,
-                                            'concept_count': concept_count,
-                                            'concept_frequency': concept_frequency,
-                                            'concept_id': concept_id,
-                                            'dataset_id': dataset_id})
+                    results_array.append({'associated_concept_id': row[2],
+                                            'associated_concept_name': row[5],
+                                            'associated_domain_id': row[6],
+                                            'concept_count': row[3],
+                                            'concept_frequency': row[4],
+                                            'concept_id': row[1],
+                                            'dataset_id': row[0]})
 
                 cursor.execute(f"select distinct p.dataset_id,p.concept_id_1,p.concept_id_2,p.concept_count,p.concept_prevalence,c.concept_name,c.domain_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id where p.concept_id_2 = {concept_id};")
                 res = cursor.fetchall()
@@ -719,20 +716,13 @@ class COHDIndex:
                         pass
                     else:
                         for row in all_assoct:
-                            associated_concept_id = row[1]
-                            associated_concept_name = row[5]
-                            associated_domain_id = row[6]
-                            concept_count = row[3]
-                            concept_frequency = row[4]
-                            concept_id = row[2]
-                            dataset_id = row[0]
-                            results_array.append({'associated_concept_id': associated_concept_id,
-                                                    'associated_concept_name': associated_concept_name,
-                                                    'associated_domain_id': associated_domain_id,
-                                                    'concept_count': concept_count,
-                                                    'concept_frequency': concept_frequency,
-                                                    'concept_id': concept_id,
-                                                    'dataset_id': dataset_id})
+                            results_array.append({'associated_concept_id': row[1],
+                                                    'associated_concept_name': row[5],
+                                                    'associated_domain_id': row[6],
+                                                    'concept_count': row[3],
+                                                    'concept_frequency': row[4],
+                                                    'concept_id': row[2],
+                                                    'dataset_id': row[0]})
 
         if len(results_array) != 0:
             results_array = sorted(results_array, key=lambda x: x['concept_count'], reverse=True)
@@ -793,27 +783,25 @@ class COHDIndex:
         if domain == "":
             for row in res:
                 if row[5] == dataset_id:
-                    concept_class_id, concept_count, concept_frequency, concept_id, concept_name, dataset_id_row, domain_id, vocabulary_id = row
-                    results_array.append({'concept_class_id': concept_class_id,
-                                            'concept_count': concept_count,
-                                            'concept_frequency': concept_frequency,
-                                            'concept_id': concept_id,
-                                            'concept_name': concept_name,
-                                            'dataset_id': dataset_id_row,
-                                            'domain_id': domain_id,
-                                            'vocabulary_id': vocabulary_id})
+                    results_array.append({'concept_class_id': row[0],
+                                            'concept_count': row[1],
+                                            'concept_frequency': row[2],
+                                            'concept_id': row[3],
+                                            'concept_name': row[4],
+                                            'dataset_id': row[5],
+                                            'domain_id': row[6],
+                                            'vocabulary_id': row[7]})
         else:
             for row in res:
                 if row[5] == dataset_id and row[6] == domain:
-                    concept_class_id, concept_count, concept_frequency, concept_id, concept_name, dataset_id_row, domain_id, vocabulary_id = row
-                    results_array.append({'concept_class_id': concept_class_id,
-                                            'concept_count': concept_count,
-                                            'concept_frequency': concept_frequency,
-                                            'concept_id': concept_id,
-                                            'concept_name': concept_name,
-                                            'dataset_id': dataset_id_row,
-                                            'domain_id': domain_id,
-                                            'vocabulary_id': vocabulary_id})
+                    results_array.append({'concept_class_id': row[0],
+                                            'concept_count': row[1],
+                                            'concept_frequency': row[2],
+                                            'concept_id': row[3],
+                                            'concept_name': row[4],
+                                            'dataset_id': row[5],
+                                            'domain_id': row[6],
+                                            'vocabulary_id': row[7]})
 
         if len(results_array) != 0:
             results_array = sorted(results_array, key=lambda x: x['concept_frequency'], reverse=True)
@@ -858,11 +846,11 @@ class COHDIndex:
             ]
         """
         if not isinstance(concept_id_1, str):
-            print("The 'concept_id1' in get_obs_exp_ratio should be a str", flush=True)
+            print("The 'concept_id_1' in get_obs_exp_ratio should be a str", flush=True)
             return []
 
         if not isinstance(concept_id_2, str):
-            print("The 'concept_id2' in get_obs_exp_ratio should be a str", flush=True)
+            print("The 'concept_id_2' in get_obs_exp_ratio should be a str", flush=True)
             return []
 
         if not isinstance(domain, str):
@@ -895,14 +883,13 @@ class COHDIndex:
                                                         'observed_count': row[5]})
                 else:
                     for row in res:
-                        concept_id_1, concept_id_2, dataset_id_row, expected_count, ln_ratio, observed_count = row
-                        if dataset_id_row == dataset_id:
-                            results_array.append({'concept_id_1': concept_id_1,
-                                                    'concept_id_2': concept_id_2,
-                                                    'dataset_id': dataset_id_row,
-                                                    'expected_count': expected_count,
-                                                    'ln_ratio': float(ln_ratio),
-                                                    'observed_count': observed_count})
+                        if row[2] == dataset_id:
+                            results_array.append({'concept_id_1': row[0],
+                                                    'concept_id_2': row[1],
+                                                    'dataset_id': row[2],
+                                                    'expected_count': row[3],
+                                                    'ln_ratio': float(row[4]),
+                                                    'observed_count': row[5]})
 
                     cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1};")
                     res = cursor.fetchall()
@@ -936,14 +923,13 @@ class COHDIndex:
                                                         'observed_count': row[5]})
                 else:
                     for row in res:
-                        concept_id_1, concept_id_2, dataset_id_row, expected_count, ln_ratio, observed_count = row
-                        if dataset_id_row == dataset_id:
-                            results_array.append({'concept_id_1': concept_id_1,
-                                                    'concept_id_2': concept_id_2,
-                                                    'dataset_id': dataset_id_row,
-                                                    'expected_count': expected_count,
-                                                    'ln_ratio': float(ln_ratio),
-                                                    'observed_count': observed_count})
+                        if row[2] == dataset_id:
+                            results_array.append({'concept_id_1': row[0],
+                                                    'concept_id_2': row[1],
+                                                    'dataset_id': row[2],
+                                                    'expected_count': row[3],
+                                                    'ln_ratio': float(row[4]),
+                                                    'observed_count': row[5]})
 
                     cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_2={concept_id_1} and c.domain_id='{domain}';")
                     res = cursor.fetchall()
@@ -1081,11 +1067,11 @@ class COHDIndex:
             ]
         """
         if not isinstance(concept_id_1, str):
-            print("The 'concept_id1' in get_chi_square should be a str", flush=True)
+            print("The 'concept_id_1' in get_chi_square should be a str", flush=True)
             return []
 
         if not isinstance(concept_id_2, str):
-            print("The 'concept_id2' in get_chi_square should be a str", flush=True)
+            print("The 'concept_id_2' in get_chi_square should be a str", flush=True)
             return []
 
         if not isinstance(domain, str):
@@ -1117,13 +1103,12 @@ class COHDIndex:
                                                         'p-value': row[4]})
                 else:
                     for row in res:
-                        chi_square, concept_id_1, concept_id_2, dataset_id_row, pvalue = row
-                        if dataset_id_row == dataset_id:
-                            results_array.append({'chi_square': chi_square,
-                                                    'concept_id_1': concept_id_1,
-                                                    'concept_id_2': concept_id_2,
-                                                    'dataset_id': dataset_id_row,
-                                                    'p-value': pvalue})
+                        if row[3] == dataset_id:
+                            results_array.append({'chi_square': row[0],
+                                                    'concept_id_1': row[1],
+                                                    'concept_id_2': row[2],
+                                                    'dataset_id': row[3],
+                                                    'p-value': row[4]})
 
                     cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1};")
                     res = cursor.fetchall()
@@ -1156,12 +1141,12 @@ class COHDIndex:
                 else:
                     for row in res:
                         chi_square, concept_id_1, concept_id_2, dataset_id_row, pvalue = row
-                        if dataset_id_row == dataset_id:
-                            results_array.append({'chi_square': chi_square,
-                                                    'concept_id_1': concept_id_1,
-                                                    'concept_id_2': concept_id_2,
-                                                    'dataset_id': dataset_id_row,
-                                                    'p-value': pvalue})
+                        if row[3] == dataset_id:
+                            results_array.append({'chi_square': row[0],
+                                                    'concept_id_1': row[1],
+                                                    'concept_id_2': row[2],
+                                                    'dataset_id': row[3],
+                                                    'p-value': row[4]})
 
                     cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_2={concept_id_1} and c.domain_id='{domain}';")
                     res = cursor.fetchall()
@@ -1294,11 +1279,11 @@ class COHDIndex:
             ]
         """
         if not isinstance(concept_id_1, str):
-            print("The 'concept_id1' in get_relative_frequency should be a str", flush=True)
+            print("The 'concept_id_1' in get_relative_frequency should be a str", flush=True)
             return []
 
         if not isinstance(concept_id_2, str):
-            print("The 'concept_id2' in get_relative_frequency should be a str", flush=True)
+            print("The 'concept_id_2' in get_relative_frequency should be a str", flush=True)
             return []
 
         if not isinstance(domain, str):
@@ -1323,23 +1308,21 @@ class COHDIndex:
                     else:
                         for row in res:
                             if row[4] == dataset_id:
-                                concept_2_count, concept_id_1, concept_id_2, concept_pair_count, dataset_id_row = row
-                                results_array.append({'concept_2_count': concept_2_count,
-                                                        'concept_id_1': concept_id_1,
-                                                        'concept_id_2': concept_id_2,
-                                                        'concept_pair_count': concept_pair_count,
-                                                        'dataset_id_row': dataset_id_row,
-                                                        'relative_frequency': concept_pair_count / concept_2_count})
+                                results_array.append({'concept_2_count': row[0],
+                                                        'concept_id_1': roww[1],
+                                                        'concept_id_2': row[2],
+                                                        'concept_pair_count': row[3],
+                                                        'dataset_id_row': row[4],
+                                                        'relative_frequency': row[3] / row[0]})
                 else:
                     for row in res:
                         if row[4] == dataset_id:
-                            concept_2_count, concept_id_1, concept_id_2, concept_pair_count, dataset_id_row = row
-                            results_array.append({'concept_2_count': concept_2_count,
-                                                    'concept_id_1': concept_id_1,
-                                                    'concept_id_2': concept_id_2,
-                                                    'concept_pair_count': concept_pair_count,
-                                                    'dataset_id_row': dataset_id_row,
-                                                    'relative_frequency': concept_pair_count / concept_2_count})
+                            results_array.append({'concept_2_count': row[0],
+                                                    'concept_id_1': row[1],
+                                                    'concept_id_2': row[2],
+                                                    'concept_pair_count': row[3],
+                                                    'dataset_id_row': row[4],
+                                                    'relative_frequency': row[3] / row[0]})
 
                     cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_2={concept_id_1};")
                     res = cursor.fetchall()
@@ -1348,13 +1331,12 @@ class COHDIndex:
                     else:
                         for row in res:
                             if row[4] == dataset_id:
-                                concept_2_count, concept_id_1, concept_id_2, concept_pair_count, dataset_id_row = row
-                                results_array.append({'concept_2_count': concept_2_count,
-                                                        'concept_id_1': concept_id_1,
-                                                        'concept_id_2': concept_id_2,
-                                                        'concept_pair_count': concept_pair_count,
-                                                        'dataset_id_row': dataset_id_row,
-                                                        'relative_frequency': concept_pair_count / concept_2_count})
+                                results_array.append({'concept_2_count': row[0],
+                                                        'concept_id_1': row[1],
+                                                        'concept_id_2': row[2],
+                                                        'concept_pair_count': row[3],
+                                                        'dataset_id_row': row[4],
+                                                        'relative_frequency': row[3] / row[0]})
             else:
                 cursor.execute(f"select distinct s.concept_count,p.concept_id_1,p.concept_id_2,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_2 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_2 = c.concept_id where p.concept_id_1={concept_id_1} and c.domain_id='{domain}';")
                 res = cursor.fetchall()
@@ -1366,23 +1348,21 @@ class COHDIndex:
                     else:
                         for row in res:
                             if row[4] == dataset_id:
-                                concept_2_count, concept_id_1, concept_id_2, concept_pair_count, dataset_id_row = row
-                                results_array.append({'concept_2_count': concept_2_count,
-                                                        'concept_id_1': concept_id_1,
-                                                        'concept_id_2': concept_id_2,
-                                                        'concept_pair_count': concept_pair_count,
-                                                        'dataset_id_row': dataset_id_row,
-                                                        'relative_frequency': concept_pair_count / concept_2_count})
+                                results_array.append({'concept_2_count': row[0],
+                                                        'concept_id_1': row[1],
+                                                        'concept_id_2': row[2],
+                                                        'concept_pair_count': row[3],
+                                                        'dataset_id_row': row[4],
+                                                        'relative_frequency': row[3] / row[0]})
                 else:
                     for row in res:
                         if row[4] == dataset_id:
-                            concept_2_count, concept_id_1, concept_id_2, concept_pair_count, dataset_id_row = row
-                            results_array.append({'concept_2_count': concept_2_count,
-                                                    'concept_id_1': concept_id_1,
-                                                    'concept_id_2': concept_id_2,
-                                                    'concept_pair_count': concept_pair_count,
-                                                    'dataset_id_row': dataset_id_row,
-                                                    'relative_frequency': concept_pair_count / concept_2_count})
+                            results_array.append({'concept_2_count': row[0],
+                                                    'concept_id_1': row[1],
+                                                    'concept_id_2': row[2],
+                                                    'concept_pair_count': row[3],
+                                                    'dataset_id_row': row[4],
+                                                    'relative_frequency': row[3] / row[0]})
 
                     cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_1 = c.concept_id where p.concept_id_2={concept_id_1} and c.domain_id='{domain}';")
                     res = cursor.fetchall()
@@ -1391,13 +1371,12 @@ class COHDIndex:
                     else:
                         for row in res:
                             if row[4] == dataset_id:
-                                concept_2_count, concept_id_1, concept_id_2, concept_pair_count, dataset_id_row = row
-                                results_array.append({'concept_2_count': concept_2_count,
-                                                        'concept_id_1': concept_id_1,
-                                                        'concept_id_2': concept_id_2,
-                                                        'concept_pair_count': concept_pair_count,
-                                                        'dataset_id_row': dataset_id_row,
-                                                        'relative_frequency': concept_pair_count / concept_2_count})
+                                results_array.append({'concept_2_count': row[0],
+                                                        'concept_id_1': row[1],
+                                                        'concept_id_2': row[2],
+                                                        'concept_pair_count': row[3],
+                                                        'dataset_id_row': row[4],
+                                                        'relative_frequency': row[3] / row[0]})
         else:
             if domain == "":
                 cursor.execute(f"select distinct s.concept_count,p.concept_id_1,p.concept_id_2,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_2 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_1={concept_id_1} and p.concept_id_2={concept_id_2};")
@@ -1410,23 +1389,21 @@ class COHDIndex:
                     else:
                         for row in res:
                             if row[4] == dataset_id:
-                                concept_2_count, concept_id_1, concept_id_2, concept_pair_count, dataset_id_row = row
-                                results_array.append({'concept_2_count': concept_2_count,
-                                                        'concept_id_1': concept_id_1,
-                                                        'concept_id_2': concept_id_2,
-                                                        'concept_pair_count': concept_pair_count,
-                                                        'dataset_id_row': dataset_id_row,
-                                                        'relative_frequency': concept_pair_count / concept_2_count})
+                                results_array.append({'concept_2_count': row[0],
+                                                        'concept_id_1': row[1],
+                                                        'concept_id_2': row[2],
+                                                        'concept_pair_count': row[3],
+                                                        'dataset_id_row': row[4],
+                                                        'relative_frequency': row[3] / row[0]})
                 else:
                     for row in res:
                         if row[4] == dataset_id:
-                            concept_2_count, concept_id_1, concept_id_2, concept_pair_count, dataset_id_row = row
-                            results_array.append({'concept_2_count': concept_2_count,
-                                                    'concept_id_1': concept_id_1,
-                                                    'concept_id_2': concept_id_2,
-                                                    'concept_pair_count': concept_pair_count,
-                                                    'dataset_id_row': dataset_id_row,
-                                                    'relative_frequency': concept_pair_count / concept_2_count})
+                            results_array.append({'concept_2_count': row[0],
+                                                    'concept_id_1': row[1],
+                                                    'concept_id_2': row[2],
+                                                    'concept_pair_count': row[3],
+                                                    'dataset_id_row': row[4],
+                                                    'relative_frequency': row[3] / row[0]})
 
                     cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_1={concept_id_2} and p.concept_id_2={concept_id_1};")
                     res = cursor.fetchall()
@@ -1435,13 +1412,12 @@ class COHDIndex:
                     else:
                         for row in res:
                             if row[4] == dataset_id:
-                                concept_2_count, concept_id_1, concept_id_2, concept_pair_count, dataset_id_row = row
-                                results_array.append({'concept_2_count': concept_2_count,
-                                                        'concept_id_1': concept_id_1,
-                                                        'concept_id_2': concept_id_2,
-                                                        'concept_pair_count': concept_pair_count,
-                                                        'dataset_id_row': dataset_id_row,
-                                                        'relative_frequency': concept_pair_count / concept_2_count})
+                                results_array.append({'concept_2_count': row[0],
+                                                        'concept_id_1': row[1],
+                                                        'concept_id_2': row[2],
+                                                        'concept_pair_count': row[3],
+                                                        'dataset_id_row': row[4],
+                                                        'relative_frequency': row[3] / row[0]})
 
             else:
                 cursor.execute(f"select distinct s.concept_count,p.concept_id_1,p.concept_id_2,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_2 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_2 = c.concept_id where p.concept_id_1={concept_id_1} and p.concept_id_2={concept_id_2} and c.domain_id='{domain}';")
@@ -1454,23 +1430,21 @@ class COHDIndex:
                     else:
                         for row in res:
                             if row[4] == dataset_id:
-                                concept_2_count, concept_id_1, concept_id_2, concept_pair_count, dataset_id_row = row
-                                results_array.append({'concept_2_count': concept_2_count,
-                                                        'concept_id_1': concept_id_1,
-                                                        'concept_id_2': concept_id_2,
-                                                        'concept_pair_count': concept_pair_count,
-                                                        'dataset_id_row': dataset_id_row,
-                                                        'relative_frequency': concept_pair_count / concept_2_count})
+                                results_array.append({'concept_2_count': row[0],
+                                                        'concept_id_1': row[1],
+                                                        'concept_id_2': row[2],
+                                                        'concept_pair_count': row[3],
+                                                        'dataset_id_row': row[4],
+                                                        'relative_frequency': row[3] / row[0]})
                 else:
                     for row in res:
                         if row[4] == dataset_id:
-                            concept_2_count, concept_id_1, concept_id_2, concept_pair_count, dataset_id_row = row
-                            results_array.append({'concept_2_count': concept_2_count,
-                                                    'concept_id_1': concept_id_1,
-                                                    'concept_id_2': concept_id_2,
-                                                    'concept_pair_count': concept_pair_count,
-                                                    'dataset_id_row': dataset_id_row,
-                                                    'relative_frequency': concept_pair_count / concept_2_count})
+                            results_array.append({'concept_2_count': row[0],
+                                                    'concept_id_1': row[1],
+                                                    'concept_id_2': row[2],
+                                                    'concept_pair_count': row[3],
+                                                    'dataset_id_row': row[4],
+                                                    'relative_frequency': row[3] / row[0]})
 
                     cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_1 = c.concept_id where p.concept_id_2={concept_id_1} and p.concept_id_1={concept_id_2} and c.domain_id='{domain}';")
                     res = cursor.fetchall()
@@ -1479,13 +1453,12 @@ class COHDIndex:
                     else:
                         for row in res:
                             if row[4] == dataset_id:
-                                concept_2_count, concept_id_1, concept_id_2, concept_pair_count, dataset_id_row = row
-                                results_array.append({'concept_2_count': concept_2_count,
-                                                        'concept_id_1': concept_id_1,
-                                                        'concept_id_2': concept_id_2,
-                                                        'concept_pair_count': concept_pair_count,
-                                                        'dataset_id_row': dataset_id_row,
-                                                        'relative_frequency': concept_pair_count / concept_2_count})
+                                results_array.append({'concept_2_count': row[0],
+                                                        'concept_id_1': row[1],
+                                                        'concept_id_2': row[2],
+                                                        'concept_pair_count': row[3],
+                                                        'dataset_id_row': row[4],
+                                                        'relative_frequency': row[3] / row[0]})
 
         if len(results_array) != 0:
             results_array = sorted(results_array, key=lambda x: x['relative_frequency'], reverse=True)
@@ -1642,6 +1615,7 @@ def main():
     print(cohdIndex.get_concept_ids(['DOID:8398', 'CUI:C3653398', 'HP:0031120']))  # 'HP:0031120' doesn't have omop concept ids
 
     print("==== Testing for retrieving observed clinical frequencies of a pair of concepts ====", flush=True)
+    print(cohdIndex.get_paired_concept_freq('192855', '', 3))
     print(cohdIndex.get_paired_concept_freq('192855', '2008271', 1))
     print(cohdIndex.get_paired_concept_freq('192855', '2008271', 2))
     print(cohdIndex.get_paired_concept_freq('192855', '2008271', 3))
