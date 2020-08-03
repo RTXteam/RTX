@@ -154,11 +154,15 @@ class OverlayClinicalInfo:
                     # sum up all frequencies  #TODO check with COHD people to see if this is kosher
                     frequency = default
                     for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
-                        freq_data = self.cohdIndex.get_paired_concept_freq(omop1, omop2, 3)  # use the hierarchical dataset
-                        if freq_data and 'concept_frequency' in freq_data:
-                            frequency += freq_data['concept_frequency']
+                        freq_data_list = self.cohdIndex.get_paired_concept_freq(omop1, omop2, 3) # use the hierarchical dataset
+                        if len(freq_data_list) != 0:
+                            freq_data = freq_data_list[0]
+                            temp_value = freq_data['concept_frequency']
+                            if temp_value > frequency:
+                                frequency = temp_value
                     # decorate the edges
                     value = frequency
+
                 elif name == 'observed_expected_ratio':
                     # should probably take the largest obs/exp ratio  # TODO: check with COHD people to see if this is kosher
                     # FIXME: the ln_ratio can be negative, so I should probably account for this, but the object model doesn't like -np.inf
