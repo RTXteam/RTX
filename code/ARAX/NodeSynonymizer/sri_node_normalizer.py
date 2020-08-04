@@ -34,14 +34,14 @@ class SriNodeNormalizer:
 
         # Translation table of different curie prefixes ARAX -> normalizer
         self.curie_prefix_tx_arax2sri = {
-            'REACT': 'Reactome',
+            #'REACT': 'Reactome',
             'Orphanet': 'ORPHANET',
-            'ICD10': 'ICD-10',
+            #'ICD10': 'ICD-10',
         }
         self.curie_prefix_tx_sri2arax = {
-            'Reactome': 'REACT',
+            #'Reactome': 'REACT',
             'ORPHANET': 'Orphanet',
-            'ICD-10': 'ICD10',
+            #'ICD-10': 'ICD10',
         }
 
 
@@ -255,7 +255,7 @@ class SriNodeNormalizer:
 
     # ############################################################################################
     # Directly fetch a normalization for a CURIE from the Normalizer
-    def get_node_normalizer_results(self, curies):
+    def get_node_normalizer_results(self, curies, cache_only=None):
 
         if isinstance(curies,str):
             #print(f"INFO: Looking for curie {curies}")
@@ -264,6 +264,9 @@ class SriNodeNormalizer:
                 result = { curies: self.cache['ids'][curies] }
                 return result
             curies = [ curies ]
+
+        if cache_only is not None:
+            print(f"ERROR: Call to sri_node_normalizer requested cache_only and we missed the cache with {curies}")
 
         # Build the URL and fetch the result
         url = f"https://nodenormalization-sri.renci.org/get_normalized_nodes?"
@@ -306,7 +309,7 @@ class SriNodeNormalizer:
 
     # ############################################################################################
     # Return a simple dict with the equivalence information and metadata about a CURIE
-    def get_curie_equivalence(self, curie):
+    def get_curie_equivalence(self, curie, cache_only=None):
 
         response = { 'status': 'ERROR', 'curie': curie, 'preferred_curie': '', 'preferred_curie_name': '',
             'type': '', 'equivalent_identifiers': [], 'equivalent_names': [] }
@@ -317,7 +320,7 @@ class SriNodeNormalizer:
         if curie_prefix in self.curie_prefix_tx_arax2sri:
             normalizer_curie = re.sub(curie_prefix,self.curie_prefix_tx_arax2sri[curie_prefix],curie)
 
-        results = self.get_node_normalizer_results(normalizer_curie)
+        results = self.get_node_normalizer_results(normalizer_curie, cache_only=cache_only)
         #print(json.dumps(results, indent=2, sort_keys=True))
 
         if results is None:

@@ -38,6 +38,7 @@ class ARAXRanker:
                                           'observed_expected_ratio': 0.8,
                                           'chi_square': 0.8
                                           }
+        self.score_stats = dict()
 
     def edge_attribute_score_combiner(self, edge):
         """
@@ -57,7 +58,7 @@ class ARAXRanker:
                     edge_confidence *= normalized_score
         return edge_confidence
 
-    def edge_attribute_score_normalizer(self, edge_attribute_name: str, edge_attribute_value, score_stats=None) -> float:
+    def edge_attribute_score_normalizer(self, edge_attribute_name: str, edge_attribute_value) -> float:
         """
         Takes an input edge attribute and value, dispatches it to the appropriate method that translates the value into
         something in the interval [0,1] where 0 is worse and 1 is better
@@ -76,9 +77,9 @@ class ARAXRanker:
             # else it's all good to proceed
             else:
                 # then dispatch to the appropriate function that does the score normalizing to get it to be in [0, 1] with 1 better
-                return getattr(self, '_' + self.__class__.__name__ + '__normalize_' + edge_attribute_name)(value=edge_attribute_value, score_stats=score_stats)
+                return getattr(self, '_' + self.__class__.__name__ + '__normalize_' + edge_attribute_name)(value=edge_attribute_value)
 
-    def __normalize_probability_treats(self, value, score_stats=None):
+    def __normalize_probability_treats(self, value):
         """
         Normalize the probability drug treats disease value.
         Empirically we've found that values greater than ~0.75 are "good" and <~0.75 are "bad" predictions of "treats"
@@ -107,7 +108,7 @@ class ARAXRanker:
         # TODO: make sure max value can be obtained
         return normalized_value
 
-    def __normalize_normalized_google_distance(self, value, score_stats=None):
+    def __normalize_normalized_google_distance(self, value):
         """
         Normalize the "normalized_google_distance
         """
@@ -119,7 +120,7 @@ class ARAXRanker:
         # TODO: make sure max value can be obtained
         return normalized_value
 
-    def __normalize_probability(self, value, score_stats=None):
+    def __normalize_probability(self, value):
         """
         These (as of 7/28/2020 in KG1 and KG2 only "drug->protein binding probabilities"
         As Vlado suggested, the lower ones are more rubbish, so again throw into a logistic function, but even steeper.
@@ -133,16 +134,16 @@ class ARAXRanker:
         # TODO: make sure max value can be obtained
         return normalized_value
 
-    def __normalize_jaccard_index(self, value, score_stats=None):
+    def __normalize_jaccard_index(self, value):
         """
         The jaccard index is all relative to other results, so there is no reason to use a logistic here.
         Just compare the value to the maximum value
         """
-        normalized_value = value / score_stats['jaccard_index']['maximum']
+        normalized_value = value / self.score_stats['jaccard_index']['maximum']
         #print(f"value: {value}, normalized: {normalized_value}")
         return normalized_value
 
-    def __normalize_paired_concept_frequency(self, value, score_stats=None):
+    def __normalize_paired_concept_frequency(self, value):
         """
         Again, these are _somewhat_ relative values. In actuality, a logistic here would make sense,
         but I don't know the distribution of frequencies in COHD, so just go the relative route
@@ -164,7 +165,7 @@ class ARAXRanker:
         #print(f"value: {value}, normalized: {normalized_value}")
         return normalized_value
 
-    def __normalize_observed_expected_ratio(self, value, score_stats=None):
+    def __normalize_observed_expected_ratio(self, value):
         """
         These are log ratios so should be interpreted as Exp[value] times more likely than chance
         """
@@ -177,7 +178,7 @@ class ARAXRanker:
         #print(f"value: {value}, normalized: {normalized_value}")
         return normalized_value
 
-    def __normalize_chi_square(self, value, score_stats=None):
+    def __normalize_chi_square(self, value):
         """
         From COHD: Note that due to large sample sizes, the chi-square can become very large.
         Hence the p-values will be very, very small... Hard to use logistic function, so instead, take the
@@ -238,7 +239,7 @@ class ARAXRanker:
         # #### 1) Create a dict of all edges by id
         # #### 2) Collect some min,max stats for edge_attributes that we may need later
         kg_edges = {}
-        score_stats = {}
+        score_stats = self.score_stats
         for edge in message.knowledge_graph.edges:
             kg_edges[edge.id] = edge
             if edge.edge_attributes is not None:
@@ -258,6 +259,7 @@ class ARAXRanker:
                                     score_stats[attribute_name]['maximum'] = value
                                 if value < score_stats[attribute_name]['minimum']:
                                     score_stats[attribute_name]['minimum'] = value
+
         response.info(f"Summary of available edge metrics: {score_stats}")
 
 
@@ -581,7 +583,8 @@ def main():
         #message_dict = araxdb.getMessage(304)  # all clinical info, osteoarthritis
         #message_dict = araxdb.getMessage(305)  # all clinical info, neurtropenia
         #message_dict = araxdb.getMessage(306)  # all clinical info, neurtropenia, but with virtual edges
-        message_dict = araxdb.getMessage(307)  # all clinical info, osteoarthritis, but with virtual edges
+        #message_dict = araxdb.getMessage(307)  # all clinical info, osteoarthritis, but with virtual edges
+        message_dict = araxdb.getMessage(322)  # Parkinsons Jaccard, top 50
         from ARAX_messenger import ARAXMessenger
         message = ARAXMessenger().from_dict(message_dict)
 

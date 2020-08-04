@@ -8,6 +8,7 @@ from Expand.expand_utilities import DictKnowledgeGraph
 import Expand.expand_utilities as eu
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.query_graph import QueryGraph
 from swagger_server.models.q_edge import QEdge
 from swagger_server.models.q_node import QNode
@@ -145,6 +146,9 @@ class ARAXExpander:
         # Convert message knowledge graph back to API standard format
         self.message.knowledge_graph = eu.convert_dict_kg_to_standard_kg(dict_kg)
 
+        # Override node types so that they match what was asked for in the query graph (where applicable) #987
+        self._override_node_types(self.message.knowledge_graph, self.message.query_graph)
+
         # Return the response and done
         kg = self.message.knowledge_graph
         if not kg.nodes and not continue_if_no_results:
@@ -173,7 +177,7 @@ class ARAXExpander:
         valid_kps = ["ARAX/KG1", "ARAX/KG2", "BTE"]
         if kp_to_use not in valid_kps:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(valid_kps)}",
-                      error_code="UnknownValue")
+                      error_code="InvalidKP")
             return answer_kg, edge_to_nodes_map
         else:
             if kp_to_use == 'BTE':
@@ -221,10 +225,8 @@ class ARAXExpander:
         log.debug(f"Modified query node is: {copy_of_qnode.to_dict()}")
 
         # Answer the query using the proper KP
-        if kp_to_use == 'BTE':
-            log.error(f"Cannot use BTE to answer single node queries", error_code="InvalidQuery")
-            return answer_kg
-        elif kp_to_use == 'ARAX/KG2' or kp_to_use == 'ARAX/KG1':
+        valid_kps_for_single_node_queries = ["ARAX/KG1", "ARAX/KG2"]
+        if kp_to_use in valid_kps_for_single_node_queries:
             from Expand.kg_querier import KGQuerier
             kg_querier = KGQuerier(log, kp_to_use)
             answer_kg = kg_querier.answer_single_node_query(copy_of_qnode)
@@ -243,7 +245,8 @@ class ARAXExpander:
                                                                          log=log)
             return answer_kg
         else:
-            log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are ARAX/KG1 or ARAX/KG2")
+            log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options for single-node queries are "
+                      f"{', '.join(valid_kps_for_single_node_queries)}", error_code="InvalidKP")
             return answer_kg
 
     def _get_query_graph_for_edge(self, qedge: QEdge, query_graph: QueryGraph, dict_kg: DictKnowledgeGraph,
@@ -496,6 +499,16 @@ class ARAXExpander:
                 kg.nodes_by_qg_id[qnode.id].pop(node_id)
 
         return kg
+
+    @staticmethod
+    def _override_node_types(kg: KnowledgeGraph, qg: QueryGraph):
+        # This method overrides KG nodes' types to match those requested in the QG, where possible (issue #987)
+        qnode_id_to_type_map = {qnode.id: qnode.type for qnode in qg.nodes}
+        for node in kg.nodes:
+            corresponding_qnode_types = {qnode_id_to_type_map.get(qnode_id) for qnode_id in node.qnode_ids}
+            non_none_types = [node_type for node_type in corresponding_qnode_types if node_type]
+            if non_none_types:
+                node.type = non_none_types
 
     @staticmethod
     def _add_curie_synonyms_to_query_nodes(qnodes: List[QNode], log: Response, kp: str):

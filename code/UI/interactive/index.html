@@ -114,7 +114,7 @@
 
       <b>&nbsp;&nbsp;&nbsp;or&nbsp;&nbsp;&nbsp;</b>
       <span class="qgselect">
-	<select id="allnodetypes" onchange="add_nodetype_to_query_graph(this.value);">
+	<select id="allnodetypes" onchange="add_nodeclass_to_query_graph(this.value);">
 	  <option style="border-bottom:1px solid black;" value="">Add a Node by Type&nbsp;&nbsp;&nbsp;&#8675;</option>
 	  <option>...loading</option>
 	</select>
@@ -158,7 +158,7 @@
   <div class="inputsection" id="qdsl_input">
     <h3 style="display:inline;">DSL Input:</h3>
     <span class="tiny" style="position:relative; left:150px;">One line per DSL command, no quotes or commas;
-    <a href="https://github.com/RTXteam/RTX/blob/demo/code/ARAX/Documentation/DSL_Documentation.md" target="_new">more info here</a><a href="javascript:pasteExample('DSL');" style="position:relative; left:100px;">Example</a></span>
+    <a href="https://github.com/RTXteam/RTX/blob/master/code/ARAX/Documentation/DSL_Documentation.md" target="_new">more info here</a><a href="javascript:pasteExample('DSL');" style="position:relative; left:100px;">Example</a></span>
     <form id="dslForm" name="dslForm" method="post" action="postQuery('DSL');">
       <textarea class="questionBox" wrap="off" id="dslText"></textarea>&nbsp;<span title="clear DSL input" class="clq" onclick="clearDSL();">&#9587;</span>
       <br/>

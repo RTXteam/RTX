@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
+set -e
 
-slim_kg2_file_name=kg2-slim.json.gz
-canonicalized_kg2_file_name=kg2-canonicalized.json
+rtx_dir=${1:-~/RTX}
 
-# Grab the latest "slim" KG2 from S3
-aws s3 cp --no-progress --region us-west-2 s3://rtx-kg2/${slim_kg2_file_name} ${slim_kg2_file_name}
+# Rebuild NodeSynonymizer using the latest KG2
+cd ${rtx_dir}/data/KGmetadata
+python3 dumpdata.py
+cd ${rtx_dir}/code/ARAX/NodeSynonymizer
+python3 sri_node_normalizer.py --build
+python3 node_synonymizer.py --build --kg_name=both
 
-# Create the canonicalized KG from the slim KG (represented as json)
-python3 -u create_canonicalized_kg_json.py ${slim_kg2_file_name} ${canonicalized_kg2_file_name}
+# Create the canonicalized KG
+cd ${rtx_dir}/code/kg2/canonicalized
+python3 -u create_canonicalized_kg_tsvs.py
 
-# Convert the json file into TSV files and upload to S3 TODO
-#tsv_dir = canonicalized_tsvs
-#rm -r -f ${tsv_dir}
-#mkdir -p ${tsv_dir}
-#python3 -u kg_canonicalized_json_to_tsv.py ${canonicalized_kg2_file_name} ${tsv_dir}
-#tar -czvf kg2-canonicalized-tsv.tar.gz nodes_c.tsv nodes_c_header.tsv edges_c.tsv edges_c_header.tsv
-#aws s3 cp --no-progress --region us-west-2 kg2-canonicalized-tsv.tar.gz s3://rtx-kg2/
+# Upload the TSV files to S3
+tar -czvf kg2-canonicalized-tsv.tar.gz nodes_c.tsv nodes_c_header.tsv edges_c.tsv edges_c_header.tsv
+aws s3 cp --no-progress --region us-west-2 kg2-canonicalized-tsv.tar.gz s3://rtx-kg2/

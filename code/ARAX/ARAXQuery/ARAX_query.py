@@ -693,11 +693,13 @@ def main():
             "create_message",
             "add_qnode(curie=DOID:14330, id=n00)",  # parkinsons
             "add_qnode(type=protein, is_set=True, id=n01)",
-            "add_qnode(type=chemical_substance, is_set=true, id=n02)",
+            "add_qnode(type=chemical_substance, is_set=false, id=n02)",
             "add_qedge(source_id=n01, target_id=n00, id=e00)",
             "add_qedge(source_id=n01, target_id=n02, id=e01)",
             "expand(edge_id=[e00,e01])",
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
+            "resultify()",
+            "filter_results(action=limit_number_of_results, max_results=50)",
             "return(message=true, store=true)",
         ]}}
     elif params.example_number == 8:  # to test jaccard with known result  # FIXME:  ERROR: Node DOID:8398 has been returned as an answer for multiple query graph nodes (n00, n02)
