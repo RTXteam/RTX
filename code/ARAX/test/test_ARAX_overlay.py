@@ -552,7 +552,7 @@ def test_issue_892():
 
 
 def test_overlay_exposures_data():
-    # NOTE: This doesn't actually produce nodes ICEES knows about... still need to find such an example
+    # NOTE: This example only produces ICEES edge attributes with p-values of 0; still need to find better example
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
         "add_qnode(curie=MONDO:0012607, id=n0)",

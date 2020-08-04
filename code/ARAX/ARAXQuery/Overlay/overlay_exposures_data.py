@@ -59,28 +59,21 @@ class OverlayExposuresData:
             accepted_source_synonyms = [curie for curie in formatted_source_synonyms if self._has_accepted_prefix(curie)]
             accepted_target_synonyms = [curie for curie in formatted_target_synonyms if self._has_accepted_prefix(curie)]
             if not accepted_source_synonyms or not accepted_target_synonyms:
-                log.debug(f"Could not find curies that ICEES accepts for edge {edge.source_id}--{edge.target_id}")
+                log.debug(f"Could not find curies that ICEES accepts for edge {edge.id} ({edge.source_id}--{edge.target_id})")
                 continue
 
+            # Query ICEES for each possible combination of synonyms for source and target nodes
             for source_curie_to_try, target_curie_to_try in itertools.product(accepted_source_synonyms, accepted_target_synonyms):
-                # Create a query graph to send to ICEES (note: they currently accept a sort of hybrid of a QG and a KG)
-                edge_query_graph = QueryGraph(nodes=[QNode(id=source_curie_to_try, curie=source_curie_to_try),
-                                                     QNode(id=target_curie_to_try, curie=target_curie_to_try)],
-                                              edges=[QEdge(id=f"icees_{edge.id}", source_id=source_curie_to_try, target_id=target_curie_to_try)])
-
-                # Send the query to ICEES and process results
+                qedge = QEdge(id=f"icees_{edge.id}", source_id=source_curie_to_try, target_id=target_curie_to_try)
                 log.debug(f"Sending query to ICEES+ for {source_curie_to_try}--{target_curie_to_try}")
-                returned_kg = self._get_exposures_data_for_edge(edge_query_graph)
-                if returned_kg:
+                returned_edge_attributes = self._get_exposures_data_for_edge(qedge)
+                if returned_edge_attributes:
                     num_edges_obtained_icees_data_for += 1
                     log.debug(f"Got data back from ICEES+ for this edge")
-                    for returned_edge in returned_kg.edges:
-                        # TODO: They provide edges in both directions (seem to have identical p-values)... should we only keep one direction?
-                        if not returned_edge.source_id == returned_edge.target_id:  # Exclude self-edges
-                            # Add the data as a new EdgeAttribute on the current edge
-                            if not edge.edge_attributes:
-                                edge.edge_attributes = []
-                            edge.edge_attributes += returned_edge.edge_attributes
+                    # Add the data as new EdgeAttributes on the current edge
+                    if not edge.edge_attributes:
+                        edge.edge_attributes = []
+                    edge.edge_attributes += returned_edge_attributes
                     # Don't worry about checking remaining synonym combos if we got results
                     break
 
@@ -92,26 +85,32 @@ class OverlayExposuresData:
         return self.response
 
     @staticmethod
-    def _get_exposures_data_for_edge(query_graph):
+    def _get_exposures_data_for_edge(qedge):
         # Note: ICEES doesn't quite accept ReasonerStdAPI, so we transform to what works
-        edges = [edge.to_dict() for edge in query_graph.edges]
-        nodes = [{"node_id": node.id, "curie": node.curie, "type": node.type} for node in query_graph.nodes]
-        icees_compatible_query = {"message": {"knowledge_graph": {"edges": edges,
-                                                                  "nodes": nodes}}}
+        qedges = [qedge.to_dict()]
+        qnodes = [{"node_id": curie, "curie": curie} for curie in [qedge.source_id, qedge.target_id]]
+        icees_compatible_query = {"message": {"knowledge_graph": {"edges": qedges,
+                                                                  "nodes": qnodes}}}
         icees_response = requests.post("https://icees.renci.org:16340/knowledge_graph_overlay",
                                        json=icees_compatible_query,
                                        headers={'accept': 'application/json'},
                                        verify=False)
-
-        # TODO: Figure out how to represent their EdgeAttributes... they look like: "edge_attributes": [
-        #             {
-        #               "src_feature": "AlopeciaDx",
-        #               "tgt_feature": "AvgDailyAcetaldehydeExposure_2",
-        #               "p_value": 0.000003790881671012495
-        #             }
-
-        # Using this just for testing purposes! (until we have a working Query_ICEES.py plugged in)
-        return None
+        all_edge_attributes = []
+        if icees_response and icees_response.status_code == 200 and "return value" in icees_response.json():
+            # TODO: better error handling
+            returned_knowledge_graph = icees_response.json()["return value"].get("knowledge_graph")
+            if returned_knowledge_graph:
+                for edge in returned_knowledge_graph.get("edges", []):
+                    source_id = edge.get("source_id")
+                    target_id = edge.get("target_id")
+                    if source_id and target_id:
+                        # Skip any self-edges and reverse edges in ICEES response
+                        if source_id == qedge.source_id and target_id == qedge.target_id:
+                            for edge_attribute in edge.get("edge_attributes", []):
+                                all_edge_attributes.append(EdgeAttribute(name="icees_p-value",  # TODO: better naming?
+                                                                         value=edge_attribute["p_value"],
+                                                                         type="EDAM:data_1669"))
+        return all_edge_attributes
 
     @staticmethod
     def _has_accepted_prefix(curie):
