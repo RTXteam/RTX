@@ -555,10 +555,10 @@ def test_overlay_exposures_data():
     # NOTE: This doesn't actually produce nodes ICEES knows about... still need to find such an example
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(curie=MONDO:0025556, type=disease, id=n0)",
-        "add_qnode(type=chemical_substance, id=n1)",
+        "add_qnode(curie=MONDO:0012607, id=n0)",
+        "add_qnode(curie=MONDO:0010940, id=n1)",
         "add_qedge(source_id=n0, target_id=n1, id=e0)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=ARAX/KG2, use_synonyms=false)",
         "overlay(action=overlay_exposures_data)",
         "resultify()",
         "return(message=true, store=false)",
