@@ -566,6 +566,7 @@ def test_overlay_exposures_data():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     print(response.show(level=response.DEBUG))
+    _attribute_tester(message, 'icees_p-value', 'EDAM:data_1669', 1)
 
 
 if __name__ == "__main__":

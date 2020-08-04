@@ -12,11 +12,6 @@ import requests
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
 from swagger_server.models.q_edge import QEdge
-from swagger_server.models.q_node import QNode
-from swagger_server.models.query_graph import QueryGraph
-from swagger_server.models.edge import Edge
-from swagger_server.models.node import Node
-from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.edge_attribute import EdgeAttribute
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
@@ -69,7 +64,7 @@ class OverlayExposuresData:
                 returned_edge_attributes = self._get_exposures_data_for_edge(qedge)
                 if returned_edge_attributes:
                     num_edges_obtained_icees_data_for += 1
-                    log.debug(f"Got data back from ICEES+ for this edge")
+                    log.debug(f"Got data back from ICEES+")
                     # Add the data as new EdgeAttributes on the current edge
                     if not edge.edge_attributes:
                         edge.edge_attributes = []
