@@ -38,7 +38,29 @@ class ARAXRanker:
                                           'observed_expected_ratio': 0.8,
                                           'chi_square': 0.8
                                           }
-        self.score_stats = dict()
+        self.score_stats = dict()  # dictionary that stores that max's and min's of the edge attribute values
+        self.kg_edge_id_to_edge = dict()  # map between the edge id's in the results and the actual edges themselves
+
+    def result_confidence_maker(self, result):
+        ###############################
+        # old method of just multiplying ALL the edge confidences together
+        if True:
+            result_confidence = 1  # everybody gets to start with a confidence of 1
+            for edge in result.edge_bindings:
+                kg_edge_id = edge.kg_id
+                # TODO: replace this with the more intelligent function
+                # here we are just multiplying the edge confidences
+                #### # to see what info is going into each result: print(f"{result.essence}: {kg_edges[kg_edge_id].type}, {kg_edges[kg_edge_id].confidence}")
+                result_confidence *= self.kg_edge_id_to_edge[kg_edge_id].confidence
+            result.confidence = result_confidence
+        else:
+            # consider each pair of nodes in the QG, then somehow combine that information
+            # Idea:
+            #   in each result
+            #       for each source and target node:
+            #           combine the confidences into a single edge with a single confidence that takes everything into account (# edges, edge scores, edge types, etc)
+            #       then assign result confidence as average/median of these "single" edge confidences?
+            result.confidence = 1
 
     def edge_attribute_score_combiner(self, edge):
         """
@@ -238,10 +260,10 @@ class ARAXRanker:
         # #### Iterate through all the edges in the knowledge graph to:
         # #### 1) Create a dict of all edges by id
         # #### 2) Collect some min,max stats for edge_attributes that we may need later
-        kg_edges = {}
+        kg_edge_id_to_edge = self.kg_edge_id_to_edge
         score_stats = self.score_stats
         for edge in message.knowledge_graph.edges:
-            kg_edges[edge.id] = edge
+            kg_edge_id_to_edge[edge.id] = edge
             if edge.edge_attributes is not None:
                 for edge_attribute in edge.edge_attributes:
                     for attribute_name in self.known_attributes:
@@ -281,14 +303,7 @@ class ARAXRanker:
         # TODO: Replace this with a more "intelligent" separate function
         # now we can loop over all the results, and combine their edge confidences (now populated)
         for result in message.results:
-            result_confidence = 1  # everybody gets to start with a confidence of 1
-            for edge in result.edge_bindings:
-                kg_edge_id = edge.kg_id
-                # TODO: replace this with the more intelligent function
-                # here we are just multiplying the edge confidences
-                #### # to see what info is going into each result: print(f"{result.essence}: {kg_edges[kg_edge_id].type}, {kg_edges[kg_edge_id].confidence}")
-                result_confidence *= kg_edges[kg_edge_id].confidence
-            result.confidence = result_confidence
+            self.result_confidence_maker(result)
         ###################################
 
             # Make all scores at least 0.001. This is all way low anyway, but let's not have anything that rounds to zero
@@ -584,7 +599,10 @@ def main():
         #message_dict = araxdb.getMessage(305)  # all clinical info, neurtropenia
         #message_dict = araxdb.getMessage(306)  # all clinical info, neurtropenia, but with virtual edges
         #message_dict = araxdb.getMessage(307)  # all clinical info, osteoarthritis, but with virtual edges
-        message_dict = araxdb.getMessage(322)  # Parkinsons Jaccard, top 50
+        #message_dict = araxdb.getMessage(322)  # Parkinsons Jaccard, top 50
+        #message_dict = araxdb.getMessage(324)  # chi_square, KG2
+        #message_dict = araxdb.getMessage(325)  # chi_square, ngd, KG2
+        message_dict = araxdb.getMessage(326)  # prob drug treats disease as attribute to all edge thrombocytopenia
         from ARAX_messenger import ARAXMessenger
         message = ARAXMessenger().from_dict(message_dict)
 

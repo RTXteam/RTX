@@ -102,20 +102,24 @@ class PredictDrugTreatsDisease:
         if 'virtual_relation_label' in parameters:
             source_curies_to_decorate = set()
             target_curies_to_decorate = set()
+            curie_to_name = dict()
             # identify the nodes that we should be adding virtual edges for
             for node in self.message.knowledge_graph.nodes:
                 if hasattr(node, 'qnode_ids'):
                     if parameters['source_qnode_id'] in node.qnode_ids:
                         if "drug" in node.type or "chemical_substance" in node.type:  # this is now NOT checked by ARAX_overlay
                             source_curies_to_decorate.add(node.id)
+                            curie_to_name[node.id] = node.name
                     if parameters['target_qnode_id'] in node.qnode_ids:
                         if "disease" in node.type or "phenotypic_feature" in node.type:  # this is now NOT checked by ARAX_overlay
                             target_curies_to_decorate.add(node.id)
+                            curie_to_name[node.id] = node.name
 
             added_flag = False  # check to see if any edges where added
             # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
 
             for (source_curie, target_curie) in itertools.product(source_curies_to_decorate, target_curies_to_decorate):
+                self.response.debug(f"Predicting probability that {curie_to_name[source_curie]} treats {curie_to_name[target_curie]}")
                 # create the edge attribute if it can be
                 # loop over all equivalent curies and take the highest probability
 
@@ -174,14 +178,16 @@ class PredictDrugTreatsDisease:
             try:
                 # map curies to types
                 curie_to_type = dict()
+                curie_to_name = dict()
                 for node in self.message.knowledge_graph.nodes:
                     curie_to_type[node.id] = node.type
+                    curie_to_name[node.id] = node.name
                 # then iterate over the edges and decorate if appropriate
                 for edge in self.message.knowledge_graph.edges:
                     # Make sure the edge_attributes are not None
                     if not edge.edge_attributes:
                         edge.edge_attributes = []  # should be an array, but why not a list?
-                    # now go and actually get the NGD
+                    # now go and actually get the probability
                     source_curie = edge.source_id
                     target_curie = edge.target_id
                     source_types = curie_to_type[source_curie]
@@ -189,7 +195,7 @@ class PredictDrugTreatsDisease:
                     if (("drug" in source_types) or ("chemical_substance" in source_types)) and (("disease" in target_types) or ("phenotypic_feature" in target_types)):
                         temp_value = 0
                         # loop over all pairs of equivalent curies and take the highest probability
-
+                        self.response.debug(f"Predicting treatment probability between {curie_to_name[source_curie]} and {curie_to_name[target_curie]}")
                         max_probability = 0
                         res = list(itertools.product(self.convert_to_trained_curies(source_curie), self.convert_to_trained_curies(target_curie)))
                         if len(res) != 0:
@@ -206,7 +212,7 @@ class PredictDrugTreatsDisease:
                         #probability = self.pred.prob_single('ChEMBL:' + target_curie[22:], source_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
                         #if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
                         #    value = probability[0]
-
+                        self.response.debug(f"Predicting treatment probability between {curie_to_name[source_curie]} and {curie_to_name[target_curie]}")
                         max_probability = 0
                         res = list(itertools.product(self.convert_to_trained_curies(target_curie), self.convert_to_trained_curies(source_curie)))
                         if len(res) != 0:

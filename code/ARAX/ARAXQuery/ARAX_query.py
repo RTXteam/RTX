@@ -679,7 +679,7 @@ def main():
             "add_qnode(curie=DOID:12384, id=n00)",
             "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00, type=has_phenotype)",
-            "expand(edge_id=e00)",
+            "expand(edge_id=e00, kp=ARAX/KG2)",
             #"overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
             #"overlay(action=overlay_clinical_info, chi_square=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
             "overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
