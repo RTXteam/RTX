@@ -8,6 +8,8 @@ import json
 import sys
 import os
 
+import requests
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
 from swagger_server.models.q_edge import QEdge
 from swagger_server.models.q_node import QNode
@@ -57,8 +59,8 @@ class OverlayExposuresData:
             accepted_source_synonyms = [curie for curie in formatted_source_synonyms if self._has_accepted_prefix(curie)]
             accepted_target_synonyms = [curie for curie in formatted_target_synonyms if self._has_accepted_prefix(curie)]
             if not accepted_source_synonyms or not accepted_target_synonyms:
-                log.warning(f"Could not find curies that ICEES accepts for edge {edge.source_id}--{edge.target_id}")
-                return self.response
+                log.debug(f"Could not find curies that ICEES accepts for edge {edge.source_id}--{edge.target_id}")
+                continue
 
             for source_curie_to_try, target_curie_to_try in itertools.product(accepted_source_synonyms, accepted_target_synonyms):
                 # Create a query graph to send to ICEES (note: they currently accept a sort of hybrid of a QG and a KG)
@@ -96,9 +98,11 @@ class OverlayExposuresData:
         nodes = [{"node_id": node.id, "curie": node.curie, "type": node.type} for node in query_graph.nodes]
         icees_compatible_query = {"message": {"knowledge_graph": {"edges": edges,
                                                                   "nodes": nodes}}}
-        # TODO: Actually run the query using Query_ICEES.py, and load results into API model
-        # icees_querier = Query_ICEES()
-        # response = icees_querier.post_knowledge_graph_overlay(icees_compatible_query)
+        icees_response = requests.post("https://icees.renci.org:16340/knowledge_graph_overlay",
+                                       json=icees_compatible_query,
+                                       headers={'accept': 'application/json'},
+                                       verify=False)
+
         # TODO: Figure out how to represent their EdgeAttributes... they look like: "edge_attributes": [
         #             {
         #               "src_feature": "AlopeciaDx",
@@ -107,20 +111,7 @@ class OverlayExposuresData:
         #             }
 
         # Using this just for testing purposes! (until we have a working Query_ICEES.py plugged in)
-        return KnowledgeGraph(nodes=[Node(id="SCTID:72164009", type=["disease"]),
-                                     Node(id="CHEBI:15343", type=["chemical_substance"])],
-                              edges=[Edge(id="icees_n00_n01",
-                                          source_id="SCTID:72164009",
-                                          target_id="CHEBI:15343",
-                                          type="association",
-                                          edge_attributes=[EdgeAttribute(name="AvgDailyAcetaldehydeExposure_2",
-                                                                         value=0.000003790881671012495)]),
-                                     Edge(id="icees_n00_n00",
-                                          source_id="SCTID:72164009",
-                                          target_id="SCTID:72164009",
-                                          type="association",
-                                          edge_attributes=[EdgeAttribute(name="AvgDailyAcetaldehydeExposure_2",
-                                                                         value=0)])])
+        return None
 
     @staticmethod
     def _has_accepted_prefix(curie):
