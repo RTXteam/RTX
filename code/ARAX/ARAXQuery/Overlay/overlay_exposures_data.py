@@ -61,7 +61,7 @@ class OverlayExposuresData:
             for source_curie_to_try, target_curie_to_try in itertools.product(accepted_source_synonyms, accepted_target_synonyms):
                 qedge = QEdge(id=f"icees_{edge.id}", source_id=source_curie_to_try, target_id=target_curie_to_try)
                 log.debug(f"Sending query to ICEES+ for {source_curie_to_try}--{target_curie_to_try}")
-                returned_edge_attributes = self._get_exposures_data_for_edge(qedge)
+                returned_edge_attributes = self._get_exposures_data_for_edge(qedge, log)
                 if returned_edge_attributes:
                     num_edges_obtained_icees_data_for += 1
                     log.debug(f"Got data back from ICEES+")
@@ -80,7 +80,7 @@ class OverlayExposuresData:
         return self.response
 
     @staticmethod
-    def _get_exposures_data_for_edge(qedge):
+    def _get_exposures_data_for_edge(qedge, log):
         # Note: ICEES doesn't quite accept ReasonerStdAPI, so we transform to what works
         qedges = [qedge.to_dict()]
         qnodes = [{"node_id": curie, "curie": curie} for curie in [qedge.source_id, qedge.target_id]]
@@ -91,8 +91,9 @@ class OverlayExposuresData:
                                        headers={'accept': 'application/json'},
                                        verify=False)
         all_edge_attributes = []
-        if icees_response and icees_response.status_code == 200 and "return value" in icees_response.json():
-            # TODO: better error handling
+        if icees_response.status_code != 200:
+            log.warning(f"ICEES+ API returned response of {icees_response.status_code}.")
+        elif "return value" in icees_response.json():
             returned_knowledge_graph = icees_response.json()["return value"].get("knowledge_graph")
             if returned_knowledge_graph:
                 for edge in returned_knowledge_graph.get("edges", []):
@@ -128,8 +129,9 @@ class OverlayExposuresData:
 
     @staticmethod
     def _is_relevant_edge(edge, nodes_by_qg_id):
-        # TODO: Does every edge need to involve a drug/chemical_substance?
-        exposures_node_types = {'chemical_substance', 'drug', 'disease', 'phenotypic_feature'}
+        # TODO: are there more such node types? can this list be obtained via ICEES API somehow?
+        exposures_node_types = {'chemical_substance', 'drug', 'disease', 'phenotypic_feature', 'disease_susceptibility',
+                                'disease_or_phenotypic_feature'}
         source_node = nodes_by_qg_id.get(edge.source_id)
         target_node = nodes_by_qg_id.get(edge.target_id)
         if set(source_node.type).intersection(exposures_node_types) and set(target_node.type).intersection(exposures_node_types):
