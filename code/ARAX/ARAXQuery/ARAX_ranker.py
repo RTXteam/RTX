@@ -38,6 +38,7 @@ class ARAXRanker:
                                           'observed_expected_ratio': 0.8,
                                           'chi_square': 0.8
                                           }
+        self.virtual_edge_types = {}
         self.score_stats = dict()  # dictionary that stores that max's and min's of the edge attribute values
         self.kg_edge_id_to_edge = dict()  # map between the edge id's in the results and the actual edges themselves
 
@@ -602,7 +603,22 @@ def main():
         #message_dict = araxdb.getMessage(322)  # Parkinsons Jaccard, top 50
         #message_dict = araxdb.getMessage(324)  # chi_square, KG2
         #message_dict = araxdb.getMessage(325)  # chi_square, ngd, KG2
-        message_dict = araxdb.getMessage(326)  # prob drug treats disease as attribute to all edge thrombocytopenia
+        #message_dict = araxdb.getMessage(326)  # prob drug treats disease as attribute to all edge thrombocytopenia
+        message_dict = araxdb.getMessage(327)
+            #add_qnode(name=DOID:1227, id=n00)
+            #add_qnode(type=protein, is_set=true, id=n01)
+            #add_qnode(type=chemical_substance, id=n02)
+            #add_qedge(source_id=n00, target_id=n01, id=e00)
+            #add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)
+            #expand(edge_id=[e00,e01], kp=ARAX/KG1)
+            #overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)
+            #overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)
+            #overlay(action=overlay_clinical_info, chi_square=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n02)
+            #overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n00, target_qnode_id=n01)
+            #overlay(action=compute_ngd, virtual_relation_label=N2, source_qnode_id=n00, target_qnode_id=n02)
+            #overlay(action=compute_ngd, virtual_relation_label=N3, source_qnode_id=n01, target_qnode_id=n02)
+            #resultify(ignore_edge_direction=true)
+            #filter_results(action=limit_number_of_results, max_results=100)
         from ARAX_messenger import ARAXMessenger
         message = ARAXMessenger().from_dict(message_dict)
 
