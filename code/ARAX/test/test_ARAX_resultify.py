@@ -1091,12 +1091,13 @@ def test_issue720_1():
     assert response.status == 'OK'
 
 
+@pytest.mark.slow
 def test_issue720_2():
     # Test when same node fulfills different qnode_ids within same result
     actions = [
-        "add_qnode(curie=UMLS:C0158779, type=anatomical_entity, id=n00)",
-        "add_qnode(curie=UMLS:C0578454, type=phenotypic_feature, id=n01)",
-        "add_qnode(type=anatomical_entity, id=n02)",
+        "add_qnode(curie=UMLS:C0158779, id=n00)",
+        "add_qnode(curie=UMLS:C0578454, id=n01)",
+        "add_qnode(id=n02)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "add_qedge(source_id=n01, target_id=n02, id=e01)",
         "expand(use_synonyms=false, kp=ARAX/KG2)",
