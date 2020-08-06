@@ -86,7 +86,7 @@ class COHDIndex:
         # if self.success_con is True:
         #     print("INFO: Creating database " + self.databaseName, flush=True)
         #     self.connection.execute(f"DROP TABLE IF EXISTS CURIE_TO_OMOP_MAPPING")
-        #     self.connection.execute(f"CREATE TABLE CURIE_TO_OMOP_MAPPING( preferred_curie VARCHAR(255), preferred_name VARCHAR(255), preferred_type VARCHAR(255), concept_id INT )")
+        #     self.connection.execute(f"CREATE TABLE CURIE_TO_OMOP_MAPPING( preferred_curie VARCHAR(255), concept_id INT )")
         #     self.connection.execute(f"DROP TABLE IF EXISTS SINGLE_CONCEPT_COUNTS")
         #     self.connection.execute(f"CREATE TABLE SINGLE_CONCEPT_COUNTS( dataset_id TINYINT, concept_id INT, concept_count INT, concept_prevalence FLOAT )")
         #     self.connection.execute(f"DROP TABLE IF EXISTS CONCEPTS")
@@ -181,20 +181,20 @@ class COHDIndex:
         #     with open(f"{self.databaseLocation}/canonicalized_kg_OMOP_id.pkl", "rb") as file:
         #         kg = pickle.load(file)
 
-        #     insert_command = 'INSERT INTO CURIE_TO_OMOP_MAPPING(preferred_curie,preferred_name,preferred_type,concept_id) values (?,?,?,?)'
+        #     insert_command = 'INSERT INTO CURIE_TO_OMOP_MAPPING(preferred_curie,concept_id) values (?,?)'
         #     count = 0
         #     total_key = [key for key in kg if len(kg[key]['concept_ids']) != 0]
 
+        #     print(f"INFO: Populating table CURIE_TO_OMOP_MAPPING", flush=True)
         #     if DEBUG:
         #         key = total_key[0]
-        #         records = list(itertools.product([key], [kg[key]['preferred_name']], [kg[key]['preferred_type']], list(kg[key]['concept_ids'])))
+        #         records = list(itertools.product([key], list(kg[key]['concept_ids'])))
         #         print(records, flush=True)
 
-        #     print(f"INFO: Populating table CURIE_TO_OMOP_MAPPING", flush=True)
         #     for key in total_key:
         #         if len(kg[key]['concept_ids']) > 0:
         #             count = count + 1
-        #             records = list(itertools.product([key], [kg[key]['preferred_name']], [kg[key]['preferred_type']], list(kg[key]['concept_ids'])))
+        #             records = list(itertools.product([key], list(kg[key]['concept_ids'])))
         #             self.connection.executemany(insert_command, records)
 
         #             if count % 10000 == 0:
@@ -341,11 +341,11 @@ class COHDIndex:
         if concept_id_pair is None:
             if not isinstance(concept_id_1, int):
                 print("Please provide either 'concept_id_1' or 'concept_id_pair'. The 'concept_id_1' in get_paired_concept_freq should be an int", flush=True)
-                return {}
+                return []
 
             if not isinstance(concept_id_2, int):
                 print("The 'concept_id_2' in get_paired_concept_freq should be an int", flush=True)
-                return {}
+                return []
         else:
             if isinstance(concept_id_pair, str):
                 concept_id_pair1 = concept_id_pair
@@ -359,17 +359,17 @@ class COHDIndex:
                     concept_id_pair2 = [f"{pair.split('_')[1]}_{pair.split('_')[0]}" for pair in concept_id_pair]
             else:
                 print("The 'concept_id_pair' in get_paired_concept_freq should be a str or a list", flush=True)
-                return {}
+                return []
 
         if not isinstance(dataset_id, int):
             print("The 'dataset_id' in get_paired_concept_freq should be an int", flush=True)
-            return {}
+            return []
         else:
             if dataset_id == 1 or dataset_id == 2 or dataset_id == 3:
                 pass
             else:
                 print("The 'dataset_id' in get_paired_concept_freq should be 1, 2 or 3", flush=True)
-                return {}
+                return []
 
         results_array = []
         cursor = self.connection.cursor()
@@ -1037,11 +1037,11 @@ class COHDIndex:
         if concept_id_pair is None:
             if not isinstance(concept_id_1, int):
                 print("Please provide either 'concept_id_1' or 'concept_id_pair'. The 'concept_id_1' in get_obs_exp_ratio should be an int", flush=True)
-                return {}
+                return []
 
             if not isinstance(concept_id_2, int):
                 print("The 'concept_id_2' in get_obs_exp_ratio should be an int", flush=True)
-                return {}
+                return []
         else:
             if isinstance(concept_id_pair, str):
                 concept_id_pair1 = concept_id_pair
@@ -1055,7 +1055,7 @@ class COHDIndex:
                     concept_id_pair2 = [f"{pair.split('_')[1]}_{pair.split('_')[0]}" for pair in concept_id_pair]
             else:
                 print("The 'concept_id_pair' in get_obs_exp_ratio should be a str or a list", flush=True)
-                return {}
+                return []
 
         if not isinstance(domain, str):
             print("The 'domain' in get_obs_exp_ratio should be a str", flush=True)
@@ -1462,11 +1462,11 @@ class COHDIndex:
         if concept_id_pair is None:
             if not isinstance(concept_id_1, int):
                 print("Please provide either 'concept_id_1' or 'concept_id_pair'. The 'concept_id_1' in get_chi_square should be an int", flush=True)
-                return {}
+                return []
 
             if not isinstance(concept_id_2, int):
                 print("The 'concept_id_2' in get_chi_square should be an int", flush=True)
-                return {}
+                return []
         else:
             if isinstance(concept_id_pair, str):
                 concept_id_pair1 = concept_id_pair
@@ -1480,7 +1480,7 @@ class COHDIndex:
                     concept_id_pair2 = [f"{pair.split('_')[1]}_{pair.split('_')[0]}" for pair in concept_id_pair]
             else:
                 print("The 'concept_id_pair' in get_chi_square should be a str or a list", flush=True)
-                return {}
+                return []
 
         if not isinstance(domain, str):
             print("The 'domain' in get_chi_square should be a str", flush=True)
@@ -1866,11 +1866,11 @@ class COHDIndex:
         if concept_id_pair is None:
             if not isinstance(concept_id_1, int):
                 print("Please provide either 'concept_id_1' or 'concept_id_pair'. The 'concept_id_1' in get_relative_frequency should be an int", flush=True)
-                return {}
+                return []
 
             if not isinstance(concept_id_2, int):
                 print("The 'concept_id_2' in get_relative_frequency should be an int", flush=True)
-                return {}
+                return []
         else:
             if isinstance(concept_id_pair, str):
                 concept_id_pair1 = concept_id_pair
@@ -1884,7 +1884,7 @@ class COHDIndex:
                     concept_id_pair2 = [f"{pair.split('_')[1]}_{pair.split('_')[0]}" for pair in concept_id_pair]
             else:
                 print("The 'concept_id_pair' in get_relative_frequency should be a str or a list", flush=True)
-                return {}
+                return []
 
         if not isinstance(domain, str):
             print("The 'domain' in get_relative_frequency should be a str", flush=True)
