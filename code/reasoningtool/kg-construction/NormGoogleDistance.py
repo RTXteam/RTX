@@ -68,7 +68,7 @@ class NormGoogleDistance:
         if self.curie_to_pmids_db:
             # Convert the input curies to their canonicalized versions because the local NGD db requires canonical IDs
             canonicalized_curies = [canonicalized_curie_map.get(curie, curie) for curie in curie_list]
-            recognized_curies = [curie for curie in canonicalized_curies if self.curie_to_pmids_db.get(curie)]
+            recognized_curies = [curie for curie in canonicalized_curies if curie in self.curie_to_pmids_db]
             if len(recognized_curies) == len(curie_list):
                 pubmed_ids_for_curies = [self.curie_to_pmids_db.get(curie) for curie in recognized_curies]
                 counts_res = NormGoogleDistance.compute_marginal_and_joint_counts(pubmed_ids_for_curies)
