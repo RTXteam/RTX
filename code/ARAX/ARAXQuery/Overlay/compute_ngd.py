@@ -85,6 +85,8 @@ class ComputeNGD:
                 target_name = curies_to_names[target_curie]
                 self.response.debug(f"Computing NGD between {source_name} and {target_name}")
                 ngd_value, method_used = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name], canonicalized_curie_map)
+                if method_used == "slow":
+                    self.response.debug(f"Had to use back-up method for that edge")
                 ngd_method_counts[method_used] += 1
                 if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                     value = ngd_value
@@ -143,7 +145,10 @@ class ComputeNGD:
                     target_curie = edge.target_id
                     source_name = node_curie_to_name[source_curie]
                     target_name = node_curie_to_name[target_curie]
+                    self.response.debug(f"Computing NGD between {source_name} and {target_name}")
                     ngd_value, method_used = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name], canonicalized_curie_map)
+                    if method_used == "slow":
+                        self.response.debug(f"Had to use back-up method for that edge")
                     ngd_method_counts[method_used] += 1
                     if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                         value = ngd_value
