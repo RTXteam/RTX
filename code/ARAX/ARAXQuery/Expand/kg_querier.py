@@ -32,8 +32,11 @@ class KGQuerier:
         """
         This function answers a one-hop (single-edge) query using either KG1 or KG2.
         :param query_graph: A Reasoner API standard query graph.
-        :return: An (almost) Reasoner API standard knowledge graph containing all of the nodes and edges returned as
-        results for the query. (Dictionary version, organized by QG IDs.)
+        :return: A tuple containing:
+            1. an (almost) Reasoner API standard knowledge graph containing all of the nodes and edges returned as
+           results for the query. (Dictionary version, organized by QG IDs.)
+            2. a map of which nodes fulfilled which qnode_ids for each edge. Example:
+              {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:126'}}
         """
         log = self.response
         enforce_directionality = self.response.data['parameters']['enforce_directionality']
