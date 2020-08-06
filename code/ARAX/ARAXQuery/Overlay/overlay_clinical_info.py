@@ -117,19 +117,13 @@ class OverlayClinicalInfo:
                 # source_OMOPs = [str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(source_curie, 1)]
                 res = self.cohdIndex.get_concept_ids(source_curie)
                 if len(res) != 0:
-                    if res[source_curie]['OMOP concepts'] is not None:
-                        source_OMOPs = [str(omop_id) for omop_id in res[source_curie]['OMOP concepts']]
-                    else:
-                        source_OMOPs = []
+                    source_OMOPs = res
                 else:
                     source_OMOPs = []
                 # target_OMOPs = [str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(target_curie, 1)]
                 res = self.cohdIndex.get_concept_ids(target_curie)
                 if len(res) != 0:
-                    if res[target_curie]['OMOP concepts'] is not None:
-                        target_OMOPs = [str(omop_id) for omop_id in res[target_curie]['OMOP concepts']]
-                    else:
-                        target_OMOPs = []
+                    target_OMOPs = res
                 else:
                     target_OMOPs = []
                 # for domain in ["Condition", "Drug", "Procedure"]:
@@ -153,13 +147,19 @@ class OverlayClinicalInfo:
                 if name == 'paired_concept_frequency':
                     # sum up all frequencies  #TODO check with COHD people to see if this is kosher
                     frequency = default
-                    for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
-                        freq_data_list = self.cohdIndex.get_paired_concept_freq(omop1, omop2, 3) # use the hierarchical dataset
-                        if len(freq_data_list) != 0:
-                            freq_data = freq_data_list[0]
-                            temp_value = freq_data['concept_frequency']
-                            if temp_value > frequency:
-                                frequency = temp_value
+                    # for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
+                    #     freq_data_list = self.cohdIndex.get_paired_concept_freq(omop1, omop2, 3) # use the hierarchical dataset
+                    #     if len(freq_data_list) != 0:
+                    #         freq_data = freq_data_list[0]
+                    #         temp_value = freq_data['concept_frequency']
+                    #         if temp_value > frequency:
+                    #             frequency = temp_value
+                    omop_pairs = [f"{omop1}_{omop2}" for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs)]
+                    if len(omop_pairs) != 0:
+                        res = self.cohdIndex.get_paired_concept_freq(concept_id_pair=omop_pairs, dataset_id=3)  # use the hierarchical dataset
+                        if len(res) != 0:
+                            maximum_concept_frequency = res[0]['concept_frequency']  # the result returned from get_paired_concept_freq was sorted by decreasing order
+                            frequency = maximum_concept_frequency
                     # decorate the edges
                     value = frequency
 
@@ -196,23 +196,37 @@ class OverlayClinicalInfo:
                     #                    value = temp_value
                     ###################################
 
-                    for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
-                        #print(f"{omop1},{omop2}")
-                        response = self.cohdIndex.get_obs_exp_ratio(omop1, concept_id_2=omop2, domain="", dataset_id=3)  # use the hierarchical dataset
-                        # response is a list, since this function is overloaded and can omit concept_id_2, take the first element
-                        if response and 'ln_ratio' in response[0]:
-                            temp_val = response[0]['ln_ratio']
-                            if temp_val > value:
-                                value = temp_val
+                    # for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
+                    #     #print(f"{omop1},{omop2}")
+                    #     response = self.cohdIndex.get_obs_exp_ratio(omop1, concept_id_2=omop2, domain="", dataset_id=3)  # use the hierarchical dataset
+                    #     # response is a list, since this function is overloaded and can omit concept_id_2, take the first element
+                    #     if response and 'ln_ratio' in response[0]:
+                    #         temp_val = response[0]['ln_ratio']
+                    #         if temp_val > value:
+                    #             value = temp_val
+                    omop_pairs = [f"{omop1}_{omop2}" for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs)]
+                    if len(omop_pairs) != 0:
+                        res = self.cohdIndex.get_obs_exp_ratio(concept_id_pair=omop_pairs, domain="", dataset_id=3)  # use the hierarchical dataset
+                        if len(res) != 0:
+                            maximum_ln_ratio = res[0]['ln_ratio']  # the result returned from get_paired_concept_freq was sorted by decreasing order
+                            value = maximum_ln_ratio
+
                 elif name == 'chi_square':
                     value = float("inf")
-                    for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
-                        response = self.cohdIndex.get_chi_square(omop1, concept_id_2=omop2, domain="", dataset_id=3)  # use the hierarchical dataset
-                        # response is a list, since this function is overloaded and can omit concept_id_2, take the first element
-                        if response and 'p-value' in response[0]:
-                            temp_val = response[0]['p-value']
-                            if temp_val < value:  # looking at p=values, so lower is better
-                                value = temp_val
+                    # for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
+                    #     response = self.cohdIndex.get_chi_square(omop1, concept_id_2=omop2, domain="", dataset_id=3)  # use the hierarchical dataset
+                    #     # response is a list, since this function is overloaded and can omit concept_id_2, take the first element
+                    #     if response and 'p-value' in response[0]:
+                    #         temp_val = response[0]['p-value']
+                    #         if temp_val < value:  # looking at p=values, so lower is better
+                    #             value = temp_val
+                    omop_pairs = [f"{omop1}_{omop2}" for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs)]
+                    if len(omop_pairs) != 0:
+                        res = self.cohdIndex.get_chi_square(concept_id_pair=omop_pairs, domain="", dataset_id=3)  # use the hierarchical dataset
+                        if len(res) != 0:
+                            minimum_pvalue = res[0]['p-value']  # the result returned from get_paired_concept_freq was sorted by decreasing order
+                            value = minimum_pvalue
+
                 # create the edge attribute
                 edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the edge attribute # FIXME: unclear in object model if attribute type dictates value type, or if value always needs to be a string
                 return edge_attribute
