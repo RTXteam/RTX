@@ -12,37 +12,31 @@ import sys
 import time
 import CachedMethods
 from cache_control_helper import CacheControlHelper
-import pickledb
 import os
 import functools
+from sqlitedict import SqliteDict
+
 from QueryNCBIeUtils import QueryNCBIeUtils
 from QueryDisont import QueryDisont  # DOID -> MeSH
 from QueryEBIOLS import QueryEBIOLS  # UBERON -> MeSH
 from QueryMyChem import QueryMyChem
-from typing import List
+from typing import List, Dict, Tuple
 import sqlite3
 
 
 # requests_cache.install_cache('NGDCache')
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
-WHATEVER_TO_MESH_DB_FILE = os.path.join(SCRIPT_DIR, 'curie_to_mesh.db')
-MESH_TO_PUBMED_DB_FILE = os.path.join(SCRIPT_DIR, 'mesh_to_pmid.db')
+CURIE_TO_PMIDS_DB_FILE = os.path.join(SCRIPT_DIR, 'curie_to_pmids.sqlite')
 NGD_NORMALIZER = 2.2e+7 * 20   # from PubMed home page there are 27 million articles; avg 20 MeSH terms per article
 
 
 class NormGoogleDistance:
     def __init__(self):
-        if os.path.exists(WHATEVER_TO_MESH_DB_FILE) and os.path.isfile(WHATEVER_TO_MESH_DB_FILE):
-            self.db_whatever_to_mesh = pickledb.load(WHATEVER_TO_MESH_DB_FILE,sig=False,
-                                                     auto_dump=False)
+        if os.path.exists(CURIE_TO_PMIDS_DB_FILE) and os.path.isfile(CURIE_TO_PMIDS_DB_FILE):
+            self.curie_to_pmids_db = SqliteDict(f"{CURIE_TO_PMIDS_DB_FILE}")
         else:
-            self.db_whatever_to_mesh = None
-        if os.path.exists(MESH_TO_PUBMED_DB_FILE) and os.path.isfile(MESH_TO_PUBMED_DB_FILE):
-            self.db_mesh_to_pubmed = pickledb.load(MESH_TO_PUBMED_DB_FILE,sig=False,
-                                                   auto_dump=False)
-        else:
-            self.db_mesh_to_pubmed = None
+            self.curie_to_pmids_db = None
 
     @staticmethod
     def compute_marginal_and_joint_counts(concept_pubmed_ids: List[str]) -> list:
@@ -69,24 +63,17 @@ class NormGoogleDistance:
             except ValueError:
                 return math.nan
 
-    def get_ngd_for_all_fast(self, curie_id_list: List[str], description_list: List[str]) -> (float, str):
-        assert len(curie_id_list) == len(description_list)
-        if self.db_whatever_to_mesh is not None and self.db_mesh_to_pubmed is not None:
-            mesh_ids_all = [self.db_whatever_to_mesh.get(curie_id) for curie_id in curie_id_list]
-            if all(mesh_ids_all):
-                #print(f"Going fast: {curie_id_list}")  # for debugging purposes and counting db hits
-                pubmed_ids_for_curies = []
-                for mesh_ids in mesh_ids_all:
-                    pubmed_ids_for_curie_set = set()
-                    for mesh_id in mesh_ids:
-                        pubmed_ids = self.db_mesh_to_pubmed.get(mesh_id)
-                        if pubmed_ids is not False:
-                            pubmed_ids_for_curie_set |= set(pubmed_ids)
-                    pubmed_ids_for_curies.append(list(pubmed_ids_for_curie_set))
+    def get_ngd_for_all_fast(self, curie_list: List[str], name_list: List[str], canonicalized_curie_map: Dict[str, str]) -> Tuple[float, str]:
+        assert len(curie_list) == len(name_list)
+        if self.curie_to_pmids_db:
+            # Convert the input curies to their canonicalized versions because the local NGD db requires canonical IDs
+            canonicalized_curies = [canonicalized_curie_map.get(curie, curie) for curie in curie_list]
+            recognized_curies = [curie for curie in canonicalized_curies if self.curie_to_pmids_db.get(curie)]
+            if len(recognized_curies) == len(curie_list):
+                pubmed_ids_for_curies = [self.curie_to_pmids_db.get(curie) for curie in recognized_curies]
                 counts_res = NormGoogleDistance.compute_marginal_and_joint_counts(pubmed_ids_for_curies)
                 return NormGoogleDistance.compute_multiway_ngd_from_counts(*counts_res), "fast"
-        #print(f"Going slow: {curie_id_list}")  # for debugging purposes and counting db misses
-        return NormGoogleDistance.get_ngd_for_all(curie_id_list, description_list), "slow"
+        return NormGoogleDistance.get_ngd_for_all(curie_list, name_list), "slow"
 
     @staticmethod
     @CachedMethods.register
