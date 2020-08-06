@@ -17,6 +17,7 @@ for num in range(1,graph.shape[1]):
 insert_command1 = insert_command1 + ")"
 
 conn.execute(insert_command1)
+conn.commit()
 
 count = 0
 
@@ -43,3 +44,6 @@ percentage = int(count*100.0/graph.shape[0])
 print(str(percentage) + "%..", end='', flush=True)
 
 conn.execute(f"CREATE INDEX idx_GRAPH_curie ON GRAPH(curie)")
+conn.commit()
+conn.close()
+print(f"INFO: Database created successfully", flush=True)
