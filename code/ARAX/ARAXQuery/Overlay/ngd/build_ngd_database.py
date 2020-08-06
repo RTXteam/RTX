@@ -7,7 +7,7 @@ There are two halves to the (full) build process:
        include MESH Descriptor/Qualifier names, Keywords, and Chemical names)
      - These mappings are obtained by scraping ALL of the PubMed XML files
      - This file needs updating very infrequently (i.e., only with new PubMed releases)
-2. Creates the final file called "curie_to_pmids.db"
+2. Creates the final file called "curie_to_pmids.sqlite"
      - Contains mappings from canonicalized curies in the NodeSynonymizer to their list of associated articles (PMIDs)
      - The NodeSynonymizer is used to link curies to concept names (which were linked to PMIDs in step 1)
 Usage: python build_ngd_database.py <path to directory containing PubMed xml files> [--full]
