@@ -3,9 +3,12 @@ import sys
 import os
 import traceback
 import ast
+from typing import List, Dict, Tuple
 
 from neo4j import GraphDatabase
 import Expand.expand_utilities as eu
+from Expand.expand_utilities import DictKnowledgeGraph
+from response import Response
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
 from RTXConfiguration import RTXConfiguration
@@ -14,156 +17,157 @@ from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
 from swagger_server.models.node_attribute import NodeAttribute
 from swagger_server.models.edge_attribute import EdgeAttribute
+from swagger_server.models.query_graph import QueryGraph
+from swagger_server.models.q_node import QNode
+from swagger_server.models.q_edge import QEdge
 
 
 class KGQuerier:
 
-    def __init__(self, response_object, kp_to_use):
+    def __init__(self, response_object: Response, kp_to_use: str):
         self.response = response_object
         self.kp = "KG2" if kp_to_use == "ARAX/KG2" else "KG1"
-        self.query_graph = None
-        self.cypher_query = None
-        self.query_results = None
-        self.edge_to_nodes_map = dict()
-        self.final_kg = {'nodes': dict(), 'edges': dict()}
-        self.non_synonym_nodes = None
 
-    def answer_one_hop_query(self, query_graph, qnodes_using_curies_from_prior_step):
+    def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         """
         This function answers a one-hop (single-edge) query using either KG1 or KG2.
         :param query_graph: A Reasoner API standard query graph.
-        :param qnodes_using_curies_from_prior_step: Set of QNode IDs whose curie is now a list of curies found in a
-        prior expand step (only for Expand's purposes).
         :return: An (almost) Reasoner API standard knowledge graph containing all of the nodes and edges returned as
         results for the query. (Dictionary version, organized by QG IDs.)
         """
-        self.query_graph = query_graph
-        dsl_parameters = self.response.data['parameters']
+        log = self.response
+        enforce_directionality = self.response.data['parameters']['enforce_directionality']
+        continue_if_no_results = self.response.data['parameters']['continue_if_no_results']
         kp = self.kp
+        final_kg = DictKnowledgeGraph()
+        edge_to_nodes_map = dict()
 
-        curie_map = dict()
-        if dsl_parameters['use_synonyms']:
-            curie_map = eu.add_curie_synonyms_to_query_nodes(qnodes=self.query_graph.nodes,
-                                                             arax_kg=kp,
-                                                             log=self.response,
-                                                             qnodes_using_curies_from_prior_step=qnodes_using_curies_from_prior_step)
-            if not self.response.status == 'OK':
-                return self.final_kg, self.edge_to_nodes_map
+        # Verify this is a valid one-hop query graph
+        if len(query_graph.edges) != 1:
+            log.error(f"KGQuerier.answer_one_hop_query() was passed a query graph that is not one-hop: "
+                      f"{query_graph.to_dict()}", error_code="InvalidQuery")
+            return final_kg, edge_to_nodes_map
+        if len(query_graph.nodes) != 2:
+            log.error(f"KGQuerier.answer_one_hop_query() was passed a query graph with more than two nodes: "
+                      f"{query_graph.to_dict()}", error_code="InvalidQuery")
+            return final_kg, edge_to_nodes_map
+        qedge_id = query_graph.edges[0].id
 
-        self._convert_query_graph_to_cypher_query(dsl_parameters['enforce_directionality'])
-        if not self.response.status == 'OK':
-            return self.final_kg, self.edge_to_nodes_map
+        # Run the actual query and process results
+        cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, enforce_directionality, kp, log)
+        if log.status != 'OK':
+            return final_kg, edge_to_nodes_map
+        neo4j_results = self._answer_one_hop_query_using_neo4j(cypher_query, qedge_id, kp, continue_if_no_results, log)
+        if log.status != 'OK':
+            return final_kg, edge_to_nodes_map
+        final_kg, edge_to_nodes_map = self._load_answers_into_kg(neo4j_results, kp, query_graph, log)
+        if log.status != 'OK':
+            return final_kg, edge_to_nodes_map
 
-        self._answer_query_using_kg_neo4j(kp, dsl_parameters['continue_if_no_results'])
-        if not self.response.status == 'OK':
-            return self.final_kg, self.edge_to_nodes_map
+        return final_kg, edge_to_nodes_map
 
-        self._add_answers_to_kg(dsl_parameters['synonym_handling'], curie_map, kp, query_graph)
-        if not self.response.status == 'OK':
-            return self.final_kg, self.edge_to_nodes_map
+    def answer_single_node_query(self, qnode: QNode) -> DictKnowledgeGraph:
+        continue_if_no_results = self.response.data['parameters']['continue_if_no_results']
+        kp = self.kp
+        log = self.response
+        final_kg = DictKnowledgeGraph()
 
-        return self.final_kg, self.edge_to_nodes_map
+        # Build and run a cypher query to get this node/nodes
+        where_clause = f"{qnode.id}.id='{qnode.curie}'" if type(qnode.curie) is str else f"{qnode.id}.id in {qnode.curie}"
+        cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode)} WHERE {where_clause} RETURN {qnode.id}"
+        log.info(f"Sending cypher query for node {qnode.id} to {kp} neo4j")
+        results = self._run_cypher_query(cypher_query, kp, log)
 
-    def answer_single_node_query(self, qnode):
-        if not qnode.curie:
-            self.response.error(f"Cannot expand a single query node if it doesn't have a curie", error_code="InvalidQuery")
-        else:
-            # Gather synonyms as appropriate
-            use_synonyms = self.response.data['parameters'].get('use_synonyms')
-            synonym_handling = self.response.data['parameters'].get('synonym_handling')
-            curie_map = dict()
-            if use_synonyms:
-                curie_map = eu.add_curie_synonyms_to_query_nodes(qnodes=[qnode], arax_kg=self.kp, log=self.response)
-                if not self.response.status == 'OK':
-                    return self.final_kg
+        # Load the results into swagger object model and add to our answer knowledge graph
+        if not results:
+            if continue_if_no_results:
+                log.warning(f"No paths were found in {kp} satisfying this query graph")
+            else:
+                log.error(f"No paths were found in {kp} satisfying this query graph", error_code="NoResults")
+        for result in results:
+            neo4j_node = result.get(qnode.id)
+            swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, kp)
+            final_kg.add_node(swagger_node, qnode.id)
 
-            # Build and run a cypher query to get this node/nodes
-            where_clause = f"{qnode.id}.id='{qnode.curie}'" if type(qnode.curie) is str else f"{qnode.id}.id in {qnode.curie}"
-            cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode)} WHERE {where_clause} RETURN {qnode.id}"
-            results = self._run_cypher_query(cypher_query, self.kp)
+        return final_kg
 
-            # Process the results and add to our answer knowledge graph, handling synonyms as appropriate
-            for result in results:
-                neo4j_node = result.get(qnode.id)
-                swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, self.kp)
-                if synonym_handling == "map_back" and qnode.id in curie_map:
-                    if swagger_node.id in curie_map[qnode.id].keys():
-                        # Only add the original curie (discard synonym nodes)
-                        eu.add_node_to_kg(self.final_kg, swagger_node, qnode.id)
-                else:
-                    eu.add_node_to_kg(self.final_kg, swagger_node, qnode.id)
+    def _convert_one_hop_query_graph_to_cypher_query(self, query_graph: QueryGraph, enforce_directionality: bool,
+                                                     kp: str, log: Response) -> str:
+        log.debug(f"Generating cypher for edge {query_graph.edges[0].id} query graph")
+        try:
+            # Build the match clause
+            qedge = query_graph.edges[0]
+            source_qnode = eu.get_query_node(query_graph, qedge.source_id)
+            target_qnode = eu.get_query_node(query_graph, qedge.target_id)
+            qedge_cypher = self._get_cypher_for_query_edge(qedge, enforce_directionality)
+            source_qnode_cypher = self._get_cypher_for_query_node(source_qnode)
+            target_qnode_cypher = self._get_cypher_for_query_node(target_qnode)
+            match_clause = f"MATCH {source_qnode_cypher}{qedge_cypher}{target_qnode_cypher}"
 
-        return self.final_kg
+            # Build the where clause
+            where_fragments = []
+            for qnode in [source_qnode, target_qnode]:
+                if qnode.curie:
+                    if type(qnode.curie) is str:
+                        node_id_where_fragment = f"{qnode.id}.id='{qnode.curie}'"
+                    else:
+                        node_id_where_fragment = f"{qnode.id}.id in {qnode.curie}"
+                    where_fragments.append(node_id_where_fragment)
+                if qnode.type and isinstance(qnode.type, list):
+                    if "KG2" in kp:
+                        node_type_property = "category_label"
+                    else:
+                        node_type_property = "category"
+                    where_fragments.append(f"{qnode.id}.{node_type_property} in {qnode.type}")
+            if where_fragments:
+                where_clause = f"WHERE {' AND '.join(where_fragments)}"
+            else:
+                where_clause = ""
 
-    def _convert_query_graph_to_cypher_query(self, enforce_directionality):
-        if len(self.query_graph.edges) > 1:
-            self.response.error(f"KGQuerier requires a single-edge query graph", error_code="InvalidQuery")
-        else:
-            self.response.debug(f"Generating cypher for edge {self.query_graph.edges[0].id} query graph")
-            try:
-                # Build the match clause
-                edge = self.query_graph.edges[0]
-                source_node = eu.get_query_node(self.query_graph, edge.source_id)
-                target_node = eu.get_query_node(self.query_graph, edge.target_id)
-                edge_cypher = self._get_cypher_for_query_edge(edge, enforce_directionality)
-                source_node_cypher = self._get_cypher_for_query_node(source_node)
-                target_node_cypher = self._get_cypher_for_query_node(target_node)
-                match_clause = f"MATCH {source_node_cypher}{edge_cypher}{target_node_cypher}"
+            # Build the with clause
+            source_qnode_col_name = f"nodes_{source_qnode.id}"
+            target_qnode_col_name = f"nodes_{target_qnode.id}"
+            qedge_col_name = f"edges_{qedge.id}"
+            # This line grabs the edge's ID and a record of which of its nodes correspond to which qnode ID
+            extra_edge_properties = "{.*, " + f"id:ID({qedge.id}), {source_qnode.id}:{source_qnode.id}.id, {target_qnode.id}:{target_qnode.id}.id" + "}"
+            with_clause = f"WITH collect(distinct {source_qnode.id}) as {source_qnode_col_name}, " \
+                          f"collect(distinct {target_qnode.id}) as {target_qnode_col_name}, " \
+                          f"collect(distinct {qedge.id}{extra_edge_properties}) as {qedge_col_name}"
 
-                # Build the where clause
-                where_fragments = []
-                for node in [source_node, target_node]:
-                    if node.curie:
-                        if type(node.curie) is str:
-                            where_fragment = f"{node.id}.id='{node.curie}'"
-                        else:
-                            where_fragment = f"{node.id}.id in {node.curie}"
-                        where_fragments.append(where_fragment)
-                if where_fragments:
-                    where_clause = "WHERE "
-                    where_clause += " AND ".join(where_fragments)
-                else:
-                    where_clause = ""
+            # Build the return clause
+            return_clause = f"RETURN {source_qnode_col_name}, {target_qnode_col_name}, {qedge_col_name}"
 
-                # Build the with clause
-                source_node_col_name = f"nodes_{source_node.id}"
-                target_node_col_name = f"nodes_{target_node.id}"
-                edge_col_name = f"edges_{edge.id}"
-                extra_edge_properties = "{.*, " + f"id:ID({edge.id}), {source_node.id}:{source_node.id}.id, {target_node.id}:{target_node.id}.id" + "}"
-                with_clause = f"WITH collect(distinct {source_node.id}) as {source_node_col_name}, " \
-                              f"collect(distinct {target_node.id}) as {target_node_col_name}, " \
-                              f"collect(distinct {edge.id}{extra_edge_properties}) as {edge_col_name}"
+            cypher_query = f"{match_clause} {where_clause} {with_clause} {return_clause}"
+            return cypher_query
+        except Exception:
+            tb = traceback.format_exc()
+            error_type, error, _ = sys.exc_info()
+            log.error(f"Problem generating cypher for query. {tb}", error_code=error_type.__name__)
+            return ""
 
-                # Build the return clause
-                return_clause = f"RETURN {source_node_col_name}, {target_node_col_name}, {edge_col_name}"
-
-                self.cypher_query = f"{match_clause} {where_clause} {with_clause} {return_clause}"
-            except Exception:
-                tb = traceback.format_exc()
-                error_type, error, _ = sys.exc_info()
-                self.response.error(f"Problem generating cypher for query. {tb}", error_code=error_type.__name__)
-
-    def _answer_query_using_kg_neo4j(self, kp, continue_if_no_results):
-        self.response.info(f"Sending cypher query for edge {self.query_graph.edges[0].id} to {kp} neo4j")
-        self.query_results = self._run_cypher_query(self.cypher_query, kp)
-        if self.response.status == 'OK':
+    def _answer_one_hop_query_using_neo4j(self, cypher_query: str, qedge_id: str, kp: str, continue_if_no_results: bool,
+                                          log: Response) -> List[Dict[str, List[Dict[str, any]]]]:
+        log.info(f"Sending cypher query for edge {qedge_id} to {kp} neo4j")
+        results_from_neo4j = self._run_cypher_query(cypher_query, kp, log)
+        if log.status == 'OK':
             columns_with_lengths = dict()
-            for column in self.query_results[0]:
-                columns_with_lengths[column] = len(self.query_results[0].get(column))
+            for column in results_from_neo4j[0]:
+                columns_with_lengths[column] = len(results_from_neo4j[0].get(column))
             if any(length == 0 for length in columns_with_lengths.values()):
                 if continue_if_no_results:
-                    self.response.warning(f"No paths were found in {kp} satisfying this query graph")
+                    log.warning(f"No paths were found in {kp} satisfying this query graph")
                 else:
-                    self.response.error(f"No paths were found in {kp} satisfying this query graph", error_code="NoResults")
-            else:
-                num_results_string = ", ".join([f"{column.split('_')[1]}: {value}" for column, value in sorted(columns_with_lengths.items())])
-                self.response.info(f"Query for edge {self.query_graph.edges[0].id} returned results ({num_results_string})")
+                    log.error(f"No paths were found in {kp} satisfying this query graph", error_code="NoResults")
+        return results_from_neo4j
 
-    def _add_answers_to_kg(self, synonym_handling, curie_map, kp, query_graph):
-        self.response.debug(f"Processing query results for edge {self.query_graph.edges[0].id}")
-        node_uuid_to_curie_dict = self._build_node_uuid_to_curie_dict(self.query_results[0]) if kp == "KG1" else dict()
+    def _load_answers_into_kg(self, neo4j_results: List[Dict[str, List[Dict[str, any]]]], kp: str,  query_graph: QueryGraph,
+                              log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+        log.debug(f"Processing query results for edge {query_graph.edges[0].id}")
+        final_kg = DictKnowledgeGraph()
+        edge_to_nodes_map = dict()
+        node_uuid_to_curie_dict = self._build_node_uuid_to_curie_dict(neo4j_results[0]) if kp == "KG1" else dict()
 
-        results_table = self.query_results[0]
+        results_table = neo4j_results[0]
         column_names = [column_name for column_name in results_table]
         for column_name in column_names:
             # Load answer nodes into our knowledge graph
@@ -171,12 +175,7 @@ class KGQuerier:
                 column_qnode_id = column_name.replace("nodes_", "", 1)
                 for neo4j_node in results_table.get(column_name):
                     swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, kp)
-                    if synonym_handling == 'map_back' and column_qnode_id in curie_map:
-                        # Only keep the original curie; discard synonym nodes
-                        if swagger_node.id in curie_map[column_qnode_id].keys():
-                            eu.add_node_to_kg(self.final_kg, swagger_node, column_qnode_id)
-                    else:
-                        eu.add_node_to_kg(self.final_kg, swagger_node, column_qnode_id)
+                    final_kg.add_node(swagger_node, column_qnode_id)
             # Load answer edges into our knowledge graph
             elif column_name.startswith('edges'):  # Example column name: 'edges_e01'
                 column_qedge_id = column_name.replace("edges_", "", 1)
@@ -186,88 +185,24 @@ class KGQuerier:
                     else:
                         swagger_edge = self._convert_kg1_edge_to_swagger_edge(neo4j_edge, node_uuid_to_curie_dict)
 
-                    # Map edges back to original starting curies as needed
-                    qedge = query_graph.edges[0]
-                    qnode_id_1 = qedge.source_id
-                    qnode_id_2 = qedge.target_id
-                    node_1_curie = neo4j_edge.get(qnode_id_1)
-                    node_2_curie = neo4j_edge.get(qnode_id_2)
-                    node_1_preferred_curie = None
-                    node_2_preferred_curie = None
-                    if synonym_handling == "map_back":
-                        if qnode_id_1 in curie_map:
-                            node_1_preferred_curie = eu.get_original_curie(returned_curie=node_1_curie,
-                                                                           qnode_id=qnode_id_1,
-                                                                           curie_map=curie_map,
-                                                                           log=self.response)
-                            if self.response.status != 'OK':
-                                return
-                            if node_1_preferred_curie != node_1_curie:
-                                swagger_edge = self._remap_edge(swagger_edge, node_1_curie, node_1_preferred_curie)
-                        if qnode_id_2 in curie_map:
-                            node_2_preferred_curie = eu.get_original_curie(returned_curie=node_2_curie,
-                                                                           qnode_id=qnode_id_2,
-                                                                           curie_map=curie_map,
-                                                                           log=self.response)
-                            if self.response.status != 'OK':
-                                return
-                            if node_2_preferred_curie != node_2_curie:
-                                swagger_edge = self._remap_edge(swagger_edge, node_2_curie, node_2_preferred_curie)
-
-                        # Update the edge ID so it's accurate and distinct from equivalent non-mapped-back edges
-                        swagger_edge.id = self._create_edge_id(swagger_edge)
-
-                    # Record which of this (mapped or unmapped) edge's nodes correspond to which qnode_id
-                    if swagger_edge.id not in self.edge_to_nodes_map:
-                        self.edge_to_nodes_map[swagger_edge.id] = dict()
-                    self.edge_to_nodes_map[swagger_edge.id][qnode_id_1] = node_1_preferred_curie if node_1_preferred_curie else node_1_curie
-                    self.edge_to_nodes_map[swagger_edge.id][qnode_id_2] = node_2_preferred_curie if node_2_preferred_curie else node_2_curie
+                    # Record which of this edge's nodes correspond to which qnode_id
+                    if swagger_edge.id not in edge_to_nodes_map:
+                        edge_to_nodes_map[swagger_edge.id] = dict()
+                    for qnode in query_graph.nodes:
+                        edge_to_nodes_map[swagger_edge.id][qnode.id] = neo4j_edge.get(qnode.id)
 
                     # Finally add the current edge to our answer knowledge graph
-                    eu.add_edge_to_kg(self.final_kg, swagger_edge, column_qedge_id)
+                    final_kg.add_edge(swagger_edge, column_qedge_id)
 
-        self._do_final_post_processing(synonym_handling, curie_map, kp, self.edge_to_nodes_map)
+        return final_kg, edge_to_nodes_map
 
-    def _do_final_post_processing(self, synonym_handling, curie_map, kp, edge_to_nodes_map):
-        if self.final_kg['edges']:
-            # Make sure any original curie that synonyms were used for appears in the answer kg as appropriate
-            if synonym_handling == 'map_back':
-                for qnode_id, curie_mappings in curie_map.items():
-                    for original_curie in curie_mappings:
-                        if eu.edge_using_node_exists(original_curie, qnode_id, edge_to_nodes_map):
-                            if qnode_id not in self.final_kg['nodes'] or original_curie not in self.final_kg['nodes'][qnode_id]:
-                                # Get this node from neo4j and add it to the kg
-                                cypher = f"match (n) where n.id='{original_curie}' return n limit 1"
-                                original_node = self._run_cypher_query(cypher, kp)[0].get('n')
-                                swagger_node = self._convert_neo4j_node_to_swagger_node(original_node, kp)
-                                eu.add_node_to_kg(self.final_kg, swagger_node, qnode_id)
-
-            # Remove any self-edges
-            edges_to_remove = []
-            qedge_id = self.query_graph.edges[0]
-            for qedge_id, edges in self.final_kg['edges'].items():
-                for edge_key, edge in edges.items():
-                    if edge.source_id == edge.target_id:
-                        edges_to_remove.append(edge_key)
-            for edge_id in edges_to_remove:
-                self.final_kg['edges'][qedge_id].pop(edge_id)
-
-            # Remove any nodes that may have been orphaned as a result of removing self-edges
-            for qnode_id in [node.id for node in self.query_graph.nodes]:
-                node_ids_used_by_edges_for_this_qnode_id = set()
-                for edge in self.final_kg['edges'][qedge_id].values():
-                    node_ids_used_by_edges_for_this_qnode_id.add(self.edge_to_nodes_map[edge.id][qnode_id])
-                orphan_node_ids_for_this_qnode_id = set(self.final_kg['nodes'][qnode_id].keys()).difference(node_ids_used_by_edges_for_this_qnode_id)
-                for node_id in orphan_node_ids_for_this_qnode_id:
-                    self.final_kg['nodes'][qnode_id].pop(node_id)
-
-    def _convert_neo4j_node_to_swagger_node(self, neo4j_node, kp):
+    def _convert_neo4j_node_to_swagger_node(self, neo4j_node: Dict[str, any], kp: str) -> Node:
         if kp == "KG2":
             return self._convert_kg2_node_to_swagger_node(neo4j_node)
         else:
             return self._convert_kg1_node_to_swagger_node(neo4j_node)
 
-    def _convert_kg2_node_to_swagger_node(self, neo4j_node):
+    def _convert_kg2_node_to_swagger_node(self, neo4j_node: Dict[str, any]) -> Node:
         swagger_node = Node()
         swagger_node.id = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
@@ -292,7 +227,7 @@ class KGQuerier:
         return swagger_node
 
     @staticmethod
-    def _convert_kg1_node_to_swagger_node(neo4j_node):
+    def _convert_kg1_node_to_swagger_node(neo4j_node: Dict[str, any]) -> Node:
         swagger_node = Node()
         swagger_node.id = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
@@ -306,44 +241,44 @@ class KGQuerier:
 
         return swagger_node
 
-    def _convert_kg2_edge_to_swagger_edge(self, neo4j_edge):
+    def _convert_kg2_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any]) -> Edge:
         swagger_edge = Edge()
-        swagger_edge.type = neo4j_edge.get('simplified_edge_label')
-        swagger_edge.source_id = neo4j_edge.get('subject')
-        swagger_edge.target_id = neo4j_edge.get('object')
-        swagger_edge.id = self._create_edge_id(swagger_edge)
-        swagger_edge.relation = neo4j_edge.get('relation')
-        swagger_edge.publications = ast.literal_eval(neo4j_edge.get('publications'))
-        swagger_edge.provided_by = self._convert_strange_provided_by_field_to_list(neo4j_edge.get('provided_by'))  # Temporary hack until provided_by is fixed in KG2
-        swagger_edge.negated = ast.literal_eval(neo4j_edge.get('negated'))
+        swagger_edge.id = f"KG2:{neo4j_edge.get('id')}"
+        swagger_edge.type = neo4j_edge.get("simplified_edge_label")
+        swagger_edge.source_id = neo4j_edge.get("subject")
+        swagger_edge.target_id = neo4j_edge.get("object")
+        swagger_edge.relation = neo4j_edge.get("relation")
+        swagger_edge.publications = ast.literal_eval(neo4j_edge.get("publications"))
+        swagger_edge.provided_by = self._convert_strange_provided_by_field_to_list(neo4j_edge.get("provided_by"))  # Temporary hack until provided_by is fixed in KG2
+        swagger_edge.negated = ast.literal_eval(neo4j_edge.get("negated"))
         swagger_edge.is_defined_by = "ARAX/KG2"
         swagger_edge.edge_attributes = []
 
         # Add additional properties on KG2 edges as swagger EdgeAttribute objects
         # TODO: fix issues coming from strange characters in 'publications_info'! (EOF error)
-        additional_kg2_edge_properties = ['relation_curie', 'simplified_relation_curie', 'simplified_relation',
-                                          'edge_label']
+        additional_kg2_edge_properties = ["relation_curie", "simplified_relation_curie", "simplified_relation",
+                                          "edge_label"]
         edge_attributes = self._create_swagger_attributes("edge", additional_kg2_edge_properties, neo4j_edge)
         swagger_edge.edge_attributes += edge_attributes
 
         return swagger_edge
 
-    def _convert_kg1_edge_to_swagger_edge(self, neo4j_edge, node_uuid_to_curie_dict):
+    def _convert_kg1_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str]) -> Edge:
         swagger_edge = Edge()
-        swagger_edge.type = neo4j_edge.get('predicate')
-        swagger_edge.source_id = node_uuid_to_curie_dict[neo4j_edge.get('source_node_uuid')]
-        swagger_edge.target_id = node_uuid_to_curie_dict[neo4j_edge.get('target_node_uuid')]
-        swagger_edge.id = self._create_edge_id(swagger_edge)
-        swagger_edge.relation = neo4j_edge.get('relation')
-        swagger_edge.provided_by = neo4j_edge.get('provided_by')
+        swagger_edge.type = neo4j_edge.get("predicate")
+        swagger_edge.source_id = node_uuid_to_curie_dict[neo4j_edge.get("source_node_uuid")]
+        swagger_edge.target_id = node_uuid_to_curie_dict[neo4j_edge.get("target_node_uuid")]
+        swagger_edge.id = f"KG1:{neo4j_edge.get('id')}"
+        swagger_edge.relation = neo4j_edge.get("relation")
+        swagger_edge.provided_by = neo4j_edge.get("provided_by")
         swagger_edge.is_defined_by = "ARAX/KG1"
 
-        if neo4j_edge.get('probability'):
-            swagger_edge.edge_attributes = self._create_swagger_attributes("edge", ['probability'], neo4j_edge)
+        if neo4j_edge.get("probability"):
+            swagger_edge.edge_attributes = self._create_swagger_attributes("edge", ["probability"], neo4j_edge)
         return swagger_edge
 
     @staticmethod
-    def _create_swagger_attributes(object_type, property_names, neo4j_object):
+    def _create_swagger_attributes(object_type: str, property_names: List[str], neo4j_object: Dict[str, any]):
         new_attributes = []
         for property_name in property_names:
             property_value = neo4j_object.get(property_name)
@@ -367,7 +302,8 @@ class KGQuerier:
 
         return new_attributes
 
-    def _run_cypher_query(self, cypher_query, kp):
+    @staticmethod
+    def _run_cypher_query(cypher_query: str, kp: str, log: Response) -> List[Dict[str, any]]:
         rtxc = RTXConfiguration()
         if kp == "KG2":  # Flip into KG2 mode if that's our KP (rtx config is set to KG1 info by default)
             rtxc.live = "KG2"
@@ -379,13 +315,13 @@ class KGQuerier:
         except Exception:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
-            self.response.error(f"Encountered an error interacting with {kp} neo4j. {tb}", error_code=error_type.__name__)
+            log.error(f"Encountered an error interacting with {kp} neo4j. {tb}", error_code=error_type.__name__)
             return []
         else:
             return query_results
 
     @staticmethod
-    def _build_node_uuid_to_curie_dict(results_table):
+    def _build_node_uuid_to_curie_dict(results_table: Dict[str, List[Dict[str, any]]]) -> Dict[str, str]:
         node_uuid_to_curie_dict = dict()
         nodes_columns = [column_name for column_name in results_table if column_name.startswith('nodes')]
         for column in nodes_columns:
@@ -394,7 +330,7 @@ class KGQuerier:
         return node_uuid_to_curie_dict
 
     @staticmethod
-    def _remap_edge(edge, new_curie, old_curie):
+    def _remap_edge(edge: Edge, new_curie: str, old_curie: str) -> Edge:
         if edge.source_id == new_curie:
             edge.source_id = old_curie
         if edge.target_id == new_curie:
@@ -402,21 +338,21 @@ class KGQuerier:
         return edge
 
     @staticmethod
-    def _get_cypher_for_query_node(node):
-        node_type_string = f":{node.type}" if node.type else ""
-        final_node_string = f"({node.id}{node_type_string})"
-        return final_node_string
+    def _get_cypher_for_query_node(qnode: QNode) -> str:
+        qnode_type_cypher = f":{qnode.type}" if qnode.type and isinstance(qnode.type, str) else ""
+        full_qnode_cypher = f"({qnode.id}{qnode_type_cypher})"
+        return full_qnode_cypher
 
     @staticmethod
-    def _get_cypher_for_query_edge(edge, enforce_directionality):
-        edge_type_string = f":{edge.type}" if edge.type else ""
-        final_edge_string = f"-[{edge.id}{edge_type_string}]-"
+    def _get_cypher_for_query_edge(qedge: QEdge, enforce_directionality: bool) -> str:
+        qedge_type_cypher = f":{qedge.type}" if qedge.type else ""
+        full_qedge_cypher = f"-[{qedge.id}{qedge_type_cypher}]-"
         if enforce_directionality:
-            final_edge_string += ">"
-        return final_edge_string
+            full_qedge_cypher += ">"
+        return full_qedge_cypher
 
     @staticmethod
-    def _convert_strange_provided_by_field_to_list(provided_by_field):
+    def _convert_strange_provided_by_field_to_list(provided_by_field: List[str]) -> List[str]:
         # Currently looks like: ["['https://identifiers.org/umls/NDFRT'", "'https://skr3.nlm.nih.gov/SemMedDB']"]
         provided_by_list = []
         unwanted_chars = ["[", "]", "'"]
@@ -425,7 +361,3 @@ class KGQuerier:
                 item = item.replace(unwanted_char, "")
             provided_by_list.append(item)
         return provided_by_list
-
-    @staticmethod
-    def _create_edge_id(swagger_edge):
-        return f"{swagger_edge.source_id}--{swagger_edge.type}--{swagger_edge.target_id}"
