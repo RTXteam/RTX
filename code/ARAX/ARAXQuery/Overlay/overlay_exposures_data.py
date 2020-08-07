@@ -126,12 +126,13 @@ class OverlayExposuresData:
 
     @staticmethod
     def _convert_curie_to_icees_preferred_format(curie):
-        # TODO: figure out if we have something that corresponds to "rxcui:"?
         prefix = curie.split(':')[0]
         local_id = curie.split(':')[-1]
-        if prefix == "CUI" or prefix == "UMLS":
+        if prefix.upper() == "CUI" or prefix.upper() == "UMLS":
             return f"umlscui:{local_id}"
-        elif prefix == "CHEMBL.COMPOUND":
+        elif prefix.upper() == "CHEMBL.COMPOUND":
             return f"CHEMBL:{local_id}"
+        elif prefix.upper() == "RXNORM":
+            return f"rxcui:{local_id}"
         else:
             return curie
