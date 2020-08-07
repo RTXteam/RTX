@@ -606,7 +606,7 @@ The code is as follows:
 
         from Overlay.overlay_exposures_data import OverlayExposuresData
         oed = OverlayExposuresData(response, message, parameters)
-        response = oed.decorate()
+        response = oed.overlay_exposures_data()
         return response
 
 
