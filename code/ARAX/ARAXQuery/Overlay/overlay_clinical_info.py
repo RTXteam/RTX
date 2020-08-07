@@ -14,6 +14,8 @@ from swagger_server.models.q_edge import QEdge
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
 from QueryCOHD import QueryCOHD as COHD
 # FIXME:^ this should be pulled from a YAML file pointing to the parser
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../KnowledgeSources/COHD_local/scripts/")
+from COHDIndex import COHDIndex
 
 # TODO: boy howdy this can be modularized quite a bit. Since COHD and other clinical KP's will be adding edge attributes and/or edges, should pull out functions to easy their addition.
 
@@ -28,6 +30,7 @@ class OverlayClinicalInfo:
         self.who_knows_about_what = {'COHD': ['chemical_substance', 'phenotypic_feature', 'disease']}  # FIXME: replace this with information about the KP's, KS's, and their API's
         self.node_curie_to_type = dict()
         self.global_iter = 0
+        self.cohdIndex = COHDIndex()
 
     def decorate(self):
         """
@@ -111,37 +114,55 @@ class OverlayClinicalInfo:
                     KP_to_use = KP
             if KP_to_use == 'COHD':
                 # convert CURIE to OMOP identifiers
-                ##################################################
-                # TODO: This is the greedy aproach: go off of names and look for everything and anything that could be a match
-                #    i.e. use curies AND names, and then just take the best result from amongst that set. Slower, but more complete
-                source_OMOPs = set([str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(source_curie, 1)])
-                target_OMOPs = set([str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(target_curie, 1)])
-                for domain in ["Condition", "Drug", "Procedure"]:
-                    source_OMOPs.update([str(x['concept_id']) for x in COHD.find_concept_ids(source_name, domain=domain, dataset_id=3)])
-                    target_OMOPs.update([str(x['concept_id']) for x in COHD.find_concept_ids(target_name, domain=domain, dataset_id=3)])
+                # source_OMOPs = [str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(source_curie, 1)]
+                res = self.cohdIndex.get_concept_ids(source_curie)
+                if len(res) != 0:
+                    source_OMOPs = res
+                else:
+                    source_OMOPs = []
+                # target_OMOPs = [str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(target_curie, 1)]
+                res = self.cohdIndex.get_concept_ids(target_curie)
+                if len(res) != 0:
+                    target_OMOPs = res
+                else:
+                    target_OMOPs = []
+                # for domain in ["Condition", "Drug", "Procedure"]:
+                #     source_OMOPs.update([str(x['concept_id']) for x in COHD.find_concept_ids(source_name, domain=domain, dataset_id=3)])
+                #     target_OMOPs.update([str(x['concept_id']) for x in COHD.find_concept_ids(target_name, domain=domain, dataset_id=3)])
                 #################################################
                 # FIXME: this was the old way
                 # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
-                #if source_curie.split('.')[0] == 'CHEMBL':
-                #    source_OMOPs = [str(x['concept_id']) for x in
-                #                    COHD.find_concept_ids(source_name, domain="Drug", dataset_id=3)]
-                #if target_curie.split('.')[0] == 'CHEMBL':
-                #    target_OMOPs = [str(x['concept_id']) for x in
-                #                    COHD.find_concept_ids(target_name, domain="Drug", dataset_id=3)]
+                # if source_curie.split('.')[0] == 'CHEMBL':
+                #     source_OMOPs = [str(x['concept_id']) for x in
+                #                     COHD.find_concept_ids(source_name, domain="Drug", dataset_id=3)]
+                # if target_curie.split('.')[0] == 'CHEMBL':
+                #     target_OMOPs = [str(x['concept_id']) for x in
+                #                     COHD.find_concept_ids(target_name, domain="Drug", dataset_id=3)]
+
                 # uniquify everything
-                source_OMOPs = list(set(source_OMOPs))
-                target_OMOPs = list(set(target_OMOPs))
+                # source_OMOPs = list(set(source_OMOPs))
+                # target_OMOPs = list(set(target_OMOPs))
 
                 # Decide how to handle the response from the KP
                 if name == 'paired_concept_frequency':
                     # sum up all frequencies  #TODO check with COHD people to see if this is kosher
                     frequency = default
-                    for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
-                        freq_data = COHD.get_paired_concept_freq(omop1, omop2, 3)  # use the hierarchical dataset
-                        if freq_data and 'concept_frequency' in freq_data:
-                            frequency += freq_data['concept_frequency']
+                    # for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
+                    #     freq_data_list = self.cohdIndex.get_paired_concept_freq(omop1, omop2, 3) # use the hierarchical dataset
+                    #     if len(freq_data_list) != 0:
+                    #         freq_data = freq_data_list[0]
+                    #         temp_value = freq_data['concept_frequency']
+                    #         if temp_value > frequency:
+                    #             frequency = temp_value
+                    omop_pairs = [f"{omop1}_{omop2}" for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs)]
+                    if len(omop_pairs) != 0:
+                        res = self.cohdIndex.get_paired_concept_freq(concept_id_pair=omop_pairs, dataset_id=3)  # use the hierarchical dataset
+                        if len(res) != 0:
+                            maximum_concept_frequency = res[0]['concept_frequency']  # the result returned from get_paired_concept_freq was sorted by decreasing order
+                            frequency = maximum_concept_frequency
                     # decorate the edges
                     value = frequency
+
                 elif name == 'observed_expected_ratio':
                     # should probably take the largest obs/exp ratio  # TODO: check with COHD people to see if this is kosher
                     # FIXME: the ln_ratio can be negative, so I should probably account for this, but the object model doesn't like -np.inf
@@ -175,23 +196,37 @@ class OverlayClinicalInfo:
                     #                    value = temp_value
                     ###################################
 
-                    for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
-                        #print(f"{omop1},{omop2}")
-                        response = COHD.get_obs_exp_ratio(omop1, concept_id_2=omop2, domain="", dataset_id=3)  # use the hierarchical dataset
-                        # response is a list, since this function is overloaded and can omit concept_id_2, take the first element
-                        if response and 'ln_ratio' in response[0]:
-                            temp_val = response[0]['ln_ratio']
-                            if temp_val > value:
-                                value = temp_val
+                    # for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
+                    #     #print(f"{omop1},{omop2}")
+                    #     response = self.cohdIndex.get_obs_exp_ratio(omop1, concept_id_2=omop2, domain="", dataset_id=3)  # use the hierarchical dataset
+                    #     # response is a list, since this function is overloaded and can omit concept_id_2, take the first element
+                    #     if response and 'ln_ratio' in response[0]:
+                    #         temp_val = response[0]['ln_ratio']
+                    #         if temp_val > value:
+                    #             value = temp_val
+                    omop_pairs = [f"{omop1}_{omop2}" for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs)]
+                    if len(omop_pairs) != 0:
+                        res = self.cohdIndex.get_obs_exp_ratio(concept_id_pair=omop_pairs, domain="", dataset_id=3)  # use the hierarchical dataset
+                        if len(res) != 0:
+                            maximum_ln_ratio = res[0]['ln_ratio']  # the result returned from get_paired_concept_freq was sorted by decreasing order
+                            value = maximum_ln_ratio
+
                 elif name == 'chi_square':
                     value = float("inf")
-                    for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
-                        response = COHD.get_chi_square(omop1, concept_id_2=omop2, domain="", dataset_id=3)  # use the hierarchical dataset
-                        # response is a list, since this function is overloaded and can omit concept_id_2, take the first element
-                        if response and 'p-value' in response[0]:
-                            temp_val = response[0]['p-value']
-                            if temp_val < value:  # looking at p=values, so lower is better
-                                value = temp_val
+                    # for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs):
+                    #     response = self.cohdIndex.get_chi_square(omop1, concept_id_2=omop2, domain="", dataset_id=3)  # use the hierarchical dataset
+                    #     # response is a list, since this function is overloaded and can omit concept_id_2, take the first element
+                    #     if response and 'p-value' in response[0]:
+                    #         temp_val = response[0]['p-value']
+                    #         if temp_val < value:  # looking at p=values, so lower is better
+                    #             value = temp_val
+                    omop_pairs = [f"{omop1}_{omop2}" for (omop1, omop2) in itertools.product(source_OMOPs, target_OMOPs)]
+                    if len(omop_pairs) != 0:
+                        res = self.cohdIndex.get_chi_square(concept_id_pair=omop_pairs, domain="", dataset_id=3)  # use the hierarchical dataset
+                        if len(res) != 0:
+                            minimum_pvalue = res[0]['p-value']  # the result returned from get_paired_concept_freq was sorted by decreasing order
+                            value = minimum_pvalue
+
                 # create the edge attribute
                 edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the edge attribute # FIXME: unclear in object model if attribute type dictates value type, or if value always needs to be a string
                 return edge_attribute
@@ -217,12 +252,10 @@ class OverlayClinicalInfo:
             if hasattr(node, 'qnode_ids'):
                 if parameters['source_qnode_id'] in node.qnode_ids:
                     source_curies_to_decorate.add(node.id)
-                    curies_to_names[
-                        node.id] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
+                    curies_to_names[node.id] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
                 if parameters['target_qnode_id'] in node.qnode_ids:
                     target_curies_to_decorate.add(node.id)
-                    curies_to_names[
-                        node.id] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
+                    curies_to_names[node.id] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
         added_flag = False  # check to see if any edges where added
         # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
         for (source_curie, target_curie) in itertools.product(source_curies_to_decorate, target_curies_to_decorate):
