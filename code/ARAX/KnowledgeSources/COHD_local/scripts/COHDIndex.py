@@ -374,7 +374,7 @@ class COHDIndex:
         results_array = []
         cursor = self.connection.cursor()
         if concept_id_pair is None:
-            if concept_id_2 == "":
+            if concept_id_2 == 0:
                 cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_1};")
                 res = cursor.fetchall()
                 if len(res) == 0:
@@ -1074,7 +1074,7 @@ class COHDIndex:
         results_array = []
         cursor = self.connection.cursor()
         if concept_id_pair is None:
-            if concept_id_2 == "":
+            if concept_id_2 == 0:
                 if domain == "":
                     cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_1};")
                     res = cursor.fetchall()
@@ -1499,7 +1499,7 @@ class COHDIndex:
         results_array = []
         cursor = self.connection.cursor()
         if concept_id_pair is None:
-            if concept_id_2 == "":
+            if concept_id_2 == 0:
                 if domain == "":
                     cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_1};")
                     res = cursor.fetchall()
@@ -1903,7 +1903,7 @@ class COHDIndex:
         results_array = []
         cursor = self.connection.cursor()
         if concept_id_pair is None:
-            if concept_id_2 == "":
+            if concept_id_2 == 0:
                 if domain == "":
                     cursor.execute(f"select distinct s.concept_count,p.concept_id_1,p.concept_id_2,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_2 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_1={concept_id_1};")
                     res = cursor.fetchall()
