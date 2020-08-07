@@ -51,7 +51,7 @@ class ARAXExpander:
         params_dict['synonym_handling'] = {"how to handle synonyms in the answer - options are `map_back` (default; map edges using a synonym back to the original curie) or `add_all` (add synonym nodes as they are - no mapping/merging)"}
         params_dict['continue_if_no_results'] = {"whether to continue execution if no paths are found matching the query graph - options are `true` or `false` (optional, default is `false`)"}
         params_dict['COHD_method'] = {"what method used to expand - current options are `paired_concept_freq`, `observed_expected_ratio`, `chi_square` (optional, default is `observed_expected_ratio`)"}
-        params_dict['COHD_method_threshold'] = {"what threshod used for the specified COHD method (optional, default is that `paired_concept_freq` is , `observed_expected_ratio` is and `chi_square` is )"}
+        params_dict['COHD_method_threshold'] = {"what threshod used for the specified COHD method (optional, default is that `paired_concept_freq` is 0.000431, `ln(observed_expected_ratio)` is 4.44 and `chi_square pvalue` is 1.6311e-271)"}
         description_list.append(params_dict)
         return description_list
 
