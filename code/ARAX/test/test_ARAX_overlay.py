@@ -556,7 +556,7 @@ def test_overlay_exposures_data_virtual():
         "add_qnode(curie=CHEBI:8382, id=n0)",
         "add_qnode(curie=MONDO:0004766, id=n1)",
         "expand(kp=ARAX/KG2)",
-        "overlay(action=overlay_exposures_data, virtual_relation_label=E1)",
+        "overlay(action=overlay_exposures_data, virtual_relation_label=E1, source_qnode_id=n0, target_qnode_id=n1)",
         "resultify()",
         "return(message=true, store=false)",
     ]}}
