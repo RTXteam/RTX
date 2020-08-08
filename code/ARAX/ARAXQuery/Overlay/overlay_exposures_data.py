@@ -12,6 +12,7 @@ import yaml
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
 from swagger_server.models.q_edge import QEdge
+from swagger_server.models.edge import Edge
 from swagger_server.models.edge_attribute import EdgeAttribute
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
@@ -24,29 +25,26 @@ class OverlayExposuresData:
         self.message = message
         self.parameters = parameters
         self.icees_curies = self._load_icees_known_curies(self.response)
+        self.synonyms_dict = self._get_node_synonyms(self.message.knowledge_graph)
+        self.icees_attribute_name = "icees_p-value"
+        self.icees_edge_type = "has_icees_p-value_with"
 
     def overlay_exposures_data(self):
-        self._decorate_edges()
+        if self.parameters.get('virtual_relation_label'):
+            self._add_virtual_edges()
+        else:
+            self._decorate_edges()
 
     def _decorate_edges(self):
         knowledge_graph = self.message.knowledge_graph
         log = self.response
 
-        # Grab our synonyms in one up front batch
-        synonymizer = NodeSynonymizer()
-        node_ids = {node.id for node in knowledge_graph.nodes}
-        synonyms_dict = synonymizer.get_equivalent_nodes(node_ids, kg_name='KG2')
-
         # TODO: Adjust to query node pairs... (otherwise duplicating effort for parallel edges..)
         # Query ICEES for each edge in the knowledge graph that ICEES can provide data on (use known curies)
         num_edges_obtained_icees_data_for = 0
         for edge in knowledge_graph.edges:
-            source_synonyms = synonyms_dict.get(edge.source_id, [edge.source_id])
-            target_synonyms = synonyms_dict.get(edge.target_id, [edge.target_id])
-            formatted_source_synonyms = [self._convert_curie_to_icees_preferred_format(curie) for curie in source_synonyms]
-            formatted_target_synonyms = [self._convert_curie_to_icees_preferred_format(curie) for curie in target_synonyms]
-            accepted_source_synonyms = self.icees_curies.intersection(set(formatted_source_synonyms))
-            accepted_target_synonyms = self.icees_curies.intersection(set(formatted_target_synonyms))
+            accepted_source_synonyms = self._get_accepted_synonyms(edge.source_id)
+            accepted_target_synonyms = self._get_accepted_synonyms(edge.target_id)
             if not accepted_source_synonyms or not accepted_target_synonyms:
                 log.debug(f"Could not find curies that ICEES accepts for edge {edge.id} ({edge.source_id}--{edge.target_id})")
             else:
@@ -54,7 +52,7 @@ class OverlayExposuresData:
                 for source_curie_to_try, target_curie_to_try in itertools.product(accepted_source_synonyms, accepted_target_synonyms):
                     qedge = QEdge(id=f"icees_{edge.id}", source_id=source_curie_to_try, target_id=target_curie_to_try)
                     log.debug(f"Sending query to ICEES+ for {source_curie_to_try}--{target_curie_to_try}")
-                    returned_edge_attributes = self._get_exposures_data_for_edge(qedge, log)
+                    returned_edge_attributes = self._get_exposures_data(qedge, log)
                     if returned_edge_attributes:
                         num_edges_obtained_icees_data_for += 1
                         log.debug(f"Got data back from ICEES+")
@@ -62,7 +60,7 @@ class OverlayExposuresData:
                         if not edge.edge_attributes:
                             edge.edge_attributes = []
                         edge.edge_attributes += returned_edge_attributes
-                        # Don't worry about checking remaining combos if we got results TODO: use lowest p-value?
+                        # Don't worry about checking remaining synonym combos if we got results (TODO: change this?)
                         break
 
         if num_edges_obtained_icees_data_for:
@@ -73,17 +71,74 @@ class OverlayExposuresData:
         return self.response
 
     def _add_virtual_edges(self):
-        # Figure out 'relevant' node pairs
+        knowledge_graph = self.message.knowledge_graph
+        log = self.response
+        nodes_by_qg_id = self._get_nodes_by_qg_id(knowledge_graph)
+        virtual_relation_label = self.parameters.get("virtual_relation_label")
 
-        # Grab synonyms for those node pairs and convert to preferred format, filter down to those accepted by ICEES
+        # Figure out which combinations of qnode pairs to consider (depending on if they were provided as parameters)
+        source_qnode_id = self.parameters.get("source_qnode_id")
+        target_qnode_id = self.parameters.get("target_qnode_id")
+        if source_qnode_id and target_qnode_id:
+            qnode_pairs = [(source_qnode_id, target_qnode_id)]
+        else:
+            all_qnode_ids = {qnode.id for qnode in self.message.query_graph.nodes}
+            qnode_pairs = list(itertools.combinations(all_qnode_ids, 2))
+        log.debug(f"Pairs of qnodes to query are: {qnode_pairs}")
 
-        # Query all possible combinations of accepted node pairs, until we get an answer (?) (or take lowest p-value?)
+        # Query ICEES for each node pair
+        total_num_virtual_edges_added = 0
+        for qnode_pair in qnode_pairs:
+            num_virtual_edges_added_for_this_qnode_pair = 0
+            source_curie_set = {curie for curie in nodes_by_qg_id.get(qnode_pair[0]) if self._get_accepted_synonyms(curie)}
+            target_curie_set = {curie for curie in nodes_by_qg_id.get(qnode_pair[1]) if self._get_accepted_synonyms(curie)}
+            if not source_curie_set or not target_curie_set:
+                log.debug(f"Could not find any curies that ICEES accepts for qnode pair {qnode_pair[0]}--{qnode_pair[1]}")
+                continue
 
-        # Add a virtual edge between each node pair (not synonym - but actual, in the KG)
-        pass
+            for source_curie, target_curie in itertools.product(source_curie_set, target_curie_set):
+                accepted_source_synonyms = self._get_accepted_synonyms(source_curie)
+                accepted_target_synonyms = self._get_accepted_synonyms(target_curie)
+                # Query ICEES for each possible combination of accepted source/target synonyms
+                for source_synonym, target_synonym in itertools.product(accepted_source_synonyms, accepted_target_synonyms):
+                    qedge = QEdge(id=f"icees_{source_synonym}--{target_synonym}",
+                                  source_id=source_synonym,
+                                  target_id=target_synonym)
+                    log.debug(f"Sending query to ICEES+ for {source_synonym}--{target_synonym}")
+                    returned_edge_attributes = self._get_exposures_data(qedge, log)
+                    if returned_edge_attributes:
+                        log.debug(f"Got data back from ICEES+")
+                        # Add a new virtual edge with this data
+                        num_virtual_edges_added_for_this_qnode_pair += 1
+                        new_edge = Edge(id=f"ICEES:{source_curie}--{target_curie}",
+                                        type=self.icees_edge_type,
+                                        source_id=source_curie,
+                                        target_id=target_curie,
+                                        is_defined_by="ARAX",
+                                        provided_by="ICEES+",
+                                        relation=virtual_relation_label,
+                                        qedge_ids=[virtual_relation_label],
+                                        edge_attributes=returned_edge_attributes)
+                        knowledge_graph.edges.append(new_edge)
+                        # Don't worry about checking remaining synonym combos if we got results (TODO: change this?)
+                        break
 
-    @staticmethod
-    def _get_exposures_data_for_edge(qedge, log):
+            # Add a qedge to the query graph if we added virtual edges for this qnode pair
+            if num_virtual_edges_added_for_this_qnode_pair:
+                new_qedge = QEdge(id=virtual_relation_label,
+                                  source_id=qnode_pair[0],
+                                  target_id=qnode_pair[1],
+                                  type=self.icees_edge_type)
+                self.message.query_graph.edges.append(new_qedge)
+
+            total_num_virtual_edges_added += num_virtual_edges_added_for_this_qnode_pair
+
+        if total_num_virtual_edges_added:
+            log.info(f"Added {total_num_virtual_edges_added} virtual edges with exposures data from ICEES+")
+        else:
+            log.warning(f"Could not find ICEES+ exposures data for any node pairs in the KG")
+
+    def _get_exposures_data(self, qedge, log):
         # Note: ICEES doesn't quite accept ReasonerStdAPI, so we transform to what works
         qedges = [qedge.to_dict()]
         qnodes = [{"node_id": curie, "curie": curie} for curie in [qedge.source_id, qedge.target_id]]
@@ -105,11 +160,34 @@ class OverlayExposuresData:
                     if source_id and target_id:
                         # Skip any self-edges and reverse edges in ICEES response
                         if source_id == qedge.source_id and target_id == qedge.target_id:
-                            for edge_attribute in edge.get("edge_attributes", []):
-                                all_edge_attributes.append(EdgeAttribute(name="icees_p-value",  # TODO: better naming?
-                                                                         value=edge_attribute["p_value"],
+                            for returned_edge_attribute in edge.get("edge_attributes", []):
+                                all_edge_attributes.append(EdgeAttribute(name=self.icees_attribute_name,
+                                                                         value=returned_edge_attribute["p_value"],
                                                                          type="EDAM:data_1669"))
         return all_edge_attributes
+
+    def _get_accepted_synonyms(self, curie):
+        synonyms = self.synonyms_dict.get(curie, curie)
+        formatted_synonyms = {self._convert_curie_to_icees_preferred_format(curie) for curie in synonyms}
+        accepted_synonyms = self.icees_curies.intersection(formatted_synonyms)
+        return accepted_synonyms
+
+    @staticmethod
+    def _get_nodes_by_qg_id(knowledge_graph):
+        nodes_by_qg_id = dict()
+        for node in knowledge_graph.nodes:
+            for qnode_id in node.qnode_ids:
+                if qnode_id not in nodes_by_qg_id:
+                    nodes_by_qg_id[qnode_id] = dict()
+                nodes_by_qg_id[qnode_id][node.id] = node
+        return nodes_by_qg_id
+
+    @staticmethod
+    def _get_node_synonyms(knowledge_graph):
+        synonymizer = NodeSynonymizer()
+        node_ids = {node.id for node in knowledge_graph.nodes}
+        equivalent_curie_info = synonymizer.get_equivalent_nodes(node_ids, kg_name='KG2')
+        return {node_id: set(equivalent_curies_dict) for node_id, equivalent_curies_dict in equivalent_curie_info.items()}
 
     @staticmethod
     def _load_icees_known_curies(log):

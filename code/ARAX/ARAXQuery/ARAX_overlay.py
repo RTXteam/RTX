@@ -588,9 +588,17 @@ The code is as follows:
 
         # Make a list of the allowable parameters and their possible values
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
-            allowable_parameters = {'action': {'overlay_exposures_data'}}
+            allowable_parameters = {'action': {'overlay_exposures_data'},
+                                    'virtual_relation_label': {self.parameters.get('virtual_relation_label')},
+                                    'source_qnode_id': set([x.id for x in self.message.query_graph.nodes]),
+                                    'target_qnode_id': set([x.id for x in self.message.query_graph.nodes])
+                                    }
         else:
-            allowable_parameters = {'action': {'overlay_exposures_data'}}
+            allowable_parameters = {'action': {'overlay_exposures_data'},
+                                    'virtual_relation_label': {'any string label identifying the virtual edge label (optional, otherwise applied to all existing edges in the KG)'},
+                                    'source_qnode_id': {'a specific source query node id (optional, otherwise applied to all edges)'},
+                                    'target_qnode_id': {'a specific target query node id (optional, otherwise applied to all edges)'}
+                                    }
 
         # A little function to describe what this thing does
         if describe:
