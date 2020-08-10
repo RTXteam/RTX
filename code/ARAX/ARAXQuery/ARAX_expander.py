@@ -191,17 +191,18 @@ class ARAXExpander:
                 return answer_kg, edge_to_nodes_map
             log.debug(f"Query for edge {qedge.id} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
-            # Make sure our query has been fulfilled (unless we're continuing if no results)
-            if not continue_if_no_results:
-                if not eu.qg_is_fulfilled(edge_query_graph, answer_kg):
-                    log.error(f"Returned answer KG does not fulfill the query graph", error_code="UnfulfilledQGID")
-                    return answer_kg, edge_to_nodes_map
-
             # Do some post-processing (deduplicate nodes, remove self-edges..)
             if synonym_handling != 'add_all':
                 answer_kg, edge_to_nodes_map = self._deduplicate_nodes(answer_kg, edge_to_nodes_map, log)
             if eu.qg_is_fulfilled(edge_query_graph, answer_kg):
                 answer_kg = self._remove_self_edges(answer_kg, edge_to_nodes_map, qedge.id, edge_query_graph.nodes, log)
+
+            # Make sure our query has been fulfilled (unless we're continuing if no results)
+            if not eu.qg_is_fulfilled(edge_query_graph, answer_kg):
+                if continue_if_no_results:
+                    log.warning(f"No paths were found in {kp_to_use} satisfying this query graph")
+                else:
+                    log.error(f"No paths were found in {kp_to_use} satisfying this query graph", error_code="NoResults")
 
             return answer_kg, edge_to_nodes_map
 
@@ -498,6 +499,7 @@ class ARAXExpander:
             for node_id in orphan_node_ids_for_this_qnode_id:
                 kg.nodes_by_qg_id[qnode.id].pop(node_id)
 
+        log.debug(f"After removing self-edges, answer KG counts are: {eu.get_printable_counts_by_qg_id(kg)}")
         return kg
 
     @staticmethod
