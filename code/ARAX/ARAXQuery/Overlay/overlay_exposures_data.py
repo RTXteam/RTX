@@ -29,6 +29,7 @@ class OverlayExposuresData:
         self.synonyms_dict = self._get_node_synonyms(self.message.knowledge_graph)
         self.icees_attribute_name = "icees_p-value"
         self.icees_edge_type = "has_icees_p-value_with"
+        self.icees_knowledge_graph_overlay_url = "https://icees.renci.org:16340/knowledge_graph_overlay"
 
     def overlay_exposures_data(self):
         virtual_relation_label = self.parameters.get('virtual_relation_label')
@@ -52,8 +53,7 @@ class OverlayExposuresData:
         source_curie_set = {curie for curie in nodes_by_qg_id.get(source_qnode_id) if self._get_accepted_synonyms(curie)}
         target_curie_set = {curie for curie in nodes_by_qg_id.get(target_qnode_id) if self._get_accepted_synonyms(curie)}
         if not source_curie_set or not target_curie_set:
-            log.warning(f"Could not find curies that ICEES accepts for any {source_qnode_id}--{target_qnode_id} node pairs")
-            return
+            log.debug(f"Could not find curies that ICEES accepts for any {source_qnode_id}--{target_qnode_id} node pairs")
 
         # Query ICEES for each possible combination of accepted source/target synonyms
         num_virtual_eges_added = 0
@@ -65,9 +65,8 @@ class OverlayExposuresData:
                               source_id=source_synonym,
                               target_id=target_synonym)
                 log.debug(f"Sending query to ICEES+ for {source_synonym}--{target_synonym}")
-                returned_edge_attributes = self._get_exposures_data(qedge, log)
-                if returned_edge_attributes:
-                    log.debug(f"Got data back from ICEES+")
+                returned_edge_attribute = self._get_exposures_data(qedge, log)
+                if returned_edge_attribute:
                     # Add a new virtual edge with this data
                     num_virtual_eges_added += 1
                     new_edge = Edge(id=f"ICEES:{source_curie}--{target_curie}",
@@ -78,7 +77,7 @@ class OverlayExposuresData:
                                     provided_by="ICEES+",
                                     relation=virtual_relation_label,
                                     qedge_ids=[virtual_relation_label],
-                                    edge_attributes=returned_edge_attributes)
+                                    edge_attributes=[returned_edge_attribute])
                     knowledge_graph.edges.append(new_edge)
                     # Don't worry about checking remaining synonym combos if we got results (TODO: change this?)
                     break
@@ -114,14 +113,13 @@ class OverlayExposuresData:
                 for source_curie_to_try, target_curie_to_try in itertools.product(accepted_source_synonyms, accepted_target_synonyms):
                     qedge = QEdge(id=f"icees_{edge.id}", source_id=source_curie_to_try, target_id=target_curie_to_try)
                     log.debug(f"Sending query to ICEES+ for {source_curie_to_try}--{target_curie_to_try}")
-                    returned_edge_attributes = self._get_exposures_data(qedge, log)
-                    if returned_edge_attributes:
+                    returned_edge_attribute = self._get_exposures_data(qedge, log)
+                    if returned_edge_attribute:
                         num_edges_obtained_icees_data_for += 1
-                        log.debug(f"Got data back from ICEES+")
                         # Add the data as new EdgeAttributes on the current edge
                         if not edge.edge_attributes:
                             edge.edge_attributes = []
-                        edge.edge_attributes += returned_edge_attributes
+                        edge.edge_attributes.append(returned_edge_attribute)
                         # Don't worry about checking remaining synonym combos if we got results (TODO: change this?)
                         break
 
@@ -146,27 +144,29 @@ class OverlayExposuresData:
         qnodes = [{"node_id": curie, "curie": curie} for curie in [qedge.source_id, qedge.target_id]]
         icees_compatible_query = {"message": {"knowledge_graph": {"edges": qedges,
                                                                   "nodes": qnodes}}}
-        icees_response = requests.post("https://icees.renci.org:16340/knowledge_graph_overlay",
+        icees_response = requests.post(self.icees_knowledge_graph_overlay_url,
                                        json=icees_compatible_query,
                                        headers={'accept': 'application/json'},
                                        verify=False)
-        all_edge_attributes = []
         if icees_response.status_code != 200:
-            log.warning(f"ICEES+ API returned response of {icees_response.status_code}.")
+            log.warning(f"ICEES+ API returned response of {icees_response.status_code}")
         elif "return value" in icees_response.json():
             returned_knowledge_graph = icees_response.json()["return value"].get("knowledge_graph")
             if returned_knowledge_graph:
                 for edge in returned_knowledge_graph.get("edges", []):
                     source_id = edge.get("source_id")
                     target_id = edge.get("target_id")
-                    if source_id and target_id:
-                        # Skip any self-edges and reverse edges in ICEES response
-                        if source_id == qedge.source_id and target_id == qedge.target_id:
-                            for returned_edge_attribute in edge.get("edge_attributes", []):
-                                all_edge_attributes.append(EdgeAttribute(name=self.icees_attribute_name,
-                                                                         value=returned_edge_attribute["p_value"],
-                                                                         type="EDAM:data_1669"))
-        return all_edge_attributes
+                    # Skip any self-edges and reverse edges in ICEES response
+                    if source_id == qedge.source_id and target_id == qedge.target_id:
+                        p_values = [attribute["p_value"] for attribute in edge.get("edge_attributes", []) if attribute.get("p_value") is not None]
+                        log.debug(f"p-values returned from ICEES for this edge are: {p_values}")
+                        if p_values:
+                            average_p_value = sum(p_values) / len(p_values)
+                            log.debug(f"Average p-value is {average_p_value}")
+                            return EdgeAttribute(name=self.icees_attribute_name,
+                                                 value=average_p_value,
+                                                 type="EDAM:data_1669")
+        return None
 
     @staticmethod
     def _get_nodes_by_qg_id(knowledge_graph):
