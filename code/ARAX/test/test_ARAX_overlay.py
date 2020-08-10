@@ -553,8 +553,8 @@ def test_issue_892():
 
 def test_overlay_exposures_data_virtual():
     query = {"previous_message_processing_plan": {"processing_actions": [
-        "add_qnode(curie=CHEBI:8382, id=n0)",
-        "add_qnode(curie=MONDO:0004766, id=n1)",
+        "add_qnode(curie=PUBCHEM:5865, id=n0)",
+        "add_qnode(curie=MESH:D052638, id=n1)",
         "expand(kp=ARAX/KG2)",
         "overlay(action=overlay_exposures_data, virtual_relation_label=E1, source_qnode_id=n0, target_qnode_id=n1)",
         "resultify()",
@@ -567,12 +567,11 @@ def test_overlay_exposures_data_virtual():
 
 
 def test_overlay_exposures_data_attribute():
-    # NOTE: This example only produces ICEES edge attributes with p-values of 0; still need to find better example
     query = {"previous_message_processing_plan": {"processing_actions": [
         "add_qnode(curie=MONDO:0012607, id=n0)",
         "add_qnode(curie=MONDO:0010940, id=n1)",
         "add_qedge(source_id=n0, target_id=n1, id=e0)",
-        "expand(kp=ARAX/KG2, use_synonyms=false)",
+        "expand(kp=ARAX/KG2)",
         "overlay(action=overlay_exposures_data)",
         "resultify()",
         "return(message=true, store=false)",
