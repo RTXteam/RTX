@@ -175,22 +175,24 @@ function postQuery(qtype) {
 	statusdiv.innerHTML = "Posting graph.  Looking for answer...";
         statusdiv.appendChild(document.createElement("br"));
 
-	// ids need to start with a non-numeric character...
+	// ids need to start with a non-numeric character
 	for (var gnode of input_qg.nodes) {
-	    if (String(gnode.id).match(/^\d/)) {
+	    if (String(gnode.id).match(/^\d/))
 		gnode.id = "qg" + gnode.id;
+
+	    if (gnode.is_set) {
+		var list = gnode.name.split("LIST_")[1];
+		gnode.curie = get_list_as_curie_array(list);
 	    }
 	}
 	for (var gedge of input_qg.edges) {
-	    if (String(gedge.id).match(/^\d/)) {
+	    if (String(gedge.id).match(/^\d/))
 		gedge.id = "qg" + gedge.id;
-	    }
-	    if (String(gedge.source_id).match(/^\d/)) {
+	    if (String(gedge.source_id).match(/^\d/))
 		gedge.source_id = "qg" + gedge.source_id;
-	    }
-	    if (String(gedge.target_id).match(/^\d/)) {
+	    if (String(gedge.target_id).match(/^\d/))
 		gedge.target_id = "qg" + gedge.target_id;
-	    }
+
 	}
 
 	document.getElementById('qg_form').style.visibility = 'hidden';
@@ -200,6 +202,7 @@ function postQuery(qtype) {
 	//queryObj.bypass_cache = bypass_cache;
 	queryObj.max_results = 100;
 
+	document.getElementById("jsonText").value = JSON.stringify(input_qg,null,2);
 	clear_qg();
     }
 
@@ -354,7 +357,7 @@ function postQuery(qtype) {
 	    }
 	    else if (data["message_code"] == "OK") {
 		input_qg = { "edges": [], "nodes": [] };
-		render_message(data);
+		render_message(data,qtype == "DSL");
 	    }
 	    else if (data["log"]) {
 		process_log(data["log"]);
@@ -438,8 +441,7 @@ function sendQuestion(e) {
 			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<b>"+jsonObj2["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br><br><i>"+jsonObj2["code_description"]+"</i><br>";
 			sesame('openmax',statusdiv);
 
-			render_message(jsonObj2);
-
+			render_message(jsonObj2,true);
 		    }
 		    else if ( jsonObj.message ) { // STILL APPLIES TO 0.9??  TODO
 			document.getElementById("statusdiv").innerHTML += "<br><br>An error was encountered:<br><span class='error'>"+jsonObj.message+"</span>";
@@ -501,7 +503,7 @@ function retrieve_message() {
 	    statusdiv.innerHTML += "<br><i>"+jsonObj2["code_description"]+"</i><br>";
 	    sesame('openmax',statusdiv);
 
-	    render_message(jsonObj2);
+	    render_message(jsonObj2,true);
 	}
 	else if ( xhr.status == 404 ) {
 	    statusdiv.innerHTML += "<br>Message with id=<span class='error'>"+message_id+"</span> was not found.";
@@ -518,7 +520,7 @@ function retrieve_message() {
 }
 
 
-function render_message(respObj) {
+function render_message(respObj,dispjson) {
     var statusdiv = document.getElementById("statusdiv");
     statusdiv.appendChild(document.createTextNode("Rendering message..."));
     sesame('openmax',statusdiv);
@@ -562,8 +564,22 @@ function render_message(respObj) {
     }
 
 
-    if (respObj["query_graph"])
+    if (respObj["query_graph"]) {
+	if (dispjson) {
+	    for (var gnode of respObj["query_graph"].nodes)
+		for (var att in gnode)
+		    if (gnode.hasOwnProperty(att))
+			if (gnode[att] == null)
+			    delete gnode[att];
+            for (var gedge of respObj["query_graph"].edges)
+		for (var att in gedge)
+		    if (gedge.hasOwnProperty(att))
+			if (gedge[att] == null)
+			    delete gedge[att];
+	    document.getElementById("jsonText").value = JSON.stringify(respObj["query_graph"],null,2);
+	}
 	process_graph(respObj["query_graph"],999);
+    }
     else
 	cytodata[999] = 'dummy'; // this enables query graph editing
 
@@ -769,8 +785,10 @@ function add_to_summary(rowdata, num) {
 	var listlink = '';
 	if (cell == 'th') {
 	    columnlist[i] = [];
-	    listlink += "&nbsp;<a href='javascript:add_items_to_list(\"A\",\"" +i+ "\");' title='Add column items to list A'>&nbsp;[+A]&nbsp;</a>";
-	    listlink += "&nbsp;<a href='javascript:add_items_to_list(\"B\",\"" +i+ "\");' title='Add column items to list B'>&nbsp;[+B]&nbsp;</a>";
+	    if (rowdata[i] != 'confidence') {
+		listlink += "&nbsp;<a href='javascript:add_items_to_list(\"A\",\"" +i+ "\");' title='Add column items to list A'>&nbsp;[+A]&nbsp;</a>";
+		listlink += "&nbsp;<a href='javascript:add_items_to_list(\"B\",\"" +i+ "\");' title='Add column items to list B'>&nbsp;[+B]&nbsp;</a>";
+	    }
 	}
 	else {
 	    columnlist[i][rowdata[i]] = 1;
@@ -1129,9 +1147,8 @@ function show_attributes(html_div, atts) {
 
 	if (att.name != null) {
 	    snippet += "<b>" + att.name + "</b>";
-	    if (att.type != null) {
+	    if (att.type != null)
 		snippet += " (" + att.type + ")";
-	    }
 	    snippet += ": ";
 	}
 	if (att.url != null)
@@ -1141,6 +1158,7 @@ function show_attributes(html_div, atts) {
 	if (att.value != null) {
 	    if (att.name == "probability_drug_treats" ||
 		att.name == "observed_expected_ratio" ||
+		att.name == "paired_concept_frequency"||
 		att.name == "paired_concept_freq"     ||
 		att.name == "jaccard_index"           ||
 		att.name == "probability"             ||
@@ -1148,9 +1166,8 @@ function show_attributes(html_div, atts) {
 		att.name == "ngd") {
 		snippet += Number(att.value).toPrecision(3);
 	    }
-            else if (Array.isArray(att.value)) {
+            else if (Array.isArray(att.value))
 		for (var val of att.value) snippet += "<br>"+val;
-	    }
 	    else
 		snippet += att.value;
 
@@ -1274,24 +1291,85 @@ function edit_qg() {
 
 
 function display_query_graph_items() {
-    var qghtml = '';
+    var table = document.createElement("table");
+    table.className = 'sumtab';
+
+    var tr = document.createElement("tr");
+    for (var head of ["Id","Name","Item","Type","Action"] ) {
+	var th = document.createElement("th")
+	th.appendChild(document.createTextNode(head));
+	tr.appendChild(th);
+    }
+    table.appendChild(tr);
+
     var nitems = 0;
 
     input_qg.nodes.forEach(function(result, index) {
 	nitems++;
-        qghtml += "<tr class='hoverable'><td>"+result.id+"</td><td title='"+result.desc+"'>"+(result.name==null?"-":result.name)+"</td><td>"+(result.curie==null?"<i>(any node)</i>":result.curie)+"</td><td>"+(result.type==null?"<i>(any)</i>":result.type)+"</td><td><a href='javascript:remove_node_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
+
+	tr = document.createElement("tr");
+	tr.className = 'hoverable';
+
+	var td = document.createElement("td");
+        td.appendChild(document.createTextNode(result.id));
+        tr.appendChild(td);
+
+        td = document.createElement("td");
+        td.appendChild(document.createTextNode(result.name == null ? "-" : result.name));
+        tr.appendChild(td);
+
+	td = document.createElement("td");
+        td.appendChild(document.createTextNode(result.is_set ? "(multiple items)" : result.curie == null ? "(any node)" : result.curie));
+        tr.appendChild(td);
+
+	td = document.createElement("td");
+        td.appendChild(document.createTextNode(result.is_set ? "(set of nodes)" : result.type == null ? "(any)" : result.type));
+        tr.appendChild(td);
+
+        td = document.createElement("td");
+	var link = document.createElement("a");
+	link.href = 'javascript:remove_node_from_query_graph(\"'+result.id+'\")';
+	link.appendChild(document.createTextNode(" Remove "));
+	td.appendChild(link);
+        tr.appendChild(td);
+
+	table.appendChild(tr);
     });
 
     input_qg.edges.forEach(function(result, index) {
-        qghtml += "<tr class='hoverable'><td>"+result.id+"</td><td>-</td><td>"+result.source_id+"--"+result.target_id+"</td><td>"+(result.type==null?"<i>(any)</i>":result.type)+"</td><td><a href='javascript:remove_edge_from_query_graph(\"" + result.id +"\");'/> Remove </a></td></tr>";
+        tr = document.createElement("tr");
+	tr.className = 'hoverable';
+
+	var td = document.createElement("td");
+        td.appendChild(document.createTextNode(result.id));
+	tr.appendChild(td);
+
+	td = document.createElement("td");
+        td.appendChild(document.createTextNode("-"));
+        tr.appendChild(td);
+
+        td = document.createElement("td");
+	td.appendChild(document.createTextNode(result.source_id+"--"+result.target_id));
+	tr.appendChild(td);
+
+        td = document.createElement("td");
+	td.appendChild(document.createTextNode(result.type == null ? "(any)" : result.type));
+	tr.appendChild(td);
+
+        td = document.createElement("td");
+	var link = document.createElement("a");
+	link.href = 'javascript:remove_edge_from_query_graph(\"'+result.id+'\")';
+	link.appendChild(document.createTextNode(" Remove "));
+	td.appendChild(link);
+	tr.appendChild(td);
+
+        table.appendChild(tr);
     });
 
+    document.getElementById("qg_items").innerHTML = '';
+    if (nitems > 0)
+	document.getElementById("qg_items").appendChild(table);
 
-    if (nitems > 0) {
-	qghtml = "<table class='sumtab'><tr><th>Id</th><th>Name</th><th>Item</th><th>Type</th><th>Action</th></tr>" + qghtml + "</table>";
-    }
-
-    document.getElementById("qg_items").innerHTML = qghtml;
 }
 
 
@@ -1459,10 +1537,21 @@ function get_possible_edges() {
 }
 
 
-function add_nodetype_to_query_graph(nodetype) {
+function add_nodeclass_to_query_graph(nodetype) {
     document.getElementById("allnodetypes").value = '';
     document.getElementById("allnodetypes").blur();
 
+    if (nodetype.startsWith("LIST_"))
+	add_nodelist_to_query_graph(nodetype);
+    else
+	add_nodetype_to_query_graph(nodetype);
+
+    update_kg_edge_input();
+    display_query_graph_items();
+}
+
+
+function add_nodetype_to_query_graph(nodetype) {
     document.getElementById("statusdiv").innerHTML = "<p>Added a node of type <i>"+nodetype+"</i></p>";
     var qgid = get_qg_id();
 
@@ -1488,17 +1577,41 @@ function add_nodetype_to_query_graph(nodetype) {
 		  };
 
     input_qg.nodes.push(tmpdata);
-    update_kg_edge_input();
-    display_query_graph_items();
 }
+
+function add_nodelist_to_query_graph(nodetype) {
+    var list = nodetype.split("LIST_")[1];
+
+    document.getElementById("statusdiv").innerHTML = "<p>Added a set of nodes from list <i>"+list+"</i></p>";
+    var qgid = get_qg_id();
+
+    cyobj[999].add( {
+        "data" : { "id"   : qgid,
+		   "name" : nodetype,
+		   "type" : "set",
+		   "parentdivnum" : 999 }
+    } );
+    cyobj[999].reset();
+    cylayout(999,"breadthfirst");
+
+    var tmpdata = { "id"     : qgid,
+		    "is_set" : true,
+		    "name"   : nodetype,
+		    "desc"   : "Set of nodes from list " + list,
+		    "curie"  : null,
+		    "type"   : null
+		  };
+
+    input_qg.nodes.push(tmpdata);
+}
+
 
 function enter_node(ele) {
-    if (event.key === 'Enter') {
+    if (event.key === 'Enter')
 	add_node_to_query_graph();
-    }
 }
 
-function add_node_to_query_graph() {
+async function add_node_to_query_graph() {
     var thing = document.getElementById("newquerynode").value;
     document.getElementById("newquerynode").value = '';
 
@@ -1507,40 +1620,33 @@ function add_node_to_query_graph() {
 	return;
     }
 
-    var things = check_entity(thing);
-    document.getElementById("devdiv").innerHTML +=  "-- found " + things.num + " nodes in graph<br>";
+    var bestthing = await check_entity(thing);
+    document.getElementById("devdiv").innerHTML +=  "-- best node = " + JSON.stringify(bestthing,null,2) + "<br>";
 
-    if (things.num > 0) {
-	if (things.num == 1) {
-            document.getElementById("statusdiv").innerHTML = "<p>Found <b>" + things.num + "</b> node that matches <i>"+thing+"</i> in our knowledge graph.</p>";
-	}
-	else {
-            document.getElementById("statusdiv").innerHTML = "<p>Found <b>" + things.num + "</b> nodes that match <i>"+thing+"</i> in our knowledge graph.</p><span class='error'>Please choose node(s) of interest by removing unwanted ones from the query graph.</span>";
-	}
+    if (bestthing.found) {
+        document.getElementById("statusdiv").innerHTML = "<p>Found entity with name <b>"+bestthing.name+"</b> that best matches <i>"+thing+"</i> in our knowledge graph.</p>";
 	sesame('openmax',statusdiv);
-	for (var nn = 0; nn < things.num; nn++) {
-	    var qgid = get_qg_id();
 
-	    cyobj[999].add( {
-		"data" : { "id"   : qgid,
-			   "name" : thing,
-			   "type" : things[nn].type,
-			   "parentdivnum" : 999 },
-//		"position" : {x:100*(qgid-nn), y:50+nn*50}
-	    } );
+	var qgid = get_qg_id();
 
-	    var tmpdata = { "id"     : qgid,
-			    "is_set" : null,
-			    "name"   : thing,
-			    "desc"   : things[nn].desc,
-			    "curie"  : things[nn].curie,
-			    "type"   : things[nn].type
-			  };
+	cyobj[999].add( {
+	    "data" : { "id"   : qgid,
+		       "name" : bestthing.name,
+		       "type" : bestthing.type,
+		       "parentdivnum" : 999 },
+	    //		"position" : {x:100*(qgid-nn), y:50+nn*50}
+	} );
 
-	    document.getElementById("devdiv").innerHTML +=  "-- found a curie = " + things[nn].curie + "<br>";
+	var tmpdata = { "id"     : qgid,
+			"is_set" : null,
+			"name"   : bestthing.name,
+			"curie"  : bestthing.curie,
+			"type"   : bestthing.type
+		      };
 
-	    input_qg.nodes.push(tmpdata);
-	}
+	document.getElementById("devdiv").innerHTML +=  "-- found a curie = " + bestthing.curie + "<br>";
+	input_qg.nodes.push(tmpdata);
+
 	cyobj[999].reset();
 	cylayout(999,"breadthfirst");
 
@@ -1551,7 +1657,6 @@ function add_node_to_query_graph() {
         document.getElementById("statusdiv").innerHTML = "<p><span class='error'>" + thing + "</span> is not in our knowledge graph.</p>";
 	sesame('openmax',statusdiv);
     }
-
 }
 
 
@@ -1683,6 +1788,20 @@ function load_nodes_and_predicates() {
 	    opt.value = 'NONSPECIFIC';
 	    opt.innerHTML = "Unspecified/Non-specific";
 	    allnodes_node.appendChild(opt);
+
+            opt = document.createElement('option');
+	    opt.id = 'nodesetA';
+	    opt.value = 'LIST_A';
+	    opt.title = "Set of Nodes from List [A]";
+	    opt.innerHTML = "List [A]";
+	    allnodes_node.appendChild(opt);
+
+            opt = document.createElement('option');
+	    opt.id = 'nodesetB';
+	    opt.value = 'LIST_B';
+            opt.title = "Set of Nodes from List [B]";
+	    opt.innerHTML = "List [B]";
+	    allnodes_node.appendChild(opt);
 	})
         .catch(error => {
 	    var opt = document.createElement('option');
@@ -1743,17 +1862,24 @@ function display_list(listId) {
     for (var li in listItems[listId]) {
 	if (listItems[listId].hasOwnProperty(li)) { // && listItems[listId][li] == 1) {
 	    numitems++;
-	    listhtml += "<tr class='hoverable'><td>" + li + "</td><td id='list"+listId+"_entity_"+li+"'>";
+	    listhtml += "<tr class='hoverable'>";
 
 	    if (entities.hasOwnProperty(li)) {
-		listhtml += entities[li];
+		listhtml += "<td>"+entities[li].checkHTML+"</td>";
+		listhtml += "<td>"+entities[li].name+"</td>";
+		listhtml += "<td>"+entities[li].curie+"</td>";
+		listhtml += "<td>"+entities[li].type+"</td>";
 	    }
 	    else {
-		listhtml += "looking up...";
-		entities[li] = '--';
+		listhtml += "<td id='list"+listId+"_entitycheck_"+li+"'>--</td>";
+		listhtml += "<td id='list"+listId+"_entityname_"+li+"'>"+li+"</td>";
+		listhtml += "<td id='list"+listId+"_entitycurie_"+li+"'>looking up...</td>";
+		listhtml += "<td id='list"+listId+"_entitytype_"+li+"'>looking up...</td>";
+		entities[li] = {};
+		entities[li].checkHTML = '--';
 	    }
 
-	    listhtml += "</td><td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/> Remove </a></td></tr>";
+	    listhtml += "<td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/> Remove </a></td></tr>";
 	}
     }
 
@@ -1761,8 +1887,11 @@ function display_list(listId) {
     document.getElementById("numlistitems"+listId).innerHTML = numitems;
     document.getElementById("menunumlistitems"+listId).innerHTML = numitems;
 
+    if (document.getElementById("nodeset"+listId))
+	document.getElementById("nodeset"+listId).innerHTML = "List [" + listId + "] -- (" + numitems + " items)";
+
     if (numitems > 0) {
-	listhtml = "<table class='sumtab'><tr><th>Item</th><th>Entity Type(s)</th><th>Action</th></tr>" + listhtml + "</table><br><br>";
+	listhtml = "<table class='sumtab'><tr><th></th><th>Name</th><th>Item</th><th>Type</th><th>Action</th></tr>" + listhtml + "</table><br><br>";
 	document.getElementById("menunumlistitems"+listId).classList.add("numnew");
 	document.getElementById("menunumlistitems"+listId).classList.remove("numold");
     }
@@ -1797,19 +1926,29 @@ function get_list_as_string(listId) {
     return liststring;
 }
 
+
+function get_list_as_curie_array(listId) {
+    var carr = [];
+    for (var li in listItems[listId])
+	if (listItems[listId].hasOwnProperty(li) && listItems[listId][li] == 1)
+	    carr.push(entities[li].curie);
+
+    return carr;
+}
+
+
 function add_items_to_list(listId,indx) {
-    for (var nitem in columnlist[indx]) {
+    for (var nitem in columnlist[indx])
 	if (columnlist[indx][nitem]) {
+            nitem = nitem.replace(/['"]+/g,''); // remove all manner of quotes
 	    listItems[listId][nitem] = 1;
 	}
-    }
     display_list(listId);
 }
 
 function enter_item(ele, listId) {
-    if (event.key === 'Enter') {
+    if (event.key === 'Enter')
 	add_new_to_list(listId);
-    }
 }
 
 function add_new_to_list(listId) {
@@ -1825,6 +1964,7 @@ function add_new_to_list(listId) {
 	}
     }
     display_list(listId);
+    add_to_dev_info("ALL_ENTITIES:",entities);
 }
 
 function remove_item(listId,item) {
@@ -1840,68 +1980,95 @@ function delete_list(listId) {
 
 function check_entities() {
     for (let entity in entities) {
-	if (entities[entity] != '--') continue;
+	if (entities[entity].checkHTML != '--') continue;
 
 	fetch(baseAPI + "api/rtx/v1/entity/" + entity)
 	    .then(response => response.json())
 	    .then(data => {
                 add_to_dev_info("ENTITIES:"+entity,data);
 
-                var entstr = "";
-		var comma = "";
-		for (var ent of data) {
-		    entstr += comma + ent.type;
-		    document.getElementById("devdiv").innerHTML += comma + ent.type;
-		    comma = ", ";
+		if (data.curie) {
+		    entities[entity].curie = data.curie;
+		    entities[entity].name  = data.name;
+		    entities[entity].type  = data.type;
+		    //entities[entity].name = data.name.replace(/['"]/g, '&apos;');  // might need this?
+
+		    entities[entity].isvalid   = true;
+		    entities[entity].checkHTML = "<span class='explevel p9'>&check;</span>&nbsp;";
+		    document.getElementById("devdiv").innerHTML += data.type+"<br>";
+		}
+		else {
+		    entities[entity].curie = "<span class='error'>unknown</span>";
+		    entities[entity].name  = entity;
+		    entities[entity].type  = "<span class='error'>unknown</span>";
+		    entities[entity].isvalid   = false;
+		    entities[entity].checkHTML = "<span class='explevel p1'>&cross;</span>&nbsp;";
 		}
 
 		// in case of a 404...?? entstr = "<span class='explevel p0'>&quest;</span>&nbsp;n/a";
 
-		if (entstr)
-		    entities[entity] = "<span class='explevel p9'>&check;</span>&nbsp;" + entstr;
-		else
-		    entities[entity] = "<span class='explevel p1'>&cross;</span>&nbsp;<span class='error'>unknown</span>";
-
-		for (var elem of document.querySelectorAll("[id$='_entity_"+entity+"']")) {
-		    elem.innerHTML = entities[entity];
-		}
+		for (var elem of document.querySelectorAll("[id$='_entitycurie_"+entity+"']"))
+		    elem.innerHTML = entities[entity].curie;
+		for (var elem of document.querySelectorAll("[id$='_entityname_"+entity+"']"))
+		    elem.innerHTML = entities[entity].name;
+		for (var elem of document.querySelectorAll("[id$='_entitytype_"+entity+"']"))
+		    elem.innerHTML = entities[entity].type;
+		for (var elem of document.querySelectorAll("[id$='_entitycheck_"+entity+"']"))
+		    elem.innerHTML = entities[entity].checkHTML;
 
 	    })
 	    .catch(error => {
                 add_to_dev_info("ENTITIES(error):"+entity,error);
-		entities[entity] = "<span class='explevel p0'>&quest;</span>&nbsp;n/a";
-                for (var elem of document.querySelectorAll("[id$='_entity_"+entity+"']")) {
-		    elem.innerHTML = entities[entity];
-		}
+		entities[entity].name = "n/a";
+		entities[entity].type = "n/a";
+                entities[entity].isvalid   = false;
+		entities[entity].checkHTML = "<span class='explevel p0'>&quest;</span>&nbsp;";
+                for (var elem of document.querySelectorAll("[id$='_entityname_"+entity+"']"))
+		    elem.innerHTML = entities[entity].name;
+                for (var elem of document.querySelectorAll("[id$='_entitytype_"+entity+"']"))
+		    elem.innerHTML = entities[entity].typecheckHTML;
+                for (var elem of document.querySelectorAll("[id$='_entitycheck_"+entity+"']"))
+		    elem.innerHTML = entities[entity].checkHTML;
+
 	    });
     }
 }
 
-function check_entity(term) {
-    var ent = [];
-    ent.num = 0;
-    if (entities[term]) { ent.num = -1; return ent; }
 
-    var xhr = new XMLHttpRequest();
-    xhr.open("get",  baseAPI + "api/rtx/v1/entity/" + term, false);
-    xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-    xhr.onloadend = function() {
-        var xob = JSON.parse(xhr.responseText);
-        add_to_dev_info("ENTITY:"+term,xob);
+async function check_entity(term) {
+    var data;
+    var ent = {};
+    ent.found = false;
 
-        if ( xhr.status == 200 ) {
-            for (var i in xob) {
-		ent.num++;
-		ent[i] = [];
-		ent[i].curie = xob[i].curie;
-		ent[i].type  = xob[i].type;
-		ent[i].desc  = xob[i].description.replace(/['"]/g, '&apos;');
-                entities[xob[i].curie] = xob[i].name + "::" + xob[i].type;
-	    }
-	}
-    };
+    if (entities[term]) {
+        if (!entities[term].isvalid)
+            return ent; // contains found=false
 
-    xhr.send(null);
+	data = entities[term];
+    }
+    else {
+	var response = await fetch(baseAPI + "api/rtx/v1/entity/" + term);
+	data = await response.json();
+
+	add_to_dev_info("ENTITY:"+term,data);
+	if (!data.curie)
+	    return ent; // contains found=false
+    }
+
+    ent.found = true;
+    ent.curie = data.curie;
+    ent.name  = data.name;
+    ent.type  = data.type;
+
+    if (!entities[data.curie]) {
+	entities[data.curie] = {}; //xob[i].name + "::" + xob[i].type;
+	entities[data.curie].curie = data.curie;
+	entities[data.curie].name  = data.name;
+	entities[data.curie].type  = data.type;
+        entities[data.curie].isvalid   = true;
+	entities[data.curie].checkHTML = "<span class='explevel p9'>&check;</span>&nbsp;";
+    }
+
     return ent;
 }
 
