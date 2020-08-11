@@ -551,5 +551,36 @@ def test_issue_892():
     _virtual_tester(message, 'probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 10)
 
 
+def test_overlay_exposures_data_virtual():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "add_qnode(curie=PUBCHEM:5865, id=n0)",
+        "add_qnode(curie=MESH:D052638, id=n1)",
+        "expand(kp=ARAX/KG2)",
+        "overlay(action=overlay_exposures_data, virtual_relation_label=E1, source_qnode_id=n0, target_qnode_id=n1)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    print(response.show())
+    _virtual_tester(message, 'has_icees_p-value_with', 'E1', 'icees_p-value', 'EDAM:data_1669', 1)
+
+
+def test_overlay_exposures_data_attribute():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+        "add_qnode(curie=MONDO:0012607, id=n0)",
+        "add_qnode(curie=MONDO:0010940, id=n1)",
+        "add_qedge(source_id=n0, target_id=n1, id=e0)",
+        "expand(kp=ARAX/KG2)",
+        "overlay(action=overlay_exposures_data)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    print(response.show())
+    _attribute_tester(message, 'icees_p-value', 'EDAM:data_1669', 1)
+
+
 if __name__ == "__main__":
     pytest.main(['-v'])
