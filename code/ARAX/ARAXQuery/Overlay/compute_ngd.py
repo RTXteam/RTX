@@ -29,11 +29,11 @@ class ComputeNGD:
         self.NGD = NormGoogleDistance.NormGoogleDistance()  # should I be importing here, or before the class? Feel like Eric said avoid global vars...
 
         # Download the NGD sqlite database if it doesn't already exist # TODO: add versioning
-        ngd_dir = f"{os.path.dirname(os.path.abspath(__file__))}/ngd/"
-        ngd_database_name = "curie_to_pmids.sqlite"
-        if not os.path.exists(f"{ngd_dir}/{ngd_database_name}"):
+        ngd_db_name = "curie_to_pmids.sqlite"
+        ngd_db_path = f"{os.path.dirname(os.path.abspath(__file__))}/ngd/{ngd_db_name}"
+        if not os.path.exists(f"{ngd_db_path}"):
             self.response.debug(f"Downloading fast NGD database because no copy exists... (will take a few minutes)")
-            os.system(f"scp rtxconfig@arax.rtx.ai:/home/ubuntu/databases_for_download/{ngd_database_name} {ngd_dir}")
+            os.system(f"scp rtxconfig@arax.rtx.ai:/home/ubuntu/databases_for_download/{ngd_db_name} {ngd_db_path}")
 
     def compute_ngd(self):
         """
