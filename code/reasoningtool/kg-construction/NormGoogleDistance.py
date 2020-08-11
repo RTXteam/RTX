@@ -25,16 +25,14 @@ import sqlite3
 
 
 # requests_cache.install_cache('NGDCache')
-
-SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
-CURIE_TO_PMIDS_DB_FILE = os.path.join(SCRIPT_DIR, 'curie_to_pmids.sqlite')
 NGD_NORMALIZER = 2.2e+7 * 20   # from PubMed home page there are 27 million articles; avg 20 MeSH terms per article
 
 
 class NormGoogleDistance:
     def __init__(self):
-        if os.path.exists(CURIE_TO_PMIDS_DB_FILE) and os.path.isfile(CURIE_TO_PMIDS_DB_FILE):
-            self.curie_to_pmids_db = SqliteDict(f"{CURIE_TO_PMIDS_DB_FILE}")
+        ngd_db_file = f"{os.path.dirname(os.path.abspath(__file__))}/../../ARAX/ARAXQuery/Overlay/ngd/curie_to_pmids.sqlite"
+        if os.path.exists(ngd_db_file) and os.path.isfile(ngd_db_file):
+            self.curie_to_pmids_db = SqliteDict(f"{ngd_db_file}")
         else:
             self.curie_to_pmids_db = None
 
