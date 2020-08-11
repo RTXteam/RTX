@@ -25,7 +25,8 @@ class ARAXOverlay:
             'compute_jaccard',
             'add_node_pmids',
             'predict_drug_treats_disease',
-            'fisher_exact_test'
+            'fisher_exact_test',
+            'overlay_exposures_data'
         }
         self.report_stats = True
 
@@ -137,11 +138,11 @@ class ARAXOverlay:
         #### Store these final parameters for convenience
         response.data['parameters'] = parameters
         self.parameters = parameters
+        
+        response.debug(f"Applying Overlay to Message with parameters {parameters}")  # TODO: re-write this to be more specific about the actual action
 
         # convert the action string to a function call (so I don't need a ton of if statements
         getattr(self, '_' + self.__class__.__name__ + '__' + parameters['action'])()  # thank you https://stackoverflow.com/questions/11649848/call-methods-by-string
-
-        response.debug(f"Applying Overlay to Message with parameters {parameters}")  # TODO: re-write this to be more specific about the actual action
 
         # TODO: add_pubmed_ids
         # TODO: compute_confidence_scores
@@ -574,6 +575,52 @@ The code is as follows:
         FTEST = ComputeFTEST(self.response, self.message, self.parameters)
         response = FTEST.fisher_exact_test()
         return response
+
+    def __overlay_exposures_data(self, describe=False):
+        """
+        This function applies the action overlay_exposures_data. It adds ICEES+ p-values either as virtual edges (if
+        the virtual_relation_label, source_qnode_id, and target_qnode_id are provided) or as EdgeAttributes tacked onto
+        existing edges in the knowledge graph (applied to all edges).
+        return: Response
+        """
+        message = self.message
+        parameters = self.parameters
+        response = self.response
+
+        # Make a list of the allowable parameters and their possible values
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
+            allowable_parameters = {'action': {'overlay_exposures_data'},
+                                    'virtual_relation_label': {self.parameters.get('virtual_relation_label')},
+                                    'source_qnode_id': {x.id for x in self.message.query_graph.nodes},
+                                    'target_qnode_id': {x.id for x in self.message.query_graph.nodes}}
+        else:
+            allowable_parameters = {'action': {'overlay_exposures_data'},
+                                    'virtual_relation_label': {'any string label used to identify the virtual edge (optional, otherwise information is added as an attribute to all existing edges in the KG)'},
+                                    'source_qnode_id': {'a specific source query node id (optional, otherwise applied to all edges)'},
+                                    'target_qnode_id': {'a specific target query node id (optional, otherwise applied to all edges)'}}
+
+        # A little function to describe what this thing does
+        if describe:
+            brief_description = """
+`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
+This information is included in edge attributes with the name `icees_p-value`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
+
+This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
+            """
+            allowable_parameters['brief_description'] = brief_description
+            return allowable_parameters
+
+        # Make sure only allowable parameters and values have been passed
+        self.check_params(allowable_parameters)
+        if response.status != 'OK':
+            return response
+
+        from Overlay.overlay_exposures_data import OverlayExposuresData
+        oed = OverlayExposuresData(response, message, parameters)
+        response = oed.overlay_exposures_data()
+        return response
+
 
 ##########################################################################################
 def main():
