@@ -562,7 +562,7 @@ def test_overlay_exposures_data_virtual():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    print(response.show(level=response.DEBUG))
+    print(response.show())
     _virtual_tester(message, 'has_icees_p-value_with', 'E1', 'icees_p-value', 'EDAM:data_1669', 1)
 
 
@@ -578,7 +578,7 @@ def test_overlay_exposures_data_attribute():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    print(response.show(level=response.DEBUG))
+    print(response.show())
     _attribute_tester(message, 'icees_p-value', 'EDAM:data_1669', 1)
 
 
