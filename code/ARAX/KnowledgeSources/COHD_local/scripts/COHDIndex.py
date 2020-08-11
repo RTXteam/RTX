@@ -256,37 +256,14 @@ class COHDIndex:
 
         results_list = []
         cursor = self.connection.cursor()
-        # if isinstance(curie, str):
         cursor.execute(f"select distinct t1.preferred_curie, t1.concept_id from CURIE_TO_OMOP_MAPPING t1 inner join CONCEPTS t2 on t1.concept_id = t2.concept_id where preferred_curie='{preferred_curie}';")
-        # else:
-        #     if len(curie) == 1:
-        #         cursor.execute(f"select distinct t1.curie, t1.concept_id from CURIE_TO_OMOP_MAPPING t1 inner join CONCEPTS t2 on t1.concept_id = t2.concept_id where curie='{curie[0]}';")
-        #     else:
-        #         cursor.execute(f"select distinct t1.curie, t1.concept_id from CURIE_TO_OMOP_MAPPING t1 inner join CONCEPTS t2 on t1.concept_id = t2.concept_id where curie in {tuple(curie)};")
+
         res = cursor.fetchall()
         if len(res) == 0:
             return []
         else:
             results_list = [row[1] for row in res]
             return results_list
-            # for row in res:
-            #     curie_id, concept_id = row
-            #     if curie_id not in results_dict:
-            #         results_dict[curie_id] = {}
-            #         results_dict[curie_id]['OMOP concepts'] = set([concept_id])
-            #     else:
-            #         results_dict[curie_id]['OMOP concepts'].update([concept_id])
-
-        # if no OMOP concept id, add None to the dict
-        # if isinstance(curie, str):
-        #     if curie not in results_dict:
-        #         results_dict[curie] = {}
-        #         results_dict[curie]['OMOP concepts'] = None
-        # else:
-        #     for curie_id in curie:
-        #         if curie_id not in results_dict:
-        #             results_dict[curie_id] = {}
-        #             results_dict[curie_id]['OMOP concepts'] = None
 
     def get_curies_from_concept_id(self, concept_id):
         """Search for curie ids by OMOP concept ids.
@@ -316,12 +293,13 @@ class COHDIndex:
 
         return results_list
 
-    def get_paired_concept_freq(self, concept_id_1=None, concept_id_2=0, concept_id_pair=None, dataset_id=1):
+    def get_paired_concept_freq(self, concept_id_1=[], concept_id_2=[], concept_id_pair=None, dataset_id=1):
         """Retrieve observed clinical frequencies of a pair of concepts.
 
         Args:
-            concept_id_1 (optional, int): an OMOP id, e.g., 192855
-            concept_id_2 (optional, int): an OMOP id, e.g., 2008271
+            concept_id_1 (optional, list): an OMOP id, e.g., [192855] or [192855, 8507]
+            concept_id_2 (optional, list): an OMOP id, e.g., [2008271] or [2008271, 939259] If concept_id_2 is unspecified, then this method
+                will return all pairs of concepts with concept_id_1.
             concept_id_pair (optional, str or list): the concatenation of two concept ids, e.g. "192855_2008271" or ["192855_2008271","8507_939259"]
             dataset_id (optional, int): The dataset_id of the dataset to query. Default dataset is the 5-year dataset e.g. 1,2,3
 
@@ -339,12 +317,16 @@ class COHDIndex:
             ]
         """
         if concept_id_pair is None:
-            if not isinstance(concept_id_1, int):
-                print("Please provide either 'concept_id_1' or 'concept_id_pair'. The 'concept_id_1' in get_paired_concept_freq should be an int", flush=True)
+            if not isinstance(concept_id_1, list):
+                print("Please provide either 'concept_id_1' or 'concept_id_pair'. The 'concept_id_1' in get_paired_concept_freq should be a list", flush=True)
                 return []
+            else:
+                if len(concept_id_1) == 0:
+                    print("The 'concept_id_1' in get_paired_concept_freq should not be a empty list", flush=True)
+                    return []
 
-            if not isinstance(concept_id_2, int):
-                print("The 'concept_id_2' in get_paired_concept_freq should be an int", flush=True)
+            if not isinstance(concept_id_2, list):
+                print("The 'concept_id_2' in get_paired_concept_freq should be a list", flush=True)
                 return []
         else:
             if isinstance(concept_id_pair, str):
@@ -374,11 +356,17 @@ class COHDIndex:
         results_array = []
         cursor = self.connection.cursor()
         if concept_id_pair is None:
-            if concept_id_2 == 0:
-                cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_1};")
+            if len(concept_id_2) == 0:
+                if len(concept_id_1) == 1:
+                    cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_1[0]};")
+                else:
+                    cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(set(concept_id_1))};")
                 res = cursor.fetchall()
                 if len(res) == 0:
-                    cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1};")
+                    if len(concept_id_1) == 1:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1[0]};")
+                    else:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2 in {tuple(set(concept_id_1))};")
                     res = cursor.fetchall()
                     if len(res) == 0:
                         pass
@@ -399,7 +387,10 @@ class COHDIndex:
                                                     'concept_count': row[3],
                                                     'concept_frequency': row[4]})
 
-                    cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1};")
+                    if len(concept_id_1) == 1:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1[0]};")
+                    else:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2 in {tuple(set(concept_id_1))};")
                     res = cursor.fetchall()
                     if len(res) == 0:
                         pass
@@ -412,10 +403,24 @@ class COHDIndex:
                                                         'concept_count': row[3],
                                                         'concept_frequency': row[4]})
             else:
-                cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_1} and concept_id_2={concept_id_2};")
+                if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                    cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_1[0]} and concept_id_2={concept_id_2[0]};")
+                elif len(concept_id_1) == 1:
+                    cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_1[0]} and concept_id_2 in {tuple(set(concept_id_2))};")
+                elif len(concept_id_2) == 1:
+                    cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(set(concept_id_1))} and concept_id_2={concept_id_2[0]};")
+                else:
+                    cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(set(concept_id_1))} and concept_id_2 in {tuple(set(concept_id_2))};")
                 res = cursor.fetchall()
                 if len(res) == 0:
-                    cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1} and concept_id_1={concept_id_2};")
+                    if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1[0]} and concept_id_1={concept_id_2[0]};")
+                    elif len(concept_id_1) == 1:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1[0]} and concept_id_1 in {tuple(set(concept_id_2))};")
+                    elif len(concept_id_2) == 1:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2 in {tuple(set(concept_id_1))} and concept_id_1={concept_id_2[0]};")
+                    else:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2 in {tuple(set(concept_id_1))} and concept_id_1 in {tuple(set(concept_id_2))};")
                     res = cursor.fetchall()
                     if len(res) == 0:
                         pass
@@ -436,7 +441,14 @@ class COHDIndex:
                                                     'concept_count': row[3],
                                                     'concept_frequency': row[4]})
 
-                    cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1} and concept_id_1={concept_id_2};")
+                    if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1[0]} and concept_id_1={concept_id_2[0]};")
+                    elif len(concept_id_1) == 1:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1[0]} and concept_id_1 in {tuple(set(concept_id_2))};")
+                    elif len(concept_id_2) == 1:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2 in {tuple(set(concept_id_1))} and concept_id_1={concept_id_2[0]};")
+                    else:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2 in {tuple(set(concept_id_1))} and concept_id_1 in {tuple(set(concept_id_2))};")
                     res = cursor.fetchall()
                     if len(res) == 0:
                         pass
@@ -997,7 +1009,7 @@ class COHDIndex:
 
         return results_array
 
-    def get_obs_exp_ratio(self, concept_id_1=None, concept_id_2=0, concept_id_pair=None, domain="", dataset_id=1):
+    def get_obs_exp_ratio(self, concept_id_1=[], concept_id_2=[], concept_id_pair=None, domain="", dataset_id=1):
         """Return the natural logarithm of the ratio between the observed count and expected count.
 
             Expected count is calculated from the single concept frequencies and assuming independence between the concepts. Results are returned in descending order of ln_ratio.
@@ -1011,8 +1023,8 @@ class COHDIndex:
                     belongs to the specified domain
 
         Args:
-            concept_id_1 (optional, int): An OMOP concept id, e.g., 192855
-            concept_id_2 (optional, int): An OMOP concept id, e.g., 2008271. If concept_id_2 is unspecified, then this method
+            concept_id_1 (optional, list): an OMOP id, e.g., [192855] or [192855, 8507]
+            concept_id_2 (optional, list): an OMOP id, e.g., [2008271] or [2008271, 939259] If concept_id_2 is unspecified, then this method
                 will return all pairs of concepts with concept_id_1.
             concept_id_pair (optional, str or list): the concatenation of two concept ids, e.g. "192855_2008271" or ["192855_2008271","8507_939259"]
             domain (optional, str): An OMOP domain id, e.g., "Condition", "Drug", "Procedure", etc., to restrict the associated
@@ -1035,12 +1047,16 @@ class COHDIndex:
             ]
         """
         if concept_id_pair is None:
-            if not isinstance(concept_id_1, int):
-                print("Please provide either 'concept_id_1' or 'concept_id_pair'. The 'concept_id_1' in get_obs_exp_ratio should be an int", flush=True)
+            if not isinstance(concept_id_1, list):
+                print("Please provide either 'concept_id_1' or 'concept_id_pair'. The 'concept_id_1' in get_obs_exp_ratio should be a list", flush=True)
                 return []
+            else:
+                if len(concept_id_1) == 0:
+                    print("The 'concept_id_1' in get_obs_exp_ratio should not be a empty list", flush=True)
+                    return []
 
-            if not isinstance(concept_id_2, int):
-                print("The 'concept_id_2' in get_obs_exp_ratio should be an int", flush=True)
+            if not isinstance(concept_id_2, list):
+                print("The 'concept_id_2' in get_obs_exp_ratio should be a list", flush=True)
                 return []
         else:
             if isinstance(concept_id_pair, str):
@@ -1074,12 +1090,18 @@ class COHDIndex:
         results_array = []
         cursor = self.connection.cursor()
         if concept_id_pair is None:
-            if concept_id_2 == 0:
+            if len(concept_id_2) == 0:
                 if domain == "":
-                    cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_1};")
+                    if len(concept_id_1) == 1:
+                        cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_1[0]};")
+                    else:
+                        cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(set(concept_id_1))};")
                     res = cursor.fetchall()
                     if len(res) == 0:
-                        cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1};")
+                        if len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1[0]};")
+                        else:
+                            cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2 in {tuple(set(concept_id_1))};")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -1102,7 +1124,10 @@ class COHDIndex:
                                                         'ln_ratio': float(row[4]),
                                                         'observed_count': row[5]})
 
-                        cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1};")
+                        if len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1[0]};")
+                        else:
+                            cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2 in {tuple(set(concept_id_1))};")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -1116,10 +1141,16 @@ class COHDIndex:
                                                             'ln_ratio': float(row[4]),
                                                             'observed_count': row[5]})
                 else:
-                    cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  where p.concept_id_1={concept_id_1} and c.domain_id='{domain}';")
+                    if len(concept_id_1) == 1:
+                        cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  where p.concept_id_1={concept_id_1[0]} and c.domain_id='{domain}';")
+                    else:
+                        cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  where p.concept_id_1 in {tuple(set(concept_id_1))} and c.domain_id='{domain}';")
                     res = cursor.fetchall()
                     if len(res) == 0:
-                        cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_2={concept_id_1} and c.domain_id='{domain}';")
+                        if len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_2={concept_id_1[0]} and c.domain_id='{domain}';")
+                        else:
+                            cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_2 in {tuple(set(concept_id_1))} and c.domain_id='{domain}';")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -1142,7 +1173,10 @@ class COHDIndex:
                                                         'ln_ratio': float(row[4]),
                                                         'observed_count': row[5]})
 
-                        cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_2={concept_id_1} and c.domain_id='{domain}';")
+                        if len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_2={concept_id_1[0]} and c.domain_id='{domain}';")
+                        else:
+                            cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_2 in {tuple(set(concept_id_1))} and c.domain_id='{domain}';")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -1157,10 +1191,24 @@ class COHDIndex:
                                                             'observed_count': row[5]})
             else:
                 if domain == "":
-                    cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_1} and concept_id_2={concept_id_2};")
+                    if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                        cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_1[0]} and concept_id_2={concept_id_2[0]};")
+                    elif len(concept_id_1) == 1:
+                        cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_1[0]} and concept_id_2 in {tuple(set(concept_id_2))};")
+                    elif len(concept_id_2) == 1:
+                        cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(set(concept_id_1))} and concept_id_2={concept_id_2[0]};")
+                    else:
+                        cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(set(concept_id_1))} and concept_id_2 in {tuple(set(concept_id_2))};")
                     res = cursor.fetchall()
                     if len(res) == 0:
-                        cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_2} and concept_id_2={concept_id_1};")
+                        if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_2[0]} and concept_id_2={concept_id_1[0]};")
+                        elif len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(set(concept_id_2))} and concept_id_2={concept_id_1[0]};")
+                        elif len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_2[0]} and concept_id_2 in {tuple(set(concept_id_1))};")
+                        else:
+                            cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(set(concept_id_2))} and concept_id_2 in {tuple(set(concept_id_1))};")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -1183,7 +1231,14 @@ class COHDIndex:
                                                         'ln_ratio': float(row[4]),
                                                         'observed_count': row[5]})
 
-                        cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_2} and concept_id_2={concept_id_1};")
+                        if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_2[0]} and concept_id_2={concept_id_1[0]};")
+                        elif len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(set(concept_id_2))} and concept_id_2={concept_id_1[0]};")
+                        elif len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_2[0]} and concept_id_2 in {tuple(set(concept_id_1))};")
+                        else:
+                            cursor.execute(f"select distinct concept_id_1,concept_id_2,dataset_id,expected_count,ln_ratio,concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(set(concept_id_2))} and concept_id_2 in {tuple(set(concept_id_1))};")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -1198,10 +1253,24 @@ class COHDIndex:
                                                             'observed_count': row[5]})
 
                 else:
-                    cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  where p.concept_id_1={concept_id_1} and p.concept_id_2={concept_id_2} and c.domain_id='{domain}';")
+                    if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                        cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  where p.concept_id_1={concept_id_1[0]} and p.concept_id_2={concept_id_2[0]} and c.domain_id='{domain}';")
+                    elif len(concept_id_1) == 1:
+                        cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  where p.concept_id_1={concept_id_1[0]} and p.concept_id_2 in {tuple(set(concept_id_2))} and c.domain_id='{domain}';")
+                    elif len(concept_id_2) == 1:
+                        cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  where p.concept_id_1 in {tuple(set(concept_id_1))} and p.concept_id_2={concept_id_2[0]} and c.domain_id='{domain}';")
+                    else:
+                        cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  where p.concept_id_1 in {tuple(set(concept_id_1))} and p.concept_id_2 in {tuple(set(concept_id_2))} and c.domain_id='{domain}';")
                     res = cursor.fetchall()
                     if len(res) == 0:
-                        cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_1={concept_id_2} and p.concept_id_2={concept_id_1} and c.domain_id='{domain}';")
+                        if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_1={concept_id_2[0]} and p.concept_id_2={concept_id_1[0]} and c.domain_id='{domain}';")
+                        elif len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_1 in {tuple(set(concept_id_2))} and p.concept_id_2={concept_id_1[0]} and c.domain_id='{domain}';")
+                        elif len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_1={concept_id_2[0]} and p.concept_id_2 in {tuple(set(concept_id_1))} and c.domain_id='{domain}';")
+                        else:
+                            cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_1 in {tuple(set(concept_id_2))} and p.concept_id_2 in {tuple(set(concept_id_1))} and c.domain_id='{domain}';")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -1224,7 +1293,14 @@ class COHDIndex:
                                                         'ln_ratio': float(row[4]),
                                                         'observed_count': row[5]})
 
-                        cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_1={concept_id_2} and p.concept_id_2={concept_id_1} and c.domain_id='{domain}';")
+                        if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_1={concept_id_2[0]} and p.concept_id_2={concept_id_1[0]} and c.domain_id='{domain}';")
+                        elif len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_1 in {tuple(set(concept_id_2))} and p.concept_id_2={concept_id_1[0]} and c.domain_id='{domain}';")
+                        elif len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_1={concept_id_2[0]} and p.concept_id_2 in {tuple(set(concept_id_1))} and c.domain_id='{domain}';")
+                        else:
+                            cursor.execute(f"select distinct p.concept_id_1,p.concept_id_2,p.dataset_id,p.expected_count,p.ln_ratio,p.concept_count from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_1 in {tuple(set(concept_id_2))} and p.concept_id_2 in {tuple(set(concept_id_1))} and c.domain_id='{domain}';")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -1424,7 +1500,7 @@ class COHDIndex:
 
         return results_array
 
-    def get_chi_square(self, concept_id_1=None, concept_id_2=0, concept_id_pair=None, domain='', dataset_id=1):
+    def get_chi_square(self, concept_id_1=[], concept_id_2=[], concept_id_pair=None, domain='', dataset_id=1):
         """Return the chi-square statistic and p-value between pairs of concepts.
 
             Results are returned in descending order of the chi-square statistic.
@@ -1437,8 +1513,8 @@ class COHDIndex:
                 2. concept_id_1: Results for all pairs of concepts that include concept_id_1
                 3. concept_id_1 and domain: Results for all pairs of concepts including concept_id_1 and where concept_id_2 belongs to the specified domain
         Args:
-            concept_id_1 (optional, int): An OMOP concept id, e.g., 192855
-            concept_id_2 (optional, int): An OMOP concept id, e.g., 2008271. If this parameter is specified, then the chi-square
+            concept_id_1 (optional, list): an OMOP id, e.g., [192855] or [192855, 8507]
+            concept_id_2 (optional, list): an OMOP id, e.g., [2008271] or [2008271, 939259] If this parameter is specified, then the chi-square
                 between concept_id_1 and concept_id_2 is returned. If this parameter is not specified, then a list of
                 chi-squared results between concept_id_1 and other concepts is returned.
             concept_id_pair (optional, str or list): the concatenation of two concept ids, e.g. "192855_2008271" or ["192855_2008271","8507_939259"]
@@ -1460,12 +1536,16 @@ class COHDIndex:
             ]
         """
         if concept_id_pair is None:
-            if not isinstance(concept_id_1, int):
-                print("Please provide either 'concept_id_1' or 'concept_id_pair'. The 'concept_id_1' in get_chi_square should be an int", flush=True)
+            if not isinstance(concept_id_1, list):
+                print("Please provide either 'concept_id_1' or 'concept_id_pair'. The 'concept_id_1' in get_chi_square should be a list", flush=True)
                 return []
+            else:
+                if len(concept_id_1) == 0:
+                    print("The 'concept_id_1' in get_chi_square should not be a empty list", flush=True)
+                    return []
 
-            if not isinstance(concept_id_2, int):
-                print("The 'concept_id_2' in get_chi_square should be an int", flush=True)
+            if not isinstance(concept_id_2, list):
+                print("The 'concept_id_2' in get_chi_square should be a list", flush=True)
                 return []
         else:
             if isinstance(concept_id_pair, str):
@@ -1499,12 +1579,18 @@ class COHDIndex:
         results_array = []
         cursor = self.connection.cursor()
         if concept_id_pair is None:
-            if concept_id_2 == 0:
+            if len(concept_id_2) == 0:
                 if domain == "":
-                    cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_1};")
+                    if len(concept_id_1) == 1:
+                        cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_1[0]};")
+                    else:
+                        cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(set(concept_id_1))};")
                     res = cursor.fetchall()
                     if len(res) == 0:
-                        cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1};")
+                        if len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1[0]};")
+                        else:
+                            cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2 in {tuple(set(concept_id_1))};")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -1525,7 +1611,10 @@ class COHDIndex:
                                                         'dataset_id': row[3],
                                                         'p-value': row[4]})
 
-                        cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1};")
+                        if len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1[0]};")
+                        else:
+                            cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2 in {tuple(set(concept_id_1))};")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -1538,10 +1627,16 @@ class COHDIndex:
                                                             'dataset_id': row[3],
                                                             'p-value': row[4]})
                 else:
-                    cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  where p.concept_id_1={concept_id_1} and c.domain_id='{domain}';")
+                    if len(concept_id_1) == 1:
+                        cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  where p.concept_id_1={concept_id_1[0]} and c.domain_id='{domain}';")
+                    else:
+                        cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  where p.concept_id_1 in {tuple(set(concept_id_1))} and c.domain_id='{domain}';")
                     res = cursor.fetchall()
                     if len(res) == 0:
-                        cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_2={concept_id_1} and c.domain_id='{domain}';")
+                        if len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_2={concept_id_1[0]} and c.domain_id='{domain}';")
+                        else:
+                            cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_2 in {tuple(set(concept_id_1))} and c.domain_id='{domain}';")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -1563,7 +1658,10 @@ class COHDIndex:
                                                         'dataset_id': row[3],
                                                         'p-value': row[4]})
 
-                        cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_2={concept_id_1} and c.domain_id='{domain}';")
+                        if len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_2={concept_id_1[0]} and c.domain_id='{domain}';")
+                        else:
+                            cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_2 in {tuple(set(concept_id_1))} and c.domain_id='{domain}';")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -1578,10 +1676,24 @@ class COHDIndex:
 
             else:
                 if domain == "":
-                    cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_1} and concept_id_2={concept_id_2};")
+                    if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                        cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_1[0]} and concept_id_2={concept_id_2[0]};")
+                    elif len(concept_id_1) == 1:
+                        cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_1[0]} and concept_id_2 in {tuple(set(concept_id_2))};")
+                    elif len(concept_id_2) == 1:
+                        cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(set(concept_id_1))} and concept_id_2={concept_id_2[0]};")
+                    else:
+                        cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(set(concept_id_1))} and concept_id_2 in {tuple(set(concept_id_2))};")
                     res = cursor.fetchall()
                     if len(res) == 0:
-                        cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_2} and concept_id_2={concept_id_1};")
+                        if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_2[0]} and concept_id_2={concept_id_1[0]};")
+                        elif len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(set(concept_id_2))} and concept_id_2={concept_id_1[0]};")
+                        elif len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_2[0]} and concept_id_2 in {tuple(set(concept_id_1))};")
+                        else:
+                            cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(set(concept_id_2))} and concept_id_2 in {tuple(set(concept_id_1))};")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -1602,7 +1714,14 @@ class COHDIndex:
                                                         'dataset_id': row[3],
                                                         'p-value': row[4]})
 
-                        cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_2} and concept_id_2={concept_id_1};")
+                        if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_2[0]} and concept_id_2={concept_id_1[0]};")
+                        elif len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(set(concept_id_2))} and concept_id_2={concept_id_1[0]};")
+                        elif len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_2[0]} and concept_id_2 in {tuple(set(concept_id_1))};")
+                        else:
+                            cursor.execute(f"select distinct chi_square_t,concept_id_1,concept_id_2,dataset_id,chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(set(concept_id_2))} and concept_id_2 in {tuple(set(concept_id_1))};")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -1616,10 +1735,24 @@ class COHDIndex:
                                                             'p-value': row[4]})
 
                 else:
-                    cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  where p.concept_id_1={concept_id_1} and p.concept_id_2={concept_id_2} and c.domain_id='{domain}';")
+                    if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                        cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  where p.concept_id_1={concept_id_1[0]} and p.concept_id_2={concept_id_2[0]} and c.domain_id='{domain}';")
+                    elif len(concept_id_1) == 1:
+                        cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  where p.concept_id_1={concept_id_1[0]} and p.concept_id_2 in {tuple(set(concept_id_2))} and c.domain_id='{domain}';")
+                    elif len(concept_id_2) == 1:
+                        cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  where p.concept_id_1 in {tuple(set(concept_id_1))} and p.concept_id_2={concept_id_2[0]} and c.domain_id='{domain}';")
+                    else:
+                        cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_2 = c.concept_id  where p.concept_id_1 in {tuple(set(concept_id_1))} and p.concept_id_2 in {tuple(set(concept_id_2))} and c.domain_id='{domain}';")
                     res = cursor.fetchall()
                     if len(res) == 0:
-                        cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_1={concept_id_2} and p.concept_id_2={concept_id_1} and c.domain_id='{domain}';")
+                        if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_1={concept_id_2[0]} and p.concept_id_2={concept_id_1[0]} and c.domain_id='{domain}';")
+                        elif len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_1 in {tuple(set(concept_id_2))} and p.concept_id_2={concept_id_1[0]} and c.domain_id='{domain}';")
+                        elif len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_1={concept_id_2[0]} and p.concept_id_2 in {tuple(set(concept_id_1))} and c.domain_id='{domain}';")
+                        else:
+                            cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_1 in {tuple(set(concept_id_2))} and p.concept_id_2 in {tuple(set(concept_id_1))} and c.domain_id='{domain}';")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -1640,7 +1773,14 @@ class COHDIndex:
                                                         'dataset_id': row[3],
                                                         'p-value': row[4]})
 
-                        cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_1={concept_id_2} and p.concept_id_2={concept_id_1} and c.domain_id='{domain}';")
+                        if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_1={concept_id_2[0]} and p.concept_id_2={concept_id_1[0]} and c.domain_id='{domain}';")
+                        elif len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_1 in {tuple(set(concept_id_2))} and p.concept_id_2={concept_id_1[0]} and c.domain_id='{domain}';")
+                        elif len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_1={concept_id_2[0]} and p.concept_id_2 in {tuple(set(concept_id_1))} and c.domain_id='{domain}';")
+                        else:
+                            cursor.execute(f"select distinct p.chi_square_t,p.concept_id_1,p.concept_id_2,p.dataset_id,p.chi_square_p from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join CONCEPTS c on p.concept_id_1 = c.concept_id  where p.concept_id_1 in {tuple(set(concept_id_2))} and p.concept_id_2 in {tuple(set(concept_id_1))} and c.domain_id='{domain}';")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -1827,7 +1967,7 @@ class COHDIndex:
 
         return results_array
 
-    def get_relative_frequency(self, concept_id_1=None, concept_id_2=0, concept_id_pair=None, domain='', dataset_id=1):
+    def get_relative_frequency(self, concept_id_1=[], concept_id_2=[], concept_id_pair=None, domain='', dataset_id=1):
         """Relative frequency between pairs of concepts.
 
             Calculates the relative frequency (i.e., conditional probability) between pairs of concepts. Results are
@@ -1841,8 +1981,8 @@ class COHDIndex:
                     belongs to the specified domain
 
         Args:
-            concept_id_1 (optional, int): An OMOP concept id, e.g., 192855
-            concept_id_2 (optional, int): An OMOP concept id, e.g., 2008271. If concept_id_2 is unspecified, then this method
+            concept_id_1 (optional, list): an OMOP id, e.g., [192855] or [192855, 8507]
+            concept_id_2 (optional, list): an OMOP id, e.g., [2008271] or [2008271, 939259] If concept_id_2 is unspecified, then this method
                 will return all pairs of concepts with concept_id_1.
             concept_id_pair (optional, str or list): the concatenation of two concept ids, e.g. "192855_2008271" or ["192855_2008271","8507_939259"]
             domain (optional, str): An OMOP domain id, e.g., "Condition", "Drug", "Procedure", etc., to restrict the associated
@@ -1864,12 +2004,16 @@ class COHDIndex:
             ]
         """
         if concept_id_pair is None:
-            if not isinstance(concept_id_1, int):
-                print("Please provide either 'concept_id_1' or 'concept_id_pair'. The 'concept_id_1' in get_relative_frequency should be an int", flush=True)
+            if not isinstance(concept_id_1, list):
+                print("Please provide either 'concept_id_1' or 'concept_id_pair'. The 'concept_id_1' in get_relative_frequency should be a list", flush=True)
                 return []
+            else:
+                if len(concept_id_1) == 0:
+                    print("The 'concept_id_1' in get_relative_frequency should not be a empty list", flush=True)
+                    return []
 
-            if not isinstance(concept_id_2, int):
-                print("The 'concept_id_2' in get_relative_frequency should be an int", flush=True)
+            if not isinstance(concept_id_2, list):
+                print("The 'concept_id_2' in get_relative_frequency should be a list", flush=True)
                 return []
         else:
             if isinstance(concept_id_pair, str):
@@ -1903,12 +2047,18 @@ class COHDIndex:
         results_array = []
         cursor = self.connection.cursor()
         if concept_id_pair is None:
-            if concept_id_2 == 0:
+            if len(concept_id_2) == 0:
                 if domain == "":
-                    cursor.execute(f"select distinct s.concept_count,p.concept_id_1,p.concept_id_2,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_2 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_1={concept_id_1};")
+                    if len(concept_id_1) == 1:
+                        cursor.execute(f"select distinct s.concept_count,p.concept_id_1,p.concept_id_2,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_2 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_1={concept_id_1[0]};")
+                    else:
+                        cursor.execute(f"select distinct s.concept_count,p.concept_id_1,p.concept_id_2,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_2 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_1 in {tuple(set(concept_id_1))};")
                     res = cursor.fetchall()
                     if len(res) == 0:
-                        cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_2={concept_id_1};")
+                        if len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_2={concept_id_1[0]};")
+                        else:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_2 in {tuple(set(concept_id_1))};")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -1931,7 +2081,10 @@ class COHDIndex:
                                                         'dataset_id_row': row[4],
                                                         'relative_frequency': row[3] / row[0]})
 
-                        cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_2={concept_id_1};")
+                        if len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_2={concept_id_1[0]};")
+                        else:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_2 in {tuple(set(concept_id_1))};")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -1945,10 +2098,16 @@ class COHDIndex:
                                                             'dataset_id_row': row[4],
                                                             'relative_frequency': row[3] / row[0]})
                 else:
-                    cursor.execute(f"select distinct s.concept_count,p.concept_id_1,p.concept_id_2,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_2 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_2 = c.concept_id where p.concept_id_1={concept_id_1} and c.domain_id='{domain}';")
+                    if len(concept_id_1) == 1:
+                        cursor.execute(f"select distinct s.concept_count,p.concept_id_1,p.concept_id_2,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_2 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_2 = c.concept_id where p.concept_id_1={concept_id_1[0]} and c.domain_id='{domain}';")
+                    else:
+                        cursor.execute(f"select distinct s.concept_count,p.concept_id_1,p.concept_id_2,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_2 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_2 = c.concept_id where p.concept_id_1 in {tuple(set(concept_id_1))} and c.domain_id='{domain}';")
                     res = cursor.fetchall()
                     if len(res) == 0:
-                        cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_1 = c.concept_id where p.concept_id_2={concept_id_1} and c.domain_id='{domain}';")
+                        if len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_1 = c.concept_id where p.concept_id_2={concept_id_1[0]} and c.domain_id='{domain}';")
+                        else:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_1 = c.concept_id where p.concept_id_2 in {tuple(set(concept_id_1))} and c.domain_id='{domain}';")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -1971,7 +2130,10 @@ class COHDIndex:
                                                         'dataset_id_row': row[4],
                                                         'relative_frequency': row[3] / row[0]})
 
-                        cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_1 = c.concept_id where p.concept_id_2={concept_id_1} and c.domain_id='{domain}';")
+                        if len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_1 = c.concept_id where p.concept_id_2={concept_id_1[0]} and c.domain_id='{domain}';")
+                        else:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_1 = c.concept_id where p.concept_id_2 in {tuple(set(concept_id_1))} and c.domain_id='{domain}';")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -1986,10 +2148,24 @@ class COHDIndex:
                                                             'relative_frequency': row[3] / row[0]})
             else:
                 if domain == "":
-                    cursor.execute(f"select distinct s.concept_count,p.concept_id_1,p.concept_id_2,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_2 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_1={concept_id_1} and p.concept_id_2={concept_id_2};")
+                    if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                        cursor.execute(f"select distinct s.concept_count,p.concept_id_1,p.concept_id_2,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_2 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_1={concept_id_1[0]} and p.concept_id_2={concept_id_2[0]};")
+                    elif len(concept_id_1) == 1:
+                        cursor.execute(f"select distinct s.concept_count,p.concept_id_1,p.concept_id_2,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_2 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_1={concept_id_1[0]} and p.concept_id_2 in {tuple(set(concept_id_2))};")
+                    elif len(concept_id_2) == 1:
+                        cursor.execute(f"select distinct s.concept_count,p.concept_id_1,p.concept_id_2,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_2 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_1 in {tuple(set(concept_id_1))} and p.concept_id_2={concept_id_2[0]};")
+                    else:
+                        cursor.execute(f"select distinct s.concept_count,p.concept_id_1,p.concept_id_2,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_2 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_1 in {tuple(set(concept_id_1))} and p.concept_id_2 in {tuple(set(concept_id_2))};")
                     res = cursor.fetchall()
                     if len(res) == 0:
-                        cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_1={concept_id_2} and p.concept_id_2={concept_id_1};")
+                        if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_1={concept_id_2[0]} and p.concept_id_2={concept_id_1[0]};")
+                        elif len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_1 in {tuple(set(concept_id_2))} and p.concept_id_2={concept_id_1[0]};")
+                        elif len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_1={concept_id_2[0]} and p.concept_id_2 in {tuple(set(concept_id_1))};")
+                        else:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_1 in {tuple(set(concept_id_2))} and p.concept_id_2 in {tuple(set(concept_id_1))};")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -2012,7 +2188,14 @@ class COHDIndex:
                                                         'dataset_id_row': row[4],
                                                         'relative_frequency': row[3] / row[0]})
 
-                        cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_1={concept_id_2} and p.concept_id_2={concept_id_1};")
+                        if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_1={concept_id_2[0]} and p.concept_id_2={concept_id_1[0]};")
+                        elif len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_1 in {tuple(set(concept_id_2))} and p.concept_id_2={concept_id_1[0]};")
+                        elif len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_1={concept_id_2[0]} and p.concept_id_2 in {tuple(set(concept_id_1))};")
+                        else:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id where p.concept_id_1 in {tuple(set(concept_id_2))} and p.concept_id_2 in {tuple(set(concept_id_1))};")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -2027,10 +2210,24 @@ class COHDIndex:
                                                             'relative_frequency': row[3] / row[0]})
 
                 else:
-                    cursor.execute(f"select distinct s.concept_count,p.concept_id_1,p.concept_id_2,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_2 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_2 = c.concept_id where p.concept_id_1={concept_id_1} and p.concept_id_2={concept_id_2} and c.domain_id='{domain}';")
+                    if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                        cursor.execute(f"select distinct s.concept_count,p.concept_id_1,p.concept_id_2,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_2 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_2 = c.concept_id where p.concept_id_1={concept_id_1[0]} and p.concept_id_2={concept_id_2[0]} and c.domain_id='{domain}';")
+                    elif len(concept_id_1) == 1:
+                        cursor.execute(f"select distinct s.concept_count,p.concept_id_1,p.concept_id_2,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_2 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_2 = c.concept_id where p.concept_id_1={concept_id_1[0]} and p.concept_id_2 in {tuple(set(concept_id_2))} and c.domain_id='{domain}';")
+                    elif len(concept_id_2) == 1:
+                        cursor.execute(f"select distinct s.concept_count,p.concept_id_1,p.concept_id_2,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_2 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_2 = c.concept_id where p.concept_id_1 in {tuple(set(concept_id_1))} and p.concept_id_2={concept_id_2[0]} and c.domain_id='{domain}';")
+                    else:
+                        cursor.execute(f"select distinct s.concept_count,p.concept_id_1,p.concept_id_2,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_2 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_2 = c.concept_id where p.concept_id_1 in {tuple(set(concept_id_1))} and p.concept_id_2 in {tuple(set(concept_id_2))} and c.domain_id='{domain}';")
                     res = cursor.fetchall()
                     if len(res) == 0:
-                        cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_1 = c.concept_id where p.concept_id_2={concept_id_1} and p.concept_id_1={concept_id_2} and c.domain_id='{domain}';")
+                        if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_1 = c.concept_id where p.concept_id_2={concept_id_1[0]} and p.concept_id_1={concept_id_2[0]} and c.domain_id='{domain}';")
+                        elif len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_1 = c.concept_id where p.concept_id_2={concept_id_1[0]} and p.concept_id_1 in {tuple(set(concept_id_2))} and c.domain_id='{domain}';")
+                        elif len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_1 = c.concept_id where p.concept_id_2 in {tuple(set(concept_id_1))} and p.concept_id_1={concept_id_2[0]} and c.domain_id='{domain}';")
+                        else:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_1 = c.concept_id where p.concept_id_2 in {tuple(set(concept_id_1))} and p.concept_id_1 in {tuple(set(concept_id_2))} and c.domain_id='{domain}';")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -2053,7 +2250,14 @@ class COHDIndex:
                                                         'dataset_id_row': row[4],
                                                         'relative_frequency': row[3] / row[0]})
 
-                        cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_1 = c.concept_id where p.concept_id_2={concept_id_1} and p.concept_id_1={concept_id_2} and c.domain_id='{domain}';")
+                        if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_1 = c.concept_id where p.concept_id_2={concept_id_1[0]} and p.concept_id_1={concept_id_2[0]} and c.domain_id='{domain}';")
+                        elif len(concept_id_1) == 1:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_1 = c.concept_id where p.concept_id_2={concept_id_1[0]} and p.concept_id_1 in {tuple(set(concept_id_2))} and c.domain_id='{domain}';")
+                        elif len(concept_id_2) == 1:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_1 = c.concept_id where p.concept_id_2 in {tuple(set(concept_id_1))} and p.concept_id_1={concept_id_2[0]} and c.domain_id='{domain}';")
+                        else:
+                            cursor.execute(f"select distinct s.concept_count,p.concept_id_2,p.concept_id_1,p.concept_count,p.dataset_id from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS p inner join SINGLE_CONCEPT_COUNTS s on p.concept_id_1 = s.concept_id and p.dataset_id = s.dataset_id inner join CONCEPTS c on p.concept_id_1 = c.concept_id where p.concept_id_2 in {tuple(set(concept_id_1))} and p.concept_id_1 in {tuple(set(concept_id_2))} and c.domain_id='{domain}';")
                         res = cursor.fetchall()
                         if len(res) == 0:
                             pass
@@ -2408,10 +2612,10 @@ def main():
     print(cohdIndex.get_concept_ids('DOID:8398')) # 'HP:0031120' doesn't have omop concept ids
 
     print("==== Testing for retrieving observed clinical frequencies of a pair of concepts ====", flush=True)
-    print(cohdIndex.get_paired_concept_freq(concept_id_1=192855, concept_id_2=2008271, dataset_id=3))
-    print(cohdIndex.get_paired_concept_freq(concept_id_1=192855, concept_id_2=2008271, dataset_id=1))
-    print(cohdIndex.get_paired_concept_freq(concept_id_1=192855, concept_id_2=2008271, dataset_id=2))
-    print(cohdIndex.get_paired_concept_freq(concept_id_1=192855, concept_id_2=2008271, dataset_id=3))
+    print(cohdIndex.get_paired_concept_freq(concept_id_1=[192855], concept_id_2=[2008271], dataset_id=3))
+    print(cohdIndex.get_paired_concept_freq(concept_id_1=[192855], concept_id_2=[2008271], dataset_id=1))
+    print(cohdIndex.get_paired_concept_freq(concept_id_1=[192855], concept_id_2=[2008271], dataset_id=2))
+    print(cohdIndex.get_paired_concept_freq(concept_id_1=[192855], concept_id_2=[2008271], dataset_id=3))
     print(cohdIndex.get_paired_concept_freq(concept_id_pair='192855_2008271', dataset_id=2))
 
     print("==== Testing for retrieving observed clinical frequencies of individual concepts ====", flush=True)
@@ -2423,19 +2627,19 @@ def main():
             print(row)
 
     print("==== Testing for returning the natural logarithm of the ratio between the observed count and expected count ====", flush=True)
-    print("The results of get_obs_exp_ratio(concept_id_1=192855)")
-    if len(cohdIndex.get_obs_exp_ratio(concept_id_1=192855)) > 0:
-        for row in cohdIndex.get_obs_exp_ratio(concept_id_1=192855):
+    print("The results of get_obs_exp_ratio(concept_id_1=[192855])")
+    if len(cohdIndex.get_obs_exp_ratio(concept_id_1=[192855])) > 0:
+        for row in cohdIndex.get_obs_exp_ratio(concept_id_1=[192855]):
             print(row)
 
-    print("The results of get_obs_exp_ratio(concept_id_1=192855,concept_id_2=2008271)")
-    if len(cohdIndex.get_obs_exp_ratio(concept_id_1=192855, concept_id_2=2008271)) > 0:
-        for row in cohdIndex.get_obs_exp_ratio(concept_id_1=192855, concept_id_2=2008271):
+    print("The results of get_obs_exp_ratio(concept_id_1=[192855],concept_id_2=[2008271]")
+    if len(cohdIndex.get_obs_exp_ratio(concept_id_1=[192855], concept_id_2=[2008271])) > 0:
+        for row in cohdIndex.get_obs_exp_ratio(concept_id_1=[192855], concept_id_2=[2008271]):
             print(row)
 
-    print("The results of get_obs_exp_ratio(concept_id_1=192855, concept_id_2=2008271, domain='Procedure')")
-    if len(cohdIndex.get_obs_exp_ratio(concept_id_1=192855, concept_id_2=2008271, domain='Procedure')) > 0:
-        for row in cohdIndex.get_obs_exp_ratio(concept_id_1=192855, concept_id_2=2008271, domain='Procedure'):
+    print("The results of get_obs_exp_ratio(concept_id_1=[192855], concept_id_2=[2008271], domain='Procedure')")
+    if len(cohdIndex.get_obs_exp_ratio(concept_id_1=[192855], concept_id_2=[2008271], domain='Procedure')) > 0:
+        for row in cohdIndex.get_obs_exp_ratio(concept_id_1=[192855], concept_id_2=[2008271], domain='Procedure'):
             print(row)
 
     print("The results of get_obs_exp_ratio(concept_id_pair='192855_2008271',domain='Procedure')")
@@ -2444,19 +2648,19 @@ def main():
             print(row)
 
     print("==== Testing for returning the chi-square statistic and p-value between pairs of concepts ====", flush=True)
-    print("The results of get_chi_square(concept_id_1=192855)")
-    if len(cohdIndex.get_chi_square(concept_id_1=192855)) > 0:
-        for row in cohdIndex.get_chi_square(concept_id_1=192855):
+    print("The results of get_chi_square(concept_id_1=[192855])")
+    if len(cohdIndex.get_chi_square(concept_id_1=[192855])) > 0:
+        for row in cohdIndex.get_chi_square(concept_id_1=[192855]):
             print(row)
 
-    print("The results of get_chi_square(concept_id_1=192855, concept_id_2=2008271)")
-    if len(cohdIndex.get_chi_square(concept_id_1=192855, concept_id_2=2008271)) > 0:
-        for row in cohdIndex.get_chi_square(concept_id_1=192855, concept_id_2=2008271):
+    print("The results of get_chi_square(concept_id_1=[192855], concept_id_2=[2008271])")
+    if len(cohdIndex.get_chi_square(concept_id_1=[192855], concept_id_2=[2008271])) > 0:
+        for row in cohdIndex.get_chi_square(concept_id_1=[192855], concept_id_2=[2008271]):
             print(row)
 
-    print("The results of get_chi_square(concept_id_1=192855, concept_id_2=2008271,domain='Procedure')")
-    if len(cohdIndex.get_chi_square(concept_id_1=192855, concept_id_2=2008271, domain='Procedure')) > 0:
-        for row in cohdIndex.get_chi_square(concept_id_1=192855, concept_id_2=2008271, domain='Procedure'):
+    print("The results of get_chi_square(concept_id_1=[192855], concept_id_2=[2008271],domain='Procedure')")
+    if len(cohdIndex.get_chi_square(concept_id_1=[192855], concept_id_2=[2008271], domain='Procedure')) > 0:
+        for row in cohdIndex.get_chi_square(concept_id_1=[192855], concept_id_2=[2008271], domain='Procedure'):
             print(row)
 
     print("The results of get_chi_square(concept_id_pair='192855_2008271', domain='Procedure')")

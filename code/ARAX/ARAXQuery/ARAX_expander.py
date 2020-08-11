@@ -24,7 +24,7 @@ class ARAXExpander:
         self.message = None
         self.parameters = {'edge_id': None, 'node_id': None, 'kp': None, 'enforce_directionality': None,
                            'use_synonyms': None, 'synonym_handling': None, 'continue_if_no_results': None,
-                           'COHD_method': None, 'COHD_method_threshold': None}
+                           'COHD_method': None, 'COHD_method_percentile': None}
 
     @staticmethod
     def describe_me():
@@ -50,8 +50,8 @@ class ARAXExpander:
         params_dict['use_synonyms'] = {"whether to consider synonym curies for query nodes with a curie specified - options are `true` or `false` (optional, default is `true`)"}
         params_dict['synonym_handling'] = {"how to handle synonyms in the answer - options are `map_back` (default; map edges using a synonym back to the original curie) or `add_all` (add synonym nodes as they are - no mapping/merging)"}
         params_dict['continue_if_no_results'] = {"whether to continue execution if no paths are found matching the query graph - options are `true` or `false` (optional, default is `false`)"}
-        params_dict['COHD_method'] = {"what method used to expand - current options are `paired_concept_freq`, `observed_expected_ratio`, `chi_square` (optional, default is `observed_expected_ratio`)"}
-        params_dict['COHD_method_threshold'] = {"what threshod used for the specified COHD method (optional, default is that `paired_concept_freq` is 0.000431, `ln(observed_expected_ratio)` is 4.44 and `chi_square pvalue` is 1.6311e-271)"}
+        params_dict['COHD_method'] = {"what method used to expand - current options are `paired_concept_freq`, `observed_expected_ratio`, `chi_square` (optional, default is `paired_concept_freq`)"}
+        params_dict['COHD_method_percentile'] = {"what percentile used as a threshold for specified COHD method (optional, default is 99 (99%), range is [0, 100])"}
         description_list.append(params_dict)
         return description_list
 
@@ -75,7 +75,7 @@ class ARAXExpander:
         parameters['synonym_handling'] = 'map_back'
         parameters['continue_if_no_results'] = False
         parameters['COHD_method'] = 'paired_concept_freq'
-        parameters['COHD_method_threshold'] = 'default'
+        parameters['COHD_method_percentile'] = 99
         for key, value in input_parameters.items():
             if key and key not in parameters:
                 response.error(f"Supplied parameter {key} is not permitted", error_code="UnknownParameter")
