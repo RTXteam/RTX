@@ -100,26 +100,27 @@ class OverlayExposuresData:
         knowledge_graph = self.message.knowledge_graph
         log = self.response
 
-        # TODO: Adjust to query node pairs... (otherwise duplicating effort for parallel edges..)
         # Query ICEES for each edge in the knowledge graph that ICEES can provide data on (use known curies)
         num_edges_obtained_icees_data_for = 0
-        for edge in knowledge_graph.edges:
-            accepted_source_synonyms = self._get_accepted_synonyms(edge.source_id)
-            accepted_target_synonyms = self._get_accepted_synonyms(edge.target_id)
-            if not accepted_source_synonyms or not accepted_target_synonyms:
-                log.debug(f"Could not find curies that ICEES accepts for edge {edge.id} ({edge.source_id}--{edge.target_id})")
-            else:
+        edges_by_node_pair = self._get_edges_by_node_pair(knowledge_graph)  # Don't duplicate effort for parallel edges
+        for node_pair_key, node_pair_edges in edges_by_node_pair.items():
+            source_id = node_pair_edges[0].source_id
+            target_id = node_pair_edges[0].target_id
+            accepted_source_synonyms = self._get_accepted_synonyms(source_id)
+            accepted_target_synonyms = self._get_accepted_synonyms(target_id)
+            if accepted_source_synonyms and accepted_target_synonyms:
                 # Query ICEES for each possible combination of accepted source/target synonyms
                 for source_curie_to_try, target_curie_to_try in itertools.product(accepted_source_synonyms, accepted_target_synonyms):
-                    qedge = QEdge(id=f"icees_{edge.id}", source_id=source_curie_to_try, target_id=target_curie_to_try)
+                    qedge = QEdge(id=f"icees_e00", source_id=source_curie_to_try, target_id=target_curie_to_try)
                     log.debug(f"Sending query to ICEES+ for {source_curie_to_try}--{target_curie_to_try}")
                     returned_edge_attribute = self._get_exposures_data(qedge, log)
                     if returned_edge_attribute:
-                        num_edges_obtained_icees_data_for += 1
-                        # Add the data as new EdgeAttributes on the current edge
-                        if not edge.edge_attributes:
-                            edge.edge_attributes = []
-                        edge.edge_attributes.append(returned_edge_attribute)
+                        num_edges_obtained_icees_data_for += len(node_pair_edges)
+                        # Add the data as new EdgeAttributes on the existing edges with this source/target ID
+                        for edge in node_pair_edges:
+                            if not edge.edge_attributes:
+                                edge.edge_attributes = []
+                            edge.edge_attributes.append(returned_edge_attribute)
                         # Don't worry about checking remaining synonym combos if we got results (TODO: change this?)
                         break
 
@@ -184,6 +185,16 @@ class OverlayExposuresData:
         node_ids = {node.id for node in knowledge_graph.nodes}
         equivalent_curie_info = synonymizer.get_equivalent_nodes(node_ids, kg_name='KG2')
         return {node_id: set(equivalent_curies_dict) for node_id, equivalent_curies_dict in equivalent_curie_info.items()}
+
+    @staticmethod
+    def _get_edges_by_node_pair(knowledge_graph):
+        edges_by_node_pair = dict()
+        for edge in knowledge_graph.edges:
+            node_pair_key = f"{edge.source_id}--{edge.target_id}"
+            if node_pair_key not in edges_by_node_pair:
+                edges_by_node_pair[node_pair_key] = []
+            edges_by_node_pair[node_pair_key].append(edge)
+        return edges_by_node_pair
 
     @staticmethod
     def _load_icees_known_curies(log):
