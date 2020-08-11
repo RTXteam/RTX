@@ -578,8 +578,8 @@ The code is as follows:
 
     def __overlay_exposures_data(self, describe=False):
         """
-        This function applies the action overlay_exposures_data. Exposures data is added either as virtual edges (if the
-        virtual_relation_label, source_qnode_id, and target_qnode_id are provided) or as EdgeAttributes tacked onto
+        This function applies the action overlay_exposures_data. It adds ICEES+ p-values either as virtual edges (if
+        the virtual_relation_label, source_qnode_id, and target_qnode_id are provided) or as EdgeAttributes tacked onto
         existing edges in the knowledge graph (applied to all edges).
         return: Response
         """
@@ -595,14 +595,19 @@ The code is as follows:
                                     'target_qnode_id': {x.id for x in self.message.query_graph.nodes}}
         else:
             allowable_parameters = {'action': {'overlay_exposures_data'},
-                                    'virtual_relation_label': {'any string label identifying the virtual edge label (optional, otherwise applied to all existing edges in the KG)'},
+                                    'virtual_relation_label': {'any string label used to identify the virtual edge (optional, otherwise information is added as an attribute to all existing edges in the KG)'},
                                     'source_qnode_id': {'a specific source query node id (optional, otherwise applied to all edges)'},
                                     'target_qnode_id': {'a specific target query node id (optional, otherwise applied to all edges)'}}
 
         # A little function to describe what this thing does
         if describe:
             brief_description = """
-            TODO """
+`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
+This information is included in edge attributes with the name `icees_p-value`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
+
+This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
+            """
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 

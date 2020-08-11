@@ -1,8 +1,8 @@
 #!/bin/env python3
 """
-This class overlays the knowledge graph with clinical exposures data from ICEES+. It either adds the data as virtual
-edges (if the virtual_relation_label, source_qnode_id, and target_qnode_id are provided) or as EdgeAttributes tacked
-onto existing edges in the knowledge graph (applied to all edges).
+This class overlays the knowledge graph with clinical exposures data from ICEES+. It adds the data (p-values) either in
+virtual edges (if the virtual_relation_label, source_qnode_id, and target_qnode_id are provided) or as EdgeAttributes
+tacked onto existing edges in the knowledge graph (applied to all edges).
 """
 import itertools
 import sys
@@ -79,7 +79,7 @@ class OverlayExposuresData:
                                     qedge_ids=[virtual_relation_label],
                                     edge_attributes=[returned_edge_attribute])
                     knowledge_graph.edges.append(new_edge)
-                    # Don't worry about checking remaining synonym combos if we got results (TODO: change this?)
+                    # Don't worry about checking remaining synonym combos if we got results
                     break
 
         # Add a qedge to the query graph if we added any virtual edges
@@ -121,7 +121,7 @@ class OverlayExposuresData:
                             if not edge.edge_attributes:
                                 edge.edge_attributes = []
                             edge.edge_attributes.append(returned_edge_attribute)
-                        # Don't worry about checking remaining synonym combos if we got results (TODO: change this?)
+                        # Don't worry about checking remaining synonym combos if we got results
                         break
 
         if num_edges_obtained_icees_data_for:
