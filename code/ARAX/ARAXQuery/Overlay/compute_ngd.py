@@ -85,10 +85,10 @@ class ComputeNGD:
                 # create the edge attribute if it can be
                 source_name = curies_to_names[source_curie]
                 target_name = curies_to_names[target_curie]
-                self.response.debug(f"Computing NGD between {source_name} and {target_name}")
                 ngd_value, method_used = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name], canonicalized_curie_map)
                 if method_used == "slow":
-                    self.response.debug(f"Had to use back-up method for that edge")
+                    self.response.debug(f"Had to use eUtils to compute NGD between {source_name} and {target_name} "
+                                        f"(value is: {ngd_value})")
                 ngd_method_counts[method_used] += 1
                 if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                     value = ngd_value
@@ -131,7 +131,9 @@ class ComputeNGD:
                 self.message.query_graph.edges.append(q_edge)
 
             self.response.info(f"NGD values successfully added to edges")
-            self.response.debug(f"Used fast NGD for {ngd_method_counts['fast']} edges, back-up NGD method for {ngd_method_counts['slow']}")
+            percent_computed_with_fast_ngd = round((ngd_method_counts['fast'] / (ngd_method_counts['fast'] + ngd_method_counts['slow'])) * 100)
+            self.response.debug(f"Used fastNGD for {percent_computed_with_fast_ngd}% of edges "
+                                f"({ngd_method_counts['fast']} of {ngd_method_counts['fast'] + ngd_method_counts['slow']})")
         else:  # you want to add it for each edge in the KG
             # iterate over KG edges, add the information
             try:
@@ -147,10 +149,10 @@ class ComputeNGD:
                     target_curie = edge.target_id
                     source_name = node_curie_to_name[source_curie]
                     target_name = node_curie_to_name[target_curie]
-                    self.response.debug(f"Computing NGD between {source_name} and {target_name}")
                     ngd_value, method_used = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name], canonicalized_curie_map)
                     if method_used == "slow":
-                        self.response.debug(f"Had to use back-up method for that edge")
+                        self.response.debug(f"Had to use eUtils to compute NGD between {source_name} and {target_name} "
+                                            f"(value is: {ngd_value})")
                     ngd_method_counts[method_used] += 1
                     if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                         value = ngd_value
@@ -163,7 +165,9 @@ class ComputeNGD:
                 self.response.error(f"Something went wrong adding the NGD edge attributes")
             else:
                 self.response.info(f"NGD values successfully added to edges")
-                self.response.debug(f"Used fast NGD for {ngd_method_counts['fast']} edges, back-up NGD method for {ngd_method_counts['slow']}")
+                percent_computed_with_fast_ngd = round((ngd_method_counts['fast'] / (ngd_method_counts['fast'] + ngd_method_counts['slow'])) * 100)
+                self.response.debug(f"Used fast NGD for {percent_computed_with_fast_ngd}% of edges "
+                                    f"({ngd_method_counts['fast']} of {ngd_method_counts['fast'] + ngd_method_counts['slow']})")
 
             return self.response
 
