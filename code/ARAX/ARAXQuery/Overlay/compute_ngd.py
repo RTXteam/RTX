@@ -1,5 +1,6 @@
 # This class will overlay the normalized google distance on a message (all edges)
 #!/bin/env python3
+import subprocess
 import sys
 import os
 import traceback
@@ -26,14 +27,8 @@ class ComputeNGD:
         self.message = message
         self.parameters = parameters
         self.global_iter = 0
+        self._download_ngd_database()
         self.NGD = NormGoogleDistance.NormGoogleDistance()  # should I be importing here, or before the class? Feel like Eric said avoid global vars...
-
-        # Download the NGD sqlite database if it doesn't already exist # TODO: add versioning
-        ngd_db_name = "curie_to_pmids.sqlite"
-        ngd_db_path = f"{os.path.dirname(os.path.abspath(__file__))}/ngd/{ngd_db_name}"
-        if not os.path.exists(f"{ngd_db_path}"):
-            self.response.debug(f"Downloading fast NGD database because no copy exists... (will take a few minutes)")
-            os.system(f"scp rtxconfig@arax.rtx.ai:/home/ubuntu/databases_for_download/{ngd_db_name} {ngd_db_path}")
 
     def compute_ngd(self):
         """
@@ -184,3 +179,21 @@ class ComputeNGD:
         else:
             return {input_curie: node_info.get('preferred_curie', input_curie) for input_curie, node_info in
                     canonicalized_node_info.items() if node_info}
+
+    def _download_ngd_database(self):
+        # This method downloads the fast NGD sqlite database if no local copy exists or if there's a new version
+        ngd_db_name = "curie_to_pmids.sqlite"
+        db_path_local = f"{os.path.dirname(os.path.abspath(__file__))}/ngd/{ngd_db_name}"
+        db_path_remote = f"/home/ubuntu/databases_for_download/{ngd_db_name}"
+        if not os.path.exists(f"{db_path_local}"):
+            self.response.debug(f"Downloading fast NGD database because no copy exists... (will take a few minutes)")
+            os.system(f"scp ubuntu@arax.rtx.ai:{db_path_remote} {db_path_local}")
+        else:
+            last_modified_local = int(os.path.getmtime(db_path_local))
+            last_modified_remote_byte_str = subprocess.check_output(f"ssh ubuntu@arax.rtx.ai 'stat -c %Y {db_path_remote}'", shell=True)
+            last_modified_remote = int(str(last_modified_remote_byte_str, 'utf-8'))
+            if last_modified_local < last_modified_remote:
+                self.response.debug(f"Downloading new version of fast NGD database... (will take a few minutes)")
+                os.system(f"scp ubuntu@arax.rtx.ai:{db_path_remote} {db_path_local}")
+            else:
+                self.response.debug(f"Confirmed local NGD database is current")
