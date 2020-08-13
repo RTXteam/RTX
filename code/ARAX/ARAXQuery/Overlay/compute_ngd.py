@@ -1,5 +1,7 @@
 # This class will overlay the normalized google distance on a message (all edges)
 #!/bin/env python3
+import functools
+import math
 import subprocess
 import sys
 import os
@@ -7,6 +9,9 @@ import traceback
 import numpy as np
 import itertools
 from datetime import datetime
+from typing import List, Dict
+
+from sqlitedict import SqliteDict
 
 # relative imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
@@ -27,7 +32,8 @@ class ComputeNGD:
         self.message = message
         self.parameters = parameters
         self.global_iter = 0
-        self._download_ngd_database()
+        self.curie_to_pmids_db = self._setup_ngd_database()
+        self.ngd_normalizer = 2.2e+7 * 20  # From PubMed home page there are 27 million articles; avg 20 MeSH terms per article
         self.NGD = NormGoogleDistance.NormGoogleDistance()  # should I be importing here, or before the class? Feel like Eric said avoid global vars...
 
     def compute_ngd(self):
@@ -37,6 +43,8 @@ class ComputeNGD:
         :default: The default value to set for NGD if it returns a nan
         :return: response
         """
+        if self.response.status != 'OK':  # Catches any errors that may have been logged during initialization
+            return self.response
         parameters = self.parameters
         self.response.debug(f"Computing NGD")
         self.response.info(f"Computing the normalized Google distance: weighting edges based on source/target node "
@@ -53,13 +61,10 @@ class ComputeNGD:
             self.response.error(f"Something went wrong when converting names")
             self.response.error(tb, error_code=error_type.__name__)
 
-
-        self.response.warning(f"Utilizing API calls to NCBI eUtils, so this may take a while...")
         name = "normalized_google_distance"
         type = "EDAM:data_2526"
         value = self.parameters['default_value']
         url = "https://arax.rtx.ai/api/rtx/v1/ui/#/PubmedMeshNgd"
-        ngd_method_counts = {"fast": 0, "slow": 0}
 
         # if you want to add virtual edges, identify the source/targets, decorate the edges, add them to the KG, and then add one to the QG corresponding to them
         if 'virtual_relation_label' in parameters:
@@ -80,16 +85,21 @@ class ComputeNGD:
             canonicalized_curie_map = self._get_canonical_curies_map(list(source_curies_to_decorate.union(target_curies_to_decorate)))
 
             added_flag = False  # check to see if any edges where added
+            num_computed_total = 0
+            num_computed_slow = 0
             # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
             for (source_curie, target_curie) in itertools.product(source_curies_to_decorate, target_curies_to_decorate):
                 # create the edge attribute if it can be
                 source_name = curies_to_names[source_curie]
                 target_name = curies_to_names[target_curie]
-                ngd_value, method_used = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name], canonicalized_curie_map)
-                if method_used == "slow":
+                num_computed_total += 1
+                ngd_value = self.calculate_ngd_fast(canonicalized_curie_map.get(source_curie, source_curie),
+                                                    canonicalized_curie_map.get(target_curie, target_curie))
+                if ngd_value is None:
+                    ngd_value = self.NGD.get_ngd_for_all([source_curie, target_curie], [source_name, target_name])
                     self.response.debug(f"Had to use eUtils to compute NGD between {source_name} and {target_name} "
                                         f"(value is: {ngd_value})")
-                ngd_method_counts[method_used] += 1
+                    num_computed_slow += 1
                 if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                     value = ngd_value
                 edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the NGD edge attribute
@@ -131,15 +141,18 @@ class ComputeNGD:
                 self.message.query_graph.edges.append(q_edge)
 
             self.response.info(f"NGD values successfully added to edges")
-            percent_computed_with_fast_ngd = round((ngd_method_counts['fast'] / (ngd_method_counts['fast'] + ngd_method_counts['slow'])) * 100)
-            self.response.debug(f"Used fastNGD for {percent_computed_with_fast_ngd}% of edges "
-                                f"({ngd_method_counts['fast']} of {ngd_method_counts['fast'] + ngd_method_counts['slow']})")
+            num_computed_fast = num_computed_total - num_computed_slow
+            percent_computed_fast = round((num_computed_fast / num_computed_total) * 100)
+            self.response.debug(f"Used fastNGD for {percent_computed_fast}% of edges "
+                                f"({num_computed_fast} of {num_computed_total})")
         else:  # you want to add it for each edge in the KG
             # iterate over KG edges, add the information
             try:
                 # Map all nodes to their canonicalized curies in one batch (need canonical IDs for the local NGD system)
                 canonicalized_curie_map = self._get_canonical_curies_map([node.id for node in self.message.knowledge_graph.nodes])
 
+                num_computed_total = 0
+                num_computed_slow = 0
                 for edge in self.message.knowledge_graph.edges:
                     # Make sure the edge_attributes are not None
                     if not edge.edge_attributes:
@@ -149,11 +162,14 @@ class ComputeNGD:
                     target_curie = edge.target_id
                     source_name = node_curie_to_name[source_curie]
                     target_name = node_curie_to_name[target_curie]
-                    ngd_value, method_used = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name], canonicalized_curie_map)
-                    if method_used == "slow":
+                    num_computed_total += 1
+                    ngd_value = self.calculate_ngd_fast(canonicalized_curie_map.get(source_curie, source_curie),
+                                                        canonicalized_curie_map.get(target_curie, target_curie))
+                    if ngd_value is None:
+                        ngd_value = self.NGD.get_ngd_for_all([source_curie, target_curie], [source_name, target_name])
                         self.response.debug(f"Had to use eUtils to compute NGD between {source_name} and {target_name} "
                                             f"(value is: {ngd_value})")
-                    ngd_method_counts[method_used] += 1
+                        num_computed_slow += 1
                     if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                         value = ngd_value
                     ngd_edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the NGD edge attribute
@@ -165,11 +181,44 @@ class ComputeNGD:
                 self.response.error(f"Something went wrong adding the NGD edge attributes")
             else:
                 self.response.info(f"NGD values successfully added to edges")
-                percent_computed_with_fast_ngd = round((ngd_method_counts['fast'] / (ngd_method_counts['fast'] + ngd_method_counts['slow'])) * 100)
-                self.response.debug(f"Used fast NGD for {percent_computed_with_fast_ngd}% of edges "
-                                    f"({ngd_method_counts['fast']} of {ngd_method_counts['fast'] + ngd_method_counts['slow']})")
-
+                num_computed_fast = num_computed_total - num_computed_slow
+                percent_computed_fast = round((num_computed_fast / num_computed_total) * 100)
+                self.response.debug(f"Used fastNGD for {percent_computed_fast}% of edges "
+                                    f"({num_computed_fast} of {num_computed_total})")
             return self.response
+
+    def calculate_ngd_fast(self, source_curie, target_curie):
+        if source_curie in self.curie_to_pmids_db and target_curie in self.curie_to_pmids_db:
+            pubmed_ids_for_curies = [self.curie_to_pmids_db.get(source_curie),
+                                     self.curie_to_pmids_db.get(target_curie)]
+            counts_res = self._compute_marginal_and_joint_counts(pubmed_ids_for_curies)
+            return self._compute_multiway_ngd_from_counts(*counts_res)
+        else:
+            return None
+
+    @staticmethod
+    def _compute_marginal_and_joint_counts(concept_pubmed_ids: List[str]) -> list:
+        return [list(map(lambda pmid_list: len(set(pmid_list)), concept_pubmed_ids)),
+                len(functools.reduce(lambda pmids_intersec_cumul, pmids_next:
+                                     set(pmids_next).intersection(pmids_intersec_cumul),
+                                     concept_pubmed_ids))]
+
+    def _compute_multiway_ngd_from_counts(self, marginal_counts: List[int],
+                                          joint_count: int) -> float:
+        # Make sure that things are within the right domain for the logs
+        # Should also make sure things are not negative, but I'll just do this with a ValueError
+        if None in marginal_counts:
+            return math.nan
+        elif 0 in marginal_counts or 0. in marginal_counts:
+            return math.nan
+        elif joint_count == 0 or joint_count == 0.:
+            return math.nan
+        else:
+            try:
+                return (max([math.log(count) for count in marginal_counts]) - math.log(joint_count)) / \
+                   (math.log(self.ngd_normalizer) - min([math.log(count) for count in marginal_counts]))
+            except ValueError:
+                return math.nan
 
     def _get_canonical_curies_map(self, curies):
         synonymizer = NodeSynonymizer()
@@ -184,8 +233,8 @@ class ComputeNGD:
             return {input_curie: node_info.get('preferred_curie', input_curie) for input_curie, node_info in
                     canonicalized_node_info.items() if node_info}
 
-    def _download_ngd_database(self):
-        # This method downloads the fast NGD sqlite database if no local copy exists or if there's a new version
+    def _setup_ngd_database(self):
+        # This method downloads the fast NGD sqlite database if needed and readies it for use
         ngd_db_name = "curie_to_pmids.sqlite"
         db_path_local = f"{os.path.dirname(os.path.abspath(__file__))}/ngd/{ngd_db_name}"
         db_path_remote = f"/home/ubuntu/databases_for_download/{ngd_db_name}"
@@ -201,3 +250,9 @@ class ComputeNGD:
                 os.system(f"scp ubuntu@arax.rtx.ai:{db_path_remote} {db_path_local}")
             else:
                 self.response.debug(f"Confirmed local NGD database is current")
+        # Verify we were successful
+        if os.path.exists(db_path_local) and os.path.isfile(db_path_local):
+            return SqliteDict(f"{db_path_local}")
+        else:
+            self.response.error(f"No local ngd database detected", error_code="DatabaseSetupIssue")
+            return None
