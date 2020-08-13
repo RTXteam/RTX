@@ -552,5 +552,16 @@ def test_987_override_node_types():
     assert all('phenotypic_feature' in node.type for node in nodes_by_qg_id['n01'].values())
 
 
+def test_ngd_expand():
+    actions_list = [
+        "add_qnode(name=DOID:8398, id=n00)",
+        "add_qnode(type=phenotypic_feature, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, type=has_phenotype, id=e00)",
+        "expand(kp=NGD)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])

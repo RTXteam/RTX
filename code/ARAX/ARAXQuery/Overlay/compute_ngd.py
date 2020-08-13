@@ -9,7 +9,7 @@ import traceback
 import numpy as np
 import itertools
 from datetime import datetime
-from typing import List, Dict
+from typing import List
 
 from sqlitedict import SqliteDict
 
@@ -234,7 +234,7 @@ class ComputeNGD:
                     canonicalized_node_info.items() if node_info}
 
     def _setup_ngd_database(self):
-        # This method downloads the fast NGD sqlite database if needed and readies it for use
+        # Download the ngd database if there isn't already a local copy or if a newer version is available
         ngd_db_name = "curie_to_pmids.sqlite"
         db_path_local = f"{os.path.dirname(os.path.abspath(__file__))}/ngd/{ngd_db_name}"
         db_path_remote = f"/home/ubuntu/databases_for_download/{ngd_db_name}"
@@ -250,7 +250,8 @@ class ComputeNGD:
                 os.system(f"scp ubuntu@arax.rtx.ai:{db_path_remote} {db_path_local}")
             else:
                 self.response.debug(f"Confirmed local NGD database is current")
-        # Verify we were successful
+
+        # Verify we were successful and set up the database
         if os.path.exists(db_path_local) and os.path.isfile(db_path_local):
             return SqliteDict(f"{db_path_local}")
         else:

@@ -174,7 +174,7 @@ class ARAXExpander:
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, edge_to_nodes_map
 
-        valid_kps = ["ARAX/KG1", "ARAX/KG2", "BTE"]
+        valid_kps = ["ARAX/KG1", "ARAX/KG2", "BTE", "NGD"]
         if kp_to_use not in valid_kps:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(valid_kps)}",
                       error_code="InvalidKP")
@@ -183,6 +183,9 @@ class ARAXExpander:
             if kp_to_use == 'BTE':
                 from Expand.bte_querier import BTEQuerier
                 kp_querier = BTEQuerier(log)
+            elif kp_to_use == 'NGD':
+                from Expand.ngd_querier import NGDQuerier
+                kp_querier = NGDQuerier(log)
             else:
                 from Expand.kg_querier import KGQuerier
                 kp_querier = KGQuerier(log, kp_to_use)
