@@ -1,5 +1,6 @@
 # This class will overlay the normalized google distance on a message (all edges)
 #!/bin/env python3
+import subprocess
 import sys
 import os
 import traceback
@@ -26,14 +27,8 @@ class ComputeNGD:
         self.message = message
         self.parameters = parameters
         self.global_iter = 0
+        self._download_ngd_database()
         self.NGD = NormGoogleDistance.NormGoogleDistance()  # should I be importing here, or before the class? Feel like Eric said avoid global vars...
-
-        # Download the NGD sqlite database if it doesn't already exist # TODO: add versioning
-        overlay_dir = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
-        ngd_database_name = "curie_to_pmids.sqlite"
-        if not os.path.exists(f"{overlay_dir}/ngd/{ngd_database_name}"):
-            self.response.debug(f"Downloading fast NGD database because no copy exists... (will take a few minutes)")
-            os.system(f"scp rtxconfig@arax.rtx.ai:/home/ubuntu/databases_for_download/{ngd_database_name} {overlay_dir}/ngd")
 
     def compute_ngd(self):
         """
@@ -90,10 +85,10 @@ class ComputeNGD:
                 # create the edge attribute if it can be
                 source_name = curies_to_names[source_curie]
                 target_name = curies_to_names[target_curie]
-                self.response.debug(f"Computing NGD between {source_name} and {target_name}")
                 ngd_value, method_used = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name], canonicalized_curie_map)
                 if method_used == "slow":
-                    self.response.debug(f"Had to use back-up method for that edge")
+                    self.response.debug(f"Had to use eUtils to compute NGD between {source_name} and {target_name} "
+                                        f"(value is: {ngd_value})")
                 ngd_method_counts[method_used] += 1
                 if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                     value = ngd_value
@@ -136,7 +131,9 @@ class ComputeNGD:
                 self.message.query_graph.edges.append(q_edge)
 
             self.response.info(f"NGD values successfully added to edges")
-            self.response.debug(f"Used fast NGD for {ngd_method_counts['fast']} edges, back-up NGD method for {ngd_method_counts['slow']}")
+            percent_computed_with_fast_ngd = round((ngd_method_counts['fast'] / (ngd_method_counts['fast'] + ngd_method_counts['slow'])) * 100)
+            self.response.debug(f"Used fastNGD for {percent_computed_with_fast_ngd}% of edges "
+                                f"({ngd_method_counts['fast']} of {ngd_method_counts['fast'] + ngd_method_counts['slow']})")
         else:  # you want to add it for each edge in the KG
             # iterate over KG edges, add the information
             try:
@@ -152,10 +149,10 @@ class ComputeNGD:
                     target_curie = edge.target_id
                     source_name = node_curie_to_name[source_curie]
                     target_name = node_curie_to_name[target_curie]
-                    self.response.debug(f"Computing NGD between {source_name} and {target_name}")
                     ngd_value, method_used = self.NGD.get_ngd_for_all_fast([source_curie, target_curie], [source_name, target_name], canonicalized_curie_map)
                     if method_used == "slow":
-                        self.response.debug(f"Had to use back-up method for that edge")
+                        self.response.debug(f"Had to use eUtils to compute NGD between {source_name} and {target_name} "
+                                            f"(value is: {ngd_value})")
                     ngd_method_counts[method_used] += 1
                     if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                         value = ngd_value
@@ -168,7 +165,9 @@ class ComputeNGD:
                 self.response.error(f"Something went wrong adding the NGD edge attributes")
             else:
                 self.response.info(f"NGD values successfully added to edges")
-                self.response.debug(f"Used fast NGD for {ngd_method_counts['fast']} edges, back-up NGD method for {ngd_method_counts['slow']}")
+                percent_computed_with_fast_ngd = round((ngd_method_counts['fast'] / (ngd_method_counts['fast'] + ngd_method_counts['slow'])) * 100)
+                self.response.debug(f"Used fast NGD for {percent_computed_with_fast_ngd}% of edges "
+                                    f"({ngd_method_counts['fast']} of {ngd_method_counts['fast'] + ngd_method_counts['slow']})")
 
             return self.response
 
@@ -184,3 +183,21 @@ class ComputeNGD:
         else:
             return {input_curie: node_info.get('preferred_curie', input_curie) for input_curie, node_info in
                     canonicalized_node_info.items() if node_info}
+
+    def _download_ngd_database(self):
+        # This method downloads the fast NGD sqlite database if no local copy exists or if there's a new version
+        ngd_db_name = "curie_to_pmids.sqlite"
+        db_path_local = f"{os.path.dirname(os.path.abspath(__file__))}/ngd/{ngd_db_name}"
+        db_path_remote = f"/home/ubuntu/databases_for_download/{ngd_db_name}"
+        if not os.path.exists(f"{db_path_local}"):
+            self.response.debug(f"Downloading fast NGD database because no copy exists... (will take a few minutes)")
+            os.system(f"scp ubuntu@arax.rtx.ai:{db_path_remote} {db_path_local}")
+        else:
+            last_modified_local = int(os.path.getmtime(db_path_local))
+            last_modified_remote_byte_str = subprocess.check_output(f"ssh ubuntu@arax.rtx.ai 'stat -c %Y {db_path_remote}'", shell=True)
+            last_modified_remote = int(str(last_modified_remote_byte_str, 'utf-8'))
+            if last_modified_local < last_modified_remote:
+                self.response.debug(f"Downloading new version of fast NGD database... (will take a few minutes)")
+                os.system(f"scp ubuntu@arax.rtx.ai:{db_path_remote} {db_path_local}")
+            else:
+                self.response.debug(f"Confirmed local NGD database is current")

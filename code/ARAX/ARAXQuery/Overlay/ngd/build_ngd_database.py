@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-This class builds a PickleDB that maps (canonicalized) curies from the NodeSynonymizer to PubMed articles (PMIDs).
+This class builds a database that maps (canonicalized) curies from the NodeSynonymizer to PubMed articles (PMIDs).
 There are two halves to the (full) build process:
 1. Creates an intermediary file called "conceptname_to_pmids.db"
      - Contains mappings from "concept names" to the list of articles (PMIDs) they appear in (where "concept names"
