@@ -203,7 +203,7 @@ class ComputeNGD:
             return None
 
     @staticmethod
-    def _compute_marginal_and_joint_counts(concept_pubmed_ids: List[str]) -> list:
+    def _compute_marginal_and_joint_counts(concept_pubmed_ids: List[List[int]]) -> list:
         return [list(map(lambda pmid_list: len(set(pmid_list)), concept_pubmed_ids)),
                 len(functools.reduce(lambda pmids_intersec_cumul, pmids_next:
                                      set(pmids_next).intersection(pmids_intersec_cumul),
@@ -237,8 +237,13 @@ class ComputeNGD:
             self.response.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
             return {}
         else:
-            return {input_curie: node_info.get('preferred_curie', input_curie) for input_curie, node_info in
-                    canonicalized_node_info.items() if node_info}
+            canonical_curies_map = dict()
+            for input_curie, node_info in canonicalized_node_info.items():
+                if node_info:
+                    canonical_curies_map[input_curie] = node_info.get('preferred_curie', input_curie)
+                else:
+                    canonical_curies_map[input_curie] = input_curie
+            return canonical_curies_map
 
     def _get_curie_to_pmids_map(self, canonicalized_curies):
         self.response.debug(f"Extracting PMID lists from sqlite database for relevant nodes")

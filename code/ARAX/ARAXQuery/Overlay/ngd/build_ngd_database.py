@@ -143,8 +143,9 @@ class NGDDatabaseBuilder:
             canonicalized_node_ids = {canonicalized_curies_dict[result['n.id']],
                                       canonicalized_curies_dict[result['m.id']]}
             pmids = self._extract_and_format_pmids(result['e.publications'])
-            for canonical_curie in canonicalized_node_ids:
-                self._add_pmids_mapping(canonical_curie, pmids, curie_to_pmids_map)
+            if pmids:  # Sometimes publications list includes only non-PMID identifiers (like ISBN)
+                for canonical_curie in canonicalized_node_ids:
+                    self._add_pmids_mapping(canonical_curie, pmids, curie_to_pmids_map)
         print(f"  Getting PMIDs from nodes in KG2 neo4j..")
         node_query = f"match (n) where n.publications is not null and n.publications <> '[]' return distinct n.id, n.publications"
         node_results = self._run_cypher_query(node_query, 'KG2')
@@ -154,7 +155,8 @@ class NGDDatabaseBuilder:
         for result in node_results:
             canonical_curie = canonicalized_curies_dict[result['n.id']]
             pmids = self._extract_and_format_pmids(result['n.publications'])
-            self._add_pmids_mapping(canonical_curie, pmids, curie_to_pmids_map)
+            if pmids:  # Sometimes publications list includes only non-PMID identifiers (like ISBN)
+                self._add_pmids_mapping(canonical_curie, pmids, curie_to_pmids_map)
 
         print("  Loading data into sqlite database..")
         # Remove any preexisting version of this database
@@ -164,7 +166,7 @@ class NGDDatabaseBuilder:
         cursor = connection.cursor()
         cursor.execute("CREATE TABLE curie_to_pmids (curie TEXT, pmids TEXT)")
         cursor.execute("CREATE UNIQUE INDEX unique_curie ON curie_to_pmids (curie)")
-        rows = [[curie, json.dumps(pmids)] for curie, pmids in curie_to_pmids_map.items()]
+        rows = [[curie, json.dumps(list({self._get_local_id_as_int(pmid) for pmid in pmids}))] for curie, pmids in curie_to_pmids_map.items()]
         cursor.executemany(f"INSERT INTO curie_to_pmids (curie, pmids) VALUES (?, ?)", rows)
         connection.commit()
         cursor.close()
@@ -208,6 +210,14 @@ class NGDDatabaseBuilder:
     @staticmethod
     def _create_pmid_string(pmid):
         return f"PMID:{pmid}"
+
+    @staticmethod
+    def _get_local_id_as_int(curie):
+        # Converts "PMID:1234" to 1234
+        assert ":" in curie
+        curie_pieces = curie.split(":")
+        assert len(curie_pieces) == 2
+        return int(curie_pieces[1])
 
     @staticmethod
     def _destroy_etree(file_contents_tree):
