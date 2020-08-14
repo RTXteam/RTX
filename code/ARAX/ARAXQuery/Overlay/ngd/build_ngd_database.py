@@ -167,7 +167,7 @@ class NGDDatabaseBuilder:
         cursor = connection.cursor()
         cursor.execute("CREATE TABLE curie_to_pmids (curie TEXT, pmids TEXT)")
         cursor.execute("CREATE UNIQUE INDEX unique_curie ON curie_to_pmids (curie)")
-        rows = [[curie, json.dumps(list({self._get_local_id_as_int(pmid) for pmid in pmids}))] for curie, pmids in curie_to_pmids_map.items()]
+        rows = [[curie, json.dumps(list(filter(None, {self._get_local_id_as_int(pmid) for pmid in pmids})))] for curie, pmids in curie_to_pmids_map.items()]
         cursor.executemany(f"INSERT INTO curie_to_pmids (curie, pmids) VALUES (?, ?)", rows)
         connection.commit()
         cursor.close()
@@ -215,7 +215,6 @@ class NGDDatabaseBuilder:
     @staticmethod
     def _get_local_id_as_int(curie):
         # Converts "PMID:1234" to 1234
-        assert ":" in curie
         curie_pieces = curie.split(":")
         local_id_str = curie_pieces[-1]
         # Remove any strange characters (like in "PMID:_19960544")
