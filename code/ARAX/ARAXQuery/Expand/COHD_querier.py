@@ -11,9 +11,9 @@ import Expand.expand_utilities as eu
 from Expand.expand_utilities import DictKnowledgeGraph
 from response import Response
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")  # code directory
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")  # code directory
 from RTXConfiguration import RTXConfiguration
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
 from swagger_server.models.node_attribute import NodeAttribute
@@ -21,9 +21,9 @@ from swagger_server.models.edge_attribute import EdgeAttribute
 from swagger_server.models.query_graph import QueryGraph
 from swagger_server.models.q_node import QNode
 from swagger_server.models.q_edge import QEdge
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../ARAX/KnowledgeSources/COHD_local/scripts/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../ARAX/KnowledgeSources/COHD_local/scripts/")
 from COHDIndex import COHDIndex
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../ARAX/NodeSynonymizer/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../ARAX/NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 
 class COHDQuerier:
@@ -147,6 +147,24 @@ class COHDQuerier:
                     else:
                         continue
 
+                if len(source_qnode_omop_ids[source_preferred_id]) == 0:
+                    log.warning(f"No OMOP concept id was found for source preferred id '{source_preferred_id}'' with qnode id '{qedge.source_id}'")
+                    continue
+                elif len(self.cohdindex.get_paired_concept_freq(concept_id_1=source_qnode_omop_ids[source_preferred_id], dataset_id=3)) == 0:
+                    log.warning(f"No paired concept ids was found from COHD database for source preferred id '{source_preferred_id}'' with qnode id '{qedge.source_id}'")
+                    continue
+                else:
+                    pass
+
+                if len(target_qnode_omop_ids[target_preferred_id]) == 0:
+                    log.warning(f"No OMOP concept id was found for target preferred id '{target_preferred_id}'' with qnode id '{qedge.target_id}'")
+                    continue
+                elif len(self.cohdindex.get_paired_concept_freq(concept_id_1=target_qnode_omop_ids[target_preferred_id], dataset_id=3)) == 0:
+                    log.warning(f"No paired concept ids was found from COHD database for target preferred id '{target_preferred_id}'' with qnode id '{qedge.target_id}'")
+                    continue
+                else:
+                    pass
+
                 frequency = 0
                 threshold1 = np.percentile([row['concept_frequency'] for row in self.cohdindex.get_paired_concept_freq(concept_id_1=source_qnode_omop_ids[source_preferred_id], dataset_id=3) if row['concept_frequency'] != 0], COHD_method_percentile)  # calculate the percentile after removing the extreme value e.g. 0
                 threshold2 = np.percentile([row['concept_frequency'] for row in self.cohdindex.get_paired_concept_freq(concept_id_1=target_qnode_omop_ids[target_preferred_id], dataset_id=3) if row['concept_frequency'] != 0], COHD_method_percentile)  # calculate the percentile after removing the extreme value e.g. 0
@@ -187,7 +205,9 @@ class COHDQuerier:
                     swagger_node = self._convert_to_swagger_node(target_preferred_id)
                     final_kg.add_node(swagger_node, target_dict[target_preferred_id])
 
-            log.info(f"The average threshold based on {COHD_method_percentile}th percentile of paired concept frequency is {threshold/count}")
+            if count != 0:
+                log.info(f"The average threshold based on {COHD_method_percentile}th percentile of paired concept frequency is {threshold/count}")
+
             return final_kg, edge_to_nodes_map
 
         elif source_qnode_omop_ids is not None:
@@ -204,7 +224,17 @@ class COHDQuerier:
                     if self.synonymizer.get_canonical_curies(source_preferred_id)[source_preferred_id]['preferred_type'] == source_qnode.type:
                         pass
                     else:
+                        log.warning(f"The preferred type of source preferred id '{source_preferred_id}' can't match to the given source type '{source_qnode.type}''")
                         continue
+
+                if len(source_qnode_omop_ids[source_preferred_id]) == 0:
+                    log.warning(f"No OMOP concept id was found for source preferred id '{source_preferred_id}'' with qnode id '{qedge.source_id}'")
+                    continue
+                elif len(self.cohdindex.get_paired_concept_freq(concept_id_1=source_qnode_omop_ids[source_preferred_id], dataset_id=3)) == 0:
+                    log.warning(f"No paired concept frequency was found from COHD database for source preferred id '{source_preferred_id}'' with qnode id '{qedge.source_id}'")
+                    continue
+                else:
+                    pass
 
                 new_edge[source_preferred_id] = dict()
                 threshold = np.percentile([row['concept_frequency'] for row in self.cohdindex.get_paired_concept_freq(concept_id_1=source_qnode_omop_ids[source_preferred_id], dataset_id=3) if row['concept_frequency'] != 0], COHD_method_percentile)
@@ -250,7 +280,9 @@ class COHDQuerier:
                     swagger_node = self._convert_to_swagger_node(target_preferred_id)
                     final_kg.add_node(swagger_node, target_dict[target_preferred_id])
 
-            log.info(f"The average threshold based on {COHD_method_percentile}th percentile of paired concept frequency is {threshold/count}")
+            if count != 0:
+                log.info(f"The average threshold based on {COHD_method_percentile}th percentile of paired concept frequency is {threshold/count}")
+
             return final_kg, edge_to_nodes_map
 
         else:
@@ -268,6 +300,15 @@ class COHDQuerier:
                         pass
                     else:
                         continue
+
+                if len(target_qnode_omop_ids[target_preferred_id]) == 0:
+                    log.warning(f"No OMOP concept id was found for target preferred id '{target_preferred_id}'' with qnode id '{qedge.target_id}'")
+                    continue
+                elif len(self.cohdindex.get_paired_concept_freq(concept_id_1=target_qnode_omop_ids[target_preferred_id], dataset_id=3)) == 0:
+                    log.warning(f"No paired concept frequency was found from COHD database for target preferred id '{target_preferred_id}'' with qnode id '{qedge.target_id}'")
+                    continue
+                else:
+                    pass
 
                 new_edge[target_preferred_id] = dict()
                 threshold = np.percentile([row['concept_frequency'] for row in self.cohdindex.get_paired_concept_freq(concept_id_1=target_qnode_omop_ids[target_preferred_id], dataset_id=3) if row['concept_frequency'] != 0], COHD_method_percentile)
@@ -313,7 +354,9 @@ class COHDQuerier:
                     swagger_node = self._convert_to_swagger_node(target_preferred_id)
                     final_kg.add_node(swagger_node, target_dict[target_preferred_id])
 
-            log.info(f"The average threshold based on {COHD_method_percentile}th percentile of paired concept frequency is {threshold/count}")
+            if count != 0:
+                log.info(f"The average threshold based on {COHD_method_percentile}th percentile of paired concept frequency is {threshold/count}")
+
             return final_kg, edge_to_nodes_map
 
     def _answer_query_using_COHD_observed_expected_ratio(self, query_graph: QueryGraph, COHD_method_percentile: float, continue_if_no_results: bool, log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
@@ -377,6 +420,24 @@ class COHDQuerier:
                     else:
                         continue
 
+                if len(source_qnode_omop_ids[source_preferred_id]) == 0:
+                    log.warning(f"No OMOP concept id was found for source preferred id '{source_preferred_id}'' with qnode id '{qedge.source_id}'")
+                    continue
+                elif len(self.cohdindex.get_obs_exp_ratio(concept_id_1=source_qnode_omop_ids[source_preferred_id], dataset_id=3)) == 0:
+                    log.warning(f"No paired concept ids was found from COHD database for source preferred id '{source_preferred_id}'' with qnode id '{qedge.source_id}'")
+                    continue
+                else:
+                    pass
+
+                if len(target_qnode_omop_ids[target_preferred_id]) == 0:
+                    log.warning(f"No OMOP concept id was found for target preferred id '{target_preferred_id}'' with qnode id '{qedge.target_id}'")
+                    continue
+                elif len(self.cohdindex.get_obs_exp_ratio(concept_id_1=target_qnode_omop_ids[target_preferred_id], dataset_id=3)) == 0:
+                    log.warning(f"No paired concept ids was found from COHD database for target preferred id '{target_preferred_id}'' with qnode id '{qedge.target_id}'")
+                    continue
+                else:
+                    pass
+
                 value = float("-inf")
                 threshold1 = np.percentile([row['ln_ratio'] for row in self.cohdindex.get_obs_exp_ratio(concept_id_1=source_qnode_omop_ids[source_preferred_id], domain="", dataset_id=3) if row['ln_ratio'] != float("-inf")], COHD_method_percentile)  # calculate the percentile after removing the extreme value e.g. -inf
                 threshold2 = np.percentile([row['ln_ratio'] for row in self.cohdindex.get_obs_exp_ratio(concept_id_1=target_qnode_omop_ids[target_preferred_id], domain="", dataset_id=3) if row['ln_ratio'] != float("-inf")], COHD_method_percentile)  # calculate the percentile after removing the extreme value e.g. -inf
@@ -416,7 +477,9 @@ class COHDQuerier:
                     swagger_node = self._convert_to_swagger_node(target_preferred_id)
                     final_kg.add_node(swagger_node, target_dict[target_preferred_id])
 
-            log.info(f"The average threshold based on {COHD_method_percentile}th percentile of natural logarithm of observed expected ratio is {threshold/count}")
+            if count != 0:
+                log.info(f"The average threshold based on {COHD_method_percentile}th percentile of natural logarithm of observed expected ratio is {threshold/count}")
+
             return final_kg, edge_to_nodes_map
 
         elif source_qnode_omop_ids is not None:
@@ -434,6 +497,15 @@ class COHDQuerier:
                         pass
                     else:
                         continue
+
+                if len(source_qnode_omop_ids[source_preferred_id]) == 0:
+                    log.warning(f"No OMOP concept id was found for source preferred id '{source_preferred_id}'' with qnode id '{qedge.source_id}'")
+                    continue
+                elif len(self.cohdindex.get_obs_exp_ratio(concept_id_1=source_qnode_omop_ids[source_preferred_id], dataset_id=3)) == 0:
+                    log.warning(f"No paired concept frequency was found from COHD database for source preferred id '{source_preferred_id}'' with qnode id '{qedge.source_id}'")
+                    continue
+                else:
+                    pass
 
                 new_edge[source_preferred_id] = dict()
                 threshold = np.percentile([row['ln_ratio'] for row in self.cohdindex.get_obs_exp_ratio(concept_id_1=source_qnode_omop_ids[source_preferred_id], domain="", dataset_id=3) if row['ln_ratio'] != float("-inf")], COHD_method_percentile)
@@ -479,7 +551,8 @@ class COHDQuerier:
                     swagger_node = self._convert_to_swagger_node(target_preferred_id)
                     final_kg.add_node(swagger_node, target_dict[target_preferred_id])
 
-            log.info(f"The average threshold based on {COHD_method_percentile}th percentile of natural logarithm of observed expected ratio is {threshold/count}")
+            if count != 0:
+                log.info(f"The average threshold based on {COHD_method_percentile}th percentile of natural logarithm of observed expected ratio is {threshold/count}")
             return final_kg, edge_to_nodes_map
 
         else:
@@ -497,6 +570,15 @@ class COHDQuerier:
                         pass
                     else:
                         continue
+
+                if len(target_qnode_omop_ids[target_preferred_id]) == 0:
+                    log.warning(f"No OMOP concept id was found for target preferred id '{target_preferred_id}'' with qnode id '{qedge.target_id}'")
+                    continue
+                elif len(self.cohdindex.get_paired_concept_freq(concept_id_1=target_qnode_omop_ids[target_preferred_id], dataset_id=3)) == 0:
+                    log.warning(f"No paired concept frequency was found from COHD database for target preferred id '{target_preferred_id}'' with qnode id '{qedge.target_id}'")
+                    continue
+                else:
+                    pass
 
                 new_edge[target_preferred_id] = dict()
                 threshold = np.percentile([row['ln_ratio'] for row in self.cohdindex.get_obs_exp_ratio(concept_id_1=target_qnode_omop_ids[target_preferred_id], domain="", dataset_id=3) if row['ln_ratio'] != float("-inf")], COHD_method_percentile)
@@ -542,7 +624,8 @@ class COHDQuerier:
                     swagger_node = self._convert_to_swagger_node(target_preferred_id)
                     final_kg.add_node(swagger_node, target_dict[target_preferred_id])
 
-            log.info(f"The average threshold based on {COHD_method_percentile}th percentile of natural logarithm of observed expected ratio is {threshold/count}")
+            if count != 0:
+                log.info(f"The average threshold based on {COHD_method_percentile}th percentile of natural logarithm of observed expected ratio is {threshold/count}")
             return final_kg, edge_to_nodes_map
 
     def _answer_query_using_COHD_chi_square(self, query_graph: QueryGraph, COHD_method_percentile: float, continue_if_no_results: bool, log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
@@ -606,6 +689,24 @@ class COHDQuerier:
                     else:
                         continue
 
+                if len(source_qnode_omop_ids[source_preferred_id]) == 0:
+                    log.warning(f"No OMOP concept id was found for source preferred id '{source_preferred_id}'' with qnode id '{qedge.source_id}'")
+                    continue
+                elif len(self.cohdindex.get_obs_exp_ratio(concept_id_1=source_qnode_omop_ids[source_preferred_id], dataset_id=3)) == 0:
+                    log.warning(f"No paired concept ids was found from COHD database for source preferred id '{source_preferred_id}'' with qnode id '{qedge.source_id}'")
+                    continue
+                else:
+                    pass
+
+                if len(target_qnode_omop_ids[target_preferred_id]) == 0:
+                    log.warning(f"No OMOP concept id was found for target preferred id '{target_preferred_id}'' with qnode id '{qedge.target_id}'")
+                    continue
+                elif len(self.cohdindex.get_obs_exp_ratio(concept_id_1=target_qnode_omop_ids[target_preferred_id], dataset_id=3)) == 0:
+                    log.warning(f"No paired concept ids was found from COHD database for target preferred id '{target_preferred_id}'' with qnode id '{qedge.target_id}'")
+                    continue
+                else:
+                    pass
+
                 value = float("inf")
                 threshold1 = np.percentile([row['p-value'] for row in self.cohdindex.get_chi_square(concept_id_1=source_qnode_omop_ids[source_preferred_id], domain="", dataset_id=3) if row['p-value'] != 0], COHD_method_percentile)  # calculate the percentile after removing the extreme value e.g. 0
                 threshold2 = np.percentile([row['p-value'] for row in self.cohdindex.get_chi_square(concept_id_1=target_qnode_omop_ids[target_preferred_id], domain="", dataset_id=3) if row['p-value'] != 0], COHD_method_percentile)  # calculate the percentile after removing the extreme value e.g. 0
@@ -647,7 +748,8 @@ class COHDQuerier:
                     swagger_node = self._convert_to_swagger_node(target_preferred_id)
                     final_kg.add_node(swagger_node, target_dict[target_preferred_id])
 
-            log.info(f"The average threshold based on {COHD_method_percentile}th percentile of chi square pvalue is {threshold/count}")
+            if count != 0:
+                log.info(f"The average threshold based on {COHD_method_percentile}th percentile of chi square pvalue is {threshold/count}")
             return final_kg, edge_to_nodes_map
 
         elif source_qnode_omop_ids is not None:
@@ -665,6 +767,15 @@ class COHDQuerier:
                         pass
                     else:
                         continue
+
+                if len(source_qnode_omop_ids[source_preferred_id]) == 0:
+                    log.warning(f"No OMOP concept id was found for source preferred id '{source_preferred_id}'' with qnode id '{qedge.source_id}'")
+                    continue
+                elif len(self.cohdindex.get_obs_exp_ratio(concept_id_1=source_qnode_omop_ids[source_preferred_id], dataset_id=3)) == 0:
+                    log.warning(f"No paired concept frequency was found from COHD database for source preferred id '{source_preferred_id}'' with qnode id '{qedge.source_id}'")
+                    continue
+                else:
+                    pass
 
                 new_edge[source_preferred_id] = dict()
                 threshold = np.percentile([row['p-value'] for row in self.cohdindex.get_chi_square(concept_id_1=source_qnode_omop_ids[source_preferred_id], domain="", dataset_id=3) if row['p-value'] != 0], (100 - COHD_method_percentile))
@@ -710,7 +821,9 @@ class COHDQuerier:
                     swagger_node = self._convert_to_swagger_node(target_preferred_id)
                     final_kg.add_node(swagger_node, target_dict[target_preferred_id])
 
-            log.info(f"The average threshold based on {COHD_method_percentile}th percentile of chi square pvalue is {threshold/count}")
+            if count != 0:
+                log.info(f"The average threshold based on {COHD_method_percentile}th percentile of chi square pvalue is {threshold/count}")
+
             return final_kg, edge_to_nodes_map
 
         else:
@@ -728,6 +841,15 @@ class COHDQuerier:
                         pass
                     else:
                         continue
+
+                if len(target_qnode_omop_ids[target_preferred_id]) == 0:
+                    log.warning(f"No OMOP concept id was found for target preferred id '{target_preferred_id}'' with qnode id '{qedge.target_id}'")
+                    continue
+                elif len(self.cohdindex.get_paired_concept_freq(concept_id_1=target_qnode_omop_ids[target_preferred_id], dataset_id=3)) == 0:
+                    log.warning(f"No paired concept frequency was found from COHD database for target preferred id '{target_preferred_id}'' with qnode id '{qedge.target_id}'")
+                    continue
+                else:
+                    pass
 
                 new_edge[target_preferred_id] = dict()
                 threshold = np.percentile([row['p-value'] for row in self.cohdindex.get_chi_square(concept_id_1=target_qnode_omop_ids[target_preferred_id], domain="", dataset_id=3) if row['p-value'] != 0], COHD_method_percentile)
@@ -773,7 +895,9 @@ class COHDQuerier:
                     swagger_node = self._convert_to_swagger_node(target_preferred_id)
                     final_kg.add_node(swagger_node, target_dict[target_preferred_id])
 
-            log.info(f"The average threshold based on {COHD_method_percentile}th percentile of chi square pvalue is {threshold/count}")
+            if count != 0:
+                log.info(f"The average threshold based on {COHD_method_percentile}th percentile of chi square pvalue is {threshold/count}")
+
             return final_kg, edge_to_nodes_map
 
     def _get_omop_id_from_curies(self, qnode: QNode, log: Response) -> Dict[str, list]:

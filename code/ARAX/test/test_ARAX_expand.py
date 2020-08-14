@@ -551,6 +551,49 @@ def test_987_override_node_types():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert all('phenotypic_feature' in node.type for node in nodes_by_qg_id['n01'].values())
 
+@pytest.mark.slow
+def test_COHD_expand_paired_concept_freq():
+    actions_list = [
+        "add_qnode(curie=UMLS:C0015967, id=n00)",
+        "add_qnode(type=chemical_substance, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(edge_id=e00, kp=COHD, COHD_method=paired_concept_freq, COHD_method_percentile=95)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    assert all([edges_by_qg_id[qedge_id][edge_id].type == "has_paired_concept_frequency_with" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes.name == "paired_concept_frequency" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes.type == "EDAM:data_0951" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes.url == "http://cohd.smart-api.info/" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+
+def test_COHD_expand_observed_expected_ratio():
+    actions_list = [
+        "add_qnode(curie=DOID:10718, id=n00)",
+        "add_qnode(type=chemical_substance, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(edge_id=e00, kp=COHD, COHD_method=observed_expected_ratio, COHD_method_percentile=95)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    assert all([edges_by_qg_id[qedge_id][edge_id].type == "has_ln_observed_expected_ratio_with" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes.name == "ln_observed_expected_ratio" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes.type == "EDAM:data_0951" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes.url == "http://cohd.smart-api.info/" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+
+def test_COHD_expand_chi_square():
+    actions_list = [
+        "add_qnode(curie=DOID:5844, id=n00)",
+        "add_qnode(type=chemical_substance, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(edge_id=e00, kp=COHD, COHD_method=chi_square, COHD_method_percentile=95)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    assert all([edges_by_qg_id[qedge_id][edge_id].type == "has_chi_square_pvalue_with" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes.name == "chi_square_pvalue" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes.type == "EDAM:data_0951" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes.url == "http://cohd.smart-api.info/" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+
 
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])

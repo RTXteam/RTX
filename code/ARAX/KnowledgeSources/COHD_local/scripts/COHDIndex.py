@@ -257,7 +257,6 @@ class COHDIndex:
         results_list = []
         cursor = self.connection.cursor()
         cursor.execute(f"select distinct t1.preferred_curie, t1.concept_id from CURIE_TO_OMOP_MAPPING t1 inner join CONCEPTS t2 on t1.concept_id = t2.concept_id where preferred_curie='{preferred_curie}';")
-
         res = cursor.fetchall()
         if len(res) == 0:
             return []
