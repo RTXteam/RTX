@@ -1,17 +1,17 @@
 # This class will overlay the normalized google distance on a message (all edges)
 #!/bin/env python3
 import functools
+import json
 import math
 import subprocess
 import sys
 import os
+import sqlite3
 import traceback
 import numpy as np
 import itertools
 from datetime import datetime
 from typing import List
-
-from sqlitedict import SqliteDict
 
 # relative imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
@@ -32,7 +32,9 @@ class ComputeNGD:
         self.message = message
         self.parameters = parameters
         self.global_iter = 0
-        self.curie_to_pmids_db = self._setup_ngd_database()
+        self.ngd_database_name = "curie_to_pmids.sqlite"
+        self.connection, self.cursor = self._setup_ngd_database()
+        self.curie_to_pmids_map = dict()
         self.ngd_normalizer = 2.2e+7 * 20  # From PubMed home page there are 27 million articles; avg 20 MeSH terms per article
         self.NGD = NormGoogleDistance.NormGoogleDistance()  # should I be importing here, or before the class? Feel like Eric said avoid global vars...
 
@@ -44,6 +46,7 @@ class ComputeNGD:
         :return: response
         """
         if self.response.status != 'OK':  # Catches any errors that may have been logged during initialization
+            self._close_database()
             return self.response
         parameters = self.parameters
         self.response.debug(f"Computing NGD")
@@ -83,10 +86,11 @@ class ComputeNGD:
 
             # Convert these curies to their canonicalized curies (needed for the local NGD system)
             canonicalized_curie_map = self._get_canonical_curies_map(list(source_curies_to_decorate.union(target_curies_to_decorate)))
-
+            self.curie_to_pmids_map = self._get_curie_to_pmids_map(set(canonicalized_curie_map.values()))
             added_flag = False  # check to see if any edges where added
             num_computed_total = 0
             num_computed_slow = 0
+            self.response.debug(f"Looping through node pairs and calculating NGD values")
             # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
             for (source_curie, target_curie) in itertools.product(source_curies_to_decorate, target_curies_to_decorate):
                 # create the edge attribute if it can be
@@ -150,9 +154,10 @@ class ComputeNGD:
             try:
                 # Map all nodes to their canonicalized curies in one batch (need canonical IDs for the local NGD system)
                 canonicalized_curie_map = self._get_canonical_curies_map([node.id for node in self.message.knowledge_graph.nodes])
-
+                self.curie_to_pmids_map = self._get_curie_to_pmids_map(set(canonicalized_curie_map.values()))
                 num_computed_total = 0
                 num_computed_slow = 0
+                self.response.debug(f"Looping through edges and calculating NGD values")
                 for edge in self.message.knowledge_graph.edges:
                     # Make sure the edge_attributes are not None
                     if not edge.edge_attributes:
@@ -185,12 +190,13 @@ class ComputeNGD:
                 percent_computed_fast = round((num_computed_fast / num_computed_total) * 100)
                 self.response.debug(f"Used fastNGD for {percent_computed_fast}% of edges "
                                     f"({num_computed_fast} of {num_computed_total})")
+            self._close_database()
             return self.response
 
     def calculate_ngd_fast(self, source_curie, target_curie):
-        if source_curie in self.curie_to_pmids_db and target_curie in self.curie_to_pmids_db:
-            pubmed_ids_for_curies = [self.curie_to_pmids_db.get(source_curie),
-                                     self.curie_to_pmids_db.get(target_curie)]
+        if source_curie in self.curie_to_pmids_map and target_curie in self.curie_to_pmids_map:
+            pubmed_ids_for_curies = [self.curie_to_pmids_map.get(source_curie),
+                                     self.curie_to_pmids_map.get(target_curie)]
             counts_res = self._compute_marginal_and_joint_counts(pubmed_ids_for_curies)
             return self._compute_multiway_ngd_from_counts(*counts_res)
         else:
@@ -221,6 +227,7 @@ class ComputeNGD:
                 return math.nan
 
     def _get_canonical_curies_map(self, curies):
+        self.response.debug(f"Canonicalizing curies of relevant nodes using NodeSynonymizer")
         synonymizer = NodeSynonymizer()
         try:
             canonicalized_node_info = synonymizer.get_canonical_curies(curies)
@@ -233,11 +240,29 @@ class ComputeNGD:
             return {input_curie: node_info.get('preferred_curie', input_curie) for input_curie, node_info in
                     canonicalized_node_info.items() if node_info}
 
+    def _get_curie_to_pmids_map(self, canonicalized_curies):
+        self.response.debug(f"Extracting PMID lists from sqlite database for relevant nodes")
+        curies = list(canonicalized_curies)
+        batch_size = 5
+        num_chunks = len(curies) // batch_size if len(curies) % batch_size == 0 else (len(curies) // batch_size) + 1
+        start_index = 0
+        stop_index = batch_size
+        curie_to_pmids_map = dict()
+        for num in range(num_chunks):
+            chunk = curies[start_index:stop_index] if stop_index <= len(curies) else curies[start_index:]
+            curie_list_str = ", ".join([f"'{curie}'" for curie in chunk])
+            self.cursor.execute(f"SELECT * FROM curie_to_pmids WHERE curie in ({curie_list_str})")
+            rows = self.cursor.fetchall()
+            for row in rows:
+                curie_to_pmids_map[row[0]] = json.loads(row[1])  # PMID list is stored as JSON string in sqlite db
+            start_index += batch_size
+            stop_index += batch_size
+        return curie_to_pmids_map
+
     def _setup_ngd_database(self):
         # Download the ngd database if there isn't already a local copy or if a newer version is available
-        ngd_db_name = "curie_to_pmids.sqlite"
-        db_path_local = f"{os.path.dirname(os.path.abspath(__file__))}/ngd/{ngd_db_name}"
-        db_path_remote = f"/home/ubuntu/databases_for_download/{ngd_db_name}"
+        db_path_local = f"{os.path.dirname(os.path.abspath(__file__))}/ngd/{self.ngd_database_name}"
+        db_path_remote = f"/home/ubuntu/databases_for_download/{self.ngd_database_name}"
         if not os.path.exists(f"{db_path_local}"):
             self.response.debug(f"Downloading fast NGD database because no copy exists... (will take a few minutes)")
             os.system(f"scp ubuntu@arax.rtx.ai:{db_path_remote} {db_path_local}")
@@ -250,10 +275,18 @@ class ComputeNGD:
                 os.system(f"scp ubuntu@arax.rtx.ai:{db_path_remote} {db_path_local}")
             else:
                 self.response.debug(f"Confirmed local NGD database is current")
-
-        # Verify we were successful and set up the database
-        if os.path.exists(db_path_local) and os.path.isfile(db_path_local):
-            return SqliteDict(f"{db_path_local}")
+        # Set up a connection to the database so it's ready for use
+        try:
+            connection = sqlite3.connect(db_path_local)
+            cursor = connection.cursor()
+        except Exception:
+            self.response.error(f"Encountered an error connecting to ngd sqlite database", error_code="DatabaseSetupIssue")
+            return None, None
         else:
-            self.response.error(f"No local ngd database detected", error_code="DatabaseSetupIssue")
-            return None
+            return connection, cursor
+
+    def _close_database(self):
+        if self.cursor:
+            self.cursor.close()
+        if self.connection:
+            self.connection.close()
