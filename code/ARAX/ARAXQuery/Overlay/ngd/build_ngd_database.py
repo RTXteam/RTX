@@ -158,6 +158,7 @@ class NGDDatabaseBuilder:
             if pmids:  # Sometimes publications list includes only non-PMID identifiers (like ISBN)
                 self._add_pmids_mapping(canonical_curie, pmids, curie_to_pmids_map)
 
+        print(f"  In the end, found PMID lists for {len(curie_to_pmids_map)} (canonical) curies")
         print("  Loading data into sqlite database..")
         # Remove any preexisting version of this database
         if os.path.exists(self.curie_to_pmids_db_path):
@@ -216,8 +217,10 @@ class NGDDatabaseBuilder:
         # Converts "PMID:1234" to 1234
         assert ":" in curie
         curie_pieces = curie.split(":")
-        assert len(curie_pieces) == 2
-        return int(curie_pieces[1])
+        local_id_str = curie_pieces[-1]
+        # Remove any strange characters (like in "PMID:_19960544")
+        stripped_id_str = "".join([character for character in local_id_str if character.isdigit()])
+        return int(stripped_id_str)
 
     @staticmethod
     def _destroy_etree(file_contents_tree):
