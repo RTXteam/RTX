@@ -219,7 +219,7 @@ class NGDDatabaseBuilder:
         local_id_str = curie_pieces[-1]
         # Remove any strange characters (like in "PMID:_19960544")
         stripped_id_str = "".join([character for character in local_id_str if character.isdigit()])
-        return int(stripped_id_str)
+        return int(stripped_id_str) if stripped_id_str else None
 
     @staticmethod
     def _destroy_etree(file_contents_tree):
