@@ -268,14 +268,14 @@ class ComputeNGD:
         db_path_remote = f"/home/ubuntu/databases_for_download/{self.ngd_database_name}"
         if not os.path.exists(f"{db_path_local}"):
             self.response.debug(f"Downloading fast NGD database because no copy exists... (will take a few minutes)")
-            os.system(f"scp ubuntu@arax.rtx.ai:{db_path_remote} {db_path_local}")
+            os.system(f"scp rtxconfig@arax.rtx.ai:{db_path_remote} {db_path_local}")
         else:
             last_modified_local = int(os.path.getmtime(db_path_local))
-            last_modified_remote_byte_str = subprocess.check_output(f"ssh ubuntu@arax.rtx.ai 'stat -c %Y {db_path_remote}'", shell=True)
+            last_modified_remote_byte_str = subprocess.check_output(f"ssh rtxconfig@arax.rtx.ai 'stat -c %Y {db_path_remote}'", shell=True)
             last_modified_remote = int(str(last_modified_remote_byte_str, 'utf-8'))
             if last_modified_local < last_modified_remote:
                 self.response.debug(f"Downloading new version of fast NGD database... (will take a few minutes)")
-                os.system(f"scp ubuntu@arax.rtx.ai:{db_path_remote} {db_path_local}")
+                os.system(f"scp rtxconfig@arax.rtx.ai:{db_path_remote} {db_path_local}")
             else:
                 self.response.debug(f"Confirmed local NGD database is current")
         # Set up a connection to the database so it's ready for use
