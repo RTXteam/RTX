@@ -86,7 +86,7 @@ class ComputeNGD:
 
             # Convert these curies to their canonicalized curies (needed for the local NGD system)
             canonicalized_curie_map = self._get_canonical_curies_map(list(source_curies_to_decorate.union(target_curies_to_decorate)))
-            self.curie_to_pmids_map = self._get_curie_to_pmids_map(set(canonicalized_curie_map.values()))
+            self.load_curie_to_pmids_data(canonicalized_curie_map.values())
             added_flag = False  # check to see if any edges where added
             num_computed_total = 0
             num_computed_slow = 0
@@ -154,7 +154,7 @@ class ComputeNGD:
             try:
                 # Map all nodes to their canonicalized curies in one batch (need canonical IDs for the local NGD system)
                 canonicalized_curie_map = self._get_canonical_curies_map([node.id for node in self.message.knowledge_graph.nodes])
-                self.curie_to_pmids_map = self._get_curie_to_pmids_map(set(canonicalized_curie_map.values()))
+                self.load_curie_to_pmids_data(canonicalized_curie_map.values())
                 num_computed_total = 0
                 num_computed_slow = 0
                 self.response.debug(f"Looping through edges and calculating NGD values")
@@ -192,6 +192,23 @@ class ComputeNGD:
                                     f"({num_computed_fast} of {num_computed_total})")
             self._close_database()
             return self.response
+
+    def load_curie_to_pmids_data(self, canonicalized_curies):
+        self.response.debug(f"Extracting PMID lists from sqlite database for relevant nodes")
+        curies = list(set(canonicalized_curies))
+        batch_size = 5
+        num_chunks = len(curies) // batch_size if len(curies) % batch_size == 0 else (len(curies) // batch_size) + 1
+        start_index = 0
+        stop_index = batch_size
+        for num in range(num_chunks):
+            chunk = curies[start_index:stop_index] if stop_index <= len(curies) else curies[start_index:]
+            curie_list_str = ", ".join([f"'{curie}'" for curie in chunk])
+            self.cursor.execute(f"SELECT * FROM curie_to_pmids WHERE curie in ({curie_list_str})")
+            rows = self.cursor.fetchall()
+            for row in rows:
+                self.curie_to_pmids_map[row[0]] = json.loads(row[1])  # PMID list is stored as JSON string in sqlite db
+            start_index += batch_size
+            stop_index += batch_size
 
     def calculate_ngd_fast(self, source_curie, target_curie):
         if source_curie in self.curie_to_pmids_map and target_curie in self.curie_to_pmids_map:
@@ -244,25 +261,6 @@ class ComputeNGD:
                 else:
                     canonical_curies_map[input_curie] = input_curie
             return canonical_curies_map
-
-    def _get_curie_to_pmids_map(self, canonicalized_curies):
-        self.response.debug(f"Extracting PMID lists from sqlite database for relevant nodes")
-        curies = list(canonicalized_curies)
-        batch_size = 5
-        num_chunks = len(curies) // batch_size if len(curies) % batch_size == 0 else (len(curies) // batch_size) + 1
-        start_index = 0
-        stop_index = batch_size
-        curie_to_pmids_map = dict()
-        for num in range(num_chunks):
-            chunk = curies[start_index:stop_index] if stop_index <= len(curies) else curies[start_index:]
-            curie_list_str = ", ".join([f"'{curie}'" for curie in chunk])
-            self.cursor.execute(f"SELECT * FROM curie_to_pmids WHERE curie in ({curie_list_str})")
-            rows = self.cursor.fetchall()
-            for row in rows:
-                curie_to_pmids_map[row[0]] = json.loads(row[1])  # PMID list is stored as JSON string in sqlite db
-            start_index += batch_size
-            stop_index += batch_size
-        return curie_to_pmids_map
 
     def _setup_ngd_database(self):
         # Download the ngd database if there isn't already a local copy or if a newer version is available

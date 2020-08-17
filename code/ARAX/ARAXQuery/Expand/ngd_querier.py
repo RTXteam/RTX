@@ -80,6 +80,7 @@ class NGDQuerier:
         # Go through those answers from KG2 and calculate ngd for each edge
         kg2_edges_map = {edge.id: edge for edge in kg2_answer_kg.edges}
         kg2_nodes_map = {node.id: node for node in kg2_answer_kg.nodes}
+        self.cngd.load_curie_to_pmids_data(kg2_nodes_map)
         kg2_edge_ngd_map = dict()
         for kg2_edge in kg2_edges_map.values():
             kg2_node_1 = kg2_nodes_map.get(kg2_edge.source_id)  # These are already canonicalized (default behavior)
