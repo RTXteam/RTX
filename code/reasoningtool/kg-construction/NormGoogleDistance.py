@@ -12,66 +12,17 @@ import sys
 import time
 import CachedMethods
 from cache_control_helper import CacheControlHelper
-import os
-import functools
-from sqlitedict import SqliteDict
 
 from QueryNCBIeUtils import QueryNCBIeUtils
 from QueryDisont import QueryDisont  # DOID -> MeSH
 from QueryEBIOLS import QueryEBIOLS  # UBERON -> MeSH
 from QueryMyChem import QueryMyChem
-from typing import List, Dict, Tuple
 import sqlite3
 
-
 # requests_cache.install_cache('NGDCache')
-NGD_NORMALIZER = 2.2e+7 * 20   # from PubMed home page there are 27 million articles; avg 20 MeSH terms per article
 
 
 class NormGoogleDistance:
-    def __init__(self):
-        ngd_db_file = f"{os.path.dirname(os.path.abspath(__file__))}/../../ARAX/ARAXQuery/Overlay/ngd/curie_to_pmids.sqlite"
-        if os.path.exists(ngd_db_file) and os.path.isfile(ngd_db_file):
-            self.curie_to_pmids_db = SqliteDict(f"{ngd_db_file}")
-        else:
-            self.curie_to_pmids_db = None
-
-    @staticmethod
-    def compute_marginal_and_joint_counts(concept_pubmed_ids: List[str]) -> list:
-        return [list(map(lambda pmid_list: len(set(pmid_list)), concept_pubmed_ids)),
-                len(functools.reduce(lambda pmids_intersec_cumul, pmids_next:
-                                     set(pmids_next).intersection(pmids_intersec_cumul),
-                                     concept_pubmed_ids))]
-
-    @staticmethod
-    def compute_multiway_ngd_from_counts(marginal_counts: List[int],
-                                         joint_count: int) -> float:
-        # Make sure that things are within the right domain for the logs
-        # Should also make sure things are not negative, but I'll just do this with a ValueError
-        if None in marginal_counts:
-            return math.nan
-        elif 0 in marginal_counts or 0. in marginal_counts:
-            return math.nan
-        elif joint_count == 0 or joint_count == 0.:
-            return math.nan
-        else:
-            try:
-                return (max([math.log(count) for count in marginal_counts]) - math.log(joint_count)) / \
-                   (math.log(NGD_NORMALIZER) - min([math.log(count) for count in marginal_counts]))
-            except ValueError:
-                return math.nan
-
-    def get_ngd_for_all_fast(self, curie_list: List[str], name_list: List[str], canonicalized_curie_map: Dict[str, str]) -> Tuple[float, str]:
-        assert len(curie_list) == len(name_list)
-        if self.curie_to_pmids_db:
-            # Convert the input curies to their canonicalized versions because the local NGD db requires canonical IDs
-            canonicalized_curies = [canonicalized_curie_map.get(curie, curie) for curie in curie_list]
-            recognized_curies = [curie for curie in canonicalized_curies if curie in self.curie_to_pmids_db]
-            if len(recognized_curies) == len(curie_list):
-                pubmed_ids_for_curies = [self.curie_to_pmids_db.get(curie) for curie in recognized_curies]
-                counts_res = NormGoogleDistance.compute_marginal_and_joint_counts(pubmed_ids_for_curies)
-                return NormGoogleDistance.compute_multiway_ngd_from_counts(*counts_res), "fast"
-        return NormGoogleDistance.get_ngd_for_all(curie_list, name_list), "slow"
 
     @staticmethod
     @CachedMethods.register
@@ -327,26 +278,3 @@ class NormGoogleDistance:
         for lst in pmids:
             pmids_with_prefix.append([f"PMID:{x}" for x in lst])
         return pmids_with_prefix
-
-
-def test01():
-    res = NormGoogleDistance.compute_marginal_and_joint_counts([['a', 'b', 'a'], ['a', 'd'], ['e', 'a', 'c']])
-    assert abs(NormGoogleDistance.compute_multiway_ngd_from_counts(*res) - 0.05719216982573684) < 1e-10
-
-
-def test02():
-    ngd = NormGoogleDistance()
-    ngd_value, method_used = ngd.get_ngd_for_all_fast(['DOID:10763', 'DOID:6713'], [None, None])
-    assert abs(0.3901010209565451 - ngd_value) < 1e-10
-
-
-def test03():
-    ngd = NormGoogleDistance()
-    ngd_value, method_used = ngd.get_ngd_for_all_fast(['DOID:XXX', 'DOID:6713'], ["hypertension", "cerebrovascular disease"])
-    assert abs(0.3969190387758672 - ngd_value) < 1e-10
-
-
-if __name__ == '__main__':
-    test01()
-    test02()
-    test03()
