@@ -179,7 +179,7 @@ class ARAXExpander:
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, edge_to_nodes_map
 
-        valid_kps = ["ARAX/KG1", "ARAX/KG2", "BTE", "COHD"]
+        valid_kps = ["ARAX/KG1", "ARAX/KG2", "BTE", "COHD", "NGD"]
         if kp_to_use not in valid_kps:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(valid_kps)}",
                       error_code="InvalidKP")
@@ -191,6 +191,9 @@ class ARAXExpander:
             elif kp_to_use == 'COHD':
                 from Expand.COHD_querier import COHDQuerier
                 kp_querier = COHDQuerier(log)
+            elif kp_to_use == 'NGD':
+                from Expand.ngd_querier import NGDQuerier
+                kp_querier = NGDQuerier(log)
             else:
                 from Expand.kg_querier import KGQuerier
                 kp_querier = KGQuerier(log, kp_to_use)
@@ -199,17 +202,18 @@ class ARAXExpander:
                 return answer_kg, edge_to_nodes_map
             log.debug(f"Query for edge {qedge.id} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
-            # Make sure our query has been fulfilled (unless we're continuing if no results)
-            if not continue_if_no_results:
-                if not eu.qg_is_fulfilled(edge_query_graph, answer_kg):
-                    log.error(f"Returned answer KG does not fulfill the query graph", error_code="UnfulfilledQGID")
-                    return answer_kg, edge_to_nodes_map
-
             # Do some post-processing (deduplicate nodes, remove self-edges..)
             if synonym_handling != 'add_all':
                 answer_kg, edge_to_nodes_map = self._deduplicate_nodes(answer_kg, edge_to_nodes_map, log)
             if eu.qg_is_fulfilled(edge_query_graph, answer_kg):
                 answer_kg = self._remove_self_edges(answer_kg, edge_to_nodes_map, qedge.id, edge_query_graph.nodes, log)
+
+            # Make sure our query has been fulfilled (unless we're continuing if no results)
+            if not eu.qg_is_fulfilled(edge_query_graph, answer_kg):
+                if continue_if_no_results:
+                    log.warning(f"No paths were found in {kp_to_use} satisfying this query graph")
+                else:
+                    log.error(f"No paths were found in {kp_to_use} satisfying this query graph", error_code="NoResults")
 
             return answer_kg, edge_to_nodes_map
 
@@ -506,6 +510,7 @@ class ARAXExpander:
             for node_id in orphan_node_ids_for_this_qnode_id:
                 kg.nodes_by_qg_id[qnode.id].pop(node_id)
 
+        log.debug(f"After removing self-edges, answer KG counts are: {eu.get_printable_counts_by_qg_id(kg)}")
         return kg
 
     @staticmethod

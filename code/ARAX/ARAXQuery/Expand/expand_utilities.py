@@ -199,9 +199,9 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: Response) -> List[str]
             curies_missing_info = {curie for curie in equivalent_curies_dict if not equivalent_curies_dict.get(curie)}
             if curies_missing_info:
                 log.warning(f"NodeSynonymizer did not find any equivalent curies for: {curies_missing_info}")
-            equivalent_curies = {curie for curie_list in equivalent_curies_dict.values() if curie_list for curie in
-                                 curie_list}
-            all_curies = equivalent_curies.union(set(curies))  # Make sure even curies without results are included
+            equivalent_curies = {curie for curie_dict in equivalent_curies_dict.values() if curie_dict for curie in
+                                 curie_dict}
+            all_curies = equivalent_curies.union(set(curies))  # Make sure even curies without synonyms are included
             return sorted(list(all_curies))
         else:
             log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
