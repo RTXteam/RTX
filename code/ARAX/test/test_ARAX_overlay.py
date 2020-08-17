@@ -553,7 +553,7 @@ def test_issue_892():
 
 def test_overlay_exposures_data_virtual():
     query = {"previous_message_processing_plan": {"processing_actions": [
-        "add_qnode(curie=PUBCHEM:5865, id=n0)",
+        "add_qnode(curie=CHEMBL.COMPOUND:CHEMBL635, id=n0)",
         "add_qnode(curie=MESH:D052638, id=n1)",
         "expand(kp=ARAX/KG2)",
         "overlay(action=overlay_exposures_data, virtual_relation_label=E1, source_qnode_id=n0, target_qnode_id=n1)",

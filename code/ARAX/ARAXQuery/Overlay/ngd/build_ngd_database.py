@@ -15,16 +15,17 @@ Usage: python build_ngd_database.py <path to directory containing PubMed xml fil
 """
 import argparse
 import ast
-import os
-import sys
 import gzip
+import json
+import os
+import sqlite3
+import sys
 import time
 import traceback
 from typing import List, Dict, Set, Union
 
 from lxml import etree
 import pickledb
-from sqlitedict import SqliteDict
 from neo4j import GraphDatabase
 
 sys.path.append(f"{os.path.dirname(os.path.abspath(__file__))}/../../../NodeSynonymizer/")
@@ -32,18 +33,17 @@ from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../")  # code directory
 from RTXConfiguration import RTXConfiguration
 
-CONCEPTNAME_TO_PMIDS_DB_FILE_NAME = "conceptname_to_pmids.db"
-CURIE_TO_PMIDS_DB_FILE_NAME = "curie_to_pmids.sqlite"
-
 
 class NGDDatabaseBuilder:
     def __init__(self, pubmed_directory_path):
         self.pubmed_directory_path = pubmed_directory_path
+        self.conceptname_to_pmids_db_path = "conceptname_to_pmids.db"
+        self.curie_to_pmids_db_path = "curie_to_pmids.sqlite"
         self.status = 'OK'
         self.synonymizer = NodeSynonymizer()
 
     def build_conceptname_to_pmids_db(self):
-        print(f"Starting to build {CONCEPTNAME_TO_PMIDS_DB_FILE_NAME} from pubmed files..")
+        print(f"Starting to build {self.conceptname_to_pmids_db_path} from pubmed files..")
         start = time.time()
         pubmed_directory = os.fsencode(self.pubmed_directory_path)
         all_file_names = [os.fsdecode(file) for file in os.listdir(pubmed_directory)]
@@ -82,23 +82,23 @@ class NGDDatabaseBuilder:
 
             # Save the data to the PickleDB after we're done
             print("  Loading data into PickleDB..")
-            conceptname_to_pmids_db = pickledb.load(CONCEPTNAME_TO_PMIDS_DB_FILE_NAME, False)
+            conceptname_to_pmids_db = pickledb.load(self.conceptname_to_pmids_db_path, False)
             for concept_name, pmid_list in conceptname_to_pmids_map.items():
                 conceptname_to_pmids_db.set(concept_name, list({self._create_pmid_string(pmid) for pmid in pmid_list}))
             print("  Saving PickleDB file..")
             conceptname_to_pmids_db.dump()
-            print(f"Done! Building {CONCEPTNAME_TO_PMIDS_DB_FILE_NAME} took {round(((time.time() - start) / 60) / 60, 3)} hours")
+            print(f"Done! Building {self.conceptname_to_pmids_db_path} took {round(((time.time() - start) / 60) / 60, 3)} hours")
 
     def build_curie_to_pmids_db(self):
-        print(f"Starting to build {CURIE_TO_PMIDS_DB_FILE_NAME}..")
+        print(f"Starting to build {self.curie_to_pmids_db_path}..")
         start = time.time()
         curie_to_pmids_map = dict()
 
         # Load the data from the first half of the build process (scraping pubmed)
-        print(f"  Loading pickle DB containing pubmed scrapings ({CONCEPTNAME_TO_PMIDS_DB_FILE_NAME})..")
-        conceptname_to_pmids_db = pickledb.load(CONCEPTNAME_TO_PMIDS_DB_FILE_NAME, False)
+        print(f"  Loading pickle DB containing pubmed scrapings ({self.conceptname_to_pmids_db_path})..")
+        conceptname_to_pmids_db = pickledb.load(self.conceptname_to_pmids_db_path, False)
         if not conceptname_to_pmids_db.getall():
-            print(f"ERROR: {CONCEPTNAME_TO_PMIDS_DB_FILE_NAME} must exist to do a partial build. Use --full or locate "
+            print(f"ERROR: {self.conceptname_to_pmids_db_path} must exist to do a partial build. Use --full or locate "
                   f"that file.")
             self.status = 'ERROR'
             return
@@ -143,8 +143,9 @@ class NGDDatabaseBuilder:
             canonicalized_node_ids = {canonicalized_curies_dict[result['n.id']],
                                       canonicalized_curies_dict[result['m.id']]}
             pmids = self._extract_and_format_pmids(result['e.publications'])
-            for canonical_curie in canonicalized_node_ids:
-                self._add_pmids_mapping(canonical_curie, pmids, curie_to_pmids_map)
+            if pmids:  # Sometimes publications list includes only non-PMID identifiers (like ISBN)
+                for canonical_curie in canonicalized_node_ids:
+                    self._add_pmids_mapping(canonical_curie, pmids, curie_to_pmids_map)
         print(f"  Getting PMIDs from nodes in KG2 neo4j..")
         node_query = f"match (n) where n.publications is not null and n.publications <> '[]' return distinct n.id, n.publications"
         node_results = self._run_cypher_query(node_query, 'KG2')
@@ -154,21 +155,23 @@ class NGDDatabaseBuilder:
         for result in node_results:
             canonical_curie = canonicalized_curies_dict[result['n.id']]
             pmids = self._extract_and_format_pmids(result['n.publications'])
-            self._add_pmids_mapping(canonical_curie, pmids, curie_to_pmids_map)
+            if pmids:  # Sometimes publications list includes only non-PMID identifiers (like ISBN)
+                self._add_pmids_mapping(canonical_curie, pmids, curie_to_pmids_map)
 
-        print("  Saving data..")
+        print(f"  In the end, found PMID lists for {len(curie_to_pmids_map)} (canonical) curies")
+        print("  Loading data into sqlite database..")
         # Remove any preexisting version of this database
-        if os.path.exists(CURIE_TO_PMIDS_DB_FILE_NAME):
-            os.remove(CURIE_TO_PMIDS_DB_FILE_NAME)
-        # Load our curie->PMIDs dictionary into the database
-        curie_to_pmids_db = SqliteDict(f"./{CURIE_TO_PMIDS_DB_FILE_NAME}")
-        for curie, pmids in curie_to_pmids_map.items():
-            curie_to_pmids_db[curie] = list(set(pmids))
-        print(f"  Final {CURIE_TO_PMIDS_DB_FILE_NAME} contains {len(list(curie_to_pmids_db.keys()))} "
-              f"canonical curies (keys).")
-        curie_to_pmids_db.commit()
-        curie_to_pmids_db.close()
-        print(f"Done! Building {CURIE_TO_PMIDS_DB_FILE_NAME} took {round((time.time() - start) / 60)} minutes.")
+        if os.path.exists(self.curie_to_pmids_db_path):
+            os.remove(self.curie_to_pmids_db_path)
+        connection = sqlite3.connect(self.curie_to_pmids_db_path)
+        cursor = connection.cursor()
+        cursor.execute("CREATE TABLE curie_to_pmids (curie TEXT, pmids TEXT)")
+        cursor.execute("CREATE UNIQUE INDEX unique_curie ON curie_to_pmids (curie)")
+        rows = [[curie, json.dumps(list(filter(None, {self._get_local_id_as_int(pmid) for pmid in pmids})))] for curie, pmids in curie_to_pmids_map.items()]
+        cursor.executemany(f"INSERT INTO curie_to_pmids (curie, pmids) VALUES (?, ?)", rows)
+        connection.commit()
+        cursor.close()
+        print(f"Done! Building {self.curie_to_pmids_db_path} took {round((time.time() - start) / 60)} minutes.")
 
     # Helper methods
 
@@ -208,6 +211,15 @@ class NGDDatabaseBuilder:
     @staticmethod
     def _create_pmid_string(pmid):
         return f"PMID:{pmid}"
+
+    @staticmethod
+    def _get_local_id_as_int(curie):
+        # Converts "PMID:1234" to 1234
+        curie_pieces = curie.split(":")
+        local_id_str = curie_pieces[-1]
+        # Remove any strange characters (like in "PMID:_19960544")
+        stripped_id_str = "".join([character for character in local_id_str if character.isdigit()])
+        return int(stripped_id_str) if stripped_id_str else None
 
     @staticmethod
     def _destroy_etree(file_contents_tree):
