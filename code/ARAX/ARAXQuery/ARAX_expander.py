@@ -159,7 +159,8 @@ class ARAXExpander:
         if not kg.nodes and not continue_if_no_results:
             log.error(f"No paths were found in {kp_to_use} satisfying this query graph", error_code="NoResults")
         else:
-            log.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges")
+            log.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges "
+                     f"({eu.get_printable_counts_by_qg_id(dict_kg)})")
         return response
 
     def _expand_edge(self, qedge: QEdge, kp_to_use: str, dict_kg: DictKnowledgeGraph, continue_if_no_results: bool,
@@ -346,7 +347,7 @@ class ARAXExpander:
                 for qnode_id, corresponding_node_id in edge_to_nodes_map[edge_id].items():
                     updated_edge_to_nodes_map[edge_id][qnode_id] = curie_mappings.get(corresponding_node_id)
 
-        log.info(f"After deduplication, answer KG counts are: {eu.get_printable_counts_by_qg_id(deduplicated_kg)}")
+        log.debug(f"After deduplication, answer KG counts are: {eu.get_printable_counts_by_qg_id(deduplicated_kg)}")
         return deduplicated_kg, updated_edge_to_nodes_map
 
     @staticmethod
