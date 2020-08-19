@@ -33,19 +33,27 @@ def dump_name_description_KG2(file_name, session, write_mode):
 		for item in res:
 			prop_dict = item['p']
 			labels = item['l']
-			if 'id' in prop_dict and 'name' in prop_dict:
-				if prop_dict['id'] and prop_dict['name'] and labels:
-					label = list(set(labels) - {'Base'}).pop()
-					if label:
-						fid.write('%s\t' % prop_dict['id'])
-						#fid.write('%s\t' % ' '.join(prop_dict['name'].split('\n')))  # FIXME: ugly workaround for node CHEMBL.COMPOUND:CHEMBL2259757 that has a tab in its name
-						fid.write('%s\t' % remove_tab_newlines.sub(" ", prop_dict['name']))  # better approach
-						fid.write('%s\n' % label)
-				if label == "protein" and 'id' in prop_dict and 'symbol' in prop_dict:  # If it's a protein, also do the symbol
-					if prop_dict['id'] and prop_dict['symbol'] and label:
-						fid.write('%s\t' % prop_dict['id'])
-						fid.write('%s\t' % prop_dict['symbol'])
-						fid.write('%s\n' % label)
+			try:
+				label = list(set(labels) - {'Base'}).pop()
+			except:
+				label = ""
+			try:
+				fid.write('%s\t' % prop_dict['id'])
+			except:
+				fid.write('\t')
+			try:
+				fid.write('%s\t' % remove_tab_newlines.sub(" ", prop_dict['name']))  # better approach
+			except:
+				fid.write('\t')
+			try:
+				fid.write('%s\n' % label)
+			except:
+				fid.write('\n')
+			if label == "protein" and 'id' in prop_dict and 'symbol' in prop_dict:  # If it's a protein, also do the symbol
+				if prop_dict['id'] and prop_dict['symbol'] and label:
+					fid.write('%s\t' % prop_dict['id'])
+					fid.write('%s\t' % prop_dict['symbol'])
+					fid.write('%s\n' % label)
 	return
 
 
