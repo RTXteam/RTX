@@ -411,7 +411,7 @@ class NodeSynonymizer:
 
                 #### If the name is empty or otherwise blank, then we will not add it to synonyms
                 if equivalent_name is None or equivalent_name == '':
-                    print(f"INFO: Will not record blank name for {node_curie} in kg_synonyms")
+                    #print(f"INFO: Will not record blank name for {node_curie} in kg_synonyms")
                     continue
                 match = re.match(r'^\s+$',equivalent_name)
                 if match:
@@ -983,9 +983,10 @@ class NodeSynonymizer:
                     stats['neither curie found'] += 1
                     continue
 
+                uc_linking_unique_concept_curie = kg_curies[uc_linking_curie]['uc_unique_concept_curie']
+                linking_type = kg_curies[uc_linking_curie]['type']
+
                 if uc_second_curie in kg_curies:
-                    uc_linking_unique_concept_curie = kg_curies[uc_linking_curie]['uc_unique_concept_curie']
-                    linking_type = kg_curies[uc_linking_curie]['type']
                     uc_second_unique_concept_curie = kg_curies[uc_second_curie]['uc_unique_concept_curie']
 
                     if uc_linking_unique_concept_curie == uc_second_unique_concept_curie:
