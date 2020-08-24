@@ -31,22 +31,20 @@ class OverlayExposuresData:
         self.icees_attribute_type = "EDAM:data_1669"
         self.icees_edge_type = "has_icees_p-value_with"
         self.icees_knowledge_graph_overlay_url = "https://icees.renci.org:16340/knowledge_graph_overlay"
-        self.virtual_relation_label = None
+        self.virtual_relation_label = self.parameters.get('virtual_relation_label')
 
     def overlay_exposures_data(self):
-        virtual_relation_label = self.parameters.get('virtual_relation_label')
         source_qnode_id = self.parameters.get('source_qnode_id')
         target_qnode_id = self.parameters.get('target_qnode_id')
-        if virtual_relation_label and source_qnode_id and target_qnode_id:
+        if self.virtual_relation_label and source_qnode_id and target_qnode_id:
             self.response.debug(f"Overlaying exposures data using virtual edge method "
-                                f"({source_qnode_id}--{virtual_relation_label}--{target_qnode_id})")
-            self.virtual_relation_label = virtual_relation_label
-            self._add_virtual_edges(virtual_relation_label, source_qnode_id, target_qnode_id)
+                                f"({source_qnode_id}--{self.virtual_relation_label}--{target_qnode_id})")
+            self._add_virtual_edges(source_qnode_id, target_qnode_id)
         else:
             self.response.debug(f"Overlaying exposures data using attribute method")
             self._decorate_existing_edges()
 
-    def _add_virtual_edges(self, virtual_relation_label, source_qnode_id, target_qnode_id):
+    def _add_virtual_edges(self, source_qnode_id, target_qnode_id):
         # This function adds ICEES exposures data as virtual edges between nodes with the specified qnode IDs
         knowledge_graph = self.message.knowledge_graph
         log = self.response
@@ -80,7 +78,7 @@ class OverlayExposuresData:
             knowledge_graph.edges.append(empty_virtual_edge)
 
         # Add a qedge to the query graph that corresponds to our new virtual edges
-        new_qedge = QEdge(id=virtual_relation_label,
+        new_qedge = QEdge(id=self.virtual_relation_label,
                           source_id=source_qnode_id,
                           target_id=target_qnode_id,
                           type=self.icees_edge_type)
