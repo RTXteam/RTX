@@ -84,7 +84,7 @@ class NGDDatabaseBuilder:
             print("  Loading data into PickleDB..")
             conceptname_to_pmids_db = pickledb.load(self.conceptname_to_pmids_db_path, False)
             for concept_name, pmid_list in conceptname_to_pmids_map.items():
-                conceptname_to_pmids_db.set(concept_name, list({self._create_pmid_string(pmid) for pmid in pmid_list}))
+                conceptname_to_pmids_db.set(concept_name, list({self._create_pmid_curie_from_local_id(pmid) for pmid in pmid_list}))
             print("  Saving PickleDB file..")
             conceptname_to_pmids_db.dump()
             print(f"Done! Building {self.conceptname_to_pmids_db_path} took {round(((time.time() - start) / 60) / 60, 3)} hours")
@@ -194,9 +194,9 @@ class NGDDatabaseBuilder:
             print(f"WARNING: Error parsing publications property on an edge.")
             return []
         else:
-            pmids = {publication_id for publication_id in publications if publication_id.startswith('PMID')}
+            pmids = {publication_id for publication_id in publications if publication_id.upper().startswith('PMID')}
             # Make sure all PMIDs are given in same format (e.g., PMID:18299583 rather than PMID18299583)
-            formatted_pmids = [self._create_pmid_string(pmid.replace('PMID', '').replace(':', '')) for pmid in pmids]
+            formatted_pmids = [self._create_pmid_curie_from_local_id(pmid.replace('PMID', '').replace(':', '')) for pmid in pmids]
             return formatted_pmids
 
     @staticmethod
@@ -209,7 +209,7 @@ class NGDDatabaseBuilder:
             mappings_dict[key].append(value_to_append)
 
     @staticmethod
-    def _create_pmid_string(pmid):
+    def _create_pmid_curie_from_local_id(pmid):
         return f"PMID:{pmid}"
 
     @staticmethod
