@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """
-This class builds a database that maps (canonicalized) curies from the NodeSynonymizer to PubMed articles (PMIDs).
+This class builds a sqlite database that maps (canonicalized) curies to PubMed articles they appear in. It creates these
+mappings using data from a PubMed XML download and from KG2.
 There are two halves to the (full) build process:
-1. Creates an intermediary file called "conceptname_to_pmids.db"
+1. Create an intermediary file called "conceptname_to_pmids.db"
      - Contains mappings from "concept names" to the list of articles (PMIDs) they appear in (where "concept names"
        include MESH Descriptor/Qualifier names, Keywords, and Chemical names)
-     - These mappings are obtained by scraping ALL of the PubMed XML files
+     - These mappings are obtained by scraping all of the PubMed XML files
      - This file needs updating very infrequently (i.e., only with new PubMed releases)
-2. Creates the final file called "curie_to_pmids.sqlite"
-     - Contains mappings from canonicalized curies in the NodeSynonymizer to their list of associated articles (PMIDs)
-     - The NodeSynonymizer is used to link curies to concept names (which were linked to PMIDs in step 1)
-Usage: python build_ngd_database.py <path to directory containing PubMed xml files> [--full]
+2. Create the final file called "curie_to_pmids.sqlite"
+     - Contains mappings from canonicalized curies to their list of PMIDs based on the data scraped from Pubmed AND
+       from KG2 data (node.publications and edge.publications)
+     - The NodeSynonymizer is used to link curies to concept names from step 1
+Usage: python build_ngd_database.py <path to directory containing PubMed xml files> [--test] [--full]
        By default, only step 2 above will be performed. To do a "full" build, use the --full flag.
 """
 import argparse
