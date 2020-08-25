@@ -196,10 +196,10 @@ class ComputeNGD:
     def load_curie_to_pmids_data(self, canonicalized_curies):
         self.response.debug(f"Extracting PMID lists from sqlite database for relevant nodes")
         curies = list(set(canonicalized_curies))
-        batch_size = 5
-        num_chunks = len(curies) // batch_size if len(curies) % batch_size == 0 else (len(curies) // batch_size) + 1
+        chunk_size = 20000
+        num_chunks = len(curies) // chunk_size if len(curies) % chunk_size == 0 else (len(curies) // chunk_size) + 1
         start_index = 0
-        stop_index = batch_size
+        stop_index = chunk_size
         for num in range(num_chunks):
             chunk = curies[start_index:stop_index] if stop_index <= len(curies) else curies[start_index:]
             curie_list_str = ", ".join([f"'{curie}'" for curie in chunk])
@@ -207,8 +207,8 @@ class ComputeNGD:
             rows = self.cursor.fetchall()
             for row in rows:
                 self.curie_to_pmids_map[row[0]] = json.loads(row[1])  # PMID list is stored as JSON string in sqlite db
-            start_index += batch_size
-            stop_index += batch_size
+            start_index += chunk_size
+            stop_index += chunk_size
 
     def calculate_ngd_fast(self, source_curie, target_curie):
         if source_curie in self.curie_to_pmids_map and target_curie in self.curie_to_pmids_map:
@@ -268,14 +268,14 @@ class ComputeNGD:
         db_path_remote = f"/home/ubuntu/databases_for_download/{self.ngd_database_name}"
         if not os.path.exists(f"{db_path_local}"):
             self.response.debug(f"Downloading fast NGD database because no copy exists... (will take a few minutes)")
-            os.system(f"scp ubuntu@arax.rtx.ai:{db_path_remote} {db_path_local}")
+            os.system(f"scp rtxconfig@arax.rtx.ai:{db_path_remote} {db_path_local}")
         else:
             last_modified_local = int(os.path.getmtime(db_path_local))
-            last_modified_remote_byte_str = subprocess.check_output(f"ssh ubuntu@arax.rtx.ai 'stat -c %Y {db_path_remote}'", shell=True)
+            last_modified_remote_byte_str = subprocess.check_output(f"ssh rtxconfig@arax.rtx.ai 'stat -c %Y {db_path_remote}'", shell=True)
             last_modified_remote = int(str(last_modified_remote_byte_str, 'utf-8'))
             if last_modified_local < last_modified_remote:
                 self.response.debug(f"Downloading new version of fast NGD database... (will take a few minutes)")
-                os.system(f"scp ubuntu@arax.rtx.ai:{db_path_remote} {db_path_local}")
+                os.system(f"scp rtxconfig@arax.rtx.ai:{db_path_remote} {db_path_local}")
             else:
                 self.response.debug(f"Confirmed local NGD database is current")
         # Set up a connection to the database so it's ready for use
