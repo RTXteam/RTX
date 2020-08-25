@@ -136,8 +136,6 @@ class NGDDatabaseBuilder:
         canonicalized_curies_dict = self._get_canonicalized_curies_dict(list(node_ids))
         for result in node_results:
             canonical_curie = canonicalized_curies_dict[result['n.id']]
-            if canonical_curie == "CHEMBL.COMPOUND:CHEMBL503565":
-                print(f"TEST: problem node WAS returned from neo4j: {result}")
             pmids = self._extract_and_format_pmids(result['n.publications'])
             if pmids:  # Sometimes publications list includes only non-PMID identifiers (like ISBN)
                 self._add_pmids_mapping(canonical_curie, pmids, curie_to_pmids_map)
@@ -201,10 +199,6 @@ class NGDDatabaseBuilder:
         cursor.execute(f"SELECT COUNT(*) FROM curie_to_pmids")
         count = cursor.fetchone()[0]
         print(f"  Done saving data in sqlite; database contains {count} rows.")
-        # TESTING to see if problem node is actually in there.
-        cursor.execute(f"SELECT * FROM curie_to_pmids WHERE curie = 'CHEMBL.COMPOUND:CHEMBL503565'")
-        rows = cursor.fetchall()
-        print(f"TEST: results for problem node query: {rows}")
         cursor.close()
 
     def _get_canonicalized_curies_dict(self, curies: List[str]) -> Dict[str, str]:
