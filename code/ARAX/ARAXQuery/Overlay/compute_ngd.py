@@ -196,10 +196,10 @@ class ComputeNGD:
     def load_curie_to_pmids_data(self, canonicalized_curies):
         self.response.debug(f"Extracting PMID lists from sqlite database for relevant nodes")
         curies = list(set(canonicalized_curies))
-        batch_size = 5
-        num_chunks = len(curies) // batch_size if len(curies) % batch_size == 0 else (len(curies) // batch_size) + 1
+        chunk_size = 20000
+        num_chunks = len(curies) // chunk_size if len(curies) % chunk_size == 0 else (len(curies) // chunk_size) + 1
         start_index = 0
-        stop_index = batch_size
+        stop_index = chunk_size
         for num in range(num_chunks):
             chunk = curies[start_index:stop_index] if stop_index <= len(curies) else curies[start_index:]
             curie_list_str = ", ".join([f"'{curie}'" for curie in chunk])
@@ -207,8 +207,8 @@ class ComputeNGD:
             rows = self.cursor.fetchall()
             for row in rows:
                 self.curie_to_pmids_map[row[0]] = json.loads(row[1])  # PMID list is stored as JSON string in sqlite db
-            start_index += batch_size
-            stop_index += batch_size
+            start_index += chunk_size
+            stop_index += chunk_size
 
     def calculate_ngd_fast(self, source_curie, target_curie):
         if source_curie in self.curie_to_pmids_map and target_curie in self.curie_to_pmids_map:
