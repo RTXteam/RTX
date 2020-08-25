@@ -187,8 +187,11 @@ class NGDDatabaseBuilder:
         cursor = connection.cursor()
         cursor.execute("CREATE TABLE curie_to_pmids (curie TEXT, pmids TEXT)")
         cursor.execute("CREATE UNIQUE INDEX unique_curie ON curie_to_pmids (curie)")
-        rows = [[curie, json.dumps(list(filter(None, {self._get_local_id_as_int(pmid) for pmid in pmids})))] for curie, pmids in curie_to_pmids_map.items()]
+        print(f"  Gathering row data..")
+        rows = [[curie, json.dumps(list(filter(None, {self._get_local_id_as_int(pmid) for pmid in pmids})))]
+                for curie, pmids in curie_to_pmids_map.items()]
         cursor.executemany(f"INSERT INTO curie_to_pmids (curie, pmids) VALUES (?, ?)", rows)
+        print(f"  Committing data..")
         connection.commit()
         # Log how many rows we've added in the end (for debugging purposes)
         cursor.execute(f"SELECT COUNT(*) FROM curie_to_pmids")
