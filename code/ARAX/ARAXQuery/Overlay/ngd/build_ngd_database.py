@@ -136,6 +136,8 @@ class NGDDatabaseBuilder:
         canonicalized_curies_dict = self._get_canonicalized_curies_dict(list(node_ids))
         for result in node_results:
             canonical_curie = canonicalized_curies_dict[result['n.id']]
+            if canonical_curie == "CHEMBL.COMPOUND:CHEMBL503565":
+                print(f"TEST: problem node WAS returned from neo4j: {result}")
             pmids = self._extract_and_format_pmids(result['n.publications'])
             if pmids:  # Sometimes publications list includes only non-PMID identifiers (like ISBN)
                 self._add_pmids_mapping(canonical_curie, pmids, curie_to_pmids_map)
@@ -190,13 +192,19 @@ class NGDDatabaseBuilder:
         print(f"  Gathering row data..")
         rows = [[curie, json.dumps(list(filter(None, {self._get_local_id_as_int(pmid) for pmid in pmids})))]
                 for curie, pmids in curie_to_pmids_map.items()]
-        cursor.executemany(f"INSERT INTO curie_to_pmids (curie, pmids) VALUES (?, ?)", rows)
-        print(f"  Committing data..")
-        connection.commit()
+        rows_in_chunks = self._divide_list_into_chunks(rows, 5000)
+        print(f"  Inserting row data into database..")
+        for chunk in rows_in_chunks:
+            cursor.executemany(f"INSERT INTO curie_to_pmids (curie, pmids) VALUES (?, ?)", chunk)
+            connection.commit()
         # Log how many rows we've added in the end (for debugging purposes)
         cursor.execute(f"SELECT COUNT(*) FROM curie_to_pmids")
         count = cursor.fetchone()[0]
         print(f"  Done saving data in sqlite; database contains {count} rows.")
+        # TESTING to see if problem node is actually in there.
+        cursor.execute(f"SELECT * FROM curie_to_pmids WHERE curie = 'CHEMBL.COMPOUND:CHEMBL503565'")
+        rows = cursor.fetchall()
+        print(f"TEST: results for problem node query: {rows}")
         cursor.close()
 
     def _get_canonicalized_curies_dict(self, curies: List[str]) -> Dict[str, str]:
@@ -278,6 +286,19 @@ class NGDDatabaseBuilder:
             return []
         else:
             return query_results
+
+    @staticmethod
+    def _divide_list_into_chunks(input_list: List[any], chunk_size: int) -> List[List[any]]:
+        num_chunks = len(input_list) // chunk_size if len(input_list) % chunk_size == 0 else (len(input_list) // chunk_size) + 1
+        start_index = 0
+        stop_index = chunk_size
+        all_chunks = []
+        for num in range(num_chunks):
+            chunk = input_list[start_index:stop_index] if stop_index <= len(input_list) else input_list[start_index:]
+            all_chunks.append(chunk)
+            start_index += chunk_size
+            stop_index += chunk_size
+        return all_chunks
 
 
 def main():
