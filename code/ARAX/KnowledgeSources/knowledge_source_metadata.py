@@ -21,7 +21,7 @@ class KnowledgeSourceMetadata:
 
         # Determine the table prefix for the knowledge graph selected
         if kg_name.upper() == 'KG1' or kg_name.upper() == 'KG2':
-            kg_prefix = kg_name.lower()
+            kg_prefix = kg_name.upper()
         else:
             eprint(f"ERROR [{method_name}]: kg_name must be either 'KG1' or 'KG2'")
             return None
