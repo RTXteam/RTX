@@ -30,7 +30,7 @@ class KnowledgeSourceMetadata:
         # Verify that the source data file exists
         input_filename = os.path.dirname(os.path.abspath(__file__)) + f"/{kg_prefix}_allowed_predicate_triples.csv"
         if not os.path.exists(input_filename):
-            eprint(f"ERROR [{method_name}]: kg_name must be either 'KG1' or 'KG2'")
+            eprint(f"ERROR [{method_name}]: File '{input_filename}' not found")
             return None
 
         # Read the data and fill the predicates dict
