@@ -5,8 +5,8 @@ import sys
 
 from swagger_server import util
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../reasoningtool/QuestionAnswering")
-import ReasoningUtilities as RU
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../ARAX/KnowledgeSources")
+from knowledge_source_metadata import KnowledgeSourceMetadata
 
 
 def predicates():  # noqa: E501
@@ -17,4 +17,5 @@ def predicates():  # noqa: E501
 
     :rtype: Dict[str, Dict[str, List[str]]]
     """
-    return(RU.get_full_meta_graph())
+    ksm = KnowledgeSourceMetadata()
+    return(ksm.get_kg_predicates(kg_name='KG2'))

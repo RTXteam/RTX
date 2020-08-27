@@ -409,6 +409,15 @@ class NodeSynonymizer:
             for equivalent_name in names:
                 lc_equivalent_name = equivalent_name.lower()
 
+                #### If the name is empty or otherwise blank, then we will not add it to synonyms
+                if equivalent_name is None or equivalent_name == '':
+                    #print(f"INFO: Will not record blank name for {node_curie} in kg_synonyms")
+                    continue
+                match = re.match(r'^\s+$',equivalent_name)
+                if match:
+                    print(f"WARNING: equivalent_name for {node_curie} is whitespace but not empty ({equivalent_name})")
+                    continue
+
                 # If this equivalent name is already there, just make sure the unique_concept_curie is the same
                 if lc_equivalent_name in kg_synonyms:
                     if debug_flag:
@@ -431,7 +440,7 @@ class NodeSynonymizer:
                         'source': kg_name,
                         'uc_unique_concept_curies': { uc_unique_concept_curie: 1 }
                     }
-                    kg_unique_concepts[uc_unique_concept_curie]['all_lc_names'][lc_equivalent_name] = 1               # FIXME. A count would be fun
+                    kg_unique_concepts[uc_unique_concept_curie]['all_lc_names'][lc_equivalent_name] = 1
 
             # Debugging
             if debug_flag:
@@ -974,9 +983,10 @@ class NodeSynonymizer:
                     stats['neither curie found'] += 1
                     continue
 
+                uc_linking_unique_concept_curie = kg_curies[uc_linking_curie]['uc_unique_concept_curie']
+                linking_type = kg_curies[uc_linking_curie]['type']
+
                 if uc_second_curie in kg_curies:
-                    uc_linking_unique_concept_curie = kg_curies[uc_linking_curie]['uc_unique_concept_curie']
-                    linking_type = kg_curies[uc_linking_curie]['type']
                     uc_second_unique_concept_curie = kg_curies[uc_second_curie]['uc_unique_concept_curie']
 
                     if uc_linking_unique_concept_curie == uc_second_unique_concept_curie:

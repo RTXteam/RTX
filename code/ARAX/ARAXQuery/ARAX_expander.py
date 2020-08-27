@@ -23,7 +23,8 @@ class ARAXExpander:
         self.response = None
         self.message = None
         self.parameters = {'edge_id': None, 'node_id': None, 'kp': None, 'enforce_directionality': None,
-                           'use_synonyms': None, 'synonym_handling': None, 'continue_if_no_results': None}
+                           'use_synonyms': None, 'synonym_handling': None, 'continue_if_no_results': None,
+                           'COHD_method': None, 'COHD_method_percentile': None}
 
     @staticmethod
     def describe_me():
@@ -44,11 +45,13 @@ class ARAXExpander:
         params_dict['brief_description'] = brief_description
         params_dict['edge_id'] = {"a query graph edge ID or list of such IDs to expand (optional, default is to expand entire query graph)"}  # this is a workaround due to how self.parameters is utilized in this class
         params_dict['node_id'] = {"a query graph node ID to expand (optional, default is to expand entire query graph)"}
-        params_dict['kp'] = {"the knowledge provider to use - current options are `ARAX/KG1`, `ARAX/KG2`, or `BTE` (optional, default is `ARAX/KG1`)"}
+        params_dict['kp'] = {"the knowledge provider to use - current options are `ARAX/KG1`, `ARAX/KG2`, `BTE`, `COHD` (optional, default is `ARAX/KG1`)"}
         params_dict['enforce_directionality'] = {"whether to obey (vs. ignore) edge directions in query graph - options are `true` or `false` (optional, default is `false`)"}
         params_dict['use_synonyms'] = {"whether to consider synonym curies for query nodes with a curie specified - options are `true` or `false` (optional, default is `true`)"}
         params_dict['synonym_handling'] = {"how to handle synonyms in the answer - options are `map_back` (default; map edges using a synonym back to the original curie) or `add_all` (add synonym nodes as they are - no mapping/merging)"}
         params_dict['continue_if_no_results'] = {"whether to continue execution if no paths are found matching the query graph - options are `true` or `false` (optional, default is `false`)"}
+        params_dict['COHD_method'] = {"what method used to expand - current options are `paired_concept_freq`, `observed_expected_ratio`, `chi_square` (optional, default is `paired_concept_freq`)"}
+        params_dict['COHD_method_percentile'] = {"what percentile used as a threshold for specified COHD method (optional, default is 99 (99%), range is [0, 100])"}
         description_list.append(params_dict)
         return description_list
 
@@ -71,6 +74,8 @@ class ARAXExpander:
         parameters['use_synonyms'] = True
         parameters['synonym_handling'] = 'map_back'
         parameters['continue_if_no_results'] = False
+        parameters['COHD_method'] = 'paired_concept_freq'
+        parameters['COHD_method_percentile'] = 99
         for key, value in input_parameters.items():
             if key and key not in parameters:
                 response.error(f"Supplied parameter {key} is not permitted", error_code="UnknownParameter")
@@ -154,7 +159,8 @@ class ARAXExpander:
         if not kg.nodes and not continue_if_no_results:
             log.error(f"No paths were found in {kp_to_use} satisfying this query graph", error_code="NoResults")
         else:
-            log.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges")
+            log.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges "
+                     f"({eu.get_printable_counts_by_qg_id(dict_kg)})")
         return response
 
     def _expand_edge(self, qedge: QEdge, kp_to_use: str, dict_kg: DictKnowledgeGraph, continue_if_no_results: bool,
@@ -174,7 +180,7 @@ class ARAXExpander:
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, edge_to_nodes_map
 
-        valid_kps = ["ARAX/KG1", "ARAX/KG2", "BTE"]
+        valid_kps = ["ARAX/KG1", "ARAX/KG2", "BTE", "COHD", "NGD"]
         if kp_to_use not in valid_kps:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(valid_kps)}",
                       error_code="InvalidKP")
@@ -183,6 +189,12 @@ class ARAXExpander:
             if kp_to_use == 'BTE':
                 from Expand.bte_querier import BTEQuerier
                 kp_querier = BTEQuerier(log)
+            elif kp_to_use == 'COHD':
+                from Expand.COHD_querier import COHDQuerier
+                kp_querier = COHDQuerier(log)
+            elif kp_to_use == 'NGD':
+                from Expand.ngd_querier import NGDQuerier
+                kp_querier = NGDQuerier(log)
             else:
                 from Expand.kg_querier import KGQuerier
                 kp_querier = KGQuerier(log, kp_to_use)
@@ -335,7 +347,7 @@ class ARAXExpander:
                 for qnode_id, corresponding_node_id in edge_to_nodes_map[edge_id].items():
                     updated_edge_to_nodes_map[edge_id][qnode_id] = curie_mappings.get(corresponding_node_id)
 
-        log.info(f"After deduplication, answer KG counts are: {eu.get_printable_counts_by_qg_id(deduplicated_kg)}")
+        log.debug(f"After deduplication, answer KG counts are: {eu.get_printable_counts_by_qg_id(deduplicated_kg)}")
         return deduplicated_kg, updated_edge_to_nodes_map
 
     @staticmethod
