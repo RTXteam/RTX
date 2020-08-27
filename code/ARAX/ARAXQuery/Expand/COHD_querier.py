@@ -951,7 +951,7 @@ class COHDQuerier:
         type = "EDAM:data_0951"
         url = "http://cohd.smart-api.info/"
 
-        swagger_edge.edge_attributes += EdgeAttribute(type=type, name=name, value=str(value), url=url)
+        swagger_edge.edge_attributes += [EdgeAttribute(type=type, name=name, value=str(value), url=url)]
 
         return swagger_edge
 
