@@ -6,7 +6,7 @@ import sys
 from swagger_server import util
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../ARAX/KnowledgeSources")
-import KnowledgeSourceMetadata from knowledge_source_metadata
+from knowledge_source_metadata import KnowledgeSourceMetadata
 
 
 def predicates():  # noqa: E501
