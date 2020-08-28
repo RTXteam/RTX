@@ -946,11 +946,12 @@ class COHDQuerier:
         swagger_edge.relation = None
         swagger_edge.provided_by = "ARAX/COHD"
         swagger_edge.is_defined_by = "ARAX"
+        swagger_edge.edge_attributes = []
 
         type = "EDAM:data_0951"
         url = "http://cohd.smart-api.info/"
 
-        swagger_edge.edge_attributes = EdgeAttribute(type=type, name=name, value=str(value), url=url)
+        swagger_edge.edge_attributes += [EdgeAttribute(type=type, name=name, value=str(value), url=url)]
 
         return swagger_edge
 

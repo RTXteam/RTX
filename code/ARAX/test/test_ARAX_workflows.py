@@ -130,7 +130,7 @@ def test_example_3():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     #assert len(message.results) in [47, 48]  # :BUG: sometimes the workflow returns 47 results, sometimes 48 (!?)
-    assert len(message.results) in range(60, 80)  # FIXME: BUG: sometimes the workflow returns 47 results, sometimes 48, sometime smore or less?! Probably due to API's not returning results (API calls to NGD and/or COHD sometimes don't go through)
+    assert len(message.results) in range(60, 90)  # FIXME: BUG: sometimes the workflow returns 47 results, sometimes 48, sometime smore or less?! Probably due to API's not returning results (API calls to NGD and/or COHD sometimes don't go through)
     assert message.results[0].essence is not None
     _virtual_tester(message, 'has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
     _virtual_tester(message, 'has_normalized_google_distance_with', 'N1', 'normalized_google_distance', 'EDAM:data_2526', 2)
