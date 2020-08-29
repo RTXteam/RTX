@@ -50,21 +50,12 @@ def dump_kg2_synonym_field():
     if results:
         file_name = 'kg2_synonyms.json'
         synonym_map = dict()
-        unparsable_nodes = dict()
         with open(file_name, 'w+') as output_file:
             for row in results:
                 curie = row['n.id']
-                synonym_list_as_string = row['n.synonym']
-                try:
-                    # Synonyms are stored as a list within a string in neo4j; parse to extract the list
-                    synonym_map[curie] = ast.literal_eval(synonym_list_as_string)
-                except Exception:
-                    unparsable_nodes[curie] = synonym_list_as_string
+                synonym_map[curie] = row['n.synonym']
             json.dump(synonym_map, output_file)
         print(f"Successfully created file '{file_name}' containing results.")
-        if len(unparsable_nodes):
-            print(f"WARNING: Skipped {len(unparsable_nodes)} nodes because there was an error when parsing "
-                  f"their synonym field, likely due to strange characters. (EOF error or the like.)")
     else:
         print(f"Sorry, couldn't get synonym data. No file created.")
 

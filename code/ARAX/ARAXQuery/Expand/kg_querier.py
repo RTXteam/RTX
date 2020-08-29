@@ -251,7 +251,7 @@ class KGQuerier:
         swagger_edge.source_id = neo4j_edge.get("subject")
         swagger_edge.target_id = neo4j_edge.get("object")
         swagger_edge.relation = neo4j_edge.get("relation")
-        swagger_edge.publications = ast.literal_eval(neo4j_edge.get("publications"))
+        swagger_edge.publications = neo4j_edge.get("publications")
         swagger_edge.provided_by = neo4j_edge.get("provided_by")
         swagger_edge.negated = ast.literal_eval(neo4j_edge.get("negated"))
         swagger_edge.is_defined_by = "ARAX/KG2"
