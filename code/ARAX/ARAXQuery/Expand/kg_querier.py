@@ -76,7 +76,7 @@ class KGQuerier:
             qnodes_with_curies = [qnode for qnode in query_graph.nodes if qnode.curie]
             for qnode in qnodes_with_curies:
                 canonical_curies = eu.get_canonical_curies_list(qnode.curie, log)
-                qnode.curie = canonical_curies
+                qnode.curie = self._convert_to_preferred_prefixes_for_kg2c(canonical_curies)  # NOTE: temporary fix until KG2C and production are synced
 
         # Run the actual query and process results
         cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, enforce_directionality, kg_name, log)
@@ -410,3 +410,14 @@ class KGQuerier:
                 item = item.replace(unwanted_char, "")
             provided_by_list.append(item)
         return provided_by_list
+
+    @staticmethod
+    def _convert_to_preferred_prefixes_for_kg2c(curies: List[str]) -> List[str]:
+        formatted_curies = []
+        for curie in curies:
+            prefix = curie.split(":")[0]
+            local_id = curie.split(":")[-1]
+            if prefix == "CUI":
+                prefix = "UMLS"
+            formatted_curies.append(f"{prefix}:{local_id}")
+        return formatted_curies
