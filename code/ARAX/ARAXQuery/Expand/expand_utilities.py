@@ -15,8 +15,6 @@ from swagger_server.models.q_node import QNode
 from swagger_server.models.q_edge import QEdge
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/kg-construction/")
-from KGNodeIndex import KGNodeIndex
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 
