@@ -97,12 +97,14 @@ class ComputeNGD:
                 source_name = curies_to_names[source_curie]
                 target_name = curies_to_names[target_curie]
                 num_computed_total += 1
-                ngd_value = self.calculate_ngd_fast(canonicalized_curie_map.get(source_curie, source_curie),
-                                                    canonicalized_curie_map.get(target_curie, target_curie))
+                canonical_source_curie = canonicalized_curie_map.get(source_curie, source_curie)
+                canonical_target_curie = canonicalized_curie_map.get(target_curie, target_curie)
+                ngd_value = self.calculate_ngd_fast(canonical_source_curie, canonical_target_curie)
                 if ngd_value is None:
                     ngd_value = self.NGD.get_ngd_for_all([source_curie, target_curie], [source_name, target_name])
-                    self.response.debug(f"Had to use eUtils to compute NGD between {source_name} and {target_name} "
-                                        f"(value is: {ngd_value})")
+                    self.response.debug(f"Had to use eUtils to compute NGD between {source_name} "
+                                        f"({canonical_source_curie}) and {target_name} ({canonical_target_curie}). "
+                                        f"Value is: {ngd_value}")
                     num_computed_slow += 1
                 if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                     value = ngd_value
@@ -168,12 +170,14 @@ class ComputeNGD:
                     source_name = node_curie_to_name[source_curie]
                     target_name = node_curie_to_name[target_curie]
                     num_computed_total += 1
-                    ngd_value = self.calculate_ngd_fast(canonicalized_curie_map.get(source_curie, source_curie),
-                                                        canonicalized_curie_map.get(target_curie, target_curie))
+                    canonical_source_curie = canonicalized_curie_map.get(source_curie, source_curie)
+                    canonical_target_curie = canonicalized_curie_map.get(target_curie, target_curie)
+                    ngd_value = self.calculate_ngd_fast(canonical_source_curie, canonical_target_curie)
                     if ngd_value is None:
                         ngd_value = self.NGD.get_ngd_for_all([source_curie, target_curie], [source_name, target_name])
-                        self.response.debug(f"Had to use eUtils to compute NGD between {source_name} and {target_name} "
-                                            f"(value is: {ngd_value})")
+                        self.response.debug(f"Had to use eUtils to compute NGD between {source_name} "
+                                            f"({canonical_source_curie}) and {target_name} ({canonical_target_curie}). "
+                                            f"Value is: {ngd_value}")
                         num_computed_slow += 1
                     if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                         value = ngd_value
