@@ -212,9 +212,7 @@ class BTEQuerier:
         if use_synonyms:
             qnodes_with_curies = [qnode for qnode in [input_qnode, output_qnode] if qnode.curie]
             for qnode in qnodes_with_curies:
-                log.debug(f"Getting curie synonyms for qnode {qnode.id} using the NodeSynonymizer")
                 synonymized_curies = eu.get_curie_synonyms(qnode.curie, log)
-                log.debug(f"Using {len(synonymized_curies)} equivalent curies for qnode {qnode.id}")
                 qnode.curie = synonymized_curies
 
         # Make sure our input node curies are in list form and use prefixes BTE prefers
