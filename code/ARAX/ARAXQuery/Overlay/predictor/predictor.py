@@ -48,7 +48,7 @@ class predictor():
         row = self.graph_cur.execute(f"select * from GRAPH where curie='{curie_name}'")
         res = row.fetchone()
         if res is None:
-            print(f"No curie named '{curie_name}' was found from database")
+            # print(f"No curie named '{curie_name}' was found from database")
             return None
         res = list(res)
         res.pop(0)

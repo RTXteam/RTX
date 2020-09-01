@@ -562,9 +562,9 @@ def test_COHD_expand_paired_concept_freq():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert all([edges_by_qg_id[qedge_id][edge_id].type == "has_paired_concept_frequency_with" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
-    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes.name == "paired_concept_frequency" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
-    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes.type == "EDAM:data_0951" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
-    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes.url == "http://cohd.smart-api.info/" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].name == "paired_concept_frequency" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].type == "EDAM:data_0951" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].url == "http://cohd.smart-api.info/" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
 
 def test_COHD_expand_observed_expected_ratio():
     actions_list = [
@@ -576,9 +576,9 @@ def test_COHD_expand_observed_expected_ratio():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert all([edges_by_qg_id[qedge_id][edge_id].type == "has_ln_observed_expected_ratio_with" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
-    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes.name == "ln_observed_expected_ratio" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
-    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes.type == "EDAM:data_0951" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
-    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes.url == "http://cohd.smart-api.info/" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].name == "ln_observed_expected_ratio" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].type == "EDAM:data_0951" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].url == "http://cohd.smart-api.info/" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
 
 def test_COHD_expand_chi_square():
     actions_list = [
@@ -590,9 +590,9 @@ def test_COHD_expand_chi_square():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert all([edges_by_qg_id[qedge_id][edge_id].type == "has_chi_square_pvalue_with" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
-    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes.name == "chi_square_pvalue" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
-    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes.type == "EDAM:data_0951" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
-    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes.url == "http://cohd.smart-api.info/" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].name == "chi_square_pvalue" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].type == "EDAM:data_0951" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].url == "http://cohd.smart-api.info/" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
 
 
 def test_ngd_expand():
