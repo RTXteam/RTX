@@ -72,6 +72,7 @@ class KGQuerier:
             for qnode in qnodes_with_curies:
                 synonymized_curies = eu.get_curie_synonyms(qnode.curie, log)
                 qnode.curie = synonymized_curies
+                qnode.type = None  # Important to clear this, otherwise results are limited (#889)
         elif kg_name == "KG2C":
             qnodes_with_curies = [qnode for qnode in query_graph.nodes if qnode.curie]
             for qnode in qnodes_with_curies:
