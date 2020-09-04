@@ -253,11 +253,10 @@ class KGQuerier:
         swagger_node = Node()
         swagger_node.id = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
-        node_category = neo4j_node.get('preferred_type')
-        swagger_node.type = eu.convert_string_or_list_to_list(node_category)
+        swagger_node.type = neo4j_node.get('types')
         # Add all additional properties on KG2C nodes as swagger NodeAttribute objects
         swagger_node.node_attributes = []
-        additional_kg2c_node_properties = ['types', 'equivalent_curies']
+        additional_kg2c_node_properties = ['equivalent_curies', 'publications']
         node_attributes = self._create_swagger_attributes("node", additional_kg2c_node_properties, neo4j_node)
         swagger_node.node_attributes += node_attributes
         return swagger_node
@@ -295,13 +294,11 @@ class KGQuerier:
         swagger_edge.provided_by = self._convert_strange_provided_by_field_to_list(neo4j_edge.get("provided_by"))  # Temporary hack until provided_by is fixed in KG2
         swagger_edge.negated = ast.literal_eval(neo4j_edge.get("negated"))
         swagger_edge.is_defined_by = "ARAX/KG2"
-        swagger_edge.edge_attributes = []
         # Add additional properties on KG2 edges as swagger EdgeAttribute objects
         # TODO: fix issues coming from strange characters in 'publications_info'! (EOF error)
         additional_kg2_edge_properties = ["relation_curie", "simplified_relation_curie", "simplified_relation",
                                           "edge_label"]
-        edge_attributes = self._create_swagger_attributes("edge", additional_kg2_edge_properties, neo4j_edge)
-        swagger_edge.edge_attributes += edge_attributes
+        swagger_edge.edge_attributes = self._create_swagger_attributes("edge", additional_kg2_edge_properties, neo4j_edge)
         return swagger_edge
 
     @staticmethod
@@ -313,6 +310,7 @@ class KGQuerier:
         swagger_edge.id = f"KG2C:{neo4j_edge.get('id')}"
         swagger_edge.provided_by = neo4j_edge.get("provided_by")
         swagger_edge.is_defined_by = "ARAX/KG2C"
+        swagger_edge.publications = neo4j_edge.get("publications")
         return swagger_edge
 
     def _convert_kg1_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str]) -> Edge:
