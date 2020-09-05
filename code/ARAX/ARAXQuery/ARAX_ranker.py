@@ -1,21 +1,145 @@
 #!/bin/env python3
-import sys
-def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
-
+import math
 import os
-import json
-import ast
-import re
-from datetime import datetime
+import networkx as nx
 import numpy as np
+import pprint
+import scipy.stats
+import sys
 
+from typing import Set, Union, Dict, List
 from response import Response
 from query_graph_info import QueryGraphInfo
-from knowledge_graph_info import KnowledgeGraphInfo
-from ARAX_messenger import ARAXMessenger
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
-from RTXConfiguration import RTXConfiguration
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+from swagger_server.models.query_graph import QueryGraph
+from swagger_server.models.result import Result
+from swagger_server.models.edge import Edge
+
+
+def _get_nx_edges_by_attr(G: Union[nx.MultiDiGraph, nx.MultiGraph], key: str, val: str) -> Set[tuple]:
+    res_set = set()
+    for edge_tuple in G.edges(data=True):
+        edge_val = edge_tuple[2].get(key, None)
+        if edge_val is not None and edge_val == val:
+            res_set.add(edge_tuple)
+    return res_set
+
+
+def _get_query_graph_networkx_from_query_graph(query_graph: QueryGraph) -> nx.MultiDiGraph:
+    query_graph_nx = nx.MultiDiGraph()
+    query_graph_nx.add_nodes_from([node.id for node in query_graph.nodes])
+    edge_list = [[edge.source_id, edge.target_id, edge.id, {'weight': 0.0}] for edge in query_graph.edges]
+    query_graph_nx.add_edges_from(edge_list)
+    return query_graph_nx
+
+
+def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str, Edge],
+                                                   qg_nx: Union[nx.MultiDiGraph, nx.MultiGraph],
+                                                   result: Result) -> Union[nx.MultiDiGraph,
+                                                                            nx.MultiGraph]:
+    res_graph = qg_nx.copy()
+    qg_edge_tuples = tuple(qg_nx.edges(keys=True, data=True))
+    qg_edge_id_to_edge_tuple = {edge_tuple[2]: edge_tuple for edge_tuple in qg_edge_tuples}
+    for edge in result.edge_bindings:
+        kg_edge = kg_edge_id_to_edge[edge.kg_id]
+        kg_edge_conf = kg_edge.confidence
+        qedge_ids = kg_edge.qedge_ids
+        for qedge_id in qedge_ids:
+            qedge_tuple = qg_edge_id_to_edge_tuple[qedge_id]
+            res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_id]['weight'] = kg_edge_conf
+    return res_graph
+
+
+def _get_weighted_graphs_networkx_from_result_graphs(kg_edge_id_to_edge: Dict[str, Edge],
+                                                     qg_nx: Union[nx.MultiDiGraph, nx.MultiGraph],
+                                                     results: List[Result]) -> List[Union[nx.MultiDiGraph,
+                                                                                          nx.MultiGraph]]:
+    res_list = []
+    for result in results:
+        res_list.append(_get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge,
+                                                                       qg_nx,
+                                                                       result))
+    return res_list
+
+
+# credit: StackOverflow:15590812
+def _collapse_nx_multigraph_to_weighted_graph(graph_nx: Union[nx.MultiDiGraph,
+                                                              nx.MultiGraph]) -> Union[nx.DiGraph,
+                                                                                       nx.Graph]:
+    if type(graph_nx) == nx.MultiGraph:
+        ret_graph = nx.Graph()
+    elif type(graph_nx) == nx.MultiDiGraph:
+        ret_graph = nx.DiGraph()
+    for u, v, data in graph_nx.edges(data=True):
+        w = data['weight'] if 'weight' in data else 1.0
+        if ret_graph.has_edge(u, v):
+            ret_graph[u][v]['weight'] += w
+        else:
+            ret_graph.add_edge(u, v, weight=w)
+    return ret_graph
+
+# computes quantile ranks in *ascending* order (so a higher x entry has a higher
+# "rank"), where ties have the same (average) rank (the reason for using scipy.stats
+# here is specifically in order to handle ties correctly)
+def _quantile_rank_list(x: List[float]) -> np.array:
+    y = scipy.stats.rankdata(x)
+    return y/len(y)
+
+
+def _rank_networkx_graphs_by_max_flow(result_graphs_nx: List[Union[nx.MultiDiGraph,
+                                                                   nx.MultiGraph]]) -> np.array:
+    max_flow_values = []
+    for result_graph_nx in result_graphs_nx:
+        apsp_dict = dict(nx.algorithms.shortest_paths.unweighted.all_pairs_shortest_path_length(result_graph_nx))
+        path_len_with_pairs_list = [(node_i, node_j, path_len) for node_i, node_i_dict in apsp_dict.items() for node_j, path_len in node_i_dict.items()]
+        max_path_len = max([path_len_with_pair_list_item[2] for path_len_with_pair_list_item in
+                            path_len_with_pairs_list])
+        pairs_with_max_path_len = [path_len_with_pair_list_item[0:2] for path_len_with_pair_list_item in path_len_with_pairs_list if
+                                   path_len_with_pair_list_item[2] == max_path_len]
+        max_flow_values_for_node_pairs = []
+        result_graph_collapsed_nx = _collapse_nx_multigraph_to_weighted_graph(result_graph_nx)
+        for source_node_id, target_node_id in pairs_with_max_path_len:
+            max_flow_values_for_node_pairs.append(nx.algorithms.flow.maximum_flow_value(result_graph_collapsed_nx,
+                                                                                        source_node_id,
+                                                                                        target_node_id,
+                                                                                        capacity="weight"))
+        max_flow_value = 0
+        if len(max_flow_values_for_node_pairs) > 0:
+            max_flow_value = sum(max_flow_values_for_node_pairs)/float(len(max_flow_values_for_node_pairs))
+        max_flow_values.append(max_flow_value)
+    return _quantile_rank_list(max_flow_values)
+
+
+def _rank_networkx_graphs_by_hamiltonian_path(result_graphs_nx: List[Union[nx.MultiDiGraph,
+                                                                           nx.MultiGraph]]) -> np.array:
+    result_scores = []
+    for result_graph_nx in result_graphs_nx:
+        adj_matrix = nx.to_numpy_matrix(result_graph_nx)
+        N = adj_matrix.shape[0]
+        result_score = np.max(np.linalg.matrix_power(adj_matrix, N-1))/math.factorial(N-1)
+        result_scores.append(result_score)
+    return _quantile_rank_list(result_scores)
+
+
+def _rank_result_graphs_by_networkx_graph_ranker(kg_edge_id_to_edge: Dict[str, Edge],
+                                                 qg_nx: Union[nx.MultiDiGraph, nx.MultiGraph],
+                                                 results: List[Result],
+                                                 nx_graph_ranker: callable) -> np.array:
+    result_graphs_nx = _get_weighted_graphs_networkx_from_result_graphs(kg_edge_id_to_edge,
+                                                                        qg_nx,
+                                                                        results)
+    return nx_graph_ranker(result_graphs_nx)
+
+
+def _rank_networkx_graphs_by_frobenius_norm(result_graphs_nx: List[Union[nx.MultiDiGraph,
+                                                                         nx.MultiGraph]]) -> np.array:
+    result_scores = []
+    for result_graph_nx in result_graphs_nx:
+        adj_matrix = nx.to_numpy_matrix(result_graph_nx)
+        result_score = np.linalg.norm(adj_matrix, ord='fro')
+        result_scores.append(result_score)
+    return _quantile_rank_list(result_scores)
 
 
 class ARAXRanker:
@@ -285,7 +409,7 @@ class ARAXRanker:
 
         response.info(f"Summary of available edge metrics: {score_stats}")
 
-
+        
         # Loop over the entire KG and normalize and combine the score of each edge, place that information in the confidence attribute of the edge
         for edge in message.knowledge_graph.edges:
             if edge.confidence is not None:
@@ -303,8 +427,19 @@ class ARAXRanker:
         ###################################
         # TODO: Replace this with a more "intelligent" separate function
         # now we can loop over all the results, and combine their edge confidences (now populated)
-        for result in message.results:
-            self.result_confidence_maker(result)
+        qg_nx = _get_query_graph_networkx_from_query_graph(message.query_graph)
+        kg_edge_id_to_edge = self.kg_edge_id_to_edge
+        results = message.results
+        ranks_list = list(map(lambda ranker_func: _rank_result_graphs_by_networkx_graph_ranker(kg_edge_id_to_edge, qg_nx, results, ranker_func),
+                              [_rank_networkx_graphs_by_max_flow,
+                               _rank_networkx_graphs_by_hamiltonian_path,
+                               _rank_networkx_graphs_by_frobenius_norm]))
+        result_scores = sum(ranks_list)/float(len(ranks_list))
+        for result, score in zip(results, result_scores):
+            result.confidence = score
+
+        #for result in message.results:
+        #    self.result_confidence_maker(result)
         ###################################
 
             # Make all scores at least 0.001. This is all way low anyway, but let's not have anything that rounds to zero
@@ -626,18 +761,36 @@ def main():
         print("ERROR: Unable to fetch message")
         return
 
+
     #ranker.aggregate_scores(message,response=response)
     ranker.aggregate_scores_dmk(message, response=response)
 
     #### Show the final result
-    print(response.show(level=Response.DEBUG))
-    print("Results:")
-    for result in message.results:
-        confidence = result.confidence
-        if confidence is None:
-            confidence = 0.0
-        print("  -" + '{:6.3f}'.format(confidence) + f"\t{result.essence}")
+#    print(response.show(level=Response.DEBUG))
+#    print("Results:")
+
+    # qg_nx = _get_query_graph_networkx_from_query_graph(message.query_graph)
+    # kg_edge_id_to_edge = ranker.kg_edge_id_to_edge
+    # results = message.results
+    # ranks_list = list(map(lambda ranker_func: _rank_result_graphs_by_networkx_graph_ranker(kg_edge_id_to_edge, qg_nx, results, ranker_func),
+    #                       [_rank_networkx_graphs_by_max_flow,
+    #                        _rank_networkx_graphs_by_hamiltonian_path,
+    #                        _rank_networkx_graphs_by_frobenius_norm]))
+    # result_scores = sum(ranks_list)/float(len(ranks_list))
+    
+    # for result in message.results:
+    #     result_graph_nx: Union[nx.MultiDiGraph, nx.MultiGraph] = ranker._get_weighted_graph_networkx_from_result_graph(qg_nx, result)
+    #     apsp_dict = dict(nx.all_pairs_shortest_path_length(result_graph_nx))
+    #     N = len(apsp_dict)
+    #     max_len = max(list(apsp_di
+    #     flow = nx.algorithms.flow.maxflow(result_graph_nx, capacity="weight")
+    #     confidence = result.confidence
+    #     if confidence is None:
+    #         confidence = 0.0
+    #     print("  -" + '{:6.3f}'.format(confidence) + f"\t{result.essence}")
     #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+
+
 
 
 if __name__ == "__main__":
