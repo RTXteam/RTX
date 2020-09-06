@@ -7,7 +7,7 @@ import pprint
 import scipy.stats
 import sys
 
-from typing import Set, Union, Dict, List
+from typing import Set, Union, Dict, List, Callable
 from response import Response
 from query_graph_info import QueryGraphInfo
 
@@ -104,7 +104,7 @@ def _rank_networkx_graphs_by_max_flow(result_graphs_nx: List[Union[nx.MultiDiGra
                                                                                         source_node_id,
                                                                                         target_node_id,
                                                                                         capacity="weight"))
-        max_flow_value = 0
+        max_flow_value = 0.0
         if len(max_flow_values_for_node_pairs) > 0:
             max_flow_value = sum(max_flow_values_for_node_pairs)/float(len(max_flow_values_for_node_pairs))
         max_flow_values.append(max_flow_value)
@@ -125,7 +125,8 @@ def _rank_networkx_graphs_by_hamiltonian_path(result_graphs_nx: List[Union[nx.Mu
 def _rank_result_graphs_by_networkx_graph_ranker(kg_edge_id_to_edge: Dict[str, Edge],
                                                  qg_nx: Union[nx.MultiDiGraph, nx.MultiGraph],
                                                  results: List[Result],
-                                                 nx_graph_ranker: callable) -> np.array:
+                                                 nx_graph_ranker: Callable[[List[Union[nx.MultiDiGraph,
+                                                                                       nx.MultiGraph]]], np.array]) -> np.array:
     result_graphs_nx = _get_weighted_graphs_networkx_from_result_graphs(kg_edge_id_to_edge,
                                                                         qg_nx,
                                                                         results)
