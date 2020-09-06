@@ -138,8 +138,7 @@ class KGQuerier:
                 if qnode.type:
                     if kg_name == "KG2C":
                         qnode_types = eu.convert_string_or_list_to_list(qnode.type)
-                        type_fragments = [f"exists(({qnode.id})-[:has_type]->({{id:'{self._get_curie_for_node_type(qnode_type)}'}}))"
-                                          for qnode_type in qnode_types]
+                        type_fragments = [f"'{qnode_type}' in {qnode.id}.types" for qnode_type in qnode_types]
                         joined_type_fragments = " OR ".join(type_fragments)
                         type_where_clause = joined_type_fragments if len(type_fragments) < 2 else f"({joined_type_fragments})"
                         where_fragments.append(type_where_clause)
@@ -428,19 +427,3 @@ class KGQuerier:
                 prefix = "UMLS"
             formatted_curies.append(f"{prefix}:{local_id}")
         return formatted_curies
-
-    def _get_curie_for_node_type(self, node_type: str) -> str:
-        return f"biolink:{self._convert_string_to_pascal_case(node_type)}"
-
-    @staticmethod
-    def _convert_string_to_pascal_case(input_string: str) -> str:
-        # Converts a string like 'chemical_substance' or 'chemicalSubstance' to 'ChemicalSubstance'
-        if not input_string:
-            return ""
-        elif "_" in input_string:
-            words = input_string.split('_')
-            return "".join([word.capitalize() for word in words])
-        elif len(input_string) > 1:
-            return input_string[0].upper() + input_string[1:]
-        else:
-            return input_string.capitalize()
