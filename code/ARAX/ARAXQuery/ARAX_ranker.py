@@ -3,7 +3,6 @@ import math
 import os
 import networkx as nx
 import numpy as np
-import pprint
 import scipy.stats
 import sys
 
@@ -111,13 +110,22 @@ def _rank_networkx_graphs_by_max_flow(result_graphs_nx: List[Union[nx.MultiDiGra
     return _quantile_rank_list(max_flow_values)
 
 
-def _rank_networkx_graphs_by_hamiltonian_path(result_graphs_nx: List[Union[nx.MultiDiGraph,
-                                                                           nx.MultiGraph]]) -> np.array:
+def _rank_networkx_graphs_by_longest_path(result_graphs_nx: List[Union[nx.MultiDiGraph,
+                                                                       nx.MultiGraph]]) -> np.array:
     result_scores = []
     for result_graph_nx in result_graphs_nx:
+        apsp_dict = dict(nx.algorithms.shortest_paths.unweighted.all_pairs_shortest_path_length(result_graph_nx))
+        path_len_with_pairs_list = [(node_i, node_j, path_len) for node_i, node_i_dict in apsp_dict.items() for node_j, path_len in node_i_dict.items()]
+        max_path_len = max([path_len_with_pair_list_item[2] for path_len_with_pair_list_item in
+                            path_len_with_pairs_list])
+        pairs_with_max_path_len = [path_len_with_pair_list_item[0:2] for path_len_with_pair_list_item in path_len_with_pairs_list if
+                                   path_len_with_pair_list_item[2] == max_path_len]
+        map_node_name_to_index = {node_id: node_index for node_index, node_id in enumerate(result_graph_nx.nodes)}
         adj_matrix = nx.to_numpy_matrix(result_graph_nx)
-        N = adj_matrix.shape[0]
-        result_score = np.max(np.linalg.matrix_power(adj_matrix, N-1))/math.factorial(N-1)
+        adj_matrix_power = np.linalg.matrix_power(adj_matrix, max_path_len)/math.factorial(max_path_len)
+        score_list = [adj_matrix_power[map_node_name_to_index[node_i],
+                                       map_node_name_to_index[node_j]] for node_i, node_j in pairs_with_max_path_len]
+        result_score = np.mean(score_list)
         result_scores.append(result_score)
     return _quantile_rank_list(result_scores)
 
@@ -433,7 +441,7 @@ class ARAXRanker:
         results = message.results
         ranks_list = list(map(lambda ranker_func: _rank_result_graphs_by_networkx_graph_ranker(kg_edge_id_to_edge, qg_nx, results, ranker_func),
                               [_rank_networkx_graphs_by_max_flow,
-                               _rank_networkx_graphs_by_hamiltonian_path,
+                               _rank_networkx_graphs_by_longest_path,
                                _rank_networkx_graphs_by_frobenius_norm]))
         result_scores = sum(ranks_list)/float(len(ranks_list))
         for result, score in zip(results, result_scores):
@@ -685,15 +693,15 @@ class ARAXRanker:
             result.row_data = [ score, result.essence, result.essence_type ]
             i_result += 1
 
-        #### Add table columns name
+        # -- Add table columns name
         message.table_column_names = [ 'confidence', 'essence', 'essence_type' ]
 
-        #### Re-sort the final results
+        # -- Re-sort the final results
         message.results.sort(key=lambda result: result.confidence, reverse=True)
 
-
-
 ##########################################################################################
+
+
 def main():
     # For faster testing, cache the testing messages locally
     import requests_cache
@@ -704,57 +712,56 @@ def main():
     argparser.add_argument('--local', action='store_true', help='If set, use local RTXFeedback database to fetch messages')
     params = argparser.parse_args()
 
-    #### Create a response object
+    # --- Create a response object
     response = Response()
     ranker = ARAXRanker()
 
-    #### Get a Message to work on
+    # --- Get a Message to work on
     from ARAX_messenger import ARAXMessenger
     messenger = ARAXMessenger()
     if not params.local:
         print("INFO: Fetching message to work on from arax.rtx.ai", flush=True)
-        #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2614')  # acetaminophen - > protein, just NGD as virtual edge
-        #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2687')  # neutropenia -> drug, predict_drug_treats_disease and ngd
-        #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2701') # observed_expected_ratio and ngd
-        #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2703')  # a huge one with jaccard
-        #message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2706')  # small one with paired concept frequency
+        # message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2614')  # acetaminophen - > protein, just NGD as virtual edge
+        # message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2687')  # neutropenia -> drug, predict_drug_treats_disease and ngd
+        # message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2701') # observed_expected_ratio and ngd
+        # message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2703')  # a huge one with jaccard
+        # message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2706')  # small one with paired concept frequency
         message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2709')  # bigger one with paired concept frequency
-
 
     # For local messages due to local changes in code not rolled out to production:
     if params.local:
         sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/Feedback")
         from RTXFeedback import RTXFeedback
         araxdb = RTXFeedback()
-        #message_dict = araxdb.getMessage(294)  # local version of 2709 but with updates to COHD
-        #message_dict = araxdb.getMessage(297)
-        #message_dict = araxdb.getMessage(298)
-        #message_dict = araxdb.getMessage(299)  # observed_expected_ratio different disease
-        #message_dict = araxdb.getMessage(300)  # chi_square
-        #message_dict = araxdb.getMessage(302)  # chi_square, different disease
-        #message_dict = araxdb.getMessage(304)  # all clinical info, osteoarthritis
-        #message_dict = araxdb.getMessage(305)  # all clinical info, neurtropenia
-        #message_dict = araxdb.getMessage(306)  # all clinical info, neurtropenia, but with virtual edges
-        #message_dict = araxdb.getMessage(307)  # all clinical info, osteoarthritis, but with virtual edges
-        #message_dict = araxdb.getMessage(322)  # Parkinsons Jaccard, top 50
-        #message_dict = araxdb.getMessage(324)  # chi_square, KG2
-        #message_dict = araxdb.getMessage(325)  # chi_square, ngd, KG2
-        #message_dict = araxdb.getMessage(326)  # prob drug treats disease as attribute to all edge thrombocytopenia
+        # message_dict = araxdb.getMessage(294)  # local version of 2709 but with updates to COHD
+        # message_dict = araxdb.getMessage(297)
+        # message_dict = araxdb.getMessage(298)
+        # message_dict = araxdb.getMessage(299)  # observed_expected_ratio different disease
+        # message_dict = araxdb.getMessage(300)  # chi_square
+        # message_dict = araxdb.getMessage(302)  # chi_square, different disease
+        # message_dict = araxdb.getMessage(304)  # all clinical info, osteoarthritis
+        # message_dict = araxdb.getMessage(305)  # all clinical info, neurtropenia
+        # message_dict = araxdb.getMessage(306)  # all clinical info, neurtropenia, but with virtual edges
+        # message_dict = araxdb.getMessage(307)  # all clinical info, osteoarthritis, but with virtual edges
+        # message_dict = araxdb.getMessage(322)  # Parkinsons Jaccard, top 50
+        # message_dict = araxdb.getMessage(324)  # chi_square, KG2
+        # message_dict = araxdb.getMessage(325)  # chi_square, ngd, KG2
+        # message_dict = araxdb.getMessage(326)  # prob drug treats disease as attribute to all edge thrombocytopenia
         message_dict = araxdb.getMessage(327)
-            #add_qnode(name=DOID:1227, id=n00)
-            #add_qnode(type=protein, is_set=true, id=n01)
-            #add_qnode(type=chemical_substance, id=n02)
-            #add_qedge(source_id=n00, target_id=n01, id=e00)
-            #add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)
-            #expand(edge_id=[e00,e01], kp=ARAX/KG1)
-            #overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)
-            #overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)
-            #overlay(action=overlay_clinical_info, chi_square=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n02)
-            #overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n00, target_qnode_id=n01)
-            #overlay(action=compute_ngd, virtual_relation_label=N2, source_qnode_id=n00, target_qnode_id=n02)
-            #overlay(action=compute_ngd, virtual_relation_label=N3, source_qnode_id=n01, target_qnode_id=n02)
-            #resultify(ignore_edge_direction=true)
-            #filter_results(action=limit_number_of_results, max_results=100)
+        # add_qnode(name=DOID:1227, id=n00)
+        # add_qnode(type=protein, is_set=true, id=n01)
+        # add_qnode(type=chemical_substance, id=n02)
+        # add_qedge(source_id=n00, target_id=n01, id=e00)
+        # add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)
+        # expand(edge_id=[e00,e01], kp=ARAX/KG1)
+        # overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)
+        # overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)
+        # overlay(action=overlay_clinical_info, chi_square=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n02)
+        # overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n00, target_qnode_id=n01)
+        # overlay(action=compute_ngd, virtual_relation_label=N2, source_qnode_id=n00, target_qnode_id=n02)
+        # overlay(action=compute_ngd, virtual_relation_label=N3, source_qnode_id=n01, target_qnode_id=n02)
+        # resultify(ignore_edge_direction=true)
+        # filter_results(action=limit_number_of_results, max_results=100)
         from ARAX_messenger import ARAXMessenger
         message = ARAXMessenger().from_dict(message_dict)
 
@@ -762,36 +769,19 @@ def main():
         print("ERROR: Unable to fetch message")
         return
 
-
-    #ranker.aggregate_scores(message,response=response)
+    # ranker.aggregate_scores(message,response=response)
     ranker.aggregate_scores_dmk(message, response=response)
 
-    #### Show the final result
-#    print(response.show(level=Response.DEBUG))
-#    print("Results:")
+    # Show the final result
+    print(response.show(level=Response.DEBUG))
+    print("Results:")
 
-    # qg_nx = _get_query_graph_networkx_from_query_graph(message.query_graph)
-    # kg_edge_id_to_edge = ranker.kg_edge_id_to_edge
-    # results = message.results
-    # ranks_list = list(map(lambda ranker_func: _rank_result_graphs_by_networkx_graph_ranker(kg_edge_id_to_edge, qg_nx, results, ranker_func),
-    #                       [_rank_networkx_graphs_by_max_flow,
-    #                        _rank_networkx_graphs_by_hamiltonian_path,
-    #                        _rank_networkx_graphs_by_frobenius_norm]))
-    # result_scores = sum(ranks_list)/float(len(ranks_list))
-    
-    # for result in message.results:
-    #     result_graph_nx: Union[nx.MultiDiGraph, nx.MultiGraph] = ranker._get_weighted_graph_networkx_from_result_graph(qg_nx, result)
-    #     apsp_dict = dict(nx.all_pairs_shortest_path_length(result_graph_nx))
-    #     N = len(apsp_dict)
-    #     max_len = max(list(apsp_di
-    #     flow = nx.algorithms.flow.maxflow(result_graph_nx, capacity="weight")
-    #     confidence = result.confidence
-    #     if confidence is None:
-    #         confidence = 0.0
-    #     print("  -" + '{:6.3f}'.format(confidence) + f"\t{result.essence}")
-    #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
-
-
+    for result in message.results:
+        confidence = result.confidence
+        if confidence is None:
+            confidence = 0.0
+        print("  -" + '{:6.3f}'.format(confidence) + f"\t{result.essence}")
+    # print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
 
 
 if __name__ == "__main__":
