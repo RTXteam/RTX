@@ -100,7 +100,7 @@ class KGQuerier:
 
         # Build and run a cypher query to get this node/nodes
         where_clause = f"{qnode.id}.id='{qnode.curie}'" if type(qnode.curie) is str else f"{qnode.id}.id in {qnode.curie}"
-        cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode)} WHERE {where_clause} RETURN {qnode.id}"
+        cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode, kg_name)} WHERE {where_clause} RETURN {qnode.id}"
         log.info(f"Sending cypher query for node {qnode.id} to {kg_name} neo4j")
         results = self._run_cypher_query(cypher_query, kg_name, log)
 
@@ -126,27 +126,30 @@ class KGQuerier:
             source_qnode = eu.get_query_node(query_graph, qedge.source_id)
             target_qnode = eu.get_query_node(query_graph, qedge.target_id)
             qedge_cypher = self._get_cypher_for_query_edge(qedge, enforce_directionality)
-            source_qnode_cypher = self._get_cypher_for_query_node(source_qnode)
-            target_qnode_cypher = self._get_cypher_for_query_node(target_qnode)
+            source_qnode_cypher = self._get_cypher_for_query_node(source_qnode, kg_name)
+            target_qnode_cypher = self._get_cypher_for_query_node(target_qnode, kg_name)
             match_clause = f"MATCH {source_qnode_cypher}{qedge_cypher}{target_qnode_cypher}"
 
             # Build the where clause
             where_fragments = []
             for qnode in [source_qnode, target_qnode]:
-                if qnode.curie:
-                    if type(qnode.curie) is str:
-                        node_id_where_fragment = f"{qnode.id}.id='{qnode.curie}'"
-                    else:
-                        node_id_where_fragment = f"{qnode.id}.id in {qnode.curie}"
-                    where_fragments.append(node_id_where_fragment)
-                if qnode.type and isinstance(qnode.type, list):
-                    if kg_name == "KG2":
-                        node_type_property = "category_label"
-                    elif kg_name == "KG2C":
-                        node_type_property = "preferred_type"
-                    else:
-                        node_type_property = "category"
-                    where_fragments.append(f"{qnode.id}.{node_type_property} in {qnode.type}")
+                if qnode.curie and isinstance(qnode.curie, list) and len(qnode.curie) > 1:
+                    where_fragments.append(f"{qnode.id}.id in {qnode.curie}")
+                if qnode.type:
+                    if kg_name == "KG2C":
+                        qnode_types = eu.convert_string_or_list_to_list(qnode.type)
+                        type_fragments = [f"exists(({qnode.id})-[:has_type]->({{id:'{self._get_curie_for_node_type(qnode_type)}'}}))"
+                                          for qnode_type in qnode_types]
+                        joined_type_fragments = " OR ".join(type_fragments)
+                        type_where_clause = joined_type_fragments if len(type_fragments) < 2 else f"({joined_type_fragments})"
+                        where_fragments.append(type_where_clause)
+                    elif isinstance(qnode.type, list):
+                        if kg_name == "KG2":
+                            node_type_property = "category_label"
+                        else:
+                            node_type_property = "category"
+                        where_fragments.append(f"{qnode.id}.{node_type_property} in {qnode.type}")
+
             if where_fragments:
                 where_clause = f"WHERE {' AND '.join(where_fragments)}"
             else:
@@ -386,10 +389,15 @@ class KGQuerier:
         return edge
 
     @staticmethod
-    def _get_cypher_for_query_node(qnode: QNode) -> str:
-        qnode_type_cypher = f":{qnode.type}" if qnode.type and isinstance(qnode.type, str) else ""
-        full_qnode_cypher = f"({qnode.id}{qnode_type_cypher})"
-        return full_qnode_cypher
+    def _get_cypher_for_query_node(qnode: QNode, kg_name: str) -> str:
+        type_cypher = f":{qnode.type}" if qnode.type and isinstance(qnode.type, str) and kg_name != "KG2C" else ""
+        if qnode.curie and (isinstance(qnode.curie, str) or len(qnode.curie) == 1):
+            curie = qnode.curie if isinstance(qnode.curie, str) else qnode.curie[0]
+            curie_cypher = f" {{id:'{curie}'}}"
+        else:
+            curie_cypher = ""
+        qnode_cypher = f"({qnode.id}{type_cypher}{curie_cypher})"
+        return qnode_cypher
 
     @staticmethod
     def _get_cypher_for_query_edge(qedge: QEdge, enforce_directionality: bool) -> str:
@@ -420,3 +428,19 @@ class KGQuerier:
                 prefix = "UMLS"
             formatted_curies.append(f"{prefix}:{local_id}")
         return formatted_curies
+
+    def _get_curie_for_node_type(self, node_type: str) -> str:
+        return f"biolink:{self._convert_string_to_pascal_case(node_type)}"
+
+    @staticmethod
+    def _convert_string_to_pascal_case(input_string: str) -> str:
+        # Converts a string like 'chemical_substance' or 'chemicalSubstance' to 'ChemicalSubstance'
+        if not input_string:
+            return ""
+        elif "_" in input_string:
+            words = input_string.split('_')
+            return "".join([word.capitalize() for word in words])
+        elif len(input_string) > 1:
+            return input_string[0].upper() + input_string[1:]
+        else:
+            return input_string.capitalize()
