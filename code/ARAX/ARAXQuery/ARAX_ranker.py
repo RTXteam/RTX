@@ -78,6 +78,7 @@ def _collapse_nx_multigraph_to_weighted_graph(graph_nx: Union[nx.MultiDiGraph,
             ret_graph.add_edge(u, v, weight=w)
     return ret_graph
 
+
 # computes quantile ranks in *ascending* order (so a higher x entry has a higher
 # "rank"), where ties have the same (average) rank (the reason for using scipy.stats
 # here is specifically in order to handle ties correctly)
@@ -86,8 +87,8 @@ def _quantile_rank_list(x: List[float]) -> np.array:
     return y/len(y)
 
 
-def _rank_networkx_graphs_by_max_flow(result_graphs_nx: List[Union[nx.MultiDiGraph,
-                                                                   nx.MultiGraph]]) -> np.array:
+def _score_networkx_graphs_by_max_flow(result_graphs_nx: List[Union[nx.MultiDiGraph,
+                                                                    nx.MultiGraph]]) -> List[float]:
     max_flow_values = []
     for result_graph_nx in result_graphs_nx:
         apsp_dict = dict(nx.algorithms.shortest_paths.unweighted.all_pairs_shortest_path_length(result_graph_nx))
@@ -107,11 +108,11 @@ def _rank_networkx_graphs_by_max_flow(result_graphs_nx: List[Union[nx.MultiDiGra
         if len(max_flow_values_for_node_pairs) > 0:
             max_flow_value = sum(max_flow_values_for_node_pairs)/float(len(max_flow_values_for_node_pairs))
         max_flow_values.append(max_flow_value)
-    return _quantile_rank_list(max_flow_values)
+    return max_flow_values
 
 
-def _rank_networkx_graphs_by_longest_path(result_graphs_nx: List[Union[nx.MultiDiGraph,
-                                                                       nx.MultiGraph]]) -> np.array:
+def _score_networkx_graphs_by_longest_path(result_graphs_nx: List[Union[nx.MultiDiGraph,
+                                                                        nx.MultiGraph]]) -> List[float]:
     result_scores = []
     for result_graph_nx in result_graphs_nx:
         apsp_dict = dict(nx.algorithms.shortest_paths.unweighted.all_pairs_shortest_path_length(result_graph_nx))
@@ -127,28 +128,28 @@ def _rank_networkx_graphs_by_longest_path(result_graphs_nx: List[Union[nx.MultiD
                                        map_node_name_to_index[node_j]] for node_i, node_j in pairs_with_max_path_len]
         result_score = np.mean(score_list)
         result_scores.append(result_score)
-    return _quantile_rank_list(result_scores)
+    return result_scores
 
 
-def _rank_result_graphs_by_networkx_graph_ranker(kg_edge_id_to_edge: Dict[str, Edge],
-                                                 qg_nx: Union[nx.MultiDiGraph, nx.MultiGraph],
-                                                 results: List[Result],
-                                                 nx_graph_ranker: Callable[[List[Union[nx.MultiDiGraph,
-                                                                                       nx.MultiGraph]]], np.array]) -> np.array:
-    result_graphs_nx = _get_weighted_graphs_networkx_from_result_graphs(kg_edge_id_to_edge,
-                                                                        qg_nx,
-                                                                        results)
-    return nx_graph_ranker(result_graphs_nx)
-
-
-def _rank_networkx_graphs_by_frobenius_norm(result_graphs_nx: List[Union[nx.MultiDiGraph,
-                                                                         nx.MultiGraph]]) -> np.array:
+def _score_networkx_graphs_by_frobenius_norm(result_graphs_nx: List[Union[nx.MultiDiGraph,
+                                                                          nx.MultiGraph]]) -> List[float]:
     result_scores = []
     for result_graph_nx in result_graphs_nx:
         adj_matrix = nx.to_numpy_matrix(result_graph_nx)
         result_score = np.linalg.norm(adj_matrix, ord='fro')
         result_scores.append(result_score)
-    return _quantile_rank_list(result_scores)
+    return result_scores
+
+
+def _score_result_graphs_by_networkx_graph_scorer(kg_edge_id_to_edge: Dict[str, Edge],
+                                                  qg_nx: Union[nx.MultiDiGraph, nx.MultiGraph],
+                                                  results: List[Result],
+                                                  nx_graph_scorer: Callable[[List[Union[nx.MultiDiGraph,
+                                                                                        nx.MultiGraph]]], np.array]) -> List[float]:
+    result_graphs_nx = _get_weighted_graphs_networkx_from_result_graphs(kg_edge_id_to_edge,
+                                                                        qg_nx,
+                                                                        results)
+    return nx_graph_scorer(result_graphs_nx)
 
 
 class ARAXRanker:
@@ -160,8 +161,8 @@ class ARAXRanker:
         self.parameters = None
         # edge attributes we know about
         self.known_attributes = {'probability', 'normalized_google_distance', 'jaccard_index',
-                                            'probability_treats', 'paired_concept_frequency',
-                                            'observed_expected_ratio', 'chi_square'}
+                                 'probability_treats', 'paired_concept_frequency',
+                                 'observed_expected_ratio', 'chi_square'}
         # how much we trust each of the edge attributes
         self.known_attributes_to_trust = {'probability': 0.5,
                                           'normalized_google_distance': 0.8,
@@ -184,7 +185,7 @@ class ARAXRanker:
                 kg_edge_id = edge.kg_id
                 # TODO: replace this with the more intelligent function
                 # here we are just multiplying the edge confidences
-                #### # to see what info is going into each result: print(f"{result.essence}: {kg_edges[kg_edge_id].type}, {kg_edges[kg_edge_id].confidence}")
+                # --- to see what info is going into each result: print(f"{result.essence}: {kg_edges[kg_edge_id].type}, {kg_edges[kg_edge_id].confidence}")
                 result_confidence *= self.kg_edge_id_to_edge[kg_edge_id].confidence
             result.confidence = result_confidence
         else:
@@ -192,7 +193,8 @@ class ARAXRanker:
             # Idea:
             #   in each result
             #       for each source and target node:
-            #           combine the confidences into a single edge with a single confidence that takes everything into account (# edges, edge scores, edge types, etc)
+            #           combine the confidences into a single edge with a single confidence that takes everything into account (
+            #           edges, edge scores, edge types, etc)
             #       then assign result confidence as average/median of these "single" edge confidences?
             result.confidence = 1
 
@@ -296,7 +298,7 @@ class ARAXRanker:
         Just compare the value to the maximum value
         """
         normalized_value = value / self.score_stats['jaccard_index']['maximum']
-        #print(f"value: {value}, normalized: {normalized_value}")
+        # print(f"value: {value}, normalized: {normalized_value}")
         return normalized_value
 
     def __normalize_paired_concept_frequency(self, value):
@@ -305,9 +307,9 @@ class ARAXRanker:
         but I don't know the distribution of frequencies in COHD, so just go the relative route
         """
         # check to make sure we don't divide by zero
-        #try:
+        # try:
         #    normalized_value = value / score_stats['paired_concept_frequency']['maximum']
-        #except:
+        # except ZeroDivisionError:
         #    normalized_value = value / (score_stats['paired_concept_frequency']['maximum'] + np.finfo(float).eps)
 
         # Give logistic a try
@@ -318,7 +320,7 @@ class ARAXRanker:
         normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
         # TODO: if "near" to the min value, set to zero (maybe one std dev from the min value of the logistic curve?)
         # TODO: make sure max value can be obtained
-        #print(f"value: {value}, normalized: {normalized_value}")
+        # print(f"value: {value}, normalized: {normalized_value}")
         return normalized_value
 
     def __normalize_observed_expected_ratio(self, value):
@@ -331,7 +333,7 @@ class ARAXRanker:
         normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
         # TODO: if "near" to the min value, set to zero (maybe one std dev from the min value of the logistic curve?)
         # TODO: make sure max value can be obtained
-        #print(f"value: {value}, normalized: {normalized_value}")
+        # print(f"value: {value}, normalized: {normalized_value}")
         return normalized_value
 
     def __normalize_chi_square(self, value):
@@ -341,10 +343,10 @@ class ARAXRanker:
         -log(p_value) approach and use that (taking a page from the geneticist's handbook)
         """
         # Taking value as is:
-        #max_value = 1
-        #curve_steepness = -100
-        #logistic_midpoint = 0.05
-        #normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
+        # max_value = 1
+        # curve_steepness = -100
+        # logistic_midpoint = 0.05
+        # normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
 
         # -Log[p_value] approach
         value = -np.log(value)
@@ -354,7 +356,7 @@ class ARAXRanker:
         normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
         # TODO: if "near" to the min value, set to zero (maybe one std dev from the min value of the logistic curve?)
         # TODO: make sure max value can be obtained
-        #print(f"value: {value}, normalized: {normalized_value}")
+        # print(f"value: {value}, normalized: {normalized_value}")
         return normalized_value
 
     def aggregate_scores_dmk(self, message, response=None):
@@ -379,10 +381,10 @@ class ARAXRanker:
         # #### Compute some basic information about the query_graph
         query_graph_info = QueryGraphInfo()
         result = query_graph_info.assess(message)
-        #response.merge(result)
-        #if result.status != 'OK':
-        #    print(response.show(level=Response.DEBUG))
-        #    return response
+        # response.merge(result)
+        # if result.status != 'OK':
+        #     print(response.show(level=Response.DEBUG))
+        #     return response
 
         # DMK FIXME: This need to be refactored so that:
         #    1. The attribute names are dynamically mapped to functions that handle their weightings (for ease of renaming attribute names)
@@ -403,7 +405,7 @@ class ARAXRanker:
                     for attribute_name in self.known_attributes:
                         if edge_attribute.name == attribute_name:
                             if attribute_name not in score_stats:
-                                score_stats[attribute_name] = {'minimum': None, 'maximum': None}  # FIXME: doesn't handle the case when all values are inf or NaN
+                                score_stats[attribute_name] = {'minimum': None, 'maximum': None}  # FIXME: doesn't handle the case when all values are inf|NaN
                             value = float(edge_attribute.value)
                             # initialize if not None already
                             if not np.isinf(value) and not np.isinf(-value) and not np.isnan(value):  # Ignore inf, -inf, and nan
@@ -418,7 +420,6 @@ class ARAXRanker:
 
         response.info(f"Summary of available edge metrics: {score_stats}")
 
-        
         # Loop over the entire KG and normalize and combine the score of each edge, place that information in the confidence attribute of the edge
         for edge in message.knowledge_graph.edges:
             if edge.confidence is not None:
@@ -439,16 +440,20 @@ class ARAXRanker:
         qg_nx = _get_query_graph_networkx_from_query_graph(message.query_graph)
         kg_edge_id_to_edge = self.kg_edge_id_to_edge
         results = message.results
-        ranks_list = list(map(lambda ranker_func: _rank_result_graphs_by_networkx_graph_ranker(kg_edge_id_to_edge, qg_nx, results, ranker_func),
-                              [_rank_networkx_graphs_by_max_flow,
-                               _rank_networkx_graphs_by_longest_path,
-                               _rank_networkx_graphs_by_frobenius_norm]))
+        ranks_list = list(map(_quantile_rank_list,
+                              map(lambda scorer_func: _score_result_graphs_by_networkx_graph_scorer(kg_edge_id_to_edge,
+                                                                                                    qg_nx,
+                                                                                                    results,
+                                                                                                    scorer_func),
+                                  [_score_networkx_graphs_by_max_flow,
+                                   _score_networkx_graphs_by_longest_path,
+                                   _score_networkx_graphs_by_frobenius_norm])))
         result_scores = sum(ranks_list)/float(len(ranks_list))
         for result, score in zip(results, result_scores):
             result.confidence = score
 
-        #for result in message.results:
-        #    self.result_confidence_maker(result)
+        # for result in message.results:
+        #     self.result_confidence_maker(result)
         ###################################
 
             # Make all scores at least 0.001. This is all way low anyway, but let's not have anything that rounds to zero
@@ -467,8 +472,7 @@ class ARAXRanker:
         # Re-sort the final results
         message.results.sort(key=lambda result: result.confidence, reverse=True)
 
-
-    # #### ############################################################################################
+    # ############################################################################################
     # #### For each result[], aggregate all available confidence metrics and other scores to compute a final score
     def aggregate_scores(self, message, response=None):
 
@@ -485,10 +489,10 @@ class ARAXRanker:
         # #### Compute some basic information about the query_graph
         query_graph_info = QueryGraphInfo()
         result = query_graph_info.assess(message)
-        #response.merge(result)
-        #if result.status != 'OK':
-        #    print(response.show(level=Response.DEBUG))
-        #    return response
+        # response.merge(result)
+        # if result.status != 'OK':
+        #     print(response.show(level=Response.DEBUG))
+        #     return response
 
         # DMK FIXME: This need to be refactored so that:
         #    1. The attribute names are dynamically mapped to functions that handle their weightings (for ease of renaming attribute names)
@@ -507,18 +511,19 @@ class ARAXRanker:
             if edge.edge_attributes is not None:
                 for edge_attribute in edge.edge_attributes:
                     # FIXME: DMK: We should probably have some some way to dynamically get the attribute names since they appear to be constantly changing
-                    # DMK: Crazy idea: have the individual ARAXi commands pass along their attribute names along with what they think of is a good way to handle them
+                    # DMK: Crazy idea: have the individual ARAXi commands pass along their attribute names along with what they think of is a
+                    #      good way to handle them
                     # DMK: eg. "higher is better" or "my range of [0, inf]" or "my value is a probability", etc.
-                    for attribute_name in [ 'probability', 'normalized_google_distance', 'jaccard_index',
-                                            'probability_treats', 'paired_concept_frequency',
-                                            'observed_expected_ratio', 'chi_square']:
+                    for attribute_name in ['probability', 'normalized_google_distance', 'jaccard_index',
+                                           'probability_treats', 'paired_concept_frequency',
+                                           'observed_expected_ratio', 'chi_square']:
                         if edge_attribute.name == attribute_name:
                             if attribute_name not in score_stats:
-                                score_stats[attribute_name] = {'minimum': None, 'maximum': None}  # FIXME: doesn't handle the case when all values are inf or NaN
+                                score_stats[attribute_name] = {'minimum': None, 'maximum': None}  # FIXME: doesn't handle the case when all values are inf|NaN
                             value = float(edge_attribute.value)
                             # TODO: don't set to max here, since returning inf for some edge attributes means "I have no data"
-                            #if np.isinf(value):
-                            #    value = 9999
+                            # if np.isinf(value):
+                            #     value = 9999
                             # initialize if not None already
                             if not np.isinf(value) and not np.isinf(-value) and not np.isnan(value):  # Ignore inf, -inf, and nan
                                 if not score_stats[attribute_name]['minimum']:
@@ -534,7 +539,7 @@ class ARAXRanker:
         # #### Loop through the results[] in order to compute aggregated scores
         i_result = 0
         for result in message.results:
-            #response.debug(f"Metrics for result {i_result}  {result.essence}: ")
+            # response.debug(f"Metrics for result {i_result}  {result.essence}: ")
 
             # #### Begin with a default score of 1.0 for everything
             score = 1.0
@@ -563,9 +568,9 @@ class ARAXRanker:
                     for edge_attribute in kg_edges[kg_edge_id].edge_attributes:
 
                         # FIXME: These are chemical_substance->protein binding probabilities, may not want be treating them like this....
-                        #### EWD: Vlado has suggested that any of these links with chemical_substance->protein binding probabilities are 
-                        #### EWD: mostly junk. very low probablility of being correct. His opinion seemed to be that they shouldn't be in the KG
-                        #### EWD: If we keep them, maybe their probabilities should be knocked down even further, in half, in quarter..
+                        # ### EWD: Vlado has suggested that any of these links with chemical_substance->protein binding probabilities are
+                        # ### EWD: mostly junk. very low probablility of being correct. His opinion seemed to be that they shouldn't be in the KG
+                        # ### EWD: If we keep them, maybe their probabilities should be knocked down even further, in half, in quarter..
                         # DMK: I agree: hence why I said we should probably not be treating them like this (and not trusting them a lot)
 
                         # #### If the edge_attribute is named 'probability', then for now use it to record the best probability only
@@ -578,16 +583,18 @@ class ARAXRanker:
                         # #### If the edge_attribute is named 'probability_drug_treats', then for now we won't do anything
                         # #### because this value also seems to be copied into the edge confidence field, so is already
                         # #### taken into account
-                        #if edge_attribute.name == 'probability_drug_treats':               # this is already put in confidence
-                        #    buf += f" probability_drug_treats={edge_attribute.value}"
-                        #    score *= value
-                        # DMK FIXME: Do we actually have 'probability_drug_treats' attributes?, the probability_drug_treats is *not* put in the confidence see: confidence = None in `predict_drug_treats_disease.py`
+                        # if edge_attribute.name == 'probability_drug_treats':               # this is already put in confidence
+                        #     buf += f" probability_drug_treats={edge_attribute.value}"
+                        #     score *= value
+                        # DMK FIXME: Do we actually have 'probability_drug_treats' attributes?, the probability_drug_treats is *not*
+                        #            put in the confidence see: confidence = None in `predict_drug_treats_disease.py`
                         # DMK: also note the edge type is: edge_type = "probably_treats"
 
                         # If the edge_attribute is named 'probability_treats', use the value more or less as a probability
-                        #### EWD says: but note that when I last worked on this, the probability_treats was repeated in an edge attribute
-                        #### EWD says: as well as in the edge confidence score, so I commented out this section (see immediately above) DMK (same re: comment above :) )
-                        #### EWD says: so that it wouldn't be counted twice. But that may have changed in the mean time.
+                        # ### EWD says: but note that when I last worked on this, the probability_treats was repeated in an edge attribute
+                        # ### EWD says: as well as in the edge confidence score, so I commented out this section (see immediately above)
+                        #     DMK (same re: comment above :) )
+                        # ### EWD says: so that it wouldn't be counted twice. But that may have changed in the mean time.
                         if edge_attribute.name == "probability_treats":
                             prob_treats = float(edge_attribute.value)
                             # Don't treat as a good prediction if the ML model returns a low value
@@ -611,7 +618,7 @@ class ARAXRanker:
                             # #### NGD = 0.7 leads to a factor of 0.76. Same ballpark
                             # #### NGD = 0.9 this is pretty far away. Still the factor is 0.64. Distantly related
                             # #### NGD = 1.0 is very far. Still, factor is 0.58. Grade inflation is rampant.
-                            factor = 1 - ( ngd - 0.3) * 0.6
+                            factor = 1 - (ngd - 0.3) * 0.6
 
                             # Apply limits of 1.0 and 0.01 to the linear fudge
                             if factor < 0.01:
@@ -642,7 +649,7 @@ class ARAXRanker:
                             else:
                                 try:
                                     factor = paired_concept_freq / score_stats['paired_concept_frequency']['maximum']
-                                except:
+                                except ZeroDivisionError:
                                     factor = paired_concept_freq / (score_stats['paired_concept_frequency']['maximum'] + eps)
                             score *= factor
                             buf += f" paired_concept_frequency={paired_concept_freq}, factor={factor}"
@@ -666,18 +673,18 @@ class ARAXRanker:
                             else:
                                 try:
                                     factor = 1 - (chi_square / score_stats['chi_square']['maximum'])  # lower is better
-                                except:
+                                except ZeroDivisionError:
                                     factor = 1 - (chi_square / (score_stats['chi_square']['maximum'] + eps))  # lower is better
                             score *= factor
                             buf += f" chi_square={chi_square}, factor={factor}"
 
                 # #### When debugging, log the edge_id and the accumulated information in the buffer
-                #response.debug(f"  - {kg_edge_id}  {buf}")
+                # response.debug(f"  - {kg_edge_id}  {buf}")
 
             # #### If there was a best_probability recorded, then multiply into the running score
-            #### EWD: This was commented out by DMK? I don't know why. I think it should be here             FIXME
-            #if best_probability > 0.0:
-            #    score *= best_probability
+            # ### EWD: This was commented out by DMK? I don't know why. I think it should be here             FIXME
+            # if best_probability > 0.0:
+            #     score *= best_probability
             # DMK: for some reason, this was causing my scores to be ridiculously low, so I commented it out and confidences went up "quite a bit"
 
             # #### Make all scores at least 0.01. This is all way low anyway, but let's not have anything that rounds to zero
@@ -685,16 +692,16 @@ class ARAXRanker:
             if score < 0.01:
                 score += 0.01
 
-            #### Round to reasonable precision. Keep only 3 digits after the decimal 
+            # ### Round to reasonable precision. Keep only 3 digits after the decimal
             score = int(score * 1000 + 0.5) / 1000.0
 
-            #response.debug(f"  ---> final score={score}")
+            # response.debug(f"  ---> final score={score}")
             result.confidence = score
-            result.row_data = [ score, result.essence, result.essence_type ]
+            result.row_data = [score, result.essence, result.essence_type]
             i_result += 1
 
         # -- Add table columns name
-        message.table_column_names = [ 'confidence', 'essence', 'essence_type' ]
+        message.table_column_names = ['confidence', 'essence', 'essence_type']
 
         # -- Re-sort the final results
         message.results.sort(key=lambda result: result.confidence, reverse=True)
