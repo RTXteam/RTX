@@ -201,7 +201,7 @@ class ARAXExpander:
             log.debug(f"Query for edge {qedge.id} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
             # Do some post-processing (deduplicate nodes, remove self-edges..)
-            if use_synonyms:
+            if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2C is already deduplicated
                 answer_kg, edge_to_nodes_map = self._deduplicate_nodes(answer_kg, edge_to_nodes_map, log)
             if eu.qg_is_fulfilled(edge_query_graph, answer_kg):
                 answer_kg = self._remove_self_edges(answer_kg, edge_to_nodes_map, qedge.id, edge_query_graph.nodes, log)
@@ -248,7 +248,7 @@ class ARAXExpander:
                               error_code="UnfulfilledQGID")
                     return answer_kg
 
-            if use_synonyms:
+            if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2C is already deduplicated
                 answer_kg, edge_node_usage_map = self._deduplicate_nodes(dict_kg=answer_kg,
                                                                          edge_to_nodes_map={},
                                                                          log=log)
