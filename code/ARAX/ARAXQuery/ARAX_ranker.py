@@ -5,6 +5,8 @@ import networkx as nx
 import numpy as np
 import scipy.stats
 import sys
+import json
+import ast
 
 from typing import Set, Union, Dict, List, Callable
 from response import Response
@@ -448,7 +450,9 @@ class ARAXRanker:
                                   [_score_networkx_graphs_by_max_flow,
                                    _score_networkx_graphs_by_longest_path,
                                    _score_networkx_graphs_by_frobenius_norm])))
+        #print(ranks_list)
         result_scores = sum(ranks_list)/float(len(ranks_list))
+        #print(result_scores)
         for result, score in zip(results, result_scores):
             result.confidence = score
 
@@ -728,19 +732,19 @@ def main():
     messenger = ARAXMessenger()
     if not params.local:
         print("INFO: Fetching message to work on from arax.rtx.ai", flush=True)
-        # message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2614')  # acetaminophen - > protein, just NGD as virtual edge
+        message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2614')  # acetaminophen - > protein, just NGD as virtual edge
         # message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2687')  # neutropenia -> drug, predict_drug_treats_disease and ngd
         # message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2701') # observed_expected_ratio and ngd
         # message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2703')  # a huge one with jaccard
         # message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2706')  # small one with paired concept frequency
-        message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2709')  # bigger one with paired concept frequency
+        # message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2709')  # bigger one with paired concept frequency
 
     # For local messages due to local changes in code not rolled out to production:
     if params.local:
         sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/Feedback")
         from RTXFeedback import RTXFeedback
         araxdb = RTXFeedback()
-        # message_dict = araxdb.getMessage(294)  # local version of 2709 but with updates to COHD
+        message_dict = araxdb.getMessage(294)  # local version of 2709 but with updates to COHD
         # message_dict = araxdb.getMessage(297)
         # message_dict = araxdb.getMessage(298)
         # message_dict = araxdb.getMessage(299)  # observed_expected_ratio different disease
@@ -754,7 +758,7 @@ def main():
         # message_dict = araxdb.getMessage(324)  # chi_square, KG2
         # message_dict = araxdb.getMessage(325)  # chi_square, ngd, KG2
         # message_dict = araxdb.getMessage(326)  # prob drug treats disease as attribute to all edge thrombocytopenia
-        message_dict = araxdb.getMessage(327)
+        # message_dict = araxdb.getMessage(327)
         # add_qnode(name=DOID:1227, id=n00)
         # add_qnode(type=protein, is_set=true, id=n01)
         # add_qnode(type=chemical_substance, id=n02)
@@ -789,6 +793,9 @@ def main():
             confidence = 0.0
         print("  -" + '{:6.3f}'.format(confidence) + f"\t{result.essence}")
     # print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+
+    # Show the message number
+    print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
 
 
 if __name__ == "__main__":
