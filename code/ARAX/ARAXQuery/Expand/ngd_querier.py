@@ -52,6 +52,12 @@ class NGDQuerier:
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
 
+        # Make sure any curies in our query graph are canonical ones
+        qnodes_with_curies = [qnode for qnode in query_graph.nodes if qnode.curie]
+        for qnode in qnodes_with_curies:
+            canonical_curies = eu.get_canonical_curies_list(qnode.curie, log)
+            qnode.curie = canonical_curies
+
         # Find potential answers using KG2
         qedge = query_graph.edges[0]
         source_qnode = next(qnode for qnode in query_graph.nodes if qnode.id == qedge.source_id)
