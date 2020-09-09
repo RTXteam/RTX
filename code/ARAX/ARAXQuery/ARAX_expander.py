@@ -1,7 +1,7 @@
 #!/bin/env python3
 import sys
 import os
-from typing import List, Dict, Union, Tuple
+from typing import List, Dict, Tuple
 
 from response import Response
 from Expand.expand_utilities import DictKnowledgeGraph
@@ -23,8 +23,8 @@ class ARAXExpander:
         self.response = None
         self.message = None
         self.parameters = {'edge_id': None, 'node_id': None, 'kp': None, 'enforce_directionality': None,
-                           'use_synonyms': None, 'synonym_handling': None, 'continue_if_no_results': None,
-                           'COHD_method': None, 'COHD_method_percentile': None}
+                           'use_synonyms': None, 'continue_if_no_results': None, 'COHD_method': None,
+                           'COHD_method_percentile': None}
 
     @staticmethod
     def describe_me():
@@ -47,8 +47,7 @@ class ARAXExpander:
         params_dict['node_id'] = {"a query graph node ID to expand (optional, default is to expand entire query graph)"}
         params_dict['kp'] = {"the knowledge provider to use - current options are `ARAX/KG1`, `ARAX/KG2`, `BTE`, `COHD` (optional, default is `ARAX/KG1`)"}
         params_dict['enforce_directionality'] = {"whether to obey (vs. ignore) edge directions in query graph - options are `true` or `false` (optional, default is `false`)"}
-        params_dict['use_synonyms'] = {"whether to consider synonym curies for query nodes with a curie specified - options are `true` or `false` (optional, default is `true`)"}
-        params_dict['synonym_handling'] = {"how to handle synonyms in the answer - options are `map_back` (default; map edges using a synonym back to the original curie) or `add_all` (add synonym nodes as they are - no mapping/merging)"}
+        params_dict['use_synonyms'] = {"whether to consider curie synonyms and merge synonymous nodes - options are `true` or `false` (optional, default is `true`)"}
         params_dict['continue_if_no_results'] = {"whether to continue execution if no paths are found matching the query graph - options are `true` or `false` (optional, default is `false`)"}
         params_dict['COHD_method'] = {"what method used to expand - current options are `paired_concept_freq`, `observed_expected_ratio`, `chi_square` (optional, default is `paired_concept_freq`)"}
         params_dict['COHD_method_percentile'] = {"what percentile used as a threshold for specified COHD method (optional, default is 99 (99%), range is [0, 100])"}
@@ -72,10 +71,10 @@ class ARAXExpander:
         parameters['kp'] = "ARAX/KG1"
         parameters['enforce_directionality'] = False
         parameters['use_synonyms'] = True
-        parameters['synonym_handling'] = 'map_back'
         parameters['continue_if_no_results'] = False
         parameters['COHD_method'] = 'paired_concept_freq'
         parameters['COHD_method_percentile'] = 99
+        # Override default values for any parameters passed in
         for key, value in input_parameters.items():
             if key and key not in parameters:
                 response.error(f"Supplied parameter {key} is not permitted", error_code="UnknownParameter")
@@ -104,7 +103,6 @@ class ARAXExpander:
         kp_to_use = self.parameters['kp']
         continue_if_no_results = self.parameters['continue_if_no_results']
         use_synonyms = self.parameters['use_synonyms']
-        synonym_handling = self.parameters['synonym_handling']
         query_graph = self.message.query_graph
         log = self.response
 
@@ -124,7 +122,7 @@ class ARAXExpander:
 
             for qedge in ordered_qedges_to_expand:
                 answer_kg, edge_node_usage_map = self._expand_edge(qedge, kp_to_use, dict_kg, continue_if_no_results,
-                                                                   query_graph, use_synonyms, synonym_handling, log)
+                                                                   query_graph, use_synonyms, log)
                 if log.status != 'OK':
                     return response
                 node_usages_by_edges_map[qedge.id] = edge_node_usage_map
@@ -140,7 +138,7 @@ class ARAXExpander:
         # Expand any specified nodes
         if input_node_ids:
             for qnode_id in input_node_ids:
-                answer_kg = self._expand_node(qnode_id, kp_to_use, continue_if_no_results, query_graph, use_synonyms, synonym_handling, log)
+                answer_kg = self._expand_node(qnode_id, kp_to_use, continue_if_no_results, query_graph, use_synonyms, log)
                 if log.status != 'OK':
                     return response
 
@@ -164,15 +162,14 @@ class ARAXExpander:
         return response
 
     def _expand_edge(self, qedge: QEdge, kp_to_use: str, dict_kg: DictKnowledgeGraph, continue_if_no_results: bool,
-                     query_graph: QueryGraph, use_synonyms: bool, synonym_handling: str,
-                     log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+                     query_graph: QueryGraph, use_synonyms: bool, log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         log.info(f"Expanding edge {qedge.id} using {kp_to_use}")
         answer_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
 
         # Create a query graph for this edge (that uses synonyms as well as curies found in prior steps)
-        edge_query_graph = self._get_query_graph_for_edge(qedge, query_graph, dict_kg, use_synonyms, kp_to_use, log)
+        edge_query_graph = self._get_query_graph_for_edge(qedge, query_graph, dict_kg)
         if log.status != 'OK':
             return answer_kg, edge_to_nodes_map
         if not any(qnode for qnode in edge_query_graph.nodes if qnode.curie):
@@ -204,7 +201,7 @@ class ARAXExpander:
             log.debug(f"Query for edge {qedge.id} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
             # Do some post-processing (deduplicate nodes, remove self-edges..)
-            if synonym_handling != 'add_all':
+            if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2C is already deduplicated
                 answer_kg, edge_to_nodes_map = self._deduplicate_nodes(answer_kg, edge_to_nodes_map, log)
             if eu.qg_is_fulfilled(edge_query_graph, answer_kg):
                 answer_kg = self._remove_self_edges(answer_kg, edge_to_nodes_map, qedge.id, edge_query_graph.nodes, log)
@@ -219,7 +216,7 @@ class ARAXExpander:
             return answer_kg, edge_to_nodes_map
 
     def _expand_node(self, qnode_id: str, kp_to_use: str, continue_if_no_results: bool, query_graph: QueryGraph,
-                     use_synonyms: bool, synonym_handling: str, log: Response) -> DictKnowledgeGraph:
+                     use_synonyms: bool, log: Response) -> DictKnowledgeGraph:
         # This function expands a single node using the specified knowledge provider
         log.debug(f"Expanding node {qnode_id} using {kp_to_use}")
         query_node = eu.get_query_node(query_graph, qnode_id)
@@ -231,8 +228,7 @@ class ARAXExpander:
             return answer_kg
         copy_of_qnode = eu.copy_qnode(query_node)
 
-        if use_synonyms:
-            self._add_curie_synonyms_to_query_nodes(qnodes=[copy_of_qnode], log=log, kp=kp_to_use)
+        # Consider both gene and protein when one is given
         if copy_of_qnode.type in ["protein", "gene"]:
             copy_of_qnode.type = ["protein", "gene"]
         log.debug(f"Modified query node is: {copy_of_qnode.to_dict()}")
@@ -252,7 +248,7 @@ class ARAXExpander:
                               error_code="UnfulfilledQGID")
                     return answer_kg
 
-            if synonym_handling != 'add_all':
+            if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2C is already deduplicated
                 answer_kg, edge_node_usage_map = self._deduplicate_nodes(dict_kg=answer_kg,
                                                                          edge_to_nodes_map={},
                                                                          log=log)
@@ -262,8 +258,8 @@ class ARAXExpander:
                       f"{', '.join(valid_kps_for_single_node_queries)}", error_code="InvalidKP")
             return answer_kg
 
-    def _get_query_graph_for_edge(self, qedge: QEdge, query_graph: QueryGraph, dict_kg: DictKnowledgeGraph,
-                                  use_synonyms: bool, kp_to_use: str, log: Response) -> QueryGraph:
+    @staticmethod
+    def _get_query_graph_for_edge(qedge: QEdge, query_graph: QueryGraph, dict_kg: DictKnowledgeGraph) -> QueryGraph:
         # This function creates a query graph for the specified qedge, updating its qnodes' curies as needed
         edge_query_graph = QueryGraph(nodes=[], edges=[])
         qnodes = [eu.get_query_node(query_graph, qedge.source_id),
@@ -276,17 +272,13 @@ class ARAXExpander:
         qedge_has_already_been_expanded = qedge.id in dict_kg.edges_by_qg_id
         for qnode in qnodes:
             qnode_copy = eu.copy_qnode(qnode)
-
             # Feed in curies from a prior Expand() step as the curie for this qnode as necessary
             qnode_already_fulfilled = qnode_copy.id in dict_kg.nodes_by_qg_id
             if qnode_already_fulfilled and not qnode_copy.curie and not qedge_has_already_been_expanded:
                 qnode_copy.curie = list(dict_kg.nodes_by_qg_id[qnode_copy.id].keys())
-
             edge_query_graph.nodes.append(qnode_copy)
 
-        if use_synonyms:
-            self._add_curie_synonyms_to_query_nodes(qnodes=edge_query_graph.nodes, log=log, kp=kp_to_use)
-        # Consider both protein and gene if qnode's type is one of those (since KP's handle these differently)
+        # Consider both protein and gene if qnode's type is one of those (since KPs handle these differently)
         for qnode in edge_query_graph.nodes:
             if qnode.type in ['protein', 'gene']:
                 qnode.type = ['protein', 'gene']
@@ -306,7 +298,7 @@ class ARAXExpander:
             # Load preferred curie info from NodeSynonymizer for nodes we haven't seen before
             unmapped_node_ids = set(nodes).difference(set(curie_mappings))
             log.debug(f"Getting preferred curies for {qnode_id} nodes returned in this step")
-            canonicalized_nodes = eu.get_preferred_curies(list(unmapped_node_ids), log) if unmapped_node_ids else dict()
+            canonicalized_nodes = eu.get_canonical_curies_dict(list(unmapped_node_ids), log) if unmapped_node_ids else dict()
             if log.status != 'OK':
                 return deduplicated_kg, updated_edge_to_nodes_map
 
@@ -523,18 +515,6 @@ class ARAXExpander:
             non_none_types = [node_type for node_type in corresponding_qnode_types if node_type]
             if non_none_types:
                 node.type = non_none_types
-
-    @staticmethod
-    def _add_curie_synonyms_to_query_nodes(qnodes: List[QNode], log: Response, kp: str):
-        log.debug("Looking for query nodes to use curie synonyms for")
-        for qnode in qnodes:
-            if qnode.curie:
-                log.debug(f"Getting curie synonyms for qnode {qnode.id} using the NodeSynonymizer")
-                synonymized_curies = eu.get_curie_synonyms(qnode.curie, log)
-                log.debug(f"Using {len(synonymized_curies)} equivalent curies for qnode {qnode.id}")
-                qnode.curie = synonymized_curies
-                if "BTE" not in kp:
-                    qnode.type = None  # Important to clear when using synonyms; otherwise we're limited #889
 
     @staticmethod
     def _get_orphan_query_node_ids(query_graph: QueryGraph):

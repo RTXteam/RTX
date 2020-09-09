@@ -15,8 +15,6 @@ from swagger_server.models.q_node import QNode
 from swagger_server.models.q_edge import QEdge
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/kg-construction/")
-from KGNodeIndex import KGNodeIndex
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 
@@ -208,7 +206,7 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: Response) -> List[str]
             return []
 
 
-def get_preferred_curies(curie: Union[str, List[str]], log: Response) -> Dict[str, Dict[str, str]]:
+def get_canonical_curies_dict(curie: Union[str, List[str]], log: Response) -> Dict[str, Dict[str, str]]:
     curies = convert_string_or_list_to_list(curie)
     try:
         synonymizer = NodeSynonymizer()
@@ -229,6 +227,31 @@ def get_preferred_curies(curie: Union[str, List[str]], log: Response) -> Dict[st
         else:
             log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
             return {}
+
+
+def get_canonical_curies_list(curie: Union[str, List[str]], log: Response) -> List[str]:
+    curies = convert_string_or_list_to_list(curie)
+    try:
+        synonymizer = NodeSynonymizer()
+        log.debug(f"Sending NodeSynonymizer.get_canonical_curies() a list of {len(curies)} curies")
+        canonical_curies_dict = synonymizer.get_canonical_curies(curies)
+        log.debug(f"Got response back from NodeSynonymizer")
+    except Exception:
+        tb = traceback.format_exc()
+        error_type, error, _ = sys.exc_info()
+        log.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
+        return []
+    else:
+        if canonical_curies_dict is not None:
+            recognized_input_curies = {input_curie for input_curie in canonical_curies_dict if canonical_curies_dict.get(input_curie)}
+            unrecognized_curies = set(curies).difference(recognized_input_curies)
+            if unrecognized_curies:
+                log.warning(f"NodeSynonymizer did not return canonical info for: {unrecognized_curies}")
+            canonical_curies = {canonical_curies_dict[recognized_curie].get('preferred_curie') for recognized_curie in recognized_input_curies}
+            return list(canonical_curies)
+        else:
+            log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+            return []
 
 
 def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: DictKnowledgeGraph) -> bool:
