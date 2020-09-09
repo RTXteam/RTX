@@ -205,12 +205,8 @@ def test_720_multiple_qg_ids_in_different_results():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    snca_id = "UniProtKB:P37840"
-    assert snca_id in nodes_by_qg_id['n01'] and snca_id in nodes_by_qg_id['n03']
-    assert set(nodes_by_qg_id['n01'][snca_id].qnode_ids) == {'n01', 'n03'}
-    e01_edges_using_snca = {edge.id for edge in edges_by_qg_id['e01'].values() if edge.source_id == snca_id or edge.target_id == snca_id}
-    e02_edges_using_snca = {edge.id for edge in edges_by_qg_id['e02'].values() if edge.source_id == snca_id or edge.target_id == snca_id}
-    assert e01_edges_using_snca == e02_edges_using_snca
+    assert set(nodes_by_qg_id['n01']).intersection(set(nodes_by_qg_id['n03']))
+    assert any(set(node.qnode_ids) == {'n01', 'n03'} for node in nodes_by_qg_id['n01'].values())
 
 
 @pytest.mark.slow
@@ -426,8 +422,8 @@ def test_curie_list_query_without_synonyms():
 @pytest.mark.slow
 def test_query_with_curies_on_both_ends():
     actions_list = [
-        "add_qnode(curie=DOID:14330, id=n00)",
-        "add_qnode(curie=UniProtKB:P24935, id=n01)",
+        "add_qnode(curie=MONDO:0005393, id=n00)",  # Gout
+        "add_qnode(curie=CUI:C0018100, id=n01)",  # Antigout agents
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "expand(kp=ARAX/KG2)",
         "return(message=true, store=false)"
