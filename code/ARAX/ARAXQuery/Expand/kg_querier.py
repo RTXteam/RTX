@@ -70,8 +70,7 @@ class KGQuerier:
         if use_synonyms and kg_name == "KG1":
             qnodes_with_curies = [qnode for qnode in query_graph.nodes if qnode.curie]
             for qnode in qnodes_with_curies:
-                synonymized_curies = eu.get_curie_synonyms(qnode.curie, log)
-                qnode.curie = synonymized_curies
+                qnode.curie = eu.get_curie_synonyms(qnode.curie, log)
                 qnode.type = None  # Important to clear this, otherwise results are limited (#889)
         elif kg_name == "KG2C":
             qnodes_with_curies = [qnode for qnode in query_graph.nodes if qnode.curie]
@@ -94,8 +93,17 @@ class KGQuerier:
     def answer_single_node_query(self, qnode: QNode) -> DictKnowledgeGraph:
         continue_if_no_results = self.continue_if_no_results
         kg_name = self.kg_name
+        use_synonyms = self.use_synonyms
         log = self.response
         final_kg = DictKnowledgeGraph()
+
+        # Convert qnode curies as needed (either to synonyms or to canonical versions)
+        if qnode.curie:
+            if use_synonyms and kg_name == "KG1":
+                qnode.curie = eu.get_curie_synonyms(qnode.curie, log)
+                qnode.type = None  # Important to clear this, otherwise results are limited (#889)
+            elif kg_name == "KG2C":
+                qnode.curie = eu.get_canonical_curies_list(qnode.curie, log)
 
         # Build and run a cypher query to get this node/nodes
         where_clause = f"{qnode.id}.id='{qnode.curie}'" if type(qnode.curie) is str else f"{qnode.id}.id in {qnode.curie}"
