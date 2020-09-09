@@ -333,6 +333,11 @@ class RTXFeedback:
           session.flush()
 
         else:
+          try:
+              result.confidence = float(result.confidence)
+          except:
+              eprint(f"WARNING: Confidence value '{result.confidence}' cannot be converted to float")
+              result.confidence = -999.0
           storedResult = Result(message_id=message_id,confidence=result.confidence,n_nodes=n_nodes,n_edges=n_edges,result_text=result.description,result_object=pickle.dumps(ast.literal_eval(repr(result))),result_hash=result_hash)
           session.add(storedResult)
           session.flush()
