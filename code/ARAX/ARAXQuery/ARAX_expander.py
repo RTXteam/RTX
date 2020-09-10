@@ -85,6 +85,13 @@ class ARAXExpander:
                     value = False
                 parameters[key] = value
 
+        # Handle situation where 'ARAX/KG2C' is entered as the kp (technically invalid, but we won't error out)
+        if parameters['kp'] == "ARAX/KG2C":
+            parameters['kp'] = "ARAX/KG2"
+            if not parameters['use_synonyms']:
+                response.warning(f"KG2C is only used when use_synonyms=true; overriding use_synonyms to True")
+                parameters['use_synonyms'] = True
+
         # Default to expanding the entire query graph if the user didn't specify what to expand
         if not parameters['edge_id'] and not parameters['node_id']:
             parameters['edge_id'] = [edge.id for edge in self.message.query_graph.edges]
