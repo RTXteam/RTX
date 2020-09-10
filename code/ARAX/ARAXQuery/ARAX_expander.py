@@ -25,6 +25,7 @@ class ARAXExpander:
         self.parameters = {'edge_id': None, 'node_id': None, 'kp': None, 'enforce_directionality': None,
                            'use_synonyms': None, 'continue_if_no_results': None, 'COHD_method': None,
                            'COHD_method_percentile': None}
+        self.valid_kps = {"ARAX/KG1", "ARAX/KG2", "BTE", "COHD", "NGD"}
 
     @staticmethod
     def describe_me():
@@ -184,9 +185,8 @@ class ARAXExpander:
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, edge_to_nodes_map
 
-        valid_kps = ["ARAX/KG1", "ARAX/KG2", "BTE", "COHD", "NGD"]
-        if kp_to_use not in valid_kps:
-            log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(valid_kps)}",
+        if kp_to_use not in self.valid_kps:
+            log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(self.valid_kps)}",
                       error_code="InvalidKP")
             return answer_kg, edge_to_nodes_map
         else:
