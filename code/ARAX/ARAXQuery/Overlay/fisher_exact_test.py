@@ -356,7 +356,7 @@ class ComputeFTEST:
                 else:
                     return self.response ## Something wrong happened for querying total number of node with the same type of source node
 
-            elif kp=='ARAX/KG2':
+            elif kp=='ARAX/KG2' or kp == 'ARAX/KG2C':
                 ## check KG1 first as KG2 might have many duplicates. If KG1 is 0, then check KG2
                 size_of_total = self.size_of_given_type_in_KP(node_type=source_node_type, use_cypher_command=True, kg='KG1') ## Try cypher query first
                 if size_of_total is not None:
