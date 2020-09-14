@@ -258,7 +258,7 @@ def test_FET_ex2():
     assert response.status == 'OK'
     edge_types_in_kg = Counter([x.type for x in message.knowledge_graph.edges])
     assert 'has_fisher_exact_test_p-value_with' in edge_types_in_kg
-    FET_edges = [x for x in message.knowledge_graph.edges if x.relation.find("FET") != -1]
+    FET_edges = [x for x in message.knowledge_graph.edges if x.relation and x.relation.find("FET") != -1]
     assert len(FET_edges) >= 2
     FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 1
