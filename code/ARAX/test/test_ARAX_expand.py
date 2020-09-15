@@ -423,7 +423,7 @@ def test_curie_list_query_without_synonyms():
 def test_query_with_curies_on_both_ends():
     actions_list = [
         "add_qnode(curie=MONDO:0005393, id=n00)",  # Gout
-        "add_qnode(curie=CUI:C0018100, id=n01)",  # Antigout agents
+        "add_qnode(curie=UMLS:C0018100, id=n01)",  # Antigout agents
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "expand(kp=ARAX/KG2)",
         "return(message=true, store=false)"
