@@ -47,6 +47,26 @@ then keep hitting return until complete
 
 Lastly, add the generated key in the new server at `<user>@<newserver>:~/.ssh/id_rsa.pub` to the authorized keys list located in the old server at `<user>@<oldserver>:~/.ssh/authorized_keys`
 
+### Shut down neo4j and mysql
+
+To prevent data corruption shut down the neo4j and mysql services running on the old server inside the rtx1 container
+
+ssh into the oldserver:
+```
+ssh <user>@<oldserver>
+```
+
+go into the docker container:
+```
+sudo docker exec -ti rtx1 bash
+```
+
+Stop neo4j and mysql:
+```
+service neo4j stop
+service mysql stop
+```
+
 ### Create a image of the rtx1 container and copy to the new server
 
 shh into the old server:
@@ -74,31 +94,12 @@ Load the image into docker:
 sudo docker load --input rtx1-<YYYY>-<MM>-<DD>-docker-image.tar
 ```
 
-### Shut down neo4j and mysql
-
-To prevent data corruption shut down the neo4j and mysql services running on the old server inside the rtx1 container
-
-ssh into the oldserver:
-```
-ssh <user>@<oldserver>
-```
-
-go into the docker container:
-```
-sudo docker exec -ti rtx1 bash
-```
-
-Stop neo4j and mysql:
-```
-service neo4j stop
-service mysql stop
-```
-
-
 
 ### Copy over data directory
 
 NOTE: This may take a while so it could be useful to start a screen instance, use nohup, ect...
+
+ADDITIONAL NOTE:
 
 Rsync over the data directory. This may be different depending on the server. On arax.rtx.ai it is at /data but on arax.ncats.io it is at /translator/data.
 ```
@@ -121,7 +122,13 @@ sudo chgrp docker RTX1/databases/graph/store_lock
 
 ### Generate SSL certification
 
-Generate SSL certification using letsencrypt and change the config file so that it matches (asside from paths, server names, etc...) the following:
+Install certbot
+'''
+sudo apt-get update
+sudo apt-get install -y certbot
+'''
+
+Generate SSL certification using letsencrypt and change the nginx config file so that it matches (asside from paths, server names, etc...) the following:
 
 ```
 map $http_upgrade $connection_upgrade {
@@ -212,7 +219,7 @@ service RTX_OpenAPI_test start
 
 Check that the services are running:
 ```
-srevice --status-all
+service --status-all
 ```
 
 Check that you can log into neo4j through a browser 
