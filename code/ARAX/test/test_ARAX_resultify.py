@@ -869,24 +869,30 @@ def test_issue680():
         "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
         "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",
         "resultify(ignore_edge_direction=true, debug=true)",
-        "filter_results(action=limit_number_of_results, max_results=1)",
         "return(message=true, store=false)",
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
-    assert len(message.results) == 1
-    result = message.results[0]
-    count_drug_prot = 0
-    count_disease_prot = 0
-    kg_edges_dict = {edge.id: edge for edge in message.knowledge_graph.edges}
-    result_edges = [kg_edges_dict.get(edge_binding.kg_id) for edge_binding in result.edge_bindings]
-    for edge in result_edges:
-        if edge.target_id.startswith("CHEMBL.") and edge.source_id.startswith("UniProtKB:"):
-            count_drug_prot += 1
-        if edge.target_id.startswith("DOID:") and edge.source_id.startswith("UniProtKB:"):
-            count_disease_prot += 1
-    assert count_drug_prot == count_disease_prot
-    assert result.essence is not None
+    assert message.results[0].essence is not None
+    kg_edges_map = {edge.id: edge for edge in message.knowledge_graph.edges}
+    kg_nodes_map = {node.id: node for node in message.knowledge_graph.nodes}
+    for result in message.results:
+        result_nodes_by_qg_id = _get_result_nodes_by_qg_id(result, kg_nodes_map, message.query_graph)
+        result_edges_by_qg_id = _get_result_edges_by_qg_id(result, kg_edges_map, message.query_graph)
+        # Make sure all intermediate nodes are connected to at least one (real, not virtual) edge on BOTH sides
+        for n01_node_id in result_nodes_by_qg_id['n01']:
+            assert any(edge for edge in result_edges_by_qg_id['e00'].values() if
+                       edge.source_id == n01_node_id or edge.target_id == n01_node_id)
+            assert any(edge for edge in result_edges_by_qg_id['e01'].values() if
+                       edge.source_id == n01_node_id or edge.target_id == n01_node_id)
+        # Make sure all edges' nodes actually exist in this result (includes virtual and real edges)
+        for qedge_id, edges_map in result_edges_by_qg_id.items():
+            qedge = next(qedge for qedge in message.query_graph.edges if qedge.id == qedge_id)
+            for edge_id, edge in edges_map.items():
+                assert (edge.source_id in result_nodes_by_qg_id[qedge.source_id] and edge.target_id in
+                        result_nodes_by_qg_id[qedge.target_id]) or \
+                       (edge.target_id in result_nodes_by_qg_id[qedge.source_id] and edge.source_id in
+                        result_nodes_by_qg_id[qedge.target_id])
 
 
 def test_issue686a():
@@ -1070,7 +1076,7 @@ def test_issue692b():
                       knowledge_graph=KnowledgeGraph(nodes=[], edges=[]))
     resultifier = ARAXResultify()
     response = resultifier.apply(message, {})
-    assert 'WARNING: no results returned (QG is unfulfilled); empty knowledge graph' in response.messages_list()[0]
+    assert 'WARNING: no results returned; empty knowledge graph' in response.messages_list()[0]
 
 
 def test_issue720_1():

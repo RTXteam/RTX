@@ -120,7 +120,7 @@ def test_example_3():
         "add_qedge(source_id=n01, target_id=n02, id=e01)",
         "expand(edge_id=[e00,e01])",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=3, remove_connected_nodes=t, qnode_id=n01)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=1, remove_connected_nodes=t, qnode_id=n01)",
         "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
         "overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n01, target_qnode_id=n02)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=normalized_google_distance, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",
@@ -130,7 +130,7 @@ def test_example_3():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     #assert len(message.results) in [47, 48]  # :BUG: sometimes the workflow returns 47 results, sometimes 48 (!?)
-    assert len(message.results) in range(45, 60)  # FIXME: BUG: sometimes the workflow returns 47 results, sometimes 48, sometime smore or less?! Probably due to API's not returning results (API calls to NGD and/or COHD sometimes don't go through)
+    assert len(message.results) in range(60, 90)  # FIXME: BUG: sometimes the workflow returns 47 results, sometimes 48, sometime smore or less?! Probably due to API's not returning results (API calls to NGD and/or COHD sometimes don't go through)
     assert message.results[0].essence is not None
     _virtual_tester(message, 'has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
     _virtual_tester(message, 'has_normalized_google_distance_with', 'N1', 'normalized_google_distance', 'EDAM:data_2526', 2)

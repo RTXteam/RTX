@@ -124,7 +124,11 @@ class PredictDrugTreatsDisease:
                 # loop over all equivalent curies and take the highest probability
 
                 max_probability = 0
-                res = list(itertools.product(self.convert_to_trained_curies(source_curie), self.convert_to_trained_curies(target_curie)))
+                converted_source_curie = self.convert_to_trained_curies(source_curie)
+                converted_target_curie = self.convert_to_trained_curies(target_curie)
+                if converted_source_curie is None or converted_target_curie is None:
+                    continue
+                res = list(itertools.product(converted_source_curie, converted_target_curie))
                 if len(res) != 0:
                     all_probabilities = self.pred.prob_all(res)
                     if isinstance(all_probabilities, list):
@@ -197,7 +201,11 @@ class PredictDrugTreatsDisease:
                         # loop over all pairs of equivalent curies and take the highest probability
                         self.response.debug(f"Predicting treatment probability between {curie_to_name[source_curie]} and {curie_to_name[target_curie]}")
                         max_probability = 0
-                        res = list(itertools.product(self.convert_to_trained_curies(source_curie), self.convert_to_trained_curies(target_curie)))
+                        converted_source_curie = self.convert_to_trained_curies(source_curie)
+                        converted_target_curie = self.convert_to_trained_curies(target_curie)
+                        if converted_source_curie is None or converted_target_curie is None:
+                            continue
+                        res = list(itertools.product(converted_source_curie, converted_target_curie))
                         if len(res) != 0:
                             all_probabilities = self.pred.prob_all(res)
                             if isinstance(all_probabilities, list):
@@ -214,7 +222,11 @@ class PredictDrugTreatsDisease:
                         #    value = probability[0]
                         self.response.debug(f"Predicting treatment probability between {curie_to_name[source_curie]} and {curie_to_name[target_curie]}")
                         max_probability = 0
-                        res = list(itertools.product(self.convert_to_trained_curies(target_curie), self.convert_to_trained_curies(source_curie)))
+                        converted_source_curie = self.convert_to_trained_curies(source_curie)
+                        converted_target_curie = self.convert_to_trained_curies(target_curie)
+                        if converted_source_curie is None or converted_target_curie is None:
+                            continue
+                        res = list(itertools.product(converted_target_curie, converted_source_curie))
                         if len(res) != 0:
                             all_probabilities = self.pred.prob_all(res)
                             if isinstance(all_probabilities, list):
