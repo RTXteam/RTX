@@ -159,6 +159,12 @@ class ARAXExpander:
 
         # Override node types so that they match what was asked for in the query graph (where applicable) #987
         self._override_node_types(self.message.knowledge_graph, self.message.query_graph)
+        
+        # Make sure we don't have any orphan edges
+        node_ids = {node.id for node in self.message.knowledge_graph.nodes}
+        for edge in self.message.knowledge_graph.edges:
+            if edge.source_id not in node_ids or edge.target_id not in node_ids:
+                self.message.knowledge_graph.edges.remove(edge)
 
         # Return the response and done
         kg = self.message.knowledge_graph
