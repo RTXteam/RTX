@@ -93,22 +93,25 @@ def _score_networkx_graphs_by_max_flow(result_graphs_nx: List[Union[nx.MultiDiGr
                                                                     nx.MultiGraph]]) -> List[float]:
     max_flow_values = []
     for result_graph_nx in result_graphs_nx:
-        apsp_dict = dict(nx.algorithms.shortest_paths.unweighted.all_pairs_shortest_path_length(result_graph_nx))
-        path_len_with_pairs_list = [(node_i, node_j, path_len) for node_i, node_i_dict in apsp_dict.items() for node_j, path_len in node_i_dict.items()]
-        max_path_len = max([path_len_with_pair_list_item[2] for path_len_with_pair_list_item in
-                            path_len_with_pairs_list])
-        pairs_with_max_path_len = [path_len_with_pair_list_item[0:2] for path_len_with_pair_list_item in path_len_with_pairs_list if
-                                   path_len_with_pair_list_item[2] == max_path_len]
-        max_flow_values_for_node_pairs = []
-        result_graph_collapsed_nx = _collapse_nx_multigraph_to_weighted_graph(result_graph_nx)
-        for source_node_id, target_node_id in pairs_with_max_path_len:
-            max_flow_values_for_node_pairs.append(nx.algorithms.flow.maximum_flow_value(result_graph_collapsed_nx,
-                                                                                        source_node_id,
-                                                                                        target_node_id,
-                                                                                        capacity="weight"))
-        max_flow_value = 0.0
-        if len(max_flow_values_for_node_pairs) > 0:
-            max_flow_value = sum(max_flow_values_for_node_pairs)/float(len(max_flow_values_for_node_pairs))
+        if len(result_graph_nx) > 1:
+            apsp_dict = dict(nx.algorithms.shortest_paths.unweighted.all_pairs_shortest_path_length(result_graph_nx))
+            path_len_with_pairs_list = [(node_i, node_j, path_len) for node_i, node_i_dict in apsp_dict.items() for node_j, path_len in node_i_dict.items()]
+            max_path_len = max([path_len_with_pair_list_item[2] for path_len_with_pair_list_item in
+                                path_len_with_pairs_list])
+            pairs_with_max_path_len = [path_len_with_pair_list_item[0:2] for path_len_with_pair_list_item in path_len_with_pairs_list if
+                                       path_len_with_pair_list_item[2] == max_path_len]
+            max_flow_values_for_node_pairs = []
+            result_graph_collapsed_nx = _collapse_nx_multigraph_to_weighted_graph(result_graph_nx)
+            for source_node_id, target_node_id in pairs_with_max_path_len:
+                max_flow_values_for_node_pairs.append(nx.algorithms.flow.maximum_flow_value(result_graph_collapsed_nx,
+                                                                                            source_node_id,
+                                                                                            target_node_id,
+                                                                                            capacity="weight"))
+            max_flow_value = 0.0
+            if len(max_flow_values_for_node_pairs) > 0:
+                max_flow_value = sum(max_flow_values_for_node_pairs)/float(len(max_flow_values_for_node_pairs))
+        else:
+            max_flow_value = 1.0
         max_flow_values.append(max_flow_value)
     return max_flow_values
 
