@@ -36,6 +36,7 @@ class BTEQuerier:
         """
         enforce_directionality = self.response.data['parameters'].get('enforce_directionality')
         continue_if_no_results = self.response.data['parameters'].get('continue_if_no_results')
+        use_synonyms = self.response.data['parameters'].get('use_synonyms')
         log = self.response
         answer_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
@@ -45,6 +46,7 @@ class BTEQuerier:
         qedge, input_qnode, output_qnode = self._validate_and_pre_process_input(query_graph=query_graph,
                                                                                 valid_bte_inputs_dict=valid_bte_inputs_dict,
                                                                                 enforce_directionality=enforce_directionality,
+                                                                                use_synonyms=use_synonyms,
                                                                                 log=log)
         if log.status != 'OK':
             return answer_kg, edge_to_nodes_map
@@ -160,7 +162,7 @@ class BTEQuerier:
 
     @staticmethod
     def _validate_and_pre_process_input(query_graph: QueryGraph, valid_bte_inputs_dict: Dict[str, Set[str]],
-                                        enforce_directionality: bool, log: Response) -> Tuple[QEdge, QNode, QNode]:
+                                        enforce_directionality: bool, use_synonyms: bool, log: Response) -> Tuple[QEdge, QNode, QNode]:
         # Make sure we have a valid one-hop query graph
         if len(query_graph.edges) != 1 or len(query_graph.nodes) != 2:
             log.error(f"BTE can only accept one-hop query graphs (your QG has {len(query_graph.nodes)} nodes and "
@@ -175,19 +177,13 @@ class BTEQuerier:
                       f"them has a curie. Your query graph is: {query_graph.to_dict()}")
             return None, None, None
 
-        # Figure out which query node is input vs. output and validate which qnodes have curies
+        # Figure out which query node is input vs. output
         if enforce_directionality:
             input_qnode = next(qnode for qnode in query_graph.nodes if qnode.id == qedge.source_id)
             output_qnode = next(qnode for qnode in query_graph.nodes if qnode.id == qedge.target_id)
         else:
-            qnodes_with_curies = [qnode for qnode in query_graph.nodes if qnode.curie]
-            input_qnode = qnodes_with_curies[0] if qnodes_with_curies else None
+            input_qnode = next(qnode for qnode in query_graph.nodes if qnode.curie)
             output_qnode = next(qnode for qnode in query_graph.nodes if qnode.id != input_qnode.id)
-        if not input_qnode.curie:
-            log.error(f"BTE cannot expand edges with a non-specific (curie-less) source node (source node is: "
-                      f"{input_qnode.to_dict()})", error_code="InvalidInput")
-            return None, None, None
-        elif not enforce_directionality:
             log.warning(f"BTE cannot do bidirectional queries; the query for this edge will be directed, going: "
                         f"{input_qnode.id}-->{output_qnode.id}")
 
@@ -211,6 +207,13 @@ class BTEQuerier:
             log.error(f"BTE does not accept QNode type(s): {', '.join(invalid_qnode_types)}. Valid options are "
                       f"{valid_bte_inputs_dict['node_types']}", error_code="InvalidInput")
             return None, None, None
+
+        # Sub in curie synonyms as appropriate
+        if use_synonyms:
+            qnodes_with_curies = [qnode for qnode in [input_qnode, output_qnode] if qnode.curie]
+            for qnode in qnodes_with_curies:
+                synonymized_curies = eu.get_curie_synonyms(qnode.curie, log)
+                qnode.curie = synonymized_curies
 
         # Make sure our input node curies are in list form and use prefixes BTE prefers
         input_curie_list = eu.convert_string_or_list_to_list(input_qnode.curie)

@@ -48,8 +48,7 @@ def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_inc
     _check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
     _check_property_format(nodes_by_qg_id, edges_by_qg_id)
     _check_node_types(message.knowledge_graph.nodes, message.query_graph)
-    if not any(action for action in actions_list if "synonym_handling=add_all" in action):
-        _check_counts_of_curie_qnodes(nodes_by_qg_id, message.query_graph)
+    _check_counts_of_curie_qnodes(nodes_by_qg_id, message.query_graph)
 
     return nodes_by_qg_id, edges_by_qg_id
 
@@ -166,9 +165,9 @@ def test_erics_first_kg1_synonym_test_with_synonyms():
 def test_acetaminophen_example_enforcing_directionality():
     actions_list = [
         "add_qnode(curie=CHEMBL.COMPOUND:CHEMBL112, id=n00)",
-        "add_qnode(type=protein, id=n01)",
+        "add_qnode(type=disease, id=n01)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "expand(edge_id=e00, use_synonyms=false, enforce_directionality=true)",
+        "expand(edge_id=e00, enforce_directionality=true)",
         "return(message=true, store=false)",
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -185,7 +184,7 @@ def test_720_ambitious_query_causing_multiple_qnode_ids_error():
         "add_qnode(type=disease, id=n02)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "add_qedge(source_id=n01, target_id=n02, id=e01)",
-        "expand(edge_id=[e00, e01], use_synonyms=false)",
+        "expand(edge_id=[e00, e01])",
         "return(message=true, store=false)",
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -202,20 +201,16 @@ def test_720_multiple_qg_ids_in_different_results():
         "add_qedge(id=e00, source_id=n00, target_id=n01)",
         "add_qedge(id=e01, source_id=n01, target_id=n02)",
         "add_qedge(id=e02, source_id=n02, target_id=n03)",
-        "expand(use_synonyms=false)",
+        "expand()",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    snca_id = "UniProtKB:P37840"
-    assert snca_id in nodes_by_qg_id['n01'] and snca_id in nodes_by_qg_id['n03']
-    assert set(nodes_by_qg_id['n01'][snca_id].qnode_ids) == {'n01', 'n03'}
-    e01_edges_using_snca = {edge.id for edge in edges_by_qg_id['e01'].values() if edge.source_id == snca_id or edge.target_id == snca_id}
-    e02_edges_using_snca = {edge.id for edge in edges_by_qg_id['e02'].values() if edge.source_id == snca_id or edge.target_id == snca_id}
-    assert e01_edges_using_snca == e02_edges_using_snca
+    assert set(nodes_by_qg_id['n01']).intersection(set(nodes_by_qg_id['n03']))
+    assert any(set(node.qnode_ids) == {'n01', 'n03'} for node in nodes_by_qg_id['n01'].values())
 
 
 @pytest.mark.slow
-def test_bte_simple_acetaminophen_query():
+def test_bte_acetaminophen_query():
     actions_list = [
         "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112, type=chemical_substance)",
         "add_qnode(id=n01, type=disease)",
@@ -227,24 +222,23 @@ def test_bte_simple_acetaminophen_query():
 
 
 @pytest.mark.slow
-def test_bte_add_all_query():
-    actions_list = [
-        "add_qnode(curie=UniProtKB:P16471, type=protein, id=n00)",
-        "add_qnode(type=cell, id=n01)",
-        "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "expand(kp=BTE, synonym_handling=add_all)",
-        "return(message=true, store=false)",
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert len(nodes_by_qg_id['n00']) > 1
-
-
-def test_bte_map_back_query():
+def test_bte_protein_query():
     actions_list = [
         "add_qnode(curie=UniProtKB:P16471, type=protein, id=n00)",
         "add_qnode(type=cell, id=n01)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "expand(kp=BTE)",
+        "return(message=true, store=false)",
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
+def test_bte_without_synonyms():
+    actions_list = [
+        "add_qnode(curie=UniProtKB:P16471, type=protein, id=n00)",
+        "add_qnode(type=cell, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(kp=BTE, use_synonyms=false)",
         "return(message=true, store=false)",
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -263,23 +257,13 @@ def test_bte_using_list_of_curies():
     assert len(nodes_by_qg_id['n00']) > 1
 
 
-def test_single_node_query_map_back():
+def test_single_node_query_with_synonyms():
     actions_list = [
         "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL1771)",
-        "expand(node_id=n00, kp=ARAX/KG1, synonym_handling=map_back)",
+        "expand(node_id=n00, kp=ARAX/KG1)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
-def test_single_node_query_add_all():
-    actions_list = [
-        "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL2220442)",
-        "expand(node_id=n00, kp=ARAX/KG1, synonym_handling=add_all)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert len(nodes_by_qg_id['n00']) > 1
 
 
 def test_single_node_query_without_synonyms():
@@ -358,18 +342,19 @@ def test_branched_query():
 
 
 @pytest.mark.slow
-def test_add_all_query_with_multiple_synonyms_in_results():
+def test_no_synonym_query_with_duplicate_nodes_in_results():
     actions_list = [
-        "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL1464)",  # warfarin
+        "add_qnode(id=n00, curie=DOID:14330)",
         "add_qnode(id=n01, type=disease)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "expand(kp=ARAX/KG2, synonym_handling=add_all)",
+        "expand(kp=ARAX/KG2, use_synonyms=false)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert len(nodes_by_qg_id['n00']) > 1
+    assert len(nodes_by_qg_id['n01']) > 1
 
 
+@pytest.mark.slow
 def test_query_that_expands_same_edge_twice():
     actions_list = [
         "add_qnode(id=n00, curie=DOID:9065)",
@@ -381,7 +366,7 @@ def test_query_that_expands_same_edge_twice():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert any(edge for edge in edges_by_qg_id['e00'].values() if edge.is_defined_by == "ARAX/KG1")
-    assert any(edge for edge in edges_by_qg_id['e00'].values() if edge.is_defined_by == "ARAX/KG2")
+    assert any(edge for edge in edges_by_qg_id['e00'].values() if edge.is_defined_by == "ARAX/KG2C")
 
 
 def test_771_continue_if_no_results_query():
@@ -412,7 +397,7 @@ def test_774_continue_if_no_results_query():
     assert not nodes_by_qg_id and not edges_by_qg_id
 
 
-def test_curie_list_query_map_back():
+def test_curie_list_query_with_synonyms():
     actions_list = [
         "add_qnode(curie=[DOID:6419, DOID:3717, DOID:11406], id=n00)",
         "add_qnode(type=phenotypic_feature, id=n01)",
@@ -421,18 +406,6 @@ def test_curie_list_query_map_back():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
-def test_curie_list_query_add_all():
-    actions_list = [
-        "add_qnode(curie=[DOID:6419, DOID:3717, DOID:11406], id=n00)",
-        "add_qnode(type=phenotypic_feature, id=n01)",
-        "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "expand(kp=ARAX/KG1, synonym_handling=add_all)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert len(nodes_by_qg_id['n00']) > 4
 
 
 def test_curie_list_query_without_synonyms():
@@ -449,8 +422,8 @@ def test_curie_list_query_without_synonyms():
 @pytest.mark.slow
 def test_query_with_curies_on_both_ends():
     actions_list = [
-        "add_qnode(curie=CHV:0000003834, id=n00)",  # diabetes
-        "add_qnode(curie=HP:0001993, id=n01)",  # ketoacidosis
+        "add_qnode(curie=MONDO:0005393, id=n00)",  # Gout
+        "add_qnode(curie=CUI:C0018100, id=n01)",  # Antigout agents
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "expand(kp=ARAX/KG2)",
         "return(message=true, store=false)"
@@ -504,7 +477,6 @@ def test_deduplication_and_self_edges():
     assert not self_edges
 
 
-@pytest.mark.slow
 def test_889_missing_curies():
     actions_list = [
         "add_qnode(name=DOID:11830, id=n00)",
@@ -551,7 +523,7 @@ def test_987_override_node_types():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert all('phenotypic_feature' in node.type for node in nodes_by_qg_id['n01'].values())
 
-@pytest.mark.slow
+
 def test_COHD_expand_paired_concept_freq():
     actions_list = [
         "add_qnode(curie=UMLS:C0015967, id=n00)",
@@ -566,6 +538,8 @@ def test_COHD_expand_paired_concept_freq():
     assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].type == "EDAM:data_0951" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
     assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].url == "http://cohd.smart-api.info/" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
 
+
+@pytest.mark.slow
 def test_COHD_expand_observed_expected_ratio():
     actions_list = [
         "add_qnode(curie=DOID:10718, id=n00)",
@@ -579,6 +553,7 @@ def test_COHD_expand_observed_expected_ratio():
     assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].name == "ln_observed_expected_ratio" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
     assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].type == "EDAM:data_0951" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
     assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].url == "http://cohd.smart-api.info/" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+
 
 def test_COHD_expand_chi_square():
     actions_list = [
@@ -597,7 +572,7 @@ def test_COHD_expand_chi_square():
 
 def test_ngd_expand():
     actions_list = [
-        "add_qnode(name=DOID:8398, id=n00)",
+        "add_qnode(name=DOID:14330, id=n00)",
         "add_qnode(type=phenotypic_feature, id=n01)",
         "add_qedge(source_id=n00, target_id=n01, type=has_phenotype, id=e00)",
         "expand(kp=NGD)",
