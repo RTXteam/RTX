@@ -24,8 +24,8 @@ from swagger_server.models.query_graph import QueryGraph
 from swagger_server.models.q_node import QNode
 from swagger_server.models.q_edge import QEdge
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction")
-from KGNodeIndex import KGNodeIndex
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer")
+from node_synonymizer import NodeSynonymizer
 
 
 class ARAXMessenger:
@@ -165,7 +165,7 @@ class ARAXMessenger:
         #### Now apply the filters. Order of operations is probably quite important
         #### Scalar value filters probably come first like minimum_confidence, then complex logic filters
         #### based on edge or node properties, and then finally maximum_results
-        response.info(f"Adding a QueryNode to Message with parameters {parameters}")
+        response.info(f"Adding a QueryNode to Message with input parameters {parameters}")
 
         #### Make sure there's a query_graph already here
         if message.query_graph is None:
@@ -175,8 +175,8 @@ class ARAXMessenger:
         if message.query_graph.nodes is None:
             message.query_graph.nodes = []
 
-        #### Set up the KGNodeIndex
-        kgNodeIndex = KGNodeIndex()
+        #### Set up the NodeSynonymizer to find curies and names
+        synonymizer = NodeSynonymizer()
 
         # Create the QNode and set the id
         qnode = QNode()
@@ -221,28 +221,25 @@ class ARAXMessenger:
 
             # Loop over the available curies and create the list
             for curie in curie_list:
-                response.debug(f"Looking up CURIE {curie} in KgNodeIndex")
-                nodes = kgNodeIndex.get_curies_and_types(curie, kg_name='KG2')
+                response.debug(f"Looking up CURIE {curie} in NodeSynonymizer")
+                synonymizer_results = synonymizer.get_canonical_curies(curies=[curie])
 
-                # If nothing was found, we won't bail out, but rather just issue a warning
-                if len(nodes) == 0:
-                    response.warning(f"A node with CURIE {curie} is not in our knowledge graph KG2, but will continue")
+                # If nothing was found, we won't bail out, but rather just issue a warning that this curie is suspect
+                if synonymizer_results[curie] is None:
+                    response.warning(f"A node with CURIE {curie} is not in our knowledge graph KG2, but will continue with it")
                     if is_curie_a_list:
                         qnode.curie.append(curie)
                     else:
                         qnode.curie = curie
 
+                # And if it is found, keep the same curie but report the preferred curie
                 else:
 
-                    # FIXME. This is just always taking the first result. This could cause problems for CURIEs with multiple types. Is that possible?
-                    # In issue #623 on 2020-06-15 we concluded that we should not specify the type here
-                    #qnode.type = nodes[0]['type']
-
-                    # Either append or set the found curie
+                    response.info(f"CURIE {curie} is found. Adding it to the qnode")
                     if is_curie_a_list:
-                        qnode.curie.append(nodes[0]['curie'])
+                        qnode.curie.append(curie)
                     else:
-                        qnode.curie = nodes[0]['curie']
+                        qnode.curie = curie
 
                 if 'type' in parameters and parameters['type'] is not None:
                     if isinstance(parameters['type'], str):
@@ -255,15 +252,18 @@ class ARAXMessenger:
 
         #### If the name is specified, try to find that
         if parameters['name'] is not None:
-            response.debug(f"Looking up CURIE {parameters['name']} in KgNodeIndex")
-            nodes = kgNodeIndex.get_curies_and_types(parameters['name'])
-            if len(nodes) == 0:
-                nodes = kgNodeIndex.get_curies_and_types(parameters['name'], kg_name='KG2')
-                if len(nodes) == 0:
-                    response.error(f"A node with name '{parameters['name']}'' is not in our knowledge graph", error_code="UnknownCURIE")
-                    return response
-            qnode.curie = nodes[0]['curie']
-            qnode.type = nodes[0]['type']
+            name = parameters['name']
+            response.debug(f"Looking up CURIE for name '{name}' in NodeSynonymizer")
+            synonymizer_results = synonymizer.get_canonical_curies(curies=[name], names=[name])
+
+            if synonymizer_results[name] is None:
+                response.error(f"A node with name '{name}' is not in our knowledge graph", error_code="UnresolvableNodeName")
+                return response
+ 
+            qnode.curie = synonymizer_results[name]['preferred_curie']
+            response.info(f"Creating QueryNode with curie '{qnode.curie}' for name '{name}'")
+            if parameters['type'] is not None:
+                qnode.type = parameters['type']
             message.query_graph.nodes.append(qnode)
             return response
 
@@ -459,134 +459,6 @@ class ARAXMessenger:
             index += 1
 
 
-    #### Reassign QNode CURIEs to KG1 space
-    def reassign_curies(self, message, input_parameters, describe=False):
-        """
-        Reassigns CURIEs to the target Knowledge Provider
-        :param message: Translator standard Message object
-        :type message: Message
-        :param input_parameters: Dict of input parameters to control the method
-        :type input_parameters: Message
-        :return: Response object with execution information
-        :rtype: Response
-        """
-
-        # #### Internal documentation setup
-        allowable_parameters = {
-            'knowledge_provider': { 'Name of the Knowledge Provider CURIE space to map to. Default=KG1. Also currently supported KG2' },
-            'mismap_result': { 'Desired action when mapping fails: ERROR or WARNING. Default is ERROR'},
-            }
-        if describe:
-            allowable_parameters['dsl_command'] = '`reassign_curies()`'  # can't get this name at run-time, need to manually put it in per https://www.python.org/dev/peps/pep-3130/
-            allowable_parameters['brief_description'] = """The `reassign_curies` method reassigns all the CURIEs in the Message QueryGraph to the specified
-                knowledge provider. Allowed values are KG1 or KG2. Default is KG1 if not specified."""
-            return allowable_parameters
-
-        #### Define a default response
-        response = Response()
-        self.response = response
-        self.message = message
-
-        #### Basic checks on arguments
-        if not isinstance(input_parameters, dict):
-            response.error("Provided parameters is not a dict", error_code="ParametersNotDict")
-            return response
-
-        #### Define a complete set of allowed parameters and their defaults
-        parameters = {
-            'knowledge_provider': 'KG1',
-            'mismap_result': 'ERROR',
-        }
-
-        #### Loop through the input_parameters and override the defaults and make sure they are allowed
-        for key,value in input_parameters.items():
-            if key not in parameters:
-                response.error(f"Supplied parameter {key} is not permitted", error_code="UnknownParameter")
-            else:
-                parameters[key] = value
-        #### Return if any of the parameters generated an error (showing not just the first one)
-        if response.status != 'OK':
-            return response
-
-        #### Store these final parameters for convenience
-        response.data['parameters'] = parameters
-        self.parameters = parameters
-
-        # Check that the knowledge_provider is valid:
-        if parameters['knowledge_provider'] != 'KG1' and parameters['knowledge_provider'] != 'KG2':
-            response.error(f"Specified knowledge provider must be 'KG1' or 'KG2', not '{parameters['knowledge_provider']}'", error_code="UnknownKP")
-            return response
-
-        #### Now try to assign the CURIEs
-        response.info(f"Reassigning the CURIEs in QueryGraph to {parameters['knowledge_provider']} space")
-
-        #### Make sure there's a query_graph already here
-        if message.query_graph is None:
-            message.query_graph = QueryGraph()
-            message.query_graph.nodes = []
-            message.query_graph.edges = []
-        if message.query_graph.nodes is None:
-            message.query_graph.nodes = []
-
-        #### Set up the KGNodeIndex
-        kgNodeIndex = KGNodeIndex()
-
-        # Loops through the QueryGraph nodes and adjust them
-        for qnode in message.query_graph.nodes:
-
-            # If the CURIE is None, then there's nothing to do
-            curie = qnode.curie
-            if curie is None:
-                continue
-
-            # Map the CURIE to the desired Knowledge Provider
-            if parameters['knowledge_provider'] == 'KG1':
-                if kgNodeIndex.is_curie_present(curie) is True:
-                    mapped_curies = [ curie ]
-                else:
-                    mapped_curies = kgNodeIndex.get_KG1_curies(curie)
-            elif parameters['knowledge_provider'] == 'KG2':
-                if kgNodeIndex.is_curie_present(curie, kg_name='KG2'):
-                    mapped_curies = [ curie ]
-                else:
-                    mapped_curies = kgNodeIndex.get_curies_and_types(curie, kg_name='KG2')
-            else:
-                response.error(f"Specified knowledge provider must be 'KG1' or 'KG2', not '{parameters['knowledge_provider']}'", error_code="UnknownKP")
-                return response
-
-            # Try to find a new CURIE
-            new_curie = None
-            if len(mapped_curies) == 0:
-                if parameters['mismap_result'] == 'WARNING':
-                    response.warning(f"Did not find a mapping for {curie} to KP '{parameters['knowledge_provider']}'. Leaving as is")
-                else:
-                    response.error(f"Did not find a mapping for {curie} to KP '{parameters['knowledge_provider']}'. This is an error")
-            elif len(mapped_curies) == 1:
-                new_curie = mapped_curies[0]
-            else:
-                original_curie_is_fine = False
-                for potential_curie in mapped_curies:
-                    if potential_curie == curie:
-                        original_curie_is_fine = True
-                if original_curie_is_fine:
-                    new_curie = curie
-                else:
-                    new_curie = mapped_curies[0]
-                    response.warning(f"There are multiple possible CURIEs in KP '{parameters['knowledge_provider']}'. Selecting the first one {new_curie}")
-
-            # If there's no CURIE, then nothing to do
-            if new_curie is None:
-                pass
-            # If it's the same
-            elif new_curie == curie:
-                response.debug(f"CURIE {curie} is fine for KP '{parameters['knowledge_provider']}'")
-            else:
-                response.info(f"Remapping CURIE {curie} to {new_curie} for KP '{parameters['knowledge_provider']}'")
-
-        #### Return the response
-        return response
-
-
     #### Fetch a message by its URI
     def fetch_message(self, message_uri):
 
@@ -692,13 +564,6 @@ def main():
     for parameter in parameters_sets:
         #### Add a QEdge
         result = messenger.add_qedge(message, parameter)
-        response.merge(result)
-        if result.status != 'OK':
-            print(response.show(level=Response.DEBUG))
-            return response
-
-    if 0:
-        result = messenger.reassign_curies(message, { 'knowledge_provider': 'KG1', 'mismap_result': 'WARNING'} )
         response.merge(result)
         if result.status != 'OK':
             print(response.show(level=Response.DEBUG))

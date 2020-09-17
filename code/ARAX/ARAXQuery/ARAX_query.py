@@ -543,7 +543,8 @@ class ARAXQuery:
                     response.info(f"Running experimental reranker on results")
                     try:
                         ranker = ARAXRanker()
-                        ranker.aggregate_scores(message, response=response)
+                        #ranker.aggregate_scores(message, response=response)
+                        ranker.aggregate_scores_dmk(message, response=response)
                     except Exception as error:
                         exception_type, exception_value, exception_traceback = sys.exc_info()
                         response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
@@ -678,7 +679,7 @@ def main():
             "add_qnode(curie=DOID:12384, id=n00)",
             "add_qnode(type=phenotypic_feature, is_set=True, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00, type=has_phenotype)",
-            "expand(edge_id=e00)",
+            "expand(edge_id=e00, kp=ARAX/KG2)",
             #"overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
             #"overlay(action=overlay_clinical_info, chi_square=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
             "overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
@@ -692,11 +693,13 @@ def main():
             "create_message",
             "add_qnode(curie=DOID:14330, id=n00)",  # parkinsons
             "add_qnode(type=protein, is_set=True, id=n01)",
-            "add_qnode(type=chemical_substance, is_set=true, id=n02)",
+            "add_qnode(type=chemical_substance, is_set=false, id=n02)",
             "add_qedge(source_id=n01, target_id=n00, id=e00)",
             "add_qedge(source_id=n01, target_id=n02, id=e01)",
             "expand(edge_id=[e00,e01])",
             "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
+            "resultify()",
+            "filter_results(action=limit_number_of_results, max_results=50)",
             "return(message=true, store=true)",
         ]}}
     elif params.example_number == 8:  # to test jaccard with known result  # FIXME:  ERROR: Node DOID:8398 has been returned as an answer for multiple query graph nodes (n00, n02)
@@ -829,13 +832,16 @@ def main():
             "resultify(ignore_edge_direction=true)",
             "return(message=true, store=true)"
         ]}}
-    elif params.example_number == 16:  # To test COHD obs/exp ratio
+    elif params.example_number == 16:  # To test COHD
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(name=DOID:8398, id=n00)",
-            "add_qnode(type=phenotypic_feature, is_set=true, id=n01)",
+            #"add_qnode(name=DOID:1227, id=n00)",
+            "add_qnode(type=phenotypic_feature, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, type=has_phenotype, id=e00)",
             "expand(edge_id=e00)",
+            "overlay(action=overlay_clinical_info, chi_square=true)",
+            "resultify()",
             "return(message=true, store=true)"
         ]}}
     elif params.example_number == 17:  # Test resultify #FIXME: this returns a single result instead of a list (one for each disease/phenotype found)

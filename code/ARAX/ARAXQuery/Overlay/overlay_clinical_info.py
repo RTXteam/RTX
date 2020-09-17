@@ -113,6 +113,7 @@ class OverlayClinicalInfo:
                 if self.in_common(source_type, self.who_knows_about_what[KP]) and self.in_common(target_type, self.who_knows_about_what[KP]):
                     KP_to_use = KP
             if KP_to_use == 'COHD':
+                self.response.debug(f"Querying Columbia Open Health data for info about {source_name} and {target_name}")
                 # convert CURIE to OMOP identifiers
                 # source_OMOPs = [str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(source_curie, 1)]
                 res = self.cohdIndex.get_concept_ids(source_curie)
