@@ -24,8 +24,8 @@ from swagger_server.models.query_graph import QueryGraph
 from swagger_server.models.q_node import QNode
 from swagger_server.models.q_edge import QEdge
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction")
-from KGNodeIndex import KGNodeIndex
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer")
+from node_synonymizer import NodeSynonymizer
 
 
 class ARAXMessenger:
@@ -165,7 +165,7 @@ class ARAXMessenger:
         #### Now apply the filters. Order of operations is probably quite important
         #### Scalar value filters probably come first like minimum_confidence, then complex logic filters
         #### based on edge or node properties, and then finally maximum_results
-        response.info(f"Adding a QueryNode to Message with parameters {parameters}")
+        response.info(f"Adding a QueryNode to Message with input parameters {parameters}")
 
         #### Make sure there's a query_graph already here
         if message.query_graph is None:
@@ -175,8 +175,8 @@ class ARAXMessenger:
         if message.query_graph.nodes is None:
             message.query_graph.nodes = []
 
-        #### Set up the KGNodeIndex
-        kgNodeIndex = KGNodeIndex()
+        #### Set up the NodeSynonymizer to find curies and names
+        synonymizer = NodeSynonymizer()
 
         # Create the QNode and set the id
         qnode = QNode()
@@ -221,28 +221,25 @@ class ARAXMessenger:
 
             # Loop over the available curies and create the list
             for curie in curie_list:
-                response.debug(f"Looking up CURIE {curie} in KgNodeIndex")
-                nodes = kgNodeIndex.get_curies_and_types(curie, kg_name='KG2')
+                response.debug(f"Looking up CURIE {curie} in NodeSynonymizer")
+                synonymizer_results = synonymizer.get_canonical_curies(curies=[curie])
 
-                # If nothing was found, we won't bail out, but rather just issue a warning
-                if len(nodes) == 0:
-                    response.warning(f"A node with CURIE {curie} is not in our knowledge graph KG2, but will continue")
+                # If nothing was found, we won't bail out, but rather just issue a warning that this curie is suspect
+                if synonymizer_results[curie] is None:
+                    response.warning(f"A node with CURIE {curie} is not in our knowledge graph KG2, but will continue with it")
                     if is_curie_a_list:
                         qnode.curie.append(curie)
                     else:
                         qnode.curie = curie
 
+                # And if it is found, keep the same curie but report the preferred curie
                 else:
 
-                    # FIXME. This is just always taking the first result. This could cause problems for CURIEs with multiple types. Is that possible?
-                    # In issue #623 on 2020-06-15 we concluded that we should not specify the type here
-                    #qnode.type = nodes[0]['type']
-
-                    # Either append or set the found curie
+                    response.info(f"CURIE {curie} is found. Adding it to the qnode")
                     if is_curie_a_list:
-                        qnode.curie.append(nodes[0]['curie'])
+                        qnode.curie.append(curie)
                     else:
-                        qnode.curie = nodes[0]['curie']
+                        qnode.curie = curie
 
                 if 'type' in parameters and parameters['type'] is not None:
                     if isinstance(parameters['type'], str):
@@ -255,15 +252,18 @@ class ARAXMessenger:
 
         #### If the name is specified, try to find that
         if parameters['name'] is not None:
-            response.debug(f"Looking up CURIE {parameters['name']} in KgNodeIndex")
-            nodes = kgNodeIndex.get_curies_and_types(parameters['name'])
-            if len(nodes) == 0:
-                nodes = kgNodeIndex.get_curies_and_types(parameters['name'], kg_name='KG2')
-                if len(nodes) == 0:
-                    response.error(f"A node with name '{parameters['name']}'' is not in our knowledge graph", error_code="UnknownCURIE")
-                    return response
-            qnode.curie = nodes[0]['curie']
-            qnode.type = nodes[0]['type']
+            name = parameters['name']
+            response.debug(f"Looking up CURIE for name '{name}' in NodeSynonymizer")
+            synonymizer_results = synonymizer.get_canonical_curies(curies=[name], names=[name])
+
+            if synonymizer_results[name] is None:
+                response.error(f"A node with name '{name}' is not in our knowledge graph", error_code="UnresolvableNodeName")
+                return response
+ 
+            qnode.curie = synonymizer_results[name]['preferred_curie']
+            response.info(f"Creating QueryNode with curie '{qnode.curie}' for name '{name}'")
+            if parameters['type'] is not None:
+                qnode.type = parameters['type']
             message.query_graph.nodes.append(qnode)
             return response
 
