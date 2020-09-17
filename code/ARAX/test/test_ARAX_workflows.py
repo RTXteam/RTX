@@ -145,17 +145,17 @@ def test_FET_example_1():
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "expand(edge_id=e00, kp=ARAX/KG1)",
         "overlay(action=fisher_exact_test, source_qnode_id=n00, target_qnode_id=n01, virtual_relation_label=FET1, rel_edge_id=e00)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_id=n01)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_id=n01)",
         "add_qnode(type=chemical_substance, is_set=true, id=n02)",
         "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
         "expand(edge_id=e01, kp=ARAX/KG1)",
         "overlay(action=fisher_exact_test, source_qnode_id=n01, target_qnode_id=n02, virtual_relation_label=FET2, rel_edge_id=e01)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_id=n02)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_id=n02)",
         "add_qnode(type=phenotypic_feature, id=n03)",
         "add_qedge(source_id=n02, target_id=n03, id=e02)",
         "expand(edge_id=e02, kp=ARAX/KG1)",
         "overlay(action=fisher_exact_test, source_qnode_id=n02, target_qnode_id=n03, virtual_relation_label=FET3, rel_edge_id=e02)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_id=n03)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_id=n03)",
         "resultify()",
         "return(message=true, store=false)"
     ]}}
@@ -171,7 +171,7 @@ def test_FET_example_1():
         assert hasattr(edge, 'edge_attributes')
         assert edge.edge_attributes
         assert edge.edge_attributes[0].name == 'fisher_exact_test_p-value'
-        assert 0 <= float(edge.edge_attributes[0].value) < 0.001
+        assert 0 <= float(edge.edge_attributes[0].value) < 0.005
         assert edge.edge_attributes[0].type == 'EDAM:data_1669'
         assert edge.is_defined_by == 'ARAX'
         assert edge.provided_by == 'ARAX'
