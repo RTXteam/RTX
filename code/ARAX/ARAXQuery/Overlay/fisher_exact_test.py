@@ -365,13 +365,19 @@ class ComputeFTEST:
 
             self.response.debug(f"Computing Fisher's Exact Test P-value")
             # calculate FET p-value for each target node in parallel
-            parameter_list = [(node, len(target_node_dict[node]), size_of_target[node]-len(target_node_dict[node]), size_of_query_sample - len(target_node_dict[node]), (size_of_total - size_of_target[node]) - (size_of_query_sample - len(target_node_dict[node]))) for node in target_node_dict]
+            del_list = []
+            parameter_list = []
+            for node in target_node_dict:
+                if size_of_target[node]-len(target_node_dict[node]) < 0:
+                    del_list.append(node)
+                    self.response.warning(f"Skipping node {node} to calculate FET p-value due to issue897 (which causes negative value).")
+                    continue
+                else:
+                    parameter_list += [(node, len(target_node_dict[node]), size_of_target[node]-len(target_node_dict[node]), size_of_query_sample - len(target_node_dict[node]), (size_of_total - size_of_target[node]) - (size_of_query_sample - len(target_node_dict[node])))]
 
-            if 'MONDO:0005046' in target_node_dict:
-                print(len(target_node_dict['MONDO:0005046']))
-                print(size_of_target['MONDO:0005046']-len(target_node_dict['MONDO:0005046']))
-                print(size_of_query_sample - len(target_node_dict['MONDO:0005046']))
-                print((size_of_total - size_of_target['MONDO:0005046']) - (size_of_query_sample - len(target_node_dict['MONDO:0005046'])))
+            for del_node in del_list:
+                del target_node_dict[del_node]
+            # parameter_list = [(node, len(target_node_dict[node]), size_of_target[node]-len(target_node_dict[node]), size_of_query_sample - len(target_node_dict[node]), (size_of_total - size_of_target[node]) - (size_of_query_sample - len(target_node_dict[node]))) for node in target_node_dict]
 
             try:
                 with multiprocessing.Pool() as executor:
@@ -438,7 +444,7 @@ class ComputeFTEST:
         return self.response
 
 
-    def query_size_of_adjacent_nodes(self, node_curie, source_type, adjacent_type, kp="ARAX/KG1", rel_type=None, use_cypher_command=True):
+    def query_size_of_adjacent_nodes(self, node_curie, source_type, adjacent_type, kp="ARAX/KG1", rel_type=None, use_cypher_command=False):
         """
         Query adjacent nodes of a given source node based on adjacent node type.
         :param node_curie: (required) the curie id of query node. It accepts both single curie id or curie id list eg. "UniProtKB:P14136" or ['UniProtKB:P02675', 'UniProtKB:P01903', 'UniProtKB:P09601', 'UniProtKB:Q02878']
@@ -686,7 +692,7 @@ class ComputeFTEST:
         """
         find all nodes of a certain type in KP
         :param node_type: the query node type
-        :param use_cypher_command: Boolean (True or False). If True, it used cypher command to query all nodes otherwise used kgNodeIndex
+        :param use_cypher_command: Boolean (True or False). If True, it used cypher command to query all nodes otherwise used NodeSynonymizer
         :param kg: only allowed for choosing 'KG1' or 'KG2' now. Will extend to BTE later
         """
         # TODO: extend this to KG2, BTE, and other KP's we know of
