@@ -581,5 +581,16 @@ def test_ngd_expand():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
+def test_genetics_kp_query():
+    actions_list = [
+        "add_qnode(curie=EFO:0001360, type=disease, id=n00)",
+        "add_qnode(type=gene, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(kp=GeneticsKP)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
