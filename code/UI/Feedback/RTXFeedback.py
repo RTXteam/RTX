@@ -291,94 +291,29 @@ class RTXFeedback:
         return storedMessage.message_id
 
 
-    #### Store all the results from a message into the database
+    #### We used to store all the result as separate entities in the database, mostly to allow feedback on each one.
+    #### But this was not used and was slow, so this is being purged from the codebase on 2020-09-22. Can always bring
+    #### it back if desired. But set everything to a plain integer count for now. Not correct, but
+    #### not used anyway.
     def addNewResults(self,message_id,message):
-        session = self.session
-        result_hash = "xxxx"
-        if message.results is not None:
-            for result in message.results:
-              n_nodes = 0
-              n_edges = 0
-              #result_hash = result.description
-              if result.result_type is None:
-                  result.result_type = "individual query answer"
-              if result.confidence is None:
-                  result.confidence = 0
-              if result.result_graph is not None:
-                  #### Calculate a hash from the list of nodes and edges in the result
-                  result_hash = self.calcResultHash(result)
-                  if result.result_graph.nodes is not None:
-                      n_nodes = len(result.result_graph.nodes)
-                  if result.result_graph.edges is not None:
-                      n_edges = len(result.result_graph.edges)
-              else:
-                  result_hash = 'xxxx'
+        if message.results is None:
+            return
 
-            #### See if there is an existing result that matches this hash
-            previousResult = None
-            #eprint(f"- {result_hash}")
-            #if result_hash != 'xxxx':
-            #  previousResult = session.query(Result).filter(Result.result_hash==result_hash).order_by(desc(Result.result_id)).first()
-            #eprint("WARNING: Forcing chache miss for result at line 309")
-            previousResult = None
-            if previousResult is not None:
-                result.id = "https://arax.rtx.ai/api/rtx/v1/result/"+str(previousResult.result_id)
-                #eprint("Reused result_id " + str(result.id))
+        id_counter = 1
+        for result in message.results:
 
-                #### Also update the linking table
-                storedLink = Message_result(message_id=message_id,result_id=previousResult.result_id)
-                session.add(storedLink)
-                session.flush()
+            if result.result_type is None:
+                result.result_type = "individual query answer"
+            if result.confidence is None:
+                result.confidence = 0
+            try:
+                result.confidence = float(result.confidence)
+            except:
+                eprint(f"WARNING: Confidence value '{result.confidence}' cannot be converted to float")
+                result.confidence = -999.0
 
-            else:
-                try:
-                    result.confidence = float(result.confidence)
-                except:
-                    eprint(f"WARNING: Confidence value '{result.confidence}' cannot be converted to float")
-                    result.confidence = -999.0
-                storedResult = Result(message_id=message_id,confidence=result.confidence,n_nodes=n_nodes,n_edges=n_edges,result_text=result.description,result_object=pickle.dumps(ast.literal_eval(repr(result))),result_hash=result_hash)
-                session.add(storedResult)
-                session.flush()
-
-                #### Also update the linking table
-                storedLink = Message_result(message_id=message_id,result_id=storedResult.result_id)
-                session.add(storedLink)
-                session.flush()
-
-                result.id = "https://arax.rtx.ai/api/rtx/v1/result/"+str(storedResult.result_id)
-                #eprint("Stored new result. Returned result_id is "+str(storedResult.result_id)+", n_nodes="+str(n_nodes)+", n_edges="+str(n_edges)+", hash="+result_hash)
-                storedResult.result_object=pickle.dumps(ast.literal_eval(repr(result)))
-
-        session.commit()
-        return
-
-
-    #### Calculate a hash from the list of nodes and edges in a result
-    def calcResultHash(self,result):
-
-        #### Get a sorted list of node ids
-        nodes = []
-        if result.result_graph.nodes is not None:
-            for node in result.result_graph.nodes:
-                nodes.append(node.id)
-        nodes.sort()
-
-        #### Get a sorted list of edge types
-        edges = []
-        if result.result_graph.edges is not None:
-            for edge in result.result_graph.edges:
-                edges.append(edge.type)
-        edges.sort()
-
-        hashing_string = ",".join(nodes)+"_"+"-".join(edges)
-
-        #### Hackathon hack!!! FIXME
-        hashing_string = repr(result)
-
-        result_hash = hashlib.md5(hashing_string.encode('utf-8'))
-        result_hash_string = result_hash.hexdigest()
-        #eprint(result_hash_string + " from " + hashing_string)
-        return result_hash_string
+            result.id = f"https://arax.rtx.ai/api/rtx/v1/result/{id_counter}"
+            id_counter += 1
 
 
     #### Get a previously stored message for this query from the database
@@ -421,126 +356,6 @@ class RTXFeedback:
         return(message)
 
 
-    #### Store all the results from a message into the database
-    def addNewResultRating(self, result_id, rating):
-        session = self.session
-
-        if result_id is None:
-            return( { "status": 450, "title": "result_id missing", "detail": "Required attribute result_id is missing from URL", "type": "about:blank" }, 450)
-        if "expertise_level_id" not in rating or rating["expertise_level_id"] is None:
-            return( { "status": 452, "title": "expertise_level_id missing", "detail": "Required attribute expertise_level_id missing from body content", "type": "about:blank" }, 452)
-        if "rating_id" not in rating or rating["rating_id"] is None:
-            return( { "status": 453, "title": "rating_id missing", "detail": "Required attribute rating_id missing from body content", "type": "about:blank" }, 453)
-        if "comment" not in rating or rating["comment"] is None:
-            return( { "status": 454, "title": "comment missing", "detail": "Required attribute comment missing from body content", "type": "about:blank" }, 454)
-        if len(rating["comment"]) > 65000:
-            return( { "status": 455, "title": "comment too long", "detail": "Comment attribute max lenth is 65 kB", "type": "about:blank" }, 455)
-
-        if "commenter_id" not in rating or rating["commenter_id"] is None:
-            if "commenter_full_name" not in rating or rating["commenter_full_name"] is None:
-                return( { "status": 451, "title": "commenter_id and commenter_name are missing", "detail": "Required attributes either commenter_id or commenter_full_name are missing from body content", "type": "about:blank" }, 451)
-            else:
-                existingCommenter = session.query(Commenter).filter(Commenter.full_name==rating["commenter_full_name"]).first()
-                if existingCommenter is None:
-                    newCommenter = Commenter(full_name=rating["commenter_full_name"],email_address="?",password="?")
-                    session.add(newCommenter)
-                    session.flush()
-                    rating["commenter_id"] = newCommenter.commenter_id
-                else:
-                    rating["commenter_id"] = existingCommenter.commenter_id
-
-        try:
-            insertResult = Result_rating(result_id=result_id, commenter_id=rating["commenter_id"], expertise_level_id=rating["expertise_level_id"],
-                rating_id = rating["rating_id"], comment=rating["comment"].encode('utf-8'), comment_datetime=datetime.now().strftime("%Y-%m-%d %H:%M:%S") )
-            session.add(insertResult)
-            session.flush()
-            session.commit()
-        except Exception as error:
-            return( { "status": 460, "title": "Error storing feedback", "detail": "Your feedback was not stored because of error: "+str(error), "type": "about:blank" }, 460 )
-
-        return( { "status": 200, "title": "Feedback stored", "detail": "Your feedback has been stored by ARAX as id="+str(insertResult.result_rating_id), "type": "about:blank" }, 200 )
-
-
-    #### Fetch all available feedback
-    def getAllFeedback(self):
-        session = self.session
-
-        storedRatings = session.query(Result_rating).all()
-        if storedRatings is not None:
-            resultRatings = []
-            for rating in storedRatings:
-                resultRating = Feedback()
-                resultRating.result_id = "https://arax.rtx.ai/api/rtx/v1/result/"+str(rating.result_id)
-                resultRating.id = resultRating.result_id + "/feedback/" + str(rating.result_rating_id)
-                resultRating.expertise_level_id = rating.expertise_level_id
-                resultRating.rating_id = rating.rating_id
-                resultRating.commenter_id = rating.commenter_id
-                resultRating.commenter_name = 'not available'
-                resultRating.comment = rating.comment
-                resultRating.datetime = rating.comment_datetime
-                resultRatings.append(resultRating)
-            return(resultRatings)
-        else:
-            return
-
-
-    #### Fetch the feedback for a result
-    def getResultFeedback(self, result_id):
-        session = self.session
-
-        if result_id is None:
-            return( { "status": 450, "title": "result_id missing", "detail": "Required attribute result_id is missing from URL", "type": "about:blank" }, 450)
-
-        #### Look for ratings we could use
-        storedRatings = session.query(Result_rating).filter(Result_rating.result_id==result_id).order_by(desc(Result_rating.comment_datetime)).all()
-        if storedRatings is not None:
-            resultRatings = []
-            for rating in storedRatings:
-                resultRating = Feedback()
-                resultRating.result_id = "https://arax.rtx.ai/api/rtx/v1/result/"+str(result_id)
-                resultRating.id = resultRating.result_id + "/feedback/" + str(rating.result_rating_id)
-                resultRating.expertise_level_id = rating.expertise_level_id
-                resultRating.rating_id = rating.rating_id
-                resultRating.commenter_id = rating.commenter_id
-                resultRating.comment = rating.comment
-                resultRating.datetime = rating.comment_datetime
-                resultRating.foobar = -1		# turns out you can put in anything you want, but it doesn't show up in the output unless the YAML says it can
-
-                commenterFullName = session.query(Commenter).filter(Commenter.commenter_id==rating.commenter_id).first().full_name
-                resultRating.commenter_full_name = commenterFullName
-
-                resultRatings.append(resultRating)
-            return(resultRatings)
-        else:
-            return
-
-
-    #### Fetch the feedback for a message
-    def getMessageFeedback(self, message_id):
-        session = self.session
-
-        if message_id is None:
-            return( { "status": 450, "title": "message_id missing", "detail": "Required attribute message_id is missing from URL", "type": "about:blank" }, 450)
-
-        #### Look for results for this message
-        storedMessageResults = session.query(Message_result).filter(Message_result.message_id==message_id).all()
-        #eprint("DEBUG: Getting results for message_id="+str(message_id))
-        if storedMessageResults is not None:
-            allResultRatings = []
-            for storedMessageResult in storedMessageResults:
-                #eprint("DEBUG:   Getting feedback for result_id="+str(storedMessageResult.result_id))
-                resultRatings = self.getResultFeedback(storedMessageResult.result_id)
-                if resultRatings is not None:
-                    for resultRating in resultRatings:
-                        allResultRatings.append(resultRating)
-            if len(allResultRatings) > 0:
-                return(allResultRatings)
-            else:
-                return( { "status": 404, "title": "Ratings not found", "detail": "There were no ratings found for this message", "type": "about:blank" }, 404)
-        else:
-            return( { "status": 404, "title": "Results not found", "detail": "There were no results found for this message", "type": "about:blank" }, 404)
-
-
     #### Fetch a cached message
     def getMessage(self, message_id):
         session = self.session
@@ -554,21 +369,6 @@ class RTXFeedback:
             return pickle.loads(storedMessage.message_object)
         else:
             return( { "status": 404, "title": "Message not found", "detail": "There is no message corresponding to message_id="+str(message_id), "type": "about:blank" }, 404)
-
-
-    #### Fetch a cached result
-    def getResult(self, result_id):
-        session = self.session
-
-        if result_id is None:
-            return( { "status": 450, "title": "result_id missing", "detail": "Required attribute result_id is missing from URL", "type": "about:blank" }, 450)
-
-        #### Find the result
-        storedResult = session.query(Result).filter(Result.result_id==result_id).first()
-        if storedResult is not None:
-            return pickle.loads(storedResult.result_object)
-        else:
-            return( { "status": 404, "title": "Result not found", "detail": "There is no result corresponding to result_id="+str(result_id), "type": "about:blank" }, 404)
 
 
     #### Get a previously stored message for this query from the database
