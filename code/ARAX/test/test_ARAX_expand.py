@@ -583,7 +583,7 @@ def test_ngd_expand():
 
 def test_genetics_kp_query():
     actions_list = [
-        "add_qnode(curie=EFO:0001360, type=disease, id=n00)",
+        "add_qnode(name=type 2 diabetes mellitus, type=disease, id=n00)",
         "add_qnode(type=gene, id=n01)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "expand(kp=GeneticsKP)",
