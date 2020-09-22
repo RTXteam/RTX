@@ -24,8 +24,8 @@ class ARAXExpander:
         self.message = None
         self.parameters = {'edge_id': None, 'node_id': None, 'kp': None, 'enforce_directionality': None,
                            'use_synonyms': None, 'continue_if_no_results': None, 'COHD_method': None,
-                           'COHD_method_percentile': None}
-        self.valid_kps = {"ARAX/KG1", "ARAX/KG2", "BTE", "COHD", "NGD"}
+                           'COHD_method_percentile': None, 'include_integrated_score': None}
+        self.valid_kps = {"ARAX/KG1", "ARAX/KG2", "BTE", "COHD", "GeneticsKP", "NGD"}
 
     @staticmethod
     def describe_me():
@@ -46,12 +46,13 @@ class ARAXExpander:
         params_dict['brief_description'] = brief_description
         params_dict['edge_id'] = {"a query graph edge ID or list of such IDs to expand (optional, default is to expand entire query graph)"}  # this is a workaround due to how self.parameters is utilized in this class
         params_dict['node_id'] = {"a query graph node ID to expand (optional, default is to expand entire query graph)"}
-        params_dict['kp'] = {"the knowledge provider to use - current options are `ARAX/KG1`, `ARAX/KG2`, `BTE`, `COHD` (optional, default is `ARAX/KG1`)"}
+        params_dict['kp'] = {"the knowledge provider to use - current options are `ARAX/KG1`, `ARAX/KG2`, `BTE`, `COHD`, `GeneticsKP`, `NGD` (optional, default is `ARAX/KG1`)"}
         params_dict['enforce_directionality'] = {"whether to obey (vs. ignore) edge directions in query graph - options are `true` or `false` (optional, default is `false`)"}
         params_dict['use_synonyms'] = {"whether to consider curie synonyms and merge synonymous nodes - options are `true` or `false` (optional, default is `true`)"}
         params_dict['continue_if_no_results'] = {"whether to continue execution if no paths are found matching the query graph - options are `true` or `false` (optional, default is `false`)"}
         params_dict['COHD_method'] = {"what method used to expand - current options are `paired_concept_freq`, `observed_expected_ratio`, `chi_square` (optional, default is `paired_concept_freq`)"}
         params_dict['COHD_method_percentile'] = {"what percentile used as a threshold for specified COHD method (optional, default is 99 (99%), range is [0, 100])"}
+        params_dict['include_integrated_score'] = {"whether to add genetics-quantile edges (in addition to MAGMA edges) from the Genetics KP - options are `true` or `false` (optional, default is `false`); relevant only when `kp=GeneticsKP`"}
         description_list.append(params_dict)
         return description_list
 
@@ -75,6 +76,7 @@ class ARAXExpander:
         parameters['continue_if_no_results'] = False
         parameters['COHD_method'] = 'paired_concept_freq'
         parameters['COHD_method_percentile'] = 99
+        parameters['include_integrated_score'] = False
         # Override default values for any parameters passed in
         for key, value in input_parameters.items():
             if key and key not in parameters:
@@ -205,6 +207,9 @@ class ARAXExpander:
             elif kp_to_use == 'NGD':
                 from Expand.ngd_querier import NGDQuerier
                 kp_querier = NGDQuerier(log)
+            elif kp_to_use == 'GeneticsKP':
+                from Expand.genetics_querier import GeneticsQuerier
+                kp_querier = GeneticsQuerier(log)
             else:
                 from Expand.kg_querier import KGQuerier
                 kp_querier = KGQuerier(log, kp_to_use)
