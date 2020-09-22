@@ -24,11 +24,13 @@ class GeneticsQuerier:
     def __init__(self, response_object: Response):
         self.response = response_object
         self.genetics_kp_api_url = "https://translator.broadinstitute.org/genetics_data_provider/query"
+        self.magma_score_name = "MAGMA-pvalue"
+        self.quantile_score_name = "Genetics-quantile"
+        self.score_type_lookup = {self.magma_score_name: "EDAM:data_1669",
+                                  self.quantile_score_name: "?"}  # TODO
         self.accepted_node_types = {"gene", "pathway", "phenotype", "disease"}
-        self.score_type_lookup = {"MAGMA-pvalue": "EDAM:data_1669",
-                                  "Genetics-quantile": "?"}  # TODO
-        self.node_type_mappings = {"protein": "gene",
-                                   "phenotypic_feature": "phenotype"}  # Needed until Biolink compliant?
+        self.node_type_remappings = {"protein": "gene",
+                                     "phenotypic_feature": "phenotype"}  # Needed until Biolink compliant?
         self.prefix_mappings = {"gene": "NCBIGene", "pathway": "GO", "phenotype": "EFO", "disease": "EFO"}
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
@@ -68,7 +70,7 @@ class GeneticsQuerier:
             qg_id_mappings = self._get_qg_id_mappings_from_results(json_response['results'])
             # Populate our final KG with nodes and edges
             for returned_edge in returned_kg['edges']:
-                if include_integrated_score or returned_edge['score_name'] == "MAGMA-pvalue":
+                if include_integrated_score or returned_edge['score_name'] == self.magma_score_name:
                     swagger_edge = self._create_swagger_edge_from_kp_edge(returned_edge)
                     for qedge_id in qg_id_mappings['edges'][swagger_edge.id]:
                         final_kg.add_edge(swagger_edge, qedge_id)
@@ -102,7 +104,7 @@ class GeneticsQuerier:
     def _pre_process_query_graph(self, query_graph: QueryGraph, log: Response) -> QueryGraph:
         for qnode in query_graph.nodes:
             # Convert node types to preferred format and verify we can do this query
-            formatted_qnode_types = {self.node_type_mappings.get(qnode_type, qnode_type) for qnode_type in eu.convert_string_or_list_to_list(qnode.type)}
+            formatted_qnode_types = {self.node_type_remappings.get(qnode_type, qnode_type) for qnode_type in eu.convert_string_or_list_to_list(qnode.type)}
             accepted_qnode_types = formatted_qnode_types.intersection(self.accepted_node_types)
             if not accepted_qnode_types:
                 log.error(f"Can't answer this query using the Genetics Provider; unaccepted type for QNode {qnode.id}", error_code="UnsupportedQueryForKP")
