@@ -52,7 +52,7 @@ class ARAXExpander:
         params_dict['continue_if_no_results'] = {"whether to continue execution if no paths are found matching the query graph - options are `true` or `false` (optional, default is `false`)"}
         params_dict['COHD_method'] = {"what method used to expand - current options are `paired_concept_freq`, `observed_expected_ratio`, `chi_square` (optional, default is `paired_concept_freq`)"}
         params_dict['COHD_method_percentile'] = {"what percentile used as a threshold for specified COHD method (optional, default is 99 (99%), range is [0, 100])"}
-        params_dict['include_integrated_score'] = {"whether to include BOTH the genetics-quantile score and MAGMA score from the Genetics KP (if False, only MAGMA score is included)"}
+        params_dict['include_integrated_score'] = {"whether to add genetics-quantile edges (in addition to MAGMA edges) from the Genetics KP - options are `true` or `false` (optional, default is `false`); relevant only when `kp=GeneticsKP`"}
         description_list.append(params_dict)
         return description_list
 
