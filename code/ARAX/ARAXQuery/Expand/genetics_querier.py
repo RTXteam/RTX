@@ -15,6 +15,8 @@ from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
 from swagger_server.models.edge_attribute import EdgeAttribute
 from swagger_server.models.query_graph import QueryGraph
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
+from node_synonymizer import NodeSynonymizer
 
 
 class GeneticsQuerier:
@@ -27,6 +29,7 @@ class GeneticsQuerier:
                                   "Genetics-quantile": "?"}  # TODO
         self.node_type_mappings = {"protein": "gene",
                                    "phenotypic_feature": "phenotype"}  # Needed until Biolink compliant?
+        self.prefix_mappings = {"gene": "NCBIGene", "pathway": "GO", "phenotype": "EFO", "disease": "EFO"}
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         """
@@ -104,7 +107,11 @@ class GeneticsQuerier:
                 return query_graph
             else:
                 qnode.type = list(accepted_qnode_types)[0]
-            # TODO: Convert curies to equivalent curies accepted by the KP (e.g., EFO, GO, or NCBIGene)
+            # Convert curies to equivalent curies accepted by the KP (depending on qnode type)
+            if qnode.curie:
+                synonymizer = NodeSynonymizer()
+                converted_curies = synonymizer.convert_curie(qnode.curie, self.prefix_mappings[qnode.type])
+                qnode.curie = converted_curies[0] if converted_curies else qnode.curie
         return query_graph
 
     @staticmethod
