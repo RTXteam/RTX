@@ -996,8 +996,10 @@ class NodeSynonymizer:
                         print(f"WARNING: Association conflict: {linking_curie}->{uc_linking_unique_concept_curie} and {second_curie}->{uc_second_unique_concept_curie}")
                         kg_unique_concepts[uc_linking_unique_concept_curie]['all_uc_curies'][uc_second_curie] = 1
                         kg_unique_concepts[uc_linking_unique_concept_curie]['all_uc_curies'][uc_second_unique_concept_curie] = 1
-                        kg_unique_concepts[uc_second_unique_concept_curie]['all_uc_curies'][uc_linking_curie] = 1
-                        kg_unique_concepts[uc_second_unique_concept_curie]['all_uc_curies'][uc_linking_unique_concept_curie] = 1
+
+                        # This probably isn't needed, but things are not working the way that I want. FIXME
+                        #kg_unique_concepts[uc_second_unique_concept_curie]['all_uc_curies'][uc_linking_curie] = 1
+                        #kg_unique_concepts[uc_second_unique_concept_curie]['all_uc_curies'][uc_linking_unique_concept_curie] = 1
 
                 else:
                     stats['add new linked curie'] += 1
@@ -1035,7 +1037,13 @@ class NodeSynonymizer:
                 if inode > 10:
                     return
 
-        print(f"INFO: Read {inode} equivalencies from {filename}")
+
+        #### This needs to be completed!!!!!! FIXME TODO
+
+
+
+
+        print(f"INFO: Read {inode} synonyms from {filename}")
         return
 
 
@@ -1667,7 +1675,7 @@ def run_example_6():
 
 
 # ############################################################################################
-def run_example_6():
+def run_example_6b():
     synonymizer = NodeSynonymizer()
 
     print("==== Get all equivalent nodes in a KG for an input curie ============================")
@@ -1772,7 +1780,7 @@ def run_example_11():
 
 # ############################################################################################
 def run_examples():
-    run_example_9()
+    run_example_6()
     return
     run_example_1()
     run_example_2()
@@ -1792,7 +1800,7 @@ def main():
     import json
 
     parser = argparse.ArgumentParser(
-        description="Tests or rebuilds the ARAX Node Synonymizer. Note that the build process requires 20 GB RAM.", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        description="Tests or rebuilds the ARAX Node Synonymizer. Note that the build process requires 26 GB RAM.", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-b', '--build', action="store_true",
                         help="If set, (re)build the index from scratch", default=False)
     parser.add_argument('-k', '--kg_name', action="store",
@@ -1864,7 +1872,7 @@ def main():
     # Else if the build option is selected, build the kg_map from scratch
     elif args.build:
         if args.kg_name == 'both':
-            print("WARNING: Beginning full NodeSynonymizer build process. This requires 20 GB of RAM. If you don't have 20 GB of RAM available, this would be a good time to stop the process!")
+            print("WARNING: Beginning full NodeSynonymizer build process. This requires 26 GB of RAM. If you don't have 26 GB of RAM available, this would be a good time to stop the process!")
             synonymizer.options['kg_name'] = 'KG2'
             synonymizer.build_kg_map()
             synonymizer.coalesce_duplicates()
