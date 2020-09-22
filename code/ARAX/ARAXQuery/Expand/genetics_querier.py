@@ -28,10 +28,9 @@ class GeneticsQuerier:
         self.quantile_score_name = "Genetics-quantile"
         self.score_type_lookup = {self.magma_score_name: "EDAM:data_1669",
                                   self.quantile_score_name: "?"}  # TODO
-        self.accepted_node_types = {"gene", "pathway", "phenotype", "disease"}
-        self.node_type_remappings = {"protein": "gene",
-                                     "phenotypic_feature": "phenotype"}  # Needed until Biolink compliant?
-        self.prefix_mappings = {"gene": "NCBIGene", "pathway": "GO", "phenotype": "EFO", "disease": "EFO"}
+        self.accepted_node_types = {"gene", "pathway", "phenotypic_feature", "disease"}
+        self.node_type_remappings = {"protein": "gene"}
+        self.prefix_mappings = {"gene": "NCBIGene", "pathway": "GO", "phenotypic_feature": "EFO", "disease": "EFO"}
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         """
