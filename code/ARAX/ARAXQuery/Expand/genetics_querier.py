@@ -111,7 +111,11 @@ class GeneticsQuerier:
             if qnode.curie:
                 synonymizer = NodeSynonymizer()
                 converted_curies = synonymizer.convert_curie(qnode.curie, self.prefix_mappings[qnode.type])
-                qnode.curie = converted_curies[0] if converted_curies else qnode.curie
+                if converted_curies:
+                    qnode.curie = converted_curies[0]
+                    log.debug(f"Converted qnode {qnode.id} curie to {qnode.curie}")
+                else:
+                    log.warning(f"Could not convert qnode {qnode.id} curie to preferred prefix ({self.prefix_mappings[qnode.type]})")
         return query_graph
 
     @staticmethod
