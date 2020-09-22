@@ -24,7 +24,7 @@ class ARAXExpander:
         self.message = None
         self.parameters = {'edge_id': None, 'node_id': None, 'kp': None, 'enforce_directionality': None,
                            'use_synonyms': None, 'continue_if_no_results': None, 'COHD_method': None,
-                           'COHD_method_percentile': None}
+                           'COHD_method_percentile': None, 'include_integrated_score': None}
         self.valid_kps = {"ARAX/KG1", "ARAX/KG2", "BTE", "COHD", "GeneticsKP", "NGD"}
 
     @staticmethod
@@ -52,6 +52,7 @@ class ARAXExpander:
         params_dict['continue_if_no_results'] = {"whether to continue execution if no paths are found matching the query graph - options are `true` or `false` (optional, default is `false`)"}
         params_dict['COHD_method'] = {"what method used to expand - current options are `paired_concept_freq`, `observed_expected_ratio`, `chi_square` (optional, default is `paired_concept_freq`)"}
         params_dict['COHD_method_percentile'] = {"what percentile used as a threshold for specified COHD method (optional, default is 99 (99%), range is [0, 100])"}
+        params_dict['include_integrated_score'] = {"whether to include BOTH the genetics-quantile score and MAGMA score from the Genetics KP (if False, only MAGMA score is included)"}
         description_list.append(params_dict)
         return description_list
 
@@ -75,6 +76,7 @@ class ARAXExpander:
         parameters['continue_if_no_results'] = False
         parameters['COHD_method'] = 'paired_concept_freq'
         parameters['COHD_method_percentile'] = 99
+        parameters['include_integrated_score'] = False
         # Override default values for any parameters passed in
         for key, value in input_parameters.items():
             if key and key not in parameters:

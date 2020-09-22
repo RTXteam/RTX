@@ -43,6 +43,7 @@ class GeneticsQuerier:
         """
         log = self.response
         continue_if_no_results = self.response.data['parameters']['continue_if_no_results']
+        include_integrated_score = self.response.data['parameters']['include_integrated_score']
         final_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
 
@@ -67,11 +68,12 @@ class GeneticsQuerier:
             qg_id_mappings = self._get_qg_id_mappings_from_results(json_response['results'])
             # Populate our final KG with nodes and edges
             for returned_edge in returned_kg['edges']:
-                swagger_edge = self._create_swagger_edge_from_kp_edge(returned_edge)
-                for qedge_id in qg_id_mappings['edges'][swagger_edge.id]:
-                    final_kg.add_edge(swagger_edge, qedge_id)
-                edge_to_nodes_map[swagger_edge.id] = {source_qnode_id: swagger_edge.source_id,
-                                                      target_qnode_id: swagger_edge.target_id}
+                if include_integrated_score or returned_edge['score_name'] == "MAGMA-pvalue":
+                    swagger_edge = self._create_swagger_edge_from_kp_edge(returned_edge)
+                    for qedge_id in qg_id_mappings['edges'][swagger_edge.id]:
+                        final_kg.add_edge(swagger_edge, qedge_id)
+                    edge_to_nodes_map[swagger_edge.id] = {source_qnode_id: swagger_edge.source_id,
+                                                          target_qnode_id: swagger_edge.target_id}
             for returned_node in returned_kg['nodes']:
                 swagger_node = self._create_swagger_node_from_kp_node(returned_node)
                 for qnode_id in qg_id_mappings['nodes'][swagger_node.id]:
