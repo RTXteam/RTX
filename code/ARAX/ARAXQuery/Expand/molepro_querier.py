@@ -150,7 +150,7 @@ class MoleProQuerier:
             if qnode.curie:
                 stripped_qnode['curie'] = qnode.curie
             stripped_qnodes.append(stripped_qnode)
-        stripped_qedges = [{'id': qedge.id, 'source_id': qedge.source_id, 'target_id': qedge.target_id, 'type': qedge.type}
+        stripped_qedges = [{'id': qedge.id, 'source_id': qedge.source_id, 'target_id': qedge.target_id, 'type': 'correlated_with'}
                            for qedge in query_graph.edges]
         kp_response = requests.post(self.kp_api_url,
                                     json={'message': {'query_graph': {'nodes': stripped_qnodes, 'edges': stripped_qedges}}},

@@ -596,7 +596,7 @@ def test_molepro_query():
     actions_list = [
         "add_qnode(curie=HGNC:9379, type=gene, id=n00)",
         "add_qnode(type=chemical_substance, id=n01)",
-        "add_qedge(source_id=n00, target_id=n01, type=correlated_with, id=e00)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "expand(kp=MolePro)",
         "return(message=true, store=false)"
     ]
