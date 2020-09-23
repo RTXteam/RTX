@@ -60,7 +60,7 @@ class MoleProQuerier:
         json_response = self._send_query_to_kp(modified_query_graph, log)
         returned_kg = json_response.get('knowledge_graph')
         if not returned_kg:
-            log.warning(f"{self.kp_name} KP didn't error out, but no KG is in the response")
+            log.warning(f"No KG is present in the response from {self.kp_name}")
         else:
             # Build a map of node/edge IDs to qnode/qedge IDs
             qg_id_mappings = self._get_qg_id_mappings_from_results(json_response['results'])
@@ -113,10 +113,11 @@ class MoleProQuerier:
                 qnode.type = list(accepted_qnode_types)[0]
             # Convert curies to equivalent curies accepted by the KP (depending on qnode type)
             if qnode.curie:
-                synonymizer = NodeSynonymizer()
-                converted_curies = synonymizer.convert_curie(qnode.curie, self.prefix_mappings[qnode.type])
-                if converted_curies:
-                    qnode.curie = self._convert_prefix_to_kp_preference(converted_curies[0])
+                equivalent_curies = eu.get_curie_synonyms(qnode.curie, log)
+                desired_curies = [curie for curie in equivalent_curies if curie.startswith(f"{self.prefix_mappings[qnode.type]}:")]
+                if desired_curies:
+                    formatted_curies = [self._convert_prefix_to_kp_preference(curie) for curie in desired_curies]
+                    qnode.curie = formatted_curies if len(formatted_curies) > 1 else formatted_curies[0]
                     log.debug(f"Converted qnode {qnode.id} curie to {qnode.curie}")
                 else:
                     log.warning(f"Could not convert qnode {qnode.id} curie to preferred prefix ({self.prefix_mappings[qnode.type]})")
@@ -152,14 +153,26 @@ class MoleProQuerier:
             stripped_qnodes.append(stripped_qnode)
         stripped_qedges = [{'id': qedge.id, 'source_id': qedge.source_id, 'target_id': qedge.target_id, 'type': 'correlated_with'}
                            for qedge in query_graph.edges]
-        kp_response = requests.post(self.kp_api_url,
-                                    json={'message': {'query_graph': {'nodes': stripped_qnodes, 'edges': stripped_qedges}}},
-                                    headers={'accept': 'application/json'})
-        if kp_response.status_code != 200:
-            log.warning(f"{self.kp_name} KP API returned response of {kp_response.status_code}")
-            return dict()
-        else:
-            return kp_response.json()
+        source_stripped_qnode = next(qnode for qnode in stripped_qnodes if qnode['id'] == query_graph.edges[0].source_id)
+        input_curies = eu.convert_string_or_list_to_list(source_stripped_qnode['curie'])
+        combined_response = dict()
+        for input_curie in input_curies:  # Until we have batch querying, ping them one-by-one for each input curie
+            source_stripped_qnode['curie'] = input_curie
+            kp_response = requests.post(self.kp_api_url,
+                                        json={'message': {'query_graph': {'nodes': stripped_qnodes, 'edges': stripped_qedges}}},
+                                        headers={'accept': 'application/json'})
+            if kp_response.status_code != 200:
+                log.warning(f"{self.kp_name} KP API returned response of {kp_response.status_code}")
+            else:
+                kp_response_json = kp_response.json()
+                if kp_response_json.get('results'):
+                    if not combined_response:
+                        combined_response = kp_response_json
+                    else:
+                        combined_response['knowledge_graph']['nodes'] += kp_response_json['knowledge_graph']['nodes']
+                        combined_response['knowledge_graph']['edges'] += kp_response_json['knowledge_graph']['edges']
+                        combined_response['results'] += kp_response_json['results']
+        return combined_response
 
     def _create_swagger_edge_from_kp_edge(self, kp_edge: Dict[str, any]) -> Edge:
         swagger_edge = Edge(id=kp_edge['id'],
