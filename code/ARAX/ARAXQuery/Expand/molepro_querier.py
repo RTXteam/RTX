@@ -13,7 +13,6 @@ from response import Response
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
-from swagger_server.models.edge_attribute import EdgeAttribute
 from swagger_server.models.query_graph import QueryGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
@@ -26,14 +25,14 @@ class MoleProQuerier:
         self.kp_api_url = "https://translator.broadinstitute.org/molepro_reasoner/query"
         self.kp_name = "MolePro"
         self.accepted_node_types = {"chemical_substance", "gene", "disease"}  # TODO: add more.. (these aren't all)
-        self.node_type_remappings = {"protein": "gene"}
+        self.node_type_overrides_for_kp = {"protein": "gene"}
         self.prefix_mappings = {"chemical_substance": "CHEMBL.COMPOUND", "gene": "HGNC", "disease": "MONDO"}
         self.prefix_overrides_for_kp = {"CHEMBL.COMPOUND": "ChEMBL"}
         self.prefix_overrides_for_arax = {"ChEMBL": "CHEMBL.COMPOUND"}
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         """
-        This function answers a one-hop (single-edge) query using the Genetics Provider.
+        This function answers a one-hop (single-edge) query using the Molecular Provider.
         :param query_graph: A Reasoner API standard query graph.
         :return: A tuple containing:
             1. an (almost) Reasoner API standard knowledge graph containing all of the nodes and edges returned as
@@ -84,9 +83,9 @@ class MoleProQuerier:
 
         if not eu.qg_is_fulfilled(query_graph, final_kg):
             if continue_if_no_results:
-                log.warning(f"No paths were found satisfying this query graph in Genetics KP")
+                log.warning(f"No paths were found satisfying this query graph in {self.kp_name}")
             else:
-                log.error(f"No paths were found satisfying this query graph in Genetics KP", error_code="NoResults")
+                log.error(f"No paths were found satisfying this query graph in {self.kp_name}", error_code="NoResults")
 
         return final_kg, edge_to_nodes_map
 
@@ -105,10 +104,10 @@ class MoleProQuerier:
     def _pre_process_query_graph(self, query_graph: QueryGraph, log: Response) -> QueryGraph:
         for qnode in query_graph.nodes:
             # Convert node types to preferred format and verify we can do this query
-            formatted_qnode_types = {self.node_type_remappings.get(qnode_type, qnode_type) for qnode_type in eu.convert_string_or_list_to_list(qnode.type)}
+            formatted_qnode_types = {self.node_type_overrides_for_kp.get(qnode_type, qnode_type) for qnode_type in eu.convert_string_or_list_to_list(qnode.type)}
             accepted_qnode_types = formatted_qnode_types.intersection(self.accepted_node_types)
             if not accepted_qnode_types:
-                log.error(f"Can't answer this query using the Genetics Provider; unaccepted type for QNode {qnode.id}", error_code="UnsupportedQueryForKP")
+                log.error(f"Can't answer this query using {self.kp_name}; unaccepted type for QNode {qnode.id}", error_code="UnsupportedQueryForKP")
                 return query_graph
             else:
                 qnode.type = list(accepted_qnode_types)[0]
