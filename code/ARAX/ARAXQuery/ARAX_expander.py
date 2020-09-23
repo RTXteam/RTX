@@ -25,7 +25,7 @@ class ARAXExpander:
         self.parameters = {'edge_id': None, 'node_id': None, 'kp': None, 'enforce_directionality': None,
                            'use_synonyms': None, 'continue_if_no_results': None, 'COHD_method': None,
                            'COHD_method_percentile': None, 'include_integrated_score': None}
-        self.valid_kps = {"ARAX/KG1", "ARAX/KG2", "BTE", "COHD", "GeneticsKP", "NGD"}
+        self.valid_kps = {"ARAX/KG1", "ARAX/KG2", "BTE", "COHD", "GeneticsKP", "MolePro", "NGD"}
 
     @staticmethod
     def describe_me():
@@ -210,6 +210,9 @@ class ARAXExpander:
             elif kp_to_use == 'GeneticsKP':
                 from Expand.genetics_querier import GeneticsQuerier
                 kp_querier = GeneticsQuerier(log)
+            elif kp_to_use == 'MolePro':
+                from Expand.molepro_querier import MoleProQuerier
+                kp_querier = MoleProQuerier(log)
             else:
                 from Expand.kg_querier import KGQuerier
                 kp_querier = KGQuerier(log, kp_to_use)
