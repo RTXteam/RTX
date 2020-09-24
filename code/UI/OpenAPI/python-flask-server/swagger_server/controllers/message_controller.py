@@ -35,6 +35,5 @@ def get_message_feedback(message_id):  # noqa: E501
 
     :rtype: MessageFeedback
     """
-    rtxFeedback = RTXFeedback()
-    return rtxFeedback.getMessageFeedback(message_id)
+    return( { "status": 501, "title": "EndpointNotImplemented", "detail": "This endpoint is no longer implemented", "type": "about:blank" }, 501 )
 
