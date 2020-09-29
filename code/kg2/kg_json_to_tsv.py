@@ -86,7 +86,8 @@ def check_all_edges_have_same_set(edgekeys_list):
                     "subject",
                     "update_date",
                     "simplified_relation",
-                    "simplified_edge_label"]
+                    "simplified_edge_label",
+                    "has_evidence"]
     for edgelabel in edgekeys_list:
         if edgelabel not in supported_ls:
             raise ValueError("edge_label not in supported list: " + edgelabel)
@@ -276,6 +277,8 @@ def edges(graph, output_file_location):
             elif key == 'edge_label':  # fix for issue number 473 (hyphens in edge_labels)
                 value = value.replace('-', '_').replace('(', '').replace(')', '')
             elif key == 'publications':
+                value = str(value).replace("', '", "; ").replace("'", "").replace("[", "").replace("]", "")
+            elif key == 'has_evidence':
                 value = str(value).replace("', '", "; ").replace("'", "").replace("[", "").replace("]", "")
             vallist.append(value)
 

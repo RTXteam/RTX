@@ -636,7 +636,8 @@ def make_edge(subject_id: str,
             'publications': [],
             'publications_info': {},
             'update_date': update_date,
-            'provided_by': provided_by}
+            'provided_by': provided_by,
+            'has_evidence': []}
 
 
 def predicate_label_to_curie(predicate_label: str,

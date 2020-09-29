@@ -76,6 +76,7 @@ if __name__ == '__main__':
                                       update_date)
             edge["negated"] = negated
             edge["publications"] = publications
+            edge["has_evidence"].append(eco_code)
             edges.append(edge)
 
     kg2_util.save_json({"nodes": [], "edges": edges},
