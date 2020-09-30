@@ -61,10 +61,10 @@ class ARAXMessenger:
         command_definition = {
             'dsl_command': 'create_message()',
             'description': """The `create_message` command creates a basic empty Message object with basic boilerplate metadata
-            such as reasoner_id, schema_version, etc. filled in. This DSL command takes no arguments. This command is not explicitly
-            necessary, as it is called implicitly when needed. e.g. If a DSL program begins with add_qnode(), the
-            create_message() will be executed automatically if there is not yet a Message. If there is already Message in memory,
-            then this command will destroy the previous one (in memory) and begin a new message.""",
+                such as reasoner_id, schema_version, etc. filled in. This DSL command takes no arguments. This command is not explicitly
+                necessary, as it is called implicitly when needed. e.g. If a DSL program begins with add_qnode(), the
+                create_message() will be executed automatically if there is not yet a Message. If there is already Message in memory,
+                then this command will destroy the previous one (in memory) and begin a new message.""",
             'parameters': {
             }
         }
