@@ -115,7 +115,8 @@ class ARAXExpander:
                     "COHD_method_percentile": {
                         "is_required": False,
                         "examples": ["paired_concept_freq", "chi_square"],
-                        "enum": list(range(0, 101)),  # TODO: How to represent a range of allowable numbers?
+                        "min": 0,
+                        "max": 100,
                         "default": 99,
                         "type": "integer",
                         "description": """What percentile to use as a cut-off/threshold for the specified COHD method."""
