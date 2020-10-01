@@ -110,7 +110,7 @@ class ARAXExpander:
                     },
                     "COHD_method_percentile": {
                         "is_required": False,
-                        "examples": ["paired_concept_freq", "chi_square"],
+                        "examples": [95, 80],
                         "min": 0,
                         "max": 100,
                         "default": 99,
