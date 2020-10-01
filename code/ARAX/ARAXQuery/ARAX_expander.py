@@ -25,16 +25,12 @@ class ARAXExpander:
         self.edge_id_parameter_info = {
             "is_required": False,
             "examples": ["e00", "[e00, e01]"],
-            "enum": [],  # TODO: Choices are all edge IDs in the QG... but can't access message outside 'apply' method?
-            "default": None,  # TODO: Technically default is to expand the entire QG... how represent that?
             "type": "string",
             "description": """A query graph edge ID or list of such IDs to expand (default is to expand entire query graph)."""
         }
         self.node_id_parameter_info = {
             "is_required": False,
             "examples": ["n00", "[n00, n01]"],
-            "enum": [],  # TODO: Choices are all node IDs in the QG... but can't access message outside 'apply' method?
-            "default": None,  # TODO: Technically default is to expand the entire QG... how represent that?
             "type": "string",
             "description": """A query graph node ID or list of such IDs to expand (default is to expand entire query graph)."""
         }
