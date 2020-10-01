@@ -173,9 +173,9 @@ class ARAXExpander:
         parameters = {"kp": kp}
         for kp_parameter_name, info_dict in self.command_definitions[kp]["parameters"].items():
             if info_dict["type"] == "boolean":
-                parameters[kp_parameter_name] = self._convert_string_to_bool_if_bool(info_dict["default"])
+                parameters[kp_parameter_name] = self._convert_string_to_bool_if_bool(info_dict.get("default", ""))
             else:
-                parameters[kp_parameter_name] = info_dict["default"]
+                parameters[kp_parameter_name] = info_dict.get("default", None)
         # Override default values for any parameters passed in
         for key, value in input_parameters.items():
             if key and key not in parameters:
