@@ -25,36 +25,142 @@ class ARAXExpander:
         self.parameters = {'edge_id': None, 'node_id': None, 'kp': None, 'enforce_directionality': None,
                            'use_synonyms': None, 'continue_if_no_results': None, 'COHD_method': None,
                            'COHD_method_percentile': None, 'include_integrated_score': None}
-        self.valid_kps = {"ARAX/KG1", "ARAX/KG2", "BTE", "COHD", "GeneticsKP", "NGD"}
+        self.allowable_kps = {"ARAX/KG1", "ARAX/KG2", "BTE", "COHD", "GeneticsKP", "NGD"}
+        self.edge_id_parameter_info = {
+            "is_required": False,
+            "examples": ["e00", "[e00, e01]"],
+            "enum": [],  # TODO: Choices are all edge IDs in the QG... but can't access message outside 'apply' method?
+            "default": None,  # TODO: Technically default is to expand the entire QG... how represent that?
+            "type": "string",
+            "description": """A query graph edge ID or list of such IDs to expand (default is to expand entire query graph)."""
+        }
+        self.node_id_parameter_info = {
+            "is_required": False,
+            "examples": ["n00", "[n00, n01]"],
+            "enum": [],  # TODO: Choices are all node IDs in the QG... but can't access message outside 'apply' method?
+            "default": None,  # TODO: Technically default is to expand the entire QG... how represent that?
+            "type": "string",
+            "description": """A query graph node ID or list of such IDs to expand (default is to expand entire query graph)."""
+        }
+        self.continue_if_no_results_parameter_info = {
+            "is_required": False,
+            "examples": ["true", "false"],  # TODO: Should these be given here as strings or as booleans?
+            "enum": ["true", "false"],
+            "default": "false",
+            "type": "boolean",
+            "description": """Whether to continue execution if no paths are found matching the query graph."""
+        }
+        self.enforce_directionality_parameter_info = {
+            "is_required": False,
+            "examples": ["true", "false"],
+            "enum": ["true", "false"],
+            "default": "false",
+            "type": "boolean",
+            "description": """Whether to obey (vs. ignore) edge directions in the query graph."""
+        }
+        self.use_synonyms_parameter_info = {
+            "is_required": False,
+            "examples": ["true", "false"],
+            "enum": ["true", "false"],
+            "default": "true",
+            "type": "boolean",
+            "description": """Whether to consider curie synonyms and merge synonymous nodes."""
+        }
+        self.command_definitions = {
+            "ARAX/KG1": {
+                "dsl_command": "expand(kp=ARAX/KG1)",
+                "description": """TODO""",
+                "parameters": {
+                    "edge_id": self.edge_id_parameter_info,
+                    "node_id": self.node_id_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "enforce_directionality": self.enforce_directionality_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info
+                }
+            },
+            "ARAX/KG2": {
+                "dsl_command": "expand(kp=ARAX/KG2)",
+                "description": """TODO""",
+                "parameters": {
+                    "edge_id": self.edge_id_parameter_info,
+                    "node_id": self.node_id_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "enforce_directionality": self.enforce_directionality_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info
+                }
+            },
+            "BTE": {
+                "dsl_command": "expand(kp=BTE)",
+                "description": """TODO""",
+                "parameters": {
+                    "edge_id": self.edge_id_parameter_info,
+                    "node_id": self.node_id_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info
+                }
+            },
+            "COHD": {
+                "dsl_command": "expand(kp=COHD)",
+                "description": """TODO""",
+                "parameters": {
+                    "edge_id": self.edge_id_parameter_info,
+                    "node_id": self.node_id_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info,
+                    "COHD_method": {
+                        "is_required": False,
+                        "examples": ["paired_concept_freq", "chi_square"],
+                        "enum": ["paired_concept_freq", "observed_expected_ratio", "chi_square"],
+                        "default": "paired_concept_freq",
+                        "type": "string",
+                        "description": """Which measure from COHD should be considered."""
+                    },
+                    "COHD_method_percentile": {
+                        "is_required": False,
+                        "examples": ["paired_concept_freq", "chi_square"],
+                        "enum": list(range(0, 101)),  # TODO: How to represent a range of allowable numbers?
+                        "default": 99,
+                        "type": "integer",
+                        "description": """What percentile to use as a cut-off/threshold for the specified COHD method."""
+                    }
+                }
+            },
+            "GeneticsKP": {
+                "dsl_command": "expand(kp=GeneticsKP)",
+                "description": """TODO""",
+                "parameters": {
+                    "edge_id": self.edge_id_parameter_info,
+                    "node_id": self.node_id_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info,
+                    "include_integrated_score": {
+                        "is_required": False,
+                        "examples": ["true", "false"],
+                        "enum": ["true", "false"],
+                        "default": "false",
+                        "type": "boolean",
+                        "description": """Whether to add genetics-quantile edges (in addition to MAGMA edges) from the Genetics KP."""
+                    }
+                }
+            },
+            "NGD": {
+                "dsl_command": "expand(kp=NGD)",
+                "description": """TODO""",
+                "parameters": {
+                    "edge_id": self.edge_id_parameter_info,
+                    "node_id": self.node_id_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info
+                }
+            }
+        }
 
-    @staticmethod
-    def describe_me():
+    def describe_me(self):
         """
         Little helper function for internal use that describes the actions and what they can do
         :return:
         """
-        # this is quite different than the `describe_me` in ARAX_overlay and ARAX_filter_kg due to expander being less
-        # of a dispatcher (like overlay and filter_kg) and more of a single self contained class
-        brief_description = """
-        `expand` effectively takes a query graph (QG) and reaches out to various knowledge providers (KP's) to find 
-        all bioentity subgraphs that satisfy that QG and augments the knowledge graph (KG) with them. As currently 
-        implemented, `expand` can utilize the ARA Expander team KG1 and KG2 Neo4j instances as well as BioThings 
-        Explorer to fulfill QG's, with functionality built in to reach out to other KP's as they are rolled out.
-        """
-        description_list = []
-        params_dict = dict()
-        params_dict['brief_description'] = brief_description
-        params_dict['edge_id'] = {"a query graph edge ID or list of such IDs to expand (optional, default is to expand entire query graph)"}  # this is a workaround due to how self.parameters is utilized in this class
-        params_dict['node_id'] = {"a query graph node ID to expand (optional, default is to expand entire query graph)"}
-        params_dict['kp'] = {"the knowledge provider to use - current options are `ARAX/KG1`, `ARAX/KG2`, `BTE`, `COHD`, `GeneticsKP`, `NGD` (optional, default is `ARAX/KG1`)"}
-        params_dict['enforce_directionality'] = {"whether to obey (vs. ignore) edge directions in query graph - options are `true` or `false` (optional, default is `false`)"}
-        params_dict['use_synonyms'] = {"whether to consider curie synonyms and merge synonymous nodes - options are `true` or `false` (optional, default is `true`)"}
-        params_dict['continue_if_no_results'] = {"whether to continue execution if no paths are found matching the query graph - options are `true` or `false` (optional, default is `false`)"}
-        params_dict['COHD_method'] = {"what method used to expand - current options are `paired_concept_freq`, `observed_expected_ratio`, `chi_square` (optional, default is `paired_concept_freq`)"}
-        params_dict['COHD_method_percentile'] = {"what percentile used as a threshold for specified COHD method (optional, default is 99 (99%), range is [0, 100])"}
-        params_dict['include_integrated_score'] = {"whether to add genetics-quantile edges (in addition to MAGMA edges) from the Genetics KP - options are `true` or `false` (optional, default is `false`); relevant only when `kp=GeneticsKP`"}
-        description_list.append(params_dict)
-        return description_list
+        return list(self.command_definitions.values())
 
     def apply(self, input_message, input_parameters, response=None):
 
@@ -193,8 +299,8 @@ class ARAXExpander:
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, edge_to_nodes_map
 
-        if kp_to_use not in self.valid_kps:
-            log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(self.valid_kps)}",
+        if kp_to_use not in self.allowable_kps:
+            log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(self.allowable_kps)}",
                       error_code="InvalidKP")
             return answer_kg, edge_to_nodes_map
         else:
