@@ -1,7 +1,7 @@
 #!/bin/env python3
 import sys
 import os
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Union
 
 from response import Response
 from Expand.expand_utilities import DictKnowledgeGraph
@@ -22,10 +22,6 @@ class ARAXExpander:
     def __init__(self):
         self.response = None
         self.message = None
-        self.parameters = {'edge_id': None, 'node_id': None, 'kp': None, 'enforce_directionality': None,
-                           'use_synonyms': None, 'continue_if_no_results': None, 'COHD_method': None,
-                           'COHD_method_percentile': None, 'include_integrated_score': None}
-        self.allowable_kps = {"ARAX/KG1", "ARAX/KG2", "BTE", "COHD", "GeneticsKP", "NGD"}
         self.edge_id_parameter_info = {
             "is_required": False,
             "examples": ["e00", "[e00, e01]"],
@@ -96,6 +92,7 @@ class ARAXExpander:
                     "edge_id": self.edge_id_parameter_info,
                     "node_id": self.node_id_parameter_info,
                     "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "enforce_directionality": self.enforce_directionality_parameter_info,
                     "use_synonyms": self.use_synonyms_parameter_info
                 }
             },
@@ -175,24 +172,19 @@ class ARAXExpander:
             return response
 
         # Define a complete set of allowed parameters and their defaults
-        parameters = self.parameters
-        parameters['kp'] = "ARAX/KG1"
-        parameters['enforce_directionality'] = False
-        parameters['use_synonyms'] = True
-        parameters['continue_if_no_results'] = False
-        parameters['COHD_method'] = 'paired_concept_freq'
-        parameters['COHD_method_percentile'] = 99
-        parameters['include_integrated_score'] = False
+        kp = input_parameters.get("kp", "ARAX/KG1")
+        parameters = {"kp": kp}
+        for kp_parameter_name, info_dict in self.command_definitions[kp]["parameters"].items():
+            if info_dict["type"] == "boolean":
+                parameters[kp_parameter_name] = self._convert_string_to_bool_if_bool(info_dict["default"])
+            else:
+                parameters[kp_parameter_name] = info_dict["default"]
         # Override default values for any parameters passed in
         for key, value in input_parameters.items():
             if key and key not in parameters:
                 response.error(f"Supplied parameter {key} is not permitted", error_code="UnknownParameter")
             else:
-                if type(value) is str and value.lower() == "true":
-                    value = True
-                elif type(value) is str and value.lower() == "false":
-                    value = False
-                parameters[key] = value
+                parameters[key] = self._convert_string_to_bool_if_bool(value) if isinstance(value, str) else value
 
         # Handle situation where 'ARAX/KG2C' is entered as the kp (technically invalid, but we won't error out)
         if parameters['kp'] == "ARAX/KG2C":
@@ -299,8 +291,9 @@ class ARAXExpander:
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, edge_to_nodes_map
 
-        if kp_to_use not in self.allowable_kps:
-            log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(self.allowable_kps)}",
+        allowable_kps = set(self.command_definitions.keys())
+        if kp_to_use not in allowable_kps:
+            log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(allowable_kps)}",
                       error_code="InvalidKP")
             return answer_kg, edge_to_nodes_map
         else:
@@ -668,6 +661,15 @@ class ARAXExpander:
             if edge_node_ids.intersection(potential_connected_edge_node_ids):
                 return potential_connected_edge
         return None
+
+    @staticmethod
+    def _convert_string_to_bool_if_bool(bool_string: str) -> Union[bool, str]:
+        if bool_string.lower() in {"true", "t"}:
+            return True
+        elif bool_string.lower() in {"false", "f"}:
+            return False
+        else:
+            return bool_string
 
 
 def main():
