@@ -482,6 +482,11 @@ class ARAXQuery:
                         message = result.data['message']
                         self.message = message
 
+                    if action['command'] == 'fetch_message':
+                        result = messenger.apply_fetch_message(message,action['parameters'])
+                        message = messenger.message
+                        self.message = message
+
                     elif action['command'] == 'add_qnode':
                         result = messenger.add_qnode(message,action['parameters'])
 
