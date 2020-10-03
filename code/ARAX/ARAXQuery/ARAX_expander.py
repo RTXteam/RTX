@@ -308,12 +308,10 @@ class ARAXExpander:
         qnodes_with_curies = [qnode for qnode in edge_query_graph.nodes if qnode.curie]
         input_qnode = qnodes_with_curies[0] if qnodes_with_curies else edge_query_graph.nodes[0]
         output_qnode = next(qnode for qnode in edge_query_graph.nodes if qnode.id != input_qnode.id)
-        num_input_curies = self._get_number_of_curies(input_qnode)
-        num_output_curies = self._get_number_of_curies(output_qnode)
-        input_curie_description = f" [{num_input_curies} curies]" if num_input_curies else ""
-        output_curie_description = f" [{num_output_curies} curies]" if num_output_curies else ""
-        log.debug(f"Modified QG for this edge is ({input_qnode.id}:{input_qnode.type}{input_curie_description})-"
-                  f"{qedge.type if qedge.type else ''}-({output_qnode.id}:{output_qnode.type}{output_curie_description})")
+        input_curie_summary = self._get_qnode_curie_summary(input_qnode)
+        output_curie_summary = self._get_qnode_curie_summary(output_qnode)
+        log.debug(f"Modified QG for this edge is ({input_qnode.id}:{input_qnode.type}{input_curie_summary})-"
+                  f"{qedge.type if qedge.type else ''}-({output_qnode.id}:{output_qnode.type}{output_curie_summary})")
         return edge_query_graph
 
     @staticmethod
@@ -594,6 +592,15 @@ class ARAXExpander:
             return 1
         else:
             return 0
+
+    def _get_qnode_curie_summary(self, qnode: QNode) -> str:
+        num_curies = self._get_number_of_curies(qnode)
+        if num_curies == 1:
+            return f" {qnode.curie if isinstance(qnode.curie, str) else qnode.curie[0]}"
+        elif num_curies > 1:
+            return f" [{num_curies} curies]"
+        else:
+            return ""
 
 
 def main():
