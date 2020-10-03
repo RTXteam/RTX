@@ -470,7 +470,7 @@ def test_two_hop_based_on_types_1():
             "overlay(action=compute_ngd)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=limit_number_of_results, max_results=50)",
-            "return(message=true, store=true)",
+            "return(message=false, store=true)",
         ]}}
         [response, message] = _do_arax_query(query)
         print(message.id)
@@ -502,7 +502,7 @@ def test_one_hop_based_on_types_1():
             "overlay(action=compute_ngd)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=limit_number_of_results, max_results=50)",
-            "return(message=true, store=true)",
+            "return(message=true, store=false)",
         ]}}
         [response, message] = _do_arax_query(query)
         print(message.id)
