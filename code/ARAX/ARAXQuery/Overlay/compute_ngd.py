@@ -148,7 +148,10 @@ class ComputeNGD:
 
             self.response.info(f"NGD values successfully added to edges")
             num_computed_fast = num_computed_total - num_computed_slow
-            percent_computed_fast = round((num_computed_fast / num_computed_total) * 100)
+            try:
+                percent_computed_fast = round((num_computed_fast / num_computed_total) * 100)
+            except:
+                percent_computed_fast = np.inf
             self.response.debug(f"Used fastNGD for {percent_computed_fast}% of edges "
                                 f"({num_computed_fast} of {num_computed_total})")
         else:  # you want to add it for each edge in the KG
