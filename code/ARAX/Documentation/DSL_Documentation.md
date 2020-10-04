@@ -3,33 +3,33 @@
 - [Domain Specific Langauage (DSL) description](#domain-specific-langauage-dsl-description)
 - [Full documentation of current DSL commands](#full-documentation-of-current-dsl-commands)
   - [ARAX_messenger](#arax_messenger)
-    - [`create_message()`](#create_message)
-    - [`add_qnode()`](#add_qnode)
-    - [`add_qedge()`](#add_qedge)
+    - [create_message()](#create_message)
+    - [add_qnode()](#add_qnode)
+    - [add_qedge()](#add_qedge)
   - [ARAX_expander](#arax_expander)
     - [`expand()`](#expand)
   - [ARAX_overlay](#arax_overlay)
-    - [`overlay(action=overlay_clinical_info)`](#overlayactionoverlay_clinical_info)
-    - [`overlay(action=overlay_exposures_data)`](#overlayactionoverlay_exposures_data)
-    - [`overlay(action=compute_jaccard)`](#overlayactioncompute_jaccard)
     - [`overlay(action=predict_drug_treats_disease)`](#overlayactionpredict_drug_treats_disease)
-    - [`overlay(action=fisher_exact_test)`](#overlayactionfisher_exact_test)
     - [`overlay(action=compute_ngd)`](#overlayactioncompute_ngd)
+    - [`overlay(action=overlay_exposures_data)`](#overlayactionoverlay_exposures_data)
+    - [`overlay(action=fisher_exact_test)`](#overlayactionfisher_exact_test)
+    - [`overlay(action=overlay_clinical_info)`](#overlayactionoverlay_clinical_info)
     - [`overlay(action=add_node_pmids)`](#overlayactionadd_node_pmids)
+    - [`overlay(action=compute_jaccard)`](#overlayactioncompute_jaccard)
   - [ARAX_filter_kg](#arax_filter_kg)
-    - [`filter_kg(action=remove_edges_by_property)`](#filter_kgactionremove_edges_by_property)
     - [`filter_kg(action=remove_nodes_by_type)`](#filter_kgactionremove_nodes_by_type)
-    - [`filter_kg(action=remove_nodes_by_property)`](#filter_kgactionremove_nodes_by_property)
+    - [`filter_kg(action=remove_edges_by_property)`](#filter_kgactionremove_edges_by_property)
     - [`filter_kg(action=remove_edges_by_type)`](#filter_kgactionremove_edges_by_type)
     - [`filter_kg(action=remove_orphaned_nodes)`](#filter_kgactionremove_orphaned_nodes)
     - [`filter_kg(action=remove_edges_by_stats)`](#filter_kgactionremove_edges_by_stats)
     - [`filter_kg(action=remove_edges_by_attribute)`](#filter_kgactionremove_edges_by_attribute)
+    - [`filter_kg(action=remove_nodes_by_property)`](#filter_kgactionremove_nodes_by_property)
   - [ARAX_filter_results](#arax_filter_results)
-    - [`filter_results(action=sort_by_edge_attribute)`](#filter_resultsactionsort_by_edge_attribute)
     - [`filter_results(action=sort_by_node_attribute)`](#filter_resultsactionsort_by_node_attribute)
-    - [`filter_results(action=sort_by_node_count)`](#filter_resultsactionsort_by_node_count)
     - [`filter_results(action=limit_number_of_results)`](#filter_resultsactionlimit_number_of_results)
+    - [`filter_results(action=sort_by_edge_attribute)`](#filter_resultsactionsort_by_edge_attribute)
     - [`filter_results(action=sort_by_edge_count)`](#filter_resultsactionsort_by_edge_count)
+    - [`filter_results(action=sort_by_node_count)`](#filter_resultsactionsort_by_node_count)
   - [ARAX_resultify](#arax_resultify)
     - [`resultify()`](#resultify)
 
@@ -53,29 +53,23 @@ while initially an empty list, a set of processing actions can be applied with s
  
 # Full documentation of current DSL commands
 ## ARAX_messenger
-### `create_message()`
-The `create_message` method creates a basic empty Message object with basic boilerplate metadata
-            such as reasoner_id, schema_version, etc. filled in. This DSL command takes no arguments
+### create_message()
+||||
+|-----|-----|-----|
+|_DSL parameters_| description | parameters |
+|_DSL arguments_| The `create_message` command creates a basic empty Message object with basic boilerplate metadata
 
+### add_qnode()
+||||
+|-----|-----|-----|
+|_DSL parameters_| description | parameters |
+|_DSL arguments_| The `add_qnode` method adds an additional QNode to the QueryGraph in the Message object. Currently
 
-### `add_qnode()`
-The `add_qnode` method adds an additional QNode to the QueryGraph in the Message object. Currently
-                when a curie or name is specified, this method will only return success if a matching node is found in the KG1/KG2 KGNodeIndex.
-
-|||||||
-|-----|-----|-----|-----|-----|-----|
-|_DSL parameters_| id | curie | name | type | is_set |
-|_DSL arguments_| {'Any string that is unique among all QNode id fields, with recommended format n00, n01, n02, etc.'} | {'Any compact URI (CURIE) (e.g. DOID:9281) (May also be a list like [UniProtKB:P12345,UniProtKB:Q54321])'} | {'Any name of a bioentity that will be resolved into a CURIE if possible or result in an error if not (e.g. hypertension, insulin)'} | {'Any valid Translator bioentity type (e.g. protein, chemical_substance, disease)'} | {'If set to true, this QNode represents a set of nodes that are all in common between the two other linked QNodes'} |
-
-### `add_qedge()`
-The `add_qedge` method adds an additional QEdge to the QueryGraph in the Message object. Currently
-                source_id and target_id QNodes must already be present in the QueryGraph. The specified type is not currently checked that it is a
-                valid Translator/BioLink relationship type, but it should be.
-
-||||||
-|-----|-----|-----|-----|-----|
-|_DSL parameters_| id | source_id | target_id | type |
-|_DSL arguments_| {'Any string that is unique among all QEdge id fields, with recommended format e00, e01, e02, etc.'} | {'id of the source QNode already present in the QueryGraph (e.g. n01, n02)'} | {'id of the target QNode already present in the QueryGraph (e.g. n01, n02)'} | {'Any valid Translator/BioLink relationship type (e.g. physically_interacts_with, participates_in)'} |
+### add_qedge()
+||||
+|-----|-----|-----|
+|_DSL parameters_| description | parameters |
+|_DSL arguments_| The `add_qedge` command adds an additional QEdge to the QueryGraph in the Message object. Currently
 
 ## ARAX_expander
 ### `expand()`
@@ -86,70 +80,12 @@ The `add_qedge` method adds an additional QEdge to the QueryGraph in the Message
         Explorer to fulfill QG's, with functionality built in to reach out to other KP's as they are rolled out.
         
 
-||||||||||
-|-----|-----|-----|-----|-----|-----|-----|-----|-----|
-|_DSL parameters_| edge_id | node_id | kp | enforce_directionality | use_synonyms | continue_if_no_results | COHD_method | COHD_method_percentile |
-|_DSL arguments_| {'a query graph edge ID or list of such IDs to expand (optional, default is to expand entire query graph)'} | {'a query graph node ID to expand (optional, default is to expand entire query graph)'} | {'the knowledge provider to use - current options are `ARAX/KG1`, `ARAX/KG2`, `BTE`, `COHD` (optional, default is `ARAX/KG1`)'} | {'whether to obey (vs. ignore) edge directions in query graph - options are `true` or `false` (optional, default is `false`)'} | {'whether to consider curie synonyms and merge synonymous nodes - options are `true` or `false` (optional, default is `true`)'} | {'whether to continue execution if no paths are found matching the query graph - options are `true` or `false` (optional, default is `false`)'} | {'what method used to expand - current options are `paired_concept_freq`, `observed_expected_ratio`, `chi_square` (optional, default is `paired_concept_freq`)'} | {'what percentile used as a threshold for specified COHD method (optional, default is 99 (99%), range is [0, 100])'} |
+|||||||||||
+|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|
+|_DSL parameters_| edge_id | node_id | kp | enforce_directionality | use_synonyms | continue_if_no_results | COHD_method | COHD_method_percentile | include_integrated_score |
+|_DSL arguments_| {'a query graph edge ID or list of such IDs to expand (optional, default is to expand entire query graph)'} | {'a query graph node ID to expand (optional, default is to expand entire query graph)'} | {'the knowledge provider to use - current options are `ARAX/KG1`, `ARAX/KG2`, `BTE`, `COHD`, `GeneticsKP`, `NGD` (optional, default is `ARAX/KG1`)'} | {'whether to obey (vs. ignore) edge directions in query graph - options are `true` or `false` (optional, default is `false`)'} | {'whether to consider curie synonyms and merge synonymous nodes - options are `true` or `false` (optional, default is `true`)'} | {'whether to continue execution if no paths are found matching the query graph - options are `true` or `false` (optional, default is `false`)'} | {'what method used to expand - current options are `paired_concept_freq`, `observed_expected_ratio`, `chi_square` (optional, default is `paired_concept_freq`)'} | {'what percentile used as a threshold for specified COHD method (optional, default is 99 (99%), range is [0, 100])'} | {'whether to add genetics-quantile edges (in addition to MAGMA edges) from the Genetics KP - options are `true` or `false` (optional, default is `false`); relevant only when `kp=GeneticsKP`'} |
 
 ## ARAX_overlay
-### `overlay(action=overlay_clinical_info)`
-
-`overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
-This KP has a number of different functionalities, such as `paired_concept_frequency`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
-All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
-This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
-This information is then included as an edge attribute.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the relation specified by `virtual_relation_label`.
-These virtual edges have the following types:
-
-* `paired_concept_frequency` has the virtual edge type `has_paired_concept_frequency_with`
-* `observed_expected_ratio` has the virtual edge type `has_observed_expected_ratio_with`
-* `chi_square` has the virtual edge type `has_chi_square_with`
-
-Note that this DSL command has quite a bit of functionality, so a brief description of the DSL parameters is given here:
-
-* `paired_concept_frequency`: If set to `true`, retrieves observed clinical frequencies of a pair of concepts indicated by edge source and target nodes and adds these values as edge attributes.
-* `observed_expected_ratio`: If set to `true`, returns the natural logarithm of the ratio between the observed count and expected count of edge source and target nodes. Expected count is calculated from the single concept frequencies and assuming independence between the concepts. This information is added as an edge attribute.
-* `chi_square`: If set to `true`, returns the chi-square statistic and p-value between pairs of concepts indicated by edge source/target nodes and adds these values as edge attributes. The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and assuming independence between concepts. P-value is calculated with 1 DOF.
-* `virtual_edge_type`: Overlays the requested information on virtual edges (ones that don't exist in the query graph).
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-
-
-||||||||
-|-----|-----|-----|-----|-----|-----|-----|
-|_DSL parameters_| paired_concept_frequency | observed_expected_ratio | chi_square | virtual_relation_label | source_qnode_id | target_qnode_id |
-|_DSL arguments_| {'false', 'true'} | {'false', 'true'} | {'false', 'true'} | {'any string label used to identify the virtual edge (optional, otherwise information is added as an attribute to all existing edges in the KG)'} | {'a specific source query node id (optional, otherwise applied to all edges)'} | {'a specific target query node id (optional, otherwise applied to all edges)'} |
-
-### `overlay(action=overlay_exposures_data)`
-
-`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
-This information is included in edge attributes with the name `icees_p-value`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
-
-This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
-            
-
-|||||
-|-----|-----|-----|-----|
-|_DSL parameters_| virtual_relation_label | source_qnode_id | target_qnode_id |
-|_DSL arguments_| {'any string label used to identify the virtual edge (optional, otherwise information is added as an attribute to all existing edges in the KG)'} | {'a specific source query node id (optional, otherwise applied to all edges)'} | {'a specific target query node id (optional, otherwise applied to all edges)'} |
-
-### `overlay(action=compute_jaccard)`
-
-`compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
-The jaccard similarity measures how many `intermediate_node_id`'s are shared in common between each `start_node_id` and `target_node_id`.
-This is used for purposes such as "find me all drugs (`start_node_id`) that have many proteins (`intermediate_node_id`) in common with this disease (`end_node_id`)."
-This can be used for downstream filtering to concentrate on relevant bioentities.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-
-
-||||||
-|-----|-----|-----|-----|-----|
-|_DSL parameters_| start_node_id | intermediate_node_id | end_node_id | virtual_relation_label |
-|_DSL arguments_| {'a node id (required)'} | {'a query node id (required)'} | {'a query node id (required)'} | {'any string label (required) that will be used to identify the virtual edge added'} |
-
 ### `overlay(action=predict_drug_treats_disease)`
 
 `predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substanct treats a disease/phenotypic feature.
@@ -170,6 +106,39 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 |-----|-----|-----|-----|
 |_DSL parameters_| virtual_relation_label | source_qnode_id | target_qnode_id |
 |_DSL arguments_| {'optional: any string label that identifies the virtual edges added (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'} | {'optional: a specific source query node id corresponding to a disease query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'} | {'optional: a specific target query node id corresponding to a disease or phenotypic_feature query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'} |
+
+### `overlay(action=compute_ngd)`
+
+`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
+This information is then included as an edge attribute with the name `normalized_google_distance`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
+
+Use cases include:
+
+* focusing in on edges that are well represented in the literature
+* focusing in on edges that are under-represented in the literature
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+
+
+||||||
+|-----|-----|-----|-----|-----|
+|_DSL parameters_| default_value | virtual_relation_label | source_qnode_id | target_qnode_id |
+|_DSL arguments_| {'0', 'inf'} | {'any string label identifying the virtual edge label (optional, otherwise applied to all existing edges in the KG)'} | {'a specific source query node id (optional, otherwise applied to all edges)'} | {'a specific target query node id (optional, otherwise applied to all edges)'} |
+
+### `overlay(action=overlay_exposures_data)`
+
+`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
+This information is included in edge attributes with the name `icees_p-value`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
+
+This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
+            
+
+|||||
+|-----|-----|-----|-----|
+|_DSL parameters_| virtual_relation_label | source_qnode_id | target_qnode_id |
+|_DSL arguments_| {'any string label used to identify the virtual edge (optional, otherwise information is added as an attribute to all existing edges in the KG)'} | {'a specific source query node id (optional, otherwise applied to all edges)'} | {'a specific target query node id (optional, otherwise applied to all edges)'} |
 
 ### `overlay(action=fisher_exact_test)`
 
@@ -208,24 +177,34 @@ The code is as follows:
 |_DSL parameters_| source_qnode_id | virtual_relation_label | target_qnode_id | rel_edge_id | top_n | cutoff |
 |_DSL arguments_| {"a specific QNode id of source nodes in message KG (required), eg. 'n00'"} | {"any string to label the relation and query edge id of virtual edge with fisher's exact test p-value (required) eg. 'FET'"} | {"a specific QNode id of target nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test (required), eg. 'n01'"} | {"a specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"} | {'an int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned), eg. 10'} | {'a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05'} |
 
-### `overlay(action=compute_ngd)`
+### `overlay(action=overlay_clinical_info)`
 
-`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
-This information is then included as an edge attribute with the name `normalized_google_distance`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
+`overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
+This KP has a number of different functionalities, such as `paired_concept_frequency`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
+All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
+This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
+This information is then included as an edge attribute.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the relation specified by `virtual_relation_label`.
+These virtual edges have the following types:
 
-Use cases include:
+* `paired_concept_frequency` has the virtual edge type `has_paired_concept_frequency_with`
+* `observed_expected_ratio` has the virtual edge type `has_observed_expected_ratio_with`
+* `chi_square` has the virtual edge type `has_chi_square_with`
 
-* focusing in on edges that are well represented in the literature
-* focusing in on edges that are under-represented in the literature
+Note that this DSL command has quite a bit of functionality, so a brief description of the DSL parameters is given here:
+
+* `paired_concept_frequency`: If set to `true`, retrieves observed clinical frequencies of a pair of concepts indicated by edge source and target nodes and adds these values as edge attributes.
+* `observed_expected_ratio`: If set to `true`, returns the natural logarithm of the ratio between the observed count and expected count of edge source and target nodes. Expected count is calculated from the single concept frequencies and assuming independence between the concepts. This information is added as an edge attribute.
+* `chi_square`: If set to `true`, returns the chi-square statistic and p-value between pairs of concepts indicated by edge source/target nodes and adds these values as edge attributes. The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and assuming independence between concepts. P-value is calculated with 1 DOF.
+* `virtual_edge_type`: Overlays the requested information on virtual edges (ones that don't exist in the query graph).
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
 
 
-||||||
-|-----|-----|-----|-----|-----|
-|_DSL parameters_| default_value | virtual_relation_label | source_qnode_id | target_qnode_id |
-|_DSL arguments_| {'inf', '0'} | {'any string label identifying the virtual edge label (optional, otherwise applied to all existing edges in the KG)'} | {'a specific source query node id (optional, otherwise applied to all edges)'} | {'a specific target query node id (optional, otherwise applied to all edges)'} |
+||||||||
+|-----|-----|-----|-----|-----|-----|-----|
+|_DSL parameters_| paired_concept_frequency | observed_expected_ratio | chi_square | virtual_relation_label | source_qnode_id | target_qnode_id |
+|_DSL arguments_| {'true', 'false'} | {'true', 'false'} | {'true', 'false'} | {'any string label used to identify the virtual edge (optional, otherwise information is added as an attribute to all existing edges in the KG)'} | {'a specific source query node id (optional, otherwise applied to all edges)'} | {'a specific target query node id (optional, otherwise applied to all edges)'} |
 
 ### `overlay(action=add_node_pmids)`
 
@@ -239,9 +218,39 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 |||
 |-----|-----|
 |_DSL parameters_| max_num |
-|_DSL arguments_| {'all', 'any integer'} |
+|_DSL arguments_| {'any integer', 'all'} |
+
+### `overlay(action=compute_jaccard)`
+
+`compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
+The jaccard similarity measures how many `intermediate_node_id`'s are shared in common between each `start_node_id` and `target_node_id`.
+This is used for purposes such as "find me all drugs (`start_node_id`) that have many proteins (`intermediate_node_id`) in common with this disease (`end_node_id`)."
+This can be used for downstream filtering to concentrate on relevant bioentities.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+
+
+||||||
+|-----|-----|-----|-----|-----|
+|_DSL parameters_| start_node_id | intermediate_node_id | end_node_id | virtual_relation_label |
+|_DSL arguments_| {'a node id (required)'} | {'a query node id (required)'} | {'a query node id (required)'} | {'any string label (required) that will be used to identify the virtual edge added'} |
 
 ## ARAX_filter_kg
+### `filter_kg(action=remove_nodes_by_type)`
+
+`remove_node_by_type` removes nodes from the knowledge graph (KG) based on a given node type.
+Use cases include:
+* removing all nodes that have `node_type=protein`.
+* removing all nodes that have `node_type=chemical_substance`.
+* etc.
+This can be applied to an arbitrary knowledge graph as possible node types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+
+
+|||
+|-----|-----|
+|_DSL parameters_| node_type |
+|_DSL arguments_| {'a node type'} |
+
 ### `filter_kg(action=remove_edges_by_property)`
 
 `remove_edges_by_property` removes edges from the knowledge graph (KG) based on a given edge property.
@@ -262,39 +271,7 @@ This can be applied to an arbitrary knowledge graph as possible edge properties 
 ||||||
 |-----|-----|-----|-----|-----|
 |_DSL parameters_| edge_property | property_value | remove_connected_nodes | qnode_id |
-|_DSL arguments_| {'an edge property'} | {'a value for the edge property'} | {'t', 'true', 'F', 'True', 'false', 'f', 'False', 'T'} | {'a specific query node id to remove'} |
-
-### `filter_kg(action=remove_nodes_by_type)`
-
-`remove_node_by_type` removes nodes from the knowledge graph (KG) based on a given node type.
-Use cases include:
-* removing all nodes that have `node_type=protein`.
-* removing all nodes that have `node_type=chemical_substance`.
-* etc.
-This can be applied to an arbitrary knowledge graph as possible node types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-
-
-|||
-|-----|-----|
-|_DSL parameters_| node_type |
-|_DSL arguments_| {'a node type'} |
-
-### `filter_kg(action=remove_nodes_by_property)`
-
-`remove_nodes_by_property` removes nodes from the knowledge graph (KG) based on a given node property.
-Use cases include:
-                
-* removing all nodes that were provided by a certain knowledge provider (KP) via `node_property=provided, property_value=Pharos` to remove all nodes provided by the KP Pharos.
-* removing all nodes provided by another ARA via `node_property=is_defined_by, property_value=ARAX/RTX`
-* etc. etc.
-                
-This can be applied to an arbitrary knowledge graph as possible node properties are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-
-
-||||
-|-----|-----|-----|
-|_DSL parameters_| node_property | property_value |
-|_DSL arguments_| {'an node property'} | {'a value for the node property'} |
+|_DSL arguments_| {'an edge property'} | {'a value for the edge property'} | {'t', 'T', 'true', 'false', 'F', 'True', 'f', 'False'} | {'a specific query node id to remove'} |
 
 ### `filter_kg(action=remove_edges_by_type)`
 
@@ -314,7 +291,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 |||||
 |-----|-----|-----|-----|
 |_DSL parameters_| edge_type | remove_connected_nodes | qnode_id |
-|_DSL arguments_| {'an edge type'} | {'t', 'true', 'F', 'True', 'false', 'f', 'False', 'T'} | {'a specific query node id to remove'} |
+|_DSL arguments_| {'an edge type'} | {'t', 'T', 'true', 'false', 'F', 'True', 'f', 'False'} | {'a specific query node id to remove'} |
 
 ### `filter_kg(action=remove_orphaned_nodes)`
 
@@ -356,7 +333,7 @@ e.g. to remove all the edges with jaccard_index values greater than 0.25 standar
 |||||||||
 |-----|-----|-----|-----|-----|-----|-----|-----|
 |_DSL parameters_| edge_attribute | type | direction | threshold | top | remove_connected_nodes | qnode_id |
-|_DSL arguments_| {'an edge attribute name'} | {'top_n', 'top_std', 'n', 'std'} | {'above', 'below'} | {'a floating point number'} | {'t', 'true', 'F', 'True', 'false', 'f', 'False', 'T'} | {'t', 'true', 'F', 'True', 'false', 'f', 'False', 'T'} | {'a specific query node id to remove'} |
+|_DSL arguments_| {'an edge attribute name'} | {'n', 'top_std', 'top_n', 'std'} | {'above', 'below'} | {'a floating point number'} | {'t', 'T', 'true', 'false', 'F', 'True', 'f', 'False'} | {'t', 'T', 'true', 'false', 'F', 'True', 'f', 'False'} | {'a specific query node id to remove'} |
 
 ### `filter_kg(action=remove_edges_by_attribute)`
 
@@ -379,27 +356,26 @@ This can be applied to an arbitrary knowledge graph as possible edge attributes 
 |||||||
 |-----|-----|-----|-----|-----|-----|
 |_DSL parameters_| edge_attribute | direction | threshold | remove_connected_nodes | qnode_id |
-|_DSL arguments_| {'an edge attribute name'} | {'above', 'below'} | {'a floating point number'} | {'t', 'true', 'F', 'True', 'false', 'f', 'False', 'T'} | {'a specific query node id to remove'} |
+|_DSL arguments_| {'an edge attribute name'} | {'above', 'below'} | {'a floating point number'} | {'t', 'T', 'true', 'false', 'F', 'True', 'f', 'False'} | {'a specific query node id to remove'} |
 
-## ARAX_filter_results
-### `filter_results(action=sort_by_edge_attribute)`
+### `filter_kg(action=remove_nodes_by_property)`
 
-`sort_by_edge_attribute` sorts the results by the edges based on a a certain edge attribute.
-Edge attributes are a list of additional attributes for an edge.
+`remove_nodes_by_property` removes nodes from the knowledge graph (KG) based on a given node property.
 Use cases include:
-
-* sorting the results by the value of the jaccard index and take the top ten `filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=d, max_results=10)`
+                
+* removing all nodes that were provided by a certain knowledge provider (KP) via `node_property=provided, property_value=Pharos` to remove all nodes provided by the KP Pharos.
+* removing all nodes provided by another ARA via `node_property=is_defined_by, property_value=ARAX/RTX`
 * etc. etc.
                 
-You have the option to specify the edge type (e.g. via `edge_relation=<an edge relation>`)
-Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
+This can be applied to an arbitrary knowledge graph as possible node properties are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
 
 
-||||||
-|-----|-----|-----|-----|-----|
-|_DSL parameters_| edge_attribute | edge_relation | direction | max_results |
-|_DSL arguments_| {'an edge attribute'} | {'an edge relation'} | {'d', 'ascending', 'descending', 'a'} | {'the maximum number of results to return'} |
+||||
+|-----|-----|-----|
+|_DSL parameters_| node_property | property_value |
+|_DSL arguments_| {'an node property'} | {'a value for the node property'} |
 
+## ARAX_filter_results
 ### `filter_results(action=sort_by_node_attribute)`
 
 `sort_by_node_attribute` sorts the results by the nodes based on a a certain node attribute.
@@ -416,24 +392,7 @@ Also, you have the option of limiting the number of results returned (e.g. via `
 ||||||
 |-----|-----|-----|-----|-----|
 |_DSL parameters_| node_attribute | node_type | direction | max_results |
-|_DSL arguments_| {'an node attribute'} | {'an node type'} | {'d', 'ascending', 'descending', 'a'} | {'the maximum number of results to return'} |
-
-### `filter_results(action=sort_by_node_count)`
-
-`sort_by_node_count` sorts the results by the number of nodes in the results.
-Use cases include:
-
-* return the results with the 10 most nodes. `filter_results(action=sort_by_node_count, direction=descending, max_results=10)`
-* etc. etc.
-                
-You have the option to specify the direction (e.g. `direction=descending`)
-Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
-
-
-||||
-|-----|-----|-----|
-|_DSL parameters_| direction | max_results |
-|_DSL arguments_| {'d', 'ascending', 'descending', 'a'} | {'the maximum number of results to return'} |
+|_DSL arguments_| {'an node attribute'} | {'an node type'} | {'a', 'ascending', 'd', 'descending'} | {'the maximum number of results to return'} |
 
 ### `filter_results(action=limit_number_of_results)`
 
@@ -450,6 +409,24 @@ Use cases include:
 |_DSL parameters_| max_results |
 |_DSL arguments_| {'a non-negative integer'} |
 
+### `filter_results(action=sort_by_edge_attribute)`
+
+`sort_by_edge_attribute` sorts the results by the edges based on a a certain edge attribute.
+Edge attributes are a list of additional attributes for an edge.
+Use cases include:
+
+* sorting the results by the value of the jaccard index and take the top ten `filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=d, max_results=10)`
+* etc. etc.
+                
+You have the option to specify the edge type (e.g. via `edge_relation=<an edge relation>`)
+Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
+
+
+||||||
+|-----|-----|-----|-----|-----|
+|_DSL parameters_| edge_attribute | edge_relation | direction | max_results |
+|_DSL arguments_| {'an edge attribute'} | {'an edge relation'} | {'a', 'ascending', 'd', 'descending'} | {'the maximum number of results to return'} |
+
 ### `filter_results(action=sort_by_edge_count)`
 
 `sort_by_edge_count` sorts the results by the number of edges in the results.
@@ -465,7 +442,24 @@ Also, you have the option of limiting the number of results returned (e.g. via `
 ||||
 |-----|-----|-----|
 |_DSL parameters_| direction | max_results |
-|_DSL arguments_| {'d', 'ascending', 'descending', 'a'} | {'the maximum number of results to return'} |
+|_DSL arguments_| {'a', 'ascending', 'd', 'descending'} | {'the maximum number of results to return'} |
+
+### `filter_results(action=sort_by_node_count)`
+
+`sort_by_node_count` sorts the results by the number of nodes in the results.
+Use cases include:
+
+* return the results with the 10 most nodes. `filter_results(action=sort_by_node_count, direction=descending, max_results=10)`
+* etc. etc.
+                
+You have the option to specify the direction (e.g. `direction=descending`)
+Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
+
+
+||||
+|-----|-----|-----|
+|_DSL parameters_| direction | max_results |
+|_DSL arguments_| {'a', 'ascending', 'd', 'descending'} | {'the maximum number of results to return'} |
 
 ## ARAX_resultify
 ### `resultify()`
