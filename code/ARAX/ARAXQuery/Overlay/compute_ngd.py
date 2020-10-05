@@ -11,17 +11,22 @@ import traceback
 import numpy as np
 import itertools
 from datetime import datetime
-from typing import List
+from typing import List, Dict, Set, Tuple
 
 # relative imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
 from swagger_server.models.edge_attribute import EdgeAttribute
 from swagger_server.models.edge import Edge
 from swagger_server.models.q_edge import QEdge
+from swagger_server.models.query_graph import QueryGraph
+from swagger_server.models.knowledge_graph import KnowledgeGraph
+from swagger_server.models.message import Message
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
 import NormGoogleDistance
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
+from ARAX_resultify import ARAXResultify
 
 
 class ComputeNGD:
@@ -34,6 +39,9 @@ class ComputeNGD:
         self.global_iter = 0
         self.ngd_database_name = "curie_to_pmids.sqlite"
         self.connection, self.cursor = self._setup_ngd_database()
+        self.kg_nodes_by_qg_id = self._get_node_ids_by_qg_id(self.message.knowledge_graph)
+        self.kg_edges_by_qg_id = self._get_edge_ids_by_qg_id(self.message.knowledge_graph)
+        self.kg_nodes_dict = {node.id: node for node in self.message.knowledge_graph.nodes}
         self.curie_to_pmids_map = dict()
         self.ngd_normalizer = 2.2e+7 * 20  # From PubMed home page there are 27 million articles; avg 20 MeSH terms per article
         self.NGD = NormGoogleDistance.NormGoogleDistance()  # should I be importing here, or before the class? Feel like Eric said avoid global vars...
@@ -71,34 +79,26 @@ class ComputeNGD:
 
         # if you want to add virtual edges, identify the source/targets, decorate the edges, add them to the KG, and then add one to the QG corresponding to them
         if 'virtual_relation_label' in parameters:
-            source_curies_to_decorate = set()
-            target_curies_to_decorate = set()
-            curies_to_names = dict()
-            # identify the nodes that we should be adding virtual edges for
-            for node in self.message.knowledge_graph.nodes:
-                if hasattr(node, 'qnode_ids'):
-                    if parameters['source_qnode_id'] in node.qnode_ids:
-                        source_curies_to_decorate.add(node.id)
-                        curies_to_names[node.id] = node.name
-                    if parameters['target_qnode_id'] in node.qnode_ids:
-                        target_curies_to_decorate.add(node.id)
-                        curies_to_names[node.id] = node.name
-
-            # Convert these curies to their canonicalized curies (needed for the local NGD system)
-            canonicalized_curie_map = self._get_canonical_curies_map(list(source_curies_to_decorate.union(target_curies_to_decorate)))
-            self.load_curie_to_pmids_data(canonicalized_curie_map.values())
+            # Figure out which node pairs to compute NGD between
+            source_qnode_id = parameters['source_qnode_id']
+            target_qnode_id = parameters['target_qnode_id']
+            node_pairs_to_evaluate = self._get_node_pairs_to_evaluate(source_qnode_id, target_qnode_id)
+            # Grab PMID lists for all involved nodes
+            involved_curies = {curie for node_pair in node_pairs_to_evaluate for curie in node_pair}
+            canonicalized_curie_lookup = self._get_canonical_curies_map(list(involved_curies))
+            self.load_curie_to_pmids_data(canonicalized_curie_lookup.values())
             added_flag = False  # check to see if any edges where added
             num_computed_total = 0
             num_computed_slow = 0
-            self.response.debug(f"Looping through node pairs and calculating NGD values")
+            self.response.debug(f"Looping through {len(node_pairs_to_evaluate)} node pairs and calculating NGD values")
             # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
-            for (source_curie, target_curie) in itertools.product(source_curies_to_decorate, target_curies_to_decorate):
+            for (source_curie, target_curie) in node_pairs_to_evaluate:
                 # create the edge attribute if it can be
-                source_name = curies_to_names[source_curie]
-                target_name = curies_to_names[target_curie]
+                source_name = self.kg_nodes_dict[source_curie].name
+                target_name = self.kg_nodes_dict[target_curie].name
                 num_computed_total += 1
-                canonical_source_curie = canonicalized_curie_map.get(source_curie, source_curie)
-                canonical_target_curie = canonicalized_curie_map.get(target_curie, target_curie)
+                canonical_source_curie = canonicalized_curie_lookup.get(source_curie, source_curie)
+                canonical_target_curie = canonicalized_curie_lookup.get(target_curie, target_curie)
                 ngd_value = self.calculate_ngd_fast(canonical_source_curie, canonical_target_curie)
                 if ngd_value is None:
                     ngd_value = self.NGD.get_ngd_for_all([source_curie, target_curie], [source_name, target_name])
@@ -148,10 +148,7 @@ class ComputeNGD:
 
             self.response.info(f"NGD values successfully added to edges")
             num_computed_fast = num_computed_total - num_computed_slow
-            try:
-                percent_computed_fast = round((num_computed_fast / num_computed_total) * 100)
-            except:
-                percent_computed_fast = np.inf
+            percent_computed_fast = round((num_computed_fast / num_computed_total) * 100) if num_computed_total else np.inf
             self.response.debug(f"Used fastNGD for {percent_computed_fast}% of edges "
                                 f"({num_computed_fast} of {num_computed_total})")
         else:  # you want to add it for each edge in the KG
@@ -194,7 +191,7 @@ class ComputeNGD:
             else:
                 self.response.info(f"NGD values successfully added to edges")
                 num_computed_fast = num_computed_total - num_computed_slow
-                percent_computed_fast = round((num_computed_fast / num_computed_total) * 100)
+                percent_computed_fast = round((num_computed_fast / num_computed_total) * 100) if num_computed_total else 100
                 self.response.debug(f"Used fastNGD for {percent_computed_fast}% of edges "
                                     f"({num_computed_fast} of {num_computed_total})")
             self._close_database()
@@ -300,3 +297,57 @@ class ComputeNGD:
             self.cursor.close()
         if self.connection:
             self.connection.close()
+
+    @staticmethod
+    def _get_node_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]]:
+        node_ids_by_qg_id = dict()
+        if knowledge_graph.nodes:
+            for node in knowledge_graph.nodes:
+                for qnode_id in node.qnode_ids:
+                    if qnode_id not in node_ids_by_qg_id:
+                        node_ids_by_qg_id[qnode_id] = set()
+                    node_ids_by_qg_id[qnode_id].add(node.id)
+        return node_ids_by_qg_id
+
+    @staticmethod
+    def _get_edge_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]]:
+        edge_ids_by_qg_id = dict()
+        if knowledge_graph.edges:
+            for edge in knowledge_graph.edges:
+                for qedge_id in edge.qedge_ids:
+                    if qedge_id not in edge_ids_by_qg_id:
+                        edge_ids_by_qg_id[qedge_id] = set()
+                    edge_ids_by_qg_id[qedge_id].add(edge.id)
+        return edge_ids_by_qg_id
+
+    def _get_node_pairs_to_evaluate(self, source_qnode_id: str, target_qnode_id: str) -> Set[Tuple[str, str]]:
+        self.response.debug(f"Narrowing down {source_qnode_id}--{target_qnode_id} node pairs to compute NGD between")
+        # Grab the portion of the QG already 'expanded' (aka, present in the KG)
+        qnode_ids_in_kg = set(self.kg_nodes_by_qg_id)
+        qedge_ids_in_kg = set(self.kg_edges_by_qg_id)
+        sub_query_graph = QueryGraph(nodes=[qnode for qnode in self.message.query_graph.nodes if qnode.id in qnode_ids_in_kg],
+                                     edges=[qedge for qedge in self.message.query_graph.edges if qedge.id in qedge_ids_in_kg])
+
+        # Compute results using Resultify so we can see which nodes appear in the same results
+        sub_message = Message()
+        sub_message.query_graph = sub_query_graph
+        sub_message.knowledge_graph = KnowledgeGraph(nodes=self.message.knowledge_graph.nodes.copy(),
+                                                     edges=self.message.knowledge_graph.edges.copy())
+        resultifier = ARAXResultify()
+        resultify_response = resultifier.apply(sub_message, {})
+
+        # Extract node pairs of interest from the results we got
+        if resultify_response.status == 'OK':
+            node_pairs = set()
+            for result in sub_message.results:
+                source_curies_in_this_result = {node_binding.kg_id for node_binding in result.node_bindings if node_binding.qg_id == source_qnode_id}
+                target_curies_in_this_result = {node_binding.kg_id for node_binding in result.node_bindings if node_binding.qg_id == target_qnode_id}
+                pairs_in_this_result = set(itertools.product(source_curies_in_this_result, target_curies_in_this_result))
+                node_pairs = node_pairs.union(pairs_in_this_result)
+            self.response.debug(f"Identified {len(node_pairs)} node pairs to compute NGD between (with help of resultify)")
+            return node_pairs
+        else:
+            # Back up to using the old method of all combinations of source/target nodes
+            self.response.warning(f"Failed to narrow down node pairs to compute NGD between; defaulting to all possible combinations")
+            return set(itertools.product(self.kg_nodes_by_qg_id[source_qnode_id],
+                                         self.kg_nodes_by_qg_id[target_qnode_id]))
