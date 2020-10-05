@@ -1,4 +1,4 @@
-# What is KG2?
+# KG2: the second-generation RTX knowledge graph
 
 KG2 is the second-generation knowledge graph for the
 [ARAX](https://github.com/RTXteam/RTX) biomedical reasoning system.  The GitHub
@@ -695,6 +695,11 @@ the form `kg2endpoint-kg2-X-Y.rtx.ai`, where `X` is the major version number and
 [version history markdown file](kg2-versions.md) with the new build version and
 the numbers of the GitHub issues that are addressed/implemented in the new KG2
 version.
+- Wherever possible we try to document the name of the build host (EC2 instance)
+used for the KG2 build in `kg2-versions.md` and we try to preserve the `kg2-build`
+directory and its contents on that host, until a new build has superseded the build.
+Having the build directory available on the actual build host is very useful for
+tracking down the source of an unexpected relationship or node property.
 
 # Structure of the JSON KG2
 
@@ -817,6 +822,11 @@ This section has some guidelines for the development team for the KG2 build syst
 - Only python3 is allowed.
 - Please follow PEP8 formatting standards.
 - Please use type hints wherever possible.
+
+### File naming
+
+- For config files and shell scripts, use kabob-case
+- For python modules, use snake_case.
 
 # Credits
 

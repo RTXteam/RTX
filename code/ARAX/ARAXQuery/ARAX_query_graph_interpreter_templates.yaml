@@ -114,6 +114,31 @@ templates:
       - resultify(ignore_edge_direction=true)
       - filter_results(action=limit_number_of_results, max_results=50)
 
+  two_hop_drug_disease:
+    name: one hop with start node drug, end node disease
+    description: Two nodes, start has a specific curie, end node has type specified as chemical_substance (or drug?!)
+    restated_question: What n01(type)s may treat n00(name)?
+    template:
+      - n00(curie,type=disease)
+      - e00()
+      - n01(type=protein)
+      - e01()
+      - n02(type=chemical_substance)
+    DSL:
+      - expand(edge_id=[e00,e01], kp=ARAX/KG2, continue_if_no_results=true)
+      #- expand(edge_id=[e00,e01], kp=BTE, continue_if_no_results=true)  # this is waaaaaay to slow
+      - expand(edge_id=e00, kp=BTE, continue_if_no_results=true)
+      #- expand(edge_id=e00, kp=GeneticsKP, continue_if_no_results=true)  # Haven't figured out why this doesn't work...
+      - overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)
+      - overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)
+      - overlay(action=overlay_clinical_info, chi_square=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n02)
+      - overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n00, target_qnode_id=n01)
+      - overlay(action=compute_ngd, virtual_relation_label=N2, source_qnode_id=n00, target_qnode_id=n02)
+      - overlay(action=compute_ngd, virtual_relation_label=N3, source_qnode_id=n01, target_qnode_id=n02)
+      - resultify(ignore_edge_direction=true)
+      - filter_results(action=limit_number_of_results, max_results=100)
+      - return(message=true, store=false)
+
   ####################################################################################################
   #### Three node, two-hop questions
   two_hop_classic_question:

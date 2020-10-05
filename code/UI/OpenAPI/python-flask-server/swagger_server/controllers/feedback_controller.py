@@ -17,8 +17,7 @@ def get_feedback_all():  # noqa: E501
 
     :rtype: None
     """
-    rtxFeedback = RTXFeedback()
-    return rtxFeedback.getAllFeedback()
+    return( { "status": 501, "title": "EndpointNotImplemented", "detail": "This endpoint is no longer implemented", "type": "about:blank" }, 501 )
 
 
 def get_feedback_expertise_levels():  # noqa: E501

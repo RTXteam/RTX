@@ -24,6 +24,7 @@
 <div onclick="openSection(this,'queryDiv');" class="menucurrent">Query</div>
 <div onclick="openSection(this,'listaDiv');" class="menuleftitem" title="view list A">List A <span class="menunum" id="menunumlistitemsA">-</span></div>
 <div onclick="openSection(this,'listbDiv');" class="menuleftitem" title="view list B">List B <span class="menunum" id="menunumlistitemsB">-</span></div>
+<div onclick="openSection(this,'compareDiv');" class="menuleftitem" title="compare lists A/B">Compare Lists </div>
 <br>
 <div onclick="openSection(this,'historyDiv');" class="menuleftitem" title="view session history">History <span class="menunum" id="menunumlistitemsSESSION">-</span></div>
 <!-- div onclick="openSection(this,'statusDiv');" class="menuleftitem">Status</div -->
@@ -185,7 +186,10 @@
 <div class="status" id="listdivB">Items in this list can be passed as input to queries that support list input, by specifying [B] as a parameter.</div>
 </div>
 
-
+<div class="pagesection" id="compareDiv">
+<div class="statushead">Compare Lists A and B </div>
+<div class="status" id="comparelists">Items in lists A and B will be automatically displayed side-by-side for ease of comparison.</div>
+</div>
 
 <div class="pagesection" id="statusDiv">
 </div>

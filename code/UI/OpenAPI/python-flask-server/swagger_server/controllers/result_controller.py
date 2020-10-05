@@ -22,8 +22,7 @@ def get_result(result_id):  # noqa: E501
 
     :rtype: Result
     """
-    rtxFeedback = RTXFeedback()
-    return rtxFeedback.getResult(result_id)
+    return( { "status": 501, "title": "EndpointNotImplemented", "detail": "This endpoint is no longer implemented", "type": "about:blank" }, 501 )
 
 
 def get_result_feedback(result_id):  # noqa: E501
@@ -36,8 +35,7 @@ def get_result_feedback(result_id):  # noqa: E501
 
     :rtype: ResultFeedback
     """
-    rtxFeedback = RTXFeedback()
-    return rtxFeedback.getResultFeedback(result_id)
+    return( { "status": 501, "title": "EndpointNotImplemented", "detail": "This endpoint is no longer implemented", "type": "about:blank" }, 501 )
 
 def post_result_feedback(result_id, body):  # noqa: E501
     """Store feedback for a particular result
@@ -51,14 +49,5 @@ def post_result_feedback(result_id, body):  # noqa: E501
 
     :rtype: None
     """
-    if connexion.request.is_json:
-
-        #### Some fumbling around here. use as a dict or as an object?
-        body = Feedback.from_dict(connexion.request.get_json())  # noqa: E501
-        ratingData = connexion.request.get_json()  # noqa: E501
-
-        rtxFeedback = RTXFeedback()
-        response = rtxFeedback.addNewResultRating(result_id, ratingData)
-        return(response)
-    return( { "status": 502, "title": "body content not JSON", "detail": "Required body content is not JSON", "type": "about:blank" }, 502 )
+    return( { "status": 501, "title": "EndpointNotImplemented", "detail": "This endpoint is no longer implemented", "type": "about:blank" }, 501 )
 

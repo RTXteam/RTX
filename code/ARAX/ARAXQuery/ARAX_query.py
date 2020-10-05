@@ -482,6 +482,11 @@ class ARAXQuery:
                         message = result.data['message']
                         self.message = message
 
+                    elif action['command'] == 'fetch_message':
+                        result = messenger.apply_fetch_message(message,action['parameters'])
+                        message = messenger.message
+                        self.message = message
+
                     elif action['command'] == 'add_qnode':
                         result = messenger.add_qnode(message,action['parameters'])
 
@@ -1303,6 +1308,28 @@ def main():
             "overlay(action=compute_ngd)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=limit_number_of_results, max_results=50)",
+            "return(message=true, store=true)",
+        ]}}
+    elif params.example_number == 8673:  # test_one_hop_based_on_types_1
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(curie=MONDO:0001475, id=n00, type=disease)",
+            "add_qnode(type=protein, id=n01, is_set=true)",
+            "add_qnode(type=chemical_substance, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=molecularly_interacts_with)",
+            "expand(edge_id=[e00,e01], kp=ARAX/KG2, continue_if_no_results=true)",
+            #- expand(edge_id=[e00,e01], kp=BTE, continue_if_no_results=true)",
+            "expand(edge_id=e00, kp=BTE, continue_if_no_results=true)",
+            #- expand(edge_id=e00, kp=GeneticsKP, continue_if_no_results=true)",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
+            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",
+            "overlay(action=overlay_clinical_info, chi_square=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n02)",
+            #"overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n00, target_qnode_id=n01)",
+            #"overlay(action=compute_ngd, virtual_relation_label=N2, source_qnode_id=n00, target_qnode_id=n02)",
+            #"overlay(action=compute_ngd, virtual_relation_label=N3, source_qnode_id=n01, target_qnode_id=n02)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=limit_number_of_results, max_results=100)",
             "return(message=true, store=true)",
         ]}}
     else:
