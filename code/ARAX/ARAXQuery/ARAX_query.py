@@ -582,11 +582,12 @@ class ARAXQuery:
 
             # If store=true, then put the message in the database
             if return_action['parameters']['store'] == 'true':
+                response.debug(f"Storing resulting Message (MySQL method)")
                 message_id = rtxFeedback.addNewMessage(message, query)
             elif return_action['parameters']['store'] == 'json':
                 if message.restated_question is None:
                     message.restated_question = ''
-                response.debug(f"Storing resulting Message")
+                response.debug(f"Storing resulting Message (JSON method)")
                 message_id = uuid.uuid4().hex
                 message_filename = 'ARAX-' + message_id
                 message_url = OUTPUT_MESSAGE_BASE_WEB_URL + message_filename
