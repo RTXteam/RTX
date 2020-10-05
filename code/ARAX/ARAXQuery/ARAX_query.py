@@ -13,6 +13,8 @@ import traceback
 from collections import Counter
 import numpy as np
 import threading
+import json
+import uuid
 
 from response import Response
 from query_graph_info import QueryGraphInfo
@@ -49,13 +51,18 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/Feedback/"
 from RTXFeedback import RTXFeedback
 
 
+OUTPUT_MESSAGE_BASE_WEB_URL = 'https://arax.rtx.ai/arax-messages/'
+# OUTPUT_MESSAGE_JSON_BASE_SUBDIR = '/tmp/'
+OUTPUT_MESSAGE_JSON_BASE_SUBDIR = '/var/www/html/production/arax-messages/'
+
+
 class ARAXQuery:
 
     #### Constructor
     def __init__(self):
         self.response = None
         self.message = None
-
+        
 
     def query_return_stream(self,query):
 
@@ -575,10 +582,19 @@ class ARAXQuery:
 
             # If store=true, then put the message in the database
             if return_action['parameters']['store'] == 'true':
+                message_id = rtxFeedback.addNewMessage(message, query)
+            elif return_action['parameters']['store'] == 'json':
+                if message.restated_question is None:
+                    message.restated_question = ''
                 response.debug(f"Storing resulting Message")
-                message_id = rtxFeedback.addNewMessage(message,query)
-
-
+                message_id = uuid.uuid4().hex
+                message_filename = 'ARAX-' + message_id
+                message_url = OUTPUT_MESSAGE_BASE_WEB_URL + message_filename
+                message.id = message_url
+                with open(OUTPUT_MESSAGE_JSON_BASE_SUBDIR + message_filename, 'w') as outfile:
+                    json.dump(ast.literal_eval(repr(message)), outfile,
+                              sort_keys=True)
+                
             #### If asking for the full message back
             if return_action['parameters']['message'] == 'true':
                 response.info(f"Processing is complete. Transmitting resulting Message back to client.")
@@ -1331,6 +1347,17 @@ def main():
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=limit_number_of_results, max_results=100)",
             "return(message=true, store=true)",
+        ]}}
+    elif params.example_number == 9999:
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=acetaminophen, id=n0)",
+            "add_qnode(type=protein, id=n1)",
+            "add_qedge(source_id=n0, target_id=n1, id=e0)",
+            "expand(edge_id=e0)",
+            "resultify()",
+            "filter_results(action=limit_number_of_results, max_results=100)",
+            "return(message=true, store=json)",
         ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
