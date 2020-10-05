@@ -589,7 +589,7 @@ class ARAXQuery:
                     message.restated_question = ''
                 response.debug(f"Storing resulting Message (JSON method)")
                 message_id = uuid.uuid4().hex
-                message_filename = 'ARAX-' + message_id
+                message_filename = 'ARAX-' + message_id + ".json"
                 message_url = OUTPUT_MESSAGE_BASE_WEB_URL + message_filename
                 message.id = message_url
                 with open(OUTPUT_MESSAGE_JSON_BASE_SUBDIR + message_filename, 'w') as outfile:
