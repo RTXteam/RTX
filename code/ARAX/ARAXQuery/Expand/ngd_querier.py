@@ -26,7 +26,6 @@ class NGDQuerier:
 
     def __init__(self, response_object: Response):
         self.response = response_object
-        self.cngd = ComputeNGD(self.response, None, None)
         self.ngd_edge_type = "has_normalized_google_distance_with"
         self.ngd_edge_attribute_name = "normalized_google_distance"
         self.ngd_edge_attribute_type = "EDAM:data_2526"
@@ -59,6 +58,7 @@ class NGDQuerier:
             qnode.curie = canonical_curies
 
         # Find potential answers using KG2
+        log.debug(f"Finding potential answers using KG2..")
         qedge = query_graph.edges[0]
         source_qnode = next(qnode for qnode in query_graph.nodes if qnode.id == qedge.source_id)
         target_qnode = next(qnode for qnode in query_graph.nodes if qnode.id == qedge.target_id)
@@ -79,14 +79,16 @@ class NGDQuerier:
             f"expand(kp=ARAX/KG2)",
             f"return(message=true, store=false)",
         ]
-        kg2_answer_kg = self._run_arax_query(actions_list, log)
+        kg2_response, kg2_message = self._run_arax_query(actions_list, log)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
 
         # Go through those answers from KG2 and calculate ngd for each edge
+        kg2_answer_kg = kg2_message.knowledge_graph
+        cngd = ComputeNGD(log, kg2_message, None)
         kg2_edges_map = {edge.id: edge for edge in kg2_answer_kg.edges}
         kg2_nodes_map = {node.id: node for node in kg2_answer_kg.nodes}
-        self.cngd.load_curie_to_pmids_data(kg2_nodes_map)
+        cngd.load_curie_to_pmids_data(kg2_nodes_map)
         kg2_edge_ngd_map = dict()
         for kg2_edge in kg2_edges_map.values():
             kg2_node_1 = kg2_nodes_map.get(kg2_edge.source_id)  # These are already canonicalized (default behavior)
@@ -98,7 +100,7 @@ class NGDQuerier:
             else:
                 ngd_source_id = kg2_node_2.id
                 ngd_target_id = kg2_node_1.id
-            ngd_value = self.cngd.calculate_ngd_fast(ngd_source_id, ngd_target_id)
+            ngd_value = cngd.calculate_ngd_fast(ngd_source_id, ngd_target_id)
             kg2_edge_ngd_map[kg2_edge.id] = {"ngd_value": ngd_value, "source_id": ngd_source_id, "target_id": ngd_target_id}
 
         # Create edges for those from KG2 found to have a low enough ngd value
@@ -147,14 +149,14 @@ class NGDQuerier:
         return ngd_node
 
     @staticmethod
-    def _run_arax_query(actions_list: List[str], log: Response) -> DictKnowledgeGraph:
+    def _run_arax_query(actions_list: List[str], log: Response):
         araxq = ARAXQuery()
         sub_query_response = araxq.query({"previous_message_processing_plan": {"processing_actions": actions_list}})
         if sub_query_response.status != 'OK':
             log.error(f"Encountered an error running ARAXQuery within Expand: {sub_query_response.show(level=sub_query_response.DEBUG)}")
             return dict()
         sub_query_message = araxq.message
-        return sub_query_message.knowledge_graph
+        return sub_query_response, sub_query_message
 
     @staticmethod
     def _get_dsl_qnode_curie_str(qnode: QNode) -> str:
