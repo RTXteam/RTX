@@ -88,24 +88,13 @@ class ComputeNGD:
             canonicalized_curie_lookup = self._get_canonical_curies_map(list(involved_curies))
             self.load_curie_to_pmids_data(canonicalized_curie_lookup.values())
             added_flag = False  # check to see if any edges where added
-            num_computed_total = 0
-            num_computed_slow = 0
             self.response.debug(f"Looping through {len(node_pairs_to_evaluate)} node pairs and calculating NGD values")
             # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
             for (source_curie, target_curie) in node_pairs_to_evaluate:
                 # create the edge attribute if it can be
-                source_name = self.kg_nodes_dict[source_curie].name
-                target_name = self.kg_nodes_dict[target_curie].name
-                num_computed_total += 1
                 canonical_source_curie = canonicalized_curie_lookup.get(source_curie, source_curie)
                 canonical_target_curie = canonicalized_curie_lookup.get(target_curie, target_curie)
                 ngd_value = self.calculate_ngd_fast(canonical_source_curie, canonical_target_curie)
-                if ngd_value is None:
-                    ngd_value = self.NGD.get_ngd_for_all([source_curie, target_curie], [source_name, target_name])
-                    self.response.debug(f"Had to use eUtils to compute NGD between {source_name} "
-                                        f"({canonical_source_curie}) and {target_name} ({canonical_target_curie}). "
-                                        f"Value is: {ngd_value}")
-                    num_computed_slow += 1
                 if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                     value = ngd_value
                 edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the NGD edge attribute
@@ -147,18 +136,12 @@ class ComputeNGD:
                 self.message.query_graph.edges.append(q_edge)
 
             self.response.info(f"NGD values successfully added to edges")
-            num_computed_fast = num_computed_total - num_computed_slow
-            percent_computed_fast = round((num_computed_fast / num_computed_total) * 100) if num_computed_total else np.inf
-            self.response.debug(f"Used fastNGD for {percent_computed_fast}% of edges "
-                                f"({num_computed_fast} of {num_computed_total})")
         else:  # you want to add it for each edge in the KG
             # iterate over KG edges, add the information
             try:
                 # Map all nodes to their canonicalized curies in one batch (need canonical IDs for the local NGD system)
                 canonicalized_curie_map = self._get_canonical_curies_map([node.id for node in self.message.knowledge_graph.nodes])
                 self.load_curie_to_pmids_data(canonicalized_curie_map.values())
-                num_computed_total = 0
-                num_computed_slow = 0
                 self.response.debug(f"Looping through edges and calculating NGD values")
                 for edge in self.message.knowledge_graph.edges:
                     # Make sure the edge_attributes are not None
@@ -167,18 +150,9 @@ class ComputeNGD:
                     # now go and actually get the NGD
                     source_curie = edge.source_id
                     target_curie = edge.target_id
-                    source_name = node_curie_to_name[source_curie]
-                    target_name = node_curie_to_name[target_curie]
-                    num_computed_total += 1
                     canonical_source_curie = canonicalized_curie_map.get(source_curie, source_curie)
                     canonical_target_curie = canonicalized_curie_map.get(target_curie, target_curie)
                     ngd_value = self.calculate_ngd_fast(canonical_source_curie, canonical_target_curie)
-                    if ngd_value is None:
-                        ngd_value = self.NGD.get_ngd_for_all([source_curie, target_curie], [source_name, target_name])
-                        self.response.debug(f"Had to use eUtils to compute NGD between {source_name} "
-                                            f"({canonical_source_curie}) and {target_name} ({canonical_target_curie}). "
-                                            f"Value is: {ngd_value}")
-                        num_computed_slow += 1
                     if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                         value = ngd_value
                     ngd_edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the NGD edge attribute
@@ -190,10 +164,6 @@ class ComputeNGD:
                 self.response.error(f"Something went wrong adding the NGD edge attributes")
             else:
                 self.response.info(f"NGD values successfully added to edges")
-                num_computed_fast = num_computed_total - num_computed_slow
-                percent_computed_fast = round((num_computed_fast / num_computed_total) * 100) if num_computed_total else 100
-                self.response.debug(f"Used fastNGD for {percent_computed_fast}% of edges "
-                                    f"({num_computed_fast} of {num_computed_total})")
             self._close_database()
             return self.response
 
@@ -221,7 +191,7 @@ class ComputeNGD:
             counts_res = self._compute_marginal_and_joint_counts(pubmed_ids_for_curies)
             return self._compute_multiway_ngd_from_counts(*counts_res)
         else:
-            return None
+            return math.nan
 
     @staticmethod
     def _compute_marginal_and_joint_counts(concept_pubmed_ids: List[List[int]]) -> list:
