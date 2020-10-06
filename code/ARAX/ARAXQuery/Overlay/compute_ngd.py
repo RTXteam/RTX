@@ -21,8 +21,6 @@ from swagger_server.models.q_edge import QEdge
 from swagger_server.models.query_graph import QueryGraph
 from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.message import Message
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
-import NormGoogleDistance
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
@@ -44,7 +42,6 @@ class ComputeNGD:
         self.kg_nodes_dict = {node.id: node for node in self.message.knowledge_graph.nodes}
         self.curie_to_pmids_map = dict()
         self.ngd_normalizer = 2.2e+7 * 20  # From PubMed home page there are 27 million articles; avg 20 MeSH terms per article
-        self.NGD = NormGoogleDistance.NormGoogleDistance()  # should I be importing here, or before the class? Feel like Eric said avoid global vars...
 
     def compute_ngd(self):
         """
