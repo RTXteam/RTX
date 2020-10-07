@@ -277,7 +277,7 @@ class RTXFeedback:
                 termsString = stringifyDict(query["message"]["query_graph"])
 
         storedMessage = Message(message_datetime=datetime.now(),restated_question=message.restated_question,query_type=query_type_id,
-            terms=termsString,tool_version=rtxConfig.version,result_code=message.message_code,message=message.code_description,n_results=n_results,message_object='')
+            terms=termsString,tool_version=rtxConfig.version,result_code=message.message_code,message=message.code_description,n_results=n_results,message_object=b'')
         session.add(storedMessage)
         session.flush()
         message.id = "https://arax.rtx.ai/api/rtx/v1/message/"+str(storedMessage.message_id)
@@ -285,19 +285,20 @@ class RTXFeedback:
         #### Instead of storing the message in the MySQL database as a message_object (the old way)
         #### Instead now store it as a JSON file on the filesystem
         message_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/responses'
-        if not os.exists(message_dir):
+        if not os.path.exists(message_dir):
             try:
                 os.mkdir(message_dir)
             except:
                 eprint(f"ERROR: Unable to create dir {message_dir}")
 
-        if os.exists(message_dir):
+        if os.path.exists(message_dir):
             message_filename = f"{storedMessage.message_id}.json"
+            message_path = f"{message_dir}/{message_filename}"
             try:
-                with open(message_dir + message_filename, 'w') as outfile:
+                with open(message_path, 'w') as outfile:
                     json.dump(message.to_dict(), outfile, sort_keys=True)
             except:
-                eprint(f"ERROR: Unable to write message to file {message_dir + message_filename}")
+                eprint(f"ERROR: Unable to write message to file {message_path}")
 
         #### This has been mostly castrated but it still puts ids in there, and may be resurrected someday
         self.addNewResults(storedMessage.message_id,message)
