@@ -381,12 +381,23 @@ class RTXFeedback:
         session = self.session
 
         if message_id is None:
-            return( { "status": 450, "title": "message_id missing", "detail": "Required attribute message_id is missing from URL", "type": "about:blank" }, 450)
+            return( { "status": 400, "title": "message_id missing", "detail": "Required attribute message_id is missing from URL", "type": "about:blank" }, 400)
 
         #### Find the message
         storedMessage = session.query(Message).filter(Message.message_id==message_id).first()
         if storedMessage is not None:
-            return pickle.loads(storedMessage.message_object)
+            if storedMessage.message_object == b'':
+                message_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/responses'
+                message_filename = f"{storedMessage.message_id}.json"
+                message_path = f"{message_dir}/{message_filename}"
+                try:
+                    with open(message_path) as infile:
+                        return json.load(infile)
+                except:
+                    eprint(f"ERROR: Unable to read message from file '{message_path}'")
+
+            else:
+                return pickle.loads(storedMessage.message_object)
         else:
             return( { "status": 404, "title": "Message not found", "detail": "There is no message corresponding to message_id="+str(message_id), "type": "about:blank" }, 404)
 
