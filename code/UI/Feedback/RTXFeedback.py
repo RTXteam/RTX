@@ -280,6 +280,7 @@ class RTXFeedback:
             terms=termsString,tool_version=rtxConfig.version,result_code=message.message_code,message=message.code_description,n_results=n_results,message_object=b'')
         session.add(storedMessage)
         session.flush()
+        session.commit()
         message.id = "https://arax.rtx.ai/api/rtx/v1/message/"+str(storedMessage.message_id)
 
         #### Instead of storing the message in the MySQL database as a message_object (the old way)
@@ -386,7 +387,7 @@ class RTXFeedback:
         #### Find the message
         storedMessage = session.query(Message).filter(Message.message_id==message_id).first()
         if storedMessage is not None:
-            if storedMessage.message_object == b'':
+            if len(storedMessage.message_object) < 5:
                 message_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/responses'
                 message_filename = f"{storedMessage.message_id}.json"
                 message_path = f"{message_dir}/{message_filename}"
