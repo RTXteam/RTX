@@ -20,6 +20,7 @@ from swagger_server.models.edge_attribute import EdgeAttribute
 from swagger_server.models.query_graph import QueryGraph
 from swagger_server.models.q_node import QNode
 from swagger_server.models.q_edge import QEdge
+from swagger_server.models.message import Message
 
 
 class NGDQuerier:
@@ -51,14 +52,8 @@ class NGDQuerier:
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
 
-        # Make sure any curies in our query graph are canonical ones
-        qnodes_with_curies = [qnode for qnode in query_graph.nodes if qnode.curie]
-        for qnode in qnodes_with_curies:
-            canonical_curies = eu.get_canonical_curies_list(qnode.curie, log)
-            qnode.curie = canonical_curies
-
         # Find potential answers using KG2
-        log.debug(f"Finding potential answers using KG2..")
+        log.debug(f"Finding potential answers using KG2")
         qedge = query_graph.edges[0]
         source_qnode = next(qnode for qnode in query_graph.nodes if qnode.id == qedge.source_id)
         target_qnode = next(qnode for qnode in query_graph.nodes if qnode.id == qedge.target_id)
@@ -84,6 +79,7 @@ class NGDQuerier:
             return final_kg, edge_to_nodes_map
 
         # Go through those answers from KG2 and calculate ngd for each edge
+        log.debug(f"Calculating NGD between each potential node pair")
         kg2_answer_kg = kg2_message.knowledge_graph
         cngd = ComputeNGD(log, kg2_message, None)
         kg2_edges_map = {edge.id: edge for edge in kg2_answer_kg.edges}
@@ -104,9 +100,11 @@ class NGDQuerier:
             kg2_edge_ngd_map[kg2_edge.id] = {"ngd_value": ngd_value, "source_id": ngd_source_id, "target_id": ngd_target_id}
 
         # Create edges for those from KG2 found to have a low enough ngd value
+        threshold = 0.5
+        log.debug(f"Creating edges between node pairs with NGD below the threshold ({threshold})")
         for kg2_edge_id, ngd_info_dict in kg2_edge_ngd_map.items():
             ngd_value = ngd_info_dict['ngd_value']
-            if ngd_value is not None and ngd_value < 0.5:  # TODO: Make determination of the threshold much more sophisticated
+            if ngd_value is not None and ngd_value < threshold:  # TODO: Make determination of the threshold much more sophisticated
                 source_id = ngd_info_dict["source_id"]
                 target_id = ngd_info_dict["target_id"]
                 ngd_edge = self._create_ngd_edge(ngd_value, source_id, target_id)
@@ -149,14 +147,12 @@ class NGDQuerier:
         return ngd_node
 
     @staticmethod
-    def _run_arax_query(actions_list: List[str], log: Response):
+    def _run_arax_query(actions_list: List[str], log: Response) -> Tuple[Response, Message]:
         araxq = ARAXQuery()
         sub_query_response = araxq.query({"previous_message_processing_plan": {"processing_actions": actions_list}})
         if sub_query_response.status != 'OK':
             log.error(f"Encountered an error running ARAXQuery within Expand: {sub_query_response.show(level=sub_query_response.DEBUG)}")
-            return dict()
-        sub_query_message = araxq.message
-        return sub_query_response, sub_query_message
+        return sub_query_response, araxq.message
 
     @staticmethod
     def _get_dsl_qnode_curie_str(qnode: QNode) -> str:
