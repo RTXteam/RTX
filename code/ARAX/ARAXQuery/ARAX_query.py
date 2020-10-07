@@ -593,7 +593,7 @@ class ARAXQuery:
                 message_url = OUTPUT_MESSAGE_BASE_WEB_URL + message_filename
                 message.id = message_url
                 with open(OUTPUT_MESSAGE_JSON_BASE_SUBDIR + message_filename, 'w') as outfile:
-                    json.dump(ast.literal_eval(repr(message)), outfile,
+                    json.dump(message.to_dict(), outfile,
                               sort_keys=True)
                 
             #### If asking for the full message back
@@ -1366,7 +1366,7 @@ def main():
 
     if 0:
         message = araxq.query_return_message(query)
-        print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+        print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
         return
 
     result = araxq.query(query)
@@ -1381,7 +1381,7 @@ def main():
     #### Print out the message that came back
     #print(response.show(level=Response.DEBUG))
     #print("Returned message:\n")
-    #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.query_graph)), sort_keys=True, indent=2))

@@ -235,7 +235,7 @@ def main():
 
     tmp = { 'query_graph_id_node_status': knowledge_graph_info.query_graph_id_node_status, 'query_graph_id_edge_status': knowledge_graph_info.query_graph_id_edge_status, 
         'n_nodes': knowledge_graph_info.n_nodes, 'n_edges': knowledge_graph_info.n_edges }
-    #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
     print(json.dumps(ast.literal_eval(repr(tmp)),sort_keys=True,indent=2))
 
 

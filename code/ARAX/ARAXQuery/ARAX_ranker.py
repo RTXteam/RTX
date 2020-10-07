@@ -825,7 +825,7 @@ def main():
         if confidence is None:
             confidence = 0.0
         print("  -" + '{:6.3f}'.format(confidence) + f"\t{result.essence}")
-    # print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    # print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
 
     # Show the message number
     print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
