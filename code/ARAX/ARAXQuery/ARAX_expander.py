@@ -26,13 +26,13 @@ class ARAXExpander:
             "is_required": False,
             "examples": ["e00", "[e00, e01]"],
             "type": "string",
-            "description": """A query graph edge ID or list of such IDs to expand (default is to expand entire query graph)."""
+            "description": "A query graph edge ID or list of such IDs to expand (default is to expand entire query graph)."
         }
         self.node_id_parameter_info = {
             "is_required": False,
             "examples": ["n00", "[n00, n01]"],
             "type": "string",
-            "description": """A query graph node ID or list of such IDs to expand (default is to expand entire query graph)."""
+            "description": "A query graph node ID or list of such IDs to expand (default is to expand entire query graph)."
         }
         self.continue_if_no_results_parameter_info = {
             "is_required": False,
@@ -40,7 +40,7 @@ class ARAXExpander:
             "enum": ["true", "false"],
             "default": "false",
             "type": "boolean",
-            "description": """Whether to continue execution if no paths are found matching the query graph."""
+            "description": "Whether to continue execution if no paths are found matching the query graph."
         }
         self.enforce_directionality_parameter_info = {
             "is_required": False,
@@ -48,7 +48,7 @@ class ARAXExpander:
             "enum": ["true", "false"],
             "default": "false",
             "type": "boolean",
-            "description": """Whether to obey (vs. ignore) edge directions in the query graph."""
+            "description": "Whether to obey (vs. ignore) edge directions in the query graph."
         }
         self.use_synonyms_parameter_info = {
             "is_required": False,
@@ -56,7 +56,7 @@ class ARAXExpander:
             "enum": ["true", "false"],
             "default": "true",
             "type": "boolean",
-            "description": """Whether to consider curie synonyms and merge synonymous nodes."""
+            "description": "Whether to consider curie synonyms and merge synonymous nodes."
         }
         self.command_definitions = {
             "ARAX/KG1": {
@@ -106,7 +106,7 @@ class ARAXExpander:
                         "enum": ["paired_concept_freq", "observed_expected_ratio", "chi_square"],
                         "default": "paired_concept_freq",
                         "type": "string",
-                        "description": """Which measure from COHD should be considered."""
+                        "description": "Which measure from COHD should be considered."
                     },
                     "COHD_method_percentile": {
                         "is_required": False,
@@ -115,7 +115,7 @@ class ARAXExpander:
                         "max": 100,
                         "default": 99,
                         "type": "integer",
-                        "description": """What percentile to use as a cut-off/threshold for the specified COHD method."""
+                        "description": "What percentile to use as a cut-off/threshold for the specified COHD method."
                     }
                 }
             },
@@ -133,7 +133,7 @@ class ARAXExpander:
                         "enum": ["true", "false"],
                         "default": "false",
                         "type": "boolean",
-                        "description": """Whether to add genetics-quantile edges (in addition to MAGMA edges) from the Genetics KP."""
+                        "description": "Whether to add genetics-quantile edges (in addition to MAGMA edges) from the Genetics KP."
                     }
                 }
             },
