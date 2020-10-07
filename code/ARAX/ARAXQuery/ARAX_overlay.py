@@ -68,27 +68,28 @@ class ARAXOverlay:
         return description_list
 
 
-    # Write a little helper function to test parameters
     def check_params(self, allowable_parameters):
+        # Write a little helper function to test parameters
         """
         Checks to see if the input parameters are allowed
         :param input_parameters: input parameters supplied to ARAXOverlay.apply()
         :param allowable_parameters: the allowable parameters
         :return: None
         """
+        allowable_parameters = self.command_definition['parameters']
         for key, item in self.parameters.items():
             if key not in allowable_parameters:
                 self.response.error(
                     f"Supplied parameter {key} is not permitted. Allowable parameters are: {list(allowable_parameters.keys())}",
                     error_code="UnknownParameter")
-            elif item not in allowable_parameters[key]:
-                if any([type(x) == float for x in allowable_parameters[key]]) or any([type(x) == int for x in allowable_parameters[key]]):  # if it's a float or int, just accept it as it is
+            elif item not in allowable_parameters[key]['examples']:
+                if any([type(x) == float for x in allowable_parameters[key]['examples']]) or any([type(x) == int for x in allowable_parameters[key]['examples']]):  # if it's a float or int, just accept it as it is
                     return
                 elif key == "virtual_relation_label" and type(item) == str:
                     return
                 else:  # otherwise, it's really not an allowable parameter
                     self.response.error(
-                        f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}",
+                        f"Supplied value {item} is not permitted. In action {allowable_parameters['dsl_command']}, allowable values to {key} are: {list(allowable_parameters[key]['description'])}",
                         error_code="UnknownValue")
 
     # helper function to check if all virtual edge parameters have been properly provided
@@ -166,35 +167,69 @@ class ARAXOverlay:
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         #allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}}
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
-            allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else None},
+            old_allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else None},
                                     'source_qnode_id': set([x.id for x in self.message.query_graph.nodes]),
                                     'target_qnode_id': set([x.id for x in self.message.query_graph.nodes])
                                     }
         else:
-            allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_relation_label': {'any string label identifying the virtual edge label (optional, otherwise applied to all existing edges in the KG)'},
+            old_allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_relation_label': {'any string label identifying the virtual edge label (optional, otherwise applied to all existing edges in the KG)'},
                                     'source_qnode_id': {'a specific source query node id (optional, otherwise applied to all edges)'},
                                     'target_qnode_id': {'a specific target query node id (optional, otherwise applied to all edges)'}
                                     }
 
+        command_definition = {
+            'dsl_command': 'overlay(action=compute_ngd)',
+            'description': """
+        `compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
+        This information is then included as an edge attribute with the name `normalized_google_distance`.
+        You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
+
+        Use cases include:
+
+        * focusing in on edges that are well represented in the literature
+        * focusing in on edges that are under-represented in the literature
+
+        This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).""",
+            'brief_description': """
+        compute_ngd computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
+        This information is then included as an edge attribute with the name normalized_google_distance.
+        You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by virtual_relation_label.""",
+            'parameters': {
+                'default_value': {
+                    'is_required': False,
+                    'examples': ['0', 'inf'],
+                    'default': 'inf',
+                    'type': 'string',
+                    'description': 'The default value of the normalized Google distance (if its value cannot be determined)'
+                },
+                'virtual_relation_label': {
+                    'is_required': False,
+                    'examples': ['N1', 'N2'],
+                    'type': 'string',
+                    'description': 'any string label identifying the virtual edge label (optional, otherwise applied to all existing edges in the KG)'
+                },
+                'source_qnode_id': {
+                    'is_required': False,
+                    'examples': ['n00', 'n01'],
+                    'type': 'string',
+                    'description': 'a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'
+                },
+                'target_qnode_id': {
+                    'is_required': False,
+                    'examples': ['n00', 'n01'],
+                    'type': 'string',
+                    'description': 'a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'
+                }
+            }
+        }
+
         # A little function to describe what this thing does
         if describe:
-            brief_description = """
-`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
-This information is then included as an edge attribute with the name `normalized_google_distance`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
-
-Use cases include:
-
-* focusing in on edges that are well represented in the literature
-* focusing in on edges that are under-represented in the literature
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-"""
-            allowable_parameters['brief_description'] = brief_description
-            return allowable_parameters
+            return command_definition
 
         # Make sure only allowable parameters and values have been passed
-        self.check_params(allowable_parameters)
+        # FIXME : this will need to be fixed
+        self.check_params(command_definition)
         # return if bad parameters have been passed
         if self.response.status != 'OK':
             return self.response
@@ -206,10 +241,12 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
             if parameters['default_value'] == '0':
                 parameters['default_value'] = '0'
             else:
-                parameters['default_value'] = float("-inf")
+                parameters['default_value'] = float("inf")
 
         # Check if all virtual edge params have been provided properly
-        self.check_virtual_edge_params(allowable_parameters)
+
+        # FIXME : this will need to be fixed
+        self.check_virtual_edge_params(command_definition)
         if self.response.status != 'OK':
             return self.response
 
