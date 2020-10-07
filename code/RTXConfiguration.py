@@ -1,15 +1,16 @@
 #!/usr/bin/python3
 
-import re
 import os
-import sys
 import datetime
 import json
 import time
 
+
 class RTXConfiguration:
 
-    #### Constructor
+    _GET_FILE_CMD = "scp araxconfig@araxconfig.rtx.ai:config.json "
+
+    # ### Constructor
     def __init__(self):
         self.version = "ARAX 0.6.0"
 
@@ -17,14 +18,14 @@ class RTXConfiguration:
 
         if not os.path.exists(file_path):
             # scp the file
-            os.system("scp rtxconfig@arax.rtx.ai:/mnt/temp/config.json " + file_path)
+            os.system(RTXConfiguration._GET_FILE_CMD + file_path)
         else:
             now_time = datetime.datetime.now()
             modified_time = time.localtime(os.stat(file_path).st_mtime)
             modified_time = datetime.datetime(*modified_time[:6])
             if (now_time - modified_time).days > 0:
                 # scp the file
-                os.system("scp rtxconfig@arax.rtx.ai:/mnt/temp/config.json " + file_path)
+                os.system(RTXConfiguration._GET_FILE_CMD + file_path)
 
         f = open(file_path, 'r')
         config_data = f.read()
@@ -38,7 +39,7 @@ class RTXConfiguration:
         # self.live = "staging"
         # self.live = "local"
 
-    #### Define attribute version
+    # ### Define attribute version
     @property
     def version(self) -> str:
         return self._version
@@ -265,7 +266,6 @@ def main():
     print("mysql umls port: %s" % rtxConfig.mysql_umls_port)
     print("mysql umls username: %s" % rtxConfig.mysql_umls_username)
     print("mysql umls password: %s" % rtxConfig.mysql_umls_password)
-
 
     # print("bolt protocol: %s" % rtxConfig.bolt)
     # print("database: %s" % rtxConfig.database)
