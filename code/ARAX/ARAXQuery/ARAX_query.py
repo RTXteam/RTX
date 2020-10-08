@@ -51,11 +51,6 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/Feedback/"
 from RTXFeedback import RTXFeedback
 
 
-OUTPUT_MESSAGE_BASE_WEB_URL = 'https://arax.rtx.ai/arax-messages/'
-# OUTPUT_MESSAGE_JSON_BASE_SUBDIR = '/tmp/'
-OUTPUT_MESSAGE_JSON_BASE_SUBDIR = '/var/www/html/production/arax-messages/'
-
-
 class ARAXQuery:
 
     #### Constructor
@@ -582,19 +577,8 @@ class ARAXQuery:
 
             # If store=true, then put the message in the database
             if return_action['parameters']['store'] == 'true':
-                response.debug(f"Storing resulting Message (MySQL method)")
+                response.debug(f"Storing resulting Message")
                 message_id = rtxFeedback.addNewMessage(message, query)
-            elif return_action['parameters']['store'] == 'json':
-                if message.restated_question is None:
-                    message.restated_question = ''
-                response.debug(f"Storing resulting Message (JSON method)")
-                message_id = uuid.uuid4().hex
-                message_filename = 'ARAX-' + message_id + ".json"
-                message_url = OUTPUT_MESSAGE_BASE_WEB_URL + message_filename
-                message.id = message_url
-                with open(OUTPUT_MESSAGE_JSON_BASE_SUBDIR + message_filename, 'w') as outfile:
-                    json.dump(message.to_dict(), outfile,
-                              sort_keys=True)
                 
             #### If asking for the full message back
             if return_action['parameters']['message'] == 'true':
