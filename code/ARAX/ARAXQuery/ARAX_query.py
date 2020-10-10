@@ -13,6 +13,8 @@ import traceback
 from collections import Counter
 import numpy as np
 import threading
+import json
+import uuid
 
 from response import Response
 from query_graph_info import QueryGraphInfo
@@ -55,7 +57,7 @@ class ARAXQuery:
     def __init__(self):
         self.response = None
         self.message = None
-
+        
 
     def query_return_stream(self,query):
 
@@ -482,6 +484,11 @@ class ARAXQuery:
                         message = result.data['message']
                         self.message = message
 
+                    elif action['command'] == 'fetch_message':
+                        result = messenger.apply_fetch_message(message,action['parameters'])
+                        message = messenger.message
+                        self.message = message
+
                     elif action['command'] == 'add_qnode':
                         result = messenger.add_qnode(message,action['parameters'])
 
@@ -569,11 +576,10 @@ class ARAXQuery:
             message.query_options['processing_actions'] = envelope.processing_actions
 
             # If store=true, then put the message in the database
-            if return_action['parameters']['store'] == 'true':
+            if return_action['parameters']['store'] == 'true' or return_action['parameters']['store'] == 'json':  # FIXME: remove the "or json" part after 2021-01 or whenever this backwards compatibility is not needed anymore
                 response.debug(f"Storing resulting Message")
-                message_id = rtxFeedback.addNewMessage(message,query)
-
-
+                message_id = rtxFeedback.addNewMessage(message, query)
+                
             #### If asking for the full message back
             if return_action['parameters']['message'] == 'true':
                 response.info(f"Processing is complete. Transmitting resulting Message back to client.")
@@ -1305,13 +1311,46 @@ def main():
             "filter_results(action=limit_number_of_results, max_results=50)",
             "return(message=true, store=true)",
         ]}}
+    elif params.example_number == 8673:  # test_one_hop_based_on_types_1
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(curie=MONDO:0001475, id=n00, type=disease)",
+            "add_qnode(type=protein, id=n01, is_set=true)",
+            "add_qnode(type=chemical_substance, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=molecularly_interacts_with)",
+            "expand(edge_id=[e00,e01], kp=ARAX/KG2, continue_if_no_results=true)",
+            #- expand(edge_id=[e00,e01], kp=BTE, continue_if_no_results=true)",
+            "expand(edge_id=e00, kp=BTE, continue_if_no_results=true)",
+            #- expand(edge_id=e00, kp=GeneticsKP, continue_if_no_results=true)",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
+            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",
+            "overlay(action=overlay_clinical_info, chi_square=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n02)",
+            #"overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n00, target_qnode_id=n01)",
+            #"overlay(action=compute_ngd, virtual_relation_label=N2, source_qnode_id=n00, target_qnode_id=n02)",
+            #"overlay(action=compute_ngd, virtual_relation_label=N3, source_qnode_id=n01, target_qnode_id=n02)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=limit_number_of_results, max_results=100)",
+            "return(message=true, store=true)",
+        ]}}
+    elif params.example_number == 9999:
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=acetaminophen, id=n0)",
+            "add_qnode(type=protein, id=n1)",
+            "add_qedge(source_id=n0, target_id=n1, id=e0)",
+            "expand(edge_id=e0)",
+            "resultify()",
+            "filter_results(action=limit_number_of_results, max_results=100)",
+            "return(message=true, store=json)",
+        ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return
 
     if 0:
         message = araxq.query_return_message(query)
-        print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+        print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
         return
 
     result = araxq.query(query)
@@ -1326,7 +1365,7 @@ def main():
     #### Print out the message that came back
     #print(response.show(level=Response.DEBUG))
     #print("Returned message:\n")
-    #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.query_graph)), sort_keys=True, indent=2))

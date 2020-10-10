@@ -293,7 +293,7 @@ class ARAXExpander:
         edge_to_nodes_map = dict()
 
         # Create a query graph for this edge (that uses synonyms as well as curies found in prior steps)
-        edge_query_graph = self._get_query_graph_for_edge(qedge, query_graph, dict_kg)
+        edge_query_graph = self._get_query_graph_for_edge(qedge, query_graph, dict_kg, log)
         if log.status != 'OK':
             return answer_kg, edge_to_nodes_map
         if not any(qnode for qnode in edge_query_graph.nodes if qnode.curie):
@@ -385,8 +385,7 @@ class ARAXExpander:
                       f"{', '.join(valid_kps_for_single_node_queries)}", error_code="InvalidKP")
             return answer_kg
 
-    @staticmethod
-    def _get_query_graph_for_edge(qedge: QEdge, query_graph: QueryGraph, dict_kg: DictKnowledgeGraph) -> QueryGraph:
+    def _get_query_graph_for_edge(self, qedge: QEdge, query_graph: QueryGraph, dict_kg: DictKnowledgeGraph, log: Response) -> QueryGraph:
         # This function creates a query graph for the specified qedge, updating its qnodes' curies as needed
         edge_query_graph = QueryGraph(nodes=[], edges=[])
         qnodes = [eu.get_query_node(query_graph, qedge.source_id),
@@ -401,14 +400,27 @@ class ARAXExpander:
             qnode_copy = eu.copy_qnode(qnode)
             # Feed in curies from a prior Expand() step as the curie for this qnode as necessary
             qnode_already_fulfilled = qnode_copy.id in dict_kg.nodes_by_qg_id
-            if qnode_already_fulfilled and not qnode_copy.curie and not qedge_has_already_been_expanded:
-                qnode_copy.curie = list(dict_kg.nodes_by_qg_id[qnode_copy.id].keys())
+            if qnode_already_fulfilled and not qnode_copy.curie:
+                if qedge_has_already_been_expanded:
+                    if self._is_input_qnode(qnode_copy, qedge):
+                        qnode_copy.curie = list(dict_kg.nodes_by_qg_id[qnode_copy.id].keys())
+                else:
+                    qnode_copy.curie = list(dict_kg.nodes_by_qg_id[qnode_copy.id].keys())
             edge_query_graph.nodes.append(qnode_copy)
 
         # Consider both protein and gene if qnode's type is one of those (since KPs handle these differently)
         for qnode in edge_query_graph.nodes:
             if qnode.type in ['protein', 'gene']:
                 qnode.type = ['protein', 'gene']
+
+        # Display a summary of what the modified query graph for this edge looks like
+        qnodes_with_curies = [qnode for qnode in edge_query_graph.nodes if qnode.curie]
+        input_qnode = qnodes_with_curies[0] if qnodes_with_curies else edge_query_graph.nodes[0]
+        output_qnode = next(qnode for qnode in edge_query_graph.nodes if qnode.id != input_qnode.id)
+        input_curie_summary = self._get_qnode_curie_summary(input_qnode)
+        output_curie_summary = self._get_qnode_curie_summary(output_qnode)
+        log.debug(f"Modified QG for this edge is ({input_qnode.id}:{input_qnode.type}{input_curie_summary})-"
+                  f"{qedge.type if qedge.type else ''}-({output_qnode.id}:{output_qnode.type}{output_curie_summary})")
         return edge_query_graph
 
     @staticmethod
@@ -609,6 +621,15 @@ class ARAXExpander:
                         edges_remaining.pop(edges_remaining.index(edge_connected_to_left_end))
         return ordered_edges
 
+    def _is_input_qnode(self, qnode: QNode, qedge: QEdge) -> bool:
+        all_ordered_qedges = self._get_order_to_expand_edges_in(self.message.query_graph)
+        current_qedge_index = all_ordered_qedges.index(qedge)
+        previous_qedge = all_ordered_qedges[current_qedge_index - 1] if current_qedge_index > 0 else None
+        if previous_qedge and qnode.id in {previous_qedge.source_id, previous_qedge.target_id}:
+            return True
+        else:
+            return False
+
     @staticmethod
     def _remove_self_edges(kg: DictKnowledgeGraph, edge_to_nodes_map: Dict[str, Dict[str, str]], qedge_id: QEdge,
                            qnodes: List[QNode], log: Response) -> DictKnowledgeGraph:
@@ -680,6 +701,24 @@ class ARAXExpander:
             return False
         else:
             return bool_string
+
+    @staticmethod
+    def _get_number_of_curies(qnode: QNode) -> int:
+        if qnode.curie and isinstance(qnode.curie, list):
+            return len(qnode.curie)
+        elif qnode.curie and isinstance(qnode.curie, str):
+            return 1
+        else:
+            return 0
+
+    def _get_qnode_curie_summary(self, qnode: QNode) -> str:
+        num_curies = self._get_number_of_curies(qnode)
+        if num_curies == 1:
+            return f" {qnode.curie if isinstance(qnode.curie, str) else qnode.curie[0]}"
+        elif num_curies > 1:
+            return f" [{num_curies} curies]"
+        else:
+            return ""
 
 
 def main():

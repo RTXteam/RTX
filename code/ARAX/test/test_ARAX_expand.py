@@ -592,5 +592,20 @@ def test_genetics_kp_query():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
+@pytest.mark.slow
+def test_multi_kp_two_hop_query():
+    actions_list = [
+        "add_qnode(curie=MONDO:0005737, id=n00, type=disease)",
+        "add_qnode(type=protein, id=n01)",
+        "add_qnode(type=chemical_substance, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "expand(kp=ARAX/KG2, edge_id=[e00,e01], continue_if_no_results=true)",
+        "expand(kp=ARAX/KG1, edge_id=e01, continue_if_no_results=true)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
