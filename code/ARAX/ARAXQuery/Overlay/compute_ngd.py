@@ -57,18 +57,6 @@ class ComputeNGD:
         self.response.debug(f"Computing NGD")
         self.response.info(f"Computing the normalized Google distance: weighting edges based on source/target node "
                            f"co-occurrence frequency in PubMed abstracts")
-
-        self.response.info("Converting CURIE identifiers to human readable names")
-        node_curie_to_name = dict()
-        try:
-            for node in self.message.knowledge_graph.nodes:
-                node_curie_to_name[node.id] = node.name
-        except:
-            tb = traceback.format_exc()
-            error_type, error, _ = sys.exc_info()
-            self.response.error(f"Something went wrong when converting names")
-            self.response.error(tb, error_code=error_type.__name__)
-
         name = "normalized_google_distance"
         type = "EDAM:data_2526"
         value = self.parameters['default_value']
