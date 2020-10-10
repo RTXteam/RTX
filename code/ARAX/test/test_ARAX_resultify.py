@@ -713,8 +713,8 @@ def test09():
 def test10():
     resultifier = ARAXResultify()
     desc = resultifier.describe_me()
-    assert 'brief_description' in desc[0]
-    assert 'ignore_edge_direction' in desc[0]
+    assert "description" in desc[0]
+    assert "ignore_edge_direction" in desc[0]["parameters"]
 
 
 @pytest.mark.slow
