@@ -277,16 +277,37 @@ class RTXFeedback:
                 termsString = stringifyDict(query["message"]["query_graph"])
 
         storedMessage = Message(message_datetime=datetime.now(),restated_question=message.restated_question,query_type=query_type_id,
-            terms=termsString,tool_version=rtxConfig.version,result_code=message.message_code,message=message.code_description,n_results=n_results,message_object=pickle.dumps(ast.literal_eval(repr(message))))
+            terms=termsString,tool_version=rtxConfig.version,result_code=message.message_code,message=message.code_description,n_results=n_results,message_object=b'')
         session.add(storedMessage)
         session.flush()
+        session.commit()
         message.id = "https://arax.rtx.ai/api/rtx/v1/message/"+str(storedMessage.message_id)
 
+        #### Instead of storing the message in the MySQL database as a message_object (the old way)
+        #### Instead now store it as a JSON file on the filesystem
+        message_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/responses'
+        if not os.path.exists(message_dir):
+            try:
+                os.mkdir(message_dir)
+            except:
+                eprint(f"ERROR: Unable to create dir {message_dir}")
+
+        if os.path.exists(message_dir):
+            message_filename = f"{storedMessage.message_id}.json"
+            message_path = f"{message_dir}/{message_filename}"
+            try:
+                with open(message_path, 'w') as outfile:
+                    json.dump(message.to_dict(), outfile, sort_keys=True)
+            except:
+                eprint(f"ERROR: Unable to write message to file {message_path}")
+
+        #### This has been mostly castrated but it still puts ids in there, and may be resurrected someday
         self.addNewResults(storedMessage.message_id,message)
 
         #### After updating all the ids, store an updated object
-        storedMessage.message_object=pickle.dumps(ast.literal_eval(repr(message)))
-        session.commit()
+        #### No longer needed because we're writing to a file after the INSERT
+        #storedMessage.message_object=pickle.dumps(ast.literal_eval(repr(message)))
+        #session.commit()
 
         return storedMessage.message_id
 
@@ -361,12 +382,23 @@ class RTXFeedback:
         session = self.session
 
         if message_id is None:
-            return( { "status": 450, "title": "message_id missing", "detail": "Required attribute message_id is missing from URL", "type": "about:blank" }, 450)
+            return( { "status": 400, "title": "message_id missing", "detail": "Required attribute message_id is missing from URL", "type": "about:blank" }, 400)
 
         #### Find the message
         storedMessage = session.query(Message).filter(Message.message_id==message_id).first()
         if storedMessage is not None:
-            return pickle.loads(storedMessage.message_object)
+            if len(storedMessage.message_object) < 5:
+                message_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/responses'
+                message_filename = f"{storedMessage.message_id}.json"
+                message_path = f"{message_dir}/{message_filename}"
+                try:
+                    with open(message_path) as infile:
+                        return json.load(infile)
+                except:
+                    eprint(f"ERROR: Unable to read message from file '{message_path}'")
+
+            else:
+                return pickle.loads(storedMessage.message_object)
         else:
             return( { "status": 404, "title": "Message not found", "detail": "There is no message corresponding to message_id="+str(message_id), "type": "about:blank" }, 404)
 

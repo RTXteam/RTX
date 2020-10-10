@@ -137,7 +137,6 @@ templates:
       - overlay(action=compute_ngd, virtual_relation_label=N3, source_qnode_id=n01, target_qnode_id=n02)
       - resultify(ignore_edge_direction=true)
       - filter_results(action=limit_number_of_results, max_results=100)
-      - return(message=true, store=false)
 
   ####################################################################################################
   #### Three node, two-hop questions

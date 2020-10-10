@@ -316,7 +316,7 @@ def main():
         #### Show the final result
         #print('-------------------------')
         #print(response.show(level=Response.DEBUG))
-        #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+        #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
 
 
 if __name__ == "__main__": main()

@@ -13,6 +13,8 @@ import traceback
 from collections import Counter
 import numpy as np
 import threading
+import json
+import uuid
 
 from response import Response
 from query_graph_info import QueryGraphInfo
@@ -55,7 +57,7 @@ class ARAXQuery:
     def __init__(self):
         self.response = None
         self.message = None
-
+        
 
     def query_return_stream(self,query):
 
@@ -574,11 +576,10 @@ class ARAXQuery:
             message.query_options['processing_actions'] = envelope.processing_actions
 
             # If store=true, then put the message in the database
-            if return_action['parameters']['store'] == 'true':
+            if return_action['parameters']['store'] == 'true' or return_action['parameters']['store'] == 'json':  # FIXME: remove the "or json" part after 2021-01 or whenever this backwards compatibility is not needed anymore
                 response.debug(f"Storing resulting Message")
-                message_id = rtxFeedback.addNewMessage(message,query)
-
-
+                message_id = rtxFeedback.addNewMessage(message, query)
+                
             #### If asking for the full message back
             if return_action['parameters']['message'] == 'true':
                 response.info(f"Processing is complete. Transmitting resulting Message back to client.")
@@ -1332,13 +1333,24 @@ def main():
             "filter_results(action=limit_number_of_results, max_results=100)",
             "return(message=true, store=true)",
         ]}}
+    elif params.example_number == 9999:
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=acetaminophen, id=n0)",
+            "add_qnode(type=protein, id=n1)",
+            "add_qedge(source_id=n0, target_id=n1, id=e0)",
+            "expand(edge_id=e0)",
+            "resultify()",
+            "filter_results(action=limit_number_of_results, max_results=100)",
+            "return(message=true, store=json)",
+        ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return
 
     if 0:
         message = araxq.query_return_message(query)
-        print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+        print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
         return
 
     result = araxq.query(query)
@@ -1353,7 +1365,7 @@ def main():
     #### Print out the message that came back
     #print(response.show(level=Response.DEBUG))
     #print("Returned message:\n")
-    #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.query_graph)), sort_keys=True, indent=2))

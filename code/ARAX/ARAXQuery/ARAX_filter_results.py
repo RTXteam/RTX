@@ -598,7 +598,7 @@ def main():
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger
     message = ARAXMessenger().from_dict(message_dict)
-    # print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    # print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
 
     #### Create an overlay object and use it to apply action[0] from the list
     #filterkg = ARAXFilterKG()
@@ -640,7 +640,7 @@ def main():
     # look at the edges
     # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)),sort_keys=True,indent=2))
     # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
-    # print(json.dumps(ast.literal_eval(repr(message)), sort_keys=True, indent=2))
+    # print(json.dumps(message.to_dict(), sort_keys=True, indent=2))
     # print(response.show(level=Response.DEBUG))
 
     # just print off the values
