@@ -36,7 +36,7 @@ class ARAXExpander:
         }
         self.continue_if_no_results_parameter_info = {
             "is_required": False,
-            "examples": ["true", "false"],  # TODO: Should these be given here as strings or as booleans?
+            "examples": ["true", "false"],
             "enum": ["true", "false"],
             "default": "false",
             "type": "boolean",
