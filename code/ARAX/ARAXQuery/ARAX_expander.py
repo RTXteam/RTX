@@ -61,8 +61,8 @@ class ARAXExpander:
         self.command_definitions = {
             "ARAX/KG1": {
                 "dsl_command": "expand(kp=ARAX/KG1)",
-                "description": """This command reaches out to the RTX KG1 Neo4j instance to find all bioentity 
-                subpaths that satisfy the query graph.""",
+                "description": "This command reaches out to the RTX KG1 Neo4j instance to find all bioentity subpaths "
+                               "that satisfy the query graph.",
                 "parameters": {
                     "edge_id": self.edge_id_parameter_info,
                     "node_id": self.node_id_parameter_info,
@@ -73,9 +73,9 @@ class ARAXExpander:
             },
             "ARAX/KG2": {
                 "dsl_command": "expand(kp=ARAX/KG2)",
-                "description": """This command reaches out to the RTX KG2 knowledge graph to find all bioentity 
-                subpaths that satisfy the query graph. If use_synonyms=true, it uses the KG2Canonicalized ('KG2C') Neo4j
-                instance; otherwise, the regular KG2 Neo4j instance is used.""",
+                "description": "This command reaches out to the RTX KG2 knowledge graph to find all bioentity subpaths "
+                               "that satisfy the query graph. If use_synonyms=true, it uses the KG2canonicalized "
+                               "('KG2c') Neo4j instance; otherwise, the regular KG2 Neo4j instance is used.",
                 "parameters": {
                     "edge_id": self.edge_id_parameter_info,
                     "node_id": self.node_id_parameter_info,
@@ -86,11 +86,12 @@ class ARAXExpander:
             },
             "BTE": {
                 "dsl_command": "expand(kp=BTE)",
-                "description": """This command uses BioThings Explorer (from the Service Provider) to find all 
-                bioentity subpaths that satisfy the query graph. Of note, all query nodes must have a type specified 
-                for BTE queries. In addition, bi-directional queries are only partially supported (the ARAX system 
-                knows how to ignore edge direction when deciding which query node for a query edge will be the 'input' 
-                qnode, but BTE itself returns only answers matching the input edge direction).""",
+                "description": "This command uses BioThings Explorer (from the Service Provider) to find all bioentity "
+                               "subpaths that satisfy the query graph. Of note, all query nodes must have a type "
+                               "specified for BTE queries. In addition, bi-directional queries are only partially "
+                               "supported (the ARAX system knows how to ignore edge direction when deciding which "
+                               "query node for a query edge will be the 'input' qnode, but BTE itself returns only "
+                               "answers matching the input edge direction).",
                 "parameters": {
                     "edge_id": self.edge_id_parameter_info,
                     "node_id": self.node_id_parameter_info,
@@ -101,8 +102,8 @@ class ARAXExpander:
             },
             "COHD": {
                 "dsl_command": "expand(kp=COHD)",
-                "description": """This command reaches out to the Clinical Data Provider (COHD) to find all bioentity 
-                subpaths that satisfy the query graph.""",
+                "description": "This command uses the Clinical Data Provider (COHD) to find all bioentity subpaths that"
+                               " satisfy the query graph.",
                 "parameters": {
                     "edge_id": self.edge_id_parameter_info,
                     "node_id": self.node_id_parameter_info,
@@ -129,10 +130,11 @@ class ARAXExpander:
             },
             "GeneticsKP": {
                 "dsl_command": "expand(kp=GeneticsKP)",
-                "description": """This command reaches out to the Genetics Provider to find all bioentity subpaths that
-                satisfy the query graph. It currently can answers questions involving the following node types: gene, 
-                protein, disease, phenotypic_feature, pathway. Temporarily (while the integration is under 
-                development), it can only be used as the first hop in a query.""",
+                "description": "This command reaches out to the Genetics Provider to find all bioentity subpaths that "
+                               "satisfy the query graph. It currently can answers questions involving the following "
+                               "node types: gene, protein, disease, phenotypic_feature, pathway. Temporarily "
+                               "(while the integration is under development), it can only be used as the first hop in"
+                               " a query.",
                 "parameters": {
                     "edge_id": self.edge_id_parameter_info,
                     "node_id": self.node_id_parameter_info,
@@ -150,9 +152,10 @@ class ARAXExpander:
             },
             "NGD": {
                 "dsl_command": "expand(kp=NGD)",
-                "description": """This command uses ARAX's in-house normalized google distance (NGD) database to expand
-                 a query graph; it returns edges between nodes with an NGD value below a certain threshold. This
-                 threshold is currently hardcoded as 0.5, though this will be made configurable/smarter in the future.""",
+                "description": "This command uses ARAX's in-house normalized google distance (NGD) database to expand "
+                               "a query graph; it returns edges between nodes with an NGD value below a certain "
+                               "threshold. This threshold is currently hardcoded as 0.5, though this will be made "
+                               "configurable/smarter in the future.",
                 "parameters": {
                     "edge_id": self.edge_id_parameter_info,
                     "node_id": self.node_id_parameter_info,
