@@ -27,7 +27,7 @@ class OverlayExposuresData:
         self.response = response
         self.message = message
         self.parameters = parameters
-        self.icees_curies = self._load_icees_known_curies(self.response)
+        self.icees_known_curies = self._load_icees_known_curies(self.response)
         self.synonyms_dict = self._get_node_synonyms(self.message.knowledge_graph)
         self.icees_attribute_name = "icees_p-value"
         self.icees_attribute_type = "EDAM:data_1669"
@@ -134,8 +134,10 @@ class OverlayExposuresData:
     def _get_accepted_synonyms(self, curie):
         synonyms = self.synonyms_dict.get(curie, curie)
         formatted_synonyms = {self._convert_curie_to_icees_preferred_format(curie) for curie in synonyms}
-        accepted_synonyms = self.icees_curies.intersection(formatted_synonyms)
-        return accepted_synonyms
+        if self.icees_known_curies:
+            return self.icees_known_curies.intersection(formatted_synonyms)
+        else:
+            return formatted_synonyms
 
     def _get_icees_p_value_for_edge(self, qedge, log):
         # Note: ICEES doesn't quite accept ReasonerStdAPI, so we transform to what works
