@@ -5,11 +5,13 @@ import traceback
 import ast
 from typing import List, Dict, Tuple, Set
 
-import Expand.expand_utilities as eu
 import requests
-from Expand.expand_utilities import DictKnowledgeGraph
-from response import Response
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import expand_utilities as eu
+from expand_utilities import DictKnowledgeGraph
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
+from response import Response
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge

@@ -3,10 +3,11 @@ import sys
 import os
 from typing import List, Dict, Tuple
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from response import Response
-from Expand.expand_utilities import DictKnowledgeGraph
-import Expand.expand_utilities as eu
-
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
+import expand_utilities as eu
+from expand_utilities import DictKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.query_graph import QueryGraph
