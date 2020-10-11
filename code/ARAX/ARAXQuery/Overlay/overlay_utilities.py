@@ -14,8 +14,14 @@ from ARAX_resultify import ARAXResultify
 from response import Response
 
 
-def get_node_pairs_to_evaluate(source_qnode_id: str, target_qnode_id: str, query_graph: QueryGraph,
-                               knowledge_graph: KnowledgeGraph, log: Response) -> Set[Tuple[str, str]]:
+def get_node_pairs_to_overlay(source_qnode_id: str, target_qnode_id: str, query_graph: QueryGraph,
+                              knowledge_graph: KnowledgeGraph, log: Response) -> Set[Tuple[str, str]]:
+    """
+    This function determines which combinations of source/target nodes in the KG need to be overlayed (e.g., have a
+    virtual edge added between). It makes use of Resultify to determine what combinations of source and target nodes
+    may actually appear together in the same Results. (See issue #1069.) If it fails to narrow the node pairs for
+    whatever reason, it defaults to returning all possible combinations of source/target nodes.
+    """
     log.debug(f"Narrowing down {source_qnode_id}--{target_qnode_id} node pairs to overlay")
     kg_nodes_by_qg_id = get_node_ids_by_qg_id(knowledge_graph)
     kg_edges_by_qg_id = get_edge_ids_by_qg_id(knowledge_graph)
@@ -44,12 +50,13 @@ def get_node_pairs_to_evaluate(source_qnode_id: str, target_qnode_id: str, query
         log.debug(f"Identified {len(node_pairs)} node pairs to overlay (with help of resultify)")
         return node_pairs
     else:
-        # Back up to using the old (n^2) method of all combinations of source/target nodes
+        # Back up to using the old (O(n^2)) method of all combinations of source/target nodes in the KG
         log.warning(f"Failed to narrow down node pairs to overlay; defaulting to all possible combinations")
         return set(itertools.product(kg_nodes_by_qg_id[source_qnode_id], kg_nodes_by_qg_id[target_qnode_id]))
 
 
 def get_node_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]]:
+    # Returns all node IDs in the KG organized like so: {"n00": {"DOID:12"}, "n01": {"UniProtKB:1", "UniProtKB:2", ...}}
     node_ids_by_qg_id = dict()
     if knowledge_graph.nodes:
         for node in knowledge_graph.nodes:
@@ -61,6 +68,7 @@ def get_node_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]
 
 
 def get_edge_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]]:
+    # Returns all edge IDs in the KG organized like so: {"e00": {"KG2:123", ...}, "e01": {"KG2:224", "KG2:225", ...}}
     edge_ids_by_qg_id = dict()
     if knowledge_graph.edges:
         for edge in knowledge_graph.edges:

@@ -62,7 +62,7 @@ class ComputeNGD:
             # Figure out which node pairs to compute NGD between
             source_qnode_id = parameters['source_qnode_id']
             target_qnode_id = parameters['target_qnode_id']
-            node_pairs_to_evaluate = ou.get_node_pairs_to_evaluate(source_qnode_id, target_qnode_id, qg, kg, self.response)
+            node_pairs_to_evaluate = ou.get_node_pairs_to_overlay(source_qnode_id, target_qnode_id, qg, kg, self.response)
             # Grab PMID lists for all involved nodes
             involved_curies = {curie for node_pair in node_pairs_to_evaluate for curie in node_pair}
             canonicalized_curie_lookup = self._get_canonical_curies_map(list(involved_curies))
