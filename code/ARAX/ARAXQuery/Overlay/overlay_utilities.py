@@ -48,11 +48,11 @@ def get_node_pairs_to_overlay(source_qnode_id: str, target_qnode_id: str, query_
             pairs_in_this_result = set(itertools.product(source_curies_in_this_result, target_curies_in_this_result))
             node_pairs = node_pairs.union(pairs_in_this_result)
         log.debug(f"Identified {len(node_pairs)} node pairs to overlay (with help of resultify)")
-        return node_pairs
-    else:
-        # Back up to using the old (O(n^2)) method of all combinations of source/target nodes in the KG
-        log.warning(f"Failed to narrow down node pairs to overlay; defaulting to all possible combinations")
-        return set(itertools.product(kg_nodes_by_qg_id[source_qnode_id], kg_nodes_by_qg_id[target_qnode_id]))
+        if node_pairs:
+            return node_pairs
+    # Back up to using the old (O(n^2)) method of all combinations of source/target nodes in the KG
+    log.warning(f"Failed to narrow down node pairs to overlay; defaulting to all possible combinations")
+    return set(itertools.product(kg_nodes_by_qg_id[source_qnode_id], kg_nodes_by_qg_id[target_qnode_id]))
 
 
 def get_node_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]]:
