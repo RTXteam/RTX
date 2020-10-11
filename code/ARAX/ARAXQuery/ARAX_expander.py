@@ -3,10 +3,11 @@ import sys
 import os
 from typing import List, Dict, Tuple
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from response import Response
-from Expand.expand_utilities import DictKnowledgeGraph
-import Expand.expand_utilities as eu
-
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
+import expand_utilities as eu
+from expand_utilities import DictKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.query_graph import QueryGraph
@@ -88,11 +89,11 @@ class ARAXExpander:
                     value = False
                 parameters[key] = value
 
-        # Handle situation where 'ARAX/KG2C' is entered as the kp (technically invalid, but we won't error out)
-        if parameters['kp'] == "ARAX/KG2C":
+        # Handle situation where 'ARAX/KG2c' is entered as the kp (technically invalid, but we won't error out)
+        if parameters['kp'].upper() == "ARAX/KG2C":
             parameters['kp'] = "ARAX/KG2"
             if not parameters['use_synonyms']:
-                response.warning(f"KG2C is only used when use_synonyms=true; overriding use_synonyms to True")
+                response.warning(f"KG2c is only used when use_synonyms=true; overriding use_synonyms to True")
                 parameters['use_synonyms'] = True
 
         # Default to expanding the entire query graph if the user didn't specify what to expand
@@ -219,7 +220,7 @@ class ARAXExpander:
             log.debug(f"Query for edge {qedge.id} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
             # Do some post-processing (deduplicate nodes, remove self-edges..)
-            if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2C is already deduplicated
+            if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2c is already deduplicated
                 answer_kg, edge_to_nodes_map = self._deduplicate_nodes(answer_kg, edge_to_nodes_map, log)
             if eu.qg_is_fulfilled(edge_query_graph, answer_kg):
                 answer_kg = self._remove_self_edges(answer_kg, edge_to_nodes_map, qedge.id, edge_query_graph.nodes, log)
@@ -266,7 +267,7 @@ class ARAXExpander:
                               error_code="UnfulfilledQGID")
                     return answer_kg
 
-            if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2C is already deduplicated
+            if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2c is already deduplicated
                 answer_kg, edge_node_usage_map = self._deduplicate_nodes(dict_kg=answer_kg,
                                                                          edge_to_nodes_map={},
                                                                          log=log)

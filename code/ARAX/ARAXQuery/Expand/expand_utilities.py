@@ -2,11 +2,8 @@
 # This file contains utilities/helper functions for general use within the Expand module
 import sys
 import os
-import time
 import traceback
 from typing import List, Dict, Union, Tuple
-
-from response import Response
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.knowledge_graph import KnowledgeGraph
@@ -15,6 +12,8 @@ from swagger_server.models.q_node import QNode
 from swagger_server.models.q_edge import QEdge
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
+from response import Response
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 
