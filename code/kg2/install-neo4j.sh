@@ -19,11 +19,11 @@ sudo apt-get update
 sudo apt-get install -y zulu-8
 
 # install Neo4j
-wget --no-check-certificate -O - https://debian.neo4j.org/neotechnology.gpg.key | sudo apt-key add -
-echo 'deb http://debian.neo4j.org/repo stable/' > /tmp/neo4j.list
+wget --no-check-certificate -O - https://debian.neo4j.com/neotechnology.gpg.key | sudo apt-key add -
+echo 'deb http://debian.neo4j.com stable 4.0' > /tmp/neo4j.list
 sudo mv /tmp/neo4j.list /etc/apt/sources.list.d/neo4j.list
-sudo apt-get update
-sudo apt-get install -y neo4j=1:3.5.13
+sudo apt-get update -y
+sudo apt-get install -y neo4j
 sudo cp /etc/neo4j/neo4j.conf /etc/neo4j/neo4j.conf.ori
 
 # note: by default, Neo4j is configured as read-only (this is a good thing, we want to keep it that way)

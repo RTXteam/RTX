@@ -5,7 +5,6 @@
 '''
 
 import argparse
-import json
 import neo4j
 import getpass
 import sys
@@ -27,24 +26,27 @@ def run_query(query):
     # Start a neo4j session, run a query, then close the session
     session = driver.session()
     query = session.run(query)
+    records = []
+    for record in query: #Only have to return anything for labels
+        records.append(record["labels(n)"])
     session.close()
-    return query
+    return records
 
 
 def node_labels():
     # Create a list of dictionaries where each key is "labels(n)"
     # and each value is a list containing a node label
     labels = "MATCH (n) RETURN distinct labels(n)"
-    query = run_query(labels)
-    data = query.data()
+    query = run_query(neo4j.Query(labels))
+    #print(query)
+    #keys = query.keys()
+    #print(query.peek())
+    data = query
     label_list = []
     # Iterate through the list and dicitionaries to create a list
     # of node labels
-    for dictionary in data:
-        for key in dictionary:
-            value = dictionary[key]
-            value_string = value[0]
-            label_list.append(value_string)
+    for label in data:
+        label_list.append(label[0])
     return label_list
 
 

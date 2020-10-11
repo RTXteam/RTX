@@ -39,7 +39,7 @@ rtx_config_file_full=${BUILD_DIR}/${rtx_config_file}
 ${s3_cp_cmd} s3://${s3_bucket}/${rtx_config_file} ${rtx_config_file_full}
 
 # change database and database paths to current database and database path in config file
-sudo sed -i '/dbms.active_database/c\dbms.active_database='${database}'' ${neo4j_config}
+sudo sed -i '/dbms.default_database/c\dbms.default_database='${DATABASE}'' ${NEO4J_CONFIG}
     
 # restart neo4j 
 sudo service neo4j restart
@@ -67,7 +67,13 @@ sudo chown neo4j:adm ${tsv_dir}/import.report
 
 # stop Neo4j database before deleting the database
 sudo service neo4j stop
-sudo rm -rf ${database_path}/databases/${database}
+
+# This is a fix for the mismatching store ID problem.
+# See my report at https://community.neo4j.com/t/mismatching-store-id-on-neo4j-admin-import/20504
+sudo rm -rf /var/lib/neo4j/
+sudo apt purge neo4j
+sudo apt autoremove
+sudo apt-get install -y neo4j=1:4.0.6
 
 mem_gb=`${CODE_DIR}/get-system-memory-gb.sh`
 
@@ -76,7 +82,8 @@ sudo -u neo4j neo4j-admin import --nodes "${tsv_dir}/nodes_header.tsv,${tsv_dir}
     --relationships "${tsv_dir}/edges_header.tsv,${tsv_dir}/edges.tsv" \
     --max-memory=${mem_gb}G --multiline-fields=true --delimiter "\009" \
     --array-delimiter=";" --report-file="${tsv_dir}/import.report" \
-    --database=${database} --ignore-missing-nodes=true
+    --database=${database} --ignore-missing-nodes=true \
+     --read-buffer-size=46m
 
 # change read only to false so that indexes and constraints can be added
 sudo sed -i '/dbms.read_only/c\dbms.read_only=false' ${neo4j_config}
