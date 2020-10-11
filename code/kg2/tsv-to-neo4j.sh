@@ -39,7 +39,7 @@ rtx_config_file_full=${BUILD_DIR}/${rtx_config_file}
 ${s3_cp_cmd} s3://${s3_bucket}/${rtx_config_file} ${rtx_config_file_full}
 
 # change database and database paths to current database and database path in config file
-sudo sed -i '/dbms.default_database/c\dbms.default_database='${DATABASE}'' ${NEO4J_CONFIG}
+sudo sed -i '/dbms.default_database/c\dbms.default_database='${data}'' ${neo4j_config}
     
 # restart neo4j 
 sudo service neo4j restart
