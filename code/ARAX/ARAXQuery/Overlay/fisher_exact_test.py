@@ -351,7 +351,7 @@ class ComputeFTEST:
                         self.response.debug(f"Since KG1 can't find the any nodes with node type {source_node_type}, ARAX/KG2C were used to calculate total number of node with the same type of source node in Fisher's Exact Test")
                         self.response.debug(f"Total {size_of_total} unique concepts with node type {source_node_type} was found in ARAX/KG2C")
 
-            elif kp=='ARAX/KG2' or kp == 'ARAX/KG2C':
+            elif kp=='ARAX/KG2' or kp == 'ARAX/KG2c':
                 ## check KG1 first as KG2 might have many duplicates. If KG1 is 0, then check KG2
                 size_of_total = self.size_of_given_type_in_KP(node_type=source_node_type, use_cypher_command=False, kg='KG2') ## Try cypher query first
                 self.response.debug(f"ARAX/KG2C were used to calculate total number of node with the same type of source node in Fisher's Exact Test")

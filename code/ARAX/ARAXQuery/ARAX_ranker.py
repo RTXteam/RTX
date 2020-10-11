@@ -7,6 +7,7 @@ import scipy.stats
 import sys
 import json
 import ast
+import re
 
 from typing import Set, Union, Dict, List, Callable
 from response import Response
@@ -167,7 +168,7 @@ class ARAXRanker:
         # edge attributes we know about
         self.known_attributes = {'probability', 'normalized_google_distance', 'jaccard_index',
                                  'probability_treats', 'paired_concept_frequency',
-                                 'observed_expected_ratio', 'chi_square'}
+                                 'observed_expected_ratio', 'chi_square', 'MAGMA-pvalue', 'Genetics-quantile '}
         # how much we trust each of the edge attributes
         self.known_attributes_to_trust = {'probability': 0.5,
                                           'normalized_google_distance': 0.8,
@@ -175,7 +176,9 @@ class ARAXRanker:
                                           'probability_treats': 1,
                                           'paired_concept_frequency': 0.5,
                                           'observed_expected_ratio': 0.8,
-                                          'chi_square': 0.8
+                                          'chi_square': 0.8,
+                                          'MAGMA-pvalue': 1.0,
+                                          'Genetics-quantile': 1.0,
                                           }
         self.virtual_edge_types = {}
         self.score_stats = dict()  # dictionary that stores that max's and min's of the edge attribute values
@@ -239,6 +242,8 @@ class ARAXRanker:
                 return 0.
             # else it's all good to proceed
             else:
+                # Fix hyphens or spaces to underscores in names
+                edge_attribute_name = re.sub(r'[- ]','_',edge_attribute_name)
                 # then dispatch to the appropriate function that does the score normalizing to get it to be in [0, 1] with 1 better
                 return getattr(self, '_' + self.__class__.__name__ + '__normalize_' + edge_attribute_name)(value=edge_attribute_value)
 
@@ -341,6 +346,7 @@ class ARAXRanker:
         # print(f"value: {value}, normalized: {normalized_value}")
         return normalized_value
 
+
     def __normalize_chi_square(self, value):
         """
         From COHD: Note that due to large sample sizes, the chi-square can become very large.
@@ -363,6 +369,30 @@ class ARAXRanker:
         # TODO: make sure max value can be obtained
         # print(f"value: {value}, normalized: {normalized_value}")
         return normalized_value
+
+
+    def __normalize_MAGMA_pvalue(self, value):
+        """
+        For Genetics Provider MAGMA p-value: Convert provided p-value to a number between 0 and 1
+        with 1 being best. Estimated conversion from SAR and DMK 2020-09-22
+        """
+
+        value = -np.log(value)
+        max_value = 1.0
+        curve_steepness = 0.849
+        logistic_midpoint = 4.97
+        normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
+        return normalized_value
+
+
+    def __normalize_Genetics_quantile(self, value):
+        """
+        For Genetics Provider MAGMA quantile: We decide 2020-09-22 that just using
+        the quantile as-is is best. With DML, SAR, EWD.
+        """
+
+        return value
+
 
     def aggregate_scores_dmk(self, message, response=None):
         """
@@ -795,7 +825,7 @@ def main():
         if confidence is None:
             confidence = 0.0
         print("  -" + '{:6.3f}'.format(confidence) + f"\t{result.essence}")
-    # print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    # print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
 
     # Show the message number
     print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))

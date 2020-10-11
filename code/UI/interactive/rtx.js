@@ -6,6 +6,7 @@ var predicates = {};
 var message_id = null;
 var summary_table_html = '';
 var summary_tsv = [];
+var compare_tsv = [];
 var columnlist = [];
 var UIstate = {};
 
@@ -25,7 +26,7 @@ function main() {
     if (message_id) {
 	var statusdiv = document.getElementById("statusdiv");
 	statusdiv.innerHTML = '';
-	statusdiv.appendChild(document.createTextNode("You have requested ARAX message id = " + message_id));;
+	statusdiv.appendChild(document.createTextNode("You have requested ARAX message id = " + message_id));
 	statusdiv.appendChild(document.createElement("br"));
 
 	document.getElementById("devdiv").innerHTML =  "Requested ARAX message id = " + message_id + "<br>";
@@ -601,7 +602,7 @@ function render_message(respObj,dispjson) {
 	button.name = 'action';
 	button.title = 'Get tab-separated values of this table to paste into Excel etc';
 	button.value = 'Copy Summary Table to clipboard (TSV)';
-	button.setAttribute('onclick', 'copyTSVToClipboard(this);');
+	button.setAttribute('onclick', 'copyTSVToClipboard(this,summary_tsv);');
         div.appendChild(button);
 
         div.appendChild(document.createElement("br"));
@@ -1911,6 +1912,48 @@ function display_list(listId) {
 
     document.getElementById("listdiv"+listId).innerHTML = listhtml;
     check_entities();
+    compare_lists();
+}
+
+function compare_lists() {
+    // only assume listA and listB, for now...
+
+    var keysA = Object.keys(listItems['A']);
+    var keysB = Object.keys(listItems['B']);
+    compare_tsv = [];
+
+    if (keysA.length == 0 || keysB.length == 0) {
+	document.getElementById("comparelists").innerHTML = "Please add elements to both lists for comparison.";
+	return;
+    }
+
+    var comparehtml = "<input class='questionBox button' type='button' name='action' title='Get tab-separated values of this table to paste into Excel etc' value='Copy Comparison Table to clipboard (TSV)' onclick='copyTSVToClipboard(this,compare_tsv);'><br><br>";
+
+    comparehtml += "<table class='sumtab'><tr><th></th><th>List A</th><th></th><th>List B</th></tr>";
+    compare_tsv.push("List A\tList B");
+
+    var maxkeys = (keysA.length > keysB.length) ? keysA : keysB;
+    for (var idx in maxkeys) {
+	comparehtml += "<tr class='hoverable'><td><span class='explevel ";
+	if (keysA[idx] == keysB[idx])
+	    comparehtml += "p9'>&check;";
+	else if (listItems['B'][keysA[idx]])
+	    comparehtml += "p5'>&check;";
+	else
+	    comparehtml += "p1'>&cross;";
+	comparehtml += "</span></td><td>" + keysA[idx] + "</td><td><span class='explevel ";
+        if (keysA[idx] == keysB[idx])
+	    comparehtml += "p9'>&check;";
+	else if (listItems['A'][keysB[idx]])
+	    comparehtml += "p5'>&check;";
+	else
+	    comparehtml += "p1'>&cross;";
+	comparehtml += "</span></td><td>" + keysB[idx] + "</td></tr>";
+	compare_tsv.push(keysA[idx]+"\t"+keysB[idx]);
+    }
+
+    comparehtml += "</table><br><br>";
+    document.getElementById("comparelists").innerHTML = comparehtml;
 }
 
 function get_list_as_string(listId) {
@@ -2130,11 +2173,11 @@ function copyJSON(ele) {
     }
 }
 
-function copyTSVToClipboard(ele) {
+function copyTSVToClipboard(ele,tsv) {
     var dummy = document.createElement("textarea");
     document.body.appendChild(dummy);
     dummy.setAttribute("id", "dummy_id");
-    for (var line of summary_tsv)
+    for (var line of tsv)
 	document.getElementById("dummy_id").value+=line+"\n";
     dummy.select();
     document.execCommand("copy");

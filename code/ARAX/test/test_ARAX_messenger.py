@@ -105,7 +105,7 @@ def test_add_qnode_bad_name():
     assert response.status == 'ERROR'
     assert isinstance(message.query_graph.nodes, list)
     assert len(message.query_graph.nodes) == 0
-    assert response.error_code == 'UnknownCURIE'
+    assert response.error_code == 'UnresolvableNodeName'
 
 
 def test_add_qnode_bad_parameters():
