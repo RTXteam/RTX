@@ -148,10 +148,11 @@ class ARAXFilterResults:
         Little helper function for internal use that describes the actions and what they can do
         :return:
         """
-        description_list = []
-        for action in self.allowable_actions:
-            description_list.append(getattr(self, '_' + self.__class__.__name__ + '__' + action)(describe=True))
-        return description_list
+        #description_list = []
+        #for action in self.allowable_actions:
+        #    description_list.append(getattr(self, '_' + self.__class__.__name__ + '__' + action)(describe=True))
+        #return description_list
+        return list(self.command_definitions.values())
 
     # Write a little helper function to test parameters
     def check_params(self, allowable_parameters):
