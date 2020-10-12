@@ -28,6 +28,164 @@ class ARAXFilterKG:
         }
         self.report_stats = True  # Set this to False when ready to go to production, this is only for debugging purposes
 
+        #parameter descriptions
+        self.edge_type_info = {
+            "is_required": True,
+            "examples": ["contraindicated_for", "affects", "expressed_in"],
+            "type": "string",
+            "description": "The name of the edge type to filter by."
+        }
+        self.remove_connected_nodes_info = {
+            "is_required": False,
+            "examples": ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F'],
+            "type": "string",
+            "description": "Indicates whether or not to remove the nodes connected to the edge. Defaults to False."
+        }
+        self.qnode_id_info = {
+            "is_required": False,
+            "examples": ['n01', 'n02'],
+            "type": "string",
+            "description": "If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_id to be removed. Defaults to None."
+        }
+        self.edge_property_info = {
+            "is_required": True,
+            "examples": ['source_id', 'provided_by', 'is_defined_by'],
+            "type": "string",
+            "description": "The name of the edge property to filter on."
+        }
+        self.edge_property_value_info = {
+            "is_required": True,
+            "examples": ['DOID:8398', 'Pharos', 'ARAX/RTX'],
+            "type": "string",
+            "description": "The edge property vaue to indicate which edges to remove."
+        }
+        self.edge_attribute_info = {
+            "is_required": True,
+            "examples": ["jaccard_index", "observed_expected_ratio", "normalized_google_distance"],
+            "type": "string",
+            "description": "The name of the edge attribute to filter on."
+        }
+        self.direction_info = {
+            "is_required": True,
+            "examples": ['above', 'below'],
+            "type": "string",
+            "description": "Indictes whether to remove above or below the given threshold."
+        }
+        self.threshold_info = {
+            "is_required": True,
+            "examples": [5,0.45],
+            "type": "float",
+            "description": "The threshold to filter with."
+        }
+        self.type_info = {
+            "is_required": False,
+            "examples": ['n', 'std', 'std_dev', 'percentile', 'p'],
+            "type": "string",
+            "description": "The statistic to use for filtering. Dafualts to 'n'."
+        }
+        self.top_info = {
+            "is_required": False,
+            "examples": ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F'],
+            "type": "string",
+            "description": "Indicate whether or not the threshold should be placed in top of the list. E.g. top set as True with type set as std_dev will set the cutoff for filtering as the mean + threshold * std_dev while setting top to False will set the cutoff as the mean - std_dev * threshold."
+        }
+        self.node_type_required_info = {
+            "is_required": True,
+            "examples": ["chemical_substance", "disease"],
+            "type": "string",
+            "description": "The name of the node type to filter by."
+        }
+        self.node_type_info = {
+            "is_required": False,
+            "examples": ["chemical_substance", "disease"],
+            "type": "string",
+            "description": "The name of the node type to filter by."
+        }
+        self.node_property_info = {
+            "is_required": True,
+            "examples": ['provided_by', 'is_defined_by'],
+            "type": "string",
+            "description": "The name of the node property to filter on."
+        }
+        self.node_property_value_info = {
+            "is_required": True,
+            "examples": ['Pharos', 'ARAX/RTX'],
+            "type": "string",
+            "description": "The node property vaue to indicate which nodes to remove."
+        }
+
+        
+
+        #command descriptions
+        self.command_definitions = {
+            "remove_edges_by_type": {
+                "dsl_command": "filter_kg(action=remove_edges_by_type)",
+                "description": "This command removes edges in the kg of the given type.",
+                "parameters": {
+                    "edge_type": self.edge_type_info,
+                    "remove_connected_nodes": self.remove_connected_nodes_info,
+                    "qnode_id": self.qnode_id_info
+                }
+            },
+            "remove_edges_by_attribute": {
+                "dsl_command": "filter_kg(action=remove_edges_by_attribute)",
+                "description": "This command removes edges in the kg by attribute values.",
+                "parameters": {
+                    "edge_attribute": self.edge_attribute_info,
+                    "direction": self.direction_info,
+                    "threshold": self.threshold_info,
+                    "remove_connected_nodes": self.remove_connected_nodes_info,
+                    "qnode_id": self.qnode_id_info
+                }
+            },
+            "remove_edges_by_property": {
+                "dsl_command": "filter_kg(action=remove_edges_by_property)",
+                "description": "This command removes edges in the kg by property values.",
+                "parameters": {
+                    "edge_property": self.edge_property,
+                    "property_value": self.edge_property_value_info,
+                    "remove_connected_nodes": self.remove_connected_nodes_info,
+                    "qnode_id": self.qnode_id_info
+                }
+            },
+            "remove_edges_by_stats": {
+                "dsl_command": "filter_kg(action=remove_edges_by_stats)",
+                "description": "This command removes edges in the kg by edge attribute statistics.",
+                "parameters": {
+                    "edge_attribute": self.edge_attribute_info,
+                    "type": self.type_info,
+                    "direction": self.direction_info,
+                    "threshold": self.threshold_info,
+                    "top": self.top_info,
+                    "remove_connected_nodes": self.remove_connected_nodes_info,
+                    "qnode_id": self.qnode_id_info
+                }
+            },
+            "remove_nodes_by_type": {
+                "dsl_command": "filter_kg(action=remove_nodes_by_type)",
+                "description": "This command removes nodes in the kg of the given type.",
+                "parameters": {
+                    "node_type": self.node_type_required_info
+                }
+            },
+            "remove_nodes_by_property": {
+                "dsl_command": "filter_kg(action=remove_nodes_by_property)",
+                "description": "This command removes nodes in the kg by property values.",
+                "parameters": {
+                    "node_property": self.node_property_info,
+                    "property_value": self.node_property_value_info
+                }
+            },
+            "remove_orphaned_nodes": {
+                "dsl_command": "filter_kg(action=remove_orphaned_nodes)",
+                "description": "This command removes nodes in the kg not connected to any edge.",
+                "parameters": {
+                    "node_type": self.node_type_info
+                }
+            }
+        }
+
+
     def report_response_stats(self, response):
         """
         Little helper function that will report the KG, QG, and results stats to the debug in the process of executing actions. Basically to help diagnose problems
