@@ -27,6 +27,97 @@ class ARAXFilterResults:
         }
         self.report_stats = True  # Set this to False when ready to go to production, this is only for debugging purposes
 
+        #parameter descriptions
+        self.edge_attribute_info = {
+            "is_required": True,
+            "examples": ["jaccard_index", "observed_expected_ratio", "normalized_google_distance"],
+            "type": "string",
+            "description": "The name of the attribute to filter by."
+        }
+        self.direction_info = {
+            "is_required": True,
+            "examples": ['descending', 'd', 'ascending', 'a'],
+            "type": "string",
+            "description": "The direction in which to order results. (ascending or descending)"
+        }
+        self.max_results_info = {
+            "is_required": False,
+            "examples": [5,10,50],
+            "type": "integer",
+            "description": "The maximum number of results to return. Default is to return all results."
+        }
+        self.max_results_required_info = {
+            "is_required": True,
+            "examples": [5,10,50],
+            "type": "integer",
+            "description": "The maximum number of results to return. Default is to return all results."
+        }
+        self.edge_relation_info = {
+            "is_required": False,
+            "examples": ['N1', 'C1'],
+            "type": "string",
+            "description": "The name of unique identifier to only filter on edges with matching relation field. (stored in the relation neo4j edge property) Default is to ignore this field."
+        }
+        self.node_attribute_info = {
+            "is_required": True,
+            "examples": ["pubmed_ids"],
+            "type": "string",
+            "description": "The name of the attribute to filter by."
+        }
+        self.node_type_info = {
+            "is_required": False,
+            "examples": ["chemical_substance", "disease"],
+            "type": "string",
+            "description": "The name of the node type to only filter on nodes of the matching type."
+        }
+
+        #command descriptions
+        self.command_definitions = {
+            "sort_by_edge_attribute": {
+                "dsl_command": "filter_results(action=sort_by_edge_attribute)",
+                "description": "This command sorts the results by a given edge attribute.",
+                "parameters": {
+                    "edge_attribute": self.edge_attribute_info,
+                    "edge_relation": self.edge_relation_info,
+                    "direction": self.direction_info,
+                    "max_results": self.max_results_info
+                }
+            },
+            "sort_by_node_attribute": {
+                "dsl_command": "filter_results(action=sort_by_node_attribute)",
+                "description": "This command sorts the results by a given node attribute.",
+                "parameters": {
+                    "node_attribute": self.node_attribute_info,
+                    "node_type": self.node_type_info,
+                    "direction": self.direction_info,
+                    "max_results": self.max_results_info
+                }
+            },
+            "limit_number_of_results": {
+                "dsl_command": "filter_results(action=limit_number_of_results)",
+                "description": "This command linits the number of results without changing order.",
+                "parameters": {
+                    "max_results": self.max_results_required_info
+                }
+            },
+            "sort_by_edge_count": {
+                "dsl_command": "filter_results(action=sort_by_edge_count)",
+                "description": "This command sorts the results by the number of edges contained in the result.",
+                "parameters": {
+                    "direction": self.direction_info,
+                    "max_results": self.max_results_info
+                }
+            },
+            "sort_by_node_count": {
+                "dsl_command": "filter_results(action=sort_by_node_count)",
+                "description": "This command sorts the results by the number of nodes contained in the result.",
+                "parameters": {
+                    "direction": self.direction_info,
+                    "max_results": self.max_results_info
+                }
+            }
+        }
+
     def report_response_stats(self, response):
         """
         Little helper function that will report the KG, QG, and results stats to the debug in the process of executing actions. Basically to help diagnose problems
