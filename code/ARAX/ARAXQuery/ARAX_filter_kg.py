@@ -142,7 +142,7 @@ class ARAXFilterKG:
                 "dsl_command": "filter_kg(action=remove_edges_by_property)",
                 "description": "This command removes edges in the kg by property values.",
                 "parameters": {
-                    "edge_property": self.edge_property,
+                    "edge_property": self.edge_property_info,
                     "property_value": self.edge_property_value_info,
                     "remove_connected_nodes": self.remove_connected_nodes_info,
                     "qnode_id": self.qnode_id_info
