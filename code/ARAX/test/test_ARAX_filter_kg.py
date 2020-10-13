@@ -15,6 +15,7 @@ from typing import List, Union
 import numpy as np
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
+from ARAX_filter_kg import ARAXFilterKG
 from ARAX_query import ARAXQuery
 from response import Response
 
@@ -39,6 +40,10 @@ def _do_arax_query(query: dict, print_response: bool=True) -> List[Union[Respons
     if response.status != 'OK' and print_response:
         print(response.show(level=response.DEBUG))
     return [response, araxq.message]
+
+def test_command_definitions():
+    fkg = ARAXFilterKG()
+    assert fkg.allowable_actions == set(fkg.command_definitions.keys())
 
 def test_warning():
     query = {"previous_message_processing_plan": {"processing_actions": [

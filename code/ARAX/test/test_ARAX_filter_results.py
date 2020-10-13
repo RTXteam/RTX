@@ -14,6 +14,7 @@ import ast
 from typing import List, Union
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
+from ARAX_filter_results import ARAXFilterResults
 from ARAX_query import ARAXQuery
 from response import Response
 
@@ -39,6 +40,10 @@ def _do_arax_query(query: dict) -> List[Union[Response, Message]]:
         print(response.show(level=response.DEBUG))
     return [response, araxq.message]
 
+
+def test_command_definitions():
+    fr = ARAXFilterResults()
+    assert fr.allowable_actions == set(fr.command_definitions.keys())
 
 def test_warning():
     query = {"previous_message_processing_plan": {"processing_actions": [
