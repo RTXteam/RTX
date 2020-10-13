@@ -27,6 +27,13 @@ class ARAXFilterResults:
         }
         self.report_stats = True  # Set this to False when ready to go to production, this is only for debugging purposes
 
+    def check_results(self, message):
+        if not hasattr(message, 'results') or len(message.results) == 0:
+            self.response.warning(
+                        f"filter_results called with no results.")
+            return True
+        return False
+
     def report_response_stats(self, response):
         """
         Little helper function that will report the KG, QG, and results stats to the debug in the process of executing actions. Basically to help diagnose problems
@@ -177,6 +184,9 @@ Also, you have the option of limiting the number of results returned (e.g. via `
 
         edge_params = self.parameters
 
+        if self.check_results(message):
+            return self.response
+
         # try to convert the max results to an int
         if 'max_results' in edge_params:
             try:
@@ -272,6 +282,9 @@ Also, you have the option of limiting the number of results returned (e.g. via `
 
         node_params = self.parameters
 
+        if self.check_results(message):
+            return self.response
+
         # try to convert the max results to an int
         if 'max_results' in node_params:
             try:
@@ -352,6 +365,9 @@ Use cases include:
 
         params = self.parameters
 
+        if self.check_results(message):
+            return self.response
+
 
         # Make sure only allowable parameters and values have been passed
         resp = self.check_params(allowable_parameters)
@@ -424,6 +440,9 @@ Also, you have the option of limiting the number of results returned (e.g. via `
             return allowable_parameters
 
         edge_params = self.parameters
+
+        if self.check_results(message):
+            return self.response
 
         # try to convert the max results to an int
         if 'max_results' in edge_params:
@@ -503,6 +522,9 @@ Also, you have the option of limiting the number of results returned (e.g. via `
             return allowable_parameters
 
         node_params = self.parameters
+
+        if self.check_results(message):
+            return self.response
 
         # try to convert the max results to an int
         if 'max_results' in node_params:
