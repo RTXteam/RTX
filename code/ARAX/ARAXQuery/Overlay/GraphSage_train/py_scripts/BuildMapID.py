@@ -24,14 +24,14 @@ def map_to_graph(row):
         res = nodesynonymizer.get_canonical_curies(drug)[drug]
         preferred_drug_curie = res['preferred_curie'] if (res is not None) and (res['preferred_type']=='drug' or res['preferred_type']=='chemical_substance') else None
         res = nodesynonymizer.get_canonical_curies(disease)[disease]
-        preferred_disease_curie = res['preferred_curie'] if (res is not None) and (res['preferred_type']=='disease' or res['preferred_type']=='phenotypic_feature') else None
+        preferred_disease_curie = res['preferred_curie'] if (res is not None) and (res['preferred_type']=='disease' or res['preferred_type']=='phenotypic_feature' or res['preferred_type']=='disease_or_phenotypic_feature') else None
         return [preferred_drug_curie, preferred_disease_curie]
     elif len(row) == 3:
         count, drug, disease = row
         res = nodesynonymizer.get_canonical_curies(drug)[drug]
         preferred_drug_curie = res['preferred_curie'] if (res is not None) and (res['preferred_type']=='drug' or res['preferred_type']=='chemical_substance') else None
         res = nodesynonymizer.get_canonical_curies(disease)[disease]
-        preferred_disease_curie = res['preferred_curie'] if (res is not None) and (res['preferred_type']=='disease' or res['preferred_type']=='phenotypic_feature') else None
+        preferred_disease_curie = res['preferred_curie'] if (res is not None) and (res['preferred_type']=='disease' or res['preferred_type']=='phenotypic_feature' or res['preferred_type']=='disease_or_phenotypic_feature') else None
         return [count, preferred_drug_curie, preferred_disease_curie]
 
 
