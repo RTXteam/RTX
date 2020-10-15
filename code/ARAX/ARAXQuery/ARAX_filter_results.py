@@ -84,7 +84,17 @@ class ARAXFilterResults:
         self.command_definitions = {
             "sort_by_edge_attribute": {
                 "dsl_command": "filter_results(action=sort_by_edge_attribute)",
-                "description": "This command sorts the results by a given edge attribute.",
+                "description": """
+                    `sort_by_edge_attribute` sorts the results by the edges based on a a certain edge attribute.
+                    Edge attributes are a list of additional attributes for an edge.
+                    Use cases include:
+
+                    * sorting the results by the value of the jaccard index and take the top ten `filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=d, max_results=10)`
+                    * etc. etc.
+                                    
+                    You have the option to specify the edge type (e.g. via `edge_relation=<an edge relation>`)
+                    Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
+                    """,
                 "parameters": {
                     "edge_attribute": self.edge_attribute_info,
                     "edge_relation": self.edge_relation_info,
@@ -94,7 +104,17 @@ class ARAXFilterResults:
             },
             "sort_by_node_attribute": {
                 "dsl_command": "filter_results(action=sort_by_node_attribute)",
-                "description": "This command sorts the results by a given node attribute.",
+                "description": """
+                    `sort_by_node_attribute` sorts the results by the nodes based on a a certain node attribute.
+                    node attributes are a list of additional attributes for an node.
+                    Use cases include:
+
+                    * sorting the rsults by the number of pubmed ids returning the top 20. `"filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=d, max_results=20)"`
+                    * etc. etc.
+                                    
+                    You have the option to specify the node type (e.g. via `node_type=<an node type>`)
+                    Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
+                    """,
                 "parameters": {
                     "node_attribute": self.node_attribute_info,
                     "node_type": self.node_type_info,
@@ -104,14 +124,30 @@ class ARAXFilterResults:
             },
             "limit_number_of_results": {
                 "dsl_command": "filter_results(action=limit_number_of_results)",
-                "description": "This command linits the number of results without changing order.",
+                "description": """
+                    `limit_number_of_results` removes excess results over the specified maximum.
+
+                    Use cases include:
+
+                    * limiting the number of results to 100 `filter_results(action=limit_number_of_results, max_results=100)`
+                    * etc. etc.
+                    """,
                 "parameters": {
                     "max_results": self.max_results_required_info
                 }
             },
             "sort_by_edge_count": {
                 "dsl_command": "filter_results(action=sort_by_edge_count)",
-                "description": "This command sorts the results by the number of edges contained in the result.",
+                "description": """
+                    `sort_by_edge_count` sorts the results by the number of edges in the results.
+                    Use cases include:
+
+                    * return the results with the 10 fewest edges. `filter_results(action=sort_by_edge_count, direction=ascending, max_results=10)`
+                    * etc. etc.
+                                    
+                    You have the option to specify the direction (e.g. `direction=descending`)
+                    Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
+                    """,
                 "parameters": {
                     "direction": self.direction_info,
                     "max_results": self.max_results_info
@@ -119,7 +155,16 @@ class ARAXFilterResults:
             },
             "sort_by_node_count": {
                 "dsl_command": "filter_results(action=sort_by_node_count)",
-                "description": "This command sorts the results by the number of nodes contained in the result.",
+                "description": """
+                    `sort_by_node_count` sorts the results by the number of nodes in the results.
+                    Use cases include:
+
+                    * return the results with the 10 most nodes. `filter_results(action=sort_by_node_count, direction=descending, max_results=10)`
+                    * etc. etc.
+                                    
+                    You have the option to specify the direction (e.g. `direction=descending`)
+                    Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
+                    """,
                 "parameters": {
                     "direction": self.direction_info,
                     "max_results": self.max_results_info
@@ -261,18 +306,7 @@ class ARAXFilterResults:
 
         # A little function to describe what this thing does
         if describe:
-            # TODO: add more use cases
-            brief_description = """
-`sort_by_edge_attribute` sorts the results by the edges based on a a certain edge attribute.
-Edge attributes are a list of additional attributes for an edge.
-Use cases include:
-
-* sorting the results by the value of the jaccard index and take the top ten `filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=d, max_results=10)`
-* etc. etc.
-                
-You have the option to specify the edge type (e.g. via `edge_relation=<an edge relation>`)
-Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
-"""
+            brief_description = self.command_definitions['sort_by_edge_attribute']
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
@@ -357,17 +391,7 @@ Also, you have the option of limiting the number of results returned (e.g. via `
         # A little function to describe what this thing does
         if describe:
             # TODO: add more use cases
-            brief_description = """
-`sort_by_node_attribute` sorts the results by the nodes based on a a certain node attribute.
-node attributes are a list of additional attributes for an node.
-Use cases include:
-
-* sorting the rsults by the number of pubmed ids returning the top 20. `"filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=d, max_results=20)"`
-* etc. etc.
-                
-You have the option to specify the node type (e.g. via `node_type=<an node type>`)
-Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
-"""
+            brief_description = self.command_definitions['sort_by_node_attribute']
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
@@ -440,14 +464,7 @@ Also, you have the option of limiting the number of results returned (e.g. via `
         # A little function to describe what this thing does
         if describe:
             # TODO: add more use cases
-            brief_description = """
-`limit_number_of_results` removes excess results over the specified maximum.
-
-Use cases include:
-
-* limiting the number of results to 100 `filter_results(action=limit_number_of_results, max_results=100)`
-* etc. etc.
-"""
+            brief_description = self.command_definitions['limit_number_of_results']
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
@@ -511,16 +528,7 @@ Use cases include:
         # A little function to describe what this thing does
         if describe:
             # TODO: add more use cases
-            brief_description = """
-`sort_by_edge_count` sorts the results by the number of edges in the results.
-Use cases include:
-
-* return the results with the 10 fewest edges. `filter_results(action=sort_by_edge_count, direction=ascending, max_results=10)`
-* etc. etc.
-                
-You have the option to specify the direction (e.g. `direction=descending`)
-Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
-"""
+            brief_description = self.command_definitions['sort_by_edge_count']
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
@@ -590,16 +598,7 @@ Also, you have the option of limiting the number of results returned (e.g. via `
         # A little function to describe what this thing does
         if describe:
             # TODO: add more use cases
-            brief_description = """
-`sort_by_node_count` sorts the results by the number of nodes in the results.
-Use cases include:
-
-* return the results with the 10 most nodes. `filter_results(action=sort_by_node_count, direction=descending, max_results=10)`
-* etc. etc.
-                
-You have the option to specify the direction (e.g. `direction=descending`)
-Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
-"""
+            brief_description = self.command_definitions['sort_by_node_count']
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
