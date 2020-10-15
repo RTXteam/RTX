@@ -1647,7 +1647,7 @@ def run_example_5():
     synonymizer = NodeSynonymizer()
 
     print("==== Getting KG1 CURIEs ============================")
-    tests = ["CUI:C0031485", "CUI:C0017205", "UniProtKB:P06865", "MESH:D005199", "HEXA",
+    tests = ["UMLS:C0031485", "UMLS:C0017205", "UniProtKB:P06865", "MESH:D005199", "HEXA",
             "CHEBI:5855", "fanconi anemia", "ibuprofen", 'DOID:9281']
 
     t0 = timeit.default_timer()
@@ -1663,8 +1663,8 @@ def run_example_6():
     synonymizer = NodeSynonymizer()
 
     print("==== Convert CURIEs to requested namespace ============================")
-    tests = [ [ "CUI:C0031485", "DOID" ], [ "FMA:7203", "UBERON" ], [ "MESH:D005199", "DOID" ], 
-            [ "CHEBI:5855", "CHEMBL.COMPOUND" ], [ "ibuprofen", "CUI" ] ]
+    tests = [ [ "UMLS:C0031485", "DOID" ], [ "FMA:7203", "UBERON" ], [ "MESH:D005199", "DOID" ],
+            [ "CHEBI:5855", "CHEMBL.COMPOUND" ], [ "ibuprofen", "UMLS" ] ]
 
     t0 = timeit.default_timer()
     for test in tests:
@@ -1679,7 +1679,7 @@ def run_example_6b():
     synonymizer = NodeSynonymizer()
 
     print("==== Get all equivalent nodes in a KG for an input curie ============================")
-    tests = [ "DOID:14330", "CUI:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281" ]
+    tests = [ "DOID:14330", "UMLS:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281" ]
     #tests = [ "DOID:9281" ]
 
     t0 = timeit.default_timer()
@@ -1715,9 +1715,9 @@ def run_example_8():
 
     print("==== Test SELECT ============================")
     synonymizer.test_select('phenylketonuria')
-    #synonymizer.test_select('CUI:C4710278')
+    #synonymizer.test_select('UMLS:C4710278')
     #synonymizer.test_select('UniProtKB:P06865')
-    #print(synonymizer.is_curie_present('CUI:C4710278'))
+    #print(synonymizer.is_curie_present('UMLS:C4710278'))
 
 
 # ############################################################################################
@@ -1726,9 +1726,9 @@ def run_example_9():
     import copy
 
     print("==== Get canonical curies for a set of input curies ============================")
-    curies = [ "DOID:14330", "CUI:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281xxxxx", "MONDO:0005520" ]
+    curies = [ "DOID:14330", "UMLS:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281xxxxx", "MONDO:0005520" ]
     names = [ "phenylketonuria", "ibuprofen", "P06865", "HEXA", "Parkinson's disease", 'supernovas', "Bob's Uncle", 'double "quotes"' ]
-    #curies = [ "CUI:C0002371", "CUI:C0889200" ]
+    #curies = [ "UMLS:C0002371", "UMLS:C0889200" ]
     
     combined_list = copy.copy(curies)
     combined_list.extend(names)
@@ -1767,8 +1767,8 @@ def run_example_11():
     synonymizer = NodeSynonymizer()
 
     print("==== Get equivalent curies for a set of input curies ============================")
-    curies = [ "DOID:14330", "CUI:C0031485" ]
-    curies = [ "DOID:14330", "CUI:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281xxxxx", "MONDO:0005520" ]
+    curies = [ "DOID:14330", "UMLS:C0031485" ]
+    curies = [ "DOID:14330", "UMLS:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281xxxxx", "MONDO:0005520" ]
 
     t0 = timeit.default_timer()
     canonical_curies = synonymizer.get_equivalent_nodes(curies=curies)
