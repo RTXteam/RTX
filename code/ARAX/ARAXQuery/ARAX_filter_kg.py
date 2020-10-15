@@ -33,85 +33,123 @@ class ARAXFilterKG:
             "is_required": True,
             "examples": ["contraindicated_for", "affects", "expressed_in"],
             "type": "string",
-            "description": "The name of the edge type to filter by."
+            "description": "The name of the edge type to filter by.",
+            "default": None
         }
         self.remove_connected_nodes_info = {
             "is_required": False,
             "examples": ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F'],
             "type": "string",
-            "description": "Indicates whether or not to remove the nodes connected to the edge. Defaults to False."
+            "description": "Indicates whether or not to remove the nodes connected to the edge.",
+            "default": 'False'
         }
         self.qnode_id_info = {
             "is_required": False,
             "examples": ['n01', 'n02'],
             "type": "string",
-            "description": "If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_id to be removed. Defaults to None."
+            "description": "If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_id to be removed." +\
+            "If not provided the qnode_id will not be considered when filtering.",
+            "default": None
         }
         self.edge_property_info = {
             "is_required": True,
             "examples": ['source_id', 'provided_by', 'is_defined_by'],
             "type": "string",
-            "description": "The name of the edge property to filter on."
+            "description": "The name of the edge property to filter on.",
+            "default": None
         }
         self.edge_property_value_info = {
             "is_required": True,
             "examples": ['DOID:8398', 'Pharos', 'ARAX/RTX'],
             "type": "string",
-            "description": "The edge property vaue to indicate which edges to remove."
+            "description": "The edge property vaue to indicate which edges to remove.",
+            "default": None
         }
         self.edge_attribute_info = {
             "is_required": True,
             "examples": ["jaccard_index", "observed_expected_ratio", "normalized_google_distance"],
             "type": "string",
-            "description": "The name of the edge attribute to filter on."
+            "description": "The name of the edge attribute to filter on.",
+            "default": None
         }
         self.direction_info = {
             "is_required": True,
             "examples": ['above', 'below'],
             "type": "string",
-            "description": "Indictes whether to remove above or below the given threshold."
+            "description": "Indictes whether to remove above or below the given threshold.",
+            "default": None
         }
         self.threshold_info = {
             "is_required": True,
             "examples": [5,0.45],
             "type": "float",
-            "description": "The threshold to filter with."
+            "description": "The threshold to filter with.",
+            "default": None
         }
         self.type_info = {
             "is_required": False,
             "examples": ['n', 'std', 'std_dev', 'percentile', 'p'],
             "type": "string",
-            "description": "The statistic to use for filtering. Dafualts to 'n'."
+            "description": "The statistic to use for filtering.",
+            "default": 'n'
+        }
+        self.threshold_stats_info = {
+            "is_required": False,
+            "examples": [5,0.45],
+            "type": "float",
+            "description": "The threshold to filter with.",
+            "default": "a value dictated by the `type` parameter. " +\
+            "If `type` is 'n' then will default to 50. " +\
+            "If `type` is 'std_dev' or 'std' then it will default to 1." +\
+            "If `type` is 'percentile' or 'p' then it will default to 95 unless "+\
+            "`edge_attribute` is also 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' "+\
+            "then it will default to 5."
+        }
+        self.direction_stats_info = {
+            "is_required": False,
+            "examples": ['above', 'below'],
+            "type": "string",
+            "description": "Indictes whether to remove above or below the given threshold.",
+            "default": "a value dictated by the `edge_attribute` parameter. " +\
+            "If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `direction` defaults to above. " +\
+            "If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `direction` defaults to below."
         }
         self.top_info = {
             "is_required": False,
             "examples": ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F'],
             "type": "string",
-            "description": "Indicate whether or not the threshold should be placed in top of the list. E.g. top set as True with type set as std_dev will set the cutoff for filtering as the mean + threshold * std_dev while setting top to False will set the cutoff as the mean - std_dev * threshold."
+            "description": "Indicate whether or not the threshold should be placed in top of the list. E.g. top set as True with type set as std_dev will set the cutoff for filtering as the mean + threshold * std_dev while setting top to False will set the cutoff as the mean - std_dev * threshold.",
+            "default": "a value dictated by the `edge_attribute` parameter. " +\
+            "If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `top` defaults to False. " +\
+            "If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `top` defaults to True."
         }
         self.node_type_required_info = {
             "is_required": True,
             "examples": ["chemical_substance", "disease"],
             "type": "string",
-            "description": "The name of the node type to filter by."
+            "description": "The name of the node type to filter by.",
+            "default": None
         }
         self.node_type_info = {
             "is_required": False,
             "examples": ["chemical_substance", "disease"],
             "type": "string",
-            "description": "The name of the node type to filter by."
+            "description": "The name of the node type to filter by. If no value provided node type will not be considered.",
+            "default": None
         }
         self.node_property_info = {
             "is_required": True,
             "examples": ['provided_by', 'is_defined_by'],
             "type": "string",
-            "description": "The name of the node property to filter on."
+            "description": "The name of the node property to filter on.",
+            "default": None
         }
         self.node_property_value_info = {
             "is_required": True,
             "examples": ['Pharos', 'ARAX/RTX'],
             "type": "string",
-            "description": "The node property vaue to indicate which nodes to remove."
+            "description": "The node property vaue to indicate which nodes to remove.",
+            "default": None
         }
 
         
@@ -154,8 +192,8 @@ class ARAXFilterKG:
                 "parameters": {
                     "edge_attribute": self.edge_attribute_info,
                     "type": self.type_info,
-                    "direction": self.direction_info,
-                    "threshold": self.threshold_info,
+                    "direction": self.direction_stats_info,
+                    "threshold": self.threshold_stats_info,
                     "top": self.top_info,
                     "remove_connected_nodes": self.remove_connected_nodes_info,
                     "qnode_id": self.qnode_id_info
