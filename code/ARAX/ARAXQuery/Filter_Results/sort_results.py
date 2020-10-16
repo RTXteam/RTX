@@ -202,6 +202,39 @@ class SortResults:
 
         return self.response
 
+    def prune_kg(self):
+        """
+        prune the kg to match the results
+        :return: response
+        """
+        node_ids = set()
+        edge_ids = set()
+        nodes_to_remove = set()
+        edges_to_remove = set()
+        for result in self.message.results:
+            for node_binding in result.node_bindings:
+                nodes.add(node_binding.kg_id)
+            for edge_binding in result.edge_bindings:
+                edges.add(edge_binding.kg_id)
+        node_ids_to_remove = set()
+        i = 0
+        for node in self.message.knowledge_graph.nodes:
+            if node.id not in node_ids:
+                nodes_to_remove.add(i)
+                node_ids_to_remove.add(node.id)
+            i += 1
+        self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
+        i = 0
+        edges_to_remove = set()
+        # iterate over edges find edges connected to the nodes
+        for edge in self.message.knowledge_graph.edges:
+            if edge.id not in edge_ids or edge.source_id in node_ids_to_remove or edge.target_id in node_ids_to_remove:
+                edges_to_remove.add(i)
+            i += 1
+        # remove edges
+        self.message.knowledge_graph.edges = [val for idx, val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]
+
+
     
 
     
