@@ -78,6 +78,8 @@ for (module, cls) in zip(modules, classes):
                         to_print += '  ' + k2 + ': None\n'
                     else:
                         to_print += '  ' + k2 + ': ' + str(v2) + '\n'
+            if 'default' not in dic['parameters']:
+                to_print += '* default:\n  There is no default value. \n'
         if dic:  # if the dic is empty, then don't create a table
             temp_table = Tomark.table([dic])
             temp_table_split = temp_table.split("\n")

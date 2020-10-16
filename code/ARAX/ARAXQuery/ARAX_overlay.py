@@ -83,6 +83,69 @@ class ARAXOverlay:
                     'type': 'string',
                     'description': "An optional label to help identify the virtual edge in the relation field."
                 }
+        self.max_num_info = {
+                    'is_required': False,
+                    'examples': ['all', 5, 50],
+                    'type': 'int or string',
+                    'description': "The maximum number of values to return. Enter 'all' to return everything",
+                    'default': 100
+                }
+        self.start_node_id_info = {
+                    'is_required': True,
+                    'examples': ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836'],
+                    'type': 'string',
+                    'description': "A curie id specifying the starting node"
+                }
+        self.intermediate_node_id_info = {
+                    'is_required': True,
+                    'examples': ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836'],
+                    'type': 'string',
+                    'description': "A curie id specifying the intermediate node"
+                }
+        self.end_node_id_info = {
+                    'is_required': True,
+                    'examples': ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836'],
+                    'type': 'string',
+                    'description': "A curie id specifying the ending node"
+                }
+        self.virtual_relation_label_required_info = {
+                    'is_required': True,
+                    'examples': ['N1', 'J2', 'FET'],
+                    'type': 'string',
+                    'description': "An optional label to help identify the virtual edge in the relation field."
+                }
+        self.source_qnode_id_required_info = {
+                    'is_required': True,
+                    'examples': ['n00', 'n01'],
+                    'type': 'string',
+                    'description': 'a specific source query node id (required)'
+                }
+        self.target_qnode_id_required_info = {
+                    'is_required': True,
+                    'examples': ['n00', 'n01'],
+                    'type': 'string',
+                    'description': 'a specific target query node id (required)'
+                }
+        self.rel_edge_id_info = {
+                    'is_required': False,
+                    'examples': ['e00', 'e01'],
+                    'type': 'string',
+                    'description': "a specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"
+                }
+        self.top_n_info = {
+                    'is_required': False,
+                    'examples': ['all', 5, 50],
+                    'type': 'int or None',
+                    'description': "an int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned)",
+                    'default': None
+                }
+        self.cutoff_info = {
+                    'is_required': False,
+                    'examples': ['all', 0.05, 0.95],
+                    'type': 'float or None',
+                    'description': "a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05",
+                    'default': None
+                }
 
         # descriptions
         self.command_definitions = {
@@ -154,7 +217,12 @@ class ARAXOverlay:
 
                     This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
-                "parameters": {}
+                "parameters": {
+                    'start_node_id': self.start_node_id_info,
+                    'intermediate_node_id': self.intermediate_node_id_info,
+                    'end_node_id': self.end_node_id_info,
+                    'virtual_relation_label': self.virtual_relation_label_required_info
+                }
             },
             "add_node_pmids": {
                 "dsl_command": "overlay(action=add_node_pmids)",
@@ -165,7 +233,9 @@ class ARAXOverlay:
 
                     This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
-                "parameters": {}
+                "parameters": {
+                    'max_num': self.max_num_info
+                }
             },
             "predict_drug_treats_disease": {
                 "dsl_command": "overlay(action=predict_drug_treats_disease)",
@@ -183,7 +253,11 @@ class ARAXOverlay:
 
                     This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
-                "parameters": {}
+                "parameters": {
+                    'virtual_relation_label': self.virtual_relation_label_info,
+                    'source_qnode_id': self.source_qnode_id_info,
+                    'target_qnode_id': self.target_qnode_id_info
+                }
             },
             "fisher_exact_test": {
                 "dsl_command": "overlay(action=fisher_exact_test)",
@@ -217,7 +291,14 @@ class ARAXOverlay:
                     ```
 
                     """,
-                "parameters": {}
+                "parameters": {
+                    'source_qnode_id': self.source_qnode_id_required_info,
+                    'virtual_relation_label': self.virtual_relation_label_required_info,
+                    'target_qnode_id': self.target_qnode_id_required_info,
+                    'rel_edge_id': self.rel_edge_id_info,
+                    'top_n': self.top_n_info,
+                    'cutoff': self.cutoff_info
+                }
             },
             "overlay_exposures_data": {
                 "dsl_command": "overlay(action=overlay_exposures_data)",
@@ -228,7 +309,11 @@ class ARAXOverlay:
 
                     This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
                     """,
-                "parameters": {}
+                "parameters": {
+                    'virtual_relation_label': self.virtual_relation_label_info,
+                    'source_qnode_id': self.source_qnode_id_info,
+                    'target_qnode_id': self.target_qnode_id_info
+                }
             }
         }
 
