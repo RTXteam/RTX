@@ -213,17 +213,11 @@ class NGDDatabaseBuilder:
         print(f"  Got results back from synonymizer")
         return canonicalized_curies_dict
 
-    def _extract_and_format_pmids(self, kg2_publications_field: str) -> List[str]:
-        try:
-            publications = ast.literal_eval(kg2_publications_field)
-        except Exception:
-            print(f"WARNING: Error parsing publications property on an edge.")
-            return []
-        else:
-            pmids = {publication_id for publication_id in publications if publication_id.upper().startswith('PMID')}
-            # Make sure all PMIDs are given in same format (e.g., PMID:18299583 rather than PMID18299583)
-            formatted_pmids = [self._create_pmid_curie_from_local_id(pmid.replace('PMID', '').replace(':', '')) for pmid in pmids]
-            return formatted_pmids
+    def _extract_and_format_pmids(self, publications: List[str]) -> List[str]:
+        pmids = {publication_id for publication_id in publications if publication_id.upper().startswith('PMID')}
+        # Make sure all PMIDs are given in same format (e.g., PMID:18299583 rather than PMID18299583)
+        formatted_pmids = [self._create_pmid_curie_from_local_id(pmid.replace('PMID', '').replace(':', '')) for pmid in pmids]
+        return formatted_pmids
 
     @staticmethod
     def _add_pmids_mapping(key: str, value_to_append: Union[str, List[str]], mappings_dict: Dict[str, List[str]]):

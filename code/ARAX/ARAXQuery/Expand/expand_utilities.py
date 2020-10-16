@@ -158,9 +158,7 @@ def convert_dict_kg_to_standard_kg(dict_kg: DictKnowledgeGraph) -> KnowledgeGrap
 def convert_curie_to_arax_format(curie: str) -> str:
     prefix = get_curie_prefix(curie)
     local_id = get_curie_local_id(curie)
-    if prefix == "UMLS":
-        prefix = "CUI"
-    elif prefix == "Reactome":
+    if prefix == "Reactome":
         prefix = "REACT"
     elif prefix == "UNIPROTKB":
         prefix = "UniProtKB"
@@ -170,9 +168,7 @@ def convert_curie_to_arax_format(curie: str) -> str:
 def convert_curie_to_bte_format(curie: str) -> str:
     prefix = get_curie_prefix(curie)
     local_id = get_curie_local_id(curie)
-    if prefix == "CUI":
-        prefix = "UMLS"
-    elif prefix == "REACT":
+    if prefix == "REACT":
         prefix = "Reactome"
     elif prefix == "UniProtKB":
         prefix = prefix.upper()

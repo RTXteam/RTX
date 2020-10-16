@@ -173,6 +173,7 @@ server {
     location / {
 	proxy_read_timeout 3000s;
         add_header 'X-Frame-Options' 'SAMEORIGIN';
+	proxy_buffering off;
 
 	include proxy_params;
 	proxy_pass http://localhost:8080;
@@ -227,6 +228,12 @@ Check that you can log into neo4j through a browser
 Check that you can get the arax tool to display when going to the base url, /beta, /test, etc...
 
 ### Troubleshooting
+
+##### Progress bar issues
+
+If you have issues with the progessbar not working correctly.
+
+Ensure that the nginx config file contains the `proxy_buffering off;` line.
 
 ##### Neo4j WebSocket connection failure
 

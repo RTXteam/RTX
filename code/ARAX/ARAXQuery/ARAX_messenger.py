@@ -702,7 +702,7 @@ def main():
         { 'curie': 'Orphanet:673'},
         { 'name': 'acetaminophen'},
         { 'curie': 'NCIT:C198'},
-        { 'curie': 'CUI:C4710278'},
+        { 'curie': 'UMLS:C4710278'},
         { 'type': 'protein', 'id': 'n10'},
         { 'curie': ['UniProtKB:P14136','UniProtKB:P35579'] },
         { 'curie': ['UniProtKB:P14136','UniProtKB:P35579'], 'is_set': 'false' },
