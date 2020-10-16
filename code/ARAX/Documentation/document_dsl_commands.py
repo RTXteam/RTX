@@ -66,9 +66,18 @@ for (module, cls) in zip(modules, classes):
             to_print += '### ' + dsl_command + '\n'
         else:  # for classes that don't use the `action=` paradigm like `expand()` and `resultify()`
             to_print += '### ' + dsl_name + '\n'
-        if 'brief_description' in dic:
-            to_print += dic['brief_description'] + '\n\n'
-            del dic['brief_description']
+        if 'description' in dic:
+            to_print += dic['description'] + '\n\n'
+            del dic['description']
+        if 'parameters' in dic:
+            to_print += 'parameters: ' + '\n'
+            for k1,v1 in dic['parameters'].items():
+                to_print += '* ' + k1 + '\n'
+                for k2,v2 in v1:
+                    if v2 is None:
+                        to_print += '  ' + k2 + ': None\n'
+                    else:
+                        to_print += '  ' + k2 + ': ' + str(v2) + '\n'
         if dic:  # if the dic is empty, then don't create a table
             temp_table = Tomark.table([dic])
             temp_table_split = temp_table.split("\n")
