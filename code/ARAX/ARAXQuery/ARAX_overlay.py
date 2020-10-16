@@ -56,7 +56,33 @@ class ARAXOverlay:
                     'type': 'string',
                     'description': 'a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'
                 }
-        self.
+        self.paired_concept_frequency_info = {
+                    'is_required': False,
+                    'examples': ['true', 'false'],
+                    'type': 'string',
+                    'description': "Indicates if you want to use the paired concept frequency option. Mutually exlisive with: "+\
+                    "`paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error."
+                }
+        self.observed_expected_ratio_info = {
+                    'is_required': False,
+                    'examples': ['true', 'false'],
+                    'type': 'string',
+                    'description': "Indicates if you want to use the paired concept frequency option. Mutually exlisive with: "+\
+                    "`paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error."
+                }
+        self.chi_square_info = {
+                    'is_required': False,
+                    'examples': ['true', 'false'],
+                    'type': 'string',
+                    'description': "Indicates if you want to use the paired concept frequency option. Mutually exlisive with: "+\
+                    "`paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error."
+                }
+        self.virtual_relation_label_info = {
+                    'is_required': False,
+                    'examples': ['N1', 'J2'],
+                    'type': 'string',
+                    'description': "An optional label to help identify the virtual edge in the relation field."
+                }
 
         # descriptions
         self.command_definitions = {
@@ -109,7 +135,14 @@ class ARAXOverlay:
 
                     This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
-                "parameters": {}
+                "parameters": {
+                    'paired_concept_frequency': self.paired_concept_frequency_info,
+                    'observed_expected_ratio': self.observed_expected_ratio_info,
+                    'chi_square': self.chi_square_info
+                    'virtual_relation_label' : self.virtual_relation_label_info,
+                    'source_qnode_id': self.source_qnode_id_info,
+                    'target_qnode_id': self.target_qnode_id_info
+                }
             },
             "compute_jaccard": {
                 "dsl_command": "overlay(action=compute_jaccard)",
