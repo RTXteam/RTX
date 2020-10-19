@@ -71,15 +71,25 @@ for (module, cls) in zip(modules, classes):
             del dic['description']
         if 'parameters' in dic:
             to_print += '#### parameters: ' + '\n\n'
-            for k1,v1 in dic['parameters'].items():
-                to_print += '* ##### ' + k1 + '\n\n'
-                for k2,v2 in v1.items():
-                    if v2 is None:
-                        to_print += '    - ' + k2 + ': None\n\n'
+            for param_key,param_val in dic['parameters'].items():
+                to_print += '* ##### ' + param_key + '\n\n'
+                if 'description' in param_val:
+                    to_print += '    - **description**: ' + param_val['description'] + '\n\n'
+                if 'type' in param_val:
+                    to_print += '    - Acceptable input types: ' + param_val['type'] + '.\n\n'
+                if 'is_required' in param_val:
+                    if param_val['is_required']:
+                        to_print += '    - This is a required parameter and must be included.\n\n'
                     else:
-                        to_print += '    - ' + k2 + ': ' + str(v2) + '\n\n'
-                if 'default' not in v1:
-                    to_print += '    - default:\n  There is no default value. \n\n'
+                        to_print += '    - This is **not** a required parameter and may be omitted.\n\n'
+                if 'examples' in param_val:
+                    if len(param_val['examples']) < 3:
+                        example_string = ' and '.join([str(x) for x in param_val['examples']])
+                    else:
+                        example_string = ', '.join([str(x) for x in param_val['examples'][:-1]]) + ', and ' + str(param_val['examples'][-1])                  
+                    to_print += '    - ' + example_string + ' are examples of valid inputs.\n\n'
+                if 'default' in param_val:
+                    to_print += '    - If not specified the default input will be ' + str(param_val['default']) + '. \n\n'
         if dic:  # if the dic is empty, then don't create a table
             temp_table = Tomark.table([dic])
             temp_table_split = temp_table.split("\n")
