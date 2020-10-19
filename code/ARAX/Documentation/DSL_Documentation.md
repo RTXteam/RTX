@@ -4,39 +4,68 @@
 - [Full documentation of current DSL commands](#full-documentation-of-current-dsl-commands)
   - [ARAX_messenger](#arax_messenger)
     - [create_message()](#create_message)
+    - [Parameters: ](#parameters-)
     - [add_qnode()](#add_qnode)
+    - [Parameters: ](#parameters--1)
     - [add_qedge()](#add_qedge)
+    - [Parameters: ](#parameters--2)
   - [ARAX_expander](#arax_expander)
     - [expand(kp=ARAX/KG1)](#expandkparaxkg1)
+    - [Parameters: ](#parameters--3)
     - [expand(kp=ARAX/KG2)](#expandkparaxkg2)
+    - [Parameters: ](#parameters--4)
     - [expand(kp=BTE)](#expandkpbte)
+    - [Parameters: ](#parameters--5)
     - [expand(kp=COHD)](#expandkpcohd)
+    - [Parameters: ](#parameters--6)
     - [expand(kp=GeneticsKP)](#expandkpgeneticskp)
+    - [Parameters: ](#parameters--7)
     - [expand(kp=NGD)](#expandkpngd)
+    - [Parameters: ](#parameters--8)
   - [ARAX_overlay](#arax_overlay)
-    - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
-    - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
     - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
-    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
-    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
+    - [Parameters: ](#parameters--9)
+    - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
+    - [Parameters: ](#parameters--10)
+    - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
+    - [Parameters: ](#parameters--11)
     - [overlay(action=predict_drug_treats_disease)](#overlayactionpredict_drug_treats_disease)
+    - [Parameters: ](#parameters--12)
+    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
+    - [Parameters: ](#parameters--13)
+    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
+    - [Parameters: ](#parameters--14)
     - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
+    - [Parameters: ](#parameters--15)
   - [ARAX_filter_kg](#arax_filter_kg)
     - [filter_kg(action=remove_edges_by_type)](#filter_kgactionremove_edges_by_type)
+    - [Parameters: ](#parameters--16)
     - [filter_kg(action=remove_edges_by_attribute)](#filter_kgactionremove_edges_by_attribute)
+    - [Parameters: ](#parameters--17)
     - [filter_kg(action=remove_edges_by_property)](#filter_kgactionremove_edges_by_property)
+    - [Parameters: ](#parameters--18)
     - [filter_kg(action=remove_edges_by_stats)](#filter_kgactionremove_edges_by_stats)
+    - [Parameters: ](#parameters--19)
     - [filter_kg(action=remove_nodes_by_type)](#filter_kgactionremove_nodes_by_type)
+    - [Parameters: ](#parameters--20)
     - [filter_kg(action=remove_nodes_by_property)](#filter_kgactionremove_nodes_by_property)
+    - [Parameters: ](#parameters--21)
     - [filter_kg(action=remove_orphaned_nodes)](#filter_kgactionremove_orphaned_nodes)
+    - [Parameters: ](#parameters--22)
   - [ARAX_filter_results](#arax_filter_results)
     - [filter_results(action=sort_by_edge_attribute)](#filter_resultsactionsort_by_edge_attribute)
+    - [Parameters: ](#parameters--23)
     - [filter_results(action=sort_by_node_attribute)](#filter_resultsactionsort_by_node_attribute)
+    - [Parameters: ](#parameters--24)
     - [filter_results(action=limit_number_of_results)](#filter_resultsactionlimit_number_of_results)
+    - [Parameters: ](#parameters--25)
     - [filter_results(action=sort_by_edge_count)](#filter_resultsactionsort_by_edge_count)
+    - [Parameters: ](#parameters--26)
     - [filter_results(action=sort_by_node_count)](#filter_resultsactionsort_by_node_count)
+    - [Parameters: ](#parameters--27)
   - [ARAX_resultify](#arax_resultify)
     - [resultify()](#resultify)
+    - [Parameters: ](#parameters--28)
 
 # Domain Specific Langauage (DSL) description
 This document describes the features and components of the DSL developed for the ARA Expander team.
@@ -65,7 +94,7 @@ The `create_message` command creates a basic empty Message object with basic boi
                 create_message() will be executed automatically if there is not yet a Message. If there is already Message in memory,
                 then this command will destroy the previous one (in memory) and begin a new message.
 
-###Parameters: 
+### Parameters: 
 
 |||
 |-----|-----|
@@ -76,73 +105,73 @@ The `create_message` command creates a basic empty Message object with basic boi
 The `add_qnode` method adds an additional QNode to the QueryGraph in the Message object. Currently
                 when a curie or name is specified, this method will only return success if a matching node is found in the KG1/KG2 KGNodeIndex.
 
-###Parameters: 
+### Parameters: 
 
-* #####id
+* ##### id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['n00', 'n01']
+    - examples: ['n00', 'n01']
 
-	default: 
+    - default: 
 
-	type: string
+    - type: string
 
-	description: Any string that is unique among all QNode id fields, with recommended format n00, n01, n02, etc.
+    - description: Any string that is unique among all QNode id fields, with recommended format n00, n01, n02, etc.
                         If no value is provided, autoincrementing values beginning for n00 are used.
 
-* #####curie
+* ##### curie
 
-	is_required: False
+    - is_required: False
 
-	examples: ['DOID:9281', '[UniProtKB:P12345,UniProtKB:Q54321]']
+    - examples: ['DOID:9281', '[UniProtKB:P12345,UniProtKB:Q54321]']
 
-	type: string
+    - type: string
 
-	description: Any compact URI (CURIE) (e.g. DOID:9281) (May also be a list like [UniProtKB:P12345,UniProtKB:Q54321])
+    - description: Any compact URI (CURIE) (e.g. DOID:9281) (May also be a list like [UniProtKB:P12345,UniProtKB:Q54321])
 
-	default:
+    - default:
   There is no default value. 
 
-* #####name
+* ##### name
 
-	is_required: False
+    - is_required: False
 
-	examples: ['hypertension', 'insulin']
+    - examples: ['hypertension', 'insulin']
 
-	type: string
+    - type: string
 
-	description: Any name of a bioentity that will be resolved into a CURIE if possible or result in an error if not (e.g. hypertension, insulin)
+    - description: Any name of a bioentity that will be resolved into a CURIE if possible or result in an error if not (e.g. hypertension, insulin)
 
-	default:
+    - default:
   There is no default value. 
 
-* #####type
+* ##### type
 
-	is_required: False
+    - is_required: False
 
-	examples: ['protein', 'chemical_substance', 'disease']
+    - examples: ['protein', 'chemical_substance', 'disease']
 
-	type: string
+    - type: string
 
-	description: Any valid Translator bioentity type (e.g. protein, chemical_substance, disease)
+    - description: Any valid Translator bioentity type (e.g. protein, chemical_substance, disease)
 
-	default:
+    - default:
   There is no default value. 
 
-* #####is_set
+* ##### is_set
 
-	is_required: False
+    - is_required: False
 
-	enum: ['true', 'false']
+    - enum: ['true', 'false']
 
-	examples: ['true', 'false']
+    - examples: ['true', 'false']
 
-	default: false
+    - default: false
 
-	type: boolean
+    - type: boolean
 
-	description: If set to true, this QNode represents a set of nodes that are all in common between the two other linked QNodes
+    - description: If set to true, this QNode represents a set of nodes that are all in common between the two other linked QNodes
 
 |||
 |-----|-----|
@@ -154,58 +183,58 @@ The `add_qedge` command adds an additional QEdge to the QueryGraph in the Messag
                 source_id and target_id QNodes must already be present in the QueryGraph. The specified type is not currently checked that it is a
                 valid Translator/BioLink relationship type, but it should be.
 
-###Parameters: 
+### Parameters: 
 
-* #####id
+* ##### id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['e00', 'e01']
+    - examples: ['e00', 'e01']
 
-	default: 
+    - default: 
 
-	type: string
+    - type: string
 
-	description: Any string that is unique among all QEdge id fields, with recommended format e00, e01, e02, etc.
+    - description: Any string that is unique among all QEdge id fields, with recommended format e00, e01, e02, etc.
                         If no value is provided, autoincrementing values beginning for e00 are used.
 
-* #####source_id
+* ##### source_id
 
-	is_required: True
+    - is_required: True
 
-	examples: ['n00', 'n01']
+    - examples: ['n00', 'n01']
 
-	type: string
+    - type: string
 
-	description: id of the source QNode already present in the QueryGraph (e.g. n00, n01)
+    - description: id of the source QNode already present in the QueryGraph (e.g. n00, n01)
 
-	default:
+    - default:
   There is no default value. 
 
-* #####target_id
+* ##### target_id
 
-	is_required: True
+    - is_required: True
 
-	examples: ['n01', 'n02']
+    - examples: ['n01', 'n02']
 
-	type: string
+    - type: string
 
-	description: id of the target QNode already present in the QueryGraph (e.g. n01, n02)
+    - description: id of the target QNode already present in the QueryGraph (e.g. n01, n02)
 
-	default:
+    - default:
   There is no default value. 
 
-* #####type
+* ##### type
 
-	is_required: False
+    - is_required: False
 
-	examples: ['protein', 'physically_interacts_with', 'participates_in']
+    - examples: ['protein', 'physically_interacts_with', 'participates_in']
 
-	type: string
+    - type: string
 
-	description: Any valid Translator/BioLink relationship type (e.g. physically_interacts_with, participates_in)
+    - description: Any valid Translator/BioLink relationship type (e.g. physically_interacts_with, participates_in)
 
-	default:
+    - default:
   There is no default value. 
 
 |||
@@ -217,75 +246,75 @@ The `add_qedge` command adds an additional QEdge to the QueryGraph in the Messag
 ### expand(kp=ARAX/KG1)
 This command reaches out to the RTX KG1 Neo4j instance to find all bioentity subpaths that satisfy the query graph.
 
-###Parameters: 
+### Parameters: 
 
-* #####edge_id
+* ##### edge_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['e00', '[e00, e01]']
+    - examples: ['e00', '[e00, e01]']
 
-	type: string
+    - type: string
 
-	description: A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
+    - description: A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
 
-	default:
+    - default:
   There is no default value. 
 
-* #####node_id
+* ##### node_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['n00', '[n00, n01]']
+    - examples: ['n00', '[n00, n01]']
 
-	type: string
+    - type: string
 
-	description: A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
+    - description: A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
 
-	default:
+    - default:
   There is no default value. 
 
-* #####continue_if_no_results
+* ##### continue_if_no_results
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false']
+    - examples: ['true', 'false']
 
-	enum: ['true', 'false']
+    - enum: ['true', 'false']
 
-	default: false
+    - default: false
 
-	type: boolean
+    - type: boolean
 
-	description: Whether to continue execution if no paths are found matching the query graph.
+    - description: Whether to continue execution if no paths are found matching the query graph.
 
-* #####enforce_directionality
+* ##### enforce_directionality
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false']
+    - examples: ['true', 'false']
 
-	enum: ['true', 'false']
+    - enum: ['true', 'false']
 
-	default: false
+    - default: false
 
-	type: boolean
+    - type: boolean
 
-	description: Whether to obey (vs. ignore) edge directions in the query graph.
+    - description: Whether to obey (vs. ignore) edge directions in the query graph.
 
-* #####use_synonyms
+* ##### use_synonyms
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false']
+    - examples: ['true', 'false']
 
-	enum: ['true', 'false']
+    - enum: ['true', 'false']
 
-	default: true
+    - default: true
 
-	type: boolean
+    - type: boolean
 
-	description: Whether to consider curie synonyms and merge synonymous nodes.
+    - description: Whether to consider curie synonyms and merge synonymous nodes.
 
 |||
 |-----|-----|
@@ -295,75 +324,75 @@ This command reaches out to the RTX KG1 Neo4j instance to find all bioentity sub
 ### expand(kp=ARAX/KG2)
 This command reaches out to the RTX KG2 knowledge graph to find all bioentity subpaths that satisfy the query graph. If use_synonyms=true, it uses the KG2canonicalized ('KG2c') Neo4j instance; otherwise, the regular KG2 Neo4j instance is used.
 
-###Parameters: 
+### Parameters: 
 
-* #####edge_id
+* ##### edge_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['e00', '[e00, e01]']
+    - examples: ['e00', '[e00, e01]']
 
-	type: string
+    - type: string
 
-	description: A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
+    - description: A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
 
-	default:
+    - default:
   There is no default value. 
 
-* #####node_id
+* ##### node_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['n00', '[n00, n01]']
+    - examples: ['n00', '[n00, n01]']
 
-	type: string
+    - type: string
 
-	description: A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
+    - description: A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
 
-	default:
+    - default:
   There is no default value. 
 
-* #####continue_if_no_results
+* ##### continue_if_no_results
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false']
+    - examples: ['true', 'false']
 
-	enum: ['true', 'false']
+    - enum: ['true', 'false']
 
-	default: false
+    - default: false
 
-	type: boolean
+    - type: boolean
 
-	description: Whether to continue execution if no paths are found matching the query graph.
+    - description: Whether to continue execution if no paths are found matching the query graph.
 
-* #####enforce_directionality
+* ##### enforce_directionality
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false']
+    - examples: ['true', 'false']
 
-	enum: ['true', 'false']
+    - enum: ['true', 'false']
 
-	default: false
+    - default: false
 
-	type: boolean
+    - type: boolean
 
-	description: Whether to obey (vs. ignore) edge directions in the query graph.
+    - description: Whether to obey (vs. ignore) edge directions in the query graph.
 
-* #####use_synonyms
+* ##### use_synonyms
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false']
+    - examples: ['true', 'false']
 
-	enum: ['true', 'false']
+    - enum: ['true', 'false']
 
-	default: true
+    - default: true
 
-	type: boolean
+    - type: boolean
 
-	description: Whether to consider curie synonyms and merge synonymous nodes.
+    - description: Whether to consider curie synonyms and merge synonymous nodes.
 
 |||
 |-----|-----|
@@ -373,75 +402,75 @@ This command reaches out to the RTX KG2 knowledge graph to find all bioentity su
 ### expand(kp=BTE)
 This command uses BioThings Explorer (from the Service Provider) to find all bioentity subpaths that satisfy the query graph. Of note, all query nodes must have a type specified for BTE queries. In addition, bi-directional queries are only partially supported (the ARAX system knows how to ignore edge direction when deciding which query node for a query edge will be the 'input' qnode, but BTE itself returns only answers matching the input edge direction).
 
-###Parameters: 
+### Parameters: 
 
-* #####edge_id
+* ##### edge_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['e00', '[e00, e01]']
+    - examples: ['e00', '[e00, e01]']
 
-	type: string
+    - type: string
 
-	description: A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
+    - description: A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
 
-	default:
+    - default:
   There is no default value. 
 
-* #####node_id
+* ##### node_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['n00', '[n00, n01]']
+    - examples: ['n00', '[n00, n01]']
 
-	type: string
+    - type: string
 
-	description: A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
+    - description: A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
 
-	default:
+    - default:
   There is no default value. 
 
-* #####continue_if_no_results
+* ##### continue_if_no_results
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false']
+    - examples: ['true', 'false']
 
-	enum: ['true', 'false']
+    - enum: ['true', 'false']
 
-	default: false
+    - default: false
 
-	type: boolean
+    - type: boolean
 
-	description: Whether to continue execution if no paths are found matching the query graph.
+    - description: Whether to continue execution if no paths are found matching the query graph.
 
-* #####enforce_directionality
+* ##### enforce_directionality
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false']
+    - examples: ['true', 'false']
 
-	enum: ['true', 'false']
+    - enum: ['true', 'false']
 
-	default: false
+    - default: false
 
-	type: boolean
+    - type: boolean
 
-	description: Whether to obey (vs. ignore) edge directions in the query graph.
+    - description: Whether to obey (vs. ignore) edge directions in the query graph.
 
-* #####use_synonyms
+* ##### use_synonyms
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false']
+    - examples: ['true', 'false']
 
-	enum: ['true', 'false']
+    - enum: ['true', 'false']
 
-	default: true
+    - default: true
 
-	type: boolean
+    - type: boolean
 
-	description: Whether to consider curie synonyms and merge synonymous nodes.
+    - description: Whether to consider curie synonyms and merge synonymous nodes.
 
 |||
 |-----|-----|
@@ -451,91 +480,91 @@ This command uses BioThings Explorer (from the Service Provider) to find all bio
 ### expand(kp=COHD)
 This command uses the Clinical Data Provider (COHD) to find all bioentity subpaths that satisfy the query graph.
 
-###Parameters: 
+### Parameters: 
 
-* #####edge_id
+* ##### edge_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['e00', '[e00, e01]']
+    - examples: ['e00', '[e00, e01]']
 
-	type: string
+    - type: string
 
-	description: A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
+    - description: A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
 
-	default:
+    - default:
   There is no default value. 
 
-* #####node_id
+* ##### node_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['n00', '[n00, n01]']
+    - examples: ['n00', '[n00, n01]']
 
-	type: string
+    - type: string
 
-	description: A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
+    - description: A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
 
-	default:
+    - default:
   There is no default value. 
 
-* #####continue_if_no_results
+* ##### continue_if_no_results
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false']
+    - examples: ['true', 'false']
 
-	enum: ['true', 'false']
+    - enum: ['true', 'false']
 
-	default: false
+    - default: false
 
-	type: boolean
+    - type: boolean
 
-	description: Whether to continue execution if no paths are found matching the query graph.
+    - description: Whether to continue execution if no paths are found matching the query graph.
 
-* #####use_synonyms
+* ##### use_synonyms
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false']
+    - examples: ['true', 'false']
 
-	enum: ['true', 'false']
+    - enum: ['true', 'false']
 
-	default: true
+    - default: true
 
-	type: boolean
+    - type: boolean
 
-	description: Whether to consider curie synonyms and merge synonymous nodes.
+    - description: Whether to consider curie synonyms and merge synonymous nodes.
 
-* #####COHD_method
+* ##### COHD_method
 
-	is_required: False
+    - is_required: False
 
-	examples: ['paired_concept_freq', 'chi_square']
+    - examples: ['paired_concept_freq', 'chi_square']
 
-	enum: ['paired_concept_freq', 'observed_expected_ratio', 'chi_square']
+    - enum: ['paired_concept_freq', 'observed_expected_ratio', 'chi_square']
 
-	default: paired_concept_freq
+    - default: paired_concept_freq
 
-	type: string
+    - type: string
 
-	description: Which measure from COHD should be considered.
+    - description: Which measure from COHD should be considered.
 
-* #####COHD_method_percentile
+* ##### COHD_method_percentile
 
-	is_required: False
+    - is_required: False
 
-	examples: [95, 80]
+    - examples: [95, 80]
 
-	min: 0
+    - min: 0
 
-	max: 100
+    - max: 100
 
-	default: 99
+    - default: 99
 
-	type: integer
+    - type: integer
 
-	description: What percentile to use as a cut-off/threshold for the specified COHD method.
+    - description: What percentile to use as a cut-off/threshold for the specified COHD method.
 
 |||
 |-----|-----|
@@ -545,75 +574,75 @@ This command uses the Clinical Data Provider (COHD) to find all bioentity subpat
 ### expand(kp=GeneticsKP)
 This command reaches out to the Genetics Provider to find all bioentity subpaths that satisfy the query graph. It currently can answers questions involving the following node types: gene, protein, disease, phenotypic_feature, pathway. Temporarily (while the integration is under development), it can only be used as the first hop in a query.
 
-###Parameters: 
+### Parameters: 
 
-* #####edge_id
+* ##### edge_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['e00', '[e00, e01]']
+    - examples: ['e00', '[e00, e01]']
 
-	type: string
+    - type: string
 
-	description: A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
+    - description: A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
 
-	default:
+    - default:
   There is no default value. 
 
-* #####node_id
+* ##### node_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['n00', '[n00, n01]']
+    - examples: ['n00', '[n00, n01]']
 
-	type: string
+    - type: string
 
-	description: A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
+    - description: A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
 
-	default:
+    - default:
   There is no default value. 
 
-* #####continue_if_no_results
+* ##### continue_if_no_results
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false']
+    - examples: ['true', 'false']
 
-	enum: ['true', 'false']
+    - enum: ['true', 'false']
 
-	default: false
+    - default: false
 
-	type: boolean
+    - type: boolean
 
-	description: Whether to continue execution if no paths are found matching the query graph.
+    - description: Whether to continue execution if no paths are found matching the query graph.
 
-* #####use_synonyms
+* ##### use_synonyms
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false']
+    - examples: ['true', 'false']
 
-	enum: ['true', 'false']
+    - enum: ['true', 'false']
 
-	default: true
+    - default: true
 
-	type: boolean
+    - type: boolean
 
-	description: Whether to consider curie synonyms and merge synonymous nodes.
+    - description: Whether to consider curie synonyms and merge synonymous nodes.
 
-* #####include_integrated_score
+* ##### include_integrated_score
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false']
+    - examples: ['true', 'false']
 
-	enum: ['true', 'false']
+    - enum: ['true', 'false']
 
-	default: false
+    - default: false
 
-	type: boolean
+    - type: boolean
 
-	description: Whether to add genetics-quantile edges (in addition to MAGMA edges) from the Genetics KP.
+    - description: Whether to add genetics-quantile edges (in addition to MAGMA edges) from the Genetics KP.
 
 |||
 |-----|-----|
@@ -623,61 +652,61 @@ This command reaches out to the Genetics Provider to find all bioentity subpaths
 ### expand(kp=NGD)
 This command uses ARAX's in-house normalized google distance (NGD) database to expand a query graph; it returns edges between nodes with an NGD value below a certain threshold. This threshold is currently hardcoded as 0.5, though this will be made configurable/smarter in the future.
 
-###Parameters: 
+### Parameters: 
 
-* #####edge_id
+* ##### edge_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['e00', '[e00, e01]']
+    - examples: ['e00', '[e00, e01]']
 
-	type: string
+    - type: string
 
-	description: A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
+    - description: A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
 
-	default:
+    - default:
   There is no default value. 
 
-* #####node_id
+* ##### node_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['n00', '[n00, n01]']
+    - examples: ['n00', '[n00, n01]']
 
-	type: string
+    - type: string
 
-	description: A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
+    - description: A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
 
-	default:
+    - default:
   There is no default value. 
 
-* #####continue_if_no_results
+* ##### continue_if_no_results
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false']
+    - examples: ['true', 'false']
 
-	enum: ['true', 'false']
+    - enum: ['true', 'false']
 
-	default: false
+    - default: false
 
-	type: boolean
+    - type: boolean
 
-	description: Whether to continue execution if no paths are found matching the query graph.
+    - description: Whether to continue execution if no paths are found matching the query graph.
 
-* #####use_synonyms
+* ##### use_synonyms
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false']
+    - examples: ['true', 'false']
 
-	enum: ['true', 'false']
+    - enum: ['true', 'false']
 
-	default: true
+    - default: true
 
-	type: boolean
+    - type: boolean
 
-	description: Whether to consider curie synonyms and merge synonymous nodes.
+    - description: Whether to consider curie synonyms and merge synonymous nodes.
 
 |||
 |-----|-----|
@@ -685,76 +714,60 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
 |_DSL arguments_| {'edge_id': {'is_required': False, 'examples': ['e00', '[e00, e01]'], 'type': 'string', 'description': 'A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).'}, 'node_id': {'is_required': False, 'examples': ['n00', '[n00, n01]'], 'type': 'string', 'description': 'A query graph node ID or list of such IDs to expand (default is to expand entire query graph).'}, 'continue_if_no_results': {'is_required': False, 'examples': ['true', 'false'], 'enum': ['true', 'false'], 'default': 'false', 'type': 'boolean', 'description': 'Whether to continue execution if no paths are found matching the query graph.'}, 'use_synonyms': {'is_required': False, 'examples': ['true', 'false'], 'enum': ['true', 'false'], 'default': 'true', 'type': 'boolean', 'description': 'Whether to consider curie synonyms and merge synonymous nodes.'}} |
 
 ## ARAX_overlay
-### overlay(action=compute_ngd)
+### overlay(action=overlay_exposures_data)
 
-                    `compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
-                    This information is then included as an edge attribute with the name `normalized_google_distance`.
-                    You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
+                    `overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
+                    This information is included in edge attributes with the name `icees_p-value`.
+                    You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
 
-                    Use cases include:
+                    This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
+                    
 
-                    * focusing in on edges that are well represented in the literature
-                    * focusing in on edges that are under-represented in the literature
+### Parameters: 
 
-                    This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+* ##### virtual_relation_label
 
-###Parameters: 
+    - is_required: False
 
-* #####default_value
+    - examples: ['N1', 'J2']
 
-	is_required: False
+    - type: string
 
-	examples: ['0', 'inf']
+    - description: An optional label to help identify the virtual edge in the relation field.
 
-	default: inf
-
-	type: string
-
-	description: The default value of the normalized Google distance (if its value cannot be determined)
-
-* #####virtual_relation_label
-
-	is_required: False
-
-	examples: ['N1', 'J2']
-
-	type: string
-
-	description: An optional label to help identify the virtual edge in the relation field.
-
-	default:
+    - default:
   There is no default value. 
 
-* #####source_qnode_id
+* ##### source_qnode_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['n00', 'n01']
+    - examples: ['n00', 'n01']
 
-	type: string
+    - type: string
 
-	description: a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+    - description: a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
 
-	default:
+    - default:
   There is no default value. 
 
-* #####target_qnode_id
+* ##### target_qnode_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['n00', 'n01']
+    - examples: ['n00', 'n01']
 
-	type: string
+    - type: string
 
-	description: a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+    - description: a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
 
-	default:
+    - default:
   There is no default value. 
 
-||||
-|-----|-----|-----|
-|_DSL parameters_| brief_description | parameters |
-|_DSL arguments_| 
+|||
+|-----|-----|
+|_DSL parameters_| parameters |
+|_DSL arguments_| {'virtual_relation_label': {'is_required': False, 'examples': ['N1', 'J2'], 'type': 'string', 'description': 'An optional label to help identify the virtual edge in the relation field.'}, 'source_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}, 'target_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}} |
 
 ### overlay(action=overlay_clinical_info)
 
@@ -780,84 +793,84 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
-###Parameters: 
+### Parameters: 
 
-* #####paired_concept_frequency
+* ##### paired_concept_frequency
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false']
+    - examples: ['true', 'false']
 
-	type: string
+    - type: string
 
-	description: Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.
+    - description: Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.
 
-	default:
+    - default:
   There is no default value. 
 
-* #####observed_expected_ratio
+* ##### observed_expected_ratio
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false']
+    - examples: ['true', 'false']
 
-	type: string
+    - type: string
 
-	description: Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.
+    - description: Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.
 
-	default:
+    - default:
   There is no default value. 
 
-* #####chi_square
+* ##### chi_square
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false']
+    - examples: ['true', 'false']
 
-	type: string
+    - type: string
 
-	description: Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.
+    - description: Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.
 
-	default:
+    - default:
   There is no default value. 
 
-* #####virtual_relation_label
+* ##### virtual_relation_label
 
-	is_required: False
+    - is_required: False
 
-	examples: ['N1', 'J2']
+    - examples: ['N1', 'J2']
 
-	type: string
+    - type: string
 
-	description: An optional label to help identify the virtual edge in the relation field.
+    - description: An optional label to help identify the virtual edge in the relation field.
 
-	default:
+    - default:
   There is no default value. 
 
-* #####source_qnode_id
+* ##### source_qnode_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['n00', 'n01']
+    - examples: ['n00', 'n01']
 
-	type: string
+    - type: string
 
-	description: a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+    - description: a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
 
-	default:
+    - default:
   There is no default value. 
 
-* #####target_qnode_id
+* ##### target_qnode_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['n00', 'n01']
+    - examples: ['n00', 'n01']
 
-	type: string
+    - type: string
 
-	description: a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+    - description: a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
 
-	default:
+    - default:
   There is no default value. 
 
 |||
@@ -865,88 +878,138 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
 |_DSL parameters_| parameters |
 |_DSL arguments_| {'paired_concept_frequency': {'is_required': False, 'examples': ['true', 'false'], 'type': 'string', 'description': 'Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.'}, 'observed_expected_ratio': {'is_required': False, 'examples': ['true', 'false'], 'type': 'string', 'description': 'Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.'}, 'chi_square': {'is_required': False, 'examples': ['true', 'false'], 'type': 'string', 'description': 'Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.'}, 'virtual_relation_label': {'is_required': False, 'examples': ['N1', 'J2'], 'type': 'string', 'description': 'An optional label to help identify the virtual edge in the relation field.'}, 'source_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}, 'target_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}} |
 
-### overlay(action=overlay_exposures_data)
+### overlay(action=compute_ngd)
 
-                    `overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
-                    This information is included in edge attributes with the name `icees_p-value`.
-                    You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
+                    `compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
+                    This information is then included as an edge attribute with the name `normalized_google_distance`.
+                    You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
 
-                    This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
+                    Use cases include:
+
+                    * focusing in on edges that are well represented in the literature
+                    * focusing in on edges that are under-represented in the literature
+
+                    This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+
+### Parameters: 
+
+* ##### default_value
+
+    - is_required: False
+
+    - examples: ['0', 'inf']
+
+    - default: inf
+
+    - type: string
+
+    - description: The default value of the normalized Google distance (if its value cannot be determined)
+
+* ##### virtual_relation_label
+
+    - is_required: False
+
+    - examples: ['N1', 'J2']
+
+    - type: string
+
+    - description: An optional label to help identify the virtual edge in the relation field.
+
+    - default:
+  There is no default value. 
+
+* ##### source_qnode_id
+
+    - is_required: False
+
+    - examples: ['n00', 'n01']
+
+    - type: string
+
+    - description: a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - default:
+  There is no default value. 
+
+* ##### target_qnode_id
+
+    - is_required: False
+
+    - examples: ['n00', 'n01']
+
+    - type: string
+
+    - description: a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - default:
+  There is no default value. 
+
+||||
+|-----|-----|-----|
+|_DSL parameters_| brief_description | parameters |
+|_DSL arguments_| 
+
+### overlay(action=predict_drug_treats_disease)
+
+                    `predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substanct treats a disease/phenotypic feature.
+                    For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
+                    The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
+                    You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified source/target qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
+                    If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
+                    Use cases include:
+
+                    * Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
+                    * For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)`
+                    * Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_id=n02)`
+
+                    This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
-###Parameters: 
+### Parameters: 
 
-* #####virtual_relation_label
+* ##### virtual_relation_label
 
-	is_required: False
+    - is_required: False
 
-	examples: ['N1', 'J2']
+    - examples: ['N1', 'J2']
 
-	type: string
+    - type: string
 
-	description: An optional label to help identify the virtual edge in the relation field.
+    - description: An optional label to help identify the virtual edge in the relation field.
 
-	default:
+    - default:
   There is no default value. 
 
-* #####source_qnode_id
+* ##### source_qnode_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['n00', 'n01']
+    - examples: ['n00', 'n01']
 
-	type: string
+    - type: string
 
-	description: a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+    - description: a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
 
-	default:
+    - default:
   There is no default value. 
 
-* #####target_qnode_id
+* ##### target_qnode_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['n00', 'n01']
+    - examples: ['n00', 'n01']
 
-	type: string
+    - type: string
 
-	description: a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+    - description: a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
 
-	default:
+    - default:
   There is no default value. 
 
 |||
 |-----|-----|
 |_DSL parameters_| parameters |
 |_DSL arguments_| {'virtual_relation_label': {'is_required': False, 'examples': ['N1', 'J2'], 'type': 'string', 'description': 'An optional label to help identify the virtual edge in the relation field.'}, 'source_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}, 'target_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}} |
-
-### overlay(action=add_node_pmids)
-
-                    `add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
-                    This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
-                    either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
-
-                    This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-###Parameters: 
-
-* #####max_num
-
-	is_required: False
-
-	examples: ['all', 5, 50]
-
-	type: int or string
-
-	description: The maximum number of values to return. Enter 'all' to return everything
-
-	default: 100
-
-|||
-|-----|-----|
-|_DSL parameters_| parameters |
-|_DSL arguments_| {'max_num': {'is_required': False, 'examples': ['all', 5, 50], 'type': 'int or string', 'description': "The maximum number of values to return. Enter 'all' to return everything", 'default': 100}} |
 
 ### overlay(action=fisher_exact_test)
 
@@ -980,150 +1043,116 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
 
                     
 
-###Parameters: 
+### Parameters: 
 
-* #####source_qnode_id
+* ##### source_qnode_id
 
-	is_required: True
+    - is_required: True
 
-	examples: ['n00', 'n01']
+    - examples: ['n00', 'n01']
 
-	type: string
+    - type: string
 
-	description: a specific source query node id (required)
+    - description: a specific source query node id (required)
 
-	default:
+    - default:
   There is no default value. 
 
-* #####virtual_relation_label
+* ##### virtual_relation_label
 
-	is_required: True
+    - is_required: True
 
-	examples: ['N1', 'J2', 'FET']
+    - examples: ['N1', 'J2', 'FET']
 
-	type: string
+    - type: string
 
-	description: An optional label to help identify the virtual edge in the relation field.
+    - description: An optional label to help identify the virtual edge in the relation field.
 
-	default:
+    - default:
   There is no default value. 
 
-* #####target_qnode_id
+* ##### target_qnode_id
 
-	is_required: True
+    - is_required: True
 
-	examples: ['n00', 'n01']
+    - examples: ['n00', 'n01']
 
-	type: string
+    - type: string
 
-	description: a specific target query node id (required)
+    - description: a specific target query node id (required)
 
-	default:
+    - default:
   There is no default value. 
 
-* #####rel_edge_id
+* ##### rel_edge_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['e00', 'e01']
+    - examples: ['e00', 'e01']
 
-	type: string
+    - type: string
 
-	description: a specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'
+    - description: a specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'
 
-	default:
+    - default:
   There is no default value. 
 
-* #####top_n
+* ##### top_n
 
-	is_required: False
+    - is_required: False
 
-	examples: ['all', 5, 50]
+    - examples: ['all', 5, 50]
 
-	type: int or None
+    - type: int or None
 
-	description: an int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned)
+    - description: an int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned)
 
-	default: None
+    - default: None
 
-* #####cutoff
+* ##### cutoff
 
-	is_required: False
+    - is_required: False
 
-	examples: ['all', 0.05, 0.95]
+    - examples: ['all', 0.05, 0.95]
 
-	type: float or None
+    - type: float or None
 
-	description: a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05
+    - description: a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05
 
-	default: None
+    - default: None
 
 |||
 |-----|-----|
 |_DSL parameters_| parameters |
 |_DSL arguments_| {'source_qnode_id': {'is_required': True, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific source query node id (required)'}, 'virtual_relation_label': {'is_required': True, 'examples': ['N1', 'J2', 'FET'], 'type': 'string', 'description': 'An optional label to help identify the virtual edge in the relation field.'}, 'target_qnode_id': {'is_required': True, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific target query node id (required)'}, 'rel_edge_id': {'is_required': False, 'examples': ['e00', 'e01'], 'type': 'string', 'description': "a specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"}, 'top_n': {'is_required': False, 'examples': ['all', 5, 50], 'type': 'int or None', 'description': 'an int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned)', 'default': None}, 'cutoff': {'is_required': False, 'examples': ['all', 0.05, 0.95], 'type': 'float or None', 'description': 'a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05', 'default': None}} |
 
-### overlay(action=predict_drug_treats_disease)
+### overlay(action=add_node_pmids)
 
-                    `predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substanct treats a disease/phenotypic feature.
-                    For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
-                    The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
-                    You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified source/target qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
-                    If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
-                    Use cases include:
-
-                    * Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
-                    * For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)`
-                    * Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_id=n02)`
+                    `add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
+                    This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+                    either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
 
                     This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
-###Parameters: 
+### Parameters: 
 
-* #####virtual_relation_label
+* ##### max_num
 
-	is_required: False
+    - is_required: False
 
-	examples: ['N1', 'J2']
+    - examples: ['all', 5, 50]
 
-	type: string
+    - type: int or string
 
-	description: An optional label to help identify the virtual edge in the relation field.
+    - description: The maximum number of values to return. Enter 'all' to return everything
 
-	default:
-  There is no default value. 
-
-* #####source_qnode_id
-
-	is_required: False
-
-	examples: ['n00', 'n01']
-
-	type: string
-
-	description: a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-	default:
-  There is no default value. 
-
-* #####target_qnode_id
-
-	is_required: False
-
-	examples: ['n00', 'n01']
-
-	type: string
-
-	description: a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-	default:
-  There is no default value. 
+    - default: 100
 
 |||
 |-----|-----|
 |_DSL parameters_| parameters |
-|_DSL arguments_| {'virtual_relation_label': {'is_required': False, 'examples': ['N1', 'J2'], 'type': 'string', 'description': 'An optional label to help identify the virtual edge in the relation field.'}, 'source_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}, 'target_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}} |
+|_DSL arguments_| {'max_num': {'is_required': False, 'examples': ['all', 5, 50], 'type': 'int or string', 'description': "The maximum number of values to return. Enter 'all' to return everything", 'default': 100}} |
 
 ### overlay(action=compute_jaccard)
 
@@ -1135,58 +1164,58 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
-###Parameters: 
+### Parameters: 
 
-* #####start_node_id
+* ##### start_node_id
 
-	is_required: True
+    - is_required: True
 
-	examples: ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836']
+    - examples: ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836']
 
-	type: string
+    - type: string
 
-	description: A curie id specifying the starting node
+    - description: A curie id specifying the starting node
 
-	default:
+    - default:
   There is no default value. 
 
-* #####intermediate_node_id
+* ##### intermediate_node_id
 
-	is_required: True
+    - is_required: True
 
-	examples: ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836']
+    - examples: ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836']
 
-	type: string
+    - type: string
 
-	description: A curie id specifying the intermediate node
+    - description: A curie id specifying the intermediate node
 
-	default:
+    - default:
   There is no default value. 
 
-* #####end_node_id
+* ##### end_node_id
 
-	is_required: True
+    - is_required: True
 
-	examples: ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836']
+    - examples: ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836']
 
-	type: string
+    - type: string
 
-	description: A curie id specifying the ending node
+    - description: A curie id specifying the ending node
 
-	default:
+    - default:
   There is no default value. 
 
-* #####virtual_relation_label
+* ##### virtual_relation_label
 
-	is_required: True
+    - is_required: True
 
-	examples: ['N1', 'J2', 'FET']
+    - examples: ['N1', 'J2', 'FET']
 
-	type: string
+    - type: string
 
-	description: An optional label to help identify the virtual edge in the relation field.
+    - description: An optional label to help identify the virtual edge in the relation field.
 
-	default:
+    - default:
   There is no default value. 
 
 |||
@@ -1210,43 +1239,43 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
-###Parameters: 
+### Parameters: 
 
-* #####edge_type
+* ##### edge_type
 
-	is_required: True
+    - is_required: True
 
-	examples: ['contraindicated_for', 'affects', 'expressed_in']
+    - examples: ['contraindicated_for', 'affects', 'expressed_in']
 
-	type: string
+    - type: string
 
-	description: The name of the edge type to filter by.
+    - description: The name of the edge type to filter by.
 
-	default: None
+    - default: None
 
-* #####remove_connected_nodes
+* ##### remove_connected_nodes
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F']
+    - examples: ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F']
 
-	type: string
+    - type: string
 
-	description: Indicates whether or not to remove the nodes connected to the edge.
+    - description: Indicates whether or not to remove the nodes connected to the edge.
 
-	default: False
+    - default: False
 
-* #####qnode_id
+* ##### qnode_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['n01', 'n02']
+    - examples: ['n01', 'n02']
 
-	type: string
+    - type: string
 
-	description: If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_id to be removed.If not provided the qnode_id will not be considered when filtering.
+    - description: If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_id to be removed.If not provided the qnode_id will not be considered when filtering.
 
-	default: None
+    - default: None
 
 |||
 |-----|-----|
@@ -1271,67 +1300,67 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     This can be applied to an arbitrary knowledge graph as possible edge attributes are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
-###Parameters: 
+### Parameters: 
 
-* #####edge_attribute
+* ##### edge_attribute
 
-	is_required: True
+    - is_required: True
 
-	examples: ['jaccard_index', 'observed_expected_ratio', 'normalized_google_distance']
+    - examples: ['jaccard_index', 'observed_expected_ratio', 'normalized_google_distance']
 
-	type: string
+    - type: string
 
-	description: The name of the edge attribute to filter on.
+    - description: The name of the edge attribute to filter on.
 
-	default: None
+    - default: None
 
-* #####direction
+* ##### direction
 
-	is_required: True
+    - is_required: True
 
-	examples: ['above', 'below']
+    - examples: ['above', 'below']
 
-	type: string
+    - type: string
 
-	description: Indictes whether to remove above or below the given threshold.
+    - description: Indictes whether to remove above or below the given threshold.
 
-	default: None
+    - default: None
 
-* #####threshold
+* ##### threshold
 
-	is_required: True
+    - is_required: True
 
-	examples: [5, 0.45]
+    - examples: [5, 0.45]
 
-	type: float
+    - type: float
 
-	description: The threshold to filter with.
+    - description: The threshold to filter with.
 
-	default: None
+    - default: None
 
-* #####remove_connected_nodes
+* ##### remove_connected_nodes
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F']
+    - examples: ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F']
 
-	type: string
+    - type: string
 
-	description: Indicates whether or not to remove the nodes connected to the edge.
+    - description: Indicates whether or not to remove the nodes connected to the edge.
 
-	default: False
+    - default: False
 
-* #####qnode_id
+* ##### qnode_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['n01', 'n02']
+    - examples: ['n01', 'n02']
 
-	type: string
+    - type: string
 
-	description: If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_id to be removed.If not provided the qnode_id will not be considered when filtering.
+    - description: If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_id to be removed.If not provided the qnode_id will not be considered when filtering.
 
-	default: None
+    - default: None
 
 |||
 |-----|-----|
@@ -1355,55 +1384,55 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     This can be applied to an arbitrary knowledge graph as possible edge properties are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
-###Parameters: 
+### Parameters: 
 
-* #####edge_property
+* ##### edge_property
 
-	is_required: True
+    - is_required: True
 
-	examples: ['source_id', 'provided_by', 'is_defined_by']
+    - examples: ['source_id', 'provided_by', 'is_defined_by']
 
-	type: string
+    - type: string
 
-	description: The name of the edge property to filter on.
+    - description: The name of the edge property to filter on.
 
-	default: None
+    - default: None
 
-* #####property_value
+* ##### property_value
 
-	is_required: True
+    - is_required: True
 
-	examples: ['DOID:8398', 'Pharos', 'ARAX/RTX']
+    - examples: ['DOID:8398', 'Pharos', 'ARAX/RTX']
 
-	type: string
+    - type: string
 
-	description: The edge property vaue to indicate which edges to remove.
+    - description: The edge property vaue to indicate which edges to remove.
 
-	default: None
+    - default: None
 
-* #####remove_connected_nodes
+* ##### remove_connected_nodes
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F']
+    - examples: ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F']
 
-	type: string
+    - type: string
 
-	description: Indicates whether or not to remove the nodes connected to the edge.
+    - description: Indicates whether or not to remove the nodes connected to the edge.
 
-	default: False
+    - default: False
 
-* #####qnode_id
+* ##### qnode_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['n01', 'n02']
+    - examples: ['n01', 'n02']
 
-	type: string
+    - type: string
 
-	description: If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_id to be removed.If not provided the qnode_id will not be considered when filtering.
+    - description: If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_id to be removed.If not provided the qnode_id will not be considered when filtering.
 
-	default: None
+    - default: None
 
 |||
 |-----|-----|
@@ -1435,91 +1464,91 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     `filter_kg(action=remove_edges_by_stats, edge_attribute=jaccard_index, type=std, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)`
                     
 
-###Parameters: 
+### Parameters: 
 
-* #####edge_attribute
+* ##### edge_attribute
 
-	is_required: True
+    - is_required: True
 
-	examples: ['jaccard_index', 'observed_expected_ratio', 'normalized_google_distance']
+    - examples: ['jaccard_index', 'observed_expected_ratio', 'normalized_google_distance']
 
-	type: string
+    - type: string
 
-	description: The name of the edge attribute to filter on.
+    - description: The name of the edge attribute to filter on.
 
-	default: None
+    - default: None
 
-* #####type
+* ##### type
 
-	is_required: False
+    - is_required: False
 
-	examples: ['n', 'std', 'std_dev', 'percentile', 'p']
+    - examples: ['n', 'std', 'std_dev', 'percentile', 'p']
 
-	type: string
+    - type: string
 
-	description: The statistic to use for filtering.
+    - description: The statistic to use for filtering.
 
-	default: n
+    - default: n
 
-* #####direction
+* ##### direction
 
-	is_required: False
+    - is_required: False
 
-	examples: ['above', 'below']
+    - examples: ['above', 'below']
 
-	type: string
+    - type: string
 
-	description: Indictes whether to remove above or below the given threshold.
+    - description: Indictes whether to remove above or below the given threshold.
 
-	default: a value dictated by the `edge_attribute` parameter. If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `direction` defaults to above. If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `direction` defaults to below.
+    - default: a value dictated by the `edge_attribute` parameter. If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `direction` defaults to above. If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `direction` defaults to below.
 
-* #####threshold
+* ##### threshold
 
-	is_required: False
+    - is_required: False
 
-	examples: [5, 0.45]
+    - examples: [5, 0.45]
 
-	type: float
+    - type: float
 
-	description: The threshold to filter with.
+    - description: The threshold to filter with.
 
-	default: a value dictated by the `type` parameter. If `type` is 'n' then will default to 50. If `type` is 'std_dev' or 'std' then it will default to 1.If `type` is 'percentile' or 'p' then it will default to 95 unless `edge_attribute` is also 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then it will default to 5.
+    - default: a value dictated by the `type` parameter. If `type` is 'n' then will default to 50. If `type` is 'std_dev' or 'std' then it will default to 1.If `type` is 'percentile' or 'p' then it will default to 95 unless `edge_attribute` is also 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then it will default to 5.
 
-* #####top
+* ##### top
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F']
+    - examples: ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F']
 
-	type: string
+    - type: string
 
-	description: Indicate whether or not the threshold should be placed in top of the list. E.g. top set as True with type set as std_dev will set the cutoff for filtering as the mean + threshold * std_dev while setting top to False will set the cutoff as the mean - std_dev * threshold.
+    - description: Indicate whether or not the threshold should be placed in top of the list. E.g. top set as True with type set as std_dev will set the cutoff for filtering as the mean + threshold * std_dev while setting top to False will set the cutoff as the mean - std_dev * threshold.
 
-	default: a value dictated by the `edge_attribute` parameter. If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `top` defaults to False. If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `top` defaults to True.
+    - default: a value dictated by the `edge_attribute` parameter. If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `top` defaults to False. If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `top` defaults to True.
 
-* #####remove_connected_nodes
+* ##### remove_connected_nodes
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F']
+    - examples: ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F']
 
-	type: string
+    - type: string
 
-	description: Indicates whether or not to remove the nodes connected to the edge.
+    - description: Indicates whether or not to remove the nodes connected to the edge.
 
-	default: False
+    - default: False
 
-* #####qnode_id
+* ##### qnode_id
 
-	is_required: False
+    - is_required: False
 
-	examples: ['n01', 'n02']
+    - examples: ['n01', 'n02']
 
-	type: string
+    - type: string
 
-	description: If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_id to be removed.If not provided the qnode_id will not be considered when filtering.
+    - description: If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_id to be removed.If not provided the qnode_id will not be considered when filtering.
 
-	default: None
+    - default: None
 
 |||
 |-----|-----|
@@ -1536,19 +1565,19 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     This can be applied to an arbitrary knowledge graph as possible node types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
-###Parameters: 
+### Parameters: 
 
-* #####node_type
+* ##### node_type
 
-	is_required: True
+    - is_required: True
 
-	examples: ['chemical_substance', 'disease']
+    - examples: ['chemical_substance', 'disease']
 
-	type: string
+    - type: string
 
-	description: The name of the node type to filter by.
+    - description: The name of the node type to filter by.
 
-	default: None
+    - default: None
 
 |||
 |-----|-----|
@@ -1567,31 +1596,31 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     This can be applied to an arbitrary knowledge graph as possible node properties are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
-###Parameters: 
+### Parameters: 
 
-* #####node_property
+* ##### node_property
 
-	is_required: True
+    - is_required: True
 
-	examples: ['provided_by', 'is_defined_by']
+    - examples: ['provided_by', 'is_defined_by']
 
-	type: string
+    - type: string
 
-	description: The name of the node property to filter on.
+    - description: The name of the node property to filter on.
 
-	default: None
+    - default: None
 
-* #####property_value
+* ##### property_value
 
-	is_required: True
+    - is_required: True
 
-	examples: ['Pharos', 'ARAX/RTX']
+    - examples: ['Pharos', 'ARAX/RTX']
 
-	type: string
+    - type: string
 
-	description: The node property vaue to indicate which nodes to remove.
+    - description: The node property vaue to indicate which nodes to remove.
 
-	default: None
+    - default: None
 
 |||
 |-----|-----|
@@ -1605,19 +1634,19 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     This can be applied to an arbitrary knowledge graph as possible node types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
-###Parameters: 
+### Parameters: 
 
-* #####node_type
+* ##### node_type
 
-	is_required: False
+    - is_required: False
 
-	examples: ['chemical_substance', 'disease']
+    - examples: ['chemical_substance', 'disease']
 
-	type: string
+    - type: string
 
-	description: The name of the node type to filter by. If no value provided node type will not be considered.
+    - description: The name of the node type to filter by. If no value provided node type will not be considered.
 
-	default: None
+    - default: None
 
 |||
 |-----|-----|
@@ -1638,55 +1667,55 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
                     
 
-###Parameters: 
+### Parameters: 
 
-* #####edge_attribute
+* ##### edge_attribute
 
-	is_required: True
+    - is_required: True
 
-	examples: ['jaccard_index', 'observed_expected_ratio', 'normalized_google_distance']
+    - examples: ['jaccard_index', 'observed_expected_ratio', 'normalized_google_distance']
 
-	type: string
+    - type: string
 
-	description: The name of the attribute to filter by.
+    - description: The name of the attribute to filter by.
 
-	default: None
+    - default: None
 
-* #####edge_relation
+* ##### edge_relation
 
-	is_required: False
+    - is_required: False
 
-	examples: ['N1', 'C1']
+    - examples: ['N1', 'C1']
 
-	type: string
+    - type: string
 
-	description: The name of unique identifier to only filter on edges with matching relation field. (stored in the relation neo4j edge property) If not provided the edge relation will not be considered when filtering.
+    - description: The name of unique identifier to only filter on edges with matching relation field. (stored in the relation neo4j edge property) If not provided the edge relation will not be considered when filtering.
 
-	default: None
+    - default: None
 
-* #####direction
+* ##### direction
 
-	is_required: True
+    - is_required: True
 
-	examples: ['descending', 'd', 'ascending', 'a']
+    - examples: ['descending', 'd', 'ascending', 'a']
 
-	type: string
+    - type: string
 
-	description: The direction in which to order results. (ascending or descending)
+    - description: The direction in which to order results. (ascending or descending)
 
-	default: None
+    - default: None
 
-* #####max_results
+* ##### max_results
 
-	is_required: False
+    - is_required: False
 
-	examples: [5, 10, 50]
+    - examples: [5, 10, 50]
 
-	type: integer
+    - type: integer
 
-	description: The maximum number of results to return. If not provided all results will be returned.
+    - description: The maximum number of results to return. If not provided all results will be returned.
 
-	default: None
+    - default: None
 
 |||
 |-----|-----|
@@ -1706,55 +1735,55 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
                     
 
-###Parameters: 
+### Parameters: 
 
-* #####node_attribute
+* ##### node_attribute
 
-	is_required: True
+    - is_required: True
 
-	examples: ['pubmed_ids']
+    - examples: ['pubmed_ids']
 
-	type: string
+    - type: string
 
-	description: The name of the attribute to filter by.
+    - description: The name of the attribute to filter by.
 
-	default: None
+    - default: None
 
-* #####node_type
+* ##### node_type
 
-	is_required: False
+    - is_required: False
 
-	examples: ['chemical_substance', 'disease']
+    - examples: ['chemical_substance', 'disease']
 
-	type: string
+    - type: string
 
-	description: The name of the node type to only filter on nodes of the matching type.If not provided the node type will not be cinsidered when filtering.
+    - description: The name of the node type to only filter on nodes of the matching type.If not provided the node type will not be cinsidered when filtering.
 
-	default: None
+    - default: None
 
-* #####direction
+* ##### direction
 
-	is_required: True
+    - is_required: True
 
-	examples: ['descending', 'd', 'ascending', 'a']
+    - examples: ['descending', 'd', 'ascending', 'a']
 
-	type: string
+    - type: string
 
-	description: The direction in which to order results. (ascending or descending)
+    - description: The direction in which to order results. (ascending or descending)
 
-	default: None
+    - default: None
 
-* #####max_results
+* ##### max_results
 
-	is_required: False
+    - is_required: False
 
-	examples: [5, 10, 50]
+    - examples: [5, 10, 50]
 
-	type: integer
+    - type: integer
 
-	description: The maximum number of results to return. If not provided all results will be returned.
+    - description: The maximum number of results to return. If not provided all results will be returned.
 
-	default: None
+    - default: None
 
 |||
 |-----|-----|
@@ -1771,19 +1800,19 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     * etc. etc.
                     
 
-###Parameters: 
+### Parameters: 
 
-* #####max_results
+* ##### max_results
 
-	is_required: True
+    - is_required: True
 
-	examples: [5, 10, 50]
+    - examples: [5, 10, 50]
 
-	type: integer
+    - type: integer
 
-	description: The maximum number of results to return. Default is to return all results.
+    - description: The maximum number of results to return. Default is to return all results.
 
-	default: None
+    - default: None
 
 |||
 |-----|-----|
@@ -1802,31 +1831,31 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
                     
 
-###Parameters: 
+### Parameters: 
 
-* #####direction
+* ##### direction
 
-	is_required: True
+    - is_required: True
 
-	examples: ['descending', 'd', 'ascending', 'a']
+    - examples: ['descending', 'd', 'ascending', 'a']
 
-	type: string
+    - type: string
 
-	description: The direction in which to order results. (ascending or descending)
+    - description: The direction in which to order results. (ascending or descending)
 
-	default: None
+    - default: None
 
-* #####max_results
+* ##### max_results
 
-	is_required: False
+    - is_required: False
 
-	examples: [5, 10, 50]
+    - examples: [5, 10, 50]
 
-	type: integer
+    - type: integer
 
-	description: The maximum number of results to return. If not provided all results will be returned.
+    - description: The maximum number of results to return. If not provided all results will be returned.
 
-	default: None
+    - default: None
 
 |||
 |-----|-----|
@@ -1845,31 +1874,31 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
                     
 
-###Parameters: 
+### Parameters: 
 
-* #####direction
+* ##### direction
 
-	is_required: True
+    - is_required: True
 
-	examples: ['descending', 'd', 'ascending', 'a']
+    - examples: ['descending', 'd', 'ascending', 'a']
 
-	type: string
+    - type: string
 
-	description: The direction in which to order results. (ascending or descending)
+    - description: The direction in which to order results. (ascending or descending)
 
-	default: None
+    - default: None
 
-* #####max_results
+* ##### max_results
 
-	is_required: False
+    - is_required: False
 
-	examples: [5, 10, 50]
+    - examples: [5, 10, 50]
 
-	type: integer
+    - type: integer
 
-	description: The maximum number of results to return. If not provided all results will be returned.
+    - description: The maximum number of results to return. If not provided all results will be returned.
 
-	default: None
+    - default: None
 
 |||
 |-----|-----|
@@ -1893,21 +1922,21 @@ underlying KG only contains directional edges of the form
 execute given an arbitrary query graph and knowledge graph provided by the
 automated reasoning system, not just ones generated by Team ARA Expander.
 
-###Parameters: 
+### Parameters: 
 
-* #####ignore_edge_direction
+* ##### ignore_edge_direction
 
-	is_required: False
+    - is_required: False
 
-	examples: ['true', 'false']
+    - examples: ['true', 'false']
 
-	enum: ['true', 'false']
+    - enum: ['true', 'false']
 
-	default: true
+    - default: true
 
-	type: boolean
+    - type: boolean
 
-	description: Whether to ignore (vs. obey) edge directions in the query graph when identifying paths that fulfill it.
+    - description: Whether to ignore (vs. obey) edge directions in the query graph when identifying paths that fulfill it.
 
 ||||
 |-----|-----|-----|

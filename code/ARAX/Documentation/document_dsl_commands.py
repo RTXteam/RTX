@@ -70,16 +70,16 @@ for (module, cls) in zip(modules, classes):
             to_print += dic['description'] + '\n\n'
             del dic['description']
         if 'parameters' in dic:
-            to_print += '###Parameters: ' + '\n\n'
+            to_print += '### Parameters: ' + '\n\n'
             for k1,v1 in dic['parameters'].items():
-                to_print += '* #####' + k1 + '\n\n'
+                to_print += '* ##### ' + k1 + '\n\n'
                 for k2,v2 in v1.items():
                     if v2 is None:
-                        to_print += '\t' + k2 + ': None\n\n'
+                        to_print += '    - ' + k2 + ': None\n\n'
                     else:
-                        to_print += '\t' + k2 + ': ' + str(v2) + '\n\n'
+                        to_print += '    - ' + k2 + ': ' + str(v2) + '\n\n'
                 if 'default' not in v1:
-                    to_print += '\tdefault:\n  There is no default value. \n\n'
+                    to_print += '    - default:\n  There is no default value. \n\n'
         if dic:  # if the dic is empty, then don't create a table
             temp_table = Tomark.table([dic])
             temp_table_split = temp_table.split("\n")
