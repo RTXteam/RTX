@@ -86,8 +86,10 @@ class SortResults:
             idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
             if 'max_results' in params:
+                prune_val = self.parameters['prune_kg']
                 self.parameters['prune_kg'] = False
                 self.limit_number_of_results()
+                self.parameters['prune_kg'] = prune_val
             if params['prune_kg']:
                 self.prune_kg()
         except:
@@ -117,8 +119,10 @@ class SortResults:
             idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
             if 'max_results' in params:
+                prune_val = self.parameters['prune_kg']
                 self.parameters['prune_kg'] = False
                 self.limit_number_of_results()
+                self.parameters['prune_kg'] = prune_val
             if params['prune_kg']:
                 self.prune_kg()
         except:
@@ -171,8 +175,10 @@ class SortResults:
             idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
             if 'max_results' in params:
+                prune_val = self.parameters['prune_kg']
                 self.parameters['prune_kg'] = False
                 self.limit_number_of_results()
+                self.parameters['prune_kg'] = prune_val
             if params['prune_kg']:
                 self.prune_kg()
         except:
@@ -202,8 +208,10 @@ class SortResults:
             idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
             if 'max_results' in params:
+                prune_val = self.parameters['prune_kg']
                 self.parameters['prune_kg'] = False
                 self.limit_number_of_results()
+                self.parameters['prune_kg'] = prune_val
             if params['prune_kg']:
                 self.prune_kg()
         except:
@@ -229,9 +237,9 @@ class SortResults:
             edges_to_remove = set()
             for result in self.message.results:
                 for node_binding in result.node_bindings:
-                    nodes.add(node_binding.kg_id)
+                    node_ids.add(node_binding.kg_id)
                 for edge_binding in result.edge_bindings:
-                    edges.add(edge_binding.kg_id)
+                    edge_ids.add(edge_binding.kg_id)
             node_ids_to_remove = set()
             i = 0
             for node in self.message.knowledge_graph.nodes:

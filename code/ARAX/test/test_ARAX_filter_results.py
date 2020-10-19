@@ -13,7 +13,8 @@ import json
 import ast
 from typing import List, Union
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
+#sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
+sys.path.append(os.getcwd()+"/../ARAXQuery")
 from ARAX_query import ARAXQuery
 from response import Response
 
@@ -55,6 +56,45 @@ def test_no_results():
     assert 'WARNING: filter_results called with no results.' in response.show(level=Response.WARNING)
     assert response.status == 'OK'
 
+def test_prune():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:1227, id=n00)",
+            "add_qnode(type=chemical_substance, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00)",
+            "overlay(action=add_node_pmids, max_num=15)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20, prune_kg=f)",
+            "return(message=true, store=false)"
+        ]}}
+    [no_prune_response, no_prune_message] = _do_arax_query(query)
+    query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:1227, id=n00)",
+            "add_qnode(type=chemical_substance, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00)",
+            "overlay(action=add_node_pmids, max_num=15)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
+            "return(message=true, store=false)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    result_nodes = set()
+    result_edges = set()
+    for result in message.results:
+        for node_binding in result.node_bindings:
+            result_nodes.add(node_binding.kg_id)
+        for edge_binding in result.edge_bindings:
+            result_edges.add(edge_binding.kg_id)
+    for node in message.knowledge_graph.nodes:
+        assert node.id in result_nodes
+    for edge in message.knowledge_graph.edges:
+        assert edge.id in result_edges
+    assert len(message.knowledge_graph.nodes) < len(no_prune_message.knowledge_graph.nodes)
+    assert len(message.knowledge_graph.edges) < len(no_prune_message.knowledge_graph.edges)
 
 def test_warning():
     query = {"previous_message_processing_plan": {"processing_actions": [
