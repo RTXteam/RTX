@@ -90,15 +90,15 @@ for (module, cls) in zip(modules, classes):
                     to_print += '    - ' + example_string + ' are examples of valid inputs.\n\n'
                 if 'default' in param_val:
                     to_print += '    - If not specified the default input will be ' + str(param_val['default']) + '. \n\n'
-        if dic:  # if the dic is empty, then don't create a table
-            temp_table = Tomark.table([dic])
-            temp_table_split = temp_table.split("\n")
-            #better_table = "|"+re.sub('\(\)',f'(action={action})', dsl_name) + ('|' * temp_table_split[0].count('|')) + '\n'
-            better_table = ('|' * (temp_table_split[0].count('|')+1)) + '\n'
-            better_table += temp_table_split[1] + '-----|\n'
-            better_table += '|_DSL parameters_' + temp_table_split[0] + "\n"
-            better_table += '|_DSL arguments_' + temp_table_split[2] + "\n"
-            to_print += better_table + '\n'
+        # if dic:  # if the dic is empty, then don't create a table
+        #     temp_table = Tomark.table([dic])
+        #     temp_table_split = temp_table.split("\n")
+        #     #better_table = "|"+re.sub('\(\)',f'(action={action})', dsl_name) + ('|' * temp_table_split[0].count('|')) + '\n'
+        #     better_table = ('|' * (temp_table_split[0].count('|')+1)) + '\n'
+        #     better_table += temp_table_split[1] + '-----|\n'
+        #     better_table += '|_DSL parameters_' + temp_table_split[0] + "\n"
+        #     better_table += '|_DSL arguments_' + temp_table_split[2] + "\n"
+        #     to_print += better_table + '\n'
         else:
             to_print += '\n'
 
