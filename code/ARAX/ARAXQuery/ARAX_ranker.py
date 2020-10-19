@@ -764,13 +764,13 @@ def main():
     from ARAX_messenger import ARAXMessenger
     messenger = ARAXMessenger()
     if not params.local:
-        print("INFO: Fetching message to work on from arax.rtx.ai", flush=True)
-        message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2614')  # acetaminophen - > protein, just NGD as virtual edge
-        # message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2687')  # neutropenia -> drug, predict_drug_treats_disease and ngd
-        # message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2701') # observed_expected_ratio and ngd
-        # message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2703')  # a huge one with jaccard
-        # message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2706')  # small one with paired concept frequency
-        # message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2709')  # bigger one with paired concept frequency
+        print("INFO: Fetching message to work on from arax.ncats.io", flush=True)
+        message = messenger.fetch_message('https://arax.ncats.io/api/rtx/v1/message/2614')  # acetaminophen - > protein, just NGD as virtual edge
+        # message = messenger.fetch_message('https://arax.ncats.io/api/rtx/v1/message/2687')  # neutropenia -> drug, predict_drug_treats_disease and ngd
+        # message = messenger.fetch_message('https://arax.ncats.io/api/rtx/v1/message/2701') # observed_expected_ratio and ngd
+        # message = messenger.fetch_message('https://arax.ncats.io/api/rtx/v1/message/2703')  # a huge one with jaccard
+        # message = messenger.fetch_message('https://arax.ncats.io/api/rtx/v1/message/2706')  # small one with paired concept frequency
+        # message = messenger.fetch_message('https://arax.ncats.io/api/rtx/v1/message/2709')  # bigger one with paired concept frequency
 
     # For local messages due to local changes in code not rolled out to production:
     if params.local:
