@@ -73,7 +73,7 @@ for (module, cls) in zip(modules, classes):
             to_print += 'parameters: ' + '\n'
             for k1,v1 in dic['parameters'].items():
                 to_print += '* ' + k1 + '\n'
-                for k2,v2 in v1:
+                for k2,v2 in v1.items():
                     if v2 is None:
                         to_print += '  ' + k2 + ': None\n'
                     else:

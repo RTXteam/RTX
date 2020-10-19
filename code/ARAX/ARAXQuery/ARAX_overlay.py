@@ -201,7 +201,7 @@ class ARAXOverlay:
                 "parameters": {
                     'paired_concept_frequency': self.paired_concept_frequency_info,
                     'observed_expected_ratio': self.observed_expected_ratio_info,
-                    'chi_square': self.chi_square_info
+                    'chi_square': self.chi_square_info,
                     'virtual_relation_label' : self.virtual_relation_label_info,
                     'source_qnode_id': self.source_qnode_id_info,
                     'target_qnode_id': self.target_qnode_id_info
@@ -583,7 +583,7 @@ class ARAXOverlay:
 
         # A little function to describe what this thing does
         if describe:
-            description_dict = command_definitions['add_node_pmids']
+            description_dict = self.command_definitions['add_node_pmids']
             return description_dict
 
 
@@ -648,7 +648,7 @@ class ARAXOverlay:
         # print(allowable_parameters)
         # A little function to describe what this thing does
         if describe:
-            description_dict = command_definitions['compute_jaccard']
+            description_dict = self.command_definitions['compute_jaccard']
             return description_dict
 
         # Make sure only allowable parameters and values have been passed
@@ -691,7 +691,7 @@ class ARAXOverlay:
 
         # A little function to describe what this thing does
         if describe:
-            description_dict = command_definitions['predict_drug_treats_disease']
+            description_dict = self.command_definitions['predict_drug_treats_disease']
             return description_dict
 
         # Make sure only allowable parameters and values have been passed
@@ -761,7 +761,7 @@ class ARAXOverlay:
 
         # A little function to describe what this thing does
         if describe:
-            description_dict = command_definitions['fisher_exact_test']
+            description_dict = self.command_definitions['fisher_exact_test']
             return description_dict
 
         # Make sure only allowable parameters and values have been passed
@@ -801,7 +801,7 @@ class ARAXOverlay:
 
         # A little function to describe what this thing does
         if describe:
-            description_dict = command_definitions['overlay_exposures_data']
+            description_dict = self.command_definitions['overlay_exposures_data']
             return description_dict
 
         # Make sure only allowable parameters and values have been passed
