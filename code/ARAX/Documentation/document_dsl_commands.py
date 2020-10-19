@@ -74,7 +74,7 @@ for (module, cls) in zip(modules, classes):
             for param_key,param_val in dic['parameters'].items():
                 to_print += '* ##### ' + param_key + '\n\n'
                 if 'description' in param_val:
-                    to_print += '    - **description**: ' + param_val['description'] + '\n\n'
+                    to_print += '    - ' + param_val['description'] + '\n\n'
                 if 'type' in param_val:
                     to_print += '    - Acceptable input types: ' + param_val['type'] + '.\n\n'
                 if 'is_required' in param_val:
