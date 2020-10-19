@@ -70,7 +70,7 @@ for (module, cls) in zip(modules, classes):
             to_print += dic['description'] + '\n\n'
             del dic['description']
         if 'parameters' in dic:
-            to_print += '### Parameters: ' + '\n\n'
+            to_print += '#### parameters: ' + '\n\n'
             for k1,v1 in dic['parameters'].items():
                 to_print += '* ##### ' + k1 + '\n\n'
                 for k2,v2 in v1.items():

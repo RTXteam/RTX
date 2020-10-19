@@ -4,68 +4,39 @@
 - [Full documentation of current DSL commands](#full-documentation-of-current-dsl-commands)
   - [ARAX_messenger](#arax_messenger)
     - [create_message()](#create_message)
-    - [Parameters: ](#parameters-)
     - [add_qnode()](#add_qnode)
-    - [Parameters: ](#parameters--1)
     - [add_qedge()](#add_qedge)
-    - [Parameters: ](#parameters--2)
   - [ARAX_expander](#arax_expander)
     - [expand(kp=ARAX/KG1)](#expandkparaxkg1)
-    - [Parameters: ](#parameters--3)
     - [expand(kp=ARAX/KG2)](#expandkparaxkg2)
-    - [Parameters: ](#parameters--4)
     - [expand(kp=BTE)](#expandkpbte)
-    - [Parameters: ](#parameters--5)
     - [expand(kp=COHD)](#expandkpcohd)
-    - [Parameters: ](#parameters--6)
     - [expand(kp=GeneticsKP)](#expandkpgeneticskp)
-    - [Parameters: ](#parameters--7)
     - [expand(kp=NGD)](#expandkpngd)
-    - [Parameters: ](#parameters--8)
   - [ARAX_overlay](#arax_overlay)
     - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
-    - [Parameters: ](#parameters--9)
-    - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
-    - [Parameters: ](#parameters--10)
-    - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
-    - [Parameters: ](#parameters--11)
-    - [overlay(action=predict_drug_treats_disease)](#overlayactionpredict_drug_treats_disease)
-    - [Parameters: ](#parameters--12)
     - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
-    - [Parameters: ](#parameters--13)
+    - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
     - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
-    - [Parameters: ](#parameters--14)
+    - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
     - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
-    - [Parameters: ](#parameters--15)
+    - [overlay(action=predict_drug_treats_disease)](#overlayactionpredict_drug_treats_disease)
   - [ARAX_filter_kg](#arax_filter_kg)
     - [filter_kg(action=remove_edges_by_type)](#filter_kgactionremove_edges_by_type)
-    - [Parameters: ](#parameters--16)
     - [filter_kg(action=remove_edges_by_attribute)](#filter_kgactionremove_edges_by_attribute)
-    - [Parameters: ](#parameters--17)
     - [filter_kg(action=remove_edges_by_property)](#filter_kgactionremove_edges_by_property)
-    - [Parameters: ](#parameters--18)
     - [filter_kg(action=remove_edges_by_stats)](#filter_kgactionremove_edges_by_stats)
-    - [Parameters: ](#parameters--19)
     - [filter_kg(action=remove_nodes_by_type)](#filter_kgactionremove_nodes_by_type)
-    - [Parameters: ](#parameters--20)
     - [filter_kg(action=remove_nodes_by_property)](#filter_kgactionremove_nodes_by_property)
-    - [Parameters: ](#parameters--21)
     - [filter_kg(action=remove_orphaned_nodes)](#filter_kgactionremove_orphaned_nodes)
-    - [Parameters: ](#parameters--22)
   - [ARAX_filter_results](#arax_filter_results)
     - [filter_results(action=sort_by_edge_attribute)](#filter_resultsactionsort_by_edge_attribute)
-    - [Parameters: ](#parameters--23)
     - [filter_results(action=sort_by_node_attribute)](#filter_resultsactionsort_by_node_attribute)
-    - [Parameters: ](#parameters--24)
     - [filter_results(action=limit_number_of_results)](#filter_resultsactionlimit_number_of_results)
-    - [Parameters: ](#parameters--25)
     - [filter_results(action=sort_by_edge_count)](#filter_resultsactionsort_by_edge_count)
-    - [Parameters: ](#parameters--26)
     - [filter_results(action=sort_by_node_count)](#filter_resultsactionsort_by_node_count)
-    - [Parameters: ](#parameters--27)
   - [ARAX_resultify](#arax_resultify)
     - [resultify()](#resultify)
-    - [Parameters: ](#parameters--28)
 
 # Domain Specific Langauage (DSL) description
 This document describes the features and components of the DSL developed for the ARA Expander team.
@@ -94,7 +65,7 @@ The `create_message` command creates a basic empty Message object with basic boi
                 create_message() will be executed automatically if there is not yet a Message. If there is already Message in memory,
                 then this command will destroy the previous one (in memory) and begin a new message.
 
-### Parameters: 
+#### parameters: 
 
 |||
 |-----|-----|
@@ -105,7 +76,7 @@ The `create_message` command creates a basic empty Message object with basic boi
 The `add_qnode` method adds an additional QNode to the QueryGraph in the Message object. Currently
                 when a curie or name is specified, this method will only return success if a matching node is found in the KG1/KG2 KGNodeIndex.
 
-### Parameters: 
+#### parameters: 
 
 * ##### id
 
@@ -183,7 +154,7 @@ The `add_qedge` command adds an additional QEdge to the QueryGraph in the Messag
                 source_id and target_id QNodes must already be present in the QueryGraph. The specified type is not currently checked that it is a
                 valid Translator/BioLink relationship type, but it should be.
 
-### Parameters: 
+#### parameters: 
 
 * ##### id
 
@@ -246,7 +217,7 @@ The `add_qedge` command adds an additional QEdge to the QueryGraph in the Messag
 ### expand(kp=ARAX/KG1)
 This command reaches out to the RTX KG1 Neo4j instance to find all bioentity subpaths that satisfy the query graph.
 
-### Parameters: 
+#### parameters: 
 
 * ##### edge_id
 
@@ -324,7 +295,7 @@ This command reaches out to the RTX KG1 Neo4j instance to find all bioentity sub
 ### expand(kp=ARAX/KG2)
 This command reaches out to the RTX KG2 knowledge graph to find all bioentity subpaths that satisfy the query graph. If use_synonyms=true, it uses the KG2canonicalized ('KG2c') Neo4j instance; otherwise, the regular KG2 Neo4j instance is used.
 
-### Parameters: 
+#### parameters: 
 
 * ##### edge_id
 
@@ -402,7 +373,7 @@ This command reaches out to the RTX KG2 knowledge graph to find all bioentity su
 ### expand(kp=BTE)
 This command uses BioThings Explorer (from the Service Provider) to find all bioentity subpaths that satisfy the query graph. Of note, all query nodes must have a type specified for BTE queries. In addition, bi-directional queries are only partially supported (the ARAX system knows how to ignore edge direction when deciding which query node for a query edge will be the 'input' qnode, but BTE itself returns only answers matching the input edge direction).
 
-### Parameters: 
+#### parameters: 
 
 * ##### edge_id
 
@@ -480,7 +451,7 @@ This command uses BioThings Explorer (from the Service Provider) to find all bio
 ### expand(kp=COHD)
 This command uses the Clinical Data Provider (COHD) to find all bioentity subpaths that satisfy the query graph.
 
-### Parameters: 
+#### parameters: 
 
 * ##### edge_id
 
@@ -574,7 +545,7 @@ This command uses the Clinical Data Provider (COHD) to find all bioentity subpat
 ### expand(kp=GeneticsKP)
 This command reaches out to the Genetics Provider to find all bioentity subpaths that satisfy the query graph. It currently can answers questions involving the following node types: gene, protein, disease, phenotypic_feature, pathway. Temporarily (while the integration is under development), it can only be used as the first hop in a query.
 
-### Parameters: 
+#### parameters: 
 
 * ##### edge_id
 
@@ -652,7 +623,7 @@ This command reaches out to the Genetics Provider to find all bioentity subpaths
 ### expand(kp=NGD)
 This command uses ARAX's in-house normalized google distance (NGD) database to expand a query graph; it returns edges between nodes with an NGD value below a certain threshold. This threshold is currently hardcoded as 0.5, though this will be made configurable/smarter in the future.
 
-### Parameters: 
+#### parameters: 
 
 * ##### edge_id
 
@@ -723,7 +694,7 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
                     
 
-### Parameters: 
+#### parameters: 
 
 * ##### virtual_relation_label
 
@@ -769,6 +740,121 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
 |_DSL parameters_| parameters |
 |_DSL arguments_| {'virtual_relation_label': {'is_required': False, 'examples': ['N1', 'J2'], 'type': 'string', 'description': 'An optional label to help identify the virtual edge in the relation field.'}, 'source_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}, 'target_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}} |
 
+### overlay(action=fisher_exact_test)
+
+                    `fisher_exact_test` computes the the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_qnode_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_qnode_id 'n02') in the message knowledge graph. 
+                    This information is then added as an edge attribute to a virtual edge which is then added to the query graph and knowledge graph.
+                    It can also allow you filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
+
+                    This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+
+                    Use cases include:
+
+                    * Given an input list (or a single) bioentities with specified query id in message KG, find connected bioentities  that are most "representative" of the input list of bioentities
+                    * Find biological pathways that are enriched for an input list of proteins (specified with a query id)
+                    * Make long query graph expansions in a targeted fashion to reduce the combinatorial explosion experienced with long query graphs 
+
+                    This p-value is calculated from fisher's exact test based on the contingency table with following format:
+
+                    |||||
+                    |-----|-----|-----|-----|
+                    |                                  | in query node list | not in query node list | row total |
+                    | connect to certain adjacent node |         a          |           b            |   a+b     |
+                    | not connect to adjacent node     |         c          |           d            |   c+d     |
+                    |         column total             |        a+c         |          b+d           |  a+b+c+d  |
+                        
+                    The p-value is calculated by applying fisher_exact method of scipy.stats module in scipy package to the contingency table.
+                    The code is as follows:
+
+                    ```
+                     _, pvalue = stats.fisher_exact([[a, b], [c, d]])
+                    ```
+
+                    
+
+#### parameters: 
+
+* ##### source_qnode_id
+
+    - is_required: True
+
+    - examples: ['n00', 'n01']
+
+    - type: string
+
+    - description: a specific source query node id (required)
+
+    - default:
+  There is no default value. 
+
+* ##### virtual_relation_label
+
+    - is_required: True
+
+    - examples: ['N1', 'J2', 'FET']
+
+    - type: string
+
+    - description: An optional label to help identify the virtual edge in the relation field.
+
+    - default:
+  There is no default value. 
+
+* ##### target_qnode_id
+
+    - is_required: True
+
+    - examples: ['n00', 'n01']
+
+    - type: string
+
+    - description: a specific target query node id (required)
+
+    - default:
+  There is no default value. 
+
+* ##### rel_edge_id
+
+    - is_required: False
+
+    - examples: ['e00', 'e01']
+
+    - type: string
+
+    - description: a specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'
+
+    - default:
+  There is no default value. 
+
+* ##### top_n
+
+    - is_required: False
+
+    - examples: ['all', 5, 50]
+
+    - type: int or None
+
+    - description: an int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned)
+
+    - default: None
+
+* ##### cutoff
+
+    - is_required: False
+
+    - examples: ['all', 0.05, 0.95]
+
+    - type: float or None
+
+    - description: a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05
+
+    - default: None
+
+|||
+|-----|-----|
+|_DSL parameters_| parameters |
+|_DSL arguments_| {'source_qnode_id': {'is_required': True, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific source query node id (required)'}, 'virtual_relation_label': {'is_required': True, 'examples': ['N1', 'J2', 'FET'], 'type': 'string', 'description': 'An optional label to help identify the virtual edge in the relation field.'}, 'target_qnode_id': {'is_required': True, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific target query node id (required)'}, 'rel_edge_id': {'is_required': False, 'examples': ['e00', 'e01'], 'type': 'string', 'description': "a specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"}, 'top_n': {'is_required': False, 'examples': ['all', 5, 50], 'type': 'int or None', 'description': 'an int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned)', 'default': None}, 'cutoff': {'is_required': False, 'examples': ['all', 0.05, 0.95], 'type': 'float or None', 'description': 'a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05', 'default': None}} |
+
 ### overlay(action=overlay_clinical_info)
 
                     `overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
@@ -793,7 +879,7 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
-### Parameters: 
+#### parameters: 
 
 * ##### paired_concept_frequency
 
@@ -878,6 +964,34 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
 |_DSL parameters_| parameters |
 |_DSL arguments_| {'paired_concept_frequency': {'is_required': False, 'examples': ['true', 'false'], 'type': 'string', 'description': 'Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.'}, 'observed_expected_ratio': {'is_required': False, 'examples': ['true', 'false'], 'type': 'string', 'description': 'Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.'}, 'chi_square': {'is_required': False, 'examples': ['true', 'false'], 'type': 'string', 'description': 'Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.'}, 'virtual_relation_label': {'is_required': False, 'examples': ['N1', 'J2'], 'type': 'string', 'description': 'An optional label to help identify the virtual edge in the relation field.'}, 'source_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}, 'target_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}} |
 
+### overlay(action=add_node_pmids)
+
+                    `add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
+                    This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+                    either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
+
+                    This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### max_num
+
+    - is_required: False
+
+    - examples: ['all', 5, 50]
+
+    - type: int or string
+
+    - description: The maximum number of values to return. Enter 'all' to return everything
+
+    - default: 100
+
+|||
+|-----|-----|
+|_DSL parameters_| parameters |
+|_DSL arguments_| {'max_num': {'is_required': False, 'examples': ['all', 5, 50], 'type': 'int or string', 'description': "The maximum number of values to return. Enter 'all' to return everything", 'default': 100}} |
+
 ### overlay(action=compute_ngd)
 
                     `compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
@@ -891,7 +1005,7 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
 
                     This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
 
-### Parameters: 
+#### parameters: 
 
 * ##### default_value
 
@@ -949,211 +1063,6 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
 |_DSL parameters_| brief_description | parameters |
 |_DSL arguments_| 
 
-### overlay(action=predict_drug_treats_disease)
-
-                    `predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substanct treats a disease/phenotypic feature.
-                    For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
-                    The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
-                    You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified source/target qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
-                    If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
-                    Use cases include:
-
-                    * Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
-                    * For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)`
-                    * Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_id=n02)`
-
-                    This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-### Parameters: 
-
-* ##### virtual_relation_label
-
-    - is_required: False
-
-    - examples: ['N1', 'J2']
-
-    - type: string
-
-    - description: An optional label to help identify the virtual edge in the relation field.
-
-    - default:
-  There is no default value. 
-
-* ##### source_qnode_id
-
-    - is_required: False
-
-    - examples: ['n00', 'n01']
-
-    - type: string
-
-    - description: a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - default:
-  There is no default value. 
-
-* ##### target_qnode_id
-
-    - is_required: False
-
-    - examples: ['n00', 'n01']
-
-    - type: string
-
-    - description: a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - default:
-  There is no default value. 
-
-|||
-|-----|-----|
-|_DSL parameters_| parameters |
-|_DSL arguments_| {'virtual_relation_label': {'is_required': False, 'examples': ['N1', 'J2'], 'type': 'string', 'description': 'An optional label to help identify the virtual edge in the relation field.'}, 'source_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}, 'target_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}} |
-
-### overlay(action=fisher_exact_test)
-
-                    `fisher_exact_test` computes the the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_qnode_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_qnode_id 'n02') in the message knowledge graph. 
-                    This information is then added as an edge attribute to a virtual edge which is then added to the query graph and knowledge graph.
-                    It can also allow you filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
-
-                    This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-
-                    Use cases include:
-
-                    * Given an input list (or a single) bioentities with specified query id in message KG, find connected bioentities  that are most "representative" of the input list of bioentities
-                    * Find biological pathways that are enriched for an input list of proteins (specified with a query id)
-                    * Make long query graph expansions in a targeted fashion to reduce the combinatorial explosion experienced with long query graphs 
-
-                    This p-value is calculated from fisher's exact test based on the contingency table with following format:
-
-                    |||||
-                    |-----|-----|-----|-----|
-                    |                                  | in query node list | not in query node list | row total |
-                    | connect to certain adjacent node |         a          |           b            |   a+b     |
-                    | not connect to adjacent node     |         c          |           d            |   c+d     |
-                    |         column total             |        a+c         |          b+d           |  a+b+c+d  |
-                        
-                    The p-value is calculated by applying fisher_exact method of scipy.stats module in scipy package to the contingency table.
-                    The code is as follows:
-
-                    ```
-                     _, pvalue = stats.fisher_exact([[a, b], [c, d]])
-                    ```
-
-                    
-
-### Parameters: 
-
-* ##### source_qnode_id
-
-    - is_required: True
-
-    - examples: ['n00', 'n01']
-
-    - type: string
-
-    - description: a specific source query node id (required)
-
-    - default:
-  There is no default value. 
-
-* ##### virtual_relation_label
-
-    - is_required: True
-
-    - examples: ['N1', 'J2', 'FET']
-
-    - type: string
-
-    - description: An optional label to help identify the virtual edge in the relation field.
-
-    - default:
-  There is no default value. 
-
-* ##### target_qnode_id
-
-    - is_required: True
-
-    - examples: ['n00', 'n01']
-
-    - type: string
-
-    - description: a specific target query node id (required)
-
-    - default:
-  There is no default value. 
-
-* ##### rel_edge_id
-
-    - is_required: False
-
-    - examples: ['e00', 'e01']
-
-    - type: string
-
-    - description: a specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'
-
-    - default:
-  There is no default value. 
-
-* ##### top_n
-
-    - is_required: False
-
-    - examples: ['all', 5, 50]
-
-    - type: int or None
-
-    - description: an int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned)
-
-    - default: None
-
-* ##### cutoff
-
-    - is_required: False
-
-    - examples: ['all', 0.05, 0.95]
-
-    - type: float or None
-
-    - description: a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05
-
-    - default: None
-
-|||
-|-----|-----|
-|_DSL parameters_| parameters |
-|_DSL arguments_| {'source_qnode_id': {'is_required': True, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific source query node id (required)'}, 'virtual_relation_label': {'is_required': True, 'examples': ['N1', 'J2', 'FET'], 'type': 'string', 'description': 'An optional label to help identify the virtual edge in the relation field.'}, 'target_qnode_id': {'is_required': True, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific target query node id (required)'}, 'rel_edge_id': {'is_required': False, 'examples': ['e00', 'e01'], 'type': 'string', 'description': "a specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"}, 'top_n': {'is_required': False, 'examples': ['all', 5, 50], 'type': 'int or None', 'description': 'an int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned)', 'default': None}, 'cutoff': {'is_required': False, 'examples': ['all', 0.05, 0.95], 'type': 'float or None', 'description': 'a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05', 'default': None}} |
-
-### overlay(action=add_node_pmids)
-
-                    `add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
-                    This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
-                    either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
-
-                    This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-### Parameters: 
-
-* ##### max_num
-
-    - is_required: False
-
-    - examples: ['all', 5, 50]
-
-    - type: int or string
-
-    - description: The maximum number of values to return. Enter 'all' to return everything
-
-    - default: 100
-
-|||
-|-----|-----|
-|_DSL parameters_| parameters |
-|_DSL arguments_| {'max_num': {'is_required': False, 'examples': ['all', 5, 50], 'type': 'int or string', 'description': "The maximum number of values to return. Enter 'all' to return everything", 'default': 100}} |
-
 ### overlay(action=compute_jaccard)
 
                     `compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
@@ -1164,7 +1073,7 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
-### Parameters: 
+#### parameters: 
 
 * ##### start_node_id
 
@@ -1223,6 +1132,68 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
 |_DSL parameters_| parameters |
 |_DSL arguments_| {'start_node_id': {'is_required': True, 'examples': ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836'], 'type': 'string', 'description': 'A curie id specifying the starting node'}, 'intermediate_node_id': {'is_required': True, 'examples': ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836'], 'type': 'string', 'description': 'A curie id specifying the intermediate node'}, 'end_node_id': {'is_required': True, 'examples': ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836'], 'type': 'string', 'description': 'A curie id specifying the ending node'}, 'virtual_relation_label': {'is_required': True, 'examples': ['N1', 'J2', 'FET'], 'type': 'string', 'description': 'An optional label to help identify the virtual edge in the relation field.'}} |
 
+### overlay(action=predict_drug_treats_disease)
+
+                    `predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substanct treats a disease/phenotypic feature.
+                    For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
+                    The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
+                    You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified source/target qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
+                    If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
+                    Use cases include:
+
+                    * Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
+                    * For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)`
+                    * Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_id=n02)`
+
+                    This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### virtual_relation_label
+
+    - is_required: False
+
+    - examples: ['N1', 'J2']
+
+    - type: string
+
+    - description: An optional label to help identify the virtual edge in the relation field.
+
+    - default:
+  There is no default value. 
+
+* ##### source_qnode_id
+
+    - is_required: False
+
+    - examples: ['n00', 'n01']
+
+    - type: string
+
+    - description: a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - default:
+  There is no default value. 
+
+* ##### target_qnode_id
+
+    - is_required: False
+
+    - examples: ['n00', 'n01']
+
+    - type: string
+
+    - description: a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - default:
+  There is no default value. 
+
+|||
+|-----|-----|
+|_DSL parameters_| parameters |
+|_DSL arguments_| {'virtual_relation_label': {'is_required': False, 'examples': ['N1', 'J2'], 'type': 'string', 'description': 'An optional label to help identify the virtual edge in the relation field.'}, 'source_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}, 'target_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}} |
+
 ## ARAX_filter_kg
 ### filter_kg(action=remove_edges_by_type)
 
@@ -1239,7 +1210,7 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
-### Parameters: 
+#### parameters: 
 
 * ##### edge_type
 
@@ -1300,7 +1271,7 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     This can be applied to an arbitrary knowledge graph as possible edge attributes are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
-### Parameters: 
+#### parameters: 
 
 * ##### edge_attribute
 
@@ -1384,7 +1355,7 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     This can be applied to an arbitrary knowledge graph as possible edge properties are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
-### Parameters: 
+#### parameters: 
 
 * ##### edge_property
 
@@ -1464,7 +1435,7 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     `filter_kg(action=remove_edges_by_stats, edge_attribute=jaccard_index, type=std, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)`
                     
 
-### Parameters: 
+#### parameters: 
 
 * ##### edge_attribute
 
@@ -1565,7 +1536,7 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     This can be applied to an arbitrary knowledge graph as possible node types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
-### Parameters: 
+#### parameters: 
 
 * ##### node_type
 
@@ -1596,7 +1567,7 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     This can be applied to an arbitrary knowledge graph as possible node properties are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
-### Parameters: 
+#### parameters: 
 
 * ##### node_property
 
@@ -1634,7 +1605,7 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     This can be applied to an arbitrary knowledge graph as possible node types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
-### Parameters: 
+#### parameters: 
 
 * ##### node_type
 
@@ -1667,7 +1638,7 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
                     
 
-### Parameters: 
+#### parameters: 
 
 * ##### edge_attribute
 
@@ -1735,7 +1706,7 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
                     
 
-### Parameters: 
+#### parameters: 
 
 * ##### node_attribute
 
@@ -1800,7 +1771,7 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     * etc. etc.
                     
 
-### Parameters: 
+#### parameters: 
 
 * ##### max_results
 
@@ -1831,7 +1802,7 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
                     
 
-### Parameters: 
+#### parameters: 
 
 * ##### direction
 
@@ -1874,7 +1845,7 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
                     Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
                     
 
-### Parameters: 
+#### parameters: 
 
 * ##### direction
 
@@ -1922,7 +1893,7 @@ underlying KG only contains directional edges of the form
 execute given an arbitrary query graph and knowledge graph provided by the
 automated reasoning system, not just ones generated by Team ARA Expander.
 
-### Parameters: 
+#### parameters: 
 
 * ##### ignore_edge_direction
 
