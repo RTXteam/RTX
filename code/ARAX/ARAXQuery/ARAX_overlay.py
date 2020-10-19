@@ -199,6 +199,11 @@ Note that this DSL command has quite a bit of functionality, so a brief descript
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
+                "mutually_exclusive_params":[
+                    'paired_concept_frequency', 
+                    'observed_expected_ratio', 
+                    'chi_square'
+                ],
                 "parameters": {
                     'paired_concept_frequency': self.paired_concept_frequency_info,
                     'observed_expected_ratio': self.observed_expected_ratio_info,

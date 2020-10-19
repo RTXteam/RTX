@@ -69,6 +69,12 @@ for (module, cls) in zip(modules, classes):
         if 'description' in dic:
             to_print += dic['description'] + '\n\n'
             del dic['description']
+        if 'mutually_exclusive_params' in dic:
+            if len(dic['mutually_exclusive_params']) < 3:
+                mutual_string = '`' + '` and `'.join([str(x) for x in dic['mutually_exclusive_params']]) + '`'
+            else:
+                mutual_string = '`' + '`, `'.join([str(x) for x in dic['mutually_exclusive_params'][:-1]]) + '`, and `' + str(dic['mutually_exclusive_params'][-1]) + '`'
+            to_print += "**NOTE: ** The parameters " + mutual_string + ' are mutually exclusive and thus will cause an error when more than one is included.\n\n'
         if 'parameters' in dic:
             to_print += '#### parameters: ' + '\n\n'
             for param_key,param_val in dic['parameters'].items():
