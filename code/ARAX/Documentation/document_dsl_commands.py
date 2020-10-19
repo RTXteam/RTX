@@ -74,7 +74,7 @@ for (module, cls) in zip(modules, classes):
                 mutual_string = '`' + '` and `'.join([str(x) for x in dic['mutually_exclusive_params']]) + '`'
             else:
                 mutual_string = '`' + '`, `'.join([str(x) for x in dic['mutually_exclusive_params'][:-1]]) + '`, and `' + str(dic['mutually_exclusive_params'][-1]) + '`'
-            to_print += "**NOTE: ** The parameters " + mutual_string + ' are mutually exclusive and thus will cause an error when more than one is included.\n\n'
+            to_print += "**NOTE:** The parameters " + mutual_string + ' are mutually exclusive and thus will cause an error when more than one is included.\n\n'
         if 'parameters' in dic:
             to_print += '#### parameters: ' + '\n\n'
             for param_key,param_val in dic['parameters'].items():
@@ -94,6 +94,14 @@ for (module, cls) in zip(modules, classes):
                     else:
                         example_string = '`' + '`, `'.join([str(x) for x in param_val['examples'][:-1]]) + '`, and `' + str(param_val['examples'][-1]) + '`'                 
                     to_print += '    - ' + example_string + ' are examples of valid inputs.\n\n'
+                if 'enum' in param_val:
+                    if len(param_val['enum']) < 3:
+                        enum_string = '`' + '` and `'.join([str(x) for x in param_val['enum']]) + '`'
+                    else:
+                        enum_string = '`' + '`, `'.join([str(x) for x in param_val['enum'][:-1]]) + '`, and `' + str(param_val['enum'][-1]) + '`'                 
+                    to_print += '    - ' + enum_string + ' are all possible valid inputs.\n\n'
+                if 'max' in param_val and 'min' in param_val:
+                    to_print += '    - The values for this parameter can range from a minimum value of ' +str(param_val['min'])+ ' to a maximum value of ' +str(param_val['max'])+ '.\n\n'
                 if 'default' in param_val:
                     to_print += '    - If not specified the default input will be ' + str(param_val['default']) + '. \n\n'
         # if dic:  # if the dic is empty, then don't create a table
