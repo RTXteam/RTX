@@ -14,13 +14,13 @@
     - [expand(kp=GeneticsKP)](#expandkpgeneticskp)
     - [expand(kp=NGD)](#expandkpngd)
   - [ARAX_overlay](#arax_overlay)
-    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
+    - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
+    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
     - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
     - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
+    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
     - [overlay(action=predict_drug_treats_disease)](#overlayactionpredict_drug_treats_disease)
-    - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
     - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
-    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
   - [ARAX_filter_kg](#arax_filter_kg)
     - [filter_kg(action=remove_edges_by_type)](#filter_kgactionremove_edges_by_type)
     - [filter_kg(action=remove_edges_by_attribute)](#filter_kgactionremove_edges_by_attribute)
@@ -85,9 +85,9 @@ The `add_qnode` method adds an additional QNode to the QueryGraph in the Message
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - n00 and n01 are examples of valid inputs.
+    - `n00` and `n01` are examples of valid inputs.
 
     - If not specified the default input will be . 
 
@@ -97,9 +97,9 @@ The `add_qnode` method adds an additional QNode to the QueryGraph in the Message
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - DOID:9281 and [UniProtKB:P12345,UniProtKB:Q54321] are examples of valid inputs.
+    - `DOID:9281` and `[UniProtKB:P12345,UniProtKB:Q54321]` are examples of valid inputs.
 
 * ##### name
 
@@ -107,9 +107,9 @@ The `add_qnode` method adds an additional QNode to the QueryGraph in the Message
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - hypertension and insulin are examples of valid inputs.
+    - `hypertension` and `insulin` are examples of valid inputs.
 
 * ##### type
 
@@ -117,9 +117,9 @@ The `add_qnode` method adds an additional QNode to the QueryGraph in the Message
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - protein, chemical_substance, and disease are examples of valid inputs.
+    - `protein`, `chemical_substance`, and `disease` are examples of valid inputs.
 
 * ##### is_set
 
@@ -127,9 +127,9 @@ The `add_qnode` method adds an additional QNode to the QueryGraph in the Message
 
     - Acceptable input types: boolean.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true and false are examples of valid inputs.
+    - `true` and `false` are examples of valid inputs.
 
     - If not specified the default input will be false. 
 
@@ -152,9 +152,9 @@ The `add_qedge` command adds an additional QEdge to the QueryGraph in the Messag
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - e00 and e01 are examples of valid inputs.
+    - `e00` and `e01` are examples of valid inputs.
 
     - If not specified the default input will be . 
 
@@ -166,7 +166,7 @@ The `add_qedge` command adds an additional QEdge to the QueryGraph in the Messag
 
     - This is a required parameter and must be included.
 
-    - n00 and n01 are examples of valid inputs.
+    - `n00` and `n01` are examples of valid inputs.
 
 * ##### target_id
 
@@ -176,7 +176,7 @@ The `add_qedge` command adds an additional QEdge to the QueryGraph in the Messag
 
     - This is a required parameter and must be included.
 
-    - n01 and n02 are examples of valid inputs.
+    - `n01` and `n02` are examples of valid inputs.
 
 * ##### type
 
@@ -184,9 +184,9 @@ The `add_qedge` command adds an additional QEdge to the QueryGraph in the Messag
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - protein, physically_interacts_with, and participates_in are examples of valid inputs.
+    - `protein`, `physically_interacts_with`, and `participates_in` are examples of valid inputs.
 
 |||
 |-----|-----|
@@ -205,9 +205,9 @@ This command reaches out to the RTX KG1 Neo4j instance to find all bioentity sub
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - e00 and [e00, e01] are examples of valid inputs.
+    - `e00` and `[e00, e01]` are examples of valid inputs.
 
 * ##### node_id
 
@@ -215,9 +215,9 @@ This command reaches out to the RTX KG1 Neo4j instance to find all bioentity sub
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - n00 and [n00, n01] are examples of valid inputs.
+    - `n00` and `[n00, n01]` are examples of valid inputs.
 
 * ##### continue_if_no_results
 
@@ -225,9 +225,9 @@ This command reaches out to the RTX KG1 Neo4j instance to find all bioentity sub
 
     - Acceptable input types: boolean.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true and false are examples of valid inputs.
+    - `true` and `false` are examples of valid inputs.
 
     - If not specified the default input will be false. 
 
@@ -237,9 +237,9 @@ This command reaches out to the RTX KG1 Neo4j instance to find all bioentity sub
 
     - Acceptable input types: boolean.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true and false are examples of valid inputs.
+    - `true` and `false` are examples of valid inputs.
 
     - If not specified the default input will be false. 
 
@@ -249,9 +249,9 @@ This command reaches out to the RTX KG1 Neo4j instance to find all bioentity sub
 
     - Acceptable input types: boolean.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true and false are examples of valid inputs.
+    - `true` and `false` are examples of valid inputs.
 
     - If not specified the default input will be true. 
 
@@ -271,9 +271,9 @@ This command reaches out to the RTX KG2 knowledge graph to find all bioentity su
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - e00 and [e00, e01] are examples of valid inputs.
+    - `e00` and `[e00, e01]` are examples of valid inputs.
 
 * ##### node_id
 
@@ -281,9 +281,9 @@ This command reaches out to the RTX KG2 knowledge graph to find all bioentity su
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - n00 and [n00, n01] are examples of valid inputs.
+    - `n00` and `[n00, n01]` are examples of valid inputs.
 
 * ##### continue_if_no_results
 
@@ -291,9 +291,9 @@ This command reaches out to the RTX KG2 knowledge graph to find all bioentity su
 
     - Acceptable input types: boolean.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true and false are examples of valid inputs.
+    - `true` and `false` are examples of valid inputs.
 
     - If not specified the default input will be false. 
 
@@ -303,9 +303,9 @@ This command reaches out to the RTX KG2 knowledge graph to find all bioentity su
 
     - Acceptable input types: boolean.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true and false are examples of valid inputs.
+    - `true` and `false` are examples of valid inputs.
 
     - If not specified the default input will be false. 
 
@@ -315,9 +315,9 @@ This command reaches out to the RTX KG2 knowledge graph to find all bioentity su
 
     - Acceptable input types: boolean.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true and false are examples of valid inputs.
+    - `true` and `false` are examples of valid inputs.
 
     - If not specified the default input will be true. 
 
@@ -337,9 +337,9 @@ This command uses BioThings Explorer (from the Service Provider) to find all bio
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - e00 and [e00, e01] are examples of valid inputs.
+    - `e00` and `[e00, e01]` are examples of valid inputs.
 
 * ##### node_id
 
@@ -347,9 +347,9 @@ This command uses BioThings Explorer (from the Service Provider) to find all bio
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - n00 and [n00, n01] are examples of valid inputs.
+    - `n00` and `[n00, n01]` are examples of valid inputs.
 
 * ##### continue_if_no_results
 
@@ -357,9 +357,9 @@ This command uses BioThings Explorer (from the Service Provider) to find all bio
 
     - Acceptable input types: boolean.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true and false are examples of valid inputs.
+    - `true` and `false` are examples of valid inputs.
 
     - If not specified the default input will be false. 
 
@@ -369,9 +369,9 @@ This command uses BioThings Explorer (from the Service Provider) to find all bio
 
     - Acceptable input types: boolean.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true and false are examples of valid inputs.
+    - `true` and `false` are examples of valid inputs.
 
     - If not specified the default input will be false. 
 
@@ -381,9 +381,9 @@ This command uses BioThings Explorer (from the Service Provider) to find all bio
 
     - Acceptable input types: boolean.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true and false are examples of valid inputs.
+    - `true` and `false` are examples of valid inputs.
 
     - If not specified the default input will be true. 
 
@@ -403,9 +403,9 @@ This command uses the Clinical Data Provider (COHD) to find all bioentity subpat
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - e00 and [e00, e01] are examples of valid inputs.
+    - `e00` and `[e00, e01]` are examples of valid inputs.
 
 * ##### node_id
 
@@ -413,9 +413,9 @@ This command uses the Clinical Data Provider (COHD) to find all bioentity subpat
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - n00 and [n00, n01] are examples of valid inputs.
+    - `n00` and `[n00, n01]` are examples of valid inputs.
 
 * ##### continue_if_no_results
 
@@ -423,9 +423,9 @@ This command uses the Clinical Data Provider (COHD) to find all bioentity subpat
 
     - Acceptable input types: boolean.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true and false are examples of valid inputs.
+    - `true` and `false` are examples of valid inputs.
 
     - If not specified the default input will be false. 
 
@@ -435,9 +435,9 @@ This command uses the Clinical Data Provider (COHD) to find all bioentity subpat
 
     - Acceptable input types: boolean.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true and false are examples of valid inputs.
+    - `true` and `false` are examples of valid inputs.
 
     - If not specified the default input will be true. 
 
@@ -447,9 +447,9 @@ This command uses the Clinical Data Provider (COHD) to find all bioentity subpat
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - paired_concept_freq and chi_square are examples of valid inputs.
+    - `paired_concept_freq` and `chi_square` are examples of valid inputs.
 
     - If not specified the default input will be paired_concept_freq. 
 
@@ -459,9 +459,9 @@ This command uses the Clinical Data Provider (COHD) to find all bioentity subpat
 
     - Acceptable input types: integer.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - 95 and 80 are examples of valid inputs.
+    - `95` and `80` are examples of valid inputs.
 
     - If not specified the default input will be 99. 
 
@@ -481,9 +481,9 @@ This command reaches out to the Genetics Provider to find all bioentity subpaths
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - e00 and [e00, e01] are examples of valid inputs.
+    - `e00` and `[e00, e01]` are examples of valid inputs.
 
 * ##### node_id
 
@@ -491,9 +491,9 @@ This command reaches out to the Genetics Provider to find all bioentity subpaths
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - n00 and [n00, n01] are examples of valid inputs.
+    - `n00` and `[n00, n01]` are examples of valid inputs.
 
 * ##### continue_if_no_results
 
@@ -501,9 +501,9 @@ This command reaches out to the Genetics Provider to find all bioentity subpaths
 
     - Acceptable input types: boolean.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true and false are examples of valid inputs.
+    - `true` and `false` are examples of valid inputs.
 
     - If not specified the default input will be false. 
 
@@ -513,9 +513,9 @@ This command reaches out to the Genetics Provider to find all bioentity subpaths
 
     - Acceptable input types: boolean.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true and false are examples of valid inputs.
+    - `true` and `false` are examples of valid inputs.
 
     - If not specified the default input will be true. 
 
@@ -525,9 +525,9 @@ This command reaches out to the Genetics Provider to find all bioentity subpaths
 
     - Acceptable input types: boolean.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true and false are examples of valid inputs.
+    - `true` and `false` are examples of valid inputs.
 
     - If not specified the default input will be false. 
 
@@ -547,9 +547,9 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - e00 and [e00, e01] are examples of valid inputs.
+    - `e00` and `[e00, e01]` are examples of valid inputs.
 
 * ##### node_id
 
@@ -557,9 +557,9 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - n00 and [n00, n01] are examples of valid inputs.
+    - `n00` and `[n00, n01]` are examples of valid inputs.
 
 * ##### continue_if_no_results
 
@@ -567,9 +567,9 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
 
     - Acceptable input types: boolean.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true and false are examples of valid inputs.
+    - `true` and `false` are examples of valid inputs.
 
     - If not specified the default input will be false. 
 
@@ -579,9 +579,9 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
 
     - Acceptable input types: boolean.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true and false are examples of valid inputs.
+    - `true` and `false` are examples of valid inputs.
 
     - If not specified the default input will be true. 
 
@@ -591,6 +591,245 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
 |_DSL arguments_| {'edge_id': {'is_required': False, 'examples': ['e00', '[e00, e01]'], 'type': 'string', 'description': 'A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).'}, 'node_id': {'is_required': False, 'examples': ['n00', '[n00, n01]'], 'type': 'string', 'description': 'A query graph node ID or list of such IDs to expand (default is to expand entire query graph).'}, 'continue_if_no_results': {'is_required': False, 'examples': ['true', 'false'], 'enum': ['true', 'false'], 'default': 'false', 'type': 'boolean', 'description': 'Whether to continue execution if no paths are found matching the query graph.'}, 'use_synonyms': {'is_required': False, 'examples': ['true', 'false'], 'enum': ['true', 'false'], 'default': 'true', 'type': 'boolean', 'description': 'Whether to consider curie synonyms and merge synonymous nodes.'}} |
 
 ## ARAX_overlay
+### overlay(action=compute_jaccard)
+
+`compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
+The jaccard similarity measures how many `intermediate_node_id`'s are shared in common between each `start_node_id` and `target_node_id`.
+This is used for purposes such as "find me all drugs (`start_node_id`) that have many proteins (`intermediate_node_id`) in common with this disease (`end_node_id`)."
+This can be used for downstream filtering to concentrate on relevant bioentities.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### start_node_id
+
+    - A curie id specifying the starting node
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
+
+* ##### intermediate_node_id
+
+    - A curie id specifying the intermediate node
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
+
+* ##### end_node_id
+
+    - A curie id specifying the ending node
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `N1`, `J2`, and `FET` are examples of valid inputs.
+
+|||
+|-----|-----|
+|_DSL parameters_| parameters |
+|_DSL arguments_| {'start_node_id': {'is_required': True, 'examples': ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836'], 'type': 'string', 'description': 'A curie id specifying the starting node'}, 'intermediate_node_id': {'is_required': True, 'examples': ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836'], 'type': 'string', 'description': 'A curie id specifying the intermediate node'}, 'end_node_id': {'is_required': True, 'examples': ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836'], 'type': 'string', 'description': 'A curie id specifying the ending node'}, 'virtual_relation_label': {'is_required': True, 'examples': ['N1', 'J2', 'FET'], 'type': 'string', 'description': 'An optional label to help identify the virtual edge in the relation field.'}} |
+
+### overlay(action=add_node_pmids)
+
+`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
+This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### max_num
+
+    - The maximum number of values to return. Enter 'all' to return everything
+
+    - Acceptable input types: int or string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `all`, `5`, and `50` are examples of valid inputs.
+
+    - If not specified the default input will be 100. 
+
+|||
+|-----|-----|
+|_DSL parameters_| parameters |
+|_DSL arguments_| {'max_num': {'is_required': False, 'examples': ['all', 5, 50], 'type': 'int or string', 'description': "The maximum number of values to return. Enter 'all' to return everything", 'default': 100}} |
+
+### overlay(action=overlay_clinical_info)
+
+`overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
+This KP has a number of different functionalities, such as `paired_concept_frequency`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
+All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
+This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
+This information is then included as an edge attribute.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the relation specified by `virtual_relation_label`.
+These virtual edges have the following types:
+
+* `paired_concept_frequency` has the virtual edge type `has_paired_concept_frequency_with`
+* `observed_expected_ratio` has the virtual edge type `has_observed_expected_ratio_with`
+* `chi_square` has the virtual edge type `has_chi_square_with`
+
+Note that this DSL command has quite a bit of functionality, so a brief description of the DSL parameters is given here:
+
+* `paired_concept_frequency`: If set to `true`, retrieves observed clinical frequencies of a pair of concepts indicated by edge source and target nodes and adds these values as edge attributes.
+* `observed_expected_ratio`: If set to `true`, returns the natural logarithm of the ratio between the observed count and expected count of edge source and target nodes. Expected count is calculated from the single concept frequencies and assuming independence between the concepts. This information is added as an edge attribute.
+* `chi_square`: If set to `true`, returns the chi-square statistic and p-value between pairs of concepts indicated by edge source/target nodes and adds these values as edge attributes. The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and assuming independence between concepts. P-value is calculated with 1 DOF.
+* `virtual_edge_type`: Overlays the requested information on virtual edges (ones that don't exist in the query graph).
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### paired_concept_frequency
+
+    - Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true` and `false` are examples of valid inputs.
+
+* ##### observed_expected_ratio
+
+    - Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true` and `false` are examples of valid inputs.
+
+* ##### chi_square
+
+    - Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true` and `false` are examples of valid inputs.
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `N1` and `J2` are examples of valid inputs.
+
+* ##### source_qnode_id
+
+    - a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### target_qnode_id
+
+    - a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+|||
+|-----|-----|
+|_DSL parameters_| parameters |
+|_DSL arguments_| {'paired_concept_frequency': {'is_required': False, 'examples': ['true', 'false'], 'type': 'string', 'description': 'Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.'}, 'observed_expected_ratio': {'is_required': False, 'examples': ['true', 'false'], 'type': 'string', 'description': 'Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.'}, 'chi_square': {'is_required': False, 'examples': ['true', 'false'], 'type': 'string', 'description': 'Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.'}, 'virtual_relation_label': {'is_required': False, 'examples': ['N1', 'J2'], 'type': 'string', 'description': 'An optional label to help identify the virtual edge in the relation field.'}, 'source_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}, 'target_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}} |
+
+### overlay(action=compute_ngd)
+
+`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
+This information is then included as an edge attribute with the name `normalized_google_distance`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
+
+Use cases include:
+
+* focusing in on edges that are well represented in the literature
+* focusing in on edges that are under-represented in the literature
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### default_value
+
+    - The default value of the normalized Google distance (if its value cannot be determined)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `0` and `inf` are examples of valid inputs.
+
+    - If not specified the default input will be inf. 
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `N1` and `J2` are examples of valid inputs.
+
+* ##### source_qnode_id
+
+    - a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### target_qnode_id
+
+    - a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+||||
+|-----|-----|-----|
+|_DSL parameters_| brief_description | parameters |
+|_DSL arguments_| 
+
 ### overlay(action=fisher_exact_test)
 
 `fisher_exact_test` computes the the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_qnode_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_qnode_id 'n02') in the message knowledge graph. 
@@ -632,7 +871,7 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
 
     - This is a required parameter and must be included.
 
-    - n00 and n01 are examples of valid inputs.
+    - `n00` and `n01` are examples of valid inputs.
 
 * ##### virtual_relation_label
 
@@ -642,7 +881,7 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
 
     - This is a required parameter and must be included.
 
-    - N1, J2, and FET are examples of valid inputs.
+    - `N1`, `J2`, and `FET` are examples of valid inputs.
 
 * ##### target_qnode_id
 
@@ -652,7 +891,7 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
 
     - This is a required parameter and must be included.
 
-    - n00 and n01 are examples of valid inputs.
+    - `n00` and `n01` are examples of valid inputs.
 
 * ##### rel_edge_id
 
@@ -660,9 +899,9 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - e00 and e01 are examples of valid inputs.
+    - `e00` and `e01` are examples of valid inputs.
 
 * ##### top_n
 
@@ -670,9 +909,9 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
 
     - Acceptable input types: int or None.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - all, 5, and 50 are examples of valid inputs.
+    - `all`, `5`, and `50` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -682,9 +921,9 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
 
     - Acceptable input types: float or None.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - all, 0.05, and 0.95 are examples of valid inputs.
+    - `all`, `0.05`, and `0.95` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -692,160 +931,6 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
 |-----|-----|
 |_DSL parameters_| parameters |
 |_DSL arguments_| {'source_qnode_id': {'is_required': True, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific source query node id (required)'}, 'virtual_relation_label': {'is_required': True, 'examples': ['N1', 'J2', 'FET'], 'type': 'string', 'description': 'An optional label to help identify the virtual edge in the relation field.'}, 'target_qnode_id': {'is_required': True, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific target query node id (required)'}, 'rel_edge_id': {'is_required': False, 'examples': ['e00', 'e01'], 'type': 'string', 'description': "a specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"}, 'top_n': {'is_required': False, 'examples': ['all', 5, 50], 'type': 'int or None', 'description': 'an int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned)', 'default': None}, 'cutoff': {'is_required': False, 'examples': ['all', 0.05, 0.95], 'type': 'float or None', 'description': 'a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05', 'default': None}} |
-
-### overlay(action=overlay_clinical_info)
-
-`overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
-This KP has a number of different functionalities, such as `paired_concept_frequency`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
-All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
-This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
-This information is then included as an edge attribute.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the relation specified by `virtual_relation_label`.
-These virtual edges have the following types:
-
-* `paired_concept_frequency` has the virtual edge type `has_paired_concept_frequency_with`
-* `observed_expected_ratio` has the virtual edge type `has_observed_expected_ratio_with`
-* `chi_square` has the virtual edge type `has_chi_square_with`
-
-Note that this DSL command has quite a bit of functionality, so a brief description of the DSL parameters is given here:
-
-* `paired_concept_frequency`: If set to `true`, retrieves observed clinical frequencies of a pair of concepts indicated by edge source and target nodes and adds these values as edge attributes.
-* `observed_expected_ratio`: If set to `true`, returns the natural logarithm of the ratio between the observed count and expected count of edge source and target nodes. Expected count is calculated from the single concept frequencies and assuming independence between the concepts. This information is added as an edge attribute.
-* `chi_square`: If set to `true`, returns the chi-square statistic and p-value between pairs of concepts indicated by edge source/target nodes and adds these values as edge attributes. The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and assuming independence between concepts. P-value is calculated with 1 DOF.
-* `virtual_edge_type`: Overlays the requested information on virtual edges (ones that don't exist in the query graph).
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### paired_concept_frequency
-
-    - Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.
-
-    - Acceptable input types: string.
-
-    - This is **not** a required parameter and may be omitted.
-
-    - true and false are examples of valid inputs.
-
-* ##### observed_expected_ratio
-
-    - Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.
-
-    - Acceptable input types: string.
-
-    - This is **not** a required parameter and may be omitted.
-
-    - true and false are examples of valid inputs.
-
-* ##### chi_square
-
-    - Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.
-
-    - Acceptable input types: string.
-
-    - This is **not** a required parameter and may be omitted.
-
-    - true and false are examples of valid inputs.
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is **not** a required parameter and may be omitted.
-
-    - N1 and J2 are examples of valid inputs.
-
-* ##### source_qnode_id
-
-    - a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is **not** a required parameter and may be omitted.
-
-    - n00 and n01 are examples of valid inputs.
-
-* ##### target_qnode_id
-
-    - a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is **not** a required parameter and may be omitted.
-
-    - n00 and n01 are examples of valid inputs.
-
-|||
-|-----|-----|
-|_DSL parameters_| parameters |
-|_DSL arguments_| {'paired_concept_frequency': {'is_required': False, 'examples': ['true', 'false'], 'type': 'string', 'description': 'Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.'}, 'observed_expected_ratio': {'is_required': False, 'examples': ['true', 'false'], 'type': 'string', 'description': 'Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.'}, 'chi_square': {'is_required': False, 'examples': ['true', 'false'], 'type': 'string', 'description': 'Indicates if you want to use the paired concept frequency option. Mutually exlisive with: `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error.'}, 'virtual_relation_label': {'is_required': False, 'examples': ['N1', 'J2'], 'type': 'string', 'description': 'An optional label to help identify the virtual edge in the relation field.'}, 'source_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}, 'target_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}} |
-
-### overlay(action=compute_ngd)
-
-`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
-This information is then included as an edge attribute with the name `normalized_google_distance`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
-
-Use cases include:
-
-* focusing in on edges that are well represented in the literature
-* focusing in on edges that are under-represented in the literature
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### default_value
-
-    - The default value of the normalized Google distance (if its value cannot be determined)
-
-    - Acceptable input types: string.
-
-    - This is **not** a required parameter and may be omitted.
-
-    - 0 and inf are examples of valid inputs.
-
-    - If not specified the default input will be inf. 
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is **not** a required parameter and may be omitted.
-
-    - N1 and J2 are examples of valid inputs.
-
-* ##### source_qnode_id
-
-    - a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is **not** a required parameter and may be omitted.
-
-    - n00 and n01 are examples of valid inputs.
-
-* ##### target_qnode_id
-
-    - a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is **not** a required parameter and may be omitted.
-
-    - n00 and n01 are examples of valid inputs.
-
-||||
-|-----|-----|-----|
-|_DSL parameters_| brief_description | parameters |
-|_DSL arguments_| 
 
 ### overlay(action=predict_drug_treats_disease)
 
@@ -871,9 +956,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - N1 and J2 are examples of valid inputs.
+    - `N1` and `J2` are examples of valid inputs.
 
 * ##### source_qnode_id
 
@@ -881,9 +966,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - n00 and n01 are examples of valid inputs.
+    - `n00` and `n01` are examples of valid inputs.
 
 * ##### target_qnode_id
 
@@ -891,71 +976,14 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - n00 and n01 are examples of valid inputs.
+    - `n00` and `n01` are examples of valid inputs.
 
 |||
 |-----|-----|
 |_DSL parameters_| parameters |
 |_DSL arguments_| {'virtual_relation_label': {'is_required': False, 'examples': ['N1', 'J2'], 'type': 'string', 'description': 'An optional label to help identify the virtual edge in the relation field.'}, 'source_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}, 'target_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}} |
-
-### overlay(action=compute_jaccard)
-
-`compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
-The jaccard similarity measures how many `intermediate_node_id`'s are shared in common between each `start_node_id` and `target_node_id`.
-This is used for purposes such as "find me all drugs (`start_node_id`) that have many proteins (`intermediate_node_id`) in common with this disease (`end_node_id`)."
-This can be used for downstream filtering to concentrate on relevant bioentities.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### start_node_id
-
-    - A curie id specifying the starting node
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - DOID:1872, CHEBI:7476, and UMLS:C1764836 are examples of valid inputs.
-
-* ##### intermediate_node_id
-
-    - A curie id specifying the intermediate node
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - DOID:1872, CHEBI:7476, and UMLS:C1764836 are examples of valid inputs.
-
-* ##### end_node_id
-
-    - A curie id specifying the ending node
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - DOID:1872, CHEBI:7476, and UMLS:C1764836 are examples of valid inputs.
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - N1, J2, and FET are examples of valid inputs.
-
-|||
-|-----|-----|
-|_DSL parameters_| parameters |
-|_DSL arguments_| {'start_node_id': {'is_required': True, 'examples': ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836'], 'type': 'string', 'description': 'A curie id specifying the starting node'}, 'intermediate_node_id': {'is_required': True, 'examples': ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836'], 'type': 'string', 'description': 'A curie id specifying the intermediate node'}, 'end_node_id': {'is_required': True, 'examples': ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836'], 'type': 'string', 'description': 'A curie id specifying the ending node'}, 'virtual_relation_label': {'is_required': True, 'examples': ['N1', 'J2', 'FET'], 'type': 'string', 'description': 'An optional label to help identify the virtual edge in the relation field.'}} |
 
 ### overlay(action=overlay_exposures_data)
 
@@ -974,9 +1002,9 @@ This can be applied to an arbitrary knowledge graph (i.e. not just those created
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - N1 and J2 are examples of valid inputs.
+    - `N1` and `J2` are examples of valid inputs.
 
 * ##### source_qnode_id
 
@@ -984,9 +1012,9 @@ This can be applied to an arbitrary knowledge graph (i.e. not just those created
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - n00 and n01 are examples of valid inputs.
+    - `n00` and `n01` are examples of valid inputs.
 
 * ##### target_qnode_id
 
@@ -994,42 +1022,14 @@ This can be applied to an arbitrary knowledge graph (i.e. not just those created
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - n00 and n01 are examples of valid inputs.
+    - `n00` and `n01` are examples of valid inputs.
 
 |||
 |-----|-----|
 |_DSL parameters_| parameters |
 |_DSL arguments_| {'virtual_relation_label': {'is_required': False, 'examples': ['N1', 'J2'], 'type': 'string', 'description': 'An optional label to help identify the virtual edge in the relation field.'}, 'source_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}, 'target_qnode_id': {'is_required': False, 'examples': ['n00', 'n01'], 'type': 'string', 'description': 'a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'}} |
-
-### overlay(action=add_node_pmids)
-
-`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
-This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
-either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### max_num
-
-    - The maximum number of values to return. Enter 'all' to return everything
-
-    - Acceptable input types: int or string.
-
-    - This is **not** a required parameter and may be omitted.
-
-    - all, 5, and 50 are examples of valid inputs.
-
-    - If not specified the default input will be 100. 
-
-|||
-|-----|-----|
-|_DSL parameters_| parameters |
-|_DSL arguments_| {'max_num': {'is_required': False, 'examples': ['all', 5, 50], 'type': 'int or string', 'description': "The maximum number of values to return. Enter 'all' to return everything", 'default': 100}} |
 
 ## ARAX_filter_kg
 ### filter_kg(action=remove_edges_by_type)
@@ -1057,7 +1057,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - This is a required parameter and must be included.
 
-    - contraindicated_for, affects, and expressed_in are examples of valid inputs.
+    - `contraindicated_for`, `affects`, and `expressed_in` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1067,9 +1067,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true, false, True, False, t, f, T, and F are examples of valid inputs.
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are examples of valid inputs.
 
     - If not specified the default input will be False. 
 
@@ -1079,9 +1079,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - n01 and n02 are examples of valid inputs.
+    - `n01` and `n02` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1118,7 +1118,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - This is a required parameter and must be included.
 
-    - jaccard_index, observed_expected_ratio, and normalized_google_distance are examples of valid inputs.
+    - `jaccard_index`, `observed_expected_ratio`, and `normalized_google_distance` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1130,7 +1130,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - This is a required parameter and must be included.
 
-    - above and below are examples of valid inputs.
+    - `above` and `below` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1142,7 +1142,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - This is a required parameter and must be included.
 
-    - 5 and 0.45 are examples of valid inputs.
+    - `5` and `0.45` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1152,9 +1152,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true, false, True, False, t, f, T, and F are examples of valid inputs.
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are examples of valid inputs.
 
     - If not specified the default input will be False. 
 
@@ -1164,9 +1164,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - n01 and n02 are examples of valid inputs.
+    - `n01` and `n02` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1202,7 +1202,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - This is a required parameter and must be included.
 
-    - source_id, provided_by, and is_defined_by are examples of valid inputs.
+    - `source_id`, `provided_by`, and `is_defined_by` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1214,7 +1214,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - This is a required parameter and must be included.
 
-    - DOID:8398, Pharos, and ARAX/RTX are examples of valid inputs.
+    - `DOID:8398`, `Pharos`, and `ARAX/RTX` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1224,9 +1224,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true, false, True, False, t, f, T, and F are examples of valid inputs.
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are examples of valid inputs.
 
     - If not specified the default input will be False. 
 
@@ -1236,9 +1236,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - n01 and n02 are examples of valid inputs.
+    - `n01` and `n02` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1282,7 +1282,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - This is a required parameter and must be included.
 
-    - jaccard_index, observed_expected_ratio, and normalized_google_distance are examples of valid inputs.
+    - `jaccard_index`, `observed_expected_ratio`, and `normalized_google_distance` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1292,9 +1292,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - n, std, std_dev, percentile, and p are examples of valid inputs.
+    - `n`, `std`, `std_dev`, `percentile`, and `p` are examples of valid inputs.
 
     - If not specified the default input will be n. 
 
@@ -1304,9 +1304,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - above and below are examples of valid inputs.
+    - `above` and `below` are examples of valid inputs.
 
     - If not specified the default input will be a value dictated by the `edge_attribute` parameter. If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `direction` defaults to above. If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `direction` defaults to below.. 
 
@@ -1316,9 +1316,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: float.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - 5 and 0.45 are examples of valid inputs.
+    - `5` and `0.45` are examples of valid inputs.
 
     - If not specified the default input will be a value dictated by the `type` parameter. If `type` is 'n' then will default to 50. If `type` is 'std_dev' or 'std' then it will default to 1.If `type` is 'percentile' or 'p' then it will default to 95 unless `edge_attribute` is also 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then it will default to 5.. 
 
@@ -1328,9 +1328,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true, false, True, False, t, f, T, and F are examples of valid inputs.
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are examples of valid inputs.
 
     - If not specified the default input will be a value dictated by the `edge_attribute` parameter. If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `top` defaults to False. If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `top` defaults to True.. 
 
@@ -1340,9 +1340,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true, false, True, False, t, f, T, and F are examples of valid inputs.
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are examples of valid inputs.
 
     - If not specified the default input will be False. 
 
@@ -1352,9 +1352,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - n01 and n02 are examples of valid inputs.
+    - `n01` and `n02` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1383,7 +1383,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - This is a required parameter and must be included.
 
-    - chemical_substance and disease are examples of valid inputs.
+    - `chemical_substance` and `disease` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1414,7 +1414,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - This is a required parameter and must be included.
 
-    - provided_by and is_defined_by are examples of valid inputs.
+    - `provided_by` and `is_defined_by` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1426,7 +1426,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - This is a required parameter and must be included.
 
-    - Pharos and ARAX/RTX are examples of valid inputs.
+    - `Pharos` and `ARAX/RTX` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1450,9 +1450,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - chemical_substance and disease are examples of valid inputs.
+    - `chemical_substance` and `disease` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1485,7 +1485,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - This is a required parameter and must be included.
 
-    - jaccard_index, observed_expected_ratio, and normalized_google_distance are examples of valid inputs.
+    - `jaccard_index`, `observed_expected_ratio`, and `normalized_google_distance` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1495,9 +1495,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - N1 and C1 are examples of valid inputs.
+    - `N1` and `C1` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1509,7 +1509,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - This is a required parameter and must be included.
 
-    - descending, d, ascending, and a are examples of valid inputs.
+    - `descending`, `d`, `ascending`, and `a` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1519,9 +1519,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: integer.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - 5, 10, and 50 are examples of valid inputs.
+    - `5`, `10`, and `50` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1553,7 +1553,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - This is a required parameter and must be included.
 
-    - pubmed_ids are examples of valid inputs.
+    - `pubmed_ids` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1563,9 +1563,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: string.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - chemical_substance and disease are examples of valid inputs.
+    - `chemical_substance` and `disease` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1577,7 +1577,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - This is a required parameter and must be included.
 
-    - descending, d, ascending, and a are examples of valid inputs.
+    - `descending`, `d`, `ascending`, and `a` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1587,9 +1587,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: integer.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - 5, 10, and 50 are examples of valid inputs.
+    - `5`, `10`, and `50` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1618,7 +1618,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - This is a required parameter and must be included.
 
-    - 5, 10, and 50 are examples of valid inputs.
+    - `5`, `10`, and `50` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1649,7 +1649,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - This is a required parameter and must be included.
 
-    - descending, d, ascending, and a are examples of valid inputs.
+    - `descending`, `d`, `ascending`, and `a` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1659,9 +1659,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: integer.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - 5, 10, and 50 are examples of valid inputs.
+    - `5`, `10`, and `50` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1692,7 +1692,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - This is a required parameter and must be included.
 
-    - descending, d, ascending, and a are examples of valid inputs.
+    - `descending`, `d`, `ascending`, and `a` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1702,9 +1702,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: integer.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - 5, 10, and 50 are examples of valid inputs.
+    - `5`, `10`, and `50` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -1738,9 +1738,9 @@ automated reasoning system, not just ones generated by Team ARA Expander.
 
     - Acceptable input types: boolean.
 
-    - This is **not** a required parameter and may be omitted.
+    - This is not a required parameter and may be omitted.
 
-    - true and false are examples of valid inputs.
+    - `true` and `false` are examples of valid inputs.
 
     - If not specified the default input will be true. 
 

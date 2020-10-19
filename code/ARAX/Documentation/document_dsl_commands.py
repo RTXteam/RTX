@@ -81,12 +81,12 @@ for (module, cls) in zip(modules, classes):
                     if param_val['is_required']:
                         to_print += '    - This is a required parameter and must be included.\n\n'
                     else:
-                        to_print += '    - This is **not** a required parameter and may be omitted.\n\n'
+                        to_print += '    - This is not a required parameter and may be omitted.\n\n'
                 if 'examples' in param_val:
                     if len(param_val['examples']) < 3:
-                        example_string = ' and '.join([str(x) for x in param_val['examples']])
+                        example_string = '`' + '` and `'.join([str(x) for x in param_val['examples']]) + '`'
                     else:
-                        example_string = ', '.join([str(x) for x in param_val['examples'][:-1]]) + ', and ' + str(param_val['examples'][-1])                  
+                        example_string = '`' + '`, `'.join([str(x) for x in param_val['examples'][:-1]]) + '`, and `' + str(param_val['examples'][-1]) + '`'                 
                     to_print += '    - ' + example_string + ' are examples of valid inputs.\n\n'
                 if 'default' in param_val:
                     to_print += '    - If not specified the default input will be ' + str(param_val['default']) + '. \n\n'
