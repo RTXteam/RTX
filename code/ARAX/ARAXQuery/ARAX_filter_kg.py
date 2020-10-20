@@ -159,17 +159,20 @@ class ARAXFilterKG:
             "remove_edges_by_type": {
                 "dsl_command": "filter_kg(action=remove_edges_by_type)",
                 "description": """
-                    `remove_edges_by_type` removes edges from the knowledge graph (KG) based on a given edge type.
-                    Use cases include:
-                                 
-                    * removing all edges that have `edge_type=contraindicated_for`. 
-                    * if virtual edges have been introduced with `overlay()` DSL commands, this action can remove all of them.
-                    * etc.
-                                
-                    You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
-                    else, only remove a single source/target node based on a query node id (via `remove_connected_nodes=t, qnode_id=<a query node id.>`
-                                
-                    This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+`remove_edges_by_type` removes edges from the knowledge graph (KG) based on a given edge type.
+Use cases include:
+             
+* removing all edges that have `edge_type=contraindicated_for`. 
+* if virtual edges have been introduced with `overlay()` DSL commands, this action can remove all of them.
+* etc.
+            
+You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
+else, only remove a single source/target node based on a query node id (via `remove_connected_nodes=t, qnode_id=<a query node id.>`
+            
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    """,
+                'brief_description': """
+remove_edges_by_type removes edges from the knowledge graph (KG) based on a given edge type.
                     """,
                 "parameters": {
                     "edge_type": self.edge_type_info,
@@ -180,20 +183,25 @@ class ARAXFilterKG:
             "remove_edges_by_attribute": {
                 "dsl_command": "filter_kg(action=remove_edges_by_attribute)",
                 "description": """
-                    `remove_edges_by_attribute` removes edges from the knowledge graph (KG) based on a a certain edge attribute.
-                    Edge attributes are a list of additional attributes for an edge.
-                    This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
-                    Use cases include:
+`remove_edges_by_attribute` removes edges from the knowledge graph (KG) based on a a certain edge attribute.
+Edge attributes are a list of additional attributes for an edge.
+This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
+Use cases include:
 
-                    * removing all edges that have a normalized google distance above/below a certain value `edge_attribute=ngd, direction=above, threshold=0.85` (i.e. remove edges that aren't represented well in the literature)
-                    * removing all edges that Jaccard index above/below a certain value `edge_attribute=jaccard_index, direction=below, threshold=0.2` (i.e. all edges that have less than 20% of intermediate nodes in common)
-                    * removing all edges with clinical information satisfying some condition `edge_attribute=chi_square, direction=above, threshold=.005` (i.e. all edges that have a chi square p-value above .005)
-                    * etc. etc.
-                                    
-                    You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
-                    else, only remove a single source/target node based on a query node id (via `remove_connected_nodes=t, qnode_id=<a query node id.>`
-                                    
-                    This can be applied to an arbitrary knowledge graph as possible edge attributes are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+* removing all edges that have a normalized google distance above/below a certain value `edge_attribute=ngd, direction=above, threshold=0.85` (i.e. remove edges that aren't represented well in the literature)
+* removing all edges that Jaccard index above/below a certain value `edge_attribute=jaccard_index, direction=below, threshold=0.2` (i.e. all edges that have less than 20% of intermediate nodes in common)
+* removing all edges with clinical information satisfying some condition `edge_attribute=chi_square, direction=above, threshold=.005` (i.e. all edges that have a chi square p-value above .005)
+* etc. etc.
+                
+You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
+else, only remove a single source/target node based on a query node id (via `remove_connected_nodes=t, qnode_id=<a query node id.>`
+                
+This can be applied to an arbitrary knowledge graph as possible edge attributes are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    """,
+                'brief_description': """
+remove_edges_by_attribute removes edges from the knowledge graph (KG) based on a a certain edge attribute.
+Edge attributes are a list of additional attributes for an edge.
+This action interacts particularly well with overlay() as overlay() frequently adds additional edge attributes.
                     """,
                 "parameters": {
                     "edge_attribute": self.edge_attribute_info,
@@ -206,19 +214,22 @@ class ARAXFilterKG:
             "remove_edges_by_property": {
                 "dsl_command": "filter_kg(action=remove_edges_by_property)",
                 "description": """
-                    `remove_edges_by_property` removes edges from the knowledge graph (KG) based on a given edge property.
-                    Use cases include:
-                                    
-                    * removing all edges that were provided by a certain knowledge provider (KP) via `edge_property=provided, property_value=Pharos` to remove all edges provided by the KP Pharos.
-                    * removing all edges that connect to a certain node via `edge_property=source_id, property_value=DOID:8398`
-                    * removing all edges with a certain relation via `edge_property=relation, property_value=upregulates`
-                    * removing all edges provided by another ARA via `edge_property=is_defined_by, property_value=ARAX/RTX`
-                    * etc. etc.
-                                    
-                    You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
-                    else, only remove a single source/target node based on a query node id (via `remove_connected_nodes=t, qnode_id=<a query node id.>`
-                                    
-                    This can be applied to an arbitrary knowledge graph as possible edge properties are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+`remove_edges_by_property` removes edges from the knowledge graph (KG) based on a given edge property.
+Use cases include:
+                
+* removing all edges that were provided by a certain knowledge provider (KP) via `edge_property=provided, property_value=Pharos` to remove all edges provided by the KP Pharos.
+* removing all edges that connect to a certain node via `edge_property=source_id, property_value=DOID:8398`
+* removing all edges with a certain relation via `edge_property=relation, property_value=upregulates`
+* removing all edges provided by another ARA via `edge_property=is_defined_by, property_value=ARAX/RTX`
+* etc. etc.
+                
+You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
+else, only remove a single source/target node based on a query node id (via `remove_connected_nodes=t, qnode_id=<a query node id.>`
+                
+This can be applied to an arbitrary knowledge graph as possible edge properties are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    """,
+                'brief_description': """
+remove_edges_by_property removes edges from the knowledge graph (KG) based on a given edge property.
                     """,
                 "parameters": {
                     "edge_property": self.edge_property_info,
@@ -230,27 +241,32 @@ class ARAXFilterKG:
             "remove_edges_by_stats": {
                 "dsl_command": "filter_kg(action=remove_edges_by_stats)",
                 "description": """
-                    `remove_edges_by_stats` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
-                    Edge attributes are a list of additional attributes for an edge.
-                    This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
-                    there are two heuristic options: `n` for removing all but the 50 best results, `std`/`std_dev` for removing all but 
-                    the best results more than 1 standard deviation from the mean, or `percentile` to remove all but the best 
-                    5% of results. (if not supplied this defaults to `n`)
-                    Use cases include:
+`remove_edges_by_stats` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
+Edge attributes are a list of additional attributes for an edge.
+This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
+there are two heuristic options: `n` for removing all but the 50 best results, `std`/`std_dev` for removing all but 
+the best results more than 1 standard deviation from the mean, or `percentile` to remove all but the best 
+5% of results. (if not supplied this defaults to `n`)
+Use cases include:
 
-                    * removing all edges with normalized google distance scores but the top 50 `edge_attribute=ngd, type=n` (i.e. remove edges that aren't represented well in the literature)
-                    * removing all edges that Jaccard index leass than 1 standard deviation above the mean. `edge_attribute=jaccard_index, type=std` (i.e. all edges that have less than 20% of intermediate nodes in common)
-                    * etc. etc.
-                                    
-                    You have the option (this defaults to false) to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
-                    else, only remove a single source/target node based on a query node id (via `remove_connected_nodes=t, qnode_id=<a query node id.>`
+* removing all edges with normalized google distance scores but the top 50 `edge_attribute=ngd, type=n` (i.e. remove edges that aren't represented well in the literature)
+* removing all edges that Jaccard index leass than 1 standard deviation above the mean. `edge_attribute=jaccard_index, type=std` (i.e. all edges that have less than 20% of intermediate nodes in common)
+* etc. etc.
+                
+You have the option (this defaults to false) to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
+else, only remove a single source/target node based on a query node id (via `remove_connected_nodes=t, qnode_id=<a query node id.>`
 
-                    You also have the option of specifying the direction to remove and location of the split by using the options 
-                    * `direction` with options `above`,`below`
-                    * `threshold` specified by a floating point number
-                    * `top` which is boolean specified by `t`, `true`, `T`, `True` and `f`, `false`, `F`, `False`
-                    e.g. to remove all the edges with jaccard_index values greater than 0.25 standard deviations below the mean you can run the following:
-                    `filter_kg(action=remove_edges_by_stats, edge_attribute=jaccard_index, type=std, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)`
+You also have the option of specifying the direction to remove and location of the split by using the options 
+* `direction` with options `above`,`below`
+* `threshold` specified by a floating point number
+* `top` which is boolean specified by `t`, `true`, `T`, `True` and `f`, `false`, `F`, `False`
+e.g. to remove all the edges with jaccard_index values greater than 0.25 standard deviations below the mean you can run the following:
+`filter_kg(action=remove_edges_by_stats, edge_attribute=jaccard_index, type=std, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)`
+                    """,
+                'brief_description': """
+remove_edges_by_stats removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
+Edge attributes are a list of additional attributes for an edge.
+This action interacts particularly well with overlay() as overlay() frequently adds additional edge attributes.
                     """,
                 "parameters": {
                     "edge_attribute": self.edge_attribute_info,
@@ -265,12 +281,15 @@ class ARAXFilterKG:
             "remove_nodes_by_type": {
                 "dsl_command": "filter_kg(action=remove_nodes_by_type)",
                 "description": """
-                    `remove_node_by_type` removes nodes from the knowledge graph (KG) based on a given node type.
-                    Use cases include:
-                    * removing all nodes that have `node_type=protein`.
-                    * removing all nodes that have `node_type=chemical_substance`.
-                    * etc.
-                    This can be applied to an arbitrary knowledge graph as possible node types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+`remove_node_by_type` removes nodes from the knowledge graph (KG) based on a given node type.
+Use cases include:
+* removing all nodes that have `node_type=protein`.
+* removing all nodes that have `node_type=chemical_substance`.
+* etc.
+This can be applied to an arbitrary knowledge graph as possible node types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    """,
+                'brief_description': """
+remove_node_by_type removes nodes from the knowledge graph (KG) based on a given node type.
                     """,
                 "parameters": {
                     "node_type": self.node_type_required_info
@@ -279,14 +298,17 @@ class ARAXFilterKG:
             "remove_nodes_by_property": {
                 "dsl_command": "filter_kg(action=remove_nodes_by_property)",
                 "description": """
-                    `remove_nodes_by_property` removes nodes from the knowledge graph (KG) based on a given node property.
-                    Use cases include:
-                                    
-                    * removing all nodes that were provided by a certain knowledge provider (KP) via `node_property=provided, property_value=Pharos` to remove all nodes provided by the KP Pharos.
-                    * removing all nodes provided by another ARA via `node_property=is_defined_by, property_value=ARAX/RTX`
-                    * etc. etc.
-                                    
-                    This can be applied to an arbitrary knowledge graph as possible node properties are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+`remove_nodes_by_property` removes nodes from the knowledge graph (KG) based on a given node property.
+Use cases include:
+                
+* removing all nodes that were provided by a certain knowledge provider (KP) via `node_property=provided, property_value=Pharos` to remove all nodes provided by the KP Pharos.
+* removing all nodes provided by another ARA via `node_property=is_defined_by, property_value=ARAX/RTX`
+* etc. etc.
+                
+This can be applied to an arbitrary knowledge graph as possible node properties are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    """,
+                'brief_description': """
+remove_nodes_by_property removes nodes from the knowledge graph (KG) based on a given node property.
                     """,
                 "parameters": {
                     "node_property": self.node_property_info,
@@ -296,9 +318,14 @@ class ARAXFilterKG:
             "remove_orphaned_nodes": {
                 "dsl_command": "filter_kg(action=remove_orphaned_nodes)",
                 "description": """
-                    `remove_orphaned_nodes` removes nodes from the knowledge graph (KG) that are not connected via any edges.
-                    Specifying a `node_type` will restrict this to only remove orphaned nodes of a certain type
-                    This can be applied to an arbitrary knowledge graph as possible node types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+`remove_orphaned_nodes` removes nodes from the knowledge graph (KG) that are not connected via any edges.
+Specifying a `node_type` will restrict this to only remove orphaned nodes of a certain type
+This can be applied to an arbitrary knowledge graph as possible node types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    """,
+                'brief_description': """
+remove_orphaned_nodes removes nodes from the knowledge graph (KG) that are not connected via any edges.
+Specifying a 'node_type' will restrict this to only remove orphaned nodes of a certain type
+This can be applied to an arbitrary knowledge graph as possible node types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
                 "parameters": {
                     "node_type": self.node_type_info

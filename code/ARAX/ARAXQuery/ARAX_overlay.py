@@ -199,6 +199,13 @@ Note that this DSL command has quite a bit of functionality, so a brief descript
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
+                'brief_description': """
+overlay_clinical_info overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
+This KP has a number of different functionalities, such as 'paired_concept_frequency', 'observed_expected_ratio', etc. which are mutually exclusive DSL parameters.
+All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
+This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
+This information is then included as an edge attribute.
+                    """,
                 "mutually_exclusive_params":[
                     'paired_concept_frequency', 
                     'observed_expected_ratio', 
@@ -223,6 +230,12 @@ This can be used for downstream filtering to concentrate on relevant bioentities
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
+                'brief_description': """
+compute_jaccard creates virtual edges and adds an edge attribute (with the property name 'jaccard_index') containing the following information:
+The jaccard similarity measures how many 'intermediate_node_id's are shared in common between each 'start_node_id' and 'target_node_id'.
+This is used for purposes such as "find me all drugs ('start_node_id') that have many proteins ('intermediate_node_id') in common with this disease ('end_node_id')."
+This can be used for downstream filtering to concentrate on relevant bioentities.
+                    """,
                 "parameters": {
                     'start_node_id': self.start_node_id_info,
                     'intermediate_node_id': self.intermediate_node_id_info,
@@ -238,6 +251,11 @@ This information is obtained from mapping node identifiers to MeSH terms and obt
 either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    """,
+                'brief_description': """
+add_node_pmids adds PubMed PMID's as node attributes to each node in the knowledge graph.
+This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
                     """,
                 "parameters": {
                     'max_num': self.max_num_info
@@ -258,6 +276,12 @@ Use cases include:
 * Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_id=n02)`
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    """,
+                'brief_description': """
+predict_drug_treats_disease utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substanct treats a disease/phenotypic feature.
+For more information about how this model was trained and how it performs, please see this publication (https://doi.org/10.1101/765305).
+The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name 'probability_treats').
+You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified source/target qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
                     """,
                 "parameters": {
                     'virtual_relation_label': self.virtual_relation_label_info,
@@ -296,6 +320,11 @@ The code is as follows:
 _, pvalue = stats.fisher_exact([[a, b], [c, d]])
 ```
                     """,
+                'brief_description': """
+fisher_exact_test computes the the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_qnode_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_qnode_id 'n02') in the message knowledge graph. 
+This information is then added as an edge attribute to a virtual edge which is then added to the query graph and knowledge graph.
+It can also allow you filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
+                    """,
                 "parameters": {
                     'source_qnode_id': self.source_qnode_id_required_info,
                     'virtual_relation_label': self.virtual_relation_label_required_info,
@@ -313,6 +342,10 @@ This information is included in edge attributes with the name `icees_p-value`.
 You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
 
 This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
+                    """,
+                'brief_description': """
+overlay_exposures_data overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
+This information is included in edge attributes with the name 'icees_p-value'.
                     """,
                 "parameters": {
                     'virtual_relation_label': self.virtual_relation_label_info,
