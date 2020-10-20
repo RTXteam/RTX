@@ -21,21 +21,21 @@ pkl_file = f"{filepath}/LogModel.pkl"
 if os.path.exists(pkl_file):
     pass
 else:
-    os.system("scp rtxconfig@arax.rtx.ai:/data/orangeboard/databases/KG2.3.4/LogModel.pkl " + pkl_file)
+    os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/LogModel.pkl " + pkl_file)
 
 ## check if there is rel_max.emb.gz
 emb_file = f"{filepath}/rel_max.emb.gz"
 if os.path.exists(emb_file):
     pass
 else:
-    os.system("scp rtxconfig@arax.rtx.ai:/data/orangeboard/databases/KG2.3.4/rel_max.emb.gz " + emb_file)
+    os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/rel_max.emb.gz " + emb_file)
 
 # check if there is map.txt
 map_file = f"{filepath}/map.txt"
 if os.path.exists(map_file):
     pass
 else:
-    os.system("scp rtxconfig@arax.rtx.ai:/data/orangeboard/databases/KG2.3.4/map.txt " + map_file)
+    os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/map.txt " + map_file)
 
 graph = pd.read_csv(emb_file, sep=' ', skiprows=1, header=None, index_col=None)
 graph = graph.sort_values(0).reset_index(drop=True)

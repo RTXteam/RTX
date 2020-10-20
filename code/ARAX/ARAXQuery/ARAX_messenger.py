@@ -677,7 +677,7 @@ def main():
     #### Test fetch_message()
     if True:
         messenger = ARAXMessenger()
-        result = messenger.apply_fetch_message(messenger.message, { 'uri': 'https://arax.ncats.io/api/rtx/v1/message/3164'} )
+        result = messenger.apply_fetch_message(messenger.message, { 'uri': 'https://arax.ncats.io/api/rtx/v1/message/3000'} )
         response.merge(result)
         if result.status != 'OK':
             print(response.show(level=Response.DEBUG))

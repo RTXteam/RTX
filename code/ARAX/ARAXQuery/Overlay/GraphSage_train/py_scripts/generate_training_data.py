@@ -364,6 +364,6 @@ if __name__ == "__main__":
     drugs = dataGenerator.get_drug_curies_from_graph()
     drugs.to_csv('~/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_3_4/raw_training_data/drugs.txt',sep='\t',index=False)
     dataGenerator.generate_MyChemData(drugs=drugs, output_path='~/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_3_4/raw_training_data',dist=2)
-    ## For semmedVER43_2020_R_PREDICATION.sql.gz, you might dowload from /data/orangeboard/databases/KG2.3.4/semmedVER43_2020_R_PREDICATION.sql.gz on arax.rtx.ai server or directly download the latest one from semmedb website
+    ## For semmedVER43_2020_R_PREDICATION.sql.gz, you might dowload from /data/orangeboard/databases/KG2.3.4/semmedVER43_2020_R_PREDICATION.sql.gz on arax.ncats.io server or directly download the latest one from semmedb website
     dataGenerator.generate_SemmedData(mysqldump_path='~/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_3_4/raw_training_data/semmedVER43_2020_R_PREDICATION.sql.gz', output_path='~/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_3_4/raw_training_data')
     
