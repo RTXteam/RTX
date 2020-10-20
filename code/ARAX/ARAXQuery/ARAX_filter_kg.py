@@ -33,12 +33,11 @@ class ARAXFilterKG:
             "is_required": True,
             "examples": ["contraindicated_for", "affects", "expressed_in"],
             "type": "string",
-            "description": "The name of the edge type to filter by.",
-            "default": None
+            "description": "The name of the edge type to filter by."
         }
         self.remove_connected_nodes_info = {
             "is_required": False,
-            "examples": ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F'],
+            "enum": ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F'],
             "type": "string",
             "description": "Indicates whether or not to remove the nodes connected to the edge.",
             "default": 'False'
@@ -48,47 +47,43 @@ class ARAXFilterKG:
             "examples": ['n01', 'n02'],
             "type": "string",
             "description": "If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_id to be removed." +\
-            "If not provided the qnode_id will not be considered when filtering.",
-            "default": None
+            "If not provided the qnode_id will not be considered when filtering."
         }
         self.edge_property_info = {
             "is_required": True,
             "examples": ['source_id', 'provided_by', 'is_defined_by'],
             "type": "string",
-            "description": "The name of the edge property to filter on.",
-            "default": None
+            "description": "The name of the edge property to filter on."
         }
         self.edge_property_value_info = {
             "is_required": True,
             "examples": ['DOID:8398', 'Pharos', 'ARAX/RTX'],
             "type": "string",
-            "description": "The edge property vaue to indicate which edges to remove.",
-            "default": None
+            "description": "The edge property vaue to indicate which edges to remove."
         }
         self.edge_attribute_info = {
             "is_required": True,
             "examples": ["jaccard_index", "observed_expected_ratio", "normalized_google_distance"],
             "type": "string",
-            "description": "The name of the edge attribute to filter on.",
-            "default": None
+            "description": "The name of the edge attribute to filter on."
         }
         self.direction_info = {
             "is_required": True,
-            "examples": ['above', 'below'],
+            "enum": ['above', 'below'],
             "type": "string",
-            "description": "Indictes whether to remove above or below the given threshold.",
-            "default": None
+            "description": "Indictes whether to remove above or below the given threshold."
         }
         self.threshold_info = {
             "is_required": True,
             "examples": [5,0.45],
+            "min": '-inf',
+            "max":'inf',
             "type": "float",
-            "description": "The threshold to filter with.",
-            "default": None
+            "description": "The threshold to filter with."
         }
         self.type_info = {
             "is_required": False,
-            "examples": ['n', 'std', 'std_dev', 'percentile', 'p'],
+            "enum": ['n', 'std', 'std_dev', 'percentile', 'p'],
             "type": "string",
             "description": "The statistic to use for filtering.",
             "default": 'n'
@@ -96,6 +91,8 @@ class ARAXFilterKG:
         self.threshold_stats_info = {
             "is_required": False,
             "examples": [5,0.45],
+            "min": 0,
+            "max": 'inf (or 100 if type=percentile or p)',
             "type": "float",
             "description": "The threshold to filter with.",
             "default": "a value dictated by the `type` parameter. " +\
@@ -107,7 +104,7 @@ class ARAXFilterKG:
         }
         self.direction_stats_info = {
             "is_required": False,
-            "examples": ['above', 'below'],
+            "enum": ['above', 'below'],
             "type": "string",
             "description": "Indictes whether to remove above or below the given threshold.",
             "default": "a value dictated by the `edge_attribute` parameter. " +\
@@ -116,7 +113,7 @@ class ARAXFilterKG:
         }
         self.top_info = {
             "is_required": False,
-            "examples": ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F'],
+            "enum": ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F'],
             "type": "string",
             "description": "Indicate whether or not the threshold should be placed in top of the list. E.g. top set as True with type set as std_dev will set the cutoff for filtering as the mean + threshold * std_dev while setting top to False will set the cutoff as the mean - std_dev * threshold.",
             "default": "a value dictated by the `edge_attribute` parameter. " +\
@@ -127,29 +124,25 @@ class ARAXFilterKG:
             "is_required": True,
             "examples": ["chemical_substance", "disease"],
             "type": "string",
-            "description": "The name of the node type to filter by.",
-            "default": None
+            "description": "The name of the node type to filter by."
         }
         self.node_type_info = {
             "is_required": False,
             "examples": ["chemical_substance", "disease"],
             "type": "string",
-            "description": "The name of the node type to filter by. If no value provided node type will not be considered.",
-            "default": None
+            "description": "The name of the node type to filter by. If no value provided node type will not be considered."
         }
         self.node_property_info = {
             "is_required": True,
             "examples": ['provided_by', 'is_defined_by'],
             "type": "string",
-            "description": "The name of the node property to filter on.",
-            "default": None
+            "description": "The name of the node property to filter on."
         }
         self.node_property_value_info = {
             "is_required": True,
             "examples": ['Pharos', 'ARAX/RTX'],
             "type": "string",
-            "description": "The node property vaue to indicate which nodes to remove.",
-            "default": None
+            "description": "The node property vaue to indicate which nodes to remove."
         }
 
         

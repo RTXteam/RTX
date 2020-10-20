@@ -32,52 +32,49 @@ class ARAXFilterResults:
             "is_required": True,
             "examples": ["jaccard_index", "observed_expected_ratio", "normalized_google_distance"],
             "type": "string",
-            "description": "The name of the attribute to filter by.",
-            "default": None
+            "description": "The name of the attribute to filter by."
         }
         self.direction_info = {
             "is_required": True,
             "examples": ['descending', 'd', 'ascending', 'a'],
             "type": "string",
-            "description": "The direction in which to order results. (ascending or descending)",
-            "default": None
+            "description": "The direction in which to order results. (ascending or descending)"
         }
         self.max_results_info = {
             "is_required": False,
             "examples": [5,10,50],
-            "type": "integer",
-            "description": "The maximum number of results to return. If not provided all results will be returned.",
-            "default": None
+            "min":0,
+            "max":'inf',
+            "type": "int",
+            "description": "The maximum number of results to return. If not provided all results will be returned."
         }
         self.max_results_required_info = {
             "is_required": True,
             "examples": [5,10,50],
+            "min":0,
+            "max":'inf',
             "type": "integer",
-            "description": "The maximum number of results to return. Default is to return all results.",
-            "default": None
+            "description": "The maximum number of results to return. If not provided all results will be returned."
         }
         self.edge_relation_info = {
             "is_required": False,
             "examples": ['N1', 'C1'],
             "type": "string",
             "description": "The name of unique identifier to only filter on edges with matching relation field. (stored in the relation neo4j edge property) "+\
-            "If not provided the edge relation will not be considered when filtering.",
-            "default": None
+            "If not provided the edge relation will not be considered when filtering."
         }
         self.node_attribute_info = {
             "is_required": True,
             "examples": ["pubmed_ids"],
             "type": "string",
-            "description": "The name of the attribute to filter by.",
-            "default": None
+            "description": "The name of the attribute to filter by."
         }
         self.node_type_info = {
             "is_required": False,
             "examples": ["chemical_substance", "disease"],
             "type": "string",
             "description": "The name of the node type to only filter on nodes of the matching type." +\
-            "If not provided the node type will not be cinsidered when filtering.",
-            "default": None
+            "If not provided the node type will not be cinsidered when filtering."
         }
 
         #command descriptions
