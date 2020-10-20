@@ -7,10 +7,11 @@ import itertools
 import numpy as np
 from typing import List, Dict, Tuple
 
-import Expand.expand_utilities as eu
-from Expand.expand_utilities import DictKnowledgeGraph
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import expand_utilities as eu
+from expand_utilities import DictKnowledgeGraph
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from response import Response
-
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")  # code directory
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../UI/OpenAPI/python-flask-server/")

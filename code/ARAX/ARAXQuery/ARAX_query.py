@@ -378,7 +378,7 @@ class ARAXQuery:
             response.debug(f"Found previous_message_uris")
             for uri in envelope.previous_message_uris:
                 response.debug(f"    messageURI={uri}")
-                matchResult = re.match( r'http[s]://arax.rtx.ai/.*api/rtx/.+/message/(\d+)',uri,re.M|re.I )
+                matchResult = re.match( r'http[s]://arax.ncats.io/.*api/rtx/.+/message/(\d+)',uri,re.M|re.I )
                 if matchResult:
                     referenced_message_id = matchResult.group(1)
                     response.debug(f"Found local RTX identifier corresponding to respond_id {referenced_message_id}")
@@ -590,7 +590,7 @@ class ARAXQuery:
                 if message_id is None:
                     message_id = 0
                 response.info(f"Processing is complete. Resulting Message id is {message_id} and is available to fetch via /message endpoint.")
-                return( { "status": 200, "message_id": str(message_id), "n_results": message.n_results, "url": "https://arax.rtx.ai/api/rtx/v1/message/"+str(message_id) }, 200)
+                return( { "status": 200, "message_id": str(message_id), "n_results": message.n_results, "url": "https://arax.ncats.io/api/rtx/v1/message/"+str(message_id) }, 200)
 
 
 
@@ -876,7 +876,7 @@ def main():
     elif params.example_number == 19:  # Let's see what happens if you ask for a node in KG2, but not in KG1 and try to expand
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(name=CUI:C1452002, id=n00)",
+            "add_qnode(name=UMLS:C1452002, id=n00)",
             "add_qnode(type=chemical_substance, is_set=true, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00, type=interacts_with)",
             "expand(edge_id=e00)",
@@ -885,7 +885,7 @@ def main():
     elif params.example_number == 20:  # Now try with KG2 expander
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(name=CUI:C1452002, id=n00)",
+            "add_qnode(name=UMLS:C1452002, id=n00)",
             "add_qnode(type=chemical_substance, is_set=true, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00, type=interacts_with)",
             "expand(edge_id=e00, kp=ARAX/KG2)",

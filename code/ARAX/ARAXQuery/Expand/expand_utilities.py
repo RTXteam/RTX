@@ -2,11 +2,8 @@
 # This file contains utilities/helper functions for general use within the Expand module
 import sys
 import os
-import time
 import traceback
 from typing import List, Dict, Union, Tuple
-
-from response import Response
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.knowledge_graph import KnowledgeGraph
@@ -15,6 +12,8 @@ from swagger_server.models.q_node import QNode
 from swagger_server.models.q_edge import QEdge
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
+from response import Response
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 
@@ -159,9 +158,7 @@ def convert_dict_kg_to_standard_kg(dict_kg: DictKnowledgeGraph) -> KnowledgeGrap
 def convert_curie_to_arax_format(curie: str) -> str:
     prefix = get_curie_prefix(curie)
     local_id = get_curie_local_id(curie)
-    if prefix == "UMLS":
-        prefix = "CUI"
-    elif prefix == "Reactome":
+    if prefix == "Reactome":
         prefix = "REACT"
     elif prefix == "UNIPROTKB":
         prefix = "UniProtKB"
@@ -171,9 +168,7 @@ def convert_curie_to_arax_format(curie: str) -> str:
 def convert_curie_to_bte_format(curie: str) -> str:
     prefix = get_curie_prefix(curie)
     local_id = get_curie_local_id(curie)
-    if prefix == "CUI":
-        prefix = "UMLS"
-    elif prefix == "REACT":
+    if prefix == "REACT":
         prefix = "Reactome"
     elif prefix == "UniProtKB":
         prefix = prefix.upper()

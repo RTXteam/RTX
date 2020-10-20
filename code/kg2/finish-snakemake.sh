@@ -3,13 +3,22 @@
 # Copyright 2020 Stephen A. Ramsey
 # Author Erica C. Wood
 
+
+# NOTE:
+# This file does not use source master-config.shinc.
+# This was a purposeful decision to minimize the different inputs.
+# All of the inputs come from Snakemake, through the system build-kg2-snakemake.sh->Snakefile->finish-snakemake.sh
+# This file is triggered last in the build system. By running it through this system, this ensures that the values 
+# passed into this file are the same as they were are the start of the build. In general, it means that there is one
+# streamlined input.
+
 set -o nounset -o pipefail -o errexit
 
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
     echo Usage: "$0 [final_output_file_full] [output_file_orphan_edges] [report_file_full] [output_nodes_file_full] [simplified_output_file_full] [simplified_report_file_full]"
     echo "[simplified_output_nodes_file_full] [slim_output_file_full] [kg2_tsv_dir] [s3_cp_cmd]"
     echo "[kg2_tsv_tarball] [s3_bucket] [s3_bucket_public] [output_file_base] [ont_load_inventory_file]"
-    echo "[CODE_DIR] [s3_bucket_versioned]"
+    echo "[CODE_DIR] [s3_bucket_versioned] [BUILD_DIR]"
     exit 2
 fi
 
@@ -30,19 +39,20 @@ output_file_base=${14}
 ont_load_inventory_file=${15}
 CODE_DIR=${16}
 s3_bucket_versioned=${17}
+BUILD_DIR=${18}
 
 echo "================= starting finish-snakemake.sh =================="
 date
 
-gzip -f ${final_output_file_full}
-tar -C ${kg2_tsv_dir} -czvf ${kg2_tsv_dir} nodes.tsv nodes_header.tsv edges.tsv edges_header.tsv
+gzip -fk ${final_output_file_full}
+tar -C ${kg2_tsv_dir} -czvf ${kg2_tsv_tarball} nodes.tsv nodes_header.tsv edges.tsv edges_header.tsv
 ${s3_cp_cmd} ${kg2_tsv_tarball} s3://${s3_bucket}/
 
-gzip -f ${simplified_output_file_full}
-gzip -f ${simplified_output_nodes_file_full}
-gzip -f ${output_nodes_file_full}
-gzip -f ${output_file_orphan_edges}
-gzip -f ${slim_output_file_full}
+gzip -fk ${simplified_output_file_full}
+gzip -fk ${simplified_output_nodes_file_full}
+gzip -fk ${output_nodes_file_full}
+gzip -fk ${output_file_orphan_edges}
+gzip -fk ${slim_output_file_full}
 
 ${s3_cp_cmd} ${final_output_file_full}.gz s3://${s3_bucket}/
 ${s3_cp_cmd} ${simplified_output_file_full}.gz s3://${s3_bucket}/

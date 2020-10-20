@@ -543,7 +543,7 @@ def test_issue_892():
         "expand(kp=BTE)",
         "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",
         "resultify(ignore_edge_direction=true)",
-        "return(message=true, store=true)"
+        "return(message=true, store=false)"
     ]}}
     [response, message] = _do_arax_query(query)
     print(response.show())

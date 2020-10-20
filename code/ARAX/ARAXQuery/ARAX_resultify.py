@@ -587,7 +587,7 @@ def _get_parallel_qedge_ids(input_qedge: QEdge, query_graph: QueryGraph) -> Set[
 
 
 def _get_kg_node_adj_map_by_qg_id(kg_node_ids_by_qg_id: Dict[str, Set[str]], knowledge_graph: KnowledgeGraph, query_graph: QueryGraph) -> Dict[str, Dict[str, Dict[str, Set[str]]]]:
-    # Returned dict looks like {'n00': {'CUI:11234': {'n01': {UniProtKB:122}}}}
+    # Returned dict looks like {'n00': {'UMLS:11234': {'n01': {UniProtKB:122}}}}
     # First initiate the overall structure of our (QG-organized) adjacency map
     kg_node_to_node_map = {qnode_id: dict() for qnode_id in kg_node_ids_by_qg_id}
     for qnode_id, node_ids_set in kg_node_ids_by_qg_id.items():

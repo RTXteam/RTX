@@ -9,22 +9,18 @@ import os
 import sqlite3
 import traceback
 import numpy as np
-import itertools
 from datetime import datetime
-from typing import List, Dict, Set, Tuple
+from typing import List
 
 # relative imports
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import overlay_utilities as ou
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
 from swagger_server.models.edge_attribute import EdgeAttribute
 from swagger_server.models.edge import Edge
 from swagger_server.models.q_edge import QEdge
-from swagger_server.models.query_graph import QueryGraph
-from swagger_server.models.knowledge_graph import KnowledgeGraph
-from swagger_server.models.message import Message
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
-from ARAX_resultify import ARAXResultify
 
 
 class ComputeNGD:
@@ -37,9 +33,6 @@ class ComputeNGD:
         self.global_iter = 0
         self.ngd_database_name = "curie_to_pmids.sqlite"
         self.connection, self.cursor = self._setup_ngd_database()
-        self.kg_nodes_by_qg_id = self._get_node_ids_by_qg_id(self.message.knowledge_graph)
-        self.kg_edges_by_qg_id = self._get_edge_ids_by_qg_id(self.message.knowledge_graph)
-        self.kg_nodes_dict = {node.id: node for node in self.message.knowledge_graph.nodes}
         self.curie_to_pmids_map = dict()
         self.ngd_normalizer = 2.2e+7 * 20  # From PubMed home page there are 27 million articles; avg 20 MeSH terms per article
 
@@ -57,29 +50,19 @@ class ComputeNGD:
         self.response.debug(f"Computing NGD")
         self.response.info(f"Computing the normalized Google distance: weighting edges based on source/target node "
                            f"co-occurrence frequency in PubMed abstracts")
-
-        self.response.info("Converting CURIE identifiers to human readable names")
-        node_curie_to_name = dict()
-        try:
-            for node in self.message.knowledge_graph.nodes:
-                node_curie_to_name[node.id] = node.name
-        except:
-            tb = traceback.format_exc()
-            error_type, error, _ = sys.exc_info()
-            self.response.error(f"Something went wrong when converting names")
-            self.response.error(tb, error_code=error_type.__name__)
-
         name = "normalized_google_distance"
         type = "EDAM:data_2526"
         value = self.parameters['default_value']
-        url = "https://arax.rtx.ai/api/rtx/v1/ui/#/PubmedMeshNgd"
+        url = "https://arax.ncats.io/api/rtx/v1/ui/#/PubmedMeshNgd"
+        qg = self.message.query_graph
+        kg = self.message.knowledge_graph
 
         # if you want to add virtual edges, identify the source/targets, decorate the edges, add them to the KG, and then add one to the QG corresponding to them
         if 'virtual_relation_label' in parameters:
             # Figure out which node pairs to compute NGD between
             source_qnode_id = parameters['source_qnode_id']
             target_qnode_id = parameters['target_qnode_id']
-            node_pairs_to_evaluate = self._get_node_pairs_to_evaluate(source_qnode_id, target_qnode_id)
+            node_pairs_to_evaluate = ou.get_node_pairs_to_overlay(source_qnode_id, target_qnode_id, qg, kg, self.response)
             # Grab PMID lists for all involved nodes
             involved_curies = {curie for node_pair in node_pairs_to_evaluate for curie in node_pair}
             canonicalized_curie_lookup = self._get_canonical_curies_map(list(involved_curies))
@@ -236,17 +219,17 @@ class ComputeNGD:
     def _setup_ngd_database(self):
         # Download the ngd database if there isn't already a local copy or if a newer version is available
         db_path_local = f"{os.path.dirname(os.path.abspath(__file__))}/ngd/{self.ngd_database_name}"
-        db_path_remote = f"/home/ubuntu/databases_for_download/{self.ngd_database_name}"
+        db_path_remote = f"/data/orangeboard/databases/KG2.3.4/{self.ngd_database_name}"
         if not os.path.exists(f"{db_path_local}"):
             self.response.debug(f"Downloading fast NGD database because no copy exists... (will take a few minutes)")
-            os.system(f"scp rtxconfig@arax.rtx.ai:{db_path_remote} {db_path_local}")
+            os.system(f"scp rtxconfig@arax.ncats.io:{db_path_remote} {db_path_local}")
         else:
             last_modified_local = int(os.path.getmtime(db_path_local))
-            last_modified_remote_byte_str = subprocess.check_output(f"ssh rtxconfig@arax.rtx.ai 'stat -c %Y {db_path_remote}'", shell=True)
+            last_modified_remote_byte_str = subprocess.check_output(f"ssh rtxconfig@arax.ncats.io 'stat -c %Y {db_path_remote}'", shell=True)
             last_modified_remote = int(str(last_modified_remote_byte_str, 'utf-8'))
             if last_modified_local < last_modified_remote:
                 self.response.debug(f"Downloading new version of fast NGD database... (will take a few minutes)")
-                os.system(f"scp rtxconfig@arax.rtx.ai:{db_path_remote} {db_path_local}")
+                os.system(f"scp rtxconfig@arax.ncats.io:{db_path_remote} {db_path_local}")
             else:
                 self.response.debug(f"Confirmed local NGD database is current")
         # Set up a connection to the database so it's ready for use
@@ -265,56 +248,3 @@ class ComputeNGD:
         if self.connection:
             self.connection.close()
 
-    @staticmethod
-    def _get_node_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]]:
-        node_ids_by_qg_id = dict()
-        if knowledge_graph.nodes:
-            for node in knowledge_graph.nodes:
-                for qnode_id in node.qnode_ids:
-                    if qnode_id not in node_ids_by_qg_id:
-                        node_ids_by_qg_id[qnode_id] = set()
-                    node_ids_by_qg_id[qnode_id].add(node.id)
-        return node_ids_by_qg_id
-
-    @staticmethod
-    def _get_edge_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]]:
-        edge_ids_by_qg_id = dict()
-        if knowledge_graph.edges:
-            for edge in knowledge_graph.edges:
-                for qedge_id in edge.qedge_ids:
-                    if qedge_id not in edge_ids_by_qg_id:
-                        edge_ids_by_qg_id[qedge_id] = set()
-                    edge_ids_by_qg_id[qedge_id].add(edge.id)
-        return edge_ids_by_qg_id
-
-    def _get_node_pairs_to_evaluate(self, source_qnode_id: str, target_qnode_id: str) -> Set[Tuple[str, str]]:
-        self.response.debug(f"Narrowing down {source_qnode_id}--{target_qnode_id} node pairs to compute NGD between")
-        # Grab the portion of the QG already 'expanded' (aka, present in the KG)
-        qnode_ids_in_kg = set(self.kg_nodes_by_qg_id)
-        qedge_ids_in_kg = set(self.kg_edges_by_qg_id)
-        sub_query_graph = QueryGraph(nodes=[qnode for qnode in self.message.query_graph.nodes if qnode.id in qnode_ids_in_kg],
-                                     edges=[qedge for qedge in self.message.query_graph.edges if qedge.id in qedge_ids_in_kg])
-
-        # Compute results using Resultify so we can see which nodes appear in the same results
-        sub_message = Message()
-        sub_message.query_graph = sub_query_graph
-        sub_message.knowledge_graph = KnowledgeGraph(nodes=self.message.knowledge_graph.nodes.copy(),
-                                                     edges=self.message.knowledge_graph.edges.copy())
-        resultifier = ARAXResultify()
-        resultify_response = resultifier.apply(sub_message, {})
-
-        # Extract node pairs of interest from the results we got
-        if resultify_response.status == 'OK':
-            node_pairs = set()
-            for result in sub_message.results:
-                source_curies_in_this_result = {node_binding.kg_id for node_binding in result.node_bindings if node_binding.qg_id == source_qnode_id}
-                target_curies_in_this_result = {node_binding.kg_id for node_binding in result.node_bindings if node_binding.qg_id == target_qnode_id}
-                pairs_in_this_result = set(itertools.product(source_curies_in_this_result, target_curies_in_this_result))
-                node_pairs = node_pairs.union(pairs_in_this_result)
-            self.response.debug(f"Identified {len(node_pairs)} node pairs to compute NGD between (with help of resultify)")
-            return node_pairs
-        else:
-            # Back up to using the old method of all combinations of source/target nodes
-            self.response.warning(f"Failed to narrow down node pairs to compute NGD between; defaulting to all possible combinations")
-            return set(itertools.product(self.kg_nodes_by_qg_id[source_qnode_id],
-                                         self.kg_nodes_by_qg_id[target_qnode_id]))

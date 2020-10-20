@@ -547,7 +547,7 @@ class ARAXMessenger:
             'parameters': {
                 'id': { 
                     'is_required': True,
-                    'examples': [ 'https://arax.rtx.ai/api/rtx/v1/message/3164' ],
+                    'examples': [ 'https://arax.ncats.io/api/rtx/v1/message/3164' ],
                     'default': '',
                     'type': 'string',
                     'description': """A URL/URI that identifies the Message to be fetched""",
@@ -677,7 +677,7 @@ def main():
     #### Test fetch_message()
     if True:
         messenger = ARAXMessenger()
-        result = messenger.apply_fetch_message(messenger.message, { 'uri': 'https://arax.rtx.ai/api/rtx/v1/message/3164'} )
+        result = messenger.apply_fetch_message(messenger.message, { 'uri': 'https://arax.ncats.io/api/rtx/v1/message/3000'} )
         response.merge(result)
         if result.status != 'OK':
             print(response.show(level=Response.DEBUG))
@@ -702,7 +702,7 @@ def main():
         { 'curie': 'Orphanet:673'},
         { 'name': 'acetaminophen'},
         { 'curie': 'NCIT:C198'},
-        { 'curie': 'CUI:C4710278'},
+        { 'curie': 'UMLS:C4710278'},
         { 'type': 'protein', 'id': 'n10'},
         { 'curie': ['UniProtKB:P14136','UniProtKB:P35579'] },
         { 'curie': ['UniProtKB:P14136','UniProtKB:P35579'], 'is_set': 'false' },

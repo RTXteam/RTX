@@ -3,10 +3,11 @@ import sys
 import os
 from typing import List, Dict, Tuple, Union
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from response import Response
-from Expand.expand_utilities import DictKnowledgeGraph
-import Expand.expand_utilities as eu
-
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
+import expand_utilities as eu
+from expand_utilities import DictKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.query_graph import QueryGraph
@@ -549,8 +550,8 @@ class ARAXExpander:
                     qnode_connections_map[qnode.id].add(connected_qnode_id)
 
         # Create a map of which nodes each node is connected to (organized by the qnode_id they're fulfilling)
-        # Example node_usages_by_edges_map: {'e00': {'KG1:111221': {'n00': 'CUI:122', 'n01': 'CUI:124'}}}
-        # Example node_connections_map: {'CUI:1222': {'n00': {'DOID:122'}, 'n02': {'UniProtKB:22', 'UniProtKB:333'}}}
+        # Example node_usages_by_edges_map: {'e00': {'KG1:111221': {'n00': 'UMLS:122', 'n01': 'UMLS:124'}}}
+        # Example node_connections_map: {'UMLS:1222': {'n00': {'DOID:122'}, 'n02': {'UniProtKB:22', 'UniProtKB:333'}}}
         node_connections_map = dict()
         for qedge_id, edges_to_nodes_dict in node_usages_by_edges_map.items():
             current_qedge = next(qedge for qedge in full_query_graph.edges if qedge.id == qedge_id)

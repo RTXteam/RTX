@@ -17,6 +17,8 @@ from swagger_server.models.edge import Edge
 from swagger_server.models.edge_attribute import EdgeAttribute
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import overlay_utilities as ou
 
 
 class OverlayExposuresData:
@@ -25,7 +27,7 @@ class OverlayExposuresData:
         self.response = response
         self.message = message
         self.parameters = parameters
-        self.icees_curies = self._load_icees_known_curies(self.response)
+        self.icees_known_curies = self._load_icees_known_curies(self.response)
         self.synonyms_dict = self._get_node_synonyms(self.message.knowledge_graph)
         self.icees_attribute_name = "icees_p-value"
         self.icees_attribute_type = "EDAM:data_1669"
@@ -47,6 +49,7 @@ class OverlayExposuresData:
     def _add_virtual_edges(self, source_qnode_id, target_qnode_id):
         # This function adds ICEES exposures data as virtual edges between nodes with the specified qnode IDs
         knowledge_graph = self.message.knowledge_graph
+        query_graph = self.message.query_graph
         log = self.response
         nodes_by_qg_id = self._get_nodes_by_qg_id(knowledge_graph)
         source_curies = set(nodes_by_qg_id.get(source_qnode_id))
@@ -56,7 +59,7 @@ class OverlayExposuresData:
         known_target_curies = {curie for curie in target_curies if self._get_accepted_synonyms(curie)}
 
         num_node_pairs_recognized = 0
-        for source_curie, target_curie in itertools.product(source_curies, target_curies):
+        for source_curie, target_curie in ou.get_node_pairs_to_overlay(source_qnode_id, target_qnode_id, query_graph, knowledge_graph, log):
             # Query ICEES only for synonyms it 'knows' about
             if source_curie in known_source_curies and target_curie in known_target_curies:
                 accepted_source_synonyms = self._get_accepted_synonyms(source_curie)
@@ -82,7 +85,7 @@ class OverlayExposuresData:
                           source_id=source_qnode_id,
                           target_id=target_qnode_id,
                           type=self.icees_edge_type)
-        self.message.query_graph.edges.append(new_qedge)
+        query_graph.edges.append(new_qedge)
 
         if num_node_pairs_recognized:
             log.info(f"ICEES+ returned data for {num_node_pairs_recognized} node pairs")
@@ -131,8 +134,10 @@ class OverlayExposuresData:
     def _get_accepted_synonyms(self, curie):
         synonyms = self.synonyms_dict.get(curie, curie)
         formatted_synonyms = {self._convert_curie_to_icees_preferred_format(curie) for curie in synonyms}
-        accepted_synonyms = self.icees_curies.intersection(formatted_synonyms)
-        return accepted_synonyms
+        if self.icees_known_curies:
+            return self.icees_known_curies.intersection(formatted_synonyms)
+        else:
+            return formatted_synonyms
 
     def _get_icees_p_value_for_edge(self, qedge, log):
         # Note: ICEES doesn't quite accept ReasonerStdAPI, so we transform to what works

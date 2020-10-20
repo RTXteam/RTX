@@ -7,7 +7,7 @@ import json
 import re
 
 # Set the base URL for the ARAX reasoner and its endpoint
-endpoint_url = 'https://arax.rtx.ai/devED/api/rtx/v1/query'
+endpoint_url = 'https://arax.ncats.io/devED/api/rtx/v1/query'
 
 # Create a dict of the request, specifying the list of DSL commands
 request = { "previous_message_processing_plan": { "processing_actions": [
@@ -40,5 +40,5 @@ print(f"Data: {response_dict['id']}")
 if response_dict['id'] is not None:
     match = re.search(r'(\d+)$', response_dict['id'])
     if match:
-        print(f"GUI: https://arax.rtx.ai/?m={match.group(1)}")
+        print(f"GUI: https://arax.ncats.io/?m={match.group(1)}")
 
