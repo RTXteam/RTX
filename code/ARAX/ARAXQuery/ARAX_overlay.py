@@ -401,20 +401,20 @@ This information is included in edge attributes with the name 'icees_p-value'.
         :param allowable_parameters: the allowable parameters
         :return: None
         """
-        allowable_parameters = self.command_definition['parameters']
+        #allowable_parameters = self.command_definitions['parameters']
         for key, item in self.parameters.items():
             if key not in allowable_parameters:
                 self.response.error(
                     f"Supplied parameter {key} is not permitted. Allowable parameters are: {list(allowable_parameters.keys())}",
                     error_code="UnknownParameter")
-            elif item not in allowable_parameters[key]['examples']:
-                if any([type(x) == float for x in allowable_parameters[key]['examples']]) or any([type(x) == int for x in allowable_parameters[key]['examples']]):  # if it's a float or int, just accept it as it is
+            elif item not in allowable_parameters[key]:
+                if any([type(x) == float for x in allowable_parameters[key]]) or any([type(x) == int for x in allowable_parameters[key]]):  # if it's a float or int, just accept it as it is
                     return
                 elif key == "virtual_relation_label" and type(item) == str:
                     return
                 else:  # otherwise, it's really not an allowable parameter
                     self.response.error(
-                        f"Supplied value {item} is not permitted. In action {allowable_parameters['dsl_command']}, allowable values to {key} are: {list(allowable_parameters[key]['description'])}",
+                        f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}",
                         error_code="UnknownValue")
 
     # helper function to check if all virtual edge parameters have been properly provided
@@ -492,17 +492,15 @@ This information is included in edge attributes with the name 'icees_p-value'.
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         #allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}}
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
-            old_allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else None},
+            allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else None},
                                     'source_qnode_id': set([x.id for x in self.message.query_graph.nodes]),
                                     'target_qnode_id': set([x.id for x in self.message.query_graph.nodes])
                                     }
         else:
-            old_allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_relation_label': {'any string label identifying the virtual edge label (optional, otherwise applied to all existing edges in the KG)'},
+            allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_relation_label': {'any string label identifying the virtual edge label (optional, otherwise applied to all existing edges in the KG)'},
                                     'source_qnode_id': {'a specific source query node id (optional, otherwise applied to all edges)'},
                                     'target_qnode_id': {'a specific target query node id (optional, otherwise applied to all edges)'}
                                     }
-
-        
 
         # A little function to describe what this thing does
         if describe:
@@ -511,7 +509,7 @@ This information is included in edge attributes with the name 'icees_p-value'.
 
         # Make sure only allowable parameters and values have been passed
         # FIXME : this will need to be fixed
-        self.check_params(command_definition)
+        self.check_params(allowable_parameters)
         # return if bad parameters have been passed
         if self.response.status != 'OK':
             return self.response
@@ -528,7 +526,7 @@ This information is included in edge attributes with the name 'icees_p-value'.
         # Check if all virtual edge params have been provided properly
 
         # FIXME : this will need to be fixed
-        self.check_virtual_edge_params(command_definition)
+        self.check_virtual_edge_params(allowable_parameters)
         if self.response.status != 'OK':
             return self.response
 

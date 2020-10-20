@@ -76,6 +76,12 @@ class ARAXFilterResults:
             "description": "The name of the node type to only filter on nodes of the matching type." +\
             "If not provided the node type will not be cinsidered when filtering."
         }
+        self.prune_kg_info = {
+            "is_required": False,
+            "enum": ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F'],
+            "type": "string",
+            "description": "This indicates if the Knowledge Graph (KG) should be pruned so that any nodes or edges not appearing in the results are removed from the KG."
+        }
 
         #command descriptions
         self.command_definitions = {
@@ -100,7 +106,8 @@ Edge attributes are a list of additional attributes for an edge.
                     "edge_attribute": self.edge_attribute_info,
                     "edge_relation": self.edge_relation_info,
                     "direction": self.direction_info,
-                    "max_results": self.max_results_info
+                    "max_results": self.max_results_info,
+                    "prune_kg": self.prune_kg_info
                 }
             },
             "sort_by_node_attribute": {
@@ -124,7 +131,8 @@ node attributes are a list of additional attributes for an node.
                     "node_attribute": self.node_attribute_info,
                     "node_type": self.node_type_info,
                     "direction": self.direction_info,
-                    "max_results": self.max_results_info
+                    "max_results": self.max_results_info,
+                    "prune_kg": self.prune_kg_info
                 }
             },
             "limit_number_of_results": {
@@ -141,7 +149,8 @@ Use cases include:
 limit_number_of_results removes excess results over the specified maximum.
                     """,
                 "parameters": {
-                    "max_results": self.max_results_required_info
+                    "max_results": self.max_results_required_info,
+                    "prune_kg": self.prune_kg_info
                 }
             },
             "sort_by_edge_count": {
@@ -161,7 +170,8 @@ sort_by_edge_count sorts the results by the number of edges in the results.
                     """,
                 "parameters": {
                     "direction": self.direction_info,
-                    "max_results": self.max_results_info
+                    "max_results": self.max_results_info,
+                    "prune_kg": self.prune_kg_info
                 }
             },
             "sort_by_node_count": {
@@ -181,7 +191,8 @@ sort_by_node_count sorts the results by the number of nodes in the results.
                     """,
                 "parameters": {
                     "direction": self.direction_info,
-                    "max_results": self.max_results_info
+                    "max_results": self.max_results_info,
+                    "prune_kg": self.prune_kg_info
                 }
             }
         }
