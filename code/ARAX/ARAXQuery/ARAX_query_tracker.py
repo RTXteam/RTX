@@ -39,12 +39,9 @@ class ARAXQueryTracker:
   def __del__(self):
     self.disconnect()
 
-  def create_database(self):
-    rtxConfig = RTXConfiguration()
-    engine = create_engine("mysql+pymysql://" + rtxConfig.mysql_feedback_username + ":" + rtxConfig.mysql_feedback_password + "@" + rtxConfig.mysql_feedback_host + "/" + self.databaseName)
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)
-    self.connect()
+  def create_tables(self):
+    Base.metadata.drop_all(self.engine)
+    Base.metadata.create_all(self.engine)
 
   def connect(self):
     rtxConfig = RTXConfiguration()
@@ -53,6 +50,8 @@ class ARAXQueryTracker:
     session = DBSession()
     self.session = session
     self.engine = engine
+    if not engine.dialect.has_table(engine, 'arax_query'):
+      self.create_tables()
 
   def disconnect(self):
     session = self.session

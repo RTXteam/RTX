@@ -30,7 +30,7 @@ class NGDQuerier:
         self.ngd_edge_type = "has_normalized_google_distance_with"
         self.ngd_edge_attribute_name = "normalized_google_distance"
         self.ngd_edge_attribute_type = "EDAM:data_2526"
-        self.ngd_edge_attribute_url = "https://arax.rtx.ai/api/rtx/v1/ui/#/PubmedMeshNgd"
+        self.ngd_edge_attribute_url = "https://arax.ncats.io/api/rtx/v1/ui/#/PubmedMeshNgd"
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         """

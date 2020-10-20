@@ -24,7 +24,7 @@ class PredictDrugTreatsDisease:
         self.message = message
         self.parameters = parameters
         self.global_iter = 0
-        ## check if the new model files exists in /predictor/retrain_data. If not, scp it from arax.rtx.ai
+        ## check if the new model files exists in /predictor/retrain_data. If not, scp it from arax.ncats.io
         pathlist = os.path.realpath(__file__).split(os.path.sep)
         RTXindex = pathlist.index("RTX")
         filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'predictor','retrain_data'])
@@ -34,14 +34,14 @@ class PredictDrugTreatsDisease:
         if os.path.exists(pkl_file):
             pass
         else:
-            os.system("scp rtxconfig@arax.rtx.ai:/data/orangeboard/databases/KG2.3.4/LogModel.pkl " + pkl_file)
+            os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/LogModel.pkl " + pkl_file)
 
         ## check if there is GRAPH.sqlite
         db_file = f"{filepath}/GRAPH.sqlite"
         if os.path.exists(db_file):
             pass
         else:
-            os.system("scp rtxconfig@arax.rtx.ai:/data/orangeboard/databases/KG2.3.4/GRAPH.sqlite " + db_file)
+            os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/GRAPH.sqlite " + db_file)
 
         # use NodeSynonymizer to replace map.txt
         # check if there is map.txt
@@ -49,7 +49,7 @@ class PredictDrugTreatsDisease:
         # if os.path.exists(map_file):
         #     pass
         # else:
-        #     os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/map.txt " + map_file)
+        #     os.system("scp rtxconfig@arax.ncats.io:/home/ubuntu/drug_repurposing_model_retrain/map.txt " + map_file)
 
         self.pred = predictor(model_file=pkl_file)
         self.pred.import_file(None, graph_database=db_file)

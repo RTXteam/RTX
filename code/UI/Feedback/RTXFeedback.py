@@ -281,7 +281,7 @@ class RTXFeedback:
         session.add(storedMessage)
         session.flush()
         session.commit()
-        message.id = "https://arax.rtx.ai/api/rtx/v1/message/"+str(storedMessage.message_id)
+        message.id = "https://arax.ncats.io/api/rtx/v1/message/"+str(storedMessage.message_id)
 
         #### Instead of storing the message in the MySQL database as a message_object (the old way)
         #### Instead now store it as a JSON file on the filesystem
@@ -333,7 +333,7 @@ class RTXFeedback:
                 eprint(f"WARNING: Confidence value '{result.confidence}' cannot be converted to float")
                 result.confidence = -999.0
 
-            result.id = f"https://arax.rtx.ai/api/rtx/v1/result/{id_counter}"
+            result.id = f"https://arax.ncats.io/api/rtx/v1/result/{id_counter}"
             id_counter += 1
 
 
@@ -420,7 +420,7 @@ class RTXFeedback:
             if debug: eprint("DEBUG: Got previous_message_uris")
             for uri in envelope.previous_message_uris:
                 if debug: eprint("DEBUG:   messageURI="+uri)
-                matchResult = re.match( r'http[s]://arax.rtx.ai/.*api/rtx/.+/message/(\d+)',uri,re.M|re.I )
+                matchResult = re.match( r'http[s]://arax.ncats.io/.*api/rtx/.+/message/(\d+)',uri,re.M|re.I )
                 if matchResult:
                     message_id = matchResult.group(1)
                     if debug: eprint("DEBUG: Found local ARAX identifier corresponding to message_id "+message_id)
@@ -546,9 +546,9 @@ class RTXFeedback:
 
         #### If requesting a full redirect to the resulting message display. This doesn't really work I don't think
         #if "RedirectToMessage" in optionsDict:
-        #  #redirect("https://arax.rtx.ai/api/rtx/v1/message/"+str(finalMessage_id), code=302)
-        #  #return( { "status": 302, "redirect": "https://arax.rtx.ai/api/rtx/v1/message/"+str(finalMessage_id) }, 302)
-        #  return( "Location: https://arax.rtx.ai/api/rtx/v1/message/"+str(finalMessage_id), 302)
+        #  #redirect("https://arax.ncats.io/api/rtx/v1/message/"+str(finalMessage_id), code=302)
+        #  #return( { "status": 302, "redirect": "https://arax.ncats.io/api/rtx/v1/message/"+str(finalMessage_id) }, 302)
+        #  return( "Location: https://arax.ncats.io/api/rtx/v1/message/"+str(finalMessage_id), 302)
 
         #### If asking for the full message back
         if return_action['parameters']['message'] == 'true':
@@ -556,15 +556,15 @@ class RTXFeedback:
 
         #### Else just the id is returned
         else:
-            #return( { "status": 200, "message_id": str(finalMessage_id), "n_results": finalMessage['n_results'], "url": "https://arax.rtx.ai/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
-            return( { "status": 200, "message_id": str(finalMessage_id), "n_results": finalMessage.n_results, "url": "https://arax.rtx.ai/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
+            #return( { "status": 200, "message_id": str(finalMessage_id), "n_results": finalMessage['n_results'], "url": "https://arax.ncats.io/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
+            return( { "status": 200, "message_id": str(finalMessage_id), "n_results": finalMessage.n_results, "url": "https://arax.ncats.io/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
 
 
     ##########################################################################################################################
     def fix_message(self,query,message,reasoner_id):
 
         if reasoner_id == "ARAX":
-            base_url = "https://arax.rtx.ai/api/rtx/v1"
+            base_url = "https://arax.ncats.io/api/rtx/v1"
         elif reasoner_id == "Robokop":
             base_url = "http://robokop.renci.org:6011/api"
         elif reasoner_id == "Indigo":
@@ -772,7 +772,7 @@ def main():
     envelope.options = [ "AnnotateDrugs", "Store", "ReturnMessageId" ]
     #envelope.options = [ "ReturnMessage" ]
     #envelope.options = [ "AnnotateDrugs", "ReturnMessage" ]
-    envelope.message_ur_is = [ "https://arax.rtx.ai/api/rtx/v1/message/300" ]
+    envelope.message_ur_is = [ "https://arax.ncats.io/api/rtx/v1/message/300" ]
 
     #result = rtxFeedback.processExternalPreviousMessageProcessingPlan(envelope)
     #print(result)

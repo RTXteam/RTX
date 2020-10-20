@@ -378,7 +378,7 @@ class ARAXQuery:
             response.debug(f"Found previous_message_uris")
             for uri in envelope.previous_message_uris:
                 response.debug(f"    messageURI={uri}")
-                matchResult = re.match( r'http[s]://arax.rtx.ai/.*api/rtx/.+/message/(\d+)',uri,re.M|re.I )
+                matchResult = re.match( r'http[s]://arax.ncats.io/.*api/rtx/.+/message/(\d+)',uri,re.M|re.I )
                 if matchResult:
                     referenced_message_id = matchResult.group(1)
                     response.debug(f"Found local RTX identifier corresponding to respond_id {referenced_message_id}")
@@ -590,7 +590,7 @@ class ARAXQuery:
                 if message_id is None:
                     message_id = 0
                 response.info(f"Processing is complete. Resulting Message id is {message_id} and is available to fetch via /message endpoint.")
-                return( { "status": 200, "message_id": str(message_id), "n_results": message.n_results, "url": "https://arax.rtx.ai/api/rtx/v1/message/"+str(message_id) }, 200)
+                return( { "status": 200, "message_id": str(message_id), "n_results": message.n_results, "url": "https://arax.ncats.io/api/rtx/v1/message/"+str(message_id) }, 200)
 
 
 

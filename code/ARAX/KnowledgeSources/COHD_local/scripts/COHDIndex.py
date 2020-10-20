@@ -61,7 +61,7 @@ class COHDIndex:
             if os.path.exists(f"{self.databaseLocation}/{old_version_database}"):
                 os.remove(f"{self.databaseLocation}/{old_version_database}")
             # copy the database file to local if it doesn't exist
-            os.system(f"scp rtxconfig@arax.rtx.ai:/data/orangeboard/databases/KG2.3.4/{self.databaseName} {database}")
+            os.system(f"scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/{self.databaseName} {database}")
 
             self.connection = sqlite3.connect(database)
             print("INFO: Connecting to database", flush=True)

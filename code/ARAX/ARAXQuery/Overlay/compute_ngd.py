@@ -53,7 +53,7 @@ class ComputeNGD:
         name = "normalized_google_distance"
         type = "EDAM:data_2526"
         value = self.parameters['default_value']
-        url = "https://arax.rtx.ai/api/rtx/v1/ui/#/PubmedMeshNgd"
+        url = "https://arax.ncats.io/api/rtx/v1/ui/#/PubmedMeshNgd"
         qg = self.message.query_graph
         kg = self.message.knowledge_graph
 
@@ -219,17 +219,17 @@ class ComputeNGD:
     def _setup_ngd_database(self):
         # Download the ngd database if there isn't already a local copy or if a newer version is available
         db_path_local = f"{os.path.dirname(os.path.abspath(__file__))}/ngd/{self.ngd_database_name}"
-        db_path_remote = f"/home/ubuntu/databases_for_download/{self.ngd_database_name}"
+        db_path_remote = f"/data/orangeboard/databases/KG2.3.4/{self.ngd_database_name}"
         if not os.path.exists(f"{db_path_local}"):
             self.response.debug(f"Downloading fast NGD database because no copy exists... (will take a few minutes)")
-            os.system(f"scp rtxconfig@arax.rtx.ai:{db_path_remote} {db_path_local}")
+            os.system(f"scp rtxconfig@arax.ncats.io:{db_path_remote} {db_path_local}")
         else:
             last_modified_local = int(os.path.getmtime(db_path_local))
-            last_modified_remote_byte_str = subprocess.check_output(f"ssh rtxconfig@arax.rtx.ai 'stat -c %Y {db_path_remote}'", shell=True)
+            last_modified_remote_byte_str = subprocess.check_output(f"ssh rtxconfig@arax.ncats.io 'stat -c %Y {db_path_remote}'", shell=True)
             last_modified_remote = int(str(last_modified_remote_byte_str, 'utf-8'))
             if last_modified_local < last_modified_remote:
                 self.response.debug(f"Downloading new version of fast NGD database... (will take a few minutes)")
-                os.system(f"scp rtxconfig@arax.rtx.ai:{db_path_remote} {db_path_local}")
+                os.system(f"scp rtxconfig@arax.ncats.io:{db_path_remote} {db_path_local}")
             else:
                 self.response.debug(f"Confirmed local NGD database is current")
         # Set up a connection to the database so it's ready for use

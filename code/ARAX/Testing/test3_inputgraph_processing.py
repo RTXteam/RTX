@@ -22,7 +22,7 @@ def main():
     #### Fill out a one hop query acetaminophen to proteins
     query = {
         "previous_message_processing_plan": {
-            "previous_message_uris": [ "https://arax.rtx.ai/api/rtx/v1/message/2" ],
+            "previous_message_uris": [ "https://arax.ncats.io/api/rtx/v1/message/2" ],
             "processing_actions": [
                 "filter(maximum_results=10)",
                 "return(message=false,store=false)"
