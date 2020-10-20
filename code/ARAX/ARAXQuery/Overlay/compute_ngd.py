@@ -219,7 +219,7 @@ class ComputeNGD:
     def _setup_ngd_database(self):
         # Download the ngd database if there isn't already a local copy or if a newer version is available
         db_path_local = f"{os.path.dirname(os.path.abspath(__file__))}/ngd/{self.ngd_database_name}"
-        db_path_remote = f"/home/ubuntu/databases_for_download/{self.ngd_database_name}"
+        db_path_remote = f"/data/orangeboard/databases/KG2.3.4/{self.ngd_database_name}"
         if not os.path.exists(f"{db_path_local}"):
             self.response.debug(f"Downloading fast NGD database because no copy exists... (will take a few minutes)")
             os.system(f"scp rtxconfig@arax.ncats.io:{db_path_remote} {db_path_local}")
