@@ -184,6 +184,21 @@ class ARAXRanker:
         self.score_stats = dict()  # dictionary that stores that max's and min's of the edge attribute values
         self.kg_edge_id_to_edge = dict()  # map between the edge id's in the results and the actual edges themselves
 
+    def describe_me(self):
+        """
+        Little helper function for internal use that describes the actions and what they can do
+        :return:
+        """
+
+        brief_description = """
+TODO: explain how the ranker ranks results
+        """
+        description_list = []
+        params_dict = dict()
+        params_dict['brief_description'] = brief_description
+        description_list.append(params_dict)
+        return description_list
+
     def result_confidence_maker(self, result):
         ###############################
         # old method of just multiplying ALL the edge confidences together
