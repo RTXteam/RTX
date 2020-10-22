@@ -191,11 +191,23 @@ class ARAXRanker:
         """
 
         brief_description = """
-TODO: explain how the ranker ranks results
+rank_results iterates through all edges in the results aggrigating and 
+normalizing the scores stored within the edge_attributes property. After combining these scores into 
+one score the ranker then scores each result through a combination of max flow, longest path, 
+and frobenius norm.
+        """
+        description = """
+`rank_results` iterates through all edges in the results aggrigating and 
+normalizing the scores stored within the `edge_attributes` property. After combining these scores into 
+one score the ranker then scores each result through a combination of 
+[max flow](https://en.wikipedia.org/wiki/Maximum_flow_problem), 
+[longest path](https://en.wikipedia.org/wiki/Longest_path_problem), 
+and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         """
         description_list = []
         params_dict = dict()
         params_dict['brief_description'] = brief_description
+        params_dict['description'] = description
         description_list.append(params_dict)
         return description_list
 
