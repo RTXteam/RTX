@@ -45,6 +45,22 @@ def test_command_definitions():
     fr = ARAXFilterResults()
     assert fr.allowable_actions == set(fr.command_definitions.keys())
 
+def test_n_results():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:1227, id=n00)",
+            "add_qnode(type=chemical_substance, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00)",
+            "overlay(action=add_node_pmids, max_num=15)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
+            "return(message=true, store=false)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert message.n_results == len(message.results)
+
 def test_no_results():
     query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",

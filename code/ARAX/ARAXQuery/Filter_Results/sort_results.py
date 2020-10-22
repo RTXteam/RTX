@@ -39,6 +39,7 @@ class SortResults:
             self.message.results = self.message.results[:n]
             if params['prune_kg']:
                 self.prune_kg()
+            self.message.n_results = n
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -92,6 +93,7 @@ class SortResults:
                 self.parameters['prune_kg'] = prune_val
             if params['prune_kg']:
                 self.prune_kg()
+            self.message.n_results = len(self.message.results)
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -125,6 +127,7 @@ class SortResults:
                 self.parameters['prune_kg'] = prune_val
             if params['prune_kg']:
                 self.prune_kg()
+            self.message.n_results = len(self.message.results)
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -181,6 +184,7 @@ class SortResults:
                 self.parameters['prune_kg'] = prune_val
             if params['prune_kg']:
                 self.prune_kg()
+            self.message.n_results = len(self.message.results)
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -214,6 +218,7 @@ class SortResults:
                 self.parameters['prune_kg'] = prune_val
             if params['prune_kg']:
                 self.prune_kg()
+            self.message.n_results = len(self.message.results)
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
