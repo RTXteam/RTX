@@ -59,7 +59,7 @@ class ARAXFilterKG:
             "is_required": True,
             "examples": ['DOID:8398', 'Pharos', 'ARAX/RTX'],
             "type": "string",
-            "description": "The edge property vaue to indicate which edges to remove."
+            "description": "The edge property value to indicate which edges to remove."
         }
         self.edge_attribute_info = {
             "is_required": True,
@@ -96,11 +96,11 @@ class ARAXFilterKG:
             "type": "float",
             "description": "The threshold to filter with.",
             "default": "a value dictated by the `type` parameter. " +\
-            "If `type` is 'n' then will default to 50. " +\
-            "If `type` is 'std_dev' or 'std' then it will default to 1." +\
-            "If `type` is 'percentile' or 'p' then it will default to 95 unless "+\
+            "If `type` is 'n' then `threshold` will default to 50. " +\
+            "If `type` is 'std_dev' or 'std' then `threshold` will default to 1." +\
+            "If `type` is 'percentile' or 'p' then `threshold` will default to 95 unless "+\
             "`edge_attribute` is also 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' "+\
-            "then it will default to 5."
+            "then `threshold` will default to 5."
         }
         self.direction_stats_info = {
             "is_required": False,
@@ -243,7 +243,7 @@ the best results more than 1 standard deviation from the mean, or `percentile` t
 Use cases include:
 
 * removing all edges with normalized google distance scores but the top 50 `edge_attribute=ngd, type=n` (i.e. remove edges that aren't represented well in the literature)
-* removing all edges that Jaccard index leass than 1 standard deviation above the mean. `edge_attribute=jaccard_index, type=std` (i.e. all edges that have less than 20% of intermediate nodes in common)
+* removing all edges that Jaccard index less than 1 standard deviation above the mean. `edge_attribute=jaccard_index, type=std` (i.e. all edges that have less than 20% of intermediate nodes in common)
 * etc. etc.
                 
 You have the option (this defaults to false) to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
@@ -312,12 +312,12 @@ remove_nodes_by_property removes nodes from the knowledge graph (KG) based on a 
                 "dsl_command": "filter_kg(action=remove_orphaned_nodes)",
                 "description": """
 `remove_orphaned_nodes` removes nodes from the knowledge graph (KG) that are not connected via any edges.
-Specifying a `node_type` will restrict this to only remove orphaned nodes of a certain type
+Specifying a `node_type` will restrict this to only remove orphaned nodes of a certain type.
 This can be applied to an arbitrary knowledge graph as possible node types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
                 'brief_description': """
 remove_orphaned_nodes removes nodes from the knowledge graph (KG) that are not connected via any edges.
-Specifying a 'node_type' will restrict this to only remove orphaned nodes of a certain type
+Specifying a 'node_type' will restrict this to only remove orphaned nodes of a certain type.
 This can be applied to an arbitrary knowledge graph as possible node types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
                 "parameters": {

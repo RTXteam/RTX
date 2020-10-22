@@ -53,7 +53,7 @@ class ARAXFilterResults:
             "examples": [5,10,50],
             "min":0,
             "max":'inf',
-            "type": "integer",
+            "type": "int",
             "description": "The maximum number of results to return. If not provided all results will be returned."
         }
         self.edge_relation_info = {
@@ -73,8 +73,8 @@ class ARAXFilterResults:
             "is_required": False,
             "examples": ["chemical_substance", "disease"],
             "type": "string",
-            "description": "The name of the node type to only filter on nodes of the matching type." +\
-            "If not provided the node type will not be cinsidered when filtering."
+            "description": "The name of the node type to only filter on nodes of the matching type. " +\
+            "If not provided the node type will not be considered when filtering."
         }
         self.prune_kg_info = {
             "is_required": False,
@@ -114,18 +114,18 @@ Edge attributes are a list of additional attributes for an edge.
                 "dsl_command": "filter_results(action=sort_by_node_attribute)",
                 "description": """
 `sort_by_node_attribute` sorts the results by the nodes based on a a certain node attribute.
-node attributes are a list of additional attributes for an node.
+Node attributes are a list of additional attributes for an node.
 Use cases include:
 
-* sorting the rsults by the number of pubmed ids returning the top 20. `"filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=d, max_results=20)"`
+* Sorting the results by the number of pubmed ids and returning the top 20. `"filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=d, max_results=20)"`
 * etc. etc.
                 
-You have the option to specify the node type (e.g. via `node_type=<an node type>`)
-Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
+You have the option to specify the node type. (e.g. via `node_type=<an node type>`)
+Also, you have the option of limiting the number of results returned. (e.g. via `max_results=<a non-negative integer>`
                     """,
                 'brief_description': """
 sort_by_node_attribute sorts the results by the nodes based on a a certain node attribute.
-node attributes are a list of additional attributes for an node.
+Node attributes are a list of additional attributes for an node.
                     """,
                 "parameters": {
                     "node_attribute": self.node_attribute_info,
@@ -162,8 +162,8 @@ Use cases include:
 * return the results with the 10 fewest edges. `filter_results(action=sort_by_edge_count, direction=ascending, max_results=10)`
 * etc. etc.
                 
-You have the option to specify the direction (e.g. `direction=descending`)
-Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
+You have the option to specify the direction. (e.g. `direction=descending`)
+Also, you have the option of limiting the number of results returned. (e.g. via `max_results=<a non-negative integer>`
                     """,
                 'brief_description': """
 sort_by_edge_count sorts the results by the number of edges in the results.
@@ -183,8 +183,8 @@ Use cases include:
 * return the results with the 10 most nodes. `filter_results(action=sort_by_node_count, direction=descending, max_results=10)`
 * etc. etc.
                 
-You have the option to specify the direction (e.g. `direction=descending`)
-Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
+You have the option to specify the direction. (e.g. `direction=descending`)
+Also, you have the option of limiting the number of results returned. (e.g. via `max_results=<a non-negative integer>`
                     """,
                 'brief_description': """
 sort_by_node_count sorts the results by the number of nodes in the results.

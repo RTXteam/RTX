@@ -15,12 +15,12 @@
     - [expand(kp=NGD)](#expandkpngd)
   - [ARAX_overlay](#arax_overlay)
     - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
-    - [overlay(action=predict_drug_treats_disease)](#overlayactionpredict_drug_treats_disease)
-    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
     - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
-    - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
+    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
     - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
     - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
+    - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
+    - [overlay(action=predict_drug_treats_disease)](#overlayactionpredict_drug_treats_disease)
   - [ARAX_filter_kg](#arax_filter_kg)
     - [filter_kg(action=remove_edges_by_type)](#filter_kgactionremove_edges_by_type)
     - [filter_kg(action=remove_edges_by_attribute)](#filter_kgactionremove_edges_by_attribute)
@@ -586,9 +586,9 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
 ## ARAX_overlay
 ### overlay(action=fisher_exact_test)
 
-`fisher_exact_test` computes the the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_qnode_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_qnode_id 'n02') in the message knowledge graph. 
+`fisher_exact_test` computes the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_qnode_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_qnode_id 'n02') in the message knowledge graph. 
 This information is then added as an edge attribute to a virtual edge which is then added to the query graph and knowledge graph.
-It can also allow you filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
+It can also allow you to filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
 
@@ -619,7 +619,7 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
 
 * ##### source_qnode_id
 
-    - a specific source query node id (required)
+    - A specific source query node id (required)
 
     - Acceptable input types: string.
 
@@ -639,7 +639,7 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
 
 * ##### target_qnode_id
 
-    - a specific target query node id (required)
+    - A specific target query node id (required)
 
     - Acceptable input types: string.
 
@@ -649,7 +649,7 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
 
 * ##### rel_edge_id
 
-    - a specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'
+    - A specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'
 
     - Acceptable input types: string.
 
@@ -659,7 +659,7 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
 
 * ##### top_n
 
-    - an int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned)
+    - An int indicating the top number (the smallest) of p-values to return (optional, otherwise all results returned)
 
     - Acceptable input types: int or None.
 
@@ -671,7 +671,7 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
 
 * ##### cutoff
 
-    - a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05
+    - A float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05
 
     - Acceptable input types: float or None.
 
@@ -680,77 +680,6 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
     - `all`, `0.05`, and `0.95` are examples of valid inputs.
 
     - If not specified the default input will be None. 
-
-### overlay(action=predict_drug_treats_disease)
-
-`predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substanct treats a disease/phenotypic feature.
-For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
-The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
-You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified source/target qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
-If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
-Use cases include:
-
-* Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
-* For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)`
-* Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_id=n02)`
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `N1` and `J2` are examples of valid inputs.
-
-* ##### source_qnode_id
-
-    - a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### target_qnode_id
-
-    - a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-### overlay(action=add_node_pmids)
-
-`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
-This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
-either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### max_num
-
-    - The maximum number of values to return. Enter 'all' to return everything
-
-    - Acceptable input types: int or string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `all`, `5`, and `50` are examples of valid inputs.
-
-    - If not specified the default input will be 100. 
 
 ### overlay(action=compute_jaccard)
 
@@ -803,6 +732,128 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
     - This is a required parameter and must be included.
 
     - `N1`, `J2`, and `FET` are examples of valid inputs.
+
+### overlay(action=add_node_pmids)
+
+`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
+This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### max_num
+
+    - The maximum number of values to return. Enter 'all' to return everything
+
+    - Acceptable input types: int or string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `all`, `5`, and `50` are examples of valid inputs.
+
+    - If not specified the default input will be 100. 
+
+### overlay(action=overlay_exposures_data)
+
+`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
+This information is included in edge attributes with the name `icees_p-value`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
+
+This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
+                    
+
+#### parameters: 
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `N1` and `J2` are examples of valid inputs.
+
+* ##### source_qnode_id
+
+    - A specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### target_qnode_id
+
+    - A specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+### overlay(action=compute_ngd)
+
+`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
+This information is then included as an edge attribute with the name `normalized_google_distance`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
+
+Use cases include:
+
+* focusing in on edges that are well represented in the literature
+* focusing in on edges that are under-represented in the literature
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### default_value
+
+    - The default value of the normalized Google distance (if its value cannot be determined)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `0` and `inf` are examples of valid inputs.
+
+    - If not specified the default input will be inf. 
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `N1` and `J2` are examples of valid inputs.
+
+* ##### source_qnode_id
+
+    - A specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### target_qnode_id
+
+    - A specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
 
 ### overlay(action=overlay_clinical_info)
 
@@ -874,7 +925,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
 * ##### source_qnode_id
 
-    - a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+    - A specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
 
     - Acceptable input types: string.
 
@@ -884,7 +935,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
 * ##### target_qnode_id
 
-    - a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+    - A specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
 
     - Acceptable input types: string.
 
@@ -892,75 +943,24 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - `n00` and `n01` are examples of valid inputs.
 
-### overlay(action=overlay_exposures_data)
+### overlay(action=predict_drug_treats_disease)
 
-`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
-This information is included in edge attributes with the name `icees_p-value`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
-
-This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
-                    
-
-#### parameters: 
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `N1` and `J2` are examples of valid inputs.
-
-* ##### source_qnode_id
-
-    - a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### target_qnode_id
-
-    - a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-### overlay(action=compute_ngd)
-
-`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
-This information is then included as an edge attribute with the name `normalized_google_distance`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
-
+`predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
+For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
+The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
+You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified source/target qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
+If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
 Use cases include:
 
-* focusing in on edges that are well represented in the literature
-* focusing in on edges that are under-represented in the literature
+* Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
+* For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)`
+* Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_id=n02)`
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
 #### parameters: 
 
-* ##### default_value
-
-    - The default value of the normalized Google distance (if its value cannot be determined)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `0` and `inf` are examples of valid inputs.
-
-    - If not specified the default input will be inf. 
-
 * ##### virtual_relation_label
 
     - An optional label to help identify the virtual edge in the relation field.
@@ -973,7 +973,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
 * ##### source_qnode_id
 
-    - a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+    - A specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
 
     - Acceptable input types: string.
 
@@ -983,7 +983,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
 * ##### target_qnode_id
 
-    - a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+    - A specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
 
     - Acceptable input types: string.
 
@@ -1146,7 +1146,7 @@ This can be applied to an arbitrary knowledge graph as possible edge properties 
 
 * ##### property_value
 
-    - The edge property vaue to indicate which edges to remove.
+    - The edge property value to indicate which edges to remove.
 
     - Acceptable input types: string.
 
@@ -1187,7 +1187,7 @@ the best results more than 1 standard deviation from the mean, or `percentile` t
 Use cases include:
 
 * removing all edges with normalized google distance scores but the top 50 `edge_attribute=ngd, type=n` (i.e. remove edges that aren't represented well in the literature)
-* removing all edges that Jaccard index leass than 1 standard deviation above the mean. `edge_attribute=jaccard_index, type=std` (i.e. all edges that have less than 20% of intermediate nodes in common)
+* removing all edges that Jaccard index less than 1 standard deviation above the mean. `edge_attribute=jaccard_index, type=std` (i.e. all edges that have less than 20% of intermediate nodes in common)
 * etc. etc.
                 
 You have the option (this defaults to false) to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
@@ -1249,7 +1249,7 @@ e.g. to remove all the edges with jaccard_index values greater than 0.25 standar
 
     - The values for this parameter can range from a minimum value of 0 to a maximum value of inf (or 100 if type=percentile or p).
 
-    - If not specified the default input will be a value dictated by the `type` parameter. If `type` is 'n' then will default to 50. If `type` is 'std_dev' or 'std' then it will default to 1.If `type` is 'percentile' or 'p' then it will default to 95 unless `edge_attribute` is also 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then it will default to 5.. 
+    - If not specified the default input will be a value dictated by the `type` parameter. If `type` is 'n' then `threshold` will default to 50. If `type` is 'std_dev' or 'std' then `threshold` will default to 1.If `type` is 'percentile' or 'p' then `threshold` will default to 95 unless `edge_attribute` is also 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `threshold` will default to 5.. 
 
 * ##### top
 
@@ -1344,7 +1344,7 @@ This can be applied to an arbitrary knowledge graph as possible node properties 
 ### filter_kg(action=remove_orphaned_nodes)
 
 `remove_orphaned_nodes` removes nodes from the knowledge graph (KG) that are not connected via any edges.
-Specifying a `node_type` will restrict this to only remove orphaned nodes of a certain type
+Specifying a `node_type` will restrict this to only remove orphaned nodes of a certain type.
 This can be applied to an arbitrary knowledge graph as possible node types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
@@ -1418,17 +1418,27 @@ Also, you have the option of limiting the number of results returned (e.g. via `
 
     - The values for this parameter can range from a minimum value of 0 to a maximum value of inf.
 
+* ##### prune_kg
+
+    - This indicates if the Knowledge Graph (KG) should be pruned so that any nodes or edges not appearing in the results are removed from the KG.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
 ### filter_results(action=sort_by_node_attribute)
 
 `sort_by_node_attribute` sorts the results by the nodes based on a a certain node attribute.
-node attributes are a list of additional attributes for an node.
+Node attributes are a list of additional attributes for an node.
 Use cases include:
 
-* sorting the rsults by the number of pubmed ids returning the top 20. `"filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=d, max_results=20)"`
+* Sorting the results by the number of pubmed ids and returning the top 20. `"filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=d, max_results=20)"`
 * etc. etc.
                 
-You have the option to specify the node type (e.g. via `node_type=<an node type>`)
-Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
+You have the option to specify the node type. (e.g. via `node_type=<an node type>`)
+Also, you have the option of limiting the number of results returned. (e.g. via `max_results=<a non-negative integer>`
                     
 
 #### parameters: 
@@ -1445,7 +1455,7 @@ Also, you have the option of limiting the number of results returned (e.g. via `
 
 * ##### node_type
 
-    - The name of the node type to only filter on nodes of the matching type.If not provided the node type will not be cinsidered when filtering.
+    - The name of the node type to only filter on nodes of the matching type. If not provided the node type will not be considered when filtering.
 
     - Acceptable input types: string.
 
@@ -1475,6 +1485,16 @@ Also, you have the option of limiting the number of results returned (e.g. via `
 
     - The values for this parameter can range from a minimum value of 0 to a maximum value of inf.
 
+* ##### prune_kg
+
+    - This indicates if the Knowledge Graph (KG) should be pruned so that any nodes or edges not appearing in the results are removed from the KG.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
 ### filter_results(action=limit_number_of_results)
 
 `limit_number_of_results` removes excess results over the specified maximum.
@@ -1491,13 +1511,23 @@ Use cases include:
 
     - The maximum number of results to return. If not provided all results will be returned.
 
-    - Acceptable input types: integer.
+    - Acceptable input types: int.
 
     - This is a required parameter and must be included.
 
     - `5`, `10`, and `50` are examples of valid inputs.
 
     - The values for this parameter can range from a minimum value of 0 to a maximum value of inf.
+
+* ##### prune_kg
+
+    - This indicates if the Knowledge Graph (KG) should be pruned so that any nodes or edges not appearing in the results are removed from the KG.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
 
 ### filter_results(action=sort_by_edge_count)
 
@@ -1507,8 +1537,8 @@ Use cases include:
 * return the results with the 10 fewest edges. `filter_results(action=sort_by_edge_count, direction=ascending, max_results=10)`
 * etc. etc.
                 
-You have the option to specify the direction (e.g. `direction=descending`)
-Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
+You have the option to specify the direction. (e.g. `direction=descending`)
+Also, you have the option of limiting the number of results returned. (e.g. via `max_results=<a non-negative integer>`
                     
 
 #### parameters: 
@@ -1534,6 +1564,16 @@ Also, you have the option of limiting the number of results returned (e.g. via `
     - `5`, `10`, and `50` are examples of valid inputs.
 
     - The values for this parameter can range from a minimum value of 0 to a maximum value of inf.
+
+* ##### prune_kg
+
+    - This indicates if the Knowledge Graph (KG) should be pruned so that any nodes or edges not appearing in the results are removed from the KG.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
 
 ### filter_results(action=sort_by_node_count)
 
@@ -1543,8 +1583,8 @@ Use cases include:
 * return the results with the 10 most nodes. `filter_results(action=sort_by_node_count, direction=descending, max_results=10)`
 * etc. etc.
                 
-You have the option to specify the direction (e.g. `direction=descending`)
-Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
+You have the option to specify the direction. (e.g. `direction=descending`)
+Also, you have the option of limiting the number of results returned. (e.g. via `max_results=<a non-negative integer>`
                     
 
 #### parameters: 
@@ -1570,6 +1610,16 @@ Also, you have the option of limiting the number of results returned (e.g. via `
     - `5`, `10`, and `50` are examples of valid inputs.
 
     - The values for this parameter can range from a minimum value of 0 to a maximum value of inf.
+
+* ##### prune_kg
+
+    - This indicates if the Knowledge Graph (KG) should be pruned so that any nodes or edges not appearing in the results are removed from the KG.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
 
 ## ARAX_resultify
 ### resultify()

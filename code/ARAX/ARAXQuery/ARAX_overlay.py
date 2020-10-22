@@ -42,19 +42,19 @@ class ARAXOverlay:
                     'is_required': False,
                     'examples': ['N1', 'N2'],
                     'type': 'string',
-                    'description': 'any string label identifying the virtual edge label (optional, otherwise applied to all existing edges in the KG)'
+                    'description': 'Any string label identifying the virtual edge label (optional, otherwise applied to all existing edges in the KG)'
                 }
         self.source_qnode_id_info = {
                     'is_required': False,
                     'examples': ['n00', 'n01'],
                     'type': 'string',
-                    'description': 'a specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'
+                    'description': 'A specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'
                 }
         self.target_qnode_id_info = {
                     'is_required': False,
                     'examples': ['n00', 'n01'],
                     'type': 'string',
-                    'description': 'a specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'
+                    'description': 'A specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'
                 }
         self.paired_concept_frequency_info = {
                     'is_required': False,
@@ -118,32 +118,32 @@ class ARAXOverlay:
                     'is_required': True,
                     'examples': ['n00', 'n01'],
                     'type': 'string',
-                    'description': 'a specific source query node id (required)'
+                    'description': 'A specific source query node id (required)'
                 }
         self.target_qnode_id_required_info = {
                     'is_required': True,
                     'examples': ['n00', 'n01'],
                     'type': 'string',
-                    'description': 'a specific target query node id (required)'
+                    'description': 'A specific target query node id (required)'
                 }
         self.rel_edge_id_info = {
                     'is_required': False,
                     'examples': ['e00', 'e01'],
                     'type': 'string',
-                    'description': "a specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"
+                    'description': "A specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"
                 }
         self.top_n_info = {
                     'is_required': False,
                     'examples': ['all', 5, 50],
                     'type': 'int or None',
-                    'description': "an int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned)",
+                    'description': "An int indicating the top number (the smallest) of p-values to return (optional, otherwise all results returned)",
                     'default': None
                 }
         self.cutoff_info = {
                     'is_required': False,
                     'examples': ['all', 0.05, 0.95],
                     'type': 'float or None',
-                    'description': "a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05",
+                    'description': "A float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05",
                     'default': None
                 }
 
@@ -264,7 +264,7 @@ either labeling in the metadata or has the MeSH term occurring in the abstract o
             "predict_drug_treats_disease": {
                 "dsl_command": "overlay(action=predict_drug_treats_disease)",
                 "description": """
-`predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substanct treats a disease/phenotypic feature.
+`predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
 For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
 The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
 You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified source/target qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
@@ -278,7 +278,7 @@ Use cases include:
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
                 'brief_description': """
-predict_drug_treats_disease utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substanct treats a disease/phenotypic feature.
+predict_drug_treats_disease utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
 For more information about how this model was trained and how it performs, please see this publication (https://doi.org/10.1101/765305).
 The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name 'probability_treats').
 You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified source/target qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
@@ -292,9 +292,9 @@ You have the choice of applying this to all appropriate edges in the knowledge g
             "fisher_exact_test": {
                 "dsl_command": "overlay(action=fisher_exact_test)",
                 "description": """
-`fisher_exact_test` computes the the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_qnode_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_qnode_id 'n02') in the message knowledge graph. 
+`fisher_exact_test` computes the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_qnode_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_qnode_id 'n02') in the message knowledge graph. 
 This information is then added as an edge attribute to a virtual edge which is then added to the query graph and knowledge graph.
-It can also allow you filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
+It can also allow you to filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
 
@@ -321,9 +321,9 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
 ```
                     """,
                 'brief_description': """
-fisher_exact_test computes the the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_qnode_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_qnode_id 'n02') in the message knowledge graph. 
+fisher_exact_test computes the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_qnode_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_qnode_id 'n02') in the message knowledge graph. 
 This information is then added as an edge attribute to a virtual edge which is then added to the query graph and knowledge graph.
-It can also allow you filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
+It can also allow you to filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
                     """,
                 "parameters": {
                     'source_qnode_id': self.source_qnode_id_required_info,
