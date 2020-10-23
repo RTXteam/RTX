@@ -184,6 +184,33 @@ class ARAXRanker:
         self.score_stats = dict()  # dictionary that stores that max's and min's of the edge attribute values
         self.kg_edge_id_to_edge = dict()  # map between the edge id's in the results and the actual edges themselves
 
+    def describe_me(self):
+        """
+        Little helper function for internal use that describes the actions and what they can do
+        :return:
+        """
+
+        brief_description = """
+rank_results iterates through all edges in the results list aggrigating and 
+normalizing the scores stored within the edge_attributes property. After combining these scores into 
+one score the ranker then scores each result through a combination of max flow, longest path, 
+and frobenius norm.
+        """
+        description = """
+`rank_results` iterates through all edges in the results list aggrigating and 
+normalizing the scores stored within the `edge_attributes` property. After combining these scores into 
+one score the ranker then scores each result through a combination of 
+[max flow](https://en.wikipedia.org/wiki/Maximum_flow_problem), 
+[longest path](https://en.wikipedia.org/wiki/Longest_path_problem), 
+and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
+        """
+        description_list = []
+        params_dict = dict()
+        params_dict['brief_description'] = brief_description
+        params_dict['description'] = description
+        description_list.append(params_dict)
+        return description_list
+
     def result_confidence_maker(self, result):
         ###############################
         # old method of just multiplying ALL the edge confidences together
@@ -433,6 +460,7 @@ class ARAXRanker:
         # #### 2) Collect some min,max stats for edge_attributes that we may need later
         kg_edge_id_to_edge = self.kg_edge_id_to_edge
         score_stats = self.score_stats
+        no_non_inf_float_flag = True
         for edge in message.knowledge_graph.edges:
             kg_edge_id_to_edge[edge.id] = edge
             if edge.edge_attributes is not None:
@@ -444,6 +472,7 @@ class ARAXRanker:
                             value = float(edge_attribute.value)
                             # initialize if not None already
                             if not np.isinf(value) and not np.isinf(-value) and not np.isnan(value):  # Ignore inf, -inf, and nan
+                                no_non_inf_float_flag = False
                                 if not score_stats[attribute_name]['minimum']:
                                     score_stats[attribute_name]['minimum'] = value
                                 if not score_stats[attribute_name]['maximum']:
@@ -453,6 +482,9 @@ class ARAXRanker:
                                 if value < score_stats[attribute_name]['minimum']:
                                     score_stats[attribute_name]['minimum'] = value
 
+        if no_non_inf_float_flag:
+            response.warning(
+                        f"No non-infinate value was encountered in any edge attribute in the knowledge graph.")
         response.info(f"Summary of available edge metrics: {score_stats}")
 
         # Loop over the entire KG and normalize and combine the score of each edge, place that information in the confidence attribute of the edge
