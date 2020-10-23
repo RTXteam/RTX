@@ -208,6 +208,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         params_dict = dict()
         params_dict['brief_description'] = brief_description
         params_dict['description'] = description
+        params_dict["dsl_command"] = "resultify()"
         description_list.append(params_dict)
         return description_list
 
