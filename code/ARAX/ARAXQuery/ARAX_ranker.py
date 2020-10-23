@@ -484,7 +484,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
         if no_non_inf_float_flag:
             response.warning(
-                        f"No non-infinate float value was encountered in the knowledge graph.")
+                        f"No non-infinate value was encountered in any edge attribute in the knowledge graph.")
         response.info(f"Summary of available edge metrics: {score_stats}")
 
         # Loop over the entire KG and normalize and combine the score of each edge, place that information in the confidence attribute of the edge
