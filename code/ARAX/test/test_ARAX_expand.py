@@ -477,6 +477,7 @@ def test_deduplication_and_self_edges():
     assert not self_edges
 
 
+@pytest.mark.slow
 def test_889_missing_curies():
     actions_list = [
         "add_qnode(name=DOID:11830, id=n00)",
@@ -524,6 +525,7 @@ def test_987_override_node_types():
     assert all('phenotypic_feature' in node.type for node in nodes_by_qg_id['n01'].values())
 
 
+@pytest.mark.slow
 def test_COHD_expand_paired_concept_freq():
     actions_list = [
         "add_qnode(curie=UMLS:C0015967, id=n00)",
