@@ -26,7 +26,7 @@ class MoleProQuerier:
         self.kp_name = "MolePro"
         self.accepted_node_types = {"chemical_substance", "gene", "disease"}  # TODO: add more.. (these aren't all)
         self.node_type_overrides_for_kp = {"protein": "gene"}
-        self.prefix_mappings = {"chemical_substance": "CHEMBL.COMPOUND", "gene": "HGNC", "disease": "MONDO"}
+        self.preferred_prefixes = {"chemical_substance": "CHEMBL.COMPOUND", "gene": "HGNC", "disease": "MONDO"}
         self.prefix_overrides_for_kp = {"CHEMBL.COMPOUND": "ChEMBL"}
         self.prefix_overrides_for_arax = {"ChEMBL": "CHEMBL.COMPOUND"}
 
@@ -83,9 +83,9 @@ class MoleProQuerier:
 
         if not eu.qg_is_fulfilled(query_graph, final_kg):
             if continue_if_no_results:
-                log.warning(f"No paths were found satisfying this query graph in {self.kp_name}")
+                log.warning(f"{self.kp_name} found no paths satisfying this query graph")
             else:
-                log.error(f"No paths were found satisfying this query graph in {self.kp_name}", error_code="NoResults")
+                log.error(f"{self.kp_name} found no paths satisfying this query graph", error_code="NoResults")
 
         return final_kg, edge_to_nodes_map
 
@@ -114,13 +114,13 @@ class MoleProQuerier:
             # Convert curies to equivalent curies accepted by the KP (depending on qnode type)
             if qnode.curie:
                 equivalent_curies = eu.get_curie_synonyms(qnode.curie, log)
-                desired_curies = [curie for curie in equivalent_curies if curie.startswith(f"{self.prefix_mappings[qnode.type]}:")]
+                desired_curies = [curie for curie in equivalent_curies if curie.startswith(f"{self.preferred_prefixes[qnode.type]}:")]
                 if desired_curies:
-                    formatted_curies = [self._convert_prefix_to_kp_preference(curie) for curie in desired_curies]
+                    formatted_curies = [self._convert_prefix_to_kp_version(curie) for curie in desired_curies]
                     qnode.curie = formatted_curies if len(formatted_curies) > 1 else formatted_curies[0]
                     log.debug(f"Converted qnode {qnode.id} curie to {qnode.curie}")
                 else:
-                    log.warning(f"Could not convert qnode {qnode.id} curie to preferred prefix ({self.prefix_mappings[qnode.type]})")
+                    log.warning(f"Could not convert qnode {qnode.id} curie(s) to preferred prefix ({self.preferred_prefixes[qnode.type]})")
         return query_graph
 
     def _get_qg_id_mappings_from_results(self, results: [any]) -> Dict[str, Dict[str, Set[str]]]:
@@ -151,11 +151,14 @@ class MoleProQuerier:
             if qnode.curie:
                 stripped_qnode['curie'] = qnode.curie
             stripped_qnodes.append(stripped_qnode)
-        stripped_qedges = [{'id': qedge.id, 'source_id': qedge.source_id, 'target_id': qedge.target_id, 'type': 'correlated_with'}
-                           for qedge in query_graph.edges]
+        stripped_qedges = [{'id': qedge.id,
+                            'source_id': qedge.source_id,
+                            'target_id': qedge.target_id,
+                            'type': qedge.type if qedge.type else 'correlated_with'} for qedge in query_graph.edges]
         source_stripped_qnode = next(qnode for qnode in stripped_qnodes if qnode['id'] == query_graph.edges[0].source_id)
         input_curies = eu.convert_string_or_list_to_list(source_stripped_qnode['curie'])
         combined_response = dict()
+        log.debug(f"Sending query to MolePro")
         for input_curie in input_curies:  # Until we have batch querying, ping them one-by-one for each input curie
             source_stripped_qnode['curie'] = input_curie
             kp_response = requests.post(self.kp_api_url,
@@ -195,7 +198,7 @@ class MoleProQuerier:
         fixed_prefix = self.prefix_overrides_for_arax.get(curie_prefix, curie_prefix)
         return f"{fixed_prefix}:{curie_local_id}"
 
-    def _convert_prefix_to_kp_preference(self, curie: str) -> str:
+    def _convert_prefix_to_kp_version(self, curie: str) -> str:
         curie_prefix = curie.split(':')[0]
         curie_local_id = curie.split(':')[-1]
         fixed_prefix = self.prefix_overrides_for_kp.get(curie_prefix, curie_prefix)
