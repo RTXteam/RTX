@@ -26,7 +26,7 @@ class ARAXExpander:
         self.parameters = {'edge_id': None, 'node_id': None, 'kp': None, 'enforce_directionality': None,
                            'use_synonyms': None, 'continue_if_no_results': None, 'COHD_method': None,
                            'COHD_method_percentile': None, 'include_integrated_score': None}
-        self.valid_kps = {"ARAX/KG1", "ARAX/KG2", "BTE", "COHD", "GeneticsKP", "NGD"}
+        self.valid_kps = {"ARAX/KG1", "ARAX/KG2", "BTE", "COHD", "GeneticsKP", "MolePro", "NGD"}
 
     @staticmethod
     def describe_me():
@@ -47,7 +47,7 @@ class ARAXExpander:
         params_dict['brief_description'] = brief_description
         params_dict['edge_id'] = {"a query graph edge ID or list of such IDs to expand (optional, default is to expand entire query graph)"}  # this is a workaround due to how self.parameters is utilized in this class
         params_dict['node_id'] = {"a query graph node ID to expand (optional, default is to expand entire query graph)"}
-        params_dict['kp'] = {"the knowledge provider to use - current options are `ARAX/KG1`, `ARAX/KG2`, `BTE`, `COHD`, `GeneticsKP`, `NGD` (optional, default is `ARAX/KG1`)"}
+        params_dict['kp'] = {"the knowledge provider to use - current options are `ARAX/KG1`, `ARAX/KG2`, `BTE`, `COHD`, `GeneticsKP`, `MolePro`, `NGD` (optional, default is `ARAX/KG1`)"}
         params_dict['enforce_directionality'] = {"whether to obey (vs. ignore) edge directions in query graph - options are `true` or `false` (optional, default is `false`)"}
         params_dict['use_synonyms'] = {"whether to consider curie synonyms and merge synonymous nodes - options are `true` or `false` (optional, default is `true`)"}
         params_dict['continue_if_no_results'] = {"whether to continue execution if no paths are found matching the query graph - options are `true` or `false` (optional, default is `false`)"}
@@ -181,7 +181,7 @@ class ARAXExpander:
     def _expand_edge(self, qedge: QEdge, kp_to_use: str, dict_kg: DictKnowledgeGraph, continue_if_no_results: bool,
                      query_graph: QueryGraph, use_synonyms: bool, log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
-        log.info(f"Expanding edge {qedge.id} using {kp_to_use}")
+        log.info(f"Expanding qedge {qedge.id} using {kp_to_use}")
         answer_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
 
@@ -211,6 +211,9 @@ class ARAXExpander:
             elif kp_to_use == 'GeneticsKP':
                 from Expand.genetics_querier import GeneticsQuerier
                 kp_querier = GeneticsQuerier(log)
+            elif kp_to_use == 'MolePro':
+                from Expand.molepro_querier import MoleProQuerier
+                kp_querier = MoleProQuerier(log)
             else:
                 from Expand.kg_querier import KGQuerier
                 kp_querier = KGQuerier(log, kp_to_use)
@@ -311,7 +314,7 @@ class ARAXExpander:
         output_qnode = next(qnode for qnode in edge_query_graph.nodes if qnode.id != input_qnode.id)
         input_curie_summary = self._get_qnode_curie_summary(input_qnode)
         output_curie_summary = self._get_qnode_curie_summary(output_qnode)
-        log.debug(f"Modified QG for this edge is ({input_qnode.id}:{input_qnode.type}{input_curie_summary})-"
+        log.debug(f"Modified QG for this qedge is ({input_qnode.id}:{input_qnode.type}{input_curie_summary})-"
                   f"{qedge.type if qedge.type else ''}-({output_qnode.id}:{output_qnode.type}{output_curie_summary})")
         return edge_query_graph
 
