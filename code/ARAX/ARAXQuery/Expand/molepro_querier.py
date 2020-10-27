@@ -27,8 +27,8 @@ class MoleProQuerier:
         self.accepted_node_types = {"chemical_substance", "gene", "disease"}  # TODO: add more.. (these aren't all)
         self.node_type_overrides_for_kp = {"protein": "gene"}
         self.preferred_prefixes = {"chemical_substance": "CHEMBL.COMPOUND", "gene": "HGNC", "disease": "MONDO"}
-        self.prefix_overrides_for_kp = {"CHEMBL.COMPOUND": "ChEMBL"}
-        self.prefix_overrides_for_arax = {"ChEMBL": "CHEMBL.COMPOUND"}
+        self.prefix_overrides_for_kp = {"CHEMBL.COMPOUND": "ChEMBL", "PUBCHEM.COMPOUND": "CID"}
+        self.prefix_overrides_for_arax = {"ChEMBL": "CHEMBL.COMPOUND", "CID": "PUBCHEM.COMPOUND"}
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         """
@@ -158,8 +158,8 @@ class MoleProQuerier:
         source_stripped_qnode = next(qnode for qnode in stripped_qnodes if qnode['id'] == query_graph.edges[0].source_id)
         input_curies = eu.convert_string_or_list_to_list(source_stripped_qnode['curie'])
         combined_response = dict()
-        log.debug(f"Sending query to MolePro")
         for input_curie in input_curies:  # Until we have batch querying, ping them one-by-one for each input curie
+            log.debug(f"Sending {query_graph.edges[0].id} query to MolePro for {input_curie}")
             source_stripped_qnode['curie'] = input_curie
             kp_response = requests.post(self.kp_api_url,
                                         json={'message': {'query_graph': {'nodes': stripped_qnodes, 'edges': stripped_qedges}}},

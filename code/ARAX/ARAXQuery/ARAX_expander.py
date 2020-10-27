@@ -181,7 +181,7 @@ class ARAXExpander:
     def _expand_edge(self, qedge: QEdge, kp_to_use: str, dict_kg: DictKnowledgeGraph, continue_if_no_results: bool,
                      query_graph: QueryGraph, use_synonyms: bool, log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
-        log.info(f"Expanding edge {qedge.id} using {kp_to_use}")
+        log.info(f"Expanding qedge {qedge.id} using {kp_to_use}")
         answer_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
 
@@ -314,7 +314,7 @@ class ARAXExpander:
         output_qnode = next(qnode for qnode in edge_query_graph.nodes if qnode.id != input_qnode.id)
         input_curie_summary = self._get_qnode_curie_summary(input_qnode)
         output_curie_summary = self._get_qnode_curie_summary(output_qnode)
-        log.debug(f"Modified QG for this edge is ({input_qnode.id}:{input_qnode.type}{input_curie_summary})-"
+        log.debug(f"Modified QG for this qedge is ({input_qnode.id}:{input_qnode.type}{input_curie_summary})-"
                   f"{qedge.type if qedge.type else ''}-({output_qnode.id}:{output_qnode.type}{output_curie_summary})")
         return edge_query_graph
 
