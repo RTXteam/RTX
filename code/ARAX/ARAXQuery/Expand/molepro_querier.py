@@ -71,6 +71,7 @@ class MoleProQuerier:
                 returned_edge['target_id'] = self._fix_prefix(returned_edge['target_id'])
                 swagger_edge = self._create_swagger_edge_from_kp_edge(returned_edge)
                 for qedge_id in qg_id_mappings['edges'][swagger_edge.id]:
+                    swagger_edge.id = self._create_unique_edge_id(swagger_edge)  # Convert to an ID that's unique for us
                     final_kg.add_edge(swagger_edge, qedge_id)
                 edge_to_nodes_map[swagger_edge.id] = {source_qnode_id: swagger_edge.source_id,
                                                       target_qnode_id: swagger_edge.target_id}
@@ -203,3 +204,6 @@ class MoleProQuerier:
         curie_local_id = curie.split(':')[-1]
         fixed_prefix = self.prefix_overrides_for_kp.get(curie_prefix, curie_prefix)
         return f"{fixed_prefix}:{curie_local_id}"
+
+    def _create_unique_edge_id(self, swagger_edge: Edge) -> str:
+        return f"{self.kp_name}:{swagger_edge.source_id}-{swagger_edge.type}-{swagger_edge.target_id}"
