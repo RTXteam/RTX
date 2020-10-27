@@ -24,9 +24,12 @@ class MoleProQuerier:
         self.response = response_object
         self.kp_api_url = "https://translator.broadinstitute.org/molepro_reasoner/query"
         self.kp_name = "MolePro"
-        self.accepted_node_types = {"chemical_substance", "gene", "disease"}  # TODO: add more.. (these aren't all)
-        self.node_type_overrides_for_kp = {"protein": "gene"}
-        self.preferred_prefixes = {"chemical_substance": "CHEMBL.COMPOUND", "gene": "HGNC", "disease": "MONDO"}
+        # TODO: Eventually validate queries better based on info in future TRAPI knowledge_map endpoint
+        self.accepted_node_types = {"chemical_substance", "gene", "disease"}
+        self.accepted_edge_types = {"correlated_with"}
+        self.node_type_overrides_for_kp = {"protein": "gene"}  # We'll call our proteins genes for MolePro queries
+        self.kp_preferred_prefixes = {"chemical_substance": "CHEMBL.COMPOUND", "gene": "HGNC", "disease": "MONDO"}
+        # Deal with non-standard prefixes (temporary until MolePro switches to Biolink preferred prefixes)
         self.prefix_overrides_for_kp = {"CHEMBL.COMPOUND": "ChEMBL", "PUBCHEM.COMPOUND": "CID"}
         self.prefix_overrides_for_arax = {"ChEMBL": "CHEMBL.COMPOUND", "CID": "PUBCHEM.COMPOUND"}
 
@@ -115,13 +118,13 @@ class MoleProQuerier:
             # Convert curies to equivalent curies accepted by the KP (depending on qnode type)
             if qnode.curie:
                 equivalent_curies = eu.get_curie_synonyms(qnode.curie, log)
-                desired_curies = [curie for curie in equivalent_curies if curie.startswith(f"{self.preferred_prefixes[qnode.type]}:")]
+                desired_curies = [curie for curie in equivalent_curies if curie.startswith(f"{self.kp_preferred_prefixes[qnode.type]}:")]
                 if desired_curies:
                     formatted_curies = [self._convert_prefix_to_kp_version(curie) for curie in desired_curies]
                     qnode.curie = formatted_curies if len(formatted_curies) > 1 else formatted_curies[0]
                     log.debug(f"Converted qnode {qnode.id} curie to {qnode.curie}")
                 else:
-                    log.warning(f"Could not convert qnode {qnode.id} curie(s) to preferred prefix ({self.preferred_prefixes[qnode.type]})")
+                    log.warning(f"Could not convert qnode {qnode.id} curie(s) to preferred prefix ({self.kp_preferred_prefixes[qnode.type]})")
         return query_graph
 
     def _get_qg_id_mappings_from_results(self, results: [any]) -> Dict[str, Dict[str, Set[str]]]:
@@ -152,10 +155,13 @@ class MoleProQuerier:
             if qnode.curie:
                 stripped_qnode['curie'] = qnode.curie
             stripped_qnodes.append(stripped_qnode)
-        stripped_qedges = [{'id': qedge.id,
-                            'source_id': qedge.source_id,
-                            'target_id': qedge.target_id,
-                            'type': qedge.type if qedge.type else 'correlated_with'} for qedge in query_graph.edges]
+        qedge = query_graph.edges[0]  # Our query graph is single-edge
+        stripped_qedge = {'id': qedge.id,
+                          'source_id': qedge.source_id,
+                          'target_id': qedge.target_id,
+                          'type': qedge.type if qedge.type else 'correlated_with'}
+        if stripped_qedge['type'] not in self.accepted_edge_types:
+            log.warning(f"MolePro only accepts the following edge types: {self.accepted_edge_types}")
         source_stripped_qnode = next(qnode for qnode in stripped_qnodes if qnode['id'] == query_graph.edges[0].source_id)
         input_curies = eu.convert_string_or_list_to_list(source_stripped_qnode['curie'])
         combined_response = dict()
@@ -163,7 +169,7 @@ class MoleProQuerier:
             log.debug(f"Sending {query_graph.edges[0].id} query to MolePro for {input_curie}")
             source_stripped_qnode['curie'] = input_curie
             kp_response = requests.post(self.kp_api_url,
-                                        json={'message': {'query_graph': {'nodes': stripped_qnodes, 'edges': stripped_qedges}}},
+                                        json={'message': {'query_graph': {'nodes': stripped_qnodes, 'edges': [stripped_qedge]}}},
                                         headers={'accept': 'application/json'})
             if kp_response.status_code != 200:
                 log.warning(f"{self.kp_name} KP API returned response of {kp_response.status_code}")
