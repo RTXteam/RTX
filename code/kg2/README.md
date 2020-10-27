@@ -351,6 +351,16 @@ regardless of the existence of output files,
 has changed to `-R Finish`, which only forces the rule that failed and the rules that depend on that rule's output
 to run.
 
+At the end of the build process, you should inspect the logfile
+`~/kg2-build/filter_kg_and_remap_predicates.log` to see if there are warnings
+like ``` relation curie is missing from the YAML config file:
+CURIEPREFIX:some_predicate ``` where `CURIEPREFIX` could be any CURIE prefix in
+`curies-to-urls-map.yaml` and `some_predicate` is a snake-case predicate label
+(or in the case of Relation Ontology, a numeric identifier). Any warnings of the
+above format in `filter_kg_and_remap_predicates.log` probably indicates that an
+addition needs to be made to the file `predicate-remap.yaml`, followed by a
+partial rebuild starting with `filter_kg_and_remap_predicates.py`.
+
 #### Note about versioning of KG2
 
 KG2 has semantic versioning with a graph/major/minor release system:
@@ -535,6 +545,10 @@ Occasionally a build will fail due to a connection error in attempting to
 cURL a file from one of the upstream sources (e.g., SMPDB, and less frequently, 
 UniChem).
 
+Another failure mode is the versioning of ChemBL. Once ChemBL upgrades their dataset, 
+old datasets may become unavailable. This will result in failure when downloading. To 
+fix this, change the version number in `extract-chembl.sh`.
+
 ## The output KG
 
 The `build-kg2.sh` script (run via one of the three methods shown above) creates
@@ -695,6 +709,12 @@ the form `kg2endpoint-kg2-X-Y.rtx.ai`, where `X` is the major version number and
 [version history markdown file](kg2-versions.md) with the new build version and
 the numbers of the GitHub issues that are addressed/implemented in the new KG2
 version.
+	- After a build has successfully completed, add a tag with the kg2 version number 
+	- Follow the format "KG2.X.Y", where X is the major version number and Y is the minor version number 
+	```
+	git tag -a KG2.X.Y -m "<name of build host used>"
+	git push --tags
+	```
 - Wherever possible we try to document the name of the build host (EC2 instance)
 used for the KG2 build in `kg2-versions.md` and we try to preserve the `kg2-build`
 directory and its contents on that host, until a new build has superseded the build.
@@ -809,6 +829,23 @@ the following name/value pairs:
 - `kg2-slim.json`
 - `kg2-version.txt`
 
+# Troubleshooting (UNDER DEVELOPMENT)
+
+## Errors in `multi_ont_to_json_kg.py`
+
+### Errors in `convert_bpv_predicate_to_curie`
+
+- An error like the following:
+
+```
+File "/home/ubuntu/kg2-code/multi_ont_to_json_kg.py", line 1158, in convert_bpv_predicate_to_curie
+     raise ValueError('unable to expand CURIE: ' + bpv_pred)
+ValueError: unable to expand CURIE: MONARCH:cliqueLeader     
+```
+
+would indicate that the CURIE prefix (in this case, `MONARCH`) needs to be added to the
+`use_for_bidirectional_mapping` section of `curies-to-urls-map.yaml` config file.
+
 # For Developers
 
 This section has some guidelines for the development team for the KG2 build system.
@@ -822,6 +859,11 @@ This section has some guidelines for the development team for the KG2 build syst
 - Only python3 is allowed.
 - Please follow PEP8 formatting standards.
 - Please use type hints wherever possible.
+
+### File naming
+
+- For config files and shell scripts, use kabob-case
+- For python modules, use snake_case.
 
 # Credits
 

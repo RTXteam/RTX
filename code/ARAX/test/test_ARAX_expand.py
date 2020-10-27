@@ -366,7 +366,7 @@ def test_query_that_expands_same_edge_twice():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert any(edge for edge in edges_by_qg_id['e00'].values() if edge.is_defined_by == "ARAX/KG1")
-    assert any(edge for edge in edges_by_qg_id['e00'].values() if edge.is_defined_by == "ARAX/KG2C")
+    assert any(edge for edge in edges_by_qg_id['e00'].values() if edge.is_defined_by == "ARAX/KG2c")
 
 
 def test_771_continue_if_no_results_query():
@@ -423,7 +423,7 @@ def test_curie_list_query_without_synonyms():
 def test_query_with_curies_on_both_ends():
     actions_list = [
         "add_qnode(curie=MONDO:0005393, id=n00)",  # Gout
-        "add_qnode(curie=CUI:C0018100, id=n01)",  # Antigout agents
+        "add_qnode(curie=UMLS:C0018100, id=n01)",  # Antigout agents
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "expand(kp=ARAX/KG2)",
         "return(message=true, store=false)"
@@ -459,7 +459,7 @@ def test_847_dont_expand_curie_less_edge():
 @pytest.mark.slow
 def test_deduplication_and_self_edges():
     actions_list = [
-        "add_qnode(curie=CUI:C0004572, id=n00)",  # Babesia
+        "add_qnode(curie=UMLS:C0004572, id=n00)",  # Babesia
         "add_qnode(id=n01)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "expand(edge_id=e00, kp=ARAX/KG2)",
@@ -468,7 +468,7 @@ def test_deduplication_and_self_edges():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     # Check that deduplication worked appropriately
     all_node_ids = {node.id for nodes in nodes_by_qg_id.values() for node in nodes.values()}
-    babesia_curies = {"CUI:C0004572", "CHV:0000001647", "LNC:LP19999-9", "MEDDRA:10003963", "MESH:D001403",
+    babesia_curies = {"UMLS:C0004572", "CHV:0000001647", "LNC:LP19999-9", "MEDDRA:10003963", "MESH:D001403",
                       "NCIT:C122040", "NCI_CDISC:C122040", "SNOMEDCT:35029001"}
     babesia_curies_in_answer = all_node_ids.intersection(babesia_curies)
     assert len(babesia_curies_in_answer) <= 1
@@ -587,6 +587,21 @@ def test_genetics_kp_query():
         "add_qnode(type=gene, id=n01)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "expand(kp=GeneticsKP)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
+@pytest.mark.slow
+def test_multi_kp_two_hop_query():
+    actions_list = [
+        "add_qnode(curie=MONDO:0005737, id=n00, type=disease)",
+        "add_qnode(type=protein, id=n01)",
+        "add_qnode(type=chemical_substance, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "expand(kp=ARAX/KG2, edge_id=[e00,e01], continue_if_no_results=true)",
+        "expand(kp=ARAX/KG1, edge_id=e01, continue_if_no_results=true)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)

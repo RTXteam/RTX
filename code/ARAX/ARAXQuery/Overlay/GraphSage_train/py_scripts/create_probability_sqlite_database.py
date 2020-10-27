@@ -6,9 +6,12 @@ import sys
 import time
 import numpy as np
 import multiprocessing
+from neo4j import GraphDatabase
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
+from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery']))
 from Overlay.predictor.predictor import predictor
 filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'predictor', 'retrain_data'])
@@ -18,29 +21,21 @@ pkl_file = f"{filepath}/LogModel.pkl"
 if os.path.exists(pkl_file):
     pass
 else:
-    os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/LogModel.pkl " + pkl_file)
+    os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/LogModel.pkl " + pkl_file)
 
 ## check if there is rel_max.emb.gz
 emb_file = f"{filepath}/rel_max.emb.gz"
 if os.path.exists(emb_file):
     pass
 else:
-    os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/rel_max.emb.gz " + emb_file)
-
-## check if there is NodeNamesDescriptions_KG2.tsv.
-pre_path = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'data', 'KGmetadata'])
-fpath = pre_path + "/NodeNamesDescriptions_KG2.tsv"
-try:
-    kpdata = pd.read_csv(fpath, sep="\t", header=None, names=['curie', 'name', 'type'])
-except FileNotFoundError:
-    raise FileNotFoundError("Please go to $RTX/data/KGmetadata and run 'python3 dumpdata.py' first")
+    os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/rel_max.emb.gz " + emb_file)
 
 # check if there is map.txt
 map_file = f"{filepath}/map.txt"
 if os.path.exists(map_file):
     pass
 else:
-    os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/map.txt " + map_file)
+    os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/map.txt " + map_file)
 
 graph = pd.read_csv(emb_file, sep=' ', skiprows=1, header=None, index_col=None)
 graph = graph.sort_values(0).reset_index(drop=True)
@@ -48,18 +43,41 @@ map_df = pd.read_csv(map_file, sep='\t',index_col=None)
 graph.loc[:,0] = map_df.loc[:,'curie']
 graph = graph.set_index([0])
 
+## Connect to neo4j database
+rtxc = RTXConfiguration()
+driver = GraphDatabase.driver("bolt://kg2canonicalized2.rtx.ai:7687", auth=(rtxc.neo4j_username, rtxc.neo4j_password))
+session = driver.session()
+
+## Pulls a dataframe of all of the graph drug-associated nodes
+query = f"match (n:chemical_substance) with distinct n.id as id, n.name as name return id, name union match (n:drug) with distinct n.id as id, n.name as name return id, name"
+res = session.run(query)
+drugs = pd.DataFrame(res.data())
+
+## Pulls a dataframe of all of the graph disease and phenotype nodes
+query = "match (n:phenotypic_feature) with distinct n.id as id, n.name as name return id, name union match (n:disease) with distinct n.id as id, n.name as name return id, name union match (n:disease_or_phenotypic_feature) with distinct n.id as id, n.name as name return id, name"
+res = session.run(query)
+diseases = pd.DataFrame(res.data())
+
 known_curies = set(map_df['curie'])
-all_set = set(kpdata.loc[(kpdata['type']=="drug") | (kpdata['type']=="chemical_substance") | (kpdata['type']=="disease") | (kpdata['type']=="phenotypic_feature"), "curie"])
-intersect = all_set.intersection(known_curies)
-graph = graph.loc[intersect, :]
 
 ## get drug/chemical_substance curie ids from KG2
-drug_curie_list = set(kpdata.loc[(kpdata['type']=="drug") | (kpdata['type']=="chemical_substance"), "curie"])
+drug_curie_list = set(drugs['id'])
 drug_curie_list = list(known_curies.intersection(drug_curie_list)) ## filter out the isolated nodes
 
 ## get disease/phenotypic_feature curie ids from KG2
-disease_curie_list = set(kpdata.loc[(kpdata['type']=="disease") | (kpdata['type']=="phenotypic_feature"), "curie"])
+disease_curie_list = set(diseases['id'])
 disease_curie_list = list(known_curies.intersection(disease_curie_list)) ## filter out the isolated nodes
+
+all_set = set(list(drugs['id'])+list(diseases['id']))
+intersect = all_set.intersection(known_curies)
+graph = graph.loc[intersect, :]
+
+#delete some variables to release memory
+del drugs
+del diseases
+del res
+del known_curies
+del intersect
 
 ## build up the prediction model
 pred = predictor(model_file=pkl_file)
@@ -87,7 +105,7 @@ print(f"Total diseases: {len(disease_curie_list)}")
 
 print(f"Insert data into database", flush=True)
 
-batch =list(range(0,len(disease_curie_list), 220))
+batch =list(range(0,len(disease_curie_list), 180))
 batch.append(len(disease_curie_list))
 print(f'Total batches: {len(batch)-1}', flush=True)
 

@@ -207,7 +207,7 @@ BSPO:0015202:
   - located_in
   - biolink:located_in
 BTO:develops_from:
-  invert:
+  rename:
   - related_to
   - biolink:related_to
 BTO:related_to:
@@ -216,32 +216,32 @@ BTO:related_to:
   - biolink:related_to
 CHEBI:has_functional_parent:
   rename:
-  - derives_from
-  - biolink:derives_from
+  - chemically_similar_to
+  - biolink:chemically_similar_to
 CHEBI:has_parent_hydride:
   rename:
-  - subclass_of
-  - biolink:subclass_of
+  - chemically_similar_to
+  - biolink:chemically_similar_to
 CHEBI:is_conjugate_acid_of:
   rename:
-  - related_to
-  - biolink:related_to
+  - chemically_similar_to
+  - biolink:chemically_similar_to
 CHEBI:is_conjugate_base_of:
   rename:
-  - related_to
-  - biolink:related_to
+  - chemically_similar_to
+  - biolink:chemically_similar_to
 CHEBI:is_enantiomer_of:
   rename:
-  - close_match
-  - skos:closeMatch
+  - chemically_similar_to
+  - biolink:chemically_similar_to
 CHEBI:is_substituent_group_from:
   rename:
   - part_of
   - biolink:part_of
 CHEBI:is_tautomer_of:
   rename:
-  - close_match
-  - skos:closeMatch
+  - chemically_similar_to
+  - biolink:chemically_similar_to
 CHEMBL.MECHANISM:activator:
   rename:
   - positively_regulates
@@ -427,7 +427,7 @@ CPT:panel_element_of_possibly_included:
   - part_of
   - biolink:part_of
 DDANAT:develops_from:
-  invert:
+  rename:
   - related_to
   - biolink:related_to
 DGIdb:activator:
@@ -679,7 +679,7 @@ FMA:developmental_stage_of:
   - coexists_with
   - biolink:coexists_with
 FMA:develops_from:
-  invert:
+  rename:
   - related_to
   - biolink:related_to
 FMA:develops_into:
@@ -1561,7 +1561,7 @@ MESH:AQ:
 MESH:QB:
   delete: null
 MESH:RO:
-  invert:
+  rename:
   - related_to
   - biolink:related_to
 MESH:SIB:
@@ -1618,6 +1618,10 @@ MONDO:equivalentTo:
   rename:
   - same_as
   - biolink:same_as
+MONDO:has_onset:
+  rename:
+  - related_to
+  - biolink:related_to
 MONDO:part_of_progression_of_disease:
   rename:
   - part_of
@@ -2370,6 +2374,18 @@ OBO:envo#has_increased_levels_of:
   rename:
   - related_to
   - biolink:related_to
+OBO:exo.obo#interacts_with:
+  rename:
+  - interacts_with
+  - biolink:interacts_with
+OBO:exo.obo#interacts_with_an_exposure_stressor_via:
+  rename:
+  - interacts_with
+  - biolink:interacts_with
+OBO:exo.obo#interacts_with_an_exposure_receptor_via:
+  rename:
+  - interacts_with
+  - biolink:interacts_with
 OBO:hancestro_0308:
   rename:
   - has_attribute
@@ -2833,9 +2849,9 @@ RO:0002200:
   - has_phenotype
   - biolink:has_phenotype
 RO:0002202:
-  invert:
-  - related_to
-  - biolink:related_to
+  rename:
+  - develops_from
+  - biolink:develops_from
 RO:0002203:
   rename:
   - related_to
@@ -2956,6 +2972,10 @@ RO:0002303:
   rename:
   - located_in
   - biolink:located_in
+RO:0002309:
+  rename:
+  - related_to
+  - biolink:related_to
 RO:0002313:
   rename:
   - affects_transport_of
@@ -3116,6 +3136,10 @@ RO:0002489:
   rename:
   - related_to
   - biolink:related_to
+RO:0002491:
+  rename:
+  - coexists_with
+  - biolink:coexists_with
 RO:0002492:
   rename:
   - related_to
@@ -4240,10 +4264,54 @@ SNOMED:uses_substance:
   rename:
   - has_input
   - biolink:has_input
+SO:adjacent_to:
+  rename:
+  - coexists_with
+  - biolink:coexists_with
+SO:contains:
+  invert:
+  - part_of
+  - biolink:part_of
+SO:derives_from:
+  rename:
+  - coexists_with
+  - biolink:coexists_with
+SO:guided_by:
+  rename:
+  - related_to
+  - biolink:related_to
 SO:has_origin:
   rename:
   - coexists_with
   - biolink:coexists_with
+SO:has_part:
+  invert:
+  - part_of
+  - biolink:part_of
+SO:has_quality:
+  rename:
+  - related_to
+  - biolink:related_to
+SO:non_functional_homolog_of:
+  rename:
+  - homologous_to
+  - biolink:homologous_to
+SO:member_of:
+  rename:
+  - part_of
+  - biolink:part_of
+SO:overlaps:
+  rename:
+  - overlaps
+  - biolink:overlaps
+SO:transcribed_from:
+  invert:
+  - has_gene_product
+  - biolink:has_gene_product
+SO:transcribed_to:
+  rename:
+  - has_gene_product
+  - biolink:has_gene_product
 UBERON:anastomoses_with:
   rename:
   - coexists_with
@@ -4337,7 +4405,7 @@ UMLS:RB:
   - subclass_of
   - biolink:subclass_of
 UMLS:RO:
-  invert:
+  rename:
   - related_to
   - biolink:related_to
 UMLS:RQ:

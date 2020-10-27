@@ -400,7 +400,7 @@ class RTXQuery:
                     query["options"] = "foo"
                     url = None
                     if reasoner_id == "RTX":
-                        url = "https://arax.rtx.ai/devED/api/rtx/v1/query"
+                        url = "https://arax.ncats.io/devED/api/rtx/v1/query"
                     elif reasoner_id == "Robokop":
                         url = "http://robokop.renci.org:6011/api/query"
                     elif reasoner_id == "Indigo":
@@ -431,7 +431,7 @@ class RTXQuery:
     def fix_message(self,query,message,reasoner_id):
 
         if reasoner_id == "RTX":
-            base_url = "https://arax.rtx.ai/devED/api/rtx/v1"
+            base_url = "https://arax.ncats.io/devED/api/rtx/v1"
         elif reasoner_id == "Robokop":
             base_url = "http://robokop.renci.org:6011/api"
         elif reasoner_id == "Indigo":

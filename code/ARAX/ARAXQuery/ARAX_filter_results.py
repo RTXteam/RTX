@@ -27,6 +27,13 @@ class ARAXFilterResults:
         }
         self.report_stats = True  # Set this to False when ready to go to production, this is only for debugging purposes
 
+    def check_results(self, message):
+        if not hasattr(message, 'results') or len(message.results) == 0:
+            self.response.warning(
+                        f"filter_results called with no results.")
+            return True
+        return False
+
     def report_response_stats(self, response):
         """
         Little helper function that will report the KG, QG, and results stats to the debug in the process of executing actions. Basically to help diagnose problems
@@ -148,14 +155,16 @@ class ARAXFilterResults:
                                     'edge_attribute': known_attributes,
                                     'edge_relation': set([x.relation for x in self.message.knowledge_graph.edges]),
                                     'direction': {'descending', 'd', 'ascending', 'a'},
-                                    'max_results': {float()}
+                                    'max_results': {float()},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
                                     }
         else:
             allowable_parameters = {'action': {'sort_by_edge_attribute'},
                                     'edge_attribute': {'an edge attribute'},
                                     'edge_relation': {'an edge relation'},
                                     'direction': {'descending', 'd', 'ascending', 'a'},
-                                    'max_results': {'the maximum number of results to return'}
+                                    'max_results': {'the maximum number of results to return'},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
                                     }
 
         # A little function to describe what this thing does
@@ -176,6 +185,9 @@ Also, you have the option of limiting the number of results returned (e.g. via `
             return allowable_parameters
 
         edge_params = self.parameters
+
+        if self.check_results(message):
+            return self.response
 
         # try to convert the max results to an int
         if 'max_results' in edge_params:
@@ -214,6 +226,17 @@ Also, you have the option of limiting the number of results returned (e.g. via `
             self.response.error(
                 f"Edge attribute must be provided, allowable attributes are: {list(allowable_parameters['edge_attribute'])}",
                 error_code="UnknownValue")
+        if 'prune_kg' not in edge_params:
+            edge_params['prune_kg'] = True
+        elif edge_params['prune_kg'] in {'true', 'True', 't', 'T'}:
+            edge_params['prune_kg'] = True
+        elif edge_params['prune_kg'] in {'false', 'False', 'f', 'F'}:
+            edge_params['prune_kg'] = False
+        else:
+            value = edge_params['prune_kg']
+            self.response.error(
+                    f"Supplied value {value} is not permitted. In parameter prune_kg, allowable values are: {list(allowable_parameters['prune_kg'])}",
+                    error_code="UnknownValue")
         if self.response.status != 'OK':
             return self.response
 
@@ -243,14 +266,16 @@ Also, you have the option of limiting the number of results returned (e.g. via `
                                     'node_attribute': known_attributes,
                                     'node_type': set([t for x in self.message.knowledge_graph.nodes for t in x.type]),
                                     'direction': {'descending', 'd', 'ascending', 'a'},
-                                    'max_results': {float()}
+                                    'max_results': {float()},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
                                     }
         else:
             allowable_parameters = {'action': {'sort_by_node_attribute'},
                                     'node_attribute': {'an node attribute'},
                                     'node_type': {'an node type'},
                                     'direction': {'descending', 'd', 'ascending', 'a'},
-                                    'max_results': {'the maximum number of results to return'}
+                                    'max_results': {'the maximum number of results to return'},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
                                     }
 
         # A little function to describe what this thing does
@@ -271,6 +296,9 @@ Also, you have the option of limiting the number of results returned (e.g. via `
             return allowable_parameters
 
         node_params = self.parameters
+
+        if self.check_results(message):
+            return self.response
 
         # try to convert the max results to an int
         if 'max_results' in node_params:
@@ -309,6 +337,17 @@ Also, you have the option of limiting the number of results returned (e.g. via `
             self.response.error(
                 f"node attribute must be provided, allowable attributes are: {list(allowable_parameters['node_attribute'])}",
                 error_code="UnknownValue")
+        if 'prune_kg' not in node_params:
+            node_params['prune_kg'] = True
+        elif node_params['prune_kg'] in {'true', 'True', 't', 'T'}:
+            node_params['prune_kg'] = True
+        elif node_params['prune_kg'] in {'false', 'False', 'f', 'F'}:
+            node_params['prune_kg'] = False
+        else:
+            value = node_params['prune_kg']
+            self.response.error(
+                    f"Supplied value {value} is not permitted. In parameter prune_kg, allowable values are: {list(allowable_parameters['prune_kg'])}",
+                    error_code="UnknownValue")
         if self.response.status != 'OK':
             return self.response
 
@@ -329,11 +368,13 @@ Also, you have the option of limiting the number of results returned (e.g. via `
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'results'):
             allowable_parameters = {'action': {'limit_number_of_results'},
-                                    'max_results': {float()}
+                                    'max_results': {float()},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
                                     }
         else:
             allowable_parameters = {'action': {'limit_number_of_results'},
-                                    'max_results': {'a non-negative integer'}
+                                    'max_results': {'a non-negative integer'},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
                                     }
 
         # A little function to describe what this thing does
@@ -351,6 +392,9 @@ Use cases include:
             return allowable_parameters
 
         params = self.parameters
+
+        if self.check_results(message):
+            return self.response
 
 
         # Make sure only allowable parameters and values have been passed
@@ -376,7 +420,17 @@ Use cases include:
                 f"Max results must be provided, allowable attributes are: {list(allowable_parameters['max_results'])}",
                 error_code="UnknownValue")
 
-        
+        if 'prune_kg' not in params:
+            params['prune_kg'] = True
+        elif params['prune_kg'] in {'true', 'True', 't', 'T'}:
+            params['prune_kg'] = True
+        elif params['prune_kg'] in {'false', 'False', 'f', 'F'}:
+            params['prune_kg'] = False
+        else:
+            value = params['prune_kg']
+            self.response.error(
+                    f"Supplied value {value} is not permitted. In parameter prune_kg, allowable values are: {list(allowable_parameters['prune_kg'])}",
+                    error_code="UnknownValue")
         if self.response.status != 'OK':
             return self.response
 
@@ -399,12 +453,14 @@ Use cases include:
         if message and parameters and hasattr(message, 'results') and hasattr(message, 'knowledge_graph') and hasattr(message.knowledge_graph, 'edges'):
             allowable_parameters = {'action': {'sort_by_edge_count'},
                                     'direction': {'descending', 'd', 'ascending', 'a'},
-                                    'max_results': {float()}
+                                    'max_results': {float()},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
                                     }
         else:
             allowable_parameters = {'action': {'sort_by_edge_count'},
                                     'direction': {'descending', 'd', 'ascending', 'a'},
-                                    'max_results': {'the maximum number of results to return'}
+                                    'max_results': {'the maximum number of results to return'},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
                                     }
 
         # A little function to describe what this thing does
@@ -424,6 +480,9 @@ Also, you have the option of limiting the number of results returned (e.g. via `
             return allowable_parameters
 
         edge_params = self.parameters
+
+        if self.check_results(message):
+            return self.response
 
         # try to convert the max results to an int
         if 'max_results' in edge_params:
@@ -458,6 +517,17 @@ Also, you have the option of limiting the number of results returned (e.g. via `
                 self.response.error(
                     f"Supplied value {value} is not permitted. In parameter direction, allowable values are: {list(allowable_parameters['direction'])}",
                     error_code="UnknownValue")
+        if 'prune_kg' not in edge_params:
+            edge_params['prune_kg'] = True
+        elif edge_params['prune_kg'] in {'true', 'True', 't', 'T'}:
+            edge_params['prune_kg'] = True
+        elif edge_params['prune_kg'] in {'false', 'False', 'f', 'F'}:
+            edge_params['prune_kg'] = False
+        else:
+            value = edge_params['prune_kg']
+            self.response.error(
+                    f"Supplied value {value} is not permitted. In parameter prune_kg, allowable values are: {list(allowable_parameters['prune_kg'])}",
+                    error_code="UnknownValue")
         if self.response.status != 'OK':
             return self.response
 
@@ -478,12 +548,14 @@ Also, you have the option of limiting the number of results returned (e.g. via `
         if message and parameters and hasattr(message, 'results') and hasattr(message, 'knowledge_graph') and hasattr(message.knowledge_graph, 'nodes'):
             allowable_parameters = {'action': {'sort_by_node_count'},
                                     'direction': {'descending', 'd', 'ascending', 'a'},
-                                    'max_results': {float()}
+                                    'max_results': {float()},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
                                     }
         else:
             allowable_parameters = {'action': {'sort_by_node_count'},
                                     'direction': {'descending', 'd', 'ascending', 'a'},
-                                    'max_results': {'the maximum number of results to return'}
+                                    'max_results': {'the maximum number of results to return'},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
                                     }
 
         # A little function to describe what this thing does
@@ -503,6 +575,9 @@ Also, you have the option of limiting the number of results returned (e.g. via `
             return allowable_parameters
 
         node_params = self.parameters
+
+        if self.check_results(message):
+            return self.response
 
         # try to convert the max results to an int
         if 'max_results' in node_params:
@@ -536,6 +611,17 @@ Also, you have the option of limiting the number of results returned (e.g. via `
             else:
                 self.response.error(
                     f"Supplied value {value} is not permitted. In parameter direction, allowable values are: {list(allowable_parameters['direction'])}",
+                    error_code="UnknownValue")
+        if 'prune_kg' not in node_params:
+            node_params['prune_kg'] = True
+        elif node_params['prune_kg'] in {'true', 'True', 't', 'T'}:
+            node_params['prune_kg'] = True
+        elif node_params['prune_kg'] in {'false', 'False', 'f', 'F'}:
+            node_params['prune_kg'] = False
+        else:
+            value = node_params['prune_kg']
+            self.response.error(
+                    f"Supplied value {value} is not permitted. In parameter prune_kg, allowable values are: {list(allowable_parameters['prune_kg'])}",
                     error_code="UnknownValue")
         if self.response.status != 'OK':
             return self.response
@@ -598,7 +684,7 @@ def main():
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger
     message = ARAXMessenger().from_dict(message_dict)
-    # print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    # print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
 
     #### Create an overlay object and use it to apply action[0] from the list
     #filterkg = ARAXFilterKG()
@@ -640,7 +726,7 @@ def main():
     # look at the edges
     # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)),sort_keys=True,indent=2))
     # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
-    # print(json.dumps(ast.literal_eval(repr(message)), sort_keys=True, indent=2))
+    # print(json.dumps(message.to_dict(), sort_keys=True, indent=2))
     # print(response.show(level=Response.DEBUG))
 
     # just print off the values

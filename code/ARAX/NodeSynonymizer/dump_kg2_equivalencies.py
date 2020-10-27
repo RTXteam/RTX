@@ -2,8 +2,8 @@
 """
 This script creates a TSV of node pairs linked by an 'equivalent_to'/'same_as' relationship in KG2. The TSV file is
 created in the same directory the script is run from. Example of rows in the output file:
-CUI:C0027358	CUI:C0014563
-CUI:C0878440	CUI:C0014563
+UMLS:C0027358	UMLS:C0014563
+UMLS:C0878440	UMLS:C0014563
 Usage: python dump_kg2_equivalencies.py
 """
 import csv

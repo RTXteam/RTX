@@ -277,16 +277,37 @@ class RTXFeedback:
                 termsString = stringifyDict(query["message"]["query_graph"])
 
         storedMessage = Message(message_datetime=datetime.now(),restated_question=message.restated_question,query_type=query_type_id,
-            terms=termsString,tool_version=rtxConfig.version,result_code=message.message_code,message=message.code_description,n_results=n_results,message_object=pickle.dumps(ast.literal_eval(repr(message))))
+            terms=termsString,tool_version=rtxConfig.version,result_code=message.message_code,message=message.code_description,n_results=n_results,message_object=b'')
         session.add(storedMessage)
         session.flush()
-        message.id = "https://arax.rtx.ai/api/rtx/v1/message/"+str(storedMessage.message_id)
+        session.commit()
+        message.id = "https://arax.ncats.io/api/rtx/v1/message/"+str(storedMessage.message_id)
 
+        #### Instead of storing the message in the MySQL database as a message_object (the old way)
+        #### Instead now store it as a JSON file on the filesystem
+        message_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/responses'
+        if not os.path.exists(message_dir):
+            try:
+                os.mkdir(message_dir)
+            except:
+                eprint(f"ERROR: Unable to create dir {message_dir}")
+
+        if os.path.exists(message_dir):
+            message_filename = f"{storedMessage.message_id}.json"
+            message_path = f"{message_dir}/{message_filename}"
+            try:
+                with open(message_path, 'w') as outfile:
+                    json.dump(message.to_dict(), outfile, sort_keys=True)
+            except:
+                eprint(f"ERROR: Unable to write message to file {message_path}")
+
+        #### This has been mostly castrated but it still puts ids in there, and may be resurrected someday
         self.addNewResults(storedMessage.message_id,message)
 
         #### After updating all the ids, store an updated object
-        storedMessage.message_object=pickle.dumps(ast.literal_eval(repr(message)))
-        session.commit()
+        #### No longer needed because we're writing to a file after the INSERT
+        #storedMessage.message_object=pickle.dumps(ast.literal_eval(repr(message)))
+        #session.commit()
 
         return storedMessage.message_id
 
@@ -312,7 +333,7 @@ class RTXFeedback:
                 eprint(f"WARNING: Confidence value '{result.confidence}' cannot be converted to float")
                 result.confidence = -999.0
 
-            result.id = f"https://arax.rtx.ai/api/rtx/v1/result/{id_counter}"
+            result.id = f"https://arax.ncats.io/api/rtx/v1/result/{id_counter}"
             id_counter += 1
 
 
@@ -361,12 +382,23 @@ class RTXFeedback:
         session = self.session
 
         if message_id is None:
-            return( { "status": 450, "title": "message_id missing", "detail": "Required attribute message_id is missing from URL", "type": "about:blank" }, 450)
+            return( { "status": 400, "title": "message_id missing", "detail": "Required attribute message_id is missing from URL", "type": "about:blank" }, 400)
 
         #### Find the message
         storedMessage = session.query(Message).filter(Message.message_id==message_id).first()
         if storedMessage is not None:
-            return pickle.loads(storedMessage.message_object)
+            if len(storedMessage.message_object) < 5:
+                message_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/responses'
+                message_filename = f"{storedMessage.message_id}.json"
+                message_path = f"{message_dir}/{message_filename}"
+                try:
+                    with open(message_path) as infile:
+                        return json.load(infile)
+                except:
+                    eprint(f"ERROR: Unable to read message from file '{message_path}'")
+
+            else:
+                return pickle.loads(storedMessage.message_object)
         else:
             return( { "status": 404, "title": "Message not found", "detail": "There is no message corresponding to message_id="+str(message_id), "type": "about:blank" }, 404)
 
@@ -388,7 +420,7 @@ class RTXFeedback:
             if debug: eprint("DEBUG: Got previous_message_uris")
             for uri in envelope.previous_message_uris:
                 if debug: eprint("DEBUG:   messageURI="+uri)
-                matchResult = re.match( r'http[s]://arax.rtx.ai/.*api/rtx/.+/message/(\d+)',uri,re.M|re.I )
+                matchResult = re.match( r'http[s]://arax.ncats.io/.*api/rtx/.+/message/(\d+)',uri,re.M|re.I )
                 if matchResult:
                     message_id = matchResult.group(1)
                     if debug: eprint("DEBUG: Found local ARAX identifier corresponding to message_id "+message_id)
@@ -514,9 +546,9 @@ class RTXFeedback:
 
         #### If requesting a full redirect to the resulting message display. This doesn't really work I don't think
         #if "RedirectToMessage" in optionsDict:
-        #  #redirect("https://arax.rtx.ai/api/rtx/v1/message/"+str(finalMessage_id), code=302)
-        #  #return( { "status": 302, "redirect": "https://arax.rtx.ai/api/rtx/v1/message/"+str(finalMessage_id) }, 302)
-        #  return( "Location: https://arax.rtx.ai/api/rtx/v1/message/"+str(finalMessage_id), 302)
+        #  #redirect("https://arax.ncats.io/api/rtx/v1/message/"+str(finalMessage_id), code=302)
+        #  #return( { "status": 302, "redirect": "https://arax.ncats.io/api/rtx/v1/message/"+str(finalMessage_id) }, 302)
+        #  return( "Location: https://arax.ncats.io/api/rtx/v1/message/"+str(finalMessage_id), 302)
 
         #### If asking for the full message back
         if return_action['parameters']['message'] == 'true':
@@ -524,15 +556,15 @@ class RTXFeedback:
 
         #### Else just the id is returned
         else:
-            #return( { "status": 200, "message_id": str(finalMessage_id), "n_results": finalMessage['n_results'], "url": "https://arax.rtx.ai/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
-            return( { "status": 200, "message_id": str(finalMessage_id), "n_results": finalMessage.n_results, "url": "https://arax.rtx.ai/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
+            #return( { "status": 200, "message_id": str(finalMessage_id), "n_results": finalMessage['n_results'], "url": "https://arax.ncats.io/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
+            return( { "status": 200, "message_id": str(finalMessage_id), "n_results": finalMessage.n_results, "url": "https://arax.ncats.io/api/rtx/v1/message/"+str(finalMessage_id) }, 200)
 
 
     ##########################################################################################################################
     def fix_message(self,query,message,reasoner_id):
 
         if reasoner_id == "ARAX":
-            base_url = "https://arax.rtx.ai/api/rtx/v1"
+            base_url = "https://arax.ncats.io/api/rtx/v1"
         elif reasoner_id == "Robokop":
             base_url = "http://robokop.renci.org:6011/api"
         elif reasoner_id == "Indigo":
@@ -740,7 +772,7 @@ def main():
     envelope.options = [ "AnnotateDrugs", "Store", "ReturnMessageId" ]
     #envelope.options = [ "ReturnMessage" ]
     #envelope.options = [ "AnnotateDrugs", "ReturnMessage" ]
-    envelope.message_ur_is = [ "https://arax.rtx.ai/api/rtx/v1/message/300" ]
+    envelope.message_ur_is = [ "https://arax.ncats.io/api/rtx/v1/message/300" ]
 
     #result = rtxFeedback.processExternalPreviousMessageProcessingPlan(envelope)
     #print(result)

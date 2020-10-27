@@ -6,10 +6,12 @@ import ast
 from typing import List, Dict, Tuple
 
 from neo4j import GraphDatabase
-import Expand.expand_utilities as eu
-from Expand.expand_utilities import DictKnowledgeGraph
-from response import Response
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import expand_utilities as eu
+from expand_utilities import DictKnowledgeGraph
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
+from response import Response
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -31,7 +33,7 @@ class KGQuerier:
         self.use_synonyms = self.response.data['parameters'].get('use_synonyms')
         if input_kp == "ARAX/KG2":
             if self.use_synonyms:
-                self.kg_name = "KG2C"
+                self.kg_name = "KG2c"
             else:
                 self.kg_name = "KG2"
         else:
@@ -72,7 +74,7 @@ class KGQuerier:
             for qnode in qnodes_with_curies:
                 qnode.curie = eu.get_curie_synonyms(qnode.curie, log)
                 qnode.type = None  # Important to clear this, otherwise results are limited (#889)
-        elif kg_name == "KG2C":
+        elif kg_name == "KG2c":
             qnodes_with_curies = [qnode for qnode in query_graph.nodes if qnode.curie]
             for qnode in qnodes_with_curies:
                 qnode.curie = eu.get_canonical_curies_list(qnode.curie, log)
@@ -102,7 +104,7 @@ class KGQuerier:
             if use_synonyms and kg_name == "KG1":
                 qnode.curie = eu.get_curie_synonyms(qnode.curie, log)
                 qnode.type = None  # Important to clear this, otherwise results are limited (#889)
-            elif kg_name == "KG2C":
+            elif kg_name == "KG2c":
                 qnode.curie = eu.get_canonical_curies_list(qnode.curie, log)
 
         # Build and run a cypher query to get this node/nodes
@@ -143,7 +145,7 @@ class KGQuerier:
                 if qnode.curie and isinstance(qnode.curie, list) and len(qnode.curie) > 1:
                     where_fragments.append(f"{qnode.id}.id in {qnode.curie}")
                 if qnode.type:
-                    if kg_name == "KG2C":
+                    if kg_name == "KG2c":
                         qnode_types = eu.convert_string_or_list_to_list(qnode.type)
                         type_fragments = [f"'{qnode_type}' in {qnode.id}.types" for qnode_type in qnode_types]
                         joined_type_fragments = " OR ".join(type_fragments)
@@ -233,7 +235,7 @@ class KGQuerier:
     def _convert_neo4j_node_to_swagger_node(self, neo4j_node: Dict[str, any], kp: str) -> Node:
         if kp == "KG2":
             return self._convert_kg2_node_to_swagger_node(neo4j_node)
-        elif kp == "KG2C":
+        elif kp == "KG2c":
             return self._convert_kg2c_node_to_swagger_node(neo4j_node)
         else:
             return self._convert_kg1_node_to_swagger_node(neo4j_node)
@@ -263,7 +265,7 @@ class KGQuerier:
         swagger_node.id = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
         swagger_node.type = neo4j_node.get('types')
-        # Add all additional properties on KG2C nodes as swagger NodeAttribute objects
+        # Add all additional properties on KG2c nodes as swagger NodeAttribute objects
         swagger_node.node_attributes = []
         additional_kg2c_node_properties = ['equivalent_curies', 'publications']
         node_attributes = self._create_swagger_attributes("node", additional_kg2c_node_properties, neo4j_node)
@@ -287,7 +289,7 @@ class KGQuerier:
                                             kg_name: str) -> Edge:
         if kg_name == "KG2":
             return self._convert_kg2_edge_to_swagger_edge(neo4j_edge)
-        elif kg_name == "KG2C":
+        elif kg_name == "KG2c":
             return self._convert_kg2c_edge_to_swagger_edge(neo4j_edge)
         else:
             return self._convert_kg1_edge_to_swagger_edge(neo4j_edge, node_uuid_to_curie_dict)
@@ -299,8 +301,8 @@ class KGQuerier:
         swagger_edge.source_id = neo4j_edge.get("subject")
         swagger_edge.target_id = neo4j_edge.get("object")
         swagger_edge.relation = neo4j_edge.get("relation")
-        swagger_edge.publications = ast.literal_eval(neo4j_edge.get("publications"))
-        swagger_edge.provided_by = self._convert_strange_provided_by_field_to_list(neo4j_edge.get("provided_by"))  # Temporary hack until provided_by is fixed in KG2
+        swagger_edge.publications = neo4j_edge.get("publications")
+        swagger_edge.provided_by = neo4j_edge.get("provided_by")
         swagger_edge.negated = ast.literal_eval(neo4j_edge.get("negated"))
         swagger_edge.is_defined_by = "ARAX/KG2"
         # Add additional properties on KG2 edges as swagger EdgeAttribute objects
@@ -316,9 +318,9 @@ class KGQuerier:
         swagger_edge.type = neo4j_edge.get("simplified_edge_label")
         swagger_edge.source_id = neo4j_edge.get("subject")
         swagger_edge.target_id = neo4j_edge.get("object")
-        swagger_edge.id = f"KG2C:{neo4j_edge.get('id')}"
+        swagger_edge.id = f"KG2c:{neo4j_edge.get('id')}"
         swagger_edge.provided_by = neo4j_edge.get("provided_by")
-        swagger_edge.is_defined_by = "ARAX/KG2C"
+        swagger_edge.is_defined_by = "ARAX/KG2c"
         swagger_edge.publications = neo4j_edge.get("publications")
         return swagger_edge
 
@@ -363,7 +365,7 @@ class KGQuerier:
     def _run_cypher_query(cypher_query: str, kg_name: str, log: Response) -> List[Dict[str, any]]:
         rtxc = RTXConfiguration()
         if "KG2" in kg_name:  # Flip into KG2 mode if that's our KP (rtx config is set to KG1 info by default)
-            rtxc.live = kg_name
+            rtxc.live = kg_name.upper()  # TODO: Eventually change config file to "KG2c" vs. "KG2C" (then won't need to convert case here)
         try:
             driver = GraphDatabase.driver(rtxc.neo4j_bolt, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
             with driver.session() as session:
@@ -396,7 +398,7 @@ class KGQuerier:
 
     @staticmethod
     def _get_cypher_for_query_node(qnode: QNode, kg_name: str) -> str:
-        type_cypher = f":{qnode.type}" if qnode.type and isinstance(qnode.type, str) and kg_name != "KG2C" else ""
+        type_cypher = f":{qnode.type}" if qnode.type and isinstance(qnode.type, str) and kg_name != "KG2c" else ""
         if qnode.curie and (isinstance(qnode.curie, str) or len(qnode.curie) == 1):
             curie = qnode.curie if isinstance(qnode.curie, str) else qnode.curie[0]
             curie_cypher = f" {{id:'{curie}'}}"
@@ -412,14 +414,3 @@ class KGQuerier:
         if enforce_directionality:
             full_qedge_cypher += ">"
         return full_qedge_cypher
-
-    @staticmethod
-    def _convert_strange_provided_by_field_to_list(provided_by_field: List[str]) -> List[str]:
-        # Currently looks like: ["['https://identifiers.org/umls/NDFRT'", "'https://skr3.nlm.nih.gov/SemMedDB']"]
-        provided_by_list = []
-        unwanted_chars = ["[", "]", "'"]
-        for item in provided_by_field:
-            for unwanted_char in unwanted_chars:
-                item = item.replace(unwanted_char, "")
-            provided_by_list.append(item)
-        return provided_by_list

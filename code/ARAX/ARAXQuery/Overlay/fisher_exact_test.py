@@ -19,8 +19,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/py
 from swagger_server.models.edge_attribute import EdgeAttribute
 from swagger_server.models.edge import Edge
 from swagger_server.models.q_edge import QEdge
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
-from KGNodeIndex import KGNodeIndex
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
+from node_synonymizer import NodeSynonymizer
 import collections
 
 
@@ -338,64 +338,46 @@ class ComputeFTEST:
         if len(target_node_dict) != 0:
             ## Based on KP detected in message KG, find the total number of node with the same type of source node
             if kp=='ARAX/KG1':
-                size_of_total = self.size_of_given_type_in_KP(node_type=source_node_type,use_cypher_command=True, kg='KG1') ## Try cypher query first
-                if size_of_total is not None:
-                    if size_of_total != 0:
-                        self.response.debug(f"ARAX/KG1 and cypher query were used to calculate total number of node with the same type of source node in Fisher's Exact Test")
-                        self.response.debug(f"Total {size_of_total} nodes with node type {source_node_type} was found in ARAX/KG1")
-                        pass
-                    else:
-                        size_of_total = self.size_of_given_type_in_KP(node_type=source_node_type, use_cypher_command=False, kg='KG1') ## If cypher query fails, then try kgNodeIndex
-                        if size_of_total==0:
-                            self.response.error(f"KG1 has 0 node with the same type of source node with qnode id {source_qnode_id}")
-                            return self.response
-                        else:
-                            self.response.debug(f"ARAX/KG1 and kgNodeIndex were used to calculate total number of node with the same type of source node in Fisher's Exact Test")
-                            self.response.debug(f"Total {size_of_total} nodes with node type {source_node_type} was found in ARAX/KG1")
-                            pass
+                size_of_total = self.size_of_given_type_in_KP(node_type=source_node_type, use_cypher_command=False, kg='KG1')
+                if size_of_total != 0:
+                    self.response.debug(f"ARAX/KG1 and cypher query were used to calculate total number of node with the same type of source node in Fisher's Exact Test")
+                    self.response.debug(f"Total {size_of_total} unique concepts with node type {source_node_type} was found in ARAX/KG1")
                 else:
-                    return self.response ## Something wrong happened for querying total number of node with the same type of source node
+                    size_of_total = self.size_of_given_type_in_KP(node_type=source_node_type, use_cypher_command=False, kg='KG2') ## If cypher query fails, then try kgNodeIndex
+                    if size_of_total==0:
+                        self.response.error(f"Both KG1 and KG2 have 0 node with the same type of source node with qnode id {source_qnode_id}")
+                        return self.response
+                    else:
+                        self.response.debug(f"Since KG1 can't find the any nodes with node type {source_node_type}, ARAX/KG2C were used to calculate total number of node with the same type of source node in Fisher's Exact Test")
+                        self.response.debug(f"Total {size_of_total} unique concepts with node type {source_node_type} was found in ARAX/KG2C")
 
-            elif kp=='ARAX/KG2' or kp == 'ARAX/KG2C':
+            elif kp=='ARAX/KG2' or kp == 'ARAX/KG2c':
                 ## check KG1 first as KG2 might have many duplicates. If KG1 is 0, then check KG2
-                size_of_total = self.size_of_given_type_in_KP(node_type=source_node_type, use_cypher_command=True, kg='KG1') ## Try cypher query first
-                if size_of_total is not None:
-                    if size_of_total!=0:
-                        self.response.warning(f"Although ARAX/KG2 was found to have the maximum number of edges connected to both {source_qnode_id} and {target_qnode_id}, ARAX/KG1 and cypher query were used to find the total number of nodes with the same type of source node with qnode id {source_qnode_id} as KG2 might have many duplicates")
-                        self.response.debug(f"Total {size_of_total} nodes with node type {source_node_type} was found in ARAX/KG1")
-                        pass
-                    else:
-                        size_of_total = self.size_of_given_type_in_KP(node_type=source_node_type, use_cypher_command=False, kg='KG1') ## If cypher query fails, then try kgNodeIndex
-                        if size_of_total is not None:
-                            if size_of_total != 0:
-                                self.response.warning(f"Although ARAX/KG2 was found to have the maximum number of edges connected to both {source_qnode_id} and {target_qnode_id}, ARAX/KG1 and kgNodeIndex were used to find the total number of nodes with the same type of source node with qnode id {source_qnode_id} as KG2 might have many duplicates")
-                                self.response.debug(f"Total {size_of_total} nodes with node type {source_node_type} was found in ARAX/KG1")
-                                pass
-                            else:
-                                size_of_total = self.size_of_given_type_in_KP(node_type=source_node_type, use_cypher_command=False, kg='KG2')
-                                if size_of_total is None:
-                                    return self.response  ## Something wrong happened for querying total number of node with the same type of source node
-                                elif size_of_total==0:
-                                    self.response.error(f"KG2 has 0 node with the same type of source node with qnode id {source_qnode_id}")
-                                    return self.response
-                                else:
-                                    self.response.debug(f"ARAX/KG2 and kgNodeIndex were used to calculate total number of node with the same type of source node in Fisher's Exact Test")
-                                    self.response.debug(f"Total {size_of_total} nodes with node type {source_node_type} was found in ARAX/KG2")
-                                    pass
-                        else:
-                            return self.response  ## Something wrong happened for querying total number of node with the same type of source node
-                else:
-                    return self.response  ## Something wrong happened for querying total number of node with the same type of source node
+                size_of_total = self.size_of_given_type_in_KP(node_type=source_node_type, use_cypher_command=False, kg='KG2') ## Try cypher query first
+                self.response.debug(f"ARAX/KG2C were used to calculate total number of node with the same type of source node in Fisher's Exact Test")
+                self.response.debug(f"Total {size_of_total} unique concepts with node type {source_node_type} was found in ARAX/KG2C")
+
             else:
                 self.response.error(f"Only KG1 or KG2 is allowable to calculate the Fisher's exact test temporally")
                 return self.response
 
             size_of_query_sample = len(source_node_list)
 
-
             self.response.debug(f"Computing Fisher's Exact Test P-value")
             # calculate FET p-value for each target node in parallel
-            parameter_list = [(node, len(target_node_dict[node]), size_of_target[node]-len(target_node_dict[node]), size_of_query_sample - len(target_node_dict[node]), (size_of_total - size_of_target[node]) - (size_of_query_sample - len(target_node_dict[node]))) for node in target_node_dict]
+            del_list = []
+            parameter_list = []
+            for node in target_node_dict:
+                if size_of_target[node]-len(target_node_dict[node]) < 0:
+                    del_list.append(node)
+                    self.response.warning(f"Skipping node {node} to calculate FET p-value due to issue897 (which causes negative value).")
+                    continue
+                else:
+                    parameter_list += [(node, len(target_node_dict[node]), size_of_target[node]-len(target_node_dict[node]), size_of_query_sample - len(target_node_dict[node]), (size_of_total - size_of_target[node]) - (size_of_query_sample - len(target_node_dict[node])))]
+
+            for del_node in del_list:
+                del target_node_dict[del_node]
+            # parameter_list = [(node, len(target_node_dict[node]), size_of_target[node]-len(target_node_dict[node]), size_of_query_sample - len(target_node_dict[node]), (size_of_total - size_of_target[node]) - (size_of_query_sample - len(target_node_dict[node]))) for node in target_node_dict]
 
             try:
                 with multiprocessing.Pool() as executor:
@@ -462,7 +444,7 @@ class ComputeFTEST:
         return self.response
 
 
-    def query_size_of_adjacent_nodes(self, node_curie, source_type, adjacent_type, kp="ARAX/KG1", rel_type=None, use_cypher_command=True):
+    def query_size_of_adjacent_nodes(self, node_curie, source_type, adjacent_type, kp="ARAX/KG1", rel_type=None, use_cypher_command=False):
         """
         Query adjacent nodes of a given source node based on adjacent node type.
         :param node_curie: (required) the curie id of query node. It accepts both single curie id or curie id list eg. "UniProtKB:P14136" or ['UniProtKB:P02675', 'UniProtKB:P01903', 'UniProtKB:P09601', 'UniProtKB:Q02878']
@@ -706,11 +688,11 @@ class ComputeFTEST:
             error_message.append(f"Something went wrong with querying adjacent nodes from {kp} for {node_curie}")
             return error_message
 
-    def size_of_given_type_in_KP(self, node_type, use_cypher_command=True, kg='KG1'):
+    def size_of_given_type_in_KP(self, node_type, use_cypher_command=False, kg='KG1'):
         """
         find all nodes of a certain type in KP
         :param node_type: the query node type
-        :param use_cypher_command: Boolean (True or False). If True, it used cypher command to query all nodes otherwise used kgNodeIndex
+        :param use_cypher_command: Boolean (True or False). If True, it used cypher command to query all nodes otherwise used NodeSynonymizer
         :param kg: only allowed for choosing 'KG1' or 'KG2' now. Will extend to BTE later
         """
         # TODO: extend this to KG2, BTE, and other KP's we know of
@@ -727,8 +709,7 @@ class ComputeFTEST:
             if use_cypher_command:
                 rtxConfig = RTXConfiguration()
                 # Connection information for the neo4j server, populated with orangeboard
-                driver = GraphDatabase.driver(rtxConfig.neo4j_bolt,
-                                              auth=basic_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
+                driver = GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=basic_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
                 session = driver.session()
 
                 query = "MATCH (n:%s) return count(distinct n)" % (node_type)
@@ -736,19 +717,19 @@ class ComputeFTEST:
                 size_of_total = res.single()["count(distinct n)"]
                 return size_of_total
             else:
-                kgNodeIndex = KGNodeIndex()
-                size_of_total = kgNodeIndex.get_total_entity_count(node_type, kg_name=kg)
+                nodesynonymizer = NodeSynonymizer()
+                size_of_total = nodesynonymizer.get_total_entity_count(node_type, kg_name=kg)
                 return size_of_total
         else:
             if use_cypher_command:
-                self.response.warning(f"KG2 is only allowable to use kgNodeIndex to query the total number of node with query type. It was set to use kgNodeIndex")
-                kgNodeIndex = KGNodeIndex()
-                size_of_total = kgNodeIndex.get_total_entity_count(node_type, kg_name=kg)
+                self.response.warning(f"KG2 is only allowable to use NodeSynonymizer to query the total number of node with query type. It was set to use kgNodeIndex")
+                nodesynonymizer = NodeSynonymizer()
+                size_of_total = nodesynonymizer.get_total_entity_count(node_type, kg_name=kg)
                 return size_of_total
 
             else:
-                kgNodeIndex = KGNodeIndex()
-                size_of_total = kgNodeIndex.get_total_entity_count(node_type, kg_name=kg)
+                nodesynonymizer = NodeSynonymizer()
+                size_of_total = nodesynonymizer.get_total_entity_count(node_type, kg_name=kg)
                 return size_of_total
 
     def _calculate_FET_pvalue_parallel(self, this):

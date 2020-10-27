@@ -49,7 +49,7 @@ def main():
 
     #### Run the query and print the result
     message = rtxq.query(query)
-    print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
 
 
 if __name__ == "__main__": main()

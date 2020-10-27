@@ -14,7 +14,7 @@ import ast
 def main():
 
     #### Set the base URL for the reasoner and its endpoint
-    #API_BASE_URL = 'https://arax.rtx.ai/devED/api/rtx/v1'
+    #API_BASE_URL = 'https://arax.ncats.io/devED/api/rtx/v1'
     API_BASE_URL = 'http://localhost:5001/devED/api/rtx/v1'
     url_str = API_BASE_URL + "/query"
  
