@@ -328,12 +328,11 @@ def main():
         araxi_commands = result.data['araxi_commands']
         print(araxi_commands)
 
-        #sys.exit(1)
-
         #### Show the final result
         #print('-------------------------')
         #print(response.show(level=Response.DEBUG))
         #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
+        #sys.exit(1)
 
 
 if __name__ == "__main__": main()
