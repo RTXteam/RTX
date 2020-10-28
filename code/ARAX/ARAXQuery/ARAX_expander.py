@@ -132,7 +132,7 @@ class ARAXExpander:
             "GeneticsKP": {
                 "dsl_command": "expand(kp=GeneticsKP)",
                 "description": "This command reaches out to the Genetics Provider to find all bioentity subpaths that "
-                               "satisfy the query graph. It currently can answers questions involving the following "
+                               "satisfy the query graph. It currently can answer questions involving the following "
                                "node types: gene, protein, disease, phenotypic_feature, pathway. Temporarily "
                                "(while the integration is under development), it can only be used as the first hop in"
                                " a query.",
@@ -149,6 +149,20 @@ class ARAXExpander:
                         "type": "boolean",
                         "description": "Whether to add genetics-quantile edges (in addition to MAGMA edges) from the Genetics KP."
                     }
+                }
+            },
+            "MolePro": {
+                "dsl_command": "expand(kp=MolePro)",
+                "description": "This command reaches out to MolePro (the Molecular Provider) to find all bioentity "
+                               "subpaths that satisfy the query graph. It currently can answer questions involving "
+                               "the following node types: gene, protein, disease, chemical_substance. Generally you"
+                               "should not specify a qedge type for MolePro queries (Expand uses 'correlated_with' "
+                               "by default behind the scenes.).",
+                "parameters": {
+                    "edge_id": self.edge_id_parameter_info,
+                    "node_id": self.node_id_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info,
                 }
             },
             "NGD": {
