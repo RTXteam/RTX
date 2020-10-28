@@ -587,7 +587,7 @@ class ARAXQuery:
             message.query_options['processing_actions'] = envelope.processing_actions
 
             # If store=true, then put the message in the database
-            if return_action['parameters']['store'] == 'true' or return_action['parameters']['store'] == 'json':  # FIXME: remove the "or json" part after 2021-01 or whenever this backwards compatibility is not needed anymore
+            if return_action['parameters']['store'] == 'true':
                 response.debug(f"Storing resulting Message")
                 message_id = rtxFeedback.addNewMessage(message, query)
                 
