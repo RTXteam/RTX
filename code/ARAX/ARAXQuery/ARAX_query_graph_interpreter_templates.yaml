@@ -96,7 +96,21 @@ templates:
       - expand(edge_id=e00)
       - resultify()
 
-  one_hop_drug_disease:
+  one_hop_drug_treats_disease:
+    name: one hop with start node drug, end node disease
+    description: Two nodes, start has a specific curie, end node has type specified as chemical_substance (or drug?!)
+    restated_question: What n01(type)s is known to treat n00(name)?
+    template:
+      - n00(curie,type=disease)
+      - e00(type=treats)
+      - n01(type=chemical_substance)
+    DSL:
+      - expand(edge_id=e00, kp=ARAX/KG2)
+      - overlay(action=compute_ngd, source_qnode_id=n00, target_qnode_id=n01, virtual_relation_label=N1)
+      - resultify()
+      - filter_results(action=limit_number_of_results, max_results=50)
+
+  one_hop_drug_somehow_related_to_disease:
     name: one hop with start node drug, end node disease
     description: Two nodes, start has a specific curie, end node has type specified as chemical_substance (or drug?!)
     restated_question: What n01(type)s may treat n00(name)?

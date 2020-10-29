@@ -477,6 +477,7 @@ def test_deduplication_and_self_edges():
     assert not self_edges
 
 
+@pytest.mark.slow
 def test_889_missing_curies():
     actions_list = [
         "add_qnode(name=DOID:11830, id=n00)",
@@ -524,6 +525,7 @@ def test_987_override_node_types():
     assert all('phenotypic_feature' in node.type for node in nodes_by_qg_id['n01'].values())
 
 
+@pytest.mark.slow
 def test_COHD_expand_paired_concept_freq():
     actions_list = [
         "add_qnode(curie=UMLS:C0015967, id=n00)",
@@ -602,6 +604,17 @@ def test_multi_kp_two_hop_query():
         "add_qedge(source_id=n01, target_id=n02, id=e01)",
         "expand(kp=ARAX/KG2, edge_id=[e00,e01], continue_if_no_results=true)",
         "expand(kp=ARAX/KG1, edge_id=e01, continue_if_no_results=true)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
+def test_molepro_query():
+    actions_list = [
+        "add_qnode(curie=HGNC:9379, type=gene, id=n00)",
+        "add_qnode(type=chemical_substance, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(kp=MolePro)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)

@@ -9,6 +9,9 @@ import re
 
 from response import Response
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer")
+from node_synonymizer import NodeSynonymizer
+
 
 class QueryGraphInfo:
 
@@ -67,8 +70,19 @@ class QueryGraphInfo:
         for qnode in nodes:
             id = qnode.id
             node_info[id] = { 'id': id, 'node_object': qnode, 'has_curie': False, 'type': qnode.type, 'has_type': False, 'is_set': False, 'n_edges': 0, 'n_links': 0, 'is_connected': False, 'edges': [], 'edge_dict': {} }
-            if qnode.curie is not None: node_info[id]['has_curie'] = True
-            if qnode.type is not None: node_info[id]['has_type'] = True
+            if qnode.curie is not None:
+                node_info[id]['has_curie'] = True
+
+                #### If the user did not specify a type, but there is a curie, try to figure out the type
+                if node_info[id]['type'] is None:
+                    synonymizer = NodeSynonymizer()
+                    canonical_curies = synonymizer.get_canonical_curies(curies=[qnode.curie], return_all_types=True)
+                    if qnode.curie in canonical_curies and 'preferred_type' in canonical_curies[qnode.curie]:
+                        node_info[id]['has_type'] = True
+                        node_info[id]['type'] = canonical_curies[qnode.curie]['preferred_type']
+
+            if qnode.type is not None:
+                node_info[id]['has_type'] = True
             #if qnode.is_set is not None: node_info[id]['is_set'] = True
             if qnode.id is None:
                 response.error("QueryGraph has a node with no id. This is not permitted", error_code="QueryGraphNodeWithNoId")
@@ -103,7 +117,7 @@ class QueryGraphInfo:
             #if qnode.type is not None:
             if qedge.type is not None:
                 edge_info[id]['has_type'] = True
-                edge_info[id]['type'] = qnode.type
+                edge_info[id]['type'] = qedge.type
             if qedge.id is None:
                 response.error("QueryGraph has a edge with no id. This is not permitted", error_code="QueryGraphEdgeWithNoId")
                 return response
@@ -258,10 +272,23 @@ class QueryGraphInfo:
 
             node_index += 1
             if node_index < self.n_nodes:
+                #print(json.dumps(ast.literal_eval(repr(node)),sort_keys=True,indent=2))
+
+                #### Extract the has_type and type_value from the edges of the node
+                #### This could fail if there are two edges coming out of the node FIXME
+                has_type = False
+                type_value = None
+                if 'edges' in node:
+                    for related_edge in node['edges']:
+                        if related_edge['source_id'] == node['id']:
+                            has_type = related_edge['has_type']
+                            if has_type is True and 'type' in related_edge:
+                                type_value = related_edge['type']
+
                 component_id = f"e{edge_index:02}"
                 template_part = f"-{component_id}()-"
                 self.query_graph_templates['simple'] += template_part
-                component = { 'component_type': 'edge', 'component_id': component_id, 'has_curie': False, 'has_type': False }
+                component = { 'component_type': 'edge', 'component_id': component_id, 'has_curie': False, 'has_type': has_type, 'type_value': type_value }
                 self.query_graph_templates['detailed']['components'].append(component)
                 edge_index += 1
 

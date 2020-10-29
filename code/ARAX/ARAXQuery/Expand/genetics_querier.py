@@ -108,7 +108,8 @@ class GeneticsQuerier:
             formatted_qnode_types = {self.node_type_remappings.get(qnode_type, qnode_type) for qnode_type in eu.convert_string_or_list_to_list(qnode.type)}
             accepted_qnode_types = formatted_qnode_types.intersection(self.accepted_node_types)
             if not accepted_qnode_types:
-                log.error(f"Can't answer this query using the Genetics Provider; unaccepted type for QNode {qnode.id}", error_code="UnsupportedQueryForKP")
+                log.error(f"GeneticsKP can only be used for queries involving {self.accepted_node_types} "
+                          f"and QNode {qnode.id} has type '{qnode.type}'", error_code="UnsupportedQueryForKP")
                 return query_graph
             else:
                 qnode.type = list(accepted_qnode_types)[0]
