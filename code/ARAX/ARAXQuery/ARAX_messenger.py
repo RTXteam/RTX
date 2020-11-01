@@ -155,16 +155,15 @@ class ARAXMessenger:
                 'type': {
                     'is_required': False,
                     'examples': [ 'protein', 'chemical_substance', 'disease' ],
-                    'type': 'string',
+                    'type': 'ARAXnode',
                     'description': 'Any valid Translator bioentity type (e.g. protein, chemical_substance, disease)',
                     },
                 'is_set': {
                     'is_required': False,
                     'enum': [ 'true', 'false' ],
                     'examples': [ 'true', 'false' ],
-                    'default': 'false',
                     'type': 'boolean',
-                    'description': 'If set to true, this QNode represents a set of nodes that are all in common between the two other linked QNodes'
+                    'description': 'If set to true, this QNode represents a set of nodes that are all in common between the two other linked QNodes (assumed to be false if not specified)'
                     },
             }
         }
@@ -395,7 +394,7 @@ class ARAXMessenger:
                 'type': {
                     'is_required': False,
                     'examples': [ 'protein', 'physically_interacts_with', 'participates_in' ],
-                    'type': 'string',
+                    'type': 'ARAXedge',
                     'description': 'Any valid Translator/BioLink relationship type (e.g. physically_interacts_with, participates_in)',
                     },
             }
