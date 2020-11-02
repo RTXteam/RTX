@@ -8,15 +8,18 @@ import time
 
 class RTXConfiguration:
 
-    _GET_FILE_CMD = "scp araxconfig@araxconfig.rtx.ai:config.json "
+    _GET_FILE_CMD = "scp araxconfig@araxconfig.rtx.ai:configv2.json "
 
     # ### Constructor
     def __init__(self):
         self.version = "ARAX 0.6.0"
 
-        file_path = os.path.dirname(os.path.abspath(__file__)) + '/config.json'
+        file_path = os.path.dirname(os.path.abspath(__file__)) + '/configv2.json'
+        local_path = os.path.dirname(os.path.abspath(__file__)) + '/config_local.json'
 
-        if not os.path.exists(file_path):
+        if os.path.exists(local_path):
+            file_path = local_path
+        elif not os.path.exists(file_path):
             # scp the file
             os.system(RTXConfiguration._GET_FILE_CMD + file_path)
         else:
@@ -56,41 +59,50 @@ class RTXConfiguration:
     def live(self, live: str):
         self._live = live
 
-        if self.live not in self.config.keys():
+        if self.live not in self.config["Contextual"].keys():
             self.neo4j_bolt = None
             self.neo4j_database = None
             self.neo4j_username = None
             self.neo4j_password = None
-            self.mysql_feedback_host = None
-            self.mysql_feedback_port = None
-            self.mysql_feedback_username = None
-            self.mysql_feedback_password = None
-            self.mysql_semmeddb_host = None
-            self.mysql_semmeddb_port = None
-            self.mysql_semmeddb_username = None
-            self.mysql_semmeddb_password = None
-            self.mysql_umls_host = None
-            self.mysql_umls_port = None
-            self.mysql_umls_username = None
-            self.mysql_umls_password = None
-
         else:
-            self.neo4j_bolt = self.config[self.live]["neo4j"]["bolt"]
-            self.neo4j_database = self.config[self.live]["neo4j"]["database"]
-            self.neo4j_username = self.config[self.live]["neo4j"]["username"]
-            self.neo4j_password = self.config[self.live]["neo4j"]["password"]
-            self.mysql_feedback_host = self.config[self.live]["mysql_feedback"]["host"]
-            self.mysql_feedback_port = self.config[self.live]["mysql_feedback"]["port"]
-            self.mysql_feedback_username = self.config[self.live]["mysql_feedback"]["username"]
-            self.mysql_feedback_password = self.config[self.live]["mysql_feedback"]["password"]
-            self.mysql_semmeddb_host = self.config[self.live]["mysql_semmeddb"]["host"]
-            self.mysql_semmeddb_port = self.config[self.live]["mysql_semmeddb"]["port"]
-            self.mysql_semmeddb_username = self.config[self.live]["mysql_semmeddb"]["username"]
-            self.mysql_semmeddb_password = self.config[self.live]["mysql_semmeddb"]["password"]
-            self.mysql_umls_host = self.config[self.live]["mysql_umls"]["host"]
-            self.mysql_umls_port = self.config[self.live]["mysql_umls"]["port"]
-            self.mysql_umls_username = self.config[self.live]["mysql_umls"]["username"]
-            self.mysql_umls_password = self.config[self.live]["mysql_umls"]["password"]
+            self.neo4j_bolt = self.config["Contextual"][self.live]["neo4j"]["bolt"]
+            self.neo4j_database = self.config["Contextual"][self.live]["neo4j"]["database"]
+            self.neo4j_username = self.config["Contextual"][self.live]["neo4j"]["username"]
+            self.neo4j_password = self.config["Contextual"][self.live]["neo4j"]["password"]
+        
+        self.cohd_database_host = self.config["Global"]["cohd_database"]["host"]
+        self.cohd_database_username = self.config["Global"]["cohd_database"]["username"]
+        self.cohd_database_path = self.config["Global"]["cohd_database"]["path"]
+
+        self.graph_database_host = self.config["Global"]["graph_database"]["host"]
+        self.graph_database_username = self.config["Global"]["graph_database"]["username"]
+        self.graph_database_path = self.config["Global"]["graph_database"]["path"]
+
+        self.log_model_host = self.config["Global"]["log_model"]["host"]
+        self.log_model_username = self.config["Global"]["log_model"]["username"]
+        self.log_model_path = self.config["Global"]["log_model"]["path"]
+
+        self.curie_to_pmids_host = self.config["Global"]["curie_to_pmids"]["host"]
+        self.curie_to_pmids_username = self.config["Global"]["curie_to_pmids"]["username"]
+        self.curie_to_pmids_path = self.config["Global"]["curie_to_pmids"]["path"]
+
+        self.node_synonymizer_host = self.config["Global"]["node_synonymizer"]["host"]
+        self.node_synonymizer_username = self.config["Global"]["node_synonymizer"]["username"]
+        self.node_synonymizer_path = self.config["Global"]["node_synonymizer"]["path"]
+
+        self.mysql_feedback_host = self.config["Global"]["mysql_feedback"]["host"]
+        self.mysql_feedback_port = self.config["Global"]["mysql_feedback"]["port"]
+        self.mysql_feedback_username = self.config["Global"]["mysql_feedback"]["username"]
+        self.mysql_feedback_password = self.config["Global"]["mysql_feedback"]["password"]
+        self.mysql_semmeddb_host = self.config["Global"]["mysql_semmeddb"]["host"]
+        self.mysql_semmeddb_port = self.config["Global"]["mysql_semmeddb"]["port"]
+        self.mysql_semmeddb_username = self.config["Global"]["mysql_semmeddb"]["username"]
+        self.mysql_semmeddb_password = self.config["Global"]["mysql_semmeddb"]["password"]
+        self.mysql_umls_host = self.config["Global"]["mysql_umls"]["host"]
+        self.mysql_umls_port = self.config["Global"]["mysql_umls"]["port"]
+        self.mysql_umls_username = self.config["Global"]["mysql_umls"]["username"]
+        self.mysql_umls_password = self.config["Global"]["mysql_umls"]["password"]
+
 
         # if self.live == "Production":
         #     self.bolt = "bolt://arax.ncats.io:7687"
