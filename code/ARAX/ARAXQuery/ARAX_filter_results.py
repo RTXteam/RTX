@@ -79,8 +79,9 @@ class ARAXFilterResults:
         self.prune_kg_info = {
             "is_required": False,
             "enum": ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F'],
-            "type": "string",
-            "description": "This indicates if the Knowledge Graph (KG) should be pruned so that any nodes or edges not appearing in the results are removed from the KG."
+            "type": "boolean",
+            "description": "This indicates if the Knowledge Graph (KG) should be pruned so that any nodes or edges not appearing in the results are removed from the KG.",
+            "default": "true"
         }
 
         #command descriptions

@@ -38,9 +38,9 @@ class ARAXFilterKG:
         self.remove_connected_nodes_info = {
             "is_required": False,
             "enum": ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F'],
-            "type": "string",
+            "type": "boolean",
             "description": "Indicates whether or not to remove the nodes connected to the edge.",
-            "default": 'False'
+            "default": 'false'
         }
         self.qnode_id_info = {
             "is_required": False,
