@@ -3,6 +3,7 @@ var qgids = [];
 var cyobj = [];
 var cytodata = [];
 var predicates = {};
+var all_predicates = {};
 var message_id = null;
 var summary_table_html = '';
 var summary_tsv = [];
@@ -16,6 +17,7 @@ var baseAPI = "";
 function main() {
     get_example_questions();
     load_nodes_and_predicates();
+    populate_dsl_commands();
     display_list('A');
     display_list('B');
     add_status_divs();
@@ -106,7 +108,7 @@ function pasteQuestion(question) {
 }
 function pasteExample(type) {
     if (type == "DSL") {
-	document.getElementById("dslText").value = 'add_qnode(name=acetaminophen, id=n0)\nadd_qnode(type=protein, id=n1)\nadd_qedge(source_id=n0, target_id=n1, id=e0)\nexpand(edge_id=e0)\noverlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n0, target_qnode_id=n1)\nresultify()';
+	document.getElementById("dslText").value = 'add_qnode(name=acetaminophen, id=n0)\nadd_qnode(type=protein, id=n1)\nadd_qedge(source_id=n0, target_id=n1, id=e0)\nexpand(edge_id=e0)\noverlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n0, target_qnode_id=n1)\nresultify()\n';
     }
     else {
 	document.getElementById("jsonText").value = '{\n   "edges": [\n      {\n         "id": "qg2",\n         "source_id": "qg1",\n         "target_id": "qg0"\n      }\n   ],\n   "nodes": [\n      {\n         "id": "qg0",\n         "curie": "CHEMBL.COMPOUND:CHEMBL112"\n      },\n      {\n         "id": "qg1",\n         "type": "protein"\n      }\n   ]\n}';
@@ -1157,13 +1159,14 @@ function show_attributes(html_div, atts) {
 
 
 	if (att.value != null) {
-	    if (att.name == "probability_drug_treats" ||
-		att.name == "observed_expected_ratio" ||
-		att.name == "paired_concept_frequency"||
-		att.name == "paired_concept_freq"     ||
-		att.name == "jaccard_index"           ||
-		att.name == "probability"             ||
-		att.name == "chi_square"              ||
+	    if (att.name == "normalized_google_distance" ||
+		att.name == "probability_drug_treats"    ||
+		att.name == "observed_expected_ratio"    ||
+		att.name == "paired_concept_frequency"   ||
+		att.name == "paired_concept_freq"        ||
+		att.name == "jaccard_index"              ||
+		att.name == "probability"                ||
+		att.name == "chi_square"                 ||
 		att.name == "ngd") {
 		snippet += Number(att.value).toPrecision(3);
 	    }
@@ -1733,6 +1736,159 @@ function get_qg_id() {
 }
 
 
+function populate_dsl_commands() {
+    var dsl_node = document.getElementById("dsl_command");
+    dsl_node.innerHTML = '';
+
+    var opt = document.createElement('option');
+    opt.style.borderBottom = "1px solid black";
+    opt.value = '';
+    opt.innerHTML = "Select DSL Command&nbsp;&nbsp;&nbsp;&#8675;";
+    dsl_node.appendChild(opt);
+
+    for (var com in araxi_commands) {
+	opt = document.createElement('option');
+	opt.value = com;
+	opt.innerHTML = com;
+	dsl_node.appendChild(opt);
+    }
+}
+
+function show_dsl_command_options(command) {
+    document.getElementById("dsl_command").value = '';
+    document.getElementById("dsl_command").blur();
+
+    var com_node = document.getElementById("dsl_command_form");
+    com_node.innerHTML = '';
+    com_node.appendChild(document.createElement('hr'));
+
+    var h2 = document.createElement('h2');
+    h2.style.marginBottom = 0;
+    h2.innerHTML = command;
+    com_node.appendChild(h2);
+
+    if (araxi_commands[command].description) {
+	com_node.appendChild(document.createTextNode(araxi_commands[command].description));
+	com_node.appendChild(document.createElement('br'));
+    }
+
+    for (var par in araxi_commands[command].parameters) {
+	com_node.appendChild(document.createElement('br'));
+
+	var span = document.createElement('span');
+	if (araxi_commands[command].parameters[par]['is_required'])
+	    span.className = 'essence';
+	span.appendChild(document.createTextNode(par+":"));
+	com_node.appendChild(span);
+
+	span = document.createElement('span');
+	span.className = 'tiny';
+	span.style.position = "relative";
+	span.style.left = "50px";
+	span.appendChild(document.createTextNode(araxi_commands[command].parameters[par].description));
+	com_node.appendChild(span);
+
+	com_node.appendChild(document.createElement('br'));
+
+        if (araxi_commands[command].parameters[par]['type'] == 'boolean') {
+	    araxi_commands[command].parameters[par]['enum'] = ['true','false'];
+	}
+	else if (araxi_commands[command].parameters[par]['type'] == 'ARAXnode') {
+	    araxi_commands[command].parameters[par]['enum'] = [];
+            for (const p in predicates) {
+		araxi_commands[command].parameters[par]['enum'].push(p);
+	    }
+	}
+        else if (araxi_commands[command].parameters[par]['type'] == 'ARAXedge') {
+	    araxi_commands[command].parameters[par]['enum'] = [];
+	    for (const p of Object.keys(all_predicates).sort()) {
+		araxi_commands[command].parameters[par]['enum'].push(p);
+	    }
+	}
+
+	if (araxi_commands[command].parameters[par]['enum']) {
+	    var span = document.createElement('span');
+	    span.className = 'qgselect';
+
+	    var sel = document.createElement('select');
+	    sel.id = "__param__"+par;
+
+	    var opt = document.createElement('option');
+	    opt.style.borderBottom = "1px solid black";
+	    opt.value = '';
+	    opt.innerHTML = "Select&nbsp;&nbsp;&nbsp;&#8675;";
+	    sel.appendChild(opt);
+
+	    for (var val of araxi_commands[command].parameters[par]['enum']) {
+		opt = document.createElement('option');
+		opt.value = val;
+		opt.innerHTML = val;
+		sel.appendChild(opt);
+	    }
+
+	    span.appendChild(sel);
+	    com_node.appendChild(span);
+
+	    if (araxi_commands[command].parameters[par]['default'])
+		sel.value = araxi_commands[command].parameters[par]['default'];
+
+	}
+	else {
+	    var i = document.createElement('input');
+	    i.id = "__param__"+par;
+	    i.className = 'questionBox';
+	    i.size = 60;
+	    com_node.appendChild(i);
+
+	    if (araxi_commands[command].parameters[par]['default'])
+		i.value = araxi_commands[command].parameters[par]['default'];
+	}
+    }
+
+    com_node.appendChild(document.createElement('br'));
+
+    var button = document.createElement("input");
+    button.className = 'questionBox button';
+    button.type = 'button';
+    button.name = 'action';
+    button.title = 'Append new DSL command to list above';
+    button.value = 'Add';
+    button.setAttribute('onclick', 'add_dsl_command("'+command+'");');
+    com_node.appendChild(button);
+
+    var link = document.createElement("a");
+    link.style.marginLeft = "20px";
+    link.href = 'javascript:abort_dsl();';
+    link.appendChild(document.createTextNode(" Cancel "));
+    com_node.appendChild(link);
+
+    com_node.appendChild(document.createElement('hr'));
+}
+
+function add_dsl_command(command) {
+    var params = document.querySelectorAll('[id^=__param__]');
+
+    var comma = ',';
+    if (command.endsWith("()"))
+	comma = '';
+
+    command = command.slice(0, -1); // remove ")"
+
+    for (var p of params) {
+	if (p.value.length == 0) continue;
+	command += comma + p.id.split("__param__")[1]+"="+p.value;
+	comma = ",";
+    }
+    command += ")";
+    document.getElementById("dslText").value += command+"\n";
+    abort_dsl();
+}
+
+function abort_dsl() {
+    document.getElementById("dsl_command_form").innerHTML = '';
+}
+
+
 function get_example_questions() {
     fetch(baseAPI + "api/rtx/v1/exampleQuestions")
         .then(response => response.json())
@@ -1784,6 +1940,10 @@ function load_nodes_and_predicates() {
 		opt.value = p;
 		opt.innerHTML = p;
 		allnodes_node.appendChild(opt);
+
+		for (const n in predicates[p])
+		    for (const r of predicates[p][n])
+			all_predicates[r] = 1;
 	    }
             opt = document.createElement('option');
 	    opt.value = 'NONSPECIFIC';
@@ -1923,7 +2083,7 @@ function compare_lists() {
     compare_tsv = [];
 
     if (keysA.length == 0 || keysB.length == 0) {
-	document.getElementById("comparelists").innerHTML = "Please add elements to both lists for comparison.";
+	document.getElementById("comparelists").innerHTML = "<br>Items in lists A and B will be automatically displayed side-by-side for ease of comparison.<br><br>At least one item is required in each list.<br><br>";
 	return;
     }
 

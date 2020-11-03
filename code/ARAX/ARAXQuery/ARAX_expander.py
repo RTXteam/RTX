@@ -133,9 +133,11 @@ class ARAXExpander:
                 "dsl_command": "expand(kp=GeneticsKP)",
                 "description": "This command reaches out to the Genetics Provider to find all bioentity subpaths that "
                                "satisfy the query graph. It currently can answer questions involving the following "
-                               "node types: gene, protein, disease, phenotypic_feature, pathway. Temporarily "
-                               "(while the integration is under development), it can only be used as the first hop in"
-                               " a query.",
+                               "node types: gene, protein, disease, phenotypic_feature, pathway. QNode types are "
+                               "required for GeneticsKP queries. Temporarily (while the integration is under "
+                               "development), it can only be used as the first hop in a query. Note that QEdge types "
+                               "are irrelevant for GeneticsKP queries, since GeneticsKP only outputs edges with a type "
+                               "of 'associated' (so Expand always uses that as the QEdge type behind the scenes).",
                 "parameters": {
                     "edge_id": self.edge_id_parameter_info,
                     "node_id": self.node_id_parameter_info,
@@ -155,9 +157,10 @@ class ARAXExpander:
                 "dsl_command": "expand(kp=MolePro)",
                 "description": "This command reaches out to MolePro (the Molecular Provider) to find all bioentity "
                                "subpaths that satisfy the query graph. It currently can answer questions involving "
-                               "the following node types: gene, protein, disease, chemical_substance. Generally you"
-                               "should not specify a qedge type for MolePro queries (Expand uses 'correlated_with' "
-                               "by default behind the scenes.).",
+                               "the following node types: gene, protein, disease, chemical_substance. QNode types are "
+                               "required for MolePro queries. Generally you should not specify a QEdge type for "
+                               "MolePro queries (Expand uses 'correlated_with' by default behind the scenes, which is "
+                               "the primary edge type of interest for ARAX in MolePro).",
                 "parameters": {
                     "edge_id": self.edge_id_parameter_info,
                     "node_id": self.node_id_parameter_info,
