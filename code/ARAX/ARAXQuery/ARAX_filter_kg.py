@@ -32,7 +32,7 @@ class ARAXFilterKG:
         self.edge_type_info = {
             "is_required": True,
             "examples": ["contraindicated_for", "affects", "expressed_in"],
-            "type": "string",
+            "type": "ARAXedge",
             "description": "The name of the edge type to filter by."
         }
         self.remove_connected_nodes_info = {
@@ -123,13 +123,13 @@ class ARAXFilterKG:
         self.node_type_required_info = {
             "is_required": True,
             "examples": ["chemical_substance", "disease"],
-            "type": "string",
+            "type": "ARAXnode",
             "description": "The name of the node type to filter by."
         }
         self.node_type_info = {
             "is_required": False,
             "examples": ["chemical_substance", "disease"],
-            "type": "string",
+            "type": "ARAXnode",
             "description": "The name of the node type to filter by. If no value provided node type will not be considered."
         }
         self.node_property_info = {
