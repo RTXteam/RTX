@@ -227,7 +227,7 @@ class QEdge(Model):
         """
         return self._option_group_id
 
-    @target_id.setter
+    @option_group_id.setter
     def option_group_id(self, option_group_id: str):
         """Sets the option_group_id of this QEdge.
 
@@ -249,8 +249,8 @@ class QEdge(Model):
         """
         return self._exclude
 
-    @negated.setter
-    def negated(self, exclude: bool):
+    @exclude.setter
+    def exclude(self, exclude: bool):
         """Sets the exclude of this QEdge.
 
         Boolean that if set to true, excludes all resulting subgraphs with this edge.  # noqa: E501

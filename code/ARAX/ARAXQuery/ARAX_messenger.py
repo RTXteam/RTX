@@ -246,14 +246,17 @@ class ARAXMessenger:
 
         if parameters['exclude'] is not None:
             if parameters['exclude'] in {'t', 'T', 'true', 'True'}:
-                parameters['exclude'] = True
+                qnode.exclude = True
             elif parameters['exclude'] in {'f', 'F', 'false', 'False'}:
-                parameters['exclude'] = False
+                qnode.exclude = False
             elif parameters['exclude'] not in {True, False}:
                 response.error(f"Supplied input, {parameters['exclude']}, for the 'exclude' parameter is not valid. Acceptable inputs are t, T, f, F, true, True, false, and False.", error_code="UnknownInput")
         else:
-            parameters['exclude'] = False
+            qnode.exclude = False
 
+        if parameters['option_group_id'] is not None:
+            qnode.option_group_id = parameters['option_group_id']
+        
         # Set the is_set parameter to what the user selected
         if parameters['is_set'] is not None:
             qnode.is_set = (parameters['is_set'].lower() == 'true')
@@ -531,13 +534,16 @@ class ARAXMessenger:
 
         if parameters['exclude'] is not None:
             if parameters['exclude'] in {'t', 'T', 'true', 'True'}:
-                parameters['exclude'] = True
+                qedge.exclude = True
             elif parameters['exclude'] in {'f', 'F', 'false', 'False'}:
-                parameters['exclude'] = False
+                qedge.exclude = False
             elif parameters['exclude'] not in {True, False}:
                 response.error(f"Supplied input, {parameters['exclude']}, for the 'exclude' parameter is not valid. Acceptable inputs are t, T, f, F, true, True, false, and False.", error_code="UnknownInput")
         else:
-            parameters['exclude'] = False
+            qedge.exclude = False
+
+        if parameters['option_group_id'] is not None:
+            qedge.option_group_id = parameters['option_group_id']
 
         #### Add it to the query_graph edge list
         message.query_graph.edges.append(qedge)
