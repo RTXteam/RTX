@@ -165,6 +165,19 @@ class ARAXMessenger:
                     'type': 'boolean',
                     'description': 'If set to true, this QNode represents a set of nodes that are all in common between the two other linked QNodes (assumed to be false if not specified)'
                     },
+                'option_group_id': {
+                    'is_required': False,
+                    'examples': [ '1', 'a', 'b2', 'option'],
+                    'type': 'string',
+                    'description': 'A group identifier indicating a group of nodes and edges should either all be included or all excluded. An optional match for all elements in this group. If not included Node will be treated as required.'
+                    },
+                'exclude': {
+                    'is_required': False,
+                    'enum': [ 'true', 'false' ],
+                    'examples': [ 'true', 'false' ],
+                    'type': 'boolean',
+                    'description': 'If set to true, results with this node will be excluded. If set to false or not included nodes will be treated as part of a normal query.'
+                    },
             }
         }
 
@@ -188,6 +201,8 @@ class ARAXMessenger:
             'name': None,
             'type': None,
             'is_set': None,
+            'option_group_id': None,
+            'exclude': None,
         }
 
         #### Loop through the input_parameters and override the defaults and make sure they are allowed
@@ -228,6 +243,16 @@ class ARAXMessenger:
         else:
             id = self.__get_next_free_node_id()
         qnode.id = id
+
+        if parameters['exclude'] is not None:
+            if parameters['exclude'] in {'t', 'T', 'true', 'True'}:
+                parameters['exclude'] = True
+            elif parameters['exclude'] in {'f', 'F', 'false', 'False'}:
+                parameters['exclude'] = False
+            elif parameters['exclude'] not in {True, False}:
+                response.error(f"Supplied input, {parameters['exclude']}, for the 'exclude' parameter is not valid. Acceptable inputs are t, T, f, F, true, True, false, and False.", error_code="UnknownInput")
+        else:
+            parameters['exclude'] = False
 
         # Set the is_set parameter to what the user selected
         if parameters['is_set'] is not None:
@@ -397,6 +422,19 @@ class ARAXMessenger:
                     'type': 'ARAXedge',
                     'description': 'Any valid Translator/BioLink relationship type (e.g. physically_interacts_with, participates_in)',
                     },
+                'option_group_id': {
+                    'is_required': False,
+                    'examples': [ '1', 'a', 'b2', 'option'],
+                    'type': 'string',
+                    'description': 'A group identifier indicating a group of nodes and edges should either all be included or all excluded. An optional match for all elements in this group. If not included Node will be treated as required.'
+                    },
+                'exclude': {
+                    'is_required': False,
+                    'enum': [ 'true', 'false' ],
+                    'examples': [ 'true', 'false' ],
+                    'type': 'boolean',
+                    'description': 'If set to true, results with this node will be excluded. If set to false or not included nodes will be treated as part of a normal query.'
+                    },
             }
         }
 
@@ -420,6 +458,8 @@ class ARAXMessenger:
             'source_id': None,
             'target_id': None,
             'type': None,
+            'option_group_id': None,
+            'exclude': None,
         }
 
         #### Loop through the input_parameters and override the defaults and make sure they are allowed
@@ -488,6 +528,16 @@ class ARAXMessenger:
         #### Add the type if any. Need to verify it's an allowed type. FIXME
         if parameters['type'] is not None:
             qedge.type = parameters['type']
+
+        if parameters['exclude'] is not None:
+            if parameters['exclude'] in {'t', 'T', 'true', 'True'}:
+                parameters['exclude'] = True
+            elif parameters['exclude'] in {'f', 'F', 'false', 'False'}:
+                parameters['exclude'] = False
+            elif parameters['exclude'] not in {True, False}:
+                response.error(f"Supplied input, {parameters['exclude']}, for the 'exclude' parameter is not valid. Acceptable inputs are t, T, f, F, true, True, false, and False.", error_code="UnknownInput")
+        else:
+            parameters['exclude'] = False
 
         #### Add it to the query_graph edge list
         message.query_graph.edges.append(qedge)

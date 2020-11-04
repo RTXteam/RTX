@@ -16,7 +16,7 @@ class QEdge(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, id: str=None, type: BiolinkRelation=None, relation: str=None, source_id: str=None, target_id: str=None, negated: bool=None):  # noqa: E501
+    def __init__(self, id: str=None, type: BiolinkRelation=None, relation: str=None, source_id: str=None, target_id: str=None, negated: bool=None, option_group_id: str=None, exclude: bool=None):  # noqa: E501
         """QEdge - a model defined in Swagger
 
         :param id: The id of this QEdge.  # noqa: E501
@@ -38,7 +38,9 @@ class QEdge(Model):
             'relation': str,
             'source_id': str,
             'target_id': str,
-            'negated': bool
+            'negated': bool,
+            'option_group_id': str,
+            'exclude': bool
         }
 
         self.attribute_map = {
@@ -47,7 +49,9 @@ class QEdge(Model):
             'relation': 'relation',
             'source_id': 'source_id',
             'target_id': 'target_id',
-            'negated': 'negated'
+            'negated': 'negated',
+            'option_group_id': 'option_group_id',
+            'exclude': 'exclude'
         }
 
         self._id = id
@@ -56,6 +60,8 @@ class QEdge(Model):
         self._source_id = source_id
         self._target_id = target_id
         self._negated = negated
+        self._option_group_id = option_group_id
+        self._exclude = exclude
 
     @classmethod
     def from_dict(cls, dikt) -> 'QEdge':
@@ -209,3 +215,48 @@ class QEdge(Model):
         """
 
         self._negated = negated
+
+    @property
+    def option_group_id(self) -> str:
+        """Gets the option_group_id of this QEdge.
+
+        Corresponds to the @id for the option group of this edge  # noqa: E501
+
+        :return: The option_group_id of this QEdge.
+        :rtype: str
+        """
+        return self._option_group_id
+
+    @target_id.setter
+    def option_group_id(self, option_group_id: str):
+        """Sets the option_group_id of this QEdge.
+
+        Corresponds to the @id for the option group of this edge  # noqa: E501
+
+        :param option_group_id: The option_group_id of this QEdge.
+        :type option_group_id: str
+        """
+        self._option_group_id = option_group_id
+
+    @property
+    def exclude(self) -> bool:
+        """Gets the exclude of this QEdge.
+
+        Boolean that if set to true, excludes all resulting subgraphs with this edge.  # noqa: E501
+
+        :return: The exclude of this QEdge.
+        :rtype: bool
+        """
+        return self._exclude
+
+    @negated.setter
+    def negated(self, exclude: bool):
+        """Sets the exclude of this QEdge.
+
+        Boolean that if set to true, excludes all resulting subgraphs with this edge.  # noqa: E501
+
+        :param exclude: The exclude of this QEdge.
+        :type exclude: bool
+        """
+
+        self._exclude = exclude

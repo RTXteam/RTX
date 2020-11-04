@@ -16,7 +16,7 @@ class QNode(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, id: str=None, curie: str=None, type: BiolinkEntity=None, is_set: bool=None):  # noqa: E501
+    def __init__(self, id: str=None, curie: str=None, type: BiolinkEntity=None, is_set: bool=None, option_group_id: str=None, exclude: bool=None):  # noqa: E501
         """QNode - a model defined in Swagger
 
         :param id: The id of this QNode.  # noqa: E501
@@ -32,20 +32,26 @@ class QNode(Model):
             'id': str,
             'curie': str,
             'type': BiolinkEntity,
-            'is_set': bool
+            'is_set': bool,
+            'option_group_id': str,
+            'exclude': bool
         }
 
         self.attribute_map = {
             'id': 'id',
             'curie': 'curie',
             'type': 'type',
-            'is_set': 'is_set'
+            'is_set': 'is_set',
+            'option_group_id': 'option_group_id',
+            'exclude': 'exclude'
         }
 
         self._id = id
         self._curie = curie
         self._type = type
         self._is_set = is_set
+        self._option_group_id = option_group_id
+        self._exclude = exclude
 
     @classmethod
     def from_dict(cls, dikt) -> 'QNode':
@@ -149,3 +155,48 @@ class QNode(Model):
         """
 
         self._is_set = is_set
+
+    @property
+    def option_group_id(self) -> str:
+        """Gets the option_group_id of this QNode.
+
+        Corresponds to the @id for the option group of this node  # noqa: E501
+
+        :return: The option_group_id of this QNode.
+        :rtype: str
+        """
+        return self._option_group_id
+
+    @target_id.setter
+    def option_group_id(self, option_group_id: str):
+        """Sets the option_group_id of this QNode.
+
+        Corresponds to the @id for the option group of this node  # noqa: E501
+
+        :param option_group_id: The option_group_id of this QNode.
+        :type option_group_id: str
+        """
+        self._option_group_id = option_group_id
+
+    @property
+    def exclude(self) -> bool:
+        """Gets the exclude of this QNode.
+
+        Boolean that if set to true, excludes all resulting subgraphs with this node.  # noqa: E501
+
+        :return: The exclude of this QNode.
+        :rtype: bool
+        """
+        return self._exclude
+
+    @negated.setter
+    def negated(self, exclude: bool):
+        """Sets the exclude of this QNode.
+
+        Boolean that if set to true, excludes all resulting subgraphs with this node.  # noqa: E501
+
+        :param exclude: The exclude of this QNode.
+        :type exclude: bool
+        """
+
+        self._exclude = exclude
