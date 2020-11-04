@@ -90,6 +90,14 @@ class RTXConfiguration:
         self.node_synonymizer_username = self.config["Global"]["node_synonymizer"]["username"]
         self.node_synonymizer_path = self.config["Global"]["node_synonymizer"]["path"]
 
+        self.rel_max_host = self.config["Global"]["rel_max"]["host"]
+        self.rel_max_username = self.config["Global"]["rel_max"]["username"]
+        self.rel_max_path = self.config["Global"]["rel_max"]["path"]
+
+        self.map_txt_host = self.config["Global"]["map_txt"]["host"]
+        self.map_txt_username = self.config["Global"]["map_txt"]["username"]
+        self.map_txt_path = self.config["Global"]["map_txt"]["path"]
+
         self.mysql_feedback_host = self.config["Global"]["mysql_feedback"]["host"]
         self.mysql_feedback_port = self.config["Global"]["mysql_feedback"]["port"]
         self.mysql_feedback_username = self.config["Global"]["mysql_feedback"]["username"]
