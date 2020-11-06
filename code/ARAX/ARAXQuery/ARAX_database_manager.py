@@ -32,9 +32,18 @@ class ARAXDatabaseManager:
             'rel_max': f"{prob_sqlite_filepath}/rel_max.emb.gz",
             'map_txt': f"{prob_sqlite_filepath}/map.txt"
         }
+        self.remote_locations = {
+            'cohd_database': f"{self.RTXConfig.cohd_database_username}@{self.RTXConfig.cohd_database_host}:{self.RTXConfig.cohd_database_path}",
+            'graph_database': f"{self.RTXConfig.graph_database_username}@{self.RTXConfig.graph_database_host}:{self.RTXConfig.graph_database_path}",
+            'log_model': f"{self.RTXConfig.log_model_username}@{self.RTXConfig.log_model_host}:{self.RTXConfig.log_model_path}",
+            'curie_to_pmids': f"{self.RTXConfig.curie_to_pmids_username}@{self.RTXConfig.curie_to_pmids_host}:{self.RTXConfig.curie_to_pmids_path}",
+            'node_synonymizer': f"{self.RTXConfig.node_synonymizer_username}@{self.RTXConfig.node_synonymizer_host}:{self.RTXConfig.node_synonymizer_path}",
+            'rel_max': f"{self.RTXConfig.rel_max_username}@{self.RTXConfig.rel_max_host}:{self.RTXConfig.rel_max_path}",
+            'map_txt': f"{self.RTXConfig.map_txt_username}@{self.RTXConfig.map_txt_host}:{self.RTXConfig.map_txt_path}"
+        }
 
     def check_date(self, file_path, max_days = 31):
-        if os.path.exists(local_path):
+        if os.path.exists(file_path):
             now_time = datetime.datetime.now()
             modified_time = time.localtime(os.stat(file_path).st_mtime)
             modified_time = datetime.datetime(*modified_time[:6])
@@ -45,11 +54,24 @@ class ARAXDatabaseManager:
         else:
             return True
 
-    def scp_database(self, user, host, remote_path, local_path):
-        os.system(f"scp {user}@{host}:{remote_path} {local_path}")
+    def scp_database(self, remote_location, local_path):
+        os.system(f"scp {remote_location} {local_path}")
 
     def force_download_all(self):
-        pass
+        for database_name in self.remote_locations.keys():
+            scp_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name])
 
     def check_all(self):
-        pass
+        for database_name, file_path in self.local_paths.items():
+            if os.path.exists(file_path):
+                now_time = datetime.datetime.now()
+                modified_time = time.localtime(os.stat(file_path).st_mtime)
+                modified_time = datetime.datetime(*modified_time[:6])
+                print(f"{database_name}: local file is {(now_time - modified_time).days} days old")
+            else:
+                print(f"{database_name}: no file found at {file_path}")
+
+    def update_databases(self, max_days=31):
+        for database_name, local_path in self.local_paths.items():
+            if check_date(local_path, max_days=max_days):
+                scp_database(remote_location=self.remote_locations[database_name], local_path=local_path)
