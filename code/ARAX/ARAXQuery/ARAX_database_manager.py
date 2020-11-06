@@ -71,7 +71,17 @@ class ARAXDatabaseManager:
             else:
                 print(f"{database_name}: no file found at {file_path}")
 
-    def update_databases(self, max_days=31):
+    def update_databases(self, max_days=31, debug=False):
         for database_name, local_path in self.local_paths.items():
             if check_date(local_path, max_days=max_days):
+                if debug:
+                    print(f"{database_name} not present or older than {max_days} days. Updating file...")
                 scp_database(remote_location=self.remote_locations[database_name], local_path=local_path)
+
+
+def main():
+    DBManager = ARAXDatabaseManager("Production")
+    DBManager.update_databases(debug=True)
+
+if __name__ == "__main__":
+    main()
