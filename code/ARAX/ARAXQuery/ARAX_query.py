@@ -50,6 +50,8 @@ from QueryGraphReasoner import QueryGraphReasoner
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/Feedback/")
 from RTXFeedback import RTXFeedback
 
+from ARAX_database_manager import ARAXDatabaseManager
+
 
 class ARAXQuery:
 
@@ -57,6 +59,7 @@ class ARAXQuery:
     def __init__(self):
         self.response = None
         self.message = None
+        self.DBManager = ARAXDatabaseManager(live = "Production")
         
 
     def query_return_stream(self,query):
@@ -142,6 +145,10 @@ class ARAXQuery:
         if result.status != 'OK':
             return response
         query_attributes = result.data
+        if self.DBManager.check_all(max_days=31):
+            response.debug(f"At least one database file is either missing or out of date. Updating now... (This may take a while)")
+            self.DBManager.update_databases(max_days=31)
+
 
         # #### If we have a query_graph in the input query
         if "have_query_graph" in query_attributes:
