@@ -44,7 +44,8 @@ def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_inc
         print(response.show(level=Response.DEBUG))
 
     # Run standard testing (applies to every test case)
-    assert eu.qg_is_fulfilled(message.query_graph, dict_kg) or kg_should_be_incomplete or should_throw_error
+    qg_without_kryptonite_edges = eu.get_qg_without_kryptonite_edges(message.query_graph)
+    assert eu.qg_is_fulfilled(qg_without_kryptonite_edges, dict_kg) or kg_should_be_incomplete or should_throw_error
     _check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
     _check_property_format(nodes_by_qg_id, edges_by_qg_id)
     _check_node_types(message.knowledge_graph.nodes, message.query_graph)
@@ -618,6 +619,34 @@ def test_molepro_query():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
+def test_exclude_edge_parallel():
+    actions_list = [
+        "add_qnode(name=DOID:3312, id=n00)",
+        "add_qnode(type=chemical_substance, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, type=indicated_for, id=e00)",
+        "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, exclude=true, id=e01)",
+        "expand(kp=ARAX/KG1)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, debug=True)
+
+
+def test_exclude_edge_perpendicular():
+    actions_list = [
+        "add_qnode(curie=DOID:3312, id=n00)",
+        "add_qnode(type=protein, id=n01)",
+        "add_qnode(type=chemical_substance, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "add_qnode(type=pathway, id=n03)",
+        "add_qedge(source_id=n01, target_id=n03, id=e02, exclude=true)",
+        "expand(kp=ARAX/KG1)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
+# TODO: add test for exclude node.. (does that ever make sense vs. excluding an edge?)
 
 
 if __name__ == "__main__":

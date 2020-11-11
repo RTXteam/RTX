@@ -3,7 +3,7 @@
 import sys
 import os
 import traceback
-from typing import List, Dict, Union, Tuple
+from typing import List, Dict, Union, Set
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.knowledge_graph import KnowledgeGraph
@@ -23,6 +23,9 @@ class DictKnowledgeGraph:
         self.nodes_by_qg_id = nodes if nodes else dict()
         self.edges_by_qg_id = edges if edges else dict()
 
+    def __str__(self):
+        return f"nodes_by_qg_id:\n{self.nodes_by_qg_id}\nedges_by_qg_id:\n{self.edges_by_qg_id}"
+
     def add_node(self, node: Node, qnode_id: str):
         if qnode_id not in self.nodes_by_qg_id:
             self.nodes_by_qg_id[qnode_id] = dict()
@@ -32,6 +35,13 @@ class DictKnowledgeGraph:
         if qedge_id not in self.edges_by_qg_id:
             self.edges_by_qg_id[qedge_id] = dict()
         self.edges_by_qg_id[qedge_id][edge.id] = edge
+
+    def get_all_edge_ids(self) -> Set[str]:
+        return {edge.source_id for qedge_id, edges in self.edges_by_qg_id.items() for edge in edges.values()}.union(
+            edge.target_id for qedge_id, edges in self.edges_by_qg_id.items() for edge in edges.values())
+
+    def get_all_node_ids(self) -> Set[str]:
+        return {node.id for nodes in self.nodes_by_qg_id.values() for node in nodes.values()}
 
 
 def get_curie_prefix(curie: str) -> str:
@@ -114,8 +124,25 @@ def get_printable_counts_by_qg_id(dict_kg: DictKnowledgeGraph) -> str:
 
 
 def get_query_node(query_graph: QueryGraph, qnode_id: str) -> QNode:
-    matching_nodes = [node for node in query_graph.nodes if node.id == qnode_id]
-    return matching_nodes[0] if matching_nodes else None
+    matching_qnodes = [qnode for qnode in query_graph.nodes if qnode.id == qnode_id]
+    return matching_qnodes[0] if matching_qnodes else None
+
+
+def get_query_edge(query_graph: QueryGraph, qedge_id: str) -> QEdge:
+    matching_qedges = [qedge for qedge in query_graph.edges if qedge.id == qedge_id]
+    return matching_qedges[0] if matching_qedges else None
+
+
+def get_qg_without_kryptonite_edges(query_graph: QueryGraph) -> QueryGraph:
+    normal_qedges = [qedge for qedge in query_graph.edges if not qedge.exclude]
+    normal_qedge_ids = {qedge.id for qedge in normal_qedges}
+    qnode_ids_used_by_normal_qedges = {qedge.source_id for qedge in normal_qedges}.union({qedge.target_id for qedge in normal_qedges})
+    return QueryGraph(nodes=[copy_qnode(qnode) for qnode in query_graph.nodes if qnode.id in qnode_ids_used_by_normal_qedges],
+                      edges=[copy_qedge(qedge) for qedge in query_graph.edges if qedge.id in normal_qedge_ids])
+
+
+def edges_are_parallel(edge_a: Union[QEdge, Edge], edge_b: Union[QEdge, Edge]) -> Union[QEdge, Edge]:
+    return {edge_a.source_id, edge_a.target_id} == {edge_b.source_id, edge_b.target_id}
 
 
 def convert_standard_kg_to_dict_kg(knowledge_graph: KnowledgeGraph) -> DictKnowledgeGraph:
@@ -252,7 +279,6 @@ def get_canonical_curies_list(curie: Union[str, List[str]], log: Response) -> Li
 def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: DictKnowledgeGraph) -> bool:
     qnode_ids = [qnode.id for qnode in query_graph.nodes]
     qedge_ids = [qedge.id for qedge in query_graph.edges]
-
     for qnode_id in qnode_ids:
         if qnode_id not in dict_kg.nodes_by_qg_id or not dict_kg.nodes_by_qg_id[qnode_id]:
             return False

@@ -264,9 +264,12 @@ class ARAXExpander:
                                                                    query_graph, use_synonyms, log)
                 if log.status != 'OK':
                     return response
-                node_usages_by_edges_map[qedge.id] = edge_node_usage_map
-
-                self._merge_answer_into_message_kg(answer_kg, dict_kg, log)
+                elif qedge.exclude:
+                    # TODO: Handle order issues... need to expand kryptonite edge AFTER connected edges...
+                    self._apply_kryptonite(answer_kg, dict_kg, node_usages_by_edges_map, query_graph, log)
+                else:
+                    node_usages_by_edges_map[qedge.id] = edge_node_usage_map
+                    self._merge_answer_into_message_kg(answer_kg, dict_kg, log)
                 if log.status != 'OK':
                     return response
 
@@ -553,6 +556,35 @@ class ARAXExpander:
                 dict_kg.add_edge(edge, qedge_id)
 
     @staticmethod
+    def _apply_kryptonite(answer_dict_kg: DictKnowledgeGraph, dict_kg: DictKnowledgeGraph,
+                          node_usages_by_edges_map: Dict[str, Dict[str, Dict[str, str]]], full_query_graph: QueryGraph,
+                          log: Response):
+        # This function is like an anti-expand, used for qedges with exclude=True
+        kryptonite_qedge_id = list(answer_dict_kg.edges_by_qg_id)[0]
+        kryptonite_qedge = eu.get_query_edge(full_query_graph, kryptonite_qedge_id)
+        kryptonite_qnode_ids = {eu.get_query_node(full_query_graph, kryptonite_qedge.source_id).id,
+                                eu.get_query_node(full_query_graph, kryptonite_qedge.target_id).id}
+        # Find which qedges in the KG link to our kryptonite edge
+        linked_qedge_ids = {qedge_id for qedge_id in dict_kg.edges_by_qg_id
+                            if eu.get_query_edge(full_query_graph, qedge_id).source_id in kryptonite_qnode_ids
+                            or eu.get_query_edge(full_query_graph, qedge_id).target_id in kryptonite_qnode_ids}
+        # Figure out which edges in the KG we need to below away
+        for linked_qedge_id in linked_qedge_ids:
+            linked_qedge = eu.get_query_edge(full_query_graph, linked_qedge_id)
+            shared_qnode_ids = kryptonite_qnode_ids.intersection({linked_qedge.source_id, linked_qedge.target_id})
+            kg_edge_node_usage_map = node_usages_by_edges_map[linked_qedge_id]
+            edge_ids_to_blow_away = set()
+            for kg_edge_id, node_usages in kg_edge_node_usage_map.items():
+                all_shared_in_common = all([node_usages[shared_qnode_id] in answer_dict_kg.nodes_by_qg_id[shared_qnode_id]
+                                            for shared_qnode_id in shared_qnode_ids])
+                if all_shared_in_common:
+                    edge_ids_to_blow_away.add(kg_edge_id)
+            # Actually get rid of all the edges we identified as needing elimination
+            for edge_id_to_blow_away in edge_ids_to_blow_away:
+                kg_edge_node_usage_map.pop(edge_id_to_blow_away)
+                dict_kg.edges_by_qg_id[linked_qedge_id].pop(edge_id_to_blow_away)
+
+    @staticmethod
     def _prune_dead_end_paths(dict_kg: DictKnowledgeGraph, full_query_graph: QueryGraph,
                               node_usages_by_edges_map: Dict[str, Dict[str, Dict[str, str]]], log: Response):
         # This function removes any 'dead-end' paths from the KG. (Because edges are expanded one-by-one, not all edges
@@ -617,6 +649,16 @@ class ARAXExpander:
                     if used_node_id not in dict_kg.nodes_by_qg_id[qnode_id]:
                         if edge_key in dict_kg.edges_by_qg_id[qedge_id]:
                             dict_kg.edges_by_qg_id[qedge_id].pop(edge_key)
+
+        # And remove all orphaned nodes (that aren't supposed to be orphans - some qnodes may be orphans by design)
+        qnode_ids_used_by_qedges = {qedge.source_id for qedge in full_query_graph.edges}.union(qedge.target_id for qedge in full_query_graph.edges)
+        non_orphan_qnode_ids = {qnode.id for qnode in full_query_graph.nodes if qnode.id in qnode_ids_used_by_qedges}
+        node_ids_used_by_edges = dict_kg.get_all_edge_ids()
+        for non_orphan_qnode_id in non_orphan_qnode_ids:
+            node_ids_in_kg = set(dict_kg.nodes_by_qg_id.get(non_orphan_qnode_id, []))
+            orphan_node_ids = node_ids_in_kg.difference(node_ids_used_by_edges)
+            for orphan_node_id in orphan_node_ids:
+                dict_kg.nodes_by_qg_id[non_orphan_qnode_id].pop(orphan_node_id)
 
     def _get_order_to_expand_edges_in(self, query_graph: QueryGraph) -> List[QEdge]:
         # This function determines what order to expand the edges in a query graph in; it attempts to start with
