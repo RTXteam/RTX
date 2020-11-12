@@ -1255,5 +1255,38 @@ def test_issue912_clean_up_kg():
     assert not orphan_edges
 
 
+def test_issue1119():
+    # Run a query to identify chemical substances that are both indicated for and contraindicated for our disease
+    actions = [
+        "add_qnode(name=DOID:3312, id=n00)",
+        "add_qnode(type=chemical_substance, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, type=indicated_for, id=e00)",
+        "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, id=e01)",
+        "expand(kp=ARAX/KG1)",
+        "resultify()"
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert message.results
+    n01_nodes_contraindicated = {node_binding.kg_id for result in message.results
+                                 for node_binding in result.node_bindings if node_binding.qg_id == "n01"}
+
+    # Verify those chemical substances aren't returned when we make the contraindicated_for edge kryptonite
+    actions = [
+        "add_qnode(name=DOID:3312, id=n00)",
+        "add_qnode(type=chemical_substance, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, type=indicated_for, id=e00)",
+        "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, exclude=true, id=e01)",
+        "expand(kp=ARAX/KG1)",
+        "resultify()"
+    ]
+    kryptonite_response, kryptonite_message = _do_arax_query(actions)
+    assert kryptonite_response.status == 'OK'
+    assert kryptonite_message.results
+    n01_nodes_kryptonite_query = {node_binding.kg_id for result in kryptonite_message.results
+                                  for node_binding in result.node_bindings if node_binding.qg_id == "n01"}
+    assert not n01_nodes_contraindicated.intersection(n01_nodes_kryptonite_query)
+
+
 if __name__ == '__main__':
     pytest.main(['-v', 'test_ARAX_resultify.py'])

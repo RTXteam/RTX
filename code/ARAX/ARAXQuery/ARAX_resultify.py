@@ -368,12 +368,28 @@ def _parse_boolean_case_insensitive(input_string:  str) -> bool:
         raise ValueError("invalid value for input_string")
 
 
+def _get_qg_without_kryptonite_portions(qg: QueryGraph) -> QueryGraph:
+    """
+    This function returns a version of the query graph in which kryptonite ("not") qedges and their associated qnodes
+    (that aren't otherwised used) have been removed. Resultify should work off of such a version of the QG (effectively
+    ignoring kryptonite portions) because handling of kryptonite qedges is done upstream in Expand (see #1119).
+    """
+    normal_qedges = [qedge for qedge in qg.edges if not qedge.exclude]
+    normal_qedge_ids = {qedge.id for qedge in normal_qedges}
+    qnode_ids_used_by_normal_qedges = {qnode_id for qedge in normal_qedges for qnode_id in [qedge.source_id, qedge.target_id]}
+    return QueryGraph(nodes=[qnode for qnode in qg.nodes if qnode.id in qnode_ids_used_by_normal_qedges],
+                      edges=[qedge for qedge in qg.edges if qedge.id in normal_qedge_ids])
+
+
 def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must* have qnode_id specified
                               qg: QueryGraph,
                               ignore_edge_direction: bool = True) -> List[Result]:
 
     if ignore_edge_direction is None:
         return _get_results_for_kg_by_qg(kg, qg)
+
+    # Use a version of the QG in which kryptonite ("not") edges/nodes have been removed (we should ignore these) #1119
+    qg = _get_qg_without_kryptonite_portions(qg)
 
     if len([node.id for node in cast(Iterable[QNode], qg.nodes) if node.id is None]) > 0:
         raise ValueError("node has None for node.id in query graph")
