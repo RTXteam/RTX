@@ -138,11 +138,14 @@ def get_query_edge(query_graph: QueryGraph, qedge_id: str) -> QEdge:
 
 
 def get_qg_without_kryptonite_edges(query_graph: QueryGraph) -> QueryGraph:
+    kryptonite_qedges = [qedge for qedge in query_graph.edges if qedge.exclude]
     normal_qedges = [qedge for qedge in query_graph.edges if not qedge.exclude]
     normal_qedge_ids = {qedge.id for qedge in normal_qedges}
+    qnode_ids_used_by_kryptonite_qedges = {qnode_id for qedge in kryptonite_qedges for qnode_id in [qedge.source_id, qedge.target_id]}
     qnode_ids_used_by_normal_qedges = {qnode_id for qedge in normal_qedges for qnode_id in [qedge.source_id, qedge.target_id]}
-    return QueryGraph(nodes=[copy_qnode(qnode) for qnode in query_graph.nodes if qnode.id in qnode_ids_used_by_normal_qedges],
-                      edges=[copy_qedge(qedge) for qedge in query_graph.edges if qedge.id in normal_qedge_ids])
+    qnode_ids_used_only_by_kryptonite_qedges = qnode_ids_used_by_kryptonite_qedges.difference(qnode_ids_used_by_normal_qedges)
+    return QueryGraph(nodes=[qnode for qnode in query_graph.nodes if qnode.id not in qnode_ids_used_only_by_kryptonite_qedges],
+                      edges=[qedge for qedge in query_graph.edges if qedge.id in normal_qedge_ids])
 
 
 def edges_are_parallel(edge_a: Union[QEdge, Edge], edge_b: Union[QEdge, Edge]) -> Union[QEdge, Edge]:

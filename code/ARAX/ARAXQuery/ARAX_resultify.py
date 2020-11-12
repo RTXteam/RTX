@@ -374,10 +374,13 @@ def _get_qg_without_kryptonite_portions(qg: QueryGraph) -> QueryGraph:
     (that aren't otherwised used) have been removed. Resultify should work off of such a version of the QG (effectively
     ignoring kryptonite portions) because handling of kryptonite qedges is done upstream in Expand (see #1119).
     """
+    kryptonite_qedges = [qedge for qedge in qg.edges if qedge.exclude]
     normal_qedges = [qedge for qedge in qg.edges if not qedge.exclude]
     normal_qedge_ids = {qedge.id for qedge in normal_qedges}
+    qnode_ids_used_by_kryptonite_qedges = {qnode_id for qedge in kryptonite_qedges for qnode_id in [qedge.source_id, qedge.target_id]}
     qnode_ids_used_by_normal_qedges = {qnode_id for qedge in normal_qedges for qnode_id in [qedge.source_id, qedge.target_id]}
-    return QueryGraph(nodes=[qnode for qnode in qg.nodes if qnode.id in qnode_ids_used_by_normal_qedges],
+    qnode_ids_used_only_by_kryptonite_qedges = qnode_ids_used_by_kryptonite_qedges.difference(qnode_ids_used_by_normal_qedges)
+    return QueryGraph(nodes=[qnode for qnode in qg.nodes if qnode.id not in qnode_ids_used_only_by_kryptonite_qedges],
                       edges=[qedge for qedge in qg.edges if qedge.id in normal_qedge_ids])
 
 
