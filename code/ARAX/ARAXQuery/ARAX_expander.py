@@ -256,7 +256,7 @@ class ARAXExpander:
             log.debug(f"Query graph for this Expand() call is: {query_sub_graph.to_dict()}")
 
             # Expand the query graph edge by edge (much faster for neo4j queries, and allows easy integration with BTE)
-            ordered_qedges_to_expand = self._get_order_to_expand_edges_in(query_sub_graph)
+            ordered_qedges_to_expand = self._get_order_to_expand_qedges_in(query_sub_graph)
             node_usages_by_edges_map = dict()
 
             for qedge in ordered_qedges_to_expand:
@@ -670,35 +670,42 @@ class ARAXExpander:
             for orphan_node_id in orphan_node_ids:
                 dict_kg.nodes_by_qg_id[non_orphan_qnode_id].pop(orphan_node_id)
 
-    def _get_order_to_expand_edges_in(self, query_graph: QueryGraph) -> List[QEdge]:
-        # This function determines what order to expand the edges in a query graph in; it attempts to start with
-        # qedges that have a qnode with a specific curie, and move out from there.
-        edges_remaining = [edge for edge in query_graph.edges]
-        ordered_edges = []
-        while edges_remaining:
-            if not ordered_edges:
-                # Start with an edge that has a node with a curie specified
-                edge_with_curie = self._get_edge_with_curie_node(query_graph)
-                first_edge = edge_with_curie if edge_with_curie else edges_remaining[0]
-                ordered_edges = [first_edge]
-                edges_remaining.pop(edges_remaining.index(first_edge))
+    def _get_order_to_expand_qedges_in(self, query_graph: QueryGraph) -> List[QEdge]:
+        """
+        This function determines what order to expand the edges in a query graph in; it looks for a qedge that has
+        a qnode with a specific curie, and moves out from there. It opts to expand kryptonite qedges only after all
+        qedges adjacent to the kryptonite qedge have been expanded.
+        """
+        qedges_remaining = [edge for edge in query_graph.edges]
+        ordered_qedges = []
+        while qedges_remaining:
+            if not ordered_qedges:
+                # Start with an edge that has a node with a curie specified (and is not a kryptonite edge)
+                qedges_with_curie = self._get_edges_with_curie_node(query_graph)
+                non_kryptonite_curie_qedges = [qedge for qedge in qedges_with_curie if not qedge.exclude]
+                if non_kryptonite_curie_qedges:
+                    first_qedge = non_kryptonite_curie_qedges[0]
+                else:
+                    first_qedge = qedges_with_curie[0] if qedges_with_curie else qedges_remaining[0]
+                ordered_qedges = [first_qedge]
+                qedges_remaining.pop(qedges_remaining.index(first_qedge))
             else:
                 # Add connected edges in a rightward (target) direction if possible
-                right_end_edge = ordered_edges[-1]
-                edge_connected_to_right_end = self._find_connected_qedge(edges_remaining, right_end_edge)
-                if edge_connected_to_right_end:
-                    ordered_edges.append(edge_connected_to_right_end)
-                    edges_remaining.pop(edges_remaining.index(edge_connected_to_right_end))
+                right_end_qedge = ordered_qedges[-1]
+                qedge_connected_to_right_end = self._find_connected_qedge(qedges_remaining, right_end_qedge)
+                if qedge_connected_to_right_end:
+                    ordered_qedges.append(qedge_connected_to_right_end)
+                    qedges_remaining.pop(qedges_remaining.index(qedge_connected_to_right_end))
                 else:
-                    left_end_edge = ordered_edges[0]
-                    edge_connected_to_left_end = self._find_connected_qedge(edges_remaining, left_end_edge)
-                    if edge_connected_to_left_end:
-                        ordered_edges.insert(0, edge_connected_to_left_end)
-                        edges_remaining.pop(edges_remaining.index(edge_connected_to_left_end))
-        return ordered_edges
+                    left_end_qedge = ordered_qedges[0]
+                    qedge_connected_to_left_end = self._find_connected_qedge(qedges_remaining, left_end_qedge)
+                    if qedge_connected_to_left_end:
+                        ordered_qedges.insert(0, qedge_connected_to_left_end)
+                        qedges_remaining.pop(qedges_remaining.index(qedge_connected_to_left_end))
+        return ordered_qedges
 
     def _is_input_qnode(self, qnode: QNode, qedge: QEdge) -> bool:
-        all_ordered_qedges = self._get_order_to_expand_edges_in(self.message.query_graph)
+        all_ordered_qedges = self._get_order_to_expand_qedges_in(self.message.query_graph)
         current_qedge_index = all_ordered_qedges.index(qedge)
         previous_qedge = all_ordered_qedges[current_qedge_index - 1] if current_qedge_index > 0 else None
         if previous_qedge and qnode.id in {previous_qedge.source_id, previous_qedge.target_id}:
@@ -752,22 +759,23 @@ class ARAXExpander:
         return list(node_ids.difference(node_ids_used_by_edges))
 
     @staticmethod
-    def _get_edge_with_curie_node(query_graph: QueryGraph):
-        for edge in query_graph.edges:
-            source_qnode = eu.get_query_node(query_graph, edge.source_id)
-            target_qnode = eu.get_query_node(query_graph, edge.target_id)
-            if source_qnode.curie or target_qnode.curie:
-                return edge
-        return None
+    def _get_edges_with_curie_node(query_graph: QueryGraph) -> List[QEdge]:
+        return [qedge for qedge in query_graph.edges if eu.get_query_node(query_graph, qedge.source_id).curie or
+                eu.get_query_node(query_graph, qedge.target_id).curie]
 
     @staticmethod
-    def _find_connected_qedge(edge_list: List[QEdge], edge: QEdge) -> QEdge:
-        edge_node_ids = {edge.source_id, edge.target_id}
-        for potential_connected_edge in edge_list:
-            potential_connected_edge_node_ids = {potential_connected_edge.source_id, potential_connected_edge.target_id}
-            if edge_node_ids.intersection(potential_connected_edge_node_ids):
-                return potential_connected_edge
-        return None
+    def _find_connected_qedge(qedge_choices: List[QEdge], qedge: QEdge) -> QEdge:
+        qedge_qnode_ids = {qedge.source_id, qedge.target_id}
+        connected_qedges = []
+        for other_qedge in qedge_choices:
+            other_qedge_qnode_ids = {other_qedge.source_id, other_qedge.target_id}
+            if qedge_qnode_ids.intersection(other_qedge_qnode_ids):
+                connected_qedges.append(other_qedge)
+        if connected_qedges:
+            non_kryptonite_qedges = [connected_qedge for connected_qedge in connected_qedges if not connected_qedge.exclude]
+            return non_kryptonite_qedges[0] if non_kryptonite_qedges else connected_qedges[0]
+        else:
+            return None
 
     @staticmethod
     def _convert_string_to_bool_if_bool(bool_string: str) -> Union[bool, str]:

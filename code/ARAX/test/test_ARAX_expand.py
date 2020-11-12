@@ -683,5 +683,38 @@ def test_exclude_edge_perpendicular():
     assert "e02" not in edges_by_qg_id_not and "n03" not in nodes_by_qg_id_not
 
 
+@pytest.mark.slow
+def test_exclude_edge_ordering():
+    # This test makes sures that kryptonite qedges are expanded AFTER their adjacent qedges
+    actions_list = [
+        "add_qnode(name=DOID:3312, id=n00)",
+        "add_qnode(type=chemical_substance, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, type=indicated_for, id=e00)",
+        "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, exclude=true, id=e01)",
+        "expand(kp=ARAX/KG1, edge_id=e00)",
+        "expand(kp=ARAX/KG1, edge_id=e01)"
+    ]
+    nodes_by_qg_id_a, edges_by_qg_id_a = _run_query_and_do_standard_testing(actions_list)
+    actions_list = [
+        "add_qnode(name=DOID:3312, id=n00)",
+        "add_qnode(type=chemical_substance, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, type=indicated_for, id=e00)",
+        "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, exclude=true, id=e01)",
+        "expand(kp=ARAX/KG1)"
+    ]
+    nodes_by_qg_id_b, edges_by_qg_id_b = _run_query_and_do_standard_testing(actions_list)
+    actions_list = [
+        "add_qnode(name=DOID:3312, id=n00)",
+        "add_qnode(type=chemical_substance, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, exclude=true, id=e01)",
+        "add_qedge(source_id=n00, target_id=n01, type=indicated_for, id=e00)",
+        "expand(kp=ARAX/KG1)"
+    ]
+    nodes_by_qg_id_c, edges_by_qg_id_c = _run_query_and_do_standard_testing(actions_list)
+    # All of these queries should produce the same KG contents
+    assert set(nodes_by_qg_id_a["n01"]) == set(nodes_by_qg_id_b["n01"]) == set(nodes_by_qg_id_c["n01"])
+    assert set(edges_by_qg_id_a["e00"]) == set(edges_by_qg_id_b["e00"]) == set(edges_by_qg_id_c["e00"])
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
