@@ -140,7 +140,7 @@ def get_query_edge(query_graph: QueryGraph, qedge_id: str) -> QEdge:
 def get_qg_without_kryptonite_edges(query_graph: QueryGraph) -> QueryGraph:
     normal_qedges = [qedge for qedge in query_graph.edges if not qedge.exclude]
     normal_qedge_ids = {qedge.id for qedge in normal_qedges}
-    qnode_ids_used_by_normal_qedges = {qedge.source_id for qedge in normal_qedges}.union({qedge.target_id for qedge in normal_qedges})
+    qnode_ids_used_by_normal_qedges = {qnode_id for qedge in normal_qedges for qnode_id in [qedge.source_id, qedge.target_id]}
     return QueryGraph(nodes=[copy_qnode(qnode) for qnode in query_graph.nodes if qnode.id in qnode_ids_used_by_normal_qedges],
                       edges=[copy_qedge(qedge) for qedge in query_graph.edges if qedge.id in normal_qedge_ids])
 

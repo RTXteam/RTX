@@ -1255,7 +1255,7 @@ def test_issue912_clean_up_kg():
     assert not orphan_edges
 
 
-def test_issue1119():
+def test_issue1119_a():
     # Run a query to identify chemical substances that are both indicated for and contraindicated for our disease
     actions = [
         "add_qnode(name=DOID:3312, id=n00)",
@@ -1286,6 +1286,28 @@ def test_issue1119():
     n01_nodes_kryptonite_query = {node_binding.kg_id for result in kryptonite_message.results
                                   for node_binding in result.node_bindings if node_binding.qg_id == "n01"}
     assert not n01_nodes_contraindicated.intersection(n01_nodes_kryptonite_query)
+
+
+@pytest.mark.slow
+def test_issue1119_b():
+    # Tests a perpendicular kryptonite qedge situation
+    actions = [
+        "add_qnode(curie=DOID:3312, id=n00)",
+        "add_qnode(type=protein, id=n01)",
+        "add_qnode(type=chemical_substance, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "add_qnode(type=pathway, id=n03)",
+        "add_qedge(source_id=n01, target_id=n03, id=e02, exclude=true)",
+        "expand(kp=ARAX/KG1)",
+        "resultify()"
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert message.results
+    # Make sure the kryptonite edge and its leaf qnode don't appear in any results
+    assert not any(node_binding.qg_id == "n03" for result in message.results for node_binding in result.node_bindings)
+    assert not any(edge_binding.qg_id == "e02" for result in message.results for edge_binding in result.edge_bindings)
 
 
 if __name__ == '__main__':

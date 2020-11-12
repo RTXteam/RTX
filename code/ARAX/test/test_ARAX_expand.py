@@ -646,8 +646,10 @@ def test_exclude_edge_parallel():
     nodes_by_qg_id_not, edges_by_qg_id_not = _run_query_and_do_standard_testing(actions_list)
     # None of the contraindicated n01 nodes should appear in the answer this time
     assert not n01_nodes_contraindicated.intersection(set(nodes_by_qg_id_not["n01"]))
+    assert "e01" not in edges_by_qg_id
 
 
+@pytest.mark.slow
 def test_exclude_edge_perpendicular():
     # First run a query without any kryptonite edges to get a baseline
     actions_list = [
@@ -678,6 +680,7 @@ def test_exclude_edge_perpendicular():
     ]
     nodes_by_qg_id_not, edges_by_qg_id_not = _run_query_and_do_standard_testing(actions_list)
     assert not n01_nodes_to_blow_away.intersection(set(nodes_by_qg_id_not["n01"]))
+    assert "e02" not in edges_by_qg_id and "n03" not in nodes_by_qg_id
 
 
 if __name__ == "__main__":
