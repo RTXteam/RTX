@@ -571,17 +571,27 @@ class ARAXExpander:
         # Figure out which edges in the KG we need to below away
         for linked_qedge_id in linked_qedge_ids:
             linked_qedge = eu.get_query_edge(full_query_graph, linked_qedge_id)
-            shared_qnode_ids = kryptonite_qnode_ids.intersection({linked_qedge.source_id, linked_qedge.target_id})
-            kg_edge_node_usage_map = node_usages_by_edges_map[linked_qedge_id]
+            kg_edge_node_usage_map = node_usages_by_edges_map.get(linked_qedge_id, dict())
+            kg_edges_dict = dict_kg.edges_by_qg_id[linked_qedge_id]
             edge_ids_to_blow_away = set()
-            for kg_edge_id, node_usages in kg_edge_node_usage_map.items():
-                all_shared_in_common = all([node_usages[shared_qnode_id] in answer_dict_kg.nodes_by_qg_id[shared_qnode_id]
-                                            for shared_qnode_id in shared_qnode_ids])
-                if all_shared_in_common:
-                    edge_ids_to_blow_away.add(kg_edge_id)
+            for kg_edge_id, kg_edge in kg_edges_dict.items():
+                kg_node_a = kg_edge.source_id if kg_edge.source_id in dict_kg.nodes_by_qg_id[linked_qedge.source_id] else kg_edge.target_id
+                kg_node_b = kg_edge.target_id if kg_node_a != kg_edge.target_id else kg_edge.source_id
+                # If nodes match for all qnode IDs this edge shares with kryptonite edge, we need to blow the edge away
+                if kryptonite_qnode_ids == {linked_qedge.source_id, linked_qedge.target_id}:
+                    if kg_node_a in answer_dict_kg.nodes_by_qg_id[linked_qedge.source_id] and \
+                            kg_node_b in answer_dict_kg.nodes_by_qg_id[linked_qedge.target_id]:
+                        edge_ids_to_blow_away.add(kg_edge_id)
+                elif linked_qedge.source_id in kryptonite_qnode_ids:
+                    if kg_node_a in answer_dict_kg.nodes_by_qg_id[linked_qedge.source_id]:
+                        edge_ids_to_blow_away.add(kg_edge_id)
+                elif linked_qedge.target_id in kryptonite_qnode_ids:
+                    if kg_node_b in answer_dict_kg.nodes_by_qg_id[linked_qedge.target_id]:
+                        edge_ids_to_blow_away.add(kg_edge_id)
             # Actually get rid of all the edges we identified as needing elimination
             for edge_id_to_blow_away in edge_ids_to_blow_away:
-                kg_edge_node_usage_map.pop(edge_id_to_blow_away)
+                if edge_id_to_blow_away in kg_edge_node_usage_map:
+                    kg_edge_node_usage_map.pop(edge_id_to_blow_away)
                 dict_kg.edges_by_qg_id[linked_qedge_id].pop(edge_id_to_blow_away)
 
     @staticmethod
