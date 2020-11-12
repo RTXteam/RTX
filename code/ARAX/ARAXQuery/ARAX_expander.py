@@ -265,7 +265,6 @@ class ARAXExpander:
                 if log.status != 'OK':
                     return response
                 elif qedge.exclude:
-                    # TODO: Handle order issues... need to expand kryptonite edge AFTER connected edges...
                     self._apply_kryptonite(answer_kg, dict_kg, node_usages_by_edges_map, query_graph, log)
                 else:
                     node_usages_by_edges_map[qedge.id] = edge_node_usage_map
@@ -560,6 +559,7 @@ class ARAXExpander:
                           node_usages_by_edges_map: Dict[str, Dict[str, Dict[str, str]]], full_query_graph: QueryGraph,
                           log: Response):
         # This function is like an anti-expand, used for qedges with exclude=True
+        log.debug(f"Applying qedge {list(answer_dict_kg.edges_by_qg_id)[0]}'s kryptonite powers")
         kryptonite_qedge_id = list(answer_dict_kg.edges_by_qg_id)[0]
         kryptonite_qedge = eu.get_query_edge(full_query_graph, kryptonite_qedge_id)
         kryptonite_qnode_ids = {eu.get_query_node(full_query_graph, kryptonite_qedge.source_id).id,
@@ -588,6 +588,7 @@ class ARAXExpander:
                 elif linked_qedge.target_id in kryptonite_qnode_ids:
                     if kg_node_b in answer_dict_kg.nodes_by_qg_id[linked_qedge.target_id]:
                         edge_ids_to_blow_away.add(kg_edge_id)
+            log.debug(f"Blowing away {len(edge_ids_to_blow_away)} KG edges due to kryptonite qedge")
             # Actually get rid of all the edges we identified as needing elimination
             for edge_id_to_blow_away in edge_ids_to_blow_away:
                 if edge_id_to_blow_away in kg_edge_node_usage_map:
