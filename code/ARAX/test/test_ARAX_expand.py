@@ -622,6 +622,20 @@ def test_molepro_query():
 
 
 def test_exclude_edge_parallel():
+    # First run a query without any kryptonite edges to get a baseline
+    actions_list = [
+        "add_qnode(name=DOID:3312, id=n00)",
+        "add_qnode(type=chemical_substance, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, type=indicated_for, id=e00)",
+        "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, id=e01)",
+        "expand(kp=ARAX/KG1)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    node_ids_used_by_contraindicated_edge = eu.get_node_ids_used_by_edges(edges_by_qg_id["e01"])
+    n01_nodes_contraindicated = set(nodes_by_qg_id["n01"]).intersection(node_ids_used_by_contraindicated_edge)
+    assert n01_nodes_contraindicated
+
+    # Then exclude the contraindicated edge and make sure the appropriate nodes are blown away
     actions_list = [
         "add_qnode(name=DOID:3312, id=n00)",
         "add_qnode(type=chemical_substance, id=n01)",
@@ -629,10 +643,29 @@ def test_exclude_edge_parallel():
         "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, exclude=true, id=e01)",
         "expand(kp=ARAX/KG1)"
     ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, debug=True)
+    nodes_by_qg_id_not, edges_by_qg_id_not = _run_query_and_do_standard_testing(actions_list)
+    # None of the contraindicated n01 nodes should appear in the answer this time
+    assert not n01_nodes_contraindicated.intersection(set(nodes_by_qg_id_not["n01"]))
 
 
 def test_exclude_edge_perpendicular():
+    # First run a query without any kryptonite edges to get a baseline
+    actions_list = [
+        "add_qnode(curie=DOID:3312, id=n00)",
+        "add_qnode(type=protein, id=n01)",
+        "add_qnode(type=chemical_substance, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "add_qnode(type=pathway, id=n03)",
+        "add_qedge(source_id=n01, target_id=n03, id=e02)",
+        "expand(kp=ARAX/KG1)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    node_ids_used_by_kryptonite_edge = eu.get_node_ids_used_by_edges(edges_by_qg_id["e02"])
+    n01_nodes_to_blow_away = set(nodes_by_qg_id["n01"]).intersection(node_ids_used_by_kryptonite_edge)
+    assert n01_nodes_to_blow_away
+
+    # Then use a kryptonite edge and make sure the appropriate nodes are blown away
     actions_list = [
         "add_qnode(curie=DOID:3312, id=n00)",
         "add_qnode(type=protein, id=n01)",
@@ -643,10 +676,8 @@ def test_exclude_edge_perpendicular():
         "add_qedge(source_id=n01, target_id=n03, id=e02, exclude=true)",
         "expand(kp=ARAX/KG1)"
     ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
-# TODO: add test for exclude node.. (does that ever make sense vs. excluding an edge?)
+    nodes_by_qg_id_not, edges_by_qg_id_not = _run_query_and_do_standard_testing(actions_list)
+    assert not n01_nodes_to_blow_away.intersection(set(nodes_by_qg_id_not["n01"]))
 
 
 if __name__ == "__main__":

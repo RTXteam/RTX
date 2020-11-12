@@ -653,7 +653,7 @@ class ARAXExpander:
         # And remove all orphaned nodes (that aren't supposed to be orphans - some qnodes may be orphans by design)
         qnode_ids_used_by_qedges = {qedge.source_id for qedge in full_query_graph.edges}.union(qedge.target_id for qedge in full_query_graph.edges)
         non_orphan_qnode_ids = {qnode.id for qnode in full_query_graph.nodes if qnode.id in qnode_ids_used_by_qedges}
-        node_ids_used_by_edges = dict_kg.get_all_edge_ids()
+        node_ids_used_by_edges = dict_kg.get_all_node_ids_used_by_edges()
         for non_orphan_qnode_id in non_orphan_qnode_ids:
             node_ids_in_kg = set(dict_kg.nodes_by_qg_id.get(non_orphan_qnode_id, []))
             orphan_node_ids = node_ids_in_kg.difference(node_ids_used_by_edges)

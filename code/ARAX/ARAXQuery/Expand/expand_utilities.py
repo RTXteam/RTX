@@ -36,9 +36,9 @@ class DictKnowledgeGraph:
             self.edges_by_qg_id[qedge_id] = dict()
         self.edges_by_qg_id[qedge_id][edge.id] = edge
 
-    def get_all_edge_ids(self) -> Set[str]:
-        return {edge.source_id for qedge_id, edges in self.edges_by_qg_id.items() for edge in edges.values()}.union(
-            edge.target_id for qedge_id, edges in self.edges_by_qg_id.items() for edge in edges.values())
+    def get_all_node_ids_used_by_edges(self) -> Set[str]:
+        return {node_id for edges in self.edges_by_qg_id.values() for edge in edges.values()
+                for node_id in [edge.source_id, edge.target_id]}
 
     def get_all_node_ids(self) -> Set[str]:
         return {node.id for nodes in self.nodes_by_qg_id.values() for node in nodes.values()}
@@ -107,6 +107,10 @@ def convert_string_or_list_to_list(string_or_list: Union[str, List[str]]) -> Lis
         return string_or_list
     else:
         return []
+
+
+def get_node_ids_used_by_edges(edges_dict: Dict[str, Edge]) -> Set[str]:
+    return {node_id for edge in edges_dict.values() for node_id in [edge.source_id, edge.target_id]}
 
 
 def get_counts_by_qg_id(dict_kg: DictKnowledgeGraph) -> Dict[str, int]:
