@@ -32,7 +32,7 @@ class ARAXFilterKG:
         self.edge_type_info = {
             "is_required": True,
             "examples": ["contraindicated_for", "affects", "expressed_in"],
-            "type": "string",
+            "type": "ARAXedge",
             "description": "The name of the edge type to filter by."
         }
         self.remove_connected_nodes_info = {
@@ -100,7 +100,8 @@ class ARAXFilterKG:
             "If `type` is 'std_dev' or 'std' then `threshold` will default to 1." +\
             "If `type` is 'percentile' or 'p' then `threshold` will default to 95 unless "+\
             "`edge_attribute` is also 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' "+\
-            "then `threshold` will default to 5."
+            "then `threshold` will default to 5.",
+            "UI_display": "false"
         }
         self.direction_stats_info = {
             "is_required": False,
@@ -109,7 +110,8 @@ class ARAXFilterKG:
             "description": "Indictes whether to remove above or below the given threshold.",
             "default": "a value dictated by the `edge_attribute` parameter. " +\
             "If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `direction` defaults to above. " +\
-            "If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `direction` defaults to below."
+            "If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `direction` defaults to below.",
+            "UI_display": "false"
         }
         self.top_info = {
             "is_required": False,
@@ -118,18 +120,19 @@ class ARAXFilterKG:
             "description": "Indicate whether or not the threshold should be placed in top of the list. E.g. top set as True with type set as std_dev will set the cutoff for filtering as the mean + threshold * std_dev while setting top to False will set the cutoff as the mean - std_dev * threshold.",
             "default": "a value dictated by the `edge_attribute` parameter. " +\
             "If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `top` defaults to False. " +\
-            "If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `top` defaults to True."
+            "If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `top` defaults to True.",
+            "UI_display": "false"
         }
         self.node_type_required_info = {
             "is_required": True,
             "examples": ["chemical_substance", "disease"],
-            "type": "string",
+            "type": "ARAXnode",
             "description": "The name of the node type to filter by."
         }
         self.node_type_info = {
             "is_required": False,
             "examples": ["chemical_substance", "disease"],
-            "type": "string",
+            "type": "ARAXnode",
             "description": "The name of the node type to filter by. If no value provided node type will not be considered."
         }
         self.node_property_info = {

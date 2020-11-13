@@ -6,6 +6,7 @@
 <link rel="stylesheet" type="text/css" href="dd.css">
 <script src="cytoscape.min.js"></script>
 <script src="rtx.js"></script>
+<script src="araxi.js"></script>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 <script src="/rtxcomplete/data/quick_def.json"></script>
@@ -162,6 +163,14 @@
     <a href="https://github.com/RTXteam/RTX/blob/master/code/ARAX/Documentation/DSL_Documentation.md" target="_new">more info here</a><a href="javascript:pasteExample('DSL');" style="position:relative; left:100px;">Example</a></span>
     <form id="dslForm" name="dslForm" method="post" action="postQuery('DSL');">
       <textarea class="questionBox" wrap="off" id="dslText"></textarea>&nbsp;<span title="clear DSL input" class="clq" onclick="clearDSL();">&#9587;</span>
+      <br/>
+      <span class="qgselect">
+	<select id="dsl_command" onchange="show_dsl_command_options(this.value)">
+	  <option style="border-bottom:1px solid black;" value="">Select DSL Command&nbsp;&nbsp;&nbsp;&#8675;</option>
+	</select>
+      </span>
+      <div id="dsl_command_form"></div>
+      <br/>
       <br/>
       <input type="button" class="questionBox button" name="action" value="POST" onClick="postQuery('DSL');">
     </form>

@@ -36,7 +36,7 @@ class ARAXFilterResults:
         }
         self.direction_info = {
             "is_required": True,
-            "examples": ['descending', 'd', 'ascending', 'a'],
+            "enum": ['descending', 'd', 'ascending', 'a'],
             "type": "string",
             "description": "The direction in which to order results. (ascending or descending)"
         }
@@ -72,7 +72,7 @@ class ARAXFilterResults:
         self.node_type_info = {
             "is_required": False,
             "examples": ["chemical_substance", "disease"],
-            "type": "string",
+            "type": "ARAXnode",
             "description": "The name of the node type to only filter on nodes of the matching type. " +\
             "If not provided the node type will not be considered when filtering."
         }
