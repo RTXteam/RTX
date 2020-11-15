@@ -16,7 +16,7 @@ class QNode(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, id: str=None, curie: str=None, type: BiolinkEntity=None, is_set: bool=None, option_group_id: str=None, exclude: bool=None):  # noqa: E501
+    def __init__(self, id: str=None, curie: str=None, type: BiolinkEntity=None, is_set: bool=None, option_group_id: str=None):  # noqa: E501
         """QNode - a model defined in Swagger
 
         :param id: The id of this QNode.  # noqa: E501
@@ -33,8 +33,7 @@ class QNode(Model):
             'curie': str,
             'type': BiolinkEntity,
             'is_set': bool,
-            'option_group_id': str,
-            'exclude': bool
+            'option_group_id': str
         }
 
         self.attribute_map = {
@@ -42,8 +41,7 @@ class QNode(Model):
             'curie': 'curie',
             'type': 'type',
             'is_set': 'is_set',
-            'option_group_id': 'option_group_id',
-            'exclude': 'exclude'
+            'option_group_id': 'option_group_id'
         }
 
         self._id = id
@@ -51,7 +49,6 @@ class QNode(Model):
         self._type = type
         self._is_set = is_set
         self._option_group_id = option_group_id
-        self._exclude = exclude
 
     @classmethod
     def from_dict(cls, dikt) -> 'QNode':
@@ -177,26 +174,3 @@ class QNode(Model):
         :type option_group_id: str
         """
         self._option_group_id = option_group_id
-
-    @property
-    def exclude(self) -> bool:
-        """Gets the exclude of this QNode.
-
-        Boolean that if set to true, excludes all resulting subgraphs with this node.  # noqa: E501
-
-        :return: The exclude of this QNode.
-        :rtype: bool
-        """
-        return self._exclude
-
-    @exclude.setter
-    def exclude(self, exclude: bool):
-        """Sets the exclude of this QNode.
-
-        Boolean that if set to true, excludes all resulting subgraphs with this node.  # noqa: E501
-
-        :param exclude: The exclude of this QNode.
-        :type exclude: bool
-        """
-
-        self._exclude = exclude
